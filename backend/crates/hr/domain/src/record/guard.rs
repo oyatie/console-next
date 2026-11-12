@@ -1,7 +1,8 @@
 //! Text guards shared by every section: trim, length, no control characters,
-//! and no 고유식별정보 typed into a free-text field (개인정보 보호법 §24,
-//! §24조의2; 시행령 §19). Migration 0261 repeats the RRN and licence shapes as
-//! CHECKs for any other writer.
+//! and no unique identifying information typed into a free-text field
+//! (Personal Information Protection Act §24, §24-2; Enforcement Decree §19).
+//! Migration 0261 repeats the RRN and licence shapes as CHECKs for any other
+//! writer.
 
 use console_kernel_core::KernelError;
 
@@ -42,10 +43,12 @@ pub(crate) fn optional_text(
     Ok(Some(value))
 }
 
-/// A 운전면허번호 or 여권번호 shape, refused in a certificate number of any
-/// kind (고유식별정보, 시행령 §19): exactly 12 digits once separators are dropped
+/// A driver's license number or passport number shape, refused in a
+/// certificate number of any kind (unique identifying information,
+/// Enforcement Decree §19): exactly 12 digits once separators are dropped
 /// (`11-23-456789-01`), a two-letter Hangul region and 10 digits (the older
-/// `서울 23-456789-01`), or a passport number (`M12345678`, `M123A4567`).
+/// form: a region name such as Seoul, written in Hangul, then
+/// `23-456789-01`), or a passport number (`M12345678`, `M123A4567`).
 #[must_use]
 pub fn looks_like_identifier_number(value: &str) -> bool {
     let digits = value.chars().filter(char::is_ascii_digit).count();

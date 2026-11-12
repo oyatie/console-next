@@ -1,6 +1,7 @@
-// Korean source for `uiOverrideSheet.` ids (ui/override-sheet). Rules: the header of ../ko.ts and GUIDE.md.
+// Korean copy for `uiOverrideSheet.` ids (ui/override-sheet). Rules: the header of ../ko.ts and GUIDE.md.
 // 「예외 처리」 is the only purple mark; the step-up commit always reads 「패스키로 확인하고 …」.
-export const koUiOverrideSheet = {
+import type { enUiOverrideSheet } from "../en/ui-override-sheet";
+export const koUiOverrideSheet: Record<keyof typeof enUiOverrideSheet, string> = {
   "uiOverrideSheet.name": "예외 처리 시트",
   "uiOverrideSheet.risk.low": "위험 낮음",
   "uiOverrideSheet.risk.mid": "위험 중간",
@@ -19,4 +20,4 @@ export const koUiOverrideSheet = {
   "uiOverrideSheet.back": "돌아가기",
   "uiOverrideSheet.reasonMissing": "예외 사유를 선택하면 누를 수 있습니다",
   "uiOverrideSheet.mark": "예외 처리",
-} as const;
+};

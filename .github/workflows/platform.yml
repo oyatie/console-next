@@ -72,20 +72,30 @@ jobs:
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
-      - name: Prune legacy image caches
+      - name: Retain Actions caches by purpose and count
         id: prune
+        env:
+          CACHE_RETENTION_BACKEND_APPLY: ${{ vars.CACHE_RETENTION_BACKEND_APPLY }}
+          CACHE_RETENTION_DB_TESTS_APPLY: ${{ vars.CACHE_RETENTION_DB_TESTS_APPLY }}
+          CACHE_RETENTION_NPM_APPLY: ${{ vars.CACHE_RETENTION_NPM_APPLY }}
+          CACHE_RETENTION_PLAYWRIGHT_APPLY: ${{ vars.CACHE_RETENTION_PLAYWRIGHT_APPLY }}
+          CACHE_RETENTION_CODEQL_APPLY: ${{ vars.CACHE_RETENTION_CODEQL_APPLY }}
+          CACHE_RETENTION_BUILDKIT_APPLY: ${{ vars.CACHE_RETENTION_BUILDKIT_APPLY }}
         continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: |
-            const { pruneImageCache } = await import(`${process.env.GITHUB_WORKSPACE}/deploy/ci/prune-image-cache.mjs`);
-            const result = await pruneImageCache(github, context);
-            await core.summary.addRaw(`Removed ${result.deleted} legacy image cache entries (${result.bytes} bytes).\n`).write();
-      - name: Warn when image cache cleanup fails
+            const {maintainCaches} = await import(`${process.env.GITHUB_WORKSPACE}/scripts/cache-retention.mjs`);
+            const result = await maintainCaches(github, context, {
+              applyFamilies: ['backend', 'db-tests', 'npm', 'playwright', 'codeql', 'buildkit'].filter(
+                family => process.env[`CACHE_RETENTION_${family.replaceAll('-', '_').toUpperCase()}_APPLY`] === 'true'),
+            });
+            await core.summary.addRaw(result.summary).write();
+      - name: Warn when Actions cache cleanup fails
         if: >-
           !cancelled() && steps.prune.outcome != 'success'
         run: |
-          echo '**Warning:** Image cache cleanup failed. Build and publish will continue; legacy caches may remain near the repository cache limit.' >> "$GITHUB_STEP_SUMMARY"
+          echo '**Warning:** Actions cache cleanup failed or was skipped. Build and publish will continue; caches may remain near the repository cache limit.' >> "$GITHUB_STEP_SUMMARY"
 
   build:
     if: github.event_name == 'merge_group' || github.event_name == 'push'

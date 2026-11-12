@@ -582,7 +582,7 @@ async fn lifecycle_noop_future_leave_type_allowed_events_and_filters(pool: PgPoo
     // No lifecycle act requires an acknowledgement (A13).
     let transfer = &detail["allowed_events"][1];
     assert_eq!(transfer["required_signoffs"], json!([]));
-    // A change of company is a 전적, refused as a TRANSFER (E-S3b).
+    // A change of company is an inter-company transfer, refused as a TRANSFER (E-S3b).
     assert_eq!(transfer["cross_company_required_signoffs"], json!([]));
     assert_eq!(detail["allowed_events"][4]["required_signoffs"], json!([]));
 

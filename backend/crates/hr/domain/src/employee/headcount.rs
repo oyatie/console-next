@@ -1,37 +1,42 @@
-//! BW-35: the derived 사업장 fact 「상시근로자 수 N인 이상」 (decisions #3,
-//! exits-challenge A3), by 근로기준법 시행령 §7의2 ①②④.
+//! BW-35: the derived workplace fact "number of regular workers: N or more"
+//! (decisions #3, exits-challenge A3), by Enforcement Decree of the Labor
+//! Standards Act §7-2 ①②④.
 //!
 //! Derived, never set: no default and no tenant toggle. Overriding it is the
 //! governed exception `HEADCOUNT_CLASS_OVERRIDE`, applied by the caller.
 //! Every statutory number arrives in [`HeadcountRules`], loaded by the caller
-//! from the `statutory_rules` register (HOLD rows until a 노무사 lifts them).
+//! from the `statutory_rules` register (HOLD rows until a labor attorney lifts
+//! them).
 //!
-//! Not encoded here (callers own them until ST-1 / the 노무사 confirm):
-//! - §7의2③ (§60–62 except §60②: five or more in every month of the prior
+//! Not encoded here (callers own them until ST-1 / the labor attorney confirm):
+//! - §7-2③ (§60–62 except §60②: five or more in every month of the prior
 //!   year) needs month-by-month results; compose it from this function.
-//! - §7의2④ 파견근로자 are excluded by the caller: they are not on the roster.
-//! - Whether 「일별로」 in ② counts every calendar day or only 가동일 [U]: this
-//!   counts 가동일, the same days ① divides by.
+//! - §7-2④ dispatched workers are excluded by the caller: they are not on the
+//!   roster.
+//! - Whether "on each day" in ② counts every calendar day or only operating
+//!   days [U]: this counts operating days, the same days ① divides by.
 
 use console_kernel_core::KernelError;
 use time::{Date, Month};
 
-/// Statutory numbers for the §7의2 method, one field per register row.
+/// Statutory numbers for the §7-2 method, one field per register row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HeadcountRules {
-    /// §7의2② 「법 적용 기준」: 5, or 10 when judging 근기법 §93.
+    /// §7-2② "threshold for applying the Act": 5, or 10 when judging Labor
+    /// Standards Act §93.
     pub threshold: u32,
-    /// §7의2① 산정기간: months before the 법 적용 사유 발생일.
+    /// §7-2① calculation period: months before the date the ground for
+    /// applying the Act arises.
     pub lookback_months: u8,
 }
 
-/// One worker's employment at this 사업장, both ends inclusive. `last_day` is
-/// the last working day (`exit_date`, decisions 0.1); `None` while employed.
+/// One worker's employment at this workplace, both ends inclusive. `last_day`
+/// is the last working day (`exit_date`, decisions 0.1); `None` while employed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RosterSpan {
     pub first_day: Date,
     pub last_day: Option<Date>,
-    /// §7의2④2: a 동거하는 친족 counts only on a day at least one other
+    /// §7-2④2: a cohabiting relative counts only on a day at least one other
     /// worker is employed.
     pub cohabiting_relative: bool,
 }
@@ -45,25 +50,27 @@ impl RosterSpan {
 /// The derivation, kept whole so the dismissal card can say why.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HeadcountClass {
-    /// 산정기간, both ends inclusive.
+    /// Calculation period, both ends inclusive.
     pub period_start: Date,
     pub period_end: Date,
-    /// 가동 일수: the divisor of ①.
+    /// Number of operating days: the divisor of ①.
     pub operating_days: u32,
-    /// 연인원: the dividend of ①. The average is `person_days / operating_days`.
+    /// Total person-days: the dividend of ①. The average is
+    /// `person_days / operating_days`.
     pub person_days: u64,
     /// ① alone: the average reaches the threshold.
     pub average_meets_threshold: bool,
-    /// ②: 가동일 whose count is below the threshold.
+    /// ②: operating days whose count is below the threshold.
     pub days_below_threshold: u32,
     /// The fact: ②1 and ②2 together reduce to 「days below < half」.
     pub meets_threshold: bool,
 }
 
-/// 산정기간 for an event on `event_date`: `lookback_months` before it through
-/// the day before, starting no earlier than `established` (①, 「사업이 성립한
-/// 날부터 1개월 미만인 경우」). A day the start month lacks (3/31 → 2/31)
-/// becomes the 1st of the following month (3/1), as BW-09 does [U].
+/// Calculation period for an event on `event_date`: `lookback_months` before
+/// it through the day before, starting no earlier than `established` (①,
+/// "where less than 1 month has passed since the day the business was
+/// established"). A day the start month lacks (3/31 → 2/31) becomes the 1st
+/// of the following month (3/1), as BW-09 does [U].
 ///
 /// # Errors
 /// Validation when the business is established on or after `event_date` (the
@@ -83,9 +90,10 @@ pub fn computation_period(
     Ok((start, end))
 }
 
-/// Derives the headcount class of ONE 사업장 for an event on `event_date`.
-/// `operating_days` are the 가동일 the caller's calendar reports for the
-/// period; `roster` is every worker of this 사업장 whose span touches it.
+/// Derives the headcount class of ONE workplace for an event on `event_date`.
+/// `operating_days` are the operating days the caller's calendar reports for
+/// the period; `roster` is every worker of this workplace whose span touches
+/// it.
 ///
 /// # Errors
 /// Validation when the period is empty, an operating day falls outside it or
@@ -148,7 +156,7 @@ pub fn headcount_class(
     })
 }
 
-/// §7의2④: everyone employed that day, relatives only alongside another worker.
+/// §7-2④: everyone employed that day, relatives only alongside another worker.
 fn workers_on(day: Date, roster: &[RosterSpan]) -> u64 {
     let employed = || roster.iter().filter(move |span| span.employed_on(day));
     if employed().all(|span| span.cohabiting_relative) {

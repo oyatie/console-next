@@ -1,5 +1,5 @@
 type: object
-description: One leave request in the approval queue (결재함 leave variant).
+description: One leave request in the approval queue (its leave variant).
 required:
 - id
 - branch_id
@@ -38,8 +38,8 @@ properties:
   reason:
     type: string
     description: >-
-      Frozen v1 key. Requests filed since the 근로기준법 §60 guardrail carry
-      no 사유 and serialize as an empty string; only historical rows still
+      Frozen v1 key. Requests filed since the Labor Standards Act §60 guardrail carry
+      no reason and serialize as an empty string; only historical rows still
       hold text.
   status:
     type: string

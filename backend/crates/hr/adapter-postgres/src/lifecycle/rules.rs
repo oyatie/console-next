@@ -48,7 +48,7 @@ pub fn validate_lifecycle_transition(
         .to_company
         .as_ref()
         .is_some_and(|next| next != &current.company);
-    // E-S3b: the company is the 법인; changing it is a 전적, never a TRANSFER.
+    // E-S3b: the company is the legal entity; changing it is a group transfer, never a TRANSFER.
     if transition.event_type == "TRANSFER" && cross_company {
         return Err(coded(
             KernelError::conflict(
@@ -75,7 +75,8 @@ pub fn validate_lifecycle_transition(
 /// ACTIVE; RETURN_FROM_LEAVE only from ON_LEAVE; TRANSFER/PROMOTE/ONBOARD not
 /// while ON_LEAVE (return first); OFFBOARD/TERMINATE allowed from ON_LEAVE;
 /// CONTRACT_RENEWAL keeps the current status and needs a CONTRACT employment;
-/// APPOINT and a 전환 keep it too (a 전환 needs the employment profile).
+/// APPOINT and an employment type change keep it too (an employment type
+/// change needs the employment profile).
 pub fn lifecycle_state_rule(
     current_status: &str,
     employment_type: Option<&str>,
@@ -137,8 +138,8 @@ pub fn lifecycle_state_rule(
                 "CONTRACT_RENEWAL must keep the current status",
             ));
         }
-        // MR-24: a 전환 rewrites the employment profile, which an imported
-        // person may not have yet.
+        // MR-24: an employment type change rewrites the employment profile,
+        // which an imported person may not have yet.
         "EMPLOYMENT_TYPE_CHANGE" if employment_type.is_none() => return Err(profile_missing()),
         "APPOINT" | "EMPLOYMENT_TYPE_CHANGE" if to != current_status => {
             return Err(lifecycle_refusal(
@@ -151,8 +152,9 @@ pub fn lifecycle_state_rule(
 }
 
 /// 422 `lifecycle_noop`: a TRANSFER that changes neither company nor unit, a
-/// PROMOTE to the 직위 and 직급 the employee already holds, an APPOINT that
-/// changes nothing, or a 전환 to the current 고용형태.
+/// PROMOTE to the title and grade the employee already holds, an APPOINT that
+/// changes nothing, or an employment type change to the current employment
+/// type.
 pub fn reject_lifecycle_noop(
     current: &EmployeeForLifecycle,
     transition: &NormalizedEmployeeLifecycleTransition,
@@ -160,7 +162,7 @@ pub fn reject_lifecycle_noop(
 ) -> Result<(), HrError> {
     let noop = match transition.event_type.as_str() {
         "TRANSFER" if !cross_company => {
-            // A named 사업장 is checked against the assignment when the
+            // A named workplace is checked against the assignment when the
             // target resolves (E-S3b).
             transition.to_workplace_id.is_none()
                 && match (transition.to_org_unit_id, &transition.to_org_unit) {
@@ -169,7 +171,7 @@ pub fn reject_lifecycle_noop(
                     (None, None) => true,
                 }
         }
-        // MR-25: a PROMOTE reads its 직위 and 직급; APPOINT and 전환 their own.
+        // MR-25: a PROMOTE reads its title and grade; APPOINT and employment type change their own.
         _ => classification_noop(current, transition).unwrap_or(false),
     };
     if noop {

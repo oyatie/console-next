@@ -1,6 +1,7 @@
-// Korean source for `uiServerPicker.` ids (ui/server-picker). Rules: the header of ../ko.ts and GUIDE.md.
+// Korean copy for `uiServerPicker.` ids (ui/server-picker). Rules: the header of ../ko.ts and GUIDE.md.
 // No results is never a dead end: 「목록에 추가」 with permission, 「추가 요청」 without.
-export const koUiServerPicker = {
+import type { enUiServerPicker } from "../en/ui-server-picker";
+export const koUiServerPicker: Record<keyof typeof enUiServerPicker, string> = {
   "uiServerPicker.name": "검색 선택기",
   "uiServerPicker.loading": "찾는 중",
   "uiServerPicker.count": "{count, plural, other {#건}}",
@@ -11,4 +12,4 @@ export const koUiServerPicker = {
   "uiServerPicker.homonym.echo": "일치하면 선택됩니다: {name} ({code})",
   "uiServerPicker.escape.add": "「{query}」 목록에 추가",
   "uiServerPicker.escape.request": "「{query}」 추가 요청",
-} as const;
+};

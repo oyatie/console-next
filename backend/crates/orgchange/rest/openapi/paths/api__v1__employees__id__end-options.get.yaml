@@ -1,8 +1,8 @@
 tags:
 - hr
 operationId: employeeEndOptions
-summary: Whether a registration is cancelled (등록 취소) or the person exits (퇴직), and why not the other
-description: CRUD. cancel_route DELETE (setup) or VOID (after 운영 시작, with the employee_void_* refusals); exit is refused
+summary: Whether a registration is cancelled or the person exits, and why not the other
+description: CRUD. cancel_route DELETE (setup) or VOID (after go-live, with the employee_void_* refusals); exit is refused
   employee_already_exited, exit_case_open (open_exit_case_id) or exit_already_scheduled. On the caller's own record
   (people-self-33) both are refused own_record_forbidden, unless the caller is the ops account and no other account
   holds the act.

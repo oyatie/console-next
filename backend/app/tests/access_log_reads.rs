@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! PII-READS (U16, BW-26, lane correction #8) through the composed app router
 //! as the runtime role: exit-case, dashboard, lifecycle-history, org-chart,
-//! account, directory and import-preview reads each write a 접속기록 row with
+//! account, directory and import-preview reads each write an access log row with
 //! the client IP and the bearer's session family; the IP is the forwarded
 //! client only when the socket peer is a configured trusted proxy; a reader
 //! without `exit_settlement_manage` gets the settlement without pay figures.
@@ -63,7 +63,7 @@ async fn personal_data_reads_record_the_client_ip_session_and_subjects(pool: PgP
     .await;
     let app: Router = build_router(app_state(runtime, public_pem));
 
-    // Through the trusted proxy: the forwarded client is the 접속지.
+    // Through the trusted proxy: the forwarded client is the access location.
     let via_proxy = |uri: String| get(uri, &admin_token, PROXY_PEER, "198.51.100.20");
     for uri in [
         "/api/v1/hr/exit-cases".to_owned(),

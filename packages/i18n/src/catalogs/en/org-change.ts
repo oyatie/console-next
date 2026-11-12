@@ -1,6 +1,4 @@
-import type { koOrgChange } from "../ko/org-change";
-
-export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
+export const enOrgChange = {
   "orgChange.sole.open": "Sole-holder exception",
   "orgChange.sole.next": "Open the next approval step",
   "orgChange.sole.rule": "Approve as a sole-holder exception because no other approver is eligible",
@@ -214,4 +212,4 @@ export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
   "orgChange.chip.scheduled": "{count, number} scheduled",
   "orgChange.list.view.cancelled": "Cancelled {count}",
   "orgChange.list.empty.cancelled": "No cancelled org changes",
-};
+} as const;

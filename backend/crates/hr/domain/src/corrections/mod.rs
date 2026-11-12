@@ -1,4 +1,4 @@
-//! BW-18 employee master-data corrections (정정): which field takes which path,
+//! BW-18 employee master-data corrections: which field takes which path,
 //! and the second-person / sole-holder choice for high-risk fields.
 //!
 //! Pure: the holder count and the `authz.sole_holder.mode` setting arrive as
@@ -16,7 +16,7 @@ pub enum CorrectionRoute {
     Low,
     /// A second person through a BW-17 request when another holder exists;
     /// otherwise the sole holder applies it with the review flag (decisions
-    /// #7 case B: 정정 of pay or dates; #6: 사번).
+    /// #7 case B: correction of pay or dates; #6: employee number).
     High,
     /// Cannot be corrected here; the string names the path that changes it.
     Unavailable(&'static str),
@@ -25,8 +25,9 @@ pub enum CorrectionRoute {
 const POSITION_VIA_LIFECYCLE: &str =
     "position_id changes through a promotion or transfer, not a correction";
 /// The text twins are display snapshots of the employment assignment (the
-/// 법인/사업장 placement) and of the 부서 binding; correcting the text alone
-/// would make them disagree with the record they mirror.
+/// legal entity/workplace placement) and of the department binding;
+/// correcting the text alone would make them disagree with the record they
+/// mirror.
 const PLACEMENT_VIA_ASSIGNMENT: &str = "the 법인, 사업장 and 부서 change through the employment assignment (re-bind as a correction, or a TRANSFER), not a text correction";
 
 /// Every scalar field of the employee record and its route. One table: the
@@ -70,17 +71,18 @@ pub const CORRECTABLE_FIELDS: [(&str, CorrectionRoute); 35] = [
         "org_unit",
         CorrectionRoute::Unavailable(PLACEMENT_VIA_ASSIGNMENT),
     ),
-    // 근로자 명부 items (MR-23; 근기법 §41, 영 §20 2·4·5·8·9호). The 퇴직 사유 is
-    // high-risk once recorded: an involuntary code on the register is a
-    // second person's call.
+    // Worker register items (MR-23; Labor Standards Act §41, Enforcement
+    // Decree §20 items 2·4·5·8·9). The exit reason is high-risk once recorded:
+    // an involuntary code on the register is a second person's call.
     ("sex", CorrectionRoute::Low),
     ("address", CorrectionRoute::Low),
     ("careers", CorrectionRoute::Low),
     ("register_note", CorrectionRoute::Low),
     ("exit_reason", CorrectionRoute::High),
-    // 인적사항 extras (MR-34). The 그룹 입사일 starts 계속근로기간 (근기법 §60
-    // 연차, 근퇴법 §8 퇴직금), so changing a recorded one is a second
-    // person's call like the 입사일.
+    // Personal details extras (MR-34). The group hire date starts the period
+    // of continuous service (Labor Standards Act §60 annual leave, Employee
+    // Retirement Benefit Security Act §8 severance pay), so changing a
+    // recorded one is a second person's call like the hire date.
     ("name_hanja", CorrectionRoute::Low),
     ("name_en", CorrectionRoute::Low),
     ("nationality", CorrectionRoute::Low),
@@ -106,7 +108,7 @@ pub fn correction_route(field: &str) -> Result<CorrectionRoute, KernelError> {
 }
 
 /// The route once the current value is known: writing a field that holds no
-/// value yet is its first recording, not a 정정, so no second person is
+/// value yet is its first recording, not a correction, so no second person is
 /// needed (the EMP-MODEL pay set-once rule, applied to every field).
 #[must_use]
 pub const fn route_for_current(route: CorrectionRoute, recorded: bool) -> CorrectionRoute {

@@ -1,6 +1,7 @@
-//! MR-33 company sections: 어학, 포상, 징계, 가족. Not named by 별지 제16호;
-//! kept because the 인사카드 is expected to hold them (decisions #21), each
-//! behind its own tenant switch (개인정보 보호법 §16①).
+//! MR-33 company sections: language, awards, disciplinary action, family. Not
+//! named by Annex Form No. 16; kept because the personnel card is expected to
+//! hold them (decisions #21), each behind its own tenant switch (Personal
+//! Information Protection Act §16①).
 
 use console_kernel_core::KernelError;
 use serde::{Deserialize, Serialize};
@@ -21,7 +22,7 @@ code_enum!(FamilyRelation {
     Other => "OTHER",
 });
 
-/// 어학. `language` is an ISO 639 code (`en`, `ja`, `zh`, …).
+/// Language. `language` is an ISO 639 code (`en`, `ja`, `zh`, …).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Language {
@@ -36,7 +37,7 @@ pub struct Language {
     pub expires_on: Option<Date>,
 }
 
-/// 포상.
+/// Awards.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Award {
@@ -49,9 +50,10 @@ pub struct Award {
     pub details: Option<String>,
 }
 
-/// 징계. `title` is the 징계 종류 as the 취업규칙 names it (견책, 감급, 정직 …);
-/// `ends_on` closes a 기간 (정직·감급). A restricted section: reads are
-/// purpose-coded and audited.
+/// Disciplinary action. `title` is the kind of disciplinary action as the
+/// rules of employment name it (reprimand, pay reduction, suspension …);
+/// `ends_on` closes a period (suspension · pay reduction). A restricted
+/// section: reads are purpose-coded and audited.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Discipline {
@@ -66,8 +68,9 @@ pub struct Discipline {
     pub ends_on: Option<Date>,
 }
 
-/// 가족. A family member is a data subject too: relation, name, birth date
-/// and 동거 only; never a 주민등록번호 (§24조의2) and no 부양 flag (payroll).
+/// Family. A family member is a data subject too: relation, name, birth date
+/// and cohabitation only; never a resident registration number (§24-2) and no
+/// dependant flag (payroll).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Family {

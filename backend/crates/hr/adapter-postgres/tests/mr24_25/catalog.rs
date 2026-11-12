@@ -1,4 +1,4 @@
-//! The typed catalogs, the 직급 PROMOTE, APPOINT and the bulk path (MR-25).
+//! The typed catalogs, the grade PROMOTE, APPOINT and the bulk path (MR-25).
 
 use console_hr_adapter_postgres::lifecycle::requests::BulkEmployeeLifecycleEventRequest;
 use serde_json::{Value, json};
@@ -10,7 +10,7 @@ use crate::{event, fixture};
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn the_catalogs_are_typed(pool: PgPool) {
     let f = fixture(pool).await;
-    // The same label may live in two lists; a rank only on 직급 and 직위.
+    // The same label may live in two lists; a rank only on grade and title.
     f.entry("GRADE", "책임", Some(3)).await;
     f.entry("POSITION", "책임", None).await;
     let ranked_position = sqlx::query(
@@ -102,7 +102,7 @@ async fn a_grade_promotion_is_dated_checked_and_rescinded(pool: PgPool) {
         ),
         (Some(&*high.to_string()), Some(&*low.to_string()))
     );
-    // A 직급-only PROMOTE keeps the 직위 text.
+    // A grade-only PROMOTE keeps the title text.
     assert_eq!(demoted["to_position"], "사원");
     f.rescind(e, &demoted).await;
     assert_eq!(f.head(e).await.0, Some(high));

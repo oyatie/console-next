@@ -1,6 +1,7 @@
-// Korean source for `requests.` ids (features/people/ui/requests-page.tsx, request-panel.tsx): change requests to
+// Korean copy for `requests.` ids (features/people/ui/requests-page.tsx, request-panel.tsx): change requests to
 // HR (변경 요청, BW-17).
-export const koRequests = {
+import type { enRequests } from "../en/requests";
+export const koRequests: Record<keyof typeof enRequests, string> = {
   "requests.none.filtered": "{filters} 조건에 맞는 요청이 없습니다.",
   "requests.filters.reset": "조건 초기화",
   "requests.reason.DATA_ENTRY_ERROR": "입력 오류",
@@ -67,4 +68,4 @@ export const koRequests = {
   "requests.done.WITHDRAWN": "{kind} 요청을 철회했습니다",
   "requests.kind.IMPORT_ROLLBACK": "가져오기 되돌리기",
   "requests.subject.DATA_IMPORT_RUN": "가져오기 기록",
-} as const;
+};

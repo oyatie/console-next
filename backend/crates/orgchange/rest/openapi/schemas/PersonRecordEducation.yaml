@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-description: 학력. Dates are month precision (the day is stored as 1).
+description: Education. Dates are month precision (the day is stored as 1).
 required: [school, level, status]
 properties:
   school:

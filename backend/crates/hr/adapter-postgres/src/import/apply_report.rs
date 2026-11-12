@@ -1,5 +1,5 @@
 //! W11: the report an applied run answers — the leave command's
-//! `apply_summary` plus what the plan adds (bound units, the 미배치 counts).
+//! `apply_summary` plus what the plan adds (bound units, the unplaced counts).
 
 use console_kernel_core::OrgId;
 use console_platform_db::with_org_conn;
@@ -35,7 +35,7 @@ pub async fn final_report(
     Ok(report)
 }
 
-/// The 명부 items the run's new people lack now, read in the settle's last
+/// The register items the run's new people lack now, read in the settle's last
 /// transaction (after its writes) or on its own for a resumed job.
 pub async fn register_gaps_in(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,

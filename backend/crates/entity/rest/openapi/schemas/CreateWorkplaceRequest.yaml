@@ -25,5 +25,5 @@ allOf:
       type:
       - string
       - 'null'
-      description: '사업장 kind (decisions #18; a label only): a platform default code or a tenant kind code from
+      description: 'Workplace kind (decisions #18; a label only): a platform default code or a tenant kind code from
         GET /api/v1/workplace-kinds. Absent = not chosen.'

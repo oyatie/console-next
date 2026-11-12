@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: eraseOrgUnit
-summary: Delete a 부서 that was never used, with its sub-부서 (either phase)
+summary: Delete a department that was never used, with its sub-departments (either phase)
 description: CRUD. The units, their revisions, own placements and order rows are removed (hard delete); one audit row
   org_unit.erase per unit keeps what was deleted. Refused when anyone was ever placed in or moved through it
   (org_unit_has_people_history), when other records name it (org_unit_has_history) or an org change names it.

@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-description: 포상.
+description: Award.
 required: [title, decided_on]
 properties:
   title:

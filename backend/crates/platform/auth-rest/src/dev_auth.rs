@@ -186,7 +186,7 @@ mod dev_auth_persona_tests {
                 "role {code} still renders a raw debug label: {name:?}"
             );
         }
-        // The SUPER_ADMIN persona is the identity-chip reference (전성진 · 관리).
+        // The SUPER_ADMIN persona is the identity-chip reference (Jeon Seong-jin · Admin).
         assert_eq!(
             dev_persona_display_name(&Role::from_str("SUPER_ADMIN").unwrap()),
             "전성진"

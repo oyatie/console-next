@@ -76,6 +76,7 @@ export function DeptEndSheet({ place: initialPlace, setup, onClose, onDone, onPr
       subtitle={t("crud.unit.subtitle")}
       onClose={onClose}
       pending={pending}
+      error={erase.error ?? dissolve.error ?? raise.error}
       notice={<CommandError error={erase.error ?? dissolve.error ?? raise.error} own={ownRefusal} />}
       consequence={<span id="crud-unit-consequence">{consequence}</span>}
       action={{ kind: deleting ? "orgDelete" : "orgDissolve", mode: deleting ? "remove" : "apply", count: 1 }}

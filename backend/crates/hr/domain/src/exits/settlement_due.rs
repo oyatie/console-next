@@ -1,12 +1,14 @@
 //! What the leaving employer owes in money, and by when (the EXIT template's
-//! X6 and X7 rows): every 금품 (「근로기준법」 제36조) and the 퇴직금
-//! (「근로자퇴직급여 보장법」 제9조). A 전적 that carries 퇴직금 opens no exit
-//! case, so every case settles both. The number of days comes from the
-//! statutory register; this names the rule only.
+//! X6 and X7 rows): all money and valuables (Labor Standards Act Article 36)
+//! and the severance pay (Employee Retirement Benefit Security Act Article 9).
+//! A group transfer that carries severance pay opens no exit case, so every
+//! case settles both. The number of days comes from the statutory register;
+//! this names the rule only.
 //!
-//! The window opens on the 퇴직일, the day after the 마지막 근무일, when the
-//! 지급 사유 arises: a payment may be made from then. The deadline counts
-//! from the 마지막 근무일 as the template does (the earlier date, #9).
+//! The window opens on the statutory exit date, the day after the last working
+//! day, when the ground for payment arises: a payment may be made from then.
+//! The deadline counts from the last working day as the template does (the
+//! earlier date, #9).
 
 use time::Date;
 
@@ -15,9 +17,10 @@ use crate::cases::clocks::{Anchor, Anchors, Clock, DueRegister, DueRule, RuleKin
 /// One payment the leaving employer settles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SettlementDue {
-    /// 금품청산: final wages, 남은 연차 수당 and every other 금품.
+    /// Settlement of money and valuables: final wages, pay for unused annual
+    /// leave and all other money and valuables.
     FinalPay,
-    /// 퇴직금 (to the worker's IRP unless an exception applies).
+    /// Severance pay (to the worker's IRP unless an exception applies).
     SeverancePay,
 }
 
@@ -56,7 +59,7 @@ pub struct SettlementWindow {
     pub clock: Clock,
 }
 
-/// The payments an exit on `exit_date` (the 마지막 근무일) settles.
+/// The payments an exit on `exit_date` (the last working day) settles.
 #[must_use]
 pub fn settlement_windows(exit_date: Date, register: &dyn DueRegister) -> Vec<SettlementWindow> {
     let dues = [SettlementDue::FinalPay, SettlementDue::SeverancePay];

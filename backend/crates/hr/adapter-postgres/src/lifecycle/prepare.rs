@@ -88,7 +88,7 @@ pub(crate) async fn prepare_lifecycle_event_with_context(
     };
     fill_promote_title(tx, org_uuid, &mut transition).await?;
     fill_classification(tx, org_uuid, &mut transition).await?;
-    // Exit dates store 마지막 근무일: employment ends only after that day.
+    // Exit dates store the last working day: employment ends only after that day.
     let effective_date = parse_yyyy_mm_dd(&transition.effective_date)?;
     let scheduled = if matches!(transition.event_type.as_str(), "TERMINATE" | "OFFBOARD") {
         console_entity_adapter_postgres::employment_end::retirement_date(effective_date) > today
@@ -160,11 +160,11 @@ pub struct LifecycleTarget {
     pub job_title_id: Option<Uuid>,
     /// `Some(binding)` when the unit binding changes.
     pub rebind: Option<Option<Uuid>>,
-    /// E-S3b: the 사업장 a TRANSFER moves the employee to (전근).
+    /// E-S3b: the workplace a TRANSFER moves the employee to (a workplace transfer).
     pub workplace: Option<WorkplaceMove>,
-    /// MR-25: the 직급, 직책, 직무, 직군 after the event.
+    /// MR-25: the grade, position, job, job family after the event.
     pub classification: Classification,
-    /// MR-24: the employment type and window a 전환 leaves.
+    /// MR-24: the employment type and window an employment type change leaves.
     pub employment: Option<EmploymentWindow>,
 }
 
@@ -195,7 +195,7 @@ pub async fn resolve_lifecycle_target(
         transition.to_org_unit_id,
     )
     .await?;
-    // A 전근 asked for where the employee already works, with no unit change.
+    // A transfer asked for where the employee already works, with no unit change.
     if transition.to_workplace_id.is_some()
         && workplace.is_none()
         && transition
@@ -206,7 +206,7 @@ pub async fn resolve_lifecycle_target(
     }
     Ok(LifecycleTarget {
         company: match (transition.event_type.as_str(), workplace) {
-            // 전적: the display snapshot follows the receiving 법인 (ED §3.9).
+            // Group transfer: the display snapshot follows the receiving legal entity (ED §3.9).
             ("GROUP_TRANSFER", Some(to)) => {
                 receiving_label(tx, org_uuid, to, &transition.effective_date)
                     .await?

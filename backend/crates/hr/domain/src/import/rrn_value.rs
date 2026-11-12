@@ -1,10 +1,10 @@
-//! 주민등록번호 as a value the import keeps (decisions #25): checked for shape
-//! and a real birth date, sealed and
+//! Resident registration number as a value the import keeps (decisions #25):
+//! checked for shape and a real birth date, sealed and
 //! matched only through the [`RrnVault`] port (the keys live with the
 //! shell, never in the database). The value never prints: `Debug` is redacted.
 //!
 //! Shape only, never the check digit: numbers issued since October 2020
-//! have no check digit. 생년월일/성별 are not derived from it into other
+//! have no check digit. Date of birth / sex are not derived from it into other
 //! fields (decisions #20 Q3).
 
 use time::{Date, Month};
@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use super::pii::is_stripped_zero_rrn;
 
-/// A 13-digit 주민등록번호 that passed [`Rrn::parse`].
+/// A 13-digit resident registration number that passed [`Rrn::parse`].
 #[derive(Clone, PartialEq, Eq)]
 pub struct Rrn(String);
 
@@ -22,7 +22,7 @@ impl std::fmt::Debug for Rrn {
     }
 }
 
-/// Why a cell is not a 주민등록번호 the import can keep (code `rrn_invalid`).
+/// Why a cell is not a resident registration number the import can keep (code `rrn_invalid`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RrnInvalid;
 
@@ -77,7 +77,8 @@ impl Rrn {
     }
 }
 
-/// A sealed 주민등록번호 as stored (employee_rrn, data_import_row_identities).
+/// A sealed resident registration number as stored (employee_rrn,
+/// data_import_row_identities).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SealedRrn {
     /// HMAC-SHA256 under the vault's matching key: the only thing compared.
@@ -95,8 +96,9 @@ pub struct SealedRrn {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VaultError;
 
-/// Seals, opens and blind-indexes a 주민등록번호. The shell implements it with
-/// keys from its environment; a tenant's rows are bound to the tenant.
+/// Seals, opens and blind-indexes a resident registration number. The shell
+/// implements it with keys from its environment; a tenant's rows are bound to
+/// the tenant.
 pub trait RrnVault: Send + Sync {
     /// # Errors
     /// [`VaultError`] when sealing fails.

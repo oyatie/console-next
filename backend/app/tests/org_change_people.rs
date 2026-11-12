@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R2 ORGCHANGE over HTTP: an org change moves its people. Moving a 부서
-//! to another 사업장 moves everyone placed in it (a dated 전근 each), a 폐지
-//! that moves members records each one's 전보, a merge keeps its successor,
+//! UX-R2 ORGCHANGE over HTTP: an org change moves its people. Moving a department
+//! to another workplace moves everyone placed in it (a dated relocation each), a
+//! dissolution that moves members records each one's reassignment, a merge keeps its successor,
 //! and a scheduled change can be cancelled, rescheduled, or applies on its
-//! 시행일 by itself (regression: org-01, org-04, org-05, org-07, org-02).
+//! effective date by itself (regression: org-01, org-04, org-05, org-07, org-02).
 
 #[path = "org_change_people/depth.rs"]
 mod depth;

@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: createAttendanceHoliday
-summary: Add a 약정휴일
+summary: Add a contractual holiday
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }

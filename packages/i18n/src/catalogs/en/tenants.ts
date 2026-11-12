@@ -1,6 +1,4 @@
-import type { koTenants } from "../ko/tenants";
-
-export const enTenants: Partial<Record<keyof typeof koTenants, string>> = {
+export const enTenants = {
   "tenants.supportLookup.title": "Support reference lookup",
   "tenants.supportLookup.reference": "Full support reference",
   "tenants.supportLookup.action": "Resolve reference",
@@ -109,4 +107,4 @@ export const enTenants: Partial<Record<keyof typeof koTenants, string>> = {
   "tenants.erase.erase_requires_second_operator": "Another operator with a registered passkey is required.",
   "tenants.erase.erase_same_operator": "The requester cannot approve. Ask another operator.",
   "tenants.erase.erase_cooling": "The cooling period must end before erasure.",
-};
+} as const;

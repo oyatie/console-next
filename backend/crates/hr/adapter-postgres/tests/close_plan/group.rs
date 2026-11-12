@@ -1,7 +1,8 @@
-//! A close moves people to another 법인 by 전적 (decisions #30): the line
-//! carries the person's consent and continuity, the plan records the 전적
-//! with the sending 법인's settlement case, and the close waits for it to
-//! take effect. A line that cannot be a 전적 refuses the plan, writing nothing.
+//! A close moves people to another legal entity by group transfer (decisions
+//! #30): the line carries the person's consent and continuity, the plan records
+//! the group transfer with the sending legal entity's settlement case, and the
+//! close waits for it to take effect. A line that cannot be a group transfer
+//! refuses the plan, writing nothing.
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -17,7 +18,7 @@ use crate::close_support::World;
 use crate::common::{certificate, cmd, corporation, port, workplace_from};
 use crate::fixture::*;
 
-/// 주식회사 나라 and its 물류센터: `(workplace, its own unit)`.
+/// "Nara Co., Ltd." and its logistics center: `(workplace, its own unit)`.
 async fn other_entity(w: &World) -> (Uuid, Uuid) {
     let entity = w
         .store
@@ -71,7 +72,7 @@ fn plan(s: &Site, on: &str, kim: Value) -> Value {
     })
 }
 
-/// `(state, settlement case)` of each 전적 recorded for `employee`.
+/// `(state, settlement case)` of each group transfer recorded for `employee`.
 async fn group_transfers(owner: &PgPool, employee: Uuid) -> Vec<(String, Option<String>)> {
     sqlx::query_as(
         "SELECT l.state, (SELECT c.status FROM employee_exit_cases c WHERE c.exit_lifecycle_event_id = l.id) \
@@ -166,7 +167,7 @@ async fn a_scheduled_close_waits_for_its_group_transfer(owner: PgPool) {
         group_transfers(&owner, s.kim).await,
         [("SCHEDULED".to_owned(), Some("HR_CONFIRMED".to_owned()))]
     );
-    // On the day, the close waits until the 전적 has taken effect.
+    // On the day, the close waits until the group transfer has taken effect.
     s.tick(day).await;
     assert_eq!(state(&owner, job.id).await, "WAITING");
     s.hr.apply_due(day).await.unwrap();
@@ -194,11 +195,11 @@ async fn a_line_that_cannot_be_a_group_transfer_refuses_the_plan_writing_nothing
     let e = s.plan(body).await.unwrap_err();
     assert_eq!((e.status.as_u16(), e.code), (422, "close_plan_refused"));
     let mut want = vec![
-        // No consent, no continuity: the 전적's own refusal.
+        // No consent, no continuity: the group transfer's own refusal.
         (s.kim.to_string(), "validation".to_owned()),
         (s.lee.to_string(), "group_transfer_same_entity".to_owned()),
         (s.park.to_string(), "org_unit_at_other_workplace".to_owned()),
-        // A 전근 never crosses 법인: the remedy is the 전적 line.
+        // A transfer never crosses legal entities: the remedy is the group transfer line.
         (s.choi.to_string(), "transfer_cross_entity".to_owned()),
     ];
     want.sort();
@@ -214,7 +215,7 @@ async fn a_planner_whose_grant_stops_at_the_sending_entity_cannot_plan_a_group_t
     let s = Site::new(&owner).await;
     let (b, b_unit) = other_entity(&s.w).await;
     let on = today().to_string();
-    // 인사 발령 over the sending 법인 only, nowhere else.
+    // "Personnel orders" over the sending legal entity only, nowhere else.
     let mut who = s.planner(Uuid::new_v4());
     let grants = APPOINTMENT_KEYS
         .map(|feature| ScopeGrant {
@@ -232,7 +233,8 @@ async fn a_planner_whose_grant_stops_at_the_sending_entity_cannot_plan_a_group_t
             .await
             .unwrap_err();
     assert_eq!((e.status.as_u16(), e.code), (403, "out_of_scope"));
-    // The same plan without the 전적 passes their grant and meets the line's own refusal: the 403 is the receiving place's.
+    // The same plan without the group transfer passes their grant and meets the
+    // line's own refusal: the 403 is the receiving place's.
     let transfer = json!({ "employee_id": s.kim, "action": "TRANSFER", "to_org_unit_id": b_unit });
     let e =
         s.hr.plan_workplace_close(who, s.w.branch, parse(plan(&s, &on, transfer)), port())

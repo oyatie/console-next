@@ -14,7 +14,7 @@ use crate::HrError;
 use crate::lifecycle::title_reason::coded;
 
 /// Admits a SETUP delete (`SetupVoid`) or a void (`Operational`) in the
-/// current phase, read `FOR SHARE` so a concurrent 운영 시작 serialises.
+/// current phase, read `FOR SHARE` so a concurrent go-live serialises.
 /// Returns the `ChangeMode` string the write is recorded under.
 pub(super) async fn admit(
     tx: &mut Transaction<'_, Postgres>,
@@ -38,7 +38,7 @@ pub(super) struct Locked {
     pub registered_on: Date,
     pub updated_at: OffsetDateTime,
     pub employee_number: Option<String>,
-    /// The legacy TEXT 퇴직일 as stored; [`Locked::exit_on`] parses it.
+    /// The legacy TEXT exit date as stored; [`Locked::exit_on`] parses it.
     exit_date: Option<String>,
     pub has_work_records: bool,
     pub recorded_hire_date: Option<String>,
@@ -54,8 +54,9 @@ impl Locked {
 
 /// Locks the (visible, so not yet voided) record and reads its facts.
 // the work records are the four tables that prove a person worked
-// today (exit case, applied 발령 other than the ONBOARD, attendance, payroll
-// line); add a table here when a module starts recording work elsewhere.
+// today (exit case, applied personnel order other than the ONBOARD,
+// attendance, payroll line); add a table here when a module starts
+// recording work elsewhere.
 pub(super) async fn lock(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,

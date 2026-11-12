@@ -1,4 +1,4 @@
-//! The 재입사 request (BW-19 2) and its normalisation.
+//! The rehire request (BW-19 2) and its normalisation.
 
 use console_hr_domain::profile::enums::{EmploymentType, PayUnit};
 use console_hr_domain::text::{normalize_enum_text, normalize_optional_text, parse_yyyy_mm_dd};
@@ -14,13 +14,13 @@ use crate::idempotency::normalize_idempotency_key;
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RehireEmployeeRequest {
-    /// The new period's first day (`YYYY-MM-DD`, after the last 퇴직일).
+    /// The new period's first day (`YYYY-MM-DD`, after the last exit date).
     pub hire_date: String,
     #[serde(deserialize_with = "deserialize_enum_10")]
     pub employment_type: String,
     pub org_unit_id: Uuid,
     pub position: String,
-    /// Defaults to the 법인 of the last period.
+    /// Defaults to the legal entity of the last period.
     #[serde(default)]
     pub company: Option<String>,
     /// Required for CONTRACT, refused otherwise.

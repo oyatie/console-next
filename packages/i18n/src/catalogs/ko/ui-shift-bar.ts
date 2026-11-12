@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koUiShiftBar = {
+import type { enUiShiftBar } from "../en/ui-shift-bar";
+export const koUiShiftBar: Record<keyof typeof enUiShiftBar, string> = {
   "uiShiftBar.scheduled": "예정",
   "uiShiftBar.recorded": "기록",
   "uiShiftBar.recognised": "인정",
@@ -9,4 +10,4 @@ export const koUiShiftBar = {
   "uiShiftBar.axis": "시간 범위 {start}–{end}",
   "uiShiftBar.table": "근무 시간 구간",
   "uiShiftBar.row": "대상",
-} as const;
+};

@@ -1,5 +1,6 @@
-// Korean source for `uiOrgCanvas.` ids (apps/web/src/ui/org-canvas): the chart canvas's zoom bar and minimap.
-export const koUiOrgCanvas = {
+// Korean copy for `uiOrgCanvas.` ids (apps/web/src/ui/org-canvas): the chart canvas's zoom bar and minimap.
+import type { enUiOrgCanvas } from "../en/ui-org-canvas";
+export const koUiOrgCanvas: Record<keyof typeof enUiOrgCanvas, string> = {
   "uiOrgCanvas.zoom": "확대·축소",
   "uiOrgCanvas.zoomIn": "확대",
   "uiOrgCanvas.zoomOut": "축소",
@@ -8,4 +9,4 @@ export const koUiOrgCanvas = {
   "uiOrgCanvas.minimap": "전체 지도",
   "uiOrgCanvas.collapseMinimap": "전체 지도 접기",
   "uiOrgCanvas.expandMinimap": "전체 지도 펼치기",
-} as const;
+};

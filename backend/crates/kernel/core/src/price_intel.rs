@@ -10,7 +10,7 @@
 //! [`MIN_SAMPLE_SIZE`] peers exists. Below that threshold every function that
 //! would produce a false-precision score returns [`PriceIntelResult::Sparse`]
 //! instead of a numeric value. Callers that display this to users should show
-//! "근거 부족 (데이터 부족)" rather than any numeric flag.
+//! "insufficient basis (insufficient data)" rather than any numeric flag.
 //!
 //! ## Confidence tiers
 //!
@@ -22,7 +22,7 @@
 //! | ≥ 30 | `High` |
 //!
 //! These thresholds are deliberately conservative. A false positive on a
-//! legitimate 기안 is more damaging to trust than missing a suspicious one.
+//! legitimate draft is more damaging to trust than missing a suspicious one.
 
 /// Minimum peer count required before any statistical outlier flag is issued.
 pub const MIN_SAMPLE_SIZE: usize = 5;
@@ -54,7 +54,7 @@ impl Confidence {
 /// Result of a statistical outlier check.
 ///
 /// [`Sparse`] means the sample is too small to produce a reliable signal.
-/// Callers should surface this as "근거 부족 (데이터 부족)", never as a flag.
+/// Callers should surface this as "insufficient basis (insufficient data)", never as a flag.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum PriceIntelResult {

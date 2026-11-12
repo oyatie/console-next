@@ -1,7 +1,5 @@
 // English for `empFix.` ids (correction and change sheets).
-import type { koEmpFix } from "../ko/emp-fix";
-
-export const enEmpFix: Partial<Record<keyof typeof koEmpFix, string>> = {
+export const enEmpFix = {
   "empFix.field.name": "Name",
   "empFix.field.sex": "Sex",
   "empFix.field.birth_date": "Date of birth",
@@ -138,4 +136,4 @@ export const enEmpFix: Partial<Record<keyof typeof koEmpFix, string>> = {
   "empFix.catalog.denied": "Adding or editing {field} entries requires catalog management permission across the tenant. Ask an HR administrator with that permission.",
   "empFix.catalog.scope": "Entity scope cannot correct personnel cards or manage the tenant grade and title catalogs. Request the change from HR.",
   "empFix.catalog.unavailable": "Nothing was saved because the selected catalog entry cannot be used. Choose an active entry from the same list.",
-};
+} as const;

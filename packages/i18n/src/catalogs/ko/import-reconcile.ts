@@ -1,6 +1,7 @@
-// Korean source for `importReconcile.` ids (features/import/ui/reconcile-*.tsx): 이관 확인 — what the applied import did
+// Korean copy for `importReconcile.` ids (features/import/ui/reconcile-*.tsx): 이관 확인 — what the applied import did
 // per sheet and per 사업장, each row checked, and the HR sign-off (spec E7-reconcile, E7-row, E7-signoff).
-export const koImportReconcile = {
+import type { enImportReconcile } from "../en/import-reconcile";
+export const koImportReconcile: Record<keyof typeof enImportReconcile, string> = {
   "importReconcile.company.source": "파일 소속 값 “{value}” · 열 “{column}” · {cell}",
   "importReconcile.company.number": "파일 등록번호 {number}",
   "importReconcile.company.candidates": "등록증으로 확인된 법인 후보:",
@@ -53,4 +54,4 @@ export const koImportReconcile = {
   "importReconcile.error.import_reconcile_changed": "그 사이 다른 사람이 행을 표시해 남은 행 수가 바뀌었습니다 · 다시 읽었습니다",
   "importReconcile.error.import_signed_off": "이 가져오기는 이미 확인을 남겼습니다",
   "importReconcile.error.import_signoff_ack_required": "남은 행이 있는 채로 기록하는지 다시 선택하십시오",
-} as const;
+};

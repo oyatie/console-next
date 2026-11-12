@@ -75,11 +75,11 @@ macro_rules! setting_keys {
 pub const REVOKE_MODES: &[&str] = &["ON_CONFIRM", "END_OF_EXIT_DATE"];
 /// Sole-holder handling, strictest first.
 pub const SOLE_HOLDER_MODES: &[&str] = &["refuse", "step_up_notice_review"];
-/// 결재 policy of a change class (decisions #26), strictest first.
+/// Approval policy of a change class (decisions #26), strictest first.
 pub const APPROVAL_POLICIES: &[&str] = &["route", "none"];
-/// 원천징수 신고 주기 (소득세법 §128). A fact; no order.
+/// Withholding filing cadence (Income Tax Act §128). A fact; no order.
 pub const FILING_CADENCES: &[&str] = &["MONTHLY", "SEMIANNUAL"];
-/// A row without 사번 at import (decisions #25), strictest first.
+/// A row without an employee number at import (decisions #25), strictest first.
 pub const UNNUMBERED_MODES: &[&str] = &["queue", "assign_by_rule"];
 
 const fn retention_years(years: i64) -> D {

@@ -1,4 +1,4 @@
-//! 직급 · 직위 · 직책 · 직무 · 직군 writes through Cedar `job_title_manage`.
+//! Grade · title · position · job · job family writes through Cedar `job_title_manage`.
 
 use console_hr_adapter_postgres::job_title::{
     CreateJobTitleRequest, JobTitleListQuery, UpdateJobTitleRequest,
@@ -92,7 +92,7 @@ async fn a_tenant_wide_grant_reaches_the_lists_and_a_scoped_one_does_not(pool: P
             Err((403, "forbidden"))
         );
     }
-    // Refused: no row, no audit; the list says so instead of offering 「+ 추가」.
+    // Refused: no row, no audit; the list says so instead of offering "+ Add".
     assert_eq!(
         before,
         (

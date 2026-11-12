@@ -64,7 +64,7 @@ macro_rules! found { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     RetentionEqualityGrievance => "retention.equality.grievance" = retention_years(3);
     RetentionSeveranceInterimProof => "retention.severance.interim_proof" = retention_years(5);
     RetentionSafetyDocs => "retention.safety.docs" = retention_years(3);
-    // The 채용절차법 §11 period is unverified [U]: a fact the tenant declares
+    // The Fair Hiring Procedure Act §11 period is unverified [U]: a fact the tenant declares
     // until ST-1 confirms a statutory floor.
     RetentionRecruitingDocs => "retention.recruiting.docs" = D::int_fact(Days, Lower);
 ] $($rest)* } }; }

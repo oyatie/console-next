@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! MR-23: the 근로자 명부 items through the MR-8 ledger, their read, the bulk
-//! import profile and the register export, as the runtime role `console_rt`.
+//! MR-23: the worker register items through the MR-8 ledger, their read, the
+//! bulk import profile and the register export, as the runtime role `console_rt`.
 
 mod support;
 
@@ -87,7 +87,7 @@ async fn register_items_are_corrected_with_a_ledger_and_kept_history(pool: PgPoo
         "first recordings carry no old value"
     );
 
-    // A second address is a new row; the 경력 list becomes 「경력 없음」.
+    // A second address is a new row; the work history list becomes "no work history".
     let stale = version(&pool, w.in_a).await;
     correct(
         &w,
@@ -159,7 +159,7 @@ async fn an_exit_reason_is_recorded_once_then_changed_by_a_second_person(pool: P
     let facts = w.hr.register_facts(w.hr(w.hr_one), w.in_a).await.unwrap();
     assert_eq!(facts.exit_reason_label.as_deref(), Some("계약만료"));
 
-    // Changing a recorded 사유 is a second person's call.
+    // Changing a recorded reason is a second person's call.
     let pending = change(json!({ "exit_reason": "DISCIPLINARY_DISMISSAL" }))
         .await
         .unwrap();

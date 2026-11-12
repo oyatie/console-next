@@ -1,5 +1,5 @@
 type: object
-description: A unit the batch wrote and the version it left it at (a DISSOLVE lists the 부서 under it too).
+description: A unit the batch wrote and the version it left it at (a DISSOLVE lists the departments under it too).
 required:
 - op_index
 - org_unit_id

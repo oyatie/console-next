@@ -1,4 +1,4 @@
-//! D0.2 over the 권한 screen's grants (155): the demotion guard covers an
+//! D0.2 over the access screen's grants (155): the demotion guard covers an
 //! access grant the requester revoked, and another tenant's holder never
 //! counts.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]

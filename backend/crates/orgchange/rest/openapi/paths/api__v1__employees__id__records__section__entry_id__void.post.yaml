@@ -1,8 +1,8 @@
 tags:
   - employees
 operationId: voidEmployeeRecord
-summary: Void a 인사카드 이력 entry
-description: Appends a VOID revision with the required reason; the entry leaves the 인사카드 and keeps its history.
+summary: Void a personnel card history entry
+description: Appends a VOID revision with the required reason; the entry leaves the personnel card and keeps its history.
   Works while the section is switched off, so collected data can still be retired. Voiding a voided entry
   answers it unchanged. Idempotency-Key as for create. Audited as employee.record.void.
   403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).

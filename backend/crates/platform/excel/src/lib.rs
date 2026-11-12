@@ -1,6 +1,6 @@
 //! Excel platform adapter.
 //!
-//! Provides byte-fidelity template filling for the Korean daily-status (일일업무진행현황)
+//! Provides byte-fidelity template filling for the Korean daily-status
 //! Excel form using umya-spreadsheet.
 //!
 //! This crate exists primarily as the result of the T0.10 viability spike (ADR-0008).
@@ -43,16 +43,16 @@ impl fmt::Display for SectionKey {
     }
 }
 
-/// Sections in the real daily-status workbook (`일일업무진행현황_0605.xlsx`).
+/// Sections in the real daily-status workbook (the Korean-titled 0605 .xlsx file).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DailyStatusSection {
-    /// `1. 일일 진행업무(실적)`.
+    /// The section titled "1. Daily work in progress (results)".
     Results,
-    /// `2. 일일 진행 업무(계획)`.
+    /// The section titled "2. Daily work in progress (plan)".
     Plans,
-    /// `3. 미결 업무 현황(누적)`.
+    /// The section titled "3. Pending work status (cumulative)".
     PendingBacklog,
-    /// `4. 정기검사`.
+    /// The section titled "4. Periodic inspection".
     PeriodicInspection,
 }
 

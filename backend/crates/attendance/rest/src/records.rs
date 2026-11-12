@@ -1,4 +1,4 @@
-//! 근태 기록 routes (ATT S2). Reads need the directory read key; writes the
+//! Attendance record routes (ATT S2). Reads need the directory read key; writes the
 //! attendance edit key on every person they touch (re-checked per cell).
 
 use crate::audit;

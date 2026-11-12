@@ -1,5 +1,5 @@
-//! The SCHEDULED half of a batch undo (EMP-UI 8, 11; spec E6-done 묶음
-//! 되돌리기): a dated batch's reservations are withdrawn, as the single
+//! The SCHEDULED half of a batch undo (EMP-UI 8, 11; spec E6-done batch
+//! undo): a dated batch's reservations are withdrawn, as the single
 //! cancel withdraws one, inside the batch rescind's transaction. The
 //! employee's later reservations that only apply after this one refuse it
 //! (409 `lifecycle_schedule_conflict`), so the batch stays all or nothing.

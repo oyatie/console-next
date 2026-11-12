@@ -25,9 +25,10 @@ async fn staged(i: &Importer, rows: &[&[&str]]) -> uuid::Uuid {
     .run_id
 }
 
-/// regression (W02, W05, W12): 정규직 needed a pick, 「2011년 4월 10일」 was
-/// refused, 연락처 was dropped. Now the label maps (reported), the date reads,
-/// and the phone lands on the profile — never in an import row.
+/// regression (W02, W05, W12): the "regular" label needed a pick, "10 April
+/// 2011" in Korean year-month-day form was refused, the contact number was
+/// dropped. Now the label maps (reported), the date reads, and the phone lands
+/// on the profile — never in an import row.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_labels_dates_and_phones_land_on_the_profile(pool: PgPool) {
     let i = importer(pool).await;
@@ -135,9 +136,9 @@ async fn an_unmapped_employment_type_blocks_apply_until_answered(pool: PgPool) {
     );
 }
 
-/// regression (W03): 「영업 2팀」 bound nothing and offered nothing; now the
-/// unit is a candidate, the person still comes in 미배치 (counted) until
-/// the operator clicks it.
+/// regression (W03): "Sales Team 2" (written with a space) bound nothing and
+/// offered nothing; now the unit is a candidate, the person still comes in
+/// unplaced (counted) until the operator clicks it.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_near_miss_units_are_offered_and_bound_only_on_answer(pool: PgPool) {
     let i = importer(pool).await;

@@ -27,12 +27,12 @@ pub const fn tag(feature: Feature) -> Option<(Domain, Level)> {
         | F::MasterListImport
         | F::PrivacyRequestDecide
         | F::RosterFieldManage => Some((D::HrBasic, L::Edit)),
-        // governance-04: the 명부 download is the 인사기본 내보내기 level.
+        // governance-04: the roster download is the HR-basic export level.
         F::ExcelDownload => Some((D::HrBasic, L::Export)),
         F::LifecycleManage => Some((D::Appointment, L::Edit)),
-        // The HR confirmation IS the exit (it records the TERMINATE), not a 결재:
-        // 퇴직 등록·수정 does it (#26: no approval on the pilot path). Only the
-        // routed HQ tier is a 결재.
+        // The HR confirmation IS the exit (it records the TERMINATE), not an approval:
+        // exit edit does it (#26: no approval on the pilot path). Only the
+        // routed HQ tier is an approval.
         F::ExitCaseReport | F::ExitSettlementManage | F::ExitCaseHrConfirm => {
             Some((D::Exit, L::Edit))
         }

@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Grants over HTTP: preview receipts and step-up apply, the SETUP / 운영 시작
+//! Grants over HTTP: preview receipts and step-up apply, the SETUP / go-live
 //! switch, dating, the grantor ceiling and every per-item refusal.
 
 mod support;
@@ -148,7 +148,7 @@ async fn every_per_item_refusal_comes_back_in_the_preview(pool: PgPool) {
         vec![
             json!("grant_target_is_ops"),
             json!("grant_overlap"),
-            // AX-5: a 부서 is a scope now; this one does not exist.
+            // AX-5: a department is a scope now; this one does not exist.
             json!("scope_node_not_found"),
             json!("scope_not_enforceable_in_pilot"),
             json!("scope_node_not_found"),

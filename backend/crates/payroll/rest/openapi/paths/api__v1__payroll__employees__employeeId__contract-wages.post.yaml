@@ -2,7 +2,7 @@ x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
 tags:
 - payroll
 operationId: createEmployeeContractWage
-summary: Record an effective-dated 근로계약 wage for an employee
+summary: Record an effective-dated employment contract wage for an employee
 description: >
   Append-only. A raise is a NEW row with a later `effectiveFrom`; the wage
   in force on a pay date is the greatest `effectiveFrom <= payDate`. This
@@ -41,7 +41,7 @@ requestBody:
             minimum: 1
             maximum: 400
             description: >
-              월 소정근로시간 (209 for a 주40시간 worker, 유급주휴 8시간 포함).
+              Monthly contractual working hours (209 for a 40-hour-week worker, including 8 hours of paid weekly holiday).
               The minimum-wage comparator's denominator; mandatory so that a
               comparison which cannot be made never reads as a pass.
           source_note:

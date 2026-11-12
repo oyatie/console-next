@@ -63,8 +63,8 @@ impl From<PgNoticeError> for KernelError {
     }
 }
 
-/// Shared hydrated-summary SELECT: audience branch names (대상), the viewer's
-/// own receipt state (확인), and per-notice 수령확인 progress — one query, no
+/// Shared hydrated-summary SELECT: audience branch names, the viewer's
+/// own receipt state, and per-notice receipt acknowledgment progress — one query, no
 /// N+1. `$1` is always the viewer. Progress is computed for every row and
 /// dropped in Rust for non-manager callers before serialization.
 // progress is an indexed per-row aggregate at LIMIT<=200; split the
@@ -504,7 +504,7 @@ impl PgNoticeStore {
         summary.ok_or_else(|| KernelError::internal("published notice vanished mid-read").into())
     }
 
-    /// Record a recipient's 수령확인. NotFound when the caller was never
+    /// Record a recipient's receipt acknowledgment. NotFound when the caller was never
     /// snapshotted as a recipient (unpublished notice, outside the audience,
     /// or not an org member at publish time) — mirrors the notifications
     /// cross-user isolation idiom rather than distinguishing "not found"

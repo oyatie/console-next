@@ -1,5 +1,5 @@
 //! Applying an APPLIED BW-17 request inside the decision's transaction: a
-//! PROFILE_CORRECTION becomes a 정정 by the deciding second person, an
+//! PROFILE_CORRECTION becomes a correction by the deciding second person, an
 //! IDENTITY_REVIEW carrying a SAME verdict becomes the merge, and an
 //! EMPLOYEE_VOID becomes the void (MR-26).
 

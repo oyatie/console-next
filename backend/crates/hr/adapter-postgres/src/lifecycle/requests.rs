@@ -49,12 +49,13 @@ pub struct CreateEmployeeLifecycleEventRequest {
     /// that admits a renewal past the fixed-term limit; consumed by it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exception_id: Option<Uuid>,
-    /// TRANSFER only (E-S3b): the 사업장 of the same 법인 the employee moves
-    /// to (전근). Without it, a unit placed at another 사업장 moves them there.
+    /// TRANSFER only (E-S3b): the workplace of the same legal entity the
+    /// employee moves to (a workplace transfer). Without it, a unit placed at another
+    /// workplace moves them there.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to_workplace_id: Option<Uuid>,
     /// GROUP_TRANSFER only (required then): the consent and the continuity
-    /// choice of a 전적 (E-S3b).
+    /// choice of a group transfer (E-S3b).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group_transfer: Option<GroupTransferRequest>,
     /// BW-11 version pins and the explicit replacement of a scheduled event.

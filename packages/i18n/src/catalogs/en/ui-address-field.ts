@@ -1,6 +1,4 @@
-import type { koUiAddressField } from "../ko/ui-address-field";
-
-export const enUiAddressField: Record<keyof typeof koUiAddressField, string> = {
+export const enUiAddressField = {
   "uiAddressField.printed": "As printed:",
   "uiAddressField.jibun": "Lot {jibun}",
   "uiAddressField.zip": "Postcode {zip}",
@@ -20,4 +18,4 @@ export const enUiAddressField: Record<keyof typeof koUiAddressField, string> = {
   "uiAddressField.useManual": "Use this address",
   "uiAddressField.manualNeeds": "A road-name address and a 5-digit postcode are needed.",
   "uiAddressField.backToSearch": "Back to search",
-};
+} as const;

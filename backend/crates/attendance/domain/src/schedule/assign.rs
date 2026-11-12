@@ -10,9 +10,10 @@ use super::ScheduleRefusal;
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LayerReason {
     Standard,
-    /// 단축 · 시각 변경 on a document (육아기 단축, 임신기 단축, …).
+    /// Reduced hours or changed start/end times on a document (childcare-period
+    /// reduction, pregnancy-period reduction, …).
     Reduction,
-    /// 대신 근무: one day, one person.
+    /// Substitute work: one day, one person.
     Substitute,
     Temporary,
 }
@@ -55,7 +56,7 @@ pub struct AssignRules<'a> {
     pub evidence_ref: Option<&'a str>,
     pub person_scope: bool,
     pub pattern_active: bool,
-    /// `Some(choices)` when the pattern is 시차출퇴근.
+    /// `Some(choices)` when the pattern uses staggered start times.
     pub start_choices: Option<&'a [u16]>,
     pub start_choice: Option<u16>,
     /// Closed attendance months that reach the target's people.

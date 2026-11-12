@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only copy loads with the locale catalog, after sign-in.
-export const koCommon = {
+import type { enCommon } from "../en/common";
+export const koCommon: Record<keyof typeof enCommon, string> = {
   "common.failed.code.nationality_unknown": "국가 목록에 없는 코드입니다. 목록에서 국가를 선택하십시오. 영국의 국가 코드는 GB입니다.",
   "common.failed.code.bulk_register_facts_refused": "입력할 수 없는 명부 항목이 있어 아무것도 저장하지 않았습니다. 표시된 직원과 항목을 확인하고 다시 적용하십시오.",
   "common.failed.code.bulk_selection_changed": "선택한 직원 수가 달라져 처리하지 않았습니다. 목록을 다시 조회하고 대상을 확인하십시오.",
@@ -88,4 +89,4 @@ export const koCommon = {
   "common.failed.code.support_reference_cross_tenant_denied": "다른 고객 계정의 지원 참조 번호는 조회할 수 없습니다.",
   "common.failed.code.support_reference_grant_required": "지원 참조 번호를 조회할 권한이 없습니다. 관리자에게 권한을 요청하십시오.",
   "common.failed.code.support_reference_not_found": "지원 참조 번호를 찾지 못했습니다. 번호를 확인하십시오.",
-} as const;
+};

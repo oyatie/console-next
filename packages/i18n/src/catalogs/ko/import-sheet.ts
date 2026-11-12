@@ -1,6 +1,7 @@
-// Korean source for `importSheet.` ids (features/import/ui/sheets-panel.tsx, sheet-editor.tsx): each sheet of an
+// Korean copy for `importSheet.` ids (features/import/ui/sheets-panel.tsx, sheet-editor.tsx): each sheet of an
 // uploaded workbook, its header row and columns (IMPORT-2).
-export const koImportSheet = {
+import type { enImportSheet } from "../en/import-sheet";
+export const koImportSheet: Record<keyof typeof enImportSheet, string> = {
   "importSheet.title": "시트 {count, number}개",
   "importSheet.needs": "머리글을 찾지 못한 시트가 {count, number}개 있습니다. 머리글 행을 선택하고 열마다 직원 항목을 지정하거나, 그 시트를 건너뛰십시오.",
   "importSheet.sheet": "{name} 시트",
@@ -35,4 +36,4 @@ export const koImportSheet = {
   "importSheet.status.remembered": "지난번에 건너뛴 시트",
   "importSheet.unskip": "{name} 시트 이번에는 가져오기",
   "importSheet.map.reread": "{name} 시트는 건너뛰어 아직 읽지 않았습니다. 다시 읽으면 머리글을 찾습니다.",
-} as const;
+};

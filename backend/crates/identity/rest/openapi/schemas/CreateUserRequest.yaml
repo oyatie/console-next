@@ -32,6 +32,6 @@ properties:
     type:
     - string
     - 'null'
-    description: 'The 아이디 (the part before `@`) HR sets at invite (decisions #33). Absent or empty takes the
-      default (the linked 사번, else `u` + hex). 422 sign_in_id_invalid by the rule, 409 sign_in_id_taken when
+    description: 'The login (the part before `@`) HR sets at invite (decisions #33). Absent or empty takes the
+      default (the linked employee number, else `u` + hex). 422 sign_in_id_invalid by the rule, 409 sign_in_id_taken when
       anyone in the tenant holds or held it.'

@@ -52,7 +52,7 @@ pub fn normalize_create_employee_request(
     let hire_date = normalize_optional_text(body.hire_date)
         .map(|raw| parse_yyyy_mm_dd(&raw))
         .transpose()?;
-    // BW-19 4: a future hire date registers 입사 예정 (PRE_HIRE) with a
+    // BW-19 4: a future hire date registers a pending hire (PRE_HIRE) with a
     // scheduled ONBOARD (create_onboard.rs); it is no longer refused.
     let facts = normalize_employee_facts(
         RawEmployeeFacts {

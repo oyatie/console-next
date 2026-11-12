@@ -1,12 +1,12 @@
 tags:
   - employees
 operationId: getEmployeeRegisterFacts
-summary: The 근로자 명부 items HR holds for one employee
+summary: The worker register items HR holds for one employee
 description: >-
-  MR-23. 성별, 주소, 이력 · 경력, 퇴직 사유 and 그 밖에 필요한 사항
-  (근로기준법 §41, 시행령 §20). Org-wide employee_directory_manage (the
-  items are not shown to a directory reader); each read leaves a 접속기록
-  row. null = 미입력. `updated_at` is the employee's version for the
+  MR-23. Sex, address, history and career, exit reason and other necessary matters
+  (Labor Standards Act §41, Enforcement Decree §20). Org-wide employee_directory_manage (the
+  items are not shown to a directory reader); each read leaves an access log
+  row. null = not entered. `updated_at` is the employee's version for the
   PATCH /employees/{id} that corrects them.
 security:
 - bearerAuth: []

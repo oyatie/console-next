@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! A 사번 변경 of one employee, its history and the lookup that still finds
-//! a person by an old 사번 (alias).
+//! An employee number change of one employee, its history and the lookup
+//! that still finds a person by an old employee number (alias).
 
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use console_ontology_canonical_adapter_postgres::employee_correction::correct_employee_head_in_tx;
@@ -47,7 +47,7 @@ pub struct EmployeeNumberChange {
     pub undone_at: Option<OffsetDateTime>,
 }
 
-/// Who a 사번 finds: the current holder, else the person it was an alias of.
+/// Who an employee number finds: the current holder, else the person it was an alias of.
 #[derive(Debug, Serialize)]
 pub struct EmployeeNumberMatch {
     pub employee_id: Uuid,
@@ -143,7 +143,7 @@ impl HrService {
         .await
     }
 
-    /// The 사번 history of one employee (변경/발령 이력), oldest first.
+    /// The employee number history of one employee (change/personnel order history), oldest first.
     pub async fn employee_number_history(
         &self,
         principal: Principal,
@@ -174,7 +174,7 @@ impl HrService {
         .await
     }
 
-    /// Who a 사번 finds: its holder, else the person whose earlier 사번 it was.
+    /// Who an employee number finds: its holder, else the person whose earlier one it was.
     pub async fn find_by_employee_number(
         &self,
         principal: Principal,

@@ -55,16 +55,16 @@ pub struct EmitInboxDocCommand {
 // ---------------------------------------------------------------------------
 
 /// List filters, mirroring the inbox screen pill row
-/// (확인 필요 / 급여명세 / 완료 / 전체).
+/// (Action required / Payslips / Done / All).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InboxDocFilter {
-    /// 확인 필요 — legal notices awaiting receipt confirmation.
+    /// Action required — legal notices awaiting receipt confirmation.
     ActionRequired,
-    /// 급여명세 — payslips.
+    /// Payslips.
     Payslip,
-    /// 완료 — confirmed documents.
+    /// Done — confirmed documents.
     Done,
-    /// 전체 — everything.
+    /// All — everything.
     All,
 }
 

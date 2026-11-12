@@ -1,5 +1,6 @@
-// Korean source for `identity.` ids (features/people/ui/identity-sheet.tsx): settling an identity review (BW-18).
-export const koIdentity = {
+// Korean copy for `identity.` ids (features/people/ui/identity-sheet.tsx): settling an identity review (BW-18).
+import type { enIdentity } from "../en/identity";
+export const koIdentity: Record<keyof typeof enIdentity, string> = {
   "identity.binding.title": "사람 연결 확인 자료",
   "identity.title": "{name} 동일인 확인",
   "identity.fact": "가져오기나 등록 때 같은 사람일 수 있는 기록이 있어 확인이 필요합니다. 다른 사람이면 표시만 해제하고, 같은 사람이면 이 기록을 남길 기록에 병합합니다.",
@@ -21,4 +22,4 @@ export const koIdentity = {
   "identity.receipt.different": "다른 사람으로 확정했습니다.",
   "identity.receipt.merged": "선택한 기록에 병합했습니다.",
   "identity.receipt.pending": "병합 요청을 기록했습니다. 다른 인사 담당자가 확인하면 병합됩니다.",
-} as const;
+};

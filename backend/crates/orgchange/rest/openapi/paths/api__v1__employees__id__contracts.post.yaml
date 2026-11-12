@@ -5,7 +5,7 @@ summary: Record a contract row (append-only)
 description: Records a new contract, a renewal, or (with supersedes_id) a correction of an earlier row. Rows are
   never edited. Idempotency-Key (a UUID) is required; a replay with the same terms answers 200 with the stored
   row, the same key with other terms 409. A labour contract (OPEN_ENDED, FIXED_TERM, PART_TIME, DAILY) needs a
-  wage above 0 and weekly_minutes (주 소정근로시간, 근기법 §17①). FIXED_TERM, DISPATCH_OUTSOURCING and
+  wage above 0 and weekly_minutes (contractual weekly working hours, Labor Standards Act §17①). FIXED_TERM, DISPATCH_OUTSOURCING and
   FREELANCE_SERVICE need end_date; OPEN_ENDED has none.
   409 when the period overlaps another live row (correct that row instead) or the corrected row was already
   corrected. Audited as employee.contract.record without the wage.

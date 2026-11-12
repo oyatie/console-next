@@ -1,7 +1,8 @@
-// Korean source for `bulk.` ids (features/people/ui/bulk): 일괄 발령 from a roster selection or a paste keyed by 사번.
+// Korean copy for `bulk.` ids (features/people/ui/bulk): 일괄 발령 from a roster selection or a paste keyed by 사번.
 // Rules: the header of ../ko.ts and GUIDE.md. A date today or earlier is in effect at once (red, "바로 반영");
 // a later one is scheduled and can be withdrawn person by person until then.
-export const koBulk = {
+import type { enBulk } from "../en/bulk";
+export const koBulk: Record<keyof typeof enBulk, string> = {
   "bulk.title": "일괄 발령",
   "bulk.subtitle.selection": "명단에서 선택한 {count, plural, other {#명}}",
   "bulk.matching": "필터와 일치하는 {count, plural, other {#명}} (제외 {excluded, plural, other {#명}})",
@@ -174,4 +175,4 @@ export const koBulk = {
   "bulk.missing": "{count, plural, other {#개}} 항목을 채워야 합니다",
   "bulk.stale.repin": "확인 후 {count, number}명을 현재 기록 기준으로 다시 불러오기",
 
-} as const;
+};

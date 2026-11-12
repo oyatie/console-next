@@ -172,7 +172,7 @@ pub async fn resolve_effective_feature_grants_in_tx(
     effective_grants_from_checked_assignments(permission_rows, &effective_scopes_by_role)
 }
 
-/// One entry per 발령, for [`enforce_assignment_non_overlap`] to group by role.
+/// One entry per appointment, for [`enforce_assignment_non_overlap`] to group by role.
 ///
 /// The permission join repeats one assignment once per permission, so the rows
 /// are folded by ASSIGNMENT id. Keying this by `role_id` instead reads as a
@@ -187,7 +187,7 @@ pub async fn resolve_effective_feature_grants_in_tx(
 ///
 /// It is NOT, however, the shape the columns arrive in. When they land, THIS
 /// function must read them; leaving `always()` here would fold two legitimately
-/// consecutive 발령 — `[100, 200)` then `[200, 300)`, the case
+/// consecutive appointments — `[100, 200)` then `[200, 300)`, the case
 /// `touching_half_open_intervals_for_one_role_do_not_overlap` exists to permit —
 /// into two `always()` intervals that overlap, and the resolver would return
 /// `Conflict` instead of that user's whole custom-role authority.

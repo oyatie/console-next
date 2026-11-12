@@ -313,7 +313,7 @@ async fn acting_surfaces_workflow_and_object_policy(owner_pool: PgPool) {
     );
 }
 
-// ---- Gap 2b: type-keyed acting-read (자동화 subtab, no instance needed) --------
+// ---- Gap 2b: type-keyed acting-read (Automation subtab, no instance needed) --------
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn acting_on_type_surfaces_workflow_and_object_policy(owner_pool: PgPool) {
@@ -324,7 +324,7 @@ async fn acting_on_type_surfaces_workflow_and_object_policy(owner_pool: PgPool) 
     let type_id = seed_type(&owner_pool, org, actor, "workorder").await;
     seed_bound_workflow_and_policy(&owner_pool, org_uuid, *type_id.as_uuid()).await;
 
-    // The manager's 자동화 subtab reads acting keyed by the TYPE (it may show a
+    // The manager's Automation subtab reads acting keyed by the TYPE (it may show a
     // type with zero instances), and must surface the same rules as the
     // instance-keyed read.
     let acting = scope_org(org, async {

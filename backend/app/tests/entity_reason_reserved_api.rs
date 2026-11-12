@@ -3,7 +3,7 @@
 //! writes (`SystemReason`: the N-1 name copy, the derived VAT unit, the close
 //! and reopen copies, …) are refused 422 `reason_code_reserved` on every
 //! route a person sends one to, with no write (`refused` checks the records,
-//! the receipt and the audit trail). Before the fix a 사업자등록 revision
+//! the receipt and the audit trail). Before the fix a business registration revision
 //! carrying `LEGAL_NAME_DERIVED` was an untyped 500: history hides that
 //! marker, so the changed-fields seal could not find the row it had written.
 
@@ -81,7 +81,7 @@ async fn markers(pool: &PgPool, org: Uuid) -> i64 {
 }
 
 /// Regression (fails on dev with a 500): the N-1 name-copy marker on a
-/// 사업자등록 revision is refused at the boundary, and the same revision with a
+/// business registration revision is refused at the boundary, and the same revision with a
 /// person's reason saves.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_registration_revision_carrying_the_name_copy_marker_is_refused(pool: PgPool) {
@@ -251,13 +251,14 @@ async fn every_revision_route_refuses_a_server_marker(pool: PgPool) {
     assert_eq!(markers(&pool, org).await, before);
 }
 
-/// Settling a 법인명 review by the registration's 상호 is a 법인 revision too.
+/// Settling a legal entity name review by the registration's trade name is a legal
+/// entity revision too.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_name_review_settled_with_a_server_marker_is_refused(pool: PgPool) {
     let (org, owner) = tenant(&pool, ADMIN).await;
     let admin = ctx(&pool, org, owner, ADMIN, None).await;
     let (entity, ..) = structure(&admin).await;
-    // The old code's own 상호 on the registration, raised by the name-review backfill.
+    // The old code's own trade name on the registration, raised by the name-review backfill.
     sqlx::query(
         "INSERT INTO business_registration_revisions (org_id, registration_id, version, effective_from, trade_name, opened_on, \
            business_address_id, unit_taxation, tax_office_label, tax_type, status, change_mode, reason_code, actor_id, \

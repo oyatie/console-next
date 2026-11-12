@@ -1,6 +1,4 @@
-import type { koRegister } from "../ko/register";
-
-export const enRegister: Record<keyof typeof koRegister, string> = {
+export const enRegister = {
   "register.err.beforeOpening": "For hires before {site} opened ({date}), keep the original hire date and register through roster import.",
   "register.err.beforeOpeningUnknown": "For hires before the workplace or employer opened, keep the original hire date and register through roster import.",
   "register.kicker": "People › one at a time · scope {scope}",
@@ -148,4 +146,4 @@ export const enRegister: Record<keyof typeof koRegister, string> = {
   "register.run.batchOp": "While operating, registrations stay in the history and are not undone. Correct a mistake on the record card.",
   "register.run.undoAll": "Undo all {n, number}",
   "register.run.submit": "Register",
-};
+} as const;

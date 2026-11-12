@@ -1,6 +1,6 @@
 //! Applying a previewed renumbering as one job, and its SETUP undo. Both
 //! write in two passes (clear, then set) so numbers can move between people
-//! of the batch without tripping the tenant-unique 사번 index.
+//! of the batch without tripping the tenant-unique employee number index.
 
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use console_kernel_core::tenant_phase::admit_write;
@@ -100,9 +100,9 @@ impl HrService {
             Box::pin(async move {
                 let org_uuid = *org.as_uuid();
                 lock_numbers(tx, org_uuid).await?;
-                // SETUP only; a governed renumbering after 운영 시작
-                // (step-up, second person) is not built yet. 사번 변경 of one
-                // person stays available.
+                // SETUP only; a governed renumbering after go-live
+                // (step-up, second person) is not built yet. An employee
+                // number change of one person stays available.
                 let mode = phase_mode(tx, org_uuid, WriteClass::SetupVoid).await?;
                 check_reason(tx, org, body.request.reason_code.trim(), body.request.note.as_deref()).await?;
                 let (preview, kind, scope_id) = preview_in_tx(tx, org_uuid, &body.request).await?;

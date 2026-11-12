@@ -6,7 +6,7 @@ properties:
   closed_on:
     type: string
     format: date
-    description: 폐쇄일, today or later (KST).
+    description: Closure date, today or later (KST).
   reason_code:
     type: string
   people:
@@ -38,12 +38,12 @@ properties:
         to_workplace_id:
           type: string
           format: uuid
-          description: GROUP_TRANSFER, required then. The receiving 사업장 of another 법인, the one to_org_unit_id
-            sits at; the planner's 발령 grant must reach it (403 out_of_scope, nothing written).
+          description: GROUP_TRANSFER, required then. The receiving workplace of another legal entity, the one to_org_unit_id
+            sits at; the planner's personnel order grant must reach it (403 out_of_scope, nothing written).
         group_transfer:
           $ref: '#/components/schemas/GroupTransferFacts'
           description: GROUP_TRANSFER, required then. The person's consent and continuity, checked as a single
-            전적 checks them.
+            group transfer checks them.
   units:
     type: array
     items:

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Decisions #7 case B with a real soft passkey: a sole HR holder applies a
-//! high-risk 정정 or an identity merge only after a step-up bound to that
+//! high-risk correction or an identity merge only after a step-up bound to that
 //! exact payload; Cedar `change_request_decide` admits the self-decision.
 
 mod support;
@@ -28,7 +28,7 @@ const SOLE: SecondPersonContext = SecondPersonContext {
 };
 
 /// A recorded hire date: a first recording needs no second person (MR-8),
-/// so the sole-holder path is exercised on a 정정 of a recorded value.
+/// so the sole-holder path is exercised on a correction of a recorded value.
 async fn recorded_hire_date(pool: &PgPool, id: Uuid) {
     sqlx::query("UPDATE employees SET hire_date = '2024-01-01' WHERE id = $1")
         .bind(id)
@@ -201,8 +201,8 @@ async fn a_sole_holder_needs_a_step_up_or_is_refused_by_the_mode(pool: PgPool) {
 }
 
 /// decisions #26: under `approval.policy.people_correction = none` the actor
-/// applies a high-risk 정정 after the step-up even while other holders exist
-/// and the sole-holder mode refuses: no BW-17 request is filed.
+/// applies a high-risk correction after the step-up even while other holders
+/// exist and the sole-holder mode refuses: no BW-17 request is filed.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn approval_policy_none_applies_with_a_step_up_whoever_else_holds_it(pool: PgPool) {
     let w = world(&pool).await;

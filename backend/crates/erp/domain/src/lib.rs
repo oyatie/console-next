@@ -2,7 +2,7 @@
 //!
 //! Pure double-entry, VAT, AR/AP, inventory, and e-tax invoice relay guardrails.
 //! This crate must not issue invoices, talk to HomeTax/NTS, or infer regulated
-//! accounting behavior without a source-versioned rule and 세무사 validation.
+//! accounting behavior without a source-versioned rule and tax-accountant validation.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use console_kernel_core::KernelError;

@@ -36,10 +36,10 @@ pub struct EmployeeListQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub department_missing: Option<bool>,
     pub org_unit_id: Option<Uuid>,
-    /// 법인 by id: employees whose current (or, once exited, last) employment
-    /// assignment names it (E-S3a).
+    /// Legal entity by id: employees whose current (or, once exited, last)
+    /// employment assignment names it (E-S3a).
     pub legal_entity_id: Option<Uuid>,
-    /// 사업장 by id, on the same assignment as `legal_entity_id`.
+    /// Workplace by id, on the same assignment as `legal_entity_id`.
     pub workplace_id: Option<Uuid>,
     /// One status or a comma-separated list (`status=ACTIVE,ON_LEAVE`).
     pub status: Option<String>,
@@ -101,7 +101,7 @@ impl EmployeeListFilters {
                     .map(|part| normalize_enum_text(part.to_owned()))
                     .filter(|part| !part.is_empty())
                     .map(|part| {
-                        // BW-19: 입사 예정 (PRE_HIRE) is listable; the refusal text is
+                        // BW-19: pending hire (PRE_HIRE) is listable; the refusal text is
                         // frozen (error_i18n matches it), so it does not name it.
                         if matches!(
                             part.as_str(),
@@ -200,7 +200,8 @@ impl EmployeeListFilters {
     }
 
     /// ` AND …` for the filters no facet group lifts: the branch scope,
-    /// company, search, 조직 and 사번 (every read applies them).
+    /// company, search, organization and employee number (every read applies
+    /// them).
     pub(crate) fn push_base(&self, builder: &mut QueryBuilder<Postgres>) {
         builder.push(" AND ");
         if let Some(visibility) = &self.visibility {
@@ -308,7 +309,7 @@ pub(crate) enum FacetGroup {
     Status,
     LegalEntity,
     Workplace,
-    /// 확인 필요 flags and the contract window.
+    /// Needs-review flags and the contract window.
     Review,
 }
 

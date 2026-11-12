@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Korean source for `import.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+// Korean copy for `import.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 import { koEnum } from "./enum";
+import type { enImport } from "../en/import";
 
-export const koImport = {
+export const koImport: Record<keyof typeof enImport, string> = {
   // People: roster import
   "import.title": "직원 명부 가져오기",
   "import.reference.entities": "법인",
@@ -267,4 +268,4 @@ export const koImport = {
   "import.reason.import_rollback.WRONG_MAPPING": "열을 잘못 연결함",
   "import.reason.import_rollback.DUPLICATE_RUN": "같은 명부를 두 번 반영함",
   "import.reason.import_rollback.OTHER": "기타",
-} as const;
+};

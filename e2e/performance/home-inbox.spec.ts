@@ -41,6 +41,8 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
     admin.on("request", request => { if (isArrival(request)) arrivalReads++; });
     const samples: { run: number; arrivalReads: number; responseStart: number; firstRows: number; inbox: number }[] = [];
     for (let run = 1; run <= 3; run++) {
+      // The header badge on the previous page makes the same read; leave that page first so a late reply cannot stand in for this load's.
+      await admin.goto("about:blank");
       arrivalReads = 0;
       const burst = admin.waitForRequest(isArrival).then(() => Promise.all(Array.from({ length: permits }, () => api("/me/action-inbox?filter=turn&attention=all"))));
       const inbox = admin.waitForResponse(isArrival);

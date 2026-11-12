@@ -1,13 +1,13 @@
-//! 사업자등록번호 and the 4-digit 종사업장 일련번호.
+//! Business registration number and the 4-digit sub-workplace serial number.
 
 use super::{canonical_serde, digit, digits_only, refusal};
 use crate::KernelError;
 
-/// 사업자등록번호: exactly 10 digits, displayed `###-##-#####`.
+/// Business registration number: exactly 10 digits, displayed `###-##-#####`.
 ///
 /// The weighted check digit (1,3,7,1,3,7,1,3,5) is in wide use but has no
 /// primary source, so a mismatch is a warning ([`BizRegNo::warnings`]), never
-/// a refusal. The 국세청 진위확인 is authoritative.
+/// a refusal. The National Tax Service authenticity check is authoritative.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct BizRegNo(String);
 
@@ -58,7 +58,8 @@ impl BizRegNo {
 }
 canonical_serde!(BizRegNo);
 
-/// 종사업장 일련번호 (사업자단위과세 부표 ①): 4 digits, never `0000`.
+/// Sub-workplace serial number (business-unit taxation supplementary schedule ①):
+/// 4 digits, never `0000`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SubWorkplaceSerial(String);
 

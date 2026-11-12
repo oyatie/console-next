@@ -1,7 +1,7 @@
 //! BW-13 / MR-25 classification catalog (`job_titles`): list, add, change. A
-//! tenant's own five lists, typed by `kind` (직급 GRADE, 직위 TITLE, 직책
-//! POSITION, 직무 JOB, 직군 JOB_FAMILY); GRADE and TITLE are ordered by
-//! `grade_rank` (higher = more senior). No seed rows.
+//! tenant's own five lists, typed by `kind` (grade GRADE, title TITLE,
+//! position POSITION, job JOB, job family JOB_FAMILY); GRADE and TITLE are
+//! ordered by `grade_rank` (higher = more senior). No seed rows.
 
 use console_hr_domain::lifecycle::classification::CATALOG_KINDS;
 use console_hr_domain::lifecycle::job_title::normalize_job_title_label;
@@ -35,7 +35,7 @@ pub struct JobTitleView {
 pub struct JobTitleList {
     pub items: Vec<JobTitleView>,
     /// The caller may add or change entries (`job_title_manage`): the
-    /// inline 「+ 추가」 is offered only then.
+    /// inline "+ Add" is offered only then.
     pub can_manage: bool,
 }
 
@@ -83,7 +83,7 @@ fn catalog_kind(raw: &str) -> Result<String, HrError> {
     ))
 }
 
-/// Only 직급 and 직위 carry a rank (the 강등 check reads it).
+/// Only grade and title carry a rank (the demotion check reads it).
 fn rank_unranked_kind() -> HrError {
     coded(
         KernelError::validation("only GRADE and TITLE entries take a grade_rank")

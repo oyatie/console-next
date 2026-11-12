@@ -1,6 +1,7 @@
-// Korean source for `empDoc.` ids (features/people/ui/card: 증명서 E2-cert, 인사카드 인쇄 E10-print, 무효화 and
+// Korean copy for `empDoc.` ids (features/people/ui/card: 증명서 E2-cert, 인사카드 인쇄 E10-print, 무효화 and
 // 등록 취소 E9-void).
-export const koEmpDoc = {
+import type { enEmpDoc } from "../en/emp-doc";
+export const koEmpDoc: Record<keyof typeof enEmpDoc, string> = {
   "empDoc.reg.counting": "세는 중…",
   "empDoc.reg.siteN": "사업장 {count, number}",
   "empDoc.reg.siteCount": "{workers} + 퇴직 {exited}",
@@ -148,4 +149,4 @@ export const koEmpDoc = {
   "empDoc.certificate.sealImage": "직인 이미지 (선택)",
   "empDoc.certificate.sealReadFailed": "직인 파일을 읽지 못했습니다. 파일을 다시 선택하십시오.",
   "empDoc.certificate.clearSeal": "직인 이미지 해제",
-} as const;
+};

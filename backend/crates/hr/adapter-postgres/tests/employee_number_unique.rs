@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! MR-28: one holder per 사번 per tenant (0277's unique index). A legacy
-//! duplicate stays outside the index, flagged, until a 사번 정정 (MR-8)
-//! clears the flag and resolves the BW-10 listing; the index's violation is
-//! a 409 for every writer, never a 500.
+//! MR-28: one holder per employee number per tenant (0277's unique index). A
+//! legacy duplicate stays outside the index, flagged, until an employee number
+//! correction (MR-8) clears the flag and resolves the BW-10 listing; the
+//! index's violation is a 409 for every writer, never a 500.
 
 mod support;
 
@@ -102,8 +102,8 @@ async fn a_legacy_duplicate_leaves_the_listing_through_a_number_correction(pool:
         (409, "employee_number_taken")
     );
 
-    // A 사번 정정 of the flagged holder (a second person decides it) clears
-    // the flag and resolves the listing.
+    // An employee number correction of the flagged holder (a second person
+    // decides it) clears the flag and resolves the listing.
     let updated_at: OffsetDateTime =
         sqlx::query_scalar("SELECT updated_at FROM employees WHERE id = $1")
             .bind(w.in_b)

@@ -1,4 +1,4 @@
-//! 근무 일정 (ATT S1) against Postgres with RLS: patterns, layers and their
+//! Work schedules (ATT S1) against Postgres with RLS: patterns, layers and their
 //! precedence, cancel before effect, refusals that write nothing, holidays.
 
 use super::support::{assign, future, key, office, refused, today, world};
@@ -121,7 +121,8 @@ async fn the_nearest_layer_decides_and_the_tree_counts_who_has_none(owner: PgPoo
         (2, 1, 1)
     );
 
-    // A layer on 생산부 (the team's parent) wins over the 사업장 for both people.
+    // A layer on the production department (the team's parent) wins over the
+    // workplace for both people.
     let (dept, _) = w
         .store
         .create_pattern(&w.hr(), &key(), office("생산부"))
@@ -141,7 +142,7 @@ async fn the_nearest_layer_decides_and_the_tree_counts_who_has_none(owner: PgPoo
         )
         .await
         .unwrap();
-    // A person layer keeps 윤하준 out of a later 사업장 change.
+    // A person layer keeps Yun Ha-jun out of a later workplace change.
     w.store
         .assign_schedule(
             &w.hr(),

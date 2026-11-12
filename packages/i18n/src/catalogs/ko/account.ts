@@ -1,5 +1,6 @@
-// Korean source for `account.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koAccount = {
+// Korean copy for `account.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enAccount } from "../en/account";
+export const koAccount: Record<keyof typeof enAccount, string> = {
   // My account
   "account.title": "내 계정",
   "account.profile": "프로필",
@@ -119,4 +120,4 @@ export const koAccount = {
   "account.privacy.deadline": "{date}까지 결과를 알립니다",
   "account.privacy.identity": "접수할 때 패스키로 본인을 확인합니다",
   "account.privacy.submit": "요구 접수",
-} as const;
+};

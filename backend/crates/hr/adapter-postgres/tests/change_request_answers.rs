@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! BW-17 answer kinds (governance S7 소명 요청, S5 policy question): the named
-//! assignee answers, even without employee-directory access. Runs as
-//! `console_rt` (RLS armed, column grants as in production).
+//! BW-17 answer kinds (governance S7 request for explanation, S5 policy
+//! question): the named assignee answers, even without employee-directory
+//! access. Runs as `console_rt` (RLS armed, column grants as in production).
 
 mod support;
 
@@ -37,7 +37,7 @@ fn answer(note: Option<&str>) -> DecideChangeRequest {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_named_handler_answers_its_access_explanation_without_directory_access(pool: PgPool) {
     let w = world(&pool).await;
-    // The 취급자 holds no employee-directory capability at all.
+    // The handler holds no employee-directory capability at all.
     let handler = Principal::new(
         UserId::from_uuid(w.admin_a),
         OrgId::from_uuid(w.org),
@@ -65,7 +65,7 @@ async fn a_named_handler_answers_its_access_explanation_without_directory_access
             .await
             .unwrap();
 
-    // It reaches the handler's list and 내 차례, and nobody else's but HR's list.
+    // It reaches the handler's list and "My turn", and nobody else's but HR's list.
     let mine =
         w.hr.list_change_requests(handler.clone(), list(Some("me")))
             .await
@@ -131,7 +131,7 @@ async fn a_named_handler_answers_its_access_explanation_without_directory_access
             .as_deref(),
         Some("월말 정산 대사 업무")
     );
-    // HR's own 기다리는 중: only what it filed.
+    // HR's own "Waiting": only what it filed.
     let filed =
         |requester: Option<&str>| -> console_hr_adapter_postgres::requests::ChangeRequestListQuery {
             serde_json::from_value(json!({ "requester": requester })).unwrap()

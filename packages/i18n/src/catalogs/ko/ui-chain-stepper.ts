@@ -1,5 +1,6 @@
-// Korean source for `uiChainStepper.` ids (ui/chain-stepper). Rules: the header of ../ko.ts and GUIDE.md.
-export const koUiChainStepper = {
+// Korean copy for `uiChainStepper.` ids (ui/chain-stepper). Rules: the header of ../ko.ts and GUIDE.md.
+import type { enUiChainStepper } from "../en/ui-chain-stepper";
+export const koUiChainStepper: Record<keyof typeof enUiChainStepper, string> = {
   "uiChainStepper.name": "처리 단계",
   "uiChainStepper.label": "처리 단계",
   "uiChainStepper.state.done": "완료:",
@@ -8,4 +9,4 @@ export const koUiChainStepper = {
   "uiChainStepper.state.failed": "실패:",
   "uiChainStepper.mine": "내 차례",
   "uiChainStepper.more": "+{count}",
-} as const;
+};

@@ -2,9 +2,9 @@
 //! held grant on its own scope node becomes an [`EffectiveFeatureGrant`] over
 //! the branches that node covers, and the principal's branch scope widens by
 //! the same branches. The doors keep their branch checks, so a grant reaches
-//! exactly its 법인 / 사업장 (or the tenant). AX-5: the same decisions are
+//! exactly its legal entity / workplace (or the tenant). AX-5: the same decisions are
 //! also kept per scope node ([`Projection::scoped`]); the HR doors decide per
-//! resource over those, so a 법인, 사업장 or 부서 grant reaches its people
+//! resource over those, so a legal-entity, workplace or department grant reaches its people
 //! whatever their legacy branch.
 
 use console_kernel_core::{BranchScope, KernelError, OrgId};
@@ -84,8 +84,8 @@ impl Projection {
 /// Tenant-level domains: their keys are capabilities over the whole tenant
 /// (who may grant, read the audit trail, change settings), not rows in a
 /// branch. A grant in one of them never moves the branch scope the data doors
-/// filter by — otherwise a 회사 전체 권한 관리 grant turned a 법인-scoped
-/// 인사 grant's holder into an all-branch principal that the org-wide HR
+/// filter by — otherwise a company-wide access-management grant turned the holder
+/// of an HR grant scoped to a legal entity into an all-branch principal that the org-wide HR
 /// gate then refused (governance-02).
 const fn moves_data_scope(domain: Domain) -> bool {
     !matches!(

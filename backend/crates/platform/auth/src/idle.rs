@@ -1,5 +1,5 @@
-//! INF-03 idle sign-out (design/security-admin.md R-3; 개인정보의 안전성
-//! 확보조치 기준 §6④; NIST SP 800-63B §7.2).
+//! INF-03 idle sign-out (design/security-admin.md R-3; Standards for Personal
+//! Information Security Measures §6④; NIST SP 800-63B §7.2).
 //!
 //! Activity is user input only. The client sends its last pointerdown,
 //! keydown or touchstart as `X-Last-Interaction` (RFC 3339). The server keeps

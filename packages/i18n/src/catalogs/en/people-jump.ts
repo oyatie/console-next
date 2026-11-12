@@ -1,7 +1,5 @@
 // English for `peopleJump.` ids.
-import type { koPeopleJump } from "../ko/people-jump";
-
-export const enPeopleJump: Partial<Record<keyof typeof koPeopleJump, string>> = {
+export const enPeopleJump = {
   "peopleJump.do": "For {name} {no}",
   "peopleJump.do.events": "Action history",
   "peopleJump.do.events.d": "Transfers, promotions, leave and reservations",
@@ -44,4 +42,4 @@ export const enPeopleJump: Partial<Record<keyof typeof koPeopleJump, string>> = 
   "peopleJump.keys.close": "Close",
   "peopleJump.keys.jump": "Find and go (a number goes straight there)",
   "peopleJump.keys.help": "This screen",
-};
+} as const;

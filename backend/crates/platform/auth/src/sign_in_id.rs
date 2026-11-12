@@ -1,5 +1,5 @@
-//! The sign-in ID `<아이디>@<회사 도메인>` (decisions #33). One rule for the
-//! sign-in route, the 아이디 change and the invite: trim, lowercase, then ASCII
+//! The sign-in ID: a login, `@`, then the company domain (decisions #33). One rule for the
+//! sign-in route, the sign-in ID change and the invite: trim, lowercase, then ASCII
 //! only. A non-ASCII character is refused, never transliterated, so the
 //! normalised form is NFC by construction. The account UUID stays the only key;
 //! this is a changeable label.
@@ -9,10 +9,10 @@ use uuid::Uuid;
 
 use crate::AuthError;
 
-/// How long a replaced 아이디 still signs in (it stays searchable for good).
+/// How long a replaced sign-in ID still signs in (it stays searchable for good).
 pub const SIGN_IN_ALIAS_DAYS: i64 = 90;
 
-/// The 아이디 part: `[a-z0-9]`, plus `.`, `_`, `-` inside, never two separators
+/// The login part: `[a-z0-9]`, plus `.`, `_`, `-` inside, never two separators
 /// in a row, 1 to 32 characters. `None` when the input breaks the rule.
 #[must_use]
 pub fn normalize_login(raw: &str) -> Option<String> {
@@ -41,7 +41,7 @@ pub fn normalize_company_domain(raw: &str) -> Option<String> {
 }
 
 /// A whole sign-in ID, normalised; `None` when either part breaks its rule
-/// (a bare 아이디 without `@domain` included: the client completes it).
+/// (a bare login without `@domain` included: the client completes it).
 #[must_use]
 pub fn normalize_sign_in_id(raw: &str) -> Option<String> {
     let (login, domain) = raw.trim().split_once('@')?;
@@ -52,7 +52,7 @@ pub fn normalize_sign_in_id(raw: &str) -> Option<String> {
     ))
 }
 
-/// The account's current sign-in ID (`<아이디>@<slug>`), read with the tenant
+/// The account's current sign-in ID (the login, `@`, then the slug), read with the tenant
 /// GUC armed for `org`. `None` only for an account with no row, which the
 /// migration and the default trigger make impossible after commit.
 pub async fn current_sign_in_id(

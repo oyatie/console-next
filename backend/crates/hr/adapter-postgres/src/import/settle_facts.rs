@@ -3,11 +3,12 @@
 //! the apply re-planned and digest-checked):
 //!
 //! - every person the run inserted gets the employment profile when the file
-//!   gave a 고용형태, and a current one is placed at their 사업장 (the first
-//!   법인 · 사업장 assignment, through the entity owner) unless 미배치;
+//!   gave an employment type, and a current one is placed at their workplace
+//!   (the first legal entity and workplace assignment, through the entity
+//!   owner) unless unplaced;
 //! - every change the run made to a person on file is a row of the BW-18
-//!   correction ledger naming the run, and a 고용형태 the person had none of
-//!   creates their profile.
+//!   correction ledger naming the run, and an employment type the person had
+//!   none of creates their profile.
 //!
 //! Each write is skipped when already there, so a replayed settle (a second
 //! apply, or one after a failure here) completes the run without doubling.
@@ -40,8 +41,9 @@ impl Recorded {
     }
 }
 
-/// The profile from the 고용형태, the file's 휴대전화 (W12; pay unknown) and
-/// its 계약종료일 · 수습종료일 (r3:hire-16); `true` when it was created now.
+/// The profile from the employment type, the file's mobile phone (W12; pay
+/// unknown) and its contract end date and probation end date (r3:hire-16);
+/// `true` when it was created now.
 async fn profile(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     (org, actor, employee): (Uuid, Uuid, Uuid),
@@ -70,8 +72,8 @@ async fn profile(
     Ok(done.rows_affected() == 1)
 }
 
-/// r3:hire-16: a new person's 성별 as the first 근로자 명부 record, with its
-/// ledger row naming the run (once: a replayed settle writes nothing new).
+/// r3:hire-16: a new person's sex as the first worker register record, with
+/// its ledger row naming the run (once: a replayed settle writes nothing new).
 async fn first_sex(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     (org, actor, run, employee): (Uuid, Uuid, Uuid, Uuid),
@@ -194,7 +196,7 @@ async fn place(
             .await?,
         )),
         // Closed after the apply re-planned (which re-checks it): the person
-        // stays 미배치 rather than a settle that can never finish.
+        // stays unplaced rather than a settle that can never finish.
         Err(error) if error.code == Some("workplace_not_open") => Ok(None),
         Err(error) => Err(coded(error)),
     }
@@ -222,7 +224,7 @@ pub async fn record_import_facts(
     .bind(keys)
     .fetch_all(tx.as_mut())
     .await?;
-    // W12: the staged 휴대전화 of these rows, taken (deleted) as they are stored.
+    // W12: the staged mobile phones of these rows, taken (deleted) as they are stored.
     let phones = crate::import::phones::take(tx, org, run, keys).await?;
     let mut recorded = Recorded::default();
     for (source_key, employee, outcome, row) in &rows {

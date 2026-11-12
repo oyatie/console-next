@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! IMPORT lane, BW-19: duplicate candidates and their governed override,
-//! distinct conflict codes, 입사 예정 (PRE_HIRE) and 재입사 (REHIRE), on a
+//! distinct conflict codes, pending hire (PRE_HIRE) and rehire (REHIRE), on a
 //! `console_rt` pool (the grants and RLS are part of what is proved).
 
 mod branch;

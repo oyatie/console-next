@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! 완료 for change requests: those the caller decided (APPLIED or DECLINED),
-//! newest first. The open queue's own reach applies today, so a decider who
-//! has since lost the grant no longer sees the names.
+//! "Done" for change requests: those the caller decided (APPLIED or
+//! DECLINED), newest first. The open queue's own reach applies today, so a
+//! decider who has since lost the grant no longer sees the names.
 
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_org_conn;

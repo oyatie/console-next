@@ -1,18 +1,21 @@
-//! E-S3b: the 법인 · 사업장 side of a lifecycle event (ED §3.9, first-run §2).
+//! E-S3b: the legal entity · workplace side of a lifecycle event (ED §3.9,
+//! first-run §2).
 //!
 //! - Leave and transfers recorded while the tenant is in SETUP are setup
 //!   records (decisions #26: migrating in must not dead-end), governed after
-//!   운영 시작 ([`lifecycle_change_mode`]). Exits are refused by EXIT's exit
+//!   go-live ([`lifecycle_change_mode`]). Exits are refused by EXIT's exit
 //!   case (E-S2) before they reach the lifecycle.
-//! - A TRANSFER moves the employee to another 사업장 of the same 법인 (전근)
-//!   when it names `to_workplace_id`, or when the unit it moves them to sits
-//!   at another 사업장. The entity crate splits the assignment in this
-//!   transaction ([`apply_move`]); rescinding or correcting the event reverses
-//!   it ([`undo_move`]). A move to another 법인 is a 전적, never a TRANSFER:
-//!   a unit (or 사업장) of another 법인 is refused (422
-//!   `transfer_cross_entity`, TR-33, decisions #30), whatever its depth.
-//! - A GROUP_TRANSFER (전적) moves them to a 사업장 of another 법인: the same
-//!   split, with the event id as the assignments' `group_transfer_id`.
+//! - A TRANSFER moves the employee to another workplace of the same legal
+//!   entity (a workplace transfer) when it names `to_workplace_id`, or when the unit it
+//!   moves them to sits at another workplace. The entity crate splits the
+//!   assignment in this transaction ([`apply_move`]); rescinding or correcting
+//!   the event reverses it ([`undo_move`]). A move to another legal entity is
+//!   a group transfer, never a TRANSFER: a unit (or workplace) of another
+//!   legal entity is refused (422 `transfer_cross_entity`, TR-33, decisions
+//!   #30), whatever its depth.
+//! - A GROUP_TRANSFER (group transfer) moves them to a workplace of another
+//!   legal entity: the same split, with the event id as the assignments'
+//!   `group_transfer_id`.
 
 use console_entity_adapter_postgres::employment_hire::unit_placement;
 use console_entity_adapter_postgres::employment_moves::{
@@ -33,8 +36,8 @@ use crate::HrError;
 
 type Tx<'a, 'b> = &'a mut sqlx::Transaction<'b, Postgres>;
 
-/// The 사업장 (and its 법인) a TRANSFER or GROUP_TRANSFER moves the employee
-/// to, and the 법인 they leave.
+/// The workplace (and its legal entity) a TRANSFER or GROUP_TRANSFER moves
+/// the employee to, and the legal entity they leave.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WorkplaceMove {
     pub from_legal_entity_id: Uuid,
@@ -51,8 +54,8 @@ fn phase_bound(event_type: &str) -> bool {
 }
 
 /// How a leave or transfer is admitted: `SETUP` (a setup record) while the
-/// tenant is in SETUP, `GOVERNED` after 운영 시작; `None` for any other act.
-/// The phase is read `FOR SHARE`, so a concurrent 운영 시작 (`FOR UPDATE`)
+/// tenant is in SETUP, `GOVERNED` after go-live; `None` for any other act.
+/// The phase is read `FOR SHARE`, so a concurrent go-live (`FOR UPDATE`)
 /// serialises with it; a missing row reads as OPERATING.
 ///
 /// # Errors
@@ -79,8 +82,9 @@ pub async fn lifecycle_change_mode(
 }
 
 /// 422 `transfer_cross_entity`: the TRANSFER's target (`field` = `value`)
-/// sits in another 법인 than the employee's on its date. A 전보 never crosses
-/// 법인; that move is a 전적 (decisions #30). Nothing is written.
+/// sits in another legal entity than the employee's on its date. A
+/// reassignment never crosses legal entities; that move is a group transfer
+/// (decisions #30). Nothing is written.
 fn cross_entity(field: &str, value: Uuid, from: Uuid, to: Uuid) -> HrError {
     HrError {
         errors: None,
@@ -98,9 +102,10 @@ fn cross_entity(field: &str, value: Uuid, from: Uuid, to: Uuid) -> HrError {
     }
 }
 
-/// TR-33: the 법인 of the unit a TRANSFER moves the employee to must be
-/// theirs. A 부서 has no placement of its own, so its 법인 is its nearest
-/// placed ancestor's (the 사업장's SITE unit); an unplaced unit is not judged.
+/// TR-33: the legal entity of the unit a TRANSFER moves the employee to must
+/// be theirs. A department has no placement of its own, so its legal entity
+/// is its nearest placed ancestor's (the workplace's SITE unit); an unplaced
+/// unit is not judged.
 async fn same_entity_unit(
     tx: Tx<'_, '_>,
     org: Uuid,
@@ -121,10 +126,11 @@ async fn same_entity_unit(
     }
 }
 
-/// The 전근 a TRANSFER makes, if any: the explicit `to_workplace_id`, else
-/// the 사업장 of the unit it moves the employee to. `None` when the employee
-/// stays at their 사업장, or when only the unit implies a move and the
-/// employee has no 법인 recorded (the 「회사 이름 정리」 cleanup places them).
+/// The transfer a TRANSFER makes, if any: the explicit `to_workplace_id`, else
+/// the workplace of the unit it moves the employee to. `None` when the
+/// employee stays at their workplace, or when only the unit implies a move
+/// and the employee has no legal entity recorded (the "clean up company
+/// names" cleanup places them).
 ///
 /// # Errors
 /// 422 `org_unit_at_other_workplace` / `workplace_not_open` /
@@ -197,7 +203,7 @@ pub async fn resolve_workplace_move(
     }
 }
 
-/// The receiving 법인's name on `on` (a 전적's company display snapshot).
+/// The receiving legal entity's name on `on` (a group transfer's company display snapshot).
 ///
 /// # Errors
 /// A malformed date; a database fault.

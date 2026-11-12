@@ -1,7 +1,7 @@
 tags:
   - equipment
 operationId: importEquipmentMasterList
-summary: Import the 지게차 master-list workbook into a fresh registry
+summary: Import the forklift master-list workbook into a fresh registry
 description: Org-wide-authority-gated (SUPER_ADMIN for built-in roles; MasterListImport) multipart upload of the customer's
   master-list .xlsx. The importer writes the tenant HQ master and therefore denies branch-scoped ADMIN principals. Upserts
   equipment by equipment number and returns a created/updated/error summary.

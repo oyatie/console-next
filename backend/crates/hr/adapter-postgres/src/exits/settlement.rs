@@ -23,7 +23,7 @@ pub type SettlementCalculation = (
     Option<i64>,
     Option<i64>,
     Vec<String>,
-    // 통상임금 (ordinary-wage) statutory basis (0093 review HIGH #2), all `None`
+    // Ordinary-wage statutory basis (0093 review HIGH #2), all `None`
     // until the wage source arrives: monthly ordinary wage, derived ordinary
     // daily wage, and the daily wage that actually governed severance.
     Option<i64>,
@@ -31,17 +31,19 @@ pub type SettlementCalculation = (
     Option<i64>,
 );
 
-/// 월 소정근로시간 (statutory monthly standard hours) for a 주40시간 worker.
+/// Monthly contractual working hours (statutory monthly standard hours) for a
+/// 40-hour-week worker.
 pub const MONTHLY_STANDARD_HOURS: i64 = 209;
 
-/// 1일 소정근로시간 (contractual daily hours).
+/// Daily contractual working hours.
 pub const DAILY_CONTRACTUAL_HOURS: i64 = 8;
 
-/// 통상일급 (1-day ordinary wage) from the monthly 통상임금 via the statutory
-/// 기준시간 rule: 통상시급 = 월 통상임금 / 209h, 통상일급 = 통상시급 × 8h.
+/// Ordinary daily wage (1-day ordinary wage) from the monthly ordinary wage via
+/// the statutory reference-hours rule: ordinary hourly wage = monthly ordinary
+/// wage / 209h, ordinary daily wage = ordinary hourly wage × 8h.
 ///
 /// STANDARD-WORKER ASSUMPTION (explicit, v1 scope): 209h/month and 8h/day are the
-/// 주40시간·1일 8시간 standard-worker convention (the official Minimum Wage
+/// 40-hour-week, 8-hour-day standard-worker convention (the official Minimum Wage
 /// Commission tables publish hourly, 8-hour daily, and "monthly (209h basis)"
 /// figures on exactly this basis). This derivation is valid ONLY for standard
 /// 40h-week / 8h-day workers; non-standard schedules (shorter contractual hours,
@@ -61,14 +63,15 @@ pub fn ordinary_daily_wage_won_from_monthly(
 }
 
 /// Deterministic SHA-256 that binds a settlement package's CERTIFIED state to
-/// the exact revision a 노무사/세무사 signed off (0093 HIGH: a non-null artifact
-/// only proves an artifact exists, not that it certified *these* numbers).
+/// the exact revision a labor attorney / tax accountant signed off (0093 HIGH:
+/// a non-null artifact only proves an artifact exists, not that it certified
+/// *these* numbers).
 ///
 /// Covers every certification-relevant field persisted on the row: the
 /// severance figure, the statutory basis, the insurance-loss payload, the
 /// approval payload, the wage-source-derived inputs (period bounds, calendar
-/// days, wage total, average daily wage, service days), AND the 통상임금
-/// (ordinary-wage) basis (monthly ordinary wage, derived ordinary daily wage,
+/// days, wage total, average daily wage, service days), AND the
+/// ordinary-wage basis (monthly ordinary wage, derived ordinary daily wage,
 /// and the statutory daily wage that governed). The ordinary-wage basis is bound
 /// DIRECTLY (0093 review HIGH #2): binding it only transitively via
 /// `severance_pay_won` was false, because the ordinary wage can change while the
@@ -150,10 +153,10 @@ pub fn compute_certified_package_digest(
 
 /// Stamps the EFFECTIVE `certification_status` onto a generated payload
 /// (insurance-loss or approval) so any surface that renders or exports the
-/// payload directly can still derive the "산정 초안 — 노무사 검증 전" marker
-/// (pre-mortem #4: the label must never be hand-placed per surface, only
-/// derived from this single computed value). No-op if the payload isn't a
-/// JSON object.
+/// payload directly can still derive the "calculation draft — not yet verified
+/// by a labor attorney" marker (pre-mortem #4: the label must never be hand-placed
+/// per surface, only derived from this single computed value). No-op if the
+/// payload isn't a JSON object.
 pub fn with_certification_status_marker(mut payload: Value, certification_status: &str) -> Value {
     if let Value::Object(map) = &mut payload {
         map.insert(
@@ -164,7 +167,7 @@ pub fn with_certification_status_marker(mut payload: Value, certification_status
     payload
 }
 
-/// Embeds the 통상임금 (ordinary-wage) statutory basis into a generated payload
+/// Embeds the ordinary-wage statutory basis into a generated payload
 /// (insurance-loss or approval) so the filed MOEL/NHIS document itself records
 /// which ordinary-wage input was compared against the average wage (0093 review
 /// HIGH #2 — the money trail must be auditable in the document, not just on the
@@ -198,7 +201,7 @@ pub fn with_ordinary_wage_basis(
 /// migration 0093's `..._cert_artifact_shape_chk` CHECK requires, emitting
 /// `reviewer_kind` as exactly `LABOR_ATTORNEY` / `TAX_ACCOUNTANT`.
 ///
-/// This is the write-side shape a future 노무사 certification-recording endpoint
+/// This is the write-side shape a future labor attorney certification-recording endpoint
 /// persists. v1 ships no such endpoint, so `CERTIFIED` is unreachable-by-design
 /// in production (safe — nothing gates on it yet, and the atomic reset in every
 /// settlement UPDATE plus the digest-match honoring below hold the invariant the
@@ -269,12 +272,13 @@ pub fn build_settlement_calculation(
 
     let period_start = parse_yyyy_mm_dd(&input.average_wage_period_start)?;
     let period_end = parse_yyyy_mm_dd(&input.average_wage_period_end)?;
-    // 통상일급 (1-day ordinary wage) derived from the monthly 통상임금 via the
-    // 기준시간 209h/8h rule (see `ordinary_daily_wage_won_from_monthly`). This
-    // derivation policy lives in the app layer, not the payroll kernel (which
-    // only enforces the max(average, ordinary) floor). Fail loud rather than
-    // default so the depressed-window population is never under-calculated by
-    // silently skipping the floor.
+    // Ordinary daily wage (1-day ordinary wage) derived from the monthly ordinary
+    // wage via the reference-hours 209h/8h rule (see
+    // `ordinary_daily_wage_won_from_monthly`). This derivation policy lives in
+    // the app layer, not the payroll kernel (which only enforces the
+    // max(average, ordinary) floor). Fail loud rather than default so the
+    // depressed-window population is never under-calculated by silently
+    // skipping the floor.
     if input.monthly_ordinary_wage_won <= 0 {
         return Err(HrError::validation(
             "monthly ordinary wage (월 통상임금) is required and must be positive for the 통상임금 floor",
@@ -307,7 +311,7 @@ pub fn build_settlement_calculation(
         Some(draft.average_daily_wage_milliwon),
         Some(draft.severance_pay_won),
         missing,
-        // 통상임금 basis (0093 review HIGH #2): monthly input, derived daily, and
+        // Ordinary-wage basis (0093 review HIGH #2): monthly input, derived daily, and
         // the daily wage that actually governed = max(average, ordinary).
         Some(input.monthly_ordinary_wage_won),
         Some(draft.ordinary_daily_wage_won),

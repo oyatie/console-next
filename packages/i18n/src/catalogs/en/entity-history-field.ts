@@ -3,9 +3,7 @@ import { enOrgBulk } from "./org-bulk";
 import { enWorkplace } from "./workplace";
 import { enEntityRecord } from "./entity-record";
 import { enEntity } from "./entity";
-import type { koEntityHistoryField } from "../ko/entity-history-field";
-
-export const enEntityHistoryField: Record<keyof typeof koEntityHistoryField, string> = {
+export const enEntityHistoryField = {
   "entityHistoryField.priority_support_basis": "Priority-support basis",
   "entityHistoryField.main_ksic_code": "Main industry code",
   "entityHistoryField.main_ksic_version": "Industry classification version",

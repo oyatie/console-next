@@ -1,6 +1,4 @@
-import type { koAttendanceRecords } from "../ko/attendance-records";
-
-export const enAttendanceRecords: Partial<Record<keyof typeof koAttendanceRecords, string>> = {
+export const enAttendanceRecords = {
   "attendanceRecords.drafts.unavailable": "Drafts could not be kept in this tab · save the attendance records before reloading",
   "attendanceRecords.drafts.unreadable": "Stored drafts could not be read · the original is preserved · save new entries before reloading",
   "attendanceRecords.back": "Back",
@@ -289,4 +287,4 @@ export const enAttendanceRecords: Partial<Record<keyof typeof koAttendanceRecord
   "attendanceRecords.card.closed": "{month} closed · read-only",
   "attendanceRecords.card.reopened": "Provisional · period unlocked · locks again at {at}",
   "attendanceRecords.card.reopenedOpenEnded": "Provisional · period unlocked",
-};
+} as const;

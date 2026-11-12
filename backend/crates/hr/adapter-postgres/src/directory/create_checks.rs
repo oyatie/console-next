@@ -1,9 +1,9 @@
 //! BW-19 1-3: the checks a People & Workforce registration meets before it
-//! writes: a taken 사번 names its holder (any status), a person already on
-//! file is named instead of silently duplicated (`create_duplicates.rs`), and
-//! the two unique-violation causes get distinct codes. Same name and hire date
-//! is only a warning: two people of one name starting on one day is
-//! legitimate (P5-NS-01).
+//! writes: a taken employee number names its holder (any status), a person
+//! already on file is named instead of silently duplicated
+//! (`create_duplicates.rs`), and the two unique-violation causes get distinct
+//! codes. Same name and hire date is only a warning: two people of one name
+//! starting on one day is legitimate (P5-NS-01).
 
 use console_ontology_canonical_adapter_postgres::employee_void::include_voided;
 use serde_json::json;
@@ -51,7 +51,7 @@ pub async fn is_replay(
 }
 
 /// The holder of `employee_number` in this tenant, any status, a voided
-/// registration included (it keeps its 사번, decisions #6; MR-26).
+/// registration included (it keeps its employee number, decisions #6; MR-26).
 pub async fn employee_number_holder(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org_uuid: Uuid,

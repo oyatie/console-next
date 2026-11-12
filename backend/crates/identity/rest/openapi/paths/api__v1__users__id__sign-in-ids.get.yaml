@@ -1,7 +1,7 @@
 tags:
   - users
 operationId: listUserSignInIds
-summary: Every 아이디 an account held
+summary: Every sign-in ID an account held
 description: 'Decisions #33. Newest first; `state` is CURRENT, ALIAS (still signs in until `alias_until`) or
   RESERVED (searchable only, never reissued).'
 security:
@@ -14,7 +14,7 @@ parameters:
     $ref: '#/components/schemas/Uuid'
 responses:
   '200':
-    description: The account's 아이디 history.
+    description: The account's sign-in ID history.
     content:
       application/json:
         schema:

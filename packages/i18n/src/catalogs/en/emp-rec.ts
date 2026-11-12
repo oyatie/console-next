@@ -1,7 +1,5 @@
 // English for `empRec.` ids (history and family rows).
-import type { koEmpRec } from "../ko/emp-rec";
-
-export const enEmpRec: Partial<Record<keyof typeof koEmpRec, string>> = {
+export const enEmpRec = {
   "empRec.meta": "Each edited or voided row is kept in history · ⋯ for history",
   "empRec.void": "Void",
   "empRec.voided": "Voided",
@@ -127,4 +125,4 @@ export const enEmpRec: Partial<Record<keyof typeof koEmpRec, string>> = {
   "empRec.history.imported": "imported",
   "empRec.history.value": "Content",
   "empRec.history.why": "Reason",
-};
+} as const;

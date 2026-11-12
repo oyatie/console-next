@@ -73,17 +73,17 @@ properties:
     type:
     - string
     - 'null'
-    description: On-site representative contact name (담당자명).
+    description: On-site representative contact name.
   contact_phone:
     type:
     - string
     - 'null'
-    description: On-site contact phone (연락처).
+    description: On-site contact phone.
   contact_email:
     type:
     - string
     - 'null'
-    description: Optional contact email (이메일).
+    description: Optional contact email.
   equipment_count:
     type: integer
     format: int64

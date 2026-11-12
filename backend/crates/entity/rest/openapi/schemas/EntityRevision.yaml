@@ -40,5 +40,5 @@ properties:
     - string
     - 'null'
     format: uuid
-    description: The kept 사업자등록증 a registration revision was recorded from (등록증 재발급·정정); null
+    description: The kept business registration certificate a registration revision was recorded from (certificate reissue / correction); null
       otherwise.

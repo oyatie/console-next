@@ -13,20 +13,23 @@ use crate::profile::enums::IdType;
 pub enum ChecklistItem {
     /// A contract row covering the hire date (G1).
     ContractRecorded,
-    /// 근로계약서 서면 교부 (근기법 §17②): an offline fact, attested through
-    /// BW-06 (decisions #3).
+    /// Written delivery of the employment contract (Labor Standards Act
+    /// §17②): an offline fact, attested through BW-06 (decisions #3).
     ContractDelivered,
-    /// 신분증명 종류 (E4). NOT_ISSUED opens a follow-up instead of blocking.
+    /// ID document type (E4). NOT_ISSUED opens a follow-up instead of blocking.
     IdRegistered,
-    /// 생년월일 (E4; 근기법 시행령 §20 명부 기재사항).
+    /// Date of birth (E4; Enforcement Decree of the Labor Standards Act §20
+    /// register entries).
     BirthDateRecorded,
-    /// 기본급 단위와 원 단위 금액 (E5).
+    /// Base pay unit and amount in won (E5).
     PayRecorded,
-    /// 4대보험 취득신고: an offline filing with a statutory clock.
-    /// NOT_TRACKED until a filing record exists and the per-scheme
-    /// deadlines (they differ between 국민연금, 건강보험 and 고용·산재) are
-    /// statutory register rows with their citations. Then it becomes Done/Open
-    /// with a server-clock due date; never a hard-coded day count here.
+    /// Acquisition reports for the four social insurances: an offline filing
+    /// with a statutory clock. NOT_TRACKED until a filing record exists and
+    /// the per-scheme deadlines (they differ between National Pension,
+    /// National Health Insurance and employment/industrial accident insurance)
+    /// are statutory register rows with their citations. Then it becomes
+    /// Done/Open with a server-clock due date; never a hard-coded day count
+    /// here.
     InsuranceAcquisitionReported,
 }
 
@@ -97,7 +100,7 @@ pub fn onboarding_checklist(facts: &OnboardingFacts) -> Vec<ChecklistEntry> {
 }
 
 /// Inside the onboarding window with something left to do: the person shows
-/// in the 온보딩 queue. Past the window the open items stay listed but the
+/// in the onboarding queue. Past the window the open items stay listed but the
 /// person leaves the queue. `window_days` is a settings value.
 #[must_use]
 pub fn onboarding_pending(

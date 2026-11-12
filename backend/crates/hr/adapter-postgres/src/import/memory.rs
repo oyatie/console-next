@@ -3,7 +3,7 @@
 //! operator maps a sheet) and cell values → codes or records
 //! (`import_value_memory`, written when a run is applied). The operator's
 //! answer in a dry run always wins over memory; a remembered record that is
-//! no longer usable (a dissolved unit, a closed 사업장) is dropped, not used.
+//! no longer usable (a dissolved unit, a closed workplace) is dropped, not used.
 
 use std::collections::BTreeMap;
 

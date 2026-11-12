@@ -1,5 +1,6 @@
-// Korean source for `entityCreate.` ids (features/entity/ui/create: the 법인 추가 wizard, spec S4).
-export const koEntityCreate = {
+// Korean copy for `entityCreate.` ids (features/entity/ui/create: the 법인 추가 wizard, spec S4).
+import type { enEntityCreate } from "../en/entity-create";
+export const koEntityCreate: Record<keyof typeof enEntityCreate, string> = {
   "entityCreate.title": "법인 등록",
   "entityCreate.crumb": "위치",
   "entityCreate.crumbRoot": "조직 구조",

@@ -6,8 +6,8 @@ description: 'BW-10 7: applies the plan of the latest dry run, named by dry_run_
   the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows
   (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry
   run''s is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing
-  people only get the fields import may write (업무, 직위, 근무지, an empty 생년월일): never name, status, 퇴직일,
-  부서 or 법인. New people are created ACTIVE, PRE_HIRE (future 입사일, ONBOARD scheduled) or EXITED (former
+  people only get the fields import may write (job duties, title, work location, an empty date of birth): never name, status, exit date,
+  department or legal entity. New people are created ACTIVE, PRE_HIRE (future hire date, ONBOARD scheduled) or EXITED (former
   employees, marked migrated). A replay of the APPLIED run with the same digest returns the stored report.
   Preserved rows remain raw-ledger evidence only.
 

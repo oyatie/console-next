@@ -1,4 +1,4 @@
-//! 퇴직 사유 at the exit report (EMP-UI 14) and the dead end it closes.
+//! The exit reason at the exit report (EMP-UI 14) and the dead end it closes.
 
 use console_hr_adapter_postgres::HrError;
 use console_hr_adapter_postgres::corrections::{CorrectEmployeeRequest, SecondPersonContext};
@@ -71,8 +71,9 @@ async fn the_report_takes_a_catalog_reason_and_it_is_the_employees(pool: PgPool)
             .await
             .unwrap();
     assert_eq!(read.exit_reason_code.as_deref(), Some("PERSONAL"));
-    // The case read serves its settlement deadlines from the register: 「근로기준법」
-    // 제36조 and 「근로자퇴직급여 보장법」 제9조, open from the 퇴직일.
+    // The case read serves its settlement deadlines from the register: Labor
+    // Standards Act Article 36 and Employee Retirement Benefit Security Act
+    // Article 9, open from the exit date.
     let deadlines = read.settlement_deadlines.unwrap();
     let due: Vec<_> = deadlines
         .iter()
@@ -92,7 +93,7 @@ async fn the_report_takes_a_catalog_reason_and_it_is_the_employees(pool: PgPool)
         Some("근로자퇴직급여 보장법")
     );
     assert_eq!(deadlines[1].article.as_deref(), Some("제9조제1항"));
-    // The 인사기록카드 register shows the case's 사유.
+    // The personnel record card register shows the case's reason.
     let facts = f.hr.register_facts(f.ops.clone(), e).await.unwrap();
     assert_eq!(facts.exit_reason_code.as_deref(), Some("PERSONAL"));
     assert_eq!(facts.exit_reason_label.as_deref(), Some("개인 사정"));
@@ -133,14 +134,15 @@ async fn an_unknown_or_retired_reason_refuses_the_report_and_writes_nothing(pool
     }
     assert_eq!(f.count("employee_exit_cases").await, 0);
     assert_eq!(f.audits("employee.exit.report").await, 0);
-    // The same report without a code still goes in (the 사유 is optional).
+    // The same report without a code still goes in (the reason is optional).
     report(&f, e, None).await.unwrap();
     assert_eq!(f.audits("employee.exit.report").await, 1);
 }
 
 /// Regression (BE-EMP-UI, EMP-UI 14): on 3c988fc2 any live case owned the
-/// 퇴직 사유 though no case could hold one, so after an exit reported through
-/// a case the reason could never be recorded (409 exit_case_owns_exit_reason).
+/// exit reason though no case could hold one, so after an exit reported
+/// through a case the reason could never be recorded (409
+/// exit_case_owns_exit_reason).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_case_without_a_reason_lets_the_register_record_it(pool: PgPool) {
     let f = fixture(pool, true).await;

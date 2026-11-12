@@ -1,7 +1,7 @@
 tags:
 - onboarding
 operationId: acceptTerms
-summary: 이용약관 acceptance by the contracting admin
+summary: Terms of service acceptance by the contracting admin
 security:
 - bearerAuth: []
 requestBody:

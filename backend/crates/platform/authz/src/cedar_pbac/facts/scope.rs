@@ -1,11 +1,11 @@
 //! The scope-grant fact block (entity design ED §3.11; decisions #15).
-//! Authority over a 법인 or 사업장 comes from scope grants, never from the
-//! holder's own employer, so a grant on another 법인 is an ordinary grant with
+//! Authority over a legal entity or workplace comes from scope grants, never from the
+//! holder's own employer, so a grant on another legal entity is an ordinary grant with
 //! the same rule (#15.3):
 //! `context.scope_tenant || context.scope_entities.containsAny(context.resource_entities)`.
-//! `scope_entities` holds the 법인 and 사업장 ids of the holder's grants;
-//! `resource_entities` holds the resource's own 법인 id and, when it has one,
-//! its 사업장 id. A tenant-level act (a new 법인) has none, so only a tenant
+//! `scope_entities` holds the legal entity and workplace ids of the holder's grants;
+//! `resource_entities` holds the resource's own legal entity id and, when it has one,
+//! its workplace id. A tenant-level act (a new legal entity) has none, so only a tenant
 //! grant reaches it. The same rule is the Rust `WHERE` backstop on lists.
 
 use std::collections::BTreeSet;
@@ -56,7 +56,7 @@ fn ids(list: &[Uuid]) -> FactValue {
 }
 
 /// The scope facts of one decision: the holder's reach (`None` = the whole
-/// tenant, else the granted 법인/사업장 ids) and the resource's ids.
+/// tenant, else the granted legal entity/workplace ids) and the resource's ids.
 #[must_use]
 pub fn scope_facts(facts: Facts, granted: Option<&[Uuid]>, resource: &[Uuid]) -> Facts {
     facts

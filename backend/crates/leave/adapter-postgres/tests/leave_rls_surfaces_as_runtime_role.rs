@@ -14,11 +14,11 @@
 //!  * an empty branch scope yields an empty queue (deny-by-omission);
 //!  * another tenant sees none of the requests (RLS);
 //!  * a re-decide of a decided request is a Conflict;
-//!  * a §61 push delivers a locked legal notice into the target's 개인 수신함
+//!  * a §61 push delivers a locked legal notice into the target's personal inbox
 //!    and records the push, idempotently per (target, kind, round);
 //!  * the §60 `kr_labor_guardrails_guard` / `trg_leave_requests_kr_labor_guardrails`
 //!    pair is pinned by name in the privilege-matrix census, and a shape-legal
-//!    `console_rt` INSERT that carries a 사유 fails closed (`leave_write.kr_annual_no_reason`).
+//!    `console_rt` INSERT that carries a reason fails closed (`leave_write.kr_annual_no_reason`).
 
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -299,7 +299,7 @@ fn decide_cmd(
         comment: if decision == LeaveDecision::Approve {
             None
         } else {
-            // §60⑤ 시기변경 협의 opener — the only lawful non-approve outcome.
+            // §60⑤ timing-change consultation opener — the only lawful non-approve outcome.
             Some("사업 운영에 막대한 지장 — 시기 변경 협의 요청".to_owned())
         },
         trace: TraceContext::generate(),
@@ -1003,7 +1003,7 @@ async fn leave_command_preprovision_and_privilege_matrix_are_fail_closed(owner_p
     assert_eq!(function_name, "kr_labor_guardrails_guard");
 
     // Hostile console_rt expand-bridge INSERT that is otherwise shape-legal
-    // (passes protected_request_writer_guard) but carries a 사유 — the named
+    // (passes protected_request_writer_guard) but carries a reason — the named
     // trigger must refuse with leave_write.kr_annual_no_reason (23514).
     let rt = runtime_role_pool(&owner_pool).await;
     let org = OrgId::one();
@@ -1985,8 +1985,8 @@ async fn approve_rejects_when_days_exceed_remaining_balance(owner_pool: PgPool) 
     .unwrap();
     assert_eq!(still_pending.items[0].status, LeaveStatus::Pending);
 
-    // 근로기준법 §60 guardrail: the lawful way out of an unapprovable request is
-    // a 시기변경 협의 (§60⑤) — it must settle the request WITHOUT touching the
+    // Labor Standards Act §60 guardrail: the lawful way out of an unapprovable request is
+    // a timing-change consultation (§60⑤) — it must settle the request WITHOUT touching the
     // ledger, because no leave was taken.
     let consult = console_platform_request_context::scope_org(sae, async {
         store
@@ -2402,11 +2402,11 @@ async fn statutory_push_target_binding_is_enforced_as_runtime_role(owner_pool: P
     assert_eq!(wrong_branch_result.kind(), ErrorKind::Forbidden);
 }
 
-/// 근로기준법 제61조 timing, as the runtime role.
+/// Labor Standards Act §61 timing, as the runtime role.
 ///
 /// Before this lane the only check on a §61 push was `round ∈ {1, 2}`: the
 /// three notices below could all be served on the same afternoon and the
-/// refusal told the worker their 미사용수당 claim had been extinguished. Every
+/// refusal told the worker their unused-leave allowance claim had been extinguished. Every
 /// assertion here is a window the statute imposes and the code did not.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn statutory_push_enforces_the_section_61_windows_as_runtime_role(owner_pool: PgPool) {
@@ -2423,7 +2423,8 @@ async fn statutory_push_enforces_the_section_61_windows_as_runtime_role(owner_po
     link_user_to_employee_and_branch(&owner_pool, sae_uuid, target, target_emp, branch).await;
 
     let store = test_store(&rt, &command_pool);
-    // 회계연도(1/1–12/31) 기준: 1차 촉구 7/1~7/10, 2차 통보 기한 10/31.
+    // Fiscal-year basis (1/1–12/31): first-round urging 7/1~7/10, second-round
+    // notice deadline 10/31.
     let period_end = date!(2026 - 12 - 31);
 
     let push = |kind: PromotionKind,
@@ -2456,7 +2457,7 @@ async fn statutory_push_enforces_the_section_61_windows_as_runtime_role(owner_po
         }
     };
 
-    // --- Round 1: the 6개월 전 기준 10일 window (§61①1) -----------------------
+    // --- Round 1: the 10-day window counted from 6 months before (§61①1) -------
     let early = push(
         PromotionKind::Promotion,
         1,
@@ -2481,7 +2482,7 @@ async fn statutory_push_enforces_the_section_61_windows_as_runtime_role(owner_po
     .expect_err("2026-07-11 is one day after the 1차 촉구 window closes");
     assert_eq!(late.kind(), ErrorKind::Validation);
 
-    // A 1차 촉구 does not designate dates — the worker does (§61①1).
+    // A first-round urging does not designate dates — the worker does (§61①1).
     let designating_round_one = push(
         PromotionKind::Promotion,
         1,
@@ -2518,7 +2519,7 @@ async fn statutory_push_enforces_the_section_61_windows_as_runtime_role(owner_po
         serde_json::json!("근로기준법 제61조제1항제1호")
     );
 
-    // Idempotent inside the same 사용기간.
+    // Idempotent inside the same use period.
     let r1_again = push(
         PromotionKind::Promotion,
         1,
@@ -2531,7 +2532,7 @@ async fn statutory_push_enforces_the_section_61_windows_as_runtime_role(owner_po
     .expect("a duplicate round-1 push is idempotent");
     assert_eq!(r1_again.id, r1.id);
 
-    // A push for a DIFFERENT 사용기간 collides on the per-employee unique key.
+    // A push for a DIFFERENT use period collides on the per-employee unique key.
     // It must fail closed, never silently return last period's row.
     let other_period = push(
         PromotionKind::Promotion,
@@ -2545,7 +2546,7 @@ async fn statutory_push_enforces_the_section_61_windows_as_runtime_role(owner_po
     .expect_err("a second 사용기간 cannot be recorded on the current unique key");
     assert_eq!(other_period.kind(), ErrorKind::Conflict);
 
-    // --- Round 2: the worker's 10-day reply window, then the 2개월 전 기한 ----
+    // --- Round 2: the worker's 10-day reply window, then the 2-months-before deadline ----
     let too_soon = push(
         PromotionKind::Promotion,
         2,
@@ -2601,7 +2602,7 @@ async fn statutory_push_enforces_the_section_61_windows_as_runtime_role(owner_po
         serde_json::json!(["2026-12-23", "2026-12-24"])
     );
 
-    // --- 노무수령거부: follows the designation, quotes it, claims nothing ----
+    // --- Refusal to accept labor: follows the designation, quotes it, claims nothing ----
     let refusal = push(
         PromotionKind::Refusal,
         0,

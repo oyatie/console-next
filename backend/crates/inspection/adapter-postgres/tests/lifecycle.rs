@@ -178,7 +178,7 @@ async fn due_schedule_listing_respects_branch_scope(pool: PgPool) {
         assert_eq!(visible.items.len(), 1);
         assert_eq!(visible.items[0].branch_id, branch_a);
         // The same-org LEFT JOIN resolves the assigned mechanic's display name
-        // (seed_user stamps "예방A-<uuid>") — no raw-UUID leak.
+        // (seed_user stamps mechanic A's Korean fixture name plus "-<uuid>") — no raw-UUID leak.
         assert!(
             visible.items[0]
                 .mechanic_display_name

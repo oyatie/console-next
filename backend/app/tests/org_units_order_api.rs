@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! The 부서 pickers' list (GET /org-units) shows the chart's order
-//! (org-sibling-order): 사업장 and 부서 in their stored order. So does every
-//! other 사업장 list a reorder through PUT /org-structure/order reaches: the
-//! statutory picker, the go-live breakdown and the 근태 scope tree.
+//! The department pickers' list (GET /org-units) shows the chart's order
+//! (org-sibling-order): workplaces and departments in their stored order. So does every
+//! other workplace list a reorder through PUT /org-structure/order reaches: the
+//! statutory picker, the go-live breakdown and the attendance scope tree.
 
 use http::StatusCode;
 use serde_json::{Value, json};
@@ -26,7 +26,8 @@ async fn the_org_unit_list_follows_the_stored_workplace_order(pool: PgPool) {
             .fetch_one(&pool)
             .await
             .unwrap();
-    // "가공장" sorts before "본사" by name; the stored order puts it last, then first.
+    // By name, the plant ("gagongjang") sorts before the head office ("bonsa") in Korean
+    // order; the stored order puts it last, then first.
     let (status, plant) = ctx
         .call(
             "POST",
@@ -64,7 +65,7 @@ async fn the_org_unit_list_follows_the_stored_workplace_order(pool: PgPool) {
             assert_eq!(status, StatusCode::OK, "{saved}");
         }
     };
-    // 사업장: creation order until one is given, then the given order.
+    // Workplaces: creation order until one is given, then the given order.
     let wp_plant = plant["record"]["id"].as_str().unwrap().to_owned();
     assert_eq!(
         children_of(org.to_string()).await,
@@ -75,7 +76,7 @@ async fn the_org_unit_list_follows_the_stored_workplace_order(pool: PgPool) {
         children_of(org.to_string()).await,
         vec![plant_site, hq_site.clone()]
     );
-    // 부서: by name until an order is given, then the given order.
+    // Departments: by name until an order is given, then the given order.
     let mut depts = Vec::new();
     for name in ["나부", "가부"] {
         let (status, unit) = ctx
@@ -111,7 +112,7 @@ async fn ids_at(ctx: &Ctx, path: &str, list: &str, kind: &str) -> Vec<String> {
         .collect()
 }
 
-/// Every 사업장 list, in its order: statutory picker, go-live breakdown, 근태 tree.
+/// Every workplace list, in its order: statutory picker, go-live breakdown, attendance tree.
 async fn workplace_lists(ctx: &Ctx) -> [Vec<String>; 3] {
     [
         ids_at(ctx, "/api/v1/statutory/workplaces", "", "").await,
@@ -148,7 +149,8 @@ async fn a_reorder_reaches_statutory_go_live_and_attendance(pool: PgPool) {
             .fetch_one(&pool)
             .await
             .unwrap();
-    // "가공장" sorts before "본사" by name; the stored order (creation until reordered) puts 본사 first.
+    // By name, the plant ("gagongjang") sorts before the head office ("bonsa") in Korean
+    // order; the stored order (creation until reordered) puts the head office first.
     let (status, plant) = ctx
         .call(
             "POST",

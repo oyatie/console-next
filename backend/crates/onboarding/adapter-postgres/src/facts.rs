@@ -18,8 +18,9 @@ use crate::PgOnboardingError;
 /// and read the store when it does (INTEG request).
 const SECURITY_CONTACT_STORE_AVAILABLE: bool = false;
 
-/// The live 법인, 등록, 사업장 and today's placements and 4대보험 status, as
-/// the 법인·사업장 panels read them (latest revision as of today).
+/// The live legal entities, registrations, workplaces and today's placements and
+/// four-social-insurance status, as the legal entity and workplace panels read them
+/// (latest revision as of today).
 macro_rules! base {
     () => {
         "WITH today AS (SELECT (now() AT TIME ZONE 'Asia/Seoul')::date AS d), \
@@ -42,8 +43,9 @@ macro_rules! base {
 }
 
 /// One row per record a counted preview line is about (company-49/-53): a
-/// 사업장 is listed once per line however many of its 4대보험 are short. Each
-/// line lists its records in the stored order (법인, then its 사업장), as the
+/// workplace is listed once per line however many of its four social insurances are
+/// short. Each line lists its records in the stored order (legal entity, then its
+/// workplaces), as the
 /// breakdown and the chart do.
 const RECORDS: &str = concat!(
     base!(),

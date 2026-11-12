@@ -1,8 +1,8 @@
-//! `GET /employees/{id}/register-facts`: the 근로자 명부 items HR holds for one
-//! employee (성별, 주소, 이력 · 경력, 퇴직 사유, 그 밖에 필요한 사항). They are
-//! personal data an employee-directory reader does not see, so the read needs
-//! `employee_directory_manage` (as the register export does) and leaves a
-//! 접속기록 row like the detail read.
+//! `GET /employees/{id}/register-facts`: the worker register items HR holds
+//! for one employee (sex, address, personal history · work history, exit
+//! reason, other necessary matters). They are personal data an employee-directory reader
+//! does not see, so the read needs `employee_directory_manage` (as the
+//! register export does) and leaves an access log row like the detail read.
 
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
@@ -24,11 +24,11 @@ pub struct RegisterFactsResponse {
     /// `PATCH /employees/{id}` that corrects these items.
     #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
-    /// `MALE` | `FEMALE`; null = 미입력.
+    /// `MALE` | `FEMALE`; null = not entered.
     pub sex: Option<String>,
-    /// The structured address (`KrAddress`); null = 미입력.
+    /// The structured address (`KrAddress`); null = not entered.
     pub address: Value,
-    /// Null = 미입력; `[]` = 경력 없음.
+    /// Null = not entered; `[]` = "no work history".
     pub careers: Value,
     pub exit_reason_code: Option<String>,
     /// The register label of the code (system label or the tenant's).

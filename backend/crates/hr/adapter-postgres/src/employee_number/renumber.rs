@@ -1,8 +1,9 @@
-//! Bulk renumbering (decisions #25): a new scheme for the tenant, a 법인 or
-//! a 사업장 — the current people of the scope (재직, 휴직, 입사 예정; former
-//! employees keep their numbers) numbered from 1 by 입사일, then current
-//! 사번, old → new, with every number someone else holds or held named as a
-//! conflict. The preview's digest binds the apply to what was shown.
+//! Bulk renumbering (decisions #25): a new scheme for the tenant, a legal
+//! entity or a workplace — the current people of the scope (employed, on leave
+//! of absence, pending hire; former employees keep their numbers) numbered
+//! from 1 by hire date, then current employee number, old → new, with every
+//! number someone else holds or held named as a conflict. The preview's
+//! digest binds the apply to what was shown.
 
 use console_hr_domain::import::numbering::{RenumberLine, plan_renumber};
 use console_platform_authz::{Feature, Principal};
@@ -42,7 +43,7 @@ pub struct RenumberPreview {
     pub preview_digest: String,
 }
 
-/// The current people of the scope as `(id, 사번)`, in numbering order.
+/// The current people of the scope as `(id, employee number)`, in numbering order.
 async fn people(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: Uuid,

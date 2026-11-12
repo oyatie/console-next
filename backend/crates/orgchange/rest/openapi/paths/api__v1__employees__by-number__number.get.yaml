@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: findEmployeeByNumber
-summary: Who a 사번 finds — its holder, else the person whose earlier 사번 it was (IMPORT-2)
+summary: Who an employee number finds — its holder, else the person whose earlier employee number it was (IMPORT-2)
 security:
 - bearerAuth: []
 parameters:

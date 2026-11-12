@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: getBulkEmployeeCorrection
-summary: Read a committed bulk 정정 job (MR-27)
+summary: Read a committed bulk correction job (MR-27)
 description: Field names and counts; the values are in the ledger rows that name the job.
 security:
 - bearerAuth: []

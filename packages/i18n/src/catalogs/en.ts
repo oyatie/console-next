@@ -15,7 +15,6 @@ import { enImportRollback } from "./en/import-rollback";
 import { enComposer } from "./en/composer";
 import { enStatutory } from "./en/statutory";
 import { enRequestOutcome } from "./en/request-outcome";
-import type { ScreenMessageId } from "./ko";
 import { enFormat } from "./en/format";
 import { enAsof } from "./en/asof";
 import { enTimeline } from "./en/timeline";
@@ -130,8 +129,13 @@ import { enEmpRec } from "./en/emp-rec";
 import { enEmpDoc } from "./en/emp-doc";
 import { enPeopleJump } from "./en/people-jump";
 
-// Partial: missing ids fall back to Korean (index.test.ts fails on any).
-export const en: Partial<Record<ScreenMessageId, string>> = {
+// Source catalog for the screens: English defines every id; ko.ts must cover each one, and any other
+// locale may be partial and falls back to English. Sign-in, shell and shared-state copy (app., auth.,
+// common., shell.) is in boot.ts. ICU MessageFormat; Korean particles via `{name|을를}` in ko/.
+// Never put an ASCII apostrophe before `{` (ICU quoting) — use “ ” for quotes.
+// One file per id prefix: `<ns>.` ids live in en/<ns>.ts and ko/<ns>.ts (kebab-case file name).
+// A new namespace appends one import and one spread line here and in ko.ts.
+export const en = {
   ...enUiFlexibleColumns,
   ...enSettingsHub,
   ...enGovernanceRefusals,
@@ -263,6 +267,8 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enSupport,
   ...enSupportAccess,
   ...enDirectoryViews,
-};
+} as const;
+
+export type ScreenMessageId = keyof typeof en;
 import { enDirectoryViews } from "./en/directory-views";
 import { enSettingsHub } from "./en/settings-hub";

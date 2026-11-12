@@ -8,7 +8,7 @@ properties:
     description: The preview digest the actor confirmed.
   sole_holder_acknowledged:
     type: boolean
-    description: 「결재할 다른 사람이 없어 본인이 단독으로 결재하게 됩니다」 confirmed.
+    description: Confirmed the notice "there is no one else to approve, so you will approve alone".
   step_up:
     type: object
     required:

@@ -1,4 +1,4 @@
-//! The bulk 발령 preview route (BE-EMP-UI, EMP-UI 8): the commit's
+//! The bulk personnel order preview route (BE-EMP-UI, EMP-UI 8): the commit's
 //! validation, read-only. Same gate as the bulk commit (in the service).
 
 use axum::extract::State;

@@ -1,5 +1,6 @@
-// Korean source for `uiAddressField.` ids (apps/web/src/ui/address-field). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koUiAddressField = {
+// Korean copy for `uiAddressField.` ids (apps/web/src/ui/address-field). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enUiAddressField } from "../en/ui-address-field";
+export const koUiAddressField: Record<keyof typeof enUiAddressField, string> = {
   "uiAddressField.printed": "등록증 표기:",
   "uiAddressField.jibun": "지번 {jibun}",
   "uiAddressField.zip": "우편번호 {zip}",
@@ -19,4 +20,4 @@ export const koUiAddressField = {
   "uiAddressField.useManual": "이 주소로 저장",
   "uiAddressField.manualNeeds": "도로명주소와 5자리 우편번호가 필요합니다.",
   "uiAddressField.backToSearch": "검색으로 돌아가기",
-} as const;
+};

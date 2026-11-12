@@ -1,8 +1,8 @@
-//! MR-24 / MR-25 pure rules: the five typed catalogs (직급 GRADE, 직위 TITLE,
-//! 직책 POSITION, 직무 JOB, 직군 JOB_FAMILY), the dated APPOINT and 고용형태
-//! 전환 (EMPLOYMENT_TYPE_CHANGE), and what each leaves on the employee head.
-//! 직위 keeps BW-13's `to_job_title_id` / `to_position`; this module adds 직급
-//! to PROMOTE and the rest to APPOINT.
+//! MR-24 / MR-25 pure rules: the five typed catalogs (grade GRADE, title
+//! TITLE, position POSITION, job JOB, job family JOB_FAMILY), the dated
+//! APPOINT and employment type change (EMPLOYMENT_TYPE_CHANGE), and what each
+//! leaves on the employee head. Title keeps BW-13's `to_job_title_id` /
+//! `to_position`; this module adds grade to PROMOTE and the rest to APPOINT.
 
 use console_kernel_core::KernelError;
 use serde::{Deserialize, Serialize};
@@ -28,37 +28,38 @@ pub const EMPLOYMENT_TYPES: [&str; 9] = [
     "FREELANCE",
 ];
 
-/// The request fields of a 직급 PROMOTE, an APPOINT or a 고용형태 전환, also
-/// the normalised form (stored in a scheduled request; every field defaults so
-/// older scheduled rows decode). Absent = unchanged.
+/// The request fields of a grade PROMOTE, an APPOINT or an employment type
+/// change, also the normalised form (stored in a scheduled request; every
+/// field defaults so older scheduled rows decode). Absent = unchanged.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClassificationChange {
-    /// PROMOTE: the 직급 (GRADE) after.
+    /// PROMOTE: the grade (GRADE) after.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to_grade_id: Option<Uuid>,
-    /// APPOINT: the 직책 (POSITION) after.
+    /// APPOINT: the position (POSITION) after.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to_position_kind_id: Option<Uuid>,
-    /// APPOINT: 보직 해제, the employee holds no 직책 after.
+    /// APPOINT: release from position, the employee holds no position after.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub vacate_position_kind: bool,
-    /// APPOINT: the 직무 (JOB) after; its label becomes `to_job`.
+    /// APPOINT: the job (JOB) after; its label becomes `to_job`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to_job_id: Option<Uuid>,
-    /// APPOINT: 종사 업무 as free text (no catalog id), when `to_job_id` is absent.
+    /// APPOINT: the work engaged in as free text (no catalog id), when
+    /// `to_job_id` is absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to_job: Option<String>,
-    /// APPOINT: the 직군 (JOB_FAMILY) after.
+    /// APPOINT: the job family (JOB_FAMILY) after.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to_job_family_id: Option<Uuid>,
-    /// EMPLOYMENT_TYPE_CHANGE: the 고용형태 after.
+    /// EMPLOYMENT_TYPE_CHANGE: the employment type after.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(deserialize_with = "deserialize_enum_25")]
     pub to_employment_type: Option<String>,
 }
 
-/// The employee's current 직급, 직책, 직무 and 직군 (직위 is
-/// `EmployeeForLifecycle::job_title_id`), and the 종사 업무 text.
+/// The employee's current grade, position, job and job family (title is
+/// `EmployeeForLifecycle::job_title_id`), and the work-engaged-in text.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Classification {
     pub grade_id: Option<Uuid>,
@@ -68,7 +69,7 @@ pub struct Classification {
     pub job: Option<String>,
 }
 
-/// The employment type and fixed-term window a 전환 leaves.
+/// The employment type and fixed-term window an employment type change leaves.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EmploymentWindow {
     pub employment_type: String,
@@ -153,7 +154,7 @@ pub fn keeps_status(event_type: &str) -> bool {
     )
 }
 
-/// The 직급·직책·직무·직군 the event leaves.
+/// The grade · position · job · job family the event leaves.
 pub fn classification_after(
     head: &EmployeeForLifecycle,
     transition: &NormalizedEmployeeLifecycleTransition,
@@ -183,13 +184,14 @@ pub fn classification_after(
     after
 }
 
-// a 전환 to CONTRACT does not run BW-12's two-year check
+// an employment type change to CONTRACT does not run BW-12's two-year check
 // (`check_fixed_term_renewal`); the next CONTRACT_RENEWAL does, and the fold
-// counts earlier windows. Run it on the 전환 too once the 노무사 confirms
-// whether a 무기 period between two fixed-term windows breaks 계속근로.
-/// The employment window a 전환 leaves (`None` for any other event): a change
-/// to CONTRACT opens a window from the effective date to the given end; a
-/// change away from it closes the window.
+// counts earlier windows. Run it on the employment type change too once the
+// labor attorney confirms whether an open-ended period between two fixed-term
+// windows breaks continuous service.
+/// The employment window an employment type change leaves (`None` for any
+/// other event): a change to CONTRACT opens a window from the effective date
+/// to the given end; a change away from it closes the window.
 pub fn employment_window_after(
     transition: &NormalizedEmployeeLifecycleTransition,
 ) -> Option<EmploymentWindow> {
@@ -227,9 +229,9 @@ pub fn project_classification(
     }
 }
 
-/// Whether a PROMOTE, APPOINT or 전환 changes nothing (`None` for any other
-/// event). A PROMOTE compares its 직위 text (projected from a catalog id) and
-/// its 직급.
+/// Whether a PROMOTE, APPOINT or employment type change changes nothing
+/// (`None` for any other event). A PROMOTE compares its title text (projected
+/// from a catalog id) and its grade.
 pub fn classification_noop(
     head: &EmployeeForLifecycle,
     transition: &NormalizedEmployeeLifecycleTransition,
@@ -252,9 +254,10 @@ pub fn classification_noop(
     Some(unchanged)
 }
 
-/// The before/after columns the ledger row keeps for a PROMOTE (직급), an
-/// APPOINT or a 전환, so a rescission restores the head. Empty otherwise.
-/// Serialized flat into the lifecycle event read (absent fields omitted).
+/// The before/after columns the ledger row keeps for a PROMOTE (grade), an
+/// APPOINT or an employment type change, so a rescission restores the head.
+/// Empty otherwise. Serialized flat into the lifecycle event read (absent
+/// fields omitted).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct ClassificationColumns {
     #[serde(skip_serializing_if = "Option::is_none")]

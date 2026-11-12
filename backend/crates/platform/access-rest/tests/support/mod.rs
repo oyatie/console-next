@@ -1,5 +1,5 @@
 //! One tenant for the access suites: an ops account and two HR workers, all
-//! with NO legacy role (AX-0), 법인 A and B each with one 사업장 and branch,
+//! with NO legacy role (AX-0), legal entities A and B each with one workplace and branch,
 //! tokens, a soft passkey for the ops account, and the face's router over the
 //! `console_rt` pool (RLS applies).
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used, clippy::panic)]

@@ -50,17 +50,17 @@ properties:
     - string
     - 'null'
     format: uuid
-    description: Branch backing the 사업장; use as home_branch_id when registering people here.
+    description: Branch backing the workplace; use as home_branch_id when registering people here.
   kind_code:
     type:
     - string
     - 'null'
-    description: 사업장 kind code (decisions
+    description: Workplace kind code from the tenant's workplace kind list; null when unassigned.
   code:
     type:
     - string
     - 'null'
-    description: The 사업장 code (unique among open 사업장), when set.
+    description: The workplace code (unique among open workplaces), when set.
   is_primary:
     type: boolean
   is_head_office:
@@ -68,7 +68,7 @@ properties:
   needs_confirmation:
     type: boolean
   can_manage:
-    description: Whether this reader may manage the 사업장 (Cedar legal_entity_manage within their scope).
+    description: Whether this reader may manage the workplace (Cedar legal_entity_manage within their scope).
     type: boolean
   closed_on:
     type:
@@ -93,7 +93,7 @@ properties:
     - string
     - 'null'
     format: uuid
-    description: The 사업장's own SITE org unit (decisions
+    description: The workplace's own SITE org unit; people with no department are registered there, and it can be named as a parent unit.
   regular_workers:
     $ref: '#/components/schemas/RegularWorkers'
   as_of:

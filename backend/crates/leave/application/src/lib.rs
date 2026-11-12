@@ -9,8 +9,9 @@
 //! narrows to the caller's branches.
 //!
 //! The statutory push is a producer of two side effects it does not own: it
-//! delivers a receipt-gated document into the target's 개인 수신함 (via the inbox
-//! crate's `InboxDocSink`) and — once the 연차촉진 submittable definition exists —
+//! delivers a receipt-gated document into the target's personal inbox (via the inbox
+//! crate's `InboxDocSink`) and — once the annual-leave use promotion submittable
+//! definition exists —
 //! starts an engine AP- run. Those integrations live in the REST/adapter layer;
 //! this crate only defines the command shapes and views.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
@@ -35,7 +36,7 @@ use uuid::Uuid;
 // ---------------------------------------------------------------------------
 
 /// Create a pending leave request. Not a public REST endpoint: requests are
-/// produced by the 기안/engine compose flow (submittable-templates, gap #1) or a
+/// produced by the draft/engine compose flow (submittable-templates, gap #1) or a
 /// roster import, which call this port with the mapping they own. Routing is
 /// resolved from the active employee's explicit home branch; the
 /// `subject_employee_id` is still checked against the caller's linked employee.
@@ -155,8 +156,8 @@ pub struct DecideLeaveRequestCommand {
     pub occurred_at: Timestamp,
 }
 
-/// Worker-only alternate 시기 proposal on a `time_change_consult` row (§60⑤ /
-/// charter §4-31: 대체 일자는 근로자 선택). The adapter binds the actor as the
+/// Worker-only alternate leave-timing proposal on a `time_change_consult` row (§60⑤ /
+/// charter §4-31: the worker chooses the substitute dates). The adapter binds the actor as the
 /// original requester and refuses employer/manager writes.
 #[derive(Debug, Clone)]
 pub struct ProposeAlternateDatesCommand {
@@ -189,17 +190,17 @@ pub struct ResolveLeaveChargeCommand {
 }
 
 // ---------------------------------------------------------------------------
-// Statutory push (촉진 / 노무수령거부)
+// Statutory push (promotion / refusal to accept labor)
 // ---------------------------------------------------------------------------
 
 /// Serve a §61 statutory push to a target employee. The adapter records the
-/// push, delivers the receipt-gated notice into the target's 개인 수신함, and
+/// push, delivers the receipt-gated notice into the target's personal inbox, and
 /// (when a submittable definition exists) starts the engine AP- run. `round`
 /// applies to a promotion (1|2); a refusal follows round 2. `target_user_id` is
 /// the inbox recipient (the target employee's linked account).
 ///
 /// The unused-day count is deliberately **absent**: §61①1 requires the notice
-/// to state the employee's own 미사용 휴가 일수, so the adapter reads it from
+/// to state the employee's own unused leave days, so the adapter reads it from
 /// the authoritative roster and refuses the push when the roster has not
 /// established it. A caller-supplied figure would be unverifiable data on a
 /// legal notice.
@@ -214,11 +215,12 @@ pub struct StatutoryPushCommand {
     pub round: i16,
     /// Which §61 window set applies — the paragraphs have different periods.
     pub track: PromotionTrack,
-    /// 제60조제7항 본문에 따른 기간의 마지막 날 (§61② tracks: 최초 1년의 근로기간
-    /// 종료일). The statutory windows are all counted back from this date, so
+    /// The last day of the period under the main text of §60⑦ (§61② tracks: the end date
+    /// of the first 1-year working period). The statutory windows are all counted back from
+    /// this date, so
     /// it is required evidence, never inferred.
     pub leave_period_end: Date,
-    /// The 사용 시기 a round-2 notice designates (§61①2 / §61②2). Required and
+    /// The leave-use timing a round-2 notice designates (§61①2 / §61②2). Required and
     /// non-empty for round 2; must be empty for round 1 and for a refusal,
     /// which reads the recorded round-2 designation instead of restating it.
     pub designated_dates: Vec<Date>,
@@ -230,7 +232,7 @@ pub struct StatutoryPushCommand {
 // Views
 // ---------------------------------------------------------------------------
 
-/// One row of the approval queue (결재함 leave variant).
+/// One row of the approval queue (approval inbox leave variant).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LeaveRequestView {
     pub id: LeaveRequestId,
@@ -263,7 +265,7 @@ pub struct LeaveRequestView {
     pub start_date: Date,
     #[serde(with = "date_fmt")]
     pub end_date: Date,
-    /// 근로기준법 §60 guardrail (charter §4-31): 연차 has no 사유란. Always
+    /// Labor Standards Act §60 guardrail (charter §4-31): annual leave has no reason field. Always
     /// `None` for requests filed after the guardrail; `Some` only on
     /// historical rows that were filed while the field was (unlawfully)
     /// mandatory. Serialized only when present so new rows expose no reason
@@ -282,7 +284,7 @@ pub struct LeaveRequestView {
     /// Coverage evidence snapshot that justified the grounds (JSON object).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_change_evidence: Option<serde_json::Value>,
-    /// Worker-chosen alternate 시기; absent until the requester proposes.
+    /// Worker-chosen alternate leave timing; absent until the requester proposes.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -341,9 +343,9 @@ pub enum LeaveBalanceTone {
     Low,
 }
 
-/// One employee's balance row (직원별 연차 현황). `left` is derived here so the
+/// One employee's balance row (annual leave status per employee). `left` is derived here so the
 /// client never recomputes it. `tone` mirrors the prototype's ok/promote/low
-/// bucketing so the bar color and the 촉진 flag come from the backend.
+/// bucketing so the bar color and the promotion flag come from the backend.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LeaveBalanceView {
     pub employee_id: Uuid,
@@ -352,7 +354,7 @@ pub struct LeaveBalanceView {
     pub grant: f64,
     pub used: f64,
     pub left: f64,
-    /// `low` (mostly used), `promote` (mostly unused → 촉진 대상), or `ok`.
+    /// `low` (mostly used), `promote` (mostly unused → promotion target), or `ok`.
     pub tone: LeaveBalanceTone,
 }
 
@@ -395,7 +397,7 @@ pub enum ApSubmission {
 
 /// The result of a statutory push. `inbox_doc_id` is the receipt-gated document
 /// delivered to the target (always present — the concrete legal delivery).
-/// `ap_run_id` is the engine submission; `None` until the 연차촉진 submittable
+/// `ap_run_id` is the engine submission; `None` until the annual-leave use promotion submittable
 /// definition exists (gap #1), in which case `ap_submission` explains the state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StatutoryPushView {

@@ -1,5 +1,6 @@
-// Korean source for `setup.` ids (apps/web/src/features/onboarding). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koSetup = {
+// Korean copy for `setup.` ids (apps/web/src/features/onboarding). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enSetup } from "../en/setup";
+export const koSetup: Record<keyof typeof enSetup, string> = {
   "setup.group.company": "법인",
   "setup.group.operations": "운영",
   "setup.group.people": "직원",
@@ -272,4 +273,4 @@ export const koSetup = {
   "setup.entityBulk.datedNeeded": "변경일과 변경 사유를 입력하십시오.",
   "setup.entityBulk.records": "법인 · 사업장",
   "setup.entityBulk.recordNeeded": "수정할 기록을 선택하십시오. 읽을 수 없는 기록은 변경하지 않습니다.",
-} as const;
+};

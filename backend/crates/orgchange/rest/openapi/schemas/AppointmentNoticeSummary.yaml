@@ -6,7 +6,7 @@ properties:
   notice_no:
     type: string
     pattern: '^[0-9]{4}-[0-9]{4}$'
-    description: 발령 번호 YYYY-NNNN.
+    description: Order number YYYY-NNNN.
   title:
     type: string
   notice_date:

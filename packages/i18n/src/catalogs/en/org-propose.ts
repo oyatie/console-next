@@ -1,7 +1,5 @@
 // English for `orgPropose.` ids (source: ../ko/org-propose.ts).
-import type { koOrgPropose } from "../ko/org-propose";
-
-export const enOrgPropose: Record<keyof typeof koOrgPropose, string> = {
+export const enOrgPropose = {
   "orgPropose.unsaved": "Not saved yet",
 
   "orgPropose.title.create": "Create a {kind} under {parent}",
@@ -134,4 +132,4 @@ export const enOrgPropose: Record<keyof typeof koOrgPropose, string> = {
   "orgPropose.done.notSent": "Draft saved but not submitted · {code} · {reason}",
   "orgPropose.done.undated": "Draft saved without its effective date and reason · {code} · {reason}",
   "orgPropose.done.unsent": "Not submitted · the preflight found blockers · {code}",
-};
+} as const;

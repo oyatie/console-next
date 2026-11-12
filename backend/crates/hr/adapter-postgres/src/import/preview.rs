@@ -165,7 +165,7 @@ impl HrService {
     }
 }
 
-/// The parse's 확인 필요 notes as stored with the run.
+/// The parse's needs-review notes as stored with the run.
 pub fn notes_json(notes: &[Note]) -> Value {
     json!(
         notes

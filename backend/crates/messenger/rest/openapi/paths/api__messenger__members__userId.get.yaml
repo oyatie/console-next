@@ -4,7 +4,7 @@ operationId: getMessengerMember
 summary: Fetch one branch member's summary for a person pin panel
 description: 'Returns a single active branch member''s summary using the same non-admin branch directory as the member
   list, so any employee can open a coworker''s person card. Viewing another person records a person.view audit event
-  (열람 — 기록 남음); a self-view records none. A target outside the caller''s branch returns 404 with no audit trail
+  (viewed — a record is kept); a self-view records none. A target outside the caller''s branch returns 404 with no audit trail
   (deny-by-omission).
 
   '

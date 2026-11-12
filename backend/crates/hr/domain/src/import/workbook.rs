@@ -6,7 +6,7 @@
 /// only say "invalid zip", so the upload is refused by what it is.
 ///
 /// # Errors
-/// `workbook_protected` for an OLE2 container (암호 또는 DRM), `workbook_not_xlsx`
+/// `workbook_protected` for an OLE2 container (password or DRM), `workbook_not_xlsx`
 /// for anything else that is not a ZIP.
 pub fn check_workbook_signature(bytes: &[u8]) -> Result<(), &'static str> {
     const ZIP: [u8; 4] = [0x50, 0x4B, 0x03, 0x04];

@@ -1,5 +1,6 @@
-//! 전적 as one act (decisions #30): the sending 법인's settlement case opens
-//! with the 전적, linked to it, and goes back only with it.
+//! Group transfer as one act (decisions #30): the sending legal entity's
+//! settlement case opens with the group transfer, linked to it, and goes back
+//! only with it.
 
 use console_hr_adapter_postgres::exits::types::CloseEmployeeExitCaseRequest;
 use console_hr_adapter_postgres::lifecycle::requests::CancelLifecycleEventRequest;
@@ -125,7 +126,7 @@ async fn a_settled_group_transfer_opens_the_sending_entitys_settlement_case(pool
     assert_eq!(reason.as_deref(), Some("GROUP_TRANSFER"));
     assert_eq!(linked, Some(id(&moved["id"])));
     assert_eq!(f.packages().await, 1);
-    // The person is not exited: they work at the receiving 법인.
+    // The person is not exited: they work at the receiving legal entity.
     let status: String =
         sqlx::query_scalar("SELECT employment_status FROM employees WHERE id = $1")
             .bind(f.employee)
@@ -160,7 +161,7 @@ async fn a_settled_group_transfer_opens_the_sending_entitys_settlement_case(pool
     }
     assert_eq!(f.cases().await, cases);
 
-    // Rescinding the 전적 takes the case with it.
+    // Rescinding the group transfer takes the case with it.
     f.rescind(&moved).await;
     let after = f.cases().await;
     assert_eq!(after[0].1, "CANCELLED");
@@ -210,7 +211,8 @@ async fn a_scheduled_group_transfer_takes_its_case_when_withdrawn_or_replaced(po
     let first = f.record(group(&on, wb[0], settled())).await.unwrap();
     assert_eq!(first["state"], "SCHEDULED");
     let case = f.cases().await[0].0;
-    // The same 전적 again on its date replaces it, explicitly, and its case with it.
+    // The same group transfer again on its date replaces it, explicitly, and
+    // its case with it.
     let mut again = group(&on, wb[0], settled());
     again["replaces_event_id"] = first["id"].clone();
     again["replace_reason_code"] = json!("SCHEDULE_CHANGED");
@@ -261,8 +263,8 @@ async fn an_open_exit_case_refuses_the_group_transfer_and_nothing_is_written(poo
     assert_eq!(facts, 0);
 }
 
-/// A scheduled 전적 that failed to apply on its date moved nobody: its case
-/// is an ordinary dead case and closes on its own (no dead end).
+/// A scheduled group transfer that failed to apply on its date moved nobody:
+/// its case is an ordinary dead case and closes on its own (no dead end).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_group_transfer_that_failed_to_apply_leaves_a_case_that_closes_alone(pool: PgPool) {
     let f = fixture(pool, true).await;

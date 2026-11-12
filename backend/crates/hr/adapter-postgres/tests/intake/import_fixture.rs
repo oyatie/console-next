@@ -25,7 +25,7 @@ use crate::fixture::{Fixture, fixture};
 #[path = "../../../../entity/adapter-postgres/tests/common/mod.rs"]
 mod entity_fixture;
 
-/// One workbook row: 사번, 성명, 부서, 직위, 입사일 (+ optional cells).
+/// One workbook row: employee number, name, department, title, hire date (+ optional cells).
 #[derive(Clone, Default)]
 pub struct Line {
     pub number: Option<&'static str>,
@@ -36,9 +36,9 @@ pub struct Line {
     pub hire: Option<String>,
     pub exit: Option<&'static str>,
     pub leave: Option<&'static str>,
-    /// 고용형태 (MR-7).
+    /// Employment type (MR-7).
     pub kind: Option<&'static str>,
-    /// 사업장 text (MR-7).
+    /// Workplace text (MR-7).
     pub site: Option<&'static str>,
 }
 
@@ -126,7 +126,7 @@ pub async fn importer(pool: PgPool) -> Importer {
 }
 
 impl Importer {
-    /// Stages `lines` as a PREVIEWED run of `filename` (rows 2.. of 명부).
+    /// Stages `lines` as a PREVIEWED run of `filename` (rows 2.. of the register).
     pub async fn preview(&self, filename: &str, lines: &[Line]) -> Uuid {
         let rows = lines
             .iter()

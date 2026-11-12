@@ -1,5 +1,5 @@
-//! Reading 발령 공고: the list (keyset, newest first) and one notice with its
-//! lines as render data.
+//! Reading personnel order notices: the list (keyset, newest first) and one
+//! notice with its lines as render data.
 
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_org_conn;

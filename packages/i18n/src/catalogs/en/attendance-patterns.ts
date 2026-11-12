@@ -1,6 +1,4 @@
-import type { koAttendancePatterns } from "../ko/attendance-patterns";
-
-export const enAttendancePatterns: Partial<Record<keyof typeof koAttendancePatterns, string>> = {
+export const enAttendancePatterns = {
   "attendancePatterns.types.title": "Work patterns",
   "attendancePatterns.types.meta": "The shape of a schedule assigned to a scope · start, end, breaks",
   "attendancePatterns.types.add": "Add work pattern",
@@ -86,4 +84,4 @@ export const enAttendancePatterns: Partial<Record<keyof typeof koAttendancePatte
   "attendancePatterns.checks.rest": "A weekly rest day in every 7 days",
   "attendancePatterns.checks.starts": "Two or more start times · every shift ends within the day",
   "attendancePatterns.checks.night": "Recognised night slots (22:00–06:00) earn the night premium · assigning checks women's night-work consent and authorisation for protected workers (under 18, pregnant, within a year after birth)",
-};
+} as const;

@@ -1,8 +1,8 @@
 tags:
 - access
 operationId: listAccessRequests
-summary: 「권한 요청」 — the open requests (권한 관리 holders) or the caller's own
-description: A holder of 권한 관리 조회 (or ops) sees every open request; any other account sees the requests it filed.
+summary: Access requests — the open requests (access management holders) or the caller's own
+description: A holder of access management view (or ops) sees every open request; any other account sees the requests it filed.
   Newest first, at most 200.
 security:
 - bearerAuth: []

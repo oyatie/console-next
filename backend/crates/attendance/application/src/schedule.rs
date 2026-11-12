@@ -1,4 +1,4 @@
-//! 근무 일정 (ATT S1) commands and read models. The wire shapes are these
+//! Work schedule (ATT S1) commands and read models. The wire shapes are these
 //! structs serialised as they are (openapi `Attendance*` schemas).
 
 use console_attendance_domain::schedule::{HolidayRule, Level, PatternSpec};
@@ -175,7 +175,7 @@ pub struct LayerRead {
     pub cancelled_by_name: Option<String>,
 }
 
-/// 예정 · 적용 중 · 지난 일정 · 취소됨, from the layer's dates and its
+/// Scheduled · in effect · ended · cancelled, from the layer's dates and its
 /// successor's start at the same scope.
 #[must_use]
 pub fn layer_state(

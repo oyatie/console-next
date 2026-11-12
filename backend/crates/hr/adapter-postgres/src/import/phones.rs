@@ -1,7 +1,8 @@
-//! W12: the 휴대전화 of import rows. Phone headers are restricted (never in a
-//! raw row), so the E.164 number is staged apart (`data_import_row_phones`)
-//! at the preview, moved to the employment profile by the settle and deleted
-//! with it; a run never applied loses them with its staged identities.
+//! W12: the mobile phone of import rows. Phone headers are restricted (never
+//! in a raw row), so the E.164 number is staged apart
+//! (`data_import_row_phones`) at the preview, moved to the employment profile
+//! by the settle and deleted with it; a run never applied loses them with its
+//! staged identities.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -31,7 +32,7 @@ pub async fn stage(
     Ok(())
 }
 
-/// The rows of a run that carry a 휴대전화 (never the numbers).
+/// The rows of a run that carry a mobile phone (never the numbers).
 pub async fn run_keys(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: Uuid,

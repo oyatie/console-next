@@ -28,7 +28,7 @@ async fn test_import_sheet_placing_people_sets_home_branch_and_clears_review_and
     let report = i.apply(run, &digest).await.unwrap();
     assert_eq!(report.inserted, 3);
 
-    // 1. Each imported person has home_branch_id = 본사's default branch
+    // 1. Each imported person has home_branch_id = the head office's default branch
     let branches: Vec<(String, Option<Uuid>)> = sqlx::query_as(
         "SELECT name, home_branch_id FROM employees WHERE org_id = $1 AND employee_number IN ('E-101', 'E-102', 'E-103') ORDER BY employee_number",
     )

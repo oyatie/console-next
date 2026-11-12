@@ -1,7 +1,5 @@
 // English for `importJob.` ids (features/import/ui/job-step.tsx): the apply running as a job (r3:hire-02).
-import type { koImportJob } from "../ko/import-job";
-
-export const enImportJob: Record<keyof typeof koImportJob, string> = {
+export const enImportJob = {
   "importJob.title": "Applying the roster",
   "importJob.state.queued": "Starting · writing exactly the dry run you approved",
   "importJob.state.applying": "Adding people to the roster",
@@ -16,4 +14,4 @@ export const enImportJob: Record<keyof typeof koImportJob, string> = {
   "importJob.error.apply_interrupted": "The apply stopped before writing anything. Go back to the dry run and apply again.",
   "importJob.error.other": "The apply stopped. Nothing was written. Go back to the dry run, review it, and apply again.",
   "importJob.started": "The roster apply has started",
-};
+} as const;

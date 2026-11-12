@@ -1,5 +1,5 @@
-//! The daily clock tick (lifecycle-events.md §5.6): a 시행일-style schedule in
-//! the worker role (#27 allows it), not a client refresh loop.
+//! The daily clock tick (lifecycle-events.md §5.6): an effective-date-style
+//! schedule in the worker role (#27 allows it), not a client refresh loop.
 //!
 //! Once per tenant per KST day — the first replica to insert the day's
 //! `lifecycle_case_clock_runs` row wins; the others find it and do nothing —

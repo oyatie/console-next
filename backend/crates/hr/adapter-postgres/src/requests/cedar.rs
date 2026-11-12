@@ -1,6 +1,6 @@
 //! Cedar `change_request_decide` (BW-17; decisions #7): the authoritative
 //! "who may" for applying or declining a change request, and for a sole
-//! holder applying their own high-risk 정정 or merge. The domain
+//! holder applying their own high-risk correction or merge. The domain
 //! `check_close` and the DB CHECK stay the backstop.
 
 use console_kernel_core::KernelError;

@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: rescindEmployeeLifecycleEvent
-summary: Rescind (취소·철회) an applied lifecycle event (BW-11)
+summary: Rescind (cancel or withdraw) an applied lifecycle event (BW-11)
 description: Undoes the employee's latest effective change (APPLIED, not RESCIND, not voided; otherwise 409
   lifecycle_void_not_latest / lifecycle_event_voided / lifecycle_void_not_applied). Exits are reversed through
   their exit case (409 lifecycle_void_exit_owned); ONBOARD and REHIRE cannot be rescinded (409

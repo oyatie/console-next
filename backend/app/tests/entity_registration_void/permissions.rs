@@ -54,7 +54,7 @@ async fn void_registration_without_permission_is_forbidden_and_writes_nothing(po
     );
 }
 
-/// A branch-scoped manager cannot void its registration's 법인-level record.
+/// A branch-scoped manager cannot void its registration's legal-entity-level record.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn void_registration_outside_the_managers_scope_is_forbidden(pool: PgPool) {
     let (org, owner) = tenant(&pool, ADMIN).await;

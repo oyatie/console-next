@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: updateWorkplaceKind
-summary: Relabel or (de)activate a 사업장 kind; a platform default gets the tenant's override
+summary: Relabel or (de)activate a workplace kind; a platform default gets the tenant's override
 security:
 - bearerAuth: []
 parameters:

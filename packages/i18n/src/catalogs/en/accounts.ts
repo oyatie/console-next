@@ -1,6 +1,4 @@
-import type { koAccounts } from "../ko/accounts";
-
-export const enAccounts: Partial<Record<keyof typeof koAccounts, string>> = {
+export const enAccounts = {
   "accounts.search.label": "Search accounts by name or employee number",
 
   "accounts.title": "Accounts",
@@ -137,4 +135,4 @@ export const enAccounts: Partial<Record<keyof typeof koAccounts, string>> = {
   "accounts.code.sign_in_id_invalid": "A sign-in ID uses lowercase letters, digits and . _ - only, never starting, ending or doubling up with a symbol.",
   "accounts.code.sign_in_id_unchanged": "That is already the sign-in ID.",
   "accounts.code.effective_date_in_future": "The effective date must be today or earlier.",
-};
+} as const;

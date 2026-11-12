@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: setLegalEntityRoles
-summary: Set 대표 사업장 / 본점 사업장
+summary: Set the representative workplace / head-office workplace
 security:
 - bearerAuth: []
 parameters:

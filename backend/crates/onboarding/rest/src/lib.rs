@@ -1,6 +1,7 @@
 //! Setup-phase REST face (entity-depth design §5–§6).
 //!
-//! The rail is readable through live setup grants; the preview and 운영 시작 needs SUPER_ADMIN, a fresh passkey step-up of the
+//! The rail is readable through live setup grants; the preview and go-live need
+//! SUPER_ADMIN, a fresh passkey step-up of the
 //! caller's own passkey and the digest of the preview they confirmed (the
 //! adapter re-checks every fact under lock; Cedar and the Rust backstop must
 //! both allow). Terms need the live ops holder; step skips need their own tenant-wide Cedar grant.

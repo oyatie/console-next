@@ -14,5 +14,5 @@ properties:
     type:
     - string
     - 'null'
-    description: 'The account''s sign-in ID `<아이디>@<회사 도메인>` (decisions #33): the client signs in with it
+    description: 'The account''s sign-in ID `<login>@<company domain>` (decisions #33): the client signs in with it
       right after enrollment, identifier-first, so a key with no resident credential works too.'

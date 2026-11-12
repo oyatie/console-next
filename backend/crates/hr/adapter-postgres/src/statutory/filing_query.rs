@@ -10,8 +10,8 @@ use console_platform_authz::{Feature, Principal};
 use sqlx::{Postgres, QueryBuilder, Transaction, postgres::PgRow};
 
 // ponytail: current `profile.employment_type` is used; dated classification
-// (a 파견→REGULAR 전환 via EMPLOYMENT_TYPE_CHANGE) is a known ceiling →
-// WPO-WORKER-FACETS / WPO-ENGAGEMENTS.
+// (a dispatched→REGULAR employment type change via EMPLOYMENT_TYPE_CHANGE) is
+// a known ceiling → WPO-WORKER-FACETS / WPO-ENGAGEMENTS.
 pub(super) fn non_employee_types() -> Vec<&'static str> {
     EmploymentType::ALL
         .iter()

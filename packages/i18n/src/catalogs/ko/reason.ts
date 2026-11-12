@@ -1,8 +1,9 @@
-// Korean source for `reason.` ids: the labels of the server's system reason codes (BW-07), keyed
+// Korean copy for `reason.` ids: the labels of the server's system reason codes (BW-07), keyed
 // reason.<domain>.<code> as listReasonCodes says. A tenant's own codes carry their labels on the row.
 // `reason.field.` ids are the shared reason-code field (reference/reason). Only the domains these screens record;
 // a lane recording another domain appends its block.
-export const koReason = {
+import type { enReason } from "../en/reason";
+export const koReason: Record<keyof typeof enReason, string> = {
   "reason.org_change_reject.EFFECTIVE_DATE_REVIEW": "시행일 재검토",
   "reason.org_change_reject.INSUFFICIENT_BASIS": "근거 부족",
   "reason.org_change_reject.WRONG_TARGET": "대상 오류",
@@ -93,4 +94,4 @@ export const koReason = {
   "reason.sign_in_id_change.OTHER": "기타",
   "reason.sign_in_id_change.INVITE": "초대 때 지정",
   "reason.sign_in_id_change.SYSTEM_DEFAULT": "자동 부여",
-} as const;
+};

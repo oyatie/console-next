@@ -1,8 +1,8 @@
-//! 접속기록 capture for HR reads of personal data (INF-02, amended by
+//! Access log capture for HR reads of personal data (INF-02, amended by
 //! GOV-PEO-1): the directory list, detail and export, exit cases, lifecycle
 //! history and the org chart. The record itself is built by the shared
 //! `console_platform_request_context::audit_context::access_log`; this module
-//! names the HR 수행업무 and resolves the reader's own employee record.
+//! names the HR task performed and resolves the reader's own employee record.
 
 use console_kernel_core::AuditEvent;
 use console_platform_authz::Principal;
@@ -13,26 +13,26 @@ use uuid::Uuid;
 
 use crate::HrError;
 
-/// The 수행업무 of an HR read.
+/// The task performed by an HR read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DirectoryAccess {
-    /// 목록 조회: one row per list page, naming the subjects on it.
+    /// List lookup: one row per list page, naming the subjects on it.
     List,
-    /// 조회: one employee's detail.
+    /// Lookup: one employee's detail.
     Detail,
-    /// 다운로드: the CSV export, with its 용도.
+    /// Download: the CSV export, with its purpose.
     Download,
-    /// A download refused before any byte (no or unknown 용도).
+    /// A download refused before any byte (no or unknown purpose).
     DownloadRefused,
-    /// 퇴사 건 목록 조회: one row per page, naming the employees on it.
+    /// Exit case list lookup: one row per page, naming the employees on it.
     ExitCaseList,
-    /// 퇴사 건 조회: one case (target), its employee (subject).
+    /// Exit case lookup: one case (target), its employee (subject).
     ExitCase,
-    /// 인사 이력 조회: one employee's lifecycle events.
+    /// HR history lookup: one employee's lifecycle events.
     LifecycleHistory,
-    /// 조직도 조회: the whole chart, recorded by its row count like a download.
+    /// Org chart lookup: the whole chart, recorded by its row count like a download.
     OrgChart,
-    /// IMPORT-2: 주민등록번호 열람 (the full number, with its 사유).
+    /// IMPORT-2: resident registration number viewing (the full number, with its reason).
     RrnReveal,
     RrnRecord,
     FieldReveal,
@@ -81,9 +81,9 @@ pub async fn actor_employee_id(
     )
 }
 
-/// One 접속기록 row. `target_id` is the employee id for a detail or history
-/// read and `query` otherwise; `details` adds kind-specific fields (export
-/// 용도, row count).
+/// One access log row. `target_id` is the employee id for a detail or
+/// history read and `query` otherwise; `details` adds kind-specific fields
+/// (export purpose, row count).
 pub fn access_event(
     principal: &Principal,
     access: DirectoryAccess,
@@ -139,7 +139,7 @@ pub fn access_event_on(
     .map_err(HrError::from_kernel)
 }
 
-/// The 접속기록 of an import run's rows shown back (preview, dry-run): the
+/// The access log of an import run's rows shown back (preview, dry-run): the
 /// request's IP, session and principal type ride along. The rows are not
 /// employees yet, so the counts ride in `after` instead of subject ids.
 pub fn import_rows_event(

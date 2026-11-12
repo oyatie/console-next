@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Migration 0247 (BW-26) scrubs restricted spreadsheet columns and
-//! 주민등록번호-shaped values out of rows imported before the importer stopped
+//! values shaped like resident registration numbers out of rows imported before
+//! the importer stopped
 //! persisting them. Applies 0001–0246, seeds the old shape, then runs 0247.
 //! The second test does the same for 0249 (PII-2).
 
@@ -170,7 +171,7 @@ async fn scrubs_restricted_columns_and_rrn_values_in_place(pool: PgPool) {
 }
 
 /// Migration 0249 (PII-2) scrubs what 0247 missed: stripped-zero RRN keys and
-/// values, the PII-2 headers (a bare 주소 too, with the worksite address copied
+/// values, the PII-2 headers (a bare address header too, with the worksite address copied
 /// from it), and RRNs in lineage text, which become one salted token per RRN.
 #[sqlx::test(migrations = false)]
 async fn pii2_scrubs_stripped_zero_rrns_pii2_headers_and_lineage_text(pool: PgPool) {
@@ -185,7 +186,7 @@ async fn pii2_scrubs_stripped_zero_rrns_pii2_headers_and_lineage_text(pool: PgPo
         .await
         .unwrap();
     // 301014123456 is 030101-4123456 with Excel's leading zero dropped;
-    // 10101345678 has a 1900s gender digit, so it is a long 사번 and stays.
+    // 10101345678 has a 1900s gender digit, so it is a long employee number and stays.
     let raw = json!({
         "성명": "김철수",
         "사번": "10101345678",

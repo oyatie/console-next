@@ -1,6 +1,4 @@
-import type { koReason } from "../ko/reason";
-
-export const enReason: Partial<Record<keyof typeof koReason, string>> = {
+export const enReason = {
   "reason.org_change_reject.EFFECTIVE_DATE_REVIEW": "Effective date needs review",
   "reason.org_change_reject.INSUFFICIENT_BASIS": "Insufficient basis",
   "reason.org_change_reject.WRONG_TARGET": "Wrong target",
@@ -90,4 +88,4 @@ export const enReason: Partial<Record<keyof typeof koReason, string>> = {
   "reason.sign_in_id_change.OTHER": "Other",
   "reason.sign_in_id_change.INVITE": "Set at invite",
   "reason.sign_in_id_change.SYSTEM_DEFAULT": "Assigned automatically",
-};
+} as const;

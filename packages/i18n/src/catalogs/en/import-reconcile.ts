@@ -1,6 +1,4 @@
-import type { koImportReconcile } from "../ko/import-reconcile";
-
-export const enImportReconcile: Record<keyof typeof koImportReconcile, string> = {
+export const enImportReconcile = {
   "importReconcile.company.source": "File company value “{value}” · column “{column}” · {cell}",
   "importReconcile.company.number": "File registration number {number}",
   "importReconcile.company.candidates": "Certificate-confirmed company candidates:",
@@ -53,4 +51,4 @@ export const enImportReconcile: Record<keyof typeof koImportReconcile, string> =
   "importReconcile.error.import_reconcile_changed": "Someone marked rows meanwhile and the open count changed · read again",
   "importReconcile.error.import_signed_off": "This import is already signed off",
   "importReconcile.error.import_signoff_ack_required": "Select again whether to sign off with rows still open",
-};
+} as const;

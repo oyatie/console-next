@@ -1224,7 +1224,7 @@ impl PgKpiRepository {
                 .await
                 .map_err(DbError::Sqlx)?;
 
-                // Active substitutions (대차): not yet returned.
+                // Active substitutions: not yet returned.
                 let active_substitutions = sqlx::query_scalar!(
                     r#"SELECT COUNT(*) AS "count!"
                        FROM equipment_substitutions

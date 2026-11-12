@@ -149,7 +149,7 @@ async fn break_glass(
 }
 
 /// Other active, non-ops accounts whose grants reach `feature` over the
-/// employee's home 사업장 (a branchless employee needs a tenant-wide grant).
+/// employee's home workplace (a branchless employee needs a tenant-wide grant).
 // loads each grant holder's subject (only on the ops-on-self path);
 // one SQL over the grant projection when AX-5 puts Cedar at each door.
 async fn other_holders(

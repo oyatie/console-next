@@ -314,18 +314,18 @@ async fn filters_and_dedup_idempotency(owner_pool: PgPool) {
         }
     };
 
-    // 확인 필요 = the unconfirmed legal notice only.
+    // "Action required" = the unconfirmed legal notice only.
     let action = list(InboxDocFilter::ActionRequired).await;
     assert_eq!(action.items.len(), 1);
     assert_eq!(action.items[0].id, legal.id);
-    // 급여명세 = the payslip only.
+    // "Payslip" = the payslip only.
     assert_eq!(list(InboxDocFilter::Payslip).await.items.len(), 1);
-    // 완료 = none yet.
+    // "Done" = none yet.
     assert_eq!(list(InboxDocFilter::Done).await.items.len(), 0);
-    // 전체 = both.
+    // "All" = both.
     assert_eq!(list(InboxDocFilter::All).await.items.len(), 2);
 
-    // Confirm the legal notice -> it leaves 확인 필요 and enters 완료.
+    // Confirm the legal notice -> it leaves "Action required" and enters "Done".
     console_platform_request_context::scope_org(sae, async {
         store.confirm_receipt(confirm(user, legal.id)).await
     })

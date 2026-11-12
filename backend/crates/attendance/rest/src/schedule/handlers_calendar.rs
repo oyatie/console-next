@@ -1,4 +1,4 @@
-//! Handlers: 근무조, 휴일, and one's own month.
+//! Handlers: shift crews, holidays, and one's own month.
 
 use axum::Json;
 use axum::extract::{Path, State};

@@ -8,7 +8,7 @@ pub struct Action {
 }
 
 impl Action {
-    /// Full/direct use of a feature (`가능` cells only).
+    /// Full/direct use of a feature (only cells marked allowed, "ganeung").
     #[must_use]
     pub const fn new(feature: Feature) -> Self {
         Self {
@@ -17,7 +17,7 @@ impl Action {
         }
     }
 
-    /// Limited feature use (`제한` or `가능` cells).
+    /// Limited feature use (cells marked limited, "jehan", or allowed, "ganeung").
     #[must_use]
     pub const fn limited(feature: Feature) -> Self {
         Self {
@@ -26,7 +26,8 @@ impl Action {
         }
     }
 
-    /// Request-only feature use (`요청 가능` or `가능` cells).
+    /// Request-only feature use (cells marked request-only, "yocheong ganeung",
+    /// or allowed, "ganeung").
     #[must_use]
     pub const fn request(feature: Feature) -> Self {
         Self {
