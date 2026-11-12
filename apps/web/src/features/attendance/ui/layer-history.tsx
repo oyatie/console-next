@@ -8,17 +8,23 @@ import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
 import type { Layer } from "../api";
 import { dateText } from "../present";
+import s from "./attendance.module.css";
 
 /**
  * Every layer this scope ever held, newest first: scheduled · in effect · past · cancelled, who assigned it and when, and
  * the one verb a layer has — "cancel" until its start date. After that it stays in history and a new layer replaces it.
  */
-export function LayerHistory({ layers, onCancel }: { layers: Layer[]; onCancel: (l: Layer) => void }) {
+export function LayerHistory({ layers, disabled, onCancel }: { layers: Layer[]; disabled?: boolean; onCancel: (l: Layer) => void }) {
   const period = (l: Layer) =>
     l.effective_to ? t("attendanceSchedule.history.range", { from: dateText(l.effective_from), to: dateText(l.effective_to) }) : t("attendanceSchedule.history.from", { from: dateText(l.effective_from) });
   return (
     <Card title={t("attendanceSchedule.history.title")} flush meta={t("attendanceSchedule.history.rule")}>
-      {layers.length ? (
+      <div className={s.historyBody}>
+        {/* Keep the empty state's intrinsic height when the first row replaces it. */}
+        <div className={layers.length ? s.historyReserve : undefined} aria-hidden={layers.length > 0 || undefined}>
+          <EmptyState title={t("attendanceSchedule.history.none")} reason={t("attendanceSchedule.history.none.reason")} />
+        </div>
+        {layers.length > 0 && (
           <Table
             label={t("attendanceSchedule.history.title")}
             rows={layers}
@@ -32,11 +38,12 @@ export function LayerHistory({ layers, onCancel }: { layers: Layer[]; onCancel: 
               {
                 header: t("attendanceSchedule.history.col.actions"),
                 fit: true,
-                cell: (l) => (l.state === "SCHEDULED" ? <Button size="sm" variant="ghost-danger" onClick={() => onCancel(l)} aria-label={t("attendanceSchedule.history.cancelOne", { pattern: l.pattern_name })}>{t("attendanceSchedule.history.cancel")}</Button> : null),
+                cell: (l) => (l.state === "SCHEDULED" ? <Button size="sm" variant="ghost-danger" disabled={disabled} onClick={() => onCancel(l)} aria-label={t("attendanceSchedule.history.cancelOne", { pattern: l.pattern_name })}>{t("attendanceSchedule.history.cancel")}</Button> : null),
               },
             ]}
           />
-        ) : <EmptyState title={t("attendanceSchedule.history.none")} reason={t("attendanceSchedule.history.none.reason")} />}
+        )}
+      </div>
     </Card>
   );
 }

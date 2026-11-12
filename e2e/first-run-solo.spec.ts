@@ -12,6 +12,7 @@ import { rosterXlsx } from "./workbook";
 import { gradeJourney } from "./helpers/grade-fix";
 import { chooseWorkbook, payPeriod } from "./helpers/import";
 import { expectComposer } from "./helpers/composer";
+import { throttleCPU } from "./helpers/cpu-throttle";
 
 // The first-run solo gate (owner rule): one administrator, an empty tenant, no helper account. From the
 // first sign-in to operating, every prerequisite is created through the product, in place, with no second
@@ -50,10 +51,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
 
   const admin = await test.step("J1 First sign-in and company domain", async () => {
     const admin = await firstSignIn(browser, replacement);
-    if (process.env.E2E_CPU_THROTTLE && browser.browserType().name() === "chromium") {
-      const cdp = await admin.context().newCDPSession(admin);
-      await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.E2E_CPU_THROTTLE) });
-    }
+    await throttleCPU(admin);
     await routeReady(admin);
     await expect(admin.locator('a[href="/setup/company-names"]')).toHaveCount(0);
     await go(admin, "/setup/company-names", true);
