@@ -240,3 +240,40 @@ fn a_reversed_dimension_returns_the_catalogued_corrupt_refusal() {
     assert_eq!(error.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(error.code, "workbook_corrupt");
 }
+
+#[test]
+fn markup_bypasses_return_the_catalogued_refusal_without_panicking() {
+    for book in [
+        include_bytes!("fixtures/dimension-namespace.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-doctype-lower.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-doctype-mixed.xlsx").as_slice(),
+    ] {
+        let error = read_workbook(book, &default_caps().unwrap()).unwrap_err();
+        assert_eq!(error.status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(error.code, console_hr_domain::import::guard::codes::CORRUPT);
+    }
+}
+
+#[test]
+fn svg_doctype_does_not_refuse_a_valid_workbook() {
+    assert_valid_dimension_corpus(include_bytes!("fixtures/dimension-svg.xlsx"));
+}
+
+#[test]
+fn olap_pivot_dimension_does_not_refuse_a_valid_workbook() {
+    assert_valid_dimension_corpus(include_bytes!("fixtures/dimension-pivot.xlsx"));
+}
+
+#[test]
+fn custom_xml_dimension_does_not_refuse_a_valid_workbook() {
+    assert_valid_dimension_corpus(include_bytes!("fixtures/dimension-custom.xlsx"));
+}
+
+fn assert_valid_dimension_corpus(book: &[u8]) {
+    let sheets = read_workbook(book, &default_caps().unwrap()).unwrap();
+    assert_eq!(sheets.len(), 1);
+    assert_eq!(sheets[0].name, "Sheet1");
+    assert_eq!(sheets[0].rows.len(), 2);
+    assert_eq!(sheets[0].rows[0].text(0), "성명");
+    assert_eq!(sheets[0].rows[1].text(0), "가");
+}

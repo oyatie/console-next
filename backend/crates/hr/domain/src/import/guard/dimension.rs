@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Preflight the dimension tokens calamine consumes before constructing a cell reader.
 
+use std::collections::HashMap;
+
 use super::codes;
 
 // XLSX format limits, independent of the tenant's lower import budgets.
@@ -39,12 +41,12 @@ fn valid(value: &[u8]) -> bool {
     }
 }
 
-fn reference(mut attributes: &[u8]) -> Option<&[u8]> {
-    let mut reference = None;
+pub(super) fn attributes(mut attributes: &[u8]) -> Option<HashMap<&[u8], &[u8]>> {
+    let mut values = HashMap::new();
     loop {
         attributes = attributes.trim_ascii_start();
         if attributes.is_empty() || attributes == b"/" {
-            return reference;
+            return Some(values);
         }
         let end = attributes
             .iter()
@@ -59,11 +61,8 @@ fn reference(mut attributes: &[u8]) -> Option<&[u8]> {
             return None;
         }
         let end = rest.iter().position(|b| *b == quote)?;
-        if name == b"ref" {
-            if reference.is_some() {
-                return None;
-            }
-            reference = Some(&rest[..end]);
+        if values.insert(name, &rest[..end]).is_some() {
+            return None;
         }
         attributes = &rest[end + 1..];
     }
@@ -74,7 +73,26 @@ fn reference(mut attributes: &[u8]) -> Option<&[u8]> {
 ///
 /// # Errors
 /// [`codes::CORRUPT`] for an invalid dimension or a DTD (not used by XLSX).
-pub(super) fn check(mut xml: &[u8]) -> Result<(), &'static str> {
+pub(super) fn check(xml: &[u8]) -> Result<(), &'static str> {
+    tags(xml, |name, attributes| {
+        if name == b"sheetData" {
+            return Ok(false);
+        }
+        if name == b"dimension"
+            && !self::attributes(attributes)
+                .and_then(|values| values.get(b"ref".as_slice()).copied())
+                .is_some_and(valid)
+        {
+            return Err(codes::CORRUPT);
+        }
+        Ok(true)
+    })
+}
+
+pub(super) fn tags(
+    mut xml: &[u8],
+    mut visit: impl FnMut(&[u8], &[u8]) -> Result<bool, &'static str>,
+) -> Result<(), &'static str> {
     while let Some(start) = xml.iter().position(|b| *b == b'<') {
         xml = &xml[start + 1..];
         let terminator = if xml.starts_with(b"!--") {
@@ -93,7 +111,10 @@ pub(super) fn check(mut xml: &[u8]) -> Result<(), &'static str> {
             xml = &xml[at + end.len()..];
             continue;
         }
-        if xml.starts_with(b"!DOCTYPE") {
+        if xml
+            .get(..8)
+            .is_some_and(|p| p.eq_ignore_ascii_case(b"!DOCTYPE"))
+        {
             return Err(codes::CORRUPT);
         }
         let mut quote = None;
@@ -117,14 +138,11 @@ pub(super) fn check(mut xml: &[u8]) -> Result<(), &'static str> {
             .position(|b| b.is_ascii_whitespace() || *b == b'/')
             .unwrap_or(tag.len());
         let name = tag[..name_end]
-            .rsplit(|b| *b == b':')
-            .next()
+            .splitn(2, |b| *b == b':')
+            .last()
             .unwrap_or_default();
-        if name == b"sheetData" {
+        if !visit(name, &tag[name_end..])? {
             return Ok(());
-        }
-        if name == b"dimension" && !reference(&tag[name_end..]).is_some_and(valid) {
-            return Err(codes::CORRUPT);
         }
         xml = &xml[end + 1..];
     }
