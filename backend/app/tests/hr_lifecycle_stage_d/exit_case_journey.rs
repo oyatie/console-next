@@ -31,10 +31,10 @@ async fn exit_case_state_machine_enforces_transitions_and_reverses_exits(pool: P
     };
     let reason = json!({"reason": "현장 확인 결과 출근 중"});
     let settlement = json!({
-        "average_wage_period_start": "2026-04-01",
-        "average_wage_period_end": "2026-06-29",
-        "average_wage_calendar_days": 90,
-        "average_wage_total_won": 9_000_000,
+        "average_wage_period_start": "2026-07-01",
+        "average_wage_period_end": "2026-09-30",
+        "average_wage_calendar_days": 92,
+        "average_wage_total_won": 9_200_000,
         "monthly_ordinary_wage_won": 3_000_000,
     });
 
@@ -302,7 +302,7 @@ async fn exit_case_state_machine_enforces_transitions_and_reverses_exits(pool: P
         .execute(&pool)
         .await
         .unwrap();
-    let case = ctx.report_exit(ready).await;
+    let case = ctx.report_exit_on(ready, "2026-09-30").await;
     let (status, body) = ctx
         .exit_action(&case, "confirm", &ctx.token, hr_confirm())
         .await;
@@ -347,7 +347,7 @@ async fn exit_case_state_machine_enforces_transitions_and_reverses_exits(pool: P
         .execute(&pool)
         .await
         .unwrap();
-    let case = ctx.report_exit(leaver).await;
+    let case = ctx.report_exit_on(leaver, "2026-09-30").await;
     let (status, body) = ctx
         .exit_action(
             &case,

@@ -225,6 +225,7 @@ pub fn certification_artifact_json(validation: &ProfessionalValidation) -> Value
 pub fn build_settlement_calculation(
     context: &ExitCaseContext,
     input: Option<&ExitSettlementInput>,
+    minimum_service_years: Option<i32>,
 ) -> Result<SettlementCalculation, HrError> {
     let mut missing = Vec::new();
     let Some(hire_date_text) = context.hire_date.as_deref() else {
@@ -252,6 +253,29 @@ pub fn build_settlement_calculation(
         .saturating_sub(hire_date.to_julian_day())
         + 1;
 
+    if let Some(years) = minimum_service_years {
+        if !console_payroll_domain::severance_window::completes_service_years(
+            hire_date, exit_date, years,
+        )? {
+            return Ok((
+                "READY_FOR_APPROVAL",
+                Some(service_days),
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(0),
+                Vec::new(),
+                None,
+                None,
+                None,
+            ));
+        }
+    } else {
+        missing.push("statutory_rules".to_owned());
+    }
+
     let Some(input) = input else {
         missing.extend(missing_wage_source_fields());
         return Ok((
@@ -270,6 +294,22 @@ pub fn build_settlement_calculation(
         ));
     };
 
+    let Some(years) = minimum_service_years else {
+        return Ok((
+            "NEEDS_SOURCE",
+            Some(service_days),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            missing,
+            None,
+            None,
+            None,
+        ));
+    };
     let period_start = parse_yyyy_mm_dd(&input.average_wage_period_start)?;
     let period_end = parse_yyyy_mm_dd(&input.average_wage_period_end)?;
     // Ordinary daily wage (1-day ordinary wage) derived from the monthly ordinary
@@ -286,16 +326,20 @@ pub fn build_settlement_calculation(
     }
     let ordinary_daily_wage_won =
         ordinary_daily_wage_won_from_monthly(input.monthly_ordinary_wage_won)?;
-    let draft = build_severance_pay_draft(SeverancePayInput {
-        hire_date,
-        exit_date,
-        average_wage_period_start: period_start,
-        average_wage_period_end: period_end,
-        average_wage_calendar_days: input.average_wage_calendar_days,
-        average_wage_total_won: input.average_wage_total_won,
-        ordinary_daily_wage_won,
-    })
-    .map_err(HrError::from_kernel)?;
+    let draft = build_severance_pay_draft(
+        SeverancePayInput {
+            hire_date,
+            exit_date,
+            average_wage_period_start: period_start,
+            average_wage_period_end: period_end,
+            average_wage_calendar_days: input.average_wage_calendar_days,
+            average_wage_total_won: input.average_wage_total_won,
+            ordinary_daily_wage_won,
+        },
+        years,
+    )
+    .map_err(HrError::from_kernel)?
+    .ok_or_else(|| HrError::internal("service eligibility changed during calculation"))?;
 
     let service_days = i32::try_from(draft.service_days)
         .map_err(|_| HrError::validation("service days overflow"))?;
