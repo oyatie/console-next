@@ -9,7 +9,7 @@ import { acknowledgeUnlockReview } from "../api";
 export function UnlockReview({ lockId, exceptionId }: { lockId: string; exceptionId: string }) {
   const review = useCommand({
     run: () => acknowledgeUnlockReview(lockId, exceptionId),
-    invalidates: ["/api/v1/me/action-inbox"],
+    invalidates: ["/api/v1/me/action-inbox", "/api/v1/period-locks"],
     onSuccess: () => focusSoon("inbox-title"),
     announce: () => t("periodLocks.review.done"),
   });

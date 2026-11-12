@@ -6,12 +6,55 @@ use axum::{
     extract::{Path, State},
 };
 use console_action_inbox_application::{ActionInboxLink, ActionInboxSourceItem};
-use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
-use console_platform_authz::{Principal, cedar_pbac::actions::period_unlock_review};
+use console_identity_adapter_postgres::second_person::{HolderCapability, PgHolderResolver};
+use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext};
+use console_platform_authz::{
+    Feature, Principal, cedar_pbac::actions::period_unlock_review::Reviewers,
+};
 use console_platform_db::with_audits;
 use serde_json::{Value, json};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+// One outstanding-review predicate for inbox delivery and the lock's current warning.
+macro_rules! pending_review {
+    () => {
+        "e.rule_code='PERIOD_UNLOCK_SOLE_HOLDER' AND e.subject_type='PERIOD_LOCK' \
+         AND e.fallback_kind='SOLE_HOLDER' AND e.status='RECORDED' AND e.consumed_at IS NOT NULL \
+         AND NOT EXISTS(SELECT 1 FROM audit_events a WHERE a.org_id=e.org_id AND a.target_type='governed_exception' AND a.target_id=e.id::text AND a.action='exception.review')"
+    };
+}
+pub(super) use pending_review;
+
+async fn load_reviewers(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org: OrgId,
+) -> Result<Reviewers, LifecycleError> {
+    let accounts: Vec<_> = PgHolderResolver {
+        tx,
+        org,
+        capability: HolderCapability::Feature {
+            feature: Feature::PeriodLockManage,
+            branch: None,
+        },
+        exclude_account: None,
+        exclude_employee: None,
+        include_ops: true,
+        now: OffsetDateTime::now_utc(),
+    }
+    .resolve_at_most(usize::MAX)
+    .await?
+    .into_iter()
+    .collect();
+    let people = sqlx::query_as::<_, (Uuid, Uuid)>(
+        "SELECT id,COALESCE(person_id,id) FROM users WHERE org_id=$1 AND id=ANY($2)",
+    )
+    .bind(org.as_uuid())
+    .bind(accounts)
+    .fetch_all(tx.as_mut())
+    .await?;
+    Ok(Reviewers::new(org, people.into_iter().collect()))
+}
 
 pub(super) async fn items(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -33,17 +76,16 @@ pub(super) async fn items(
         String,
         Option<Value>,
     );
-    let rows: Vec<Row> = sqlx::query_as(
+    let rows: Vec<Row> = sqlx::query_as(concat!(
         "SELECT e.id,e.subject_id,e.requested_by,u.person_id,e.reason_code,e.note,e.review_due_at,e.consumed_at,l.domain,l.period_start,l.period_end,u.display_name, \
          (SELECT jsonb_build_object('system',false,'label_ko',c.label_ko,'label_en',c.label_en) FROM reason_codes c WHERE c.org_id=e.org_id AND c.domain='period_unlock' AND c.code=e.reason_code) \
          FROM governed_exceptions e JOIN period_locks l ON l.org_id=e.org_id AND l.id=e.subject_id JOIN person_accounts_current u ON u.org_id=e.org_id AND u.id=e.requested_by \
-         WHERE e.org_id=$1 AND e.rule_code='PERIOD_UNLOCK_SOLE_HOLDER' AND e.subject_type='PERIOD_LOCK' AND e.fallback_kind='SOLE_HOLDER' AND e.status='RECORDED' AND e.consumed_at<=$2 \
-         AND NOT EXISTS(SELECT 1 FROM audit_events a WHERE a.org_id=e.org_id AND a.target_type='governed_exception' AND a.target_id=e.id::text AND a.action='exception.review') ORDER BY e.consumed_at,e.id")
+         WHERE e.org_id=$1 AND e.consumed_at<=$2 AND ", pending_review!(), " ORDER BY e.consumed_at,e.id"))
         .bind(principal.org_id.as_uuid()).bind(as_of).fetch_all(tx.as_mut()).await?;
     if rows.is_empty() {
         return Ok(Vec::new());
     }
-    let reviewers = period_unlock_review::load(tx, principal.org_id).await?;
+    let reviewers = load_reviewers(tx, principal.org_id).await?;
     let mut items = Vec::new();
     for (
         id,
@@ -83,7 +125,7 @@ pub(super) async fn acknowledge(
     let org = principal.org_id;
     let actor = principal.user_id;
     let response = with_audits::<_, _, LifecycleError>(&state.pool, org, move |tx| Box::pin(async move {
-        let reviewers = period_unlock_review::load(tx, org).await?;
+        let reviewers = load_reviewers(tx, org).await?;
         // Refuse unentitled callers before disclosing whether this exception exists.
         if !reviewers.allows(*actor.as_uuid(), Uuid::nil(), None)? {
             return Err(KernelError::forbidden("close entitlement is required to review an unlock").into());
@@ -105,3 +147,7 @@ pub(super) async fn acknowledge(
     })).await?;
     Ok(Json(response))
 }
+
+#[cfg(test)]
+#[path = "unlock_review_tests.rs"]
+mod tests;

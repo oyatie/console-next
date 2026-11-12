@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Live close entitlement and independent review, shared by inbox and acknowledgement.
 use super::{ActionBundle, Fact};
-use crate::{
-    Feature,
-    access::{NodeKind, NodeRef},
-    cedar_pbac::visible::load_facts,
-};
 use console_kernel_core::{KernelError, OrgId};
 use std::{collections::BTreeMap, sync::OnceLock};
 use uuid::Uuid;
@@ -49,6 +44,11 @@ pub struct Reviewers {
 }
 
 impl Reviewers {
+    /// Current Cedar-entitled accounts and their natural-person identities.
+    pub fn new(org: OrgId, people: BTreeMap<Uuid, Uuid>) -> Self {
+        Self { org, people }
+    }
+
     pub fn allows(
         &self,
         actor: Uuid,
@@ -64,36 +64,6 @@ impl Reviewers {
             self.people.values().any(|p| *p != maker),
         )
     }
-}
-
-pub async fn load(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    org: OrgId,
-) -> Result<Reviewers, KernelError> {
-    let accounts: Vec<(Uuid, Option<Uuid>)> = sqlx::query_as(
-        "SELECT id,person_id FROM users WHERE org_id=$1 AND is_active ORDER BY id FOR SHARE",
-    )
-    .bind(org.as_uuid())
-    .fetch_all(tx.as_mut())
-    .await
-    .map_err(|e| KernelError::internal(e.to_string()))?;
-    let mut people = BTreeMap::new();
-    for (actor, person) in accounts {
-        let facts = load_facts(tx, org, actor).await?;
-        let entitled = facts
-            .authorize(
-                Feature::PeriodLockManage.as_str(),
-                NodeRef {
-                    kind: NodeKind::Tenant,
-                    id: *org.as_uuid(),
-                },
-            )
-            .map_err(|e| KernelError::internal(e.to_string()))?;
-        if decide(actor, org, entitled, false, false)? {
-            people.insert(actor, person.unwrap_or(actor));
-        }
-    }
-    Ok(Reviewers { org, people })
 }
 
 #[cfg(test)]

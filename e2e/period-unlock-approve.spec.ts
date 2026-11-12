@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { OWN_ECHO_MS } from "../apps/web/src/lib/freshness";
 import { expectAccessible } from "./a11y";
+import { forgetResize } from "./stability";
 import { grantAccess } from "./access-flows";
 import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
@@ -224,6 +225,7 @@ test("a sole close authority delivers separate inbox reviews before and after go
   await startOperations(operator);
   await lockPayroll(human);
   await human.setViewportSize({ width: 390, height: 844 });
+  await forgetResize(human);
   await human.emulateMedia({ colorScheme: "dark" });
   await human.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
   await human.getByRole("button", { name: `급여 ${month} 잠금 해제`, exact: true }).click();
@@ -248,6 +250,7 @@ test("a sole close authority delivers separate inbox reviews before and after go
   await expect(human.getByRole("button", { name: /^해제됨 / }).locator(".chip--warn")).toHaveCount(0);
   await go(human, "/inbox");
   await expect(human.locator(`[data-id="period_unlock:${recorded.exception.id}"]`)).toHaveCount(0);
+  await human.waitForTimeout(OWN_ECHO_MS);
   await go(operator, "/inbox");
   for (const exception of [outcome.exception, recorded.exception]) {
     const review = operator.locator(`[data-id="period_unlock:${exception.id}"]`);
@@ -259,4 +262,12 @@ test("a sole close authority delivers separate inbox reviews before and after go
   }
   await operator.reload();
   await expect(operator.locator('[data-id^="period_unlock:"]')).toHaveCount(0);
+  await go(human, LOCKS);
+  await human.getByRole("button", { name: /^해제됨 / }).click();
+  await expect(human.getByText("사후 검토 필요", { exact: true })).toHaveCount(0);
+  const api = apiOf(operator, bearerOf(operator));
+  const locks = await (await api("/period-locks?active=false")).json();
+  for (const unlocked of [outcome, recorded]) {
+    expect(locks.items.find((lock: { id: string }) => lock.id === unlocked.lock.id).unlockReviewRequired).toBe(false);
+  }
 });

@@ -13,6 +13,34 @@ use uuid::Uuid;
 
 const INBOX: &str = "/api/v1/me/action-inbox";
 
+#[path = "period_unlock_review/scale.rs"]
+mod scale;
+
+async fn grant_review(owner: &PgPool, org: OrgId, account: Uuid, grantor: Uuid) {
+    let role = Uuid::new_v4();
+    sqlx::query("INSERT INTO access_roles(org_id,id,name_ko,status,version,created_by) VALUES($1,$2,'마감 검토','ACTIVE',1,$3)")
+        .bind(org.as_uuid()).bind(role).bind(grantor).execute(owner).await.unwrap();
+    sqlx::query("INSERT INTO access_role_versions(org_id,role_id,version,name_ko,status,change_mode,created_by) VALUES($1,$2,1,'마감 검토','ACTIVE','OPERATING',$3)")
+        .bind(org.as_uuid()).bind(role).bind(grantor).execute(owner).await.unwrap();
+    sqlx::query("INSERT INTO access_role_lines(org_id,role_id,version,domain,levels) VALUES($1,$2,1,'exceptions',ARRAY['edit'])")
+        .bind(org.as_uuid()).bind(role).execute(owner).await.unwrap();
+    sqlx::query("INSERT INTO access_grants(org_id,account_id,role_id,scope_kind,valid_from,effective_in_setup,change_mode,reason_code,granted_by) VALUES($1,$2,$3,'TENANT',now()-interval '400 days',true,'OPERATING','NEW_HIRE',$4)")
+        .bind(org.as_uuid()).bind(account).bind(role).bind(grantor).execute(owner).await.unwrap();
+}
+
+async fn review_required(app: &axum::Router, token: &str, unlocked: &Value) -> bool {
+    let (status, locks) = read(app, &format!("{LOCKS}?active=false"), token).await;
+    assert_eq!(status, StatusCode::OK, "{locks}");
+    locks["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|l| l["id"] == unlocked["lock"]["id"])
+        .unwrap()["unlockReviewRequired"]
+        .as_bool()
+        .unwrap()
+}
+
 async fn unlock(
     owner: &PgPool,
     app: &axum::Router,
@@ -92,6 +120,7 @@ async fn operating_review_is_owned_acknowledged_and_repeat_unlock_is_a_new_item(
     sqlx::query("UPDATE tenant_phase SET phase='OPERATING',go_live_at=now(),go_live_by=$2,go_live_preview_digest=repeat('a',64) WHERE org_id=$1").bind(org.as_uuid()).bind(human.id).execute(&owner).await.unwrap();
     let first = unlock(&owner, &app, &mut human).await;
     let second = unlock(&owner, &app, &mut human).await;
+    grant_review(&owner, org, human.id, ops.id).await;
     let items = reviews(&app, &ops.token).await;
     assert_eq!(items.len(), 2, "each exception must survive independently");
     for unlocked in [&first, &second] {
@@ -113,6 +142,10 @@ async fn operating_review_is_owned_acknowledged_and_repeat_unlock_is_a_new_item(
     let (status, body) = send(&app, &review_path(&first), &human.token, None, json!({})).await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
     assert_eq!(body["error"]["code"], "forbidden");
+    assert_eq!(
+        body["error"]["message"],
+        "another close authority must review this unlock"
+    );
     let wrong_lock = review_path(&first).replace(
         first["lock"]["id"].as_str().unwrap(),
         &Uuid::new_v4().to_string(),
@@ -141,11 +174,20 @@ async fn operating_review_is_owned_acknowledged_and_repeat_unlock_is_a_new_item(
         assert_eq!(status, StatusCode::OK, "{body}");
     }
     assert_eq!(reviews(&app, &ops.token).await.len(), 1);
+    assert!(!review_required(&app, &ops.token, &first).await);
+    assert!(review_required(&app, &ops.token, &second).await);
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE org_id=$1 AND target_id=$2 AND action='exception.review'").bind(org.as_uuid()).bind(first["exception"]["id"].as_str().unwrap()).fetch_one(&owner).await.unwrap();
     assert_eq!(count, 1, "acknowledgement is idempotent");
+    let refreshes: i64 = sqlx::query_scalar("SELECT count(*) FROM resource_changes c JOIN audit_events a ON a.id=c.audit_event_id WHERE a.org_id=$1 AND a.target_id=$2 AND a.action='exception.review' AND c.resource_type='period_lock' AND c.resource_id IS NULL")
+        .bind(org.as_uuid()).bind(first["exception"]["id"].as_str().unwrap()).fetch_one(&owner).await.unwrap();
+    assert_eq!(
+        refreshes, 1,
+        "one receipt refreshes cached locks in other tabs"
+    );
     let (status, body) = send(&app, &review_path(&second), &ops.token, None, json!({})).await;
     assert_eq!(status, StatusCode::OK, "{body}");
     assert!(reviews(&app, &ops.token).await.is_empty());
+    assert!(!review_required(&app, &ops.token, &second).await);
     let count: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM notifications WHERE org_id=$1 AND category='period_lock.sole_holder'",
     )
