@@ -1,4 +1,4 @@
-import { lazy, StrictMode, Suspense } from "react";
+import { lazy, StrictMode, Suspense, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, Link, RouterProvider, useRouterState } from "@tanstack/react-router";
@@ -48,7 +48,11 @@ const router = createRouter({
   defaultPreload: "intent",
   scrollRestoration: true,
   // Paint resolved parents while a screen chunk loads, retaining the shell and its session observers.
-  defaultPendingComponent: ReadSkeleton,
+  defaultPendingComponent: function PendingScreen(): ReactNode {
+    // A pending parent must retain the leaf's record or form loading shape.
+    const Pending = useRouterState({ select: state => state.matches.map(match => router.routesById[match.routeId]?.options.pendingComponent).findLast(Boolean) }) ?? ReadSkeleton;
+    return <Pending />;
+  },
   defaultPendingMs: 0,
   defaultPendingMinMs: 0,
   defaultNotFoundComponent: () => (
