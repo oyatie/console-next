@@ -2,7 +2,7 @@
 import type { OrgChangeDetail } from "@console/api/pending";
 import { expect, type Page } from "@playwright/test";
 import { test } from "../locale-fixture";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { failure, id } from "../mock/fixtures";
 import { orgChange } from "../mock/org-changes";
@@ -38,7 +38,7 @@ async function passkey(page: Page, cancel = false) {
   });
 }
 
-for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
+for (const locale of LOCALES) for (const width of [1440, 390]) {
   test(`org sole holder: bound decision and persisted review in ${locale} at ${width}px @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const { fixture, record } = await setup(page, locale);
@@ -89,7 +89,7 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
   });
 }
 
-for (const locale of ["ko", "en"] as const) {
+for (const locale of LOCALES) {
   test(`org sole holder: server absence keeps drafter waiting in ${locale} @ui-state`, async ({ page }) => {
     const { fixture } = await setup(page, locale, false);
     try {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { i18n, loadCatalog, t } from "@console/i18n";
-import { expect, test } from "@playwright/test";
+import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
+import { expect } from "@playwright/test";
+import { test } from "../locale-fixture";
 import { expectAxe, fits } from "../a11y";
 import { filingTask, mockFilings } from "../mock/filings";
 import { failure } from "../mock/fixtures";
@@ -8,9 +9,7 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
-test.afterEach(() => i18n.set("ko"));
-
-for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
+for (const locale of LOCALES) for (const width of [1440, 390]) {
   test(`citation destinations are inert and unsafe URLs are refused in ${locale} at ${width}px @ui-state`, async ({ page }, info) => {
     await loadCatalog(locale); i18n.set(locale);
     await page.setViewportSize({ width, height: 1000 });
@@ -65,7 +64,7 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
   });
 }
 
-for (const locale of ["ko", "en"] as const) {
+for (const locale of LOCALES) {
   test(`plain text citation gallery in ${locale} at 390px in dark @ui-state`, async ({ page }, info) => {
     await loadCatalog(locale); i18n.set(locale);
     await page.setViewportSize({ width: 390, height: 1000 });
