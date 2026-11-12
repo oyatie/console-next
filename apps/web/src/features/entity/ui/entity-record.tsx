@@ -53,6 +53,12 @@ import { NameReview } from "./name-review";
 
 const route = getRouteApi("/app/org/entities/$id");
 
+export function EntityScreen() {
+  const { id } = route.useParams();
+  const { wp } = route.useSearch();
+  return <EntityRecord key={`${id}:${wp ?? ""}`} id={id} workplace={wp} />;
+}
+
 const countDepts = (n: OrgStructureNode | undefined): number => (n ? n.children.reduce((a, x) => a + (x.kind === "DEPARTMENT" ? 1 : 0) + countDepts(x), 0) : 0);
 
 /**
