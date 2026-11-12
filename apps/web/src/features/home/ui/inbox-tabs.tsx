@@ -20,12 +20,12 @@ export function InboxTabs({ view }: { view: InboxView }) {
   const navigate = useNavigate();
   const offered: readonly string[] = first?.available_filters ?? [];
   const current = (TODO_CHIPS as readonly string[]).includes(view) ? "turn" : view;
-  // The row paints before the read with empty count slots, so nothing moves when it lands; chips share its line.
-  const tabs = INBOX_TABS.filter(tab => tab !== "waiting" || !first || offered.includes(tab));
+  // The tabs are fixed by relation and paint before the read with empty count slots, so nothing moves when it
+  // lands; only the chips depend on what the server offers, and they share the tab line.
   const chips = TODO_CHIPS.filter(key => offered.includes(key));
   return <div className={css.tabRow}>
     <TabNav label={t("home.lanes")} overflow="scroll">
-      {tabs.map(tab => <Link key={tab} to="/inbox" search={{ tab: tab === "turn" ? undefined : tab }} replace resetScroll={false} activeOptions={{ exact: true, includeSearch: true }} className={tabClass} aria-current={current === tab ? "page" : undefined}>
+      {INBOX_TABS.map(tab => <Link key={tab} to="/inbox" search={{ tab: tab === "turn" ? undefined : tab }} replace resetScroll={false} activeOptions={{ exact: true, includeSearch: true }} className={tabClass} aria-current={current === tab ? "page" : undefined}>
         {t(`home.inbox.tab.${tab}`)}{tab === "turn" || tab === "waiting" ? <>{" "}<TabCount>{shown(first?.counts[tab])}</TabCount></> : null}
       </Link>)}
     </TabNav>
