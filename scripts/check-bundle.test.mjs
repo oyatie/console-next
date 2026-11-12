@@ -211,9 +211,12 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
       for (const file of ["index-main.js", "vendor-boot.js", "dryrun.js", "calendar.js", "answers.js", "host.js"]) mock.writeChunk(file, file);
       const source = "src/features/import/ui/resolve-controls.tsx";
       const route = "src/features/import/ui/dryrun-step.tsx";
-      mock.dynamic("src/ui/date/date-calendar.tsx", "calendar.js");
-      mock.dynamic("src/ui/external-url-host.tsx", "host.js");
-      mock.dynamic(source, "answers.js");
+      const deferred = Object.values(JSON.parse(readFileSync(DEFAULT_BUDGET_FILE, "utf8"))).flatMap(config => config.deferred ?? []);
+      for (const [index, path] of deferred.entries()) {
+        const file = `deferred-${index}.js`;
+        mock.writeChunk(file, file);
+        mock.dynamic(path, file);
+      }
       mock.dynamic(route, "dryrun.js", [source]);
       assert.match(checkRouteBudgets(mock.dist, DEFAULT_BUDGET_FILE).error, /resolve-controls.*statically loaded/);
       mock.dynamic(route, "dryrun.js");
