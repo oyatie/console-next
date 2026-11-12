@@ -72,9 +72,13 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
         await expect(trigger).toBeFocused();
         if (state === "populated") {
           await trigger.click();
+          // 해야 할 일 re-reads my turn on arrival: let it land before the next page counts its own read.
+          const arrived = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/me/action-inbox");
           await fullPage.click();
           await expect(page).toHaveURL(/\/inbox$/);
           await expect(page.locator("main h1")).toBeVisible();
+          await (await arrived).finished();
+          await expect(page.getByRole("region", { name: t("home.inbox.title"), exact: true }).locator("[data-id]")).toHaveCount(3);
         }
       }
       expect(mock.unexpected).toEqual([]);
@@ -140,17 +144,19 @@ test("Home shares its arrival read and refreshes held work after attention chang
   expect(mock.unexpected).toEqual([]);
 });
 
-for (const filter of ["all", "waiting", "scheduled", "turn"] as const) {
-  test(`inbox ${filter} shares arrival counts and opens only my turn in the header panel`, async ({ page }) => {
+// 완료 is a list of its own: the page keeps my turn read, so the badge shares it. Old 전체 links land on my turn.
+for (const [tab, filter] of [["all", "turn"], ["waiting", "waiting"], ["scheduled", "scheduled"], ["turn", "turn"], ["done", "turn"]] as const) {
+  test(`inbox ${tab} shares arrival counts and opens only my turn in the header panel`, async ({ page }) => {
     const mock = await mockScreen(page, screens[0], "populated");
     const reads: string[] = [];
+    await mockRoute(page, "get", "/api/v1/me/action-inbox/done", { status: 200, json: { items: [], next_cursor: null } });
     await mockRoute(page, "get", "/api/v1/me/action-inbox", request => {
       const selected = new URL(request.url()).searchParams.get("filter")!;
       reads.push(selected);
       const queue = inbox(3);
       return { status: 200, json: selected === "turn" ? queue : { ...queue, items: queue.items.map(item => ({ ...item, title: "다른 차례 업무", lane: "waiting" as const })) } };
     });
-    await page.goto(`/inbox?tab=${filter}`);
+    await page.goto(`/inbox?tab=${tab}`);
     await expect(page.locator("main h1")).toBeVisible({ timeout: 20_000 });
     const trigger = page.locator("#top-needs-me");
     await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));

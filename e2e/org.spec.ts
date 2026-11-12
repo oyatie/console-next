@@ -122,7 +122,7 @@ test.fixme("an org change is drafted, submitted from its page, rejected with a r
   await expect(admin.getByRole("row", { name: /영남권 신설/ })).toContainText("결재 중");
   // In the inbox the redraft waits on others; the rejection it settles leaves my turn.
   await go(admin, "/inbox?tab=waiting");
-  await expect(admin.getByRole("link", { name: "기다리는 중 1" })).toHaveAttribute("aria-current", "page");
+  await expect(admin.getByRole("link", { name: "요청한 일 1" })).toHaveAttribute("aria-current", "page");
   await expect(admin.getByRole("link", { name: "반려 사유 보기" })).toHaveCount(0);
 
   // The rejected 부서 was never created.

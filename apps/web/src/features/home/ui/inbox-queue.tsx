@@ -21,7 +21,8 @@ import { Card } from "../../../ui/card/card";
 import { TabNav } from "../../../ui/tabs/tabs";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { Skeleton } from "../../../ui/skeleton/skeleton";
-import { isAttentionFilter, type AttentionInboxResponse, type InboxFilter } from "../domain/inbox-filter";
+import { inboxView, isAttentionFilter, type AttentionInboxResponse, type InboxFilter } from "../domain/inbox-filter";
+import { InboxTabs } from "./inbox-tabs";
 import { InboxRead } from "./inbox-read";
 import { InboxReadContext, useInboxRead } from "./use-inbox-read";
 import css from "./inbox-queue.module.css";
@@ -109,10 +110,11 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
           {t(`home.attention.${key}`)}
         </ToggleButton>)}
       </div> : null}
-      {(!preview || !first?.attention_filters?.length) && !setupPhase && !first?.setup && !!first?.available_filters.length && <TabNav label={t("home.lanes")} overflow="scroll">
-        {(preview ? first.available_filters : ["all", ...first.available_filters] as InboxFilter[]).map(key => {
-          const count = key === "all" ? (first.counts.all ?? (filter === "all" ? { total: first.total, total_is_exact: first.total_is_exact } : undefined)) : first.counts[key];
-          return <Link key={key} to="/inbox" search={{ tab: key === "all" ? undefined : key }} replace={!preview} resetScroll={preview ? undefined : false} className={tabClass} aria-current={filter === key ? (preview ? true : "page") : undefined} activeOptions={{ exact: true, includeSearch: true }}>
+      {!preview && !setupPhase && !first?.setup && <InboxTabs view={filter === "all" || filter === "deadlines" ? "turn" : filter} />}
+      {preview && !first?.attention_filters?.length && !setupPhase && !first?.setup && !!first?.available_filters.length && <TabNav label={t("home.lanes")} overflow="scroll">
+        {first.available_filters.map(key => {
+          const count = first.counts[key];
+          return <Link key={key} to="/inbox" search={{ tab: inboxView(key) === "turn" ? undefined : inboxView(key) }} className={tabClass} aria-current={filter === key ? true : undefined} activeOptions={{ exact: true, includeSearch: true }}>
             {count ? t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total }) : t(`home.inbox.filter.${key}`)}
           </Link>;
         })}

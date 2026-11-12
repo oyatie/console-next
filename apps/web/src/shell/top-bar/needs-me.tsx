@@ -8,7 +8,7 @@ import { api, session, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { cursorPages, cursorRead } from "../../lib/query";
-import { inboxFilter } from "../../features/home/domain/inbox-filter";
+import { inboxReadFilter, inboxView } from "../../features/home/domain/inbox-filter";
 import { chunk } from "../../lib/chunk-guard";
 import { ReadSkeleton } from "../../ui/skeleton/skeleton";
 import s from "./top-bar.module.css";
@@ -29,7 +29,7 @@ export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
   const home = pathname === "/";
   const fullInbox = pathname === "/inbox";
   const shared = home || fullInbox;
-  const filter = fullInbox ? inboxFilter(search.tab) : "turn";
+  const filter = fullInbox ? inboxReadFilter(inboxView(search.tab)) : "turn";
   // Queue pages start their arrival read; keep the shared observer live after that answer.
   const inbox = useInfiniteQuery({ ...(shared ? cursorPages("/api/v1/me/action-inbox", home ? { filter, attention: "all" } : { filter }) : countRead), enabled: query => !seed && !platform && (!shared || !!query.state.data), staleTime: Infinity, placeholderData: keepPreviousData, notifyOnChangeProps: "all" });
   const separate = fullInbox && filter !== "turn";

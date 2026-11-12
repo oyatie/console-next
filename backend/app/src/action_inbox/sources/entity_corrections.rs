@@ -11,6 +11,14 @@ use console_kernel_core::{BranchScope, KernelError, UserId};
 use console_platform_authz::{Action, Feature, Principal, authorize_capability};
 use sqlx::PgPool;
 
+/// 정정 review reach: a tenant-wide holder of entity management or org-change apply.
+pub(crate) fn reviews(principal: &Principal) -> bool {
+    principal.branch_scope == BranchScope::All
+        && [Feature::LegalEntityManage, Feature::OrgChangeApply]
+            .into_iter()
+            .any(|f| authorize_capability(principal, Action::new(f)).is_ok())
+}
+
 pub(crate) async fn page(
     pool: &PgPool,
     principal: &Principal,
@@ -22,11 +30,7 @@ pub(crate) async fn page(
         total_is_exact: true,
         has_more: false,
     };
-    if principal.branch_scope != BranchScope::All
-        || ![Feature::LegalEntityManage, Feature::OrgChangeApply]
-            .into_iter()
-            .any(|f| authorize_capability(principal, Action::new(f)).is_ok())
-    {
+    if !reviews(principal) {
         return Ok(empty());
     }
     let p = principal.clone();

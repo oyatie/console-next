@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+description: An item the caller decided, as the 완료 tab lists it.
+required: [id, kind, title, outcome, completed_at, links]
+properties:
+  id:
+    type: string
+    description: The namespaced id the open item had ("{kind}:{uuid}").
+  kind:
+    type: string
+    x-extensible-enum: [hr_request, period_unlock, identifier_correction]
+  title:
+    type: string
+    description: The subject (a person or legal entity name).
+  outcome:
+    type: string
+    x-extensible-enum: [APPLIED, DECLINED, APPROVED, REJECTED]
+    description: The source's own end state.
+  completed_at:
+    type: string
+    format: date-time
+  links:
+    type: array
+    items:
+      $ref: '#/components/schemas/ActionInboxLink'

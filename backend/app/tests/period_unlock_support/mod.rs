@@ -297,3 +297,5 @@ pub async fn router(owner: &PgPool) -> (axum::Router, JwtIssuer) {
         build_router(AppState::new(config, DatabaseDependency::Postgres(runtime)).unwrap());
     (service, issuer)
 }
+
+pub mod done;

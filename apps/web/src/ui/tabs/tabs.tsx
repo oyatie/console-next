@@ -68,7 +68,7 @@ export function TabNav({ label, children, overflow }: { label: string; children:
   return <nav ref={nav} aria-label={label} className={`${s.list} ${overflow === "scroll" ? s.scroll : ""}`}>{children}</nav>;
 }
 
-/** Keep unknown counts' layout slots; show zero once the read settles. */
+/** Keep unknown counts' layout slots; show zero once the read settles. A formatted lower bound ("31+") passes through. */
 export const TabCount = ({ children }: { children?: ReactNode }) => <span className={s.count}>
-  {typeof children === "number" && Number.isFinite(children) && children >= 0 ? fmtNumber(children) : null}
+  {typeof children === "number" && Number.isFinite(children) && children >= 0 ? fmtNumber(children) : typeof children === "string" && /^\d[\d,]*\+$/.test(children) ? children : null}
 </span>;

@@ -6392,6 +6392,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/action-inbox/done",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__action-inbox__done.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/authz",
         operations: &[Operation {
             method: "get",
@@ -7003,6 +7012,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AccountStatus",
         body: include_str!("../../identity/rest/openapi/schemas/AccountStatus.yaml"),
+    },
+    NamedYaml {
+        name: "ActionInboxDoneItem",
+        body: include_str!("../../identity/rest/openapi/schemas/ActionInboxDoneItem.yaml"),
     },
     NamedYaml {
         name: "ActionInboxItem",

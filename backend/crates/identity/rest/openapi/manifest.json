@@ -249,6 +249,9 @@
     "/api/v1/me/action-inbox": [
       "get"
     ],
+    "/api/v1/me/action-inbox/done": [
+      "get"
+    ],
     "/api/v1/me/authz": [
       "get"
     ],
@@ -432,6 +435,7 @@
     "AccessScope",
     "AccessScopeKind",
     "AccountStatus",
+    "ActionInboxDoneItem",
     "ActionInboxItem",
     "ActionInboxLink",
     "ActionInboxResponse",

@@ -11,7 +11,7 @@ import { screens } from "./registry";
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) {
-  for (const path of ["/", "/inbox", ...INBOX_FILTERS.filter(tab => tab !== "all").map(tab => `/inbox?tab=${tab}`), "/people/requests", "/requests", `/requests/${id(99)}`]) {
+  for (const path of ["/", "/inbox", ...["waiting", "scheduled", "failures"].map(tab => `/inbox?tab=${tab}`), "/people/requests", "/requests", `/requests/${id(99)}`]) {
     test(`home inbox ${path}: empty or not found at ${width}px @ui-state`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
       const fixture = await mockScreen(page, screens[0], "empty");
@@ -37,7 +37,8 @@ for (const width of [1440, 390]) {
         } else if (path.startsWith("/inbox?tab=")) {
           const tab = new URL(path, "https://console.invalid").searchParams.get("tab")!;
           const tabs = main.getByRole("navigation", { name: t("home.lanes"), exact: true });
-          await expect(tabs.locator(`[href="/inbox?tab=${tab}"]`)).toHaveAttribute("aria-current", "page");
+          // 예정 and 실패 are chips under 해야 할 일, the tab at plain /inbox.
+          await expect(tabs.locator(`[href="${tab === "waiting" ? "/inbox?tab=waiting" : "/inbox"}"]`)).toHaveAttribute("aria-current", "page");
           await expect(main.getByRole("heading", { name: t("home.inbox.empty.title"), exact: true })).toBeVisible();
           await expect(main.getByRole("heading", { name: t("home.noWork.title"), exact: true })).toHaveCount(0);
           await expect(main.locator("table")).toHaveCount(0);

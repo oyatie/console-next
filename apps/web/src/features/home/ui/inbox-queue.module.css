@@ -1,3 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 .attention { display: flex; flex-wrap: nowrap; gap: var(--space-2); min-width: 0; overflow-x: auto; }
 .attention > button { flex: none; white-space: nowrap; }
+/* One row when wide; on a phone the chips wrap under the tabs so every tab stays in view. */
+.tabRow { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-2); min-width: 0; }
+.tabRow > nav { flex: 1 1 auto; }
+.tabRow > [role="group"] { flex: none; align-self: center; }

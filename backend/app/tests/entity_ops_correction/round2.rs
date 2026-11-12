@@ -98,6 +98,34 @@ async fn my_queue_reuses_decision_eligibility_and_finds_work_after_non_actionabl
     assert_eq!(body["items"][0]["can_apply"], true);
     let (_, body) = get(&s, &format!("{REGISTER}?awaiting=me"), &s.approver.token).await;
     assert_eq!(body["items"], json!([]));
+    // 업무함 완료: the approval is newest, the 55 earlier declines follow on the next page.
+    let (status, done) = get(&s, "/api/v1/me/action-inbox/done", &s.approver.token).await;
+    assert_eq!(status, StatusCode::OK, "{done}");
+    let items = done["items"].as_array().unwrap();
+    assert_eq!(items.len(), 50, "{done}");
+    assert_eq!(items[0]["id"], json!(format!("identifier_correction:{id}")));
+    assert_eq!(items[0]["outcome"], "APPROVED");
+    assert!(
+        items[1..].iter().all(|i| i["outcome"] == "DECLINED"),
+        "{done}"
+    );
+    let cursor = done["next_cursor"].as_str().unwrap();
+    let (_, rest) = get(
+        &s,
+        &format!("/api/v1/me/action-inbox/done?cursor={cursor}"),
+        &s.approver.token,
+    )
+    .await;
+    assert_eq!(
+        (
+            rest["items"].as_array().unwrap().len(),
+            &rest["next_cursor"]
+        ),
+        (6, &Value::Null),
+        "{rest}"
+    );
+    let (_, theirs) = get(&s, "/api/v1/me/action-inbox/done", &s.ops.token).await;
+    assert_eq!(theirs["items"], json!([]), "{theirs}");
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

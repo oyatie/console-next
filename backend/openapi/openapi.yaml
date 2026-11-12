@@ -19425,6 +19425,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/action-inbox/done:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - me
+      operationId: listMyActionInboxDone
+      summary: 완료 - what the caller decided, newest first
+      description: >-
+        The 업무함 완료 tab. Items the caller decided, newest first by completed_at, merged across
+        sources with one keyset: change requests the caller applied or declined, period unlocks the
+        caller approved, and 정정 the caller approved or declined. Each source keeps the grant its
+        open queue requires, so a row shows only while the caller may still read it (a revoked grant
+        hides it). Not counted and never part of the open list or its filters. A name on a row is a
+        personnel read and is access-logged like the open list. 422 validation on a cursor this
+        route did not issue.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        description: Rows per page, 1 to 100 (default 50).
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+      - name: cursor
+        in: query
+        required: false
+        description: The previous page's next_cursor.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: One page of finished items.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActionInboxDoneItem'
+                  next_cursor:
+                    type: [string, 'null']
+                    description: Present when another page exists.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/me/authz:
     get:
       tags:
@@ -34043,6 +34095,32 @@ components:
         id: { type: string, format: uuid }
         label: { type: string }
         kind: { type: string, enum: [automation, policy] }
+    ActionInboxDoneItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      description: An item the caller decided, as the 완료 tab lists it.
+      required: [id, kind, title, outcome, completed_at, links]
+      properties:
+        id:
+          type: string
+          description: The namespaced id the open item had ("{kind}:{uuid}").
+        kind:
+          type: string
+          x-extensible-enum: [hr_request, period_unlock, identifier_correction]
+        title:
+          type: string
+          description: The subject (a person or legal entity name).
+        outcome:
+          type: string
+          x-extensible-enum: [APPLIED, DECLINED, APPROVED, REJECTED]
+          description: The source's own end state.
+        completed_at:
+          type: string
+          format: date-time
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionInboxLink'
     ActionInboxItem:
       type: object
       description: >-

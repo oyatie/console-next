@@ -12,6 +12,7 @@ type Page = components["schemas"]["ActionInboxResponse"];
 type Options = ReturnType<typeof cursorPages<"/api/v1/me/action-inbox">>;
 const view = vi.hoisted(() => ({
   options: undefined as Options | undefined,
+  reads: [] as unknown[],
   phase: "OPERATING" as "SETUP" | "OPERATING",
   list: { isPending: false, isFetching: false, dataUpdatedAt: 1, error: null as unknown, data: undefined as { pages: Page[] } | undefined, hasNextPage: false, isFetchingNextPage: false },
 }));
@@ -21,7 +22,14 @@ vi.mock("@tanstack/react-query", async original => ({
     data: JSON.parse(readIdentity(options))[0] === "/api/v1/users/me" ? { display_name: "사용자", tenant: { name: "검증법인", phase: view.phase, go_live_at: null } } : undefined,
     isPending: false, isFetching: false, isFetchedAfterMount: true, isError: false, isSuccess: true, dataUpdatedAt: 1,
   }),
-  useInfiniteQuery: (options: Options) => { view.options = options; return { ...view.list, fetchNextPage: vi.fn(), refetch: vi.fn() }; },
+  useInfiniteQuery: (options: Options) => {
+    const read = JSON.parse(readIdentity(options));
+    view.reads.push(read);
+    // The done tab reads its own (empty) list beside the queue.
+    if (read[0] !== "/api/v1/me/action-inbox") return { ...view.list, data: { pages: [{ items: [], next_cursor: null }] }, fetchNextPage: vi.fn(), refetch: vi.fn() };
+    view.options = options;
+    return { ...view.list, fetchNextPage: vi.fn(), refetch: vi.fn() };
+  },
 }));
 vi.mock("../../../lib/live/live", async original => ({ ...await original<typeof import("../../../lib/live/live")>(), liveApplying: { get: () => false, subscribe: () => () => {} }, holdLive: () => () => {} }));
 
@@ -38,15 +46,29 @@ const html = (url = "/inbox") => {
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   view.options = undefined;
+  view.reads = [];
   view.phase = "OPERATING";
   view.list = { isPending: false, isFetching: false, dataUpdatedAt: Date.now() + 1_000, error: null, data: { pages: [samplePage()] }, hasNextPage: false, isFetchingNextPage: false };
 });
 
-test("InboxPage defaults to filter=all while /inbox?tab=turn addresses my turn", () => {
-  html("/inbox");
-  expect(JSON.parse(readIdentity(view.options!))).toEqual(["/api/v1/me/action-inbox", { query: { filter: "all" } }, "cursor"]);
-  html("/inbox?tab=turn");
-  expect(JSON.parse(readIdentity(view.options!))).toEqual(["/api/v1/me/action-inbox", { query: { filter: "turn" } }, "cursor"]);
+test.each([
+  ["/inbox", "turn"], ["/inbox?tab=all", "turn"], ["/inbox?tab=deadlines", "turn"], ["/inbox?tab=turn", "turn"],
+  ["/inbox?tab=waiting", "waiting"], ["/inbox?tab=scheduled", "scheduled"], ["/inbox?tab=failures", "failures"],
+  ["/inbox?tab=done", "turn"],
+])("%s reads the queue with filter=%s", (url, filter) => {
+  html(url);
+  expect(view.reads[0]).toEqual(["/api/v1/me/action-inbox", { query: { filter } }, "cursor"]);
+});
+
+test.each([
+  ["done", "/api/v1/me/action-inbox/done"],
+])("tab=%s keeps my turn read for counts and shows its own list as the current tab", (tab, path) => {
+  const markup = html(`/inbox?tab=${tab}`);
+  expect(view.reads).toContainEqual([path, { query: {} }, "cursor"]);
+  expect(markup).toContain(`aria-current="page" href="/inbox?tab=${tab}"`);
+  expect(markup.match(/aria-current="page"/g)).toHaveLength(1);
+  expect(markup).toMatch(new RegExp(`href="/inbox">${t("home.inbox.tab.turn")} <span[^>]*>1</span></a>`));
+  expect(markup).toContain(t("home.inbox.done.empty"));
 });
 
 test.each([false, true])("an empty inbox with an unavailable source stays partial (has_work=%s)", has_work => {
