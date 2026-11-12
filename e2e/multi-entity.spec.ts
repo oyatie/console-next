@@ -1,13 +1,20 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import type { components } from "@console/api/schema";
 import { fmtDate } from "@console/i18n/format";
-import { expectAccessible } from "./a11y";
+import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option, takeCode, unique, vendorPage } from "./flows";
-import { addDepartments } from "./structure-flows";
+import { addDepartments, leaveScreen } from "./structure-flows";
 import { firstWorkplace, registerAt } from "./helpers/entity";
-import { registerEntity, SECOND, setupRail, startOperations, REGISTRATION_FIXTURES, brnDisplay } from "./setup-flows";
+import { answer, registerBranch, registerEntity, SECOND, setupCompany, setupRail, startOperations, REGISTRATION_FIXTURES, brnDisplay } from "./setup-flows";
+import { apiOf, bearerOf } from "./helpers/api";
+import { openTenant } from "./helpers/tenant";
+import { hrAct, openHistory } from "./record";
+import { fillDate, reasonBox, sheet, signOff } from "./sheet";
+import { reasonChip } from "./helpers/lifecycle";
 
 // One tenant, two 법인 (a group): each has its own registration, workplace and people, and every person is placed
-// by id at one 법인 and one of its 사업장. Needs the backend's entity crate (branch hard/entity-depth, not merged).
+// by id at one 법인 and one of its 사업장.
 
 test("a group of two legal entities: each with its workplace and people, placed by id", { tag: "@first-run" }, async ({ browser }) => {
   const v = await vendorPage(browser);
@@ -30,8 +37,12 @@ test("a group of two legal entities: each with its workplace and people, placed 
   const list = admin.getByRole("grid", { name: "법인 목록" });
   for (const column of ["법인명", "구분", "대표 등록번호", "사업장", "재직", "확인"])
     await expect(list.getByRole("columnheader", { name: column, exact: true })).toBeVisible();
-  await expect(list.getByRole("row", { name: new RegExp(`주식회사 가나홀딩스 .*${brnDisplay(REGISTRATION_FIXTURES.primary.brn)} 1곳`) })).toBeVisible();
-  await expect(list.getByRole("row", { name: new RegExp(`주식회사 가나랩 .*${brnDisplay(REGISTRATION_FIXTURES.second.brn)} 1곳`) })).toBeVisible();
+  // The LongTable migration (ebdc131a2b) names each row by its row header; facts remain in their cells.
+  for (const [name, registration] of [["가나홀딩스", REGISTRATION_FIXTURES.primary], ["가나랩", REGISTRATION_FIXTURES.second]] as const) {
+    const row = list.getByRole("row", { name: `주식회사 ${name}`, exact: true });
+    await expect(row.getByRole("gridcell", { name: brnDisplay(registration.brn), exact: true })).toBeVisible();
+    await expect(row.getByRole("gridcell", { name: "1곳", exact: true })).toBeVisible();
+  }
   await expectAccessible(admin, "entity list (two entities)");
 
   // A dated change, twice: each save carries the revision it read, so the second one is not refused as stale.
@@ -61,8 +72,8 @@ test("a group of two legal entities: each with its workplace and people, placed 
 
   // Each entity counts its own people.
   await go(admin, "/org/entities");
-  await expect(list.getByRole("row", { name: /가나홀딩스 .* 1명/ })).toBeVisible();
-  await expect(list.getByRole("row", { name: /가나랩 .* 1명/ })).toBeVisible();
+  for (const name of ["가나홀딩스", "가나랩"])
+    await expect(list.getByRole("row", { name: `주식회사 ${name}`, exact: true }).getByRole("gridcell", { name: "1명", exact: true })).toBeVisible();
 
   // The newest bearer the app itself sent (memory only). Nothing re-reads on a timer (decision #27), so the next
   // screen may well send no request at all: track every request from here instead of waiting for the next one.
@@ -88,10 +99,60 @@ test("a group of two legal entities: each with its workplace and people, placed 
   expect(refused.error.reasons).toContain("start_group_transfer");
 });
 
-// 전근 (a move between 사업장 of one 법인, design §3.9): a lifecycle TRANSFER with to_workplace_id that splits the
-// placement on its date and starts the 피보험자 전근 신고 clock when the workplaces' insurance links differ.
-// Waits for hr's lifecycle TRANSFER to call the placement port (hr.rs, INTEG R2).
-// fixme: owner=@jason931225; reason=lifecycle transfer does not yet update placements; expires=2026-11-17
-test.fixme("a transfer between two workplaces of one legal entity moves the placement on its date", async () => {});
+test("a transfer between two workplaces of one legal entity moves the placement on its date", async ({ browser }) => {
+  const admin = await openTenant(browser, "workplacemove", "전근상사");
+  const api = apiOf(admin, bearerOf(admin));
+  await setupCompany(admin, "전근상사", "본사");
+  await registerBranch(admin, "전근상사", "공장", REGISTRATION_FIXTURES.branch_primary.brn);
+  await go(admin, "/org");
+  await addDepartments(admin, "본사", ["지원팀"]);
+  await addDepartments(admin, "공장", ["생산팀"]);
+  const hired = kstDate(-30);
+  const person = await registerAt(admin, "김전근", "전근상사", "지원팀", undefined, hired);
+  const record = new URL(admin.url()).pathname;
+  await startOperations(admin);
+  await leaveScreen(admin);
+  const placements = async () => {
+    const response = await api(`/employment-assignments?employee_id=${person}`);
+    expect(response.status()).toBe(200);
+    return (await response.json() as components["schemas"]["EmploymentAssignmentList"]).items;
+  };
+  const before = await placements();
+  expect(before).toHaveLength(1);
+  await go(admin, record);
+  await hrAct(admin, "전보");
+  const transfer = sheet(admin);
+  await expect(transfer).toContainText("김전근");
+  await transfer.getByRole("combobox", { name: "어디로" }).fill("생산팀");
+  await admin.getByRole("option", { name: /생산팀/ }).click();
+  const on = kstDate(-2);
+  await fillDate(transfer, on);
+  await reasonChip(transfer, "업무 필요").click();
+  await reasonBox(transfer).fill("생산 지원");
+  await signOff(transfer);
+  await expectAccessible(admin, "workplace transfer effective date");
+  await atPhoneWidth(admin, async () => {
+    for (const theme of ["light", "dark"]) {
+      await admin.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+      await fits(admin, "workplace transfer");
+    }
+  });
+  const recorded = answer(admin, "POST", /\/lifecycle-events$/);
+  await transfer.getByRole("button", { name: "전근 1명 적용", exact: true }).click();
+  const response = await recorded;
+  expect(response.status()).toBe(200);
+  const event = await response.json() as components["schemas"]["EmployeeLifecycleEvent"];
+  await expect(transfer).toBeHidden();
+  const after = await placements();
+  expect(after).toHaveLength(2);
+  expect(after.find(p => p.valid_from === hired)).toMatchObject({ workplace_id: before[0]!.workplace_id, valid_to: on });
+  const moved = after.find(p => p.valid_from === on)!;
+  expect(moved).toMatchObject({ legal_entity_id: before[0]!.legal_entity_id, cause: "TRANSFER", valid_to: null });
+  expect(moved.workplace_id).not.toBe(before[0]!.workplace_id);
+  expect(event.to_workplace_id).toBe(moved.workplace_id);
+  await expect(admin.getByRole("group", { name: "소속", exact: true }).getByRole("link", { name: "공장", exact: true })).toBeVisible();
+  await openHistory(admin);
+  await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: "생산 지원" })).toContainText("생산팀");
+});
 
 // 전적 (a move between 법인) with consent and a continuity choice: group-transfer.spec.ts.
