@@ -1,5 +1,6 @@
-// Korean source for `orgUnit.` ids: the 부서 panel, add, delete, merge and the 운영 중 기안 (apps/web/src/features/org/structure).
-export const koOrgUnit = {
+// Korean copy for `orgUnit.` ids: the 부서 panel, add, delete, merge and the 운영 중 기안 (apps/web/src/features/org/structure).
+import type { enOrgUnit } from "../en/org-unit";
+export const koOrgUnit: Record<keyof typeof enOrgUnit, string> = {
   "orgUnit.kind": "부서",
   "orgUnit.tab.members": "직원 {count, number}",
   "orgUnit.stat.total": "하위 포함",
@@ -130,4 +131,4 @@ export const koOrgUnit = {
   "orgUnit.dissolve.loading": "구성원 목록",
   "orgUnit.act.blocking": "{code} 진행 중",
   "orgUnit.fact.name": "부서 이름",
-} as const;
+};

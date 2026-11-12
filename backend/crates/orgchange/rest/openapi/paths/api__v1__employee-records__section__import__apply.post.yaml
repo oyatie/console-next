@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: applyEmployeeRecordImport
-summary: Apply a previewed 인사카드 section sheet
+summary: Apply a previewed personnel card section sheet
 description: Bound to the preview's plan_digest; 409 record_import_plan_changed when the rows or the records
   changed since (preview again). Applies every valid row (partial apply) and reports the rest with their codes.
   Idempotency-Key (a UUID) is required; a replay answers 200 with the stored report. Audited as one

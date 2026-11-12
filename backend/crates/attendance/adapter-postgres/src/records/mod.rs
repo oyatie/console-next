@@ -1,5 +1,5 @@
-//! 근태 기록 persistence (ATT S2): the day board, the month grid, one
-//! person's month, and the batch writes (save, 정정, 기록 취소, 일괄 취소).
+//! Attendance record persistence (ATT S2): the day board, the month grid, one
+//! person's month, and the batch writes (save, correction, record void, batch undo).
 //! Errors share `ScheduleStoreError` and its codes.
 
 mod board;

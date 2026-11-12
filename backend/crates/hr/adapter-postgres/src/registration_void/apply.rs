@@ -22,10 +22,11 @@ use crate::requests::ChangeRequestResponse;
 
 const CANCEL_REASON: &str = "등록 취소 (registration voided)";
 
-/// Cancels every SCHEDULED 발령 (a PRE_HIRE's ONBOARD, so the runner never
-/// brings the person back on the hire date), supersedes the 법인 · 사업장
-/// assignment, then marks the record. `destroy` tombstones it in the same
-/// transaction; `Some(true)` also frees the 사번 (SETUP only).
+/// Cancels every SCHEDULED personnel order (a PRE_HIRE's ONBOARD, so the
+/// runner never brings the person back on the hire date), supersedes the
+/// legal entity · workplace assignment, then marks the record. `destroy`
+/// tombstones it in the same transaction; `Some(true)` also frees the
+/// employee number (SETUP only).
 pub(crate) async fn void_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
@@ -75,7 +76,7 @@ pub(crate) async fn void_in_tx(
     Ok(voided_at)
 }
 
-/// The audit row of a void: ids, 사번, reason and basis; no other PII.
+/// The audit row of a void: ids, employee number, reason and basis; no other PII.
 pub(crate) fn void_event(
     principal: &Principal,
     action: &str,

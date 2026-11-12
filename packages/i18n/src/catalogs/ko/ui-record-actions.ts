@@ -1,5 +1,6 @@
-// Korean source for `uiRecordActions.` ids (ui/record-actions: docs/design/record-actions.md). One verb per action.
-export const koUiRecordActions = {
+// Korean copy for `uiRecordActions.` ids (ui/record-actions: docs/design/record-actions.md). One verb per action.
+import type { enUiRecordActions } from "../en/ui-record-actions";
+export const koUiRecordActions: Record<keyof typeof enUiRecordActions, string> = {
   "uiRecordActions.edit": "수정",
   "uiRecordActions.add": "추가",
   "uiRecordActions.of": "{field} {verb}",
@@ -15,4 +16,4 @@ export const koUiRecordActions = {
   "uiRecordActions.path.approval": "결재 후 반영 · 이력으로 남습니다",
   "uiRecordActions.path.second": "다른 담당자가 확인한 뒤 반영 · 정정 기록으로 남습니다",
   "uiRecordActions.path.stepUp": "패스키 확인 뒤 반영 · 정정 기록으로 남습니다",
-} as const;
+};

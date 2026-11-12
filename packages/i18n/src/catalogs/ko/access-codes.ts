@@ -1,6 +1,7 @@
 // Korean labels for the access catalog's codes: data domains, levels and their verbs, grant states and the role_change
 // reasons, by server key (the key itself never shows). Rules: the header of ../ko.ts and GUIDE.md.
-export const koAccessCodes = {
+import type { enAccessCodes } from "../en/access-codes";
+export const koAccessCodes: Record<keyof typeof enAccessCodes, string> = {
   "accessCodes.domain.org": "조직",
   "accessCodes.domain.org.help": "법인·사업장·부서와 조직 변경",
   "accessCodes.domain.hr_basic": "인사기본",
@@ -86,4 +87,4 @@ export const koAccessCodes = {
   "accessCodes.refusal.scope_not_enforceable_in_pilot": "이 범위는 아직 적용할 수 없습니다",
   "accessCodes.refusal.self_grant_forbidden": "본인에게는 부여할 수 없습니다",
   "accessCodes.refusal.valid_range_invalid": "기간이 맞지 않습니다",
-} as const;
+};

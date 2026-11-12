@@ -1000,7 +1000,7 @@ mod tests {
             permission_level: PermissionLevel::Allow.as_str().to_owned(),
         };
 
-        // THE CONTROL: one 발령 for the role folds into one grant, so the
+        // THE CONTROL: one appointment for the role folds into one grant, so the
         // refusal below is the overlap and not the fixture.
         let unambiguous = effective_grants_from_checked_assignments(vec![row(1)], &scopes).unwrap();
         assert_eq!(unambiguous.len(), 1);
@@ -1013,7 +1013,7 @@ mod tests {
     }
 
     /// The guard above is only a guard if the resolver hands it one entry per
-    /// 발령. The permission join repeats an assignment once per permission, so
+    /// appointment. The permission join repeats an assignment once per permission, so
     /// the rows are folded to the assignment first — and that fold is where the
     /// guard can be switched off without any other test noticing: key the map
     /// by `role_id` instead of the assignment id and two records for one role
@@ -1029,7 +1029,7 @@ mod tests {
             permission_level: PermissionLevel::Allow.as_str().to_owned(),
         };
 
-        // One 발령 carrying two permissions is ONE assignment. Two entries here
+        // One appointment carrying two permissions is ONE assignment. Two entries here
         // would refuse every user who holds a role with more than one feature.
         let one_appointment = assignment_validities(&[
             row(1, Feature::WorkOrderCreate),
@@ -1037,7 +1037,7 @@ mod tests {
         ]);
         assert_eq!(one_appointment.len(), 1);
 
-        // Two 발령 for the same role are TWO assignments — the ambiguity the
+        // Two appointments for the same role are TWO assignments — the ambiguity the
         // guard exists to refuse. One entry here is the guard going silent.
         let two_appointments = assignment_validities(&[
             row(1, Feature::WorkOrderCreate),

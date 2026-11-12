@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Korean source for `rosterFields.` ids (features/people/ui/roster-fields-page.tsx): fields a company adds to its personnel card.
-export const koRosterFields = {
+// Korean copy for `rosterFields.` ids (features/people/ui/roster-fields-page.tsx): fields a company adds to its personnel card.
+import type { enRosterFields } from "../en/roster-fields";
+export const koRosterFields: Record<keyof typeof enRosterFields, string> = {
   "rosterFields.title": "인사카드 항목",
   "rosterFields.list": "추가한 항목",
   "rosterFields.col.label": "항목 이름",
@@ -36,4 +37,4 @@ export const koRosterFields = {
   "rosterFields.edit.commit": "항목 저장",
   "rosterFields.retire": "{label} 사용 중지",
   "rosterFields.restore": "{label} 다시 사용",
-} as const;
+};

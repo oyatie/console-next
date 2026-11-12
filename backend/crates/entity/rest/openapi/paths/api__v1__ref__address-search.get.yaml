@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: searchRoadAddress
-summary: 도로명주소 keyword search through the server (juso.go.kr); UNAVAILABLE falls back to manual entry
+summary: Road-name address keyword search through the server (juso.go.kr); UNAVAILABLE falls back to manual entry
 description: The key lives in the server environment (STREET_JUSO_API_KEY). No key, an expired or rejected key,
   a timeout or a juso failure answer status UNAVAILABLE (200), never an error. Rate-limited per user.
 security:
@@ -22,7 +22,7 @@ parameters:
     default: 1
 responses:
   '200':
-    description: Hits (20 per page), each a full KrAddress with source JUSO and no 상세주소.
+    description: Hits (20 per page), each a full KrAddress with source JUSO and no detailed address.
     content:
       application/json:
         schema:

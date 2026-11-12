@@ -10,7 +10,7 @@ properties:
   english_name:
     type: [string, 'null']
     maxLength: 200
-    description: Optional 영문명 - Latin letters, digits, spaces and & . , - ' ( ) only (english_name_not_latin). Omitted keeps it; null clears it.
+    description: Optional English name - Latin letters, digits, spaces and & . , - ' ( ) only (english_name_not_latin). Omitted keeps it; null clears it.
   version:
     type: integer
   effective_from:
@@ -18,7 +18,7 @@ properties:
     format: date
   before_first_record:
     type: boolean
-    description: Today is before the first record takes effect (e.g. before 개설일); this is that first record.
+    description: Today is before the first record takes effect (e.g. before the opening date); this is that first record.
   name:
     type: string
   display_name:
@@ -62,7 +62,7 @@ properties:
     - 'null'
     items:
       $ref: '#/components/schemas/EntityDirector'
-    description: 임원 (상법 §317②8). Null for callers who may not manage the 법인, like representatives.
+    description: Executives (Commercial Act §317②8). Null for callers who may not manage the legal entity, like representatives.
   vat_unit_mode:
     anyOf:
     - $ref: '#/components/schemas/VatUnitMode'

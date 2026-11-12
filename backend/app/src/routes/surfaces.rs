@@ -150,7 +150,7 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         "hr-import-runs",
         console_hr_rest::import_runs::IMPORT_RUN_ROUTE_PATHS,
     ),
-    // IMPORT-2: RRN read/reveal, 사번 변경, numbering rules, renumbering.
+    // IMPORT-2: RRN read/reveal, employee number change, numbering rules, renumbering.
     surface(
         "hr-identity",
         console_hr_rest::identity::IDENTITY_ROUTE_PATHS,
@@ -171,7 +171,8 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         "hr-personal-facts",
         console_hr_rest::personal_facts::PERSONAL_FACTS_ROUTE_PATHS,
     ),
-    // BE-EMP-UI: bulk 발령 preview, 발령 공고, 이관 확인.
+    // BE-EMP-UI: bulk appointment preview, appointment notice,
+    // migration reconciliation.
     surface(
         "hr-bulk-lifecycle",
         console_hr_rest::bulk_lifecycle::BULK_LIFECYCLE_ROUTE_PATHS,

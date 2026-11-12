@@ -85,7 +85,7 @@ pub(super) fn mount_mail(router: Router, deps: &TenantDeps<'_>) -> Router {
     ))
 }
 
-/// Notice board (사내 게시판): publish snapshots recipients into
+/// Company notice board: publish snapshots recipients into
 /// `notice_receipts` and fans out one notification per recipient through the
 /// SAME notification-center sink the messenger @-mention path uses (#198).
 #[cfg(feature = "notices")]

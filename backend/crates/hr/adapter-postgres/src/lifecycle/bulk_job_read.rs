@@ -1,5 +1,5 @@
-//! CAP-04: the read side of a bulk 발령 job and the schedule loop's
-//! finishing of a job whose driver died (see `bulk_job`).
+//! CAP-04: the read side of a bulk personnel order job and the schedule
+//! loop's finishing of a job whose driver died (see `bulk_job`).
 
 use console_kernel_core::{AuditEvent, KernelError, OrgId};
 use console_platform_authz::Principal;

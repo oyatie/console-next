@@ -1,13 +1,13 @@
 x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "entity", "engine": "cedar"}
 tags: [attendance]
 operationId: readAttendanceDayBoard
-summary: One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first
+summary: One day's board (daily · compact) — the partition ledger, then workplace › department groups with issue rows first
 description: Cedar EmployeeDirectoryRead on the tenant, legal entity or workplace admits this read; department-only grants do not. Explicit filters and each person's dated workplace are authorized in the same fact snapshot.
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: date, in: query, required: true, schema: { type: string, format: date } }
   - { name: workplace_id, in: query, required: false, schema: { $ref: '#/components/schemas/Uuid' } }
-  - { name: unit_id, in: query, required: false, description: open this 부서 group (all its rows), schema: { $ref: '#/components/schemas/Uuid' } }
+  - { name: unit_id, in: query, required: false, description: open this department group (all its rows), schema: { $ref: '#/components/schemas/Uuid' } }
   - { name: issues_only, in: query, required: false, schema: { type: boolean } }
   - { name: no_schedule_only, in: query, required: false, description: show only people without a resolved schedule; counts remain for the whole scope, schema: { type: boolean } }
   - { name: mark, in: query, required: false, description: only rows carrying this issue kind; aggregates remain for the entire authorized day scope, schema: { $ref: '#/components/schemas/AttendanceMark' } }

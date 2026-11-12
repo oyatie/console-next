@@ -39,13 +39,13 @@ properties:
     - $ref: '#/components/schemas/Uuid'
     - type: 'null'
   legal_entity_id:
-    description: 법인 of the employee's current (or last) employment assignment; null when none is recorded.
+    description: Legal entity of the employee's current (or last) employment assignment; null when none is recorded.
       company stays a display snapshot.
     oneOf:
     - $ref: '#/components/schemas/Uuid'
     - type: 'null'
   workplace_id:
-    description: 사업장 of the same assignment; null when none is recorded.
+    description: Workplace of the same assignment; null when none is recorded.
     oneOf:
     - $ref: '#/components/schemas/Uuid'
     - type: 'null'
@@ -135,10 +135,10 @@ properties:
       or when the leave named none.
   work_email:
     type: string
-    description: 업무용 이메일, the only contact a directory row carries; absent when none is recorded. The registered
+    description: Work email, the only contact a directory row carries; absent when none is recorded. The registered
       personal phone is never on the row (EmployeeEmploymentDetail.phone_e164, directory managers only).
   next_event:
-    description: The nearest SCHEDULED lifecycle event (effective-dated personnel action, 발령 효력 예정), earliest
+    description: The nearest SCHEDULED lifecycle event (effective-dated personnel action, a personnel order scheduled to take effect), earliest
       effective_date first; null when none.
     oneOf:
     - $ref: '#/components/schemas/EmployeeNextEvent'

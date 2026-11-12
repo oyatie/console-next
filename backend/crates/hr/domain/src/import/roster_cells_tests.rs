@@ -13,10 +13,10 @@ fn row(cells: &[&str]) -> GridRow {
     }
 }
 
-/// regression (W12): 「합계 | 300명」 became a person named 「300명」.
+/// regression (W12): a "Total | 300 people" row became a person named "300 people".
 #[test]
 fn regression_a_totals_row_is_not_a_person() {
-    // 사번, 성명, 입사일
+    // employee number, name, hire date
     assert!(is_summary_row(
         &row(&["합계", "300명", ""]),
         Some(1),
@@ -33,7 +33,8 @@ fn regression_a_totals_row_is_not_a_person() {
 
 #[test]
 fn a_person_is_never_a_totals_row() {
-    // A person named 「계」 with an 입사일, a 성명 next to a 합계 note, no token.
+    // A person named "Gye" (the bare "total" token) with a hire date, a name next
+    // to a "Total" note, no token.
     assert!(!is_summary_row(
         &row(&["E-1", "계", "2024-03-04"]),
         Some(1),
@@ -52,8 +53,9 @@ fn a_person_is_never_a_totals_row() {
     assert!(!is_summary_row(&row(&["", "", ""]), Some(1), Some(2)));
 }
 
-/// regression (W12): 연락처 was dropped (저장하지 않음), so every imported
-/// person had 휴대전화 미등록; a number cell also lost its leading 0.
+/// regression (W12): the contact column was dropped ("don't save"), so every
+/// imported person had "no mobile phone registered"; a number cell also lost
+/// its leading 0.
 #[test]
 fn regression_phone_cells_read_as_e164() {
     for (cell, e164) in [

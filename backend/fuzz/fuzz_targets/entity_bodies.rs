@@ -1,8 +1,9 @@
-//! The 법인 / 사업장 / 사업자등록 request bodies as the entity routes take them
+//! The legal entity / workplace / business registration request bodies as the entity
+//! routes take them
 //! (`serde_json` into the domain `*Input`, then the domain validator), plus the
 //! document upload and structure-code checks. The first byte picks the body.
 //! Invariants: never panic; a refusal is a 409/422-shaped `Refusal` with a
-//! stable snake_case code; a validated 법인 name is 1..=200 characters.
+//! stable snake_case code; a validated legal entity name is 1..=200 characters.
 #![no_main]
 
 use console_entity_domain::Refusal;

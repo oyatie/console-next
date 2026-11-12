@@ -1,9 +1,10 @@
 //! IMPORT-2 (decisions #25): one detected sheet → staged rows. Only mapped
 //! sheets yield rows; a sheet that needs mapping yields its report and no
 //! cell. Every target is read from the column the mapping names (never from
-//! a same-named header elsewhere); restricted and 주민등록번호 cells are
-//! dropped before the raw row exists, and an RRN column is sealed through
-//! the vault into a staged identity (no vault: dropped, and the sheet says so).
+//! a same-named header elsewhere); restricted and resident registration
+//! number cells are dropped before the raw row exists, and an RRN column is
+//! sealed through the vault into a staged identity (no vault: dropped, and
+//! the sheet says so).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -27,7 +28,7 @@ use crate::import::parsed::{EmployeeCanonicalFields, ImportRowStatus, ParsedEmpl
 use crate::import::persist::persistable_import_row;
 use crate::import::types::EmployeeImportColumn;
 
-/// A sealed 주민등록번호 waiting in `data_import_row_identities`.
+/// A sealed resident registration number waiting in `data_import_row_identities`.
 #[derive(Debug, Clone)]
 pub struct StagedIdentity {
     pub source_key: String,
@@ -41,7 +42,7 @@ pub struct SheetRows {
     pub columns: Vec<EmployeeImportColumn>,
     pub identities: Vec<StagedIdentity>,
     pub notes: Vec<Note>,
-    /// W12: `(source_key, E.164)` of the rows with a 휴대전화.
+    /// W12: `(source_key, E.164)` of the rows with a mobile phone.
     pub phones: Vec<(String, String)>,
 }
 
@@ -212,7 +213,7 @@ pub fn sheet_rows(
             |i| cell_json(plans.get(i).and_then(|p| row.get(p.column))),
             |key| restricted.contains(key),
         );
-        // W12: a totals / footer row (`합계 | 300명`) is kept, never a person.
+        // W12: a totals / footer row ("Total | 300 people" in Korean) is kept, never a person.
         let summary = is_summary_row(row, targets.column("name"), targets.column("hire_date"));
         if summary {
             out.notes
@@ -282,9 +283,10 @@ pub fn sheet_rows(
                 out.notes.push(note("number_invalid", Some(source_row), at));
             }
         }
-        // r3:hire-01: the 법인 text is the file's own 법인 column or nothing;
-        // never the sheet's name. The apply derives the person's 법인 from
-        // the 사업장 the plan places them at (`company`), else 법인 미정.
+        // r3:hire-01: the legal entity text is the file's own legal entity
+        // column or nothing; never the sheet's name. The apply derives the
+        // person's legal entity from the workplace the plan places them at
+        // (`company`), else "legal entity undetermined".
         let mapped_company = targets.text(row, "company");
         let company_source = if mapped_company.is_some() {
             "mapped_column"

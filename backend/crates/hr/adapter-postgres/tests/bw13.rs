@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! BW-13 through the `HrService` entry points the routes call, on a
 //! `console_rt` pool (so 0261's grants, RLS and the leave trigger are what is
-//! proved): required leave facts, PROMOTE by catalog id with the 강등 reason,
-//! and the job-title catalog.
+//! proved): required leave facts, PROMOTE by catalog id with the demotion
+//! reason, and the job-title catalog.
 
 #[path = "support/go_live.rs"]
 mod go_live;

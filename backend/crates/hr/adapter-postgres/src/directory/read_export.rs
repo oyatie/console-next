@@ -1,6 +1,6 @@
 //! `GET /employees/export.csv`: the list's filtered rows as the standard CSV
-//! (UTF-8 BOM for Excel, formula neutralisation), with its download 용도
-//! logged before the first byte (INF-02, GOV-PEO-1; 고시 2023-6 §8②), then
+//! (UTF-8 BOM for Excel, formula neutralisation), with its download purpose
+//! logged before the first byte (INF-02, GOV-PEO-1; Notice 2023-6 §8②), then
 //! streamed with no row cap (PEOPLE-B).
 
 use console_kernel_core::BranchScope;
@@ -25,7 +25,7 @@ use crate::{HrError, HrService};
 
 pub const EMPLOYEE_EXPORT_FILE_NAME: &str = "employees-standard.csv";
 
-/// The download 용도 codes (governance design S6).
+/// The download purpose codes (governance design S6).
 // a fixed list until GOV-RC-1 ships the `export_purpose` reason
 // domain; then validate against that domain instead.
 pub const EXPORT_PURPOSES: &[&str] = &[
@@ -59,14 +59,14 @@ const CHUNK_BYTES: usize = 64 * 1024;
 #[derive(Debug, Deserialize)]
 pub struct ExportPurposeQuery {
     pub export_purpose: Option<String>,
-    /// `standard` (default) or `register` (근로자 명부 columns).
+    /// `standard` (default) or `register` (worker register columns).
     pub layout: Option<String>,
 }
 
 /// The CSV body, in order; an `Err` ends the download early.
 pub type CsvChunks = mpsc::Receiver<Result<String, HrError>>;
 
-/// 422 `export_purpose_required`: no 용도, or one outside [`EXPORT_PURPOSES`].
+/// 422 `export_purpose_required`: no purpose, or one outside [`EXPORT_PURPOSES`].
 pub fn export_purpose_required() -> HrError {
     HrError {
         errors: None,
@@ -133,23 +133,24 @@ pub(crate) fn push_csv_row(csv: &mut String, row: &sqlx::postgres::PgRow) -> Res
 }
 
 impl HrService {
-    /// Validates the 용도, commits the `excel_export_logs` row and its
-    /// 접속기록 event, then streams the CSV from the same immutable read snapshot.
-    /// A missing or unknown 용도 is refused, and the refusal is logged too.
+    /// Validates the purpose, commits the `excel_export_logs` row and its
+    /// access log event, then streams the CSV from the same immutable read
+    /// snapshot. A missing or unknown purpose is refused, and the refusal is
+    /// logged too.
     pub async fn export_employees_csv(
         &self,
         principal: Principal,
         query: EmployeeListQuery,
         purpose: ExportPurposeQuery,
     ) -> Result<(&'static str, CsvChunks), HrError> {
-        // AX-5: the rows are where the reader holds 내보내기 (the 인사기본
+        // AX-5: the rows are where the reader holds export (the HR-basics
         // export level carries its view, so that reach is readable too).
         hr_reach_in(&principal, Feature::EmployeeDirectoryRead, Tier::Branch)?;
         let reach = hr_reach_in(&principal, Feature::ExcelDownload, Tier::Branch)?;
         let filters =
             EmployeeListFilters::from_query(&query, &principal.branch_scope)?.with_reach(reach);
         let layout = ExportLayout::parse(purpose.layout.as_deref())?;
-        // The register carries 생년월일 and the personal phone, which a
+        // The register carries date of birth and the personal phone, which a
         // read-only reader never sees (`redact_for_reader`): HR (manage) only.
         if layout == ExportLayout::Register {
             hr_reach_in(&principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;

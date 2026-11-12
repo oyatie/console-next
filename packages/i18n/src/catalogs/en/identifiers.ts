@@ -1,6 +1,4 @@
-import type { koIdentifiers } from "../ko/identifiers";
-
-export const enIdentifiers: Partial<Record<keyof typeof koIdentifiers, string>> = {
+export const enIdentifiers = {
   "identifiers.title": "{name}: employee and resident registration numbers",
   "identifiers.cancel": "Cancel",
   "identifiers.scope.tenant": "All",
@@ -94,4 +92,4 @@ export const enIdentifiers: Partial<Record<keyof typeof koIdentifiers, string>> 
   "identifiers.error.renumber_already_undone": "This renumbering is already undone.",
   "identifiers.error.renumber_undo_conflict": "A number of this renumbering changed since, so it cannot be undone.",
   "identifiers.error.rrn_vault_unavailable": "The server has no key for resident registration numbers, so it cannot be shown now. Tell your operator.",
-};
+} as const;

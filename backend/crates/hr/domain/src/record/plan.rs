@@ -1,7 +1,7 @@
-//! The import-sheet row decision. The adapter loads the facts (who the 사번
-//! names, the entry the row targets, the person's live entries) and this
-//! decides what the row does. Re-importing the same sheet changes nothing:
-//! a row equal to a live entry is UNCHANGED.
+//! The import-sheet row decision. The adapter loads the facts (who the
+//! employee number names, the entry the row targets, the person's live
+//! entries) and this decides what the row does. Re-importing the same sheet
+//! changes nothing: a row equal to a live entry is UNCHANGED.
 
 use serde::Serialize;
 use uuid::Uuid;
@@ -11,7 +11,7 @@ use super::{RecordFields, Section};
 /// What a sheet row asks for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RowIntent {
-    /// No `entry_id`: a new entry (or, for 병역, the live one).
+    /// No `entry_id`: a new entry (or, for military service, the live one).
     Create(RecordFields),
     /// `entry_id` with values: a correction of that entry.
     Update {

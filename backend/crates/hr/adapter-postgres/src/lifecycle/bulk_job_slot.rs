@@ -1,6 +1,6 @@
-//! CAP-04 (decisions #28 load shedding): the per-process cap on bulk 발령
-//! job drivers; past it the next job is 503 `bulk_lifecycle_busy` with
-//! `Retry-After`, before anything is written.
+//! CAP-04 (decisions #28 load shedding): the per-process cap on bulk
+//! personnel order job drivers; past it the next job is 503
+//! `bulk_lifecycle_busy` with `Retry-After`, before anything is written.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -8,7 +8,8 @@ use crate::HrError;
 
 /// Drivers one process runs at once; the next job is 503
 /// `bulk_lifecycle_busy` with `Retry-After` (#28 load shedding).
-/// a per-process cap; a tenant-fair queue if many tenants 발령 at once.
+/// a per-process cap; a tenant-fair queue if many tenants issue personnel
+/// orders at once.
 pub const MAX_DRIVERS: usize = 2;
 /// The `Retry-After` of `bulk_lifecycle_busy`, in seconds.
 pub const RETRY_AFTER_SECS: u32 = 15;

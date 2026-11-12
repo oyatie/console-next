@@ -61,7 +61,7 @@ macro_rules! typed_id {
 }
 
 typed_id!(
-    /// A tenant — one maintenance company (정비 회사). The top of the
+    /// A tenant — one maintenance company. The top of the
     /// hierarchy (org → region → branch → user) and the hard multi-tenant
     /// isolation boundary: every tenant-scoped row carries an `org_id`, and
     /// Postgres RLS keyed on `app.current_org` makes cross-tenant access
@@ -96,13 +96,13 @@ impl OrgId {
     }
 }
 typed_id!(
-    /// An organizational branch (지점). Day-1 scoping concept: every
+    /// An organizational branch. Day-1 scoping concept: every
     /// work order, user membership, equipment row, KPI rollup, and chat
     /// team-channel carries one.
     BranchId
 );
 typed_id!(
-    /// A region (지역) grouping branches (수도권/충청/영남/호남 rollout units).
+    /// A region grouping branches (Capital Area/Chungcheong/Yeongnam/Honam rollout units).
     RegionId
 );
 typed_id!(UserId);
@@ -155,7 +155,8 @@ typed_id!(SupportTicketCommentId);
 typed_id!(AuditEventId);
 typed_id!(
     /// A notification — one recipient-scoped pointer object in the general
-    /// notifications domain (결재/멘션/문서/공지/근태/급여, extensible). Persistence
+    /// notifications domain (approval/mention/document/notice/attendance/payroll,
+    /// extensible). Persistence
     /// is the source of truth; realtime `LISTEN/NOTIFY` carries only this id.
     NotificationId
 );
@@ -166,34 +167,36 @@ typed_id!(
     TodoId
 );
 typed_id!(
-    /// One document in a recipient's statutory-notice vault (개인 수신함): a
-    /// payslip self-view row (frictionless) or a legal notice (근로계약/취업규칙/
-    /// 연차촉진/노무수령거부) whose passkey-gated confirmation is the legal receipt
+    /// One document in a recipient's statutory-notice vault (personal inbox): a
+    /// payslip self-view row (frictionless) or a legal notice (employment contract/
+    /// work rules/annual-leave use promotion/refusal to accept labor) whose
+    /// passkey-gated confirmation is the legal receipt
     /// evidence. Recipient-scoped like notifications; the recipient is always
     /// bound from the authenticated principal, never from request input.
     InboxDocId
 );
 typed_id!(
-    /// One leave request (연차/반차 신청) awaiting a branch approver's decision.
+    /// One leave request (annual or half-day leave) awaiting a branch approver's decision.
     /// Branch-scoped; the requesting principal is bound from the authenticated
     /// token, and the decider is separated from the requester (SoD).
     LeaveRequestId
 );
 typed_id!(
-    /// One statutory leave push (근로기준법 §61 연차 사용 촉진 1차/2차, or a
-    /// 노무수령거부 notice) delivered to a target employee's 개인 수신함. Records the
+    /// One statutory leave push (Labor Standards Act §61 annual-leave use promotion
+    /// first/second round, or a refusal-to-accept-labor notice) delivered to a target
+    /// employee's personal inbox. Records the
     /// receipt-document delivery and, when the submittable definition exists, the
     /// engine AP- submission it started.
     LeavePromotionId
 );
 typed_id!(
-    /// One org-wide board notice (게시판 NT- 공지): a draft -> published
+    /// One org-wide board notice (bulletin-board NT- notice): a draft -> published
     /// document. Publishing snapshots recipients into [`NoticeReceiptId`] rows
     /// and fans out one `notifications`-table pointer per recipient.
     NoticeId
 );
 typed_id!(
-    /// One recipient's 수령확인 (receipt acknowledgment) row for a
+    /// One recipient's receipt acknowledgment row for a
     /// [`NoticeId`], snapshotted at publish time.
     NoticeReceiptId
 );

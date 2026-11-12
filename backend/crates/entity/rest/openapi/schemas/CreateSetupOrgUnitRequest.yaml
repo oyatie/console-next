@@ -9,7 +9,7 @@ properties:
   kind:
     type: string
     deprecated: true
-    description: Retired (decision 18, one 부서 kind); accepted and ignored.
+    description: Retired (decision 18, one department kind); accepted and ignored.
     enum:
     - DEPARTMENT
     - TEAM
@@ -18,10 +18,10 @@ properties:
     - string
     - 'null'
     format: uuid
-    description: The 사업장 the 부서 sits in directly.
+    description: The workplace the department sits in directly.
   parent_org_unit_id:
     type:
     - string
     - 'null'
     format: uuid
-    description: The 부서 (or 사업장 unit) it sits under.
+    description: The department (or workplace unit) it sits under.

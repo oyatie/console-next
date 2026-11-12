@@ -1,7 +1,5 @@
 import { enEnum } from "./enum";
-import type { koImport } from "../ko/import";
-
-export const enImport: Partial<Record<keyof typeof koImport, string>> = {
+export const enImport = {
   "import.title": "Import employee roster",
   "import.reference.entities": "Legal entities",
   "import.reference.numbers": "Employee number rules",
@@ -258,4 +256,4 @@ export const enImport: Partial<Record<keyof typeof koImport, string>> = {
   "import.reason.import_rollback.WRONG_MAPPING": "Wrong mapping",
   "import.reason.import_rollback.DUPLICATE_RUN": "Duplicate import",
   "import.reason.import_rollback.OTHER": "Other",
-};
+} as const;

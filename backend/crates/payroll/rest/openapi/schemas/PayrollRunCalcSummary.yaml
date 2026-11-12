@@ -21,7 +21,7 @@ properties:
     format: int64
   payable:
     type: boolean
-    description: Always false until the 노무사/세무사 release gate flips the stored rows.
+    description: Always false until the labor attorney / tax accountant release gate flips the stored rows.
   kernel_rate_table:
     type: string
   total_net_won:

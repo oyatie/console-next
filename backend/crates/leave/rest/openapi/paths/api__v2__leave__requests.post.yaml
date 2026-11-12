@@ -1,7 +1,7 @@
 tags:
   - leave
 operationId: createLeaveRequestV2
-summary: File a self-service 연차/반차 request (본인 연차 신청)
+summary: File a self-service annual or half-day leave request
 description: >-
   The caller files a leave request for THEMSELVES. `subject_employee_id`
   and the routing `branch_id` are resolved server-side from the caller's
@@ -45,8 +45,8 @@ responses:
   '422':
     description: >-
       Invalid leave type, date range, or partial-day intent — or a body
-      carrying the retired `reason` field (근로기준법 §60: 연차에는 사유가
-      없다).
+      carrying the retired `reason` field (Labor Standards Act §60: annual leave needs no
+      reason).
     content:
       application/json:
         schema:

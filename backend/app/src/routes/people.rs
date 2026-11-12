@@ -1,4 +1,4 @@
-//! People: HR and the 인사카드 (the MVP), then attendance, leave, recruiting
+//! People: HR and the HR record card (the MVP), then attendance, leave, recruiting
 //! (incl. the hire handshake), evaluation, benefits and payroll (one mount each).
 
 use axum::Router;
@@ -52,7 +52,7 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
                 ),
             )),
         )
-        // EMP-RECORD 인사카드 sections (MR-31/33/35), behind the request context.
+        // EMP-RECORD HR record card sections (MR-31/33/35), behind the request context.
         .merge(console_platform_request_context::with_request_context(
             console_hr_rest::record::router(console_hr_adapter_postgres::HrService::new(
                 pool.clone(),
@@ -60,7 +60,7 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             state.jwt_verifier.clone(),
             pool.clone(),
         ))
-        // MR-34 인적사항 + 사진 (presigned upload to the primary media bucket).
+        // MR-34 personal facts + photo (presigned upload to the primary media bucket).
         .merge(console_platform_request_context::with_request_context(
             console_hr_rest::personal_facts::router(
                 console_hr_adapter_postgres::HrService::new(pool.clone()),

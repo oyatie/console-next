@@ -29,12 +29,14 @@ pub struct NormalizedEmployeeLifecycleTransition {
     /// BW-07 reason code (`lifecycle_transfer` / `lifecycle_promote`).
     #[serde(default)]
     pub reason_code: Option<String>,
-    /// TRANSFER (E-S3b): the 사업장 of the same 법인 the employee moves to
-    /// (전근). `serde(default)`: SCHEDULED rows stored before E-S3b decode.
+    /// TRANSFER (E-S3b): the workplace of the same legal entity the employee
+    /// moves to (a transfer). `serde(default)`: SCHEDULED rows stored before
+    /// E-S3b decode.
     #[serde(default)]
     pub to_workplace_id: Option<Uuid>,
-    /// MR-24/25: a PROMOTE's 직급, an APPOINT's 직책·직무·직군, a 전환's
-    /// 고용형태. Flattened, every field defaults (older scheduled rows decode).
+    /// MR-24/25: a PROMOTE's grade, an APPOINT's position · job · job family,
+    /// an employment type change's employment type. Flattened, every field
+    /// defaults (older scheduled rows decode).
     #[serde(flatten)]
     pub classify: ClassificationChange,
     pub effective_date: String,
@@ -56,8 +58,10 @@ pub struct EmployeeForLifecycle {
     pub employment_type: Option<String>,
     /// The contract window's start; a renewal may not end before it.
     pub contract_start_date: Option<Date>,
-    /// The contract window's end (MR-24: a rescinded 전환 restores it).
+    /// The contract window's end (MR-24: a rescinded employment type change
+    /// restores it).
     pub contract_end_date: Option<Date>,
-    /// MR-25: the current 직급, 직책, 직무, 직군 and 종사 업무 text.
+    /// MR-25: the current grade, position, job, job family and work-engaged-in
+    /// text.
     pub classification: Classification,
 }

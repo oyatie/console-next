@@ -58,7 +58,7 @@ fn assign_body(w: &World) -> Value {
         "pattern_id": w.pattern, "effective_from": format!("{}-01-01", w.year), "reason": "STANDARD"})
 }
 
-/// A tenant with a 사업장, one person bound to it, and one of each schedule record.
+/// A tenant with a workplace, one person bound to it, and one of each schedule record.
 async fn world(pool: PgPool) -> World {
     let (org, owner) = tenant(&pool, &["SUPER_ADMIN"]).await;
     let admin = ctx(&pool, org, owner, &["SUPER_ADMIN"], None).await;

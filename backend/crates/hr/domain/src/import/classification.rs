@@ -120,8 +120,8 @@ pub fn target_header_aliases(target: &str) -> &'static [&'static str] {
 mod tests {
     use super::*;
 
-    /// regression: a roster's pay columns (기본급, 상여금, 교통비) were kept as
-    /// raw text because no restricted word named them.
+    /// regression: a roster's pay columns (base pay, bonus, transport allowance)
+    /// were kept as raw text because no restricted word named them.
     #[test]
     fn regression_a_column_no_field_takes_is_never_stored() {
         for header in [

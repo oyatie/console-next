@@ -1,4 +1,4 @@
-//! MR-26 등록 취소: the `employees` writes of a void (this crate is the
+//! MR-26 registration void: the `employees` writes of a void (this crate is the
 //! `ObjectKey::Employment` owner, the one crate with DML on `employees`).
 //! The HR adapter calls these inside its decision transaction, after it
 //! locked the row and decided the void is allowed.
@@ -66,7 +66,7 @@ pub async fn void_employee_head_in_tx(
 
 /// Destroys a voided record's personal data (0277 `employee_void_destroy_pii`:
 /// the head, the profile, the correction ledger's values and the person's
-/// unshared name history). `release_number` frees the 사번 too: only a SETUP
+/// unshared name history). `release_number` frees the employee number too: only a SETUP
 /// delete, which nothing can have referenced, passes `true`.
 ///
 /// # Errors

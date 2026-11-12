@@ -1,5 +1,6 @@
-// Korean source for `empCard.` ids (features/people/ui/card: the 인사카드, employee-ux/final E2). 합니다체, no "!".
-export const koEmpCard = {
+// Korean copy for `empCard.` ids (features/people/ui/card: the 인사카드, employee-ux/final E2). 합니다체, no "!".
+import type { enEmpCard } from "../en/emp-card";
+export const koEmpCard: Record<keyof typeof enEmpCard, string> = {
   "empCard.crumb": "직원",
   "empCard.unplaced": "미배치",
   "empCard.pos.unit": "{unit} 목록",
@@ -282,4 +283,4 @@ export const koEmpCard = {
   "empCard.reveal.error.rrn_vault_unavailable": "암호화 키를 사용할 수 없어 표시하지 않았습니다.",
   "empCard.reveal.shown": "{field} 값을 {seconds}초 동안 보여 줍니다.",
   "empCard.reveal.remasked": "{field} 값을 다시 가렸습니다.",
-} as const;
+};

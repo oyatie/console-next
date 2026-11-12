@@ -1,9 +1,9 @@
-//! IMPORT-2 (decisions #25): 사번 numbering rules. A rule is a prefix and a
-//! width per 사업장, 법인 or tenant (most specific first; the tenant default
-//! is the registration's `E-` + 6). The next number is one past the highest
-//! number of that shape in use — current numbers and live aliases alike, so
-//! an old 사번 is never handed to someone else. Pure: the adapter loads the
-//! rules and the numbers in use.
+//! IMPORT-2 (decisions #25): employee number numbering rules. A rule is a
+//! prefix and a width per workplace, legal entity or tenant (most specific
+//! first; the tenant default is the registration's `E-` + 6). The next number
+//! is one past the highest number of that shape in use — current numbers and
+//! live aliases alike, so an old employee number is never handed to someone
+//! else. Pure: the adapter loads the rules and the numbers in use.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -54,7 +54,8 @@ pub struct Numbering {
     pub by_entity: BTreeMap<Uuid, NumberRule>,
     pub by_workplace: BTreeMap<Uuid, NumberRule>,
     pub workplace_entity: BTreeMap<Uuid, Uuid>,
-    /// Current 사번 of every record (voided included) and every live alias.
+    /// Current employee number of every record (voided included) and every
+    /// live alias.
     pub taken: BTreeSet<String>,
 }
 
@@ -104,8 +105,9 @@ pub struct RenumberLine {
     pub conflict: Option<&'static str>,
 }
 
-/// Old → new for `people` (`(id, current 사번)`, in the order to number them)
-/// under `rule`, from 1. `taken` is every number in use (current and alias).
+/// Old → new for `people` (`(id, current employee number)`, in the order to
+/// number them) under `rule`, from 1. `taken` is every number in use (current
+/// and alias).
 #[must_use]
 pub fn plan_renumber(
     people: &[(Uuid, Option<String>)],

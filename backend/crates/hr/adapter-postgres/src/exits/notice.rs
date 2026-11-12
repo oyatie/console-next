@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Written delivery facts for 근로기준법 §27, shared by confirm and apply.
+//! Written delivery facts for Labor Standards Act §27, shared by confirm and apply.
 use crate::HrError;
 use console_hr_domain::exits::protection::{NoticeFacts, notice_missing};
 use console_hr_domain::text::{normalize_optional_limited_text, parse_yyyy_mm_dd};

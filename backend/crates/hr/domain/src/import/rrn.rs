@@ -1,5 +1,5 @@
-//! 주민등록번호 (RRN) value detection for import cells, headers, file and
-//! sheet names (moved from `app/src/hr.rs`, R2-import).
+//! Resident registration number (RRN) value detection for import cells,
+//! headers, file and sheet names (moved from `app/src/hr.rs`, R2-import).
 
 use super::cells::half_width;
 use super::rrn_value::Rrn;

@@ -16,7 +16,8 @@ use crate::corrections::refusal;
 
 /// The register items of one employee in their stored text form (the form
 /// [`super::normalize`] returns); the address and the career list are JSON
-/// text, the career list `None` while 미입력 and `[]` for 경력 없음.
+/// text, the career list `None` while not entered and `[]` for no prior
+/// experience.
 #[derive(Debug, Default)]
 pub struct RegisterRow {
     pub sex: Option<String>,
@@ -28,7 +29,7 @@ pub struct RegisterRow {
 }
 
 impl RegisterRow {
-    /// The stored value of a register item, `None` when 미입력.
+    /// The stored value of a register item, `None` when not entered.
     #[must_use]
     pub fn stored(&self, field: &str) -> Option<&str> {
         match field {
@@ -42,7 +43,7 @@ impl RegisterRow {
     }
 }
 
-// The 퇴직 사유 is the live exit case's when its report gave one.
+// The exit reason is the live exit case's when its report gave one.
 const LOAD: &str = concat!(
     "SELECT f.sex, x.code AS exit_reason_code, f.register_note, \
      (SELECT (to_jsonb(a) - '{org_id,id,employee_id,created_by,created_at}'::text[])::text \
@@ -94,9 +95,9 @@ pub async fn load_in_tx(
 }
 
 /// The checks a register value cannot pass on its own, run before a value is
-/// applied or filed for a second person: a 퇴직 사유 only on an exited
-/// record whose exit no live exit case owns (the case's own code is the 사유
-/// then), and a tenant code only while active.
+/// applied or filed for a second person: an exit reason only on an exited
+/// record whose exit no live exit case owns (the case's own code is the
+/// reason then), and a tenant code only while active.
 pub(crate) async fn check_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
@@ -114,7 +115,7 @@ pub(crate) async fn check_in_tx(
             "an exit reason is recorded only for an exited employee",
         ));
     }
-    // A live case owns the 사유 only when its report gave one; a case
+    // A live case owns the reason only when its report gave one; a case
     // reported without one leaves the register item to record it.
     let live_case: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM employee_exit_cases WHERE org_id = $1 AND employee_id = $2 \

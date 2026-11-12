@@ -21,10 +21,10 @@ properties:
   specification:
     type: string
     minLength: 1
-    description: 규격, e.g. 입식 or 좌식.
+    description: Specification, e.g. stand-up or sit-down.
   ton_text:
     type: string
-    description: 톤수 text, e.g. "2.5T"; numeric milli-tons are derived when the value ends in T.
+    description: Tonnage text, e.g. "2.5T"; numeric milli-tons are derived when the value ends in T.
   management_no:
     type:
     - string
@@ -110,19 +110,19 @@ properties:
     - integer
     - 'null'
     format: int64
-    description: 임대료 in KRW.
+    description: Rental fee in KRW.
   vehicle_value:
     type:
     - integer
     - 'null'
     format: int64
-    description: 취득가액 in KRW.
+    description: Acquisition cost in KRW.
   residual_value:
     type:
     - integer
     - 'null'
     format: int64
-    description: 잔존가액 in KRW.
+    description: Residual value in KRW.
   note:
     type:
     - string

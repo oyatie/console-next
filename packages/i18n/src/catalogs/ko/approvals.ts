@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Korean source for `approvals.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+// Korean copy for `approvals.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 import sourceLabels from "../approval-sources.json" with { type: "json" };
-export const koApprovals = {
+import type { enApprovals } from "../en/approvals";
+export const koApprovals: Record<keyof typeof enApprovals, string> = {
   "approvals.field.verification": "결재 전 확인",
   "approvals.blocked": "결재 전 확인이 필요합니다.",
   "approvals.title": "결재함",
@@ -59,4 +60,4 @@ export const koApprovals = {
   "approvals.source.orgChange": sourceLabels.ko,
   "approvals.field.effectiveDate": "시행일",
   "approvals.field.proposal": "변경 내용",
-} as const;
+};

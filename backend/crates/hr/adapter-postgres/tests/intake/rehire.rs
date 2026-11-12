@@ -1,4 +1,4 @@
-//! BW-19 2: 재입사 is the same person on a new employment period.
+//! BW-19 2: rehire is the same person on a new employment period.
 
 use console_hr_adapter_postgres::directory::create_rehire_input::RehireEmployeeRequest;
 use sqlx::PgPool;

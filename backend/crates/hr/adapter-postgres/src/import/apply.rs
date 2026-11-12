@@ -3,7 +3,7 @@
 //! 409 `rows_changed_since_preview` naming the rows. The leave command then
 //! writes the plan (one statement, all or nothing), and the settle opens what
 //! the new people need: the canonical employment of a current employee, the
-//! SCHEDULED ONBOARD of an 입사 예정 one. W11: both run as a job
+//! SCHEDULED ONBOARD of a pending-hire one. W11: both run as a job
 //! (`apply_drive`).
 
 use console_hr_domain::import::plan::{Decisions, PlannedRow};

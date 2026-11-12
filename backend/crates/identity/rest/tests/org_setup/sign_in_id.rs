@@ -1,5 +1,5 @@
-//! AUTH-ID (decisions #33; sign-in-identifier.md §7): the 아이디 at invite, its
-//! governed change (reason, 기준일, audit), the old value kept as an alias that
+//! AUTH-ID (decisions #33; sign-in-identifier.md §7): the sign-in ID at invite, its
+//! governed change (reason, effective date, audit), the old value kept as an alias that
 //! search still finds, and never reissued, to anyone. A child of `org_setup`
 //! (its harness and seeds), kept apart so the pinned parent file does not grow.
 
@@ -156,7 +156,7 @@ async fn a_rename_keeps_the_old_id_as_an_alias_and_never_reissues_it(pool: PgPoo
     assert_eq!(rows[0]["assigned_by_name"], "Ops");
     assert_eq!(renames_audited(&pool).await, 1);
 
-    // Search still finds the person by the old 아이디.
+    // Search still finds the person by the old sign-in ID.
     let (status, found) = send(
         &harness,
         "GET",
@@ -246,7 +246,7 @@ async fn each_rename_refusal_is_typed_and_writes_nothing(pool: PgPool) {
             "{refused}"
         );
     }
-    // Unknown account: 404; a caller without 권한 관리: 403.
+    // Unknown account: 404; a caller without access management: 403.
     let (status, _) = rename(
         &harness,
         &token,

@@ -1086,7 +1086,7 @@ fn org_unit_for_branch(branch: Uuid) -> Uuid {
     Uuid::from_u128(branch.as_u128() ^ 1)
 }
 
-/// Seeds an ACTIVE site named 인사 (id = `org_unit_for_branch`), as
+/// Seeds an ACTIVE site named with the Korean word for HR (id = `org_unit_for_branch`), as
 /// fixture rows (the owner port is exercised by the org-unit tests).
 async fn seed_org_unit_for_branch(pool: &PgPool, org: OrgId, branch: Uuid) {
     let id = org_unit_for_branch(branch);

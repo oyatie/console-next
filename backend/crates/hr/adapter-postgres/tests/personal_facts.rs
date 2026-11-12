@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! MR-34: the 인적사항 extras through the MR-8 ledger (one by one and in
-//! bulk) and the 그룹 입사일's second person and hire bound, as the runtime
-//! role `console_rt`. The 사진 gate is proved in hr-rest `photo_http.rs`.
+//! MR-34: the personal details extras through the MR-8 ledger (one by one and
+//! in bulk) and the group hire date's second person and hire bound, as the
+//! runtime role `console_rt`. The photo gate is proved in hr-rest
+//! `photo_http.rs`.
 
 #[path = "personal_facts/compat.rs"]
 mod compat;
@@ -209,7 +210,7 @@ async fn the_group_service_start_stays_before_the_hire_and_a_change_needs_a_seco
         Some("2018-01-02")
     );
 
-    // Moving the 입사일 before the recorded 그룹 입사일 is refused at filing.
+    // Moving the hire date before the recorded group hire date is refused at filing.
     let err = correct_on(&pool, &w, w.in_a, json!({ "hire_date": "2017-01-01" }))
         .await
         .unwrap_err();

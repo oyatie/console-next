@@ -1,7 +1,7 @@
-//! [`super::korean_message`] exact messages, part: 인적사항 extras and 사진
+//! [`super::korean_message`] exact messages, part: personal-facts extras and photo
 //! uploads (MR-34, lane EMP-FACTS).
 
-/// Exact English message → Korean (합니다체).
+/// Exact English message → Korean (formal polite style).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
     (
         "retry after the oldest record leaves the rolling one-hour window",

@@ -1,7 +1,5 @@
 // English for `empContact.` ids.
-import type { koEmpContact } from "../ko/emp-contact";
-
-export const enEmpContact: Partial<Record<keyof typeof koEmpContact, string>> = {
+export const enEmpContact = {
   "empContact.add": "Add emergency contact",
   "empContact.edit": "Edit emergency contact",
   "empContact.added": "Emergency contact added",
@@ -24,4 +22,4 @@ export const enEmpContact: Partial<Record<keyof typeof koEmpContact, string>> = 
   "empContact.need.notice": "Confirm that the contact person was told",
   "empContact.recorded": "Basis {basis} ({label}) · Recorded by {by} · {at}",
   "empContact.of": "emergency contact {who}",
-};
+} as const;

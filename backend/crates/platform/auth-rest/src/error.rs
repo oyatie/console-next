@@ -120,7 +120,7 @@ impl RestError {
         }
     }
 
-    /// 422 `sign_in_id_invalid`: not `<아이디>@<domain>` by the sign-in ID rule.
+    /// 422 `sign_in_id_invalid`: not a sign-in ID part, `@` and a domain by the sign-in ID rule.
     /// Syntax only: it says nothing about whether such an account exists.
     pub(crate) fn sign_in_id_invalid() -> Self {
         Self {

@@ -1,6 +1,4 @@
-import type { koLive } from "../ko/live";
-
-export const enLive: Partial<Record<keyof typeof koLive, string>> = {
+export const enLive = {
   "live.status.reconnecting": "Live connection lost · reconnecting",
   "live.status.offline": "Offline · this screen is not updating",
   "live.updated_ago": "Updated {ago}",
@@ -25,4 +23,4 @@ export const enLive: Partial<Record<keyof typeof koLive, string>> = {
   "live.claim.held_by": "{holder} is handling this · {minutes, plural, one {# minute} other {# minutes}} left",
   "live.claim.take_over": "Take over this item",
   "live.claim.taken_over": "{actor} took over this item",
-};
+} as const;

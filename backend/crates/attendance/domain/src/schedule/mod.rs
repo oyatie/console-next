@@ -1,4 +1,4 @@
-//! 근무 일정 (ATT S1): patterns, effective-dated layers and the day plan they
+//! Work schedules (ATT S1): patterns, effective-dated layers and the day plan they
 //! decide. Pure: no IO, no clock (callers pass `today`).
 
 mod assign;

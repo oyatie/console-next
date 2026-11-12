@@ -1,6 +1,4 @@
-import type { koAttendanceHolidays } from "../ko/attendance-holidays";
-
-export const enAttendanceHolidays: Partial<Record<keyof typeof koAttendanceHolidays, string>> = {
+export const enAttendanceHolidays = {
   "attendanceHolidays.holidays.title": "Company holidays",
   "attendanceHolidays.holidays.meta": "Days off set by the work rules or a collective agreement",
   "attendanceHolidays.holidays.add": "Add company holiday",
@@ -75,4 +73,4 @@ export const enAttendanceHolidays: Partial<Record<keyof typeof koAttendanceHolid
   "attendanceHolidays.year.next": "Next year",
   "attendanceHolidays.monthN": "Month {n}",
   "attendanceHolidays.dayN": "Day {n}",
-};
+} as const;

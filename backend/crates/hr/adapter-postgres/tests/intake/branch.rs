@@ -1,5 +1,5 @@
-//! UX-R1 PLACEMENT (org-19, worst-case-32): the legacy 소속 지점 is the
-//! 사업장's own branch. A registration or an N-1 routing command that
+//! UX-R1 PLACEMENT (org-19, worst-case-32): the legacy home branch is the
+//! workplace's own branch. A registration or an N-1 routing command that
 //! names another branch is refused (422 `home_branch_not_workplace`) and
 //! writes nothing.
 
@@ -12,8 +12,9 @@ use uuid::Uuid;
 use crate::import_fixture::importer;
 use crate::register;
 
-/// 본사 (backed by the fixture's branch) and 공장 (another branch), with a
-/// 부서 under 본사's SITE unit: `(공장's branch, 부서)`.
+/// The head office (backed by the fixture's branch) and a plant (another
+/// branch), with a department under the head office's SITE unit:
+/// `(plant's branch, department)`.
 async fn two_sites(owner: &PgPool, f: &crate::fixture::Fixture) -> (Uuid, Uuid) {
     let o = *f.principal.org_id.as_uuid();
     let user = *f.principal.user_id.as_uuid();
@@ -78,7 +79,8 @@ async fn regression_the_home_branch_never_contradicts_the_workplace(pool: PgPool
     let f = &i.f;
     let (other, dept) = two_sites(&pool, f).await;
 
-    // Registration: the 부서 sits at 본사; 공장's branch is refused, nothing written.
+    // Registration: the department sits at the head office; the plant's branch
+    // is refused, nothing written.
     let before = people(&pool).await;
     let mut body = f.body("branch-1", "REGULAR");
     body.org_unit_id = Some(dept);
@@ -90,13 +92,13 @@ async fn regression_the_home_branch_never_contradicts_the_workplace(pool: PgPool
     );
     assert_eq!(people(&pool).await, before);
 
-    // 본사's own branch registers.
+    // The head office's own branch registers.
     let mut body = f.body("branch-2", "REGULAR");
     body.org_unit_id = Some(dept);
     let (made, _) = register(f, body).await.unwrap();
     let id = made.employee.id;
 
-    // The one click: another 사업장's branch is refused and changes nothing.
+    // The one click: another workplace's branch is refused and changes nothing.
     let stamp = || async {
         let (branch, at): (Option<Uuid>, OffsetDateTime) =
             sqlx::query_as("SELECT home_branch_id, updated_at FROM employees WHERE id = $1")
@@ -149,7 +151,7 @@ async fn regression_the_home_branch_never_contradicts_the_workplace(pool: PgPool
     };
     assert_eq!(refused.code, Some("home_branch_not_workplace"));
     assert_eq!(stamp().await, (branch, at));
-    // The 사업장's own branch is accepted.
+    // The workplace's own branch is accepted.
     let set =
         f.hr.set_home_branch(f.principal.clone(), i.store.clone(), id, ask(f.branch))
             .await

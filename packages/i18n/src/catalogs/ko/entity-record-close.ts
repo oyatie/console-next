@@ -1,5 +1,6 @@
-// Korean source for `entityRecordClose.` ids (the 법인 close sheet on the record; split from entity-record.ts for the 300-line ceiling).
-export const koEntityRecordClose = {
+// Korean copy for `entityRecordClose.` ids (the 법인 close sheet on the record; split from entity-record.ts for the 300-line ceiling).
+import type { enEntityRecordClose } from "../en/entity-record-close";
+export const koEntityRecordClose: Record<keyof typeof enEntityRecordClose, string> = {
   "entityRecordClose.title": "법인 종료",
   "entityRecordClose.first": "먼저 끝내야 할 일 {count, number}개",
   "entityRecordClose.firstWhy": "이 {count, number}개가 남아 있어 종료일을 정할 수 없습니다. 하나씩 처리하면 여기서 바로 사라집니다.",

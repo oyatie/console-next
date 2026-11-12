@@ -1,5 +1,6 @@
-// Korean source for `entityRecord.` ids (features/entity/ui/record: the 법인 record, its 고치기 sheets, spec S3).
-export const koEntityRecord = {
+// Korean copy for `entityRecord.` ids (features/entity/ui/record: the 법인 record, its 고치기 sheets, spec S3).
+import type { enEntityRecord } from "../en/entity-record";
+export const koEntityRecord: Record<keyof typeof enEntityRecord, string> = {
   "entityRecord.tabs": "법인 정보 보기",
   "entityRecord.tab.overview": "개요",
   "entityRecord.tab.certificates": "사업자등록증",

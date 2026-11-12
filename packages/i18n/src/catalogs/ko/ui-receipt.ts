@@ -1,7 +1,8 @@
-// Korean source for `uiReceipt.` ids (apps/web/src/ui/receipt): feedback after an action. Undo exists
+// Korean copy for `uiReceipt.` ids (apps/web/src/ui/receipt): feedback after an action. Undo exists
 // only for a local draft; an audited decision shows sending, then the server's record (no optimistic
 // done), and a lost response is looked up again with the same request key.
-export const koUiReceipt = {
+import type { enUiReceipt } from "../en/ui-receipt";
+export const koUiReceipt: Record<keyof typeof enUiReceipt, string> = {
   "uiReceipt.draft": "초안",
   "uiReceipt.undoApplied": "되돌리기",
   "uiReceipt.dismiss": "알림 닫기",
@@ -10,4 +11,4 @@ export const koUiReceipt = {
   "uiReceipt.recorded": "기록됨",
   "uiReceipt.checking.title": "응답을 받지 못했습니다",
   "uiReceipt.checking": "이전 요청이 이미 처리되었을 수 있습니다. 같은 요청 키로 기록된 상태를 다시 조회하는 중입니다. 다시 실행하지 마십시오.",
-} as const;
+};

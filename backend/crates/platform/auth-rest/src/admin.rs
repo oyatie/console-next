@@ -142,7 +142,7 @@ pub(crate) async fn issue_admin_otp(
         resolve_branch_scope_in_org(&state.pool, principal.org_id, target.user_id, &target_roles)
             .await
             .map_err(|err| RestError::internal(err.to_string()))?;
-    // governance-01: a roleless account (no title, no 지점) is issued for by whoever
+    // governance-01: a roleless account (no title, no branch) is issued for by whoever
     // manages accounts; it carries no access of its own.
     let caller_manages_roleless = target_roles.is_empty()
         && authorize_capability(&principal, Action::new(Feature::UserManage)).is_ok();
@@ -297,7 +297,7 @@ pub(crate) async fn admin_credential_reset(
         resolve_branch_scope_in_org(&state.pool, principal.org_id, target.user_id, &target_roles)
             .await
             .map_err(|err| RestError::internal(err.to_string()))?;
-    // governance-01: a roleless account (no title, no 지점) is issued for by whoever
+    // governance-01: a roleless account (no title, no branch) is issued for by whoever
     // manages accounts; it carries no access of its own.
     let caller_manages_roleless = target_roles.is_empty()
         && authorize_capability(&principal, Action::new(Feature::UserManage)).is_ok();

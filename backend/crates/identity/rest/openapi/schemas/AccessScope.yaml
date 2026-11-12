@@ -5,7 +5,7 @@ properties:
   kind:
     $ref: '#/components/schemas/AccessScopeKind'
   node_id:
-    description: The 법인, 사업장 or 부서 id. Absent or null for TENANT, required otherwise.
+    description: The legal entity, workplace or department id. Absent or null for TENANT, required otherwise.
     oneOf:
     - $ref: '#/components/schemas/Uuid'
     - type: 'null'

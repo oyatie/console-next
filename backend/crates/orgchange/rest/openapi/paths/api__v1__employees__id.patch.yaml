@@ -1,12 +1,12 @@
 tags:
   - employees
 operationId: correctEmployee
-summary: Correct employee master data (정정)
+summary: Correct employee master data
 description: >-
   BW-18, MR-8: the one correction path for every scalar employee field.
   Org-wide employee_directory_manage only; a branch-scoped caller files a
   PROFILE_CORRECTION change request instead. Each changed field is
-  recorded as a 정정 in the ledger (old and new value, reason). `name`,
+  recorded as a correction in the ledger (old and new value, reason). `name`,
   `phone`, `job`, `work_email`, `id_type` and typed catalog ids
   (`grade_id`, `job_title_id`, `position_kind_id`, `job_id`, `job_family_id`)
   apply at once. Catalog ids must name an active entry of their kind in
@@ -33,20 +33,20 @@ description: >-
   `employee_number` is 409 `employee_number_in_use`; `pay_unit` on a
   record without one needs `base_pay` in the same change (422). A record
   without an employment profile is 409 `employee_profile_missing` for
-  profile fields; a merged record is 409 `employee_merged`. 근로자 명부
-  items (MR-23; 근로기준법 §41, 시행령 §20 2·4·5·8·9호): `sex`,
+  profile fields; a merged record is 409 `employee_merged`. Worker register
+  items (MR-23; Labor Standards Act §41, Enforcement Decree §20 items 2, 4, 5, 8 and 9): `sex`,
   `address`, `careers` and `register_note` apply at once and may be
-  cleared (null = 미입력; `careers: []` = 「경력 없음」); `exit_reason` (퇴직
-  사유, an exit_reason catalog code, never cleared) applies at once when
+  cleared (null = not entered; `careers: []` = "no prior experience"); `exit_reason` (exit
+  reason, an exit_reason catalog code, never cleared) applies at once when
   none is recorded and otherwise takes the high-risk path. It is recorded
   only on an EXITED record (409 `employee_not_exited`) whose exit no live
   exit case owns (409 `exit_case_owns_exit_reason`). Read them with GET
-  /employees/{id}/register-facts. 인적사항 extras (MR-34): `name_hanja`,
+  /employees/{id}/register-facts. Personal details extras (MR-34): `name_hanja`,
   `name_en`, `nationality`, `personal_email`, `emergency_contacts` and
-  `photo` apply at once and may be cleared (null = 미입력);
-  `group_service_start_date` (그룹 입사일, 근속 기산일) applies at once
+  `photo` apply at once and may be cleared (null = not entered);
+  `group_service_start_date` (group hire date, the service start date) applies at once
   when none is recorded and otherwise takes the high-risk path, and is
-  never after the 입사일 (422). `photo` is the id of a confirmed upload of
+  never after the hire date (422). `photo` is the id of a confirmed upload of
   this employee (409 `photo_upload_unconfirmed`, 404
   `photo_upload_not_found`). Read them with GET
   /employees/{id}/personal-facts.

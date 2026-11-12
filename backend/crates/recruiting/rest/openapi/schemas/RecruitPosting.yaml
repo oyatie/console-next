@@ -44,7 +44,7 @@ properties:
     - string
     - 'null'
     format: date
-    description: Null = open-ended (상시).
+    description: Null = open-ended.
   requirements:
     type: array
     items:

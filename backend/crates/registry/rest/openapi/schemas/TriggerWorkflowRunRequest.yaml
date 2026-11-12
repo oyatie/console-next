@@ -19,4 +19,4 @@ properties:
     - 'null'
     format: uuid
     description: >-
-      §16 org-scope automation gate (85 판정); ignored for a personal-scope (§3.9.0-①) definition.
+      §16 org-scope automation gate (ruling 85); ignored for a personal-scope (§3.9.0-①) definition.

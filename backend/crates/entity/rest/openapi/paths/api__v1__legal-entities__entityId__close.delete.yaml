@@ -1,10 +1,10 @@
 tags:
 - entity
 operationId: withdrawLegalEntityClose
-summary: Withdraw a closed 법인's close (종료 취소, catalog company-19)
-description: 'The business goes on. The 법인 reads open again, and the 사업장 and 사업자등록 that closed with it (on its
-  종료일, by its close) reopen with the revision each had before the close and every 사업장 its own unit. Grants ended
-  with the close stay ended. `why` is kept in the audit row. Refused 409 `legal_entity_not_closed` for an open 법인;
+summary: Withdraw a closed legal entity's close (close withdrawal, catalog company-19)
+description: 'The business goes on. The legal entity reads open again, and the workplaces and business registrations that closed with it (on its
+  end date, by its close) reopen with the revision each had before the close and every workplace its own unit. Grants ended
+  with the close stay ended. `why` is kept in the audit row. Refused 409 `legal_entity_not_closed` for an open legal entity;
   422 `why` required.'
 security:
 - bearerAuth: []
@@ -31,7 +31,7 @@ requestBody:
         $ref: '#/components/schemas/CloseWithdrawalRequest'
 responses:
   '200':
-    description: Withdrawn; the 법인 as it now reads.
+    description: Withdrawn; the legal entity as it now reads.
     content:
       application/json:
         schema:

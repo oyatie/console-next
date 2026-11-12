@@ -31,12 +31,12 @@ properties:
     oneOf:
     - $ref: '#/components/schemas/Uuid'
     - type: 'null'
-    description: The 부서장 in this revision.
+    description: The department head in this revision.
   headName:
     type: [string, 'null']
-    description: The 부서장's name, resolved within the tenant; null when none or unknown.
+    description: The department head's name, resolved within the tenant; null when none or unknown.
   mergedInto:
     oneOf:
     - $ref: '#/components/schemas/Uuid'
     - type: 'null'
-    description: The unit a dissolved one was merged into (its successor, 합치기).
+    description: The unit a dissolved one was merged into (its successor, by a merge).

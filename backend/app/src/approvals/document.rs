@@ -123,7 +123,7 @@ pub(super) async fn read(
         None => "",
     });
     document["opinion_max"] = json!(if step.is_some() { OPINION_MAX } else { 0 });
-    // 보완 요청 (return) is not offered: the source has no such transition.
+    // Return for supplement is not offered: the source has no such transition.
     document["my_actions"] = if step.is_some() {
         json!({"kind":"approve","reject":{"consequence":"request_ends","reason_domain":ReasonDomain::OrgChangeReject.as_str()}})
     } else {

@@ -1026,7 +1026,7 @@ impl PgFinancialStore {
                 // ── Deferred WORM compliance gate (SUBMIT only) ───────────────
                 // A purchase may be CREATED against still-replicating evidence,
                 // but it must not enter the approval pipeline until the linked
-                // 거래명세표 is durably preserved (worm_replica_status VERIFIED).
+                // transaction statement is durably preserved (worm_replica_status VERIFIED).
                 // Guarded strictly on the submit target so the check never leaks
                 // into approve/execute/reject, which share this method.
                 if to == PurchaseStatus::RequestSubmitted {
@@ -1377,7 +1377,7 @@ async fn ensure_work_order_matches_tx(
 /// requiring the WORM replica to be verified.
 ///
 /// This is the create/restart-time check. It still enforces that the evidence is
-/// REQUEST-stage 거래명세표 belonging to the same branch/equipment/work-order as
+/// REQUEST-stage transaction statement belonging to the same branch/equipment/work-order as
 /// the purchase — the financial-scope invariants — but it deliberately does NOT
 /// require `worm_replica_status == 'VERIFIED'`. The WORM-replica state is set
 /// asynchronously by the replication worker (`replicate_once`), with no retry
@@ -1438,7 +1438,7 @@ async fn ensure_statement_evidence_tx(
 ///
 /// The deferred compliance gate enforced at SUBMIT: a purchase request may be
 /// created against still-replicating evidence, but it may not enter the approval
-/// pipeline until the 거래명세표 is durably preserved under COMPLIANCE retention
+/// pipeline until the transaction statement is durably preserved under COMPLIANCE retention
 /// (`worm_replica_status == 'VERIFIED'`). Surfaces a clear caller-facing reason so
 /// the operator learns the request is waiting on WORM verification rather than
 /// seeing a silent failure.

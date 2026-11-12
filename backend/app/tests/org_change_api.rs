@@ -39,10 +39,10 @@ fn today_kst() -> time::Date {
 /// The legacy org-setup URLs are compatibility inputs only: orgchange owns
 /// their mutation methods, persists one typed DRAFT, and leaves identity's live
 /// region/branch tables untouched until the normal approval/apply lifecycle.
-/// Decisions #18 retired 지역/지점 as separate concepts: creating or renaming
+/// Decisions #18 retired region/branch as separate concepts: creating or renaming
 /// a region or branch is refused with `region_branch_retired` (no draft, no
 /// row); closing a legacy one is still drafted, but never a branch that backs
-/// a 사업장 (`branch_backs_workplace`).
+/// a workplace (`branch_backs_workplace`).
 async fn assert_legacy_org_setup_mutations_create_governed_drafts_without_direct_apply(
     pool: &PgPool,
     rt: &PgPool,
@@ -212,7 +212,7 @@ async fn assert_legacy_org_setup_mutations_create_governed_drafts_without_direct
 
     // Target-state parity with the removed direct mutators: tenant-hidden or
     // missing targets are 404, already-deactivated targets 409, and a branch
-    // that backs a 사업장 409 `branch_backs_workplace`. None writes a draft.
+    // that backs a workplace 409 `branch_backs_workplace`. None writes a draft.
     let super_admin = seed_user(pool, org, "SUPER_ADMIN").await;
     let super_token = keys.token(pool, super_admin, org, &["SUPER_ADMIN"]).await;
     let other_org = seed_org(pool, "legacy-proposal-other").await;
@@ -856,7 +856,7 @@ async fn dissolve_applies_on_its_date_behind_the_referential_net(pool: PgPool) {
     org_change_support::approve_chain(&pool, &rt, &keys, org, &id, &submitted["approvalSteps"])
         .await;
 
-    // org-05: a DISSOLVE applies on its 시행일 like every change — no tick
+    // org-05: a DISSOLVE applies on its effective date like every change — no tick
     // list. The referential net still holds: while the resident user remains,
     // effectuate refuses and writes nothing.
     let (status, refused) = send(
@@ -897,7 +897,8 @@ async fn dissolve_applies_on_its_date_behind_the_referential_net(pool: PgPool) {
         .await
         .unwrap();
 
-    // §3.9.1 동결 창: a lock on the 시행일 refuses the apply and records the attempt.
+    // §3.9.1 freeze window: a lock on the effective date refuses the apply and
+    // records the attempt.
     let lock = seed_period_lock(
         &pool,
         org,
@@ -963,7 +964,7 @@ async fn dissolve_applies_on_its_date_behind_the_referential_net(pool: PgPool) {
     assert_eq!(applied["status"], "APPLIED");
 
     // Effective-date gate: a fully-approved change refuses to apply before
-    // its effective date (발효일), and the past is rejected at the draft door.
+    // its effective date, and the past is rejected at the draft door.
     let (status, past) = send(
         &rt,
         &keys,
@@ -1298,7 +1299,7 @@ async fn authorization_denies_without_leakage_and_conceals_other_tenants(pool: P
     assert_eq!(entities, json!([]), "fail-closed empty: {entities}");
 
     // With a live group grant the SECURITY DEFINER resolvers surface the
-    // member 법인 — the positive path, not just the fail-closed one.
+    // member legal entities — the positive path, not just the fail-closed one.
     let group_id: Uuid = sqlx::query_scalar(
         "INSERT INTO groups (slug, name) VALUES ('sae-holdings', '지주회사') RETURNING id",
     )
@@ -1362,8 +1363,8 @@ async fn authorization_denies_without_leakage_and_conceals_other_tenants(pool: P
     assert_eq!(outsider_entities, json!([]), "no grant, no 법인 list");
 }
 
-/// §3.9.1 변경 동결 창: an APPROVED change may not be applied while the period
-/// it takes effect in is closed for 급여 마감 or 회계 결산. The refusal is
+/// §3.9.1 change freeze window: an APPROVED change may not be applied while the period
+/// it takes effect in is closed for payroll close or accounting settlement. The refusal is
 /// fail-closed and names the blocking window, the request and the org tree are
 /// untouched, the attempt itself is audited even though its transaction rolled
 /// back, and another tenant's lock over the same window never bites.
@@ -1843,7 +1844,7 @@ async fn seed_user_in_branch(pool: &PgPool, org: OrgId, role: &str, branch: Uuid
     user
 }
 
-/// A 사업장 backed by `branch` (minimal MIGRATION-mode rows).
+/// A workplace backed by `branch` (minimal MIGRATION-mode rows).
 async fn seed_workplace(pool: &PgPool, org: OrgId, branch: Uuid) {
     let entity: Uuid = sqlx::query_scalar(
         "INSERT INTO legal_entities (org_id, biz_kind, created_change_mode) \

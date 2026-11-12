@@ -12,7 +12,7 @@ properties:
     - 'null'
     pattern: ^[0-9 -]{8,20}$
     x-console-format: insurance_mgmt_no
-    description: 사업장관리번호 (8–13 digits).
+    description: Workplace management number (8–13 digits).
   established_on:
     type:
     - string
@@ -75,4 +75,4 @@ properties:
     - 'null'
     pattern: ^[0-9 -]{8,20}$
     x-console-format: insurance_mgmt_no
-    description: 사업장관리번호 (8–13 digits).
+    description: Workplace management number (8–13 digits).

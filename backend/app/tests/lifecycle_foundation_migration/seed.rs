@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! The API-only seed of the LC migration test: two 법인 and five people, an
-//! exit and a rehire, a 전적, a live exit and a withdrawn one.
+//! The API-only seed of the LC migration test: two legal entities and five people, an
+//! exit and a rehire, an inter-company transfer, a live exit and a withdrawn one.
 
 #[path = "../support/go_live.rs"]
 mod go_live;
@@ -38,7 +38,8 @@ async fn ok(caller: &Caller, method: &str, uri: &str, body: Value) -> Value {
     out
 }
 
-/// A 법인 with its 사업자등록 and 본사; (entity, workplace, branch, org unit).
+/// A legal entity with its business registration and head office; (entity, workplace,
+/// branch, org unit).
 async fn entity(
     ops: &Caller,
     name: &str,
@@ -82,7 +83,7 @@ struct Place {
     company: &'static str,
 }
 
-/// Registers a person and binds them to the 법인 from their hire date.
+/// Registers a person and binds them to the legal entity from their hire date.
 async fn hire(ops: &Caller, at: &Place, number: &str, name: &str, hired: &str) -> Uuid {
     let created = ok(ops, "POST", "/api/v1/employees", json!({
         "employee_number": number, "name": name, "company": at.company, "employment_type": "REGULAR",
@@ -147,7 +148,7 @@ pub async fn seed(pool: &PgPool) -> Seeded {
         token: Some(token(pool, &keys, org, ops_id, "SUPER_ADMIN").await),
     };
 
-    // SETUP: two 법인 and five people, through the API only.
+    // SETUP: two legal entities and five people, through the API only.
     let (status, _) = ops
         .call(
             "POST",
@@ -172,7 +173,7 @@ pub async fn seed(pool: &PgPool) -> Seeded {
     let stays = hire(&ops, &a, "LC-5", "철회", "2025-06-02").await;
     go_live::go_live(pool, org).await;
 
-    // 퇴직 → 재입사: HR confirmation exits now (TERMINATE), the rehire opens a new period.
+    // Exit → rehire: HR confirmation exits now (TERMINATE), the rehire opens a new period.
     let exit = report_exit(&ops, rehired, &day(-10)).await;
     ok(
         &ops,
@@ -200,7 +201,7 @@ pub async fn seed(pool: &PgPool) -> Seeded {
         "idempotency_key": "lc-rehire", "acknowledge_open_exit_case": true,
     }))
     .await;
-    // 전적 A → B, settled.
+    // Inter-company transfer A → B, settled.
     ok(
         &ops,
         "POST",

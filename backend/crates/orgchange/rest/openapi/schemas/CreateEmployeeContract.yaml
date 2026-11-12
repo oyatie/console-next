@@ -21,7 +21,7 @@ properties:
     type: integer
     format: int64
     minimum: 0
-    description: Defaults to base_pay_won; required (non-zero) for a 근로계약.
+    description: Defaults to base_pay_won; required (non-zero) for an employment contract.
   pay_unit:
     type: string
     enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
@@ -30,4 +30,4 @@ properties:
     type: integer
     minimum: 1
     maximum: 10080
-    description: 주 소정근로시간 in minutes; required for a 근로계약.
+    description: Contractual weekly working hours in minutes; required for an employment contract.

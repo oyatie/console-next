@@ -1,6 +1,4 @@
-import type { koImportReview } from "../ko/import-review";
-
-export const enImportReview: Partial<Record<keyof typeof koImportReview, string>> = {
+export const enImportReview = {
   "importReview.reason.workplace_not_open_on_date": "Hire date precedes the workplace or employer opening date",
   "importReview.info.workplace_not_open_on_date": "Placement starts on {date}. The original hire date is retained.",
   "importReview.title": "To check: {count, number}",
@@ -86,4 +84,4 @@ export const enImportReview: Partial<Record<keyof typeof koImportReview, string>
   "importReview.value.none.company": "Keep for confirmation",
   "importReview.value.kind.company": "Certificate-confirmed entities",
   "importReview.reason.company_unconfirmed": "Company label needs confirmation",
-};
+} as const;

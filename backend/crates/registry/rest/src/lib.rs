@@ -410,8 +410,9 @@ impl From<EquipmentListItem> for EquipmentListItemResponse {
 /// list. Read access (WorkOrderReadAll, all authenticated roles). Non-SUPER_ADMIN
 /// principals see only rows in their own branch(es) — the same scope guard used
 /// by the substitute-search and dispatch-map endpoints. The `q` parameter is
-/// normalized like the 호기-lookup: strips a leading '#' and a trailing '호기'
-/// suffix then matches leading-zero-insensitively, so the floor-typed '10호기'
+/// normalized like the unit-number lookup: strips a leading '#' and a trailing Korean
+/// unit-number suffix ("hogi") then matches leading-zero-insensitively, so the
+/// floor-typed '10' + "hogi"
 /// and the stored '010' resolve to the same row.
 async fn list_equipment(
     State(state): State<RegistryRestState>,
@@ -523,7 +524,7 @@ impl From<CreatedCustomer> for CreatedCustomerResponse {
     }
 }
 
-/// POST /api/v1/customers — create a customer (고객) directly in the caller's org
+/// POST /api/v1/customers — create a customer directly in the caller's org
 /// on the caller's branch for branch-scoped admins, or default HQ for org-wide
 /// principals. Admin-gated (EquipmentManage), the same feature as the site PATCH.
 /// The name is trimmed, required, and bounded; a same-name
@@ -618,7 +619,7 @@ impl From<CreatedSite> for CreatedSiteResponse {
     }
 }
 
-/// POST /api/v1/sites — create a site (현장) under an existing customer in the
+/// POST /api/v1/sites — create a site under an existing customer in the
 /// caller's org. Admin-gated (EquipmentManage). The customer must belong to the
 /// caller's org: an unknown or foreign-org `customer_id` is a 404 (RLS hides
 /// another tenant's customer, so it is never revealed). A customer in another
@@ -912,7 +913,7 @@ fn validate_site_geofence_radius(body: &UpdateSiteRequest) -> Result<(), RestErr
 }
 
 // ---------------------------------------------------------------------------
-// Substitute (대차) assignment / return — audited equipment-lifecycle writes
+// Substitute assignment / return — audited equipment-lifecycle writes
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koNts = {
+import type { enNts } from "../en/nts";
+export const koNts: Record<keyof typeof enNts, string> = {
   "nts.preview.missing": "등록증을 함께 기록하려면 입력하십시오 · {fields}",
   "nts.preview.statusSince": "휴업 시작일",
   "nts.preview.clear": "조회 결과 사용 안 함",
@@ -54,4 +55,4 @@ export const koNts = {
   "nts.ops.REJECTED": "연동 서비스가 {env} 키를 거부했습니다. 등록 상태를 확인하십시오.",
   "nts.ops.expiry": "만료일",
   "nts.ops.daysLeft": "남은 일수"
-} as const;
+};

@@ -1,4 +1,4 @@
-//! Scheduled personnel actions (발령 효력 예정): applies lifecycle events whose
+//! Scheduled appointments: applies lifecycle events whose
 //! effective date has arrived in Asia/Seoul. The HR module owns the locked,
 //! tenant-armed, audited apply; app composition owns this loop's lifetime.
 //! The same tick re-locks expired period unlock windows (BW-15), resumes
@@ -107,7 +107,8 @@ pub fn spawn(
                         Ok(resumed) => tracing::info!(resumed, "import rollback jobs resumed"),
                         Err(error) => tracing::warn!(code=error.code, "import rollback resume failed"),
                     }
-                    // CAP-04: a bulk 발령 job whose driver died is finished from what committed.
+                    // CAP-04: a bulk job of appointments whose driver died is finished
+                    // from what committed.
                     match console_hr_adapter_postgres::HrService::new(pool.clone()).finish_stale_bulk_lifecycle_jobs().await {
                         Ok(0) => {},
                         Ok(finished) => tracing::info!(finished, "stale bulk lifecycle jobs finished"),

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! E-S3a: the directory list, detail, facets and org chart read 법인 and
-//! 사업장 by id from the employee's employment assignment.
+//! E-S3a: the directory list, detail, facets and org chart read the legal
+//! entity and workplace by id from the employee's employment assignment.
 
 mod support;
 
@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use support::{employee, principal, query, tenant, user};
 use uuid::Uuid;
 
-/// A MIGRATION-mode 법인 (needs_confirmation) with one revision named `label`.
+/// A MIGRATION-mode legal entity (needs_confirmation) with one revision named `label`.
 async fn legal_entity(pool: &PgPool, org: Uuid, label: &str) -> Uuid {
     let id = Uuid::new_v4();
     seed(
@@ -107,7 +107,7 @@ async fn directory_reads_filter_count_and_group_by_entity_and_workplace_id(pool:
         false,
     )
     .await;
-    // Exited: the last assignment still names the 법인.
+    // Exited: the last assignment still names the legal entity.
     let last = ("2020-01-01", Some("2021-01-01"));
     assign(&pool, t.org, lee, da, None, last, false).await;
     // A remapped row is superseded; a transfer scheduled far ahead is not yet live.

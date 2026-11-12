@@ -2,7 +2,7 @@ x-console-authz: {"permission": "pay:edit", "scope": "tenant"}
 tags:
 - payroll
 operationId: issuePayrollPayslips
-summary: Issue payslips for a PAID run into each recipient's inbox vault; hard-gated by the registered 노무사/세무사 release-gate record (409 legal_gate otherwise)
+summary: Issue payslips for a PAID run into each recipient's inbox vault; hard-gated by the registered labor attorney / tax accountant release-gate record (409 legal_gate otherwise)
 security:
 - bearerAuth: []
 parameters:

@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Negative suite for people and 운영 시작 over HTTP (refusal audit,
+//! Negative suite for people and go-live over HTTP (refusal audit,
 //! tools/ci/check-refusal-tests.mjs): each refusal's status and code, that
 //! nothing changed, and that a retry is refused the same way.
 
@@ -24,7 +24,7 @@ async fn phase(pool: &PgPool, org: Uuid) -> String {
         .unwrap()
 }
 
-/// 운영 시작 needs a 부서 (LMG-ORG-6); the workplace's own unit is not one.
+/// Go-live needs a department (LMG-ORG-6); the workplace's own unit is not one.
 async fn department(
     pool: &PgPool,
     org: Uuid,
@@ -82,7 +82,7 @@ async fn the_legacy_one_shot_import_is_gone_and_a_non_holder_is_forbidden_first(
     assert_eq!(count(&pool, "employees", org).await, 0);
 }
 
-/// 운영 시작 is ops-only, bound to the preview the person saw, and
+/// Go-live is ops-only, bound to the preview the person saw, and
 /// one-way; every refusal leaves the tenant in SETUP (or OPERATING after).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn go_live_refuses_a_non_holder_a_stale_preview_and_a_second_time(pool: PgPool) {

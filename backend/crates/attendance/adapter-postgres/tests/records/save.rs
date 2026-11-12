@@ -38,7 +38,7 @@ pub fn save(cells: Vec<CellInput>) -> SaveInput {
     }
 }
 
-/// 주 5일 09–18 at 평택 from 2026-01-01.
+/// 5 days a week, 09–18, at Pyeongtaek from 2026-01-01.
 pub async fn scheduled(owner: PgPool) -> World {
     let w = world(owner).await;
     let (p, _) = w
@@ -227,7 +227,7 @@ async fn every_cell_refusal_saves_nothing(owner: PgPool) {
             "entry_unreadable"
         ]
     );
-    // A planned 출장 for a future day is allowed.
+    // A planned business trip for a future day is allowed.
     w.store
         .save_entries(&hr, &key(), save(vec![cell(&w, 0, future, "출장")]))
         .await

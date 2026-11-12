@@ -48,7 +48,7 @@ properties:
   ack_count:
     type: integer
     format: int64
-    description: Members who have acked ("확인") this message.
+    description: Members who have acked ("Confirm") this message.
   acked_by_me:
     type: boolean
     description: Whether the reading caller has acked this message. Always false on a realtime message-posted event.

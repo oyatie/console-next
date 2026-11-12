@@ -38,7 +38,7 @@ properties:
   enforcement:
     type: string
     description: The grant's AccessEnforcement, except that an ENFORCED row Cedar denies on the account's own slice (a voided
-      사업장, a broken chain) reads SCOPE_UNAVAILABLE, and every row of a deactivated account reads ACCOUNT_INACTIVE.
+      workplace, a broken chain) reads SCOPE_UNAVAILABLE, and every row of a deactivated account reads ACCOUNT_INACTIVE.
     x-extensible-enum:
     - ENFORCED
     - PREPARED

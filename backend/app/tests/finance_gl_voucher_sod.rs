@@ -3,7 +3,7 @@
 //! tests, driven through the REAL assembled app router (`build_router`).
 //!
 //! Proves, end-to-end over the wired stack:
-//!   (a) SoD (M2) — a preparer's own `승인` is rejected 403 at the REST surface; a
+//!   (a) SoD (M2) — a preparer's own approve action is rejected 403 at the REST surface; a
 //!       DISTINCT approver clears it and the approver is recorded on the response;
 //!   (b) coverage-gap #3 — an approved read-only support session token is
 //!       rejected 403 `support.refuse.read_only` on EVERY finance voucher mutation
@@ -33,7 +33,7 @@ const TEST_AUDIENCE: &str = "console-api";
 
 const VOUCHERS_PATH: &str = "/api/v1/finance-gl/vouchers";
 
-/// SoD at the REST surface: the 기표자 cannot approve their own voucher (403); a
+/// SoD at the REST surface: the preparer cannot approve their own voucher (403); a
 /// distinct approver can, and the recorded approver is surfaced on the response.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn rest_rejects_self_approval_and_accepts_distinct_approver(pool: PgPool) {
@@ -48,7 +48,7 @@ async fn rest_rejects_self_approval_and_accepts_distinct_approver(pool: PgPool) 
     let creator_token = keys.token(&pool, creator, vec![branch], false).await;
     let approver_token = keys.token(&pool, approver, vec![branch], false).await;
 
-    // 기표: create a balanced draft.
+    // Drafting: create a balanced draft.
     let (status, created) = send(
         &rt,
         &keys,
@@ -69,7 +69,7 @@ async fn rest_rejects_self_approval_and_accepts_distinct_approver(pool: PgPool) 
     let voucher_id = created["id"].as_str().unwrap().to_owned();
     assert_eq!(created["approved_by"], Value::Null);
 
-    // 제출: 기표 → 차대검증.
+    // Submit: drafting → debit/credit check.
     let (status, _) = send(
         &rt,
         &keys,
@@ -81,7 +81,7 @@ async fn rest_rejects_self_approval_and_accepts_distinct_approver(pool: PgPool) 
     .await;
     assert_eq!(status, StatusCode::OK);
 
-    // 승인 by the preparer → 403 forbidden (self-approval barred).
+    // Approval by the preparer → 403 forbidden (self-approval barred).
     let (status, body) = send(
         &rt,
         &keys,
@@ -98,7 +98,7 @@ async fn rest_rejects_self_approval_and_accepts_distinct_approver(pool: PgPool) 
     );
     assert_eq!(body["error"]["code"], "forbidden");
 
-    // 승인 by a DISTINCT approver → 200, approver recorded.
+    // Approval by a DISTINCT approver → 200, approver recorded.
     let (status, approved) = send(
         &rt,
         &keys,
@@ -115,7 +115,7 @@ async fn rest_rejects_self_approval_and_accepts_distinct_approver(pool: PgPool) 
         approver.as_uuid().to_string()
     );
 
-    // 전기: posts and keeps the approver.
+    // Posting: posts and keeps the approver.
     let (status, posted) = send(
         &rt,
         &keys,

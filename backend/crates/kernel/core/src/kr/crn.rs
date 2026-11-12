@@ -1,4 +1,5 @@
-//! 법인등록번호 (상업등기규칙 별표 / 법인등록번호 부여 규칙).
+//! Corporate registration number (Commercial Registration Rules Annex / Rules on
+//! Assigning Corporate Registration Numbers).
 
 use super::{canonical_serde, digit, digits_only, refusal};
 use crate::KernelError;
@@ -7,9 +8,9 @@ use crate::KernelError;
 /// digit is part of the serial, so the checksum would fail ~90% of the time.
 pub const CRN_CHECK_DIGIT_RETIRED_ON: time::Date = time::macros::date!(2025 - 01 - 31);
 
-/// 법인등록번호: exactly 13 digits, displayed `######-#######`.
+/// Corporate registration number: exactly 13 digits, displayed `######-#######`.
 ///
-/// Digits 1–4 are the 등기관서 code (별표 2) and 5–6 the 법인 종류 (별표 3).
+/// Digits 1–4 are the registry office code (Annex 2) and 5–6 the legal entity kind (Annex 3).
 /// Both lists are renumbered over time, so an unlisted code is a warning raised
 /// by the caller against the loaded list, never a refusal here.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -39,19 +40,19 @@ impl CorpRegNo {
         format!("{}-{}", &self.0[..6], &self.0[6..])
     }
 
-    /// 등기관서 code (digits 1–4).
+    /// Registry office code (digits 1–4).
     #[must_use]
     pub fn registry_office_code(&self) -> &str {
         &self.0[..4]
     }
 
-    /// 법인 종류 code (digits 5–6).
+    /// Legal entity kind code (digits 5–6).
     #[must_use]
     pub fn corp_kind_code(&self) -> &str {
         &self.0[4..6]
     }
 
-    /// 별표 4 checksum: weights 1,2,1,2… over 12 digits.
+    /// Annex 4 checksum: weights 1,2,1,2… over 12 digits.
     #[must_use]
     pub fn checksum_matches(&self) -> bool {
         let s = &self.0;
@@ -61,9 +62,9 @@ impl CorpRegNo {
         (10 - sum % 10) % 10 == digit(s, 12)
     }
 
-    /// Soft warnings. The checksum runs only for a 법인 known to be
+    /// Soft warnings. The checksum runs only for a legal entity known to be
     /// incorporated before [`CRN_CHECK_DIGIT_RETIRED_ON`]; with no date, or a
-    /// later one, nothing is said (a warning on every valid new 법인 would
+    /// later one, nothing is said (a warning on every valid new legal entity would
     /// teach users to ignore amber).
     #[must_use]
     pub fn warnings(&self, incorporated_on: Option<time::Date>) -> Vec<&'static str> {

@@ -20,22 +20,23 @@ use console_hr_adapter_postgres::registration_void::list::VoidedEmployee;
 use console_hr_adapter_postgres::registration_void::{
     SetupDeleteRequest, VoidEmployeeRequest, VoidOutcome,
 };
+use console_hr_adapter_postgres::requests::approval_class;
+use console_hr_domain::requests::ChangeRequestKind;
 use console_platform_auth::PasskeyService;
 use console_platform_authz::Principal;
-use console_settings_domain::SettingKey;
 use uuid::Uuid;
 
 use crate::HrApiError;
 
 pub const EMPLOYEE_CORRECTION_PATH: &str = "/api/v1/employees/{id}";
 pub const IDENTITY_RESOLUTION_PATH: &str = "/api/v1/employees/{id}/identity-resolution";
-/// MR-26: 등록 취소 after 운영 시작 (`DELETE` on [`EMPLOYEE_CORRECTION_PATH`]
-/// is the SETUP delete).
+/// MR-26: registration void after go-live (`DELETE` on
+/// [`EMPLOYEE_CORRECTION_PATH`] is the SETUP delete).
 pub const EMPLOYEE_VOID_PATH: &str = "/api/v1/employees/{id}/void";
-/// MR-26: the 「취소된 등록」 list.
+/// MR-26: the "voided registrations" list.
 pub const EMPLOYEE_VOIDS_PATH: &str = "/api/v1/employees/voided";
 // --- lane: CRUD ---
-/// 등록 취소 or 퇴직: which way the record ends, and why not the other.
+/// Registration void or exit: which way the record ends, and why not the other.
 pub const EMPLOYEE_END_OPTIONS_PATH: &str = "/api/v1/employees/{id}/end-options";
 pub const CORRECTIONS_ROUTE_PATHS: &[&str] = &[
     EMPLOYEE_CORRECTION_PATH,
@@ -91,7 +92,7 @@ async fn correct(
     let holders = holders::second_person_context(
         &state.hr,
         &principal,
-        Some(SettingKey::ApprovalPolicyPeopleCorrection),
+        approval_class(ChangeRequestKind::ProfileCorrection)?,
     )
     .await?;
     let outcome = state
@@ -110,7 +111,7 @@ async fn resolve_identity(
     let holders = holders::second_person_context(
         &state.hr,
         &principal,
-        Some(SettingKey::ApprovalPolicyIdentityMerge),
+        approval_class(ChangeRequestKind::IdentityReview)?,
     )
     .await?;
     let outcome = state
@@ -146,7 +147,7 @@ async fn void(
     let holders = holders::second_person_context(
         &state.hr,
         &principal,
-        Some(SettingKey::ApprovalPolicyRegistrationVoid),
+        approval_class(ChangeRequestKind::EmployeeVoid)?,
     )
     .await?;
     let outcome = state

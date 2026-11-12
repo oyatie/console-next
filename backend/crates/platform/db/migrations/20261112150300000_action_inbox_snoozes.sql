@@ -120,6 +120,8 @@ AS $$
         ('approval.step_up.people_correction', 'bool', NULL::BIGINT, NULL::BIGINT, 0::BIGINT, 'lower', 'tenant', NULL::TEXT[]),
         ('approval.step_up.identity_merge', 'bool', NULL::BIGINT, NULL::BIGINT, 0::BIGINT, 'lower', 'tenant', NULL::TEXT[]),
         ('approval.step_up.import_rollback', 'bool', NULL::BIGINT, NULL::BIGINT, 0::BIGINT, 'lower', 'tenant', NULL::TEXT[]),
+        ('approval.bulk.registration_void', 'bool', NULL::BIGINT, NULL::BIGINT, 0::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
+        ('approval.step_up.registration_void', 'bool', NULL::BIGINT, NULL::BIGINT, 0::BIGINT, 'lower', 'tenant', NULL::TEXT[]),
         ('import.upload.max_mib', 'int', 1::BIGINT, 64::BIGINT, 16::BIGINT, 'higher', 'platform_only', NULL::TEXT[]),
         ('import.zip.max_entries', 'int', 16::BIGINT, 10000::BIGINT, 1000::BIGINT, 'higher', 'platform_only', NULL::TEXT[]),
         ('import.zip.max_expanded_mib', 'int', 1::BIGINT, 1024::BIGINT, 128::BIGINT, 'higher', 'platform_only', NULL::TEXT[]),

@@ -3,7 +3,7 @@ tags:
 - access
 operationId: listAccessRoles
 summary: List the tenant's roles
-description: Needs 권한 관리 조회 (`access` × `view`) over any node, or ops (role definitions are tenant-wide objects).
+description: Needs access management view (`access` × `view`) over any node, or ops (role definitions are tenant-wide objects).
 security:
 - bearerAuth: []
 parameters:

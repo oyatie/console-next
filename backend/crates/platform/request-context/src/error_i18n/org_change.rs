@@ -1,6 +1,6 @@
 //! [`super::korean_message`] exact messages, part: Org change and org units.
 
-/// Exact English message → Korean (합니다체).
+/// Exact English message → Korean (formal polite style).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
     (
         "Identity verification failed. Verify again to approve this step.",

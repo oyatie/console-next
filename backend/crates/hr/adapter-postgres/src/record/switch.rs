@@ -1,5 +1,6 @@
 //! The per-section tenant switches (`hr.record.<section>.enabled`,
-//! 개인정보 보호법 §16①), read in the caller's transaction.
+//! Personal Information Protection Act §16①), read in the caller's
+//! transaction.
 //!
 //! the tenant-row SELECT mirrors settings-adapter-postgres
 //! `load_rows_in_tx` (hr-adapter → settings-adapter is an illegal edge, the

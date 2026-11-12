@@ -11,7 +11,7 @@ use console_kernel_core::{BranchScope, KernelError, UserId};
 use console_platform_authz::{Action, Feature, Principal, authorize_capability};
 use sqlx::PgPool;
 
-/// 정정 review reach: a tenant-wide holder of entity management or org-change apply.
+/// Correction review reach: a tenant-wide holder of entity management or org-change apply.
 pub(crate) fn reviews(principal: &Principal) -> bool {
     principal.branch_scope == BranchScope::All
         && [Feature::LegalEntityManage, Feature::OrgChangeApply]

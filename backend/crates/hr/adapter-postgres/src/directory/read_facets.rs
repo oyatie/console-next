@@ -40,8 +40,8 @@ pub struct EmployeeReviewCounts {
 /// Each group is counted with every filter except its own, as the chips
 /// combine: `status` ignores the status filter; `review` ignores the review
 /// and contract filters (one count per flag); `legal_entity` / `workplace`
-/// ignore their own id filter (the 법인 / 사업장 switcher); `total` and
-/// `employment_type` apply every filter.
+/// ignore their own id filter (the legal entity / workplace switcher); `total`
+/// and `employment_type` apply every filter.
 #[derive(Debug, Serialize)]
 pub struct EmployeeFacets {
     pub total: i64,
@@ -49,7 +49,7 @@ pub struct EmployeeFacets {
     pub employment_type: Vec<FacetCount>,
     /// Counts per `legal_entity_id` (E-S3a); null value: no assignment yet.
     pub legal_entity: Vec<FacetCount>,
-    /// Counts per `workplace_id` (E-S3a); null value: no 사업장 recorded.
+    /// Counts per `workplace_id` (E-S3a); null value: no workplace recorded.
     pub workplace: Vec<FacetCount>,
     pub review: EmployeeReviewCounts,
 }

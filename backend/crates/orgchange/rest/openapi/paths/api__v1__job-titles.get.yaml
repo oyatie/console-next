@@ -3,8 +3,8 @@ tags:
   - employees
 operationId: listJobTitles
 summary: The tenant's classification catalogs (BW-13, MR-25)
-description: The tenant's five typed lists (kind GRADE 직급, TITLE 직위, POSITION 직책, JOB 직무, JOB_FAMILY
-  직군), by kind, most senior first (grade_rank descending, unranked last), including deactivated ones (active
+description: The tenant's five typed lists (kinds GRADE, TITLE, POSITION, JOB and
+  JOB_FAMILY), by kind, most senior first (grade_rank descending, unranked last), including deactivated ones (active
   false) so history keeps resolving. No entries are seeded. Takes employee_directory_read.
 security:
 - bearerAuth: []
@@ -27,7 +27,7 @@ responses:
             can_manage:
               type: boolean
               description: BE-EMP-UI. The caller may add or change entries (Cedar job_title_manage); draw the
-                inline 「+ 추가」 only when true.
+                inline "+ Add" button only when true.
             items:
               type: array
               items:

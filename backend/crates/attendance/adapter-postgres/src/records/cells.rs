@@ -1,6 +1,6 @@
-//! Typed cells judged against the roster, the 근무 일정, the current entry
-//! (If-Match), closed months and the caller's own row. Preview, save, 정정
-//! and 기록 취소 all decide here, so they answer alike.
+//! Typed cells judged against the roster, the work schedule, the current entry
+//! (If-Match), closed months and the caller's own row. Preview, save, correction
+//! and record void all decide here, so they answer alike.
 
 use std::collections::{HashMap, HashSet};
 
@@ -40,7 +40,7 @@ pub(crate) struct Judged {
 pub(crate) enum Judging {
     Preview,
     Save,
-    /// 기록 취소: the value is ignored and the day goes empty.
+    /// Record void: the value is ignored and the day goes empty.
     Void,
 }
 

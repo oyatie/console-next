@@ -1,9 +1,10 @@
 //! Load the [`AccessSubject`] of one account inside a tenant-armed transaction:
 //! the phase, the ops flag, and its current or still-live grants, each with its
 //! role version's lines, its scope chain and the branches it projects to.
-//! A 부서 grant's chain runs 부서 → … → the 사업장 it sits in → 법인 →
-//! tenant (AX-5); a chain that does not reach the tenant (a dissolved 부서, one
-//! under no 사업장) is refused by the engine. 「이 조직만」 grants are never
+//! A department grant's chain runs department → … → the workplace it sits in →
+//! legal entity → tenant (AX-5); a chain that does not reach the tenant (a dissolved
+//! department, one under no workplace) is refused by the engine. "This organization
+//! only" grants are never
 //! loaded (the API refuses them, so this is a second net).
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -227,7 +228,7 @@ async fn load_access_subject_inner(
             NodeKind::Workplace => {
                 BranchScope::Branches(wp_branch.map(BranchId::from_uuid).into_iter().collect())
             }
-            // Filled below from the 법인's live 사업장.
+            // Filled below from the legal entity's live workplaces.
             NodeKind::LegalEntity | NodeKind::Department => BranchScope::Branches(BTreeSet::new()),
         };
         held.push(HeldGrant {

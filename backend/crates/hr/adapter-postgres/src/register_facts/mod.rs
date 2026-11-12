@@ -1,15 +1,16 @@
-//! 근로자 명부 items HR holds itself (MR-23, lane EMP-FACTS): 성별, 주소,
-//! 이력 · 경력, the 퇴직 사유 of an exit recorded without an exit case, and
-//! 그 밖에 필요한 사항 (근로기준법 §41, 시행령 §20 2·4·5·8·9호).
+//! Worker register items HR holds itself (MR-23, lane EMP-FACTS): sex,
+//! address, personal history · work history, the exit reason of an exit
+//! recorded without an exit case, and other necessary matters (Labor
+//! Standards Act §41, Enforcement Decree §20 items 2, 4, 5, 8 and 9).
 //!
-//! They change only through the MR-8 correction path (`PATCH
-//! /employees/{id}` and its BW-17 request), one `employee_corrections` row per
-//! item: `corrections` calls [`normalize`], [`store::check_in_tx`] and
+//! They change only through the MR-8 correction path
+//! (`PATCH /employees/{id}` and its BW-17 request), one `employee_corrections`
+//! row per item: `corrections` calls [`normalize`], [`store::check_in_tx`] and
 //! [`store::write_in_tx`].
 //!
 //! A normalized value is text the same function accepts again (a filed
 //! request stores it and the decision re-normalizes it); `None` clears the
-//! item back to 미입력; the address and the career list are their JSON.
+//! item back to not entered; the address and the career list are their JSON.
 
 pub mod bulk;
 pub(crate) mod exit_reason;
@@ -31,8 +32,8 @@ pub fn is_register_field(field: &str) -> bool {
     REGISTER_FIELDS.contains(&field)
 }
 
-/// The stored text of one register item; `None` clears it (미입력). The
-/// 퇴직 사유 is never cleared, only corrected to another code.
+/// The stored text of one register item; `None` clears it (not entered). The
+/// exit reason is never cleared, only corrected to another code.
 pub fn normalize(field: &str, value: &Value) -> Result<Option<String>, HrError> {
     let text = match value {
         Value::Null => None,
@@ -112,7 +113,7 @@ fn address(value: &Value) -> Result<Option<String>, HrError> {
     }
 }
 
-/// The 경력 list as JSON (`[]` = 경력 없음), checked row by row.
+/// The work history list as JSON (`[]` = "no work history"), checked row by row.
 fn careers(value: &Value) -> Result<Option<String>, HrError> {
     let value = match value {
         Value::Null => return Ok(None),
@@ -129,8 +130,8 @@ fn careers(value: &Value) -> Result<Option<String>, HrError> {
         .map_err(|_| HrError::validation("changes.careers could not be stored"))
 }
 
-/// The ledger value of a stored text: JSON null for 미입력, the address or
-/// career JSON as JSON, any other item as a string.
+/// The ledger value of a stored text: JSON null for not entered, the address
+/// or career JSON as JSON, any other item as a string.
 #[must_use]
 pub fn ledger_value(field: &str, stored: Option<&str>) -> Value {
     match (field, stored) {

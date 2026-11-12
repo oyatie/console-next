@@ -16,7 +16,7 @@ use crate::metrics::record_hr_read;
 use crate::profile::load_facts;
 use crate::{HrError, HrService};
 
-/// no `pending` (온보딩 queue membership) yet. It needs the window
+/// no `pending` (onboarding queue membership) yet. It needs the window
 /// setting `hr.onboarding.window_days` (`keys/emp_model.rs` from INT-6a);
 /// `onboarding_pending` is ready for it. The items are complete without it.
 #[derive(Debug, Clone, Serialize)]

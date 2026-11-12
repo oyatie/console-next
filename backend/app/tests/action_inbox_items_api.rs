@@ -18,6 +18,8 @@ mod go_live;
 #[allow(dead_code)]
 #[path = "emp_ui_routes/harness.rs"]
 mod harness;
+#[path = "action_inbox_items/hr_policy.rs"]
+mod hr_policy;
 #[path = "support/http.rs"]
 mod http;
 #[path = "action_inbox_items/legacy_draft.rs"]

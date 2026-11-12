@@ -1,5 +1,6 @@
-// Korean source for `empFix.` ids (features/people/ui/card/fix-*: 정정 · 변경 sheets, employee-ux/final E4).
-export const koEmpFix = {
+// Korean copy for `empFix.` ids (features/people/ui/card/fix-*: 정정 · 변경 sheets, employee-ux/final E4).
+import type { enEmpFix } from "../en/emp-fix";
+export const koEmpFix: Record<keyof typeof enEmpFix, string> = {
   "empFix.field.name": "성명",
   "empFix.field.sex": "성별",
   "empFix.field.birth_date": "생년월일",
@@ -136,4 +137,4 @@ export const koEmpFix = {
   "empFix.catalog.denied": "{field} 목록 추가·수정에는 전체 범위의 목록 관리 권한이 필요합니다. 해당 권한을 가진 인사 담당자에게 요청하십시오.",
   "empFix.catalog.scope": "법인 범위에서는 인사카드를 정정하거나 전체 범위의 직급·직위 목록을 관리할 수 없습니다. 인사 담당자에게 변경을 요청하십시오.",
   "empFix.catalog.unavailable": "선택한 목록 항목을 사용할 수 없어 저장하지 않았습니다. 현재 사용 중인 같은 종류의 항목을 다시 선택하십시오.",
-} as const;
+};

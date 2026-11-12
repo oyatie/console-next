@@ -1,5 +1,5 @@
-//! MR-27: bulk 정정 of scalar employee fields, the grid and the
-//! 「필터와 일치하는 n명 모두」 selection (decisions #21: every field editable
+//! MR-27: bulk correction of scalar employee fields, the grid and the
+//! "all n matching the filter" selection (decisions #21: every field editable
 //! through the bulk path too). Lane LIFE.
 //!
 //! - **Selection** is server-side: the `GET /employees` filters plus
@@ -54,8 +54,8 @@ pub struct SelectionFilter {
     pub register_review_required: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub org_unit_id: Option<Uuid>,
-    /// Comma-separated statuses. Absent: everyone but EXITED (a 퇴직자 is
-    /// selected only when asked for).
+    /// Comma-separated statuses. Absent: everyone but EXITED (a former
+    /// employee is selected only when asked for).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -64,7 +64,7 @@ pub struct SelectionFilter {
     pub lifecycle_apply_failed: Option<bool>,
 }
 
-/// 「필터와 일치하는 n명 모두 선택」 with individual unticks.
+/// "Select all n matching the filter" with individual unticks.
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct BulkSelection {

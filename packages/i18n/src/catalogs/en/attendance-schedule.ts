@@ -1,6 +1,4 @@
-import type { koAttendanceSchedule } from "../ko/attendance-schedule";
-
-export const enAttendanceSchedule: Partial<Record<keyof typeof koAttendanceSchedule, string>> = {
+export const enAttendanceSchedule = {
   "attendanceSchedule.calendar.empty": "No work schedules",
   "attendanceSchedule.calendar.empty.reason": "Add a work pattern to assign schedules to workplaces and employees.",
   "attendanceSchedule.tree.inherited": "{pattern} · from {from}",
@@ -92,4 +90,4 @@ export const enAttendanceSchedule: Partial<Record<keyof typeof koAttendanceSched
   "attendanceSchedule.cancel.commit": "Cancel before it starts",
   "attendanceSchedule.cancel.consequence": "Cancels the {date} schedule of {scope} · it stays in history as cancelled and the scope keeps its current schedule",
   "attendanceSchedule.cancel.done": "Cancelled the {pattern} schedule of {scope} (from {date})",
-};
+} as const;

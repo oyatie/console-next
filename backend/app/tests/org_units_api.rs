@@ -272,7 +272,7 @@ async fn org_units_are_governed_bound_and_counted(pool: PgPool) {
     assert_eq!(status, StatusCode::NOT_FOUND);
 
     // A bare SITE is never proposed (decisions #18, proved in org_change_api):
-    // a 사업장's own unit comes with the 사업장, so the site is a fixture here.
+    // a workplace's own unit comes with the workplace, so the site is a fixture here.
     let site = seed_fixture_unit(&pool, org, "본사").await.to_string();
     assert_eq!(ctx.unit(&site).await.unwrap()["parentId"], org_s);
     let dept = ctx.create_unit("DEPARTMENT", Some(&site), "정비부").await;
@@ -323,7 +323,7 @@ async fn org_units_are_governed_bound_and_counted(pool: PgPool) {
         ["ORG_UNIT_CYCLE"]
     );
 
-    // Employees: placement is optional at registration -- 미배치 is never a refusal
+    // Employees: placement is optional at registration -- being unplaced is never a refusal
     // (console-react docs/design/onboarding-and-migration.md C1, AM-5) -- so an
     // unplaced person registers in no unit. Placed: bound, projected, counted.
     let seeded_people = ctx.unit(&org_s).await.unwrap()["headcount"]
@@ -451,7 +451,7 @@ async fn org_units_are_governed_bound_and_counted(pool: PgPool) {
         "{chart}"
     );
 
-    // Dissolve an empty leaf: DISSOLVE kind applies on its 시행일 (UX-R2
+    // Dissolve an empty leaf: DISSOLVE kind applies on its effective date (UX-R2
     // org-05: no tick list) → DISSOLVED; then it cannot take a new employee (422).
     let (status, dissolve) = ctx
         .call("DELETE", &format!("{UNITS}/{team3}"), &ctx.drafter, None)
@@ -576,7 +576,7 @@ async fn reassign_moves_registered_and_on_leave_members(pool: PgPool) {
     );
 
     let active = register("E-202").await;
-    // A member under another company string (e.g. an imported 법인 name) is
+    // A member under another company string (e.g. an imported legal entity name) is
     // counted by the dissolve headcount, so the reassign must move it too.
     let mut body = ctx.employee_body("E-203", Some(&from));
     body["company"] = json!("다른 법인");
@@ -637,9 +637,9 @@ async fn reassign_moves_registered_and_on_leave_members(pool: PgPool) {
         .fetch_all(&pool)
         .await
         .unwrap();
-        // UX-R2 org-04: the move is a dated 전보 in the person's 인사 이력
+        // UX-R2 org-04: the move is a dated reassignment in the person's HR history
         // (hr's lifecycle record, batched under the change), not a bare
-        // canonical hr.transfer; a 휴직자 (hr refuses their TRANSFER) moves
+        // canonical hr.transfer; a person on leave of absence (hr refuses their TRANSFER) moves
         // with the unit and keeps no event.
         assert_eq!(targets, ["hr.appoint"]);
         let transfers: Vec<Option<Uuid>> = sqlx::query_scalar(

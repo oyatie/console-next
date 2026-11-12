@@ -1,9 +1,9 @@
 tags:
 - entity
 operationId: searchAddressDetail
-summary: 상세주소 options (동, then 층·호) of the building a road-address hit names
-description: Through the server with DETAILED_JUSO_API_KEY. Without dong it lists the building's 동; with dong
-  (empty for a building without 동) the 층·호 of that 동. UNAVAILABLE or no options keep the free-text 상세주소.
+summary: Detailed address options (dong, then floor · unit) of the building a road-address hit names
+description: Through the server with DETAILED_JUSO_API_KEY. Without dong it lists the building's dong (blocks); with dong
+  (empty for a building without blocks) the floors and units of that dong. UNAVAILABLE or no options keep the free-text detailed address.
 security:
 - bearerAuth: []
 parameters:

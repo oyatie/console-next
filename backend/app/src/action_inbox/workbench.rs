@@ -22,17 +22,17 @@ pub(crate) async fn read_workbench_action_inbox(
     authorization: Authorization,
 ) -> Result<WorkbenchActionInboxPage, WorkbenchSourceFailure> {
     let (org, account) = (principal.org_id, principal.user_id);
-    let (deadline_due_soon_days, org_policy, snoozed) = console_platform_db::with_org_conn::<
+    let (deadline_due_soon_days, policies, snoozed) = console_platform_db::with_org_conn::<
         _,
         _,
         console_settings_adapter_postgres::PgSettingsError,
     >(pool, org, move |tx| {
         Box::pin(async move {
-            let (window, org_policy, _) = policy::load(tx.as_mut(), org, as_of).await?;
+            let (window, policies, _) = policy::load(tx.as_mut(), org, as_of).await?;
             let snoozed = snooze::load(tx.as_mut(), org, account)
                 .await
                 .map_err(console_platform_db::DbError::from)?;
-            Ok((window, org_policy, snoozed))
+            Ok((window, policies, snoozed))
         })
     })
     .await
@@ -52,7 +52,7 @@ pub(crate) async fn read_workbench_action_inbox(
         statutory_register: request_register::Register::default(),
         setup_created_at: as_of,
         deadline_due_soon_days,
-        org_policy,
+        policies,
         read_permits,
         support_reference: crate::telemetry::current_trace_context()
             .trace_id()

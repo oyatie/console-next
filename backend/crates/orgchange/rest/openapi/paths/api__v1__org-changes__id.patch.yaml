@@ -4,7 +4,7 @@ operationId: updateOrgChangeDraft
 summary: Edit an org-change draft, or move a scheduled change
 description: >-
   DRAFT or PRECHECKED: every edit returns the request to DRAFT, so a stored preflight receipt must be re-run before
-  submit. APPROVED before its 시행일 (예약 수정): only effectiveDate and reason move (a kind or proposal is 409
+  submit. APPROVED before its effective date (scheduled-change edit): only effectiveDate and reason move (a kind or proposal is 409
   org_change_scheduled_content); moved to today it applies at once; under approval.policy.org_structure = route
   only a caller holding org_change_apply may move it (403 org_change_scheduled_locked). Omitted fields are left
   unchanged.

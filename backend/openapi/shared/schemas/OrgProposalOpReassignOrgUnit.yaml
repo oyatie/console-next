@@ -2,9 +2,9 @@
 type: object
 additionalProperties: false
 description: >-
-  Move the members of one OrgUnit to another on the change's 시행일: each
-  ACTIVE member gets a dated TRANSFER lifecycle event (전보; also a 전근 when
-  the target sits at another 사업장, its assignment split on the date)
+  Move the members of one OrgUnit to another on the change's effective date: each
+  ACTIVE member gets a dated TRANSFER lifecycle event (reassignment; also a relocation when
+  the target sits at another workplace, its assignment split on the date)
   batched under the change's id; a member hr refuses a TRANSFER (on leave
   and the other non-ACTIVE states) is rebound and re-placed with no event,
   status kept. Matched are every member who is not EXITED, or only

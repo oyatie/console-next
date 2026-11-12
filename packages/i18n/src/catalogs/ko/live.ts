@@ -1,7 +1,8 @@
-// Korean source for `live.` ids (connection, change notices, presence, leases). Rules: the header of
+// Korean copy for `live.` ids (connection, change notices, presence, leases). Rules: the header of
 // ../ko.ts and packages/i18n/GUIDE.md. `*.hidden` variants drop the actor: a covert-labelled actor is
 // never named (OD-RT-3). `{time}` and `{ago}` come preformatted from the shared formatters.
-export const koLive = {
+import type { enLive } from "../en/live";
+export const koLive: Record<keyof typeof enLive, string> = {
   // Connection (shell) and freshness (per screen)
   "live.status.reconnecting": "실시간 연결 끊김 · 재연결 중",
   "live.status.offline": "오프라인 · 화면이 자동으로 갱신되지 않음",
@@ -31,4 +32,4 @@ export const koLive = {
   "live.claim.held_by": "{holder}님 처리 중 · {minutes, plural, other {#분}} 남음",
   "live.claim.take_over": "작업 가져오기",
   "live.claim.taken_over": "{actor}님이 이 작업을 가져갔습니다",
-} as const;
+};

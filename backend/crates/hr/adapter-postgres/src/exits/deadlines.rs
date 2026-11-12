@@ -1,6 +1,7 @@
-//! An exit case's settlement deadlines (금품청산 and 퇴직금): the windows of
-//! `console_hr_domain::exits::settlement_due` over the statutory register,
-//! with the citation each deadline rests on. Served on the case read.
+//! An exit case's settlement deadlines (settlement of money and valuables and
+//! severance pay): the windows of `console_hr_domain::exits::settlement_due`
+//! over the statutory register, with the citation each deadline rests on.
+//! Served on the case read.
 
 use console_compliance_domain::statutory::StatutoryRegister;
 use console_hr_domain::cases::clocks::Clock;
@@ -12,7 +13,7 @@ use crate::cases::register::Register;
 use crate::clock::today_kst;
 use crate::exits::types::ExitSettlementDeadline;
 
-/// The deadlines of an exit whose 마지막 근무일 is `exit_date`.
+/// The deadlines of an exit whose last working day is `exit_date`.
 ///
 /// # Errors
 /// 422 when the stored date is not a date.

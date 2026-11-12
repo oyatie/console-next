@@ -1,7 +1,8 @@
-//! IMPORT-2 (decisions #25): one employee's 주민등록번호 as HR reads it —
-//! masked by default (`GET`), the full number only with a 사유 code from the
-//! `rrn_reveal` domain, and every read in 접속기록. Opening the sealed value
-//! takes the shell's vault; without one the reveal is 503, never a fallback.
+//! IMPORT-2 (decisions #25): one employee's resident registration number as
+//! HR reads it — masked by default (`GET`), the full number only with a
+//! reason code from the `rrn_reveal` domain, and every read in the access log.
+//! Opening the sealed value takes the shell's vault; without one the reveal is
+//! 503, never a fallback.
 
 pub(crate) mod govern;
 mod record;
@@ -92,7 +93,7 @@ fn unavailable() -> HrError {
 }
 
 impl HrService {
-    /// The masked 주민등록번호 of an employee (접속기록: a detail read).
+    /// The masked resident registration number of an employee (access log: a detail read).
     pub async fn rrn_status(
         &self,
         principal: Principal,
@@ -128,7 +129,8 @@ impl HrService {
         .await
     }
 
-    /// The full 주민등록번호, with a 사유 code; the 접속기록 row names the code.
+    /// The full resident registration number, with a reason code; the access
+    /// log row names the code.
     ///
     /// # Errors
     /// 403 without org-wide `employee_directory_manage`; 400/422 for a reason

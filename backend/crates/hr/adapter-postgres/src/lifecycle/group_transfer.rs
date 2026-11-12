@@ -1,15 +1,17 @@
-//! E-S3b 전적 (GROUP_TRANSFER): the facts recorded with the event
+//! E-S3b group transfer (GROUP_TRANSFER): the facts recorded with the event
 //! (design/legal-entities-and-workplaces §6, ED §3.9).
 //!
 //! - The employee's consent is required as an attested offline fact with its
-//!   evidence (민법 §657①: an employer may not transfer its rights to a third
-//!   party without the worker's consent; decisions #3: never a bare tick).
-//! - Continuity is chosen per dimension, none defaulted (퇴직금, 연차, 근속;
-//!   `console_hr_domain::lifecycle::group_transfer`); any carried dimension
-//!   needs the succession agreement's evidence.
-//! - The 그룹 입사일 is carried in either case.
-//! - When the sending 법인 settles 퇴직금, its settlement case opens with the
-//!   전적 (`exits::group_transfer_case`); 4대보험 상실·취득 follow the event in
+//!   evidence (Civil Act §657①: an employer may not transfer its rights to a
+//!   third party without the worker's consent; decisions #3: never a bare
+//!   tick).
+//! - Continuity is chosen per dimension, none defaulted (severance pay, annual
+//!   leave, length of service; `console_hr_domain::lifecycle::group_transfer`);
+//!   any carried dimension needs the succession agreement's evidence.
+//! - The group hire date is carried in either case.
+//! - When the sending legal entity settles severance pay, its settlement case
+//!   opens with the group transfer (`exits::group_transfer_case`); the four
+//!   social insurances' loss and acquisition of coverage follow the event in
 //!   the statutory filings.
 
 use serde::{Deserialize, Serialize};
@@ -28,17 +30,17 @@ use console_kernel_core::{AuditEvent, OrgId, UserId};
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GroupTransferRequest {
-    /// 퇴직금: SETTLED or CARRIED; required, no default.
+    /// Severance pay: SETTLED or CARRIED; required, no default.
     #[serde(default)]
     pub continuity: Option<String>,
-    /// 연차: SETTLED or CARRIED. With `seniority_continuity`, or neither (then
-    /// `continuity` names all three, the one-choice contract).
+    /// Annual leave: SETTLED or CARRIED. With `seniority_continuity`, or
+    /// neither (then `continuity` names all three, the one-choice contract).
     #[serde(default)]
     pub annual_leave_continuity: Option<String>,
-    /// 근속: RESTART or CARRIED.
+    /// Length of service: RESTART or CARRIED.
     #[serde(default)]
     pub seniority_continuity: Option<String>,
-    /// 그룹 입사일, ISO `YYYY-MM-DD`, on or before the start date.
+    /// Group hire date, ISO `YYYY-MM-DD`, on or before the start date.
     #[serde(default)]
     pub group_service_start_date: Option<String>,
     /// The day the employee consented, on or before the start date.
@@ -139,10 +141,10 @@ pub fn normalize_group_transfer(
     }))
 }
 
-/// What a recorded 전적 writes beside its event, in the caller's transaction:
-/// its facts and, when the sending 법인 settles 퇴직금, that 법인's settlement
-/// case (`branch` is the person's there, read before the move). Returns the
-/// case and its audit.
+/// What a recorded group transfer writes beside its event, in the caller's
+/// transaction: its facts and, when the sending legal entity settles
+/// severance pay, that legal entity's settlement case (`branch` is the
+/// person's there, read before the move). Returns the case and its audit.
 ///
 /// # Errors
 /// 409 `exit_case_open` (the person's open exit case), or a database fault.

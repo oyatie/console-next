@@ -1,17 +1,17 @@
 tags:
   - leave
 operationId: decideLeaveRequestV2
-summary: Approve a pending leave request or open a 시기변경 협의
+summary: Approve a pending leave request or open a timing-change consultation
 description: >-
   Requires `employee_directory_manage` in the request's branch. An
   APPROVE writes the leave ledger (used += exact resolved charge units,
   remaining -= exact resolved charge units) in the same audited transaction.
   Separation of duties — a request cannot be
-  decided by its own requester (403). 근로기준법 §60 forbids refusing 연차:
+  decided by its own requester (403). Labor Standards Act §60 forbids refusing annual leave:
   `return`/`reject` are retired (422) and the only non-approve decision is
-  `time_change` (§60⑤ 시기변경 협의), which requires a comment and never
+  `time_change` (§60⑤ timing-change consultation), which requires a comment and never
   touches the ledger. Eligibility for `time_change` is system-judged from
-  branch coverage evidence (요건 자동 판정); without a coverage shortfall
+  branch coverage evidence (automatic eligibility determination); without a coverage shortfall
   the decision fails closed with 422 `leave_decide.time_change_ineligible`.
   A successful consult stamps `time_change_grounds` /
   `time_change_evidence` on the v2 view; the worker then proposes

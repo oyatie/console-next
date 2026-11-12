@@ -20,7 +20,7 @@ mod locks_exits;
 mod org_change;
 mod personal;
 
-/// Exact English message → Korean (합니다체), split by area; the first match
+/// Exact English message → Korean (formal polite style), split by area; the first match
 /// in this order wins.
 const MESSAGES: &[&[(&str, &str)]] = &[
     auth::MESSAGES,

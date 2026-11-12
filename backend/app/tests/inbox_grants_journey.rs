@@ -66,7 +66,7 @@ async fn grant_notices_appear_once_only_for_the_holder_and_leave_on_confirmation
         2,
         "multiple role levels must not duplicate a grant"
     );
-    // A grant notice is FYI: listed under 참조 (filter=notices), never as 해야 할 일 (filter=turn).
+    // A grant notice is FYI: listed under Reference (filter=notices), never as To-do (filter=turn).
     for (filter, want) in [("notices", 2), ("turn", 0)] {
         let (status, view) = ctx
             .call("GET", &format!("{INBOX}?filter={filter}&limit=200"), None)

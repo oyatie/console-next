@@ -91,41 +91,41 @@ properties:
         type: [string, 'null']
         enum: [MALE, FEMALE, null]
       address:
-        description: 주소 (영 §20 4호), a juso result or structured manual entry; null clears it.
+        description: Address (Enforcement Decree §20 item 4), a juso result or structured manual entry; null clears it.
         oneOf:
         - $ref: '#/components/schemas/KrAddress'
         - type: 'null'
       careers:
-        description: 이력 · 경력 (영 §20 5호), the whole list; [] = 경력 없음, null = 미입력.
+        description: History and career (Enforcement Decree §20 item 5), the whole list; [] = no prior experience, null = not entered.
         type: [array, 'null']
         maxItems: 100
         items:
           $ref: '#/components/schemas/EmployeeCareer'
       exit_reason:
-        description: 퇴직(해고) 사유 (영 §20 8호), an exit_reason catalog code.
+        description: Exit (dismissal) reason (Enforcement Decree §20 item 8), an exit_reason catalog code.
         type: string
       register_note:
-        description: 그 밖에 필요한 사항 (영 §20 9호).
+        description: Other necessary matters (Enforcement Decree §20 item 9).
         type: [string, 'null']
         maxLength: 500
       name_hanja:
-        description: 한자 성명 (CJK ideographs).
+        description: Name in Chinese characters (CJK ideographs).
         type: [string, 'null']
         maxLength: 30
       name_en:
-        description: 영문 성명 (Latin letters, spaces, - ' . ,).
+        description: English name (Latin letters, spaces, - ' . ,).
         type: [string, 'null']
         maxLength: 100
       nationality:
-        description: '국적, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it.'
+        description: 'Nationality, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it.'
         type: [string, 'null']
         pattern: '^[A-Za-z]{2}$'
       personal_email:
-        description: 개인 메일.
+        description: Personal email.
         type: [string, 'null']
         maxLength: 254
       emergency_contacts:
-        description: 비상연락처, the whole list (at most 3); [] or null clears it.
+        description: Emergency contacts, the whole list (at most 3); [] or null clears it.
         type: [array, 'null']
         maxItems: 3
         items:
@@ -151,7 +151,7 @@ properties:
         - $ref: '#/components/schemas/Uuid'
         - type: 'null'
       group_service_start_date:
-        description: 그룹 입사일 (근속 기산일); on or before the hire date.
+        description: Group hire date (service start date); on or before the hire date.
         type: [string, 'null']
         format: date
   reason_code:

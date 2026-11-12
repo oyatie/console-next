@@ -1,4 +1,5 @@
-//! IMPORT-2: matching order, 동명이인, setup status facts and 사번 numbering.
+//! IMPORT-2: matching order, namesakes, setup status facts and employee number
+//! numbering.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -82,7 +83,7 @@ fn namesakes_are_told_apart_by_identity_details_never_by_a_suffix() {
         .collect();
     assert_eq!(masked, [Some("1990-01-**".into()), None]);
     assert_eq!(plan.candidates[1].org_unit.as_deref(), Some("영업팀"));
-    // Two records with one RRN (a 재입사) are candidates too.
+    // Two records with one RRN (a rehire) are candidates too.
     let mut c = person("E-3", "김삼", "EXITED");
     c.rrn_hmac = hashed(5);
     let mut d = person("E-4", "김삼", "ACTIVE");
@@ -93,7 +94,7 @@ fn namesakes_are_told_apart_by_identity_details_never_by_a_suffix() {
     let plan = &world.plan(&[twice], &Decisions::default())[0];
     assert_eq!(plan.outcome, "unresolved_identity");
     assert!(plan.candidates.iter().all(|c| c.basis == "rrn"));
-    // Choosing "new" while the 사번 is someone's is refused.
+    // Choosing "new" while the employee number is someone's is refused.
     let decisions = Decisions {
         identity: BTreeMap::from([("z".into(), IdentityPick { employee_id: None })]),
         ..Decisions::default()

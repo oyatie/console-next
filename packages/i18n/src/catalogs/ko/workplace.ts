@@ -1,5 +1,6 @@
-// Korean source for `workplace.` ids (apps/web/src/features/entity (workplaces)). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koWorkplace = {
+// Korean copy for `workplace.` ids (apps/web/src/features/entity (workplaces)). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enWorkplace } from "../en/workplace";
+export const koWorkplace: Record<keyof typeof enWorkplace, string> = {
   "workplace.answer.consequence": "{name|은는} {date}부터 등록 대상 아님으로 기록합니다. 이력에 남습니다.",
   "workplace.filing.entityBasis": "법인 기준",
   "workplace.registration.prompt": "사업자등록 여부 확인",
@@ -289,4 +290,4 @@ export const koWorkplace = {
   "workplace.code.reused": "닫힌 사업장이 쓰던 코드입니다 · 이력에서 두 사업장이 같은 코드로 보입니다.",
   "workplace.close.target.closingDept": "닫히는 사업장의 부서",
   "workplace.closed.noEdit": "폐쇄한 사업장은 수정하지 않습니다 · 이력은 계속 볼 수 있습니다",
-} as const;
+};

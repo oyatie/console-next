@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! The 완료 and 참조 tabs beside the open list, one item's 활동 내역, and its snooze.
+//! The Done and Reference tabs beside the open list, one item's activity, and its snooze.
 use axum::Router;
 use axum::routing::{get, post};
 

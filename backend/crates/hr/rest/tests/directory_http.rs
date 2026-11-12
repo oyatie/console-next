@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! PEOPLE-B over HTTP, through the request-context layer: the export's
-//! 접속기록 row carries the client IP (the trusted proxy's resolved client, else
-//! the socket peer) and session, the CSV is never cached and starts
+//! access log row carries the client IP (the trusted proxy's resolved client,
+//! else the socket peer) and session, the CSV is never cached and starts
 //! with a BOM, and the facets read answers with the chip counts.
 
 use std::net::SocketAddr;

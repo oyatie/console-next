@@ -6,7 +6,7 @@ allOf:
   properties:
     name:
       type: string
-      description: Per-code Korean item label from the copy catalog; 미분류 for codes without declared display meaning.
+      description: Per-code Korean item label from the copy catalog; the literal 미분류 (unclassified) for codes without declared display meaning.
     value:
       type: [string, 'null']
       description: Code-specific stored quantities. Contributions show numerator/denominator; minimum wage shows hourly won and monthly equivalent won; income and premium bands show lower–upper won. Null for unknown codes or missing quantities.

@@ -1,7 +1,7 @@
 tags:
   - equipment-substitutions
 operationId: assignEquipmentSubstitute
-summary: Assign a substitute (대차) unit to a down/under-repair equipment
+summary: Assign a substitute unit to a down/under-repair equipment
 description: Audited equipment-lifecycle write. Requires EquipmentManage (ADMIN/EXECUTIVE/SUPER_ADMIN).
 security:
 - bearerAuth: []

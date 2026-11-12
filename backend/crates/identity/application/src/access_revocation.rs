@@ -1,4 +1,4 @@
-//! When a leaver's access ends (access-model §5.3, governance-04, 고시 §5).
+//! When a leaver's access ends (access-model §5.3, governance-04, public notice §5).
 //!
 //! The exit confirmation ends every grant the leaver's account holds at this
 //! instant and, once it has passed, suspends the account and its sessions
@@ -34,7 +34,7 @@ const KST: UtcOffset = match UtcOffset::from_hms(9, 0, 0) {
     Err(_) => UtcOffset::UTC,
 };
 
-/// The instant access ends: never later than the end of the 퇴직일 (KST), never
+/// The instant access ends: never later than the end of the exit date (KST), never
 /// earlier than `now` (a past instant would not satisfy `valid_to > now`
 /// elsewhere and means "now" anyway).
 #[must_use]

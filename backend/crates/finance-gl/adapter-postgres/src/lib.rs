@@ -1,4 +1,4 @@
-//! Postgres finance-GL (전표) adapter.
+//! Postgres finance-GL (voucher) adapter.
 //!
 //! Every mutation runs through `with_audit`/`with_audits`, which arms
 //! `app.current_org` before the closure, so RLS scopes every read and write to
@@ -56,8 +56,8 @@ impl PgVoucherStore {
         &self.pool
     }
 
-    /// Open a fresh draft voucher (기표). Lines may be unbalanced at draft time;
-    /// the balance gate is enforced when the voucher is submitted for 차대검증.
+    /// Open a fresh draft voucher. Lines may be unbalanced at draft time;
+    /// the balance gate is enforced when the voucher is submitted for the debit/credit check.
     pub async fn create_draft(
         &self,
         command: CreateVoucherDraftCommand,
@@ -88,7 +88,7 @@ impl PgVoucherStore {
         .await
     }
 
-    /// Derive a draft voucher from an approved source 기안 (승인 → 전표 파생).
+    /// Derive a draft voucher from an approved source draft (approval → voucher derivation).
     /// Identical persistence to [`create_draft`], but the source ref is required
     /// so the approval chain always records voucher → source linkage for drill.
     pub async fn create_draft_from_source(
@@ -109,7 +109,8 @@ impl PgVoucherStore {
         .await
     }
 
-    /// 기표 → 차대검증. The balance gate: rejected (fail-closed) unless 차변 = 대변.
+    /// Drafting → debit/credit check. The balance gate: rejected (fail-closed) unless
+    /// debit = credit.
     pub async fn submit(
         &self,
         command: VoucherTransitionCommand,
@@ -122,7 +123,7 @@ impl PgVoucherStore {
         .await
     }
 
-    /// 차대검증 → 승인.
+    /// Debit/credit check → approval.
     pub async fn approve(
         &self,
         command: VoucherTransitionCommand,
@@ -135,7 +136,7 @@ impl PgVoucherStore {
         .await
     }
 
-    /// 승인 → 전기(posted). Stamps `posted_at`; lines become immutable.
+    /// Approval → posting (posted). Stamps `posted_at`; lines become immutable.
     pub async fn post(
         &self,
         command: VoucherTransitionCommand,
@@ -144,8 +145,8 @@ impl PgVoucherStore {
             .await
     }
 
-    /// 전기 → 역분개. Never mutates the posted voucher's lines — creates a linked
-    /// contra voucher whose lines swap 차↔대 so the pair nets to zero, marks the
+    /// Posting → reversal. Never mutates the posted voucher's lines — creates a linked
+    /// contra voucher whose lines swap debit↔credit so the pair nets to zero, marks the
     /// original REVERSED, and returns the new contra voucher.
     pub async fn reverse(
         &self,
@@ -444,7 +445,7 @@ impl PgVoucherStore {
                 let current = lock_voucher(tx, command.voucher_id).await?;
                 validate_voucher_transition(current.status, target)?;
 
-                // Use-case balance gate at 차대검증. The DB trigger is the
+                // Use-case balance gate at the debit/credit check. The DB trigger is the
                 // backstop; this returns a clean domain error first.
                 if target == VoucherStatus::BalanceChecked {
                     let lines = load_lines(tx, command.voucher_id).await?;
@@ -452,8 +453,8 @@ impl PgVoucherStore {
                     ensure_balanced(outcome)?;
                 }
 
-                // Separation of duties at 승인: the approver MUST differ from the
-                // 기표자 (created_by). Fail-closed here (clean 403) and at the DB
+                // Separation of duties at approval: the approver MUST differ from the
+                // preparer (created_by). Fail-closed here (clean 403) and at the DB
                 // CHECK (`approved_by <> created_by`). Matches the four-eyes idiom
                 // used for gov_approvals.
                 if target == VoucherStatus::Approved && command.actor == current.created_by {
@@ -462,8 +463,8 @@ impl PgVoucherStore {
                     )
                     .into());
                 }
-                // Defense in depth at 전기: a voucher cannot post without a recorded
-                // approver. The FSM only allows Approved → Posted, and 승인 stamps
+                // Defense in depth at posting: a voucher cannot post without a recorded
+                // approver. The FSM only allows Approved → Posted, and approval stamps
                 // approved_by, so this only fires if that invariant were bypassed.
                 if target == VoucherStatus::Posted && current.approved_by.is_none() {
                     return Err(KernelError::conflict(
@@ -676,7 +677,7 @@ async fn set_voucher_status(
     occurred_at: OffsetDateTime,
 ) -> Result<(), PgVoucherError> {
     // `approved_by` is write-once: COALESCE only stamps it when this transition is
-    // the 승인 step, and the DB trigger rejects any later change.
+    // the approval step, and the DB trigger rejects any later change.
     sqlx::query(
         r#"
         UPDATE finance_gl_vouchers

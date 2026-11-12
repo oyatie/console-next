@@ -1,5 +1,6 @@
 // The company structure chart's second set of words (selection, order, find, list filters); structure.ts holds the first.
-export const koStructureChart = {
+import type { enStructureChart } from "../en/structure-chart";
+export const koStructureChart: Record<keyof typeof enStructureChart, string> = {
   "structureChart.unplaced": "미배치 {count, number}명 포함",
   "structureChart.selection.cursor": "초점은 {name}(선택 안 됨)",
   "structureChart.moved": "방금 옮김 · {from}에서",
@@ -42,4 +43,4 @@ export const koStructureChart = {
   "structureChart.export.next": "다음 쪽",
   "structureChart.export.consequencePages": "{format} {pages, number}쪽에 사업장 {sites, number}곳 · 부서 {depts, number}개 · 인원 {people, number}명이 들어갑니다",
   "structureChart.export.visible": "목록에 보이는 {count, number}개 행",
-} as const;
+};

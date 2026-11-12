@@ -139,14 +139,14 @@ async fn read(
         .await
         .map_err(|error| source_failure("clock", error))?;
     let (org, account) = (principal.org_id, principal.user_id);
-    let (created_at, deadline_due_soon_days, org_policy, snooze_days, snoozed) =
+    let (created_at, deadline_due_soon_days, policies, snooze_days, snoozed) =
         console_platform_db::with_org_conn::<
             _,
             _,
             console_settings_adapter_postgres::PgSettingsError,
         >(&state.pool, org, move |tx| {
             Box::pin(async move {
-                let (window, org_policy, snooze_days) = policy::load(tx.as_mut(), org, now).await?;
+                let (window, policies, snooze_days) = policy::load(tx.as_mut(), org, now).await?;
                 // The account's snoozes are read once here, before any source runs.
                 let snoozed = snooze::load(tx.as_mut(), org, account)
                     .await
@@ -158,7 +158,7 @@ async fn read(
                 .fetch_one(tx.as_mut())
                 .await
                 .map_err(console_platform_db::DbError::from)?;
-                Ok((created, window, org_policy, snooze_days, snoozed))
+                Ok((created, window, policies, snooze_days, snoozed))
             })
         })
         .await
@@ -177,7 +177,7 @@ async fn read(
         statutory_register: request_register::Register::default(),
         setup_created_at: created_at,
         deadline_due_soon_days,
-        org_policy,
+        policies,
         snoozes: Snoozes::new(snoozed, mode, now),
     };
     let mut page = run_action_inbox(
@@ -225,7 +225,7 @@ struct PgActionInboxSources {
     statutory_register: request_register::Register,
     setup_created_at: OffsetDateTime,
     deadline_due_soon_days: i64,
-    org_policy: Option<console_action_inbox_application::decision::DecisionPolicy>,
+    policies: policy::Policies,
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
     support_reference: String,
     snoozes: Snoozes,

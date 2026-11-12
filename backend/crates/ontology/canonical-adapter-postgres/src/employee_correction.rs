@@ -1,4 +1,4 @@
-//! BW-18 legacy-head corrections (정정): the `employees` writes a master-data
+//! BW-18 legacy-head corrections: the `employees` writes a master-data
 //! correction and an identity resolution need. This crate is the contract's
 //! `ObjectKey::Employment` owner, the one crate permitted to hold DML against
 //! `employees` (writer-ownership gate); the HR adapter calls these inside its
@@ -8,7 +8,7 @@ use sqlx::{Postgres, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-/// The `employees` columns a 정정 may write, in the order of the statement's
+/// The `employees` columns a correction may write, in the order of the statement's
 /// parameters. `name`, `hire_date`, `exit_date` and `employee_number` are
 /// never cleared (the HR adapter refuses a null for them before calling here).
 pub const CORRECTABLE_HEAD_COLUMNS: [&str; 16] = [
@@ -55,12 +55,12 @@ const CORRECT_EMPLOYEE_HEAD_SQL: &str = "UPDATE employees SET \
 
 /// Writes the corrected legacy-head values (`None` clears the column; a
 /// column not named keeps its value) and bumps `updated_at`, the version the
-/// next optimistic write compares against. A written 사번 also clears the
+/// next optimistic write compares against. A written employee number also clears the
 /// MR-28 legacy-duplicate flag, so the record joins the unique index (a
-/// still-shared 사번 then fails with 23505 on
+/// still-shared employee number then fails with 23505 on
 /// `employees_org_employee_number_key`). The TEXT `hire_date` / `exit_date`
 /// keep their DATE twins in step through the PA-DATE trigger. A `job` text
-/// correction unbinds the 직무 catalog id (MR-25 `job_id`): the corrected text
+/// correction unbinds the job catalog id (MR-25 `job_id`): the corrected text
 /// is no longer that entry's label; APPOINT re-binds one. Returns the new
 /// `updated_at`.
 ///

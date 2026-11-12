@@ -7,10 +7,11 @@ use serde_json::{Map, Value};
 use crate::import::canonical::json_value_text;
 
 /// The only way a spreadsheet row becomes persistable JSON. A restricted
-/// column's cell and any cell holding a 주민등록번호-shaped value are dropped
-/// here, before the row reaches `data_import_rows`, `employees` or a preview;
-/// only the header names of non-empty dropped cells are returned, so the
-/// mapping profile can still say the column was present.
+/// column's cell and any cell holding a value shaped like a resident
+/// registration number are dropped here, before the row reaches
+/// `data_import_rows`, `employees` or a preview; only the header names of
+/// non-empty dropped cells are returned, so the mapping profile can still say
+/// the column was present.
 pub fn persistable_import_row(
     normalized_headers: &[String],
     cell: impl Fn(usize) -> Value,

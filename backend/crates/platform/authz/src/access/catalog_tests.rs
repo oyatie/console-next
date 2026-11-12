@@ -76,8 +76,8 @@ fn wire_names_round_trip() {
     assert_eq!(Domain::parse("hr"), Err(CatalogError::DomainUnknown));
 }
 
-/// governance-17 / governance-04 walk: 퇴직 등록·수정 confirms an exit (the
-/// HR confirmation is the exit, not a 결재); only the routed HQ tier is 결재.
+/// governance-17 / governance-04 walk: exit edit confirms an exit (the
+/// HR confirmation is the exit, not an approval); only the routed HQ tier is approval.
 #[test]
 fn the_hr_exit_confirmation_is_an_edit_not_an_approval() {
     use crate::Feature;

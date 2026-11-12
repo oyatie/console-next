@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Reported dates are 마지막 근무일, shared by live and dated org surfaces.
+//! Reported dates are the last working day, shared by live and dated org surfaces.
 
 #[path = "../../../entity/adapter-postgres/tests/common/mod.rs"]
 mod common;

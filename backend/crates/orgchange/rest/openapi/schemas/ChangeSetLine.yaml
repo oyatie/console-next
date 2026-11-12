@@ -33,23 +33,23 @@ properties:
   reason_code:
     type: [string, 'null']
   to_grade_id:
-    description: PROMOTE by 직급 (catalog GRADE), MR-27.
+    description: PROMOTE by grade (catalog GRADE), MR-27.
     $ref: '#/components/schemas/Uuid'
   to_position_kind_id:
-    description: APPOINT 직책 (catalog POSITION).
+    description: APPOINT position (catalog POSITION).
     $ref: '#/components/schemas/Uuid'
   vacate_position_kind:
     type: boolean
-    description: APPOINT 보직 해제.
+    description: APPOINT, relieved of position.
   to_job_id:
-    description: APPOINT 직무 (catalog JOB).
+    description: APPOINT job (catalog JOB).
     $ref: '#/components/schemas/Uuid'
   to_job:
     type: string
     maxLength: 200
-    description: APPOINT 종사 업무 as text, when to_job_id is absent.
+    description: APPOINT job duties as text, when to_job_id is absent.
   to_job_family_id:
-    description: APPOINT 직군 (catalog JOB_FAMILY).
+    description: APPOINT job family (catalog JOB_FAMILY).
     $ref: '#/components/schemas/Uuid'
   to_employment_type:
     type: string

@@ -29,7 +29,7 @@ pub struct AttestRequest<'a> {
 pub struct AttestedFact {
     pub exception_id: Uuid,
     pub attestation_id: Uuid,
-    /// 상실신고 완료 without a 접수번호: the caller raises the review flag.
+    /// Loss report done without a filing receipt number: the caller raises the review flag.
     pub review_flag: bool,
 }
 

@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)] // the shared emp_ui_routes harness unwraps, as every app test crate allows
-//! BE-MIG over HTTP (W11, W03 / E8): the apply job and the 미배치 queue are
+//! BE-MIG over HTTP (W11, W03 / E8): the apply job and the unplaced queue are
 //! mounted behind the request context; `Prefer: respond-async` answers 202
 //! with the job and GET reads it to `done`; a shed apply is 503 with
 //! `Retry-After`; refusals reach the wire with status and code. The service
@@ -152,7 +152,7 @@ async fn the_import_job_and_the_unplaced_queue_answer_on_the_wire(pool: PgPool) 
     };
     let unplaced = "/api/v1/employees/import/unplaced";
 
-    // The 미배치 queue: 401 / 403 / 422 refusals, then an empty queue.
+    // The unplaced queue: 401 / 403 / 422 refusals, then an empty queue.
     assert_eq!(
         anonymous.call("GET", unplaced, None).await.0,
         StatusCode::UNAUTHORIZED

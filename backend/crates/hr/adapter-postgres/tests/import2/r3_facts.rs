@@ -1,20 +1,22 @@
-//! UX-R3 IMPORT r3:hire-16 / records-02: the 근로자 명부 (근기법 시행령 §20)
-//! facts an import carries — 성별 (its column, else the 주민등록번호's 7th
-//! digit; #25: the number is never stored), 종사 업무, 계약종료일, 수습종료일
-//! — as dated first records; 직급 stays apart from 직위; the report says what
-//! the 명부 still lacks.
+//! UX-R3 IMPORT r3:hire-16 / records-02: the worker register (Enforcement
+//! Decree of the Labor Standards Act §20) facts an import carries — sex (its
+//! column, else the resident registration number's 7th digit; #25: the number
+//! is never stored), work engaged in, contract end date, probation end date —
+//! as dated first records; grade stays apart from title; the report says what
+//! the register still lacks.
 
 use console_hr_domain::import::detect::WorkbookMappingRequest;
 use sqlx::PgPool;
 
 use crate::harness::{decisions, importer, map, table};
 
-/// (성명, 성별, 직위, 직무) as stored.
+/// (name, sex, title, job) as stored.
 type Facts = (String, Option<String>, Option<String>, Option<String>);
 
-/// regression (r3:hire-16, records-02): 성별 and the contract and probation
-/// ends were 「가져오지 않음」 and every imported person's 명부 read 성별 빠짐,
-/// although the sealed 주민등록번호 states it; 직급 overwrote 직위.
+/// regression (r3:hire-16, records-02): sex and the contract and probation
+/// ends were "not imported" and every imported person's register read "sex
+/// missing", although the sealed resident registration number states it;
+/// grade overwrote title.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_register_facts_come_in_as_first_records(pool: PgPool) {
     let i = importer(pool).await;
@@ -139,7 +141,7 @@ async fn regression_register_facts_come_in_as_first_records(pool: PgPool) {
     );
 }
 
-/// A 계약종료일 before the 입사일 is refused on its cell (never a silent drop).
+/// A contract end date before the hire date is refused on its cell (never a silent drop).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_contract_end_before_the_hire_date_is_refused_on_its_cell(pool: PgPool) {
     let i = importer(pool).await;

@@ -14,7 +14,7 @@ properties:
     - $ref: '#/components/schemas/KrAddress'
     - type: 'null'
   careers:
-    description: null = 미입력; [] = 경력 없음.
+    description: null = not entered; [] = no prior experience.
     type: [array, 'null']
     items:
       $ref: '#/components/schemas/EmployeeCareer'

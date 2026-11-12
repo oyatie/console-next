@@ -19,7 +19,7 @@ properties:
     $ref: '#/components/schemas/Uuid'
   category:
     type: string
-    description: Extensible category (결재/멘션/문서/공지/근태/급여 and beyond).
+    description: Extensible category (literal values such as 결재 approval, 멘션 mention, 문서 document, 공지 notice, 근태 attendance, 급여 pay, and beyond).
   kind:
     type: string
     description: Extensible producer kind (default "info"); generic detect->assign->resolve chains key on this.

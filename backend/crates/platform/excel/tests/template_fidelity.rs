@@ -117,20 +117,20 @@ fn roundtrip_fill_and_read_back() {
 
     // ── 2. Fill row 4 (section 1 first data row) ────────────────────────────
     // Column mapping (1-based):
-    //   A(1)=구분  B(2)=No  C(3)=사업장  D(4)=호기  E(5)=불량내용
-    //   F(6)=작업자  G(7)=Warning/Priority
+    //   A(1)=category  B(2)=No  C(3)=workplace  D(4)=unit number
+    //   E(5)=defect description  F(6)=worker  G(7)=Warning/Priority
     const ROW_DATA: u32 = 4;
     {
         let ws = book
             .sheet_by_name_mut("6월05일")
             .expect("Sheet '6월05일' must be present for writing");
 
-        ws.cell_mut((1u32, ROW_DATA)).set_value("미"); // 구분
+        ws.cell_mut((1u32, ROW_DATA)).set_value("미"); // category
         ws.cell_mut((2u32, ROW_DATA)).set_value("99"); // No
-        ws.cell_mut((3u32, ROW_DATA)).set_value("가나정밀"); // 사업장
-        ws.cell_mut((4u32, ROW_DATA)).set_value("#290"); // 호기
-        ws.cell_mut((5u32, ROW_DATA)).set_value("시동안걸림"); // 불량내용
-        ws.cell_mut((6u32, ROW_DATA)).set_value("김테스트"); // 작업자
+        ws.cell_mut((3u32, ROW_DATA)).set_value("가나정밀"); // workplace
+        ws.cell_mut((4u32, ROW_DATA)).set_value("#290"); // unit number
+        ws.cell_mut((5u32, ROW_DATA)).set_value("시동안걸림"); // defect description
+        ws.cell_mut((6u32, ROW_DATA)).set_value("김테스트"); // worker
         ws.cell_mut((7u32, ROW_DATA)).set_value("Priority#1"); // Warning/Priority
     }
 

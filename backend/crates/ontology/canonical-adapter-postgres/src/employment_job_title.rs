@@ -1,8 +1,8 @@
 //! BW-13: the employee's catalog title (`employees.job_title_id`), MR-25: the
-//! other four catalog ids and the 종사 업무 text; BW-11: its
+//! other four catalog ids and the duties text; BW-11: its
 //! lifecycle version pin (`employees.head_version`). `employees`
 //! belongs to `ObjectKey::Employment`, so its DML lives in this crate; the HR
-//! lifecycle validates the PROMOTE (active title, 강등 reason) and calls this
+//! lifecycle validates the PROMOTE (active title, demotion reason) and calls this
 //! inside its own transaction, after `employment::apply_employment_change`
 //! has written the display text (`position`).
 
@@ -51,8 +51,8 @@ pub async fn bump_head_version(
     .map(|_| ())
 }
 
-/// MR-25: the employee's 직급, 직책, 직무 and 직군 catalog ids (in that order)
-/// and the 종사 업무 text, as a PROMOTE or APPOINT leaves them (or a
+/// MR-25: the employee's grade, title, job and job family catalog ids (in that order)
+/// and the duties text, as a PROMOTE or APPOINT leaves them (or a
 /// rescission restores them). The 0266 trigger refuses an id of another kind.
 ///
 /// # Errors

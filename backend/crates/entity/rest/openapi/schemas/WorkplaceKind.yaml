@@ -17,4 +17,4 @@ properties:
     type: boolean
   active:
     type: boolean
-    description: Offered in the picker. A deactivated kind still reads on its 사업장.
+    description: Offered in the picker. A deactivated kind still reads on its workplaces.

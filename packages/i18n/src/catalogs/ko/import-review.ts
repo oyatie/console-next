@@ -1,6 +1,7 @@
-// Korean source for `importReview.` ids (features/import/ui/review-*.tsx, resolve-controls.tsx, remembered.tsx): the
+// Korean copy for `importReview.` ids (features/import/ui/review-*.tsx, resolve-controls.tsx, remembered.tsx): the
 // counted 「확인 필요」 queue of a dry run and how each item is answered (IMPORT-2).
-export const koImportReview = {
+import type { enImportReview } from "../en/import-review";
+export const koImportReview: Record<keyof typeof enImportReview, string> = {
   "importReview.reason.workplace_not_open_on_date": "입사일이 사업장 또는 법인의 개설일보다 이릅니다",
   "importReview.info.workplace_not_open_on_date": "사업장 배치는 {date}부터 반영합니다. 입사일은 원본대로 유지합니다.",
 
@@ -87,4 +88,4 @@ export const koImportReview = {
   "importReview.value.none.company": "확인 필요로 유지",
   "importReview.value.kind.company": "등록증으로 확인된 법인",
   "importReview.reason.company_unconfirmed": "소속 이름 확인 필요",
-} as const;
+};

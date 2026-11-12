@@ -1,8 +1,9 @@
 //! BW-10 the import plan: what one candidate row of a run will do, decided
 //! from the row, the people on file and the operator's decisions. Identity is
-//! the 사번 (or an alias), then the 주민등록번호 keyed hash (decisions #25); a
-//! row matching neither waits for the operator when it resembles people on
-//! file. Pure: the adapter loads the facts and stores the plan.
+//! the employee number (or an alias), then the resident registration number
+//! keyed hash (decisions #25); a row matching neither waits for the operator
+//! when it resembles people on file. Pure: the adapter loads the facts and
+//! stores the plan.
 
 use std::collections::BTreeMap;
 
@@ -15,8 +16,9 @@ use uuid::Uuid;
 
 use super::numbering::Numbering;
 
-/// The 법인 text of a person whose 법인 nobody decided yet (r3:hire-01): an
-/// import never guesses one, and the 미배치 queue shows them 법인 미정.
+/// The legal entity text of a person whose legal entity nobody decided yet
+/// (r3:hire-01): an import never guesses one, and the unplaced queue shows them
+/// as "legal entity undetermined".
 pub const ENTITY_UNDECIDED: &str = "법인 미정";
 
 /// A person on file, as the plan compares them (merged-away rows excluded).
@@ -37,13 +39,13 @@ pub struct OnFile {
     pub position: Option<String>,
     pub worksite_name: Option<String>,
     pub worksite_address: Option<String>,
-    /// The employment profile's 고용형태; `None`: no profile yet.
+    /// The employment profile's employment type; `None`: no profile yet.
     pub employment_type: Option<String>,
     /// The head's `updated_at` (RFC 3339): apply refuses if it moved.
     pub observed: String,
-    /// IMPORT-2: the keyed hash of the stored 주민등록번호, if any.
+    /// IMPORT-2: the keyed hash of the stored resident registration number, if any.
     pub rrn_hmac: Option<Vec<u8>>,
-    /// IMPORT-2: earlier 사번 that still find this person.
+    /// IMPORT-2: earlier employee numbers that still find this person.
     pub aliases: Vec<String>,
 }
 
@@ -62,8 +64,8 @@ pub struct FieldChange {
 }
 
 /// A difference import never writes for an existing person, with where it
-/// is done instead: `lifecycle_transfer` (발령), `exit_case` (퇴직 처리),
-/// `rehire` (재입사).
+/// is done instead: `lifecycle_transfer` (personnel order), `exit_case` (exit
+/// processing), `rehire` (rehire).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Deferred {
     pub field: &'static str,
@@ -72,7 +74,7 @@ pub struct Deferred {
     pub route: &'static str,
 }
 
-/// A person a row without a 사번 may be.
+/// A person a row without an employee number may be.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Candidate {
     pub employee_id: Uuid,
@@ -80,7 +82,7 @@ pub struct Candidate {
     pub status: String,
     /// `rrn`, `name_birth_date` or `name_only`.
     pub basis: &'static str,
-    /// IMPORT-2 (동명이인): what tells namesakes apart, never a name suffix.
+    /// IMPORT-2 (namesakes): what tells namesakes apart, never a name suffix.
     pub company: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub org_unit: Option<String>,
@@ -89,8 +91,8 @@ pub struct Candidate {
     pub birth_date_masked: Option<String>,
 }
 
-/// IMPORT-2 (decisions #26): a 휴직 the file records for a new person, applied
-/// as a setup fact from its start date.
+/// IMPORT-2 (decisions #26): a leave of absence the file records for a new
+/// person, applied as a setup fact from its start date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SetupLeave {
     pub start_date: String,
@@ -110,30 +112,32 @@ pub struct NewPerson {
     pub birth_date: Option<String>,
     pub org_unit: Option<String>,
     pub org_unit_id: Option<Uuid>,
-    /// First load of a former employee (근기법 §42 보존): the 이관 mark.
+    /// First load of a former employee (Labor Standards Act §42 retention): the
+    /// migration mark.
     pub migrated_former: bool,
-    /// MR-7: the 사업장 the person is placed at from the hire date (its 법인
-    /// follows); `None`: 미배치.
+    /// MR-7: the workplace the person is placed at from the hire date (its legal
+    /// entity follows); `None`: unplaced.
     pub workplace_id: Option<Uuid>,
-    /// MR-7: the employment profile's 고용형태; `None`: no profile yet.
+    /// MR-7: the employment profile's employment type; `None`: no profile yet.
     pub employment_type: Option<String>,
     /// A unit name that resolved to no unit: kept as the person's source
-    /// value (「미배치 · 원본 부서」).
+    /// value ("unplaced · source department").
     pub unresolved_org_unit: Option<String>,
-    /// IMPORT-2: where the 사번 came from (`file`, `rule`, `manual`); `None`
-    /// with no number: 「사번 미부여」.
+    /// IMPORT-2: where the employee number came from (`file`, `rule`, `manual`);
+    /// `None` with no number: "no employee number assigned".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub employee_number_source: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub leave: Option<SetupLeave>,
-    /// W03: why a current person comes in 미배치: `unit_unknown`,
+    /// W03: why a current person comes in unplaced: `unit_unknown`,
     /// `unit_ambiguous`, `unit_left_unplaced` (the operator's `null`),
-    /// `workplace_unknown` (a bound unit under no open 사업장), `no_place` (no
-    /// 부서 and no 사업장 text that binds); `None`: placed, or a former employee.
+    /// `workplace_unknown` (a bound unit under no open workplace), `no_place` (no
+    /// department and no workplace text that binds); `None`: placed, or a former
+    /// employee.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unplaced_reason: Option<&'static str>,
-    /// r3:hire-16: the 근로자 명부 facts a new person's first records take:
-    /// 성별, and the employment profile's 계약종료일 and 수습종료일.
+    /// r3:hire-16: the worker register facts a new person's first records take:
+    /// sex, and the employment profile's contract end date and probation end date.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sex: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -145,7 +149,7 @@ pub struct NewPerson {
 /// The per-row result of the dry run. `outcome` is one of `insert`, `update`,
 /// `unchanged`, `excluded`, `refused`, `unresolved_identity`; apply runs only
 /// when every row is one of the first four. An unknown unit is no longer a
-/// question that blocks apply: the person comes in 미배치 (MR-7).
+/// question that blocks apply: the person comes in unplaced (MR-7).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PlannedRow {
     pub source_key: String,
@@ -171,10 +175,10 @@ pub struct PlannedRow {
     /// `refused`: which cell (e.g. `hire_date` for `invalid_date`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refusal_field: Option<&'static str>,
-    /// The file's unit name that bound no unit (the person is 미배치).
+    /// The file's unit name that bound no unit (the person is unplaced).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unit_name: Option<String>,
-    /// The file's 사업장 text that named no 사업장 (MR-7).
+    /// The file's workplace text that named no workplace (MR-7).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub workplace_name: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -202,9 +206,9 @@ pub struct PlanFacts<'a> {
     pub people: &'a [OnFile],
     /// Unit name → ids of the ACTIVE units with that name.
     pub units: &'a BTreeMap<String, Vec<Uuid>>,
-    /// Unit id → the open 사업장 it sits in (itself or an ancestor).
+    /// Unit id → the open workplace it sits in (itself or an ancestor).
     pub unit_workplaces: &'a BTreeMap<Uuid, Uuid>,
-    /// 사업장 name → ids of the open 사업장 with that name.
+    /// Workplace name → ids of the open workplaces with that name.
     pub workplaces: &'a BTreeMap<String, Vec<Uuid>>,
     pub today: Date,
     /// No payroll period is approved yet, so former employees may still be

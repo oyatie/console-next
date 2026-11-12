@@ -35,7 +35,7 @@ pub struct ItemCompleteFacts {
     pub item_kind: String,
     /// The actor holds the item's owner line (domain × level).
     pub actor_holds_owner_line: bool,
-    /// The actor's scope covers the case's 법인 / 사업장 / branch.
+    /// The actor's scope covers the case's legal entity / workplace / branch.
     pub actor_scope_covers: bool,
     /// The case's subject has a user account.
     pub has_subject_user: bool,

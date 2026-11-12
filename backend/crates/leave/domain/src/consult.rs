@@ -1,16 +1,17 @@
-//! 근로기준법 §60⑤ 시기변경 협의 — automatic eligibility, worker alternate dates,
+//! Labor Standards Act §60⑤ timing-change consultation — automatic eligibility,
+//! worker alternate dates,
 //! and repeat-exercise audit rollup (charter §4-31).
 //!
 //! cm3 made refusal unrepresentable and introduced the terminal
 //! `time_change_consult` status. This module supplies the **consult mechanics**
 //! that charter §4-31 names alongside the proviso:
 //!
-//! 1. **요건 자동 판정** — the system judges whether granting the requested
-//!    시기 would leave the branch below a coverage floor. A manager comment
+//! 1. **Automatic requirements ruling** — the system judges whether granting the
+//!    requested timing would leave the branch below a coverage floor. A manager comment
 //!    alone cannot open a consult.
-//! 2. **대체 일자는 근로자 선택** — only the requester may propose alternate
-//!    dates, and they must differ from the original 시기.
-//! 3. **반복 행사 = 감사 집계** — each exercise in the same leave-year is
+//! 2. **Alternate dates are the worker's choice** — only the requester may propose
+//!    alternate dates, and they must differ from the original timing.
+//! 3. **Repeat exercise = audit rollup** — each exercise in the same leave-year is
 //!    counted; at the threshold an audit rollup flag is raised.
 //!
 //! Pure functions only. Persistence and the fail-closed SQL gate live in the
@@ -55,7 +56,7 @@ impl TimeChangeGroundsCode {
 pub const MINIMUM_ON_DUTY: u32 = 1;
 
 /// Second exercise of §60⑤ against the same subject in one leave-year raises
-/// the repeat-audit rollup (charter: 반복 행사=감사 집계).
+/// the repeat-audit rollup (charter: repeat exercise = audit rollup).
 pub const TIME_CHANGE_REPEAT_AUDIT_THRESHOLD: u32 = 2;
 
 /// Evidence the SQL gate (and tests) collect before calling
@@ -119,7 +120,7 @@ pub fn judge_time_change_eligibility(
     }
 }
 
-/// Validate a worker-chosen alternate 시기 against the original request.
+/// Validate a worker-chosen alternate leave timing against the original request.
 ///
 /// The alternate must be a well-formed [`NewLeaveRequest`] of the same leave
 /// type (and partial-day period rules), and must not restates the original
@@ -203,7 +204,7 @@ mod tests {
 
     #[test]
     fn ample_coverage_makes_time_change_ineligible() {
-        // Charter: 요건 자동 판정 — a manager cannot open a consult when the
+        // Charter: automatic requirements ruling — a manager cannot open a consult when the
         // branch would still meet the on-duty floor after granting leave.
         let evidence = TimeChangeCoverageEvidence {
             headcount: 5,

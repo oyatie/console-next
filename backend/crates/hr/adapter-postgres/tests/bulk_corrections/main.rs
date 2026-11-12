@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! MR-27: bulk 정정 through MR-8's ledger, run as the runtime role
+//! MR-27: bulk correction through MR-8's ledger, run as the runtime role
 //! `console_rt`: server-side selection, preview with exact counts, per-row
 //! preconditions, one job per commit.
 
@@ -240,7 +240,7 @@ async fn grid_rows_refuse_per_row_preconditions_and_write_the_rest(pool: PgPool)
         "reason_code": "DATA_ENTRY_ERROR",
     });
     let p = preview(&w, &body, SECOND).await;
-    // in_b fails a precondition (an active record has no 퇴직일; or the
+    // in_b fails a precondition (an active record has no exit date; or the
     // number in_a takes in this batch), and a refused row reserves nothing.
     assert_eq!(row(&p, w.in_a).outcome, "CHANGE");
     let refused = row(&p, w.in_b);

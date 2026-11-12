@@ -1,7 +1,8 @@
-//! UX-R1 PLACEMENT (regression: move-01, move-02): a 부서 has no placement of
-//! its own; its 사업장 and 법인 are its nearest placed ancestor's (the
-//! 사업장's SITE unit). A 전보 into a 부서 under another 사업장 is a 전근; one
-//! under another 법인 is refused (a 전적), whatever the depth of the 부서.
+//! UX-R1 PLACEMENT (regression: move-01, move-02): a department has no
+//! placement of its own; its workplace and legal entity are its nearest placed
+//! ancestor's (the workplace's SITE unit). A reassignment into a department
+//! under another workplace is a transfer; one under another legal entity is
+//! refused (a group transfer), whatever the depth of the department.
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -10,8 +11,9 @@ use uuid::Uuid;
 use super::*;
 
 // The fixture helpers are TR-33's (`cross_entity.rs`): `department_under`
-// draws the SITE unit and a 부서 with no placement of its own, `department`
-// one more level under it, `written` what a refused write must leave alone.
+// draws the SITE unit and a department with no placement of its own,
+// `department` one more level under it, `written` what a refused write must
+// leave alone.
 impl Fixture {
     async fn org_unit(&self) -> Option<Uuid> {
         sqlx::query_scalar("SELECT org_unit_id FROM employees WHERE id = $1")
@@ -21,7 +23,8 @@ impl Fixture {
             .unwrap()
     }
 
-    /// `(부서, 팀)`: a 부서 under `workplace`'s SITE unit and a 팀 under it.
+    /// `(department, team)`: a department under `workplace`'s SITE unit and a
+    /// team under it.
     async fn department_and_team(&self, entity: Uuid, workplace: Uuid) -> (Uuid, Uuid) {
         let (_, dept) = self.department_under(entity, workplace, "생산팀").await;
         (dept, self.department(dept, "조립파트").await)
@@ -56,7 +59,8 @@ impl Fixture {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_transfer_into_a_department_of_another_workplace_is_a_move(pool: PgPool) {
-    // move-02: the 사업장 stayed 본사 after a 전보 into 평택공장 › 생산팀.
+    // move-02: the workplace stayed the head office after a reassignment into
+    // "Pyeongtaek plant › Production team".
     let f = fixture(pool, true).await;
     let (entity, w) = f.entity(2).await;
     f.place(entity, w[0]).await;
@@ -82,7 +86,7 @@ async fn regression_a_transfer_into_a_department_of_another_workplace_is_a_move(
             (on.clone(), None, Some(w[1]), "TRANSFER".to_owned()),
         ]
     );
-    // Rescinding the 전보 takes them back, with one row at the first 사업장.
+    // Rescinding the reassignment takes them back, with one row at the first workplace.
     f.rescind(&moved).await;
     assert_eq!(f.home_branch().await, branches[0]);
     assert_eq!(
@@ -93,7 +97,8 @@ async fn regression_a_transfer_into_a_department_of_another_workplace_is_a_move(
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_transfer_into_a_department_of_another_entity_is_refused(pool: PgPool) {
-    // move-01: the record claimed 법인 A while its 부서 was 법인 B's.
+    // move-01: the record claimed legal entity A while its department was legal
+    // entity B's.
     let f = fixture(pool, true).await;
     let (a, wa) = f.entity(1).await;
     let (b, wb) = f.entity(1).await;
@@ -105,7 +110,7 @@ async fn regression_a_transfer_into_a_department_of_another_entity_is_refused(po
             .record(event("TRANSFER", &on, json!({"to_org_unit_id": unit})))
             .await
             .unwrap_err();
-        // TR-33's code on trunk (one code for a 전보 across 법인).
+        // TR-33's code on trunk (one code for a reassignment across legal entities).
         assert_eq!(refused, (422, "transfer_cross_entity".to_owned()));
     }
     // Nothing is written: no assignment, no unit change, no event, no audit row.

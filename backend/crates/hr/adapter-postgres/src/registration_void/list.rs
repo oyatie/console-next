@@ -1,6 +1,6 @@
-//! `GET /api/v1/employees/voided`: the 「취소된 등록」 list. The one read that
-//! opens the `hide_voided` policy, inside its own transaction; it is a
-//! personal-data list read, so it writes its 접속기록 row (INF-02).
+//! `GET /api/v1/employees/voided`: the "voided registrations" list. The one
+//! read that opens the `hide_voided` policy, inside its own transaction; it
+//! is a personal-data list read, so it writes its access log row (INF-02).
 
 use console_ontology_canonical_adapter_postgres::employee_void::include_voided;
 use console_platform_authz::{Feature, Principal};
@@ -19,7 +19,7 @@ pub struct VoidedEmployee {
     pub employee_id: Uuid,
     /// None once a SETUP delete freed it.
     pub employee_number: Option<String>,
-    /// The name until the personal data is destroyed, then `(파기됨)`.
+    /// The name until the personal data is destroyed, then the "(destroyed)" placeholder.
     pub name: String,
     pub void_reason_code: String,
     /// SETUP, GOVERNED or SOLE_HOLDER.

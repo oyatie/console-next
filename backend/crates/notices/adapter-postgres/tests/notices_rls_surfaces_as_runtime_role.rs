@@ -5,7 +5,7 @@
 //! is publish-tier-gated, publish snapshots the effective audience (org-wide
 //! or branch-scoped via `user_branches`) + issues an NT- code + fans out one
 //! notification per recipient, drafts are editable and frozen at publish,
-//! 수령확인 progress/receipts are correct, and cross-org isolation holds
+//! receipt acknowledgment progress/receipts are correct, and cross-org isolation holds
 //! throughout — including for `notice_audience_branches`.
 
 use console_kernel_core::{BranchId, NoticeId, OrgId, TraceContext, UserId};
@@ -312,7 +312,7 @@ async fn draft_visibility_publish_and_progress_as_runtime_role(owner_pool: PgPoo
         assert_eq!(list.items[0].category, "공지");
     }
 
-    // (c) 수령확인 progress starts at 0/3.
+    // (c) Receipt acknowledgment progress starts at 0/3.
     let progress_before = console_platform_request_context::scope_org(sae, async {
         store
             .progress(NoticeProgressQuery {

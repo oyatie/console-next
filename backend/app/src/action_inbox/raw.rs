@@ -94,7 +94,11 @@ impl ActionInboxSourcePort for Raw<'_> {
                         &sources.pool,
                         &sources.principal,
                         query,
-                        sources.org_policy,
+                        sources
+                            .policies
+                            .get(&console_settings_domain::SettingKey::ApprovalPolicyOrgStructure)
+                            .copied()
+                            .flatten(),
                         &sources.authorization,
                     )
                     .await
@@ -116,7 +120,13 @@ impl ActionInboxSourcePort for Raw<'_> {
                     sources::hr_register::page(&sources.pool, &sources.principal, query).await
                 }
                 ActionInboxSource::HrRequests => {
-                    sources::hr_requests::page(&sources.pool, &sources.principal, query).await
+                    sources::hr_requests::page(
+                        &sources.pool,
+                        &sources.principal,
+                        query,
+                        &sources.policies,
+                    )
+                    .await
                 }
                 ActionInboxSource::HrInsurance => {
                     sources::hr_insurance::page(

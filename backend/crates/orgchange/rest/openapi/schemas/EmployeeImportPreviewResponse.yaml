@@ -60,4 +60,4 @@ properties:
   sealed_identities:
     type: integer
     minimum: 0
-    description: Rows whose 주민등록번호 was sealed for matching.
+    description: Rows whose resident registration number was sealed for matching.

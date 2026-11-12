@@ -1,7 +1,8 @@
-//! The 퇴직(해고) 사유 a 근로자 명부 prints for a system `exit_reason` code
-//! (영 §20 8호 asks for the 사유, and 근기법 §40 keeps internal codes off the
-//! register). Labels are the Korean names of decisions #9 Table A, one per
-//! BW-07 roster code; a tenant code prints its own `label_ko`.
+//! The exit (dismissal) reason a worker register prints for a system
+//! `exit_reason` code (Enforcement Decree §20 item 8 asks for the reason, and
+//! Labor Standards Act §40 keeps internal codes off the register). Labels are
+//! the Korean names of decisions #9 Table A, one per BW-07 roster code; a
+//! tenant code prints its own `label_ko`.
 
 /// The register label of a system `exit_reason` code, `None` for any other.
 #[must_use]
@@ -31,7 +32,8 @@ pub fn exit_reason_label(code: &str) -> Option<&'static str> {
     })
 }
 
-/// The 성별 cell of the register: 남 / 여, empty while 미입력.
+/// The sex cell of the register: the Korean "male" / "female", empty while not
+/// entered.
 #[must_use]
 pub fn sex_label(code: &str) -> &'static str {
     match code {
@@ -41,6 +43,6 @@ pub fn sex_label(code: &str) -> &'static str {
     }
 }
 
-/// The 이력 cell when the employee has no prior career (an explicit answer,
-/// not 미입력).
+/// The history cell when the employee has no prior career (an explicit answer,
+/// not left unentered).
 pub const CAREER_NONE: &str = "경력 없음";

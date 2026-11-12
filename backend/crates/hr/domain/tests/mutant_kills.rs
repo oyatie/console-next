@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Pins what cargo-mutants found unpinned in hr-domain (TS-14,
 //! tools/lanes/mutants.sh): the shared text and date normalisers at their
-//! edges, and the two RRN detectors that keep 주민등록번호 out of every
-//! column but its own (a surviving mutant there is a privacy guard no test
-//! holds).
+//! edges, and the two RRN detectors that keep resident registration numbers
+//! out of every column but its own (a surviving mutant there is a privacy
+//! guard no test holds).
 
 use console_hr_domain::import::pii::is_stripped_zero_rrn;
 use console_hr_domain::import::rrn::{contains_rrn_shaped, is_rrn_value};

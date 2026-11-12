@@ -1,6 +1,7 @@
-// Korean source for `attendanceHolidays.` ids: 약정휴일 (list, add with preview, 사용 중지) and the read-only 공휴일.
+// Korean copy for `attendanceHolidays.` ids: 약정휴일 (list, add with preview, 사용 중지) and the read-only 공휴일.
 // Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koAttendanceHolidays = {
+import type { enAttendanceHolidays } from "../en/attendance-holidays";
+export const koAttendanceHolidays: Record<keyof typeof enAttendanceHolidays, string> = {
   "attendanceHolidays.holidays.title": "약정휴일",
   "attendanceHolidays.holidays.meta": "취업규칙이나 단체협약으로 정한 쉬는 날",
   "attendanceHolidays.holidays.add": "약정휴일 추가",
@@ -77,4 +78,4 @@ export const koAttendanceHolidays = {
   "attendanceHolidays.year.next": "다음 연도",
   "attendanceHolidays.monthN": "{n}월",
   "attendanceHolidays.dayN": "{n}일",
-} as const;
+};

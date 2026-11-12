@@ -1,5 +1,5 @@
 //! EMP-CREATE: the rules a registration (`POST /api/v1/employees`) applies to
-//! the EMP-MODEL facts given with it, and the 최저임금 hint. Pure: the
+//! the EMP-MODEL facts given with it, and the minimum wage hint. Pure: the
 //! statutory floors arrive from the caller (payroll's register).
 
 use console_kernel_core::KernelError;
@@ -7,10 +7,12 @@ use console_kernel_core::KernelError;
 use crate::contract::ContractKind;
 use crate::profile::enums::{EmploymentType, PayUnit, WorkerClassification};
 
-/// 1주 법정근로시간 40시간 (근로기준법 제50조①), in minutes. The 209-hour
-/// monthly floor of the 최저임금 고시 is computed on this week.
+/// The statutory 40 working hours in 1 week (Labor Standards Act Article
+/// 50①), in minutes. The 209-hour monthly floor of the minimum wage notice is
+/// computed on this week.
 const STATUTORY_WEEK_MINUTES: i64 = 40 * 60;
-/// 1주 소정근로시간 15시간 미만은 주휴(제55조)가 없다 (근로기준법 제18조③).
+/// Under 15 contractual working hours in 1 week there is no weekly paid
+/// holiday (Article 55) (Labor Standards Act Article 18③).
 /// Below it the 209-hour proportion does not hold, so no monthly floor is
 /// derived (the hint stays silent rather than guess).
 const WEEKLY_REST_THRESHOLD_MINUTES: i64 = 15 * 60;
@@ -48,7 +50,8 @@ pub fn check_contract_kind(
     }
 }
 
-/// 수습 is a 근로자 fact: 임원, 파견·도급 인력 and 프리랜서 have none.
+/// Probation is a worker fact: executives, dispatched and subcontracted staff
+/// and freelancers have none.
 ///
 /// # Errors
 /// Validation when a probation is given for a non-employee type.
@@ -62,7 +65,7 @@ pub fn check_probation_applies(employment_type: EmploymentType) -> Result<(), Ke
     }
 }
 
-/// The 최저임금 figures in force on a day (최저임금 고시).
+/// The minimum wage figures in force on a day (minimum wage notice).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MinimumWageFloors {
     pub hourly_won: i64,
@@ -72,8 +75,8 @@ pub struct MinimumWageFloors {
 
 /// The floor a wage in `unit` is compared with, or `None` when it cannot be
 /// derived without guessing (a monthly or annual wage under 15 hours a week).
-/// A part-time week takes the 209-hour floor in proportion to its 소정근로시간;
-/// hours above 40 are overtime and do not raise the base floor.
+/// A part-time week takes the 209-hour floor in proportion to its contractual
+/// working hours; hours above 40 are overtime and do not raise the base floor.
 #[must_use]
 pub fn minimum_wage_floor(
     floors: MinimumWageFloors,
@@ -94,8 +97,9 @@ pub fn minimum_wage_floor(
     }
 }
 
-/// True when a 근로자's wage is below its floor. Non-employees (임원, 파견·도급,
-/// 프리랜서) are outside the 최저임금법 for this tenant and never warn.
+/// True when a worker's wage is below its floor. Non-employees (executives,
+/// dispatched/subcontracted staff, freelancers) are outside the Minimum Wage
+/// Act for this tenant and never warn.
 #[must_use]
 pub fn below_minimum_wage(
     employment_type: EmploymentType,
