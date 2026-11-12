@@ -60,6 +60,9 @@ export function SetupPasskey() {
     void documents.refetch();
   };
 
+  // Consent controls appear only once the fresh documents determine the centered form's final layout.
+  if (loading && !documents.data) return <main className="auth"><Skeleton bones={["title", "row", "row"]} label={t("common.loading")} /></main>;
+
   return (
     <main className="auth">
       <div className="auth__frame"><Card flush><div className="auth__content">
