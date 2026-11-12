@@ -42,7 +42,7 @@ fn parse(
     parse_workbook(&ctx, sheets, memory, mapping).map_err(|e| e.message)
 }
 
-/// regression (W12): the footer 「합계 | 300명」 was a candidate person.
+/// regression (W12): the footer "Total | 300 people" was a candidate person.
 #[test]
 fn regression_a_footer_row_is_kept_but_never_a_candidate() -> Result<(), String> {
     let sheet = roster(&[["E-1", "김일", "2024-03-04", ""], ["합계", "1명", "", ""]]);
@@ -66,8 +66,8 @@ fn regression_a_footer_row_is_kept_but_never_a_candidate() -> Result<(), String>
     Ok(())
 }
 
-/// regression (W12): 연락처 was 저장하지 않음; now it is read as E.164 and
-/// still never kept in the raw row or shown in a preview.
+/// regression (W12): the contact column was "don't save"; now it is read as
+/// E.164 and still never kept in the raw row or shown in a preview.
 #[test]
 fn regression_the_phone_column_is_read_but_never_kept_raw() -> Result<(), String> {
     let sheet = roster(&[
@@ -181,8 +181,8 @@ fn regression_a_skipped_sheet_stays_skipped_until_imported_again() -> Result<(),
     Ok(())
 }
 
-/// regression (r3:hire-01): a sheet with no 법인 column gave every person
-/// the sheet's name (「퇴직자 명단」) as their 법인.
+/// regression (r3:hire-01): a sheet with no legal entity column gave every
+/// person the sheet's name ("list of former employees") as their legal entity.
 #[test]
 fn regression_a_sheet_name_never_becomes_a_company() -> Result<(), String> {
     let parsed = parse(

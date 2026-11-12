@@ -64,7 +64,7 @@ async fn employee(pool: &PgPool, org: Uuid, name: &str, home_branch: Option<Uuid
     id
 }
 
-/// The reader's account: every read writes a 접속기록 row naming its actor.
+/// The reader's account: every read writes an access log row naming its actor.
 async fn reader(pool: &PgPool, org: Uuid) -> Uuid {
     let id = Uuid::new_v4();
     sqlx::query(
@@ -157,7 +157,7 @@ async fn a_branch_admin_reads_only_its_own_branch(pool: PgPool) {
             err.message
         );
     }
-    // A refused detail showed nothing, so it leaves no 접속기록 row (INF-02).
+    // A refused detail showed nothing, so it leaves no access log row (INF-02).
     let read: Vec<String> = sqlx::query_scalar(
         "SELECT target_id FROM audit_events WHERE org_id = $1 AND action = 'employee.read'",
     )

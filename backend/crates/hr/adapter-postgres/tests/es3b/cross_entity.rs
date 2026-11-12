@@ -1,8 +1,9 @@
-//! TR-33 (move walk M22, decisions #30): a 전보 never crosses 법인. A TRANSFER
-//! to a 부서 under another 법인's 사업장 — single, bulk or future-dated — is
-//! 422 `transfer_cross_entity` naming the target, and writes nothing: no
-//! event, no assignment, no audit row. The 부서 has no placement of its own;
-//! its 법인 is its 사업장's.
+//! TR-33 (move walk M22, decisions #30): a reassignment never crosses legal
+//! entities. A TRANSFER to a department under another legal entity's
+//! workplace — single, bulk or future-dated — is 422 `transfer_cross_entity`
+//! naming the target, and writes nothing: no event, no assignment, no audit
+//! row. The department has no placement of its own; its legal entity is its
+//! workplace's.
 
 use console_hr_adapter_postgres::lifecycle::requests::{
     BulkEmployeeLifecycleEventRequest, CreateEmployeeLifecycleEventRequest,
@@ -14,9 +15,9 @@ use uuid::Uuid;
 use super::*;
 
 impl Fixture {
-    /// A unit, drawn as `placed`'s 사업장 (a SITE) when given; a 부서 names
-    /// its `parent_id` and has no placement of its own (what the structure
-    /// editor makes).
+    /// A unit, drawn as `placed`'s workplace (a SITE) when given; a department
+    /// names its `parent_id` and has no placement of its own (what the
+    /// structure editor makes).
     async fn unit(&self, attributes: Value, placed: Option<(Uuid, Uuid)>) -> Uuid {
         let (org, user, unit) = (self.org, self.user, Uuid::new_v4());
         let mut sql = format!(
@@ -37,7 +38,8 @@ impl Fixture {
         unit
     }
 
-    /// The SITE unit of `workplace` and one 부서 under it: `(site, 부서)`.
+    /// The SITE unit of `workplace` and one department under it:
+    /// `(site, department)`.
     pub(crate) async fn department_under(
         &self,
         entity: Uuid,
@@ -132,8 +134,8 @@ fn transfer(on: &str, unit: Uuid) -> Value {
     event("TRANSFER", on, json!({"to_org_unit_id": unit}))
 }
 
-/// Two 법인 A and B, the employee placed at A's 사업장, a 부서 under each:
-/// `(a, b, ours, theirs, [A's SITE unit, B's])`.
+/// Two legal entities A and B, the employee placed at A's workplace, a
+/// department under each: `(a, b, ours, theirs, [A's SITE unit, B's])`.
 async fn two_entities(f: &Fixture) -> (Uuid, Uuid, Uuid, Uuid, [Uuid; 2]) {
     let (a, wa) = f.entity(1).await;
     let (b, wb) = f.entity(1).await;
@@ -165,8 +167,9 @@ async fn regression_m22_a_transfer_into_another_entitys_department_is_refused(po
         );
         assert_eq!(f.written().await, before, "nothing written ({on})");
     }
-    // The same 법인's 부서 still records, now and on a later date; no 전근
-    // (the 부서 is at the 사업장 they work at), so the assignment stays one row.
+    // The same legal entity's department still records, now and on a later
+    // date; no transfer (the department is at the workplace they work at), so
+    // the assignment stays one row.
     f.record(transfer(&day(0), ours)).await.unwrap();
     let after = f.written().await;
     assert_eq!((after.0, after.1, after.3), (1, 1, Some(ours)));
@@ -195,8 +198,9 @@ async fn regression_m22_a_bulk_transfer_into_another_entity_refuses_the_employee
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_reservation_whose_department_left_the_entity_fails_on_its_date(pool: PgPool) {
-    // A transfer scheduled before its 부서 was placed under another 법인 (or
-    // before this guard) is re-judged on its date: APPLY_FAILED, not applied.
+    // A transfer scheduled before its department was placed under another
+    // legal entity (or before this guard) is re-judged on its date:
+    // APPLY_FAILED, not applied.
     let f = fixture(pool, true).await;
     let (_, _, ours, _, [_, site_b]) = two_entities(&f).await;
     let reserved = f.record(transfer(&day(5), ours)).await.unwrap();

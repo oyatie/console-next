@@ -1,4 +1,4 @@
-//! E-S3b: SETUP records (decisions #26) and 전근 through the employment assignment.
+//! E-S3b: SETUP records (decisions #26) and transfer through the employment assignment.
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -8,7 +8,7 @@ use super::*;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn leave_and_transfers_are_setup_records_in_setup(pool: PgPool) {
-    // decisions #26: migrating in must not dead-end on 휴직 or 전근.
+    // decisions #26: migrating in must not dead-end on leave of absence or transfer.
     let f = fixture(pool, false).await;
     let leave = event(
         "LEAVE_OF_ABSENCE",
@@ -83,7 +83,7 @@ async fn a_transfer_to_another_workplace_splits_the_assignment_until_rescinded(p
             (on.clone(), None, Some(w[1]), "TRANSFER".to_owned()),
         ]
     );
-    // Asking for the 사업장 they are at, with no unit change, changes nothing.
+    // Asking for the workplace they are at, with no unit change, changes nothing.
     let again = event("TRANSFER", &day(-1), json!({"to_workplace_id": w[1]}));
     assert_eq!(
         f.record(again).await.unwrap_err(),
@@ -94,7 +94,7 @@ async fn a_transfer_to_another_workplace_splits_the_assignment_until_rescinded(p
         f.live().await,
         [(HIRE.to_owned(), None, Some(w[0]), "HIRE".to_owned())]
     );
-    // Moved again and rescinded again: still one row at the first 사업장.
+    // Moved again and rescinded again: still one row at the first workplace.
     let again = f
         .record(event("TRANSFER", &on, json!({"to_workplace_id": w[1]})))
         .await
@@ -134,7 +134,7 @@ async fn a_unit_at_another_workplace_takes_the_employee_there_on_its_date(pool: 
     assert_eq!(scheduled["state"], "SCHEDULED");
     assert_eq!(scheduled["to_workplace_id"], json!(w[1]));
     assert_eq!(f.live().await.len(), 1, "nothing moves before its date");
-    // A named 사업장 that is not the unit's is refused.
+    // A named workplace that is not the unit's is refused.
     let mismatch = event(
         "TRANSFER",
         &day(11),

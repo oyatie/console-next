@@ -1,11 +1,13 @@
-//! 인적사항 extras HR holds on an employee (MR-34, lane EMP-FACTS): 한자 ·
-//! 영문 성명, 국적, 개인 메일, 비상연락처, 사진 and 그룹 입사일 (the
-//! 근속 기산일 an import's 그룹입사일 column maps to).
+//! Personal details extras HR holds on an employee (MR-34, lane EMP-FACTS):
+//! name in Chinese characters · English name, nationality, personal email,
+//! emergency contacts, photo and group hire date (the service start date an
+//! import's group hire date column maps to).
 //!
-//! None of them is a 근로자 명부 item (근로기준법 시행령 §20); they are
-//! optional company fields, so NULL stays 미입력 and nothing is defaulted
-//! (개인정보 보호법 §16 minimisation). 비상연락처 is a third person's data:
-//! at most [`MAX_EMERGENCY_CONTACTS`], never imported by default.
+//! None of them is a worker register item (Labor Standards Act Enforcement
+//! Decree §20); they are optional company fields, so NULL stays not entered
+//! and nothing is defaulted (Personal Information Protection Act §16
+//! minimisation). An emergency contact is a third person's data: at most
+//! [`MAX_EMERGENCY_CONTACTS`], never imported by default.
 //!
 //! Pure: values in, typed values or a coded `KernelError` out.
 
@@ -24,7 +26,7 @@ pub const PERSONAL_FIELDS: [&str; 7] = [
     "group_service_start_date",
 ];
 
-/// Most 비상연락처 one employee holds (third-party data, kept small).
+/// Most emergency contacts one employee holds (third-party data, kept small).
 pub const MAX_EMERGENCY_CONTACTS: usize = 3;
 
 /// The photo types a browser renders as an image. No SVG: it is a document
@@ -52,10 +54,12 @@ const fn is_hanja(c: char) -> bool {
         | '\u{20000}'..='\u{2FA1F}') // Extensions B.. and the compatibility supplement
 }
 
-/// 한자 성명: CJK ideographs (spaces allowed between parts), at most 30.
+/// Name in Chinese characters: CJK ideographs (spaces allowed between parts),
+/// at most 30.
 ///
 /// # Errors
-/// Validation when a character is not a 한자 or the name is too long.
+/// Validation when a character is not a Chinese character or the name is too
+/// long.
 pub fn normalize_name_hanja(raw: &str) -> Result<Option<String>, KernelError> {
     let Some(name) = collapse(raw) else {
         return Ok(None);
@@ -74,7 +78,7 @@ fn is_latin_letter(c: char) -> bool {
         || (('\u{C0}'..='\u{24F}').contains(&c) && c.is_alphabetic() && c != '×' && c != '÷')
 }
 
-/// 영문 성명 as written (passport style or not): Latin letters, spaces and
+/// English name as written (passport style or not): Latin letters, spaces and
 /// `- ' . ,`, at most 100; the case is kept as typed.
 ///
 /// # Errors
@@ -96,8 +100,8 @@ pub fn normalize_name_en(raw: &str) -> Result<Option<String>, KernelError> {
     Ok(Some(name))
 }
 
-/// 국적: an ISO 3166-1 alpha-2 code, upper case. NULL is 미입력 (never KR by
-/// default).
+/// Nationality: an ISO 3166-1 alpha-2 code, upper case. NULL is not entered
+/// (never KR by default).
 /// This pure normalizer checks shape; the correction transaction checks
 /// membership against the dated database catalog.
 ///
@@ -117,7 +121,7 @@ pub fn normalize_nationality(raw: &str) -> Result<Option<String>, KernelError> {
     Ok(Some(code))
 }
 
-/// How a 비상연락처 relates to the employee.
+/// How an emergency contact relates to the employee.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ContactRelation {
@@ -143,7 +147,7 @@ impl ContactRelation {
     }
 }
 
-/// One 비상연락처 as the client sends it.
+/// One emergency contact as the client sends it.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EmergencyContactInput {
@@ -155,7 +159,7 @@ pub struct EmergencyContactInput {
     pub contact_notified: Option<bool>,
 }
 
-/// A checked 비상연락처; the phone is normalized to E.164 by the adapter.
+/// A checked emergency contact; the phone is normalized to E.164 by the adapter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EmergencyContact {
     pub name: String,
@@ -164,7 +168,7 @@ pub struct EmergencyContact {
     pub contact_notified: bool,
 }
 
-/// Checks the whole 비상연락처 list (an empty list clears it).
+/// Checks the whole emergency contact list (an empty list clears it).
 ///
 /// # Errors
 /// Validation on too many rows, a blank or long name, or a blank phone.
@@ -240,9 +244,10 @@ pub fn check_photo(content_type: &str, byte_size: i64) -> Result<&'static str, K
     Ok(canonical)
 }
 
-/// 그룹 입사일 (근속 기산일): the day continuous service in the group began.
-/// It counts toward 계속근로기간 (근로기준법 §60 연차, 근로자퇴직급여 보장법
-/// §8), so it is never after the 입사일 here and not before 1900.
+/// Group hire date (service start date): the day continuous service in the
+/// group began. It counts toward the period of continuous service (Labor
+/// Standards Act §60 annual leave, Employee Retirement Benefit Security Act
+/// §8), so it is never after the hire date here and not before 1900.
 ///
 /// # Errors
 /// Validation when the date is after `hire` or before 1900-01-01.

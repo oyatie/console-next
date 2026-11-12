@@ -35,16 +35,17 @@ pub struct EmployeeCanonicalFields {
     pub hire_date: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exit_date: Option<String>,
-    /// BW-10: 생년월일 cell text (typed by the dry run).
+    /// BW-10: date of birth cell text (typed by the dry run).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub birth_date: Option<String>,
-    /// MR-7: 고용형태 cell text (mapped by the dry run).
+    /// MR-7: employment type cell text (mapped by the dry run).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub employment_type: Option<String>,
     #[serde(default = "default_active_status")]
     pub employment_status: String,
-    /// r3:hire-16: `MALE` / `FEMALE` (the 성별 column, else the 주민등록번호's
-    /// 7th digit); 계약종료일 and 수습종료일 cell text.
+    /// r3:hire-16: `MALE` / `FEMALE` (the sex column, else the resident
+    /// registration number's 7th digit); contract end date and probation end
+    /// date cell text.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sex: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -69,7 +70,7 @@ pub struct EmployeeCanonicalFields {
     pub night_hours: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub holiday_hours: Option<String>,
-    /// IMPORT-2: 재직상태, 휴직 시작일, 휴직 유형 cell text (typed by the dry run).
+    /// IMPORT-2: employment status, leave start date, leave type cell text (typed by the dry run).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -101,11 +102,11 @@ pub struct ParsedEmployeeImportWorkbook {
     pub columns: Vec<EmployeeImportColumn>,
     /// IMPORT-2: per-sheet reports as stored with the run (no header candidates).
     pub sheets: Vec<Value>,
-    /// IMPORT-2: sealed 주민등록번호 of rows, staged apart from the raw rows.
+    /// IMPORT-2: sealed resident registration numbers of rows, staged apart from the raw rows.
     pub identities: Vec<StagedIdentity>,
-    /// W12: `(source_key, E.164)` of rows with a 휴대전화, staged apart too.
+    /// W12: `(source_key, E.164)` of rows with a mobile phone, staged apart too.
     pub phones: Vec<(String, String)>,
-    /// IMPORT-2: sheet- and cell-level 확인 필요 items of the parse.
+    /// IMPORT-2: sheet- and cell-level needs-review items of the parse.
     pub notes: Vec<Note>,
     /// IMPORT-2: header labels the operator mapped (memory key → target).
     pub remembered: Vec<(String, Option<String>)>,

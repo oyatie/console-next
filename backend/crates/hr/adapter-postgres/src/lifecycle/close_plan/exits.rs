@@ -1,8 +1,9 @@
-//! A close plan's 퇴직 lines: each opens an exit case (as the exit report
-//! does, in the plan's transaction) with 마지막 근무일 = the day before the
-//! 폐쇄일 and its BW-07 `exit_reason` (CLOSURE 폐업 · INSOLVENCY 도산), or
-//! joins the person's open case. The case then goes the usual way (HR
-//! confirmation records the TERMINATE); the close waits for it.
+//! A close plan's exit lines: each opens an exit case (as the exit report
+//! does, in the plan's transaction) with last working day = the day before
+//! the closure date and its BW-07 `exit_reason` (CLOSURE business closure ·
+//! INSOLVENCY insolvency), or joins the person's open case. The case then
+//! goes the usual way (HR confirmation records the TERMINATE); the close
+//! waits for it.
 
 use console_kernel_core::{AuditAction, AuditEvent, BranchId, OrgId, TraceContext, UserId};
 use console_settings_domain::code_lists::ReasonDomain;
@@ -15,7 +16,7 @@ use crate::HrError;
 use crate::exits::store::resolve_exit_case_branch;
 use crate::lifecycle::title_reason::validate_reason_code;
 
-/// The 퇴직 사유 a close may give: 폐업 (default) or 도산.
+/// The exit reason a close may give: business closure (default) or insolvency.
 pub(crate) const CLOSE_EXIT_REASONS: [&str; 2] = ["CLOSURE", "INSOLVENCY"];
 
 /// The note every case a close opens carries.
@@ -63,7 +64,7 @@ pub(crate) async fn checked_reason(
 
 /// Open (or join) the exit case of `employee` for a close on `closed_on`.
 /// `Ok(Err(refusal))` when the person cannot leave that day (already
-/// EXITED, a 퇴직일 before the 입사일, an exit already scheduled).
+/// EXITED, an exit date before the hire date, an exit already scheduled).
 pub(crate) async fn open_for_close(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,

@@ -1,8 +1,8 @@
 //! IMPORT-2 (decisions #25) who a row is, in order: the operator's pick, the
-//! 사번 (current, then an alias of an earlier 사번); RRN and namesakes
-//! are review evidence, never automatic identity keys.
-//! A 사번 and an RRN that name two different people are a conflict for the
-//! operator, not a merge.
+//! employee number (current, then an alias of an earlier employee number); RRN
+//! and namesakes are review evidence, never automatic identity keys.
+//! An employee number and an RRN that name two different people are a
+//! conflict for the operator, not a merge.
 
 use super::plan::{Candidate, ImportRow, OnFile, PlanFacts, PlannedRow};
 use super::plan_people::unresolved;
@@ -17,7 +17,7 @@ pub(super) enum Identity<'a> {
     Settled(Box<PlannedRow>),
 }
 
-/// A person a row may be, with what tells namesakes apart (동명이인).
+/// A person a row may be, with what tells namesakes (people sharing a name) apart.
 pub(super) fn candidate(person: &OnFile, basis: &'static str) -> Candidate {
     Candidate {
         employee_id: person.id,

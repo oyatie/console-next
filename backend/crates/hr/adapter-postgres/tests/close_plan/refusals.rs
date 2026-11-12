@@ -1,5 +1,5 @@
-//! Fail-closed: every refusal names its lines (or the 사업장's role) with its
-//! code, and writes nothing — no job, no 전근, no exit case, no audit row.
+//! Fail-closed: every refusal names its lines (or the workplace's role) with its
+//! code, and writes nothing — no job, no transfer, no exit case, no audit row.
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -42,9 +42,9 @@ async fn lines_that_cannot_apply_are_refused_together_and_nothing_is_written(own
                 { "org_unit_id": s.logistics, "action": "DISSOLVE" },
             ],
             "people": [
-                // A 전적 names where it goes: a typed refusal, never a silent 전근.
+                // A group transfer names where it goes: a typed refusal, never a silent transfer.
                 { "employee_id": s.kim, "action": "GROUP_TRANSFER" },
-                // A 부서 of the closing 사업장 takes no one.
+                // A department of the closing workplace takes no one.
                 { "employee_id": s.lee, "action": "TRANSFER", "to_org_unit_id": s.logistics },
                 { "employee_id": s.park, "action": "EXIT", "exit_reason_code": "PERSONAL" },
                 { "employee_id": s.choi, "action": "TRANSFER" },
@@ -81,7 +81,7 @@ async fn lines_that_cannot_apply_are_refused_together_and_nothing_is_written(own
 async fn the_head_office_a_past_date_and_a_second_plan_are_refused(owner: PgPool) {
     let s = Site::new(&owner).await;
     let empty = json!({ "closed_on": today().to_string() });
-    // 본사 is the 대표 사업장: it never closes alone.
+    // The head office is the representative workplace: it never closes alone.
     let body = serde_json::from_value(empty.clone()).unwrap();
     let e =
         s.hr.plan_workplace_close(
@@ -96,7 +96,7 @@ async fn the_head_office_a_past_date_and_a_second_plan_are_refused(owner: PgPool
         (e.status.as_u16(), e.code),
         (409, "workplace_holds_entity_role")
     );
-    // A 폐쇄일 in the past is refused on its field.
+    // A closure date in the past is refused on its field.
     let yesterday = today().previous_day().unwrap().to_string();
     let e = s.plan(json!({ "closed_on": yesterday })).await.unwrap_err();
     assert_eq!((e.status.as_u16(), e.code), (422, "date_in_past"));

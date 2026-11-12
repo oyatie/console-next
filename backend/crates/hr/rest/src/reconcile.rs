@@ -1,5 +1,5 @@
-//! 이관 확인 routes (BE-EMP-UI; spec E7-reconcile, E7-row, E7-signoff). The
-//! gates are in the service (`employee_directory_manage` org-wide).
+//! Migration review routes (BE-EMP-UI; spec E7-reconcile, E7-row, E7-signoff).
+//! The gates are in the service (`employee_directory_manage` org-wide).
 
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;

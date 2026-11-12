@@ -1,9 +1,10 @@
-//! MR-22: the 법인 · 사업장 assignment is written with the registration, in
-//! its transaction, so one call records the person and where they work (no
-//! second call that can fail after the person exists).
+//! MR-22: the legal entity · workplace assignment is written with the
+//! registration, in its transaction, so one call records the person and where
+//! they work (no second call that can fail after the person exists).
 //!
-//! The 사업장 is the one asked for (`workplace_id`), else the one the chosen
-//! unit sits in. Neither: the person is 미배치 (no assignment), placed later.
+//! The workplace is the one asked for (`workplace_id`), else the one the
+//! chosen unit sits in. Neither: the person is unplaced (no assignment),
+//! placed later.
 
 use console_entity_adapter_postgres::employment_hire::{hire_in_tx, unit_placement};
 use console_entity_adapter_postgres::employment_moves::MoveWrite;
@@ -21,12 +22,12 @@ fn refused(code: &'static str, message: &str) -> HrError {
 }
 
 /// Places the just-registered `employee_id`; `None` when nothing names a
-/// 사업장 (미배치).
+/// workplace (unplaced).
 ///
 /// # Errors
-/// 422 `workplace_required` (a 법인 without a 사업장), `org_unit_at_other_workplace`,
+/// 422 `workplace_required` (a legal entity without a workplace), `org_unit_at_other_workplace`,
 /// `workplace_of_other_entity`, `workplace_not_open`, `home_branch_not_workplace`
-/// (a home branch that is not the 사업장's); a database fault.
+/// (a home branch that is not the workplace's); a database fault.
 pub async fn place_registration(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: Uuid,
@@ -96,8 +97,8 @@ pub async fn place_registration(
     Ok(Some(placed.workplace_id))
 }
 
-/// UX-R1 PLACEMENT (org-19, worst-case-32): the legacy 소속 지점 is the
-/// 사업장's own branch and never says otherwise: 422
+/// UX-R1 PLACEMENT (org-19, worst-case-32): the legacy home branch is the
+/// workplace's own branch and never says otherwise: 422
 /// `home_branch_not_workplace` (field `home_branch_id`).
 pub fn branch_refused() -> HrError {
     let mut error = refused(

@@ -1,5 +1,6 @@
-//! BW-10 the planner's two person checks: who a row without a 사번 may be,
-//! and what a row does to the person its 사번 (or the operator's pick) names.
+//! BW-10 the planner's two person checks: who a row without an employee number
+//! may be, and what a row does to the person its employee number (or the
+//! operator's pick) names.
 
 use super::cells::name_key;
 use super::plan::{
@@ -10,8 +11,8 @@ use super::plan_place;
 use super::plan_rows::refused;
 use super::plan_status::status_of;
 
-/// People of the same name (spaces ignored) a row without a 사번 may be; a
-/// differing 생년월일 rules one out.
+/// People of the same name (spaces ignored) a row without an employee number
+/// may be; a differing date of birth rules one out.
 pub(super) fn unresolved(
     base: PlannedRow,
     row: &ImportRow,
@@ -95,8 +96,8 @@ pub(super) fn existing(
         });
     }
     let mut deferred = Vec::new();
-    // 고용형태 fills an empty profile (the person has none yet, MR-7); a
-    // different one is a 정정 (BW-18), never an import overwrite.
+    // Employment type fills an empty profile (the person has none yet, MR-7); a
+    // different one is a correction (BW-18), never an import overwrite.
     let (kind, unmapped) = plan_place::employment_type(row.employment_type.as_ref(), decisions);
     deferred.extend(unmapped);
     match (kind, &person.employment_type) {
@@ -113,9 +114,10 @@ pub(super) fn existing(
         }),
         _ => {}
     }
-    // r3:worst-case-22: a 법인 the file names that is not the person's is a
-    // 전적 (or a mistake in the file), never a 발령: a 전보 cannot cross a
-    // 법인, and the import never moves anyone between 법인.
+    // r3:worst-case-22: a legal entity the file names that is not the person's
+    // is a group transfer (or a mistake in the file), never a personnel order: a
+    // reassignment cannot cross a legal entity, and the import never moves
+    // anyone between legal entities.
     let entity_moves = person
         .workplace_id
         .zip(
@@ -178,8 +180,8 @@ pub(super) fn existing(
     }
 }
 
-/// IMPORT-2: a stated status or a 사번 that differs from the person on file
-/// is never written by import; it comes back with the flow that does it.
+/// IMPORT-2: a stated status or an employee number that differs from the person
+/// on file is never written by import; it comes back with the flow that does it.
 fn status_and_number(row: &ImportRow, person: &OnFile, decisions: &Decisions) -> Vec<Deferred> {
     let mut out = Vec::new();
     if let Ok(Some(status)) = status_of(row, decisions)

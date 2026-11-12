@@ -117,7 +117,7 @@ pub fn normalize_lifecycle_transition(
                 "contract_end_date is required for CONTRACT_RENEWAL",
             ));
         }
-        // MR-24: a 전환 to CONTRACT takes one too (checked with its type).
+        // MR-24: an employment type change to CONTRACT takes one too (checked with its type).
         (false, true) if event_type != "EMPLOYMENT_TYPE_CHANGE" => {
             return Err(HrError::validation(
                 "contract_end_date is only allowed for CONTRACT_RENEWAL and a change to CONTRACT",
@@ -141,7 +141,8 @@ pub fn normalize_lifecycle_transition(
             "to_workplace_id is only allowed for TRANSFER and GROUP_TRANSFER",
         ));
     }
-    // E-S3b 전적: the receiving 사업장 names the 법인; the company text follows it.
+    // E-S3b group transfer: the receiving workplace names the legal entity; the
+    // company text follows it.
     if group && body.to_workplace_id.is_none() {
         return Err(HrError::validation(
             "to_workplace_id is required for GROUP_TRANSFER",

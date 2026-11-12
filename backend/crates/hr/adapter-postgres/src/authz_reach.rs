@@ -22,7 +22,7 @@ use crate::scope_sql::push_branch_scope_column;
 pub struct HrScope {
     pub entities: Vec<Uuid>,
     pub workplaces: Vec<Uuid>,
-    /// 부서 subtree roots.
+    /// Department subtree roots.
     pub units: Vec<Uuid>,
 }
 
@@ -35,7 +35,7 @@ impl HrScope {
 /// Who a door may touch for one operation key.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HrReach {
-    /// The whole tenant (ops, a 전체 grant, a legacy org-wide role).
+    /// The whole tenant (ops, an "All" grant, a legacy org-wide role).
     All,
     /// The grant set's nodes, or — for a legacy branch role holding no grant
     /// for the key — the people homed in its branches.
@@ -169,7 +169,7 @@ pub fn push_reach_at_unit(builder: &mut QueryBuilder<Postgres>, reach: &HrReach,
     builder.push(") ");
 }
 
-/// Whether a place (its 법인, 사업장 and 부서 columns) is inside `scope`.
+/// Whether a place (its legal entity, workplace and department columns) is inside `scope`.
 fn push_scope(
     builder: &mut QueryBuilder<Postgres>,
     scope: &HrScope,
@@ -197,9 +197,9 @@ const HEADS: &str = "heads AS (SELECT DISTINCT ON (org_unit_id) org_unit_id, \
      attributes->>'parent_id' AS parent FROM org_unit_revisions \
      ORDER BY org_unit_id, version DESC)";
 
-/// `(<subquery>)`: the 부서 placed in one of the scope's 법인/사업장 and the
-/// units under them, stopping at a unit placed somewhere else (uncorrelated:
-/// planned once, hashed).
+/// `(<subquery>)`: the departments placed in one of the scope's legal entities
+/// or workplaces and the units under them, stopping at a unit placed somewhere
+/// else (uncorrelated: planned once, hashed).
 fn push_placed_units(builder: &mut QueryBuilder<Postgres>, scope: &HrScope) {
     builder.push(format!(
         "(WITH RECURSIVE {HEADS}, pl AS (SELECT org_unit_id, \
@@ -269,8 +269,8 @@ pub async fn person_in_reach(
     Ok(q.build_query_scalar().fetch_one(tx.as_mut()).await?)
 }
 
-/// Whether a place someone would be registered or moved into (any of its 법인,
-/// 사업장, 부서) is inside `reach`.
+/// Whether a place someone would be registered or moved into (any of its legal
+/// entity, workplace, department) is inside `reach`.
 pub async fn place_in_reach(
     tx: &mut Transaction<'_, Postgres>,
     reach: &HrReach,
@@ -284,7 +284,7 @@ pub async fn place_in_reach(
         // A legacy branch role holds no place (fail closed).
         HrReach::Within { .. } => return Ok(false),
     };
-    // A 사업장 named alone counts in its 법인 too.
+    // A workplace named alone counts in its legal entity too.
     let mut q = QueryBuilder::<Postgres>::new("SELECT EXISTS (SELECT 1 FROM (SELECT COALESCE(");
     q.push_bind(entity);
     q.push("::uuid, (SELECT w.legal_entity_id FROM workplaces w WHERE w.id = ");

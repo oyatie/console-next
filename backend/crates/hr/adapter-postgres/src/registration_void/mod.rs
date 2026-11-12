@@ -1,12 +1,13 @@
-//! MR-26 등록 취소: a record that should never have existed.
+//! MR-26 registration void: a record that should never have existed.
 //!
 //! - SETUP: [`HrService::setup_delete_employee`] voids and tombstones at
-//!   once and frees the 사번 (nothing can reference it before 운영 시작).
-//! - After 운영 시작: [`HrService::void_employee`], governed like a high-risk
-//!   정정 (second person, or a sole holder's step-up with the review flag);
-//!   the personal data goes after `people.void_pii_retention`
+//!   once and frees the employee number (nothing can reference it before
+//!   go-live).
+//! - After go-live: [`HrService::void_employee`], governed like a high-risk
+//!   correction (second person, or a sole holder's step-up with the review
+//!   flag); the personal data goes after `people.void_pii_retention`
 //!   ([`HrService::destroy_due_void_pii`]).
-//! - [`HrService::list_voided`] is the 「취소된 등록」 list.
+//! - [`HrService::list_voided`] is the "voided registrations" list.
 //!
 //! A voided row is hidden from every runtime read by 0277's `hide_voided`
 //! policy; the `employees` writes go through the canonical owner
@@ -37,13 +38,13 @@ pub struct SetupDeleteRequest {
     /// The employee's `updated_at` as last read (RFC 3339).
     pub expected_updated_at: String,
     pub reason_code: String,
-    /// An EXITED person inside the 근로자 명부 period: the actor confirms the
-    /// tenant keeps its original register (onboarding design §7.3).
+    /// An EXITED person inside the worker register period: the actor confirms
+    /// the tenant keeps its original register (onboarding design §7.3).
     #[serde(default)]
     pub register_kept: bool,
 }
 
-/// `POST /api/v1/employees/{id}/void` after 운영 시작.
+/// `POST /api/v1/employees/{id}/void` after go-live.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VoidEmployeeRequest {
@@ -51,7 +52,7 @@ pub struct VoidEmployeeRequest {
     pub reason_code: String,
     #[serde(default)]
     pub note: Option<String>,
-    /// 「근무한 적 없음」: required unless the person is PRE_HIRE.
+    /// "Never worked": required unless the person is PRE_HIRE.
     #[serde(default)]
     pub attest_never_worked: bool,
     /// A sole holder's void: a step-up bound to this employee and

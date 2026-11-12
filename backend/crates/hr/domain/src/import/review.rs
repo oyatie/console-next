@@ -1,9 +1,9 @@
-//! IMPORT-2 (decisions #25): the 「확인 필요」 queue — every item of a run
+//! IMPORT-2 (decisions #25): the "needs review" queue — every item of a run
 //! that needs a person, counted, with its reason, the source sheet and cell,
 //! and the one decision that resolves it (the FE sends that entry in the
 //! next dry run). A projection of the plan, never stored on its own.
 //! `blocking` items keep apply closed; the rest come in as the plan says
-//! (미배치, 사번 미부여) and stay listed.
+//! (unplaced, no employee number assigned) and stay listed.
 
 use std::collections::BTreeMap;
 
@@ -39,14 +39,15 @@ pub struct ReviewItem {
     pub cell: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field: Option<&'static str>,
-    /// The text to map (a unit, 사업장, 고용형태, 재직상태 or 휴직 유형 text).
+    /// The text to map (a unit, workplace, employment type, employment status or
+    /// leave type text).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
     /// Rows the item covers (a value map covers every row with that text).
     pub rows: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resolution: Option<Resolution>,
-    /// W03: the records a unit / 사업장 text may mean (`names`), best first.
+    /// W03: the records a unit / workplace text may mean (`names`), best first.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub candidates: Vec<NameCandidate>,
 }

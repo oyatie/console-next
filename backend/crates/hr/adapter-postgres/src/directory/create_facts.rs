@@ -259,8 +259,8 @@ pub async fn record_registration_facts(
 }
 
 /// `pay_below_minimum_wage`: the recorded pay (or the contract wage) of a
-/// 근로자 is below the 최저임금 floor in force on the hire date. A hint, never
-/// a refusal: the payslip's own check is the binding one.
+/// worker is below the minimum wage floor in force on the hire date. A hint,
+/// never a refusal: the payslip's own check is the binding one.
 #[must_use]
 pub fn minimum_wage_warning(
     employment_type: EmploymentType,

@@ -1,7 +1,7 @@
 //! IMPORT-2 (decisions #25): a whole workbook of any layout → the staged
 //! run. Every sheet is detected on its own (operator mapping, remembered
 //! labels, catalog); mapped sheets give rows, the others give a report and a
-//! blocking 「확인 필요」 item, never an error and never a guess.
+//! blocking "needs review" item, never an error and never a guess.
 
 use std::collections::BTreeMap;
 

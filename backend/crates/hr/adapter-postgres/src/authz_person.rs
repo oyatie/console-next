@@ -151,8 +151,8 @@ impl super::HrCaseFacts {
     }
 }
 
-/// The keys a 발령 (a lifecycle event) passes on: 발령 등록·수정, or — as
-/// before AX-5 — 인사기본 등록·수정.
+/// The keys a personnel order (a lifecycle event) passes on: "Personnel order
+/// register/edit", or — as before AX-5 — "HR basics register/edit".
 pub const APPOINTMENT_KEYS: [Feature; 2] =
     [Feature::LifecycleManage, Feature::EmployeeDirectoryManage];
 

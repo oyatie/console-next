@@ -1,4 +1,4 @@
-//! BW-17 change requests (변경 요청): kinds, subjects and the close rule.
+//! BW-17 change requests: kinds, subjects and the close rule.
 //!
 //! Pure: who may act (the HR tier, the branch scope) is checked by the adapter;
 //! this module decides only "whether" a close is legal for these facts.
@@ -8,8 +8,9 @@ use uuid::Uuid;
 
 /// What the request asks for. `OTHER` is the unforeseen case: a note is
 /// required and the request is flagged for review. `ACCESS_EXPLANATION` (the
-/// 접속기록 review's 소명 요청, governance S7) and `POLICY_QUESTION` (S5's
-/// 규정 검토 필요) are answered by their named assignee, who need not be HR.
+/// access log review's request for explanation, governance S7) and
+/// `POLICY_QUESTION` (S5's "policy review needed") are answered by their named
+/// assignee, who need not be HR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeRequestKind {
     ProfileCorrection,
@@ -19,7 +20,7 @@ pub enum ChangeRequestKind {
     Other,
     AccessExplanation,
     PolicyQuestion,
-    /// MR-26 등록 취소, filed only by `POST /employees/{id}/void`.
+    /// MR-26 registration void, filed only by `POST /employees/{id}/void`.
     EmployeeVoid,
     ImportRollback,
 }
@@ -80,7 +81,7 @@ impl ChangeRequestKind {
         }
     }
 
-    /// `OTHER` is reviewed after the fact (the 기타 path).
+    /// `OTHER` is reviewed after the fact (the "Other" path).
     #[must_use]
     pub const fn review_required(self) -> bool {
         matches!(self, Self::Other)
@@ -95,7 +96,8 @@ impl ChangeRequestKind {
 }
 
 /// Validates a new request's shape: the subject fits the kind, OTHER carries
-/// a note, and a 소명 요청 is named to the account it asks (that 취급자).
+/// a note, and a request for explanation is named to the account it asks
+/// (that handler).
 pub fn validate_new_request(
     kind: ChangeRequestKind,
     subject_type: &str,
@@ -122,7 +124,7 @@ pub fn validate_new_request(
     Ok(())
 }
 
-/// An answer kind closes with the assignee's note (the 소명 or the reply).
+/// An answer kind closes with the assignee's note (the explanation or the reply).
 pub fn validate_answer(
     kind: ChangeRequestKind,
     decision: ChangeRequestDecision,

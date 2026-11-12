@@ -1,5 +1,5 @@
-//! BW-11 정정 (correct) and 취소·철회 (rescind) routes. Without
-//! `confirm_cascades: true` a rescind only previews its cascades.
+//! BW-11 correction (correct) and cancellation/withdrawal (rescind) routes.
+//! Without `confirm_cascades: true` a rescind only previews its cascades.
 
 use axum::extract::{Path, State};
 use axum::routing::post;

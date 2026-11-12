@@ -1,4 +1,4 @@
-//! 인사카드 section routes (MR-31/33/35): one employee's entries (create,
+//! Personnel card section routes (MR-31/33/35): one employee's entries (create,
 //! correct, void, history) and the per-section sheet (export, import preview,
 //! import apply). Writes require an `Idempotency-Key` (a UUID); a replay
 //! answers 200 with the stored result, a new write 201.
@@ -78,8 +78,9 @@ struct ListQuery {
     section: Option<String>,
     #[serde(default)]
     include_voided: bool,
-    /// Required for a restricted section (징계, 장애, 보훈): a
-    /// `restricted_record_purpose` code, plus a note when the code asks.
+    /// Required for a restricted section (disciplinary action, disability,
+    /// veteran status): a `restricted_record_purpose` code, plus a note when
+    /// the code asks.
     purpose: Option<String>,
     purpose_note: Option<String>,
 }
@@ -95,7 +96,7 @@ fn purpose(code: Option<String>, note: Option<String>) -> Option<RecordPurpose> 
     code.map(|code| RecordPurpose { code, note })
 }
 
-/// Record reads are never cached: a restricted one is 민감정보.
+/// Record reads are never cached: a restricted one is sensitive information.
 type NoStore<T> = ([(header::HeaderName, &'static str); 1], Json<T>);
 
 fn no_store<T>(body: T) -> NoStore<T> {

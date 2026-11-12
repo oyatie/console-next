@@ -1,4 +1,4 @@
-//! CAP-04 (decisions #27, #28): the bulk 발령 as a job. `POST
+//! CAP-04 (decisions #27, #28): the bulk personnel order as a job. `POST
 //! /employees/lifecycle-events/bulk` with `Prefer: respond-async` answers
 //! 202 with the job and its `Location` once the request's own checks pass;
 //! `GET …/bulk/jobs/{job_id}` reads it. Without the header the request stays

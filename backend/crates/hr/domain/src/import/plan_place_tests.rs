@@ -1,4 +1,4 @@
-//! MR-7: placement, 미배치 and the 고용형태 of imported rows.
+//! MR-7: placement, unplaced and the employment type of imported rows.
 
 use std::collections::BTreeMap;
 
@@ -137,12 +137,12 @@ fn a_new_person_is_placed_at_the_workplace_of_their_unit_or_their_workplace_text
     );
     let placed = |i: usize| plan[i].new_person.as_ref().unwrap().workplace_id;
     assert_eq!((placed(0), placed(1)), (Some(at_unit), Some(named)));
-    // The unit and the 사업장 text disagree: a question, not a guess.
+    // The unit and the workplace text disagree: a question, not a guess.
     assert_eq!(
         (plan[2].refusal_code, plan[2].refusal_field),
         (Some("workplace_conflict"), Some("workplace"))
     );
-    // A 현장 name or an ambiguous name places nobody, and says so.
+    // A site name or an ambiguous name places nobody, and says so.
     assert_eq!(
         (placed(3), plan[3].workplace_name.as_deref()),
         (None, Some("강남현장"))
@@ -152,7 +152,7 @@ fn a_new_person_is_placed_at_the_workplace_of_their_unit_or_their_workplace_text
         (None, Some("지점"))
     );
 
-    // The operator answers: 공장 text is not a 사업장 here; 지점 is that one.
+    // The operator answers: the "plant" text is not a workplace here; "branch" is that one.
     let decisions = Decisions {
         workplace_map: BTreeMap::from([("공장".into(), None), ("지점".into(), Some(named))]),
         ..Decisions::default()
@@ -199,7 +199,7 @@ fn an_unmapped_unit_or_type_never_blocks_and_a_former_employee_is_not_placed() {
     let coded = plan[1].new_person.as_ref().unwrap();
     assert_eq!(coded.employment_type.as_deref(), Some("CONTRACT"));
     assert!(coded.workplace_id.is_some());
-    // r3:hire-22: a former employee is found at their unit's 사업장, never bound.
+    // r3:hire-22: a former employee is found at their unit's workplace, never bound.
     let former = plan[2].new_person.as_ref().unwrap();
     let hq = world.unit_workplaces[&world.units["인사팀"][0]];
     assert_eq!(

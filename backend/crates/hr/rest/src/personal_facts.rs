@@ -1,10 +1,10 @@
-//! 인적사항 extra routes (MR-34, lane EMP-FACTS). INTEG mounts [`router`]
+//! Personal details extra routes (MR-34, lane EMP-FACTS). INTEG mounts [`router`]
 //! inside the authenticated HR router with the object store (the storage
 //! config's primary bucket) and registers [`PERSONAL_FACTS_ROUTE_PATHS`].
 //! Changes of these items are corrections: `PATCH /employees/{id}` (one by
 //! one) and `POST /employees/register-facts/bulk` (the import profile).
 //!
-//! 사진: `POST …/photo-uploads` answers a presigned PUT (type and size are
+//! Photo: `POST …/photo-uploads` answers a presigned PUT (type and size are
 //! signed), the browser PUTs the bytes, `POST …/photo-uploads/{upload_id}/confirm`
 //! HEADs the object, then `PATCH /employees/{id} {"photo": upload_id}`. Without
 //! object storage the upload routes answer 503 and the read serves no URL.

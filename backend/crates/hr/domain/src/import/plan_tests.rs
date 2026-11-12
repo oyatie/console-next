@@ -197,7 +197,7 @@ fn a_new_person_needs_a_date_and_one_unit() {
         (plan[1].refusal_code, plan[1].refusal_field),
         (Some("invalid_date"), Some("hire_date"))
     );
-    // An unknown unit is no question that blocks apply: 미배치, name kept.
+    // An unknown unit is no question that blocks apply: unplaced, name kept.
     let unplaced = plan[2].new_person.as_ref().unwrap();
     assert_eq!(
         (plan[2].outcome, plan[2].unit_name.as_deref()),

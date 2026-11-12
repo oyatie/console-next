@@ -61,7 +61,7 @@ fn the_register_is_kept_three_years_from_the_exit_day() {
         register_kept_until(date!(2024 - 03 - 31), 3),
         date!(2027 - 03 - 31)
     );
-    // 민법 §160③: no 29 February in 2027, so the month's last day.
+    // Civil Act §160③: no 29 February in 2027, so the month's last day.
     assert_eq!(
         register_kept_until(date!(2024 - 02 - 29), 3),
         date!(2027 - 02 - 28)

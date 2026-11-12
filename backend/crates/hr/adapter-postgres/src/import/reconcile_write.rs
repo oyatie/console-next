@@ -1,7 +1,7 @@
-//! 이관 확인 writes: one row's verification state (versioned) and the run's
-//! one HR sign-off. Both lock the run row first, so a sign-off and a late
-//! row write never interleave; a signed-off run is frozen. No second person
-//! (#26): the sign-off records who attested and over which open count.
+//! Migration review writes: one row's verification state (versioned) and the
+//! run's one HR sign-off. Both lock the run row first, so a sign-off and a
+//! late row write never interleave; a signed-off run is frozen. No second
+//! person (#26): the sign-off records who attested and over which open count.
 
 use console_hr_domain::text::normalize_optional_limited_text;
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
@@ -21,7 +21,7 @@ use crate::{HrError, HrService};
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetReconcileCheckRequest {
-    /// CONFIRMED (확인함) or NEEDS_CHECK (확인 필요).
+    /// CONFIRMED ("confirmed") or NEEDS_CHECK ("needs review").
     #[serde(deserialize_with = "deserialize_enum_15")]
     pub state: String,
     #[serde(default)]
@@ -34,7 +34,7 @@ pub struct SetReconcileCheckRequest {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SignOffImportRequest {
-    /// The open count (확인 필요 + 미확인) the person saw.
+    /// The open count (needs review + unconfirmed) the person saw.
     pub expected_open_count: i64,
     /// Required when the open count is not 0: signing over open rows is said.
     #[serde(default)]

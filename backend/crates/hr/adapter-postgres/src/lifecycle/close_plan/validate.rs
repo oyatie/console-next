@@ -1,7 +1,8 @@
-//! A close plan checked against the 사업장 as it is, fail-closed: a line for
-//! every person and for every 부서 directly under it, each target an active
-//! unit at another open 사업장 of the same 법인 (or a 부서 the plan itself
-//! moves there). Writes nothing; returns the lines to store or every refusal.
+//! A close plan checked against the workplace as it is, fail-closed: a line
+//! for every person and for every department directly under it, each target
+//! an active unit at another open workplace of the same legal entity (or a
+//! department the plan itself moves there). Writes nothing; returns the lines
+//! to store or every refusal.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -22,7 +23,7 @@ use crate::HrError;
 
 pub(super) type Tx<'a, 'b> = &'a mut Transaction<'b, Postgres>;
 
-/// What the 사업장 holds now.
+/// What the workplace holds now.
 pub(crate) struct Holdings<'a> {
     pub scope: &'a CloseScope,
     pub units: &'a [ScopeUnit],
@@ -71,15 +72,15 @@ pub(crate) async fn check(
         )
         .collect();
     if !missing.is_empty() {
-        // Fail closed: nothing applies while anyone or any 부서 has no line.
+        // Fail closed: nothing applies while anyone or any department has no line.
         return Err(plan_refused(
             "close_plan_incomplete",
             missing.into_iter().chain(refusals).collect(),
         ));
     }
     let alternatives = open_alternatives(tx, at.scope).await?;
-    // Where each unit under the 사업장 is on the day: a moved subtree's
-    // 사업장 is its destination's; a dissolved one is nowhere.
+    // Where each unit under the workplace is on the day: a moved subtree's
+    // workplace is its destination's; a dissolved one is nowhere.
     let mut moved_to: BTreeMap<Uuid, Uuid> = BTreeMap::new();
     let mut lines = Vec::new();
     for line in body.units.iter().filter(|l| l.action == UnitAction::Move) {
@@ -183,10 +184,11 @@ pub(crate) async fn check(
     Ok(lines)
 }
 
-/// The 사업장 a 전근 target unit is at on the day, or why it cannot take
-/// anyone: `org_unit_not_found` (not an active unit), `workplace_not_open`
-/// (at no open 사업장, at this one, or dissolved with it),
-/// `transfer_cross_entity` (another 법인's: a 전적, never a 전근).
+/// The workplace a transfer target unit is at on the day, or why it cannot
+/// take anyone: `org_unit_not_found` (not an active unit), `workplace_not_open`
+/// (at no open workplace, at this one, or dissolved with it),
+/// `transfer_cross_entity` (another legal entity's: a group transfer, never a
+/// transfer).
 async fn target_at(
     tx: Tx<'_, '_>,
     at: &Holdings<'_>,
@@ -199,8 +201,8 @@ async fn target_at(
     })
 }
 
-/// The 사업장 and 법인 a target unit is at on the day (a unit the plan moves
-/// stays in this 법인), or why it cannot take anyone.
+/// The workplace and legal entity a target unit is at on the day (a unit the
+/// plan moves stays in this legal entity), or why it cannot take anyone.
 pub(super) async fn target_of(
     tx: Tx<'_, '_>,
     at: &Holdings<'_>,
@@ -222,7 +224,7 @@ pub(super) async fn target_of(
         .ok_or("workplace_not_open"))
 }
 
-/// The unit and every unit under it, from the 사업장's list.
+/// The unit and every unit under it, from the workplace's list.
 fn subtree_of(units: &[ScopeUnit], root: Uuid) -> Vec<Uuid> {
     let mut out = vec![root];
     let mut i = 0;
@@ -239,7 +241,7 @@ fn subtree_of(units: &[ScopeUnit], root: Uuid) -> Vec<Uuid> {
     out
 }
 
-/// The 법인's other open 사업장: where a refused target could go instead.
+/// The legal entity's other open workplaces: where a refused target could go instead.
 async fn open_alternatives(tx: Tx<'_, '_>, scope: &CloseScope) -> Result<Vec<Uuid>, HrError> {
     Ok(sqlx::query_scalar(
         "SELECT id FROM workplaces WHERE legal_entity_id = $1 AND id <> $2 AND voided_at IS NULL AND closed_on IS NULL ORDER BY id",

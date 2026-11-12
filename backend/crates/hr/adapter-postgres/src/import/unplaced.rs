@@ -1,7 +1,7 @@
-//! W03 / E8: the 미배치 queue — current people an import (or anything else)
-//! left without a current 사업장 or the department their file named, with the
-//! file's own 부서 text and why. Counted for the roster chip, keyset-paged by
-//! (`created_at`, id).
+//! W03 / E8: the unplaced queue — current people an import (or anything else)
+//! left without a current workplace or the department their file named, with
+//! the file's own department text and why. Counted for the roster chip,
+//! keyset-paged by (`created_at`, id).
 
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_org_conn;
@@ -39,7 +39,7 @@ pub struct UnplacedPerson {
     pub legal_entity_id: Option<Uuid>,
     pub workplace_id: Option<Uuid>,
     pub org_unit_id: Option<Uuid>,
-    /// The 부서 text the file named that bound nothing (원본 부서).
+    /// The department text the file named that bound nothing (source department).
     pub source_org_unit: Option<String>,
     /// The statutory workplace text that did not bind, separate from the physical site.
     pub source_workplace: Option<String>,

@@ -1,12 +1,12 @@
 //! The per-section import sheet (bulk create, correct and void). The browser
 //! parses the sheet (no file and no RRN column reaches the server) and sends
-//! typed rows keyed by 사번. Preview writes nothing; apply is bound to the
-//! preview's `plan_digest`, applies every valid row (partial apply), skips
-//! the rest with their codes, and replays its report for a repeated
-//! Idempotency-Key. Rows that carry `entry_id` (from the section sheet
-//! export) correct or void that entry.
+//! typed rows keyed by employee number. Preview writes nothing; apply is
+//! bound to the preview's `plan_digest`, applies every valid row (partial
+//! apply), skips the rest with their codes, and replays its report for a
+//! repeated Idempotency-Key. Rows that carry `entry_id` (from the section
+//! sheet export) correct or void that entry.
 //!
-//! not wired into the import run wizard / 이관 확인 funnel (IMPORT
+//! not wired into the import run wizard / migration review funnel (IMPORT
 //! lane's `import_runs`); add a sheet role there when that model is on trunk.
 
 use console_hr_domain::record::plan::Decision;

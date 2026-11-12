@@ -1,5 +1,5 @@
-//! BW-13 lifecycle seams: a PROMOTE's catalog title, the 강등 check, and the
-//! BW-07 reason code of a TRANSFER or PROMOTE.
+//! BW-13 lifecycle seams: a PROMOTE's catalog title, the demotion check, and
+//! the BW-07 reason code of a TRANSFER or PROMOTE.
 
 use console_hr_domain::lifecycle::event::{
     EmployeeForLifecycle, NormalizedEmployeeLifecycleTransition,
@@ -54,10 +54,10 @@ pub async fn fill_promote_title(
     Ok(())
 }
 
-/// The catalog title the event leaves on the employee, after the 강등 check
-/// on the 직급 and the 직위 (MR-25): a PROMOTE of the 직위 sets it (by id, or
-/// clears it when promoted by free text); a 직급-only PROMOTE and any other
-/// event keep the current one.
+/// The catalog title the event leaves on the employee, after the demotion
+/// check on the grade and the title (MR-25): a PROMOTE of the title sets it
+/// (by id, or clears it when promoted by free text); a grade-only PROMOTE and
+/// any other event keep the current one.
 pub async fn promote_target_title(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org_uuid: Uuid,

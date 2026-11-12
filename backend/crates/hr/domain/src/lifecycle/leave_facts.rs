@@ -13,8 +13,9 @@ pub const LEAVE_TYPES: [&str; 6] = [
     "OTHER",
 ];
 
-/// 육아휴직 (남녀고용평등법 §19) and 출산전후휴가 (근로기준법 §74) end on a
-/// known date, so the return date is required.
+/// Childcare leave (Equal Employment Opportunity Act §19) and maternity leave
+/// (Labor Standards Act §74) end on a known date, so the return date is
+/// required.
 pub const RETURN_DATE_REQUIRED: [&str; 2] = ["CHILDCARE", "MATERNITY"];
 
 /// Checks a LEAVE_OF_ABSENCE's type and return date (both already normalised).

@@ -56,7 +56,7 @@ impl HrService {
         let decision = ChangeRequestDecision::parse(body.decision.trim())?;
         // Apply and decline are the HR tier's, except that the named assignee
         // answers an answer kind; withdrawing is the requester's. Outside HR
-        // the row decides (below), so a named 취급자 is never a dead end.
+        // the row decides (below), so a named handler is never a dead end.
         let reach = hr_reach(&principal, Feature::EmployeeDirectoryManage).ok();
         let reason = reason_code(&body.reason_code, "reason_code")?;
         let note = note(body.note.as_deref())?;

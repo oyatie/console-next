@@ -1,6 +1,6 @@
-//! MR-26 등록 취소 on real registrations, run as `console_rt`: the shared
-//! helpers, and the SETUP delete (tombstoned at once, 사번 freed). The
-//! governed void after 운영 시작 is in `void_governed.rs`.
+//! MR-26 registration void on real registrations, run as `console_rt`: the
+//! shared helpers, and the SETUP delete (tombstoned at once, employee number
+//! freed). The governed void after go-live is in `void_governed.rs`.
 
 use std::collections::BTreeSet;
 
@@ -172,12 +172,13 @@ async fn a_setup_delete_tombstones_at_once_and_frees_the_number(pool: PgPool) {
     .await
     .unwrap();
     assert_eq!(phone, None);
-    // The 사번 is free again, and the 「취소된 등록」 list shows the tombstone.
+    // The employee number is free again, and the "voided registrations" list
+    // shows the tombstone.
     register(&f, "sd-2", "2026-09-01", "S-001").await;
     let list = f.hr.list_voided(f.principal.clone()).await.unwrap();
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].employee_id, id);
-    // After 운영 시작 there is no delete, only the governed void.
+    // After go-live there is no delete, only the governed void.
     let other = register(&f, "sd-3", "2026-09-01", "").await;
     go_live(&pool, *f.principal.org_id.as_uuid()).await;
     assert_eq!(

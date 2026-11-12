@@ -57,9 +57,9 @@ pub async fn require_assignable_org_unit(
 
 /// BW-19 3: the two unique-violation causes of a create get their own codes:
 /// the idempotency reservation's constraint is `idempotency_key_reused`; the
-/// 사번 uniqueness (the 0183 trigger, which names no constraint) is
-/// `employee_number_taken`. The pre-write check names the holder; this mapping
-/// covers the race it cannot see.
+/// employee number uniqueness (the 0183 trigger, which names no constraint)
+/// is `employee_number_taken`. The pre-write check names the holder; this
+/// mapping covers the race it cannot see.
 pub fn employee_create_db_error(error: sqlx::Error) -> HrError {
     if let Some(database) = error.as_database_error()
         && database.code().is_some_and(|code| code == "23505")
@@ -89,9 +89,10 @@ pub async fn next_employee_number(
         .bind(org_uuid)
         .execute(tx.as_mut())
         .await?;
-    // A voided registration keeps its 사번 (MR-26), so it counts here too, and
-    // so does every number a 사번 변경 ever moved away from or to (records-02:
-    // a retired E-000001 alias was issued again and refused 409).
+    // A voided registration keeps its employee number (MR-26), so it counts
+    // here too, and so does every number an employee number change ever moved
+    // away from or to (records-02: a retired E-000001 alias was issued again
+    // and refused 409).
     include_voided(tx, true).await?;
     let last: Option<i64> = sqlx::query_scalar(
         "SELECT max(substr(n, 3)::BIGINT) FROM ( \

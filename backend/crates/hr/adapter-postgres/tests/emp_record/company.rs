@@ -1,5 +1,5 @@
-//! MR-33 company sections (어학, 포상, 징계, 가족) end to end, and the 0262
-//! CHECK backstops for any writer that skips the domain.
+//! MR-33 company sections (language, awards, disciplinary action, family) end
+//! to end, and the 0262 CHECK backstops for any writer that skips the domain.
 
 use console_hr_adapter_postgres::record::{
     CreateRecordRequest, ImportRow, ImportSheetRequest, UpdateRecordRequest,
@@ -57,7 +57,7 @@ async fn company_sections_record_correct_and_import(pool: PgPool) {
             .await
             .unwrap_err();
     assert_eq!(refused.status, 422);
-    // 징계 is recorded, but the plain 인사카드 read leaves it out.
+    // Disciplinary action is recorded, but the plain personnel card read leaves it out.
     let discipline = json!({ "title": "견책", "decided_on": "2026-01-05" });
     f.hr.create_record(
         p(),
@@ -80,7 +80,7 @@ async fn company_sections_record_correct_and_import(pool: PgPool) {
     );
     assert_eq!(list.sections.len(), Section::ALL.len());
 
-    // The sheet path: an 어학 row by 사번, then the export round trip.
+    // The sheet path: a language row by employee number, then the export round trip.
     let rows = vec![ImportRow {
         row: 2,
         employee_number: "C-1".into(),

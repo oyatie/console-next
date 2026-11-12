@@ -1,7 +1,7 @@
-//! MR-7: an import creates the profile and the 법인 · 사업장 assignment of
-//! the people it inserts (미배치 allowed), and every change it makes to a
-//! person on file is a correction-ledger row naming the run. A replayed apply
-//! writes nothing twice.
+//! MR-7: an import creates the profile and the legal entity and workplace
+//! assignment of the people it inserts (unplaced allowed), and every change it
+//! makes to a person on file is a correction-ledger row naming the run. A
+//! replayed apply writes nothing twice.
 
 use console_hr_domain::import::plan::Decisions;
 use sqlx::PgPool;
@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::import_fixture::{importer, line};
 
-/// `(사번, 법인, 사업장, cause, 고용형태)`.
+/// `(employee number, legal entity, workplace, cause, employment type)`.
 type Person = (
     String,
     Option<Uuid>,
@@ -26,7 +26,7 @@ type LedgerRow = (
     Option<Uuid>,
 );
 
-/// Everyone, by 사번.
+/// Everyone, by employee number.
 async fn people(pool: &PgPool) -> Vec<Person> {
     sqlx::query_as(
         "SELECT e.employee_number, a.legal_entity_id, a.workplace_id, a.cause, p.employment_type \
@@ -89,7 +89,7 @@ async fn a_second_file_updates_through_the_correction_ledger(pool: PgPool) {
     let mut again = line("E-1", "김일");
     again.job = Some("총무");
     again.kind = Some("PART_TIME");
-    // Only a 고용형태: the batch changes no column, the settle the profile.
+    // Only an employment type: the batch changes no column, the settle the profile.
     let mut only_kind = line("E-2", "이이");
     only_kind.kind = Some("REGULAR");
     let run = im.preview("명부2.xlsx", &[again, only_kind]).await;

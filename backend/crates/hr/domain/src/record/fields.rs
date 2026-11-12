@@ -1,5 +1,5 @@
 //! The four section shapes and their rules. Dates travel as `YYYY-MM-DD`;
-//! 학력 dates are month precision (the day is set to 1 on validate).
+//! education dates are month precision (the day is set to 1 on validate).
 
 use console_kernel_core::KernelError;
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,7 @@ code_enum!(QualKind {
     Other => "OTHER",
 });
 code_enum!(
-    /// No 면제 사유 and no 전역 구분: both can disclose health (PIPA §23).
+    /// No exemption reason and no discharge type: both can disclose health (PIPA §23).
     MilStatus {
         Completed => "COMPLETED",
         Serving => "SERVING",
@@ -57,7 +57,7 @@ code_enum!(TrainStatus {
     NotCompleted => "NOT_COMPLETED",
 });
 
-/// 학력.
+/// Education.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Education {
@@ -72,8 +72,9 @@ pub struct Education {
     pub ended_on: Option<Date>,
 }
 
-/// 자격·면허. `number` is never a 운전면허번호 (고유식별정보, 시행령 §19.3):
-/// a DRIVER_LICENSE entry records its kind and class only.
+/// Qualifications and licenses. `number` is never a driver's license number
+/// (unique identifying information, Enforcement Decree §19.3): a
+/// DRIVER_LICENSE entry records its kind and class only.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Qualification {
@@ -91,7 +92,8 @@ pub struct Qualification {
     pub expires_on: Option<Date>,
 }
 
-/// 병역 (근로기준법 시행규칙 별지 제16호 「병역 사항」).
+/// Military service (Labor Standards Act Enforcement Rule Annex Form No. 16
+/// "military service").
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Military {
@@ -106,7 +108,7 @@ pub struct Military {
     pub served_to: Option<Date>,
 }
 
-/// 교육 이수.
+/// Training completed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Training {

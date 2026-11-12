@@ -35,7 +35,7 @@ macro_rules! code_enum {
 }
 
 code_enum!(
-    /// 고용형태 (E13): one enum. The first four are the 0172 values.
+    /// Employment type (E13): one enum. The first four are the 0172 values.
     EmploymentType, "employment_type" {
         Regular = "REGULAR",
         Contract = "CONTRACT",
@@ -50,7 +50,7 @@ code_enum!(
 );
 
 code_enum!(
-    /// 근로자 구분 (E13), derived from [`EmploymentType`] and never stored.
+    /// Worker category (E13), derived from [`EmploymentType`] and never stored.
     /// Values match the HR-registers `WorkerRelation` (hr-reports-registers §2.3).
     WorkerClassification, "worker_classification" {
         Employee = "EMPLOYEE",
@@ -62,7 +62,7 @@ code_enum!(
 );
 
 code_enum!(
-    /// 임금 단위 (E5).
+    /// Wage unit (E5).
     PayUnit, "pay_unit" {
         Monthly = "MONTHLY",
         Hourly = "HOURLY",
@@ -72,7 +72,7 @@ code_enum!(
 );
 
 code_enum!(
-    /// 신분증명 종류 (E4, BW-19). Only the type is kept: decisions #6.
+    /// ID document type (E4, BW-19). Only the type is kept: decisions #6.
     IdType, "id_type" {
         Rrn = "RRN",
         Arc = "ARC",
@@ -82,9 +82,10 @@ code_enum!(
 );
 
 impl EmploymentType {
-    /// 근로자 구분. A 임원 is not presumed a 근로자: 근로자성 is a judgement
-    /// recorded later (`LsaWorkerStatus`, hr-reports-registers P-2). 파견 받은
-    /// 인력, 도급 인력 and 프리랜서 are not the tenant's 근로자 at all.
+    /// Worker category. An executive is not presumed a worker: worker status
+    /// is a judgement recorded later (`LsaWorkerStatus`, hr-reports-registers
+    /// P-2). Dispatched-in staff, subcontracted staff and freelancers are not
+    /// the tenant's workers at all.
     #[must_use]
     pub const fn worker_classification(self) -> WorkerClassification {
         match self {

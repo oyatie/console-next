@@ -1,10 +1,10 @@
 //! After the leave command applied a run: every person the run inserted gets
 //! what a registration gives them. A current employee opens the canonical
 //! employment (through the Employment owner; without it an org change refuses
-//! them as unbound). An 입사 예정 (PRE_HIRE) one gets the SCHEDULED ONBOARD the
-//! lifecycle runner applies on the first day. A former employee (이관) gets
-//! nothing: their history starts and ends before the product. Then the
-//! profile, placement and correction-ledger rows of the run (MR-7,
+//! them as unbound). A pending-hire (PRE_HIRE) one gets the SCHEDULED ONBOARD
+//! the lifecycle runner applies on the first day. A former employee
+//! (migration) gets nothing: their history starts and ends before the product.
+//! Then the profile, placement and correction-ledger rows of the run (MR-7,
 //! `settle_facts`).
 
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
@@ -237,7 +237,7 @@ pub fn settle_chunk(
                 || recorded.any()
                 || last;
             let mut audits = if wrote { vec![audit] } else { Vec::new() };
-            // r3:hire-16: the done job's report says what the 명부 still lacks,
+            // r3:hire-16: the done job's report says what the register still lacks,
             // read after this last chunk's writes.
             let mut job = job;
             if let Some(report) = job

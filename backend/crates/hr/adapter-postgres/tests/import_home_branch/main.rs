@@ -3,8 +3,9 @@
 //! Acceptance and negative tests for LMG-PLACE-A-IMPORT-ROUTING.
 //!
 //! Acceptance:
-//! - Importing a sheet placing 3 people in 본사 -> each has home_branch_id = 본사's default branch
-//!   and home_branch_review_required lists 0 of them;
+//! - Importing a sheet placing 3 people in the head office -> each has
+//!   home_branch_id = the head office's default branch and
+//!   home_branch_review_required lists 0 of them;
 //! - An attendance/leave routing read for an imported person resolves the branch.
 //! - An expand-only, idempotent backfill sets it for current employees with a live assignment
 //!   and a NULL home branch (re-run = no change).

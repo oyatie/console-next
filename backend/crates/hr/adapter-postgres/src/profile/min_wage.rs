@@ -1,7 +1,7 @@
-//! The 최저임금 hint beside a pay input (parity E5; gate U8): the floor a wage
-//! in a unit is compared with on a day, with the 고시 that sets it. Read only;
-//! the figures are payroll's statutory register (`minimum_wage_on`), never a
-//! number of this crate.
+//! The minimum wage hint beside a pay input (parity E5; gate U8): the floor a
+//! wage in a unit is compared with on a day, with the public notice that sets
+//! it. Read only; the figures are payroll's statutory register
+//! (`minimum_wage_on`), never a number of this crate.
 
 use console_hr_domain::profile::enums::PayUnit;
 use console_hr_domain::profile::registration::{MinimumWageFloors, minimum_wage_floor};
@@ -45,8 +45,8 @@ pub struct MinimumWageHint {
     pub instrument: MinimumWageInstrument,
 }
 
-/// `None` when the register has no 최저임금 for `on` (a year whose 고시 is not
-/// recorded yet): the hint is then silent, never a guessed number.
+/// `None` when the register has no minimum wage for `on` (a year whose public
+/// notice is not recorded yet): the hint is then silent, never a guessed number.
 #[must_use]
 pub fn minimum_wage_hint(
     on: Date,

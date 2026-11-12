@@ -1,13 +1,16 @@
-//! 인사카드 sections. MR-31: 학력, 자격·면허, 병역, 교육 이수 — the
-//! 「기타 사항 (필요시 학력, 병역 사항, 기능·자격 사항, 교육 이수 내역 등)」 of
-//! 근로기준법 시행규칙 별지 제16호서식. MR-33: 어학, 포상, 징계, 가족. MR-35:
-//! 장애, 보훈 (restricted, with a 개인정보 보호법 §23① basis). An entry is a
-//! fact of the natural person; every change is a new revision (CREATE,
-//! UPDATE = correction, VOID).
+//! Personnel card sections. MR-31: education, qualifications and licenses,
+//! military service, training completed — the "other matters (education,
+//! military service, skills and qualifications, training completed, etc. as
+//! needed)" of Labor Standards Act Enforcement Rule Annex Form No. 16. MR-33:
+//! language, awards, disciplinary action, family. MR-35: disability, veteran
+//! status (restricted, with a Personal Information Protection Act §23① basis).
+//! An entry is a fact of the natural person; every change is a new revision
+//! (CREATE, UPDATE = correction, VOID).
 //!
 //! Pure rules only: the field shapes and their checks, and the import-sheet
-//! row decision. PII minimisation is structural: there is no field for a 면제
-//! 사유, a 전역 구분 or a 운전면허번호 (개인정보 보호법 §23, §24, 시행령 §19).
+//! row decision. PII minimisation is structural: there is no field for an
+//! exemption reason, a discharge type or a driver's license number (Personal
+//! Information Protection Act §23, §24, Enforcement Decree §19).
 
 mod fields;
 mod fields_company;
@@ -62,7 +65,8 @@ macro_rules! code_enum {
 pub(crate) use code_enum;
 
 code_enum!(
-    /// MR-31's four, MR-33's four (상벌 is 포상 + 징계) and MR-35's two.
+    /// MR-31's four, MR-33's four (rewards and discipline is awards +
+    /// disciplinary action) and MR-35's two.
     Section {
         Education => "EDUCATION",
         Qualification => "QUALIFICATION",
@@ -105,20 +109,22 @@ impl Section {
             .ok_or_else(|| KernelError::not_found("unknown record section"))
     }
 
-    /// 병역, 장애 and 보훈 are one status per person: a second live entry is
-    /// refused and an import row without an entry id corrects the live one.
+    /// Military service, disability and veteran status are one status per
+    /// person: a second live entry is refused and an import row without an entry
+    /// id corrects the live one.
     #[must_use]
     pub const fn single_live(self) -> bool {
         matches!(self, Self::Military | Self::Disability | Self::Veteran)
     }
 
-    /// Restricted: left out of the plain 인사카드 read, read only with a
+    /// Restricted: left out of the plain personnel card read, read only with a
     /// purpose (audited), never exported as a sheet, and gated by the
-    /// `employee_restricted_record` Cedar action. 장애·보훈 are 민감정보
-    /// (§23①); 징계 is held back for the 징계 domain the access model reserves.
+    /// `employee_restricted_record` Cedar action. Disability and veteran status
+    /// are sensitive information (§23①); disciplinary action is held back for
+    /// the discipline domain the access model reserves.
     ///
-    /// 징계 rides this gate until the access model's 징계 domain
-    /// mounts; move it to that domain's grant then.
+    /// Disciplinary action rides this gate until the access model's discipline
+    /// domain mounts; move it to that domain's grant then.
     #[must_use]
     pub const fn restricted(self) -> bool {
         matches!(self, Self::Discipline | Self::Disability | Self::Veteran)

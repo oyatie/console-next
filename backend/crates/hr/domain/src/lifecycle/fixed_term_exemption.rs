@@ -1,27 +1,37 @@
-//! The grounds that let fixed-term service pass the two-year limit:
-//! 기간제법 §4① 단서 각 호, with §4①5 split as its 시행령 §3①② split it.
+//! The grounds that let fixed-term service pass the two-year limit: each item
+//! of the Fixed-Term Workers Act §4① proviso, with §4①5 split as its
+//! Enforcement Decree §3①② split it.
 //! A renewal that [`super::fixed_term::check_renewal`] calls `ExceedsLimit`
 //! goes through only as a governed `FIXED_TERM_OVER_TWO_YEARS` exception
-//! naming one of these. There is no free "기타": §4①6 is the closed 시행령
-//! §3③ list.
+//! naming one of these. There is no free "Other": §4①6 is the closed
+//! Enforcement Decree §3③ list.
 
 /// One statutory ground. Wire codes never change once shipped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixedTermExemption {
-    /// §4①1: 사업의 완료 또는 특정한 업무의 완성에 필요한 기간을 정한 경우.
+    /// §4①1: where the period needed to complete a business or a specific task
+    /// is fixed.
     ProjectCompletion,
-    /// §4①2: 휴직·파견 등으로 결원이 발생하여 복귀할 때까지 대신하는 경우.
+    /// §4①2: where a vacancy arises from a leave of absence, dispatch, etc. and
+    /// someone fills in until the absent worker returns.
     AbsenceCover,
-    /// §4①3: 학업, 직업훈련 등을 이수함에 따라 그 이수에 필요한 기간을 정한 경우.
+    /// §4①3: where the period needed to complete studies, vocational training,
+    /// etc. is fixed.
     StudyOrTraining,
-    /// §4①4: 고령자고용법 §2(1) 고령자 (55세 이상, 같은 법 시행령 §2①).
+    /// §4①4: an aged person under Aged Employment Act §2(1) (aged 55 or over,
+    /// Enforcement Decree §2① of the same Act).
     OlderWorker,
-    /// §4①5 with 시행령 §3①: 박사 학위, 기술사, 별표 2 전문자격으로 해당 분야 종사.
+    /// §4①5 with Enforcement Decree §3①: a doctoral degree, a professional
+    /// engineer qualification or an Annex Table 2 professional qualification,
+    /// working in that field.
     Professional,
-    /// §4①5 with 시행령 §3②: 정부의 복지정책·실업대책 등에 따른 일자리.
+    /// §4①5 with Enforcement Decree §3②: jobs under government welfare
+    /// policies, unemployment measures, etc.
     GovernmentJobProgram,
-    /// §4①6 with 시행령 §3③ 1–8호 (다른 법령, 군사·안보, 대학 강사·조교,
-    /// 고소득 전문직, 초단시간, 체육, 연구기관 …); the note names the 호.
+    /// §4①6 with Enforcement Decree §3③ items 1–8 (other statutes, military ·
+    /// security, university lecturers · teaching assistants, high-income
+    /// professionals, very short hours, sports, research institutes …); the
+    /// note names the item.
     DecreeListed,
 }
 
@@ -63,7 +73,7 @@ impl FixedTermExemption {
         }
     }
 
-    /// §4①6 points at a list of eight 호; the record must say which.
+    /// §4①6 points at a list of eight items; the record must say which.
     #[must_use]
     pub const fn requires_note(self) -> bool {
         matches!(self, Self::DecreeListed)
@@ -76,7 +86,8 @@ mod tests {
 
     #[test]
     fn grounds_are_the_six_statutory_items_with_item_five_split() {
-        // 기간제법 §4① 단서 1–6호; 5호 splits into 시행령 §3① and §3②.
+        // Fixed-Term Workers Act §4① proviso items 1–6; item 5 splits into
+        // Enforcement Decree §3① and §3②.
         let articles = G::ALL.map(G::article);
         for item in 1..=6 {
             let cite = format!("제4조제1항제{item}호");
@@ -90,7 +101,7 @@ mod tests {
 
     #[test]
     fn study_or_training_is_a_ground() {
-        // 기간제법 §4①3, missing from the BW-12 draft list.
+        // Fixed-Term Workers Act §4①3, missing from the BW-12 draft list.
         assert!(G::ALL.contains(&G::StudyOrTraining));
         assert_eq!(G::StudyOrTraining.code(), "STUDY_OR_TRAINING");
     }
@@ -101,7 +112,7 @@ mod tests {
         codes.sort_unstable();
         codes.dedup();
         assert_eq!(codes.len(), 7);
-        // 기간제법 §4①6 → 시행령 §3③ 1–8호.
+        // Fixed-Term Workers Act §4①6 → Enforcement Decree §3③ items 1–8.
         let noted: Vec<G> = G::ALL.into_iter().filter(|g| g.requires_note()).collect();
         assert_eq!(noted, [G::DecreeListed]);
     }

@@ -1,4 +1,4 @@
-//! #28: a 사업장 of 2,000 people closes in one plan. The request answers well
+//! #28: a workplace of 2,000 people closes in one plan. The request answers well
 //! inside the 30 s request timeout (it checks the plan and schedules it); the
 //! tick applies it all-or-none in one transaction with no request deadline.
 //! Both times are printed for the READY note (measured, not hoped).
@@ -18,7 +18,8 @@ const PEOPLE: i64 = 2_000;
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn two_thousand_people_close_by_one_plan_the_tick_applies(owner: PgPool) {
     let s = Site::new(&owner).await;
-    // 2,000 more in 개발팀, placed at 부산지점 from 2026-01-02 (as the owner, in one statement each).
+    // 2,000 more in the development team, placed at the Busan branch from 2026-01-02
+    // (as the owner, in one statement each).
     sqlx::query(
         "WITH e AS (INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, source_key, org_unit_id) \
            SELECT $1, '주식회사 가나', '직원' || g, 'x', 'x', g, 'burst-' || g, $2 FROM generate_series(1, $3) g RETURNING id) \

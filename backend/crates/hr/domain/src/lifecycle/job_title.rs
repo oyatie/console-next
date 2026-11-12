@@ -1,4 +1,4 @@
-//! BW-13 job-title rules: the catalog label and the 강등 check on PROMOTE.
+//! BW-13 job-title rules: the catalog label and the demotion check on PROMOTE.
 
 use console_kernel_core::KernelError;
 

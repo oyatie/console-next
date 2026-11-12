@@ -31,14 +31,14 @@ pub(crate) async fn bound_person(
 
 /// The employee's already-bound person, locked for
 /// this transaction so concurrent writes to one person serialise (the
-/// version and the one-live-병역 checks read what they write).
+/// version and the one-live-military-service checks read what they write).
 pub(crate) async fn writable_person(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
     actor: UserId,
     employee: Uuid,
 ) -> Result<Uuid, HrError> {
-    // people-self-33: every 인사기록카드 write (and its import) meets the self rule.
+    // people-self-33: every personnel record card write (and its import) meets the self rule.
     crate::own_record::own_record_guard(
         tx,
         org,
