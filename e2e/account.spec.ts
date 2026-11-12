@@ -149,10 +149,9 @@ test("a refused sign-in right after enrollment lands on the login screen, and th
   const code = await inviteAccount(admin, "김신입", "oversight");
   const page = await (await newContext(browser)).newPage();
   await virtualAuthenticator(page);
-  let refused = false;
+  let signIns = 0;
   await page.route("**/api/v1/auth/passkey/login/finish", (route) => {
-    if (refused) return route.continue();
-    refused = true;
+    if (++signIns > 1) return route.continue();
     return route.fulfill({ status: 429, contentType: "application/json", body: JSON.stringify({ error: { code: "rate_limited", message: "too many sign-ins" } }) });
   });
   await page.goto("/login");
@@ -168,6 +167,13 @@ test("a refused sign-in right after enrollment lands on the login screen, and th
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page).toHaveURL(/\/login\?enrolled=true/);
   await expectAccessible(page, "login after a refused post-enrollment sign-in");
+  await atPhoneWidth(page, async () => {
+    expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
+    await expectAccessible(page, "login after a refused post-enrollment sign-in at phone width");
+  });
+  // Recovery waits for an explicit retry instead of starting another sign-in through autofill.
+  expect(signIns).toBe(1);
   await passkeyLogin(page);
   await expect(page.getByRole("heading", { name: "김신입님" })).toBeVisible();
+  expect(signIns).toBe(2);
 });
