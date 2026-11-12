@@ -295,6 +295,23 @@ test("database result collection proves all shards and preserves measured durati
   assert.throws(() => backendTests.collectDatabaseResults(plan, [junit(ids).replace('tests="2"', 'tests="3"')]), /count/);
 });
 
+test("database nightly and manual runs cannot replace pending dev or PR runs", () => {
+  const { concurrency } = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
+  const group = (event_name, ref = "refs/heads/dev", run_id = "1") => concurrency.group.replace(
+    /\$\{\{(.*?)\}\}/g, (_, expression) => new Function("github", `return ${expression}`)({ event_name, ref, run_id }),
+  );
+  assert.equal(concurrency["cancel-in-progress"], false);
+  const trunk = group("push"), nightly = group("schedule"), manual = group("workflow_dispatch");
+  assert.equal(trunk, "db-tests-trunk");
+  assert.equal(group("push", "refs/heads/dev", "2"), trunk, "dev pushes retain one serialized group");
+  assert.equal(group("schedule", "refs/heads/dev", "2"), nightly, "nightly runs retain one serialized group");
+  const pr = group("pull_request", "refs/pull/1/merge");
+  assert.equal(group("pull_request", "refs/pull/1/merge", "2"), pr);
+  assert.equal(new Set([trunk, nightly, manual, group("workflow_dispatch", "refs/heads/dev", "2"),
+    pr, group("pull_request", "refs/pull/2/merge")]).size, 6,
+  "nightly, dev, distinct manual rehearsals and separate PRs must not replace each other's pending run");
+});
+
 test("the database workflow is tiered, pinned and limited to four duration shards", () => {
   const file = readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8");
   const dbWorkflow = yaml.load(file);
@@ -304,7 +321,6 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   assert.doesNotMatch(file, /CI-[A-Z]+/);
   assert.match(file, /push:\s*\n\s*branches: \[dev\]/);
   assert.match(file, /schedule:\s*\n\s*- cron:/);
-  assert.equal(dbWorkflow.concurrency.group, "db-tests-${{ github.event_name == 'pull_request' && github.ref || 'trunk' }}");
   assert.equal(dbWorkflow.concurrency["cancel-in-progress"], false);
   assert.deepEqual(dbWorkflow.on.pull_request.paths, [
     ".github/workflows/db-tests.yml",

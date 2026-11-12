@@ -21,7 +21,9 @@ on:
     - cron: '47 17 * * *'
 permissions: {}
 concurrency:
-  group: db-tests-${{ github.event_name == 'pull_request' && github.ref || 'trunk' }}
+  # Pending runs replace each other even when cancel-in-progress is false; isolate nightly and manual runs.
+  # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+  group: db-tests-${{ github.event_name == 'pull_request' && github.ref || github.event_name == 'schedule' && 'nightly' || github.event_name == 'workflow_dispatch' && github.run_id || 'trunk' }}
   cancel-in-progress: false
 
 jobs:
