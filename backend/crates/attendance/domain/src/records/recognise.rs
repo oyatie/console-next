@@ -132,7 +132,7 @@ pub struct RecognitionInterval {
 pub struct Recognition {
     pub recorded: u32,
     pub recognised: u32,
-    /// Recognised inside 소정.
+    /// Recognised inside the contractual hours.
     pub regular: u32,
     pub outside_scheduled: u32,
     pub prior_approved: u32,
@@ -147,7 +147,7 @@ pub struct Recognition {
     pub early_unrecognised: u32,
     /// Deprecated N-1: late open excess; these minutes are paid.
     pub late_unrecognised: u32,
-    /// 소정 minutes not worked: 지각 · 조퇴 · 이탈.
+    /// Contractual minutes not worked: late arrival · early leave · away.
     pub late_in: u32,
     pub early_out: u32,
     pub away: u32,

@@ -1,6 +1,6 @@
-//! 근태 lists 법인 › 사업장 › 부서 in the chart's stored order, never by name
-//! (org-sibling-order): the 근무 일정 scope tree (and every picker built from
-//! it) and the 일별 board's 사업장 › 부서 groups.
+//! Attendance lists legal entity › workplace › department in the chart's stored order,
+//! never by name (org-sibling-order): the work schedule scope tree (and every picker
+//! built from it) and the daily board's workplace › department groups.
 
 use super::support::{TestReads, World, seed, world};
 
@@ -9,8 +9,9 @@ use console_attendance_domain::schedule::Level;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-/// By name 서울 본사 sorts before 평택공장 and 가공부 before 생산부; the
-/// stored order says the opposite at both levels. 황정우 moves to 가공부.
+/// By Korean name the Seoul head office sorts before the Pyeongtaek plant and the processing
+/// department before the production department; the stored order says the opposite at both
+/// levels. Hwang Jeong-u moves to the processing department.
 async fn ordered(owner: PgPool) -> (World, Uuid) {
     let w = world(owner).await;
     let site: Uuid = sqlx::query_scalar(
@@ -52,7 +53,7 @@ async fn the_schedule_tree_follows_the_stored_order(owner: PgPool) {
             .collect()
     };
     assert_eq!(of(Level::Workplace), w.workplaces.to_vec());
-    // Depth first: 생산부, its 생산1팀, then 가공부.
+    // Depth first: production department, its production team 1, then processing department.
     assert_eq!(of(Level::Department), vec![w.dept, w.team, ga]);
 }
 

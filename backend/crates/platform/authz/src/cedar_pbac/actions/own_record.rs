@@ -1,6 +1,6 @@
 //! `own_record`: an HR write whose subject is the actor's own employee record
-//! (people-self-33). The platform rule the role editor states 「본인 건 제외 ·
-//! 어떤 역할로도 자기 자신의 인사 기록은 바꿀 수 없습니다」: nobody reports,
+//! (people-self-33). The platform rule the role editor states, "Own records excluded ·
+//! no role can change your own HR record": nobody reports,
 //! confirms, withdraws, appoints, corrects or renumbers their own record,
 //! whatever they hold. Another holder in scope, or the ops account, records it.
 //!

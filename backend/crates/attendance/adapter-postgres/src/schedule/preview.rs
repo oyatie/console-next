@@ -15,7 +15,7 @@ use super::org::Person;
 use super::universe::Universe;
 use super::{ScheduleStoreError, codes, month_label};
 
-/// Does `p` belong to the scope, and at which 부서 depth.
+/// Does `p` belong to the scope, and at which department depth.
 pub(crate) fn reach(u: &Universe, p: &Person, level: Level, id: Uuid) -> Option<u8> {
     match level {
         Level::Person => (p.id == id).then_some(0),
@@ -32,7 +32,7 @@ pub(crate) fn reach(u: &Universe, p: &Person, level: Level, id: Uuid) -> Option<
     }
 }
 
-/// The branch a person is scoped by (their 사업장's).
+/// The branch a person is scoped by (their workplace's).
 pub(crate) fn branch_of(u: &Universe, p: &Person) -> Option<Uuid> {
     p.workplace_id
         .and_then(|w| u.org.workplaces.get(&w))

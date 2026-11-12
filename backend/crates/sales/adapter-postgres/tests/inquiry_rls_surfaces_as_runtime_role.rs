@@ -13,7 +13,7 @@
 //! pool, which would see every row and green-light a cross-org submit:
 //!   (a) a public inquiry submitted under the RESOLVED storefront org is visible
 //!       to a staff inbox read in that SAME org (round-trip), for BOTH a
-//!       UsedSales and a RENTAL topic (rental leads must appear in 판매문의 관리);
+//!       UsedSales and a RENTAL topic (rental leads must appear in sales-inquiry management);
 //!   (b) cross-tenant: under a DIFFERENT org's GUC the lead is INVISIBLE.
 //!
 //! Crucially the storefront org here is a NON-`one()` tenant, so the test would
@@ -113,14 +113,14 @@ async fn public_inquiry_is_visible_to_staff_in_same_org_as_runtime_role(owner_po
 
     let store = PgSalesStore::new(rt_pool.clone());
 
-    // (a) A 판매(중고) lead AND a 렌탈 lead, both submitted under the resolved
+    // (a) A sales (used) lead AND a rental lead, both submitted under the resolved
     //     storefront org — exactly as the public router does after the fix.
     submit(&store, storefront, InquiryTopic::UsedSales, "홍길동").await;
     submit(&store, storefront, InquiryTopic::Rental, "임꺽정").await;
 
     // Staff read under the SAME org see BOTH leads (round-trip), including the
     // rental one — rental inquiries land in the same customer_inquiries surface
-    // the 판매문의 관리 inbox reads.
+    // the sales-inquiry management inbox reads.
     let staff_view = console_platform_request_context::scope_org(storefront, async {
         store.list_inquiries(inbox()).await
     })

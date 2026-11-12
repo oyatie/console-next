@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! PERF-BE CAP-04 (decisions #27, #28) over HTTP as `console_rt`: the bulk
-//! 발령 sent with `Prefer: respond-async` is a job — 202 + Location, then the
+//! appointment sent with `Prefer: respond-async` is a job — 202 + Location, then the
 //! batch exactly once (all or nothing), its outcome on `GET …/bulk/jobs/{id}`,
 //! audited progress steps — and every refusal answers with nothing written.
 
@@ -55,7 +55,7 @@ async fn settled(ctx: &Ctx, token: &str, location: &str) -> Value {
     panic!("the job never finished");
 }
 
-/// regression (CAP-04): the 500-person 발령 answered only synchronously
+/// regression (CAP-04): the 500-person appointment answered only synchronously
 /// (p95 3.0-4.0 s against "accepted <= 1 s"); `Prefer` was ignored.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_an_async_bulk_transfer_is_a_job_recorded_exactly_once(pool: PgPool) {

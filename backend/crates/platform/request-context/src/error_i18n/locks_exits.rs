@@ -1,6 +1,6 @@
 //! [`super::korean_message`] exact messages, part: Platform tenant admin, period locks and exit cases.
 
-/// Exact English message → Korean (합니다체).
+/// Exact English message → Korean (formal polite style).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
     // Platform tenant admin code reissue
     ("tenant was not found", "테넌트를 찾을 수 없습니다."),

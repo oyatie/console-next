@@ -1,4 +1,4 @@
-//! 근무조: dated rosters that cross 부서 within one 사업장.
+//! Shift crews: dated rosters that cross departments within one workplace.
 
 use console_attendance_application::CallerScope;
 use console_attendance_application::calendar::{CrewInput, CrewMember, CrewMembersInput, CrewRead};

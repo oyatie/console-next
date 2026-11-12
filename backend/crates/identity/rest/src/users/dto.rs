@@ -24,8 +24,8 @@ pub(crate) struct CreateUserRequest {
     pub(crate) roles: Vec<String>,
     #[serde(default)]
     pub(crate) branch_ids: Vec<BranchId>,
-    /// The 아이디 HR sets at invite (decisions #33); absent or empty takes the
-    /// default (사번, else `u` + the UUID's random tail).
+    /// The sign-in ID HR sets at invite (decisions #33); absent or empty takes the
+    /// default (employee number, else `u` + the UUID's random tail).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) sign_in_id: Option<String>,
 }

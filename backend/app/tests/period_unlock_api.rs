@@ -72,7 +72,8 @@ async fn a_sole_holder_unlocks_at_once_and_is_flagged_for_review(owner: PgPool) 
     // Names, not bare ids, for the screen (BW-15).
     assert_eq!(locked["lockedByName"], "단독", "{locked}");
     assert_eq!(unlocked["lock"]["unlockedByName"], "단독", "{unlocked}");
-    // Decisions #7 case B: the 예외 처리 mark and its 사후 검토 item, consumed by this unlock.
+    // Decisions #7 case B: the exception-handling mark and its post-hoc review
+    // item, consumed by this unlock.
     let exception_id: Uuid = unlocked["exception"]["id"]
         .as_str()
         .unwrap()
@@ -253,7 +254,7 @@ async fn a_second_person_performs_the_unlock_with_their_own_step_up(owner: PgPoo
     );
     assert_eq!(unlocked["lock"]["unlockApprovedByName"], "승인자");
     assert_eq!(unlocked["lock"]["unlockReviewRequired"], false);
-    // A second-person unlock is no 예외 처리: no exception is recorded.
+    // A second-person unlock is no exception handling: no exception is recorded.
     assert!(unlocked.get("exception").is_none(), "{unlocked}");
     assert_eq!(
         unlocked["lock"]["relockAt"].as_str().map(|s| s.is_empty()),

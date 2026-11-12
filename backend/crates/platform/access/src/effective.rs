@@ -1,5 +1,5 @@
 //! Effective access of one account (or the caller), the ops holder, and
-//! 「ops 사용 기록」.
+//! the "ops usage log".
 
 use std::collections::BTreeMap;
 
@@ -39,7 +39,7 @@ fn fail_closed_decision<T>(
 }
 
 /// One row per live grant × domain × level. An ENFORCED row is re-decided by
-/// Cedar on the account's own slice; a denial there (a voided 사업장, a broken
+/// Cedar on the account's own slice; a denial there (a voided workplace, a broken
 /// chain) reads `SCOPE_UNAVAILABLE`; every row of a deactivated account reads
 /// `ACCOUNT_INACTIVE`.
 async fn effective_of(

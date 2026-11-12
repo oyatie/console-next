@@ -1,4 +1,5 @@
-//! The 근무 일정 scope tree: 법인 › 사업장 › 부서 and 근무조 with people counts,
+//! The work-schedule scope tree: legal entity › workplace › department and shift crew
+//! with people counts,
 //! each node's effective layer, and who has no schedule. Nodes come in the chart's
 //! order, so every picker built from them lists siblings as the chart does.
 
@@ -127,7 +128,8 @@ impl PgAttendanceStore {
                             node(Level::Crew, *id, Some(*wp), name.clone());
                         }
                     }
-                    // Each kind in the chart's order (siblings by their stored 순서); 근무조 by name.
+                    // Each kind in the chart's order (siblings by their stored order);
+                    // shift crews by name.
                     let rank = u.org.tree_rank();
                     let at = |id: &Uuid| rank.get(id).copied().unwrap_or(usize::MAX);
                     nodes.sort_by(|a, b| {

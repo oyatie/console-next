@@ -178,7 +178,8 @@ async fn seed_user(owner_pool: &PgPool, org: Uuid, tag: &str) -> UserId {
     user_id
 }
 
-/// Seed one equipment row (status 임대) via direct INSERT, mirroring the registry
+/// Seed one equipment row (status set to the Korean value for rental) via direct INSERT,
+/// mirroring the registry
 /// crate's own RLS tests. Returns its id — the projected action's target.
 async fn seed_equipment(owner_pool: &PgPool, org: Uuid, branch_id: BranchId) -> EquipmentId {
     let equipment_id = Uuid::new_v4();

@@ -48,7 +48,7 @@ async fn the_emp_ui_routes_are_mounted_and_their_refusals_reach_the_wire(pool: P
         token: None,
     };
 
-    // 직급·직위·직책·직무: the ops account adds inline; ADMIN is refused.
+    // Grade · position · title · job: the ops account adds inline; ADMIN is refused.
     let (status, list) = ops.call("GET", "/api/v1/job-titles", None).await;
     assert_eq!(
         (status, list["can_manage"].clone()),
@@ -88,7 +88,7 @@ async fn the_emp_ui_routes_are_mounted_and_their_refusals_reach_the_wire(pool: P
         (StatusCode::FORBIDDEN, "forbidden")
     );
 
-    // Bulk 발령 preview.
+    // Bulk appointment preview.
     let preview = "/api/v1/employees/lifecycle-events/bulk/preview";
     let body = json!({"event_type": "PROMOTE", "employee_ids": [Uuid::new_v4()], "to_position": "과장",
                       "effective_date": "2027-03-01", "comment": "x"});
@@ -104,7 +104,7 @@ async fn the_emp_ui_routes_are_mounted_and_their_refusals_reach_the_wire(pool: P
     let (status, _) = anonymous.call("POST", preview, Some(body)).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 
-    // 발령 공고.
+    // Appointment notice.
     let notice =
         json!({"title": "공고", "notice_date": "2026-10-07", "event_ids": [Uuid::new_v4()]});
     let (status, _) = ops
@@ -130,7 +130,7 @@ async fn the_emp_ui_routes_are_mounted_and_their_refusals_reach_the_wire(pool: P
     let (status, page) = ops.call("GET", "/api/v1/appointment-notices", None).await;
     assert_eq!((status, page["items"].clone()), (StatusCode::OK, json!([])));
 
-    // 이관 확인.
+    // Migration reconciliation.
     let run = Uuid::new_v4();
     for (method, uri, body) in [
         (
@@ -164,7 +164,7 @@ async fn the_emp_ui_routes_are_mounted_and_their_refusals_reach_the_wire(pool: P
         );
     }
 
-    // 퇴직 사유 at the report.
+    // Exit reason at the report.
     let employee: Uuid = sqlx::query_scalar(
         "INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, \
          source_key, hire_date) VALUES ($1, 'Co', '한결', 'console', 'console', 1, $2, '2025-01-02') RETURNING id",

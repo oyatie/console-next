@@ -1111,7 +1111,7 @@ async fn seed_evidence(
     evidence_id
 }
 
-/// Seed a user with the given role AND `is_org_lead = true` (대표/CEO).
+/// Seed a user with the given role AND `is_org_lead = true` (CEO).
 async fn seed_org_lead_user(pool: &PgPool, role: &str, branch_id: BranchId) -> UserId {
     let user_id = UserId::new();
     sqlx::query(
@@ -1139,9 +1139,9 @@ async fn seed_org_lead_user(pool: &PgPool, role: &str, branch_id: BranchId) -> U
 // Self-approval guard tests (Slice A, task #34)
 // ===========================================================================
 
-/// (a) A normal ADMIN who submitted/requested a 기안 must NOT be able to
+/// (a) A normal ADMIN who submitted/requested a draft must NOT be able to
 ///     approve it. The guard must return a 422-equivalent validation error:
-///     "본인이 상신/요청한 건은 결재할 수 없습니다".
+///     "You cannot approve an item you submitted or requested yourself".
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn self_approval_blocked_for_normal_admin(pool: PgPool) {
     console_platform_request_context::scope_org(OrgId::one(), async move {

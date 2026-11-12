@@ -1,10 +1,10 @@
 //! `change_request_decide` (BW-17; governance S10; decisions #7). Applying or
-//! declining a change request (변경 요청) filed by someone else. The holder is
-//! the org-wide HR tier, or the named assignee of an answer kind (소명 요청,
-//! 규정 질의). The requester never decides their own request, except as the
+//! declining a change request filed by someone else. The holder is
+//! the org-wide HR tier, or the named assignee of an answer kind (explanation request,
+//! policy question). The requester never decides their own request, except as the
 //! decisions #7 case-B sole-holder fallback: no other eligible holder, a
 //! step-up bound to the payload, and `authz.sole_holder.mode` is not `refuse`
-//! (a 정정 of pay or dates by a one-person HR tenant), or when the tenant's
+//! (a correction of pay or dates by a one-person HR tenant), or when the tenant's
 //! `approval.policy.<class>` is `none` (decisions #26: no second person is
 //! required, so the actor applies it after the same step-up).
 //! Withdrawal is the requester's own act and is not decided here.

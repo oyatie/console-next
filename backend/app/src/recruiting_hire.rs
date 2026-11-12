@@ -98,7 +98,7 @@ async fn hire(
                     .await
                     .map_err(HireError::Recruiting)?;
                 let Some(hr_employment_type) = context.employment_type.hr_employment_type() else {
-                    // 재직 명부 비합산: a pool posting must never create an
+                    // Not counted on the employed roster: a pool posting must never create an
                     // employee; the workforce-pool registry does not exist yet.
                     return Err(HireError::PoolRegistrationUnavailable);
                 };

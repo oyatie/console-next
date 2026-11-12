@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! RUNTIME RLS + FSM gate for the finance-GL voucher (전표) domain, exercised as
+//! RUNTIME RLS + FSM gate for the finance-GL voucher domain, exercised as
 //! the genuine non-owner runtime role `console_rt` (NOSUPERUSER / NOBYPASSRLS / FORCE
 //! RLS) — the only faithful exercise of the tenant policy. The default
 //! `#[sqlx::test]` pool connects as a BYPASSRLS superuser that sees every row and
@@ -7,7 +7,7 @@
 //! ELSE as `console_rt`.
 //!
 //! Proves the lane's binding invariants:
-//!   (a) BALANCE GATE — an unbalanced voucher cannot advance past 차대검증, both
+//!   (a) BALANCE GATE — an unbalanced voucher cannot advance past the debit/credit check, both
 //!       via the use-case (`submit`) and via a raw status UPDATE (the DB trigger).
 //!   (b) POSTED IMMUTABILITY — a posted voucher rejects further FSM steps and its
 //!       lines cannot be inserted/mutated (append-only, draft-only trigger).
@@ -128,8 +128,8 @@ fn step(actor: UserId, voucher_id: VoucherId) -> VoucherTransitionCommand {
 }
 
 /// Drive a balanced draft all the way to POSTED and return its id. Separation of
-/// duties is honoured: `creator` files 기표 + 제출, a DISTINCT `approver` signs 승인,
-/// and 전기 posts it.
+/// duties is honoured: `creator` files the draft and submits it, a DISTINCT `approver` signs
+/// the approval, and the posting step posts it.
 async fn seed_posted_voucher(
     store: &PgVoucherStore,
     org: OrgId,
@@ -183,7 +183,7 @@ async fn balance_gate_blocks_unbalanced_advance(owner_pool: PgPool) {
             ))
             .await
             .unwrap();
-        // Use-case balance gate: submit (기표 → 차대검증) must fail closed.
+        // Use-case balance gate: submit (drafting → debit/credit check) must fail closed.
         let submitted = store.submit(step(actor, created.id)).await;
         assert!(
             submitted.is_err(),
@@ -196,7 +196,7 @@ async fn balance_gate_blocks_unbalanced_advance(owner_pool: PgPool) {
     })
     .await;
 
-    // Defense in depth: a raw status UPDATE past 차대검증 is rejected by the DB
+    // Defense in depth: a raw status UPDATE past the debit/credit check is rejected by the DB
     // trigger even if the use-case gate were bypassed. Arm the GUC ourselves so
     // the row is visible to RLS and the trigger — not RLS — is what rejects it.
     let mut tx = store.pool().begin().await.unwrap();
@@ -413,8 +413,8 @@ async fn cross_org_isolation_and_fail_closed(owner_pool: PgPool) {
     );
 }
 
-/// SEPARATION OF DUTIES (M2): the 기표자 cannot approve their own voucher; a
-/// distinct approver clears 승인, is recorded, and the voucher then posts.
+/// SEPARATION OF DUTIES (M2): the preparer cannot approve their own voucher; a
+/// distinct approver clears approval, is recorded, and the voucher then posts.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn self_approval_rejected_and_distinct_approver_posts(owner_pool: PgPool) {
     seed_org(&owner_pool, ORG_A, "A").await;
@@ -439,7 +439,7 @@ async fn self_approval_rejected_and_distinct_approver_posts(owner_pool: PgPool) 
             .unwrap();
         store.submit(step(creator, created.id)).await.unwrap();
 
-        // 승인 by the 기표자 is rejected (fail-closed) before any write.
+        // Approval by the preparer is rejected (fail-closed) before any write.
         assert!(
             store.approve(step(creator, created.id)).await.is_err(),
             "the preparer must not be able to approve their own voucher"
@@ -449,12 +449,12 @@ async fn self_approval_rejected_and_distinct_approver_posts(owner_pool: PgPool) 
         assert_eq!(reread.status, VoucherStatus::BalanceChecked);
         assert_eq!(reread.approved_by, None);
 
-        // A DISTINCT approver clears 승인 and is recorded.
+        // A DISTINCT approver clears approval and is recorded.
         let approved = store.approve(step(approver, created.id)).await.unwrap();
         assert_eq!(approved.status, VoucherStatus::Approved);
         assert_eq!(approved.approved_by, Some(approver));
 
-        // 전기 posts (no SoD on post) and keeps the recorded approver.
+        // The posting step posts (no SoD on post) and keeps the recorded approver.
         let posted = store.post(step(creator, created.id)).await.unwrap();
         assert_eq!(posted.status, VoucherStatus::Posted);
         assert_eq!(posted.approved_by, Some(approver));

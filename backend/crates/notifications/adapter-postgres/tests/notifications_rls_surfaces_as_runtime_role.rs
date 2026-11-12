@@ -890,7 +890,7 @@ async fn mute_policies_route_attention_as_runtime_role(owner_pool: PgPool) {
     assert_eq!(clear_audits, 1, "the successful delete audited");
 }
 
-/// 개체별 view: one group per distinct link with totals, category breakdown,
+/// Per-object view: one group per distinct link with totals, category breakdown,
 /// latest preview and the caller's object-mute state; keyset-paginated behind
 /// an opaque fail-closed cursor; recipient- and tenant-isolated.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

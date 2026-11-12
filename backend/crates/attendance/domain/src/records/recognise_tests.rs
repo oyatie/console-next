@@ -3,7 +3,7 @@ use super::*;
 fn w(start: u16, end: u16) -> Window {
     Window { start, end }
 }
-/// 08:00–17:00, 휴게 12:00–13:00.
+/// 08:00–17:00, break 12:00–13:00.
 fn factory() -> Shift {
     Shift {
         start: 480,
@@ -36,7 +36,7 @@ fn early_arrival_and_a_late_stay_are_paid_without_approval() {
 
 #[test]
 fn an_approved_window_is_recognised_only_where_worked() {
-    // 승인 17:00–19:00, worked until 18:20: 1:20 approved, 0:40 unused.
+    // Approved 17:00–19:00, worked until 18:20: 1:20 approved, 0:40 unused.
     let r = recognise(
         &[w(480, 1100)],
         Some(&factory()),

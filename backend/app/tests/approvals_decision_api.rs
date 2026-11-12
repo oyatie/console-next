@@ -254,7 +254,7 @@ async fn where_the_read_offers_nothing_the_decision_is_refused(pool: PgPool) {
         assert_eq!(body["error"][field], read_body["error"][field]);
     }
 
-    // 보완 요청 is not a decision this document takes.
+    // Return for supplement is not a decision this document takes.
     let ctx = fixtures::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
     let (_, seen) = ctx.call("GET", &uri, None).await;
     let returned = decision(&seen, "RETURN", json!({"reason_code": "NEEDS_SUPPLEMENT"}));

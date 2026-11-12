@@ -5,7 +5,7 @@
 
 use super::{BizRegNo, CorpRegNo};
 
-/// `000-{class:02}-{serial:04}{check}`: a checksum-valid 사업자등록번호 whose
+/// `000-{class:02}-{serial:04}{check}`: a checksum-valid business registration number whose
 /// middle code `class` keeps its NTS classification (81 corporate head office,
 /// 85 corporate branch, …).
 #[must_use]
@@ -17,8 +17,9 @@ pub fn brn(class: u8, serial: u16) -> String {
     format!("{}-{}-{}", &d[..3], &d[3..5], &d[5..])
 }
 
-/// `0002{kind:02}-{serial:06}{check}`: a checksum-valid 법인등록번호 with the
-/// unissued 등기관서 code `0002` and 법인 종류 `kind` (11 주식회사).
+/// `0002{kind:02}-{serial:06}{check}`: a checksum-valid corporate registration number
+/// with the unissued registry office code `0002` and legal entity kind `kind` (11
+/// stock company).
 #[must_use]
 pub fn crn(kind: u8, serial: u32) -> String {
     let prefix = format!("0002{:02}{:06}", kind % 100, serial % 1_000_000);

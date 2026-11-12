@@ -196,8 +196,8 @@ async fn listing_and_inquiry_lifecycle_is_tenant_scoped_and_audited(pool: PgPool
         assert_eq!(public.items[0].kind, ListingKind::Electric);
         assert_eq!(public.items[0].condition, ListingCondition::Used);
 
-        // A second, brand-new (신차) listing — published straight away so the
-        // storefront's 중고/신차 sub-category filter is exercised end-to-end
+        // A second, brand-new listing — published straight away so the
+        // storefront's used/new sub-category filter is exercised end-to-end
         // through the RLS-armed store.
         let new_listing_id = SalesListingId::new();
         store
@@ -229,7 +229,7 @@ async fn listing_and_inquiry_lifecycle_is_tenant_scoped_and_audited(pool: PgPool
             .await
             .unwrap();
 
-        // The public catalog now holds one 중고 and one 신차 listing; each
+        // The public catalog now holds one used and one new listing; each
         // condition filter returns exactly its own.
         assert_eq!(store.list_listings(catalog(false)).await.unwrap().total, 2);
         let used = store

@@ -125,7 +125,7 @@ async fn calendar_for(
     let mut d = first;
     while d <= last {
         // one roster read per day for a person (31 small reads), so a
-        // mid-month 전근 shows on its day; batch by assignment range if it shows.
+        // mid-month relocation shows on its day; batch by assignment range if it shows.
         let p = match &person {
             Some(_) => load_roster(tx, d, Some(id))
                 .await?

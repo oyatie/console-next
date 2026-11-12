@@ -148,7 +148,7 @@ pub async fn unlock_in_tx(
             return Err(KernelError::conflict("period lock is already unlocked"));
         }
     };
-    // The governed unlock may reopen a month an org 근태 close references: it
+    // The governed unlock may reopen a month an org attendance close references: it
     // names the row it unlocks for the kept 0188 guard (migration
     // 20261013142447372), which still refuses any other unlock of such a lock.
     // Goes with that guard's contract (pending/20261013142447372_*).

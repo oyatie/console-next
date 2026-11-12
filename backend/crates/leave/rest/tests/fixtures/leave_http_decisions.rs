@@ -61,7 +61,7 @@ async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: Pg
         Some(auth.verifier),
     ));
 
-    // 근로기준법 §60: refusal is not a decision — even the frozen v1 route must
+    // Labor Standards Act §60: refusal is not a decision — even the frozen v1 route must
     // fail closed rather than mint a 'rejected' row.
     let refusal = request_json(
         service.clone(),

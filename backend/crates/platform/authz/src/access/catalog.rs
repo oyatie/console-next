@@ -28,7 +28,7 @@ pub enum Domain {
     SupportAccess,
 }
 
-/// 조회 · 등록·수정 · 결재 · 내보내기.
+/// View · edit · approve · export.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Level {
@@ -124,7 +124,7 @@ impl Domain {
     }
 
     /// The levels a role line may carry for this domain, in display order.
-    /// Empty = listed but not grantable (징계 until its module mounts).
+    /// Empty = listed but not grantable (discipline until its module mounts).
     #[must_use]
     pub const fn offered(self) -> &'static [Level] {
         match self {

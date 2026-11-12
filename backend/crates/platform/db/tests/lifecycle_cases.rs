@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! LC-B3 (migration 0314) invariants, each with its refusal:
 //! - an unknown item kind is refused (closed vocabulary);
-//! - 「기한 미확인」 never carries a date, and template due rules keep their shape;
+//! - "Deadline unconfirmed" never carries a date, and template due rules keep their shape;
 //! - nobody completes an item of their own case (DB backstop of the Cedar forbid);
 //! - a result is write-once (attestation_immutable), CORRECTION_NEEDED aside;
 //! - a case does not close over an open blocking item;

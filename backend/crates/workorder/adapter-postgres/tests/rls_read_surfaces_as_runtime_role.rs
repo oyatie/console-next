@@ -315,12 +315,12 @@ async fn messenger_thread_list_returns_tenant_rows_as_runtime_role(owner_pool: P
 }
 
 // ===========================================================================
-// (4) #19.13a — WORK-ORDER CREATE resolves a `호기`/`#`-decorated, leading-zero
-// management number AS `console_rt`. Equipment is stored as the bare `3`; the
-// receptionist files `3호기`. Before the fix the adapter stripped only `#` and
-// matched exactly, so `3호기` failed the create. After the fix the adapter
-// normalizer strips `#` AND `호기` and matches leading-zero-insensitively, so all
-// of `3호기` / `#3` / `003` resolve the same `3`.
+// (4) #19.13a — WORK-ORDER CREATE resolves a "hogi"-suffixed (the Korean unit-number
+// suffix) or `#`-decorated, leading-zero management number AS `console_rt`.
+// Equipment is stored as the bare `3`; the receptionist files "3hogi". Before the
+// fix the adapter stripped only `#` and matched exactly, so "3hogi" failed the
+// create. After the fix the adapter normalizer strips `#` AND "hogi" and matches
+// leading-zero-insensitively, so all of "3hogi" / `#3` / `003` resolve the same `3`.
 // ===========================================================================
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn create_work_order_resolves_hogi_decorated_management_no_as_runtime_role(
@@ -332,10 +332,10 @@ async fn create_work_order_resolves_hogi_decorated_management_no_as_runtime_role
     seed_org(&owner_pool, sae_uuid, "sae").await;
     let branch = seed_branch(&owner_pool, sae_uuid).await;
     let receptionist = seed_user(&owner_pool, sae_uuid, "RECEPTIONIST", branch).await;
-    // Equipment stored as the bare `3` (no leading zero, no 호기 suffix).
+    // Equipment stored as the bare `3` (no leading zero, no unit-number suffix).
     seed_equipment(&owner_pool, sae_uuid, branch, "3").await;
 
-    // File the order with the decorated `3호기` as the genuine non-owner console_rt.
+    // File the order with the decorated "3hogi" as the genuine non-owner console_rt.
     let summary = console_platform_request_context::scope_org(sae, async {
         let store = PgWorkOrderStore::new(rt_pool.clone());
         store
@@ -364,7 +364,7 @@ async fn create_work_order_resolves_hogi_decorated_management_no_as_runtime_role
 
 // ===========================================================================
 // (5) #19.13a — a management number with NO matching equipment yields a DISTINCT
-// NotFound (404) the UI renders as "해당 호기 장비를 찾을 수 없습니다", never a
+// NotFound (404) the UI renders as "No equipment found for that unit number", never a
 // generic 500/validation. Proves the create write-lookup fails closed cleanly.
 // ===========================================================================
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

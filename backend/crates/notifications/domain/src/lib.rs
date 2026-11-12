@@ -2,8 +2,9 @@
 //!
 //! Pure value objects and the deep-link wire contract only. Persistence, audit,
 //! REST, and realtime delivery live in outer layers. `category` is deliberately
-//! a validated free-form string, not an enum: new producers (결재/멘션/문서/공지/
-//! 근태/급여 and beyond) add categories without a code change or migration.
+//! a validated free-form string, not an enum: new producers (approval/mention/
+//! document/notice/attendance/payroll and beyond) add categories without a code
+//! change or migration.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use console_kernel_core::KernelError;
@@ -44,7 +45,7 @@ impl NotificationCategory {
 }
 
 /// Extensible notification behavioral kind (matches the DB `kind` CHECK).
-/// Distinct from [`NotificationCategory`] (display grouping, e.g. 결재/멘션):
+/// Distinct from [`NotificationCategory`] (display grouping, e.g. approval/mention):
 /// `kind` drives the detect -> assign -> resolve chain — a resolvable kind
 /// (e.g. `slo_violation`) is auto-resolved when the matching domain event
 /// fires, generically, by matching on the notification's `link`. Defaults to
@@ -68,7 +69,7 @@ impl NotificationKind {
     }
 
     /// The default, never-auto-resolved kind for a plain informational
-    /// notification (결재/멘션/문서/공지/근태/급여 and beyond).
+    /// notification (approval/mention/document/notice/attendance/payroll and beyond).
     #[must_use]
     pub fn info() -> Self {
         Self("info".to_owned())

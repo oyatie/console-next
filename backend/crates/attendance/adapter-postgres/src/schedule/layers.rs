@@ -143,7 +143,7 @@ async fn plan(
             t.scope_id,
         )?);
     }
-    // A 법인 target reaches the branches of the people it reaches.
+    // A legal entity target reaches the branches of the people it reaches.
     let reached = roster.iter().filter(|p| {
         input
             .targets

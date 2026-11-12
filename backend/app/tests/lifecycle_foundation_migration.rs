@@ -1,11 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! LC-B1 / LC-B3 migration acceptance (inter-entity-transfer.md §4.3,
-//! lifecycle-events.md §5.1): a tenant seeded only through the API — two 법인,
-//! a plain hire, an exit and a rehire, a 전적, a live exit and a withdrawn one —
+//! lifecycle-events.md §5.1): a tenant seeded only through the API — two
+//! legal entities, a plain hire, an exit and a rehire, an inter-company transfer,
+//! a live exit and a withdrawn one —
 //! is backfilled by the same functions migrations 0313/0314 run, with zero loss:
 //! `employees` byte-identical, head counts = 1 + REHIRE + GROUP_TRANSFER, no
-//! overlapping periods, every assignment inside one period, the same 재직
-//! headcount, 연차 untouched, one case per exit case, and a rerun writes nothing.
+//! overlapping periods, every assignment inside one period, the same employed
+//! headcount, annual leave untouched, one case per exit case, and a rerun writes nothing.
 
 #[path = "lifecycle_foundation_migration/seed.rs"]
 mod seed;
@@ -31,7 +32,7 @@ async fn an_api_seeded_tenant_backfills_into_periods_and_cases_with_zero_loss(po
         withdrawn,
     } = seed::seed(&pool).await;
 
-    // Before: every employees row and every 연차 figure.
+    // Before: every employees row and every annual leave figure.
     let digest = "SELECT string_agg(e.id::text || md5(to_jsonb(e)::text), ',' ORDER BY e.id) FROM employees e WHERE e.org_id = $1";
     let leave = "SELECT string_agg(e.id::text || ':' || coalesce(e.leave_remaining::text, '-') || ':' \
                  || coalesce((SELECT b.leave_remaining::text FROM employee_leave_balances b WHERE b.org_id = e.org_id \

@@ -1,4 +1,4 @@
-//! One spreadsheet cell's text through every import normaliser: dates, 사번,
+//! One spreadsheet cell's text through every import normaliser: dates, employee numbers,
 //! codes, header labels, RRN detection and the RRN value object (the input of
 //! the keyed hash). Invariants: never panic; what `Rrn::parse` accepts the PII
 //! scrub (`is_rrn_value`) catches too; the mask and `Debug` never show

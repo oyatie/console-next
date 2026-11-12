@@ -503,7 +503,7 @@ async fn notification_routing_rest_is_recipient_scoped(pool: PgPool) {
         assert_eq!(upserted.json["scope"].as_str(), Some("category"));
         assert_eq!(upserted.json["action"].as_str(), Some("mute"));
 
-        // Badge truth: muted 결재 leaves unread-count, summary tallies it, the
+        // Badge truth: a muted approval leaves unread-count, summary tallies it, the
         // list still carries the row annotated.
         let count = get_json(
             service.clone(),

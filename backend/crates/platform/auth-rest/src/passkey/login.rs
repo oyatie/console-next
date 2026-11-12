@@ -83,7 +83,7 @@ pub(crate) async fn start_login(
             .start_identified_authentication(&state.pool, &identifier)
             .await
     } else {
-        // Usernameless (autofill, the 「패스키로 로그인」 button): an empty
+        // Usernameless (autofill, the "Sign in with passkey" button): an empty
         // allowCredentials; the user is resolved at finish from the credential.
         services.passkeys.start_authentication(&state.pool).await
     }
