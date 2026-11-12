@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! MR-24 / MR-25 through the `HrService` entry points, on a `console_rt` pool
 //! (0266's grants, triggers and checks are what is proved): the five typed
-//! catalogs, a 직급 PROMOTE, the dated APPOINT (직책·직무·직군), the dated
-//! 고용형태 전환, their rescission, scheduling and bulk path.
+//! catalogs, a grade PROMOTE, the dated APPOINT (position, job, job family),
+//! the dated employment type change, their rescission, scheduling and bulk path.
 
 mod catalog;
 mod change_sets;
@@ -154,7 +154,7 @@ impl Fixture {
             .unwrap();
     }
 
-    /// grade, 직책, 직무 id, 직무 text, 직군.
+    /// grade, position, job id, job text, job family.
     pub async fn head(
         &self,
         employee: Uuid,

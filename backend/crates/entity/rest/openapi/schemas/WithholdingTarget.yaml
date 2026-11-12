@@ -1,5 +1,5 @@
 type: object
-description: Where the 사업장's 원천세 is filed, derived from 소득세법 §7①3·4 with its basis.
+description: Where the workplace's withholding tax is filed, derived from Income Tax Act §7①3·4 with its basis.
 required:
 - kind
 properties:

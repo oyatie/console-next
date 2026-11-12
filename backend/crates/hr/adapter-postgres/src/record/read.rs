@@ -1,6 +1,6 @@
 //! Reads: one employee's entries, one entry's history, and the per-section
-//! sheet export (사번 + entry id + version) that the import sheet takes back
-//! for bulk corrections and voids.
+//! sheet export (employee number + entry id + version) that the import sheet
+//! takes back for bulk corrections and voids.
 
 use console_hr_domain::record::Section;
 use console_kernel_core::KernelError;
@@ -103,7 +103,7 @@ impl HrService {
     }
 
     /// Live entries of one section across the tenant, by entry id, one row
-    /// per entry under the bound employee with the lowest 사번.
+    /// per entry under the bound employee with the lowest employee number.
     pub async fn record_section_sheet(
         &self,
         principal: Principal,
@@ -113,10 +113,10 @@ impl HrService {
     ) -> Result<SectionSheet, HrError> {
         authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
         if section.restricted() {
-            // a bulk read of 민감/징계 needs the per-export 결재 tier
-            // (access-model GR-25), which is not built; until then the sheet
-            // is refused and bulk corrections take entry ids from the
-            // purposed one-by-one read.
+            // a bulk read of sensitive/disciplinary sections needs the
+            // per-export approval tier (access-model GR-25), which is not
+            // built; until then the sheet is refused and bulk corrections take
+            // entry ids from the purposed one-by-one read.
             return Err(HrError {
                 errors: None,
                 status: http::StatusCode::CONFLICT,

@@ -2,7 +2,7 @@ x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
 tags:
 - entity
 operationId: listEntitySetupBatches
-summary: 법인 · 사업장 batch and direct registration receipts, newest first (latest 200), with whether each can still be undone
+summary: Legal entity and workplace batch and direct registration receipts, newest first (latest 200), with whether each can still be undone
 security:
 - bearerAuth: []
 responses:

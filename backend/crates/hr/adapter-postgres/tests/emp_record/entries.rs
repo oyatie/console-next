@@ -1,5 +1,5 @@
-//! One-by-one create, correct, void, history; PII shapes; the 병역 single
-//! entry; the tenant switch; shared persons; access.
+//! One-by-one create, correct, void, history; PII shapes; the military service
+//! single entry; the tenant switch; shared persons; access.
 
 use std::collections::BTreeSet;
 
@@ -98,7 +98,8 @@ async fn create_correct_void_keep_history_on_a_minted_person(pool: PgPool) {
             .await
             .unwrap();
     assert!(live.items.is_empty());
-    // 장애·보훈 start off (PIPA §23①); every other section starts on.
+    // Disability and veteran status start off (PIPA §23①); every other section
+    // starts on.
     assert!(
         live.sections
             .iter()

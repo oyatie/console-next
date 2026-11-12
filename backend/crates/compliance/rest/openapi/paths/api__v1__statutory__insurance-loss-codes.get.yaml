@@ -1,6 +1,6 @@
 tags: [Compliance]
 operationId: listStatutoryInsuranceLossCodes
-summary: List one insurer's 상실 codes in force on a date (BW-30)
+summary: List one insurer's loss-of-coverage codes in force on a date (BW-30)
 description: >
   Reads the global, migration-only statutory register. Rows ship HOLD until a
   qualified reviewer lifts CTRL-KR-WORKFORCE-001; HOLD rows are listed with

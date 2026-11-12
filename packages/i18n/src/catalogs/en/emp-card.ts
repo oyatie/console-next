@@ -1,7 +1,5 @@
 // English for `empCard.` ids (the personnel record card).
-import type { koEmpCard } from "../ko/emp-card";
-
-export const enEmpCard: Partial<Record<keyof typeof koEmpCard, string>> = {
+export const enEmpCard = {
   "empCard.crumb": "People",
   "empCard.unplaced": "Unplaced",
   "empCard.pos.unit": "{unit} list",
@@ -284,4 +282,4 @@ export const enEmpCard: Partial<Record<keyof typeof koEmpCard, string>> = {
   "empCard.reveal.error.rrn_vault_unavailable": "The encryption key is unavailable. The value was not displayed.",
   "empCard.reveal.shown": "Showing {field} for {seconds} seconds.",
   "empCard.reveal.remasked": "{field} is masked again.",
-};
+} as const;

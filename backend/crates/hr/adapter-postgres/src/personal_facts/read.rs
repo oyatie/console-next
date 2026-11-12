@@ -1,8 +1,8 @@
-//! `GET /employees/{id}/personal-facts`: the 인적사항 extras HR holds for one
-//! employee. Personal data a directory reader does not see, so the read
-//! needs `employee_directory_manage` and leaves a 접속기록 row like the
-//! detail read. The REST layer turns `photo.object_key` into a short-lived
-//! presigned GET; the key itself is never serialized.
+//! `GET /employees/{id}/personal-facts`: the personal details extras HR holds
+//! for one employee. Personal data a directory reader does not see, so the
+//! read needs `employee_directory_manage` and leaves an access log row like
+//! the detail read. The REST layer turns `photo.object_key` into a
+//! short-lived presigned GET; the key itself is never serialized.
 
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
@@ -46,15 +46,15 @@ pub struct PersonalFactsResponse {
     pub updated_at: OffsetDateTime,
     pub name_hanja: Option<String>,
     pub name_en: Option<String>,
-    /// ISO 3166-1 alpha-2; null = 미입력.
+    /// ISO 3166-1 alpha-2; null = not entered.
     pub nationality: Option<String>,
     /// Active official reference options for the nationality editor.
     pub countries: Vec<CountryOption>,
     pub personal_email: Option<String>,
-    /// `[{name, relation, phone}]`; null = 미입력.
+    /// `[{name, relation, phone}]`; null = not entered.
     pub emergency_contacts: Value,
     pub photo: Option<PersonalPhoto>,
-    /// 그룹 입사일 (근속 기산일), `YYYY-MM-DD`.
+    /// Group hire date (service start date), `YYYY-MM-DD`.
     pub group_service_start_date: Option<String>,
 }
 

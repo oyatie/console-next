@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! BE-EMP-UI through the `HrService` entry points on a `console_rt` pool (RLS
-//! armed): the catalog writes, the exit report's 퇴직 사유, dated bulk 승진 ·
-//! 계약 갱신 with its preview and batch undo, 발령 공고, 이관 확인 and the
-//! per-field bulk-correction refusals. Every guarded path has its refusal
-//! test (status, code, nothing written, audit row present or absent); tests
-//! named `regression_*` fail on the parent commit 3c988fc2.
+//! armed): the catalog writes, the exit report's exit reason, dated bulk
+//! promotion · contract renewal with its preview and batch undo, personnel
+//! order notices, migration review and the per-field bulk-correction refusals.
+//! Every guarded path has its refusal test (status, code, nothing written,
+//! audit row present or absent); tests named `regression_*` fail on the parent
+//! commit 3c988fc2.
 
 mod batch_access;
 mod bulk;

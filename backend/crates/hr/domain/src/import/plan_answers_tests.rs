@@ -1,6 +1,7 @@
-//! r3:hire-19: a conflict pattern is one decision — 「부서를 따름」 /
-//! 「근무지를 따름 (미배치로)」 for a 부서 at another 사업장 than the 근무지,
-//! 「입사 예정으로」 for 재직 with a future 입사일 — never row by row.
+//! r3:hire-19: a conflict pattern is one decision — "follow the department" /
+//! "follow the work location (as unplaced)" for a department at another
+//! workplace than the work location, "as a pending hire" for employed with a
+//! future hire date — never row by row.
 
 use std::collections::BTreeMap;
 
@@ -16,8 +17,8 @@ fn answered(key: &str, answer: &str) -> Decisions {
     }
 }
 
-/// regression (r3:hire-19): the only way through a 부서/근무지 mismatch was to
-/// exclude every such row.
+/// regression (r3:hire-19): the only way through a department / work location
+/// mismatch was to exclude every such row.
 #[test]
 fn regression_a_unit_workplace_mismatch_is_answered_once_for_every_row() {
     let mut world = World::new(vec![]);

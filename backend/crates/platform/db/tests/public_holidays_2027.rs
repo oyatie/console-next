@@ -19,7 +19,7 @@ struct Holiday {
     article: Option<i32>,
 }
 
-// 대통령령 제36290호 §3①1·2·3, ② (overlap), ③ (Saturday substitute).
+// Presidential Decree No. 36290 §3①1·2·3, ② (overlap), ③ (Saturday substitute).
 fn substitutes(base: &[(Date, i32)]) -> Vec<(Date, Date, i32)> {
     let public: BTreeSet<_> = base.iter().map(|(day, _)| *day).collect();
     let mut occupied = public.clone();
@@ -63,7 +63,8 @@ async fn official_2027_edition_and_every_substitute_agree_with_the_decree(pool: 
     .fetch_all(&pool)
     .await
     .unwrap();
-    // 우주항공청 공고 제2026-0078호, 월력요항 p.4 (read from kasa.go.kr).
+    // Korea AeroSpace Administration announcement No. 2026-0078, calendar summary
+    // (wollyeok yohang) p.4 (read from kasa.go.kr).
     let expected = [
         (date!(2027 - 01 - 01), "1월 1일"),
         (date!(2027 - 02 - 06), "설날 연휴"),

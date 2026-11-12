@@ -2,7 +2,7 @@ use crate::*;
 
 /// Headcount, everywhere this adapter counts people (preflight impact, the
 /// dissolve blocker, the org tree and unit detail): employees who are not
-/// EXITED — ACTIVE, ON_LEAVE (휴직: employed, still assigned to the unit) and
+/// EXITED — ACTIVE, ON_LEAVE (leave of absence: employed, still assigned to the unit) and
 /// UNKNOWN. One predicate, `entity_employed_on(entity_today(), hire_on, exit_on, employment_status)`, shared with the
 /// `ReassignOrgUnit` transfer set, so every member that blocks a dissolve is one
 /// a reassign can move.

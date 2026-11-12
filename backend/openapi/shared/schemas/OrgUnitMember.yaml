@@ -12,7 +12,7 @@ properties:
     type: string
   title:
     type: string
-    description: Current 직책 from the employee card's position-kind catalog fact.
+    description: Current position from the employee card's position-kind catalog fact.
   since:
     type: string
     format: date

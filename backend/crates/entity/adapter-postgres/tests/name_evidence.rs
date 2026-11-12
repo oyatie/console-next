@@ -19,7 +19,8 @@ async fn person_names_are_refused_without_entity_or_audit_side_effects(owner: Pg
         );
         assert_eq!(refusal.0, "validation_failed");
         assert!(refusal.1.contains(&("name".into(), "legal_name_is_person")));
-        // The 약칭 and the 영문명 are guarded the same way, each with its own pointer.
+        // The short name and the English name are guarded the same way, each with its
+        // own pointer.
         let mut input = corporation("주식회사 누리", "000211-0006241");
         input.display_name = Some(name.into());
         let refusal = code(store.create_entity(&cmd(&actor), input).await.unwrap_err());

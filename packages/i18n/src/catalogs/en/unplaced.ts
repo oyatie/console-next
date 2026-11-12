@@ -1,6 +1,4 @@
-import type { koUnplaced } from "../ko/unplaced";
-
-export const enUnplaced: Record<keyof typeof koUnplaced, string> = {
+export const enUnplaced = {
   "unplaced.crumbTodo": "To-dos",
   "unplaced.title": "Place unplaced people",
   "unplaced.phaseSetup": "Setup · a selection applies at once",
@@ -71,4 +69,4 @@ export const enUnplaced: Record<keyof typeof koUnplaced, string> = {
   "unplaced.why.stale_record": "Someone changed this person just now · pick again",
   "unplaced.why.lifecycle_schedule_conflict": "Clashes with a scheduled action · check it on their record",
   "unplaced.why.scheduled_conflict": "Clashes with a scheduled action · check it on their record",
-};
+} as const;

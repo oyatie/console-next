@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Decisions #26 item d through the router: after 운영 시작 a 법인등록번호
+//! Decisions #26 item d through the router: after go-live a corporate registration number
 //! correction needs a governed exception, and the tenant ops account may
 //! cover it itself (break-glass): its own passkey step-up bound to exactly
-//! this correction, recorded as a sole-holder exception (사후 검토 due) and
+//! this correction, recorded as a sole-holder exception (after-the-fact review due) and
 //! audited. Everyone else, and ops without a matching step-up, is refused
 //! with nothing written.
 

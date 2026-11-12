@@ -1,6 +1,4 @@
-import type { koIdentity } from "../ko/identity";
-
-export const enIdentity: Partial<Record<keyof typeof koIdentity, string>> = {
+export const enIdentity = {
   "identity.binding.title": "Person binding evidence",
   "identity.title": "Is {name} someone already on file?",
   "identity.fact": "An import or registration found a record that may be the same person. If they differ, the flag clears; if they are the same, this record merges into the one kept.",
@@ -22,4 +20,4 @@ export const enIdentity: Partial<Record<keyof typeof koIdentity, string>> = {
   "identity.receipt.different": "Confirmed as different people.",
   "identity.receipt.merged": "Merged into the record kept.",
   "identity.receipt.pending": "The merge waits for another HR person to confirm it.",
-};
+} as const;

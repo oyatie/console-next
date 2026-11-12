@@ -1,7 +1,8 @@
-// Korean source for `orgBulk.` ids (apps/web/src/features/org-bulk): the bulk paths of 회사 구조 (S7) —
+// Korean copy for `orgBulk.` ids (apps/web/src/features/org-bulk): the bulk paths of 회사 구조 (S7) —
 // 목록 붙여넣기, 조직 시트 가져오기 and 사업장 일괄 수정. Names are matched only when they are the same;
 // nothing is guessed from a similar name.
-export const koOrgBulk = {
+import type { enOrgBulk } from "../en/org-bulk";
+export const koOrgBulk: Record<keyof typeof enOrgBulk, string> = {
   "orgBulk.paste.error.kind_not_allowed": "{line}행 · 부서에는 사업장 종류를 지정할 수 없습니다. 둘째 칸을 비우십시오.",
   "orgBulk.plan.status.kind_not_allowed": "둘째 칸 삭제 필요",
   "orgBulk.crumb": "조직 구조",
@@ -194,4 +195,4 @@ export const koOrgBulk = {
   "orgBulk.links.edit": "사업장 일괄 수정",
   "orgBulk.links.history": "변경 이력",
   "orgBulk.import.role.brn": "사업자등록번호",
-} as const;
+};

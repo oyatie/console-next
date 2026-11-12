@@ -1,8 +1,8 @@
 tags:
 - entity
 operationId: bindEmploymentAssignment
-summary: Bind an employee to a 법인 and 사업장 from a date
-description: A change of 법인 is refused (entity_change_needs_group_transfer → start_group_transfer).
+summary: Bind an employee to a legal entity and workplace from a date
+description: A change of legal entity is refused (entity_change_needs_group_transfer → start_group_transfer).
 security:
 - bearerAuth: []
 parameters:

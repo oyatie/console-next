@@ -1,5 +1,6 @@
-// Korean source for `capture.` ids (apps/web/src/features/entity: regular headcount, code lists, kept originals). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koCapture = {
+// Korean copy for `capture.` ids (apps/web/src/features/entity: regular headcount, code lists, kept originals). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enCapture } from "../en/capture";
+export const koCapture: Record<keyof typeof enCapture, string> = {
   "capture.headcount.label": "상시근로자수",
   "capture.headcount.value": "{count, number}명",
   "capture.headcount.held": "산정 보류",

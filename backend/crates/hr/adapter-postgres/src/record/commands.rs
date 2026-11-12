@@ -171,8 +171,8 @@ impl HrService {
         .await
     }
 
-    /// Void: the entry leaves the 인사카드 and keeps its history. Works with
-    /// the section switched off, so collected data can still be retired.
+    /// Void: the entry leaves the personnel card and keeps its history. Works
+    /// with the section switched off, so collected data can still be retired.
     pub async fn void_record(
         &self,
         principal: Principal,

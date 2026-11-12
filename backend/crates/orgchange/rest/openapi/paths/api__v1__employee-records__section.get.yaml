@@ -1,12 +1,12 @@
 tags:
   - employees
 operationId: listEmployeeRecordSheet
-summary: The live entries of one 인사카드 section across the tenant (sheet export)
-description: One row per live entry with the bound employee of the lowest 사번, its entry id and version, in
+summary: The live entries of one personnel card section across the tenant (sheet export)
+description: One row per live entry with the bound employee of the lowest employee number, its entry id and version, in
   entry id order. The rows go back into the import sheet with entry_id and expected_version to correct or
   void entries in bulk. Takes org-wide employee_directory_manage. A restricted section (discipline,
   disability, veteran) is refused with 409 record_restricted_export_unavailable until the per-export
-  결재 tier exists.
+  approval tier exists.
 security:
 - bearerAuth: []
 parameters:

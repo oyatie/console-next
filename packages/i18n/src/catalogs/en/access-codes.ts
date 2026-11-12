@@ -1,6 +1,4 @@
-import type { koAccessCodes } from "../ko/access-codes";
-
-export const enAccessCodes: Partial<Record<keyof typeof koAccessCodes, string>> = {
+export const enAccessCodes = {
   "accessCodes.domain.org": "Organization",
   "accessCodes.domain.org.help": "Entities, workplaces, departments and org changes",
   "accessCodes.domain.hr_basic": "HR records",
@@ -86,4 +84,4 @@ export const enAccessCodes: Partial<Record<keyof typeof koAccessCodes, string>> 
   "accessCodes.refusal.scope_not_enforceable_in_pilot": "This scope cannot be enforced yet",
   "accessCodes.refusal.self_grant_forbidden": "You cannot grant to yourself",
   "accessCodes.refusal.valid_range_invalid": "The period is not valid",
-};
+} as const;

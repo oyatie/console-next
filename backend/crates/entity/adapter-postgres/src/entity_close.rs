@@ -1,5 +1,6 @@
-//! MR-15: close a 법인 (해산 / 폐업). Its open 사업장 and 사업자등록 close
-//! on the same date through [`crate::closure`]; the close is set once (0264).
+//! MR-15: close a legal entity (dissolution / business closure). Its open
+//! workplaces and business registrations close on the same date through
+//! [`crate::closure`]; the close is set once (0264).
 
 use console_entity_application::{
     Actor, CloseCorrection, CloseLegalEntity, LegalEntityView, Saved,
@@ -18,10 +19,11 @@ use crate::site_unit::dissolve_sites;
 use crate::{PgEntityError, PgEntityStore, admit, audit, today_kst};
 
 impl PgEntityStore {
-    /// Close a 법인 (MR-15): 해산 or 폐업 on `closed_on` (no later than
-    /// today). Its open 사업장 and 사업자등록 close on the same date (CLOSED
-    /// revisions), their SITE units dissolve, and the close is set once.
-    /// Refused while people or 부서 remain anywhere in it.
+    /// Close a legal entity (MR-15): dissolution or business closure on
+    /// `closed_on` (no later than today). Its open workplaces and business
+    /// registrations close on the same date (CLOSED revisions), their SITE
+    /// units dissolve, and the close is set once. Refused while people or
+    /// departments remain anywhere in it.
     ///
     /// # Errors
     /// Field issues (`closed_on`, `reason_code`), `legal_entity_not_open`,
@@ -41,7 +43,8 @@ impl PgEntityStore {
                     return Ok((Saved { record, warnings: vec![], change_mode: done.change_mode.unwrap_or_default() }, vec![]));
                 }
                 let admitted = admit(tx, WriteClass::EntityStructure).await?;
-                // The revise paths lock a 사업장 or 사업자등록 before its 법인: same order here.
+                // The revise paths lock a workplace or business registration before its legal
+                // entity: same order here.
                 let workplaces: Vec<Uuid> = sqlx::query_scalar(
                     "SELECT id FROM workplaces WHERE legal_entity_id = $1 AND voided_at IS NULL AND closed_on IS NULL ORDER BY id FOR UPDATE",
                 )
@@ -90,8 +93,8 @@ impl PgEntityStore {
     }
 }
 
-/// The open records the 법인's close closed with it on `on`: their newest
-/// revision is the close's own (or an earlier correction of it).
+/// The open records the legal entity's close closed with it on `on`: their
+/// newest revision is the close's own (or an earlier correction of it).
 pub(crate) async fn closed_with(
     tx: &mut crate::Tx<'_>,
     registrations: bool,
@@ -119,10 +122,11 @@ pub(crate) async fn closed_with(
 }
 
 impl PgEntityStore {
-    /// Correct a 법인's recorded close (catalog company-19): the 종료일 and
-    /// 종료 사유 become the right ones, and the 사업장 and 사업자등록 that
-    /// closed with it move to the same date (a CLOSED revision each). It
-    /// never reopens anything; `why` is kept in the audit row.
+    /// Correct a legal entity's recorded close (catalog company-19): the end
+    /// date and end reason become the right ones, and the workplaces and
+    /// business registrations that closed with it move to the same date (a
+    /// CLOSED revision each). It never reopens anything; `why` is kept in the
+    /// audit row.
     ///
     /// # Errors
     /// `legal_entity_not_closed` (409), field issues (`closed_on`,

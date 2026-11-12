@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koOpsRecovery = {
+import type { enOpsRecovery } from "../en/ops-recovery";
+export const koOpsRecovery: Record<keyof typeof enOpsRecovery, string> = {
   "opsRecovery.tenantOpenedBy": "공급사 운영자 {actor}의 복구 요청",
   "opsRecovery.operator": "공급사 운영자",
   "opsRecovery.title": "운영 계정(ops) 복구",
@@ -44,4 +45,4 @@ export const koOpsRecovery = {
   "opsRecovery.ready": "대기 기간이 끝났습니다. 요청자나 승인자가 복구 코드를 발급할 수 있습니다.",
   "opsRecovery.inactive": "먼저 고객 계정을 활성화하십시오.",
   "opsRecovery.codeLost": "코드를 잃거나 유효 기간이 지나면 운영 계정 복구를 다시 요청하십시오. 두 운영자의 확인과 대기 기간을 다시 거칩니다.",
-} as const;
+};

@@ -1,5 +1,5 @@
 //! Grants: list, preview a batch (single-use receipt), apply it all or nothing.
-//! 권한 부여 is high-risk (decision #26): apply needs a fresh passkey step-up
+//! Granting access is high-risk (decision #26): apply needs a fresh passkey step-up
 //! and a `role_change` reason; the preview re-runs inside the apply
 //! transaction and any difference refuses with `preview_stale`.
 

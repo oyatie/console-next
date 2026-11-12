@@ -1,7 +1,7 @@
 use crate::*;
 
 /// The note a moved person's event carries: the change's code and reason, so
-/// their 인사 이력 names the org change that moved them.
+/// their HR history names the org change that moved them.
 pub(crate) fn move_cause(id: Uuid, request: &RequestRow) -> PeopleMoveCause {
     let reason: String = request.reason.chars().take(900).collect();
     PeopleMoveCause {
@@ -30,7 +30,7 @@ pub(crate) async fn subtree(tx: Tx<'_, '_>, unit: Uuid) -> Result<Vec<Uuid>, PgO
 }
 
 /// Moves people through the owners' port inside the apply transaction. A port
-/// refusal keeps its kind and code (a 법인 crossed, a later scheduled event
+/// refusal keeps its kind and code (a legal entity crossed, a later scheduled event
 /// the move would break); the caller's whole change rolls back.
 pub(crate) async fn move_people(
     tx: Tx<'_, '_>,

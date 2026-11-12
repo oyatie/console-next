@@ -1,7 +1,7 @@
 //! BW-10 the facts a run is planned against, read in the caller's armed
-//! transaction: its candidate rows, the people they may be (by 사번 or by
-//! name), the ACTIVE units by name, and whether former employees may still be
-//! loaded (no payroll period approved yet, W-05).
+//! transaction: its candidate rows, the people they may be (by employee number
+//! or by name), the ACTIVE units by name, and whether former employees may
+//! still be loaded (no payroll period approved yet, W-05).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -18,8 +18,8 @@ use crate::import::types::StoredEmployeeImportRow;
 use crate::lifecycle::title_reason::coded;
 
 /// A stored candidate row as the planner reads it; `hashes` are the run's
-/// staged 주민등록번호 keyed hashes by `source_key`, `phones` the rows with a
-/// staged 휴대전화.
+/// staged resident registration number keyed hashes by `source_key`, `phones`
+/// the rows with a staged mobile phone.
 pub fn import_row(
     stored: &StoredEmployeeImportRow,
     (hashes, phones): (&BTreeMap<String, Vec<u8>>, &BTreeSet<String>),
@@ -85,9 +85,10 @@ struct PersonRow {
     aliases: Vec<String>,
 }
 
-/// The people the rows may be: every holder of a 사번 in the file (current
-/// or as an alias), every person whose 주민등록번호 hash a row carries, and
-/// every namesake (spaces ignored) of a row. Merged-away rows are not people.
+/// The people the rows may be: every holder of an employee number in the file
+/// (current or as an alias), every person whose resident registration number
+/// hash a row carries, and every namesake (spaces ignored) of a row.
+/// Merged-away rows are not people.
 pub async fn people_for_rows(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org_uuid: Uuid,
@@ -198,8 +199,9 @@ pub fn units_named(
         .collect()
 }
 
-/// MR-7: where the units the plan may bind sit (unit id → open 사업장, itself
-/// or an ancestor) and every open 사업장 by name, through the entity owner.
+/// MR-7: where the units the plan may bind sit (unit id → open workplace,
+/// itself or an ancestor) and every open workplace by name, through the entity
+/// owner.
 pub async fn placement_facts(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org_uuid: Uuid,

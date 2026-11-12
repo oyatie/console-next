@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: placeAttendanceCrewMembers
-summary: Put people in this 근무조 from a date (a move ends their previous 근무조 the day before)
+summary: Put people in this crew from a date (a move ends their previous crew the day before)
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: crew_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }

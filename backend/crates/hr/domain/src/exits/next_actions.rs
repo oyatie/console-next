@@ -9,8 +9,9 @@ pub struct ExitCaseNextAction {
 }
 
 /// The actions a case's state admits, as keys; the client owns labels and
-/// routes. A case a 전적 opened is never rejected or cancelled on its own:
-/// the 전적 is withdrawn or rescinded instead, and the case goes with it.
+/// routes. A case a group transfer opened is never rejected or cancelled on
+/// its own: the group transfer is withdrawn or rescinded instead, and the case
+/// goes with it.
 pub fn exit_case_next_actions(
     status: &str,
     follows_group_transfer: bool,

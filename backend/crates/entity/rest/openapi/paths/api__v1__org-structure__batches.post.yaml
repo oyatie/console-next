@@ -2,11 +2,11 @@ x-console-authz: {"permission": "OrgChangeApply", "scope": "capability"}
 tags:
 - entity
 operationId: applyOrgSetupBatch
-summary: Create, rename, move and dissolve 부서 in one transaction during setup
-description: SETUP only (after 운영 시작 phase_not_setup with remedy submit_org_change). One 부서 kind (decision
+summary: Create, rename, move and dissolve departments in one transaction during setup
+description: SETUP only (after go-live phase_not_setup with remedy submit_org_change). One department kind (decision
   18) — the level follows from the parent. Every op on an existing unit carries expected_version; a stale one
   is 409 stale_revision naming the op (errors[].field = ops[i].expected_version) and nothing is applied. A move
-  to another 사업장 corrects its people's 사업장 placement too. The receipt's batch_id can be undone.
+  to another workplace corrects its people's workplace placement too. The receipt's batch_id can be undone.
 security:
 - bearerAuth: []
 parameters:

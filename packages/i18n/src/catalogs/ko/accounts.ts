@@ -1,5 +1,6 @@
-// Korean source for `accounts.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koAccounts = {
+// Korean copy for `accounts.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enAccounts } from "../en/accounts";
+export const koAccounts: Record<keyof typeof enAccounts, string> = {
   "accounts.search.label": "계정 이름·사번 검색",
 
   // People: accounts list
@@ -142,4 +143,4 @@ export const koAccounts = {
   "accounts.code.sign_in_id_invalid": "아이디는 영문 소문자, 숫자와 . _ - 만 쓸 수 있고, 기호로 시작하거나 끝나거나 연달아 쓸 수 없습니다.",
   "accounts.code.sign_in_id_unchanged": "지금 아이디와 같습니다.",
   "accounts.code.effective_date_in_future": "기준일은 오늘이나 그 전 날짜여야 합니다.",
-} as const;
+};

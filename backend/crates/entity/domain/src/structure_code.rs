@@ -1,5 +1,5 @@
-//! 부서 코드 and 사업장 code (G5, review R16): one rule for both, the same
-//! as the org change's `check_unit_code` (1-30 letters, digits, `.`, `_`,
+//! Department code and workplace code (G5, review R16): one rule for both, the
+//! same as the org change's `check_unit_code` (1-30 letters, digits, `.`, `_`,
 //! `-`; matched exactly), so a code set in setup stays valid after go-live.
 
 use crate::Refusal;

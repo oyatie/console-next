@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: listEmployeeNumberHistory
-summary: The 사번 history of an employee, oldest first (IMPORT-2)
+summary: The employee number history of an employee, oldest first (IMPORT-2)
 security:
 - bearerAuth: []
 parameters:

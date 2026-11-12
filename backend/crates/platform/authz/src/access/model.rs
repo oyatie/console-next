@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::catalog::{Domain, Level};
 
-/// A node of 회사 전체 → 법인 → 사업장 → 부서.
+/// A node of the whole company → legal entity → workplace → department.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum NodeKind {
@@ -53,9 +53,9 @@ impl NodeKind {
 
     /// Whether the pilot can enforce a grant on this kind (with descendants).
     /// Every kind is: the HR doors decide per resource over the grant set
-    /// (AX-5), so a 부서 grant reaches exactly its subtree. A 부서 grant still
+    /// (AX-5), so a department grant reaches exactly its subtree. A department grant still
     /// projects no branches, so the branch-keyed doors of other modules never
-    /// widen to its 사업장.
+    /// widen to its workplace.
     #[must_use]
     pub const fn enforceable_in_pilot(self) -> bool {
         true
@@ -152,7 +152,7 @@ pub struct GrantState {
 impl GrantState {
     /// A grant counts when it is not revoked, its role is ACTIVE, `now` is in
     /// `[valid_from, valid_to)`, and the tenant is OPERATING or the grant is
-    /// marked 「설정 단계부터 적용」.
+    /// marked "Apply from the setup phase".
     #[must_use]
     pub fn enforcement(&self, phase: TenantPhase, now: Timestamp) -> Enforcement {
         if self.revoked {

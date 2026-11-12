@@ -8,9 +8,9 @@ use uuid::Uuid;
 use super::load::{db, scope_path};
 use super::model::{NodeKind, NodePath, NodeRef};
 
-/// The chain of a 부서: itself and its parent 부서 up to the 사업장 it sits
-/// in (the nearest unit with an open placement on a live 사업장), then that
-/// 법인 and the tenant. A dissolved 부서, or one under no 사업장, yields a
+/// The chain of a department: itself and its parent departments up to the workplace it sits
+/// in (the nearest unit with an open placement on a live workplace), then that
+/// legal entity and the tenant. A dissolved department, or one under no workplace, yields a
 /// chain without the tenant: the grant still compiles, and the engine refuses
 /// every decision on it (GR-27, fail closed).
 ///

@@ -1,9 +1,9 @@
-//! A 사업장's own org-tree unit (decisions #14.1): the SITE unit that
-//! `represents_workplace` is created together with the 사업장, so people can
-//! be registered there with no 부서, and is dissolved when the 사업장 (or its
-//! 법인) is voided during setup. Writes go through the canonical OrgUnit
-//! owner ([`OrgUnitSetupWritePort`]); the client never creates SITE units
-//! (design §3.7).
+//! A workplace's own org-tree unit (decisions #14.1): the SITE unit that
+//! `represents_workplace` is created together with the workplace, so people
+//! can be registered there with no department, and is dissolved when the
+//! workplace (or its legal entity) is voided during setup. Writes go through
+//! the canonical OrgUnit owner ([`OrgUnitSetupWritePort`]); the client never
+//! creates SITE units (design §3.7).
 
 use serde_json::json;
 use sqlx::Row;
@@ -33,10 +33,11 @@ pub(crate) async fn workplace_unit(
     if let Some(id) = existing {
         return Ok(id);
     }
-    // A 사업장's first unit starts at 개설일, like the 사업장 record itself: a
-    // structure is dated at its real start, never at the day it was entered,
-    // so a 부서 under it can be dated from the day it really began. A unit
-    // made after an earlier one ended (a reopened 사업장) starts today.
+    // A workplace's first unit starts at its opening date, like the workplace
+    // record itself: a structure is dated at its real start, never at the day
+    // it was entered, so a department under it can be dated from the day it
+    // really began. A unit made after an earlier one ended (a reopened
+    // workplace) starts today.
     let row = sqlx::query(
         "SELECT w.legal_entity_id, r.name, \
            CASE WHEN EXISTS (SELECT 1 FROM org_unit_placements p WHERE p.workplace_id = w.id AND p.represents_workplace) \
@@ -75,9 +76,10 @@ pub(crate) async fn workplace_unit(
     Ok(site)
 }
 
-/// The open SITE placements of the 사업장 `id` (`column = "workplace_id"`) or
-/// of every 사업장 of the 법인 `id` (`column = "legal_entity_id"`).
-/// `$1` is that id, `$2` whether it names a 법인.
+/// The open SITE placements of the workplace `id` (`column = "workplace_id"`)
+/// or of every workplace of the legal entity `id`
+/// (`column = "legal_entity_id"`). `$1` is that id, `$2` whether it names a
+/// legal entity.
 macro_rules! sites {
     () => {
         "WITH sites AS (SELECT p.id, p.org_unit_id FROM org_unit_placements p \
@@ -85,7 +87,7 @@ macro_rules! sites {
     };
 }
 
-/// The SITE units of the 사업장 `id` (or of every 사업장 of the 법인 `id`).
+/// The SITE units of the workplace `id` (or of every workplace of the legal entity `id`).
 async fn site_units(
     tx: &mut Tx<'_>,
     column: &'static str,
@@ -101,10 +103,10 @@ async fn site_units(
 }
 
 /// Refuse a void while people are placed in the record (or, for an entity,
-/// any of its 사업장): an open placement there, or anyone who has not left
-/// in the 사업장's own unit or any 부서 under it. Empty 부서 do not block:
-/// they are dissolved with the 사업장 (MR-12; before, a void here was a dead
-/// end, since setup had no way to remove a 부서).
+/// any of its workplaces): an open placement there, or anyone who has not
+/// left in the workplace's own unit or any department under it. Empty
+/// departments do not block: they are dissolved with the workplace (MR-12;
+/// before, a void here was a dead end, since setup had no way to remove a department).
 pub(crate) async fn ensure_unused(
     tx: &mut Tx<'_>,
     column: &'static str,
@@ -141,11 +143,11 @@ pub(crate) async fn ensure_unused(
     Ok(())
 }
 
-/// Dissolve the SITE units of a voided 사업장 (or of every 사업장 of a voided
-/// 법인), and the empty 부서 under them, deepest first, and close the SITE
-/// placements. Call after [`ensure_unused`], in the void's transaction. A
-/// placement opened today closes tomorrow: the period CHECK forbids an empty
-/// range, and the unit is dissolved either way.
+/// Dissolve the SITE units of a voided workplace (or of every workplace of a
+/// voided legal entity), and the empty departments under them, deepest first,
+/// and close the SITE placements. Call after [`ensure_unused`], in the void's
+/// transaction. A placement opened today closes tomorrow: the period CHECK
+/// forbids an empty range, and the unit is dissolved either way.
 pub(crate) async fn dissolve_sites(
     tx: &mut Tx<'_>,
     actor: &Actor,
@@ -185,9 +187,9 @@ pub(crate) async fn dissolve_sites(
     Ok(())
 }
 
-/// Keep a 사업장's SITE unit named after it: people placed 「부서 없이」 see
-/// the unit's name in the org-unit list and the directory. Called when a
-/// revision renames the 사업장 and takes effect today or earlier.
+/// Keep a workplace's SITE unit named after it: people placed "without a
+/// department" see the unit's name in the org-unit list and the directory.
+/// Called when a revision renames the workplace and takes effect today or earlier.
 ///
 /// a future-dated rename leaves the unit until the next revise;
 /// the scheduled-revision runner should call this on its effective date.

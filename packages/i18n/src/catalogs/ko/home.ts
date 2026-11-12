@@ -1,5 +1,6 @@
-// Korean source for `home.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koHome = {
+// Korean copy for `home.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enHome } from "../en/home";
+export const koHome: Record<keyof typeof enHome, string> = {
   "home.inbox.privacyRequest": "권리 요구",
   "home.inbox.correction.decide": "정정 요청 검토",
   "home.requests.review": "요청 검토",
@@ -17,6 +18,20 @@ export const koHome = {
   "home.inbox.record.title": "업무 상세",
   "home.inbox.record.original": "원본 열기",
   "home.inbox.record.back": "목록으로",
+  "home.inbox.activity.title": "활동 내역",
+  "home.inbox.activity.empty": "기록된 활동이 없습니다",
+  "home.inbox.activity.system": "시스템",
+  "home.inbox.activity.verb.create": "생성",
+  "home.inbox.activity.verb.submit": "제출",
+  "home.inbox.activity.verb.approve": "승인",
+  "home.inbox.activity.verb.reject": "반려",
+  "home.inbox.activity.verb.decide": "결정",
+  "home.inbox.activity.verb.apply": "반영",
+  "home.inbox.activity.verb.withdraw": "회수",
+  "home.inbox.activity.verb.cancel": "취소",
+  "home.inbox.activity.verb.update": "변경",
+  "home.inbox.activity.verb.confirm": "확인",
+  "home.inbox.activity.verb.other": "기타 변경",
   "home.inbox.title": "업무함",
   "home.inbox.tab.turn": "해야 할 일",
   "home.inbox.tab.waiting": "요청한 일",
@@ -121,4 +136,4 @@ export const koHome = {
   "home.inbox.source.support": "고객 지원",
   "home.inbox.source.workOrder": "작업 지시",
   "home.inbox.source.governance": "운영 검토",
-} as const;
+};

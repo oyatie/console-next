@@ -1,20 +1,24 @@
-//! 전적 continuity (design/inter-entity-transfer.md T2, F3–F10): 퇴직금, 연차
-//! and 근속 are each chosen, none defaulted. SETTLED is the legal outcome when
-//! nothing is agreed (F3), but it is still a choice the employee and the two
-//! 법인 make; CARRIED rests on a 특약 or the receiving 법인's 취업규칙, so it
-//! needs that agreement's evidence. Whether a mix is lawful (N-LC1, N-LC2) is
-//! for the 노무사: the choice is recorded, never inferred.
+//! Group transfer continuity (design/inter-entity-transfer.md T2, F3–F10):
+//! severance pay, annual leave and length of service are each chosen, none
+//! defaulted. SETTLED is the legal outcome when nothing is agreed (F3), but it
+//! is still a choice the employee and the two legal entities make; CARRIED
+//! rests on a special agreement or the receiving legal entity's rules of
+//! employment, so it needs that agreement's evidence. Whether a mix is lawful
+//! (N-LC1, N-LC2) is for the labor attorney: the choice is recorded, never
+//! inferred.
 
 use console_kernel_core::KernelError;
 
-/// 퇴직금 or 연차: settled at the sending 법인, or carried to the receiving one.
+/// Severance pay or annual leave: settled at the sending legal entity, or
+/// carried to the receiving one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Settle {
     Settled,
     Carried,
 }
 
-/// 근속: counted afresh from the start date, or carried from the 그룹 입사일.
+/// Length of service: counted afresh from the start date, or carried from the
+/// group hire date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Seniority {
     Restart,
@@ -57,7 +61,7 @@ impl Seniority {
     }
 }
 
-/// The three choices of one 전적.
+/// The three choices of one group transfer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Continuity {
     pub severance: Settle,
@@ -77,10 +81,10 @@ fn trimmed(v: Option<&str>) -> Option<&str> {
 
 impl Continuity {
     /// The three choices as sent. `severance` is the `continuity` field. A body
-    /// with neither of the other two is the one-choice contract every 전적
-    /// before T2 used: its single choice named all three (SETTLED settled
-    /// 퇴직금 and 연차 and restarted 근속), so it still means that. A body
-    /// naming either names both.
+    /// with neither of the other two is the one-choice contract every group
+    /// transfer before T2 used: its single choice named all three (SETTLED
+    /// settled severance pay and annual leave and restarted length of service),
+    /// so it still means that. A body naming either names both.
     ///
     /// # Errors
     /// 422 `validation` naming the missing or unknown dimension.
@@ -122,10 +126,12 @@ impl Continuity {
             || self.seniority == Seniority::Carried
     }
 
-    /// The sending 법인 pays 퇴직금 (「근로자퇴직급여 보장법」 제9조) and settles
-    /// every 금품 (「근로기준법」 제36조): its settlement case opens with the
-    /// 전적. Under 퇴직금 승계 the relationship carries over (F4) and paying it
-    /// would contradict the choice (F5), so no case opens; the mixes are N-LC1.
+    /// The sending legal entity pays severance pay (Employee Retirement Benefit
+    /// Security Act Article 9) and settles every item of money and valuables
+    /// (Labor Standards Act Article 36): its settlement case opens with the
+    /// group transfer. Under severance succession the relationship carries over
+    /// (F4) and paying it would contradict the choice (F5), so no case opens;
+    /// the mixes are N-LC1.
     #[must_use]
     pub fn opens_settlement_case(self) -> bool {
         self.severance == Settle::Settled

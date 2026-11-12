@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::harness::{Importer, decisions, table};
 
-/// A 법인 「한빛」 with one open 사업장 「본사」 backed by `default_branch`.
+/// A legal entity "Hanbit" with one open workplace "Head office" backed by `default_branch`.
 pub(super) async fn setup_headquarters(i: &Importer, default_branch: Uuid) -> (Uuid, Uuid) {
     let (o, entity, workplace) = (i.org(), Uuid::new_v4(), Uuid::new_v4());
     let sql = format!(

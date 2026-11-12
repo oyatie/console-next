@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! UX-R1 ENTITY through the real router as `console_rt`: the reader's verbs
-//! (can_manage), 설립 중, 휴업's expected end and the close correction, each
+//! (can_manage), in formation, the business suspension's expected end and the close
+//! correction, each
 //! refusal with its status and code and nothing written.
 
 use axum::body::{Body, to_bytes};
@@ -94,7 +95,8 @@ async fn ctx(pool: &PgPool) -> Ctx {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn founding_and_reader_verbs_over_http(pool: PgPool) {
     let c = ctx(&pool).await;
-    // A 법인 needs its number unless it is being founded; 설립 중 is a 법인's state only.
+    // A legal entity needs its number unless it is being founded; "in formation" is a
+    // legal entity's state only.
     let (status, body) = c
         .call(
             "POST",
@@ -184,7 +186,7 @@ async fn a_close_is_corrected_over_http_and_refused_where_it_must_be(pool: PgPoo
         (Some("2026-01-15"), Some("BUSINESS_CLOSED"))
     );
     assert_eq!(audits(&pool, "legal_entity.close_correct").await, 1);
-    // A closed 법인 is read-only for every other write.
+    // A closed legal entity is read-only for every other write.
     let (status, body) = c.call("PUT", &format!("/api/v1/legal-entities/{id}"), Some(json!({ "expected_version": 1, "effective_from": "2026-01-01", "reason_code": "X", "biz_kind": "CORPORATION", "name": "새이름", "representation_mode": "SINGLE", "representatives": ["홍길동"], "crn": "0002110006241", "head_office_address": address() }))).await;
     assert_eq!(
         (status, body["error"]["code"].as_str()),
@@ -194,7 +196,7 @@ async fn a_close_is_corrected_over_http_and_refused_where_it_must_be(pool: PgPoo
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_close_is_withdrawn_over_http_and_refused_where_it_must_be(pool: PgPool) {
-    // regression: r3 company-15 — 종료 취소 did not exist (the DELETE was 405).
+    // regression: r3 company-15 — "Cancel close" did not exist (the DELETE was 405).
     let c = ctx(&pool).await;
     let (_, saved) = c
         .call(

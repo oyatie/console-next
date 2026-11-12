@@ -1,9 +1,12 @@
-//! MR-35 restricted sections: 장애 and 보훈. 장애 is 건강 information, 민감정보
-//! under 개인정보 보호법 §23①, which may be processed only with a separate
-//! consent (§23①1) or where a statute requires or permits it (§23①2). Every
-//! revision therefore carries its [`Basis`]. Fields are what employment duties
-//! read and no more: 장애 severity (장애인고용촉진법 §2제2호, §28의3: 중증 counts
-//! twice), 보훈 target (국가유공자법 §29 취업지원 대상자). No 장애 유형, no 상이 등급.
+//! MR-35 restricted sections: disability and veteran status. Disability is
+//! health information, sensitive information under Personal Information
+//! Protection Act §23①, which may be processed only with a separate consent
+//! (§23①1) or where a statute requires or permits it (§23①2). Every revision
+//! therefore carries its [`Basis`]. Fields are what employment duties read and
+//! no more: disability severity (Disabled Persons Employment Promotion Act §2
+//! item 2, §28-3: severe counts twice), veteran target (Act on Persons of
+//! Distinguished Service to the State §29 persons eligible for employment
+//! support). No disability type, no service-injury grade.
 
 use console_kernel_core::KernelError;
 use serde::{Deserialize, Serialize};
@@ -14,17 +17,18 @@ use super::{code_enum, iso_date};
 code_enum!(DisabilitySeverity { Severe => "SEVERE", NonSevere => "NON_SEVERE" });
 code_enum!(VeteranTarget { SelfHolder => "SELF", Family => "FAMILY" });
 code_enum!(
-    /// The statute a §23①2 basis relies on: DISABLED_EMPLOYMENT =
-    /// 장애인고용촉진법 §28①, §29①, §33①⑤; VETERAN_EMPLOYMENT = 국가유공자법
-    /// §30제2호, §33의2①, §34. [J] Whether it covers a given employer is
-    /// counsel's reading; the code only names what HR relied on.
+    /// The statute a §23①2 basis relies on: DISABLED_EMPLOYMENT = Disabled
+    /// Persons Employment Promotion Act §28①, §29①, §33①⑤; VETERAN_EMPLOYMENT
+    /// = Act on Persons of Distinguished Service to the State §30 item 2,
+    /// §33-2①, §34. [J] Whether it covers a given employer is counsel's
+    /// reading; the code only names what HR relied on.
     BasisStatute {
         DisabledEmployment => "DISABLED_EMPLOYMENT",
         VeteranEmployment => "VETERAN_EMPLOYMENT",
     }
 );
 
-/// Why a restricted entry may be processed (개인정보 보호법 §23①).
+/// Why a restricted entry may be processed (Personal Information Protection Act §23①).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)]
 pub enum Basis {
@@ -48,7 +52,7 @@ impl Basis {
     }
 }
 
-/// 장애.
+/// Disability.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Disability {
@@ -58,8 +62,8 @@ pub struct Disability {
     pub basis: Basis,
 }
 
-/// 보훈 (취업지원 대상자). [J] Not a §23① category itself; restricted because
-/// it can reveal 상이.
+/// Veteran status (persons eligible for employment support). [J] Not a §23①
+/// category itself; restricted because it can reveal a service injury.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Veteran {

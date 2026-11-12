@@ -1,12 +1,13 @@
-//! BW-12 wiring: the two-year rule (기간제법 §4①) on CONTRACT_RENEWAL and the
-//! employee's fixed-term service read.
+//! BW-12 wiring: the two-year rule (Fixed-Term Workers Act §4①) on
+//! CONTRACT_RENEWAL and the employee's fixed-term service read.
 //!
 //! History, first match wins: the live labour-contract rows with an end date
 //! (`employee_contracts`, EMP-MODEL G1); else the profile's contract window
-//! (0245, which CONTRACT_RENEWAL extends) plus the windows earlier 고용형태
-//! 전환 away from CONTRACT closed (MR-24); else `hire_date` (imported people,
-//! flagged and refused past the register limit). 육아휴직 is taken out (남녀고용평등법 §19⑤). The
-//! limit is the statutory register's FIXED_TERM_MAX_YEARS on the renewal date.
+//! (0245, which CONTRACT_RENEWAL extends) plus the windows earlier employment
+//! type changes away from CONTRACT closed (MR-24); else `hire_date` (imported
+//! people, flagged and refused past the register limit). Childcare leave is
+//! taken out (Equal Employment Opportunity Act §19⑤). The limit is the
+//! statutory register's FIXED_TERM_MAX_YEARS on the renewal date.
 
 use console_compliance_domain::statutory::codes;
 use console_governance_adapter_postgres::PgGovernanceError;
@@ -91,7 +92,7 @@ async fn load(
         .map(|(start, end)| DatePeriod { start, end })
         .collect();
     if contracts.is_empty() {
-        // MR-24: a window a 전환 away from CONTRACT closed still counts.
+        // MR-24: a window an employment type change away from CONTRACT closed still counts.
         contracts = closed_contract_windows(tx, org, employee).await?;
         if let (Some(start), Some(end)) = (start, end) {
             contracts.push(DatePeriod { start, end });
@@ -206,10 +207,11 @@ pub async fn fixed_term_view(
 /// A CONTRACT_RENEWAL that would take service past the limit is 409
 /// `fixed_term_limit`, unless `exception_id` names a recorded or approved
 /// FIXED_TERM_OVER_TWO_YEARS exception for this employee and renewal whose
-/// reason code is one of the 기간제법 §4① 단서 grounds; that exception is
-/// consumed here, in the write's transaction. The governed payload is
-/// `{"employee_id", "contract_end_date"}`. Over the limit on the hire-date
-/// fallback is allowed (the read flags it). A shortening is not checked.
+/// reason code is one of the Fixed-Term Workers Act §4① proviso grounds; that
+/// exception is consumed here, in the write's transaction. The governed
+/// payload is `{"employee_id", "contract_end_date"}`. Over the limit on the
+/// hire-date fallback is allowed (the read flags it). A shortening is not
+/// checked.
 pub async fn check_fixed_term_renewal(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     org: Uuid,

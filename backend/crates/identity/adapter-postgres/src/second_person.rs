@@ -6,7 +6,7 @@
 //!
 //! SQL (`second_person_candidates`, migrations 0254 and 0361) returns every
 //! row the definition looks at, with a reason: legacy system roles, custom
-//! policy roles and the 권한 screen's access grants (role × scope × dates).
+//! policy roles and the Access screen's access grants (role × scope × dates).
 //! Rust finalises each custom-role and access-grant row's scope (the access
 //! grant alone, through Cedar) and counts. Settings values arrive resolved
 //! (plan D2).

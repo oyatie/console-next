@@ -1,7 +1,8 @@
-//! 근로자 명부 items held by HR itself (MR-23): 성별, 이력 · 경력, the 퇴직
-//! 사유 label, 그 밖에 필요한 사항. 근로기준법 §41①, 시행령 §20 2·5·8·9호,
-//! 시행규칙 §16 별지 제16호서식 (law.go.kr MST 290781 / 270551 / 269393).
-//! The 주소 shape is the entity context's `KrAddress`, validated by the adapter.
+//! Worker register items held by HR itself (MR-23): sex, personal history ·
+//! work history, the exit reason label, other necessary matters. Labor Standards
+//! Act §41①, Enforcement Decree §20 items 2·5·8·9, Enforcement Rule §16 Annex
+//! Form No. 16 (law.go.kr MST 290781 / 270551 / 269393).
+//! The address shape is the entity context's `KrAddress`, validated by the adapter.
 //!
 //! Pure: values in, typed values or a coded `KernelError` out.
 
@@ -22,7 +23,7 @@ pub const MAX_CAREER_ROWS: usize = 100;
 
 const NOTE_MAX_CHARS: usize = 500;
 
-/// 성별 (영 §20 2호), as 별지 제16호서식 records it.
+/// Sex (Enforcement Decree §20 item 2), as Annex Form No. 16 records it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Sex {
     Male,
@@ -47,7 +48,7 @@ impl Sex {
     }
 }
 
-/// One 경력 row as the client sends it; months are `YYYY-MM`.
+/// One work history row as the client sends it; months are `YYYY-MM`.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CareerInput {
@@ -63,7 +64,7 @@ pub struct CareerInput {
     pub leave_reason: Option<String>,
 }
 
-/// A checked 경력 row; months are the first day of the month.
+/// A checked work history row; months are the first day of the month.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Career {
     pub employer_name: String,
@@ -120,7 +121,7 @@ fn bounded(value: Option<String>, max: usize, field: &str) -> Result<Option<Stri
     Ok(value)
 }
 
-/// Checks the whole 경력 list (an empty list is 「경력 없음」).
+/// Checks the whole work history list (an empty list is "no work history").
 pub fn validate_careers(rows: Vec<CareerInput>) -> Result<Vec<Career>, KernelError> {
     if rows.len() > MAX_CAREER_ROWS {
         return Err(KernelError::validation(format!(
@@ -160,7 +161,7 @@ pub fn validate_careers(rows: Vec<CareerInput>) -> Result<Vec<Career>, KernelErr
         .collect()
 }
 
-/// 그 밖에 필요한 사항: optional, trimmed, at most 500 characters.
+/// Other necessary matters: optional, trimmed, at most 500 characters.
 pub fn normalize_register_note(raw: &str) -> Result<Option<String>, KernelError> {
     bounded(Some(raw.to_owned()), NOTE_MAX_CHARS, "register_note")
 }

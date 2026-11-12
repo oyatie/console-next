@@ -189,7 +189,7 @@ async fn ledgers_admit_only_an_employment_id_fill_and_findings_only_a_resolution
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn the_plan_reports_what_it_will_not_guess(pool: PgPool) {
     let t = tenant(&pool).await;
-    // EXITED with an exit date but no TERMINATE (an imported 퇴사자): closed from
+    // EXITED with an exit date but no TERMINATE (an imported former employee): closed from
     // employees.exit_on, and reported; EXITED with no date stays open, reported.
     let dated: Uuid = sqlx::query_scalar(
         "INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, source_key, \

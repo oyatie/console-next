@@ -1,8 +1,9 @@
-//! A close plan's 전적 lines (decisions #30): each is recorded when the plan
-//! is, as the single 전적 records it (prepare, guards, the event dated the
-//! 폐쇄일 with the person's consent and continuity, and the sending 법인's
-//! settlement case), so the person's history and the case show it at once.
-//! The close then waits for each to take effect (`apply::advance`).
+//! A close plan's group transfer lines (decisions #30): each is recorded when
+//! the plan is, as the single group transfer records it (prepare, guards, the
+//! event dated the closure date with the person's consent and continuity, and
+//! the sending legal entity's settlement case), so the person's history and
+//! the case show it at once. The close then waits for each to take effect
+//! (`apply::advance`).
 
 use console_hr_domain::lifecycle::classification::ClassificationChange;
 use console_kernel_core::AuditEvent;
@@ -31,11 +32,11 @@ use crate::lifecycle::prepare::prepare_lifecycle_event;
 use crate::lifecycle::record::record_lifecycle_event_tx;
 use crate::lifecycle::requests::CreateEmployeeLifecycleEventRequest;
 
-/// The note each 전적 the plan records carries (as the 퇴직 lines' cases do).
+/// The note each group transfer the plan records carries (as the exit lines' cases do).
 const NOTE: &str = "사업장 폐쇄";
 
-/// Record every 전적 line on `on`; a refused line refuses the plan, naming
-/// each person (the caller rolls back).
+/// Record every group transfer line on `on`; a refused line refuses the plan,
+/// naming each person (the caller rolls back).
 pub(super) async fn record_group_transfers(
     tx: &mut Transaction<'_, Postgres>,
     who: &Planner,
@@ -43,8 +44,9 @@ pub(super) async fn record_group_transfers(
     today: Date,
     lines: &mut [NewLine],
 ) -> Result<Vec<AuditEvent>, HrError> {
-    // The receiving places inside the planner's 발령 grant, as for a single
-    // 전적 (403 `out_of_scope`, the whole plan refused, nothing written).
+    // The receiving places inside the planner's personnel order grant, as for
+    // a single group transfer (403 `out_of_scope`, the whole plan refused,
+    // nothing written).
     for line in lines.iter().filter(|l| l.action == "GROUP_TRANSFER") {
         let place = (None, line.target_workplace_id, line.target_unit_id);
         authorize_hr_place_any(tx, &who.principal, &APPOINTMENT_KEYS, place).await?;
@@ -147,10 +149,11 @@ async fn record_one(
     Ok((item.id, case, events))
 }
 
-/// A 전적 line (decisions #30): to a unit at another 법인's open 사업장, the
-/// one the line names (the planner's grant was checked on it), with the
-/// person's consent and continuity checked as the single 전적 checks them.
-/// The plan records the 전적 itself; this only checks the line.
+/// A group transfer line (decisions #30): to a unit at another legal entity's
+/// open workplace, the one the line names (the planner's grant was checked on
+/// it), with the person's consent and continuity checked as the single group
+/// transfer checks them. The plan records the group transfer itself; this
+/// only checks the line.
 pub(super) async fn line(
     tx: Tx<'_, '_>,
     at: &Holdings<'_>,

@@ -19,7 +19,7 @@ use crate::clock::today_kst;
 use crate::metrics::record_hr_read;
 use crate::{HrError, HrService};
 
-/// no 수습 종료 reminder window until the settings key exists
+/// no probation end reminder window until the settings key exists
 /// (`hr.probation.reminder_lead_days` in the settings-domain `keys.rs` roster,
 /// F-SET, read through ADR-006's platform read path). Until then DUE_SOON is
 /// never served; OVERDUE and days_left are.

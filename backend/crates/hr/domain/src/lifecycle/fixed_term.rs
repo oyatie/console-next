@@ -1,10 +1,12 @@
-//! BW-12: cumulative fixed-term service (기간제법 §4①) and the renewal check.
+//! BW-12: cumulative fixed-term service (Fixed-Term Workers Act §4①) and the
+//! renewal check.
 //!
 //! Service counts the days inside CONTRACT periods, minus CHILDCARE leave
-//! (남녀고용평등법 §19⑤). Gaps between contracts do not count. The limit is a
-//! statutory register value (`limit_months`, a parameter), never a constant.
-//! An employee with no contract history (imported) falls back to `hire_date`
-//! and needs confirmation before a renewal over the limit.
+//! (Equal Employment Opportunity Act §19⑤). Gaps between contracts do not
+//! count. The limit is a statutory register value (`limit_months`, a
+//! parameter), never a constant. An employee with no contract history
+//! (imported) falls back to `hire_date` and needs confirmation before a
+//! renewal over the limit.
 
 use time::{Date, Duration};
 
@@ -146,9 +148,9 @@ fn compute(
         day += Duration::DAY;
     }
 
-    // The statutory limit in days from `first` (민법 §160), then walk forward
-    // until that many counted days have passed. After `last` every day counts
-    // (projected service) except childcare leave.
+    // The statutory limit in days from `first` (Civil Act §160), then walk
+    // forward until that many counted days have passed. After `last` every day
+    // counts (projected service) except childcare leave.
     let needed = (period_end(first, limit_months) - first).whole_days() + 1;
     let mut counted = 0i64;
     let mut day = first;
@@ -168,8 +170,8 @@ fn compute(
     }
 }
 
-/// 민법 §160②③: a period of `months` from `start` ends the day before the
-/// corresponding date, or on the month's last day when there is none.
+/// Civil Act §160②③: a period of `months` from `start` ends the day before
+/// the corresponding date, or on the month's last day when there is none.
 fn period_end(start: Date, months: u8) -> Date {
     let total = i32::from(u8::from(start.month())) - 1 + i32::from(months);
     let year = start.year() + total.div_euclid(12);
@@ -189,7 +191,7 @@ mod tests {
     use super::*;
     use time::macros::date;
 
-    const LIMIT: u8 = 24; // 기간제법 §4①; production reads it from statutory_rules.
+    const LIMIT: u8 = 24; // Fixed-Term Workers Act §4①; production reads it from statutory_rules.
 
     fn p(start: Date, end: Date) -> DatePeriod {
         DatePeriod { start, end }
@@ -238,8 +240,8 @@ mod tests {
 
     #[test]
     fn childcare_leave_extends_the_limit() {
-        // 23 months with 4 months of 육아휴직 = 19 counted months; a 5-month
-        // renewal stays within 24, and exceeds it without the leave.
+        // 23 months with 4 months of childcare leave = 19 counted months; a
+        // 5-month renewal stays within 24, and exceeds it without the leave.
         let contracts = [p(date!(2024 - 01 - 01), date!(2025 - 11 - 30))];
         let leave = [p(date!(2024 - 06 - 01), date!(2024 - 09 - 30))];
         let renewal = p(date!(2025 - 12 - 01), date!(2026 - 04 - 30));

@@ -1,9 +1,9 @@
 tags:
 - entity
 operationId: setWorkplaceCode
-summary: Set or clear the code of a 사업장 (a label; direct in both phases, audited)
-description: The same rule as 부서 코드 (1-30 letters, digits, '.', '_', '-'), unique among the tenant's open 사업장.
-  A code a closed or voided 사업장 held is accepted with the warning code_reused.
+summary: Set or clear the code of a workplace (a label; direct in both phases, audited)
+description: The same rule as the department code (1-30 letters, digits, '.', '_', '-'), unique among the tenant's open workplaces.
+  A code a closed or voided workplace held is accepted with the warning code_reused.
 security:
 - bearerAuth: []
 parameters:

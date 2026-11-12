@@ -1,6 +1,7 @@
 //! `GET /change-requests`: HR sees the org's requests (optionally only those
 //! named to it, or open to the role); everyone else sees only the requests it
-//! filed (기다리는 중) or is named on (`assignee=me`: its 소명 요청).
+//! filed ("Waiting") or is named on (`assignee=me`: its requests for
+//! explanation).
 
 use console_hr_domain::requests::ChangeRequestKind;
 use console_platform_authz::{Feature, Principal};
@@ -57,8 +58,8 @@ impl HrService {
         query: ChangeRequestListQuery,
     ) -> Result<ChangeRequestPage, HrError> {
         // No reader preflight: outside HR the rows are the caller's own (filed
-        // or named to it), so a named 취급자 without directory access still
-        // finds the 소명 요청 it must answer.
+        // or named to it), so a named handler without directory access still
+        // finds the request for explanation it must answer.
         record_hr_read("change_requests");
         // AX-5: HR sees the requests about the people inside its grant set.
         let reach = hr_reach(&principal, Feature::EmployeeDirectoryManage).ok();

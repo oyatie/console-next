@@ -1,6 +1,7 @@
-// Korean source for `importValues.` ids (features/import/ui/value-table.tsx): 값 연결 — each text in the file and where
+// Korean copy for `importValues.` ids (features/import/ui/value-table.tsx): 값 연결 — each text in the file and where
 // it goes in the console (spec E7-values).
-export const koImportValues = {
+import type { enImportValues } from "../en/import-values";
+export const koImportValues: Record<keyof typeof enImportValues, string> = {
   "importValues.title": "값 연결 · {kind}",
   "importValues.counts": "값 {all, number} · 선택할 것 {open, number}",
   "importValues.col.text": "파일의 값",
@@ -22,4 +23,4 @@ export const koImportValues = {
   "importValues.why.remembered": "전에 선택한 값",
   "importValues.basis.registration_number": "등록번호 일치",
   "importValues.basis.alias": "약칭 후보",
-} as const;
+};

@@ -1,8 +1,9 @@
-//! The caller's reach over 법인 · 사업장 (decisions #15; worst-case-08): the
-//! ops account and a whole-tenant reach see everything; anyone else reaches
-//! only the 법인 and 사업장 their grants that count now name, plus the 사업장
-//! their legacy branches back. Reads, counts and Cedar scope facts all take
-//! it, so an out-of-scope 사업장 is neither listed nor counted.
+//! The caller's reach over legal entities and workplaces (decisions #15;
+//! worst-case-08): the ops account and a whole-tenant reach see everything;
+//! anyone else reaches only the legal entities and workplaces their grants
+//! that count now name, plus the workplaces their legacy branches back. Reads,
+//! counts and Cedar scope facts all take it, so an out-of-scope workplace is
+//! neither listed nor counted.
 
 use console_entity_adapter_postgres::PgEntityStore;
 use console_entity_application::EntityScope;
@@ -23,7 +24,7 @@ impl From<DbError> for Load {
 }
 
 /// # Errors
-/// The grants or the 사업장 could not be read (the request fails closed).
+/// The grants or the workplaces could not be read (the request fails closed).
 pub(crate) async fn reach(
     store: &PgEntityStore,
     p: &Principal,

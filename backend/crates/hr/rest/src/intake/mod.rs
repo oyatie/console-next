@@ -1,4 +1,4 @@
-//! IMPORT lane routes (BW-19 재입사). INTEG registers `INTAKE_ROUTE_PATHS` in
+//! IMPORT lane routes (BW-19 rehire). INTEG registers `INTAKE_ROUTE_PATHS` in
 //! `CONFIGURED_ROUTE_SURFACES` and merges `router`.
 
 use axum::extract::{Path, State};

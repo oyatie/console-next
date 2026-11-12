@@ -3,8 +3,8 @@
 //! `test` per touched path, checked by the shared evaluator under the row
 //! lock. It records facts that hold no value yet; every write goes through
 //! the one correction path (`corrections::apply_fields_in_tx`: the same
-//! checks, writers and 정정 ledger), and a value already recorded is changed
-//! only by a correction (`PATCH /employees/{id}`, 409 `correction_required`).
+//! checks, writers and correction ledger), and a value already recorded is
+//! changed only by a correction (`PATCH /employees/{id}`, 409 `correction_required`).
 
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
 use console_platform_authz::{Feature, Principal};
@@ -34,11 +34,11 @@ const WRITABLE: [&str; 6] = [
 ];
 
 /// 409 `correction_required`: a recorded value is changed only through the
-/// governed 정정 (BW-18), never by a field edit.
+/// governed correction (BW-18), never by a field edit.
 const CORRECTION_REQUIRED: &str = "correction_required";
 
-/// The ledger reason of a first recording through this PATCH (no 정정 reason
-/// applies: nothing was recorded before).
+/// The ledger reason of a first recording through this PATCH (no correction
+/// reason applies: nothing was recorded before).
 const FIRST_RECORD: &str = "FIRST_RECORD";
 
 pub(crate) fn refusal_error(refusal: &Refusal) -> HrError {

@@ -79,8 +79,8 @@ async fn a_grantor_gives_only_what_they_hold_where_they_manage_access(pool: PgPo
         .await;
     assert_eq!(status, StatusCode::OK, "{ok}");
     assert_eq!(ok[0]["granted_by"], json!(w.hr.as_uuid()));
-    // No dead end for a scoped 권한 관리 holder: it reads the role list it
-    // grants from, and the grants over the nodes it manages — not 법인 B's.
+    // No dead end for a scoped access management holder: it reads the role list it
+    // grants from, and the grants over the nodes it manages — not legal entity B's.
     w.grant(json!([grant_op(
         w.hr2,
         viewer,

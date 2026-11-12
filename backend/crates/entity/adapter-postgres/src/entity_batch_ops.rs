@@ -1,6 +1,6 @@
-//! One op of a bulk 법인 · 사업장 batch (MR-29): the one-by-one writers, run
-//! inside the batch transaction, plus what the receipt and the preview need
-//! (the record's state before and after, as history's field diff).
+//! One op of a bulk legal entity · workplace batch (MR-29): the one-by-one
+//! writers, run inside the batch transaction, plus what the receipt and the
+//! preview need (the record's state before and after, as history's field diff).
 
 use std::collections::HashMap;
 
@@ -174,7 +174,7 @@ pub(crate) async fn exec(
                 is_primary: op.is_primary,
                 is_head_office: op.is_head_office,
                 default_branch_id: None,
-                // the bulk sheet has no kind column; a kind is set per 사업장 afterwards.
+                // the bulk sheet has no kind column; a kind is set per workplace afterwards.
                 kind_code: None,
             };
             let (id, events) =

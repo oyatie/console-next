@@ -35,20 +35,20 @@ impl EndOffer {
 pub struct EmployeeEndOptions {
     pub employee_id: Uuid,
     pub phase: &'static str,
-    /// 등록 취소: `DELETE /employees/{id}` in SETUP, `POST …/void` after.
+    /// Registration void: `DELETE /employees/{id}` in SETUP, `POST …/void` after.
     pub cancel: EndOffer,
     /// `DELETE` or `VOID`.
     pub cancel_route: &'static str,
-    /// The void needs 「근무한 적 없음」 (anyone but PRE_HIRE).
+    /// The void needs "never worked" (anyone but PRE_HIRE).
     pub attestation_required: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub void_basis: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recorded_hire_date: Option<String>,
-    /// The SETUP delete of an EXITED person inside the 명부 period needs
-    /// 「원본 명부 보관」 confirmed.
+    /// The SETUP delete of an EXITED person inside the register period needs
+    /// "original register kept" confirmed.
     pub register_confirmation_required: bool,
-    /// 퇴직: report an exit case.
+    /// Exit: report an exit case.
     pub exit: EndOffer,
     /// The open case to continue, when there is one.
     #[serde(skip_serializing_if = "Option::is_none")]

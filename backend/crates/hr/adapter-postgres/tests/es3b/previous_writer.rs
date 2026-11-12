@@ -1,7 +1,8 @@
-//! Expand/contract for 0356: the release before it keeps inserting 전적 rows
-//! without the 연차/근속 pair while blue and green share the schema (and after
-//! a rollback). The insert is taken and the new read derives the pair from the
-//! one choice, as the 0356 backfill does.
+//! Expand/contract for 0356: the release before it keeps inserting group
+//! transfer rows without the annual leave / length of service pair while blue
+//! and green share the schema (and after a rollback). The insert is taken and
+//! the new read derives the pair from the one choice, as the 0356 backfill
+//! does.
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -9,8 +10,8 @@ use uuid::Uuid;
 
 use super::*;
 
-/// Re-writes one 전적's facts row with the previous release's INSERT, column
-/// for column (no 연차/근속 pair).
+/// Re-writes one group transfer's facts row with the previous release's
+/// INSERT, column for column (no annual leave / length of service pair).
 const AS_PREVIOUS_RELEASE: &str = "WITH written AS (DELETE FROM employee_group_transfers \
        WHERE lifecycle_event_id = $1 RETURNING *) \
      INSERT INTO employee_group_transfers (org_id, lifecycle_event_id, employee_id, \

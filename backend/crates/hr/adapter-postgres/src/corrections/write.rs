@@ -33,7 +33,7 @@ pub(crate) struct LedgerMeta<'a> {
     pub corrected_by: Uuid,
     pub change_request_id: Option<Uuid>,
     pub review_required: bool,
-    /// The bulk 정정 job the row belongs to (MR-27).
+    /// The bulk correction job the row belongs to (MR-27).
     pub batch_id: Option<Uuid>,
 }
 
@@ -49,8 +49,8 @@ fn day(raw: Option<&str>) -> Option<time::Date> {
 }
 
 /// The checks a value cannot pass on its own: an exit date only on an exited
-/// record without an exit case, dates in order, a free 사번, a pay unit with a
-/// pay, an open probation.
+/// record without an exit case, dates in order, a free employee number, a pay
+/// unit with a pay, an open probation.
 pub(crate) async fn check_against_record(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
@@ -118,7 +118,7 @@ pub(crate) async fn check_against_record(
             .bind(number)
             .execute(tx.as_mut())
             .await?;
-        // A voided registration keeps its 사번 (decisions #6), so it counts.
+        // A voided registration keeps its employee number (decisions #6), so it counts.
         include_voided(tx, true).await?;
         let taken: bool = sqlx::query_scalar(
             "SELECT EXISTS (SELECT 1 FROM employees WHERE org_id = $1 AND employee_number = $2 AND id <> $3)",
@@ -228,8 +228,8 @@ pub(crate) async fn apply_fields_in_tx(
         .iter()
         .map(|(field, value)| (field.as_str(), value.as_deref()))
         .collect();
-    // An empty column list still bumps updated_at: a profile-only 정정 moves
-    // the record's version too.
+    // An empty column list still bumps updated_at: a profile-only correction
+    // moves the record's version too.
     let updated_at = if meta.import_run_id.is_some() {
         restore_import_employee_head_in_tx(tx, org, employee_id, &columns).await?
     } else {
@@ -279,8 +279,8 @@ pub(crate) async fn apply_fields_in_tx(
 
 /// MR-28: once no legacy-flagged holder of `number` is left, the BW-10
 /// listing (0274 `employee_number_conflicts`) records the group resolved by
-/// the person whose 정정 settled it. A voided holder stays hidden: a void
-/// needs no cleanup.
+/// the person whose correction settled it. A voided holder stays hidden: a
+/// void needs no cleanup.
 async fn resolve_number_conflict(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,

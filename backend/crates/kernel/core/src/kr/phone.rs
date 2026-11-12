@@ -50,7 +50,7 @@ impl PhoneE164 {
         } else if compact.starts_with('+') {
             compact
         } else if compact.len() == 8 && matches!(compact.get(..2), Some("15" | "16" | "18")) {
-            // 전국대표번호 (1588-xxxx): domestic only, stored under +82.
+            // Nationwide representative number (1588-xxxx): domestic only, stored under +82.
             format!("+82{compact}")
         } else {
             format!("+{compact}")
@@ -90,7 +90,7 @@ impl PhoneE164 {
         if let Some(rest) = n.strip_prefix('2') {
             return split("02", rest);
         }
-        // 050x 평생번호 use a 4-digit prefix; everything else a 3-digit one.
+        // 050x lifetime numbers use a 4-digit prefix; everything else a 3-digit one.
         let head = if n.starts_with("50") { 3 } else { 2 };
         match (n.get(..head), n.get(head..)) {
             (Some(p), Some(rest)) => split(&format!("0{p}"), rest),
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn refuses_junk() {
-        // "1588-123": a 대표번호 typo is refused, not stored as a Korean number.
+        // "1588-123": a representative-number typo is refused, not stored as a Korean number.
         for bad in [
             "",
             "123",

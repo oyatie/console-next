@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-description: 교육 이수.
+description: Training completed.
 required: [course, status, started_on]
 properties:
   course:

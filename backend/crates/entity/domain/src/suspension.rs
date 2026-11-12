@@ -1,15 +1,16 @@
-//! 휴업's expected end (catalog company-07): the 휴업 신고 names a 휴업 기간,
-//! so a SUSPENDED revision may carry the date it is expected to end. It is a
-//! plan, never a clock: 재개 is still a revision back to CONTINUING.
+//! A business suspension's expected end (catalog company-07): the suspension
+//! report names a suspension period, so a SUSPENDED revision may carry the
+//! date it is expected to end. It is a plan, never a clock: resumption is still
+//! a revision back to CONTINUING.
 
 use crate::codes::OperatingStatus;
 use crate::refusal::{Issues, NOT_APPLICABLE};
 
-/// `status_until` is never before the 휴업 starts.
+/// `status_until` is never before the business suspension starts.
 pub const UNTIL_BEFORE_SINCE: &str = "status_until_before_since";
 
-/// The expected end of a 휴업: only with SUSPENDED, on or after `since`
-/// (any date, a plan may run past today).
+/// The expected end of a business suspension: only with SUSPENDED, on or after
+/// `since` (any date, a plan may run past today).
 pub fn status_until(
     is: &mut Issues,
     raw: Option<&str>,

@@ -2,7 +2,7 @@ x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
 tags:
 - entity
 operationId: listLegalEntities
-summary: List 법인 with their 등록 and 사업장
+summary: List legal entities with their registrations and workplaces
 security:
 - bearerAuth: []
 responses:

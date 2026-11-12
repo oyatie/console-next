@@ -8,7 +8,7 @@ properties:
   expected_version:
     type: integer
     minimum: 0
-    description: The highest 4대보험 revision version of the 사업장 the client read (0 when it has none). A
+    description: The highest four-social-insurance revision version of the workplace the client read (0 when it has none). A
       change since is 409 stale_revision, with error.current_version.
   effective_from:
     type: string

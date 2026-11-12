@@ -1,4 +1,4 @@
-//! 사업자등록 writes: create (one certificate), revise, void.
+//! Business registration writes: create (one certificate), revise, void.
 
 use console_entity_application::{
     Actor, RegistrationRevision, RegistrationStatusInput, RegistrationView, Saved, VoidRecord,
@@ -53,12 +53,13 @@ pub(crate) async fn open_registrations(
 }
 
 impl PgEntityStore {
-    /// Record one 사업자등록증's facts. The entity's VAT unit is derived from
-    /// the facts while they decide it, and asked for once they no longer do.
+    /// Record one business registration certificate's facts. The entity's VAT
+    /// unit is derived from the facts while they decide it, and asked for once
+    /// they no longer do.
     ///
     /// # Errors
-    /// Field issues, duplicate 사업자등록번호, `vat_unit_mode` required, or
-    /// database faults.
+    /// Field issues, duplicate business registration number, `vat_unit_mode`
+    /// required, or database faults.
     pub async fn create_registration(
         &self,
         actor: &Actor,
@@ -142,7 +143,7 @@ impl PgEntityStore {
                 .bind(*actor.user.as_uuid())
                 .fetch_one(tx.as_mut())
                 .await?;
-                // INTEG-3: the first record starts at 개업일 when it is known.
+                // INTEG-3: the first record starts at the business start date if known.
                 let effective_from = draft.opened_on;
                 let meta = RevisionMeta { version: 1, effective_from, reason_code: console_entity_domain::SystemReason::Create.into(), admitted, actor: &actor, payload: serde_json::to_value(&draft)? };
                 if let Some(doc) = evidence {
@@ -159,13 +160,13 @@ impl PgEntityStore {
                     let checked_at: Option<time::OffsetDateTime>=sqlx::query_scalar("SELECT (outcome->>'checked_at')::timestamptz FROM entity_commands WHERE command_id=$1").bind(preview.as_ref().map(|p|p.command_id)).fetch_one(tx.as_mut()).await?;
                     crate::registration_check::append(tx,id,Some(*actor.user.as_uuid()),&answer,checked_at).await?;
                 }
-                // After the revision: the certificate takes its 발급일 from it.
+                // After the revision: the certificate takes its issue date from it.
                 let attached = match evidence {
                     Some(doc) => crate::documents::attach_in_tx(tx, &actor, doc, entity, Some(id)).await?.1,
                     None => None,
                 };
-                // The VAT unit is a fact learned today: dated at 개업일 it would
-                // sort under the entity's later revisions and be lost.
+                // The VAT unit is a fact learned today: dated at the business start date
+                // it would sort under the entity's later revisions and be lost.
                 set_vat_unit(tx, entity, mode, basis.as_str(), &RevisionMeta { effective_from: today, ..meta }).await?;
                 let event = audit(&actor, "business_registration.create", "business_registration", id, admitted, json!({
                     "legal_entity_id": entity, "brn": draft.brn.as_ref().map(|b| b.as_str()),
@@ -180,9 +181,9 @@ impl PgEntityStore {
     }
 
     /// A new revision of a registration (full state; status changes such as
-    /// 휴업/폐업 are confirmed here, effective-dated). With `evidence`, the
-    /// new original is attached in the same transaction, supersedes the one
-    /// kept before and is linked to the revision.
+    /// business suspension/closure are confirmed here, effective-dated). With
+    /// `evidence`, the new original is attached in the same transaction,
+    /// supersedes the one kept before and is linked to the revision.
     ///
     /// # Errors
     /// Field issues, `identifier_locked`, the document's refusals, or database faults.
@@ -236,7 +237,7 @@ impl PgEntityStore {
     /// Undo a mistaken registration during setup.
     ///
     /// # Errors
-    /// `phase_not_setup`, `record_in_use` (a 사업장 files under it), or database faults.
+    /// `phase_not_setup`, `record_in_use` (a workplace files under it), or database faults.
     pub async fn void_registration(
         &self,
         actor: &Actor,

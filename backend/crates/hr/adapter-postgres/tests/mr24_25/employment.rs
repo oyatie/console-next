@@ -1,4 +1,4 @@
-//! The dated 고용형태 전환 (MR-24).
+//! The dated employment type change (MR-24).
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -100,7 +100,8 @@ async fn an_employment_type_change_is_dated_and_keeps_the_window(pool: PgPool) {
             Some("2027-12-31".to_owned())
         )
     );
-    // The window the first 전환 closed still counts toward 기간제법 §4 (MR-24).
+    // The window the first employment type change closed still counts toward
+    // Fixed-Term Workers Act §4 (MR-24).
     let service =
         f.hr.employee_fixed_term(f.principal.clone(), e)
             .await

@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! ENT-CAPTURE through the real router as `console_rt`: reference lists, the
 //! address proxies with no juso key (UNAVAILABLE, never an error), a
-//! certificate kept from upload to read-back, dated history, the 4대보험
-//! change and the 상시근로자수 HOLD placeholder.
+//! certificate kept from upload to read-back, dated history, the four-social-insurance
+//! change and the regular-worker-count HOLD placeholder.
 
 #[path = "support/terms.rs"]
 mod terms;
@@ -255,7 +255,7 @@ async fn a_certificate_is_typed_kept_and_read_back_with_reference_data(pool: PgP
     assert_eq!(headers[header::CACHE_CONTROL], "private, no-store");
     assert_eq!(headers[header::CONTENT_TYPE], "application/pdf");
 
-    // A 재발급 certificate supersedes the kept one; its retention runs from then
+    // A reissued certificate supersedes the kept one; its retention runs from then
     // (retention.entity_registration_document, 5 years by default). A body over
     // the global 2 MiB JSON limit is still accepted on the upload route.
     let mut reissued = b"%PDF-1.7 reissued ".to_vec();
@@ -323,7 +323,7 @@ async fn a_certificate_is_typed_kept_and_read_back_with_reference_data(pool: PgP
             .any(|c| c["field"] == "business_types")
     }));
 
-    // 4대보험 change: keyed, versioned, in the 사업장 history.
+    // Four-social-insurance change: keyed, versioned, in the workplace history.
     let (status, wp) = ctx
         .call("POST", &format!("/api/v1/legal-entities/{entity_id}/workplaces"), Some(json!({
             "name": "본사", "registration_id": reg["record"]["id"], "same_address_as_registration": true,

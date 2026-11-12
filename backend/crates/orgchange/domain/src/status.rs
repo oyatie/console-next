@@ -110,13 +110,14 @@ impl OrgChangeStatus {
                 // approval.policy.org_structure = none (decisions #26): submit
                 // approves at once and creates no step.
                 | (Self::Draft | Self::Prechecked, Self::Approved)
-                // Every kind applies on its 시행일 (org-05: a 폐지 no longer
-                // opens settlement). SETTLING is an inbound-only legacy state:
-                // rows already stored in it still archive.
+                // Every kind applies on its effective date (org-05: an
+                // abolition no longer opens settlement). SETTLING is an
+                // inbound-only legacy state: rows already stored in it still
+                // archive.
                 | (Self::Approved, Self::Applied)
                 | (Self::Settling, Self::Archived)
-                // org-02: a scheduled change (APPROVED, its 시행일 not come)
-                // is cancelled like a draft.
+                // org-02: a scheduled change (APPROVED, its effective date not
+                // come) is cancelled like a draft.
                 | (Self::Draft | Self::Prechecked | Self::Approved, Self::Cancelled)
         );
         if allowed {
@@ -163,9 +164,9 @@ impl TargetKind {
     }
 }
 
-/// Ordered SoD chain roles (HR → 재무 → 법무 → 임원), fixed in slice 1; the
-/// step table's `role_key TEXT + step_order` shape already accommodates a
-/// configurable approval matrix later without a migration.
+/// Ordered SoD chain roles (HR → finance → legal → executive), fixed in slice
+/// 1; the step table's `role_key TEXT + step_order` shape already accommodates
+/// a configurable approval matrix later without a migration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ApprovalRoleKey {

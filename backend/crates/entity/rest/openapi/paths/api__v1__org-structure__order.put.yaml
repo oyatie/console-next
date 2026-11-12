@@ -1,13 +1,13 @@
 tags:
 - entity
 operationId: reorderOrgStructure
-summary: Put one parent's children in order (순서; a label, direct in both phases, audited)
-description: 'At most one parent: none (the tenant''s 법인; needs legal_entity_manage on the tenant), legal_entity_id
-  (its 사업장; needs legal_entity_manage on the 법인), workplace_id (the 부서 directly in that 사업장) or org_unit_id
-  (the 부서 under that 부서; both need the org-change apply permission). children names every current child once,
+summary: Put one parent's children in order (display order; a label, direct in both phases, audited)
+description: 'At most one parent: none (the tenant''s legal entities; needs legal_entity_manage on the tenant), legal_entity_id
+  (its workplaces; needs legal_entity_manage on the legal entity), workplace_id (the departments directly in that workplace) or org_unit_id
+  (the departments under that department; both need the org-change apply permission). children names every current child once,
   in the new order; expected_children, when sent, is the order the caller read, and a different current order is
   refused (no lost reorder). Unit versions do not change, so setup batch pins stay valid. The chart, the outline,
-  the 목록, the 법인 list and export read this order.'
+  the list, the legal entity list and export read this order.'
 security:
 - bearerAuth: []
 parameters:

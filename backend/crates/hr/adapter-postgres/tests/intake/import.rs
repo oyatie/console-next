@@ -1,4 +1,4 @@
-//! BW-10: identity by 사번, no status overwrite, the digest-bound apply.
+//! BW-10: identity by employee number, no status overwrite, the digest-bound apply.
 
 use console_hr_domain::import::plan::Decisions;
 use sqlx::PgPool;

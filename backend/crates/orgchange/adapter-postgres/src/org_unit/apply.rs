@@ -117,7 +117,7 @@ pub(crate) async fn apply_org_unit_op(
             merged_into,
         } => {
             let head = active_head(load_unit_head(tx, *org_unit_id).await?)?;
-            // 합치기 (org-07): the successor must still be active, and is kept.
+            // Merge (org-07): the successor must still be active, and is kept.
             if let Some(successor) = merged_into {
                 active_head(load_unit_head(tx, *successor).await?)?;
             }

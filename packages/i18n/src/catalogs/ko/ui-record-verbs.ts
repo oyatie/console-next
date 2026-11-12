@@ -1,6 +1,7 @@
-// Korean source for `uiRecordVerbs.` ids (ui/record-verbs). Rules: the header of ../ko.ts and GUIDE.md.
+// Korean copy for `uiRecordVerbs.` ids (ui/record-verbs). Rules: the header of ../ko.ts and GUIDE.md.
 // After a record exists only these three verbs are used; an applied record is never 「되돌리기」.
-export const koUiRecordVerbs = {
+import type { enUiRecordVerbs } from "../en/ui-record-verbs";
+export const koUiRecordVerbs: Record<keyof typeof enUiRecordVerbs, string> = {
   "uiRecordVerbs.name": "변경 · 정정 · 철회",
   "uiRecordVerbs.label": "{object}에 쓸 수 있는 동작",
   "uiRecordVerbs.verb.amend": "변경",
@@ -17,4 +18,4 @@ export const koUiRecordVerbs = {
   "uiRecordVerbs.button.withdraw": "{object} 철회",
   "uiRecordVerbs.cascade": "함께 거둬지는 것",
   "uiRecordVerbs.cascade.none": "함께 거둬지는 것이 없습니다.",
-} as const;
+};

@@ -6,11 +6,11 @@ pub enum PgOrgChangeError {
     Db(#[from] DbError),
     #[error(transparent)]
     Domain(#[from] KernelError),
-    /// §3.9.1 변경 동결 창: a live org mutation was refused because the period
-    /// it takes effect in is closed. Distinct from `Domain` so the caller can
-    /// record the refused attempt (`record_freeze_refusal`) before the 409
-    /// leaves the store — the business transaction, and any audit row inside
-    /// it, has already rolled back by then.
+    /// §3.9.1 change freeze window: a live org mutation was refused because the
+    /// period it takes effect in is closed. Distinct from `Domain` so the
+    /// caller can record the refused attempt (`record_freeze_refusal`) before
+    /// the 409 leaves the store — the business transaction, and any audit row
+    /// inside it, has already rolled back by then.
     #[error(transparent)]
     Frozen(KernelError),
     /// Submit refused because the in-transaction preflight found blockers.

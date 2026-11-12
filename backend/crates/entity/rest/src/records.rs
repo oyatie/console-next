@@ -1,4 +1,4 @@
-//! Dated history of each record, and the 4대보험 change of a 사업장.
+//! Dated history of each record, and the four-social-insurances change of a workplace.
 
 use axum::Json;
 use axum::extract::{Path, State};

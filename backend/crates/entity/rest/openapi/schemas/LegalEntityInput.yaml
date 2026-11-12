@@ -1,5 +1,5 @@
 type: object
-description: Create (or the full state of a revision of) a 법인 / 개인사업자. CORPORATION also requires crn and head_office_address.
+description: Create (or the full state of a revision of) a corporation / sole proprietor. CORPORATION also requires crn and head_office_address.
 required:
 - biz_kind
 - name
@@ -9,13 +9,13 @@ properties:
   english_name:
     type: [string, 'null']
     maxLength: 200
-    description: Optional 영문명 - Latin letters, digits, spaces and & . , - ' ( ) only (english_name_not_latin). Omitted keeps it; null clears it.
+    description: Optional English name - Latin letters, digits, spaces and & . , - ' ( ) only (english_name_not_latin). Omitted keeps it; null clears it.
   biz_kind:
     $ref: '#/components/schemas/EntityBizKind'
   name:
     type: string
     maxLength: 200
-    description: 법인명 / 상호 as printed.
+    description: Legal entity name / trade name as printed.
   display_name:
     type:
     - string
@@ -32,14 +32,14 @@ properties:
     type: integer
     minimum: 0
     maximum: 50
-    description: Printed as 외 n명.
+    description: Printed as "and n others".
   crn:
     type:
     - string
     - 'null'
     pattern: ^[0-9]{6}-?[0-9]{7}$
     x-console-format: crn
-    description: 법인등록번호.
+    description: Corporate registration number.
   head_office_address:
     anyOf:
     - $ref: '#/components/schemas/KrAddress'
@@ -67,7 +67,7 @@ properties:
     - 'null'
     items:
       $ref: '#/components/schemas/EntityDirectorInput'
-    description: 임원 in printed order. Omitted or null on a revise keeps the current ones; [] removes them all.
+    description: Executives in printed order. Omitted or null on a revise keeps the current ones; [] removes them all.
   vat_unit_mode:
     anyOf:
     - $ref: '#/components/schemas/VatUnitMode'
@@ -99,10 +99,10 @@ properties:
     type:
     - boolean
     - 'null'
-    description: 설립 중 (create only; a 법인사업자 before its 설립등기, so with no 법인등록번호 yet). On a revise the record decides it; entering the 법인등록번호 ends it.
+    description: Being incorporated (create only; a corporate business before its incorporation registration, so with no corporate registration number yet). On a revise the record decides it; entering the corporate registration number ends it.
   opened_on:
     type:
     - string
     - 'null'
     format: date
-    description: 개업연월일 of the 사업자등록증 typed with it (create only); the record's first revision starts there when no 설립일 (incorporated_on) is known.
+    description: Business start date of the business registration certificate typed with it (create only); the record's first revision starts there when no incorporation date (incorporated_on) is known.

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Korean source for `workplaceRegChange.` ids (the 사업장 사업자등록 change dialog; split from workplace.ts for the 300-line ceiling).
-export const koWorkplaceRegChange = {
+// Korean copy for `workplaceRegChange.` ids (the 사업장 사업자등록 change dialog; split from workplace.ts for the 300-line ceiling).
+import type { enWorkplaceRegChange } from "../en/workplace-reg-change";
+export const koWorkplaceRegChange: Record<keyof typeof enWorkplaceRegChange, string> = {
   "workplaceRegChange.title": "{name} 사업자등록 변경",
   "workplaceRegChange.kicker": "{entity} · {name}",
   "workplaceRegChange.target": "변경할 사업자등록",
@@ -13,4 +14,4 @@ export const koWorkplaceRegChange = {
   "workplaceRegChange.pickDate": "변경일을 입력하십시오.",
   "workplaceRegChange.consequence": "{name|은는} {date}부터 새 등록증으로 신고합니다.",
   "workplaceRegChange.unlinked": "{name|은는} {date}부터 사업자등록 연결을 해제합니다.",
-} as const;
+};

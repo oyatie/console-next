@@ -1,5 +1,5 @@
-//! A dated change to a 사업장's 4대보험 relations (the insurance PUT): only the
-//! insurers listed change; each is validated as on creation.
+//! A dated change to a workplace's relations with the four social insurances
+//! (the insurance PUT): only the insurers listed change; each is validated as on creation.
 
 use crate::codes::Insurer;
 use crate::insurance::{InsuranceDraft, InsurerInput, validate_insurer};
@@ -7,7 +7,7 @@ use crate::refusal::{Issues, NOT_APPLICABLE, REQUIRED, Refusal};
 
 /// # Errors
 /// 422: no insurer listed, an unknown or repeated insurer, a relation that
-/// points at the 사업장 itself, or any field issue of one insurer.
+/// points at the workplace itself, or any field issue of one insurer.
 pub fn validate_insurance_change(
     workplace: uuid::Uuid,
     insurers: &[InsurerInput],
@@ -78,7 +78,7 @@ mod tests {
             )),
             vec![("insurers[1].insurer".to_owned(), "duplicate")]
         );
-        // ESTABLISHED needs its 관리번호 and 성립일.
+        // ESTABLISHED needs its management number and establishment date.
         let missing = fields(validate_insurance_change(me, &[nps("ESTABLISHED")]));
         assert!(
             missing

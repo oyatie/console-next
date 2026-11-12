@@ -1,5 +1,5 @@
 type: string
-description: 조회 `view` · 등록·수정 `edit` · 결재 `approve` · 내보내기 `export`. edit/approve/export imply view.
+description: View `view` · create/edit `edit` · approve `approve` · export `export`. edit/approve/export imply view.
 enum:
 - view
 - edit

@@ -15,7 +15,7 @@ properties:
   attest_never_worked:
     type: boolean
     default: false
-    description: 「근무한 적 없음」; required unless the person is PRE_HIRE.
+    description: The "never worked" attestation; required unless the person is PRE_HIRE.
   step_up:
     description: A sole holder's EXCEPTION_DECIDE passkey step-up envelope.
     allOf:

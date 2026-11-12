@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
-description: An item the caller decided, as the 완료 tab lists it.
+description: An item the caller decided, as the done tab lists it.
 required: [id, kind, title, outcome, completed_at, links]
 properties:
   id:

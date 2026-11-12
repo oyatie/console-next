@@ -1,7 +1,7 @@
 //! Corrections of the employment-profile fields (phone, employment type, pay
-//! and its unit, 수습 종료일). The columns and their console_rt UPDATE grant
-//! come from the EMP-MODEL migration; `employee_employment_profiles` is not a
-//! canonical object table, so the HR adapter writes it directly.
+//! and its unit, probation end date). The columns and their console_rt UPDATE
+//! grant come from the EMP-MODEL migration; `employee_employment_profiles` is
+//! not a canonical object table, so the HR adapter writes it directly.
 
 use http::StatusCode;
 use sqlx::{Postgres, Row, Transaction};
@@ -61,9 +61,9 @@ impl ProfileValues {
 }
 
 /// Writes the corrected profile values. `value_of` is `None` for a field not
-/// in the correction and `Some(None)` for one cleared (only the 수습 종료일).
-/// base_pay also fills base_pay_won once a pay unit is (or becomes) recorded
-/// (the E5 pair).
+/// in the correction and `Some(None)` for one cleared (only the probation end
+/// date). base_pay also fills base_pay_won once a pay unit is (or becomes)
+/// recorded (the E5 pair).
 pub(crate) async fn update_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,

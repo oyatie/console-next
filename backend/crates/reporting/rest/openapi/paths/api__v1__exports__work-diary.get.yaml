@@ -2,7 +2,7 @@ tags:
   - exports
 operationId: getWorkDiaryExport
 summary: Export the confirmed or generated work-diary workbook
-description: Exports the 업무일지 workbook for the requested date, preserving the template's additional sheets and using
+description: Exports the work-diary workbook for the requested date, preserving the template's additional sheets and using
   an existing draft when one has been edited or confirmed.
 security:
 - bearerAuth: []

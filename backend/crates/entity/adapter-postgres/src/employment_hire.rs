@@ -1,12 +1,13 @@
-//! A person's first 법인 · 사업장 assignment, written inside the caller's own
-//! transaction (registration MR-22, import MR-7; ADR-004: this crate stays the
-//! one writer of `employment_assignments`).
+//! A person's first legal entity · workplace assignment, written inside the
+//! caller's own transaction (registration MR-22, import MR-7; ADR-004: this
+//! crate stays the one writer of `employment_assignments`).
 //!
-//! - [`unit_placement`] finds the 법인 · 사업장 an org unit sits in: its own
-//!   open placement, else its nearest ancestor's (a 부서 or 팀 under the
-//!   사업장's SITE unit).
-//! - [`unit_contradicts`] names the 사업장 a placement would contradict.
-//! - [`open_workplaces`] names every open 사업장, for an import's 사업장 column.
+//! - [`unit_placement`] finds the legal entity · workplace an org unit sits
+//!   in: its own open placement, else its nearest ancestor's (a department or
+//!   team under the workplace's SITE unit).
+//! - [`unit_contradicts`] names the workplace a placement would contradict.
+//! - [`open_workplaces`] names every open workplace, for an import's
+//!   workplace column.
 //! - [`hire_in_tx`] writes the first assignment from the hire date, once.
 //! - [`withdraw_voided_in_tx`] supersedes every live one of a voided record.
 //!
@@ -31,10 +32,10 @@ fn internal(error: sqlx::Error) -> KernelError {
     KernelError::internal(format!("employment assignment write failed: {error}"))
 }
 
-/// The 법인 · 사업장 of `unit` today: the open placement of the unit or of
-/// its nearest ancestor that has one. `None` when no ancestor is placed. The
-/// one resolver (0319 `placement_unit_workplaces`): registration, binding,
-/// 전보 and the placement checks all judge a unit through it.
+/// The legal entity · workplace of `unit` today: the open placement of the
+/// unit or of its nearest ancestor that has one. `None` when no ancestor is
+/// placed. The one resolver (0319 `placement_unit_workplaces`): registration,
+/// binding, reassignment and the placement checks all judge a unit through it.
 ///
 /// # Errors
 /// Internal on a database fault.
@@ -59,9 +60,9 @@ pub async fn unit_placement(
     }))
 }
 
-/// The 사업장 the employee's 부서 sits in today when it is not `workplace`:
-/// placing them there would contradict the org chart (org-01). `None` when
-/// they agree, or the employee is in no placed 부서.
+/// The workplace the employee's department sits in today when it is not
+/// `workplace`: placing them there would contradict the org chart (org-01).
+/// `None` when they agree, or the employee is in no placed department.
 ///
 /// # Errors
 /// Internal on a database fault.
@@ -87,8 +88,8 @@ pub async fn unit_contradicts(
         .filter(|at| *at != workplace))
 }
 
-/// Every open 사업장 (neither it nor its 법인 closed or voided) with its
-/// current name, for matching a 사업장 column of an import (MR-7).
+/// Every open workplace (neither it nor its legal entity closed or voided)
+/// with its current name, for matching a workplace column of an import (MR-7).
 ///
 /// # Errors
 /// Internal on a database fault.
@@ -127,7 +128,7 @@ pub async fn initial_placement_start(
     Ok(opened.map_or(hire, |opened| hire.max(opened)))
 }
 
-/// Place the person at the open 사업장 `workplace` from `from`, open-ended.
+/// Place the person at the open workplace `workplace` from `from`, open-ended.
 /// The cause is `SETUP_BIND` while the tenant is in SETUP, `HIRE` after.
 ///
 /// # Errors
@@ -189,9 +190,9 @@ pub(crate) async fn insert_from(
     })
 }
 
-/// A voided registration (MR-26) never held its 법인 · 사업장: every live
-/// assignment of the person is superseded, so no headcount, roster or
-/// "people still placed here" check counts it. Returns how many.
+/// A voided registration (MR-26) never held its legal entity · workplace:
+/// every live assignment of the person is superseded, so no headcount, roster
+/// or "people still placed here" check counts it. Returns how many.
 ///
 /// # Errors
 /// Internal on a database fault.

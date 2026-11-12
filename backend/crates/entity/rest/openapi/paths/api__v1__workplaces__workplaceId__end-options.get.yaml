@@ -1,8 +1,8 @@
 tags:
 - entity
 operationId: workplaceEndOptions
-summary: Whether a 사업장 is deleted (never used) or closed (폐쇄), and why not the other
-description: CRUD. As the 법인 read, for one 사업장.
+summary: Whether a workplace is deleted (never used) or closed (closure), and why not the other
+description: CRUD. As the legal entity read, for one workplace.
 security:
 - bearerAuth: []
 parameters:

@@ -1,4 +1,5 @@
-//! Bulk 법인 · 사업장 create and update from a sheet (MR-29, decisions #21).
+//! Bulk legal entity · workplace create and update from a sheet (MR-29,
+//! decisions #21).
 //!
 //! One batch = one transaction (onboarding-and-migration C12). The dry run
 //! runs the real writers and rolls back (`with_org_rollback`), so its verdict
@@ -7,12 +8,13 @@
 //! targets' versions, today and the tenant phase. The apply must carry that
 //! digest (a change since → 409 `rows_changed_since_preview`), refuses on the
 //! first failing op (nothing applied) and leaves a receipt that SETUP can undo
-//! (`entity_batch_undo`). After 운영 시작 the same writers run governed, as
+//! (`entity_batch_undo`). After go-live the same writers run governed, as
 //! the one-by-one routes do; only the undo is SETUP-only.
 //!
-//! 법인 and 사업장 only (a 사업장 row takes an existing
-//! `registration_id`); 사업자등록 ops, and running inside the people import
-//! run's transaction (onboarding-and-migration §3.4), are followups #31-#32.
+//! Legal entities and workplaces only (a workplace row takes an existing
+//! `registration_id`); business registration ops, and running inside the
+//! people import run's transaction (onboarding-and-migration §3.4), are
+//! followups #31-#32.
 
 use std::collections::HashMap;
 
@@ -43,7 +45,7 @@ struct Run {
 }
 
 impl PgEntityStore {
-    /// Dry-run or apply a bulk 법인 · 사업장 batch.
+    /// Dry-run or apply a bulk legal entity · workplace batch.
     ///
     /// # Errors
     /// Shape issues (`ops[i].*`), `rows_changed_since_preview`, the first

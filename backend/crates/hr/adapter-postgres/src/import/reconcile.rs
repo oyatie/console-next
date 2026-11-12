@@ -1,8 +1,9 @@
-//! 이관 확인 (decisions #20, #25; spec E7-reconcile, E7-row, E7-signoff):
+//! Migration review (decisions #20, #25; spec E7-reconcile, E7-row, E7-signoff):
 //! the server's account of an applied import — per-sheet funnels from the
-//! run's own rows and plan, 배치 대조 per 사업장 against the live roster, one
-//! verification state per run row, and the HR sign-off (`reconcile_write`).
-//! Rows carry name, 사번 and unresolved company evidence; never the RRN.
+//! run's own rows and plan, placement reconciliation per workplace against the
+//! live roster, one verification state per run row, and the HR sign-off
+//! (`reconcile_write`). Rows carry name, employee number and unresolved
+//! company evidence; never the RRN.
 //!
 //! Every route needs `employee_directory_manage` org-wide, the import's gate.
 
@@ -42,7 +43,7 @@ pub struct ReconcileCounts {
 }
 
 impl ReconcileCounts {
-    /// What a sign-off attests over while still open (확인 필요 + 미확인).
+    /// What a sign-off attests over while still open (needs review + unconfirmed).
     #[must_use]
     pub const fn open(&self) -> i64 {
         self.needs_check + self.unchecked
@@ -62,8 +63,9 @@ pub struct SheetFunnel {
     pub excluded: i64,
 }
 
-/// 배치 대조, one 사업장 (null: 미배치): the run's people there now, the
-/// people there the file did not name, and the total, current people only.
+/// Placement reconciliation, one workplace (null: unplaced): the run's people
+/// there now, the people there the file did not name, and the total, current
+/// people only.
 #[derive(Debug, Serialize)]
 pub struct PlacementLine {
     pub workplace_id: Option<Uuid>,

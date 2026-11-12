@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-description: 어학. language is an ISO 639 code (stored lower case).
+description: Language skills. language is an ISO 639 code (stored lower case).
 required: [language]
 properties:
   language:

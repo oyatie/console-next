@@ -6,4 +6,4 @@ properties:
     type: string
     minLength: 1
     maxLength: 200
-    description: Customer name (고객명). Required, trimmed, ≤ 200 characters.
+    description: Customer name. Required, trimmed, ≤ 200 characters.

@@ -23,8 +23,8 @@ use crate::{HrError, HrService};
 impl HrService {
     /// `POST /employees/{id}/lifecycle-events/{event_id}/cancel`: withdraw a
     /// SCHEDULED event before its date. A scheduled exit belongs to its exit case
-    /// and is withdrawn by cancelling or rejecting that case; a scheduled 전적
-    /// takes the sending 법인's settlement case with it.
+    /// and is withdrawn by cancelling or rejecting that case; a scheduled group
+    /// transfer takes the sending legal entity's settlement case with it.
     pub async fn cancel_lifecycle_event(
         &self,
         principal: Principal,

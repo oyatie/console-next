@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! MR-15 as `console_rt`: a 법인 해산/폐업 closes its 사업장 and 사업자등록
-//! with it, once, and is refused while people remain.
+//! MR-15 as `console_rt`: a legal entity's dissolution/closure closes its workplace and
+//! business registration with it, once, and is refused while people remain.
 
 mod close_support;
 mod common;
@@ -60,7 +60,7 @@ async fn closing_an_entity_closes_its_workplaces_and_registrations_once(owner: P
         ("record_in_use", Some("move_people_first"))
     );
 
-    // Kim's placement ended before the 해산일 (rows close set-once).
+    // Kim's placement ended before the dissolution date (rows close set-once).
     sqlx::query("UPDATE employment_assignments SET valid_to = '2026-01-01' WHERE employee_id = $1")
         .bind(kim)
         .execute(&owner)

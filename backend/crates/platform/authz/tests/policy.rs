@@ -1636,10 +1636,10 @@ async fn seed_other_tenant_customer(pool: &PgPool) -> (OrgId, uuid::Uuid) {
     (OrgId::from_uuid(org), customer)
 }
 
-/// `assignment_validities` stamps every 발령 with `GrantValidity::always()`,
+/// `assignment_validities` stamps every appointment with `GrantValidity::always()`,
 /// and that is correct only while `user_role_assignments` has no interval
 /// columns. When ADR-0032's other half lands them and that function is not
-/// changed to read them, two legitimately consecutive 발령 of one role —
+/// changed to read them, two legitimately consecutive appointments of one role —
 /// `[100, 200)` then `[200, 300)`, the case
 /// `touching_half_open_intervals_for_one_role_do_not_overlap` exists to permit —
 /// become two `always()` intervals that DO overlap, and

@@ -34,7 +34,8 @@ const CTX: EntityContext<'static> = EntityContext {
 
 #[test]
 fn the_registration_name_is_the_entitys_and_a_sent_one_is_ignored() {
-    // regression (0h): the 등록증 ① showed its own copy while 수정 edited the entity's name.
+    // regression (0h): the certificate ① showed its own copy while "Edit" changed the
+    // entity's name.
     let mut json = serde_json::to_value(input()).unwrap();
     json["trade_name"] = "NURI".into();
     let sent: RegistrationInput = serde_json::from_value(json).unwrap();

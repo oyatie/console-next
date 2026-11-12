@@ -4,7 +4,7 @@ tags:
 operationId: createBulkEmployeeLifecycleEvents
 summary: Record one TRANSFER, PROMOTE, APPOINT, EMPLOYMENT_TYPE_CHANGE or CONTRACT_RENEWAL for many employees, all or nothing
 description: >-
-  Bulk appointment (일괄 발령). Every listed employee is locked and validated by the single-event rules of
+  Bulk personnel order. Every listed employee is locked and validated by the single-event rules of
   POST /api/v1/employees/{id}/lifecycle-events (state, no-op, signoffs) before anything is written; an
   effective_date after today (KST) schedules every event (state SCHEDULED) exactly as the single-event
   endpoint does. If any employee is refused, nothing is recorded and the 422 names every

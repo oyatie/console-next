@@ -1,5 +1,6 @@
-// Korean source for `tenants.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koTenants = {
+// Korean copy for `tenants.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enTenants } from "../en/tenants";
+export const koTenants: Record<keyof typeof enTenants, string> = {
   "tenants.supportLookup.title": "지원 참조 번호 조회",
   "tenants.supportLookup.reference": "전체 지원 참조 번호",
   "tenants.supportLookup.action": "조회",
@@ -114,4 +115,4 @@ export const koTenants = {
   "tenants.erase.erase_requires_second_operator": "패스키를 등록한 다른 운영자가 필요합니다.",
   "tenants.erase.erase_same_operator": "요청한 운영자는 승인할 수 없습니다. 다른 운영자에게 요청하십시오.",
   "tenants.erase.erase_cooling": "승인 후 대기 기간이 지나야 삭제할 수 있습니다.",
-} as const;
+};

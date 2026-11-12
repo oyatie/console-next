@@ -1,12 +1,13 @@
-//! UX-R2 ENDS: the 사업장 close job (company-01, worst-case-18). One plan
-//! closes a 사업장 that still has people and 부서: a line for every person
-//! (전근 | 퇴직) and every 부서 directly under it (moved | 폐지), applied
-//! all-or-none on the 폐쇄일 (HR's `lifecycle::close_plan`).
+//! UX-R2 ENDS: the workplace close job (company-01, worst-case-18). One plan
+//! closes a workplace that still has people and departments: a line for every
+//! person (relocation | exit) and every department directly under it (moved |
+//! abolished), applied all-or-none on the closure date (HR's `lifecycle::close_plan`).
 //!
-//! Who may: `legal_entity_manage` on the 사업장 (the close) AND
-//! `employee_directory_manage` (each 전근, 퇴직 and 전적 is an HR write), both
-//! evaluated, either missing refuses (403, nothing written); HR checks each
-//! 전적's receiving place against the planner's grants as a single 전적.
+//! Who may: `legal_entity_manage` on the workplace (the close) AND
+//! `employee_directory_manage` (each relocation, exit and group transfer is an
+//! HR write), both evaluated, either missing refuses (403, nothing written); HR
+//! checks each group transfer's receiving place against the planner's grants as
+//! a single group transfer.
 
 use axum::Json;
 use axum::extract::{Path, State};

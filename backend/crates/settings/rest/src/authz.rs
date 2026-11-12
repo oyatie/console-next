@@ -4,7 +4,8 @@
 //! Evaluates `settings_manage` and `reason_code_manage` through Cedar PBAC.
 //! Supports:
 //! - Tenant ops authority comes from Cedar principal policy, independently of grants
-//! - Custom scope grants (`NodeKind::Tenant` for 전체, or 법인 or 사업장 for scoped writes)
+//! - Custom scope grants (`NodeKind::Tenant` for all, or legal entity or workplace for scoped
+//!   writes)
 //! - Scoped grants writing tenant-wide return 403 `scope_tenant_wide_only`
 //! - Scoped grants writing outside their scope return 403 `out_of_scope`
 //! - Loosening without step-up returns 403 `step_up_required`

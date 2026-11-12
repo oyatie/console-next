@@ -1,6 +1,4 @@
-import type { koOrg } from "../ko/org";
-
-export const enOrg: Partial<Record<keyof typeof koOrg, string>> = {
+export const enOrg = {
 
 
   "org.unit.picker.label": "Unit",
@@ -42,4 +40,4 @@ export const enOrg: Partial<Record<keyof typeof koOrg, string>> = {
   "org.change.effectuate.apply": "Applying org change {code} updates the organization immediately. To undo it, submit a new org change.",
   "org.change.effectuate.reassign": "Applying reorganization {code} transfers {count, plural, one {# employee} other {# employees}} of {from} (including anyone on leave) to {to} now. Everyone keeps their own status. This can’t be undone and is recorded in the history and audit log for each person.",
   "org.change.rejected.next": "A rejected change can’t be submitted again. Address the note and submit a new change from Organization.",
-};
+} as const;

@@ -1,5 +1,5 @@
-//! The stored 주민등록번호: masked by default, the full number only with a
-//! 사유 and a 접속기록 row, never without the vault.
+//! The stored resident registration number: masked by default, the full number
+//! only with a reason and an access log row, never without the vault.
 
 use sqlx::PgPool;
 

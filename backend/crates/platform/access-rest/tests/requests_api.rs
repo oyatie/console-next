@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R3 SCOPE: 「권한 요청」 is a record (governance-22, people-self-38), who
+//! UX-R3 SCOPE: "Request access" is a record (governance-22, people-self-38), who
 //! can grant is a read (worst-case-44), each scoped grant line names what it
-//! does not reach (governance-18), a closed 법인/사업장 is never a new scope
+//! does not reach (governance-18), a closed legal entity/workplace is never a new scope
 //! (company-21), and a deactivated account's grants read as using nothing
 //! (people-self-46). Every refusal: status, code, nothing written.
 
@@ -135,7 +135,7 @@ async fn a_refused_screen_files_one_request_that_a_granter_closes(pool: PgPool) 
     let logged = request_audits(&w).await;
     assert_eq!(logged, 2, "create + close");
 
-    // Who can grant: the ops account (and holders of 권한 관리 등록·수정).
+    // Who can grant: the ops account (and holders of access management edit).
     let (status, granters) = w
         .call(Method::GET, "/api/v1/access/granters", w.hr, None)
         .await;
@@ -173,7 +173,7 @@ async fn a_scoped_line_names_its_caveats_and_a_closed_scope_is_refused(pool: PgP
         "{me}"
     );
 
-    // company-21 (regression): a closed 사업장 is not a scope.
+    // company-21 (regression): a closed workplace is not a scope.
     sqlx::query("UPDATE workplaces SET closed_on = current_date - 1 WHERE id = $1")
         .bind(w.wp_b)
         .execute(&w.owner)

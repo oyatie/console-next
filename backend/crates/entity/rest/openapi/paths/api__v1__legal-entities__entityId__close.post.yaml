@@ -1,12 +1,12 @@
 tags:
 - entity
 operationId: closeLegalEntity
-summary: Close a 법인 (해산 or 폐업) with its open 사업장 and 사업자등록
-description: 'MR-15. Records the 법인''s close on `closed_on` (no later than today) with `reason_code` DISSOLVED (해산)
-  or BUSINESS_CLOSED (폐업). Its open 사업장 and 사업자등록 close on the same date (a CLOSED revision each; their own
-  units dissolve) and the close is set once: a closed 법인 is read-only. Refused 409 `record_in_use` while anyone not
-  exited is placed in it past `closed_on` (remedy `move_people_first`) or 부서 remain (remedy `move_or_dissolve_units_first`);
-  409 `legal_entity_not_open` when already closed or voided. A 사업장 alone closes by a revision with status CLOSED
+summary: Close a legal entity (dissolution or business closure) with its open workplaces and business registrations
+description: 'MR-15. Records the legal entity''s close on `closed_on` (no later than today) with `reason_code` DISSOLVED (dissolution)
+  or BUSINESS_CLOSED (business closure). Its open workplaces and business registrations close on the same date (a CLOSED revision each; their own
+  units dissolve) and the close is set once: a closed legal entity is read-only. Refused 409 `record_in_use` while anyone not
+  exited is placed in it past `closed_on` (remedy `move_people_first`) or departments remain (remedy `move_or_dissolve_units_first`);
+  409 `legal_entity_not_open` when already closed or voided. A workplace alone closes by a revision with status CLOSED
   (PUT /workplaces/{workplaceId}).'
 security:
 - bearerAuth: []
@@ -33,7 +33,7 @@ requestBody:
         $ref: '#/components/schemas/CloseLegalEntityRequest'
 responses:
   '200':
-    description: Closed; the 법인 as it now reads.
+    description: Closed; the legal entity as it now reads.
     content:
       application/json:
         schema:

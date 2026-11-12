@@ -140,7 +140,7 @@ impl HrService {
                 ));
             }
 
-            // Embed the 통상임금 basis into the filed approval document too (0093
+            // Embed the ordinary wage basis into the filed approval document too (0093
             // review HIGH #2), from the same persisted columns the digest covers,
             // so a read-path digest recompute stays consistent.
             let approval_payload = with_ordinary_wage_basis(

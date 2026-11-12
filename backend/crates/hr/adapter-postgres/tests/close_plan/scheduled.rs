@@ -1,6 +1,6 @@
-//! A later 폐쇄일: checked now (a dry run on the day, rolled back), nothing
-//! moves before the day, the tick applies it on the day; one open job per
-//! 사업장, and a planned close can be withdrawn.
+//! A later closure date: checked now (a dry run on the day, rolled back),
+//! nothing moves before the day, the tick applies it on the day; one open job
+//! per workplace, and a planned close can be withdrawn.
 
 use serde_json::json;
 use sqlx::PgPool;
@@ -29,7 +29,8 @@ async fn a_later_close_moves_nothing_before_its_day_and_applies_on_it(owner: PgP
     });
     let job = s.plan(plan.clone()).await.unwrap();
     assert_eq!(job.state, "SCHEDULED");
-    // The dry run left no trace: nobody moved, no 전근 recorded, 개발팀 where it was.
+    // The dry run left no trace: nobody moved, no transfer recorded, the
+    // development team where it was.
     assert_eq!(nothing_written(&owner).await.1, 0);
     assert_eq!(common::placed_at(&owner, s.kim).await, s.w.branch);
     assert_eq!(
@@ -37,7 +38,7 @@ async fn a_later_close_moves_nothing_before_its_day_and_applies_on_it(owner: PgP
         Some(s.branch_unit.to_string())
     );
 
-    // One open close per 사업장.
+    // One open close per workplace.
     let e = s.plan(plan.clone()).await.unwrap_err();
     assert_eq!((e.status.as_u16(), e.code), (409, "close_job_open"));
 
@@ -93,7 +94,7 @@ async fn a_planned_close_is_withdrawn_and_can_be_planned_again(owner: PgPool) {
         close_support::closed_on(&owner, "workplaces", s.w.branch).await,
         None
     );
-    // The read shows the 사업장's people and 부서, and the planner may plan again.
+    // The read shows the workplace's people and departments, and the planner may plan again.
     let view =
         s.hr.workplace_close_plan(s.planner(uuid::Uuid::new_v4()).org, s.w.branch)
             .await

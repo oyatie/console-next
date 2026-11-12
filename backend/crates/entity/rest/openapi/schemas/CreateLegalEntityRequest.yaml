@@ -7,4 +7,4 @@ allOf:
       - string
       - 'null'
       format: uuid
-      description: A kept document (CORP_REGISTRY_EXTRACT or BIZ_REG_CERT) this 법인 is entered from.
+      description: A kept document (CORP_REGISTRY_EXTRACT or BIZ_REG_CERT) this legal entity is entered from.

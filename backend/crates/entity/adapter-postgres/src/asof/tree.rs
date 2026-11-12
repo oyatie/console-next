@@ -29,7 +29,7 @@ impl Tree {
         OrgStructureNode {
             scheduled_by: None,
             changed_after: false,
-            // One 부서 kind (decisions #18); a pre-0262 `team` reads as a 부서.
+            // One department kind (decisions #18); a pre-0262 `team` reads as a department.
             kind: if unit.kind == "site" {
                 "SITE"
             } else {
@@ -59,7 +59,7 @@ impl Tree {
     }
 }
 
-/// Every live unit with its counts, 순서, code and dated head (D19).
+/// Every live unit with its counts, order, code and dated head (D19).
 pub(crate) async fn load(tx: &mut Tx<'_>, point: ReadPoint) -> Result<Tree, PgEntityError> {
     let rows = sqlx::query(
         "SELECT DISTINCT ON (r.org_unit_id) r.org_unit_id, r.version, r.attributes, p.position \
@@ -75,7 +75,7 @@ pub(crate) async fn load(tx: &mut Tx<'_>, point: ReadPoint) -> Result<Tree, PgEn
     let mut units = HashMap::new();
     for r in &rows {
         let attrs: serde_json::Value = r.try_get("attributes")?;
-        // A unit with no kind is a legacy 지역/지점 binding anchor, not a
+        // A unit with no kind is a legacy region/branch binding anchor, not a
         // tree node (decisions #18; orgchange `head.rs` reads it the same way).
         if attrs["status"] == "dissolved"
             || !matches!(attrs["kind"].as_str(), Some("site" | "department" | "team"))
@@ -108,7 +108,7 @@ pub(crate) async fn load(tx: &mut Tx<'_>, point: ReadPoint) -> Result<Tree, PgEn
             },
         );
     }
-    // Head names, and 「(겸)」: the head belongs elsewhere or heads another unit too.
+    // Head names, and "(concurrent)": the head belongs elsewhere or heads another unit too.
     let heads: Vec<Uuid> = units
         .values()
         .filter_map(|u| u.head.as_ref().map(|h| h.employee_id))

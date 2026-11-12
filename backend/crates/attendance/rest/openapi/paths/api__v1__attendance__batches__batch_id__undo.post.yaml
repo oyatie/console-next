@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: undoAttendanceBatch
-summary: 일괄 취소 — the whole save stops counting, until its month closes; the entries stay as history
+summary: Batch undo — the whole save stops counting, until its month closes; the entries stay as history
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: batch_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }

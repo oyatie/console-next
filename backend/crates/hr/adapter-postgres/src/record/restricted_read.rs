@@ -1,11 +1,12 @@
-//! The purposed read of a restricted section (징계, 장애, 보훈). The plain
-//! 인사카드 read leaves these sections out, because knowing that such a record
-//! exists is itself sensitive (access-model §6.3 item 9). This read needs a
+//! The purposed read of a restricted section (disciplinary action, disability,
+//! veteran status). The plain personnel card read leaves these sections out,
+//! because knowing that such a record exists is itself sensitive
+//! (access-model §6.3 item 9). This read needs a
 //! `restricted_record_purpose` code, passes the Cedar gate, and writes one
 //! audit row per read naming the subject, the section, the entries returned
 //! and the purpose — never the values.
 //!
-//! The shared access writer makes these reads eligible for 접속기록 점검.
+//! The shared access writer makes these reads eligible for access log review.
 
 use console_hr_domain::record::Section;
 use console_kernel_core::AuditEvent;

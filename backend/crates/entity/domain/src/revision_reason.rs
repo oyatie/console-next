@@ -39,16 +39,18 @@ macro_rules! system_reasons {
 system_reasons! {
     // The first revision of a record.
     Create => "CREATE",
-    // The N-1 copy a 법인명 change appends to each 사업자등록 (registration history hides it).
+    // The N-1 copy a legal entity name change appends to each business registration
+    // (registration history hides it).
     LegalNameDerived => "LEGAL_NAME_DERIVED",
-    // The 법인's VAT unit, re-derived when its 사업자등록 change.
+    // The legal entity's VAT unit, re-derived when its business registrations change.
     VatUnitDerived => "VAT_UNIT_DERIVED",
-    // A 사업장 closed on its own (MR-14).
+    // A workplace closed on its own (MR-14).
     WorkplaceClosed => "WORKPLACE_CLOSED",
-    // A 사업장 / 사업자등록 closed with its 법인 (MR-15): 해산, 폐업.
+    // A workplace / business registration closed with its legal entity (MR-15):
+    // dissolution, business closure.
     LegalEntityDissolved => "LEGAL_ENTITY_DISSOLVED",
     LegalEntityBusinessClosed => "LEGAL_ENTITY_BUSINESS_CLOSED",
-    // The 법인's close corrected or withdrawn (company-19).
+    // The legal entity's close corrected or withdrawn (company-19).
     LegalEntityCloseCorrected => "LEGAL_ENTITY_CLOSE_CORRECTED",
     LegalEntityCloseWithdrawn => "LEGAL_ENTITY_CLOSE_WITHDRAWN",
     // A setup batch undone.
@@ -56,14 +58,15 @@ system_reasons! {
 }
 
 impl SystemReason {
-    /// The markers of a record closed with its 법인 (the close or a correction of it).
+    /// The markers of a record closed with its legal entity (the close or a
+    /// correction of it).
     pub const CLOSED_WITH_ENTITY: [Self; 3] = [
         Self::LegalEntityDissolved,
         Self::LegalEntityBusinessClosed,
         Self::LegalEntityCloseCorrected,
     ];
 
-    /// The marker of a 법인 close by its reason.
+    /// The marker of a legal entity close by its reason.
     #[must_use]
     pub const fn entity_close(reason: crate::codes::CloseReason) -> Self {
         match reason {

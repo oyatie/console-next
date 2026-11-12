@@ -1276,7 +1276,7 @@ async fn preflight_writes_zero_rows_and_never_spends_the_approval(owner_pool: Pg
 /// property schema and field kinds. A preflight that skips that judgement reports
 /// `would_execute: true` for an edit set the writeback then refuses — a false
 /// green in the product, and worse than no dry run because operators trust it
-/// (DESIGN.md §4-42 puts 시뮬레이션 on the write path precisely so they can).
+/// (DESIGN.md §4-42 puts simulation on the write path precisely so they can).
 ///
 /// `priority` is declared `choice`, so the writer's `check_field_shape` requires
 /// a string. A NUMERIC `priority` param passes `validate_params` (which checks

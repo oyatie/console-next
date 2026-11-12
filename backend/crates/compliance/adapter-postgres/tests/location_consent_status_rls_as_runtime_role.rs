@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! RUNTIME RLS gate for the GPS location-consent status + transition flow that
-//! the 위치동의 (LocationSettingsPage / LocationConsentPanel) screen drives
+//! the location consent (LocationSettingsPage / LocationConsentPanel) screen drives
 //! (issue #19.7 — the consent page reportedly did not load / the feature looked
 //! non-functional).
 //!

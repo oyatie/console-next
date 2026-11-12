@@ -28,7 +28,7 @@ async fn report(
 async fn the_exit_report_refuses_and_writes_nothing(pool: PgPool) {
     let f = fixture(pool, true).await;
     let e = f.employee().await;
-    // A 퇴직일 before the 입사일 (2025-01-02).
+    // An exit date before the hire date (2025-01-02).
     let early = report(&f, &f.ops, e, "2024-12-31").await.unwrap_err();
     assert_eq!(status(&early), (422, "effective_date_before_hire"));
     assert_eq!(f.count("employee_exit_cases").await, 0);
@@ -53,13 +53,13 @@ async fn after_go_live_a_fresh_registration_is_cancelled_and_a_worked_one_exits(
     assert_eq!((o.phase, o.cancel_route), ("OPERATING", "VOID"));
     assert!(o.cancel.allowed && o.attestation_required && o.exit.allowed);
     assert!(o.can_cancel && o.can_report_exit);
-    // An exit case is a work record: 등록 취소 is refused, 퇴직 continues.
+    // An exit case is a work record: registration void is refused, exit continues.
     let case = report(&f, &f.ops, e, "2026-10-31").await.unwrap();
     let o = f.hr.employee_end_options(&f.ops, e).await.unwrap();
     assert_eq!(o.cancel.refusal, Some("employee_void_has_work_records"));
     assert_eq!(o.exit.refusal, Some("exit_case_open"));
     assert_eq!(o.open_exit_case_id, Some(crate::uuid(&case["id"])));
-    // Once exited, 퇴직 is not offered again.
+    // Once exited, exit is not offered again.
     sqlx::query("UPDATE employees SET employment_status = 'EXITED' WHERE id = $1")
         .bind(e)
         .execute(&f.owner)

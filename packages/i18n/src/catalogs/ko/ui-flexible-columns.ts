@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koUiFlexibleColumns = {
+import type { enUiFlexibleColumns } from "../en/ui-flexible-columns";
+export const koUiFlexibleColumns: Record<keyof typeof enUiFlexibleColumns, string> = {
   "uiFlexibleColumns.full": "전체 화면으로 보기",
-} as const;
+};

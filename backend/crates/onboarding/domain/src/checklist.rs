@@ -1,6 +1,7 @@
 //! The setup rail (design §6.2; challenge (d) A11): steps in three groups —
-//! 조직 구조 (법인·사업장), 운영 방식 (조직·결재·두 번째 패스키; 보안 연락처
-//! once its store exists), 사람 (직원·운영 시작). There is no 결재 step under
+//! organization structure (legal entity · workplace), operating model (organization ·
+//! approval · second passkey; security contact once its store exists), people
+//! (employees · go-live). There is no approval step under
 //! `approval.policy.org_structure = none` (decisions #26). Each step has a state, one primary action and, when it
 //! cannot proceed, the prerequisite that opens in place (never a greyed-out
 //! step without its fix).
@@ -30,7 +31,7 @@ pub struct Step {
     /// The fix or follow-up the client links to, when there is one.
     pub remedy: Option<&'static str>,
     pub count: Option<i64>,
-    /// The step may be completed by an explicit 「나중에」 / 「없이 진행」 choice.
+    /// The step may be completed by an explicit "Later" / "Continue without" choice.
     pub skippable: bool,
     pub counts: Counts,
     pub paths: Vec<&'static str>,
@@ -156,7 +157,7 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
     }
     steps.push(org);
 
-    // decisions #26: the 결재선 step exists only when org changes route.
+    // decisions #26: the approval line step exists only when org changes route.
     if f.org_change_routed {
         let mut approval = step("approval", "operations", Done, "confirm_approver");
         if !f.org_change_route_resolvable() {

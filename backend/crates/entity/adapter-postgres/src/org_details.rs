@@ -1,7 +1,8 @@
-//! Setup 부서 코드 and 부서장 (G5, D19). They live in the unit's revision
-//! attributes under the keys the org change's `SET_ORG_UNIT_DETAILS` writes
-//! (`code`, `head_employee_id`, `head_since`), so one read serves both
-//! phases. `head_since` dates the head: it moves only when the head changes.
+//! Setup department codes and department heads (G5, D19). They live in the
+//! unit's revision attributes under the keys the org change's
+//! `SET_ORG_UNIT_DETAILS` writes (`code`, `head_employee_id`, `head_since`),
+//! so one read serves both phases. `head_since` dates the head: it moves only
+//! when the head changes.
 
 use console_entity_domain::structure_code::structure_code;
 use serde_json::{Value, json};

@@ -13,4 +13,4 @@ properties:
     - string
     - 'null'
     format: date-time
-    description: 수령확인 timestamp; null while the recipient is outstanding.
+    description: Receipt acknowledgement timestamp; null while the recipient is outstanding.

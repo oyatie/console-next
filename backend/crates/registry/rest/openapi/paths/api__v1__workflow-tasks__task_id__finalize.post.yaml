@@ -2,7 +2,7 @@ tags:
   - workflow-tasks
 operationId: finalizeWorkflowTask
 summary: Finalize an approval document (author or delegate)
-description: Completes a finalization waiting task (종결). Author mode requires the initiating author; delegate mode is
+description: Completes a finalization waiting task. Author mode requires the initiating author; delegate mode is
   policy-gated (legacy enforce, inert Cedar shadow) and requires a non-empty reason. Finalization is a pre-terminal
   WAITING step, not a terminal reopen — the run reaches SUCCEEDED only when no receipt-confirmation step follows;
   otherwise it stays WAITING and a receipt task opens. Idempotent on idempotency_key.

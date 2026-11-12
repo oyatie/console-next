@@ -1,6 +1,6 @@
 //! Property tests for the pure HR import rules: the `YYYY-MM-DD` reader, the
-//! 주민등록번호 detectors that keep RRNs out of stored rows, and header
-//! matching. Default 256 cases; the nightly `fuzz` profile raises
+//! resident registration number detectors that keep RRNs out of stored rows,
+//! and header matching. Default 256 cases; the nightly `fuzz` profile raises
 //! `PROPTEST_CASES` (see `.config/nextest.toml`).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
@@ -96,8 +96,9 @@ proptest! {
     /// still caught, with or without the `.0` a float renders with.
     ///
     /// births 2000-01..2000-09 lose three zeros and leave 10 digits,
-    /// the same shape as a 10-digit 사번 (`2024000123`), so `pii.rs` keeps
-    /// them by design. Excluded here; a header-level rule would close it.
+    /// the same shape as a 10-digit employee number (`2024000123`), so
+    /// `pii.rs` keeps them by design. Excluded here; a header-level rule would
+    /// close it.
     #[test]
     fn excel_stripped_2000s_rrn_is_caught(
         yymmdd in yymmdd_2000s().prop_filter("10-digit case kept by design", |d| !d.starts_with("000")),
@@ -120,8 +121,10 @@ proptest! {
     }
 
     /// Every catalogued alias still maps to its target when a person wraps it
-    /// in spaces, brackets or `_` noise (`" 입사 일자 (필수)"` is a different
-    /// header, but `"[입사일자]"` and `"입 사 일 자"` are the same one).
+    /// in spaces, brackets or `_` noise (the hire-date header with a leading
+    /// space and a "(required)" suffix is a different header, but the same
+    /// header in brackets, or with a space between every syllable, is the same
+    /// one).
     #[test]
     fn decorated_aliases_map_to_their_target(
         field_at in any::<prop::sample::Index>(),

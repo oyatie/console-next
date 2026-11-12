@@ -1,5 +1,6 @@
-//! A tenant with one 법인, two 사업장 (평택, 서울) each with its site unit and
-//! branch, 생산부 › 생산1팀 under 평택, and people placed there.
+//! A tenant with one legal entity, two workplaces (Pyeongtaek, Seoul) each with its site unit
+//! and branch, a production department › Production Team 1 under Pyeongtaek, and people
+//! placed there.
 #![allow(dead_code)]
 
 use std::{future::Future, pin::Pin};
@@ -24,12 +25,12 @@ pub struct World {
     pub org: Uuid,
     pub admin: Uuid,
     pub entity: Uuid,
-    /// 평택, 서울.
+    /// Pyeongtaek, Seoul.
     pub workplaces: [Uuid; 2],
     pub branches: [Uuid; 2],
     pub dept: Uuid,
     pub team: Uuid,
-    /// Two people in 생산1팀 (평택) and one at 서울 with no 부서.
+    /// Two people in Production Team 1 (Pyeongtaek) and one at Seoul with no department.
     pub people: [Uuid; 3],
 }
 
@@ -42,7 +43,7 @@ impl World {
             org_wide: true,
         }
     }
-    /// An HR worker scoped to 서울 only.
+    /// An HR worker scoped to Seoul only.
     pub fn seoul_hr(&self) -> CallerScope {
         CallerScope {
             org_id: self.org,
@@ -257,7 +258,7 @@ impl TestReads for PgAttendanceStore {
     }
 }
 
-/// 주 5일 09–18, 휴게 12–13, 토 휴무, 일 주휴.
+/// 5 days a week 09–18, break 12–13, Saturday a day off, Sunday the weekly paid holiday.
 pub fn office(name: &str) -> PatternInput {
     let work = json!({"kind": "WORK", "shift": {"start": 540, "end": 1080, "breaks": [{"start": 720, "end": 780}]}});
     PatternInput {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![cfg(feature = "attendance")]
 #![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
-//! Attendance record reads commit one batched 접속기록 before returning personal data.
+//! Attendance record reads commit one batched access log record before returning personal data.
 
 #[path = "support/http.rs"]
 mod support;

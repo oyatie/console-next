@@ -20,10 +20,12 @@ beforeAll(async () => {
       load: id => id === "\0dialog-test" ? `
         import { createElement as h, StrictMode, useState } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { loadCatalog } from '@console/i18n';
+        import { i18n, loadCatalog } from '@console/i18n';
         import { Dialog } from '/apps/web/src/ui/dialog.tsx';
         import { Sheet } from '/apps/web/src/ui/sheet/sheet.tsx';
+        // The harness reads in English; the surface's own close control must not share the test's button name.
         await loadCatalog('en');
+        i18n.set('en');
         function App() {
           const [open, setOpen] = useState(false);
           const [next, setNext] = useState(false);
@@ -32,7 +34,7 @@ beforeAll(async () => {
           const close = () => setOpen(false);
           const children = [
             h('input', { key: 'input', 'aria-label': 'Name' }),
-            h('button', { key: 'close', onClick: close }, 'Close'),
+            h('button', { key: 'close', onClick: close }, 'Leave form'),
             h('button', { key: 'next', onClick: () => { close(); setNext(true); } }, 'Next'),
             h('button', { key: 'nested', onClick: () => setNested(true) }, 'Nested'),
           ];
@@ -71,7 +73,7 @@ for (const surface of ["dialog", "sheet"]) {
     await expectElement(page.locator("#root")).not.toHaveAttribute("aria-hidden");
     expect(await page.locator("#root").evaluate(el => el instanceof HTMLElement && el.inert)).toBe(true);
     await page.locator("#restricted").evaluate(el => el.parentElement!.setAttribute("aria-hidden", "true"));
-    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("button", { name: "Leave form", exact: true }).click();
     await expectElement(page.locator("#restricted").locator("..")).toHaveAttribute("aria-hidden", "true");
   });
 
@@ -84,7 +86,7 @@ for (const surface of ["dialog", "sheet"]) {
     expect(await opener.evaluate(el => Boolean(el.closest("[inert]")))).toBe(true);
     await opener.evaluate(el => el.focus());
     await expectElement(opener).not.toBeFocused();
-    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("button", { name: "Leave form", exact: true }).click();
     await expectElement(opener).toBeFocused();
     await expectElement(page.getByRole("button", { name: "Open", exact: true })).toBeVisible();
     expect(await page.locator("#restricted").evaluate(el => Boolean(el.closest("[inert]")))).toBe(true);

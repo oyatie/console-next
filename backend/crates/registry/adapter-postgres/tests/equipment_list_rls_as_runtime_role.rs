@@ -293,7 +293,8 @@ async fn equipment_list_search_and_pagination(owner_pool: PgPool) {
         "matched row must have management_no '001'"
     );
 
-    // Search by 호기-normalized "1호기" must also match stored "001" (ltrim leading zero).
+    // A unit-number-normalized search for "1" with the Korean unit-number suffix
+    // ("hogi") must also match stored "001" (ltrim leading zero).
     let page_hogi = scope_org(
         org,
         store.list_equipment(EquipmentListQuery {

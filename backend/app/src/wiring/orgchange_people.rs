@@ -2,18 +2,18 @@
 //! change moves its people through the owners' own writes, inside the
 //! change's apply transaction.
 //!
-//! - The 사업장 a unit sits at is the ONE resolver's: its nearest placed
+//! - The workplace a unit sits at is the ONE resolver's: its nearest placed
 //!   ancestor (`employment_hire::unit_placement`, TR-33; UX-R1 PLACEMENT's
 //!   0310 serves the same helper). Never a second resolver.
-//! - An ACTIVE person gets a dated TRANSFER lifecycle event (전보 into the
-//!   target unit, 전근 too when its 사업장 differs), recorded by hr's own
+//! - An ACTIVE person gets a dated TRANSFER lifecycle event (reassignment into the
+//!   target unit, relocation too when its workplace differs), recorded by hr's own
 //!   `record_lifecycle_event_tx` — the same row, assignment split and audit a
-//!   전보 from the person's record writes — batched under the change's id.
-//! - Anyone else on the roll (휴직 and the other non-ACTIVE states, which hr
+//!   reassignment from the person's record writes — batched under the change's id.
+//! - Anyone else on the roll (leave of absence and the other non-ACTIVE states, which hr
 //!   refuses a TRANSFER) keeps the record whole without an event: the unit
 //!   rebind and the assignment split, the same two writes the event applies.
-//!   no 발령 row for them until hr admits an org-change 전보 for a
-//!   휴직자 (asked in backend-followups).
+//!   no appointment row for them until hr admits an org-change reassignment for a
+//!   person on leave of absence (asked in backend-followups).
 
 use console_entity_adapter_postgres::employment_hire::unit_placement;
 use console_entity_adapter_postgres::employment_moves::placement_on;
@@ -66,7 +66,7 @@ pub(crate) async fn move_people(
         let unit = to_unit.or(member.unit);
         let workplace = new_workplace(tx, org_uuid, member.id, unit, cause.on).await?;
         if to_unit.is_none() && workplace.is_none() {
-            continue; // follows a unit that stays at its 사업장
+            continue; // follows a unit that stays at its workplace
         }
         if member.status == "ACTIVE" {
             let audit = transfer(tx, (org, actor), &cause, member.id, to_unit, workplace).await?;
@@ -109,7 +109,7 @@ async fn members(tx: Tx<'_, '_>, org: Uuid, units: &[Uuid]) -> Result<Vec<Member
         .collect())
 }
 
-/// The 사업장 the person moves to on `on`: the unit's (its nearest placed
+/// The workplace the person moves to on `on`: the unit's (its nearest placed
 /// ancestor's) when it differs from where they are placed then; `None` when
 /// it is the same, the unit is not placed, or they have no placement then.
 async fn new_workplace(
@@ -157,7 +157,7 @@ async fn transfer(
     }))
     .map_err(|_| KernelError::internal("org-change transfer body did not build"))?;
     let transition = normalize_lifecycle_transition(body).map_err(refusal)?;
-    // The change applies on its 시행일 (the worker's date may run ahead of the
+    // The change applies on its effective date (the worker's date may run ahead of the
     // wall clock in a debug E2E): the event is applied now, never scheduled.
     let today = today_kst().max(cause.on);
     let prepared = prepare_lifecycle_event(tx, *org.as_uuid(), employee, transition, today)
@@ -170,7 +170,7 @@ async fn transfer(
     Ok(audit)
 }
 
-/// The two writes a TRANSFER applies, for a person hr refuses one (휴직 …).
+/// The two writes a TRANSFER applies, for a person hr refuses one (leave of absence …).
 async fn keep_whole(
     tx: Tx<'_, '_>,
     (org, actor): (Uuid, Uuid),

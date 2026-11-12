@@ -118,10 +118,10 @@ pub struct CreateWorkOrderCommand {
     pub symptom: String,
     pub customer_request: Option<String>,
     pub target_due_at: Option<Timestamp>,
-    /// Typed maintenance classification (유형). Optional on the wire; the
+    /// Typed maintenance classification. Optional on the wire; the
     /// console intake requires it client-side.
     pub maintenance_type: Option<MaintenanceType>,
-    /// Typed maintenance cause (원인). Optional on the wire.
+    /// Typed maintenance cause. Optional on the wire.
     pub maintenance_cause: Option<MaintenanceCause>,
     pub trace: TraceContext,
     pub occurred_at: Timestamp,

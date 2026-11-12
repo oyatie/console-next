@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: dissolveSetupOrgUnit
-summary: Dissolve a 부서 and the 부서 under it during setup
+summary: Dissolve a department and the departments under it during setup
 description: Refused (org_unit_has_members, remedy move_people_first) while anyone who has not left is placed in
   it or under it. Undoable by its batch_id.
 security:

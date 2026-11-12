@@ -2,7 +2,7 @@ tags:
   - employees
 operationId: listChangeSets
 summary: The caller's open change sets with their unsaved line counts (BW-38)
-description: Each OPEN draft with line_count (「저장 안 됨 · n건」) and stale_count (lines whose employee changed
+description: Each OPEN draft with line_count ("Not saved · n items") and stale_count (lines whose employee changed
   since they were drafted). Takes org-wide employee_directory_manage.
 security:
 - bearerAuth: []

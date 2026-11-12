@@ -1,6 +1,6 @@
-//! BW-35 headcount-class fixtures (근로기준법 시행령 §7의2, decisions #3).
-//! The rule values here are the register's current HOLD readings; production
-//! code never carries them.
+//! BW-35 headcount-class fixtures (Enforcement Decree of the Labor Standards
+//! Act §7-2, decisions #3). The rule values here are the register's current
+//! HOLD readings; production code never carries them.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use console_hr_domain::employee::headcount::{
@@ -16,7 +16,7 @@ const HOLD: HeadcountRules = HeadcountRules {
 };
 const LONG_AGO: Date = date!(2020 - 01 - 01);
 const EVENT: Date = date!(2026 - 10 - 15);
-/// Four 가동일 inside the 9/15–10/14 period.
+/// Four operating days inside the 9/15–10/14 period.
 const DAYS: [Date; 4] = [
     date!(2026 - 10 - 06),
     date!(2026 - 10 - 07),
@@ -75,7 +75,7 @@ fn exactly_at_threshold_meets_it_one_below_does_not() {
 
 #[test]
 fn low_average_but_few_short_days_meets_threshold() {
-    // §7의2②1: counts 5, 5, 5, 0 → average 3.75, one day of four below.
+    // §7-2②1: counts 5, 5, 5, 0 → average 3.75, one day of four below.
     let roster = workers(5, LONG_AGO, Some(DAYS[2]));
     let c = headcount_class(EVENT, LONG_AGO, &DAYS, &roster, &HOLD).unwrap();
     assert_eq!(c.person_days, 15);
@@ -86,7 +86,7 @@ fn low_average_but_few_short_days_meets_threshold() {
 
 #[test]
 fn high_average_but_half_short_days_does_not_meet_threshold() {
-    // §7의2②2: counts 20, 20, 4, 4 → average 12, two days of four below.
+    // §7-2②2: counts 20, 20, 4, 4 → average 12, two days of four below.
     let mut roster = workers(4, LONG_AGO, None);
     roster.extend(workers(16, LONG_AGO, Some(DAYS[1])));
     let c = headcount_class(EVENT, LONG_AGO, &DAYS, &roster, &HOLD).unwrap();

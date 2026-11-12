@@ -1,5 +1,6 @@
-//! The tenant's 사번 numbering rules (prefix + width per tenant, 법인 or
-//! 사업장): list with the next number each would give, set, remove.
+//! The tenant's employee number numbering rules (prefix + width per tenant,
+//! legal entity or workplace): list with the next number each would give,
+//! set, remove.
 
 use console_hr_domain::import::numbering::{NumberRule, Numbering};
 use console_platform_authz::{Feature, Principal};
@@ -20,7 +21,7 @@ pub struct NumberRuleRequest {
     /// `TENANT`, `LEGAL_ENTITY` or `WORKPLACE`.
     #[serde(deserialize_with = "deserialize_enum_14")]
     pub scope_kind: String,
-    /// The 법인 or 사업장 id; omitted for `TENANT`.
+    /// The legal entity or workplace id; omitted for `TENANT`.
     #[serde(default)]
     pub scope_id: Option<Uuid>,
     pub prefix: String,

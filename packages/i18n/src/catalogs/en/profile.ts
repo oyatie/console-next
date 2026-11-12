@@ -1,6 +1,4 @@
-import type { koProfile } from "../ko/profile";
-
-export const enProfile: Partial<Record<keyof typeof koProfile, string>> = {
+export const enProfile = {
   "profile.correct.title": "Correct {name}’s record",
   "profile.request.title": "Request a change for {name}",
   "profile.section.what": "What changes",
@@ -31,4 +29,4 @@ export const enProfile: Partial<Record<keyof typeof koProfile, string>> = {
   "profile.receipt.requested": "Sent the change request to HR.",
   "profile.receipt.requests": "View change requests",
   "profile.request.kind.missing": "Select the kind of request",
-};
+} as const;

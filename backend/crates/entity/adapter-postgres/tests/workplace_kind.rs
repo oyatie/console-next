@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! 사업장 kind (decisions #18, MR-19), as `console_rt` (FORCE RLS): the
+//! Workplace kind (decisions #18, MR-19), as `console_rt` (FORCE RLS): the
 //! platform defaults with the tenant's own kinds and overrides, the kind at
 //! create and as a direct, audited change in both phases.
 
@@ -182,7 +182,7 @@ async fn kinds_are_platform_defaults_plus_the_tenants_own(owner: PgPool) {
     assert_eq!(wp.kind_code.as_deref(), Some(depot.code.as_str()));
 
     // A direct change, refused for unknown codes; a deactivated kind the
-    // 사업장 already has stays valid; null clears it.
+    // workplace already has stays valid; null clears it.
     for bad in ["factory", "TEAM", &Uuid::new_v4().to_string()] {
         let err = store
             .set_workplace_kind(&cmd(&actor), wp.id, kind(Some(bad)))
@@ -209,7 +209,7 @@ async fn kinds_are_platform_defaults_plus_the_tenants_own(owner: PgPool) {
         .unwrap();
     assert_eq!(cleared.record.kind_code, None);
 
-    // After 운영 시작 it stays direct (a label changes no rule), audited GOVERNED.
+    // After go-live it stays direct (a label changes no rule), audited GOVERNED.
     set_operating(&owner, ORG).await;
     let branch = store
         .set_workplace_kind(&cmd(&actor), wp.id, kind(Some("BRANCH")))

@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! decisions #14.1, as `console_rt` (FORCE RLS) with the canonical OrgUnit
-//! owner behind the port: a 사업장 brings its own SITE unit, so a person can be
-//! placed there with no 부서, and voiding the 사업장 (or its 법인) during setup
-//! dissolves that unit and the empty 부서 under it — refused while people
-//! still sit in it or under it.
+//! decisions #14.1, as `console_rt` (FORCE RLS) with the canonical OrgUnit owner behind
+//! the port: a workplace brings its own SITE unit, so a person can be placed there with no
+//! department, and voiding the workplace (or its legal entity) during setup dissolves that
+//! unit and the empty departments under it — refused while people still sit in it or
+//! under it.
 
 mod common;
 
@@ -64,7 +64,7 @@ async fn a_workplace_brings_its_own_unit_and_takes_it_when_voided(owner: PgPool)
     .unwrap();
     assert_eq!(kind, "site");
 
-    // Renaming the 사업장 renames its unit (people placed there see it).
+    // Renaming the workplace renames its unit (people placed there see it).
     let rename = Revision {
         expected_version: Some(1),
         effective_from: Some("2026-01-01".into()),
@@ -88,7 +88,7 @@ async fn a_workplace_brings_its_own_unit_and_takes_it_when_voided(owner: PgPool)
     .unwrap();
     assert_eq!(name, "서울 본사");
 
-    // A person registered straight at the 사업장 (no 부서) holds it.
+    // A person registered straight at the workplace (no department) holds it.
     sqlx::query(
         "INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, source_key, org_unit_id) \
          VALUES ($1, '주식회사 가나', '김직원', 'x', 'x', 1, 'k1', $2)",
@@ -109,7 +109,8 @@ async fn a_workplace_brings_its_own_unit_and_takes_it_when_voided(owner: PgPool)
         ("record_in_use", Some("reassign_people_first"))
     );
 
-    // A second 사업장 with a 부서: the 부서 reuses the 사업장's unit, and holds it.
+    // A second workplace with a department: the department reuses the workplace's unit,
+    // and holds it.
     let branch = store
         .create_workplace(
             &cmd(&actor),
@@ -159,7 +160,7 @@ async fn a_workplace_brings_its_own_unit_and_takes_it_when_voided(owner: PgPool)
     .await
     .unwrap();
     assert_eq!(parent, branch_site.to_string(), "no second SITE unit");
-    // Someone in a 부서 under the 사업장 holds it …
+    // Someone in a department under the workplace holds it …
     let lee: Uuid = sqlx::query_scalar(
         "INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, source_key, org_unit_id) \
          VALUES ($1, '주식회사 가나', '이직원', 'x', 'x', 2, 'k2', $2) RETURNING id",
@@ -179,8 +180,8 @@ async fn a_workplace_brings_its_own_unit_and_takes_it_when_voided(owner: PgPool)
         (code_, remedy),
         ("record_in_use", Some("reassign_people_first"))
     );
-    // … but empty 부서 do not (MR-12: no more remove_org_units_first dead
-    // end); they are dissolved with the 사업장's own unit.
+    // … but empty departments do not (MR-12: no more remove_org_units_first dead end);
+    // they are dissolved with the workplace's own unit.
     sqlx::query("UPDATE employees SET employment_status = 'EXITED' WHERE id = $1")
         .bind(lee)
         .execute(&owner)
@@ -198,7 +199,7 @@ async fn a_workplace_brings_its_own_unit_and_takes_it_when_voided(owner: PgPool)
         ("dissolved".into(), false)
     );
 
-    // An empty 사업장 voids, and its unit goes with it.
+    // An empty workplace voids, and its unit goes with it.
     let spare = store
         .create_workplace(
             &cmd(&actor),

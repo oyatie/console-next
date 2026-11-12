@@ -2,9 +2,9 @@ x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "tenant"}
 tags:
   - employees
 operationId: listEmployeeImportUnplaced
-summary: The 미배치 queue — current people without a 사업장 or without the 부서 their file named
-description: 'BE-MIG (walkthrough W03, spec E8) — every current person with no 사업장 (reason no_place, or
-  workplace_unknown when their 부서 sits under no open 사업장), or placed at a 사업장 but without the 부서 their
+summary: The unplaced queue — current people without a workplace or without the department their file named
+description: 'BE-MIG (walkthrough W03, spec E8) — every current person with no workplace (reason no_place, or
+  workplace_unknown when their department sits under no open workplace), or placed at a workplace but without the department their
   import file named (unit_unknown, source_org_unit is the file''s text). count is the whole queue (the roster
   chip); items are keyset-paged by creation. run_id narrows it to the people
   one import inserted. 403 without org-wide employee_directory_manage; 422 for a cursor this list did not issue.'

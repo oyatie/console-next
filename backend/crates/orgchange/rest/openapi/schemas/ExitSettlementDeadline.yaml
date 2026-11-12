@@ -5,10 +5,10 @@ properties:
   kind:
     type: string
     enum: [FINAL_PAY, SEVERANCE_PAY]
-    description: FINAL_PAY - 금품청산 (final wages, 남은 연차 수당, every 금품). SEVERANCE_PAY - 퇴직금.
+    description: FINAL_PAY - final settlement (final wages, pay for unused annual leave, all other money and valuables). SEVERANCE_PAY - severance pay.
   opens_on:
     type: [string, 'null']
-    description: YYYY-MM-DD. The 퇴직일 (the day after effective_exit_date), when payment may be made.
+    description: YYYY-MM-DD. The exit date (the day after effective_exit_date), when payment may be made.
   due_date:
     type: [string, 'null']
     description: YYYY-MM-DD from the register's day count after effective_exit_date; null when the register has no

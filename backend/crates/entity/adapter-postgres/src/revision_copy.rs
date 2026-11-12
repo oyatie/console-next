@@ -1,8 +1,9 @@
-//! A dated copy of a 사업장's or 사업자등록's current revision with a new
-//! status: CLOSED for a close (MR-14/15), or the status it had before its
-//! close for a withdrawn 법인 close (UX-R3 company-15). The copy keeps every
-//! other field (업태·종목 and 공동사업자 rows for a 사업자등록) and is dated so
-//! it reads as the head.
+//! A dated copy of a workplace's or business registration's current revision
+//! with a new status: CLOSED for a close (MR-14/15), or the status it had
+//! before its close for a withdrawn legal entity close (UX-R3 company-15).
+//! The copy keeps every other field (business type · item and joint business
+//! operator rows for a business registration) and is dated so it reads as
+//! the head.
 
 use console_kernel_core::UserId;
 use uuid::Uuid;
@@ -55,7 +56,7 @@ const WORKPLACE: &str = "INSERT INTO workplace_revisions (org_id, workplace_id, 
            sha256(convert_to(jsonb_build_object('{KEY}', version, 'status_since', $2::date)::text, 'UTF8')), $6, $7 \
          FROM workplace_revisions r WHERE r.workplace_id = $1 {SRC}";
 
-/// Append the copy of one 사업장 (`registration` false) or 사업자등록 (true).
+/// Append the copy of one workplace (`registration` false) or business registration (true).
 ///
 /// a revision scheduled after today still reads as the head on its
 /// date; a scheduled-revision runner should re-apply the close then.
@@ -126,9 +127,9 @@ pub(crate) async fn append_copy(
 pub(crate) const LEGAL_NAME_DERIVED: &str =
     console_entity_domain::SystemReason::LegalNameDerived.as_str();
 
-/// SS-001 / AD-F02c: a 법인명 change appends nothing to its registrations. The released
-/// binary derives every registration's ① from the entity at read time, so no reader of
-/// `trade_name` remains. Kept as a no-op until the contract step removes its callers.
+/// SS-001 / AD-F02c: a legal entity name change appends nothing to its registrations. The
+/// released binary derives every registration's ① from the entity at read time, so no reader
+/// of `trade_name` remains. Kept as a no-op until the contract step removes its callers.
 pub(crate) async fn append_renamed_registrations(
     _tx: &mut Tx<'_>,
     _entity: Uuid,
@@ -141,7 +142,7 @@ pub(crate) async fn append_renamed_registrations(
 
 /// 409 `stale_revision` unless the client read the registration at a version no
 /// person has changed since: an N-1 name copy appended after it is not a change,
-/// so an open 등록증 sheet stays valid across a 법인명 change.
+/// so an open certificate sheet stays valid across a legal entity name change.
 pub(crate) async fn ensure_registration_version(
     tx: &mut Tx<'_>,
     id: Uuid,

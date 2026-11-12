@@ -55,13 +55,13 @@ parameters:
   schema:
     $ref: '#/components/schemas/Uuid'
   description: Only employees whose current employment assignment (the last one once exited, the first one before
-    the hire date) names this 법인.
+    the hire date) names this legal entity.
 - name: workplace_id
   in: query
   required: false
   schema:
     $ref: '#/components/schemas/Uuid'
-  description: Only employees whose current employment assignment names this 사업장.
+  description: Only employees whose current employment assignment names this workplace.
 - name: status
   in: query
   required: false
@@ -78,7 +78,7 @@ parameters:
       - EXITED
       - UNKNOWN
   description: One employment status or a comma-separated list (`status=ACTIVE,ON_LEAVE`). Omitted means every status,
-    EXITED included. PRE_HIRE is 입사 예정 (a future hire date, ONBOARD scheduled).
+    EXITED included. PRE_HIRE is a pending hire (a future hire date, ONBOARD scheduled).
 - name: employee_number
   in: query
   required: false

@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! MR-12 undo (design OM §3.5, §5.4), as `console_rt`: a setup 부서 batch
-//! is undone through the same writer (a move back takes people's 사업장
-//! back), never blindly (later changes first), and only in setup. Plus the
-//! 0262 data step that folds legacy `team` units into the one 부서 kind.
+//! MR-12 undo (design OM §3.5, §5.4), as `console_rt`: a setup department batch is undone
+//! through the same writer (a move back takes people's workplace back), never blindly
+//! (later changes first), and only in setup. Plus the 0262 data step that folds legacy
+//! `team` units into the one department kind.
 
 mod common;
 
@@ -35,7 +35,7 @@ async fn undo_reverts_a_batch_once_last_in_first_out_and_only_in_setup(owner: Pg
     let (store, actor) = tenant(&owner, ORG, "A").await;
     let (entity, [(hq, hq_site), (plant, _)]) = two_workplaces(&store, &actor).await;
 
-    // Batch 1 creates two levels; batch 2 moves the top one to the 공장.
+    // Batch 1 creates two levels; batch 2 moves the top one to the factory.
     let b1 = store
         .apply_org_setup_batch(
             &cmd(&actor),
@@ -67,7 +67,7 @@ async fn undo_reverts_a_batch_once_last_in_first_out_and_only_in_setup(owner: Pg
         .unwrap();
     assert_eq!(placed_at(&owner, kim).await, plant);
 
-    // Batch 1 cannot go first: 생산부 changed after it.
+    // Batch 1 cannot go first: the production department changed after it.
     let (code_, fields, remedy) = code(
         store
             .undo_org_setup_batch(&cmd(&actor), b1.batch_id, port())
@@ -80,7 +80,8 @@ async fn undo_reverts_a_batch_once_last_in_first_out_and_only_in_setup(owner: Pg
     );
     assert_eq!(fields, vec![(dept.to_string(), "changed_since_batch")]);
 
-    // Undoing batch 2 moves 생산부 back, and 김직원's 사업장 with it.
+    // Undoing batch 2 moves the production department back, and employee Kim's workplace
+    // with it.
     let undo2 = store
         .undo_org_setup_batch(&cmd(&actor), b2.batch_id, port())
         .await
@@ -103,7 +104,7 @@ async fn undo_reverts_a_batch_once_last_in_first_out_and_only_in_setup(owner: Pg
     );
     assert_eq!(code_, "batch_not_undoable");
 
-    // Batch 1 created 생산1팀, which holds 김직원 now: it stays.
+    // Batch 1 created production team 1, which holds employee Kim now: it stays.
     let (code_, _, remedy) = code(
         store
             .undo_org_setup_batch(&cmd(&actor), b1.batch_id, port())
@@ -114,8 +115,8 @@ async fn undo_reverts_a_batch_once_last_in_first_out_and_only_in_setup(owner: Pg
         (code_, remedy),
         ("undo_unit_in_use", Some("move_people_first"))
     );
-    // Once 김직원 sits at the 사업장 itself, batch 1 undoes: the move was
-    // undone, so 생산부 holds what batch 1 left (LIFO), children first.
+    // Once employee Kim sits at the workplace itself, batch 1 undoes: the move was undone,
+    // so the production department holds what batch 1 left (LIFO), children first.
     sqlx::query("UPDATE employees SET org_unit_id = $2 WHERE id = $1")
         .bind(kim)
         .bind(hq_site)
@@ -218,7 +219,7 @@ async fn undo_reverts_a_batch_once_last_in_first_out_and_only_in_setup(owner: Pg
     assert_eq!(unit_head(&owner, logistics).await.1, "active");
     assert_eq!(unit_head(&owner, child).await.1, "active");
 
-    // After 운영 시작 nothing is undone, and the list stops offering it.
+    // After go-live nothing is undone, and the list stops offering it.
     set_operating(&owner, ORG).await;
     let (code_, _, remedy) = code(
         store
@@ -285,7 +286,7 @@ async fn legacy_team_units_become_departments_keeping_their_history(owner: PgPoo
         .await
         .unwrap();
     assert_eq!(history, 1, "the team revision stays as history");
-    // The relabelled unit takes setup ops like any 부서.
+    // The relabelled unit takes setup ops like any department.
     let rename = OrgSetupOp::Rename {
         org_unit_id: Some(team),
         expected_version: Some(2),

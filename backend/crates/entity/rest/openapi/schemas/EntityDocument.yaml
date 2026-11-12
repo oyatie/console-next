@@ -42,7 +42,7 @@ properties:
     - string
     - 'null'
     format: date
-    description: 발급일 as typed on the 사업자등록 it backs.
+    description: Issue date as typed on the business registration it backs.
   superseded_at:
     type:
     - string

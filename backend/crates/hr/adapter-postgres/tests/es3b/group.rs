@@ -1,4 +1,4 @@
-//! E-S3b 전적 (GROUP_TRANSFER): consent, continuity and the move to another 법인.
+//! E-S3b group transfer (GROUP_TRANSFER): consent, continuity and the move to another legal entity.
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -30,7 +30,7 @@ async fn a_group_transfer_moves_the_employee_to_the_other_entity_until_rescinded
     f.place(a, wa[0]).await;
     let on = day(-2);
 
-    // The facts are required, with no defaults; 포괄 승계 needs its agreement.
+    // The facts are required, with no defaults; comprehensive succession needs its agreement.
     let mut bare = group(&on, wb[0], "SETTLED");
     bare.as_object_mut().unwrap().remove("group_transfer");
     assert_eq!(f.record(bare).await.unwrap_err().0, 422);
@@ -38,7 +38,7 @@ async fn a_group_transfer_moves_the_employee_to_the_other_entity_until_rescinded
         f.record(group(&on, wb[0], "CARRIED")).await.unwrap_err().0,
         422
     );
-    // A 사업장 of the employee's own 법인 is a 전근, not a 전적.
+    // A workplace of the employee's own legal entity is a transfer, not a group transfer.
     assert_eq!(
         f.record(group(&on, wa[0], "SETTLED")).await.unwrap_err(),
         (422, "group_transfer_same_entity".to_owned())
@@ -99,8 +99,8 @@ async fn a_group_transfer_is_a_setup_record_in_setup(pool: PgPool) {
     assert_eq!(f.live().await.last().unwrap().2, Some(wa[0]));
 }
 
-/// The card offers 전적 by the state rule (it used to be missing from
-/// `allowed_events`, so the console never opened it).
+/// The card offers group transfer by the state rule (it used to be missing
+/// from `allowed_events`, so the console never opened it).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn the_detail_offers_a_group_transfer(pool: PgPool) {
     let f = fixture(pool, true).await;
@@ -135,9 +135,9 @@ impl Fixture {
     }
 }
 
-/// A holder of 인사 over the sending 법인 only may not place the person in
-/// another: the receiving 사업장 is outside the grant set (403 out_of_scope),
-/// and nothing is written.
+/// A holder of HR over the sending legal entity only may not place the person
+/// in another: the receiving workplace is outside the grant set (403
+/// out_of_scope), and nothing is written.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_group_transfer_needs_the_receiving_entity_in_the_grant(pool: PgPool) {
     let f = fixture(pool, true).await;
@@ -151,7 +151,7 @@ async fn a_group_transfer_needs_the_receiving_entity_in_the_grant(pool: PgPool) 
         Default::default(),
         BranchScope::All,
     )
-    // 인사 실무 over 법인 A: both appointment keys, nowhere else.
+    // HR practitioner over legal entity A: both appointment keys, nowhere else.
     .with_scope_grants(
         APPOINTMENT_KEYS
             .map(|feature| ScopeGrant {
@@ -172,7 +172,7 @@ async fn a_group_transfer_needs_the_receiving_entity_in_the_grant(pool: PgPool) 
 }
 
 /// Another tenant's account does not find the person (404, no existence
-/// leak), and a 사업장 of another tenant is no target: refused, nothing written.
+/// leak), and a workplace of another tenant is no target: refused, nothing written.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_group_transfer_never_crosses_tenants(pool: PgPool) {
     let f = fixture(pool.clone(), true).await;

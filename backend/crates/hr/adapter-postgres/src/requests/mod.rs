@@ -1,4 +1,4 @@
-//! BW-17 change requests (변경 요청): create, list, decide and the assignee's
+//! BW-17 change requests: create, list, decide and the assignee's
 //! action-inbox page. Lane PEOPLE-A.
 
 pub mod cedar;
@@ -15,6 +15,16 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::HrError;
+
+/// Convert the domain's class name at the settings boundary; unknown keys fail closed.
+pub fn approval_class(
+    kind: console_hr_domain::requests::ChangeRequestKind,
+) -> Result<Option<console_settings_domain::SettingKey>, HrError> {
+    console_hr_domain::requests::approval_class(kind)
+        .map(str::parse)
+        .transpose()
+        .map_err(|_| HrError::internal("unregistered HR approval class"))
+}
 
 /// The only assignee role today: org-wide employee-directory managers (HR).
 pub const ASSIGNEE_ROLE_HR: &str = "HR";
@@ -53,7 +63,7 @@ pub struct DecideChangeRequest {
 pub struct ChangeRequestListQuery {
     /// `me`: named to the caller; `role`: open to any HR person. HR only.
     pub assignee: Option<String>,
-    /// `me`: only the requests the caller filed (its 기다리는 중).
+    /// `me`: only the requests the caller filed (its "Waiting").
     pub requester: Option<String>,
     pub status: Option<String>,
     pub limit: Option<i64>,
@@ -73,7 +83,7 @@ pub struct ChangeRequestResponse {
     pub assignee_role: String,
     pub assignee_user_id: Option<Uuid>,
     pub status: String,
-    /// OTHER requests are reviewed after the fact (the 기타 path).
+    /// OTHER requests are reviewed after the fact (the "Other" path).
     pub review_required: bool,
     pub decided_by: Option<Uuid>,
     pub decision_reason_code: Option<String>,

@@ -31,7 +31,7 @@ properties:
     $ref: '#/components/schemas/EmployeeImportUnplaced'
   register_gaps:
     type: object
-    description: 'r3:hire-16 / records-02: the 근로자 명부 (근기법 시행령 §20) items the run''s new people still lack after
+    description: 'r3:hire-16 / records-02: the worker register (Enforcement Decree of the Labor Standards Act §20) items the run''s new people still lack after
       the apply (exit_reason: former employees only); absent on runs applied before it existed.'
     required: [people, sex, address, careers, exit_reason]
     properties:

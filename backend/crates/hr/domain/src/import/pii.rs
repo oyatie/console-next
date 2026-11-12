@@ -2,11 +2,11 @@
 //! own with `rustc --test`. Migration 0249 scrubs stored values with the same
 //! rules; keep the two in step.
 
-/// A whole 11–12 digit number (optionally `.0`) that becomes a 주민등록번호
-/// once the leading zeros Excel strips from a 2000–2009 birth year are put
-/// back: `YYMMDD` must be a real date in 2000–2009 and the gender digit one of
-/// that century's (3/4 citizen, 7/8 foreign resident). Anything else (a long
-/// numeric 사번, a 1900s gender digit) is kept.
+/// A whole 11–12 digit number (optionally `.0`) that becomes a resident
+/// registration number once the leading zeros Excel strips from a 2000–2009
+/// birth year are put back: `YYMMDD` must be a real date in 2000–2009 and the
+/// gender digit one of that century's (3/4 citizen, 7/8 foreign resident).
+/// Anything else (a long numeric employee number, a 1900s gender digit) is kept.
 pub fn is_stripped_zero_rrn(text: &str) -> bool {
     let whole = text.strip_suffix(".0").unwrap_or(text);
     if !matches!(whole.len(), 11 | 12)
@@ -43,8 +43,9 @@ const ENGLISH_RESTRICTED: [&str; 8] = [
 ];
 
 /// Restricted headers added in PII-2 to both the employee and the attendance
-/// list: the English fragments, `생년월일`, and a bare `주소` (a home address;
-/// a work address is always qualified, e.g. `근무지주소`).
+/// list: the English fragments, the Korean "date of birth" header, and a bare
+/// Korean "address" header (a home address; a work address is always
+/// qualified, e.g. "work location address").
 pub fn is_pii2_restricted_header(header: &str) -> bool {
     let lower = header.to_lowercase();
     header == "주소"

@@ -1,5 +1,5 @@
-//! 사업장 writes inside the caller's transaction: the one-by-one create and
-//! revise (`workplace.rs`) and the bulk batch (MR-29) share them.
+//! Workplace writes inside the caller's transaction: the one-by-one create
+//! and revise (`workplace.rs`) and the bulk batch (MR-29) share them.
 
 use console_entity_application::{Actor, CreateWorkplace, WorkplaceRevision};
 use console_entity_domain::Refusal;
@@ -21,7 +21,7 @@ mod registration;
 use registration::resolved_reason;
 pub(crate) use registration::{answer_event, observe_answer, registration_answer};
 
-/// Create a 사업장 under `entity` inside the caller's transaction (the
+/// Create a workplace under `entity` inside the caller's transaction (the
 /// one-by-one create and the bulk batch share it).
 pub(crate) async fn create_workplace_in_tx(
     tx: &mut Tx<'_>,
@@ -71,7 +71,7 @@ pub(crate) async fn create_workplace_in_tx(
     .bind(draft.is_abstract)
     .fetch_one(tx.as_mut())
     .await?;
-    // INTEG-3: the first record starts at 개설일.
+    // INTEG-3: the first record starts at the opening date.
     let meta = RevisionMeta {
         version: 1,
         effective_from: draft.opened_on,
@@ -94,7 +94,7 @@ pub(crate) async fn create_workplace_in_tx(
         of_other,
     )
     .await?;
-    // decisions #14.1: its own org-tree unit, so people can be placed here with no 부서.
+    // decisions #14.1: its own org-tree unit, so people can be placed here with no department.
     let site = workplace_unit(tx, actor, id, today, admitted, port).await?;
     let event = audit(
         actor,
@@ -109,8 +109,8 @@ pub(crate) async fn create_workplace_in_tx(
     Ok((id, vec![event, answer]))
 }
 
-/// Append a full-state revision of 사업장 `id` inside the caller's
-/// transaction; returns its 법인.
+/// Append a full-state revision of workplace `id` inside the caller's
+/// transaction; returns its legal entity.
 pub(crate) async fn revise_workplace_in_tx(
     tx: &mut Tx<'_>,
     actor: &Actor,
@@ -144,7 +144,7 @@ pub(crate) async fn revise_workplace_in_tx(
     };
     let resolved_reason = resolved_reason(&input, before_reason.as_ref(), references)?;
     let draft = validate_workplace_resolved(&input, ctx, today, resolved_reason.as_ref())?;
-    // MR-18: the 종사업장 일련번호 moves with its registration link, as a dated change.
+    // MR-18: the sub-workplace serial number moves with its registration link, as a dated change.
     let serial: Option<String> =
         sqlx::query_scalar("SELECT sub_serial FROM workplaces WHERE id = $1")
             .bind(id)
@@ -165,7 +165,7 @@ pub(crate) async fn revise_workplace_in_tx(
     if effective_from <= today {
         rename_site(tx, actor, id, &draft.name, today, port).await?;
     }
-    // MR-14: 폐업 closes the 사업장 (once it is empty); another status reopens it.
+    // MR-14: business closure closes the workplace (once it is empty); another status reopens it.
     crate::closure::apply_workplace_status(
         tx,
         actor,
@@ -241,7 +241,7 @@ pub(crate) async fn revise_workplace_in_tx(
     Ok((entity, events))
 }
 
-/// Void 사업장 `id` (setup undo) inside the caller's transaction.
+/// Void workplace `id` (setup undo) inside the caller's transaction.
 pub(crate) async fn void_workplace_in_tx(
     tx: &mut Tx<'_>,
     actor: &Actor,

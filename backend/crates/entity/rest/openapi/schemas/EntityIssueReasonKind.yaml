@@ -4,4 +4,4 @@ enum:
 - REISSUE
 - CORRECTION
 - OTHER_AS_PRINTED
-description: 발급 사유 kind; no official list exists, the printed text is kept.
+description: Issue reason kind; no official list exists, the printed text is kept.

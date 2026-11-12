@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: listAttendancePatterns
-summary: 근무 유형 with how many people each one governs today
+summary: Work patterns with how many people each one governs today
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: include_retired, in: query, required: false, schema: { type: boolean } }

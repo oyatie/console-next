@@ -1,6 +1,4 @@
-import type { koAccount } from "../ko/account";
-
-export const enAccount: Partial<Record<keyof typeof koAccount, string>> = {
+export const enAccount = {
   "account.title": "My account",
   "account.profile": "Profile",
   "account.logout.here": "Sign out on this device",
@@ -116,4 +114,4 @@ export const enAccount: Partial<Record<keyof typeof koAccount, string>> = {
   "account.privacy.deadline": "We will notify you of the result by {date}",
   "account.privacy.identity": "Verify your identity with a passkey when submitting",
   "account.privacy.submit": "Submit request",
-};
+} as const;

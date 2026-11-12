@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R2 SETUP: the 운영 시작 preview tells the truth, through the real
+//! UX-R2 SETUP: the go-live preview tells the truth, through the real
 //! router as `console_rt`.
-//! - company-49 (regression): a 사업장 short of all four 4대보험 counts once,
+//! - company-49 (regression): a workplace short of all four social insurances counts once,
 //!   not once per insurer; no line names the contact store that does not exist.
 //! - company-53: every counted line carries the records it counts.
-//! - hire-34 (regression): 인원 is who is employed today; 입사 예정 apart.
+//! - hire-34 (regression): headcount is who is employed today; scheduled joiners apart.
 //! - governance-20: the rail asks for a second passkey until there are two.
 //! - routed org changes count the deciders Cedar decides, never a role name.
 
@@ -150,7 +150,8 @@ async fn regression_go_live_counts_the_records_the_panels_show(pool: PgPool) {
         "opened_on": "2020-03-02", "is_head_office": true, "kind_code": "HEAD_OFFICE",
         "insurance": { "shortcut": "ALL_ESTABLISHED_NUMBERS_LATER" },
     })).await;
-    // 오송공장: no 등록증 yet and 4대보험 「아직 없음」 — four insurer rows, one 사업장.
+    // Osong factory: no business registration certificate yet and the four social
+    // insurances set to "None yet" — four insurer rows, one workplace.
     let osong = ctx.ok("POST", &workplaces, json!({
         "name": "오송공장", "address": address(), "opened_on": "2021-05-03", "kind_code": "FACTORY",
         "insurance": { "shortcut": "NONE_YET" },
@@ -225,7 +226,7 @@ async fn regression_go_live_counts_the_records_the_panels_show(pool: PgPool) {
         !p.to_string().contains("security_contact_store_pending"),
         "{p}"
     );
-    // regression hire-34: was 3 (the 입사 예정 counted in 인원).
+    // regression hire-34: was 3 (the scheduled joiner counted in headcount).
     assert_eq!(
         (
             &p["facts"]["employees"],
@@ -321,7 +322,8 @@ async fn regression_routed_org_changes_count_the_deciders_cedar_decides_never_a_
         "invite_executive"
     );
 
-    // A tenant role with 조직 결재 over 전체, granted from setup: the colleague now counts.
+    // A tenant role with org approval over the whole tenant, granted from setup: the
+    // colleague now counts.
     let role = ctx.ok("POST", "/api/v1/access/roles", json!({ "name_ko": "조직 결재", "lines": [{ "domain": "org", "levels": ["view", "approve"] }] })).await;
     let op = json!({ "op": "grant", "account_id": colleague.as_uuid(), "role_id": role["id"],
         "scope": { "kind": "TENANT", "node_id": null, "include_descendants": true }, "effective_in_setup": true });
@@ -425,7 +427,8 @@ fn app_state(runtime: PgPool, leave_command: PgPool, keys: &(String, String)) ->
         .unwrap()
 }
 
-/// Negative: 운영 시작 is refused while the preview counts a blocker (409 go_live_blocked) or when the digest is not the
+/// Negative: go-live is refused while the preview counts a blocker (409 go_live_blocked)
+/// or when the digest is not the
 /// preview's (409 preview_stale), each with a verified passkey, and nothing is written either time.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn go_live_is_refused_with_blockers_open_or_a_stale_digest_and_writes_nothing(pool: PgPool) {

@@ -1,18 +1,22 @@
 //! `GET /employees/export.csv?layout=register`: the filtered rows as a
-//! 근로자 명부 (SC-HRR-003; hr-reports-registers §1 L1–L4).
+//! worker register (SC-HRR-003; hr-reports-registers §1 L1–L4).
 //!
-//! Columns follow 근로기준법 시행규칙 별지 제16호서식 (개정 2024-07-29), which
-//! carries the 시행령 §20 items: 1 성명 · 2 성별 · 3 생년월일 · 4 주소 · 5 이력 ·
-//! 6 종사하는 업무의 종류 · 7 고용 또는 고용갱신 연월일, 계약기간 · 8 해고·퇴직·사망
-//! 연월일과 사유 · 9 그 밖에 필요한 사항 (근기법 §41①, 시행령 §20, read
-//! 2026-10-03 from law.go.kr DRF: 근로기준법 MST=290781, 시행령 MST=270551,
-//! 시행규칙 MST=269393). 사번, 사업장 and 소속 lead each row so a 사업장's
-//! register can be cut from the file (§41① 「각 사업장별로」).
+//! Columns follow Labor Standards Act Enforcement Rule Annex Form No. 16
+//! (amended 2024-07-29), which carries the Enforcement Decree §20 items:
+//! 1 name · 2 sex · 3 date of birth · 4 address · 5 history · 6 kind of work
+//! engaged in · 7 date of employment or employment renewal, contract period ·
+//! 8 date of and reason for dismissal, exit or death · 9 other necessary
+//! matters (Labor Standards Act §41①, Enforcement Decree §20, read 2026-10-03
+//! from law.go.kr DRF: Labor Standards Act MST=290781, Enforcement Decree
+//! MST=270551, Enforcement Rule MST=269393). Employee number, workplace and
+//! affiliation lead each row so a workplace's register can be cut from the
+//! file (§41① "for each workplace").
 //!
 //! An item not recorded is an empty cell, never a guess (HR-6: empty =
-//! 미입력). 성별, 주소, 이력, 퇴직 사유 and 기타 are the MR-23 register facts
-//! (`register_facts`); the 퇴직 사유 is the code's label (system or tenant).
-//! Labels only (근기법 §40): no internal code, id or flag is written.
+//! not entered). Sex, address, history, exit reason and other are the MR-23
+//! register facts (`register_facts`); the exit reason is the code's label
+//! (system or tenant). Labels only (Labor Standards Act §40): no internal
+//! code, id or flag is written.
 
 use sqlx::Row;
 use time::Duration;
@@ -29,15 +33,16 @@ use console_hr_domain::text::parse_yyyy_mm_dd;
 pub enum ExportLayout {
     /// The directory columns (`employees-standard.csv`).
     Standard,
-    /// The 근로자 명부 columns, in 별지 제16호서식 order.
+    /// The worker register columns, in Annex Form No. 16 order.
     Register,
 }
 
 const REGISTER_HEADER: &str = "사번,성명,성별,생년월일,주소,전화번호,사업장,소속,종사 업무,고용일,갱신일,계약기간,마지막 근무일,퇴직일,퇴직(해고) 사유,이력,그 밖에 필요한 사항\r\n";
 
 /// The register's row source; the correlated reads use the list's `e`, `p`
-/// and `ea`. 사업장 is the assigned workplace's name today (E-S3a), else the
-/// imported worksite text; `workplace_id=` cuts one 사업장's register.
+/// and `ea`. The workplace is the assigned workplace's name today (E-S3a),
+/// else the imported worksite text; `workplace_id=` cuts one workplace's
+/// register.
 pub(crate) const REGISTER_SELECT: &str = concat!(
     "SELECT e.employee_number, e.name, e.birth_date::TEXT AS birth_date, \
     CASE WHEN console_employee_facts(e.org_id,e.id) ? 'phone' THEN console_employee_facts(e.org_id,e.id)->>'phone' ELSE p.phone_e164 END AS phone_e164, \
@@ -112,11 +117,11 @@ const SEX: &str = "#sex";
 const EXIT_REASON: &str = "#exit_reason";
 const CAREERS: &str = "#careers";
 
-/// Marker for the derived 퇴직일 column.
+/// Marker for the derived exit date column.
 const RETIRED_ON: &str = "#retired_on";
 
-/// 퇴직일 = 마지막 근무일 + 1 (decisions #9: `exit_date` is the 마지막 근무일);
-/// empty when the stored date is not an ISO date.
+/// Exit date = last working day + 1 (decisions #9: `exit_date` is the last
+/// working day); empty when the stored date is not an ISO date.
 pub fn retired_on(last_working_day: &str) -> String {
     parse_yyyy_mm_dd(last_working_day)
         .ok()

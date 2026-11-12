@@ -1,7 +1,7 @@
-//! Finance GL (총계정원장 전표) domain.
+//! Finance GL (general-ledger voucher) domain.
 //!
-//! Pure accounting-voucher rules: the 기표→차대검증→승인→전기→역분개 FSM, the
-//! 차/대(debit/credit) balance math behind the balance gate, and the contra-line
+//! Pure accounting-voucher rules: the drafting→debit/credit check→approval→posting→reversal
+//! FSM, the debit/credit balance math behind the balance gate, and the contra-line
 //! derivation for a reversal. No persistence or HTTP concerns live here.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
@@ -65,15 +65,15 @@ macro_rules! typed_id {
 }
 
 typed_id!(
-    /// A general-ledger voucher (전표, VC-…).
+    /// A general-ledger voucher (VC-…).
     VoucherId
 );
 typed_id!(
-    /// One 차/대 line of a voucher.
+    /// One debit/credit line of a voucher.
     VoucherLineId
 );
 
-/// Debit (차변) or credit (대변) side of a voucher line.
+/// Debit or credit side of a voucher line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DebitCredit {
@@ -90,7 +90,7 @@ impl DebitCredit {
         }
     }
 
-    /// The Korean bookkeeping label (차변/대변).
+    /// The Korean bookkeeping label (the Korean words for debit/credit).
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
@@ -119,8 +119,8 @@ impl DebitCredit {
     }
 }
 
-/// Voucher FSM state. 기표(draft) → 차대검증(balance-checked) → 승인(approved) →
-/// 전기(posted) → 역분개(reversed).
+/// Voucher FSM state. Drafting (draft) → debit/credit check (balance-checked) →
+/// approval (approved) → posting (posted) → reversal (reversed).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum VoucherStatus {
@@ -168,7 +168,7 @@ impl VoucherStatus {
         }
     }
 
-    /// True once the voucher is 전기(posted): its lines are immutable and it may
+    /// True once the voucher is posted: its lines are immutable and it may
     /// only be superseded by a reversal.
     #[must_use]
     pub const fn is_terminal_posted(self) -> bool {
@@ -202,7 +202,7 @@ pub fn validate_voucher_transition(
     }
 }
 
-/// The 차/대 totals of a voucher's lines.
+/// The debit/credit totals of a voucher's lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct BalanceOutcome {
     pub debit_total_won: i64,
@@ -210,15 +210,15 @@ pub struct BalanceOutcome {
 }
 
 impl BalanceOutcome {
-    /// A voucher is balanced when 차변 = 대변 and the total is strictly positive
-    /// (a zero-amount voucher never clears 차대검증).
+    /// A voucher is balanced when debit = credit and the total is strictly positive
+    /// (a zero-amount voucher never clears the debit/credit check).
     #[must_use]
     pub const fn is_balanced(self) -> bool {
         self.debit_total_won == self.credit_total_won && self.debit_total_won > 0
     }
 }
 
-/// Sum the 차/대 sides. Every line amount must be strictly positive; sums use
+/// Sum the debit/credit sides. Every line amount must be strictly positive; sums use
 /// checked arithmetic so an overflow fails closed rather than wrapping (money
 /// path).
 pub fn compute_balance<I>(lines: I) -> Result<BalanceOutcome, KernelError>
@@ -260,7 +260,7 @@ where
 }
 
 /// Fail closed unless the voucher is balanced — the balance gate that blocks a
-/// voucher from advancing past 차대검증.
+/// voucher from advancing past the debit/credit check.
 pub fn ensure_balanced(outcome: BalanceOutcome) -> Result<(), KernelError> {
     if outcome.is_balanced() {
         Ok(())

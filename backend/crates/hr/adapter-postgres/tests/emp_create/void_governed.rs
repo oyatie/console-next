@@ -1,5 +1,6 @@
-//! MR-26 after 운영 시작: the governed void (a second person, or a sole
-//! holder's step-up), its refusals, the kept 사번 and the PII destruction.
+//! MR-26 after go-live: the governed void (a second person, or a sole
+//! holder's step-up), its refusals, the kept employee number and the PII
+//! destruction.
 
 use console_hr_adapter_postgres::corrections::SecondPersonContext;
 use console_hr_adapter_postgres::registration_void::VoidOutcome;
@@ -15,7 +16,7 @@ use crate::void::{
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_void_after_go_live_is_decided_by_a_second_person_and_keeps_the_number(pool: PgPool) {
     let f = fixture(pool.clone()).await;
-    // 입사 예정: PRE_HIRE with a SCHEDULED ONBOARD.
+    // Pending hire: PRE_HIRE with a SCHEDULED ONBOARD.
     let id = register(&f, "v-1", "2030-01-02", "").await;
     let number: String = sqlx::query_scalar("SELECT employee_number FROM employees WHERE id = $1")
         .bind(id)
@@ -79,7 +80,8 @@ async fn a_void_after_go_live_is_decided_by_a_second_person_and_keeps_the_number
         onboard, "CANCELLED",
         "the runner never brings the person back"
     );
-    // The 사번 stays taken (decisions #6), and the next generated one skips it.
+    // The employee number stays taken (decisions #6), and the next generated one
+    // skips it.
     let mut taken = f.body("v-2", "REGULAR");
     taken.employee_number = number.clone();
     assert_eq!(code(f.create(taken).await), (409, "employee_number_taken"));
@@ -150,7 +152,8 @@ async fn a_started_registration_needs_the_attestation_and_a_worked_one_is_exited
         sole_holder_refuse: false,
     };
     assert_eq!(code(attempt(true, sole).await), (401, "step_up_required"));
-    // An applied 발령 beyond the ONBOARD is a work record: 퇴직, not 취소.
+    // An applied personnel order beyond the ONBOARD is a work record: an exit,
+    // not a void.
     sqlx::query(
         "INSERT INTO employee_lifecycle_events (org_id, employee_id, event_type, effective_date, \
            from_status, to_status, comment, created_by) \

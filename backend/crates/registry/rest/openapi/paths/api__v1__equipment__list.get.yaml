@@ -3,7 +3,7 @@ tags:
 operationId: listEquipment
 summary: Paginated, filterable, branch-scoped equipment list
 description: 'Read access (WorkOrderReadAll — all authenticated roles). Non-SUPER_ADMIN principals see only rows in
-  their own branch(es). The `q` parameter is normalized like the 호기-lookup: strips a leading `#` and a trailing `호기`
+  their own branch(es). The `q` parameter is normalized like the unit-number lookup: strips a leading `#` and a trailing `호기` (unit number)
   suffix then matches leading-zero-insensitively across management_no, equipment_no, model, maker, customer name, site
   name, and VIN.
 
@@ -16,7 +16,7 @@ parameters:
   required: false
   schema:
     type: string
-  description: Free-text search (호기-normalized, leading-zero-insensitive).
+  description: Free-text search (unit-number-normalized, leading-zero-insensitive).
 - name: status
   in: query
   required: false

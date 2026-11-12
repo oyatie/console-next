@@ -2,7 +2,7 @@ tags:
   - workflow-studio
 operationId: listWorkflowDefinitionsByObjectKind
 summary: Automation rules acting on an object kind (dynamics↔ontology)
-description: The explore screen's "작용 자동화" panel source. Returns definitions whose primary object_type is the kind or
+description: The explore screen's "automations acting on it" panel source. Returns definitions whose primary object_type is the kind or
   whose declared object_kinds chain touches it, plus the trigger bindings scoped to that kind.
 security:
 - bearerAuth: []

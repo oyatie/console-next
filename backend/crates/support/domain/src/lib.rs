@@ -2,7 +2,7 @@
 //!
 //! Kept strictly separate from the 16-state work-order FSM and the P1 dispatch
 //! FSM. A support ticket is a help-desk request (internal staff or external
-//! customer), not a 정비 job. No I/O lives here — only data and transition
+//! customer), not a maintenance job. No I/O lives here — only data and transition
 //! rules, exercised by unit tests.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 

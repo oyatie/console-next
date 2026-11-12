@@ -1,4 +1,4 @@
-//! 도로명주소 and 상세주소 search through the server (lane corrections #11–13).
+//! Road-name address and detailed address search through the server (lane corrections #11–13).
 //!
 //! The keys come from the server environment (`STREET_JUSO_API_KEY`,
 //! `DETAILED_JUSO_API_KEY`) and never reach the browser, git or a log line.
@@ -46,7 +46,7 @@ pub struct AddressSearch {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AddressDetail {
-    /// `OK` (possibly with no options: the free-text 상세주소 stays) or `UNAVAILABLE`.
+    /// `OK` (possibly with no options: the free-text detailed address stays) or `UNAVAILABLE`.
     pub status: SearchStatus,
     pub items: Vec<DetailOption>,
 }
@@ -59,7 +59,7 @@ pub enum JusoRefusal {
     RateLimited,
 }
 
-/// The building a road-address hit names (its juso codes), for 상세주소.
+/// The building a road-address hit names (its juso codes), for the detailed address.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Building {
     pub adm_cd: String,
@@ -167,7 +167,7 @@ impl JusoClient {
         }
     }
 
-    /// 도로명주소 keyword search, one page (1-based).
+    /// Road-name address keyword search, one page (1-based).
     ///
     /// # Errors
     /// `RateLimited` over the per-user budget; `InvalidQuery` when juso refuses the keyword.
@@ -220,8 +220,9 @@ impl JusoClient {
         })
     }
 
-    /// 상세주소 options of one building: its 동 (no `dong`), or the 층·호 of
-    /// one 동 (`dong` given; an empty `dong` lists a building without 동).
+    /// Detailed-address options of one building: its building wings ("dong";
+    /// no `dong`), or the floors and units of one wing (`dong` given; an empty
+    /// `dong` lists a building without wings).
     ///
     /// # Errors
     /// `RateLimited` over the per-user budget.

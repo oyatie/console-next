@@ -1,6 +1,7 @@
-//! 등록증 재발급·정정 against the record's recorded states. Revisions are
-//! full states, so a change dated before a later one is hidden or undone by
-//! it: such a date is refused, never written. Pure; the adapter reads the dates.
+//! Certificate reissue / correction against the record's recorded states.
+//! Revisions are full states, so a change dated before a later one is hidden
+//! or undone by it: such a date is refused, never written. Pure; the adapter
+//! reads the dates.
 
 use crate::refusal::{Refusal, Warning};
 
@@ -11,9 +12,10 @@ pub const BEFORE_STATE_IN_FORCE: &str = "before_state_in_force";
 /// A reissue dated before a scheduled registration state: that state, recorded
 /// without the change, would undo it from its day on.
 pub const REGISTRATION_CHANGE_SCHEDULED: &str = "registration_change_scheduled";
-/// The same for the 법인's part (대표자, 법인명, 본점) and a scheduled 법인 state.
+/// The same for the legal entity's part (representative, legal entity name,
+/// head office) and a scheduled legal entity state.
 pub const ENTITY_CHANGE_SCHEDULED: &str = "entity_change_scheduled";
-/// The 법인's part was moved to the later state's date (that state is in force).
+/// The legal entity's part was moved to the later state's date (that state is in force).
 pub const ENTITY_CHANGE_FROM_LATER_STATE: &str = "entity_change_from_later_state";
 
 /// The registration's recorded states against the reissue's date: the state in
@@ -41,12 +43,12 @@ pub fn reissue_registration_from(
     Ok(())
 }
 
-/// From when the reissue's 법인 part holds, given the 법인's latest recorded
-/// state (`latest`). The part is the state in force with the certificate's
-/// changes, so a scheduled state (not in it) is refused rather than undone; a
-/// later state already in force is that state, so the part starts there, with
-/// a warning (ponytail: carrying the change through later states,
-/// ent-revision-carry-forward, keeps its own date).
+/// From when the reissue's legal entity part holds, given the legal entity's
+/// latest recorded state (`latest`). The part is the state in force with the
+/// certificate's changes, so a scheduled state (not in it) is refused rather
+/// than undone; a later state already in force is that state, so the part
+/// starts there, with a warning (ponytail: carrying the change through later
+/// states, ent-revision-carry-forward, keeps its own date).
 ///
 /// # Errors
 /// `effective_from` `entity_change_scheduled`.

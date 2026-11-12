@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! LANE ENTITY-FIX (parity S3 dead ends, 2026-10-07): sequential edits on a
-//! 법인 with a 등록증 — a scheduled 대표자 변경, then a 대표전화 정정, then a
-//! 개업연월일 정정 — as the runtime role `console_rt` (FORCE RLS). What must
-//! keep failing (a stale version, a 발급일 before the 개업연월일) is refused
-//! with its code, writes no revision and no audit row.
+//! LANE ENTITY-FIX (parity S3 dead ends, 2026-10-07): sequential edits on a legal entity
+//! with a certificate — a scheduled representative change, then a main phone number
+//! correction, then a business start date correction — as the runtime role `console_rt`
+//! (FORCE RLS). What must keep failing (a stale version, an issue date before the business
+//! start date) is refused with its code, writes no revision and no audit row.
 
 mod common;
 
@@ -39,8 +39,8 @@ async fn count(owner: &PgPool, sql: &str, id: Uuid) -> i64 {
         .unwrap()
 }
 
-/// A 법인 with its 등록증 (the VAT unit derived from it is v2); returns the
-/// entity, the 등록증 and the newest entity version read.
+/// A legal entity with its certificate (the VAT unit derived from it is v2); returns the
+/// entity, the certificate and the newest entity version read.
 async fn entity_with_certificate(
     owner: &PgPool,
 ) -> (
@@ -129,7 +129,7 @@ async fn a_correction_after_a_scheduled_change_saves_on_the_newest_version_and_l
         "a stale save writes no audit row"
     );
 
-    // On the newest version (current or scheduled) the 정정 of today saves.
+    // On the newest version (current or scheduled) the correction of today saves.
     store
         .revise_entity(
             &cmd(&actor),
@@ -155,7 +155,7 @@ async fn a_correction_after_a_scheduled_change_saves_on_the_newest_version_and_l
         "the scheduled 대표자 변경 is kept"
     );
 
-    // Regression: the 정정 lists only what it changed, not the scheduled 대표자.
+    // Regression: the correction lists only what it changed, not the scheduled representative.
     let history = store.entity_history(&actor, entity, true).await.unwrap();
     let fields: Vec<&str> = history[0]
         .changes

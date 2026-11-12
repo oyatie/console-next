@@ -77,7 +77,7 @@ pub fn stored_employee_import_row(
     )
     .map_err(|err| HrError::validation(format!("stored import canonical row is invalid: {err}")))?;
     Ok(StoredEmployeeImportRow {
-        // r3:hire-01: empty when the file has no 법인 column.
+        // r3:hire-01: empty when the file has no legal entity column.
         company: canonical_row
             .get("company")
             .and_then(Value::as_str)

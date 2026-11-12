@@ -4,7 +4,8 @@
 //! returns the stored row, a reused key with other terms is a 409.
 
 use console_hr_domain::contract::{
-    ContractKind, ContractRow, ContractTerms, in_force, overlapping, validate_terms,
+    ContractKind, ContractRow, ContractTerms, correction_terms, in_force, overlapping,
+    validate_terms,
 };
 use console_hr_domain::profile::enums::PayUnit;
 use console_hr_domain::text::parse_yyyy_mm_dd;
@@ -24,6 +25,8 @@ use crate::own_record::own_record_guard;
 use crate::profile::date_text;
 use crate::{HrError, HrService};
 mod refusal;
+mod terms;
+pub use terms::ContractRows;
 
 const MANAGE: Feature = Feature::EmployeeDirectoryManage;
 
@@ -87,6 +90,7 @@ async fn load_stored(
 ) -> Result<Vec<Stored>, HrError> {
     let rows = sqlx::query(
         "SELECT id, command_id, kind, start_date, end_date, wage_won, pay_unit, weekly_minutes, \
+         daily_minutes, scheduled_days_per_week, weekly_paid_minutes, terms_effective_from, \
          supersedes_id, created_at FROM employee_contracts WHERE org_id = $1 AND employee_id = $2 \
          ORDER BY start_date DESC, created_at DESC",
     )
@@ -111,6 +115,10 @@ async fn load_stored(
                         wage_won: row.try_get("wage_won")?,
                         pay_unit: PayUnit::parse(&pay_unit)?,
                         weekly_minutes: row.try_get("weekly_minutes")?,
+                        daily_minutes: row.try_get("daily_minutes")?,
+                        scheduled_days_per_week: row.try_get("scheduled_days_per_week")?,
+                        weekly_paid_minutes: row.try_get("weekly_paid_minutes")?,
+                        terms_effective_from: row.try_get("terms_effective_from")?,
                     },
                 },
             })
@@ -165,36 +173,7 @@ async fn require_employee(
         })
 }
 
-/// Appends one validated row in the caller's transaction; the registration
-/// (EMP-CREATE) records the first contract through it.
-pub(crate) async fn insert_row(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
-    org_id: Uuid,
-    employee_id: Uuid,
-    command_id: Uuid,
-    terms: &ContractTerms,
-    supersedes_id: Option<Uuid>,
-    actor: Uuid,
-) -> Result<Uuid, HrError> {
-    Ok(sqlx::query_scalar(
-        "INSERT INTO employee_contracts (org_id, employee_id, command_id, kind, start_date, \
-         end_date, wage_won, pay_unit, weekly_minutes, supersedes_id, created_by) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
-    )
-    .bind(org_id)
-    .bind(employee_id)
-    .bind(command_id)
-    .bind(terms.kind.as_str())
-    .bind(terms.start_date)
-    .bind(terms.end_date)
-    .bind(terms.wage_won)
-    .bind(terms.pay_unit.as_str())
-    .bind(terms.weekly_minutes)
-    .bind(supersedes_id)
-    .bind(actor)
-    .fetch_one(tx.as_mut())
-    .await?)
-}
+pub(crate) use terms::insert_row;
 
 fn terms_of(request: &RecordContractRequest) -> Result<ContractTerms, HrError> {
     let terms = ContractTerms {
@@ -208,6 +187,10 @@ fn terms_of(request: &RecordContractRequest) -> Result<ContractTerms, HrError> {
         wage_won: request.wage_won,
         pay_unit: request.pay_unit,
         weekly_minutes: request.weekly_minutes,
+        daily_minutes: None,
+        scheduled_days_per_week: None,
+        weekly_paid_minutes: None,
+        terms_effective_from: None,
     };
     validate_terms(&terms)?;
     Ok(terms)
@@ -259,6 +242,13 @@ impl HrService {
                 own_record_guard(tx, org, actor, employee_id, manage).await?;
                 let all = load_stored(tx, org_uuid, employee_id).await?;
                 let today = today_kst();
+                let terms = if let Some(original) =
+                    all.iter().find(|s| Some(s.row.id) == request.supersedes_id)
+                {
+                    correction_terms(&original.row.terms, terms)?
+                } else {
+                    terms
+                };
                 if let Some(prior) = all.iter().find(|s| s.command_id == command_id) {
                     if prior.row.terms == terms && prior.row.supersedes_id == request.supersedes_id
                     {

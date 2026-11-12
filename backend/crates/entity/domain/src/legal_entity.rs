@@ -1,4 +1,4 @@
-//! LegalEntity (법인 / 개인사업자): input validation into a typed revision.
+//! LegalEntity (legal entity / sole proprietor): input validation into a typed revision.
 
 use console_kernel_core::kr::{CorpRegNo, PhoneE164};
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,7 @@ pub struct CodeInput {
 }
 
 /// The list version stamped while no reference list is loaded: the code is
-/// format-checked only and the UI shows 「코드 확인 필요」.
+/// format-checked only and the UI shows "code needs checking".
 pub const CODE_UNVERIFIED: &str = "UNVERIFIED";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -66,7 +66,7 @@ pub struct LegalEntityInput {
     pub incorporated_on: Option<String>,
     pub fiscal_year_end_month: Option<i32>,
     pub capital_won: Option<i64>,
-    /// 임원 in printed order. Omitted (`null`) on a revise: the current ones
+    /// Executives in printed order. Omitted (`null`) on a revise: the current ones
     /// are kept; `[]` removes them all.
     pub directors: Option<Vec<DirectorInput>>,
     pub vat_unit_mode: Option<String>,
@@ -75,12 +75,14 @@ pub struct LegalEntityInput {
     pub priority_support: Option<String>,
     pub priority_support_basis: Option<String>,
     pub large_group_member: Option<bool>,
-    /// 설립 중 (catalog company-04): a 법인 recorded before its 설립등기, so
-    /// with no 법인등록번호 yet. On a revise the server takes it from the
-    /// record (it only ever ends, when the number is entered).
+    /// Being incorporated (catalog company-04): a legal entity recorded before
+    /// its incorporation registration, so with no corporate registration
+    /// number yet. On a revise the server takes it from the record (it only
+    /// ever ends, when the number is entered).
     pub founding: Option<bool>,
-    /// 개업연월일 of the 사업자등록증 typed with it (create only): the first
-    /// record starts there when no 설립일 is known (company-21).
+    /// Business start date of the business registration certificate typed
+    /// with it (create only): the first record starts there when no
+    /// incorporation date is known (company-21).
     pub opened_on: Option<String>,
 }
 
@@ -113,9 +115,10 @@ pub struct LegalEntityDraft {
     pub main_phone: Option<PhoneE164>,
     pub priority_support: Option<(PrioritySupport, PrioritySupportBasis)>,
     pub large_group_member: Option<bool>,
-    /// Still 설립 중: asked for and no 법인등록번호 entered yet.
+    /// Still being incorporated: asked for and no corporate registration
+    /// number entered yet.
     pub founding: bool,
-    /// When the record's first revision starts, failing a 설립일.
+    /// When the record's first revision starts, failing an incorporation date.
     pub opened_on: Option<time::Date>,
 }
 

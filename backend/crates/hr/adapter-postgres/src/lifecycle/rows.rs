@@ -57,8 +57,9 @@ fn group_transfer_view(row: &sqlx::postgres::PgRow) -> Result<Option<GroupTransf
         return Ok(None);
     };
     // A row the release before 0356 wrote (blue/green overlap, or after a
-    // rollback) has no 연차/근속 pair: it recorded the one-choice contract,
-    // which Continuity::parse reads exactly as the 0356 backfill does.
+    // rollback) has no annual leave/length of service pair: it recorded the
+    // one-choice contract, which Continuity::parse reads exactly as the 0356
+    // backfill does.
     let annual_leave: Option<String> = row.try_get("gt_annual_leave")?;
     let seniority: Option<String> = row.try_get("gt_seniority")?;
     let read = Continuity::parse(

@@ -25,7 +25,7 @@ pub struct CreateEmployeeRequest {
     #[serde(default)]
     pub org_unit: String,
     /// When given, an ACTIVE Site/Department/Team of this tenant.
-    /// Omitted: 미배치.
+    /// Omitted: unplaced.
     #[serde(default)]
     pub org_unit_id: Option<Uuid>,
     #[serde(default)]
@@ -72,8 +72,9 @@ pub struct CreateEmployeeRequest {
     #[serde(default)]
     pub duplicate_override: Option<DuplicateOverride>,
     /// MR-22: where the person works, recorded with the registration. The
-    /// 사업장 alone is enough (its 법인 follows); a 법인 needs its 사업장.
-    /// Both absent: the 사업장 the unit sits in, else 미배치.
+    /// workplace alone is enough (its legal entity follows); a legal entity
+    /// needs its workplace. Both absent: the workplace the unit sits in, else
+    /// unplaced.
     #[serde(default)]
     pub legal_entity_id: Option<Uuid>,
     #[serde(default)]

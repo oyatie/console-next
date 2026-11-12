@@ -1,4 +1,4 @@
-//! The 이관 확인 rows: one per planned row of an applied run, keyset by
+//! The migration review rows: one per planned row of an applied run, keyset by
 //! (sheet, row), filtered by state. Unresolved company cells retain their source; no RRN.
 
 use console_platform_authz::{Feature, Principal};

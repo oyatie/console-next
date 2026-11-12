@@ -41,7 +41,7 @@ fn rename(unit: Uuid, version: i32, name: &str) -> OrgSetupOp {
     }
 }
 
-/// The fixture's 사업장 opened on 2020-03-02; its tree unit starts that day.
+/// The fixture's workplace opened on 2020-03-02; its tree unit starts that day.
 const OPENED: time::Date = date!(2020 - 03 - 02);
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -65,7 +65,7 @@ async fn a_batch_takes_effect_on_its_date_and_today_when_it_names_none(owner: Pg
         .unwrap();
     assert_eq!(record(&owner, undated.units[0].org_unit_id).await.0, today);
 
-    // A company being set up enters a 부서 that began years ago, and the team
+    // A company being set up enters a department that began years ago, and the team
     // under it: every unit of the batch is recorded from that day.
     let began = date!(2021 - 03 - 02);
     let dated = store
@@ -87,7 +87,8 @@ async fn a_batch_takes_effect_on_its_date_and_today_when_it_names_none(owner: Pg
         );
     }
 
-    // A 기준일 on that day shows the 부서 under its 사업장; the day before does not.
+    // An as-of date on that day shows the department under its workplace; the day before
+    // does not.
     let names_on = |date: time::Date| {
         let (store, actor) = (store.clone(), actor.clone());
         async move {
@@ -113,7 +114,7 @@ async fn a_batch_takes_effect_on_its_date_and_today_when_it_names_none(owner: Pg
         .unwrap();
     let (_, status, _, _) = unit_head(&owner, dated.units[0].org_unit_id).await;
     assert_ne!(status, "active");
-    // ...and leaves no trace in its own past: on its day the 부서 was never entered.
+    // ...and leaves no trace in its own past: on its day the department was never entered.
     assert!(names_on(began).await.is_empty());
 }
 
@@ -167,7 +168,7 @@ async fn a_date_that_cannot_hold_is_refused_and_nothing_is_written(owner: PgPool
         .await
         .unwrap()
         .parse_date();
-    // A 부서 that began in 2022, renamed in 2024.
+    // A department that began in 2022, renamed in 2024.
     let made = store
         .apply_org_setup_batch_on(
             &cmd(&actor),
@@ -197,13 +198,13 @@ async fn a_date_that_cannot_hold_is_refused_and_nothing_is_written(owner: PgPool
             today.next_day().unwrap(),
             "org_setup_date_future",
         ),
-        // A unit cannot start before the 사업장 it stands in opened.
+        // A unit cannot start before the workplace it stands in opened.
         (
             vec![under_workplace("x", "과거부", hq)],
             OPENED.previous_day().unwrap(),
             "org_setup_date_before_parent",
         ),
-        // Nor a team before the 부서 it is under.
+        // Nor a team before the department it is under.
         (
             vec![OrgSetupOp::Create {
                 client_ref: None,

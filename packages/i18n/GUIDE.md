@@ -1,9 +1,13 @@
 # Copy guide (catalog rules)
 
-Every user-facing string lives in `src/catalogs/ko/<ns>.ts` (source, one file per id prefix, merged by
-`ko.ts`) and is translated per locale (`en/<ns>.ts`, merged by `en.ts`). Sign-in, shell and
-shared-state copy (ids `app.`, `auth.`, `common.`, `shell.`) lives in `src/catalogs/boot.ts` (both
-locales) instead: it ships in the entry, while each locale's screen catalog loads with the first screen.
+Every user-facing string lives in the catalogs, one file per id prefix. **English is the source**:
+`src/catalogs/en/<ns>.ts` (merged by `en.ts`) defines every id. Each locale translates those ids:
+`ko/<ns>.ts` (merged by `ko.ts`) is typed `Record<keyof typeof en…, string>`, so a missing Korean id
+fails `npm run typecheck`; a future locale may be partial and falls back to English. `t()` looks up the
+current locale (Korean by default). Sign-in, shell and shared-state copy (ids `app.`, `auth.`,
+`common.`, `shell.`) lives in `src/catalogs/boot.ts` (every locale) instead: it ships in the entry,
+while each locale's screen catalog loads with the first screen.
+A new string: add the id with its English text to `en/<ns>.ts`, then its Korean to `ko/<ns>.ts`.
 Components never contain literal text; `npm run lint` fails on Hangul outside the catalogs.
 
 ## Ids

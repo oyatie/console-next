@@ -27,7 +27,7 @@ impl EffectiveFeatureGrant {
 }
 
 /// An [`EffectiveFeatureGrant`] that carries an effective-dated interval
-/// (ADR-0032 §1) — a 발령 with a start date, and possibly an end date.
+/// (ADR-0032 §1) — an appointment with a start date, and possibly an end date.
 ///
 /// The grant inside is **unreachable without a decision instant**. The field is
 /// private and the only way through is [`Self::resolve`], which takes a

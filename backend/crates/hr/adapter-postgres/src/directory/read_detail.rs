@@ -210,7 +210,7 @@ impl HrService {
             Box::pin(async move {
                 // AX-5: outside the reader's grant set — or no such person —
                 // is one `out_of_scope` (no existence leak), and nothing was
-                // shown, so no 접속기록 row.
+                // shown, so no access log row.
                 authorize_hr_person_in(
                     tx,
                     &reader,

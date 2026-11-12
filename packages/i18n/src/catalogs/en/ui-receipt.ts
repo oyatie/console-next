@@ -1,6 +1,4 @@
-import type { koUiReceipt } from "../ko/ui-receipt";
-
-export const enUiReceipt: Record<keyof typeof koUiReceipt, string> = {
+export const enUiReceipt = {
   "uiReceipt.draft": "Draft",
   "uiReceipt.undoApplied": "Undo",
   "uiReceipt.dismiss": "Dismiss",
@@ -9,4 +7,4 @@ export const enUiReceipt: Record<keyof typeof koUiReceipt, string> = {
   "uiReceipt.recorded": "Recorded",
   "uiReceipt.checking.title": "No response received",
   "uiReceipt.checking": "The earlier request may already have been processed. Looking up its recorded state with the same request key. Do not run it again.",
-};
+} as const;

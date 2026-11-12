@@ -43,4 +43,4 @@ export const enEntityRecordClose = {
   "entityRecordClose.grants": "{count, number} access grants end · scoped to this entity or its workplaces",
   "entityRecordClose.grantsDone": "Ended {count, number} access grants",
   "entityRecordClose.grantsLeft": "{count, number} access grants could not be ended · settle them on the access screen",
-};
+} as const;

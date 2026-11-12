@@ -22,27 +22,29 @@ pub struct ImportRow {
     pub workplace: Option<String>,
     pub worksite_name: Option<String>,
     pub worksite_address: Option<String>,
-    /// 고용형태 as the file wrote it (a code or a label the operator maps).
+    /// Employment type as the file wrote it (a code or a label the operator maps).
     pub employment_type: Option<String>,
-    /// IMPORT-2: 재직상태, 휴직 시작일 and 휴직 유형 as the file wrote them.
+    /// IMPORT-2: employment status, leave start date and leave type as the file wrote them.
     pub status: Option<String>,
     pub leave_start_date: Option<String>,
     pub leave_type: Option<String>,
-    /// 복직 예정일 (required for 육아휴직 and 출산전후휴가).
+    /// Expected return date (required for childcare leave and maternity leave).
     pub leave_return_date: Option<String>,
-    /// IMPORT-2: the keyed hash of the row's 주민등록번호 (never the number).
+    /// IMPORT-2: the keyed hash of the row's resident registration number (never
+    /// the number).
     pub rrn_hmac: Option<Vec<u8>>,
-    /// W12: the row has a 휴대전화 (the number stays in the stored row).
+    /// W12: the row has a mobile phone (the number stays in the stored row).
     pub has_phone: bool,
-    /// r3:hire-16: `MALE` / `FEMALE` from the 성별 column or the 주민등록번호.
+    /// r3:hire-16: `MALE` / `FEMALE` from the sex column or the resident
+    /// registration number.
     pub sex: Option<String>,
-    /// r3:hire-16: 계약종료일 and 수습종료일 as the file wrote them.
+    /// r3:hire-16: contract end date and probation end date as the file wrote them.
     pub contract_end_date: Option<String>,
     pub probation_end_date: Option<String>,
 }
 
-/// The operator's choice for a row without a 사번 that resembles people on
-/// file: one of them (`employee_id`), or a new person (`null`).
+/// The operator's choice for a row without an employee number that resembles
+/// people on file: one of them (`employee_id`), or a new person (`null`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct IdentityPick {
@@ -66,31 +68,33 @@ pub struct Decisions {
     /// Imported company alias → a certificate-confirmed entity's primary workplace, or unresolved.
     #[serde(default)]
     pub company_map: BTreeMap<String, Option<Uuid>>,
-    /// Unit name in the file → an ACTIVE unit id, or `null`: 미배치 (no
-    /// unit). An unknown name the operator did not answer is 미배치 too.
+    /// Unit name in the file → an ACTIVE unit id, or `null`: unplaced (no
+    /// unit). An unknown name the operator did not answer is unplaced too.
     #[serde(default)]
     pub unit_map: BTreeMap<String, Option<Uuid>>,
-    /// 사업장 text in the file → an open 사업장 id, or `null`: not a 사업장
-    /// (a 현장 name), so it places nobody.
+    /// Workplace text in the file → an open workplace id, or `null`: not a
+    /// workplace (a site name), so it places nobody.
     #[serde(default)]
     pub workplace_map: BTreeMap<String, Option<Uuid>>,
-    /// 고용형태 text in the file → an employment type code, or `null`: leave
-    /// it empty (정보 미입력). The codes themselves map without an answer.
+    /// Employment type text in the file → an employment type code, or `null`:
+    /// leave it empty ("information not entered"). The codes themselves map
+    /// without an answer.
     #[serde(default)]
     pub employment_type_map: BTreeMap<String, Option<String>>,
-    /// `source_key` → the person a row without a 사번 is.
+    /// `source_key` → the person a row without an employee number is.
     #[serde(default)]
     pub identity: BTreeMap<String, IdentityPick>,
     /// `source_key` → why the row is left out.
     #[serde(default)]
     pub exclusions: BTreeMap<String, Exclusion>,
-    /// IMPORT-2: 재직상태 text → status code (`ACTIVE`, `ON_LEAVE`, ...).
+    /// IMPORT-2: employment status text → status code (`ACTIVE`, `ON_LEAVE`, ...).
     #[serde(default)]
     pub status_map: BTreeMap<String, String>,
-    /// IMPORT-2: 휴직 유형 text (`""` when the cell is empty) → leave type.
+    /// IMPORT-2: leave type text (`""` when the cell is empty) → leave type.
     #[serde(default)]
     pub leave_type_map: BTreeMap<String, String>,
-    /// IMPORT-2: `source_key` → the 사번 the operator gives a row without one.
+    /// IMPORT-2: `source_key` → the employee number the operator gives a row
+    /// without one.
     #[serde(default)]
     pub employee_numbers: BTreeMap<String, String>,
     /// W05: `reason` or `reason:field` → why every such row is left out
@@ -98,9 +102,10 @@ pub struct Decisions {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub group_exclusions: BTreeMap<String, Exclusion>,
     /// r3:hire-19: one answer for a conflict pattern, never row by row —
-    /// `workplace_conflict` → `follow_unit` (the 부서's 사업장) or
-    /// `follow_workplace` (the 근무지, the 부서 left 미배치); `status_conflict`
-    /// → `pre_hire` (재직 with a future 입사일 comes in 입사 예정).
+    /// `workplace_conflict` → `follow_unit` (the department's workplace) or
+    /// `follow_workplace` (the work location, the department left unplaced);
+    /// `status_conflict` → `pre_hire` (employed with a future hire date comes
+    /// in as pending hire).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub group_answers: BTreeMap<String, String>,
 }

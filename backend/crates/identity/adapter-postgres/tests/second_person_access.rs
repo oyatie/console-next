@@ -1,4 +1,4 @@
-//! D0.2 over the 권한 screen's grants (155): an access grant (role × scope ×
+//! D0.2 over the Access screen's grants (155): an access grant (role × scope ×
 //! dates) makes its holder an eligible second person only while it is live,
 //! old enough, noticed, and reaches the act's scope on its own.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
@@ -131,8 +131,8 @@ async fn a_revoked_ended_or_narrow_grant_does_not_count(owner: PgPool) {
         },
     )
     .await;
-    // Per grant, not per holder: an unnoticed 회사 전체 grant never lends the
-    // noticed 법인 grant its scope.
+    // Per grant, not per holder: an unnoticed company-wide grant never lends the
+    // noticed legal entity grant its scope.
     grant(
         &owner,
         org(),

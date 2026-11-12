@@ -20,12 +20,12 @@ properties:
     enum: [payslip, legal_notice]
   notice_type:
     type: string
-    description: Statutory subtype for a legal notice (근로계약/취업규칙/연차촉진/노무수령거부).
+    description: Statutory subtype for a legal notice, a Korean value such as 근로계약 (employment contract), 취업규칙 (work rules), 연차촉진 (annual leave use promotion) or 노무수령거부 (refusal to accept work).
   title:
     type: string
   legal_basis:
     type: string
-    description: Statutory basis surfaced in the passkey gate (e.g. 근로기준법 §61).
+    description: Statutory basis surfaced in the passkey gate (e.g. Labor Standards Act §61).
   source_kind:
     type: string
     description: Producing-object kind (e.g. workflow_run, payroll_run).

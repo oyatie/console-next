@@ -20,8 +20,8 @@ pub fn router(service: HrService) -> Router {
         .with_state(service)
 }
 
-/// The 최저임금 floor for a pay unit on a day; `null` when the register has
-/// no figure for that day.
+/// The minimum wage floor for a pay unit on a day; `null` when the register
+/// has no figure for that day.
 async fn minimum_wage(
     State(service): State<HrService>,
     Extension(principal): Extension<Principal>,

@@ -222,7 +222,7 @@ impl Importer {
         self.apply(run, &plan.dry_run_digest).await.unwrap()
     }
 
-    /// `(id, 사번, status)` by name (names are unique in these tests).
+    /// `(id, employee number, status)` by name (names are unique in these tests).
     pub async fn person(&self, name: &str) -> (Uuid, Option<String>, String) {
         sqlx::query_as(
             "SELECT id, employee_number, employment_status FROM employees \
@@ -235,7 +235,7 @@ impl Importer {
         .unwrap()
     }
 
-    /// An ACTIVE 부서 of this tenant named `name` (W03).
+    /// An ACTIVE department of this tenant named `name` (W03).
     pub async fn unit(&self, name: &str) -> Uuid {
         let id = Uuid::new_v4();
         sqlx::query("INSERT INTO org_units (org_id, id) VALUES ($1, $2)")

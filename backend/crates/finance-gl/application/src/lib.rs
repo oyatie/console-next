@@ -8,7 +8,7 @@ use console_kernel_core::{
 };
 use serde::{Deserialize, Serialize};
 
-/// One 차/대 line the caller wants on a draft voucher.
+/// One debit/credit line the caller wants on a draft voucher.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VoucherLineInput {
     pub account_code: String,
@@ -18,16 +18,16 @@ pub struct VoucherLineInput {
     pub memo: String,
 }
 
-/// A logical reference to the source 기안/document a voucher was derived from
-/// (승인 → 전표 파생 chain): an object type + id, resolvable in any domain.
+/// A logical reference to the source draft/document a voucher was derived from
+/// (approval → voucher derivation chain): an object type + id, resolvable in any domain.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VoucherSourceRef {
     pub object_type: String,
     pub object_id: String,
 }
 
-/// Open a fresh draft voucher (기표). `source` is set when the draft was derived
-/// from an approved expense-class 기안; `None` for a hand-keyed voucher.
+/// Open a fresh draft voucher. `source` is set when the draft was derived
+/// from an approved expense-class draft; `None` for a hand-keyed voucher.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateVoucherDraftCommand {
     pub actor: UserId,
@@ -39,9 +39,9 @@ pub struct CreateVoucherDraftCommand {
     pub occurred_at: Timestamp,
 }
 
-/// Derive a draft voucher from an approved source 기안 (지출결의/전표/구매). The
-/// approval chain calls this with the source object ref and the projected 차/대
-/// totals from the structured 증빙 lines. Distinct from
+/// Derive a draft voucher from an approved source draft (expenditure resolution / voucher /
+/// purchase). The approval chain calls this with the source object ref and the projected
+/// debit/credit totals from the structured evidence lines. Distinct from
 /// [`CreateVoucherDraftCommand`] only in that the source is REQUIRED here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateVoucherDraftFromSourceCommand {
@@ -64,7 +64,7 @@ pub struct VoucherTransitionCommand {
 }
 
 /// Reverse a posted voucher — creates a linked contra voucher; the memo explains
-/// why (역분개 사유).
+/// why (reversal reason).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReverseVoucherCommand {
     pub actor: UserId,
@@ -113,7 +113,7 @@ pub struct VoucherSummary {
     /// on `users`. `None` only for a deleted user.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_by_name: Option<String>,
-    /// The distinct principal who approved the voucher at 승인 (separation of
+    /// The distinct principal who approved the voucher at the approval step (separation of
     /// duties: always `!= created_by`). `None` until approved.
     pub approved_by: Option<UserId>,
     /// `approved_by`'s display name (same resolution as `created_by_name`).

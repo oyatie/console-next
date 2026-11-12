@@ -1,4 +1,4 @@
-//! Shared kernel for the 정비/렌탈 FSM backend.
+//! Shared kernel for the maintenance/rental FSM backend.
 //!
 //! Layering contract: everything depends inward on this crate; this crate
 //! depends on nothing in the workspace. Pure data and logic only — no async

@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-description: 징계 (restricted). title is the 징계 종류; ends_on closes a 정직·감급 기간.
+description: Discipline (restricted). title is the discipline type; ends_on closes a suspension or pay-cut period.
 required: [title, decided_on]
 properties:
   title:

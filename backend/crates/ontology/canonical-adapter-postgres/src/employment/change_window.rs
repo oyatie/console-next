@@ -1,4 +1,4 @@
-//! §3.9.1 변경 동결 창: the period-lock gate every dated employment mutation passes.
+//! §3.9.1 change freeze window: the period-lock gate every dated employment mutation passes.
 
 use super::error::EmploymentError;
 use console_platform_db::{PeriodLockDomain, assert_period_open, lock_period_lock_key};
@@ -6,7 +6,7 @@ use sqlx::{Postgres, Transaction};
 use time::{Date, OffsetDateTime, macros::offset};
 use uuid::Uuid;
 
-/// The freeze domains §3.9.1 names — 급여 마감 and 회계 결산. One list, mirroring
+/// The freeze domains §3.9.1 names — payroll close and accounting close. One list, mirroring
 /// the org-change adapter's `FREEZE_DOMAINS`, so an employment change and an org
 /// change can never freeze on a different set of windows.
 const EMPLOYMENT_FREEZE_DOMAINS: [PeriodLockDomain; 2] =
@@ -20,7 +20,7 @@ pub(super) fn business_date(instant: OffsetDateTime) -> Date {
     instant.to_offset(offset!(+9)).date()
 }
 
-/// §3.9.1 변경 동결 창 — refuse an employment mutation whose effective date falls
+/// §3.9.1 change freeze window — refuse an employment mutation whose effective date falls
 /// inside a closed payroll or accounting period. Runs in the caller's already-
 /// armed transaction, so the lookup is RLS-scoped to the caller's tenant and the
 /// refusal rolls the whole write back.

@@ -512,7 +512,8 @@ impl PgNotificationStore {
     }
 
     /// Per-category unread breakdown for the comms-rail badge, plus the total.
-    /// `category` doubles as the "surface" grouping (결재/멘션/문서/공지/근태/급여,
+    /// `category` doubles as the "surface" grouping (approval/mention/document/notice/
+    /// attendance/payroll,
     /// extensible) — a new producer category needs no schema change to appear
     /// here. Mute-suppressed rows are excluded from `total_unread` and
     /// `by_category` and tallied honestly as `muted_unread` instead.
@@ -614,7 +615,7 @@ impl PgNotificationStore {
         .await
     }
 
-    /// Aggregate the caller's notifications by source object (개체별 view):
+    /// Aggregate the caller's notifications by source object (per-object view):
     /// one row per distinct `link`, newest activity first, with total/unread
     /// tallies, a per-category unread breakdown, the latest row for preview,
     /// and the caller's object-level mute state. Keyset-paginated on
