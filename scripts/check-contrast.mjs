@@ -6,7 +6,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { context, decodeIdent, experienceBlocks, parseCss, rootDeclaration } from "./check-ds-refs.mjs";
+import { context, decodeIdent, experienceBlocks, literalColour, parseCss, rootDeclaration } from "./check-ds-refs.mjs";
 
 /**
  * The experience token files beside a base token file: the regular files `experiences/<id>.css`. There are none when
@@ -92,6 +92,11 @@ export function checkTokens(file) {
   parseCss(css).walkDecls((decl) => {
     if (rootDeclaration(decl) && context(decl).theme === "dark") baseDark.add(decodeIdent(decl.prop));
   });
+  // The experiences' dark rule takes the base's dark block as the list of its colours: one written for light only escapes it.
+  for (const [name, value] of Object.entries(base.light)) {
+    if (literalColour(value) && !baseDark.has(name))
+      result.problems.push(`${file.split(path.sep).join("/")}: ${name} is a colour set for light only, so dark would show its light value; declare it under :root[data-theme="dark"] too`);
+  }
   for (const overlay of experienceFiles(file)) {
     const id = path.basename(overlay, ".css");
     const own = experienceBlocks(readFileSync(overlay, "utf8"), id, baseDark, overlay);

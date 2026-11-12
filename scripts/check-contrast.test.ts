@@ -214,13 +214,34 @@ test("every colour an experience sets for light is also set for dark", () => {
   expect(exempt.status).toBe(0);
 });
 
-test("the colour test picks out of the base's light block exactly the tokens its dark block sets", async () => {
+test("every colour the base file sets for light is also set in its dark block", () => {
+  const css = readFileSync(tokens, "utf8");
+  for (const [added, token] of [
+    [":root { --band: #102030; }", "--band"],
+    [":root { --band-shadow: 0 1px 2px rgba(20, 26, 33, 0.08); }", "--band-shadow"],
+    [':root[data-theme="light"] { --band: gainsboro; }', "--band"],
+  ]) {
+    const r = run(`${css}\n${added}`);
+    expect(r.status, added).toBe(1);
+    expect(r.stdout).toMatch(/ checks, 1 problem\(s\)\n$/);
+    expect(r.stderr).toMatch(/^\S*\/tokens\.css: /);
+    expect(r.stderr).toContain(`tokens.css: ${token} is a colour set for light only, so dark would show its light value; declare it under :root[data-theme="dark"] too\n`);
+  }
+  // A dark value satisfies it, and a size or a value that only names other tokens never needed one.
+  const ok = run(`${css}\n:root { --band: #102030; --band-w: 4px; --band-line: var(--border); }\n:root[data-theme="dark"] { --band: #d0d7e0; }`);
+  expect(ok.stderr).toBe("");
+  expect(ok.status).toBe(0);
+});
+
+test("the colour test recognises the light value of every token the base's dark block sets", async () => {
+  // The other direction, which the gate cannot see: a colour form the test missed would escape the rule above.
   const { literalColour, parseCss } = await import(/* @vite-ignore */ fileURLToPath(new URL("./check-ds-refs.mjs", import.meta.url)));
-  const light: string[] = [], dark: string[] = [];
-  parseCss(readFileSync(tokens, "utf8")).walkDecls(/^--/, (decl: { prop: string; value: string; parent: { selector: string } }) => {
+  const { themeTokens } = await api();
+  const css = readFileSync(tokens, "utf8"), light = themeTokens(css).light;
+  const dark: string[] = [];
+  parseCss(css).walkDecls(/^--/, (decl: { prop: string; parent: { selector: string } }) => {
     if (decl.parent.selector !== ":root") dark.push(decl.prop);
-    else if (literalColour(decl.value)) light.push(decl.prop);
   });
   expect(dark.length).toBeGreaterThan(50);
-  expect(light.sort()).toEqual(dark.sort());
+  expect(dark.filter((name) => !literalColour(light[name]))).toEqual([]);
 });

@@ -85,7 +85,8 @@ test.each(["packages/tokens/tokens.css", "apps/web/src/ui/x/bad.module.css"])("c
 test.each(["--own", "--없는색"])("compact local and token declarations define %s", (prop) => {
   for (const definitions of [
     { "apps/web/src/ui/x/ok.module.css": `.ok{${prop}:red;color:var(${prop})}` },
-    { "packages/tokens/tokens.css": `:root{${prop}:red}`, "apps/web/src/ui/x/ok.module.css": `.ok{color:var(${prop})}` },
+    // The token file sets its colour for dark too, as the contrast gate asks of every colour in it.
+    { "packages/tokens/tokens.css": `:root{${prop}:red}:root[data-theme="dark"]{${prop}:red}`, "apps/web/src/ui/x/ok.module.css": `.ok{color:var(${prop})}` },
   ]) {
     const r = gate(fixture(definitions));
     expect(r.status, r.stderr).toBe(0);
