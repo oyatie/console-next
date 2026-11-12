@@ -8,8 +8,8 @@ CREATE TABLE action_inbox_snoozes (
     until DATE NOT NULL,
     item_version TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (org_id, account_id, item_id),
-    FOREIGN KEY (account_id, org_id) REFERENCES users(id, org_id) ON DELETE CASCADE
+    -- No reference to users: a group administrator acting in this tenant has their user row in another one.
+    PRIMARY KEY (org_id, account_id, item_id)
 );
 ALTER TABLE action_inbox_snoozes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE action_inbox_snoozes FORCE ROW LEVEL SECURITY;

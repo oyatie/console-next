@@ -269,8 +269,19 @@ async fn my_snooze_is_mine_alone(pool: PgPool) {
     assert_eq!(rows(&pool, elsewhere).await, 0);
     assert_eq!(ids(&list(&holder, "?snoozed=only").await), [own]);
 
-    // The database keeps one tenant's rows from another's session.
+    // An account acting here from another home tenant has no user row here and can still postpone.
     let runtime = http::role_pool(&pool, "console_rt", None).await;
+    let mut tx = runtime.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO action_inbox_snoozes (org_id,account_id,item_id,until) VALUES ($1,$2,'work:x',CURRENT_DATE + 1)")
+        .bind(org).bind(Uuid::new_v4()).execute(tx.as_mut()).await.unwrap();
+    tx.rollback().await.unwrap();
+
+    // The database keeps one tenant's rows from another's session.
     let mut tx = runtime.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org',$1,true)")
         .bind(elsewhere.to_string())
