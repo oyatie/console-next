@@ -30,6 +30,7 @@ pub(crate) async fn page(
         .items
         .into_iter()
         .map(|request| ActionInboxSourceItem {
+            due_basis: None,
             context: Some(serde_json::json!({ "request": {
                 "kind": request.kind, "reason_code": request.reason_code
             }})),

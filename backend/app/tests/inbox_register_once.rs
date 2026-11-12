@@ -241,3 +241,33 @@ async fn cold_setup_eight_concurrent_home_reads_keep_every_source_available(pool
         probe.pool.close().await;
     }
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_due_read_from_the_statutory_register_says_so_and_no_other_due_does(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    let employee = fixtures::seed_employee(&pool, org).await;
+    fixtures::seed_exit_case_with_settlement(&pool, org, employee, user).await;
+    sqlx::query("INSERT INTO employee_lifecycle_events (org_id,employee_id,event_type,to_status,effective_date,comment,created_by,state) VALUES ($1,$2,'ONBOARD','ACTIVE',CURRENT_DATE::text,'register read',$3,'APPLIED')")
+        .bind(org).bind(employee).bind(user.as_uuid()).execute(&pool).await.unwrap();
+    let (page, _) = read(&ctx).await;
+    let items = page["items"].as_array().unwrap();
+    let statutory =
+        |i: &&serde_json::Value| i["kind"] == "insurance_filing" || i["kind"] == "hr_exit_settle";
+    let (register, others): (Vec<_>, Vec<_>) = items.iter().partition(statutory);
+    assert!(
+        register.iter().any(|i| i["kind"] == "insurance_filing"),
+        "{page}"
+    );
+    assert!(
+        register.iter().any(|i| i["kind"] == "hr_exit_settle"),
+        "{page}"
+    );
+    for item in register.iter().filter(|i| i.get("due").is_some()) {
+        assert_eq!(item["due_basis"], "statutory", "{item}");
+    }
+    assert!(!others.is_empty(), "{page}");
+    for item in others {
+        assert!(item.get("due_basis").is_none(), "{item}");
+    }
+}

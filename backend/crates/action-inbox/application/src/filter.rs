@@ -367,6 +367,7 @@ mod tests {
     fn item(lane: &'static str, due_tone: &'static str, kind: &str) -> ActionInboxItem {
         ActionInboxItem {
             age_days: 0,
+            due_basis: None,
             fold_key: String::new(),
             context: None,
             id: String::new(),

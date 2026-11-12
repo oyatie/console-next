@@ -84,6 +84,7 @@ pub(crate) async fn page(
             continue;
         }
         items.push(ActionInboxSourceItem {
+            due_basis: None,
             id: format!("privacy_request:{}", row.id),
             kind: "privacy_request".into(),
             title: row.receipt_no.clone(),

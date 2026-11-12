@@ -12,6 +12,7 @@ fn deadline_window_comes_from_the_server() {
     );
     let source = ActionInboxSourcePage {
         items: vec![ActionInboxSourceItem {
+            due_basis: None,
             context: None,
             id: "insurance_filing_ACQUIRE_NPS:00000000-0000-0000-0000-000000000001".into(),
             kind: "insurance_filing".into(),
@@ -76,6 +77,7 @@ fn every_home_kind_carries_its_lane_and_database_deadline_days() {
         let page = merge_pages(
             vec![ActionInboxSourcePage {
                 items: vec![ActionInboxSourceItem {
+                    due_basis: None,
                     context: None,
                     id: format!("{kind}:00000000-0000-0000-0000-000000000001"),
                     kind: kind.into(),
@@ -173,6 +175,7 @@ fn server_views_cross_nonmatching_pages_and_keep_the_admission_boundary() {
     let mut source = Source(
         (0..405)
             .map(|index| ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: format!("org_change:{}", uuid::Uuid::from_u128(index + 1)),
                 kind: if index == 201 || index == 404 {
@@ -249,6 +252,7 @@ fn deadline_ties_use_age_before_id_in_sources_and_merged_pages() {
             .into_iter()
             .enumerate()
             .map(|(index, id)| ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: format!("work:00000000-0000-0000-0000-{id:012}"),
                 kind: "work".into(),

@@ -27479,6 +27479,7 @@ paths:
         '422': {$ref: '#/components/responses/ValidationError'}
   /api/v1/roster-fields:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
       tags:
         - employees
@@ -27513,6 +27514,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - employees
       operationId: createRosterField
@@ -27566,6 +27568,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/roster-fields/{id}:
     patch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - employees
       operationId: updateRosterField
@@ -34433,6 +34436,11 @@ components:
           type: string
         due:
           $ref: '#/components/schemas/Timestamp'
+        due_basis:
+          type: string
+          enum:
+          - statutory
+          description: Present when the due date is a legal deadline read from the statutory register, such as a final-pay settlement or a social insurance filing. Absent for every other due date.
         dueTone:
           type: string
           enum:
@@ -59828,6 +59836,7 @@ components:
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
     RosterField:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       description: A field the tenant adds to its personnel card.
       required: [id, label, value_type, section, visibility, choices, active]
@@ -59853,6 +59862,7 @@ components:
           type: boolean
           description: false = retired (hidden from new entry, values kept).
     RosterFieldChoice:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [id, label]
       properties:
@@ -59861,6 +59871,7 @@ components:
         label:
           type: string
     RosterFieldChoiceInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required: [label]
@@ -59874,10 +59885,12 @@ components:
           minLength: 1
           maxLength: 40
     RosterFieldSection:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       x-extensible-enum: [PERSONAL, JOB]
       description: The card section a field sits in - PERSONAL 인적사항, JOB 재직·배치.
     RosterFieldValueType:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       x-extensible-enum: [TEXT, INTEGER, DECIMAL, DATE, CHOICE]
       description: TEXT, INTEGER (whole number), DECIMAL, DATE, or CHOICE (one option from the field's list).
