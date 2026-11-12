@@ -7,7 +7,7 @@ import { editable } from "../../../ui/long-table/row-keys";
 import { KeyMap } from "../../../ui/palette/key-map";
 import { CHART_KEYS } from "./use-chart-keys";
 
-const OUTLINE = [["navigate", ["↑", "↓", "←", "→"]], ["addBelow", ["Enter"]], ["nest", ["Tab", "Shift Tab"]], ["rename", ["F2"]], ["finish", ["Esc"]]] as const;
+const OUTLINE = [["navigate", ["↑", "↓", "←", "→"]], ["addBelow", ["Enter"]], ["nest", ["Tab", "Shift Tab"]], ["rename", ["F2"]], ["move", ["M"]], ["finish", ["Esc"]]] as const;
 const keyLabel = (key: string) => key.replace(/ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Escape/g, k => ({ ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→", Escape: "Esc" })[k]!);
 
 export function StructureKeys({ view }: { view: "chart" | "outline" }) {

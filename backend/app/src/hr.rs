@@ -61,7 +61,6 @@ use console_hr_domain::import::classification::{
 };
 use console_hr_domain::import::classification::{import_header_match_key, normalize_header_label};
 use console_hr_domain::import::grid::GridSheet;
-use console_hr_domain::import::pii as import_pii;
 use console_hr_domain::import::rrn::is_rrn_value;
 use console_hr_domain::import::rrn_value::RrnVault;
 use console_hr_rest::HrApiError;
@@ -2363,10 +2362,7 @@ fn parse_attendance_tabular_sheet(
         let (raw_row, dropped_columns) = persistable_import_row(
             &header.normalized_headers,
             |idx| row.get(idx).cloned().unwrap_or(Value::Null),
-            |header| {
-                attendance_import_target_for_header(header).is_none()
-                    && is_restricted_attendance_import_header(header)
-            },
+            |header| attendance_import_target_for_header(header).is_none(),
         );
         let employee_number =
             raw_text_for_attendance_target(&raw_row, &header.columns, "employee_number");
@@ -2675,12 +2671,12 @@ fn attendance_import_column(
     normalized_header: &str,
 ) -> AttendanceImportColumn {
     let target = attendance_import_target_for_header(normalized_header).map(ToOwned::to_owned);
+    // Only a column a field takes is stored; any other is dropped whatever
+    // its header says (no word list has to name it).
     let classification = if target.is_some() {
         "canonical"
-    } else if is_restricted_attendance_import_header(normalized_header) {
-        "restricted"
     } else {
-        "retained"
+        "restricted"
     };
     AttendanceImportColumn {
         source_header: source_header.trim().to_owned(),
@@ -2689,29 +2685,6 @@ fn attendance_import_column(
         classification: classification.to_owned(),
         preview_allowed: classification == "canonical",
     }
-}
-
-fn is_restricted_attendance_import_header(header: &str) -> bool {
-    let restricted_fragments = [
-        "주민",
-        "급여",
-        "시급",
-        "수당",
-        "보험",
-        "소득세",
-        "은행",
-        "계좌",
-        "전화",
-        "연락처",
-        "휴대폰",
-        "핸드폰",
-        "주소",
-        "개인",
-    ];
-    restricted_fragments
-        .iter()
-        .any(|fragment| header.contains(fragment))
-        || import_pii::is_pii2_restricted_header(header)
 }
 
 fn attendance_import_columns_from_rows(
@@ -2750,7 +2723,7 @@ fn attendance_import_mapping_profile(columns: &[AttendanceImportColumn]) -> Valu
         "target_catalog": target_catalog,
         "columns": columns,
         "policy": {
-            "unknown_columns": "retain_raw_only",
+            "unknown_columns": "drop_header_only",
             "restricted_columns": "drop_header_only",
             "resident_registration_number_values": "drop_any_column",
             "header_detection": {
@@ -4459,8 +4432,8 @@ mod tests {
     #[test]
     fn attendance_import_csv_parses_valid_rows_and_masks_preview_values() -> Result<(), String> {
         let csv = "\
-사번,성명,지점,근무일,출근시간,퇴근시간,근무분,급여메모
-E-001,=홍길동,본사,2026-07-01,09:00,18:00,540,=cmd|' /C calc'!A0
+사번,성명,지점,근무일,출근시간,퇴근시간,근무분,급여메모,비고
+E-001,=홍길동,본사,2026-07-01,09:00,18:00,540,=cmd|' /C calc'!A0,현장 지원
 ";
         let parsed = parse_attendance_import_upload("attendance.csv", csv.as_bytes(), &[])
             .map_err(|err| format!("expected attendance CSV to parse, got {err:?}"))?;
@@ -4483,9 +4456,13 @@ E-001,=홍길동,본사,2026-07-01,09:00,18:00,540,=cmd|' /C calc'!A0
         let values = &response.sample_rows[0].values;
         assert_eq!(values.get("성명"), Some(&json!("'=홍길동")));
         assert_eq!(values.get("급여메모"), None);
-        assert!(response.columns.iter().any(|column| {
-            column.normalized_header == "급여메모" && column.classification == "restricted"
-        }));
+        // No field takes 비고 either: listed, never stored, whatever its wording.
+        assert_eq!(values.get("비고"), None);
+        for header in ["급여메모", "비고"] {
+            assert!(response.columns.iter().any(|column| {
+                column.normalized_header == header && column.classification == "restricted"
+            }));
+        }
         assert_eq!(
             response.mapping_profile["policy"]["payroll_effect"],
             json!("lineage_only_not_payable")
