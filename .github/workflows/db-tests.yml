@@ -11,6 +11,12 @@ on:
       - .config/nextest.toml
   push:
     branches: [dev]
+  workflow_dispatch:
+    inputs:
+      disk_min_bytes:
+        description: Free disk reserve in bytes (override for guard rehearsals)
+        type: string
+        required: false
   schedule:
     - cron: '47 17 * * *'
 permissions: {}
@@ -85,6 +91,8 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: '0'
       CARGO_NEXTEST_VERSION: 0.9.138
       CARGO_TERM_COLOR: always
+      # Keep headroom for runner diagnostics and failure artifacts during compilation.
+      RUNNER_DISK_MIN_BYTES: ${{ inputs.disk_min_bytes || vars.RUNNER_DISK_MIN_BYTES || '2147483648' }}
       DATABASE_URL: postgres://console_buck_admin@127.0.0.1:5432/console_ci_contract?options%5Bconsole.sqlx_test_bootstrap%5D=buck-sqlx-superuser-v1
       SQLX_OFFLINE: 'true'
     steps:
@@ -102,6 +110,7 @@ jobs:
           sudo rm -rf -- /usr/share/dotnet /usr/share/swift /opt/hostedtoolcache/CodeQL
           echo 'Disk after cleanup, before cache restore and build:'
           df -h "$GITHUB_WORKSPACE"
+          node scripts/runner-disk.mjs before-cache
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: rust-cache
         with:
@@ -114,6 +123,7 @@ jobs:
           restore-keys: db-tests-${{ runner.os }}-${{ runner.arch }}-debug${{ env.CARGO_PROFILE_TEST_DEBUG }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-
       - name: Install pinned Rust test runner
         run: |
+          node scripts/runner-disk.mjs after-cache
           curl --fail --silent --show-error --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
             "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
           echo "e1c85dbe02dcf5b963803b3f96f4f561757f5c37cab68c932411dea20d57284e  ${RUNNER_TEMP}/nextest.tar.gz" | sha256sum -c -
@@ -169,23 +179,37 @@ jobs:
           }
           JS
       - name: Run duration shard
-        run: node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
+        run: node scripts/runner-disk.mjs db-shard-${{ matrix.shard }} node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
       - name: Report disk after database tests
         if: ${{ !cancelled() }}
         run: |
           echo 'Disk after database build and tests:'
           df -h "$GITHUB_WORKSPACE"
+          node scripts/runner-disk.mjs after-tests
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v6.0.0
+        if: ${{ !cancelled() }}
+        with:
+          name: db-test-results-${{ matrix.shard }}
+          path: backend/target/nextest/ci/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v6.0.0
+        if: ${{ !cancelled() }}
+        with:
+          name: db-test-diagnostics-${{ matrix.shard }}
+          path: .cache/runner-disk/
+          include-hidden-files: true
+          if-no-files-found: error
       - name: Check Rust cache budget
         id: cache-budget
         if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' }}
         env:
           RUST_CACHE_MAX_BYTES: '3221225472'
         run: |
-          cache_archive="${RUNNER_TEMP}/db-tests-rust-cache.tar.zst"
           find "$HOME/.cargo/registry" -type f -print0 > "${RUNNER_TEMP}/db-tests-rust-cache-files"
           find backend/target -type f \( -path 'backend/target/*/.fingerprint/*' -o -path 'backend/target/*/build/*' -o -path 'backend/target/*/deps/*' \) -print0 >> "${RUNNER_TEMP}/db-tests-rust-cache-files"
-          tar --null -T "${RUNNER_TEMP}/db-tests-rust-cache-files" -cf - | zstd -q -T0 -3 -o "$cache_archive"
-          cache_bytes="$(stat -c %s "$cache_archive")"
+          # Count compressed bytes without retaining a second copy on the runner.
+          # Standard runner storage: https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+          cache_bytes="$(tar --null -T "${RUNNER_TEMP}/db-tests-rust-cache-files" -cf - | zstd -q -T0 -3 | wc -c)"
           echo "Rust cache candidate: ${cache_bytes} bytes / ${RUST_CACHE_MAX_BYTES} bytes." >> "$GITHUB_STEP_SUMMARY"
           if (( cache_bytes > RUST_CACHE_MAX_BYTES )); then
             echo "::warning::Rust cache candidate is over budget; this shard remains green and the cache will not be saved."
@@ -202,12 +226,6 @@ jobs:
             backend/target/*/build
             backend/target/*/deps
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v6.0.0
-        if: ${{ !cancelled() }}
-        with:
-          name: db-test-results-${{ matrix.shard }}
-          path: backend/target/nextest/ci/
-          if-no-files-found: error
 
   db-test-timings:
     if: ${{ always() && needs.db-tests.result != 'cancelled' }}
