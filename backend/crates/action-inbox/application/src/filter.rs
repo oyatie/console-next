@@ -227,6 +227,7 @@ pub(crate) fn counts(
         ("scheduled", InboxFilter::Scheduled),
         ("deadlines", InboxFilter::Deadlines),
         ("failures", InboxFilter::Failures),
+        ("notices", InboxFilter::Notices),
     ]
     .into_iter()
     .map(|(key, filter)| {
@@ -388,12 +389,16 @@ mod tests {
 
     #[test]
     fn a_grant_notice_is_a_notice_not_work_to_do() {
+        // A second passkey is work to do (Home prompts it from the turn read), not a notice.
+        let security = item("turn", "neutral", "account_security");
+        assert!(InboxFilter::Turn.includes(&security) && !InboxFilter::Notices.includes(&security));
         let notice = item("turn", "neutral", "grant_notice");
         assert!(!InboxFilter::Turn.includes(&notice));
         assert!(InboxFilter::Notices.includes(&notice));
         assert!(InboxFilter::All.includes(&notice));
         assert!(!InboxFilter::Notices.includes(&item("turn", "neutral", "workflow")));
-        assert_eq!(counts(&[notice], true)["turn"].total, 0);
+        let both = counts(&[notice, security], true);
+        assert_eq!((both["turn"].total, both["notices"].total), (1, 1));
         assert!(InboxFilter::Notices.includes_source(crate::ActionInboxSource::GrantNotice));
         assert!(!InboxFilter::Notices.includes_source(crate::ActionInboxSource::Workflow));
     }
@@ -411,13 +416,14 @@ mod tests {
         ];
         for exact in [true, false] {
             let result = counts(&items, exact);
-            assert_eq!(result.len(), 5);
+            assert_eq!(result.len(), 6);
             for (key, total) in [
                 ("turn", 3),
                 ("waiting", 2),
                 ("scheduled", 2),
                 ("deadlines", 2),
                 ("failures", 2),
+                ("notices", 0),
             ] {
                 assert_eq!(
                     result[key],

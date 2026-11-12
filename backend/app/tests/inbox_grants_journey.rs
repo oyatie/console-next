@@ -77,7 +77,9 @@ async fn grant_notices_appear_once_only_for_the_holder_and_leave_on_confirmation
             want,
             "{filter}: {view}"
         );
+        assert_eq!(view["total"], want, "{filter}: {view}");
         assert_eq!(view["counts"]["turn"]["total"], 0, "{filter}: {view}");
+        assert_eq!(view["counts"]["notices"]["total"], 2, "{filter}: {view}");
     }
     for row in rows {
         let grant: Uuid = row["links"][0]["id"].as_str().unwrap().parse().unwrap();

@@ -56,7 +56,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     } as const] } };
     let confirmed = false;
     await mockRoute(page, "get", "/api/v1/me/action-inbox", request => ({ status: 200, json: new URL(request.url()).searchParams.get("filter") === "notices"
-      ? { ...inbox(0), items: confirmed ? [] : [grant] } : inbox(3) }));
+      ? { ...inbox(0), items: confirmed ? [] : [grant] } : { ...inbox(3), counts: { ...inbox(3).counts, notices: { total: confirmed ? 0 : 1, total_is_exact: true } } } }));
     await mockRoute(page, "post", "/api/v1/access/grants/{grantId}/notice", request => {
       writes.push(new URL(request.url()).pathname);
       confirmed = true;
@@ -78,9 +78,12 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.goto("/inbox?tab=reference");
     const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("listitem");
     await expect(list).toHaveCount(5);
+    const tab = page.getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.reference")}`) });
+    await expect(tab).toHaveText(`${t("home.inbox.tab.reference")} 1`);
     await expect(list.nth(0).getByRole("button", { name: t("home.grantNotices.confirm", { role: "급여 담당" }), exact: true })).toBeVisible();
     await list.nth(0).getByRole("button", { name: t("home.grantNotices.confirm", { role: "급여 담당" }), exact: true }).click();
     await expect(list).toHaveCount(4);
+    await expect(tab).toHaveText(`${t("home.inbox.tab.reference")} 0`);
     await expect(list.nth(0).getByRole("link", { name: "조직 변경 안내", exact: true })).toHaveAttribute("href", "/org/changes/c1");
     await expect(list.nth(1).getByRole("link", { name: "계정 연결 안내", exact: true })).toHaveAttribute("href", "/people/e1");
     await expect(list.nth(2).getByRole("link", { name: "운영 복구 안내", exact: true })).toHaveAttribute("href", "/account");

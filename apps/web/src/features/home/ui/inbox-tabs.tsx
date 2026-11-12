@@ -10,6 +10,8 @@ import { useInboxRead } from "./use-inbox-read";
 import css from "./inbox-queue.module.css";
 
 type Count = { total: number; total_is_exact: boolean } | undefined;
+// 참조 counts the grants waiting for my confirmation (the server's notices view); 완료 has no count.
+const TAB_COUNT = { turn: "turn", waiting: "waiting", reference: "notices" } as const;
 // An exact count stays a number (TabCount formats it); a lower bound arrives formatted with its "+".
 const shown = (count: Count) => count && (count.total_is_exact ? count.total : `${fmtNumber(count.total)}+`);
 const chipCount = (count: Count) => count ? `${fmtNumber(count.total)}${count.total_is_exact ? "" : "+"}` : "";
@@ -26,7 +28,7 @@ export function InboxTabs({ view }: { view: InboxView }) {
   return <div className={css.tabRow}>
     <TabNav label={t("home.lanes")} overflow="scroll">
       {INBOX_TABS.map(tab => <Link key={tab} to="/inbox" search={{ tab: tab === "turn" ? undefined : tab }} replace resetScroll={false} activeOptions={{ exact: true, includeSearch: true }} className={tabClass} aria-current={current === tab ? "page" : undefined}>
-        {t(`home.inbox.tab.${tab}`)}{tab === "turn" || tab === "waiting" ? <>{" "}<TabCount>{shown(first?.counts[tab])}</TabCount></> : null}
+        {t(`home.inbox.tab.${tab}`)}{tab === "done" ? null : <>{" "}<TabCount>{shown(first?.counts[TAB_COUNT[tab]])}</TabCount></>}
       </Link>)}
     </TabNav>
     {chips.length > 0 && <div role="group" aria-label={t("home.inbox.tab.turn")} className={css.attention}>
