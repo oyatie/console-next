@@ -34,9 +34,8 @@ function NoticeRow({ notice }: { notice: Notice }) {
     invalidates: [REFERENCE],
     announce: () => t("home.inbox.reference.confirmed"),
   });
-  return <li className="row">
-    <span>{notice.unread && <strong>{t("home.inbox.reference.unread")} · </strong>}<NoticeTarget link={notice.link}>{notice.text}</NoticeTarget>
-      <span className="muted num"> · <time dateTime={notice.created_at}>{fmtDateTime(notice.created_at)}</time></span></span>
+  return <li>
+    {notice.unread && <strong>{t("home.inbox.reference.unread")} · </strong>}<NoticeTarget link={notice.link}>{notice.text}</NoticeTarget> · <time className="muted num" dateTime={notice.created_at}>{fmtDateTime(notice.created_at)}</time>{" "}
     {notice.unread && <Button size="sm" disabled={confirm.isPending} onClick={() => confirm.mutate(undefined)}>{t("home.inbox.reference.confirm")}</Button>}
   </li>;
 }

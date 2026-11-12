@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import type { components } from "@console/api/schema";
 import { loadCatalog, t } from "@console/i18n";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
@@ -33,6 +34,50 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await fits(page, `inbox done ${width}px ${theme}`);
     await expectAxe(page, `inbox done ${width}px ${theme}`);
     await page.screenshot({ path: info.outputPath(`inbox-done-${width}-${theme}.png`), fullPage: true });
+    expect(mock.unexpected).toEqual([]);
+  });
+}
+
+const notice = (id: string, text: string, link: components["schemas"]["NotificationLink"], unread = false) => ({
+  id, recipient_user_id: "00000000-0000-4000-8000-000000000001", category: "tenant.go_live", kind: "info", text, link, unread,
+  created_at: "2026-11-11T05:00:00Z", read_at: null, resolved_at: null, muted: false,
+});
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`참조 lists my notices and 확인 marks one read at ${width}px ${theme}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const mock = await mockScreen(page, screens[0], "populated");
+    await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(3) });
+    let read = false;
+    const writes: string[] = [];
+    const unreadId = "10000000-0000-4000-8000-000000000001";
+    await mockRoute(page, "get", "/api/v1/me/action-inbox/reference", () => ({ status: 200, json: { next_cursor: null, items: [
+      notice(unreadId, "조직 변경 안내", { type: "object", kind: "org_change", id: "c1" }, !read),
+      notice("10000000-0000-4000-8000-000000000002", "계정 연결 안내", { type: "object", kind: "employee", id: "e1" }),
+      notice("10000000-0000-4000-8000-000000000003", "운영 복구 안내", { type: "screen", screen: "account" }),
+      notice("10000000-0000-4000-8000-000000000004", "모르는 화면 안내", { type: "screen", screen: "somewhere/else" }),
+    ] } }));
+    await mockRoute(page, "post", "/api/v1/me/action-inbox/reference/{id}/read", request => {
+      writes.push(new URL(request.url()).pathname);
+      read = true;
+      return { status: 200, json: notice(unreadId, "조직 변경 안내", { type: "object", kind: "org_change", id: "c1" }) };
+    });
+    await page.goto("/inbox?tab=reference");
+    const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("listitem");
+    await expect(list).toHaveCount(4);
+    await expect(list.nth(0).getByRole("link", { name: "조직 변경 안내", exact: true })).toHaveAttribute("href", "/org/changes/c1");
+    await expect(list.nth(1).getByRole("link", { name: "계정 연결 안내", exact: true })).toHaveAttribute("href", "/people/e1");
+    await expect(list.nth(2).getByRole("link", { name: "운영 복구 안내", exact: true })).toHaveAttribute("href", "/account");
+    await expect(list.nth(3).getByRole("link")).toHaveCount(0);
+    await expect(list.nth(0)).toContainText(t("home.inbox.reference.unread"));
+    await fits(page, `inbox reference ${width}px ${theme}`);
+    await expectAxe(page, `inbox reference ${width}px ${theme}`);
+    await page.screenshot({ path: info.outputPath(`inbox-reference-${width}-${theme}.png`), fullPage: true });
+    await list.nth(0).getByRole("button", { name: t("home.inbox.reference.confirm"), exact: true }).click();
+    await expect(list.nth(0)).not.toContainText(t("home.inbox.reference.unread"));
+    await expect(list.getByRole("button")).toHaveCount(0);
+    expect(writes).toEqual([`/api/v1/me/action-inbox/reference/${unreadId}/read`]);
     expect(mock.unexpected).toEqual([]);
   });
 }
