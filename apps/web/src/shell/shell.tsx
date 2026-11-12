@@ -21,7 +21,7 @@ import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
 import { useTheme } from "./theme";
 import { PLATFORM_NAV, TENANT_NAV, activeLink, rememberedRail, tenantNav } from "./nav";
-import { Skeleton } from "../ui/skeleton/skeleton";
+import { ReadSkeleton, Skeleton } from "../ui/skeleton/skeleton";
 import { PhaseBand } from "./phase-band";
 import { SessionRecovery } from "./session-recovery";
 import { streamReady } from "../lib/live/session-stream";
@@ -208,7 +208,7 @@ export function Shell() {
           {!platform && <DomainNotice />}{!platform && !((access.isError || pageFailures > 0) && supportFault && !hasSupportNotice) && <ActiveSupportBanner />}
         </ReadFailureContext.Provider>
         <ReadFailureContext.Provider value={recovery}>
-          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand key={principal}><Outlet /></PhaseBand>}</RouteGuard>
+          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand key={principal}><Suspense fallback={<ReadSkeleton layout="list" />}><Outlet /></Suspense></PhaseBand>}</RouteGuard>
         </ReadFailureContext.Provider>
         </SessionRecovery>
       </PageMain>
