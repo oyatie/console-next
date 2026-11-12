@@ -79,7 +79,8 @@ pub(super) fn choices(
     if sent.is_empty() || sent.len() > CHOICE_MAX {
         return Err(choices_invalid("a CHOICE field has 1 to 50 options"));
     }
-    let mut out = Vec::with_capacity(sent.len());
+    // Constant bound: the request length is checked above, but the allocation must not depend on it.
+    let mut out = Vec::with_capacity(CHOICE_MAX);
     for input in sent {
         let label = input.label.trim();
         if label.is_empty() || label.chars().count() > CHOICE_LABEL_MAX || label.chars().any(hidden)
