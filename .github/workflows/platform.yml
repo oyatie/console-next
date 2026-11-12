@@ -57,14 +57,20 @@ jobs:
       - name: Retain Actions caches by purpose and count
         id: prune
         env:
-          CACHE_RETENTION_APPLY: ${{ vars.CACHE_RETENTION_APPLY }}
+          CACHE_RETENTION_BACKEND_APPLY: ${{ vars.CACHE_RETENTION_BACKEND_APPLY }}
+          CACHE_RETENTION_DB_TESTS_APPLY: ${{ vars.CACHE_RETENTION_DB_TESTS_APPLY }}
+          CACHE_RETENTION_NPM_APPLY: ${{ vars.CACHE_RETENTION_NPM_APPLY }}
+          CACHE_RETENTION_PLAYWRIGHT_APPLY: ${{ vars.CACHE_RETENTION_PLAYWRIGHT_APPLY }}
+          CACHE_RETENTION_CODEQL_APPLY: ${{ vars.CACHE_RETENTION_CODEQL_APPLY }}
+          CACHE_RETENTION_BUILDKIT_APPLY: ${{ vars.CACHE_RETENTION_BUILDKIT_APPLY }}
         continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: |
             const {maintainCaches} = await import(`${process.env.GITHUB_WORKSPACE}/scripts/cache-retention.mjs`);
             const result = await maintainCaches(github, context, {
-              dryRun: process.env.CACHE_RETENTION_APPLY !== 'true',
+              applyFamilies: ['backend', 'db-tests', 'npm', 'playwright', 'codeql', 'buildkit'].filter(
+                family => process.env[`CACHE_RETENTION_${family.replaceAll('-', '_').toUpperCase()}_APPLY`] === 'true'),
             });
             await core.summary.addRaw(result.summary).write();
       - name: Warn when Actions cache cleanup fails

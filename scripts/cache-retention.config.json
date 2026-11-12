@@ -59,11 +59,16 @@
         "platform.yml native image build per architecture; blobs are shared by indexes"
       ],
       "keyPattern": "^(index-(?:console-)?platform-(?:amd64|arm64)-\\d+-[a-f0-9]+#)(\\d+)$|^buildkit-blob-\\d+-sha256:[a-f0-9]{64}$",
-      "copies": 1,
+      "copies": 2,
       "restoreCopies": 1,
       "prefixes": 1,
       "legacyPattern": "^index-platform-(amd64|arm64)-1-[a-f0-9]{8}#\\d+$",
-      "blobPattern": "^buildkit-blob-1-sha256:[a-f0-9]{64}$"
+      "blobPattern": "^buildkit-blob-1-sha256:[a-f0-9]{64}$",
+      "blobBuilds": 2,
+      "blobScopes": [
+        "index-console-platform-amd64-",
+        "index-console-platform-arm64-"
+      ]
     }
   }
 }

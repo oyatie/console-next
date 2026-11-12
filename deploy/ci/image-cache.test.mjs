@@ -91,7 +91,7 @@ ${build.run}`], {cwd: root, encoding: 'utf8', env: {...process.env,
 }
 
 const context = {eventName: 'push', ref: 'refs/heads/dev', repo: {owner: 'example', repo: 'console'}, payload: {repository: {default_branch: 'dev'}}};
-const blob = {id: 1, key: `buildkit-blob-1-sha256:${'a'.repeat(64)}`, size_in_bytes: 8000, ref: 'refs/heads/dev', version: 'v', created_at: new Date(0).toISOString()};
+const blob = {id: 1, key: `buildkit-blob-1-sha256:${'a'.repeat(64)}`, size_in_bytes: 8000, ref: 'refs/heads/dev', version: 'v', created_at: new Date(0).toISOString(), last_accessed_at: new Date(0).toISOString()};
 const old = {id: 2, key: 'index-platform-amd64-1-5a70b200#87', size_in_bytes: 100, ref: 'refs/heads/dev', version: 'v', created_at: new Date(0).toISOString()};
 const npm = {id: 3, key: 'node-cache-Linux-x64-npm-lock', size_in_bytes: 200};
 const current = {id: 4, key: 'index-console-platform-arm64-1-5a70b200#1', size_in_bytes: 100, ref: 'refs/heads/dev', version: 'v', created_at: new Date(0).toISOString()};
@@ -142,7 +142,7 @@ async function prune(caches, ctx = context, failure) {
     assert.deepEqual(args, {...context.repo, per_page: 100});
     return caches;
   }};
-  const result = await maintainCaches(github, ctx, {family: 'buildkit', dryRun: false});
+  const result = await maintainCaches(github, ctx, {family: 'buildkit', applyFamilies: ['buildkit']});
   return {deleted, result};
 }
 

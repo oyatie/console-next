@@ -514,7 +514,13 @@ jobs:
         id: rust-cache-merge
         continue-on-error: true
         timeout-minutes: 5
+        env:
+          CACHE_PRIMARY: ${{ steps.rust-cache.outputs.cache-primary-key }}
+          CACHE_MATCHED: ${{ steps.rust-cache.outputs.cache-matched-key }}
         run: |
+          if [[ -n "$CACHE_MATCHED" && "${CACHE_MATCHED%-*}" != "${CACHE_PRIMARY%-*}" ]]; then
+            rm -rf "$GITHUB_WORKSPACE/backend/target"
+          fi
           shopt -s nullglob
           for archive in "$RUNNER_TEMP"/rust-cache/registry-*.tgz; do tar -xzf "$archive" -C "$HOME"; done
           for archive in "$RUNNER_TEMP"/rust-cache/target-*.tgz; do tar -xzf "$archive" -C "$GITHUB_WORKSPACE"; done
@@ -536,7 +542,7 @@ jobs:
         timeout-minutes: 2
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          CACHE_RETENTION_APPLY: ${{ vars.CACHE_RETENTION_APPLY }}
+          CACHE_RETENTION_BACKEND_APPLY: ${{ vars.CACHE_RETENTION_BACKEND_APPLY }}
           SAVED_KEY: ${{ steps.rust-cache.outputs.cache-primary-key }}
           RESTORED_KEY: ${{ steps.rust-cache.outputs.cache-matched-key }}
         with:
@@ -544,7 +550,7 @@ jobs:
             const {maintainCaches} = await import(`${process.env.GITHUB_WORKSPACE}/scripts/cache-retention.mjs`);
             const result = await maintainCaches(github, context, {
               family: 'backend', savedKey: process.env.SAVED_KEY, restoredKey: process.env.RESTORED_KEY,
-              dryRun: process.env.CACHE_RETENTION_APPLY !== 'true',
+              applyFamilies: process.env.CACHE_RETENTION_BACKEND_APPLY === 'true' ? ['backend'] : [],
             });
             await core.summary.addRaw(result.summary).write();
       - name: Warn when Rust cache cleanup fails
