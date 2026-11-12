@@ -31,9 +31,8 @@ export function DoneList() {
   return <QueryState q={done} layout="list">{data => {
     const rows = data.pages.flatMap(page => page.items);
     if (!rows.length) return <EmptyState title={t("home.inbox.done.empty")} reason={null} />;
-    return <><ul className="list-plain">{rows.map(item => <li className="row" key={item.id}>
-      <span><DoneTarget item={item} /> · {item.title} · {codeText(`home.inbox.outcome.${item.outcome}`, t("enum.unknown"))}
-        <span className="muted num"> · <time dateTime={item.completed_at}>{fmtDateTime(item.completed_at)}</time></span></span>
+    return <><ul className="list-plain">{rows.map(item => <li key={item.id}>
+      <DoneTarget item={item} /> · {item.title} · {codeText(`home.inbox.outcome.${item.outcome}`, t("enum.unknown"))} · <time className="muted num" dateTime={item.completed_at}>{fmtDateTime(item.completed_at)}</time>
     </li>)}</ul>
       {done.hasNextPage && <Button disabled={done.isFetchingNextPage} onClick={() => void done.fetchNextPage()}>{t("home.inbox.more")}</Button>}</>;
   }}</QueryState>;
