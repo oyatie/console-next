@@ -14,8 +14,8 @@
     "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": 23,
     "apps/web/src/features/company-domain/ui/domain-page.tsx#default": 22,
     "apps/web/src/features/entity/ui/entity-routes.tsx#EntitiesScreen": 118,
-    "apps/web/src/features/entity/ui/entity-routes.tsx#EntityScreen": 256,
-    "apps/web/src/features/entity/ui/entity-routes.tsx#NewEntityScreen": 99,
+    "apps/web/src/features/entity/ui/entity-routes.tsx#EntityScreen": 0,
+    "apps/web/src/features/entity/ui/entity-routes.tsx#NewEntityScreen": 0,
     "apps/web/src/features/identifiers/ui/identifiers-page.tsx#IdentifiersPage": 52,
     "apps/web/src/features/import/ui/import-page.tsx#ImportPage": 130,
     "apps/web/src/features/onboarding/ui/company-names.tsx#CompanyNames": 0,
@@ -41,7 +41,9 @@
     "apps/web/src/lib/react/query-state.tsx#QueryState": 27,
     "apps/web/src/features/people/ui/register-run-page.tsx#RegisterRunPage": 79,
     "apps/web/src/features/people/ui/company-mappings.tsx#CompanyMappings": 39,
-    "apps/web/src/features/attendance/ui/person-schedule-sheet.tsx#PersonScheduleSheet": 53
+    "apps/web/src/features/attendance/ui/person-schedule-sheet.tsx#PersonScheduleSheet": 53,
+    "apps/web/src/features/entity/ui/entity-record.tsx#EntityScreen": 256,
+    "apps/web/src/features/entity/ui/entity-wizard.tsx#NewEntityScreen": 99
   },
   "newScreens": {
     "apps/web/src/lib/react/query-state.tsx#QueryState": {
@@ -66,6 +68,22 @@
       "EMPTY": 3,
       "LEGAL": 0,
       "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/entity/ui/entity-record.tsx#EntityScreen": {
+      "FACT": 214,
+      "REFUSAL": 25,
+      "EMPTY": 7,
+      "LEGAL": 8,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/entity/ui/entity-wizard.tsx#NewEntityScreen": {
+      "FACT": 85,
+      "REFUSAL": 12,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
       "EXPLANATION": 0
     }
   }
