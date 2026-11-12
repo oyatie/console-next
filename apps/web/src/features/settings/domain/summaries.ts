@@ -52,4 +52,9 @@ export function approvalSummary(data: Read<"listSettings">, t: SummaryCopy, fmtD
   return { value, hints };
 }
 
-export const summaryFormatters = { domain: domainSummary, numbering: numberingSummary, titles: titlesSummary, periods: periodsSummary };
+/** How many fields the company has added and still uses. */
+const rosterFieldsSummary = (data: Read<"listRosterFields">, t: SummaryCopy) => {
+  const active = data.items.filter(row => row.active).length;
+  return active ? t("settingsHub.number", { value: active }) : t("settingsHub.rosterFields.empty");
+};
+export const summaryFormatters = { domain: domainSummary, numbering: numberingSummary, titles: titlesSummary, rosterFields: rosterFieldsSummary, periods: periodsSummary };

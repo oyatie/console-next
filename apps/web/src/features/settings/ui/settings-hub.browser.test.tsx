@@ -63,11 +63,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(approval).toContainText("2026. 12. 01.");
     await expect(approval.getByRole("link")).toHaveCount(0);
     const links = main.getByRole("link");
-    await expect(links).toHaveCount(4);
+    await expect(links).toHaveCount(5);
     for (const link of await links.all()) await expect(link.locator("svg[aria-hidden=true]")).toHaveCount(1);
     await page.keyboard.press("Tab");
     await expect(links.first()).toBeFocused();
-    for (let i = 1; i < 4; i++) {
+    for (let i = 1; i < 5; i++) {
       await page.keyboard.press("Tab");
       await expect(links.nth(i)).toBeFocused();
     }
@@ -83,7 +83,7 @@ for (const status of [403, 503]) test(`one ${status} summary leaves other cards 
   const main = page.getByRole("main");
   await expect(main.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText("확인 불가");
   await expect(main.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
-  await expect(main.getByRole("link")).toHaveCount(4);
+  await expect(main.getByRole("link")).toHaveCount(5);
   await page.unroute("**/api/v1/tenant/company-domain/request");
 });
 

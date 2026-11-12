@@ -22,13 +22,13 @@ test.each(SETTINGS_VIEWS)("$to derives visibility from its own served route requ
   expect(settingsViews(without, { ...access, is_ops: true }).some(row => row.to === view.to)).toBe(false);
 });
 
-test("branch HR sees job titles; tenant HR may also open numbering; no grant sees no rows", () => {
+test("branch HR sees job titles and card fields; tenant HR may also open numbering; no grant sees no rows", () => {
   const branch = screenAccess("/people/job-titles");
   for (const entry of branch.entries) entry.scope.kind = "WORKPLACE";
-  expect(paths(branch)).toEqual(["/people/job-titles"]);
+  expect(paths(branch)).toEqual(["/people/job-titles", "/people/roster-fields"]);
   for (const entry of branch.entries) entry.level = "edit";
-  expect(paths(branch)).toEqual(["/people/job-titles"]);
-  expect(paths(screenAccess("/people/numbering"))).toEqual(["/people/numbering", "/people/job-titles"]);
+  expect(paths(branch)).toEqual(["/people/job-titles", "/people/roster-fields"]);
+  expect(paths(screenAccess("/people/numbering"))).toEqual(["/people/numbering", "/people/job-titles", "/people/roster-fields"]);
   expect(paths(screenAccess("/"))).toEqual([]);
 });
 
@@ -42,8 +42,9 @@ test("the route guard opens the hub exactly when at least one served destination
 });
 
 test("changing a destination's requirement changes both visibility and the hub guard", () => {
-  const original = routes.find(route => route.fullPath === "/people/job-titles")!;
-  const changed = routes.map(route => route === original ? { options: { path: original.fullPath, staticData: { access: { domain: "org", level: "view" } } as StaticDataRouteOption } } : route);
+  // Both destinations a branch HR person opens move to another domain.
+  const moved = ["/people/job-titles", "/people/roster-fields"];
+  const changed = routes.map(route => moved.includes(route.fullPath) ? { options: { path: route.fullPath, staticData: { access: { domain: "org", level: "view" } } as StaticDataRouteOption } } : route);
   const branch = screenAccess("/people/job-titles");
   expect(settingsViews(changed, branch)).toEqual([]);
   expect(accessRefusal(branch, settingsRequirement(changed))).toBe("access_denied");

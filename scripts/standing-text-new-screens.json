@@ -1,4 +1,12 @@
 {
+  "apps/web/src/features/people/ui/roster-fields-page.tsx#RosterFieldsPage": {
+    "FACT": 15,
+    "REFUSAL": 8,
+    "EMPTY": 2,
+    "LEGAL": 0,
+    "RECEIPT": 1,
+    "EXPLANATION": 0
+  },
   "apps/web/src/features/statutory/ui/statutory-page.tsx#StatutoryPage": {
     "FACT": 24,
     "REFUSAL": 15,

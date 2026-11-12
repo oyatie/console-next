@@ -6,12 +6,13 @@ import { accessRefusal, type AccessRequirement } from "../reference/authz/domain
 import type { MessageId } from "@console/i18n";
 import { get } from "../lib/query";
 
-type Destination = "/settings/company-domain" | "/people/numbering" | "/people/job-titles" | "/people/period-locks";
+type Destination = "/settings/company-domain" | "/people/numbering" | "/people/job-titles" | "/people/roster-fields" | "/people/period-locks";
 /** Route metadata owns access; the route contract test pins each shared read path. */
 export const SETTINGS_VIEWS = [
   { to: "/settings/company-domain", label: "shell.settings.domain", summary: { ...get("/api/v1/tenant/company-domain/request"), format: "domain" } },
   { to: "/people/numbering", label: "identifiers.numbering.title", summary: { ...get("/api/v1/employee-number-rules"), format: "numbering" } },
   { to: "/people/job-titles", label: "shell.settings.titles", summary: { ...get("/api/v1/job-titles"), format: "titles" } },
+  { to: "/people/roster-fields", label: "rosterFields.title", summary: { ...get("/api/v1/roster-fields"), format: "rosterFields" } },
   { to: "/people/period-locks", label: "periodLocks.title", summary: { ...get("/api/v1/period-locks", { params: { query: { limit: 200 } } }), format: "periods" } },
 ] as const satisfies readonly { to: Destination; label: MessageId; summary: object }[];
 export type SettingsView = (typeof SETTINGS_VIEWS)[number];

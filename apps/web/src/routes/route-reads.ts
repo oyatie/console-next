@@ -52,6 +52,7 @@ export const routeReads = {
   "/people/import": { reads: ["GET /api/v1/employees/import/unplaced"] },
   "/people/unplaced": { reads: ["GET /api/v1/employees/import/unplaced"] },
   "/people/job-titles": { reads: ["GET /api/v1/job-titles"] },
+  "/people/roster-fields": { reads: ["GET /api/v1/roster-fields"] },
   "/people/certificates": { reads: ["GET /api/v1/hr/certificates"] },
   "/people/exits": { reads: ["GET /api/v1/hr/exit-cases"] },
   "/people/period-locks": { reads: ["GET /api/v1/period-locks"] },

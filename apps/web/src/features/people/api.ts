@@ -155,6 +155,12 @@ export const rescindBatch = (batchId: string, body: { reason_code: string; note?
 export type JobTitleKind = components["schemas"]["JobTitleKind"];
 /** BW-13: the tenant's position catalog, most senior first, inactive titles included (history keeps resolving them). */
 export const jobTitlesQuery = { ...get("/api/v1/job-titles"), staleTime: 60_000 };
+export type RosterField = components["schemas"]["RosterField"];
+export type RosterFieldInput = paths["/api/v1/roster-fields"]["post"]["requestBody"]["content"]["application/json"];
+type RosterFieldChange = paths["/api/v1/roster-fields/{id}"]["patch"]["requestBody"]["content"]["application/json"];
+export const rosterFieldsQuery = get("/api/v1/roster-fields");
+export const addRosterField = (body: RosterFieldInput) => unwrap(api.POST("/api/v1/roster-fields", { body }));
+export const updateRosterField = (id: string, body: RosterFieldChange) => unwrap(api.PATCH("/api/v1/roster-fields/{id}", { params: { path: { id } }, body }));
 /** Adds a title to the catalog (a label the company already has answers with that title). */
 export const addJobTitle = (body: { kind: JobTitleKind; label: string; grade_rank: number | null }) => unwrap(api.POST("/api/v1/job-titles", { body }));
 /** Renames, re-ranks or (de)activates a title; a title is never deleted. */
