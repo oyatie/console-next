@@ -40,3 +40,19 @@ fn inbox_decision_settings_default_to_existing_behavior_and_govern_loosening() {
             .is_err()
     );
 }
+
+#[test]
+fn snooze_presets_are_tenant_day_counts_inside_a_year() {
+    for (wire, min, default) in [
+        ("inbox.snooze.short_days", 1, 1),
+        ("inbox.snooze.long_days", 2, 7),
+    ] {
+        let key: SettingKey = wire.parse().unwrap();
+        let def = key.def();
+        assert_eq!(def.default, Some(SettingValue::Int(default)), "{wire}");
+        assert_eq!(def.governance, Governance::Tenant, "{wire}");
+        assert!(def.in_range(SettingValue::Int(min)), "{wire}");
+        assert!(!def.in_range(SettingValue::Int(min - 1)), "{wire}");
+        assert!(!def.in_range(SettingValue::Int(366)), "{wire}");
+    }
+}
