@@ -68,7 +68,6 @@ export function ProposalForm({ intent, v, set, onClose, spec }: { intent: Intent
   const [pressed, setPressed] = useState(false);
   const fields = fieldsOf(intent);
   const errors = validate(fields, v, { today, current: currentName(intent) });
-  const dirty = fields.some((f) => v[f].trim() !== "");
   const card = useRef<HTMLDivElement>(null);
   const freeze = useFreezeCheck(v.date);
   const error = (f: Field) => {
@@ -147,7 +146,6 @@ export function ProposalForm({ intent, v, set, onClose, spec }: { intent: Intent
     <Composer
       title={sp.title}
       subtitle={t("orgPropose.unsaved")}
-      dirty={dirty}
       onClose={onClose}
       pending={propose.isPending}
       action={{ kind: sp.action, mode: routed ? "request" : later ? "schedule" : "apply", count: sp.count ?? 1 }}
