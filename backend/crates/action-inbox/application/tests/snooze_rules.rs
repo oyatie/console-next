@@ -46,6 +46,11 @@ fn an_item_says_whether_and_until_when_it_may_be_postponed() {
             due: Some(statutory_due),
             ..item("hr_request", 3)
         },
+        ActionInboxSourceItem {
+            due: Some(datetime!(2026-11-13 23:59:59 +9)),
+            due_basis: Some(DueBasis::Statutory),
+            ..item("hr_insurance", 4)
+        },
     ];
     let page = merge_pages(
         vec![ActionInboxSourcePage {
@@ -90,6 +95,13 @@ fn an_item_says_whether_and_until_when_it_may_be_postponed() {
         assert_eq!(plain.check(past, TODAY), Err(SnoozeRefusal::Past));
         assert_eq!(decision.check(past, TODAY), Err(SnoozeRefusal::Past));
     }
+    // Due tomorrow under the law: no day is left, so no control is offered and the deadline refuses.
+    let (wire, last) = facts(4);
+    assert_eq!(wire, json!({"allowed": false, "latest": "2026-11-12"}));
+    assert_eq!(
+        last.check(date!(2026 - 11 - 13), TODAY),
+        Err(SnoozeRefusal::PastLegalDue(TODAY))
+    );
     assert_eq!(
         serde_json::from_value::<SnoozeFacts>(json!({"allowed": true, "latest": "2026-11-19"}))
             .unwrap(),

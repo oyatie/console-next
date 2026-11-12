@@ -88,6 +88,57 @@ fn a_snooze_not_seen_in_an_unfinished_source_makes_only_that_total_inexact() {
         "an honest lower bound, not a wrong exact number"
     );
     assert_eq!(page.counts["snoozed"], count(1, false));
+
+    // The only snooze lies past what was read: the count is a lower bound of zero, never an exact zero.
+    let alone = [id("work", 5)];
+    let page = list(&source, &snoozed(&alone, SnoozeMode::Exclude), 2, None);
+    assert_eq!(page.counts["snoozed"], count(0, false));
+}
+
+/// A source that counts the rows after its cursor, as some sources do.
+struct FromCursor(Source);
+
+impl ActionInboxSourcePort for FromCursor {
+    fn list_source_page(
+        &self,
+        source: S,
+        query: ActionInboxSourceQuery,
+    ) -> ActionInboxSourceFuture<'_> {
+        let before = query.after.as_ref().map_or(0, |after| {
+            let ids: Vec<_> = self
+                .0
+                .items
+                .iter()
+                .filter(|(from, _)| *from == source)
+                .collect();
+            ids.iter()
+                .position(|(_, item)| item.id == after.id)
+                .map_or(0, |at| at + 1)
+        });
+        let page = self.0.list_source_page(source, query);
+        Box::pin(async move {
+            let mut page = page.await?;
+            page.total -= before;
+            Ok(page)
+        })
+    }
+}
+
+#[test]
+fn a_refilled_page_keeps_the_total_of_the_query_it_answers() {
+    let source = FromCursor(Source::of(work(1..=6)));
+    let snoozes = snoozed(&[id("work", 2)], SnoozeMode::Exclude);
+    let port = SnoozedPort {
+        port: &source,
+        snoozes: &snoozes,
+    };
+    let query = ListActionInboxQuery {
+        limit: Some(3),
+        cursor: None,
+    };
+    let page = block_on(list_action_inbox(&port, query, NOW)).unwrap();
+    assert_eq!(ids(&page), [id("work", 1), id("work", 3), id("work", 4)]);
+    assert_eq!((page.total, page.total_is_exact), (5, true));
 }
 
 #[test]

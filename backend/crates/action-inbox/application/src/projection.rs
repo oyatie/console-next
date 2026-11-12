@@ -45,7 +45,7 @@ pub(super) fn project_item(
         done: false,
         created_at: item.created_at,
     };
-    item.snooze = crate::SnoozeFacts::of(&item);
+    item.snooze = crate::SnoozeFacts::of(&item, crate::kst_date(now));
     item
 }
 

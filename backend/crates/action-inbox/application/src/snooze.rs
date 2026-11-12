@@ -74,16 +74,18 @@ pub struct SnoozeFacts {
 }
 
 impl SnoozeFacts {
-    pub(crate) fn of(item: &ActionInboxItem) -> Self {
+    /// `today` is Korea's date: a legal deadline that leaves no later day allows no control.
+    pub(crate) fn of(item: &ActionInboxItem, today: Date) -> Self {
         let blocks = Attention::Approvals.includes(item);
+        let latest = item
+            .due
+            .filter(|_| item.due_basis == Some(DueBasis::Statutory))
+            .and_then(|due| kst_date(due).previous_day());
         Self {
-            allowed: !blocks,
+            allowed: !blocks && latest.is_none_or(|latest| latest > today),
             reason: blocks.then_some(SnoozeBlock::BlocksOthers),
             until: None,
-            latest: item
-                .due
-                .filter(|_| item.due_basis == Some(DueBasis::Statutory))
-                .and_then(|due| kst_date(due).previous_day()),
+            latest,
         }
     }
 
@@ -93,7 +95,8 @@ impl SnoozeFacts {
         if until <= today {
             return Err(SnoozeRefusal::Past);
         }
-        if !self.allowed {
+        // A decision others wait on is refused as such; an item with no day left is refused by its deadline below.
+        if self.reason.is_some() {
             return Err(SnoozeRefusal::NotAllowed);
         }
         match self.latest {
@@ -261,8 +264,12 @@ impl ActionInboxSourcePort for SnoozedPort<'_> {
             };
             let (mut kept, mut overflow, mut rounds) = (Vec::new(), false, 0);
             let mut next = query;
+            // The total answers the caller's query, so it comes from the first raw page; a
+            // continuation page counts from its own cursor.
+            let mut head = None;
             let (raw_total, raw_exact, more) = loop {
                 let page = self.port.list_source_page(source, next.clone()).await?;
+                let (total, exact) = *head.get_or_insert((page.total, page.total_is_exact));
                 let last = page.items.last().map(|item| ActionInboxPosition {
                     created_at: item.created_at,
                     due: item.due,
@@ -292,7 +299,7 @@ impl ActionInboxSourcePort for SnoozedPort<'_> {
                         next.after = Some(last);
                         next.limit = MAX_PAGE_LIMIT;
                     }
-                    _ => break (page.total, page.total_is_exact, page.has_more),
+                    _ => break (total, exact, page.has_more),
                 }
             };
             if !only && more && kept.is_empty() && rounds == MAX_SCAN_PAGES {
