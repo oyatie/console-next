@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { browserEngine } from "../apps/web/src/lib/browser-test";
 import AxeBuilder from "@axe-core/playwright";
-import { chromium, firefox, type Browser, type Page } from "@playwright/test";
+import { type Browser, type Page } from "@playwright/test";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expectAxe } from "../e2e/a11y";
 
 let browser: Browser;
 let page: Page;
 beforeAll(async () => {
-  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
+  browser = await browserEngine().launch();
   const context = await browser.newContext();
   page = await context.newPage();
 }, 60_000);

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { browserEngine } from "../../lib/browser-test";
 import { resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { AxeBuilder } from "@axe-core/playwright";
-import { chromium, expect as visible, firefox, type Browser, type Page } from "@playwright/test";
+import { expect as visible, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 
-let server: ViteDevServer;
-let browser: Browser, page: Page;
+let server: ViteDevServer, browser: Browser, page: Page;
 
 // Stratified pages and repeated end-jumps, fixed seed so the old blank-viewport failure is reproducible.
 const paging = (() => {
@@ -101,7 +101,7 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
+  browser = await browserEngine().launch();
   page = await (await browser.newContext()).newPage();
 }, 60_000);
 

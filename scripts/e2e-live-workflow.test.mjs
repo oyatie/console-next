@@ -75,7 +75,7 @@ test("Firefox live discovery preserves Chromium's live scope except visual basel
     const output = path.join(dir, `${browser}.json`);
     const result = spawnSync(process.execPath, [path.join(root, "node_modules/@playwright/test/cli.js"),
       "test", "--list", `--config=${config}`, `--project=${browser === "firefox" ? "firefox" : "parallel"}`, "--reporter=json"],
-    { cwd: root, encoding: "utf8", env: { ...process.env, E2E_XBROWSER: browser === "firefox" ? "1" : "0", PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
+    { cwd: root, encoding: "utf8", env: { ...process.env, E2E_BROWSER: browser, PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     const report = JSON.parse(readFileSync(output, "utf8"));
     assert.deepEqual(report.errors, []);

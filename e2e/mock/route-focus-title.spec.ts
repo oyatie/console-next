@@ -6,7 +6,7 @@ import { screenAccess, user } from "./fixtures";
 import { screens } from "../states/registry";
 import { expectAxe } from "../a11y";
 
-test("route navigation focuses h1 and announces the page title with the current tenant", async ({ page }) => {
+test("route navigation focuses h1 and announces the page title with the current tenant", async ({ page, browserName }) => {
   await mockScreen(page, screens[1], "populated");
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: {
     ...screenAccess("/people"), entries: [...screenAccess("/people").entries, ...screenAccess("/org").entries],
@@ -33,8 +33,12 @@ test("route navigation focuses h1 and announces the page title with the current 
   // Programmatic navigation starts from the already managed heading, which must not acquire a keyboard ring.
   await expect(heading).toHaveCSS("outline-style", "none");
   await orgLink.focus();
-  // Keyboard modality must not assume the host's Tab preference includes links.
-  await orgLink.press("ArrowDown");
+  // macOS WebKit's Tab preference can omit links; Firefox needs Tab to enter keyboard modality.
+  if (browserName === "webkit" && process.platform === "darwin") await orgLink.press("ArrowDown");
+  else {
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+  }
   await expect(orgLink).toBeFocused();
   await orgLink.press("Enter");
   await expect(page).toHaveURL(/\/org$/);

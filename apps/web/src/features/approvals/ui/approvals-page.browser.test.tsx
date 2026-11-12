@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { chromium, firefox, expect, type Browser, type Page } from "@playwright/test";
+import { expect, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, test } from "vitest";
-import { browserTestOptimizeDeps } from "../../../lib/browser-test";
+import { browserEngine, browserTestOptimizeDeps } from "../../../lib/browser-test";
 import type { ApprovalDocument, ApprovalItem } from "../api";
 
 const items: ApprovalItem[] = [{
@@ -24,7 +24,7 @@ const approvalDocument: ApprovalDocument = {
   opinion_max: 1000, my_actions: { kind: "none" },
 };
 
-const ENGINES = process.env.E2E_XBROWSER === "1" ? [chromium, firefox] : [chromium];
+const ENGINES = [browserEngine()];
 let server: ViteDevServer;
 const sessions: { browser: Browser; page: Page }[] = [];
 
