@@ -7,7 +7,7 @@
   // Per attribute (data-<name>): its storage key and the closed list of values. Anything else stored sets nothing.
   var prefs = {
     theme: { key: "console.theme", values: ["light", "dark"] },
-    // An experience becomes known by adding its id to this list.
+    // An experience becomes known by adding its id to this list; a test holds the list to the experience token files.
     experience: { key: "console.experience", values: [] },
   };
   for (var name in prefs) {

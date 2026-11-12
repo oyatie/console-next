@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { afterEach, expect, test, vi } from "vitest";
 import { THEME_KEY, THEMES, knownExperiences } from "./prefs";
@@ -72,4 +72,18 @@ test("the bundle's known experiences are the boot script's own list", () => {
   expect(knownExperiences()).toEqual([]);
   vi.stubGlobal("consolePrefs", boot({}, withCalm).published);
   expect(knownExperiences()).toEqual(["calm"]);
+});
+
+test("the known experiences are exactly the ones with a token file", () => {
+  // The token gates take an experience's id from its file name; a list that differed would apply nothing, or an id with no tokens.
+  const dir = new URL("../../../../packages/tokens/experiences/", import.meta.url);
+  const files = existsSync(dir) ? readdirSync(dir).filter((name) => name.endsWith(".css")).map((name) => name.slice(0, -".css".length)) : [];
+  expect([...boot({}).published.experience.values].sort()).toEqual(files.sort());
+});
+
+test("the boot script blocks the parser ahead of the entry, so it has run before anything can paint", () => {
+  const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
+  // No async, defer or module type: any of them lets the page render before the script runs.
+  expect(html.match(/<script\b[^>]*prefs\.js[^>]*>/g)).toEqual(['<script src="/prefs.js">']);
+  expect(html.indexOf('<script src="/prefs.js">')).toBeLessThan(html.indexOf('<script type="module"'));
 });
