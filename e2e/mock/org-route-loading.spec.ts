@@ -83,12 +83,14 @@ for (const query of ["", "&as_of=2026-10-01&known_at=2026-10-02T00%3A00%3A00Z"])
 }
 
 for (const state of ["chart", "refused"] as const) {
-  test(`${state} does not start the entity list chunk or read`, async ({ page }) => {
+  test(`${state} does not start the entity list chunk${state === "refused" ? " or read" : ""}`, async ({ page }) => {
     const fixture = await mockScreen(page, screens[2], "empty");
     const requests: string[] = [];
     page.on("request", request => {
       const path = new URL(request.url()).pathname;
-      if (path === "/api/v1/legal-entities" || /\/assets\/entity-routes-[^/]+\.js$/.test(path)) requests.push(path);
+      // The chart reads legal entities itself, so only the refused state can assert the read stays idle.
+      const listRead = state === "refused" && path === "/api/v1/legal-entities";
+      if (listRead || /\/assets\/entity-routes-[^/]+\.js$/.test(path)) requests.push(path);
     });
     if (state === "refused") await mockRoute(page, "get", "/api/v1/access/me", {
       status: 200, json: { ...screenAccess("/org"), decisions: {}, entries: [] },
