@@ -96,6 +96,7 @@ test("org decision 409 is one object preserving the N-1 error and optional refus
   expect(schemas.ErrorBody).not.toHaveProperty("oneOf");
   expect(schemas.ErrorBody!.properties!.error!.properties!.details).toEqual({ type: "object", properties: {
     current_version: { type: "string", description: "Current opaque decision version; re-read the document before deciding again." },
+    latest: { type: "string", format: "date", description: "The last day an inbox item may be postponed to, present on a snooze_past_legal_due refusal." },
   } });
   expect(schemas.ErrorBody!.properties!.error!.required).toEqual(["code", "message"]);
   expect(schemas.ErrorBody!.properties!.error!.properties!.current_version!.type).toBe("integer");
