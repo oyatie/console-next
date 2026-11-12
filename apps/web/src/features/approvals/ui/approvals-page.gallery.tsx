@@ -24,6 +24,7 @@ const document: ApprovalDocument = {
   consequence: tg("blocker.routeBody"),
   opinion_max: 1000,
   my_actions: { kind: "none" },
+  decision_refusal: "org_change.refuse.identity_unbound",
 };
 export default function ApprovalsGallery() {
   const [selected, setSelected] = useState(false);
