@@ -196,6 +196,7 @@ export const koExit: Record<keyof typeof enExit, string> = {
   "exit.noticePay.ground": "단서 근거",
   "exit.noticePay.evidence": "단서 증빙 참조",
   "exit.error.dismissal_notice_short": "해고예고가 대장 기준보다 짧습니다. 해고예고수당 지급 또는 증빙이 있는 대장 단서를 선택하십시오.",
+  "exit.error.severance_statutory_basis_unavailable": "퇴직일에 적용할 퇴직금 근속 기준을 확인할 수 없습니다. 법정 기준 대장 검토를 요청하십시오.",
   "exit.error.employee_exited_read_only": "퇴직한 직원의 인사기록은 읽기 전용입니다. 변경은 정정으로 요청하십시오.",
   "exit.error.fixed_term_basis_unconfirmed": "계약 이력이 없어 기간제 한도를 확인할 수 없습니다. 계약 이력을 기록하거나 증빙이 있는 예외를 선택하십시오.",
   "exit.error.rehire_exit_case_open": "이전 퇴직 결정이 끝나지 않았습니다. 본사 확인을 마친 뒤 남은 절차를 확인하십시오.",

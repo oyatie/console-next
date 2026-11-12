@@ -32,6 +32,15 @@ pub async fn upsert_exit_settlement_package(
         .whole("YEARS")
         .filter(|years| *years > 0)
         .and_then(|years| i32::try_from(years).ok());
+    if years.is_none() {
+        return Err(HrError::from_kernel(
+            console_kernel_core::KernelError::conflict(
+                "No usable severance service rule covers the exit date. Request a statutory register review.",
+            )
+            .with_code("severance_statutory_basis_unavailable")
+            .with_field("effective_exit_date"),
+        ));
+    }
     let under_service = match (context.hire_date.as_deref(), years) {
         (Some(hire), Some(years)) => {
             !completes_service_years(parse_yyyy_mm_dd(hire)?, exit, years)?
@@ -53,6 +62,10 @@ pub async fn upsert_exit_settlement_package(
         statutory_daily_wage_milliwon,
     ) = build_settlement_calculation(&context, settlement_input.as_ref(), years)?;
     let mut statutory_basis = exit_statutory_basis();
+    statutory_basis["calculation_references"] = json!({"rules": [{
+        "code": rule.code, "effective_from": rule.effective_from,
+        "citation": {"instrument_ko": rule.instrument, "article_ko": rule.article},
+    }]});
     if under_service {
         statutory_basis["severance_eligibility"] = json!({
             "outcome": "NOT_ELIGIBLE", "reason": "UNDER_SERVICE_YEARS",

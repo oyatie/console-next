@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
+
+#[path = "short_tenure/rules.rs"]
+mod rules;
 use console_kernel_core::BranchScope;
 use console_platform_authz::{EffectiveFeatureGrant, Feature, PermissionLevel, Principal, Role};
 use std::collections::BTreeSet;
@@ -36,6 +39,18 @@ async fn same_day_hire_exit_submits_without_wage_sources(pool: PgPool) {
     assert_eq!(
         p["statutory_basis"]["severance_eligibility"]["threshold"],
         json!({"num":1,"den":1})
+    );
+    assert_eq!(p["status"], "READY_FOR_APPROVAL");
+    assert_eq!(c["status"], "SETTLEMENT_READY");
+    let rule = &p["statutory_basis"]["calculation_references"]["rules"][0];
+    assert_eq!(rule["code"], "SEVERANCE_MIN_SERVICE_YEARS");
+    assert_eq!(rule["effective_from"], "2026-07-01");
+    assert_eq!(rule["citation"]["instrument_ko"], "근로자퇴직급여 보장법");
+    assert!(
+        rule["citation"]["article_ko"]
+            .as_str()
+            .unwrap()
+            .contains("제4조제1항")
     );
     assert_eq!(p["severance_pay_won"], 0);
     assert_eq!(p["missing_source_fields"], json!([]));
@@ -77,9 +92,9 @@ async fn same_day_hire_exit_submits_without_wage_sources(pool: PgPool) {
 async fn service_threshold_uses_exit_dated_register_row(pool: PgPool) {
     sqlx::query("UPDATE statutory_rules SET value_num=2 WHERE code='SEVERANCE_MIN_SERVICE_YEARS' AND effective_from <= DATE '2026-10-13' AND (effective_to_exclusive IS NULL OR DATE '2026-10-13' < effective_to_exclusive)")
         .execute(&pool).await.unwrap();
-    sqlx::query("UPDATE statutory_rules SET effective_to_exclusive=DATE '2026-10-14' WHERE code='SEVERANCE_MIN_SERVICE_YEARS'")
+    sqlx::query("UPDATE statutory_rules SET effective_to_exclusive=DATE '2026-10-14' WHERE code='SEVERANCE_MIN_SERVICE_YEARS' AND effective_from=DATE '2026-07-01'")
         .execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO statutory_rules SELECT (jsonb_populate_record(NULL::statutory_rules,to_jsonb(r)||jsonb_build_object('effective_from','2026-10-14','effective_to_exclusive',NULL,'value_num',3))).* FROM statutory_rules r WHERE code='SEVERANCE_MIN_SERVICE_YEARS'")
+    sqlx::query("INSERT INTO statutory_rules SELECT (jsonb_populate_record(NULL::statutory_rules,to_jsonb(r)||jsonb_build_object('effective_from','2026-10-14','effective_to_exclusive',NULL,'value_num',3))).* FROM statutory_rules r WHERE code='SEVERANCE_MIN_SERVICE_YEARS' AND effective_from=DATE '2026-07-01'")
         .execute(&pool).await.unwrap();
     let (_, c) = prepared(&pool, "2025-10-14", "2026-10-13").await;
     let eligibility = &c["settlement_package"]["statutory_basis"]["severance_eligibility"];
@@ -134,36 +149,53 @@ async fn short_tenure_draft_refuses_other_tenant_and_lower_grant_without_writes(
     assert_eq!(count, 0);
 }
 
+fn wage_input() -> Value {
+    json!({"average_wage_period_start":"2026-07-01","average_wage_period_end":"2026-09-30",
+        "average_wage_calendar_days":92,"average_wage_total_won":9_200_000,"monthly_ordinary_wage_won":3_000_000})
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn missing_service_rule_keeps_settlement_unpayable(pool: PgPool) {
-    sqlx::query("UPDATE statutory_rules SET effective_to_exclusive=DATE '2026-10-13' WHERE code='SEVERANCE_MIN_SERVICE_YEARS'")
-        .execute(&pool).await.unwrap();
+async fn unknown_hire_does_not_claim_a_service_exclusion(pool: PgPool) {
     let (w, c) = prepared(&pool, "2026-10-13", "2026-10-13").await;
-    assert!(c["settlement_package"]["severance_pay_won"].is_null());
+    let id = c["id"].as_str().unwrap().parse().unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL session_replication_role=replica")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE employees SET hire_on=NULL,hire_date=NULL WHERE id=$1")
+        .bind(w.in_a)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query(
+        "UPDATE employment_heads SET hire_date=NULL,severance_start_date=NULL WHERE employee_id=$1",
+    )
+    .bind(w.in_a)
+    .execute(tx.as_mut())
+    .await
+    .unwrap();
+    console_hr_adapter_postgres::exits::settlement_store::upsert_exit_settlement_package(
+        &mut tx, w.org, id, None,
+    )
+    .await
+    .unwrap();
+    let p: Value = sqlx::query_scalar(
+        "SELECT to_jsonb(p) FROM employee_exit_settlement_packages p WHERE exit_case_id=$1",
+    )
+    .bind(id)
+    .fetch_one(tx.as_mut())
+    .await
+    .unwrap();
+    assert_eq!(p["status"], "NEEDS_SOURCE");
+    assert!(p["severance_pay_won"].is_null());
+    assert!(p["statutory_basis"]["severance_eligibility"].is_null());
     assert!(
-        c["settlement_package"]["missing_source_fields"]
+        p["missing_source_fields"]
             .as_array()
             .unwrap()
-            .contains(&json!("statutory_rules"))
+            .contains(&json!("hire_date"))
     );
-    let id = c["id"].as_str().unwrap().parse().unwrap();
-    let error =
-        w.hr.draft_exit_approval(
-            w.hr(w.hr_one),
-            id,
-            serde_json::from_value(json!({"submit":true})).unwrap(),
-        )
-        .await
-        .unwrap_err();
-    assert_eq!(error.code, "validation");
-    let status: String =
-        sqlx::query_scalar("SELECT status FROM employee_exit_cases WHERE org_id=$1 AND id=$2")
-            .bind(w.org)
-            .bind(id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(status, "HQ_CONFIRMED");
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -176,7 +208,7 @@ async fn settlement_uses_linked_employment_instead_of_latest_employee_hire(pool:
         .execute(tx.as_mut())
         .await
         .unwrap();
-    sqlx::query("INSERT INTO employment_heads(org_id,id,employee_id,valid_from,hire_date,severance_start_date) VALUES ($1,$2,$3,'2026-10-13T00:00:00+09:00','2026-10-13','2026-10-13')")
+    sqlx::query("INSERT INTO employment_heads(org_id,id,employee_id,valid_from,hire_date,severance_start_date) VALUES ($1,$2,$3,'2026-10-13T00:00:00+09:00','2024-01-01','2026-10-13')")
         .bind(w.org).bind(head).bind(w.in_a).execute(tx.as_mut()).await.unwrap();
     sqlx::query("UPDATE employee_exit_cases SET employment_id=$2 WHERE id=$1")
         .bind(id)
@@ -184,7 +216,7 @@ async fn settlement_uses_linked_employment_instead_of_latest_employee_hire(pool:
         .execute(tx.as_mut())
         .await
         .unwrap();
-    sqlx::query("UPDATE employees SET hire_date='2024-01-01',hire_on='2024-01-01' WHERE id=$1")
+    sqlx::query("UPDATE employees SET hire_date='2023-01-01',hire_on='2023-01-01' WHERE id=$1")
         .bind(w.in_a)
         .execute(tx.as_mut())
         .await
@@ -197,9 +229,72 @@ async fn settlement_uses_linked_employment_instead_of_latest_employee_hire(pool:
         }})).unwrap()).await.unwrap();
     let package = result.settlement_package.unwrap();
     assert_eq!(package.service_days, Some(1));
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL session_replication_role=replica")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE employment_heads SET severance_start_date=NULL WHERE id=$1")
+        .bind(head)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let context = console_hr_adapter_postgres::exits::store::load_exit_case_context(
+        &mut tx, w.org, id, false,
+    )
+    .await
+    .unwrap();
+    assert_eq!(context.hire_date.as_deref(), Some("2024-01-01"));
+    sqlx::query("UPDATE employment_heads SET hire_date=NULL WHERE id=$1")
+        .bind(head)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let context = console_hr_adapter_postgres::exits::store::load_exit_case_context(
+        &mut tx, w.org, id, false,
+    )
+    .await
+    .unwrap();
+    assert_eq!(context.hire_date.as_deref(), Some("2023-01-01"));
     assert_eq!(package.severance_pay_won, Some(0));
     assert_eq!(
         package.statutory_basis["severance_eligibility"]["reason"],
         "UNDER_SERVICE_YEARS"
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn historical_service_rule_covers_the_day_before_the_current_slice(pool: PgPool) {
+    let gaps_or_overlaps: i64 = sqlx::query_scalar("SELECT count(*) FROM (SELECT day FROM generate_series(DATE '2005-12-01',DATE '2026-07-01',INTERVAL '1 day') day LEFT JOIN statutory_rules r ON r.code='SEVERANCE_MIN_SERVICE_YEARS' AND r.effective_from<=day AND (r.effective_to_exclusive IS NULL OR day<r.effective_to_exclusive) GROUP BY day HAVING count(r.code)<>1) invalid")
+        .fetch_one(&pool).await.unwrap();
+    assert_eq!(gaps_or_overlaps, 0);
+    let (w, c) = prepared(&pool, "2026-06-30", "2026-06-30").await;
+    let p = &c["settlement_package"];
+    assert_eq!(p["status"], "READY_FOR_APPROVAL");
+    assert_eq!(p["severance_pay_won"], 0);
+    assert_eq!(
+        p["statutory_basis"]["calculation_references"]["rules"][0]["effective_from"],
+        "2025-11-11"
+    );
+    let id = c["id"].as_str().unwrap().parse().unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL session_replication_role=replica")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE employee_exit_cases SET effective_exit_date='2005-11-30' WHERE id=$1")
+        .bind(id)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let error =
+        console_hr_adapter_postgres::exits::settlement_store::upsert_exit_settlement_package(
+            &mut tx,
+            w.org,
+            id,
+            Some(serde_json::from_value(wage_input()).unwrap()),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "severance_statutory_basis_unavailable");
 }

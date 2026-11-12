@@ -9,14 +9,16 @@ import { openTenant } from "./helpers/tenant";
 
 type ExitCase = components["schemas"]["EmployeeExitCase"];
 
-for (const replay of [1, 2]) {
-  test(`same-day service excludes severance and submits without wage sources (${replay})`, { tag: ["@hr", "@regression"] }, async ({ browser }) => {
-    const admin = await openTenant(browser, `short-exit-${replay}`, "단기근속회사");
+for (const [period, on, effectiveFrom] of [
+  ["recent", kstDate(-1), "2026-07-01"],
+  ["historical", "2026-06-30", "2025-11-11"],
+] as const) {
+  test(`same-day service excludes severance and submits without wage sources (${period})`, { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+    const admin = await openTenant(browser, `short-exit-${period}`, "단기근속회사");
     const api = apiOf(admin, bearerOf(admin));
     await setupCompany(admin, "단기근속회사", "본사");
     await startOperations(admin);
     // Last working day has ended, so the exit can apply in both browser projects.
-    const on = kstDate(-1);
     await registerEmployee(admin, { name: "당일퇴직", number: "SHORT-01", hired: on, unit: "본사" });
     await admin.getByRole("button", { name: "퇴직 보고" }).click();
     const sheet = admin.getByRole("dialog");
@@ -41,6 +43,11 @@ for (const replay of [1, 2]) {
       outcome: "NOT_ELIGIBLE", reason: "UNDER_SERVICE_YEARS", threshold: { num: 1, den: 1 }, review_required: true,
       rule: { instrument: "근로자퇴직급여 보장법" },
     });
+    expect(p.status).toBe("READY_FOR_APPROVAL");
+    expect(p.statutory_basis?.calculation_references).toMatchObject({ rules: [{
+      code: "SEVERANCE_MIN_SERVICE_YEARS", effective_from: effectiveFrom,
+      citation: { instrument_ko: "근로자퇴직급여 보장법", article_ko: expect.stringContaining("제4조제1항") },
+    }] });
     expect(p.severance_pay_won).toBe(0);
     expect(p.missing_source_fields).toEqual([]);
     expect(p.certification_status).toBe("UNCERTIFIED_DRAFT");

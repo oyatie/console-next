@@ -9,6 +9,7 @@ use time::Date;
 #[derive(Debug, Clone, Serialize)]
 pub struct LegalRule {
     pub code: String,
+    pub effective_from: Option<String>,
     pub value: Option<i64>,
     pub unit: String,
     pub instrument: Option<String>,
@@ -35,6 +36,9 @@ pub(crate) async fn rule(
     let row = rows.first();
     Ok(LegalRule {
         code: code.into(),
+        effective_from: row
+            .filter(|_| active == 1)
+            .map(|r| r.get::<Date, _>("effective_from").to_string()),
         value: row
             .filter(|r| active == 1 && r.get::<i64, _>("value_den") == 1)
             .map(|r| r.get("value_num")),
