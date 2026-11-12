@@ -43,8 +43,12 @@ async fn open_review_queries_stay_constant_at_two_thousand_accounts(owner: PgPoo
             sqlx::query("INSERT INTO users(org_id,display_name,roles) SELECT $1,'일반 계정',ARRAY['MEMBER'] FROM generate_series(2,$2)")
                 .bind(org.as_uuid()).bind(accounts).execute(&owner).await.unwrap();
         }
+        let as_of = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap();
         let queries = statements::Statements::default();
-        let items = items(&mut tx, &principal, OffsetDateTime::now_utc())
+        let items = items(&mut tx, &principal, as_of)
             .with_subscriber(queries.dispatch())
             .await
             .unwrap();
