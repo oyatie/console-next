@@ -103,7 +103,7 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
         onSubmit={() => { if (!rejecting || reason.trim()) decide.mutate(rejecting ? "REJECTED" : "APPROVED"); }}
         onClose={rejecting ? () => setRejecting(false) : undefined}
         secondary={!rejecting && <Button onClick={() => setRejecting(true)}>{commitLabel({ kind: "orgChange", mode: "reject" })}</Button>}
-        notice={<CommandError error={decide.error} />}
+        error={decide.error} notice={<CommandError error={decide.error} />}
       >
         {rejecting && <>
           <Field label={t("orgChange.decide.reject.reason")} required example={t("orgChange.decide.reject.example")}>
