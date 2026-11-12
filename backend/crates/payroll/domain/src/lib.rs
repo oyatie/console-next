@@ -984,23 +984,21 @@ pub fn simplified_withholding_table_instruments() -> Vec<(EffectivePeriod, Instr
 /// "sha256 of the article unit" reproduced none of them and could not tell a
 /// wrong number from a wrong method. The method is the evidence, so it is
 /// written out here, and this is the only copy of it in the tree. The XML
-/// element names are Korean; they are given below in English with a
-/// romanisation of each tag.
+/// element names are the source's own (Korean) tag names, quoted exactly.
 ///
 /// 1. `lawService.do?target=eflaw&MST=282559&efYd=<slice>&type=XML`.
-/// 2. Select the article-unit element ('jomundanwi') with article number
-///    ('jomunbeonho') 103, article branch number ('jomungajibeonho') 13 and
-///    article flag ('jomunyeobu') set to article ('jomun'), and take its
-///    **inner** content — the opening and closing article-unit tags
-///    themselves excluded.
+/// 2. Select the article-unit element `<조문단위>` whose article number
+///    `조문번호` is 103, branch number `조문가지번호` is 13 and article flag
+///    `조문여부` is `조문`, and take its **inner** content — the
+///    `<조문단위>`/`</조문단위>` tags themselves excluded.
 /// 3. Delete every per-article enforcement date element
-///    ('jomunsihaengilja'), tags and content. Change nothing else: no
+///    `<조문시행일자>…</조문시행일자>`, tags and content. Change nothing else: no
 ///    trimming, no whitespace or newline normalization.
 /// 4. sha256 over the UTF-8 bytes.
 ///
 /// Yields `c1cb99797adb21bbb4eddb3b42808c8c291611226ca15173c1f5e6731f8fc8a1` at
 /// all four slices. Two near misses, recorded so the next mismatch is diagnosed
-/// instead of re-measured: keeping the article-unit tags gives `cece5eff…`
+/// instead of re-measured: keeping the `<조문단위>` tags gives `cece5eff…`
 /// (also stable across the four), and trimming the inner content gives
 /// `f7f21af8…`.
 ///
