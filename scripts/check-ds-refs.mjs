@@ -61,29 +61,32 @@ export function literalColour(value) {
 
 /**
  * An experience file's own declarations, by block. The gates compute its overlay on the base from the specificity
- * of exactly two selectors, so a declaration anywhere else would cascade in a way they do not model: it is refused.
- * So is a colour the light block sets and the dark block does not.
+ * of exactly two selectors, so anything that would cascade another way is refused: a rule or statement other than
+ * the two blocks, a property that is not a token, an !important. So is a colour the light block sets and the dark
+ * block does not.
  */
 export function experienceBlocks(css, id) {
   const light = `:root[data-experience="${id}"]`, dark = `${light}[data-theme="dark"]`;
   const own = { light: {}, dark: {}, problems: [] };
-  const refused = new Set();
-  parseCss(css).walkDecls((decl) => {
-    const rule = decl.parent;
-    const selector = rule.type === "rule" && rule.parent.type === "root" ? rule.selector.replaceAll("'", '"') : "";
-    const block = selector === light ? own.light : selector === dark ? own.dark : null;
-    if (block) {
-      const name = decodeIdent(decl.prop);
-      if (name.startsWith("--")) block[name] = decl.value.trim();
-      return;
-    }
-    // A rule inside a condition is refused for the condition; anything else for itself.
-    const outside = rule.parent?.type === "atrule" ? rule.parent : rule;
-    if (refused.has(outside)) return;
-    refused.add(outside);
-    const where = outside.selector ?? (outside.name ? `@${outside.name} ${outside.params}`.trim() : "a declaration outside any rule");
+  const refuse = (node) => {
+    const where = node.selector ?? (node.name ? `@${node.name} ${node.params}`.trim() : "a declaration outside any rule");
     own.problems.push(`${where} is not one of the experience's blocks; move its declarations under ${light} or ${dark}`);
-  });
+  };
+  // Every top-level node, not every declaration: an @import carries none, and brings in rules no gate reads.
+  for (const node of parseCss(css).nodes) {
+    if (node.type === "comment") continue;
+    const selector = node.type === "rule" ? node.selector.replaceAll("'", '"') : "";
+    const block = selector === light ? own.light : selector === dark ? own.dark : null;
+    if (!block) { refuse(node); continue; }
+    for (const child of node.nodes) {
+      if (child.type === "comment") continue;
+      const name = child.type === "decl" ? decodeIdent(child.prop) : "";
+      if (child.type !== "decl") refuse(child);
+      else if (!name.startsWith("--")) own.problems.push(`${name} is not a token; an experience file sets custom properties only, so remove it`);
+      else if (child.important) own.problems.push(`${name} is marked !important, which the order of the light and dark blocks does not account for; drop !important`);
+      else block[name] = child.value.trim();
+    }
+  }
   // In dark the light block still applies, ahead of the base's dark block: a light colour with no dark value shows in dark.
   for (const [name, value] of Object.entries(own.light)) {
     if (literalColour(value) && !Object.hasOwn(own.dark, name))

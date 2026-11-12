@@ -147,11 +147,28 @@ test.each([
   [':root[data-experience="calm"] { .card { --row-h: 36px; } }', ".card"],
   ["@font-face { font-family: Calm; }", "@font-face"],
   ['@media (min-width: 640px) { :root[data-experience="calm"] { --row-h: 36px; } }', "@media (min-width: 640px)"],
+  // A statement with no declarations of its own: what it brings in is read by no gate.
+  ['@import "../palette.css";\n:root[data-experience="calm"] { --row-h: 36px; }', '@import "../palette.css"'],
+  ['@layer calm, base;\n:root[data-experience="calm"] { --row-h: 36px; }', "@layer calm, base"],
 ])("an experience file holds only its own light and dark blocks: %s", (css, where) => {
   const r = run(readFileSync(tokens, "utf8"), { calm: css });
   expect(r.status, r.stderr).toBe(1);
   expect(r.stderr).toContain(`experiences/calm.css: ${where} `);
   expect(r.stderr).toContain(':root[data-experience="calm"] or :root[data-experience="calm"][data-theme="dark"]');
+});
+
+test("an experience block declares tokens only, and none of them !important", () => {
+  const css = readFileSync(tokens, "utf8");
+  // The dark value is the one the dark rule asks for, yet !important in the light block would beat it in dark.
+  for (const [light, dark] of [["--ink: #141a21 !important;", "--ink: #e8edf4;"], ["--ink: #141a21;", "--ink: #e8edf4 ! IMPORTANT;"]]) {
+    const r = run(css, { calm: blocks("calm", light, dark) });
+    expect(r.status, r.stderr).toBe(1);
+    expect(r.stderr).toContain("experiences/calm.css: --ink is marked !important, which the order of the light and dark blocks does not account for; drop !important\n");
+  }
+  // A property on the root ties the base's dark rule as a token does, and no dark rule covers it.
+  const property = run(css, { calm: blocks("calm", "--border: #d0d7e0; color-scheme: light;", "--border: #2b3542;") });
+  expect(property.status, property.stderr).toBe(1);
+  expect(property.stderr).toContain("experiences/calm.css: color-scheme is not a token; an experience file sets custom properties only, so remove it\n");
 });
 
 test("every colour an experience sets for light is also set for dark", () => {
