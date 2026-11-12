@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { test, expect } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
+import { fmtDate, fmtNumber } from "@console/i18n/format";
 import { mockScreen } from "../mock/screen";
 import { payrollScreens } from "./payroll";
 import { failure } from "../mock/fixtures";
@@ -202,6 +202,57 @@ test("an insurance total inconsistent with the visible rows is held with its rem
     await expect(deductions.getByText("34,568원", { exact: true })).toHaveCount(0);
     await expect(deductions.getByText("3,422,222원", { exact: true })).toHaveCount(0);
     await expect(deductions.getByText(t("payroll.reference.held"), { exact: true })).toHaveCount(2);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+for (const [width, colorScheme] of [[1440, "light"], [1440, "dark"], [390, "light"], [390, "dark"]] as const) test(`deduction sources follow the page scroll ${width} ${colorScheme} @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.emulateMedia({ colorScheme });
+  const fixture = await mockScreen(page, payrollScreens[0], "populated");
+  const sample = draft.deductions![0]!;
+  const deductions = (["NationalPension", "HealthInsurance", "LongTermCare", "EmploymentUnemployment"] as const).map((code, index) => ({
+    ...sample, code, label_ko: `모의 공제 ${index + 1}`, employee_won: sample.employee_won! + index,
+    instrument: { ...sample.instrument, name_ko: `모의 공제 산정 기준 ${index + 1}`, article_ko: "모의 공제 산정과 적용 범위를 정하는 조문", url: `https://example.com/deduction/${index + 1}` },
+    share_instrument: { ...sample.instrument, name_ko: `모의 직원 부담 기준 ${index + 1}`, article_ko: "모의 직원 부담액과 분담 범위를 정하는 조문", url: `https://example.com/share/${index + 1}` },
+    provenance_ko: "화면 검증용 가상 기준 · 공제 산정 근거와 직원 부담 근거를 함께 확인합니다.",
+  })) satisfies NonNullable<typeof draft.deductions>;
+  const writes: string[] = [];
+  page.on("request", request => { if (request.method() !== "GET" && new URL(request.url()).pathname.startsWith("/api/v1/payroll/")) writes.push(request.url()); });
+  await page.route("**/api/v1/payroll/employees/*/payslip-draft?*", route => route.fulfill({ json: {
+    ...draft, deductions, total_employee_insurance_won: deductions.reduce((sum, row) => sum + row.employee_won, 0),
+    remainder_after_insurance_won: draft.gross_won! - deductions.reduce((sum, row) => sum + row.employee_won, 0),
+  } }));
+  try {
+    await page.goto(employeePayScreen.path);
+    const section = page.getByRole("region", { name: t("payroll.employee.deductions"), exact: true }).first();
+    await expect(section.getByText(deductions[0]!.label_ko, { exact: true })).toBeVisible();
+    await section.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: test.info().outputPath(`deductions-${width}-${colorScheme}.png`), fullPage: true });
+    expect(await section.evaluate(root => [...root.querySelectorAll<HTMLElement>("*")].filter(element => {
+      const style = getComputedStyle(element);
+      return /auto|scroll/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1;
+    }).map(element => element.getAttribute("role") ?? element.tagName))).toEqual([]);
+    for (const deduction of deductions) {
+      const row = section.getByRole("row").filter({ hasText: deduction.label_ko });
+      await row.scrollIntoViewIfNeeded();
+      await expect(row.getByText(t("payroll.employee.won", { amount: fmtNumber(deduction.employee_won) }), { exact: true })).toBeVisible();
+      for (const instrument of [deduction.instrument, deduction.share_instrument]) {
+        const citation = row.locator("cite").filter({ hasText: instrument.name_ko });
+        await expect(citation).toBeVisible();
+        await expect(citation).toHaveText(`${instrument.name_ko} · ${instrument.article_ko} · ${instrument.promulgation_ko} · ${instrument.url}`);
+        await expect(citation.getByRole("link")).toHaveCount(0);
+        const copy = citation.getByRole("button", { name: t("uiField.copyUrl"), exact: true });
+        await copy.focus();
+        await expect(copy).toBeFocused();
+      }
+      await expect(row.getByText(deduction.provenance_ko, { exact: true })).toHaveCount(1);
+      await expect(row.getByRole("cell")).toHaveCount(3);
+      expect(await row.getByRole("cell").evaluateAll(cells => cells.every(cell => cell.scrollWidth <= cell.clientWidth + 1 && cell.scrollHeight <= cell.clientHeight + 1))).toBe(true);
+    }
+    await fits(page, `deduction-sources/${width}/${colorScheme}`);
+    await expectAxe(page, `deduction-sources/${width}/${colorScheme}`);
+    expect(writes).toEqual([]);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });

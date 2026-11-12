@@ -1,6 +1,6 @@
 {
   "baseline": {
-    "apps/web/src/features/payroll/ui/employee-pay-page.tsx#EmployeePayPage": 31
+    "apps/web/src/features/payroll/ui/employee-pay-page.tsx#EmployeePayPage": 25
   },
   "newScreens": {
     "apps/web/src/features/payroll/ui/employee-pay-page.tsx#EmployeePayPage": {
