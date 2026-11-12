@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { OrgChangeDetail } from "@console/api/pending";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "../locale-fixture";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { failure, id } from "../mock/fixtures";
