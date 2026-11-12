@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! 사진 uploads. The REST layer holds the object store: it asks here for an
+//! Photo uploads. The REST layer holds the object store: it asks here for an
 //! upload record ([`HrService::issue_photo_upload`]) and presigns a PUT for
 //! its key; after the browser's PUT it HEADs the key and calls
 //! [`HrService::confirm_photo_upload`]. The confirmed upload id is then the
@@ -65,7 +65,7 @@ fn event(principal: &Principal, action: &str, upload: &PhotoUpload) -> Result<Au
 }
 
 impl HrService {
-    /// Records a new 사진 upload for `employee_id` and returns it with its
+    /// Records a new photo upload for `employee_id` and returns it with its
     /// server-made key.
     pub async fn issue_photo_upload(
         &self,

@@ -1,15 +1,16 @@
-//! The sending 법인's settlement case of a 전적 (decisions #30;
-//! design/inter-entity-transfer.md §3.3, the A-side trail): the 전적 is the
-//! 퇴직 at the sending 법인, so its exit case opens with it, in its
-//! transaction, already past the HR confirmation (the 전적 itself is the
-//! recorded exit; no TERMINATE). The case carries the 전적 event as its exit
-//! event, 마지막 근무일 = the day before the start, 퇴직 사유 `GROUP_TRANSFER`,
-//! and then goes the usual way: HQ confirmation, 퇴직금 · 금품청산 settlement,
+//! The sending legal entity's settlement case of a group transfer (decisions
+//! #30; design/inter-entity-transfer.md §3.3, the A-side trail): the group
+//! transfer is the exit at the sending legal entity, so its exit case opens
+//! with it, in its transaction, already past the HR confirmation (the group
+//! transfer itself is the recorded exit; no TERMINATE). The case carries the
+//! group transfer event as its exit event, last working day = the day before
+//! the start, exit reason `GROUP_TRANSFER`, and then goes the usual way: HQ
+//! confirmation, the severance pay · money and valuables settlement,
 //! approval. Access is not ended (the person stays employed in the tenant).
 //!
-//! The way back is the 전적's own: withdrawing a scheduled 전적, replacing it,
-//! or rescinding it cancels the case here; the case's reject and cancel
-//! refuse (`exit_case_follows_group_transfer`).
+//! The way back is the group transfer's own: withdrawing a scheduled group
+//! transfer, replacing it, or rescinding it cancels the case here; the case's
+//! reject and cancel refuse (`exit_case_follows_group_transfer`).
 
 use console_kernel_core::{AuditAction, AuditEvent, BranchId, OrgId, TraceContext, UserId};
 use http::StatusCode;
@@ -23,7 +24,8 @@ use crate::exits::report::exit_case_open;
 use crate::exits::settlement_store::upsert_exit_settlement_package;
 use crate::exits::store::resolve_exit_case_branch;
 
-/// The 퇴직 사유 a 전적's case carries (catalog `reason.exit_reason.GROUP_TRANSFER`).
+/// The exit reason a group transfer's case carries (catalog
+/// `reason.exit_reason.GROUP_TRANSFER`).
 pub const GROUP_TRANSFER_EXIT_REASON: &str = "GROUP_TRANSFER";
 
 fn event(
@@ -50,8 +52,8 @@ fn event(
     Ok(e)
 }
 
-/// The branch the case belongs to: the person's at the sending 법인, read
-/// before the 전적 moves them.
+/// The branch the case belongs to: the person's at the sending legal entity,
+/// read before the group transfer moves them.
 ///
 /// # Errors
 /// A database fault.
@@ -63,7 +65,7 @@ pub async fn sending_branch(
     resolve_exit_case_branch(tx, org, employee, None, None).await
 }
 
-/// Opens the settlement case of the 전적 `event` starting `start`.
+/// Opens the settlement case of the group transfer `event` starting `start`.
 ///
 /// # Errors
 /// 409 `exit_case_open` naming the person's open exit case (one at a time;
@@ -115,9 +117,9 @@ pub async fn open_settlement_case(
     Ok((case, audit))
 }
 
-/// Cancels the open settlement case of the 전적 `event_id`, if any, with its
-/// settlement package: the 전적 was withdrawn, replaced or rescinded. A
-/// SUBMITTED case stays: what was settled and filed is kept.
+/// Cancels the open settlement case of the group transfer `event_id`, if any,
+/// with its settlement package: the group transfer was withdrawn, replaced or
+/// rescinded. A SUBMITTED case stays: what was settled and filed is kept.
 ///
 /// # Errors
 /// A database fault.
@@ -170,8 +172,8 @@ pub async fn withdraw_settlement_case(
     )?))
 }
 
-/// The refusal of a reject or cancel on a 전적's case: the 전적 is withdrawn
-/// or rescinded from the person's history instead.
+/// The refusal of a reject or cancel on a group transfer's case: the group
+/// transfer is withdrawn or rescinded from the person's history instead.
 #[must_use]
 pub fn follows_group_transfer() -> HrError {
     HrError {

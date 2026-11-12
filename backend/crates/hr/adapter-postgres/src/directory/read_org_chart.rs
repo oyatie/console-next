@@ -1,7 +1,7 @@
 //! `GET /hr/org-chart`: company -> unit -> position grouping (moved from
-//! `app/src/hr.rs`, R2-people). An employee with a 법인 assignment groups
-//! under that 법인 by id and its current name; one without keeps the legacy
-//! company-text group (E-S3a).
+//! `app/src/hr.rs`, R2-people). An employee with a legal entity assignment
+//! groups under that legal entity by id and its current name; one without
+//! keeps the legacy company-text group (E-S3a).
 
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
@@ -22,7 +22,7 @@ pub struct HrOrgChartResponse {
 
 #[derive(Debug, Serialize)]
 pub struct HrOrgChartCompany {
-    /// The 법인 this group is; null for a legacy company-text group.
+    /// The legal entity this group is; null for a legacy company-text group.
     pub legal_entity_id: Option<Uuid>,
     pub company: String,
     pub total: i64,

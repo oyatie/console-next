@@ -90,8 +90,9 @@ impl Fixture {
         employee
     }
 
-    /// A pre-MR-28 duplicate 사번 as 0292 flags it: the flag guard admits it
-    /// only from the migration, so the row is written the way that UPDATE ran.
+    /// A pre-MR-28 duplicate employee number as 0292 flags it: the flag guard
+    /// admits it only from the migration, so the row is written the way that
+    /// UPDATE ran.
     pub async fn legacy_duplicate(&self, number: &str) -> Uuid {
         let id = self.employee(&format!("{number}-legacy")).await;
         let mut tx = self.owner.begin().await.unwrap();

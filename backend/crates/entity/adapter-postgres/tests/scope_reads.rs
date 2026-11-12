@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! decisions #15, the SQL backstop of the Cedar scope rule
-//! `scope_tenant || scope_entities.containsAny(resource)`, as `console_rt`:
-//! a grant on 법인 B reaches B whoever employs the holder; a 사업장 grant
-//! reaches that 사업장 (and shows its 법인); without a grant nothing crosses.
+//! `scope_tenant || scope_entities.containsAny(resource)`, as `console_rt`: a grant on
+//! legal entity B reaches B whoever employs the holder; a workplace grant reaches that
+//! workplace (and shows its legal entity); without a grant nothing crosses.
 
 mod common;
 
@@ -51,7 +51,7 @@ async fn reads_stop_at_the_granted_entities_and_workplaces(owner: PgPool) {
     let [(a, a_reg, a_wp), (b, _, _)] = ids[..] else {
         unreachable!()
     };
-    // A second 사업장 of A, outside a grant on A's first one.
+    // A second workplace of A, outside a grant on A's first one.
     store
         .create_workplace(&cmd(&actor), a, workplace_from(a_reg, "부산지점"), port())
         .await
@@ -75,7 +75,7 @@ async fn reads_stop_at_the_granted_entities_and_workplaces(owner: PgPool) {
     // The tenant scope sees both.
     assert_eq!(store.list_entities(&actor, false).await.unwrap().len(), 2);
 
-    // A grant on 법인 B: B only, and nothing of A (#15.4).
+    // A grant on legal entity B: B only, and nothing of A (#15.4).
     let on_b = scoped(&actor, &[b]);
     let seen: Vec<Uuid> = store
         .list_entities(&on_b, false)
@@ -100,7 +100,7 @@ async fn reads_stop_at_the_granted_entities_and_workplaces(owner: PgPool) {
         vec![b]
     );
 
-    // A grant on A's 사업장: A shows, with that 사업장, and its placements.
+    // A grant on A's workplace: A shows, with that workplace, and its placements.
     let on_site = scoped(&actor, &[a_wp]);
     let seen = store.list_entities(&on_site, false).await.unwrap();
     assert_eq!(seen.iter().map(|e| e.id).collect::<Vec<_>>(), vec![a]);

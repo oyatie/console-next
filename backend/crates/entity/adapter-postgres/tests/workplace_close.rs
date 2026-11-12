@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! MR-14 as `console_rt`: a 사업장 폐업 (status CLOSED) sets its closed_on once
-//! it is empty, refuses new placements (adapter and 0264) and reopens on a
-//! later revision; the orgchange port closes one inside its own transaction.
+//! MR-14 as `console_rt`: a workplace closure (status CLOSED) sets its closed_on once it is
+//! empty, refuses new placements (adapter and 0264) and reopens on a later revision; the
+//! orgchange port closes one inside its own transaction.
 
 mod close_support;
 mod common;
@@ -45,7 +45,8 @@ async fn a_workplace_closes_once_empty_refuses_placements_and_reopens(owner: PgP
     );
     assert_eq!(closed_on(&owner, "workplaces", w.branch).await, None);
 
-    // Moved on 2026-01-01 (before the 폐업일): the 사업장 closes and its SITE unit dissolves.
+    // Moved on 2026-01-01 (before the closure date): the workplace closes and its SITE unit
+    // dissolves.
     w.store
         .bind_assignment(&cmd(&w.actor), bind(&w, kim, spare, "2026-01-01"))
         .await
@@ -95,7 +96,7 @@ async fn a_workplace_closes_once_empty_refuses_placements_and_reopens(owner: PgP
         .await
         .unwrap_err();
     assert!(err.to_string().contains("workplace_closed"), "{err}");
-    // History that ends by the 폐업일 is still recordable.
+    // History that ends by the closure date is still recordable.
     sqlx::query(raw)
         .bind(ORG)
         .bind(lee)
@@ -108,7 +109,8 @@ async fn a_workplace_closes_once_empty_refuses_placements_and_reopens(owner: PgP
         .await
         .unwrap();
 
-    // The 본사/대표 사업장 does not close alone while another 사업장 is open.
+    // The headquarters / representative workplace does not close alone while another
+    // workplace is open.
     let (code_, _, remedy) = code(
         set_status(&w, w.hq, "본사", "CLOSED", Some("2026-01-31"))
             .await
@@ -122,7 +124,7 @@ async fn a_workplace_closes_once_empty_refuses_placements_and_reopens(owner: PgP
         )
     );
 
-    // The registration does not close while open 사업장 file under it.
+    // The registration does not close while open workplaces file under it.
     let rev = Revision {
         expected_version: Some(1),
         effective_from: Some("2026-01-31".into()),
@@ -149,7 +151,7 @@ async fn a_workplace_closes_once_empty_refuses_placements_and_reopens(owner: PgP
         ("record_in_use", Some("close_workplaces_first"))
     );
 
-    // A later revision back to 계속 reopens it with a new SITE unit; placements work again.
+    // A later revision back to continuing reopens it with a new SITE unit; placements work again.
     set_status(&w, w.branch, "부산지점", "CONTINUING", None)
         .await
         .unwrap();

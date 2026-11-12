@@ -120,7 +120,7 @@ pub(crate) async fn entities_at(
     };
     for e in &mut entities {
         e.name_reviews = reviews.remove(&e.id).unwrap_or_default();
-        // Only individual certificates own their 상호; legacy NULL uses the entity name.
+        // Only individual certificates own their trade name; legacy NULL uses the entity name.
         let name = e
             .current
             .as_ref()

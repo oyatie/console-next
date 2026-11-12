@@ -1,6 +1,6 @@
 //! Person and employment fact rules (parity E3, E4, E12/F5). Pure: `today` is
-//! a parameter, and the lead time of the 수습 종료 reminder arrives from the
-//! caller's settings lookup.
+//! a parameter, and the lead time of the end-of-probation reminder arrives
+//! from the caller's settings lookup.
 
 use console_kernel_core::KernelError;
 use time::{Date, Month};
@@ -8,7 +8,7 @@ use time::{Date, Month};
 /// The `employees_work_email_shape` bound (RFC 5321 §4.5.3.1.3 path limit).
 const WORK_EMAIL_MAX: usize = 254;
 
-/// 업무용 이메일 (E3): trimmed, one `@`, no whitespace, a dotted domain, which
+/// Work email (E3): trimmed, one `@`, no whitespace, a dotted domain, which
 /// is lower-cased (the local part is left as typed: RFC 5321 §2.4).
 ///
 /// # Errors
@@ -17,7 +17,7 @@ pub fn normalize_work_email(raw: &str) -> Result<String, KernelError> {
     normalize_email(raw, "work_email")
 }
 
-/// Any mailbox field (업무용 or 개인 메일) under the rule of
+/// Any mailbox field (work or personal email) under the rule of
 /// [`normalize_work_email`]; `field` names it in the refusal.
 ///
 /// # Errors
@@ -37,8 +37,9 @@ pub fn normalize_email(raw: &str, field: &str) -> Result<String, KernelError> {
     Ok(format!("{local}@{}", domain.to_ascii_lowercase()))
 }
 
-/// 생년월일 (E4): a real past date, not before 1900 (the column floor). Age
-/// rules (연소자, 55세) are read from it elsewhere and never refuse here.
+/// Date of birth (E4): a real past date, not before 1900 (the column floor).
+/// Age rules (minors, age 55) are read from it elsewhere and never refuse
+/// here.
 ///
 /// # Errors
 /// Validation when the date is in the future or before 1900-01-01.
@@ -53,12 +54,12 @@ pub fn validate_birth_date(birth_date: Date, today: Date) -> Result<(), KernelEr
     Ok(())
 }
 
-/// 수습 종료일 (E12): the period starts on the hire date, so it must end on or
-/// after it. A confirmed probation is closed and cannot be re-dated.
+/// Probation end date (E12): the period starts on the hire date, so it must
+/// end on or after it. A confirmed probation is closed and cannot be re-dated.
 ///
 /// # Errors
 /// Validation for an end before the hire date; invalid transition once the
-/// 수습 종료 is confirmed.
+/// end of probation is confirmed.
 pub fn validate_probation_end(
     end_date: Date,
     hire_date: Option<Date>,
@@ -77,7 +78,7 @@ pub fn validate_probation_end(
     Ok(())
 }
 
-/// Where a probation stands on `today` (F5: the 「수습 종료 D-n」 queue item).
+/// Where a probation stands on `today` (F5: the "probation ends D-n" queue item).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ProbationState {
@@ -85,9 +86,9 @@ pub enum ProbationState {
     None,
     /// Ends later than the reminder window.
     Running,
-    /// Inside the reminder window: HR owes the 수습 종료 decision.
+    /// Inside the reminder window: HR owes the end-of-probation decision.
     DueSoon,
-    /// The end date passed without a recorded 수습 종료.
+    /// The end date passed without a recorded end of probation.
     Overdue,
     Confirmed,
 }

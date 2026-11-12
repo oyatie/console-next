@@ -1,9 +1,10 @@
-//! r3:hire-16 / records-02: the 근로자 명부 (근기법 시행령 §20) 성별 of an
-//! imported person, from the file's 성별 column, else from the 주민등록번호's
-//! 7th digit (odd 남, even 여). #25: only that meaning leaves the parse; the
-//! number itself is sealed and never stored in a row.
+//! r3:hire-16 / records-02: the worker register (Enforcement Decree of the
+//! Labor Standards Act §20) sex of an imported person, from the file's sex
+//! column, else from the resident registration number's 7th digit (odd male,
+//! even female). #25: only that meaning leaves the parse; the number itself is
+//! sealed and never stored in a row.
 
-/// A 성별 cell as people write it, as `MALE` / `FEMALE`; anything else is no
+/// A sex cell as people write it, as `MALE` / `FEMALE`; anything else is no
 /// answer (never a guess).
 #[must_use]
 pub fn sex_of_text(raw: &str) -> Option<&'static str> {
@@ -14,7 +15,8 @@ pub fn sex_of_text(raw: &str) -> Option<&'static str> {
     }
 }
 
-/// The 성별 a 13-digit 주민등록번호 (or 외국인등록번호) states in its 7th digit.
+/// The sex a 13-digit resident registration number (or alien registration
+/// number) states in its 7th digit.
 #[must_use]
 pub fn sex_of_rrn(digits: &str) -> Option<&'static str> {
     let digit = digits.chars().nth(6)?.to_digit(10)?;

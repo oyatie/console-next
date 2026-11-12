@@ -77,7 +77,7 @@ fn every_dependency_blocks_and_a_runs_own_work_does_not() {
         .kinds(run, false)
         .is_empty()
     );
-    // The setup 휴직, ONBOARD and employment are all tagged with this run.
+    // The setup leave of absence, ONBOARD and employment are all tagged with this run.
     let mut own = Dependencies {
         work_record_runs: vec![Some(run); 3],
         ..Default::default()

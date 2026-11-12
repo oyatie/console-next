@@ -1,8 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! SS-001 / AD-F02c: 법인명 has one stored source. The released binary already derives
-//! every registration's ① from the entity (no reader of `trade_name` remains), so no
-//! write path stores 법인명 into `trade_name`: a 법인명 change appends nothing, status
-//! copies drop legacy corporate names, and an individual registration keeps its 상호.
+//! SS-001 / AD-F02c: the legal entity name has one stored source. The released binary
+//! already derives every registration's ① from the entity (no reader of `trade_name`
+//! remains), so no write path stores the legal entity name into `trade_name`: a legal
+//! entity name change appends nothing, status copies drop legacy corporate names, and an
+//! individual registration keeps its trade name.
 mod common;
 use common::*;
 use console_entity_application::{
@@ -146,7 +147,7 @@ async fn a_legal_name_change_stores_no_copy_and_reads_the_new_name(owner: PgPool
         .unwrap()
         .len();
 
-    // An edit that keeps the 법인명 appends nothing to the registration.
+    // An edit that keeps the legal entity name appends nothing to the registration.
     let view = store.get_entity(&actor, id, true).await.unwrap();
     store
         .revise_entity(&cmd(&actor), id, revision(&view, "주식회사 가나", "가나"))
@@ -154,7 +155,8 @@ async fn a_legal_name_change_stores_no_copy_and_reads_the_new_name(owner: PgPool
         .unwrap();
     assert_eq!(head(&owner, reg).await.0, version);
 
-    // A rename: no write path stores 법인명 into trade_name; no derived copy appended.
+    // A rename: no write path stores the legal entity name into trade_name; no derived
+    // copy appended.
     let view = store.get_entity(&actor, id, true).await.unwrap();
     store
         .revise_entity(&cmd(&actor), id, revision(&view, "주식회사 누리", "가나"))
@@ -178,7 +180,8 @@ async fn a_legal_name_change_stores_no_copy_and_reads_the_new_name(owner: PgPool
         "a rename appends no registration revision"
     );
 
-    // A 등록증 sheet opened before the rename still saves: no person changed the registration.
+    // A certificate sheet opened before the rename still saves: no person changed the
+    // registration.
     let back = console_entity_application::RegistrationRevision {
         expected_version: Some(version),
         effective_from: Some(current.effective_from.to_string()),
@@ -234,7 +237,7 @@ async fn an_individual_registration_retains_trade_name(owner: PgPool) {
         .create_workplace(&cmd(&actor), id, workplace_from(reg, "본사"), port())
         .await
         .unwrap();
-    // A certificate's own 상호 must survive independently of the entity name.
+    // A certificate's own trade name must survive independently of the entity name.
     sqlx::query(
         "INSERT INTO business_registration_revisions SELECT (jsonb_populate_record(NULL::business_registration_revisions, \
          to_jsonb(r) || jsonb_build_object('id', gen_random_uuid(), 'version', r.version + 1, \

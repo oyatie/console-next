@@ -71,7 +71,7 @@ pub async fn apply_lifecycle_head<'c, H: LifecycleApplyHooks<sqlx::Transaction<'
     }
     if let Some(to) = target.workplace {
         let on = parse_yyyy_mm_dd(&transition.effective_date)?;
-        // A 전적's assignments carry its event id as the group_transfer_id.
+        // A group transfer's assignments carry its event id as the group_transfer_id.
         let group = (transition.event_type == "GROUP_TRANSFER").then_some(event_id);
         apply_move(tx, (org_uuid, employee_id, actor), event_id, to, on, group).await?;
     }

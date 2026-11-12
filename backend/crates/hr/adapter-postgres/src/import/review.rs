@@ -1,6 +1,6 @@
 //! IMPORT-2: the dry run's decisions beyond BW-10 — checking the new maps,
 //! filling unanswered ones from the tenant's memory (only for texts this run
-//! has, only records still usable), and the 「확인 필요」 queue of the plan.
+//! has, only records still usable), and the "needs review" queue of the plan.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -24,11 +24,12 @@ use crate::lifecycle::title_reason::coded;
 
 type Tx<'a, 'b> = &'a mut sqlx::Transaction<'b, Postgres>;
 
-/// The status, leave-type and 사번 answers name known codes and rows.
+/// The status, leave-type and employee number answers name known codes and
+/// rows.
 ///
 /// # Errors
-/// 400 for an unknown code, a 사번 answer for a row not in the run, or a
-/// blank / overlong 사번.
+/// 400 for an unknown code, an employee number answer for a row not in the
+/// run, or a blank / overlong employee number.
 pub fn check_import2_decisions(
     stored: &[StoredEmployeeImportRow],
     decisions: &Decisions,
@@ -200,7 +201,7 @@ pub async fn review_of(
             item.candidates = super::company::proposals(row, &confirmed);
         }
     }
-    // W03: every unit and 사업장 of the tenant, not only the names the rows used.
+    // W03: every unit and workplace of the tenant, not only the names the rows used.
     let units = active_org_units_by_name(tx).await?;
     let mut workplaces = BTreeMap::<String, Vec<Uuid>>::new();
     for (name, id) in open_workplaces(tx.as_mut(), org).await.map_err(coded)? {

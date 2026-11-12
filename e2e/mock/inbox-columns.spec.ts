@@ -81,7 +81,9 @@ for (const path of ["/", "/inbox"]) {
         await expect(pane).toContainText(data.items[0]!.title);
         await expect(pane).toContainText("김담당");
         await expect(pane.getByRole("link", { name: t("home.inbox.record.original"), exact: true })).toBeVisible();
-        await expect(pane.getByRole("heading", { name: "활동 내역", exact: true })).toHaveCount(0);
+        // 활동 내역 is the item's own read; the default mock answers no events.
+        await expect(pane.getByRole("heading", { name: t("home.inbox.activity.title"), exact: true })).toHaveCount(1);
+        await expect(pane).toContainText(t("home.inbox.activity.empty"));
         if (width === 390) {
           await expect(page.locator("[data-flexible-columns] > div").first()).toBeHidden();
           await expect(pane.getByRole("button", { name: t("common.back"), exact: true })).toBeVisible();

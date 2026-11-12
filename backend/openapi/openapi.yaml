@@ -19477,6 +19477,62 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/me/action-inbox/items/{id}/activity:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - me
+      operationId: listMyActionInboxItemActivity
+      summary: Activity on one of my inbox items
+      description: >-
+        The record column's activity list for an item in the caller's inbox. The item is resolved
+        through the caller's own sources, the same read as the list, so another person's item, an
+        unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item
+        was not found while a source was unavailable. Rows are the audit events on the item's own
+        record (the request, change, lock, grant or case its first link names; for an org change,
+        also its approval steps), newest first, at most 50: what happened (a verb from a closed set,
+        other for anything else), who did it (absent for system events) and when. Events on the
+        person or account behind an item are not served, and audit snapshots never are.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: The item id as the list serves it (kind:uuid).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The item's activity, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 50
+                    items:
+                      type: object
+                      required: [verb, occurred_at]
+                      properties:
+                        verb:
+                          type: string
+                          x-extensible-enum: [create, submit, approve, reject, decide, apply, withdraw, cancel, update, confirm, other]
+                        actor_name:
+                          type: string
+                          description: The acting account's display name; absent for system events.
+                        occurred_at:
+                          type: string
+                          format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/me/action-inbox/reference:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -34570,10 +34626,10 @@ components:
               type: boolean
         version:
           type: string
-          description: Opaque command version for pending org-change approval rows; changes after any step decision.
+          description: Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes.
         policy:
           type: object
-          description: Named policy for the stored approval chain, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without stored steps. Commands recheck live policy.
+          description: Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy.
           required: [key, routed, merge_consecutive, bulk_allowed, step_up]
           properties:
             key:

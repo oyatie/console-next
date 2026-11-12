@@ -173,8 +173,8 @@ impl From<KernelError> for HrError {
     }
 }
 
-/// MR-28: the tenant-unique 사번 index (0277). Every writer that reaches it
-/// (registration, import apply, a 정정) answers 409, never 500.
+/// MR-28: the tenant-unique employee number index (0277). Every writer that
+/// reaches it (registration, import apply, a correction) answers 409, never 500.
 const EMPLOYEE_NUMBER_INDEX: &str = "employees_org_employee_number_key";
 
 impl From<DbError> for HrError {

@@ -11,6 +11,7 @@ fn inbox_decision_settings_default_to_existing_behavior_and_govern_loosening() {
         "people_correction",
         "identity_merge",
         "import_rollback",
+        "registration_void",
     ] {
         for (property, looser_when) in
             [("bulk", LooserWhen::Higher), ("step_up", LooserWhen::Lower)]

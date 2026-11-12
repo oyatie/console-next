@@ -1,10 +1,10 @@
-//! Setup 부서 batches (MR-12; design OM §3.2-§3.5, decisions #18, #20): one
-//! transaction applies every op through the canonical OrgUnit owner, or none.
-//! Each change to an existing unit is pinned to the version the client read
-//! (a per-op 409 names the op and the unit), and each touched unit's
-//! before-image is kept in `org_setup_batches`, so the batch can be undone
-//! until 운영 시작 (`org_batch_undo`). After go-live `admit` refuses with
-//! `phase_not_setup` / `submit_org_change`: changes then go through a
+//! Setup department batches (MR-12; design OM §3.2-§3.5, decisions #18,
+//! #20): one transaction applies every op through the canonical OrgUnit
+//! owner, or none. Each change to an existing unit is pinned to the version
+//! the client read (a per-op 409 names the op and the unit), and each touched
+//! unit's before-image is kept in `org_setup_batches`, so the batch can be
+//! undone until go-live (`org_batch_undo`). After go-live `admit` refuses
+//! with `phase_not_setup` / `submit_org_change`: changes then go through a
 //! governed org change.
 
 use std::collections::HashMap;
@@ -25,7 +25,7 @@ use crate::org_units::{OrgUnitSetupWritePort, port_refusal};
 use crate::{Admitted, PgEntityError, PgEntityStore, Tx, admit, audit, today_kst};
 
 /// a request-size guard, not a tenant policy; one batch is one
-/// transaction (OM C12). The P2b group has ≈ 420 부서 in all.
+/// transaction (OM C12). The P2b group has ≈ 420 departments in all.
 pub(crate) const MAX_OPS: usize = 1000;
 
 /// How a batch was asked for.
@@ -35,9 +35,9 @@ pub(crate) enum BatchMode {
     Setup,
     /// A single-unit setup route: fields named bare (legacy clients).
     Unit,
-    /// A 부서 write that applies at once in either phase (CRUD: 폐지,
-    /// 부서장 · 코드), recorded GOVERNED after 운영 시작 and refused while
-    /// the tenant routes org changes (`crate::org_usage::admit_direct`).
+    /// A department write that applies at once in either phase (CRUD:
+    /// abolish, department head · code), recorded GOVERNED after go-live and
+    /// refused while the tenant routes org changes (`crate::org_usage::admit_direct`).
     Direct,
 }
 
@@ -127,8 +127,8 @@ impl Run<'_> {
     }
 
     /// Write `attributes` as the next revision of `unit` (a new unit when
-    /// `None`) and record the step. A unit that lands in another 사업장 takes
-    /// its people's 사업장 placement with it.
+    /// `None`) and record the step. A unit that lands in another workplace
+    /// takes its people's workplace placement with it.
     pub async fn write(
         &mut self,
         tx: &mut Tx<'_>,
@@ -241,7 +241,7 @@ impl Run<'_> {
 }
 
 impl PgEntityStore {
-    /// Apply setup 부서 ops in one transaction (`POST /org-structure/batches`).
+    /// Apply setup department ops in one transaction (`POST /org-structure/batches`).
     ///
     /// # Errors
     /// `phase_not_setup`, field issues (`ops[i].…`), a per-op 409

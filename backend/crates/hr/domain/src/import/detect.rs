@@ -1,7 +1,7 @@
 //! IMPORT-2 (decisions #25): which row of a sheet is its header and which
 //! column is which target, for any layout. In order: the operator's mapping
 //! for the sheet, then the tenant's remembered header labels, then the
-//! catalog aliases. A sheet with content but no row naming a 성명 column is
+//! catalog aliases. A sheet with content but no row naming a name column is
 //! not guessed at: it comes back `NeedsMapping` with its likeliest header
 //! rows, and its cells are not kept.
 

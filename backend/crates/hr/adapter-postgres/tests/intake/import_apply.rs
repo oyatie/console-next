@@ -1,4 +1,4 @@
-//! BW-10: unknown units (미배치, MR-7), settling new people, atomic and concurrent applies.
+//! BW-10: unknown units (unplaced, MR-7), settling new people, atomic and concurrent applies.
 
 use console_hr_adapter_postgres::directory::read_filters::EmployeeListQuery;
 use console_hr_domain::import::plan::Decisions;
@@ -14,7 +14,7 @@ async fn an_unknown_unit_comes_in_unplaced_and_a_mapped_one_binds(pool: PgPool) 
     elsewhere.unit = Some("영업팀");
     let run = im.preview("명부.xlsx", &[elsewhere]).await;
     let plan = im.dry_run(run, Decisions::default()).await;
-    // MR-7: 미배치 is never a refusal; the name is listed and kept.
+    // MR-7: unplaced is never a refusal; the name is listed and kept.
     assert_eq!(
         (plan.unsettled_rows, plan.unresolved_org_units.as_slice()),
         (0, &["영업팀".to_owned()][..])

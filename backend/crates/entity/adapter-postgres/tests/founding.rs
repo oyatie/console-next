@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R1 ENTITY company-08 (catalog company-04) and company-21 as
-//! `console_rt`: a 법인 recorded 설립 중 has no 법인등록번호 until its 설립등기;
-//! entering the number ends the founding, once. A record created with its
-//! certificate's 개업연월일 starts there, not today.
+//! UX-R1 ENTITY company-08 (catalog company-04) and company-21 as `console_rt`: a legal
+//! entity recorded as under incorporation has no corporate registration number until its
+//! incorporation registration; entering the number ends the founding, once. A record
+//! created with its certificate's business start date starts there, not today.
 
 mod common;
 
@@ -25,7 +25,7 @@ fn founding(name: &str) -> LegalEntityInput {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_founding_entity_takes_its_number_once(owner: PgPool) {
     let (store, actor) = tenant(&owner, ORG, "F").await;
-    // A 법인 without a number is refused unless it is being founded.
+    // A legal entity without a number is refused unless it is being founded.
     let err = store
         .create_entity(
             &cmd(&actor),
@@ -37,7 +37,7 @@ async fn a_founding_entity_takes_its_number_once(owner: PgPool) {
         .await
         .unwrap_err();
     assert_eq!(code(err).1, vec![("crn".into(), "required")]);
-    // 설립 중 is a 법인's state only.
+    // "Under incorporation" is a legal entity's state only.
     let individual = LegalEntityInput {
         biz_kind: Some("INDIVIDUAL".into()),
         ..founding("가나상회")
@@ -60,7 +60,7 @@ async fn a_founding_entity_takes_its_number_once(owner: PgPool) {
         .record;
     assert!(e.founding && e.crn.is_none());
 
-    // A revise keeps it 설립 중 whatever the client says, until the number comes.
+    // A revise keeps it under incorporation whatever the client says, until the number comes.
     let rev = |version, input| Revision {
         expected_version: Some(version),
         effective_from: Some("2026-03-02".into()),
@@ -121,7 +121,7 @@ async fn a_record_starts_at_its_certificates_opening_date(owner: PgPool) {
         .unwrap()
         .record;
     assert_eq!(e.current.unwrap().effective_from.to_string(), "2020-03-02");
-    // A 설립일 still wins.
+    // An incorporation date still wins.
     let both = LegalEntityInput {
         opened_on: Some("2020-03-02".into()),
         incorporated_on: Some("2019-11-01".into()),

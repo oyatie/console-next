@@ -72,7 +72,7 @@ async fn a_certificate_is_kept_attached_and_superseded_by_the_next(owner: PgPool
         None
     );
 
-    // A 재발급 certificate supersedes the first; its retention clock starts.
+    // A reissued certificate supersedes the first; its retention clock starts.
     let second = store.upload_document(&actor, pdf("v2")).await.unwrap();
     store
         .attach_document(&actor, second.id, entity, Some(reg))
@@ -85,7 +85,7 @@ async fn a_certificate_is_kept_attached_and_superseded_by_the_next(owner: PgPool
     assert!(old.superseded_at.is_some() && new.superseded_at.is_none());
     assert!(old.clone().with_retention(Some(5)).retain_until.is_some());
 
-    // Never moved to another 법인.
+    // Never moved to another legal entity.
     let other = store
         .create_entity(&cmd(&actor), corporation("주식회사 다라", "000111-0000013"))
         .await

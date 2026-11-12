@@ -9,7 +9,8 @@ pub struct RunCalcSummary {
     pub calculated_at: OffsetDateTime,
     pub calculated_lines: i64,
     pub blocked_lines: i64,
-    /// Always `false` until the 노무사/세무사 release gate flips stored rows.
+    /// Always `false` until the labor attorney/tax accountant release gate
+    /// flips stored rows.
     pub payable: bool,
     pub kernel_rate_table: String,
     /// `None` unless EVERY line of the run calculated — never a partial sum

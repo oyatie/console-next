@@ -8,8 +8,9 @@ use sqlx::PgPool;
 
 use crate::harness::{decisions, importer, table};
 
-/// 재직 with a future 입사일: refused until answered 「입사 예정으로」, then the
-/// person comes in 입사 예정; a made-up answer is 422 and nothing changes.
+/// Employed with a future hire date: refused until answered "as a pending hire",
+/// then the person comes in as a pending hire; a made-up answer is 422 and
+/// nothing changes.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_active_with_a_future_hire_date_is_answered_pre_hire_once(pool: PgPool) {
     let i = importer(pool).await;

@@ -1,7 +1,8 @@
-//! IMPORT-2 (decisions #25): 사번 — numbering rules, a 사번 변경 (not a 정정:
-//! an effective date, a reason code, the old number kept as an alias that
-//! still finds the person, history), and bulk renumbering with an old → new
-//! preview and a SETUP undo. Every reference stays on the UUID.
+//! IMPORT-2 (decisions #25): employee numbers — numbering rules, an employee
+//! number change (not a correction: an effective date, a reason code, the old
+//! number kept as an alias that still finds the person, history), and bulk
+//! renumbering with an old → new preview and a SETUP undo. Every reference
+//! stays on the UUID.
 
 pub mod change;
 pub mod facts;

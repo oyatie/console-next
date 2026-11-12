@@ -1,4 +1,4 @@
-//! 발령 공고 · 발령 번호 (EMP-UI 10).
+//! Personnel order notices · personnel order numbers (EMP-UI 10).
 
 use console_hr_adapter_postgres::HrError;
 use console_hr_adapter_postgres::lifecycle::requests::BulkEmployeeLifecycleEventRequest;
@@ -147,7 +147,7 @@ async fn an_event_is_announced_once_and_a_refused_notice_takes_no_number(pool: P
         .await
         .unwrap_err();
     assert_eq!(status(&no_batch).0, 404);
-    // A withdrawn reservation is not a 발령 any more.
+    // A withdrawn reservation is not a personnel order any more.
     let (b2, e2) = batch(&f, 1, "2027-03-01").await;
     let withdraw: RescindLifecycleEventRequest =
         serde_json::from_value(json!({"reason_code": "PLAN_WITHDRAWN", "confirm_cascades": true}))

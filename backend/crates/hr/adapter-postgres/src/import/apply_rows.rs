@@ -1,7 +1,7 @@
 //! BW-10 the rows the leave command applies, built from a checked plan:
-//! `insert` with every value of the new person (the 사번 the plan previewed,
-//! or none: 「사번 미부여」), `update` with only the fields import may write.
-//! Unchanged and excluded rows are not sent.
+//! `insert` with every value of the new person (the employee number the plan
+//! previewed, or none: "no employee number assigned"), `update` with only the
+//! fields import may write. Unchanged and excluded rows are not sent.
 
 use std::collections::BTreeMap;
 
@@ -12,8 +12,8 @@ use uuid::Uuid;
 use crate::import::company::company_of;
 use crate::import::types::StoredEmployeeImportRow;
 
-/// The 이관 mark of a former employee and the unit name that bound no unit
-/// (「미배치 · 원본 부서」, kept on the person: MR-7).
+/// The migration mark of a former employee and the unit name that bound no
+/// unit ("unplaced · source department", kept on the person: MR-7).
 fn metadata(person: &NewPerson, source: &StoredEmployeeImportRow) -> Value {
     let mut metadata = Map::new();
     if person.migrated_former {
@@ -31,12 +31,12 @@ fn metadata(person: &NewPerson, source: &StoredEmployeeImportRow) -> Value {
     Value::Object(metadata)
 }
 
-/// The p_rows of `leave_api.apply_employee_import_batch` v2. Every 사번 is
-/// the one the dry run showed (IMPORT-2: assigned in the plan, never here);
-/// a person recorded 휴직 is inserted current and the settle records the
-/// 휴직 from its start date (decisions #26).
-/// `entities` names the 법인 of each 사업장 the plan places someone at
-/// (`company::entity_names`): a new person's 법인 text (r3:hire-01).
+/// The p_rows of `leave_api.apply_employee_import_batch` v2. Every employee
+/// number is the one the dry run showed (IMPORT-2: assigned in the plan, never
+/// here); a person recorded on leave of absence is inserted current and the
+/// settle records the leave of absence from its start date (decisions #26).
+/// `entities` names the legal entity of each workplace the plan places someone
+/// at (`company::entity_names`): a new person's legal entity text (r3:hire-01).
 pub fn batch_rows(
     stored: &[StoredEmployeeImportRow],
     plan: &[PlannedRow],
@@ -66,7 +66,7 @@ pub fn batch_rows(
                 }));
             }
             ("update", _, Some(employee_id)) => {
-                // 고용형태 lives on the employment profile: the settle step
+                // Employment type lives on the employment profile: the settle step
                 // writes it (MR-7), the batch only the employee columns.
                 let set: Map<String, Value> = row
                     .diff

@@ -90,8 +90,8 @@ pub async fn world_count(pool: &PgPool, org: Uuid, actor: UserId, count: usize) 
                  '{actor_id}', {end});"
             ));
         }
-        // 0, 1: one 법인/사업장 each; 2: a 법인 with no 사업장; 3: none; plus a
-        // superseded row that must never count.
+        // 0, 1: one legal entity / workplace each; 2: a legal entity with no
+        // workplace; 3: none; plus a superseded row that must never count.
         let pick = n % 4;
         if pick < 3 {
             let entity = entities[pick % 2];

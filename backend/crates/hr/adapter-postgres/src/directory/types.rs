@@ -32,9 +32,9 @@ pub struct EmployeeResponse {
     pub org_unit: Option<String>,
     /// Canonical OrgUnit binding (0242); null when unbound (legacy/imported).
     pub org_unit_id: Option<Uuid>,
-    /// 법인 and 사업장 by id from the employee's current (or last) employment
-    /// assignment; null when none is recorded. `company` / `worksite_name`
-    /// stay display snapshots (E-S3a).
+    /// Legal entity and workplace by id from the employee's current (or last)
+    /// employment assignment; null when none is recorded. `company` /
+    /// `worksite_name` stay display snapshots (E-S3a).
     pub legal_entity_id: Option<Uuid>,
     pub workplace_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -83,11 +83,11 @@ pub struct EmployeeResponse {
     /// that put them there; absent otherwise or when the leave named none.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_return_date: Option<String>,
-    /// 업무용 이메일: the only contact the directory row carries (G11). The
+    /// Work email: the only contact the directory row carries (G11). The
     /// registered personal phone stays on `employment.phone_e164`, managers only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub work_email: Option<String>,
-    /// The nearest SCHEDULED lifecycle event (발령 효력 예정); null when none.
+    /// The nearest SCHEDULED lifecycle event (a personnel order not yet in effect); null when none.
     pub next_event: Option<EmployeeNextEvent>,
     /// The latest scheduled action that could not apply on its date and was
     /// not redone since (no SCHEDULED or APPLIED event of the same kind was
@@ -118,8 +118,8 @@ pub struct EmployeeFailedEvent {
 #[derive(Debug, Serialize)]
 pub struct EmployeeCreateWarning {
     /// `same_name_in_unit`: other non-exited employees in the same unit share
-    /// the name. `pay_below_minimum_wage`: the pay of a 근로자 is below the
-    /// 최저임금 floor (`floor_won`) in force on the hire date.
+    /// the name. `pay_below_minimum_wage`: the pay of a worker is below the
+    /// minimum wage floor (`floor_won`) in force on the hire date.
     pub code: &'static str,
     /// Empty for `pay_below_minimum_wage` (kept, so existing clients that
     /// read it as a list keep working).
@@ -179,8 +179,8 @@ pub struct EmployeeDetailResponse {
     pub allowed_scheduled_events: Vec<AllowedLifecycleEvent>,
     /// The date of the employee's last SCHEDULED event; null when none.
     pub schedule_after: Option<String>,
-    /// MR-25: the current 직급, 직위, 직책, 직무 and 직군 catalog ids (labels
-    /// from `GET /api/v1/job-titles`); null when none.
+    /// MR-25: the current grade, title, position, job and job family catalog
+    /// ids (labels from `GET /api/v1/job-titles`); null when none.
     pub classification: EmployeeClassification,
     /// Non-blocking notices on registration and current detail reads.
     #[serde(skip_serializing_if = "Vec::is_empty")]

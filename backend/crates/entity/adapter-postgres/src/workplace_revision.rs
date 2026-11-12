@@ -1,4 +1,4 @@
-//! 사업장 typed revision rows and the per-insurer 4대보험 rows.
+//! Workplace typed revision rows and the per-insurer four-social-insurance rows.
 
 use console_entity_domain::Refusal;
 use console_entity_domain::codes::WithholdingMode;

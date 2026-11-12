@@ -1,8 +1,9 @@
-//! A 부서 created as part of an outline (a create named by a `ref`: a paste or
-//! an import) goes after its siblings (UX-R3 org-13): when any sibling has no
-//! 순서 yet, the order the chart shows (순서, then name) is written down first,
-//! then the new unit takes the next place. A pasted outline thus keeps its typed
-//! order instead of falling back to name order (연구10실 before 연구1실).
+//! A department created as part of an outline (a create named by a `ref`: a
+//! paste or an import) goes after its siblings (UX-R3 org-13): when any
+//! sibling has no order yet, the order the chart shows (order, then name) is
+//! written down first, then the new unit takes the next place. A pasted
+//! outline thus keeps its typed order instead of falling back to name order
+//! (which puts "research office 10" before "research office 1").
 
 use uuid::Uuid;
 

@@ -1,12 +1,14 @@
-//! `POST /employees/register-facts/bulk`: the 「근로자 명부 항목」 and
-//! 「인적사항」 import profiles and the bulk update of their low-risk items
-//! (성별, 주소, 이력 · 경력, 그 밖에 필요한 사항; 한자 · 영문 성명, 국적, 개인
-//! 메일, 비상연락처). The browser parses the sheet (no file and
-//! no 주민등록번호 reaches the server) and sends one row per employee, keyed by
-//! id or 사번. `dry_run` answers what each row would change; the apply is
-//! all-or-nothing and writes one ledger row per changed item. A 퇴직 사유 or
-//! 그룹 입사일 is taken only as a first recording; changing a recorded one is
-//! high-risk and goes through `PATCH /employees/{id}`.
+//! `POST /employees/register-facts/bulk`: the "worker register items" and
+//! "personal details" import profiles and the bulk update of their low-risk
+//! items (sex, address, personal history · work history, other necessary matters; name
+//! in Chinese characters · English name, nationality, personal email,
+//! emergency contact). The browser parses the sheet (no file and no resident
+//! registration number reaches the server) and sends one row per employee,
+//! keyed by id or employee number. `dry_run` answers what each row would
+//! change; the apply is all-or-nothing and writes one ledger row per changed
+//! item. An exit reason or group hire date is taken only as a first
+//! recording; changing a recorded one is high-risk and goes through
+//! `PATCH /employees/{id}`.
 
 use std::collections::HashSet;
 
@@ -33,8 +35,9 @@ use crate::{HrError, HrService};
 /// Most rows one call takes.
 pub const MAX_BULK_ROWS: usize = 500;
 
-/// The items a bulk row may carry: the low-risk 명부 items (MR-23) and the
-/// 인적사항 extras (MR-34; a 사진 is uploaded per employee, not here).
+/// The items a bulk row may carry: the low-risk register items (MR-23) and
+/// the personal details extras (MR-34; a photo is uploaded per employee, not
+/// here).
 pub const BULK_FIELDS: [&str; 9] = [
     "sex",
     "address",
@@ -48,8 +51,8 @@ pub const BULK_FIELDS: [&str; 9] = [
 ];
 
 /// High-risk items a bulk row takes only as a first recording (an imported
-/// 퇴사자's 사유, an imported 그룹입사일); changing a recorded one goes
-/// through `PATCH /employees/{id}` and its second person.
+/// former employee's reason, an imported group hire date); changing a
+/// recorded one goes through `PATCH /employees/{id}` and its second person.
 pub const FIRST_RECORDING_FIELDS: [&str; 2] = ["exit_reason", "group_service_start_date"];
 
 #[derive(Debug, Deserialize)]
@@ -90,7 +93,7 @@ pub struct BulkRegisterFactsOutcome {
     pub rows: Vec<BulkRowOutcome>,
 }
 
-/// The row's employee, by id or by a 사번 that names exactly one record.
+/// The row's employee, by id or by an employee number that names exactly one record.
 async fn resolve(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
@@ -250,7 +253,7 @@ impl HrService {
                     change_request_id: None,
                     review_required: false,
                     // MR-23's profile import is its own all-or-nothing batch,
-                    // not an MR-27 bulk 정정 job.
+                    // not an MR-27 bulk correction job.
                     batch_id: None,
                 };
                 let mut changed = 0usize;

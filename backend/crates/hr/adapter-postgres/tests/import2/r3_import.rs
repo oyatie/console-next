@@ -1,7 +1,7 @@
-//! UX-R3 IMPORT: a person's 법인 is the 법인 of the 사업장 the import places
-//! them at (never the sheet's name), a former employee is found at their
-//! 근무지's 사업장, the apply job's terminal step reaches the event stream,
-//! and the 미배치 queue reads its own facts.
+//! UX-R3 IMPORT: a person's legal entity is the legal entity of the workplace
+//! the import places them at (never the sheet's name), a former employee is
+//! found at their work location's workplace, the apply job's terminal step
+//! reaches the event stream, and the unplaced queue reads its own facts.
 
 use console_hr_adapter_postgres::import::apply_drive::Started;
 use console_hr_adapter_postgres::import::company::ENTITY_UNDECIDED;
@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::harness::{Importer, decisions, importer, table};
 
-/// A 법인 「한빛」 with one open 사업장 「본사」.
+/// A legal entity "Hanbit" with one open workplace "Head office".
 async fn headquarters(i: &Importer) -> Uuid {
     let (o, entity, workplace) = (i.org(), Uuid::new_v4(), Uuid::new_v4());
     let sql = format!(
@@ -147,9 +147,9 @@ async fn regression_an_import_before_workplace_opening_needs_review_and_keeps_th
     );
 }
 
-/// regression (r3:hire-01, hire-22): every person of a sheet with no 법인
-/// column got the sheet's name (「퇴직자 명단」) as their 법인, and a former
-/// employee lost their 사업장.
+/// regression (r3:hire-01, hire-22): every person of a sheet with no legal
+/// entity column got the sheet's name ("list of former employees") as their
+/// legal entity, and a former employee lost their workplace.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_the_entity_comes_from_the_workplace_never_the_sheet_name(pool: PgPool) {
     let i = importer(pool).await;
@@ -265,9 +265,9 @@ async fn regression_a_job_that_settles_nothing_still_reaches_the_stream_when_don
     assert_eq!(unheard, 0, "the done step reached no import_run event");
 }
 
-/// regression (r3:hire-21): the queue showed 「— — —」 for people whose 직위,
-/// 고용형태 and 입사일 exist (the screen read them from the roster's first
-/// 1,000); the queue now carries them.
+/// regression (r3:hire-21): the queue showed "— — —" for people whose title,
+/// employment type and hire date exist (the screen read them from the roster's
+/// first 1,000); the queue now carries them.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_the_unplaced_queue_carries_the_placement_facts(pool: PgPool) {
     let i = importer(pool).await;

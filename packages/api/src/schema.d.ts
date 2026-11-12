@@ -9035,6 +9035,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/action-inbox/items/{id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activity on one of my inbox items
+         * @description The record column's activity list for an item in the caller's inbox. The item is resolved through the caller's own sources, the same read as the list, so another person's item, an unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item was not found while a source was unavailable. Rows are the audit events on the item's own record (the request, change, lock, grant or case its first link names; for an org change, also its approval steps), newest first, at most 50: what happened (a verb from a closed set, other for anything else), who did it (absent for system events) and when. Events on the person or account behind an item are not served, and audit snapshots never are.
+         */
+        get: operations["listMyActionInboxItemActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/action-inbox/reference": {
         parameters: {
             query?: never;
@@ -15344,9 +15364,9 @@ export interface components {
                 grants?: components["schemas"]["AccessEffectiveEntry"][];
                 is_ops?: boolean;
             };
-            /** @description Opaque command version for pending org-change approval rows; changes after any step decision. */
+            /** @description Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes. */
             version?: string;
-            /** @description Named policy for the stored approval chain, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without stored steps. Commands recheck live policy. */
+            /** @description Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy. */
             policy?: {
                 /** @description Settings key whose catalog label names the approval policy. */
                 key: string;
@@ -49955,6 +49975,40 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    listMyActionInboxItemActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The item id as the list serves it (kind:uuid). */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The item's activity, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            verb: string;
+                            /** @description The acting account's display name; absent for system events. */
+                            actor_name?: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     listMyActionInboxReference: {

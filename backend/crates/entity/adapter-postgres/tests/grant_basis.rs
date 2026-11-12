@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! decisions #15.2 as `console_rt`: the facts a scope grant's 업무위탁 basis is
-//! checked against — the tenant setting (default on, a tenant may turn it
-//! off) and whether the holder is employed by the target 법인.
+//! decisions #15.2 as `console_rt`: the facts a scope grant's outsourcing basis is checked
+//! against — the tenant setting (default on, a tenant may turn it off) and whether the
+//! holder is employed by the target legal entity.
 
 mod common;
 
@@ -44,7 +44,7 @@ async fn a_grant_on_another_entity_needs_its_basis_until_the_tenant_opts_out(own
     let [(a, a_wp), (b, b_wp)] = entities[..] else {
         unreachable!()
     };
-    // The holder is the admin's own account, employed by 법인 A.
+    // The holder is the admin's own account, employed by legal entity A.
     let employee: Uuid = sqlx::query_scalar(
         "INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, source_key) \
          VALUES ($1, '주식회사 가나', '김인사', 'x', 'x', 1, 'k1') RETURNING id",
@@ -83,7 +83,7 @@ async fn a_grant_on_another_entity_needs_its_basis_until_the_tenant_opts_out(own
     let on_b = facts(Target::Workplace(b_wp)).await.unwrap();
     assert_eq!(on_b, other);
 
-    // So a grant on 법인 B needs the 업무위탁 basis by default.
+    // So a grant on legal entity B needs the outsourcing basis by default.
     let today = time::macros::date!(2026 - 10 - 05);
     let none = GrantBasisInput::default();
     let refused = check_grant_basis(on_b.required, on_b.holder_employed_by_target, &none, today);

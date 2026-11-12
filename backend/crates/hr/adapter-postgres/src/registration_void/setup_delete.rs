@@ -1,9 +1,10 @@
 //! `DELETE /employees/{id}` during SETUP: the record goes at once. It is
-//! voided, tombstoned in the same transaction and its 사번 freed; the row
-//! stays only as the hidden tombstone, because the registration already wrote
-//! append-only history (the ONBOARD 발령, the person's revisions) that a hard
-//! delete could not remove. An EXITED person still inside the 근로자 명부
-//! period needs the actor's confirmation that the original register is kept.
+//! voided, tombstoned in the same transaction and its employee number freed;
+//! the row stays only as the hidden tombstone, because the registration
+//! already wrote append-only history (the ONBOARD personnel order, the
+//! person's revisions) that a hard delete could not remove. An EXITED person
+//! still inside the worker register period needs the actor's confirmation
+//! that the original register is kept.
 
 use console_hr_domain::registration_void::check_setup_delete;
 use console_kernel_core::WriteClass;
@@ -25,7 +26,7 @@ use crate::{HrError, HrService};
 impl HrService {
     /// # Errors
     /// 403 without org-wide `employee_directory_manage`; 409
-    /// `phase_not_setup` after 운영 시작 (void instead);
+    /// `phase_not_setup` after go-live (void instead);
     /// 409 `exited_register_confirmation_required`; 409 on a stale version;
     /// 404 for an unknown (or already voided) record.
     pub async fn setup_delete_employee(

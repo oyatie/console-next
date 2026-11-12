@@ -1,12 +1,12 @@
-//! 사업장 kind (decisions #18): a label from a tenant-editable code list. It
+//! Workplace kind (decisions #18): a label from a tenant-editable code list. It
 //! changes no rule. The platform defaults are these codes; their labels live
 //! in the ko/en catalogs. A tenant adds its own kinds (server-generated UUID
 //! codes, its own label) and may relabel or hide a default.
 
 use crate::Refusal;
 
-/// The platform defaults, in picker order: 본사, 사업장, 공장, 지점, 영업소,
-/// 연구소, 물류센터, 매장.
+/// The platform defaults, in picker order: headquarters, workplace, factory,
+/// branch, sales office, research lab, logistics center, store.
 pub const PLATFORM_KINDS: [&str; 8] = [
     "HEAD_OFFICE",
     "WORKPLACE",
@@ -41,8 +41,8 @@ pub fn label(raw: Option<&str>) -> Result<String, Refusal> {
     Ok(value.to_owned())
 }
 
-/// A code a 사업장 may name, before the tenant list is consulted: a platform
-/// code, or the shape of a tenant code (a UUID). `None` (미지정) passes.
+/// A code a workplace may name, before the tenant list is consulted: a
+/// platform code, or the shape of a tenant code (a UUID). `None` (unassigned) passes.
 ///
 /// # Errors
 /// `kind_code: invalid_choice`.

@@ -16,8 +16,8 @@ use crate::directory::normalize::{normalize_phone_e164, required_employee_text};
 use crate::{personal_facts, register_facts};
 
 /// Fields a correction may clear (JSON `null`). The rest always hold a value
-/// once recorded: removing a hire, exit or birth date, a 사번 or a pay is not a
-/// 정정 (an exit is rescinded through the exit case).
+/// once recorded: removing a hire, exit or birth date, an employee number or a
+/// pay is not a correction (an exit is rescinded through the exit case).
 const CLEARABLE: [&str; 3] = ["job", "work_email", "probation_end_date"];
 
 fn date(field: &str, text: &str) -> Result<Date, HrError> {

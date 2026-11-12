@@ -1,7 +1,8 @@
-//! BW-11: 취소·철회 (rescind) of an APPLIED lifecycle event, and the pieces
-//! the 정정 (correct) path shares: which event may be voided, and the head it
-//! restores. Append-only: the original row is never touched; a RESCIND row (or,
-//! for a correction, the replacement) carries `voids_event_id`.
+//! BW-11: cancellation or withdrawal (rescind) of an APPLIED lifecycle event,
+//! and the pieces the correction (correct) path shares: which event may be
+//! voided, and the head it restores. Append-only: the original row is never
+//! touched; a RESCIND row (or, for a correction, the replacement) carries
+//! `voids_event_id`.
 //!
 //! only the employee's latest effective event (APPLIED, not a
 //! RESCIND, not voided) may be voided, so the restore is just its `from_`
@@ -67,9 +68,9 @@ pub(super) struct Original {
     from_job_title_id: Option<Uuid>,
     from_contract_end_date: Option<Date>,
     to_org_unit_id: Option<Uuid>,
-    /// E-S3b: the 사업장 the event moved the employee to, if it moved them.
+    /// E-S3b: the workplace the event moved the employee to, if it moved them.
     to_workplace_id: Option<Uuid>,
-    /// MR-24/25: the 직급·직책·직무·직군 and employment window it replaced.
+    /// MR-24/25: the grade · position · job · job family and employment window it replaced.
     before: (ClassificationColumns, Option<Date>),
 }
 
@@ -186,7 +187,7 @@ pub(super) fn restored_head(
 
 /// Validates the restored head against the employee's SCHEDULED events, then
 /// writes it (the Employment owner's change-window check refuses a locked
-/// month: the payroll-cutoff bound of a rescission), reverses its 전근
+/// month: the payroll-cutoff bound of a rescission), reverses its transfer
 /// (E-S3b; `undo` = (actor, the undoing command's id)) and runs `on_rescind`
 /// for the voided event (rescind, and the void half of a correction).
 pub(super) async fn restore_head(

@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R3 org-13: departments created in one batch (a pasted outline) keep the
-//! order they were typed in, under a parent that already had 부서 in name
-//! order; the chart and the list read the same order.
+//! UX-R3 org-13: departments created in one batch (a pasted outline) keep the order they
+//! were typed in, under a parent that already had departments in name order; the chart and
+//! the list read the same order.
 
 mod common;
 
@@ -13,7 +13,8 @@ const ORG: Uuid = Uuid::from_u128(0xA000_0000_0000_0000_0000_0000_0000_0C13);
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_pasted_outline_keeps_its_typed_order(owner: PgPool) {
-    // regression: r3 org-13 — the preview showed 연구1실…연구12실, the chart 연구10실 first.
+    // regression: r3 org-13 — the preview showed Research Office 1…Research Office 12, the
+    // chart Research Office 10 first.
     let (store, actor) = tenant(&owner, ORG, "A").await;
     let (_, [(hq, _), _]) = two_workplaces(&store, &actor).await;
     // An earlier batch: those stay first, in the order they were made.
@@ -50,7 +51,8 @@ async fn regression_a_pasted_outline_keeps_its_typed_order(owner: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn single_adds_stay_in_name_order(owner: PgPool) {
-    // A create with no ref (one 부서 added on the chart) writes no place: name order until an order is given.
+    // A create with no ref (one department added on the chart) writes no place: name order
+    // until an order is given.
     let (store, actor) = tenant(&owner, ORG, "B").await;
     let (_, [(hq, _), _]) = two_workplaces(&store, &actor).await;
     for name in ["채용팀", "교육팀"] {

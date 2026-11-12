@@ -1,25 +1,30 @@
 //! BW-10 the planner: every candidate row of a run → one [`PlannedRow`].
 //!
 //! 1. An excluded row is only excluded.
-//! 2. A 사번 used twice in the file, or two rows that resolve to one person,
-//!    are refused (`duplicate_in_file`): nobody guesses which row wins.
-//! 3. A 사번 on file is that person: an update of the fields import may write
-//!    (업무, 직위, 근무지, an empty 생년월일 or 고용형태), never of name, status, 퇴직일,
-//!    부서 or 법인 — those come back as `deferred` with the flow that does
-//!    them. A name, 생년월일 or 입사일 that contradicts the person on file is
-//!    `identity_mismatch` (a 정정 request, BW-17).
-//! 4. A row without a 사번 that resembles people on file waits for the
-//!    operator's pick (`unresolved_identity`); never an automatic name match.
-//! 5. A new person needs a valid 입사일; a future one is 입사 예정 (PRE_HIRE);
-//!    a 퇴직일 loads a former employee as EXITED only while no payroll period
-//!    is approved. A current one is bound to the unit its name resolves to
-//!    (or the operator's mapping), else comes in 미배치 with the name kept;
-//!    it is placed at the 사업장 of the unit, else of the 사업장 text, and a
-//!    unit and a 사업장 text that disagree are refused (MR-7).
-//! 6. IMPORT-2: identity is the 사번 or an alias, then the 주민등록번호 hash
-//!    (`plan_identity`); a stated 재직상태 (휴직 with its start) is a setup
-//!    fact of a new person (`plan_status`); a new person without a 사번 gets
-//!    the rule's next number in the preview, or none (「사번 미부여」).
+//! 2. An employee number used twice in the file, or two rows that resolve to
+//!    one person, are refused (`duplicate_in_file`): nobody guesses which row
+//!    wins.
+//! 3. An employee number on file is that person: an update of the fields
+//!    import may write (duties, title, work location, an empty date of birth or
+//!    employment type), never of name, status, exit date, department or legal
+//!    entity — those come back as `deferred` with the flow that does them. A
+//!    name, date of birth or hire date that contradicts the person on file is
+//!    `identity_mismatch` (a correction request, BW-17).
+//! 4. A row without an employee number that resembles people on file waits
+//!    for the operator's pick (`unresolved_identity`); never an automatic name
+//!    match.
+//! 5. A new person needs a valid hire date; a future one is pending hire
+//!    (PRE_HIRE); an exit date loads a former employee as EXITED only while no
+//!    payroll period is approved. A current one is bound to the unit its name
+//!    resolves to (or the operator's mapping), else comes in unplaced with the
+//!    name kept; it is placed at the workplace of the unit, else of the
+//!    workplace text, and a unit and a workplace text that disagree are refused
+//!    (MR-7).
+//! 6. IMPORT-2: identity is the employee number or an alias, then the resident
+//!    registration number hash (`plan_identity`); a stated employment status
+//!    (leave of absence with its start) is a setup fact of a new person
+//!    (`plan_status`); a new person without an employee number gets the rule's
+//!    next number in the preview, or none ("no employee number assigned").
 
 use std::collections::BTreeMap;
 
@@ -62,7 +67,7 @@ pub fn plan_rows(
             plan_row(row, twice, facts, decisions)
         })
         .collect();
-    // Two rows that resolve to one person (a 사번 and a pick, or two picks).
+    // Two rows that resolve to one person (an employee number and a pick, or two picks).
     let mut targets: BTreeMap<uuid::Uuid, usize> = BTreeMap::new();
     for row in &planned {
         if let (Some(id), "update" | "unchanged") = (row.employee_id, row.outcome) {
@@ -182,8 +187,9 @@ fn new_person(
     };
     let (kind, unmapped) = plan_place::employment_type(row.employment_type.as_ref(), decisions);
     // A former employee keeps the unit text of the file and is bound to no
-    // unit; r3:hire-22: the 사업장 of their 근무지 (or unit) is their 사업장 at
-    // exit, so their 법인 is known (none when the two disagree: no guess).
+    // unit; r3:hire-22: the workplace of their work location (or unit) is their
+    // workplace at exit, so their legal entity is known (none when the two
+    // disagree: no guess).
     // A current one is bound and placed (MR-7).
     let mut left = false;
     let (org_unit, org_unit_id, unresolved, workplace, workplace_name) = if status == "EXITED" {
@@ -247,9 +253,10 @@ fn new_person(
     }
 }
 
-/// IMPORT-2: the 사번 of every new person, previewed: the file's own (refused
-/// if someone holds or held it), the operator's, else the tenant rule's next
-/// number — or none (「사번 미부여」) when the tenant keeps them for review.
+/// IMPORT-2: the employee number of every new person, previewed: the file's own
+/// (refused if someone holds or held it), the operator's, else the tenant rule's
+/// next number — or none ("no employee number assigned") when the tenant keeps
+/// them for review.
 fn assign_numbers(planned: &mut [PlannedRow], decisions: &Decisions, numbering: &Numbering) {
     let mut numbering = numbering.clone();
     for row in planned.iter_mut().filter(|row| row.outcome == "insert") {

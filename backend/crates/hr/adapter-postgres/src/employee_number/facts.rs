@@ -1,6 +1,7 @@
-//! IMPORT-2 (decisions #25): the 사번 facts a numbering, a change or a
-//! renumbering reads — the numbers in use (every record's, voided ones too,
-//! and every live alias), the tenant's rules, and each 사업장's 법인.
+//! IMPORT-2 (decisions #25): the employee number facts a numbering, a change
+//! or a renumbering reads — the numbers in use (every record's, voided ones
+//! too, and every live alias), the tenant's rules, and each workplace's legal
+//! entity.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -15,7 +16,7 @@ use crate::import::caps::settings_in_tx;
 
 type Tx<'a, 'b> = &'a mut sqlx::Transaction<'b, Postgres>;
 
-/// Serializes every 사번 writer of the tenant (the registration's own lock).
+/// Serializes every employee number writer of the tenant (the registration's own lock).
 pub async fn lock_numbers(tx: Tx<'_, '_>, org: Uuid) -> Result<(), HrError> {
     sqlx::query("SELECT pg_advisory_xact_lock(hashtext('employee_number_seq:' || $1::text))")
         .bind(org)
@@ -24,8 +25,8 @@ pub async fn lock_numbers(tx: Tx<'_, '_>, org: Uuid) -> Result<(), HrError> {
     Ok(())
 }
 
-/// Every 사번 in use: current numbers (voided records included, MR-26 never
-/// reuses them) and live aliases.
+/// Every employee number in use: current numbers (voided records included,
+/// MR-26 never reuses them) and live aliases.
 pub async fn taken_numbers(tx: Tx<'_, '_>, org: Uuid) -> Result<BTreeSet<String>, HrError> {
     include_voided(tx, true).await?;
     let current: Vec<String> = sqlx::query_scalar(

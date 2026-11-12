@@ -1,5 +1,6 @@
-//! BW-12: the 육아휴직 periods that do not count toward fixed-term service
-//! (남녀고용평등법 §19⑤), folded from an employee's APPLIED lifecycle events.
+//! BW-12: the childcare leave periods that do not count toward fixed-term
+//! service (Equal Employment Opportunity Act §19⑤), folded from an employee's
+//! APPLIED lifecycle events.
 
 use time::Date;
 

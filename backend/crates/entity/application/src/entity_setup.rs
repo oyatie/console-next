@@ -1,4 +1,4 @@
-//! Bulk 법인 · 사업장 create and update (MR-29): the sheet import's batch.
+//! Bulk legal entity and workplace create and update (MR-29): the sheet import's batch.
 //!
 //! The browser parses the sheet, maps its columns and merges a partial row
 //! over the record it read (`GET /legal-entities`), so every op carries a full
@@ -16,8 +16,9 @@ use uuid::Uuid;
 /// One sheet row, as an op.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EntitySetupOp {
-    /// The client's row key (`법인!7`), echoed back; another op's
-    /// `entity_ref` may name it. Unique within the batch.
+    /// The client's row key (sheet and row, e.g. the legal entity sheet's
+    /// `!7`), echoed back; another op's `entity_ref` may name it. Unique
+    /// within the batch.
     #[serde(rename = "ref")]
     pub reference: Option<String>,
     /// `CREATE_ENTITY` | `REVISE_ENTITY` | `CREATE_WORKPLACE` | `REVISE_WORKPLACE`.
@@ -26,14 +27,14 @@ pub struct EntitySetupOp {
     pub id: Option<Uuid>,
     /// REVISE: the version the client read (409 `stale_revision` otherwise).
     pub expected_version: Option<i32>,
-    /// CREATE_WORKPLACE: the 법인, existing ...
+    /// CREATE_WORKPLACE: the legal entity, existing ...
     pub legal_entity_id: Option<Uuid>,
     /// ... or created earlier in this batch (its `ref`).
     pub entity_ref: Option<String>,
     /// REVISE: overrides the batch's `effective_from` / `reason_code`.
     pub effective_from: Option<String>,
     pub reason_code: Option<String>,
-    /// *_WORKPLACE: make it the 대표 / 본점 사업장 of its 법인.
+    /// *_WORKPLACE: make it the representative / head-office workplace of its legal entity.
     pub is_primary: Option<bool>,
     pub is_head_office: Option<bool>,
     /// *_ENTITY: the full state.

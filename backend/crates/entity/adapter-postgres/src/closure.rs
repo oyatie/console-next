@@ -1,7 +1,8 @@
-//! Close instead of delete (decisions #21): MR-14 a 사업장 폐업 (a revision
-//! with status CLOSED sets `workplaces.closed_on`; a later CONTINUING one
-//! reopens it) and MR-15 a 법인 해산/폐업 (its open 사업장 and 사업자등록 close
-//! with it). Both are refused while people or 부서 remain; 0264 refuses any
+//! Close instead of delete (decisions #21): MR-14 a workplace business closure
+//! (a revision with status CLOSED sets `workplaces.closed_on`; a later
+//! CONTINUING one reopens it) and MR-15 a legal entity dissolution/business
+//! closure (its open workplaces and business registrations close with it).
+//! Both are refused while people or departments remain; 0264 refuses any
 //! later placement past the close.
 
 use console_entity_application::Actor;
@@ -15,9 +16,9 @@ use crate::revision_copy::{Copy, RevisionAt, append_copy};
 use crate::site_unit::{dissolve_sites, workplace_unit};
 use crate::{Admitted, PgEntityError, Tx, admit};
 
-/// Refuse while anyone not EXITED is placed at the 사업장 `id` (or anywhere in
-/// the 법인 `id` when `whole_entity`) past `on`, sits in its own SITE unit, or
-/// while 부서 hang under it.
+/// Refuse while anyone not EXITED is placed at the workplace `id` (or anywhere
+/// in the legal entity `id` when `whole_entity`) past `on`, sits in its own
+/// SITE unit, or while departments hang under it.
 pub(crate) async fn ensure_vacant(
     tx: &mut Tx<'_>,
     whole_entity: bool,
@@ -68,7 +69,7 @@ pub(crate) fn per_record(command: Uuid, record: Uuid) -> Uuid {
     Uuid::from_u128(command.as_u128() ^ record.as_u128())
 }
 
-/// Close one 사업장 inside the caller's transaction: a CLOSED revision and
+/// Close one workplace inside the caller's transaction: a CLOSED revision and
 /// `workplaces.closed_on`. This is what the orgchange `WorkplaceClosePort`
 /// wraps (`CLOSE_WORKPLACE`, whose settlement has already moved or exited the
 /// people and which dissolves the SITE unit itself). Already closed or voided
@@ -105,7 +106,7 @@ pub async fn close_workplace_in_tx(
         console_entity_domain::SystemReason::WorkplaceClosed.as_str(),
         admitted,
         actor,
-        // One apply may close several 사업장 under one command id.
+        // One apply may close several workplaces under one command id.
         per_record(command, workplace),
     )
     .await
@@ -141,10 +142,11 @@ pub(crate) async fn close_one(
     Ok(())
 }
 
-/// After a 사업장 revision (MR-14): CLOSED sets `closed_on` to its 폐업일 once
-/// the 사업장 is empty and holds no 법인 role or shared registration, and
-/// dissolves its SITE unit; any other status on a closed 사업장 reopens it
-/// (a correction, kept in the revision history) with a new SITE unit.
+/// After a workplace revision (MR-14): CLOSED sets `closed_on` to its closure
+/// date once the workplace is empty and holds no legal entity role or shared
+/// registration, and dissolves its SITE unit; any other status on a closed
+/// workplace reopens it (a correction, kept in the revision history) with a
+/// new SITE unit.
 #[allow(clippy::too_many_arguments)] // the revise's own context, passed through
 pub(crate) async fn apply_workplace_status(
     tx: &mut Tx<'_>,
@@ -194,8 +196,9 @@ pub(crate) async fn apply_workplace_status(
     }
 }
 
-/// A 사업장 that is the 법인's 대표/본점 사업장, or holds a 사업자등록 others
-/// still file under, does not close alone.
+/// A workplace that is the legal entity's representative / head-office
+/// workplace, or holds a business registration others still file under, does
+/// not close alone.
 async fn ensure_holds_nothing(
     tx: &mut Tx<'_>,
     entity: Uuid,
@@ -237,8 +240,8 @@ async fn ensure_holds_nothing(
     Ok(())
 }
 
-/// A 사업자등록 does not close while open 사업장 still file under it (each
-/// would be left on a closed registration it cannot be revised against).
+/// A business registration does not close while open workplaces still file
+/// under it (each would be left on a closed registration it cannot be revised against).
 pub(crate) async fn ensure_registration_closable(
     tx: &mut Tx<'_>,
     registration: Uuid,

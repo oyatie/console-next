@@ -1,10 +1,11 @@
-//! UX-R2 ENDS (company-01, worst-case-18; decisions #21): the 법인 · 사업장
-//! half of a 사업장 close job, reads. HR's `lifecycle::close_plan`
-//! orchestrates the job in one transaction: it reads who and what is still
-//! at the 사업장 here, records each person's 전근 or 퇴직 through the lifecycle
-//! path, then calls the writes (`workplace_close_apply`, re-exported here) to
-//! move or dissolve each 부서 and to close the 사업장 itself — the same checks
-//! and writes a direct close makes.
+//! UX-R2 ENDS (company-01, worst-case-18; decisions #21): the legal entity ·
+//! workplace half of a workplace close job, reads. HR's
+//! `lifecycle::close_plan` orchestrates the job in one transaction: it reads
+//! who and what is still at the workplace here, records each person's
+//! relocation or exit through the lifecycle path, then calls the writes
+//! (`workplace_close_apply`, re-exported here) to move or dissolve each
+//! department and to close the workplace itself — the same checks and writes
+//! a direct close makes.
 
 use console_entity_domain::Refusal;
 use console_orgchange_domain::{TreeEntry, tree_order};
@@ -19,19 +20,20 @@ pub use crate::workplace_close_apply::{
 };
 use crate::{PgEntityError, Tx};
 
-/// The 사업장 a close plan is for, as it is now.
+/// The workplace a close plan is for, as it is now.
 #[derive(Debug, Clone, Serialize)]
 pub struct CloseScope {
     pub workplace_id: Uuid,
     pub legal_entity_id: Uuid,
-    /// Its own (SITE) unit; `None` for a legacy 사업장 without one.
+    /// Its own (SITE) unit; `None` for a legacy workplace without one.
     pub site_org_unit_id: Option<Uuid>,
     pub closed_on: Option<time::Date>,
-    /// It is its 법인's 대표 사업장 or 본점: it does not close alone.
+    /// It is its legal entity's representative workplace or head office: it does not
+    /// close alone.
     pub holds_entity_role: bool,
 }
 
-/// An active 부서 under the 사업장 (any depth).
+/// An active department under the workplace (any depth).
 #[derive(Debug, Clone, Serialize)]
 pub struct ScopeUnit {
     pub org_unit_id: Uuid,
@@ -40,8 +42,8 @@ pub struct ScopeUnit {
     pub version: i64,
 }
 
-/// Someone who has not left and is still at the 사업장: placed there now (or
-/// later), or bound to its own unit or a 부서 under it.
+/// Someone who has not left and is still at the workplace: placed there now
+/// (or later), or bound to its own unit or a department under it.
 #[derive(Debug, Clone, Serialize)]
 pub struct ClosePerson {
     pub employee_id: Uuid,
@@ -51,8 +53,8 @@ pub struct ClosePerson {
     pub hire_date: Option<String>,
 }
 
-/// Read the 사업장 (locked `FOR UPDATE` when `lock`, as every 사업장 write
-/// locks it). 404 `workplace_not_found`; 409 `workplace_voided`.
+/// Read the workplace (locked `FOR UPDATE` when `lock`, as every workplace
+/// write locks it). 404 `workplace_not_found`; 409 `workplace_voided`.
 ///
 /// # Errors
 /// Those refusals, or database faults.
@@ -87,8 +89,8 @@ pub async fn scope(
     })
 }
 
-/// Every active 부서 under the SITE unit `site` (the SITE unit excluded),
-/// with its parent and version, in the chart's tree order (parents first).
+/// Every active department under the SITE unit `site` (the SITE unit
+/// excluded), with its parent and version, in the chart's tree order (parents first).
 ///
 /// # Errors
 /// Database faults.
@@ -130,8 +132,9 @@ pub async fn units_under(tx: &mut Tx<'_>, site: Uuid) -> Result<Vec<ScopeUnit>, 
         .collect())
 }
 
-/// Everyone a close must plan for: not EXITED, and placed at the 사업장 past
-/// `today`, or bound to one of `units` (its own unit and the 부서 under it).
+/// Everyone a close must plan for: not EXITED, and placed at the workplace
+/// past `today`, or bound to one of `units` (its own unit and the departments
+/// under it).
 ///
 /// # Errors
 /// Database faults.
@@ -167,8 +170,9 @@ pub async fn people_at(
         .map_err(Into::into)
 }
 
-/// The 사업장 (and its 법인) of a unit that is open: the one its nearest SITE
-/// ancestor (or itself) represents. `None` when it sits at no open 사업장.
+/// The workplace (and its legal entity) of a unit that is open: the one its
+/// nearest SITE ancestor (or itself) represents. `None` when it sits at no
+/// open workplace.
 ///
 /// # Errors
 /// Database faults.

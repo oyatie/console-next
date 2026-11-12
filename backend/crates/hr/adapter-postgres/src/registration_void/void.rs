@@ -1,10 +1,11 @@
-//! `POST /employees/{id}/void` after 운영 시작: 등록 취소 of a person who never
-//! started, or of a fresh registration nobody worked on (onboarding design
-//! §7.3). Governed like a high-risk 정정: a second person decides a filed
-//! EMPLOYEE_VOID request, or a sole holder voids after a step-up bound to
-//! this employee and payload, flagged for review (decisions #7 case B). The
-//! record stays as a hidden VOIDED tombstone with its 사번; the rest of its
-//! personal data goes after `people.void_pii_retention`.
+//! `POST /employees/{id}/void` after go-live: registration void of a person
+//! who never started, or of a fresh registration nobody worked on
+//! (onboarding design §7.3). Governed like a high-risk correction: a second
+//! person decides a filed EMPLOYEE_VOID request, or a sole holder voids after
+//! a step-up bound to this employee and payload, flagged for review
+//! (decisions #7 case B). The record stays as a hidden VOIDED tombstone with
+//! its employee number; the rest of its personal data goes after
+//! `people.void_pii_retention`.
 
 use console_hr_domain::corrections::HighRiskPath;
 use console_hr_domain::registration_void::{VoidFacts, void_basis};
@@ -151,8 +152,9 @@ impl HrService {
                     mode: "SOLE_HOLDER",
                 };
                 let voided_at = void_in_tx(tx, org_uuid, employee_id, &mark, None).await?;
-                // review_required is the 예외 처리 mark, as for a
-                // sole-holder 정정; the 사후 검토 item lands with BW-06/F-EXC.
+                // review_required is the exception-handling mark, as for a
+                // sole-holder correction; the after-the-fact review item lands
+                // with BW-06/F-EXC.
                 after["mode"] = json!("SOLE_HOLDER");
                 after["review_required"] = json!(true);
                 after["step_up_assertion_id"] = json!(assertion);

@@ -1,7 +1,8 @@
 //! IMPORT-2 (decisions #26): the current status a file records for a new
-//! person — 재직, 휴직 (with its start date and type), 퇴사, 입사 예정 — as a
-//! setup fact. A stated status must agree with the dates; a text the catalog
-//! and the operator's map do not know is a question, never a guess.
+//! person — employed, on leave of absence (with its start date and type),
+//! exited, pending hire — as a setup fact. A stated status must agree with the
+//! dates; a text the catalog and the operator's map do not know is a question,
+//! never a guess.
 
 use super::cells::parse_import_date;
 use super::normalize::{known_code, leave_type_code, status_code};
@@ -57,7 +58,7 @@ fn leave(row: &ImportRow, hire: time::Date, decisions: &Decisions) -> Result<Set
                 .filter(|back| *back > start)
                 .ok_or(("invalid_date", "leave_return_date"))?,
         ),
-        // 0264: 육아휴직 and 출산전후휴가 name their return date.
+        // 0264: childcare leave and maternity leave name their return date.
         None if matches!(leave_type, "CHILDCARE" | "MATERNITY") => {
             return Err(("leave_return_required", "leave_return_date"));
         }
@@ -70,11 +71,13 @@ fn leave(row: &ImportRow, hire: time::Date, decisions: &Decisions) -> Result<Set
     })
 }
 
-/// A new person's status (and 휴직), from the stated status and the dates.
+/// A new person's status (and leave of absence), from the stated status and
+/// the dates.
 ///
 /// # Errors
-/// A status the dates contradict, a 퇴사 without 퇴사일, a 휴직 without its
-/// start or type, a former employee after the first payroll.
+/// A status the dates contradict, an exit without an exit date, a leave of
+/// absence without its start or type, a former employee after the first
+/// payroll.
 pub(super) fn new_status(
     row: &ImportRow,
     (hire, exit): (time::Date, Option<time::Date>),
@@ -94,7 +97,7 @@ pub(super) fn new_status(
         (None, None) => "ACTIVE",
         (Some("PRE_HIRE"), None) if future => "PRE_HIRE",
         (Some(status @ ("ACTIVE" | "ON_LEAVE")), None) if !future => status,
-        // r3:hire-19: 재직 with a future 입사일, answered 「입사 예정으로」.
+        // r3:hire-19: employed with a future hire date, answered "as a pending hire".
         (Some("ACTIVE"), None)
             if decisions
                 .group_answers

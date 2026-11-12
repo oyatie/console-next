@@ -1,9 +1,10 @@
 //! BW-09: the average-wage window, its countable days, and the one-year
 //! severance test, derived from dates instead of typed by hand.
 //!
-//! Date model (decisions 0.1): `exit_date` is the last working day (이직일) and
-//! `loss_date = exit_date + 1` (상실일; 퇴직일 in 근로기준법/퇴직급여 practice).
-//! Pure date math only: no IO, no clock, no policy values.
+//! Date model (decisions 0.1): `exit_date` is the last working day (the date of
+//! leaving) and `loss_date = exit_date + 1` (the coverage-loss date; the exit
+//! date in Labor Standards Act / retirement benefit practice). Pure date math
+//! only: no IO, no clock, no policy values.
 
 use console_kernel_core::KernelError;
 use time::{Date, Month};
@@ -11,7 +12,7 @@ use time::{Date, Month};
 mod exclusion;
 pub use exclusion::{ExclusionPeriod, ExclusionReason};
 
-/// The derived 평균임금 산정기간. `start..=end`, both inclusive.
+/// The derived average-wage calculation period. `start..=end`, both inclusive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AverageWageWindow {
     pub start: Date,
@@ -40,12 +41,12 @@ pub fn loss_date(exit_date: Date) -> Result<Date, KernelError> {
 }
 
 /// The 3 calendar months before `loss_date`, ending on `exit_date` inclusive
-/// (근로기준법 §2①6: 「사유가 발생한 날 이전 3개월」). Last working day 9/30 →
-/// 7/1–9/30.
-/// Each exclusion first shrinks to what 시행령 §2① removes
-/// ([`ExclusionReason`]), then is clipped to the window.
-/// A window with no countable day is refused: 판례 then moves the window to
-/// before the exclusion, which needs wage history this function does not have.
+/// (Labor Standards Act §2①6: "the 3 months before the day the cause arose").
+/// Last working day 9/30 → 7/1–9/30. Each exclusion first shrinks to what
+/// Enforcement Decree §2① removes ([`ExclusionReason`]), then is clipped to the
+/// window. A window with no countable day is refused: case law then moves the
+/// window to before the exclusion, which needs wage history this function does
+/// not have.
 pub fn average_wage_window(
     exit_date: Date,
     exclusions: &[ExclusionPeriod],
@@ -96,10 +97,10 @@ pub fn average_wage_window(
     })
 }
 
-/// 퇴직금 service condition of 근로자퇴직급여 보장법 §4①: one calendar year,
-/// i.e. `loss_date >= hire_date + 1 year`. Not `>= 365 days`, which is a day
-/// short across a 2/29. A 2/29 hire reaches the anniversary on 3/1
-/// (민법 §160③: the period ends on 2/28).
+/// Severance pay service condition of the Employee Retirement Benefit Security
+/// Act §4①: one calendar year, i.e. `loss_date >= hire_date + 1 year`. Not
+/// `>= 365 days`, which is a day short across a 2/29. A 2/29 hire reaches the
+/// anniversary on 3/1 (Civil Act §160③: the period ends on 2/28).
 ///
 /// The 15 h/week condition is separate and not decided here.
 pub fn completes_one_year_of_service(
@@ -118,7 +119,7 @@ pub fn completes_one_year_of_service(
 
 /// The same day of the month `months` earlier. A day the target month lacks
 /// (5/31 → 2/31) becomes the 1st of the following month (3/1), mirroring
-/// 민법 §160③. [U] 노무사 to confirm the month-end case.
+/// Civil Act §160③. [U] Labor attorney to confirm the month-end case.
 fn months_before(day: Date, months: i32) -> Result<Date, KernelError> {
     let index = day.year() * 12 + i32::from(u8::from(day.month())) - 1 - months;
     let month = u8::try_from(index.rem_euclid(12) + 1)

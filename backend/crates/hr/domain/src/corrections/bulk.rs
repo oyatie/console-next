@@ -1,5 +1,5 @@
-//! MR-27 bulk 정정: how one field and one row of a bulk correction proceed,
-//! once the value has been compared with the record. Pure; the adapter
+//! MR-27 bulk correction: how one field and one row of a bulk correction
+//! proceed, once the value has been compared with the record. Pure; the adapter
 //! supplies the route ([`super::route_for_current`]) and the second-person
 //! path ([`super::high_risk_path`]).
 

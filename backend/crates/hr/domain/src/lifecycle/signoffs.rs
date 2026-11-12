@@ -28,7 +28,7 @@ pub struct EmployeeLifecycleSignoffs {
 /// | every other event | none |
 ///
 /// `cross_company` no longer matters (E-S3b): a TRANSFER that changes the
-/// company is refused as a 전적 (409 `entity_change_needs_group_transfer`).
+/// company is refused as a group transfer (409 `entity_change_needs_group_transfer`).
 pub fn required_lifecycle_signoffs(
     event_type: &str,
     _cross_company: bool,

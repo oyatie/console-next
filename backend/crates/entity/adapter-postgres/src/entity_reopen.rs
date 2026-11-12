@@ -1,8 +1,9 @@
-//! UX-R3 STRUCT company-15 (catalog company-19): withdraw a 법인's close
-//! (종료 취소) when the business goes on. The 사업장 and 사업자등록 that closed
-//! with it reopen in the same command — each gets back the revision it had
-//! before the close (kept in its history) and every 사업장 its SITE unit — and
-//! the 법인 reads open again (0336). Grants ended with the close stay ended.
+//! UX-R3 STRUCT company-15 (catalog company-19): withdraw a legal entity's
+//! close ("close withdrawn") when the business goes on. The workplaces and
+//! business registrations that closed with it reopen in the same command —
+//! each gets back the revision it had before the close (kept in its history)
+//! and every workplace its SITE unit — and the legal entity reads open again
+//! (0336). Grants ended with the close stay ended.
 
 use console_entity_application::{Actor, CloseWithdrawal, LegalEntityView, Saved};
 use console_entity_domain::Refusal;
@@ -57,7 +58,7 @@ impl PgEntityStore {
                 let base = command_id(&actor)?;
                 let workplaces = closed_with(tx, false, id, on).await?;
                 let registrations = closed_with(tx, true, id, on).await?;
-                // A 사업장 reopens on its registration, so the registrations go first.
+                // A workplace reopens on its registration, so the registrations go first.
                 for (registration, ids) in [(true, &registrations), (false, &workplaces)] {
                     for r in ids {
                         let at = RevisionAt { admitted, actor: actor.user, command: per_record(base, *r) };

@@ -1,4 +1,4 @@
-//! IMPORT-2: the value-mapping kinds of the 확인 필요 queue.
+//! IMPORT-2: the value-mapping kinds of the needs-review queue.
 
 /// One kind of value-mapping item.
 #[derive(Clone, Copy)]
@@ -39,7 +39,7 @@ pub(super) const WORKPLACE: ValueMap = ValueMap {
     choices: &[],
 };
 /// W02: blocking. An unanswered label kept apply open and 300 people came
-/// in with no 고용형태; `null` (leave it empty) is an answer.
+/// in with no employment type; `null` (leave it empty) is an answer.
 pub(super) const EMPLOYMENT_TYPE: ValueMap = ValueMap {
     reason: "employment_type_unmapped",
     blocking: true,

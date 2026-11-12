@@ -2,7 +2,7 @@
 //! D26 (decisions #26): `approval.policy.org_structure` decides what submit
 //! does. `none` (the default) approves at once with no approval step and
 //! applies a due change in the same transaction; a future-dated one waits as
-//! APPROVED and its drafter may apply it on its 시행일 without
+//! APPROVED and its drafter may apply it on its effective date without
 //! `org_change_apply`. `route` keeps the BW-01 ordered steps and the apply
 //! permission. Driven through the store entry points the REST handlers call.
 
@@ -73,8 +73,9 @@ async fn none_leaves_a_future_change_approved_for_its_drafter(pool: PgPool) {
         assert!(waiting.approval_steps.is_empty());
         assert_eq!(open_branches(&pool, org).await, 1);
 
-        // The drafter without org_change_apply reaches the 시행일 check (409),
-        // never the permission refusal: on its date they apply it themselves.
+        // The drafter without org_change_apply reaches the effective-date check
+        // (409), never the permission refusal: on its date they apply it
+        // themselves.
         let early = store
             .effectuate(actor, future.summary.id, false)
             .await
@@ -124,8 +125,8 @@ async fn route_still_creates_the_ordered_steps(pool: PgPool) {
     .await;
 }
 
-/// Decisions #18 retired creating a 지점 (MR-20); closing a legacy one that
-/// backs no 사업장 is still an org change, so it carries the policy here.
+/// Decisions #18 retired creating a branch (MR-20); closing a legacy one that
+/// backs no workplace is still an org change, so it carries the policy here.
 fn close_branch(branch: Uuid, key: &str, effective_date: Date) -> CreateOrgChange {
     CreateOrgChange {
         kind: OrgChangeKind::Reorg,
@@ -181,7 +182,7 @@ async fn seed_org(pool: &PgPool) -> OrgId {
     OrgId::from_uuid(id)
 }
 
-/// A legacy 지점 with no 사업장 behind it.
+/// A legacy branch with no workplace behind it.
 async fn seed_branch(pool: &PgPool, org: OrgId) -> Uuid {
     let region: Uuid = sqlx::query_scalar(
         "INSERT INTO regions (name, org_id) VALUES ('D26 권역', $1) RETURNING id",

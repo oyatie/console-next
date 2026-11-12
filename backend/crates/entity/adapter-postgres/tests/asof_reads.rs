@@ -146,8 +146,8 @@ async fn chart_rename_diff_and_change_dates_share_the_effective_timeline(owner: 
     let id = port().write(&mut tx, actor.org, actor.user, Uuid::new_v4(), None,
         json!({"name":"Old","kind":"department","parent_id":site,"status":"active","effective_from":(d-Duration::days(30)).to_string()})).await.unwrap();
     tx.commit().await.unwrap();
-    // The parent and its placement exist from the 사업장's 개설일, well before
-    // the two dated department revisions; nothing is back-dated by hand.
+    // The parent and its placement exist from the workplace's opening date, well
+    // before the two dated department revisions; nothing is back-dated by hand.
     let attrs = |name: &str, date: Date| json!({"name":name,"kind":"department","parent_id":site,"status":"active","effective_from":date.to_string()});
     revise_unit(&owner, &actor, id, attrs("Old", d - Duration::days(30))).await;
     revise_unit(&owner, &actor, id, attrs("New", d - Duration::days(10))).await;

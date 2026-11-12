@@ -69,8 +69,8 @@ pub fn project_lifecycle_head(
     if let Some(position) = &transition.to_position {
         head.position = Some(position.clone());
     }
-    // A PROMOTE of the 직위 sets the catalog title too: by id, or cleared by
-    // free text (a 직급-only PROMOTE keeps it).
+    // A PROMOTE of the title sets the catalog title too: by id, or cleared by
+    // free text (a grade-only PROMOTE keeps it).
     if transition.event_type == "PROMOTE" && transition.to_position.is_some() {
         head.job_title_id = transition.to_job_title_id;
     }

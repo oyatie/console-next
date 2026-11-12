@@ -1,5 +1,5 @@
-//! MR-22: one registration call records the person and their 법인 · 사업장,
-//! all or nothing. A new tenant is in SETUP, so the cause is SETUP_BIND.
+//! MR-22: one registration call records the person and their legal entity and
+//! workplace, all or nothing. A new tenant is in SETUP, so the cause is SETUP_BIND.
 
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -7,8 +7,8 @@ use uuid::Uuid;
 use crate::fixture::{Fixture, fixture};
 use crate::register;
 
-/// A 법인 with two open 사업장; the first has its SITE unit and a 부서 under
-/// it (the 부서 has no placement of its own).
+/// A legal entity with two open workplaces; the first has its SITE unit and a
+/// department under it (the department has no placement of its own).
 struct Org {
     entity: Uuid,
     first: Uuid,
@@ -104,7 +104,7 @@ async fn the_unit_places_the_person_at_its_workplace_in_the_same_call(pool: PgPo
         vec![(o.entity, o.first, "2026-09-01".into(), "SETUP_BIND".into())]
     );
 
-    // The asked 사업장 and the unit's disagree: nothing is written at all.
+    // The asked workplace and the unit's disagree: nothing is written at all.
     let before = people(&pool).await;
     let mut body = f.body("place-2", "REGULAR");
     body.name = "박배치".into();
@@ -132,7 +132,7 @@ async fn an_asked_workplace_places_the_person_and_no_workplace_is_unplaced(pool:
         vec![(o.entity, o.second, "2026-09-01".into(), "SETUP_BIND".into())]
     );
 
-    // The fixture's bare unit sits nowhere: the person is 미배치.
+    // The fixture's bare unit sits nowhere: the person is unplaced.
     let mut body = f.body("ask-2", "REGULAR");
     body.name = "이미배치".into();
     body.phone = "010-4444-5555".into();

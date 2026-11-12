@@ -24,9 +24,9 @@ pub async fn employee_facets(
     Ok(Json(hr.employee_facets(principal, query).await?))
 }
 
-/// `GET /api/v1/employees/export.csv`: the filtered CSV with its 용도
+/// `GET /api/v1/employees/export.csv`: the filtered CSV with its purpose
 /// (`export_purpose`) and `layout` (`standard`, or `register` for the
-/// 근로자 명부 columns), streamed; the download is logged before the first
+/// worker register columns), streamed; the download is logged before the first
 /// byte and never cached (INF-01, INF-02).
 pub async fn export_employees_csv(
     State(hr): State<HrService>,

@@ -1,6 +1,6 @@
-//! The exit ends the person's 법인 · 사업장 assignment (UX-R3 STRUCT
+//! The exit ends the person's legal entity · workplace assignment (UX-R3 STRUCT
 //! company-01, records-04): confirming it ends the live row the day after the
-//! 마지막 근무일, and reversing it reopens that row. The entity crate writes
+//! last working day, and reversing it reopens that row. The entity crate writes
 //! the rows (ADR-004); the caller holds the employee `FOR UPDATE`.
 
 use console_entity_adapter_postgres::employment_end::{end_on_exit_in_tx, reopen_on_exit_in_tx};

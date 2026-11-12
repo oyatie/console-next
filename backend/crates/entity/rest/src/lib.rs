@@ -1,13 +1,14 @@
-//! 법인 · 사업장 REST face (entity-depth design §3, §6).
+//! Legal entity and workplace REST face (entity-depth design §3, §6).
 //!
-//! Reads need the org-change read permission (ADMIN and above); 법인 ·
-//! 사업자등록 · 사업장 writes need the Cedar action `legal_entity_manage`
-//! (decisions #14.2) within the caller's scope (#15); setup 부서 units keep
-//! the org-change apply permission; employment assignment needs the
-//! employee-directory manage permission (`auth.rs`). Restricted personal
-//! fields (대표자, 공동사업자) are returned only to callers who may manage them. Every write is admitted against the tenant
-//! phase by the adapter: immediate and marked SETUP before 운영 시작,
-//! governed after.
+//! Reads need the org-change read permission (ADMIN and above); legal entity,
+//! business registration and workplace writes need the Cedar action
+//! `legal_entity_manage` (decisions #14.2) within the caller's scope (#15);
+//! setup department units keep the org-change apply permission; employment
+//! assignment needs the employee-directory manage permission (`auth.rs`).
+//! Restricted personal fields (representatives, joint business operators) are
+//! returned only to callers who may manage them. Every write is admitted
+//! against the tenant phase by the adapter: immediate and marked SETUP before
+//! go-live, governed after.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
@@ -167,8 +168,8 @@ impl EntityRestState {
         self
     }
 
-    /// Serve 도로명주소 / 상세주소 search through `juso` (keys from the server
-    /// environment, `JusoConfig::from_env`).
+    /// Serve road-name address / detailed address search through `juso` (keys
+    /// from the server environment, `JusoConfig::from_env`).
     #[must_use]
     pub fn with_juso(mut self, juso: Arc<JusoClient>) -> Self {
         self.juso = Some(juso);

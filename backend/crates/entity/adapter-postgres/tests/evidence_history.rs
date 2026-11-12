@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! ENT-CAPTURE dated history, the 4대보험 change and the 상시근로자수 HOLD
-//! placeholder, as the runtime role `console_rt` (FORCE RLS).
+//! ENT-CAPTURE dated history, the four social insurances change and the ordinarily-employed
+//! headcount HOLD placeholder, as the runtime role `console_rt` (FORCE RLS).
 
 mod common;
 
@@ -63,7 +63,7 @@ async fn history_lists_what_each_revision_changed_and_hides_restricted_names(own
             .any(|c| c.field == "head_office_address" && c.after.is_some())
     );
 
-    // A reader without the write permission never sees 대표자 names, nor their changes.
+    // A reader without the write permission never sees representative names, nor their changes.
     let plain = store
         .entity_history(&actor, created.id, false)
         .await

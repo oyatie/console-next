@@ -306,10 +306,11 @@ pub struct OrgUnitRevisionView {
     pub created_at: OffsetDateTime,
     /// The unit's code in this revision (UX-R2 org-17: a code change is a history line).
     pub code: Option<String>,
-    /// The 부서장 in this revision, and their name (a head change is a history line).
+    /// The department head in this revision, and their name (a head change is a
+    /// history line).
     pub head_employee_id: Option<Uuid>,
     pub head_name: Option<String>,
-    /// The unit a dissolved one was merged into (합치기, org-07).
+    /// The unit a dissolved one was merged into (merge, org-07).
     pub merged_into: Option<Uuid>,
 }
 

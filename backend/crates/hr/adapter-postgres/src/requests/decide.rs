@@ -15,7 +15,9 @@ use uuid::Uuid;
 
 use super::cedar::{DecideFacts, enforce_change_request_decide};
 use super::read::change_request_from_row;
-use super::{ChangeRequestResponse, DecideChangeRequest, note, reason_code, refusal};
+use super::{
+    ChangeRequestResponse, DecideChangeRequest, approval_class, note, reason_code, refusal,
+};
 use crate::authz::{HrReach, hr_reach, person_in_reach};
 use crate::corrections::{SecondPersonContext, apply_requested_correction_in_tx};
 use crate::{HrError, HrService, change_request_columns};
@@ -56,7 +58,7 @@ impl HrService {
         let decision = ChangeRequestDecision::parse(body.decision.trim())?;
         // Apply and decline are the HR tier's, except that the named assignee
         // answers an answer kind; withdrawing is the requester's. Outside HR
-        // the row decides (below), so a named 취급자 is never a dead end.
+        // the row decides (below), so a named handler is never a dead end.
         let reach = hr_reach(&principal, Feature::EmployeeDirectoryManage).ok();
         let reason = reason_code(&body.reason_code, "reason_code")?;
         let note = note(body.note.as_deref())?;
@@ -77,6 +79,13 @@ impl HrService {
                 .ok_or_else(not_found)?;
                 let current = change_request_from_row(&row)?;
                 let kind = ChangeRequestKind::parse(&current.kind)?;
+                let mut holders = holders;
+                if let Some(key) = approval_class(kind)? {
+                    holders.routed = console_settings_adapter_postgres::approval_routes_in_tx(
+                        tx.as_mut(), org, key,
+                    )
+                    .await?;
+                }
                 // AX-5: HR decides a request about a person inside its grant
                 // set (the whole tenant for any other subject).
                 let hr = match &reach {

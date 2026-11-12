@@ -1,6 +1,7 @@
-//! UX-R2 ENDS: the writes of a 사업장 close job (see `workplace_close_plan`):
-//! move or dissolve a 부서 through the canonical OrgUnit owner, close the
-//! 사업장 as a direct close does, and the job's audit and idempotency rows.
+//! UX-R2 ENDS: the writes of a workplace close job (see
+//! `workplace_close_plan`): move or dissolve a department through the
+//! canonical OrgUnit owner, close the workplace as a direct close does, and
+//! the job's audit and idempotency rows.
 
 use console_entity_application::{Actor, EntityScope};
 use console_entity_domain::Refusal;
@@ -36,9 +37,9 @@ impl CloseActor {
     }
 }
 
-/// Move the 부서 `unit` (and everything under it) under `parent`, effective
-/// today, through the canonical OrgUnit owner. Its people are not rebound
-/// here: their 전근 events are, before this runs.
+/// Move the department `unit` (and everything under it) under `parent`,
+/// effective today, through the canonical OrgUnit owner. Its people are not
+/// rebound here: their relocation events are, before this runs.
 ///
 /// # Errors
 /// `org_unit_not_found`, the owner's refusal, or database faults.
@@ -69,7 +70,7 @@ pub async fn reparent(
     .await
 }
 
-/// Dissolve the 부서 `unit` and everything under it (deepest first), today.
+/// Dissolve the department `unit` and everything under it (deepest first), today.
 /// 409 `org_unit_has_members` while anyone who has not left is placed there.
 ///
 /// # Errors
@@ -142,10 +143,11 @@ async fn unit_event(
     audit(&who.actor(), action, "org_unit", unit, admitted, after)
 }
 
-/// Close the 사업장 on `on`: refused while anyone or any 부서 is still there
-/// (`record_in_use`) or while it is the 법인's 대표 사업장 or 본점
-/// (`workplace_holds_entity_role`); otherwise `closed_on`, a CLOSED revision
-/// and its SITE unit dissolved, as a direct close does.
+/// Close the workplace on `on`: refused while anyone or any department is
+/// still there (`record_in_use`) or while it is the legal entity's
+/// representative workplace or head office (`workplace_holds_entity_role`);
+/// otherwise `closed_on`, a CLOSED revision and its SITE unit dissolved, as
+/// a direct close does.
 ///
 /// # Errors
 /// Those refusals, or database faults.

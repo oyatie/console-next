@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! The certificate a registration revision names: linked from the first one
-//! (typed at creation) to each reissue, and refused unless it is a new,
-//! kept 사업자등록증 — on the create, the reissue and the plain revise alike,
-//! each refusal writing nothing.
+//! The certificate a registration revision names: linked from the first one (typed at
+//! creation) to each reissue, and refused unless it is a new, kept business registration
+//! certificate — on the create, the reissue and the plain revise alike, each refusal
+//! writing nothing.
 
 mod common;
 mod reissue_support;
@@ -14,7 +14,7 @@ use reissue_support::*;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-/// A 법인 whose certificate is recorded with its original, as the create sheet does.
+/// A legal entity whose certificate is recorded with its original, as the create sheet does.
 async fn evidenced(store: &PgEntityStore, actor: &Actor) -> (Uuid, Uuid, Uuid) {
     let entity = store
         .create_entity(&cmd(actor), corporation("주식회사 가나", CRN))

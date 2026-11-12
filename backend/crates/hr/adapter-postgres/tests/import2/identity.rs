@@ -1,4 +1,5 @@
-//! 사번 identifies; an RRN is review evidence, and contradictions block import.
+//! The employee number identifies; an RRN is review evidence, and
+//! contradictions block import.
 
 use console_hr_domain::import::plan::IdentityPick;
 use sqlx::PgPool;

@@ -33,7 +33,7 @@ pub fn width_key(raw: &str) -> String {
     width
 }
 
-/// Person data in a name field: one of the 대표자 names, or a list of person names.
+/// Person data in a name field: one of the representative names, or a list of person names.
 #[must_use]
 pub fn is_person(name: &str, representatives: &[String]) -> bool {
     let key = width_key(name);
@@ -58,14 +58,14 @@ pub fn is_person(name: &str, representatives: &[String]) -> bool {
     people.contains(&key) || person_list
 }
 
-/// The three name facts of a 법인 and the refusal each gives to person data.
+/// The three name facts of a legal entity and the refusal each gives to person data.
 pub const PERSON_CODES: [(&str, &str); 3] = [
     ("name", "legal_name_is_person"),
     ("display_name", "display_name_is_person"),
     ("english_name", "english_name_is_person"),
 ];
 
-/// 영문명: Latin letters, digits, spaces and common corporate punctuation only.
+/// English name: Latin letters, digits, spaces and common corporate punctuation only.
 #[must_use]
 pub fn is_latin_name(name: &str) -> bool {
     name.chars()

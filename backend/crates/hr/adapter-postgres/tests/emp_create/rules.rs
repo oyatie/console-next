@@ -1,4 +1,4 @@
-//! Pure: normalisation refusals, the request hash and the 최저임금 warning.
+//! Pure: normalisation refusals, the request hash and the minimum wage warning.
 
 use console_hr_adapter_postgres::directory::create_facts::{
     CreateEmployeeContract, NormalizedEmployeeFacts, minimum_wage_warning,
@@ -215,7 +215,7 @@ fn pay_below_the_minimum_wage_warns_only_for_employees() {
         )
         .is_none()
     );
-    // No 고시 recorded for the year: silent, never a guessed floor.
+    // No minimum wage notice recorded for the year: silent, never a guessed floor.
     assert!(
         minimum_wage_warning(
             EmploymentType::Regular,

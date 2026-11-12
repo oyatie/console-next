@@ -1,11 +1,12 @@
-//! Advancing a close job on (or after) its 폐쇄일, in the caller's
-//! transaction, all-or-none: each 부서 the plan moves goes under its new
-//! 사업장 first, then each 전근 is recorded as the single-event path records
-//! it (prepare, BW-11 guards, record: a dated TRANSFER with the assignment
-//! split, `to_workplace_id` naming the 사업장 the unit sits at on the day).
-//! While a 퇴직 the plan opened or a 전적 it recorded is not in effect, the
-//! job WAITS (the moves and 전근 stay done); once nobody is left, the plan's
-//! 부서 are dissolved and the 사업장 closes as a direct close does.
+//! Advancing a close job on (or after) its closure date, in the caller's
+//! transaction, all-or-none: each department the plan moves goes under its
+//! new workplace first, then each transfer is recorded as the single-event
+//! path records it (prepare, BW-11 guards, record: a dated TRANSFER with the
+//! assignment split, `to_workplace_id` naming the workplace the unit sits at
+//! on the day). While an exit the plan opened or a group transfer it recorded
+//! is not in effect, the job WAITS (the moves and transfers stay done); once
+//! nobody is left, the plan's departments are dissolved and the workplace
+//! closes as a direct close does.
 
 use console_entity_adapter_postgres::OrgUnitSetupWritePort;
 use console_entity_adapter_postgres::workplace_close_plan::{self as entity, CloseActor};
@@ -32,14 +33,14 @@ type Tx<'a, 'b> = &'a mut Transaction<'b, Postgres>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Advanced {
     Applied,
-    /// The people whose 퇴직 is not in effect yet.
+    /// The people whose exit is not in effect yet.
     Waiting(Vec<Uuid>),
 }
 
-/// Advance `job` as of `today` (the date its 전근 are judged against: the
-/// real KST date, or the 폐쇄일 for a planning dry run). A refused line
-/// returns 422 `close_plan_refused` naming every refused line; the caller
-/// rolls back.
+/// Advance `job` as of `today` (the date its transfers are judged against:
+/// the real KST date, or the closure date for a planning dry run). A refused
+/// line returns 422 `close_plan_refused` naming every refused line; the
+/// caller rolls back.
 pub(crate) async fn advance(
     tx: Tx<'_, '_>,
     org: OrgId,
@@ -103,7 +104,7 @@ pub(crate) async fn advance(
         .filter(|l| !l.done && matches!(l.action.as_str(), "EXIT" | "GROUP_TRANSFER"))
     {
         let employee = l.employee_id.unwrap_or_default();
-        // A 퇴직 is in effect once the person has exited; a 전적 once its event applied.
+        // An exit is in effect once the person has exited; a group transfer once its event applied.
         let gone: bool = sqlx::query_scalar(
             "SELECT CASE WHEN $2::uuid IS NULL THEN e.employment_status = 'EXITED' \
                     ELSE EXISTS (SELECT 1 FROM employee_lifecycle_events l WHERE l.id = $2 AND l.state = 'APPLIED') END \
@@ -139,8 +140,8 @@ pub(crate) async fn advance(
     Ok(Advanced::Applied)
 }
 
-/// One 전근, as the single-event route records it; a client refusal is the
-/// line's (`Ok(Err)`), a fault the request's.
+/// One transfer, as the single-event route records it; a client refusal is
+/// the line's (`Ok(Err)`), a fault the request's.
 async fn transfer(
     tx: Tx<'_, '_>,
     org: OrgId,

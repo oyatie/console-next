@@ -19,8 +19,9 @@ pub(crate) async fn load(
     point: ReadPoint,
 ) -> Result<Vec<Membership>, PgEntityError> {
     // A newly recorded backdated exit supersedes the canonical snapshot's stale status.
-    // One count rule for chart, list, compare and export: employed on D iff 입사일 <= D < 퇴직일,
-    // where 퇴직일 = stored 마지막 근무일 + 1 = 4대보험 상실일.
+    // One count rule for chart, list, compare and export: employed on D iff hire date <= D <
+    // exit date, where exit date = stored last working day + 1 = the date coverage under the
+    // four social insurances is lost.
     let rows = sqlx::query(
         "WITH known_events AS MATERIALIZED ( \
            SELECT * FROM employee_lifecycle_events WHERE $2::timestamptz IS NULL UNION ALL \

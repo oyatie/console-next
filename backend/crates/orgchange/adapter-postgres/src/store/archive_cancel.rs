@@ -34,10 +34,11 @@ impl PgOrgChangeStore {
                     )
                     .into());
                 }
-                // A legacy SETTLING 폐지 (stored before org-05 applied 폐지 on
-                // its 시행일): the deferred ops run now, inside this one tx; the
-                // referential guards re-verify (settlement must have actually
-                // cleared the dependents, or this rolls back with a conflict).
+                // A legacy SETTLING abolition (stored before org-05 applied
+                // abolition on its effective date): the deferred ops run now,
+                // inside this one tx; the referential guards re-verify
+                // (settlement must have actually cleared the dependents, or
+                // this rolls back with a conflict).
                 let mut audits = apply_ops(
                     tx,
                     (org, actor, now),

@@ -69,7 +69,7 @@ pub fn validate_upload(
     }
     let content_type =
         sniff(&bytes).ok_or_else(|| Refusal::field("file", "file_type_not_accepted"))?;
-    // The name is kept for the 문서 tab only; path parts never reach storage.
+    // The name is kept for the documents tab only; path parts never reach storage.
     let file_name = file_name
         .and_then(|n| n.rsplit(['/', '\\']).next())
         .map(str::trim)
@@ -88,7 +88,7 @@ pub fn validate_upload(
 
 /// Until when a superseded original is kept: the same calendar day `years`
 /// after the day it was superseded (KST). A 29 February anchor without a
-/// corresponding day lands on the month's end, 28 February (민법 §160③).
+/// corresponding day lands on the month's end, 28 February (Civil Act §160③).
 /// The disposition job (GOV-AUD) decides on its own reading of the setting.
 #[must_use]
 pub fn retain_until(superseded_on: time::Date, years: i64) -> Option<time::Date> {

@@ -199,7 +199,8 @@ async fn apply_scheduled_lifecycle_event_tx(
     let mut transition: NormalizedEmployeeLifecycleTransition = request
         .and_then(|request| serde_json::from_value(request).ok())
         .ok_or_else(|| HrError::internal("scheduled lifecycle event has no readable request"))?;
-    // A renewal, APPOINT or 전환 keeps whatever status the employee holds on its date.
+    // A renewal, APPOINT or employment type change keeps whatever status the
+    // employee holds on its date.
     resolve_kept_status(&mut transition, &current);
     validate_lifecycle_transition(&current, &transition)?;
     let target = resolve_lifecycle_target(tx, org_uuid, employee_id, &current, &transition).await?;

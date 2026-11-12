@@ -1,6 +1,7 @@
-//! Issuing a 발령 공고: the events checked (recorded, not undone, on no other
-//! notice), the next 발령 번호 of the notice year taken under the tenant's
-//! year lock, the notice and its lines written, one audit row.
+//! Issuing a personnel order notice: the events checked (recorded, not
+//! undone, on no other notice), the next personnel order number of the notice
+//! year taken under the tenant's year lock, the notice and its lines written,
+//! one audit row.
 
 use console_hr_domain::text::{
     normalize_limited_text, normalize_optional_limited_text, parse_yyyy_mm_dd,
@@ -77,8 +78,9 @@ async fn named_events(
     Ok(ids)
 }
 
-/// Every event exists, is recorded (APPLIED or SCHEDULED), is a 발령 (not a
-/// RESCIND or an exit reversal), is not undone, and is on no other notice.
+/// Every event exists, is recorded (APPLIED or SCHEDULED), is a personnel
+/// order (not a RESCIND or an exit reversal), is not undone, and is on no
+/// other notice.
 async fn check_events(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,

@@ -1,18 +1,18 @@
-//! MR-26: 등록 취소 (void) of a record that should never have existed, and
-//! the 근로자 명부 retention floor that bounds a SETUP delete.
+//! MR-26: registration void of a record that should never have existed, and
+//! the worker register retention floor that bounds a SETUP delete.
 //!
 //! Pure: today, the tenant's window and period, and the work-record fact
 //! arrive as parameters. The adapter maps each refusal to its wire code.
 //!
-//! - After 운영 시작 a void is allowed only for a person who never started
+//! - After go-live a void is allowed only for a person who never started
 //!   (PRE_HIRE), or for one registered under `people.void_window` days ago
-//!   whose actor attests 「근무한 적 없음」 (onboarding design §7.3). Anyone
-//!   with a work record is exited (퇴직), never voided.
-//! - The 근로자 명부 is kept 3 years from the 해고·퇴직·사망일 (근로기준법
-//!   §42; 시행령 §22①1, ②1). The period is the tenant's
-//!   `retention.labor.employee_register` (never below 3 years, decisions #10);
-//!   a year period ends on the same calendar day, or the month's last day
-//!   when that day does not exist (민법 §160②③).
+//!   whose actor attests "never worked" (onboarding design §7.3). Anyone
+//!   with a work record is exited (an exit), never voided.
+//! - The worker register is kept 3 years from the date of dismissal, exit or
+//!   death (Labor Standards Act §42; Enforcement Decree §22①1, ②1). The period
+//!   is the tenant's `retention.labor.employee_register` (never below 3 years,
+//!   decisions #10); a year period ends on the same calendar day, or the
+//!   month's last day when that day does not exist (Civil Act §160②③).
 
 use console_kernel_core::KernelError;
 use time::{Date, Month};
@@ -55,7 +55,7 @@ pub struct VoidFacts<'a> {
     pub has_work_records: bool,
 }
 
-/// Whether the record may be voided after 운영 시작. `as_of` is the KST date
+/// Whether the record may be voided after go-live. `as_of` is the KST date
 /// the window is measured at (the request's filing date when a second person
 /// decides later, so the decision cannot age the request out).
 ///
@@ -91,7 +91,7 @@ pub fn void_basis(
     }
 }
 
-/// The last day the 근로자 명부 must be kept: `years` after the exit day.
+/// The last day the worker register must be kept: `years` after the exit day.
 #[must_use]
 pub fn register_kept_until(exit_on: Date, years: i32) -> Date {
     let year = exit_on.year() + years;
@@ -105,7 +105,7 @@ fn last_day(year: i32, month: Month) -> Date {
 }
 
 /// A SETUP delete of an EXITED person still inside the register period
-/// needs the actor's confirmation that the tenant keeps its original 명부
+/// needs the actor's confirmation that the tenant keeps its original register
 /// (onboarding design §7.3, RI#38).
 ///
 /// # Errors

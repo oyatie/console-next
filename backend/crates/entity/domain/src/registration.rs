@@ -1,4 +1,4 @@
-//! BusinessRegistration (사업자등록): one certificate's fields.
+//! BusinessRegistration (business registration): one certificate's fields.
 
 use console_kernel_core::kr::{BizRegNo, Email};
 use serde::{Deserialize, Serialize};
@@ -44,7 +44,7 @@ pub struct RegistrationInput {
 pub struct RegistrationDraft {
     pub brn: Option<BizRegNo>,
     pub brn_pending_reason: Option<BrnPendingReason>,
-    /// An individual certificate's printed 상호; other kinds store no name copy.
+    /// An individual certificate's printed trade name; other kinds store no name copy.
     pub trade_name: Option<String>,
     pub classification_reason: Option<Option<String>>,
     pub opened_on: time::Date,
@@ -67,7 +67,7 @@ pub struct RegistrationDraft {
 pub struct EntityContext<'a> {
     pub biz_kind: Option<BizKind>,
     pub entity_name: &'a str,
-    /// No head on create; a revision may have a legacy NULL 상호.
+    /// No head on create; a revision may have a legacy NULL trade name.
     pub head_trade_name: Option<Option<&'a str>>,
 }
 

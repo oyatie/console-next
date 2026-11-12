@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import type { components } from "@console/api/schema";
+import type { components, operations } from "@console/api/schema";
 import { loadCatalog } from "@console/i18n";
 import { trailItemLabel } from "../apps/web/src/features/people/present";
 import { filingLabel } from "../apps/web/src/features/statutory/present";
@@ -106,4 +107,14 @@ test("employment record: hire trail, facts, a contract and its correction, proba
   await expect(contracts.getByRole("listitem")).toHaveCount(2);
   await expect(contracts.getByRole("listitem").filter({ hasText: "정정됨" })).toContainText("3,000,000");
   await expectAccessible(admin, "contract history with a correction");
+
+  // Moving the corrected start date voids the old wage even before the replacement starts.
+  await contracts.getByRole("button", { name: "정정", exact: true }).click();
+  await fillDate(fix, kstDate(1), "계약 시작일");
+  await fix.getByRole("button", { name: "정정 기록" }).click();
+  await expect(fix).toBeHidden();
+  await expect(contracts.getByText("현재 계약", { exact: true })).toHaveCount(0);
+  const history = await read<operations["listEmployeeContracts"]["responses"][200]["content"]["application/json"]>(`/api/v1/employees/${person}/contracts`);
+  expect(history.items).toHaveLength(3);
+  expect(history.items.every((row) => !row.in_force)).toBe(true);
 });

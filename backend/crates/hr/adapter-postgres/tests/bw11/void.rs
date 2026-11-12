@@ -1,4 +1,4 @@
-//! BW-11 정정 (correct) and 취소·철회 (rescind).
+//! BW-11 correction (correct) and cancellation or withdrawal (rescind).
 
 use console_hr_adapter_postgres::lifecycle::correct::CorrectLifecycleEventRequest;
 use console_hr_adapter_postgres::lifecycle::void::RescindLifecycleEventRequest;

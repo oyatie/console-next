@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! ENT-REG after 운영 시작: an identifier correction is admitted only by
+//! ENT-REG after go-live: an identifier correction is admitted only by
 //! consuming the BW-06 governed exception for exactly that correction
 //! (MR-17), through the port as the composition root wires it.
 

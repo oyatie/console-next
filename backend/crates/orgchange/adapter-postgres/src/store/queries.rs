@@ -236,7 +236,7 @@ impl PgOrgChangeStore {
         .await
     }
 
-    /// The 법인 list = active member orgs of every group the actor holds a
+    /// The legal entity list = active member orgs of every group the actor holds a
     /// live grant for (fail-closed empty; design gap-analysis §2).
     ///
     /// L5-ORG: each row also carries Company/OrgUnit canonical reference fields

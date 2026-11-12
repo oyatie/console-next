@@ -16,7 +16,7 @@ serde = { workspace = true }
 uuid = { workspace = true }
 # Default features only: the shadow-first Cedar boundary does not use
 # partial-eval/entity-manifest. Pinned exact for provable bundle equivalence.
-cedar-policy = "=4.14.0"
+cedar-policy = "=4.14.1"
 stacker = "=0.1.25"
 sha2 = { workspace = true }
 hex = { workspace = true }

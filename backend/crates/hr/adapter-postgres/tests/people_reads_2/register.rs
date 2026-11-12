@@ -1,4 +1,4 @@
-//! The 근로자 명부 export layout (SC-HRR-003) and its manage gate.
+//! The worker register export layout (SC-HRR-003) and its manage gate.
 
 use console_hr_adapter_postgres::directory::read_export::ExportPurposeQuery;
 use futures::StreamExt;
@@ -41,7 +41,7 @@ async fn register_layout_writes_the_form_16_columns_and_derives_the_retirement_d
     )
     .await;
 
-    // 사업장 by id (E-S3a): the register names the workplace's current name,
+    // Workplace by id (E-S3a): the register names the workplace's current name,
     // and `workplace_id` leaves out the employee assigned nowhere.
     let workplace = Uuid::new_v4();
     fixture(
@@ -101,9 +101,9 @@ async fn register_layout_writes_the_form_16_columns_and_derives_the_retirement_d
     assert_eq!(logged, "employees-register.csv");
 }
 
-/// The register carries 생년월일 and the personal phone: a directory reader
-/// without `employee_directory_manage` (EXECUTIVE) may export the standard
-/// columns but never the register, and the refusal logs no download.
+/// The register carries the date of birth and the personal phone: a directory
+/// reader without `employee_directory_manage` (EXECUTIVE) may export the
+/// standard columns but never the register, and the refusal logs no download.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn register_layout_is_refused_to_a_reader_without_manage(pool: PgPool) {
     let t = tenant(&pool).await;

@@ -1,5 +1,5 @@
-//! Reads of a bulk 법인 · 사업장 op (MR-29): the record's state for the
-//! diff, its newest revision, and the record a CREATE row would duplicate.
+//! Reads of a bulk legal entity · workplace op (MR-29): the record's state for
+//! the diff, its newest revision, and the record a CREATE row would duplicate.
 
 use console_entity_domain::Refusal;
 use console_entity_domain::legal_entity::{LegalEntityInput, validate_legal_entity};
@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::entity_batch_ops::OpErr;
 use crate::{PgEntityError, Tx};
 
-/// Far enough ahead that a 사업장 view shows its latest revision as current.
+/// Far enough ahead that a workplace view shows its latest revision as current.
 const LATEST: time::Date = time::Date::MAX;
 
 /// A view state as a map for the diff, minus revision bookkeeping, plus `extra`.
@@ -35,7 +35,8 @@ pub(crate) fn state<S: serde::Serialize, const N: usize>(
     map
 }
 
-/// `needs_confirmation` and the latest state (with its 대표 / 본점 flags).
+/// `needs_confirmation` and the latest state (with its representative /
+/// head-office flags).
 pub(crate) async fn workplace_state(
     tx: &mut Tx<'_>,
     entity: Uuid,
@@ -67,7 +68,8 @@ pub(crate) async fn head(
     Ok(sqlx::query_as(sql).bind(id).fetch_one(tx.as_mut()).await?)
 }
 
-/// An open 법인 the row would duplicate: same 법인등록번호, else same 상호.
+/// An open legal entity the row would duplicate: same corporate registration
+/// number, else same trade name.
 pub(crate) async fn existing_entity(
     tx: &mut Tx<'_>,
     input: &LegalEntityInput,
@@ -90,7 +92,7 @@ pub(crate) async fn existing_entity(
     .await?)
 }
 
-/// An open 사업장 of `entity` with the same name.
+/// An open workplace of `entity` with the same name.
 pub(crate) async fn existing_workplace(
     tx: &mut Tx<'_>,
     entity: Uuid,

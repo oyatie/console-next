@@ -16,15 +16,17 @@ pub fn statutory_contribution_rates() -> Vec<StatutoryRate> {
             code: ContributionCode::NationalPension,
             period: EffectivePeriod::new(date!(2026 - 01 - 01), Some(date!(2027 - 01 - 01))),
             basis: ContributionBasis::MonthlyStandardIncome,
-            // 1만분의 475 = 4.75%, the employee share directly: there is no
-            // total-then-halve step for 국민연금.
+            // 475 per 10,000 = 4.75%, the employee share directly: there is no
+            // total-then-halve step for the National Pension.
             rate_num: 475,
             rate_den: 10_000,
-            // 단수 rule: LOCATED. 국민연금법 제117조 준용s 국고금관리법 for
-            // 연금보험료, exactly as 국민건강보험법 제107조 does for 건강보험.
-            // An earlier round recorded this bridge as absent and emitted the
-            // unrounded product as a disclosed assumption; the article exists
-            // and is in force, so the assumption is retired.
+            // Fraction rule: LOCATED. National Pension Act Article 117 applies
+            // the National Treasury Management Act mutatis mutandis to pension
+            // contributions, exactly as National Health Insurance Act Article
+            // 107 does for health insurance. An earlier round recorded this
+            // bridge as absent and emitted the unrounded product as a disclosed
+            // assumption; the article exists and is in force, so the assumption
+            // is retired.
             total_rounding: Rounding::Resolved {
                 unit: RoundingUnit::Trunc10,
                 instrument: national_pension_fraction_instrument(),
@@ -53,9 +55,10 @@ pub fn statutory_contribution_rates() -> Vec<StatutoryRate> {
                 name_ko: "국민건강보험법 시행령",
                 article_ko: "제44조제1항 「법 제73조제1항에 따른 직장가입자의 보험료율 … 은 각각 1만분의 719로 한다」 <개정 2025.12.23>",
                 // The row is in force from 2026-01-01, so its instrument must be
-                // the one in force THEN. 제36116호 (시행 2026-02-19) did not touch
-                // 제44조 — its 개정 history ends 2025.12.23 — and citing it dated
-                // the rate seven weeks after the row it justifies.
+                // the one in force THEN. Presidential Decree No. 36116
+                // (effective 2026-02-19) did not touch Article 44 — its
+                // amendment history ends 2025.12.23 — and citing it dated the
+                // rate seven weeks after the row it justifies.
                 promulgation_ko: "대통령령 제35931호",
                 enforced_on: date!(2026 - 01 - 01),
                 url: "https://www.law.go.kr/법령/국민건강보험법시행령",
@@ -64,17 +67,19 @@ pub fn statutory_contribution_rates() -> Vec<StatutoryRate> {
             share_instrument: Some(fifty_fifty_share_instrument()),
             provenance: "요율은 2026-01-01 시행본을 eflaw로 직접 읽음 (법령ID 002813, MST 280453, 대통령령 제35931호) — 제44조제1항의 최종 개정은 2025.12.23이며 제36116호(시행 2026-02-19)는 이 조문을 건드리지 않았다. 종전 인용 「제36116호, 시행 2026-02-19」은 이 행의 effective_from(2026-01-01)보다 7주 늦은 문서였다. 50/50 분담(제76조제1항)과 10원 절사(제107조)는 이 행의 effective_from에 시행 중인 슬라이스에서 읽음 — MST 265877, efYd 20250423, 법률 제20505호. 종전 인용 「법률 제21065호」는 시행 2026-01-02로 이 행보다 하루 늦은 슬라이스였다. 총액은 10원 절사 후 상·하한 고시로 클램프하며, 절반 분담의 반올림 단위는 미해결(Q-HALF-SHARE-ROUNDING-UNIT).",
         },
-        // 장기요양's basis is the 건강보험료액, and its ratio is EXACT
-        // (9,448/71,900) until 제9조제1항's 반올림 clause enters force.
+        // Long-term care's basis is the health insurance premium amount, and
+        // its ratio is EXACT (9,448/71,900) until Article 9(1)'s round-half-up
+        // clause enters force.
         StatutoryRate {
             code: ContributionCode::LongTermCare,
             period: EffectivePeriod::new(date!(2026 - 01 - 01), Some(date!(2026 - 11 - 27))),
             basis: ContributionBasis::HealthInsurancePremium,
             rate_num: 9_448,
             rate_den: 71_900,
-            // The 준용 article, not the destination: 장기요양 reaches 제107조 only
-            // through 노인장기요양보험법 제64조, and the destination alone is a
-            // citation only a reader who already knows the chain can check.
+            // The mutatis mutandis article, not the destination: long-term care
+            // reaches Article 107 only through Long-Term Care Insurance Act
+            // Article 64, and the destination alone is a citation only a reader
+            // who already knows the chain can check.
             total_rounding: Rounding::Resolved {
                 unit: RoundingUnit::Trunc10,
                 instrument: long_term_care_fraction_instrument(),
@@ -86,9 +91,10 @@ pub fn statutory_contribution_rates() -> Vec<StatutoryRate> {
             instrument: Instrument {
                 name_ko: "노인장기요양보험법 시행령",
                 article_ko: "제4조(장기요양보험료율) 「법 제9조제1항에 따른 장기요양보험료율은 100만분의 9,448로 한다」 <개정 2025.12.30>",
-                // Same defect as 건강보험 above: 제36325호 is enforced 2026-05-12,
-                // four months after this row starts. 제4조's own 개정 ends
-                // 2025.12.30 — 제35987호.
+                // Same defect as health insurance above: Presidential Decree
+                // No. 36325 is enforced 2026-05-12, four months after this row
+                // starts. Article 4's own amendments end 2025.12.30 — No.
+                // 35987.
                 promulgation_ko: "대통령령 제35987호",
                 enforced_on: date!(2026 - 01 - 01),
                 url: "https://www.law.go.kr/법령/노인장기요양보험법시행령",
@@ -127,14 +133,15 @@ pub fn statutory_contribution_rates() -> Vec<StatutoryRate> {
             code: ContributionCode::EmploymentUnemployment,
             period: EffectivePeriod::new(date!(2026 - 01 - 01), Some(date!(2027 - 01 - 01))),
             basis: ContributionBasis::MonthlyRemuneration,
-            // 1천분의 18 total, employee bears ½ → 9/1,000.
+            // 18 per 1,000 total, employee bears ½ → 9/1,000.
             rate_num: 9,
             rate_den: 1_000,
-            // 단수 rule: STILL NONE LOCATED, and no longer "same as 국민연금" —
-            // 국민연금 has 제117조. `Assumed`, not `Resolved`: 시행령
-            // 제12조제1항제2호 sets a RATE and prescribes no 단수 rule, so citing
-            // it as the instrument that settles the rounding was a citation
-            // that did not match what it cited.
+            // Fraction rule: STILL NONE LOCATED, and no longer "same as
+            // National Pension" — National Pension has Article 117. `Assumed`,
+            // not `Resolved`: Enforcement Decree Article 12(1) item 2 sets a
+            // RATE and prescribes no fraction rule, so citing it as the
+            // instrument that settles the rounding was a citation that did not
+            // match what it cited.
             total_rounding: Rounding::Assumed {
                 unit: RoundingUnit::ExactWon,
                 note_ko: NO_FRACTION_RULE_IN_COLLECTION_ACT,
@@ -151,10 +158,12 @@ pub fn statutory_contribution_rates() -> Vec<StatutoryRate> {
             basis: ContributionBasis::IndustryTariff,
             rate_num: 0,
             rate_den: 1,
-            // 국민건강보험법 제107조 has no application to 산재보험료: it is not
-            // reached from 징수법 by any 준용, and 징수법 itself has no 단수
-            // article. The earlier citation of it here was a statute that does
-            // not govern this row.
+            // National Health Insurance Act Article 107 has no application to
+            // industrial accident insurance premiums: it is not reached from
+            // the Insurance Premium Collection Act by any mutatis mutandis
+            // provision, and that Act itself has no fraction article. The
+            // earlier citation of it here was a statute that does not govern
+            // this row.
             total_rounding: Rounding::Assumed {
                 unit: RoundingUnit::ExactWon,
                 note_ko: NO_FRACTION_RULE_IN_COLLECTION_ACT,
@@ -163,10 +172,13 @@ pub fn statutory_contribution_rates() -> Vec<StatutoryRate> {
             clamp_required: false,
             instrument: Instrument {
                 name_ko: "고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률",
-                // 제13조제5항 본문 전문. 「사업주가 전액 부담한다」는 조문에 없는
-                // 표현이므로 인용하지 않는다 — 근로자 공제가 없다는 결론은
-                // 제13조제5항이 산재보험료를 사업주 부담으로만 산정하고
-                // 제13조제2항이 근로자에게 고용보험료만 지우는 데서 나온다.
+                // The full main text of Article 13(5). "The employer bears the
+                // whole amount" is wording the article does not contain, so it
+                // is not quoted — the conclusion that there is no employee
+                // deduction comes from Article 13(5) computing the industrial
+                // accident insurance premium as the employer's burden only, and
+                // Article 13(2) charging the employee only the employment
+                // insurance premium.
                 article_ko: "제13조제5항 「제1항에 따라 사업주가 부담하여야 하는 산재보험료는 그 사업주가 경영하는 사업에 종사하는 근로자의 개인별 보수총액에 다음 각 호에 따른 산재보험료율을 곱한 금액을 합한 금액으로 한다」 — 근로자 부담분을 정한 항이 없다. 요율은 고용노동부고시 제2025-91호 별지, 유효기간 2026-12-31",
                 promulgation_ko: "법률 제19209호",
                 enforced_on: date!(2024 - 01 - 01),

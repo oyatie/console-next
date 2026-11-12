@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! people-self-33 (r2, P0): an HR worker holding 인사 실무 over the 법인
-//! reported (201) and HR-confirmed (200) their OWN exit. The `own_record`
-//! Cedar action now refuses every HR write whose subject is the actor's own
-//! record (403 `own_record_forbidden`, nothing written); the ops account
-//! passes only as the sole holder, audited for review. Red on bec13989.
+//! people-self-33 (r2, P0): an HR worker holding the HR practitioner role over
+//! the legal entity reported (201) and HR-confirmed (200) their OWN exit. The
+//! `own_record` Cedar action now refuses every HR write whose subject is the
+//! actor's own record (403 `own_record_forbidden`, nothing written); the ops
+//! account passes only as the sole holder, audited for review. Red on bec13989.
 
 #[path = "../support/go_live.rs"]
 mod go_live;
@@ -96,7 +96,7 @@ async fn an_hr_worker_cannot_record_their_own_exit(pool: PgPool) {
     assert_eq!(w.count(events, own).await, 0, "no lifecycle event");
 }
 
-/// regression: people-self-33 — 정보 정정 of one's own record is refused.
+/// regression: people-self-33 — information correction of one's own record is refused.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn an_hr_worker_cannot_correct_their_own_record(pool: PgPool) {
     let w = world(pool).await;
@@ -130,8 +130,8 @@ async fn an_hr_worker_cannot_correct_their_own_record(pool: PgPool) {
 }
 
 /// The ops account linked to its own record (a solo admin): it records its
-/// own exit only while no other account holds 퇴직 등록, and that pass is
-/// audited for review. Once someone else holds it, ops is refused too.
+/// own exit only while no other account holds exit registration, and that pass
+/// is audited for review. Once someone else holds it, ops is refused too.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn ops_records_its_own_exit_only_as_the_sole_holder(pool: PgPool) {
     let w = world(pool).await;

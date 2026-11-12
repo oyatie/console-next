@@ -1,6 +1,7 @@
-//! The per-section import sheet plan: each row resolved to an employee by 사번
-//! and decided by `console_hr_domain::record::plan::decide`. Preview and apply
-//! compute the same plan; apply runs only when its digest still matches.
+//! The per-section import sheet plan: each row resolved to an employee by
+//! employee number and decided by `console_hr_domain::record::plan::decide`.
+//! Preview and apply compute the same plan; apply runs only when its digest
+//! still matches.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
@@ -222,7 +223,7 @@ pub(crate) async fn plan(
             .cloned()
             .collect();
         let mut decision = decide(section, person, &intent, target, &live);
-        // One row per entry, and one new 병역 entry per person, per sheet.
+        // One row per entry, and one new military service entry per person, per sheet.
         let fields = match intent {
             RowIntent::Create(f) | RowIntent::Update { fields: f, .. } => Some(f),
             RowIntent::Void { .. } => None,

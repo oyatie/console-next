@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! BW-12 through the `HrService` entry points, on a `console_rt` pool: the
-//! fixed-term limit on CONTRACT_RENEWAL (from the statutory register), 육아휴직
-//! taken out, the hire-date fallback requiring review, and the governed
+//! fixed-term limit on CONTRACT_RENEWAL (from the statutory register), childcare
+//! leave taken out, the hire-date fallback requiring review, and the governed
 //! FIXED_TERM_OVER_TWO_YEARS exception consumed once.
 
 #[path = "support/go_live.rs"]

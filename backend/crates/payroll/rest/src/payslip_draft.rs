@@ -1,13 +1,13 @@
 //! `GET /api/v1/payroll/employees/{employee_id}/payslip-draft` — one real
-//! employee's 급여명세서 draft, computed from the contract wage in force, every
+//! employee's payslip draft, computed from the contract wage in force, every
 //! figure carrying its instrument.
 //!
 //! The period's real timesheet is read and **gates** the draft — it does not
-//! yet drive a figure. No amount here is prorated by attendance; a 근태기록 that
-//! is absent, SHORT OF the period's working days, or unbalanced raises
-//! `ATTENDANCE_INCOMPLETE` instead, so the draft cannot look complete on data it
-//! never read. 근로기준법 제56조's 연장·야간·휴일 premiums are what will make it
-//! arithmetic.
+//! yet drive a figure. No amount here is prorated by attendance; an attendance
+//! record that is absent, SHORT OF the period's working days, or unbalanced
+//! raises `ATTENDANCE_INCOMPLETE` instead, so the draft cannot look complete on
+//! data it never read. Labor Standards Act Article 56's overtime, night and
+//! holiday premiums are what will make it arithmetic.
 //!
 //! # Why this is not the run lifecycle
 //!
@@ -72,13 +72,13 @@ pub(crate) fn routes() -> Router<PayrollRestState> {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct PayslipDraftParams {
-    /// 급여계산기간, `YYYY-MM`.
+    /// Pay calculation period, `YYYY-MM`.
     period: String,
-    /// 지급일, `YYYY-MM-DD`. Defaults to the period end.
+    /// Pay date, `YYYY-MM-DD`. Defaults to the period end.
     ///
     /// It is a SEPARATE input from the period on purpose: the pay date selects
-    /// the rate row AND the 기준소득월액 band, so a June period paid in July
-    /// must not silently reuse the June band.
+    /// the rate row AND the standard monthly income band, so a June period paid
+    /// in July must not silently reuse the June band.
     pay_date: Option<String>,
 }
 
@@ -297,7 +297,7 @@ async fn get_payslip_draft(
     };
 
     if wage.wage_kind != "MONTHLY" {
-        // 시급제 needs hour-driven pay items, which this slice does not model.
+        // Hourly pay needs hour-driven pay items, which this slice does not model.
         // Refusing is the honest answer; multiplying an hourly rate by the f64
         // hours cast would be the dishonest one.
         return Ok(Json(json!({
@@ -323,10 +323,11 @@ async fn get_payslip_draft(
     .map_err(RestError::from_kernel)?;
 
     // The timesheet must be load-bearing or not claimed. It drives no FIGURE in
-    // this slice — 근로기준법 제56조 premiums are the next increment — so it
-    // carries the only weight it honestly can: the same refusal shape
-    // withholding uses. An absent, PARTIAL or unbalanced 근태기록 blocks the
-    // draft instead of silently yielding a full month.
+    // this slice — Labor Standards Act Article 56 premiums are the next
+    // increment — so it carries the only weight it honestly can: the same
+    // refusal shape withholding uses. An absent, PARTIAL or unbalanced
+    // attendance record blocks the draft instead of silently yielding a full
+    // month.
     let mut blockers = draft.blockers.clone();
     let attendance_blocker = attendance_blocker(&attendance);
     let attendance_is_complete = attendance_blocker.is_none();
@@ -385,14 +386,15 @@ async fn get_payslip_draft(
 
 /// Weekdays in the period — the working days a full month could have.
 ///
-/// 공휴일 are NOT modelled and neither is the contract's own 소정근로일, so this
-/// OVER-counts in any month carrying a public holiday. That is the only
-/// direction it is allowed to err: over-counting makes the blocker fire on a
-/// timesheet that was actually complete, while under-counting would let a short
-/// month pass as full. The draft is allowed to refuse too often; it is not
-/// allowed to look finished on data it never read.
-// weekday count, not a 근로일 calendar. Replace with the 공휴일 table
-// and the contract's 소정근로일 when this stops gating and starts prorating.
+/// Public holidays are NOT modelled and neither are the contract's own
+/// prescribed working days, so this OVER-counts in any month carrying a public
+/// holiday. That is the only direction it is allowed to err: over-counting
+/// makes the blocker fire on a timesheet that was actually complete, while
+/// under-counting would let a short month pass as full. The draft is allowed to
+/// refuse too often; it is not allowed to look finished on data it never read.
+// weekday count, not a working-day calendar. Replace with the public holiday
+// table and the contract's prescribed working days when this stops gating and
+// starts prorating.
 fn expected_working_days(period_start: Date, period_end: Date) -> i64 {
     core::iter::successors(Some(period_start), |day| day.next_day())
         .take_while(|day| *day <= period_end)
@@ -405,13 +407,15 @@ fn expected_working_days(period_start: Date, period_end: Date) -> i64 {
 /// Two conditions, both readable straight off the stored records:
 ///  * **fewer worked days than the period has working days** — including the
 ///    zero-record extreme. A month with 12 of 23 days recorded is not "absent",
-///    but it is not a full month either, and the earnings line asserts 완전출근;
+///    but it is not a full month either, and the earnings line asserts full
+///    attendance;
 ///  * **unbalanced punches** — a CLOCK_IN without its CLOCK_OUT is an open or
-///    missing shift, and 근로기준법 제56조's 연장·야간·휴일 premiums (the next
-///    increment) are derived from exactly those pairs.
+///    missing shift, and Labor Standards Act Article 56's overtime, night and
+///    holiday premiums (the next increment) are derived from exactly those
+///    pairs.
 ///
-/// Deliberately NOT a figure. This slice does not 일할계산 and does not invent
-/// a proration from `worked_days`; it refuses, and names why. Silently
+/// Deliberately NOT a figure. This slice does not prorate by day and does not
+/// invent a proration from `worked_days`; it refuses, and names why. Silently
 /// computing a full month on a partial timesheet is the failure this prevents.
 fn attendance_blocker(attendance: &AttendanceSummary) -> Option<String> {
     let AttendanceSummary {
@@ -530,7 +534,7 @@ mod tests {
 
         // PARTIAL BUT BALANCED — the case that used to sail through. Every
         // punch is paired, so the unbalanced check passes; only the shortfall
-        // catches it, and the earnings line asserts 완전출근.
+        // catches it, and the earnings line asserts full attendance.
         let blocker =
             attendance_blocker(&summary(12, 12, 12)).expect("a half-recorded month must block");
         assert!(blocker.contains("worked_days=12"), "{blocker}");

@@ -1,11 +1,12 @@
-//! The 업무위탁 basis of a scope grant on another 법인 (decisions #15.2).
+//! The outsourcing basis of a scope grant on another legal entity (decisions #15.2).
 //!
-//! A grant is an ordinary grant whatever 법인 employs its holder (#15.3).
-//! Only when the tenant setting `authz.cross_entity_grant.basis_required` is
-//! on (the default) does a grant whose holder is not employed by the target
-//! 법인 need its basis: the 업무위탁 contract reference and date, which feed
-//! that 법인's 수탁자 list for its 처리방침 (개인정보 보호법 §26②). A tenant
-//! that turns it off tracks no basis (its own responsibility, #15.2).
+//! A grant is an ordinary grant whatever legal entity employs its holder
+//! (#15.3). Only when the tenant setting
+//! `authz.cross_entity_grant.basis_required` is on (the default) does a grant
+//! whose holder is not employed by the target legal entity need its basis: the
+//! outsourcing contract reference and date, which feed that legal entity's
+//! list of entrustees for its privacy policy (Personal Information Protection
+//! Act §26②). A tenant that turns it off tracks no basis (its own responsibility, #15.2).
 
 use serde::{Deserialize, Serialize};
 
@@ -14,9 +15,9 @@ use crate::{Issues, Refusal};
 /// The basis as typed with a grant.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GrantBasisInput {
-    /// 업무위탁 계약 reference (e.g. a contract number), 1–200 characters.
+    /// Outsourcing contract reference (e.g. a contract number), 1–200 characters.
     pub basis_ref: Option<String>,
-    /// 업무위탁 계약일, `YYYY-MM-DD`, not after today.
+    /// Outsourcing contract date, `YYYY-MM-DD`, not after today.
     pub basis_date: Option<String>,
 }
 
@@ -27,12 +28,12 @@ pub struct GrantBasis {
     pub basis_date: time::Date,
 }
 
-/// Validate the basis of a grant on the target 법인.
+/// Validate the basis of a grant on the target legal entity.
 ///
 /// `required` is the resolved setting; `holder_employed_by_target` whether an
-/// open employment of the holder sits at that 법인 (a TENANT grant counts as
-/// employed: it targets no single 법인). A basis given when none is needed is
-/// still validated and kept, so a tenant may record one voluntarily.
+/// open employment of the holder sits at that legal entity (a TENANT grant
+/// counts as employed: it targets no single legal entity). A basis given when
+/// none is needed is still validated and kept, so a tenant may record one voluntarily.
 ///
 /// # Errors
 /// `basis_ref` / `basis_date` field issues: `required` when the basis is

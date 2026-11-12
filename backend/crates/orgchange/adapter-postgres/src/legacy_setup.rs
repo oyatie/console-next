@@ -93,8 +93,8 @@ pub(crate) async fn validate_legacy_org_setup_targets(
     }
 }
 
-/// Refuse closing a branch that backs a live 사업장 (decisions #18): the
-/// branch is the 사업장's authorization spine and closes with it.
+/// Refuse closing a branch that backs a live workplace (decisions #18): the
+/// branch is the workplace's authorization spine and closes with it.
 pub(crate) async fn refuse_branch_backing_workplace(
     tx: Tx<'_, '_>,
     branch_id: Uuid,
