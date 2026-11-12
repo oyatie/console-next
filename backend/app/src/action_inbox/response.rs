@@ -9,6 +9,7 @@ pub(super) async fn project(
     filter: InboxFilter,
     first: bool,
     now: OffsetDateTime,
+    [short_days, long_days]: [i64; 2],
 ) -> Result<Json<serde_json::Value>, InboxError> {
     let unavailable: Vec<_> = page.unavailable.iter().map(|source| serde_json::json!({ "source": source, "support_reference": sources.support_reference })).collect();
     let mut response = serde_json::to_value(page).map_err(|e| source_failure("projection", e))?;
@@ -93,6 +94,12 @@ pub(super) async fn project(
         .map(|(key, _)| key)
         .collect::<Vec<_>>()
     );
+    // Dates resolved here, in Korea's calendar, so no client does date arithmetic.
+    response["snooze_presets"] = serde_json::json!(console_action_inbox_application::presets(
+        console_action_inbox_application::kst_date(now),
+        short_days,
+        long_days,
+    ));
     response["as_of"] = serde_json::json!(
         now.format(&time::format_description::well_known::Rfc3339)
             .map_err(|e| source_failure("clock", e))?

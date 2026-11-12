@@ -10,6 +10,8 @@ pub(super) const KEYS: &[SettingKey] = &[
     SettingKey::ApprovalPolicyOrgStructure,
     SettingKey::ApprovalBulkOrgStructure,
     SettingKey::ApprovalStepUpOrgStructure,
+    SettingKey::InboxSnoozeShortDays,
+    SettingKey::InboxSnoozeLongDays,
 ];
 
 #[tracing::instrument(name = "action_inbox.policy", skip_all)]
@@ -17,15 +19,31 @@ pub(super) async fn load(
     conn: &mut sqlx::PgConnection,
     org: OrgId,
     now: Timestamp,
-) -> Result<(i64, Option<DecisionPolicy>), KernelError> {
+) -> Result<(i64, Option<DecisionPolicy>, [i64; 2]), KernelError> {
     let settings =
         console_settings_adapter_postgres::resolve_in_tx(conn, org, KEYS, None, now).await?;
-    let window = settings
-        .get(&SettingKey::DeadlineDueSoonDays)
-        .and_then(|entry| entry.as_ref().ok())
-        .and_then(|entry| entry.value.as_int())
-        .ok_or_else(|| KernelError::internal("deadline display window unavailable"))?;
-    Ok((window, org_structure(&settings)?))
+    let days = |key, missing: &'static str| {
+        settings
+            .get(&key)
+            .and_then(|entry| entry.as_ref().ok())
+            .and_then(|entry| entry.value.as_int())
+            .ok_or_else(|| KernelError::internal(missing))
+    };
+    let window = days(
+        SettingKey::DeadlineDueSoonDays,
+        "deadline display window unavailable",
+    )?;
+    let snooze = [
+        days(
+            SettingKey::InboxSnoozeShortDays,
+            "snooze presets unavailable",
+        )?,
+        days(
+            SettingKey::InboxSnoozeLongDays,
+            "snooze presets unavailable",
+        )?,
+    ];
+    Ok((window, org_structure(&settings)?, snooze))
 }
 
 pub(super) fn org_structure(
@@ -76,7 +94,7 @@ mod tests {
             })
             .collect();
         assert!(!org_structure(&defaults).unwrap().unwrap().routed);
-        for &key in &KEYS[1..] {
+        for &key in &KEYS[1..4] {
             let mut missing = defaults.clone();
             missing.remove(&key);
             assert!(org_structure(&missing).is_err(), "{key:?}");

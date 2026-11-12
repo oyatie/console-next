@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! The 완료 and 참조 tabs beside the open list, and one item's 활동 내역.
+//! The 완료 and 참조 tabs beside the open list, one item's 활동 내역, and 미루기.
 use axum::Router;
 use axum::routing::{get, post};
 
-use super::{ActionInboxState, activity, done, reference};
+use super::{ActionInboxState, activity, done, reference, snooze};
 
 pub const ME_ACTION_INBOX_DONE_PATH: &str = "/api/v1/me/action-inbox/done";
 pub const ME_ACTION_INBOX_REFERENCE_PATH: &str = "/api/v1/me/action-inbox/reference";
 pub const ME_ACTION_INBOX_REFERENCE_READ_PATH: &str = "/api/v1/me/action-inbox/reference/{id}/read";
 pub const ME_ACTION_INBOX_ITEM_ACTIVITY_PATH: &str = "/api/v1/me/action-inbox/items/{id}/activity";
+pub const ME_ACTION_INBOX_ITEM_SNOOZE_PATH: &str = "/api/v1/me/action-inbox/items/{id}/snooze";
 
 pub(super) fn routes(router: Router<ActionInboxState>) -> Router<ActionInboxState> {
     router
@@ -16,4 +17,8 @@ pub(super) fn routes(router: Router<ActionInboxState>) -> Router<ActionInboxStat
         .route(ME_ACTION_INBOX_REFERENCE_PATH, get(reference::list))
         .route(ME_ACTION_INBOX_REFERENCE_READ_PATH, post(reference::read))
         .route(ME_ACTION_INBOX_ITEM_ACTIVITY_PATH, get(activity::list))
+        .route(
+            ME_ACTION_INBOX_ITEM_SNOOZE_PATH,
+            post(snooze::put).delete(snooze::remove),
+        )
 }

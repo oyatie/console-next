@@ -19377,6 +19377,15 @@ paths:
           enum: [all, turn, waiting, scheduled, deadlines, failures, notices]
           default: all
         description: Server-owned view; ownership and deadlines are never merged or filtered in the browser.
+      - name: snoozed
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [only]
+        description: >-
+          With only, lists the items the caller postponed, each with snooze.until. Without it the
+          list, its pages and its counts leave those items out. Takes no filter and no attention value.
       - name: limit
         in: query
         required: false
@@ -19408,7 +19417,7 @@ paths:
               schema:
                 type: string
         '422':
-          description: The cursor is malformed or attention was combined with a saved filter other than all or turn.
+          description: The cursor is malformed, attention was combined with a saved filter other than all or turn, or snoozed was combined with a filter or attention value.
           content:
             application/json:
               schema:
@@ -19531,6 +19540,103 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/me/action-inbox/items/{id}/snooze:
+    delete:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - me
+      operationId: unsnoozeMyActionInboxItem
+      summary: Bring one of my postponed inbox items back
+      description: >-
+        Ends the caller's own snooze of an item, so it returns to their list at once. Bringing back
+        an item that is not postponed changes nothing and still answers 204. The item is resolved
+        through the caller's own sources, postponed or not, so another person's item, an unknown id
+        and a malformed id answer the same 404 lifecycle.refuse.scope.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: The item id as the list serves it (kind:uuid).
+        schema:
+          type: string
+      responses:
+        '204':
+          description: The item is in the caller's list again.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: lifecycle.refuse.scope - the item is not in the caller's inbox or does not exist, one answer for both.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - me
+      operationId: snoozeMyActionInboxItem
+      summary: Postpone one of my inbox items
+      description: >-
+        Hides an item from the caller's own list, pages and counts until the given day. Nothing on
+        the item changes and nobody else's list does. Postponing an item that is already postponed
+        moves its day. The item returns by itself on that day, and earlier when its decision version
+        changes or its deadline passes after it was postponed. The item is resolved through the
+        caller's own sources, the same read as the list, so another person's item, an unknown id and
+        a malformed id answer the same 404 lifecycle.refuse.scope. A refusal writes nothing.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: The item id as the list serves it (kind:uuid).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [until]
+              additionalProperties: false
+              properties:
+                until:
+                  type: string
+                  format: date
+                  description: The day the item returns, later than today in Korea and no later than the item's snooze.latest.
+      responses:
+        '204':
+          description: The item is postponed until that day.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: lifecycle.refuse.scope - the item is not in the caller's inbox or does not exist, one answer for both.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: snooze_not_allowed - the item is a decision someone else is waiting on (snooze.allowed is false).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: >-
+            snooze_past when the day is today or earlier in Korea; snooze_past_legal_due when the
+            item's due date is a legal deadline and the day is on or after it, with the last allowed
+            day in error.details.latest; validation when until is not a date.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/me/action-inbox/reference:
@@ -34518,6 +34624,26 @@ components:
         days_remaining:
           type: [integer, 'null']
           description: Calendar days remaining in the source deadline's timezone, computed from the database clock.
+        snooze:
+          type: object
+          description: Whether the caller may postpone this item in their own list, and to which day at most. The snooze command enforces the same facts.
+          required: [allowed]
+          properties:
+            allowed:
+              type: boolean
+              description: False when the item is a decision someone else is waiting on; no snooze control is offered then.
+            reason:
+              type: string
+              enum: [blocks_others]
+              description: Why the item cannot be postponed; present only when allowed is false.
+            until:
+              type: string
+              format: date
+              description: The day the item returns to the list; present only in the snoozed view.
+            latest:
+              type: string
+              format: date
+              description: The last day the item may be postponed to, the day before its legal deadline in Korea. Absent when the day is unbounded. When it is not later than today, no day is left.
         context:
           type: object
           description: Source-owned facts for the row's command and informed grant confirmation.
@@ -34745,7 +34871,7 @@ components:
                 type: string
         counts:
           type: object
-          description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds.
+          description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted.
           additionalProperties:
             type: object
             required: [total, total_is_exact]
@@ -34759,6 +34885,19 @@ components:
           description: Up to three scheduled changes from the admitted source pages, in deadline order.
           items:
             $ref: '#/components/schemas/ActionInboxItem'
+        snooze_presets:
+          type: array
+          description: The snooze presets with their days resolved by the server in Korea's calendar. short and long are day counts from the tenant's settings; next_week is the coming Monday. A preset later than an item's snooze.latest is not available for that item.
+          items:
+            type: object
+            required: [key, date]
+            properties:
+              key:
+                type: string
+                enum: [short, next_week, long]
+              date:
+                type: string
+                format: date
         has_work:
           type: boolean
           description: Whether this account holds any capability the console offers.
@@ -45727,6 +45866,10 @@ components:
                 current_version:
                   type: string
                   description: Current opaque decision version; re-read the document before deciding again.
+                latest:
+                  type: string
+                  format: date
+                  description: The last day an inbox item may be postponed to, present on a snooze_past_legal_due refusal.
             code:
               type: string
             message:

@@ -54,6 +54,7 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
             crate::action_inbox::tabs::ME_ACTION_INBOX_REFERENCE_PATH,
             crate::action_inbox::tabs::ME_ACTION_INBOX_REFERENCE_READ_PATH,
             crate::action_inbox::tabs::ME_ACTION_INBOX_ITEM_ACTIVITY_PATH,
+            crate::action_inbox::tabs::ME_ACTION_INBOX_ITEM_SNOOZE_PATH,
         ],
     ),
     surface(

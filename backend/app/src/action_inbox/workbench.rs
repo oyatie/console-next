@@ -21,13 +21,19 @@ pub(crate) async fn read_workbench_action_inbox(
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
     authorization: Authorization,
 ) -> Result<WorkbenchActionInboxPage, WorkbenchSourceFailure> {
-    let org = principal.org_id;
-    let (deadline_due_soon_days, org_policy) = console_platform_db::with_org_conn::<
+    let (org, account) = (principal.org_id, principal.user_id);
+    let (deadline_due_soon_days, org_policy, snoozed) = console_platform_db::with_org_conn::<
         _,
         _,
         console_settings_adapter_postgres::PgSettingsError,
     >(pool, org, move |tx| {
-        Box::pin(async move { Ok(policy::load(tx.as_mut(), org, as_of).await?) })
+        Box::pin(async move {
+            let (window, org_policy, _) = policy::load(tx.as_mut(), org, as_of).await?;
+            let snoozed = snooze::load(tx.as_mut(), org, account)
+                .await
+                .map_err(console_platform_db::DbError::from)?;
+            Ok((window, org_policy, snoozed))
+        })
     })
     .await
     .map_err(|error| {
@@ -51,6 +57,8 @@ pub(crate) async fn read_workbench_action_inbox(
         support_reference: crate::telemetry::current_trace_context()
             .trace_id()
             .to_owned(),
+        // What the account postponed is off the workbench too.
+        snoozes: Snoozes::new(snoozed, SnoozeMode::Exclude, as_of),
     };
     let page = list_complete_action_inbox(&sources, as_of)
         .await

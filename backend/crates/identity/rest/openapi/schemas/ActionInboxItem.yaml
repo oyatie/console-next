@@ -119,6 +119,26 @@ properties:
   days_remaining:
     type: [integer, 'null']
     description: Calendar days remaining in the source deadline's timezone, computed from the database clock.
+  snooze:
+    type: object
+    description: Whether the caller may postpone this item in their own list, and to which day at most. The snooze command enforces the same facts.
+    required: [allowed]
+    properties:
+      allowed:
+        type: boolean
+        description: False when the item is a decision someone else is waiting on; no snooze control is offered then.
+      reason:
+        type: string
+        enum: [blocks_others]
+        description: Why the item cannot be postponed; present only when allowed is false.
+      until:
+        type: string
+        format: date
+        description: The day the item returns to the list; present only in the snoozed view.
+      latest:
+        type: string
+        format: date
+        description: The last day the item may be postponed to, the day before its legal deadline in Korea. Absent when the day is unbounded. When it is not later than today, no day is left.
   context:
     type: object
     description: Source-owned facts for the row's command and informed grant confirmation.
