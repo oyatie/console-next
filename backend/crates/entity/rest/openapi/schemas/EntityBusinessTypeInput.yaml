@@ -9,11 +9,11 @@ properties:
   sector:
     type: string
     maxLength: 100
-    description: 업태 as printed
+    description: Business type as printed
   item:
     type: string
     maxLength: 200
-    description: 종목 as printed
+    description: Business item as printed
   nts_code:
     type:
     - string

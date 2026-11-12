@@ -8,7 +8,7 @@ required:
 - can_manage
 properties:
   open_exit_cases:
-    description: UX-R2 ENDS. Exit cases still open (not rejected, cancelled or submitted) for anyone placed at the record, so its close never hides a 퇴직 in flight.
+    description: UX-R2 ENDS. Exit cases still open (not rejected, cancelled or submitted) for anyone placed at the record, so its close never hides an exit in flight.
     type: array
     items:
       type: object

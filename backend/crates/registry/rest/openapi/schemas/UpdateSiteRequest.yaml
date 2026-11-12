@@ -48,16 +48,16 @@ properties:
     - string
     - 'null'
     maxLength: 100
-    description: On-site representative contact name (담당자명). Null clears it.
+    description: On-site representative contact name. Null clears it.
   contact_phone:
     type:
     - string
     - 'null'
     maxLength: 40
-    description: On-site contact phone (연락처). Null clears it.
+    description: On-site contact phone. Null clears it.
   contact_email:
     type:
     - string
     - 'null'
     maxLength: 320
-    description: Optional contact email (이메일). Null clears it.
+    description: Optional contact email. Null clears it.

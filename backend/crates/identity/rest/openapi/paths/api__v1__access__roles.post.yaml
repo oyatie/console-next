@@ -3,7 +3,7 @@ tags:
 - access
 operationId: createAccessRole
 summary: Create a role (version 1)
-description: 'Needs 권한 관리 등록·수정 (`access` × `edit`) over the whole tenant, or ops. A non-ops author must
+description: 'Needs access management edit (`access` × `edit`) over the whole tenant, or ops. A non-ops author must
 
   hold every line they add, over the whole tenant (grantor ceiling, GR-7). Levels are normalized:
 

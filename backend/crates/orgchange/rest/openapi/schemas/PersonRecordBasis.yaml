@@ -1,5 +1,5 @@
-description: 개인정보 보호법 §23① basis of a restricted entry — CONSENT (§23①1, separate consent) or STATUTE
-  (§23①2; DISABLED_EMPLOYMENT for 장애, VETERAN_EMPLOYMENT for 보훈).
+description: Personal Information Protection Act §23① basis of a restricted entry — CONSENT (§23①1, separate consent) or STATUTE
+  (§23①2; DISABLED_EMPLOYMENT for disability, VETERAN_EMPLOYMENT for veterans' status).
 oneOf:
 - type: object
   additionalProperties: false

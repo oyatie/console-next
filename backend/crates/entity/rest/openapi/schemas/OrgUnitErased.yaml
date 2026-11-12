@@ -10,6 +10,6 @@ properties:
   erased:
     type: integer
     format: int64
-    description: The units deleted (the 부서 and its sub-부서).
+    description: The units deleted (the department and its sub-departments).
   change_mode:
     type: string

@@ -34,8 +34,8 @@ properties:
   classification:
     type: object
     required: [grade_id, job_title_id, position_kind_id, job_id, job_family_id]
-    description: MR-25. The current 직급, 직위, 직책, 직무 and 직군 catalog ids (labels from GET
-      /api/v1/job-titles); each null when none. Changed by PROMOTE (직급, 직위) and APPOINT (직책, 직무, 직군).
+    description: MR-25. The current grade, title, position, job and job family catalog ids (labels from GET
+      /api/v1/job-titles); each null when none. Changed by PROMOTE (grade, title) and APPOINT (position, job, job family).
     properties:
       grade_id:
         oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]

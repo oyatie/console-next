@@ -2,8 +2,8 @@ type: object
 description: >-
   A self-service leave-request filing. The subject employee and branch are
   NOT accepted here — they are resolved from the authenticated caller.
-  There is deliberately no `reason` field: 근로기준법 §60 grants the worker
-  the 시기지정권, so a 연차/반차 filing carries no 사유 and a body that
+  There is deliberately no `reason` field: Labor Standards Act §60 grants the worker
+  the right to designate the timing, so an annual / half-day leave filing carries no reason and a body that
   still sends one is rejected (422).
 additionalProperties: false
 required:

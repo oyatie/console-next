@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: reviseBusinessRegistration
-summary: Effective-dated revision of a registration (status 휴업/폐업 confirmed here)
+summary: Effective-dated revision of a registration (the suspended / closed status is confirmed here)
 security:
 - bearerAuth: []
 parameters:

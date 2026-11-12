@@ -2,7 +2,7 @@ x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
 tags:
 - entity
 operationId: getOrgStructure
-summary: 전체 → 법인 → 사업장 → 부서 (any depth)
+summary: All → legal entity → workplace → department (any depth)
 security:
 - bearerAuth: []
 responses:

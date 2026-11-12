@@ -10,13 +10,13 @@ description: >-
   here: OFFBOARD/TERMINATE are 422 — an employee leaves only through an exit case, whose HR confirmation
   records TERMINATE and whose rejection records the compensating EXIT_REVERSAL. No act needs an
   acknowledgement (decisions #3, A13). TRANSFER, LEAVE_OF_ABSENCE and RETURN_FROM_LEAVE wait
-  for 운영 시작: 409 phase_not_operating while the tenant is in SETUP (first-run §2). A TRANSFER that changes
-  to_company is 409 entity_change_needs_group_transfer: another 법인 is a 전적, never a transfer (E-S3b).
-  A TRANSFER to a unit or 사업장 of another 법인 is 422 transfer_cross_entity naming the target in
+  for go-live: 409 phase_not_operating while the tenant is in SETUP (first-run §2). A TRANSFER that changes
+  to_company is 409 entity_change_needs_group_transfer: another legal entity is a group transfer, never a transfer (E-S3b).
+  A TRANSFER to a unit or workplace of another legal entity is 422 transfer_cross_entity naming the target in
   error.refusals [{field, code, value}] (TR-33, decisions #30); nothing is written.
   A change that alters nothing is 422 lifecycle_noop (TRANSFER to the current unit within the
   same company, or with no target; PROMOTE to the current position). An effective_date after today (KST)
-  schedules the event (state SCHEDULED; 발령 효력 예정) for TRANSFER, PROMOTE, LEAVE_OF_ABSENCE,
+  schedules the event (state SCHEDULED; a personnel order scheduled to take effect) for TRANSFER, PROMOTE, LEAVE_OF_ABSENCE,
   RETURN_FROM_LEAVE and CONTRACT_RENEWAL (ONBOARD is 422): the same rules run now against the employee as
   they will stand on that date (the current head with every earlier SCHEDULED event applied), nothing about
   the employee changes, and a SCHEDULED event of the same type on the same date is replaced (CANCELLED with

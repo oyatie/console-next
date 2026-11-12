@@ -54,7 +54,7 @@ properties:
   site:
     $ref: '#/components/schemas/NamedEntity'
   site_contact:
-    description: 사업장 대표 담당자 연락처 (#13). 등록된 연락처가 없으면 null.
+    description: Contact details of the workplace's main contact person (#13). Null when no contact is registered.
     oneOf:
     - type: 'null'
     - $ref: '#/components/schemas/SiteContact'

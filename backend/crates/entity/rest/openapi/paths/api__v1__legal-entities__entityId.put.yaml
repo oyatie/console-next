@@ -3,7 +3,7 @@ tags:
 operationId: reviseLegalEntity
 summary: Effective-dated revision (full state)
 description: 'Clears needs_confirmation. Identity changes are corrections: free in SETUP, identifier_locked
-  after 운영 시작.'
+  after go-live.'
 security:
 - bearerAuth: []
 parameters:

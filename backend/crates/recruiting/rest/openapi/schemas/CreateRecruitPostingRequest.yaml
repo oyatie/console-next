@@ -33,7 +33,7 @@ properties:
     - string
     - 'null'
     format: date
-    description: Omit or null for an open-ended posting (상시).
+    description: Omit or null for an open-ended posting.
   requirements:
     type: array
     maxItems: 20

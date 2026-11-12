@@ -1,7 +1,7 @@
 tags:
   - workflow-runs
 operationId: createWorkflowPostFinalizationRejection
-summary: Create a compensating post-finalization rejection (사후 반려)
+summary: Create a compensating post-finalization rejection
 description: Records a compensating document linked to an already-finalized run and notifies the whole approval line.
   The terminal run is never reopened or mutated; a new POST_FINALIZATION_REJECTION document is created instead.
   Policy-gated (legacy enforce, inert Cedar shadow). Idempotent on idempotency_key.

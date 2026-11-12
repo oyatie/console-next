@@ -24,7 +24,7 @@ properties:
     - 'null'
   account_active:
     type: boolean
-    description: false = the account is deactivated; its grants grant nothing (멈춤).
+    description: false = the account is deactivated; its grants grant nothing (paused).
   account_has_passkey:
     type: boolean
     description: Whether the holder has enrolled a passkey (can sign in to use the grant).
@@ -32,7 +32,7 @@ properties:
     type:
     - string
     - 'null'
-    description: The holder's 소속 (their employee record's 부서), when the account is linked.
+    description: The holder's affiliation (their employee record's department), when the account is linked.
   account_employee_number:
     type:
     - string
@@ -56,7 +56,7 @@ properties:
     description: Pending elevated grant's configured activation deadline; null after activation or cancellation.
   effective_in_setup:
     type: boolean
-    description: 「설정 단계부터 적용」 — enforced during SETUP too.
+    description: Apply from the setup phase — enforced during SETUP too.
   enforcement:
     $ref: '#/components/schemas/AccessEnforcement'
   reason_code:

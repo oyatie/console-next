@@ -11,6 +11,6 @@ properties:
     - 'null'
     format: uuid
     description: >-
-      §16 org-scope automation gate (85 판정). Required to publish (direct-activate) an org-scope definition;
+      §16 org-scope automation gate (ruling 85). Required to publish (direct-activate) an org-scope definition;
       a personal-scope definition (§3.9.0-①) ignores this and publishes directly. References a gov_approvals
       request_ref recorded by a distinct approver.

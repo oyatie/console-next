@@ -1,5 +1,5 @@
 type: object
-description: 상시근로자 수 (근로기준법 시행령 §7의2). Derived, never typed; HOLD until a 노무사 releases the method
+description: Number of regular workers (Enforcement Decree of the Labor Standards Act §7-2). Derived, never typed; HOLD until a labor attorney releases the method
   (BW-35), so no value is shown, only the live roster count.
 required:
 - status

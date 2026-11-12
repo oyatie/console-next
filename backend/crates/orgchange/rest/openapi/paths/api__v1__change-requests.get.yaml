@@ -1,12 +1,12 @@
 tags:
   - employees
 operationId: listChangeRequests
-summary: List change requests (변경 요청)
+summary: List change requests
 description: >-
   BW-17. HR (org-wide employee_directory_manage) sees the organization's
-  requests; any other caller sees only the requests it filed (기다리는
-  중) or is named on. `assignee=me` lists the requests named to the
-  caller (a 소명 요청 to answer); `assignee=role` is HR-only.
+  requests; any other caller sees only the requests it filed ("waiting")
+  or is named on. `assignee=me` lists the requests named to the
+  caller (an explanation request to answer); `assignee=role` is HR-only.
 security:
 - bearerAuth: []
 parameters:
@@ -23,7 +23,7 @@ parameters:
   schema:
     type: string
     enum: [me]
-  description: me = only the requests the caller filed (기다리는 중).
+  description: me = only the requests the caller filed ("waiting").
 - name: status
   in: query
   required: false

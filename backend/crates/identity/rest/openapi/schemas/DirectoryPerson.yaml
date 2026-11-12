@@ -35,7 +35,7 @@ properties:
     type:
     - string
     - 'null'
-    description: 'The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33). A label: the account is keyed by `id` only.'
+    description: 'The current sign-in ID `<login>@<company domain>` (decisions #33). A label: the account is keyed by `id` only.'
   employee_id:
     type:
     - string

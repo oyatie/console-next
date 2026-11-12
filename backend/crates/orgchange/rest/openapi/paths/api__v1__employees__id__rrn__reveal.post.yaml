@@ -1,9 +1,9 @@
 tags:
   - employees
 operationId: revealEmployeeRrn
-summary: The full 주민등록번호, with a 사유 (IMPORT-2)
+summary: The full resident registration number, with a reason (IMPORT-2)
 description: 'Decisions #25. reason_code from the rrn_reveal domain (PAYROLL_WITHHOLDING, SOCIAL_INSURANCE_FILING,
-  IDENTITY_VERIFICATION, DATA_SUBJECT_ACCESS, OTHER + note); the 접속기록 row (action employee.rrn_reveal) names
+  IDENTITY_VERIFICATION, DATA_SUBJECT_ACCESS, OTHER + note); the access log row (action employee.rrn_reveal) names
   the code, never the number. 404 when none is recorded; 503 rrn_vault_unavailable when the server has no vault
   keys. Never cached (Cache-Control no-store).'
 security:

@@ -27,7 +27,7 @@ allOf:
       - 'null'
       format: date
     status_until:
-      description: 휴업's expected end (SUSPENDED only, never before status_since).
+      description: The business suspension's expected end (SUSPENDED only, never before status_since).
       type:
       - string
       - 'null'
@@ -37,6 +37,6 @@ allOf:
       - string
       - 'null'
       format: uuid
-      description: A 재발급 / 정정 사업자등록증 kept for this revision, attached in the same transaction and named as
+      description: A reissued / corrected business registration certificate kept for this revision, attached in the same transaction and named as
         its evidence; it supersedes the one kept before. Never the certificate in force or one already
         superseded (422 document_not_new).

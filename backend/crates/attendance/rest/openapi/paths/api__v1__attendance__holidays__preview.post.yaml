@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: previewAttendanceHoliday
-summary: People and closed months a 약정휴일 would touch, and its overlap with 공휴일, writing nothing
+summary: People and closed months a contractual holiday would touch, and its overlap with public holidays, writing nothing
 security: [{ bearerAuth: [] }]
 requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceHolidayInput' } } } }
 responses:

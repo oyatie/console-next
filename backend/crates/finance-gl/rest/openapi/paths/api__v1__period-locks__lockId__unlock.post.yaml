@@ -7,7 +7,7 @@ description: 'Close-authority gated (PeriodLockManage, org-wide), audited (BW-15
   sent}". relockAt is at most period_lock.unlock_max_days out; the period locks again then on its own. When another
   eligible holder exists the request waits for them (202, PENDING_SECOND_PERSON; a new request supersedes the open
   one). With none, authz.sole_holder.mode step_up_notice_review unlocks at once, flags the lock for review and
-  records the 예외 처리 with its 사후 검토 item (200, exception); any other mode refuses (409
+  records the exception handling with its post-hoc review item (200, exception); any other mode refuses (409
   period_unlock_sole_holder_refused). An Idempotency-Key replays the first response.'
 security:
 - bearerAuth: []

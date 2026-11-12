@@ -1,12 +1,12 @@
 tags:
   - leave
 operationId: pushLeavePromotion
-summary: Serve a §61 연차 사용 촉진 (round 1 or 2)
+summary: Serve a §61 annual leave use promotion (round 1 or 2)
 description: >-
   Requires `employee_directory_manage` in the target `branch_id` (which is
-  validated against the actor's scope). Delivers a receipt-gated 연차촉진
-  notice into the target's 개인 수신함 and records the push. The engine AP-
-  run binds once the 연차촉진 submittable definition exists; until then the
+  validated against the actor's scope). Delivers a receipt-gated annual-leave-promotion
+  notice into the target's personal inbox and records the push. The engine AP-
+  run binds once the annual-leave-promotion submittable definition exists; until then the
   push carries `ap_submission: pending_engine_definition`. Idempotent per
   (target, round).
 security:

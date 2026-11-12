@@ -6,6 +6,6 @@ properties:
   closed_on:
     type: string
     format: date
-    description: 해산일 or 폐업일; no later than today (KST).
+    description: Dissolution date or business closure date; no later than today (KST).
   reason_code:
     $ref: '#/components/schemas/EntityCloseReason'

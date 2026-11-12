@@ -1,7 +1,7 @@
 tags:
 - notices
 operationId: getNoticeProgress
-summary: 수령확인 progress (done/total) for one notice (NoticeManage only)
+summary: Receipt acknowledgement progress (done/total) for one notice (NoticeManage only)
 security:
 - bearerAuth: []
 parameters:

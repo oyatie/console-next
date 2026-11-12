@@ -1,5 +1,5 @@
 type: object
-description: One leave request in the approval queue (결재함 leave variant).
+description: One leave request in the approval queue (its leave variant).
 required:
 - id
 - branch_id
@@ -79,8 +79,8 @@ properties:
   reason:
     type: string
     description: >-
-      Historical rows only (filed before the 근로기준법 §60 guardrail);
-      omitted for requests that carry no 사유.
+      Historical rows only (filed before the Labor Standards Act §60 guardrail);
+      omitted for requests that carry no reason.
   status:
     type: string
     enum: [pending, approved, time_change_consult, returned, rejected]
@@ -114,11 +114,11 @@ properties:
   alternate_start_date:
     type: string
     format: date
-    description: Worker-chosen alternate 시기 start; omitted until proposed.
+    description: Worker-chosen alternate timing start; omitted until proposed.
   alternate_end_date:
     type: string
     format: date
-    description: Worker-chosen alternate 시기 end; omitted until proposed.
+    description: Worker-chosen alternate timing end; omitted until proposed.
   alternate_partial_day_period:
     type: string
     enum: [am, pm]

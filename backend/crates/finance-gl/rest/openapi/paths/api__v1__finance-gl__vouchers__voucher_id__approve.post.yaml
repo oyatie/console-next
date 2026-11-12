@@ -1,7 +1,7 @@
 tags:
 - finance-gl
 operationId: approveVoucher
-summary: 차대검증 → 승인
+summary: BALANCE_CHECKED → APPROVED
 security:
 - bearerAuth: []
 parameters:

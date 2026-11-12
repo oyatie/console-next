@@ -1,7 +1,7 @@
 tags:
 - finance-gl
 operationId: postVoucher
-summary: 승인 → 전기(posted); lines become immutable
+summary: APPROVED → POSTED; lines become immutable
 security:
 - bearerAuth: []
 parameters:

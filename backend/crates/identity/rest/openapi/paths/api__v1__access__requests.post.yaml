@@ -1,7 +1,7 @@
 tags:
 - access
 operationId: createAccessRequest
-summary: File a 「권한 요청」 from a refused screen
+summary: File an access request from a refused screen
 description: Any signed-in account. One open request per (account, screen); filing again answers the open one with 200.
   An `OTHER` reason needs a note (422 `access_request_note_required`). Writes an `access.request.create` audit row.
 security:

@@ -1,7 +1,7 @@
 tags:
 - notices
 operationId: listNoticeReceipts
-summary: 수령확인 receipts drill for one notice (NoticeManage only); acknowledged=false is the outstanding chase list
+summary: Receipt acknowledgement drill for one notice (NoticeManage only); acknowledged=false is the outstanding chase list
 security:
 - bearerAuth: []
 parameters:

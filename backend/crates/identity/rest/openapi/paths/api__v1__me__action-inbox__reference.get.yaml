@@ -2,9 +2,9 @@
 tags:
   - me
 operationId: listMyActionInboxReference
-summary: 참조 - the notices addressed to the caller
+summary: Reference (FYI) - the notices addressed to the caller
 description: >-
-  The 업무함 참조 tab: the notifications addressed to the caller (FYI, no action needed),
+  The inbox reference tab: the notifications addressed to the caller (FYI, no action needed),
   newest first, with the notification center's own recipient and mute rules. Served on the
   inbox surface so the tab works while the notifications module's own routes are off.
 security:

@@ -1,7 +1,7 @@
 tags:
 - onboarding
 operationId: skipSetupStep
-summary: 「부서 없이 진행」 / 「직원은 나중에」
+summary: Skip a setup step ("proceed without departments" / "add employees later")
 security:
 - bearerAuth: []
 parameters:

@@ -4,7 +4,7 @@ tags:
 operationId: listOrgUnits
 summary: List the org tree (flat)
 description: The caller's Company root plus every Site/Department/Team head with headcount, in the org chart's order
-  (each parent before its children; Sites in their 법인 then 사업장 order, Departments by their stored order, then
+  (each parent before its children; Sites in their legal entity then workplace order, Departments by their stored order, then
   name). Read floor is the org-change read floor (ADMIN, EXECUTIVE, SUPER_ADMIN).
 security:
 - bearerAuth: []

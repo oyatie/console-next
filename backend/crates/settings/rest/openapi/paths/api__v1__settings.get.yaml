@@ -1,7 +1,7 @@
 operationId: listSettings
 summary: List every setting resolved now
 description: Every registered setting key with its definition, the value in force now for the tenant (or the given
-  legal entity or 사업장), where it came from, and rows scheduled to take effect later. The frontend reads these values;
+  legal entity or workplace), where it came from, and rows scheduled to take effect later. The frontend reads these values;
   the server decides with them.
 tags:
 - Settings
@@ -11,7 +11,7 @@ parameters:
 - name: entity
   in: query
   required: false
-  description: Legal entity or 사업장 to resolve for; omitted = tenant-wide.
+  description: Legal entity or workplace to resolve for; omitted = tenant-wide.
   schema:
     $ref: '#/components/schemas/Uuid'
 responses:

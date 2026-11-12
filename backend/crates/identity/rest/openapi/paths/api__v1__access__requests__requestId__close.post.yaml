@@ -1,8 +1,8 @@
 tags:
 - access
 operationId: closeAccessRequest
-summary: Close a 「권한 요청」
-description: DONE or DECLINED by a holder of 권한 관리 등록·수정 (or ops); WITHDRAWN by the requester. 403 `access_denied`
+summary: Close an access request
+description: DONE or DECLINED by a holder of access management edit (or ops); WITHDRAWN by the requester. 403 `access_denied`
   otherwise, 404 `access_request_not_found`, 409 `access_request_closed` once closed. Writes an `access.request.close`
   audit row.
 security:

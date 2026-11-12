@@ -7,7 +7,7 @@ properties:
     $ref: '#/components/schemas/Uuid'
   from_number:
     type: [string, 'null']
-    description: The alias kept; null when the person had no 사번 (사번 미부여).
+    description: The alias kept; null when the person had no employee number.
   to_number:
     type: string
   effective_date:

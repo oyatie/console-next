@@ -1,5 +1,5 @@
 type: object
-description: A governance finding raised by the integrity engine (#34). Findings are "검토 필요" (review needed) — e.g.
+description: A governance finding raised by the integrity engine (#34). Findings are "needs review" — e.g.
   a self-approval record (detector_id `anomaly.self_approval`) or a price anomaly (`anomaly.price_outlier`) — and are
   NOT accusations of wrongdoing.
 required:

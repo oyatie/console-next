@@ -2,7 +2,7 @@ tags:
 - access
 operationId: applyAccessGrants
 summary: Apply a previewed batch, all or nothing
-description: '권한 부여 is high-risk (decision #26): it needs a fresh passkey `step_up`. The batch is re-checked in
+description: 'Granting access is high-risk (decision #26): it needs a fresh passkey `step_up`. The batch is re-checked in
 
   the write transaction; any difference from the preview is 409 `preview_stale` (preview again). A
 

@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: cancelWorkplaceClose
-summary: Withdraw a planned 사업장 close
+summary: Withdraw a planned workplace close
 description: 'UX-R2 ENDS. The open (SCHEDULED or WAITING) job becomes CANCELLED; exit cases it opened stay open and are cancelled on their own. Same doors as planning.'
 security:
 - bearerAuth: []

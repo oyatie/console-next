@@ -1,5 +1,5 @@
 type: object
-description: BW-17 change request (변경 요청) to HR. The requester never decides.
+description: BW-17 change request to HR. The requester never decides.
 required: [id, kind, subject_type, subject_id, payload, reason_code, requested_by, assignee_role, status, review_required, created_at]
 properties:
   id:

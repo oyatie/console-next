@@ -2,7 +2,7 @@ tags:
 - access
 operationId: listAccessGranters
 summary: Who can grant access — the count and up to five names a refusal shows
-description: Any signed-in account. The ops account and every active account holding 권한 관리 등록·수정 that counts now.
+description: Any signed-in account. The ops account and every active account holding access management edit that counts now.
 security:
 - bearerAuth: []
 responses:

@@ -7,4 +7,4 @@ properties:
     - string
     - 'null'
     format: date-time
-    description: 수령확인 timestamp; null until the caller acknowledges.
+    description: Receipt acknowledgement timestamp; null until the caller acknowledges.

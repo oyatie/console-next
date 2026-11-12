@@ -1,7 +1,7 @@
 tags:
   - equipment-substitutions
 operationId: returnEquipmentSubstitute
-summary: Return an active substitute (대차) assignment
+summary: Return an active substitute assignment
 description: Audited equipment-lifecycle write. Requires EquipmentManage (ADMIN/EXECUTIVE/SUPER_ADMIN).
 security:
 - bearerAuth: []

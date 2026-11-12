@@ -7,7 +7,7 @@ description: >-
   reads as 404. PROFILE_CORRECTION carries `payload.changes` with fields
   from name, phone, hire_date, employment_type, position_id, base_pay
   (applied through BW-18). OTHER requires a note and is flagged for
-  review. ACCESS_EXPLANATION (governance S7 소명 요청) needs org-wide
+  review. ACCESS_EXPLANATION (governance S7 explanation request) needs org-wide
   audit_log_read, a USER_ACCOUNT subject and `assignee_user_id` equal to
   it; POLICY_QUESTION (S5) names the ORGANIZATION.
 security:
