@@ -14,6 +14,7 @@ pub mod header;
 pub mod identity;
 pub mod mask;
 pub mod parsed;
+pub mod period;
 pub mod persist;
 pub mod plan_facts;
 pub mod preview;

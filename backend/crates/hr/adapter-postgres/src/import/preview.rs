@@ -46,6 +46,9 @@ impl HrService {
             names.entry(name).or_default().push(id);
         }
         crate::import::workbook::refine_place_columns(&mut parsed, &names);
+        if upload.pay_period_start.is_none() {
+            crate::import::period::drop_period_values(&mut parsed);
+        }
         let actor = principal.user_id;
         let run_id = Uuid::new_v4();
         let mut mapping_profile = employee_import_mapping_profile(&parsed.columns);
@@ -177,13 +180,16 @@ pub fn notes_json(notes: &[Note]) -> Value {
 
 /// The stored notes back (unknown reasons are skipped).
 pub fn notes_from(profile: &Value) -> Vec<Note> {
-    const KNOWN: [&str; 5] = [
+    const KNOWN: [&str; 7] = [
         "sheet_needs_mapping",
         "rrn_unavailable",
         "rrn_invalid",
         // W12: non-blocking notes of the parse.
         "summary_row_skipped",
         "phone_invalid",
+        // A number cell that is not one; days and hours without a pay period.
+        "number_invalid",
+        "work_period_missing",
     ];
     profile["notes"]
         .as_array()

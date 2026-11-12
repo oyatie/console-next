@@ -215,3 +215,104 @@ async fn inline_driver_leaves_the_queued_http_outcome_immutable(pool: PgPool) {
     })
     .await;
 }
+
+/// Days and hours worked are facts of a pay period. With one, a mapped column
+/// is stored typed on the import row, where the payroll roster reads it. With
+/// none there is no reader: neither the typed value nor the cell is stored,
+/// and a non-blocking note says so.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn days_and_hours_are_stored_typed_only_for_a_run_with_a_pay_period(pool: PgPool) {
+    let i = importer(pool).await;
+    let roster = table(
+        "명부",
+        0,
+        &[
+            &["사번", "성명", "입사일", "근무일수", "연장시간"],
+            &["E-1", "김일", "2024-03-04", "21", "여섯 시간"],
+        ],
+    );
+    let stored = |run: uuid::Uuid| {
+        let pool = i.owner.clone();
+        async move {
+            sqlx::query_as::<_, (serde_json::Value, serde_json::Value)>(
+                "SELECT raw_row, canonical_row->'canonical' FROM data_import_rows WHERE run_id = $1",
+            )
+            .bind(run)
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+        }
+    };
+    let reasons = |notes: &[serde_json::Value]| -> Vec<String> {
+        notes
+            .iter()
+            .filter(|n| n["blocking"] == false)
+            .map(|n| n["reason"].as_str().unwrap_or_default().to_owned())
+            .collect()
+    };
+
+    let with_period = i
+        .preview(
+            "a.xlsx",
+            std::slice::from_ref(&roster),
+            &WorkbookMappingRequest::default(),
+        )
+        .await
+        .unwrap();
+    let (raw, typed) = stored(with_period.run_id).await;
+    assert_eq!(typed["work_days"], "21.000000");
+    assert_eq!(typed.get("overtime_hours"), None, "not a number: left out");
+    assert_eq!(raw["근무일수"], 21, "the mapped cell is kept as read");
+    let profile: serde_json::Value =
+        sqlx::query_scalar("SELECT mapping_profile FROM data_import_runs WHERE id = $1")
+            .bind(with_period.run_id)
+            .fetch_one(&i.owner)
+            .await
+            .unwrap();
+    assert_eq!(
+        reasons(profile["notes"].as_array().unwrap()),
+        ["number_invalid"]
+    );
+    assert!(
+        profile["target_allowlist"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!("work_days")),
+        "the payroll roster reads typed values for a run that lists the target"
+    );
+
+    let without = i
+        .preview_for(
+            "b.xlsx",
+            &[roster],
+            &WorkbookMappingRequest::default(),
+            None,
+        )
+        .await
+        .unwrap();
+    let (raw, typed) = stored(without.run_id).await;
+    assert_eq!(typed.get("work_days"), None);
+    assert_eq!(raw.get("근무일수"), None, "{raw}");
+    assert_eq!(raw["성명"], "김일");
+    let profile: serde_json::Value =
+        sqlx::query_scalar("SELECT mapping_profile FROM data_import_runs WHERE id = $1")
+            .bind(without.run_id)
+            .fetch_one(&i.owner)
+            .await
+            .unwrap();
+    assert_eq!(
+        reasons(profile["notes"].as_array().unwrap()),
+        ["number_invalid", "work_period_missing"]
+    );
+    // Both reach the review list as things said, not asked.
+    let plan = i.dry_run(without.run_id, decisions()).await;
+    for reason in ["number_invalid", "work_period_missing"] {
+        assert!(
+            plan.review
+                .items
+                .iter()
+                .any(|item| item.reason == reason && !item.blocking && item.resolution.is_none()),
+            "{reason}"
+        );
+    }
+}

@@ -16,14 +16,17 @@ mod legacy;
 mod openapi;
 mod org_units;
 mod requests;
+mod step_decision;
 
 use access::*;
 use dto::*;
+pub use error::RestError as OrgChangeRefusal;
 use error::*;
 use legacy::*;
 pub use openapi::OPENAPI_FRAGMENT;
 use org_units::*;
 use requests::*;
+pub use step_decision::decide_step_as;
 
 use axum::{
     Json, Router,

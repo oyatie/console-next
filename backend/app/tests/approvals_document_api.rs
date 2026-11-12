@@ -73,14 +73,17 @@ async fn detail_uses_source_body_route_and_changes_fingerprint_with_source_facts
     assert_eq!(first["route"][0]["state"], "current");
     assert_eq!(first["body"], json!([]));
     assert_eq!(first["proposal"], json!([]));
-    assert_eq!(first["my_actions"], json!({"kind":"none"}));
-    assert_eq!(first["opinion_max"], 0);
+    // The approver whose turn it is reads the decision the source takes from them.
+    assert_eq!(first["my_actions"]["kind"], "approve");
+    assert_eq!(first["opinion_max"], 998);
     assert!(!first["fingerprint"].as_str().unwrap().is_empty());
     assert!(first["revision"].as_u64().unwrap() > 0);
     assert_eq!(ctx.call("GET", &uri, None).await.1, first);
     let maker_ctx = fixtures::ctx(&pool, org, maker, &["SUPER_ADMIN"], None).await;
     let own = maker_ctx.call("GET", &uri, None).await.1;
     assert_eq!(own["box"], "requested");
+    assert_eq!(own["my_actions"], json!({"kind":"none"}));
+    assert_eq!(own["opinion_max"], 0);
     assert_eq!(
         own["fingerprint"], first["fingerprint"],
         "a fingerprint describes source facts, not the actor's box"

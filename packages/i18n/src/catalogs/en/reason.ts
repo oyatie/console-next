@@ -1,6 +1,16 @@
 import type { koReason } from "../ko/reason";
 
 export const enReason: Partial<Record<keyof typeof koReason, string>> = {
+  "reason.org_change_reject.EFFECTIVE_DATE_REVIEW": "Effective date needs review",
+  "reason.org_change_reject.INSUFFICIENT_BASIS": "Insufficient basis",
+  "reason.org_change_reject.WRONG_TARGET": "Wrong target",
+  "reason.org_change_reject.POLICY_VIOLATION": "Policy violation",
+  "reason.org_change_reject.OTHER": "Other",
+  "reason.approval_return.NEEDS_SUPPLEMENT": "Needs more content",
+  "reason.approval_return.ADD_EVIDENCE": "Add evidence",
+  "reason.approval_return.ADJUST_EFFECTIVE_DATE": "Adjust the effective date",
+  "reason.approval_return.CORRECT_TARGET": "Correct the target",
+  "reason.approval_return.OTHER": "Other",
   "reason.excess_post_approval.WORK_CONFIRMED": "Work confirmed",
   "reason.excess_post_approval.OTHER": "Other",
   "reason.excess_paid_over_cap.STATUTORY_CAP_EXCEEDED": "Work exceeding the statutory cap confirmed",

@@ -7,7 +7,9 @@ description: >-
   Cedar approval_document_read uses the same source facts and inbox membership as the list.
   Hidden, absent, unsupported, draft and unrouted documents all return not_found.
   Proposal contains typed source operations and effective_date is a business date; body does not repeat the header.
-  This read-only envelope exposes no decisions until the source-command adapter is available.
+  my_actions offers a decision exactly where the source command takes one from this viewer: the document is in
+  their pending box with no decision_refusal, in approval, with a step awaiting it. consequence is then
+  next_step or final (the last step), and opinion_max the longest opinion; otherwise my_actions is none.
 parameters:
 - {name: id, in: path, required: true, schema: {type: string}, description: Canonical source-prefixed document ID from the inbox.}
 responses:

@@ -5,6 +5,7 @@
 //!   original text is logged inside the request span. One layer covers every
 //!   `internal(err.to_string())` site in every crate. A JSON body that is not
 //!   the envelope (`/readyz`'s dependency report) passes untouched.
+//! * A 4xx envelope keeps its sibling fields for structured refusal details.
 //! * A `text/plain` error (an axum extractor rejection such as malformed JSON,
 //!   or a panic) becomes the JSON envelope `{"error":{code,message}}`.
 //! * A typed connection-pool timeout is overload, not a fault: 503 + `Retry-After`
@@ -20,7 +21,7 @@ use axum::extract::Request;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::Next;
 use axum::response::Response;
-use serde_json::{Map, Value, json};
+use serde_json::{Map, Value};
 
 use crate::error_i18n::buffer_small_body;
 use crate::http::overload::RETRY_AFTER_SECS;
@@ -77,10 +78,16 @@ fn rewrite(
     bytes: &[u8],
     trace_id: impl FnOnce() -> String,
 ) -> Option<Rewritten> {
+    let mut body = Map::new();
     let mut error = if json {
         match serde_json::from_slice::<Value>(bytes) {
-            Ok(Value::Object(mut body)) => match body.remove("error") {
-                Some(Value::Object(error)) => error,
+            Ok(Value::Object(mut envelope)) => match envelope.remove("error") {
+                Some(Value::Object(error)) => {
+                    if status.is_client_error() {
+                        body = envelope;
+                    }
+                    error
+                }
                 _ => return None,
             },
             _ => return None,
@@ -121,9 +128,10 @@ fn rewrite(
         original
     };
     error.insert("message".into(), message.into());
+    body.insert("error".into(), Value::Object(error));
     Some(Rewritten {
         status,
-        body: json!({ "error": error }),
+        body: Value::Object(body),
         retry,
     })
 }

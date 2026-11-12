@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-/** Requested canonical projection over source records; no separate approval store. */
+import type { components } from "../schema";
+type S = components["schemas"];
+
+/** Canonical projection over source records; no separate approval store. */
 type ApprovalBox = "pending" | "upcoming" | "requested" | "reference" | "completed";
 
 export type ApprovalViewer =
@@ -17,41 +20,26 @@ export type ApprovalItem = {
   status: { key: string; label: string; tone: "ok" | "warn" | "danger" | "info" | "neutral" };
   requester?: { id: string; name: string; role?: string | null } | null;
   requested_at: string;
+  /** The date the document takes effect, when it has one; shown beside the title in the list. */
+  effective_date?: string | null;
   due_at?: string | null;
   facts: { key: string; label: string; value: string }[];
   route: { id: string; label: string; assignee?: string | null; state: "done" | "current" | "waiting" | "failed"; meta?: string | null }[];
   viewer?: ApprovalViewer | null;
 };
 
-type ApprovalReason = {
-  codes: { code: string; label: string }[];
-  other: string;
-  memo_max: number;
-};
-type ApprovalReasonAction = { consequence: string; reason: ApprovalReason };
-
-/** The server chooses the exact action variant after Cedar and SoD evaluation. */
-type ApprovalActions =
-  | { kind: "approve"; return?: ApprovalReasonAction; reject: ApprovalReasonAction }
-  | { kind: "none" };
-
 export type ApprovalDocument = ApprovalItem & {
   body: { key: string; label: string; value: string }[];
   revision: number;
   fingerprint: string;
+  /** A consequence key (next_step, final); the screen owns the words. */
   consequence: string;
   opinion_max: number;
-  my_actions: ApprovalActions;
+  /** The server offers a decision only where its source command takes one from this viewer. */
+  my_actions: S["ApprovalDocumentDetail"]["my_actions"];
 };
 
-export type ApprovalDecision = {
-  decision: "APPROVE" | "RETURN" | "REJECT";
-  seen_fingerprint: string;
-  opinion: string;
-  reason_code?: string;
-  note?: string;
-};
-export type ApprovalDecisionReceipt = { message: string };
+export type ApprovalDecision = S["ApprovalDecisionRequest"];
 
 export type ApprovalPage = {
   items: ApprovalItem[];

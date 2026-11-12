@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [org]
+operationId: decideApprovalDocument
+summary: Decide the step of an approval document that awaits the caller
+security: [{bearerAuth: []}]
+description: >-
+  An adapter over the source's own decision command (org change: decideOrgChangeApprovalStep), taken only where
+  the document read offered my_actions.kind approve. Hidden and absent documents return the read's not_found
+  first. A seen_fingerprint that no longer matches, or a source version that moved before the command ran,
+  returns 409 approval_document_changed and decides nothing. Where the read offers none the answer is 409
+  approval_decision_unavailable. The source command then re-checks authority, separation of duties and step
+  order and answers with its own codes. REJECT requires a reason_code of the org_change_reject catalog, with a
+  note where the code requires one; the note and the opinion are both kept in the step's memo. RETURN is 422:
+  no source takes a return yet. A repeated Idempotency-Key answers 409 command_applied.
+parameters:
+- {name: id, in: path, required: true, schema: {type: string}, description: Canonical source-prefixed document ID from the inbox.}
+- {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 16, maxLength: 200}}
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema: {$ref: '#/components/schemas/ApprovalDecisionRequest'}
+responses:
+  '200':
+    description: Decision recorded by the source command.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/ApprovalDecisionReceipt'}
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '403': {$ref: '#/components/responses/Forbidden'}
+  '404': {$ref: '#/components/responses/NotFound'}
+  '409':
+    description: approval_document_changed, approval_decision_unavailable, command_applied, or the source command's own refusal.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/ErrorBody'}
+  '422': {$ref: '#/components/responses/ValidationError'}
+  '500':
+    description: Sanitized approvals.projection_unavailable; includes a support reference.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/ErrorBody'}

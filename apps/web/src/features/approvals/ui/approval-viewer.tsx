@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { t } from "@console/i18n";
+import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
+import { reasonCodesQuery, reasonOptions, type ReasonDomain } from "../../../lib/reason-codes";
 import { readsAreStale, useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { ApprovalCard } from "../../../ui/approval-card/approval-card";
@@ -22,6 +23,27 @@ import { SourceViewerLink } from "./source-viewer-link";
 
 const route = getRouteApi("/app/approvals/$approvalId");
 const emptyReason = (): Reason => ({ code: null, memo: "" });
+/** The longest note a reason takes (the reason catalog's own limit). */
+const NOTE_MAX = 1000;
+type DecisionForm = "reject" | "return";
+type Receipt = Awaited<ReturnType<typeof decideApproval>>;
+
+/** The words for a consequence key; a key this build does not know stays visible as itself. */
+const consequenceText = (key: string) => { const id = `approvals.consequence.${key}`; return isMessageId(id) ? t(id) : key; };
+/** What was recorded, from the decision and the document's status after it. */
+const receiptText = (r: Receipt) =>
+  r.decision === "REJECTED" ? t("approvals.receipt.rejected")
+  : r.decision === "APPROVED" ? t(r.status === "IN_APPROVAL" ? "approvals.receipt.approvedNext" : "approvals.receipt.approvedFinal")
+  : t("approvals.receipt.recorded");
+
+/** The reasons of one decision, from the catalog domain the server names. */
+function useDecisionReasons(domain: string | undefined) {
+  const known = domain as ReasonDomain | undefined;
+  const q = useQuery({ ...reasonCodesQuery(known ?? "org_change_reject"), enabled: Boolean(known) });
+  const options = known ? reasonOptions(known, q.data?.items) : [];
+  // The catalog marks which code needs a written note; the field takes one such code.
+  return { codes: options.map(o => ({ code: o.value, label: o.label })), other: options.find(o => o.requiresNote)?.value ?? "OTHER" };
+}
 
 export function ApprovalViewerPage() {
   const { approvalId } = route.useParams();
@@ -58,16 +80,17 @@ export function ApprovalDocumentView({ document: d }: { document: ApprovalDocume
 }
 
 function ApprovalDecisionPanel({ document: d }: { document: ApprovalDocument }) {
-  type DecisionForm = "reject" | "return";
   const [opinion, setOpinion] = useState("");
   const [reasons, setReasons] = useState<Record<DecisionForm, Reason>>({ reject: emptyReason(), return: emptyReason() });
   const [receipt, setReceipt] = useState<string>();
   const command = useCommand({
     run: (body: ApprovalDecision, key: string) => decideApproval(d.id, body, key),
     invalidates: ["/api/v1/approvals"], settle: true,
-    onSuccess: result => setReceipt(result.message),
-    announce: result => result.message,
+    onSuccess: result => setReceipt(receiptText(result)),
+    announce: receiptText,
   });
+  const actions = d.my_actions;
+  const catalog = { reject: useDecisionReasons(actions.reject?.reason_domain), return: useDecisionReasons(actions.return?.reason_domain) };
   const submit = (decision: ApprovalDecision["decision"]) => {
     const decisionForm = decision === "REJECT" ? "reject" : decision === "RETURN" ? "return" : undefined;
     const reason = decisionForm ? reasons[decisionForm] : undefined;
@@ -76,28 +99,22 @@ function ApprovalDecisionPanel({ document: d }: { document: ApprovalDocument }) 
       ...(reason?.code ? { reason_code: reason.code, ...(reason.memo.trim() ? { note: reason.memo.trim() } : {}) } : {}),
     });
   };
-  const actions = d.my_actions;
-  if (actions.kind === "none") return receipt ? <Card><p role="status">{receipt}</p></Card> : null;
-  const reasonAction = (form: DecisionForm) => form === "reject" ? actions.reject : actions.return;
+  // Only the action the server offers is drawn; nothing is inferred from the document's status.
+  const reject = actions.kind === "approve" ? actions.reject : undefined;
+  if (!reject) return receipt ? <Card><p role="status">{receipt}</p></Card> : null;
   const stale = readsAreStale(command.error) && command.variables?.seen_fingerprint === d.fingerprint;
   return <ApprovalCard
     eyebrow={[d.source.label, d.document_no].filter(Boolean).join(" · ")}
     step={d.route.find(step => step.state === "current")?.label}
     title={t("approvals.viewer.decision")}
-    consequence={d.consequence}
-    rejectConsequence={actions.reject.consequence}
+    consequence={consequenceText(d.consequence)}
+    rejectConsequence={consequenceText(reject.consequence)}
     approveLabel={commitLabel({ kind: "entityRecord", mode: "approve" })}
     rejectLabel={t("uiApprovalCard.reject")}
-    {...(actions.return ? { returnLabel: t("uiApprovalCard.return"), returnConsequence: actions.return.consequence, onReturn: () => submit("RETURN") } : { returnLabel: undefined, returnConsequence: undefined, onReturn: undefined })}
-    reason={form => {
-      const action = reasonAction(form);
-      return action && <ReasonField label={t("approvals.viewer.reason")} codes={action.reason.codes} other={action.reason.other} value={reasons[form]}
-        onChange={reason => setReasons(current => ({ ...current, [form]: reason }))} memoMax={action.reason.memo_max} />;
-    }}
-    reasonComplete={form => {
-      const action = reasonAction(form);
-      return Boolean(action && reasonProblem(reasons[form], action.reason.other) === null);
-    }}
+    {...(actions.return ? { returnLabel: t("uiApprovalCard.return"), returnConsequence: consequenceText(actions.return.consequence), onReturn: () => submit("RETURN") } : { returnLabel: undefined, returnConsequence: undefined, onReturn: undefined })}
+    reason={form => (form === "reject" || actions.return) && <ReasonField label={t("approvals.viewer.reason")} codes={catalog[form].codes} other={catalog[form].other} value={reasons[form]}
+      onChange={reason => setReasons(current => ({ ...current, [form]: reason }))} memoMax={NOTE_MAX} />}
+    reasonComplete={form => catalog[form].codes.length > 0 && reasonProblem(reasons[form], catalog[form].other) === null}
     onApprove={() => submit("APPROVE")}
     onReject={() => submit("REJECT")}
     pending={command.isPending ? command.variables?.decision === "REJECT" ? "reject" : command.variables?.decision === "RETURN" ? "return" : "approve" : undefined}
@@ -105,7 +122,7 @@ function ApprovalDecisionPanel({ document: d }: { document: ApprovalDocument }) 
     meta={t("approvals.viewer.revision", { revision: d.revision })}
     receipt={receipt && <p role="status">{receipt}</p>}
   >
-    <CommandError error={command.error} own={code => code === "approval_document_changed" ? t("approvals.viewer.changed") : undefined} />
+    <CommandError error={command.error} own={code => code === "approval_document_changed" ? t("approvals.viewer.changed") : code === "approval_decision_unavailable" ? t("approvals.viewer.unavailable") : undefined} />
     <Field label={t("approvals.viewer.opinion")} required={false} hint={t("approvals.viewer.opinionHint")}>
       {props => <TextArea {...props} maxLength={d.opinion_max} value={opinion} onChange={event => setOpinion(event.target.value)} />}
     </Field>

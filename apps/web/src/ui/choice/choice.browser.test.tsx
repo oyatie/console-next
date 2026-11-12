@@ -45,6 +45,13 @@ test("chip selection reserves the checkmark without moving any option", async ()
     await chip.click();
     expect(await chip.getByRole("radio").isChecked()).toBe(true);
     expect(await chip.locator("svg").evaluate(element => getComputedStyle(element).visibility)).toBe("visible");
+    const tick = await chip.locator("svg").boundingBox();
+    expect(tick?.width ?? 0).toBeGreaterThan(0);
+    expect(tick?.height ?? 0).toBeGreaterThan(0);
+    const unselected = chips.filter({ has: page.getByRole("radio", { checked: false }) });
+    for (const otherTick of await unselected.locator("svg").all()) {
+      expect(await otherTick.isVisible()).toBe(false);
+    }
     expect(await geometry()).toEqual(before);
   }
 });

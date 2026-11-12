@@ -26,6 +26,11 @@ properties:
     - leave_accrued
     - leave_used
     - leave_remaining
+    - work_days
+    - regular_hours
+    - overtime_hours
+    - night_hours
+    - holiday_hours
     - company
     - sex
     - contract_end_date
@@ -33,7 +38,8 @@ properties:
   classification:
     type: string
     description: '`restricted` columns are dropped at import: their values are never stored and never appear in preview
-      `values`.'
+      `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no
+      longer produced and appears only on runs made before that rule.'
     enum:
     - canonical
     - retained

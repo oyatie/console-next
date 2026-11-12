@@ -3504,6 +3504,8 @@ paths:
       description: >-
         Projects canonical org-change records. Cedar approval_document_list filters every box, count, facet and focus
         under one snapshot. Assigned upcoming and reference relationships are not stored by this source.
+        A document is in one box per viewer: a person who decided a step keeps it under completed while later steps
+        are pending, and its requester under requested until it is finished.
         Search and source apply to counts before descending created-at/UUID keyset paging.
       parameters:
       - {name: box, in: query, required: true, schema: {type: string, enum: [pending, upcoming, requested, reference, completed]}}
@@ -3533,7 +3535,9 @@ paths:
         Cedar approval_document_read uses the same source facts and inbox membership as the list.
         Hidden, absent, unsupported, draft and unrouted documents all return not_found.
         Proposal contains typed source operations and effective_date is a business date; body does not repeat the header.
-        This read-only envelope exposes no decisions until the source-command adapter is available.
+        my_actions offers a decision exactly where the source command takes one from this viewer: the document is in
+        their pending box with no decision_refusal, in approval, with a step awaiting it. consequence is then
+        next_step or final (the last step), and opinion_max the longest opinion; otherwise my_actions is none.
       parameters:
       - {name: id, in: path, required: true, schema: {type: string}, description: Canonical source-prefixed document ID from the inbox.}
       responses:
@@ -3544,6 +3548,50 @@ paths:
               schema: {$ref: '#/components/schemas/ApprovalDocumentDetail'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '500':
+          description: Sanitized approvals.projection_unavailable; includes a support reference.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorBody'}
+  /api/v1/approvals/{id}/decision:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [org]
+      operationId: decideApprovalDocument
+      summary: Decide the step of an approval document that awaits the caller
+      security: [{bearerAuth: []}]
+      description: >-
+        An adapter over the source's own decision command (org change: decideOrgChangeApprovalStep), taken only where
+        the document read offered my_actions.kind approve. Hidden and absent documents return the read's not_found
+        first. A seen_fingerprint that no longer matches, or a source version that moved before the command ran,
+        returns 409 approval_document_changed and decides nothing. Where the read offers none the answer is 409
+        approval_decision_unavailable. The source command then re-checks authority, separation of duties and step
+        order and answers with its own codes. REJECT requires a reason_code of the org_change_reject catalog, with a
+        note where the code requires one; the note and the opinion are both kept in the step's memo. RETURN is 422:
+        no source takes a return yet. A repeated Idempotency-Key answers 409 command_applied.
+      parameters:
+      - {name: id, in: path, required: true, schema: {type: string}, description: Canonical source-prefixed document ID from the inbox.}
+      - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 16, maxLength: 200}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ApprovalDecisionRequest'}
+      responses:
+        '200':
+          description: Decision recorded by the source command.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApprovalDecisionReceipt'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: approval_document_changed, approval_decision_unavailable, command_applied, or the source command's own refusal.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorBody'}
+        '422': {$ref: '#/components/responses/ValidationError'}
         '500':
           description: Sanitized approvals.projection_unavailable; includes a support reference.
           content:
@@ -34741,6 +34789,24 @@ components:
           format: date-time
         line_count:
           type: integer
+    ApprovalDecisionReceipt:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [decision, status]
+      properties:
+        decision: {type: string, x-extensible-enum: [APPROVED, REJECTED]}
+        status: {type: string, description: The source document's status key after the decision.}
+    ApprovalDecisionRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [decision, seen_fingerprint]
+      properties:
+        decision: {type: string, enum: [APPROVE, REJECT, RETURN]}
+        seen_fingerprint: {type: string, description: The fingerprint of the document the decision was made on.}
+        opinion: {type: string, description: Optional; at most the document's opinion_max characters.}
+        reason_code: {type: string, description: Required to reject; a code of my_actions.reject.reason_domain.}
+        note: {type: string, description: The reason's note; required where the code requires one.}
     ApprovalDocument:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -34830,8 +34896,23 @@ components:
           my_actions:
             type: object
             required: [kind]
+            description: >-
+              What the viewer may decide now. approve carries reject, and return only where the source takes one
+              (none does yet). Each names the consequence and the reason-code catalog domain its reason_code comes from.
             properties:
-              kind: {type: string, enum: [none]}
+              kind: {type: string, x-extensible-enum: [none, approve]}
+              reject:
+                type: object
+                required: [consequence, reason_domain]
+                properties:
+                  consequence: {type: string, x-extensible-enum: [request_ends]}
+                  reason_domain: {type: string}
+              return:
+                type: object
+                required: [consequence, reason_domain]
+                properties:
+                  consequence: {type: string, x-extensible-enum: [back_to_drafter]}
+                  reason_domain: {type: string}
     ApprovalDocumentPage:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -35615,7 +35696,8 @@ components:
         classification:
           type: string
           description: '`restricted` columns are dropped at import: their values are never stored and never appear in preview
-            `values`.'
+            `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no
+            longer produced and appears only on runs made before that rule.'
           enum:
           - canonical
           - retained
@@ -42110,6 +42192,11 @@ components:
           - leave_accrued
           - leave_used
           - leave_remaining
+          - work_days
+          - regular_hours
+          - overtime_hours
+          - night_hours
+          - holiday_hours
           - company
           - sex
           - contract_end_date
@@ -42117,7 +42204,8 @@ components:
         classification:
           type: string
           description: '`restricted` columns are dropped at import: their values are never stored and never appear in preview
-            `values`.'
+            `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no
+            longer produced and appears only on runs made before that rule.'
           enum:
           - canonical
           - retained
@@ -42859,7 +42947,8 @@ components:
           description: A refusal_code, or sheet_needs_mapping, rrn_unavailable, rrn_invalid, unresolved_identity,
             status_unmapped, leave_type_unmapped, unit_unmapped, workplace_unmapped, employment_type_unmapped
             (blocking, W02), employee_number_missing (사번 미부여), deferred_change, summary_row_skipped and
-            phone_invalid (W12, non-blocking).
+            phone_invalid (W12, non-blocking). number_invalid (a number column's cell that is not a number, left out)
+            and work_period_missing (the run has no pay period, so days and hours worked are left out) are non-blocking.
         blocking:
           type: boolean
         sheet:

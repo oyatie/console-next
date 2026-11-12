@@ -89,7 +89,50 @@ pub(crate) async fn seed_import_with_dropped(
     raw_row: serde_json::Value,
     dropped_restricted_columns: &[&str],
 ) {
+    seed_mapped_import(
+        pool,
+        org,
+        status,
+        row_status,
+        period,
+        employee_key,
+        raw_row,
+        dropped_restricted_columns,
+        None,
+    )
+    .await;
+}
+
+/// The targets a run knows once days and hours are things a column is mapped to.
+pub(crate) const PERIOD_TARGETS: [&str; 7] = [
+    "work_days",
+    "regular_hours",
+    "overtime_hours",
+    "night_hours",
+    "holiday_hours",
+    "leave_used",
+    "leave_remaining",
+];
+
+/// `seed_import_with_dropped` for a run that knows the period targets: its
+/// mapping profile lists them, and `typed` is the row's mapped, typed values.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn seed_mapped_import(
+    pool: &PgPool,
+    org: Uuid,
+    status: &str,
+    row_status: &str,
+    period: (time::Date, time::Date),
+    employee_key: &str,
+    raw_row: serde_json::Value,
+    dropped_restricted_columns: &[&str],
+    typed: Option<serde_json::Value>,
+) {
     let run_id = Uuid::new_v4();
+    let mapping_profile = match &typed {
+        Some(_) => serde_json::json!({ "target_allowlist": PERIOD_TARGETS }),
+        None => serde_json::json!({}),
+    };
     // An employee_hr run cannot be INSERTed already APPLIED: 0166's writer guard
     // raises 42501 (`employee_import_run.command_required`). It CAN be updated
     // into APPLIED by `console_leave_definer`, which is the role the guard names
@@ -98,8 +141,8 @@ pub(crate) async fn seed_import_with_dropped(
     sqlx::query(
         "INSERT INTO data_import_runs \
          (id, org_id, entity_type, status, source_filename, source_format, source_sha256, \
-          pay_period_start, pay_period_end) \
-         VALUES ($1, $2, 'employee_hr', $3, 'book.xlsx', 'xlsx', repeat('a', 64), $4, $5)",
+          pay_period_start, pay_period_end, mapping_profile) \
+         VALUES ($1, $2, 'employee_hr', $3, 'book.xlsx', 'xlsx', repeat('a', 64), $4, $5, $6)",
     )
     .bind(run_id)
     .bind(org)
@@ -110,6 +153,7 @@ pub(crate) async fn seed_import_with_dropped(
     })
     .bind(period.0)
     .bind(period.1)
+    .bind(mapping_profile)
     .execute(pool)
     .await
     .unwrap();
@@ -177,7 +221,8 @@ pub(crate) async fn seed_import_with_dropped(
         "INSERT INTO data_import_rows \
          (org_id, run_id, source_sheet, source_row, source_key, row_status, raw_row, canonical_row) \
          VALUES ($1, $2, 's', 1, $3, $4, $5, jsonb_build_object('source_key', $6::text, \
-                 'source_metadata', jsonb_build_object('dropped_restricted_columns', $7::jsonb)))",
+                 'source_metadata', jsonb_build_object('dropped_restricted_columns', $7::jsonb), \
+                 'canonical', $8::jsonb))",
     )
     .bind(org)
     .bind(run_id)
@@ -186,6 +231,7 @@ pub(crate) async fn seed_import_with_dropped(
     .bind(&raw_row)
     .bind(employee_key)
     .bind(serde_json::json!(dropped_restricted_columns))
+    .bind(typed.unwrap_or_else(|| serde_json::json!({})))
     .execute(pool)
     .await
     .unwrap();

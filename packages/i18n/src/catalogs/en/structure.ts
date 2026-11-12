@@ -163,6 +163,7 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.list.showOnChart": "Show on the chart",
   "structure.outline.title": "{name} outline",
   "structure.outline.label": "Outline",
+  "structure.outline.dropIdle": "Drop it on its new place · the line shows where it lands · Esc cancels",
   "structure.outline.levelHint": "Determined by its position",
   "structure.outline.levelCol": "Level",
   "structure.outline.newUnder": "Department · under {parent}",

@@ -57,6 +57,7 @@ MANUAL_PREFIXES = [
     ("/api/v1/workflow-tasks", "registry"),
     ("/api/v1/workflow-runs", "registry"),
     ("/api/v1/approval-inbox", "registry"),
+    ("/api/v1/approvals", "orgchange"),
     ("/api/v1/integrity", "governance"),
     ("/api/v1/object-links", "ontology"),
     ("/api/v1/object-types", "ontology"),

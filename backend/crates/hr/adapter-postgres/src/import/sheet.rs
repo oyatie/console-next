@@ -111,6 +111,18 @@ impl Targets<'_> {
     }
 }
 
+/// The targets read as decimals (leave balances; days and hours of the period).
+const DECIMAL_TARGETS: [&str; 8] = [
+    "leave_accrued",
+    "leave_used",
+    "leave_remaining",
+    "work_days",
+    "regular_hours",
+    "overtime_hours",
+    "night_hours",
+    "holiday_hours",
+];
+
 fn canonical(row: &GridRow, t: &Targets<'_>, rrn_sex: Option<&str>) -> EmployeeCanonicalFields {
     let text = |target: &str| t.text(row, target);
     let decimal = |target: &str| text(target).and_then(|v| normalized_decimal_text(&v));
@@ -145,6 +157,11 @@ fn canonical(row: &GridRow, t: &Targets<'_>, rrn_sex: Option<&str>) -> EmployeeC
         leave_accrued: decimal("leave_accrued"),
         leave_used: decimal("leave_used"),
         leave_remaining: decimal("leave_remaining"),
+        work_days: decimal("work_days"),
+        regular_hours: decimal("regular_hours"),
+        overtime_hours: decimal("overtime_hours"),
+        night_hours: decimal("night_hours"),
+        holiday_hours: decimal("holiday_hours"),
         status: text("employment_status"),
         leave_start_date: text("leave_start_date"),
         leave_type: text("leave_type"),
@@ -252,6 +269,17 @@ pub fn sheet_rows(
                     }
                     _ => {}
                 },
+            }
+        }
+        // A number column's cell that is not a number is left out and said so,
+        // never read as zero and never a reason to refuse the person.
+        for target in DECIMAL_TARGETS {
+            if targets
+                .text(row, target)
+                .is_some_and(|text| normalized_decimal_text(&text).is_none())
+            {
+                let at = cells.get(target).cloned();
+                out.notes.push(note("number_invalid", Some(source_row), at));
             }
         }
         // r3:hire-01: the 법인 text is the file's own 법인 column or nothing;
