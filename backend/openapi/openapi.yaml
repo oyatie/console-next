@@ -19427,6 +19427,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/me/action-inbox/done:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - me
       operationId: listMyActionInboxDone
@@ -34131,6 +34132,7 @@ components:
         label: { type: string }
         kind: { type: string, enum: [automation, policy] }
     ActionInboxDoneItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       description: An item the caller decided, as the 완료 tab lists it.
       required: [id, kind, title, outcome, completed_at, links]
