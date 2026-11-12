@@ -9,6 +9,14 @@
 pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
     &[
         (
+            "residence_status_codes",
+            "official residence-status identities; migration-owned public reference data, SELECT-only to console_rt",
+        ),
+        (
+            "residence_status_versions",
+            "dated official residence-status labels; migration-owned public reference data, SELECT-only to console_rt",
+        ),
+        (
             "country_codes",
             "ISO 3166-1 identities; migration-owned public reference data, SELECT-only to console_rt",
         ),

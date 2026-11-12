@@ -34,3 +34,5 @@ pub mod cases;
 
 // --- lane: CX-statutory ---
 pub mod filing;
+
+pub mod residence;
