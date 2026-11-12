@@ -238,11 +238,13 @@ for (const [width, colorScheme] of [[1440, "light"], [1440, "dark"], [390, "ligh
       await row.scrollIntoViewIfNeeded();
       await expect(row.getByText(t("payroll.employee.won", { amount: fmtNumber(deduction.employee_won) }), { exact: true })).toBeVisible();
       for (const instrument of [deduction.instrument, deduction.share_instrument]) {
-        const link = row.getByRole("link", { name: `${instrument.name_ko} · ${instrument.article_ko} · ${instrument.promulgation_ko}`, exact: true });
-        await expect(link).toBeVisible();
-        await expect(link).toHaveAttribute("href", instrument.url);
-        await link.focus();
-        await expect(link).toBeFocused();
+        const citation = row.locator("cite").filter({ hasText: instrument.name_ko });
+        await expect(citation).toBeVisible();
+        await expect(citation).toHaveText(`${instrument.name_ko} · ${instrument.article_ko} · ${instrument.promulgation_ko} · ${instrument.url}`);
+        await expect(citation.getByRole("link")).toHaveCount(0);
+        const copy = citation.getByRole("button", { name: t("uiField.copyUrl"), exact: true });
+        await copy.focus();
+        await expect(copy).toBeFocused();
       }
       await expect(row.getByRole("cell")).toHaveCount(3);
       expect(await row.getByRole("cell").evaluateAll(cells => cells.every(cell => cell.scrollWidth <= cell.clientWidth + 1 && cell.scrollHeight <= cell.clientHeight + 1))).toBe(true);
