@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! 완료: what the caller decided, newest first, only while they may still read it.
+//! Done: what the caller decided, newest first, only while they may still read it.
 
 #[path = "support/http.rs"]
 mod http;

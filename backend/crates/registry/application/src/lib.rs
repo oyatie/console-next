@@ -23,7 +23,7 @@ impl ImportSheet {
     #[must_use]
     pub const fn workbook_name(self) -> &'static str {
         match self {
-            Self::Master => "지게차 Master list", // "<company> 지게차 Master list"
+            Self::Master => "지게차 Master list", // "<company> " + this name (forklift Master list)
             Self::Reserve => "예비 및 여유차량",
         }
     }
@@ -364,7 +364,7 @@ pub struct CreateEquipmentCommand {
     pub occurred_at: Timestamp,
 }
 
-/// Create one customer (고객) directly, outside the bulk import path.
+/// Create one customer directly, outside the bulk import path.
 ///
 /// `branch_id` is the branch the new customer lands on: the REST handler passes
 /// the caller's own branch for a branch-scoped admin (so the new row is
@@ -388,7 +388,7 @@ pub struct CreatedCustomer {
     pub name: String,
 }
 
-/// Create one site (현장) under an existing customer, directly. The site lands on
+/// Create one site under an existing customer, directly. The site lands on
 /// the existing customer's branch under `customer_id`; the adapter validates that
 /// the customer belongs to the caller's org and branch scope before writing.
 /// Optional location/contact fields mirror the PATCH /sites surface so a site can
@@ -437,7 +437,8 @@ pub struct CreatedSite {
 
 /// A partial update to one equipment master row. `None` fields are left
 /// untouched; `Some` fields are written. Customer/site and financial fields can
-/// all be re-targeted here, including the 유효설비 `status` and 취득/잔존가액.
+/// all be re-targeted here, including the active-equipment `status` and
+/// acquisition/residual value.
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct UpdateEquipmentFields {
     pub customer_name: Option<String>,
@@ -467,7 +468,7 @@ pub struct UpdateEquipmentFields {
     pub rental_fee: Option<Option<MoneyWon>>,
     pub vehicle_value: Option<Option<MoneyWon>>,
     pub residual_value: Option<Option<MoneyWon>>,
-    /// Acquisition cost (취득원가): a distinct accounting fact, never the
+    /// Acquisition cost: a distinct accounting fact, never the
     /// depreciation base. Independent of `vehicle_value`; never feeds the
     /// residual engine.
     pub acquisition_cost_won: Option<Option<MoneyWon>>,
@@ -524,7 +525,7 @@ pub struct DeleteEquipmentCommand {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum EquipmentSortBy {
-    /// 호기 번호 ascending (default).
+    /// Unit number ascending (default).
     #[default]
     EquipmentNo,
     /// Model name ascending.
@@ -543,7 +544,7 @@ pub struct EquipmentListQuery {
     /// Branch scope resolved from the JWT principal (SUPER_ADMIN = All, others =
     /// their assigned branches). Never caller-supplied.
     pub branch_scope: BranchScope,
-    /// Free-text search across management_no (호기-normalized, leading-zero-
+    /// Free-text search across management_no (unit-number-normalized, leading-zero-
     /// insensitive), model, maker, equipment_no, customer name, site name, VIN.
     pub q: Option<String>,
     /// Filter to a single status.
@@ -734,7 +735,7 @@ pub struct EquipmentByLocationQuery {
 /// One site row for the dispatch map. Sites with no entered coordinates come
 /// back with `latitude`/`longitude` = `None`; the UI lists them as "ungeocoded"
 /// instead of dropping a fabricated pin. Counts are computed in SQL from the
-/// Korean status literals (`임대` rented, `예비` spare) and the active-substitution
+/// Korean status literals (rented "imdae", spare "yebi") and the active-substitution
 /// table, so the map never shows a fake number either.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SiteLocationGroup {

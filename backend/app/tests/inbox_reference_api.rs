@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! 참조: the notices addressed to me, newest first, and 확인 that marks one read.
+//! Reference: the notices addressed to me, newest first, and "Confirm", which marks one read.
 
 #[path = "support/http.rs"]
 mod http;
@@ -57,7 +57,7 @@ async fn my_notices_list_newest_first_and_only_i_can_mark_mine_read(pool: PgPool
             .all(|i| i["unread"] == true)
     );
 
-    // 확인 marks mine read; another person's notice is 404 and stays unread.
+    // "Confirm" marks mine read; another person's notice is 404 and stays unread.
     let (status, read) = ctx
         .call("POST", &format!("{REFERENCE}/{first}/read"), None)
         .await;

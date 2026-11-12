@@ -185,7 +185,7 @@ pub struct ListMembersQuery {
 /// (UI-M2a AC). Unlike the admin-gated `/api/v1/users/{id}`, this reads the
 /// same non-admin branch directory as `list_members`, so any employee can open
 /// a coworker's card. Viewing someone else records a `person.view` audit event
-/// (DESIGN §4.7 "열람 — 기록 남음"); a self-view records none.
+/// (DESIGN §4.7 "viewing — leaves a record"); a self-view records none.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MemberProfileQuery {
     pub actor: UserId,
@@ -267,7 +267,7 @@ pub struct MessageSummary {
     pub read_count: i64,
     /// Number of non-sender thread members who are expected to read this message.
     pub read_target_count: i64,
-    /// Number of members who have acked ("확인") this message.
+    /// Number of members who have acked ("Confirm") this message.
     pub ack_count: i64,
     /// Whether the reading actor has acked this message. Always `false` on a
     /// freshly-posted realtime event (no one has acked yet).

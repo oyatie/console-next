@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! RUNTIME RLS gate for the PM (정기 예방정비) schedule create + list (#19.22).
+//! RUNTIME RLS gate for the PM (periodic preventive maintenance) schedule create + list (#19.22).
 //!
 //! The reported symptom — "won't register / doesn't appear" — is NOT a missing
 //! arm: `create_schedule` writes correctly and `list_due_schedules` is armed.
@@ -88,7 +88,8 @@ async fn seed_branch(owner_pool: &PgPool, org: Uuid) -> BranchId {
     BranchId::from_uuid(branch_id)
 }
 
-/// Seed an active prevention mechanic (`team = '예방'`, `MECHANIC`) in `branch`,
+/// Seed an active prevention mechanic (`team` set to the Korean value for
+/// prevention, `MECHANIC`) in `branch`,
 /// satisfying the `ensure_prevention_mechanic_tx` guard at create time.
 async fn seed_prevention_mechanic(owner_pool: &PgPool, org: Uuid, branch: BranchId) -> UserId {
     let id = UserId::new();

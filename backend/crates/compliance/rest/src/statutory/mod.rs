@@ -97,7 +97,7 @@ fn parse_query(query: &LossCodeQuery) -> Result<(Insurer, Date), KernelError> {
     Ok((insurer, on))
 }
 
-/// The `insurer`'s 상실 codes in force on `on`. HOLD rows are listed with their
+/// The `insurer`'s loss codes in force on `on`. HOLD rows are listed with their
 /// disposition; an insurer with no sourced table returns an empty list.
 async fn list_insurance_loss_codes(
     State(state): State<ComplianceRestState>,

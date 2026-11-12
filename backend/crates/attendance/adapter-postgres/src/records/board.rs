@@ -1,6 +1,6 @@
-//! 일별 · 간단히 (A1-day): the partition ledger, then 사업장 › 부서 groups with
+//! Daily · Simple (A1-day): the partition ledger, then workplace › department groups with
 //! issue rows first and clean rows folded. Groups follow the chart's order
-//! (사업장, then its 부서 in their stored 순서), never the name.
+//! (workplace, then its departments in their stored order), never the name.
 
 use std::{collections::BTreeMap, future::Future, pin::Pin};
 
@@ -160,7 +160,8 @@ impl PgAttendanceStore {
                     let mut issues = BTreeMap::<Mark, IssueGroup>::new();
                     let rank = u.org.tree_rank();
                     let at = |id: Option<Uuid>| id.and_then(|x| rank.get(&x).copied());
-                    // The 사업장's own group (no 부서) first, then its 부서 in the chart's order.
+                    // The workplace's own group (no department) first, then its departments
+                    // in the chart's order.
                     let mut groups: BTreeMap<
                         (usize, Option<usize>, String, Option<Uuid>),
                         BoardGroup,

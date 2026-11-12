@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! 참조 (`/api/v1/me/action-inbox/reference`): the notices addressed to the
-//! caller, FYI and needing no action, newest first, and the 확인 that marks
+//! Reference (`/api/v1/me/action-inbox/reference`): the notices addressed to the
+//! caller, FYI and needing no action, newest first, and the Confirm action that marks
 //! one read. Served through the notifications store with its own recipient
 //! and mute rules; the notifications module's own routes stay off.
 use axum::Extension;
@@ -44,7 +44,7 @@ pub(super) async fn list(
     Ok(Json(page))
 }
 
-/// 확인: one of the caller's own notices, read. Another person's id is 404.
+/// Confirm: one of the caller's own notices, read. Another person's id is 404.
 pub(super) async fn read(
     State(state): State<ActionInboxState>,
     Extension(principal): Extension<Principal>,

@@ -1,4 +1,4 @@
-//! 월간 근무표 (A3-grid) and one person's month (A7-card).
+//! Monthly work roster (A3-grid) and one person's month (A7-card).
 
 use console_attendance_application::CallerScope;
 use console_attendance_application::records_read::{

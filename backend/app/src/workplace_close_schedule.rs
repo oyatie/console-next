@@ -1,5 +1,5 @@
-//! UX-R2 ENDS: the lifecycle tick's 사업장 close step. A close job whose
-//! 폐쇄일 has come (or that WAITED for its 퇴직 to take effect) is advanced
+//! UX-R2 ENDS: the lifecycle tick's workplace close step. A close job whose
+//! close date has come (or that WAITED for its exits to take effect) is advanced
 //! by HR's `lifecycle::close_plan`, after the tick has applied the day's
 //! scheduled lifecycle events. Both roles run it (the dev/E2E launcher starts
 //! only the api role); jobs are claimed `FOR UPDATE SKIP LOCKED`.

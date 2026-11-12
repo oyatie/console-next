@@ -17,9 +17,9 @@
 //!     diverge.
 //!
 //! The §61 statutory push delivers a receipt-gated notice into the target's
-//! 개인 수신함 through the inbox crate's [`InboxDocSink`] (the concrete legal
+//! personal inbox through the inbox crate's [`InboxDocSink`] (the concrete legal
 //! delivery) and records the push row. Starting the engine AP- run is gated on
-//! the 연차촉진 submittable definition (gap #1); until it exists the push is
+//! the annual-leave use promotion submittable definition (gap #1); until it exists the push is
 //! recorded with `ap_run_id = NULL` and an honest `pending_engine_definition`
 //! status — never a fabricated run.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
@@ -85,7 +85,7 @@ struct PromotionRecord {
     /// The KST date the notice was served — the anchor for the §61 reply window
     /// and ordering checks.
     served_on: Date,
-    /// The delivered notice's `source_id`, which encodes the 연차 사용기간 the
+    /// The delivered notice's `source_id`, which encodes the annual leave use period the
     /// push belongs to. Used to tell a genuine re-push apart from a *different*
     /// leave period colliding on the current per-employee unique key.
     source_id: Option<String>,
@@ -829,7 +829,7 @@ impl PgLeaveStore {
         })
     }
 
-    /// Worker-only alternate 시기 on a `time_change_consult` row (§60⑤).
+    /// Worker-only alternate leave timing on a `time_change_consult` row (§60⑤).
     pub async fn propose_alternate_dates(
         &self,
         command: ProposeAlternateDatesCommand,
@@ -1019,18 +1019,20 @@ impl PgLeaveStore {
         }
     }
 
-    /// Serve a §61 promotion (1차/2차) or a 노무수령거부 notice: deliver the
-    /// receipt-gated document into the target's 개인 수신함 and record the push.
+    /// Serve a §61 promotion (round 1/round 2) or a refusal-to-accept-labor
+    /// notice: deliver the receipt-gated document into the target's personal
+    /// inbox and record the push.
     ///
-    /// Every step is judged against 근로기준법 제61조 by
+    /// Every step is judged against Labor Standards Act §61 by
     /// [`console_leave_domain::promotion`] before anything is delivered: round 1
     /// must fall inside its statutory window, round 2 must follow a recorded
     /// round 1 by more than the worker's 10-day reply period and land on or
-    /// before the 2차 통보 기한, and a 노무수령거부 must follow a recorded round-2
+    /// before the round-2 notice deadline, and a refusal to accept labor must
+    /// follow a recorded round-2
     /// designation. A push that misses its window is refused rather than
     /// delivered as a legally void notice.
     ///
-    /// Idempotent per `(org, target, kind, round)` **within one 연차 사용기간** —
+    /// Idempotent per `(org, target, kind, round)` **within one annual leave use period** —
     /// a push for a different period collides on the current unique key and is
     /// refused (fail closed) until `leave_promotions` carries the period; see
     /// `docs/evidence/console/hotfix/leave-promotion/manifests/`.
@@ -1047,8 +1049,8 @@ impl PgLeaveStore {
         let served_on = command.occurred_at.to_offset(offset!(+9)).date();
         let tag = period_tag(command.track, command.leave_period_end);
 
-        // §61①1 requires the notice to state the employee's own 미사용 휴가
-        // 일수. It is read from the authoritative roster, never from the caller.
+        // §61①1 requires the notice to state the employee's own number of unused
+        // leave days. It is read from the authoritative roster, never from the caller.
         let unused_days = self
             .unused_leave_days(org, command.target_employee_id)
             .await?;
@@ -1079,7 +1081,7 @@ impl PgLeaveStore {
         }
 
         // Only the predecessor this step actually depends on is read, and it
-        // must belong to the same 연차 사용기간.
+        // must belong to the same annual leave use period.
         let predecessor = match (command.kind, command.round) {
             (PromotionKind::Promotion, 2) => {
                 let record = self
@@ -1122,7 +1124,7 @@ impl PgLeaveStore {
         let round =
             validate_push(command.kind, command.round, &context).map_err(PgLeaveError::Domain)?;
 
-        // §61①2 / §61②2 require the 2차 통보 to *designate the dates*. A refusal
+        // §61①2 / §61②2 require the round-2 notice to *designate the dates*. A refusal
         // refuses labour on exactly the dates that designation named, read back
         // from the recorded notice rather than restated by the caller.
         let designated_dates = match (command.kind, round) {
@@ -1179,7 +1181,7 @@ impl PgLeaveStore {
             Some(legal_basis),
             Some("leave_promotion"),
             // Deterministic source id ties the notice back to the push row and
-            // pins it to one 연차 사용기간.
+            // pins it to one annual leave use period.
             Some(&dedup_key),
             body,
         )
@@ -1200,7 +1202,7 @@ impl PgLeaveStore {
             .map_err(PgLeaveError::Domain)?;
 
         // 2. Record the push, referencing the delivered notice. The engine AP-
-        //    run stays NULL until the 연차촉진 submittable definition exists
+        //    run stays NULL until the annual-leave use promotion submittable definition exists
         //    (gap #1); we never fabricate a run.
         let id = LeavePromotionId::new();
         let inbox_doc_id = *emitted.id.as_uuid();
@@ -1286,11 +1288,12 @@ impl PgLeaveStore {
         })
     }
 
-    /// The employee's 미사용 연차 일수, exactly as the roster records it
+    /// The employee's unused annual leave days, exactly as the roster records it
     /// (`employees.leave_remaining NUMERIC(16,6)` since migration 0166, rendered
     /// as text — never a float on a legal notice). `trim_scale` drops the storage
     /// scale's trailing zeros without changing the value, so the notice served to
-    /// a worker reads `13일` / `13.5일`, not `13.000000일`.
+    /// a worker reads 13 / 13.5 days, not 13.000000 days (each with the Korean
+    /// day suffix).
     /// Doubles as the target-exists check: a missing employee is `not_found`,
     /// an employee whose roster figure was never established is a conflict, and
     /// neither ever becomes a fabricated zero.
@@ -1615,8 +1618,8 @@ fn balance_from_row(row: &sqlx::postgres::PgRow) -> Result<LeaveBalanceView, PgL
     })
 }
 
-/// Bucket a balance for the bar color + 촉진 flag, mirroring the prototype:
-/// mostly-unused (used < 50% of grant) ⇒ `promote` (촉진 대상); nearly-exhausted
+/// Bucket a balance for the bar color + promotion flag, mirroring the prototype:
+/// mostly-unused (used < 50% of grant) ⇒ `promote` (promotion target); nearly-exhausted
 /// (≤ 2 days left) ⇒ `low`; otherwise `ok`.
 // fixed thresholds; move to org policy if HR wants them configurable.
 fn balance_tone(grant: f64, used: f64, left: f64) -> LeaveBalanceTone {
@@ -1630,9 +1633,9 @@ fn balance_tone(grant: f64, used: f64, left: f64) -> LeaveBalanceTone {
 }
 
 /// Render the statutory notice title + JSONB body delivered into the inbox.
-/// The tag that binds a push to one 연차 사용기간. Until `leave_promotions`
+/// The tag that binds a push to one annual leave use period. Until `leave_promotions`
 /// carries the period itself, this is the only thing separating this year's
-/// 촉진 from last year's on the per-employee unique key.
+/// promotion from last year's on the per-employee unique key.
 fn period_tag(track: PromotionTrack, period_end: Date) -> String {
     format!("{}-{period_end}", track.as_str())
 }
@@ -1646,9 +1649,9 @@ fn promotion_dedup_key(
     format!("leave-{kind}-{target_employee_id}-r{round}-{tag}")
 }
 
-/// Fail closed when a recorded push belongs to a *different* 연차 사용기간 than
+/// Fail closed when a recorded push belongs to a *different* annual leave use period than
 /// the one being pushed. The `leave_promotions` unique key is per employee, not
-/// per period, so without this check a second year's 촉진 would silently return
+/// per period, so without this check a second year's promotion would silently return
 /// last year's row — a wrong answer wearing a success status.
 fn ensure_same_period(
     record: &PromotionRecord,
@@ -1666,7 +1669,7 @@ fn ensure_same_period(
     .into())
 }
 
-/// Read the 사용 시기 a recorded 2차 통보 designated. The refusal notice must
+/// Read the leave timing a recorded round-2 notice designated. The refusal notice must
 /// refuse labour on exactly those days, so they are read back from the notice
 /// rather than restated.
 fn recorded_designated_dates(payload: &serde_json::Value) -> Result<Vec<Date>, PgLeaveError> {
@@ -1736,10 +1739,11 @@ fn iso_dates(dates: &[Date]) -> Vec<String> {
 ///
 /// Each round states only what the statute requires it to state, and the
 /// refusal states only what the employer is *doing*. The previous refusal body
-/// asserted "본 통지로써 해당 연차에 대한 사용자의 금전 보상 의무가 소멸함" — a legal
+/// asserted "by this notice, the employer's monetary compensation obligation for
+/// the annual leave concerned is extinguished" — a legal
 /// conclusion this system cannot reach: §61 relief additionally requires that
 /// the worker did not in fact work the designated day and that the employer
-/// maintained the refusal (대법원 2019다279283). That conclusion is now stated as
+/// maintained the refusal (Supreme Court 2019Da279283). That conclusion is now stated as
 /// the condition it is, not as an accomplished fact.
 fn notice_body(
     command: &StatutoryPushCommand,
@@ -1790,7 +1794,8 @@ fn notice_body(
                 "legal_basis": format!("{statute}제2호"),
                 "paragraphs": [
                     // The notice designates the days it lists — no more. Saying
-                    // it designates "미사용 연차 {unused_days}일의 사용 시기"
+                    // it designates "the use timing of {unused_days} days of
+                    // unused annual leave"
                     // while listing two dates would be a claim the payload
                     // itself contradicts.
                     format!(
@@ -1923,9 +1928,10 @@ mod statutory_notice_tests {
     }
 
     /// The fabrication this hotfix removes: the refusal notice used to tell the
-    /// worker "본 통지로써 해당 연차에 대한 사용자의 금전 보상 의무가 소멸함". §61
+    /// worker "by this notice, the employer's monetary compensation obligation
+    /// for the annual leave concerned is extinguished". §61
     /// relief also requires that the worker did not in fact work the designated
-    /// day and that the employer maintained the refusal (대법원 2019다279283), so
+    /// day and that the employer maintained the refusal (Supreme Court 2019Da279283), so
     /// no notice can announce that outcome.
     #[test]
     fn the_refusal_notice_never_announces_that_the_pay_obligation_is_extinguished() {
@@ -1987,7 +1993,7 @@ mod statutory_notice_tests {
         assert!(text.contains("2026-12-31"), "{text}");
     }
 
-    /// The refusal reads its designated days back out of the recorded 2차 통보,
+    /// The refusal reads its designated days back out of the recorded round-2 notice,
     /// so the two serialisations have to agree.
     #[test]
     fn designated_dates_survive_the_notice_payload_round_trip() {

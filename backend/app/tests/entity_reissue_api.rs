@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! 등록증 재발급·정정 through the router: POST
+//! Business registration certificate reissue and correction through the router: POST
 //! /business-registrations/{id}/reissues records the new certificate, the
-//! facts it changed (the registration's and the 법인's 대표자) and the
+//! facts it changed (the registration's and the legal entity's representative) and the
 //! evidence as one change; a refusal names its field and writes nothing; no
 //! token is 401.
 

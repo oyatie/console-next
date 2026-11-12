@@ -3,7 +3,7 @@
 //!
 //! Each type is decided by the door its REST read uses today, with every
 //! attribute taken from the `resource_changes` row (no DB read):
-//! * the 법인/조직 surfaces read with the `org_change_read` capability
+//! * the legal entity/organization surfaces read with the `org_change_read` capability
 //!   (`entity-rest` `Need::Read`, onboarding), accounts and roles with their
 //!   manage capability (identity-rest);
 //! * the people surfaces read through the HR doors

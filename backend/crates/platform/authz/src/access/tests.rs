@@ -329,7 +329,8 @@ fn an_incomplete_or_foreign_chain_is_an_error_never_an_allow() {
             .allows(Feature::OrgChangeRead.as_str(), &other.le(other.le_a))
             .is_err()
     );
-    // A workplace whose 법인 link is missing (a voided 사업장) is not a tenant-wide node.
+    // A workplace whose legal entity link is missing (a voided workplace) is not a
+    // tenant-wide node.
     let broken = NodePath(vec![
         n(NodeKind::Workplace, t.wp_a1),
         n(NodeKind::Tenant, *t.org.as_uuid()),

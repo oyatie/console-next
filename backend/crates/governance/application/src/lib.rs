@@ -59,7 +59,7 @@ pub struct OpenOverrideCommand {
 }
 
 /// Open a pending four-eyes request: a requester records what needs deciding
-/// (arch §19 팀 배포 / override open). A distinct approver later decides it via
+/// (arch §19 team deploy / override open). A distinct approver later decides it via
 /// [`DecideApprovalCommand`] keyed by the same `request_ref`. `request_ref` is a
 /// logical ref to whatever is gated (an override id, a console_view instance id
 /// for a team deploy, an action-execute ref).

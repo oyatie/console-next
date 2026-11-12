@@ -17,7 +17,7 @@ impl PgOnboardingStore {
         self.audit_refusal(actor, result).await
     }
 
-    /// 운영 시작. `step_up_verified` is the REST layer's verified passkey
+    /// Go-live. `step_up_verified` is the REST layer's verified passkey
     /// assertion for this request; `digest` must equal the preview the actor saw.
     ///
     /// # Errors

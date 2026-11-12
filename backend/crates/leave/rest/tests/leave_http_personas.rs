@@ -165,7 +165,7 @@ async fn member_self_service_is_server_bound_and_missing_home_branch_is_explicit
 #[path = "fixtures/leave_http_decisions.rs"]
 mod decisions;
 
-/// 근로기준법 제61조 at the transport boundary.
+/// Labor Standards Act Article 61 at the transport boundary.
 ///
 /// The store enforces the windows (see the adapter's runtime-role proof); this
 /// pins what the HTTP contract now demands of a caller: the statutory inputs
@@ -205,7 +205,8 @@ async fn statutory_push_requires_its_statutory_inputs_over_http(owner_pool: PgPo
     ));
 
     // The handler stamps `occurred_at` from the clock, so the happy path picks a
-    // 연차 사용기간 whose 1차 촉구 window (§61①1) contains today. Derived, never
+    // use period for annual leave whose first-round urging window (§61①1) contains
+    // today. Derived, never
     // hard-coded — a literal date would rot into a wall-clock time bomb.
     let today = OffsetDateTime::now_utc()
         .to_offset(UtcOffset::from_hms(9, 0, 0).unwrap())
@@ -266,7 +267,7 @@ async fn statutory_push_requires_its_statutory_inputs_over_http(owner_pool: PgPo
     );
     assert_eq!(unknown_track.body["error"]["code"], "validation");
 
-    // A 사용기간 whose window has not opened yet: refused, with the window in the
+    // A use period whose window has not opened yet: refused, with the window in the
     // message so the operator can act on it.
     let out_of_window = request_json(
         service.clone(),
@@ -321,7 +322,7 @@ async fn statutory_push_requires_its_statutory_inputs_over_http(owner_pool: PgPo
     assert_eq!(served.body["ap_submission"], "pending_engine_definition");
 
     // The delivered notice is receipt-gated, addressed to the target, and states
-    // the roster's own 미사용 일수 — never the 13.0 the caller tried to supply.
+    // the roster's own unused days — never the 13.0 the caller tried to supply.
     let (kind, notice_type, confirmed_at, payload): (
         String,
         String,

@@ -113,7 +113,7 @@ fn shape(started: &Value) -> (BTreeSet<String>, BTreeSet<String>, Vec<BTreeSet<S
     (keys(started), keys(public_key), entries)
 }
 
-/// A fresh active account in the seeded tenant, with its default 아이디.
+/// A fresh active account in the seeded tenant, with its default sign-in ID.
 async fn account(owner: &PgPool, name: &str) -> (UserId, String) {
     let id: Uuid = sqlx::query_scalar(
         "INSERT INTO users (display_name, roles, org_id, is_active) VALUES ($1, '{}', $2, true) RETURNING id",

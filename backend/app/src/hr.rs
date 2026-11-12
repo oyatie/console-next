@@ -100,7 +100,7 @@ pub const EMPLOYEES_IMPORT_PREVIEW_PATH: &str = "/api/v1/employees/import/previe
 pub const EMPLOYEES_IMPORT_DRY_RUN_PATH_TEMPLATE: &str =
     "/api/v1/employees/import/{run_id}/dry-run";
 pub const EMPLOYEES_IMPORT_APPLY_PATH_TEMPLATE: &str = "/api/v1/employees/import/{run_id}/apply";
-/// BE-MIG (W03 / E8): the 미배치 queue.
+/// BE-MIG (W03 / E8): the unplaced queue.
 pub const EMPLOYEES_IMPORT_UNPLACED_PATH: &str = "/api/v1/employees/import/unplaced";
 pub const EMPLOYEES_EXPORT_CSV_PATH: &str = "/api/v1/employees/export.csv";
 pub const EMPLOYEE_FACETS_PATH: &str = "/api/v1/employees/facets";
@@ -185,7 +185,7 @@ pub struct HrState {
     leave_command_store: Option<PgLeaveStore>,
     jwt_verifier: Option<JwtVerifier>,
     passkey_step_up: Option<PasskeyService>,
-    /// IMPORT-2: the 주민등록번호 vault (keys from the environment), if set.
+    /// IMPORT-2: the resident registration number vault (keys from the environment), if set.
     rrn_vault: Option<std::sync::Arc<dyn RrnVault>>,
 }
 
@@ -2817,7 +2817,7 @@ fn require_leave_import_command_store(state: &HrState) -> Result<PgLeaveStore, H
     })
 }
 
-/// §16 ingest-commit gate (85 판정): apply ("적재") requires self-checklist
+/// §16 ingest-commit gate (ruling 85): apply ("load") requires self-checklist
 /// evidence — fail-closed deny, nothing written, if it's missing or false.
 /// Authority is already enforced by the caller's `authorize_hr_org_wide` check;
 /// four-eyes/egress are not part of this gate (ingest commit is single-actor).
@@ -4023,7 +4023,8 @@ mod tests {
         assert!(refused.message.contains("locked"));
     }
 
-    /// BW-26. A workbook and a CSV carrying 주민등록번호, 급여, 계좌 and 전화
+    /// BW-26. A workbook and a CSV carrying resident registration number, pay, bank
+    /// account and phone
     /// columns plus RRN-shaped values under innocuous headers go through
     /// preview, dry-run and apply; afterwards no text/json column of any table
     /// in the database holds an RRN-shaped value or a planted restricted value.
@@ -4159,7 +4160,7 @@ mod tests {
         for (col, header) in header_row.iter().enumerate() {
             sheet.cell_mut((col as u32 + 1, 1)).set_value(*header);
         }
-        // BW-10: a new person needs a 입사일; no 소속 leaves them unbound.
+        // BW-10: a new person needs a hire date; no affiliation leaves them unbound.
         sheet.cell_mut((13, 2)).set_value("2026-06-01");
         for (col, value) in ["홍길동", "E-1001", "", "900101-1234567"]
             .iter()
@@ -4382,8 +4383,8 @@ mod tests {
         ] {
             assert!(is_rrn_value(hit), "{hit} must match");
         }
-        // A 10-digit 사번 and a phone number keep their leading zero rule; a
-        // long 사번 that is no 2000s birth date and gender digit is kept.
+        // A 10-digit employee number and a phone number keep their leading zero rule; a
+        // long employee number that is no 2000s birth date and gender digit is kept.
         for miss in ["2024000123", "01012345678", "10101345678", "123456123456"] {
             assert!(!is_rrn_value(miss), "{miss} must not match");
         }
@@ -4456,7 +4457,7 @@ E-001,=홍길동,본사,2026-07-01,09:00,18:00,540,=cmd|' /C calc'!A0,현장 지
         let values = &response.sample_rows[0].values;
         assert_eq!(values.get("성명"), Some(&json!("'=홍길동")));
         assert_eq!(values.get("급여메모"), None);
-        // No field takes 비고 either: listed, never stored, whatever its wording.
+        // No field takes the remarks column either: listed, never stored, whatever its wording.
         assert_eq!(values.get("비고"), None);
         for header in ["급여메모", "비고"] {
             assert!(response.columns.iter().any(|column| {
@@ -5761,7 +5762,7 @@ E-001,홍길동,본사,2026-07-01,abc
         );
     }
 
-    /// 0093 review HIGH #2: the certified digest must bind the 통상임금 basis
+    /// 0093 review HIGH #2: the certified digest must bind the ordinary-wage basis
     /// DIRECTLY, not merely transitively through `severance_pay_won`. Changing
     /// ONLY the monthly ordinary wage (holding severance and every other covered
     /// field byte-identical — the case where the average wage governs the floor)
@@ -5797,7 +5798,7 @@ E-001,홍길동,본사,2026-07-01,abc
         );
     }
 
-    /// 0093 review HIGH #3 (money bug): the 통상일급 derivation must multiply
+    /// 0093 review HIGH #3 (money bug): the daily ordinary wage derivation must multiply
     /// BEFORE dividing (`(monthly * 8) / 209`), never floor `monthly / 209` first.
     /// Flooring first understated the daily ordinary wage by up to 7 won/day and
     /// under-paid severance whenever the ordinary floor governed.
@@ -5851,7 +5852,7 @@ E-001,홍길동,본사,2026-07-01,abc
         .await
         .map_err(|err| format!("initial upsert failed: {err:?}"))?;
 
-        // Simulate the (deferred) 노무사 recording action: mark CERTIFIED with a
+        // Simulate the (deferred) labor attorney recording action: mark CERTIFIED with a
         // valid artifact + digest as console_rt.
         let validation = ProfessionalValidation {
             reviewer_kind: ProfessionalReviewerKind::LaborAttorney,
@@ -7685,7 +7686,7 @@ E-001,홍길동,본사,2026-07-01,abc
                 "CONTRACT_RENEWAL"
             ]
         );
-        // MR-24/25: an APPOINT keeps the status; a 전환 needs the profile.
+        // MR-24/25: an APPOINT keeps the status; an employment-type change needs the profile.
         assert_eq!(events("ON_LEAVE", None), ["APPOINT", "RETURN_FROM_LEAVE"]);
         assert_eq!(
             events("ON_LEAVE", Some("CONTRACT")),
@@ -7748,7 +7749,7 @@ E-001,홍길동,본사,2026-07-01,abc
         let mut other_company = transition("TRANSFER");
         other_company.to_org_unit_id = Some(unit);
         other_company.to_company = Some("ACME-SUB".to_owned());
-        // Not a no-op: a change of company is a 전적, never a TRANSFER (E-S3b).
+        // Not a no-op: a change of company is an inter-company transfer, never a TRANSFER (E-S3b).
         assert_eq!(
             code(other_company),
             Some("entity_change_needs_group_transfer")

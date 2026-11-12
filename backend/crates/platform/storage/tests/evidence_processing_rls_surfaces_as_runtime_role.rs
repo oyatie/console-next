@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! RUNTIME RLS gate for the 정비사 evidence MEDIA-processing pipeline.
+//! RUNTIME RLS gate for the mechanic evidence MEDIA-processing pipeline.
 //!
 //! The default `#[sqlx::test]` pool connects as a BYPASSRLS superuser, which
 //! sees/writes every row regardless of `app.current_org` — it would green-light

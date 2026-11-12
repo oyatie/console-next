@@ -1,4 +1,4 @@
-//! PEOPLE-A (MR-26) keys: 등록 취소 after 운영 시작 (onboarding design §7.3,
+//! PEOPLE-A (MR-26) keys: registration void after go-live (onboarding design §7.3,
 //! §13). Append-only; see `keys/mod.rs`.
 
 macro_rules! people_a { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*

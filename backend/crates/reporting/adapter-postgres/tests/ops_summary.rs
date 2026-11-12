@@ -254,7 +254,7 @@ async fn funnel_aging_and_distribution_counts_are_correct(pool: PgPool) {
         .await
         .unwrap();
 
-    // Equipment distribution: the fixture seeds one 임대; add one 폐기 + one 예비.
+    // Equipment distribution: the fixture seeds one rented; add one scrapped + one spare.
     seed_equipment(&pool, org, fx.branch_id, fx.customer_id, fx.site_id, "폐기").await;
     seed_equipment(&pool, org, fx.branch_id, fx.customer_id, fx.site_id, "예비").await;
 
@@ -295,7 +295,7 @@ async fn substitutions_approvals_and_support_counts_are_correct(pool: PgPool) {
     .await
     .unwrap();
 
-    // An active substitution (대차): a second equipment unit substitutes the first.
+    // An active substitution: a second equipment unit substitutes the first.
     let substitute =
         seed_equipment(&pool, org, fx.branch_id, fx.customer_id, fx.site_id, "대체").await;
     sqlx::query(

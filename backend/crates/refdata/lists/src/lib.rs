@@ -124,23 +124,26 @@ pub const LISTS: &[ListInfo] = &[
         }),
         reason: None,
     },
-    // 국세청 업종코드 (고시 2026-14) is published as images only (design §4).
+    // National Tax Service industry codes (public notice 2026-14) are published as
+    // images only (design §4).
     empty(
         "nts_industry_code",
         ListStatus::NotLoaded,
         "no_machine_readable_source",
     ),
-    // 세무서 codes: no verified official file (design §4).
+    // Tax office codes: no verified official file (design §4).
     empty("tax_office", ListStatus::NotLoaded, "no_verified_source"),
-    // 공단 지사 codes: no verified official file (design §4).
+    // Insurance corporation branch-office codes: no verified official file (design §4).
     empty(
         "insurance_branch",
         ListStatus::NotLoaded,
         "no_verified_source",
     ),
-    // KSIC (국가데이터처 고시 2024-203): licence asked of 국가데이터처 (O-5).
+    // KSIC (Ministry of Data and Statistics public notice 2024-203): licence asked of the
+    // Ministry of Data and Statistics (O-5).
     empty("ksic", ListStatus::Hold, "licence_pending"),
-    // Bank codes: licence asked of 금융결제원 (O-5).
+    // Bank codes: licence asked of the Korea Financial Telecommunications & Clearings
+    // Institute (O-5).
     empty("bank", ListStatus::Hold, "licence_pending"),
 ];
 
@@ -271,7 +274,8 @@ mod tests {
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].label, "성남시 분당구");
         assert_eq!(hits[0].parent_label, Some("경기도"));
-        // 세종 has no 시군구: it is a 시도-level row of its own.
+        // Sejong has no city/county/district (si-gun-gu) level: it is a province-level
+        // (si-do) row of its own.
         let (_, sejong) = search("admin_region", "세종", 10).unwrap();
         assert_eq!(sejong.len(), 1);
         assert_eq!(sejong[0].parent_label, None);

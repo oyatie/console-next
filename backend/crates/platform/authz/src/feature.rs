@@ -42,11 +42,11 @@ pub enum Feature {
     /// custom role assignment/effective-policy publication is held behind the
     /// policy-studio safety gates in docs/specs/rbac-configurable.md.
     RoleManage,
-    /// Create/rename regions (지역) during org setup.
+    /// Create/rename regions during org setup.
     RegionManage,
-    /// Create/rename branches (지점) during org setup.
+    /// Create/rename branches during org setup.
     BranchManage,
-    /// Create/update/soft-delete equipment master rows (지게차) outside the
+    /// Create/update/soft-delete equipment master rows (forklifts) outside the
     /// bulk master-list import path.
     EquipmentManage,
     MasterListImport,
@@ -69,7 +69,7 @@ pub enum Feature {
     /// satisfies both gates. The ADMIN matrix cell is retained for a future
     /// branch-filtered projection, not authority over today's tenant-wide route.
     OpsDashboardRead,
-    /// Manage the public sales catalog (#6 지게차 매매): create/update/withdraw
+    /// Manage the public sales catalog (#6 forklift sales): create/update/withdraw
     /// used-forklift listings and triage inbound customer inquiries. ADMIN tier.
     SalesManage,
     /// Receive an advance shipping notice and record warehouse receipt
@@ -144,7 +144,7 @@ pub enum Feature {
     /// Import/manage tenant HR employee rows. ADMIN + SUPER_ADMIN only; employees
     /// are deliberately not auth users.
     EmployeeDirectoryManage,
-    /// Report a staff exit case (무단결근 → 퇴사 보고). The branch/site manager
+    /// Report a staff exit case (unexcused absence → exit report). The branch/site manager
     /// tier — ADMIN + SUPER_ADMIN. Distinct from HR/HQ confirmation so a site
     /// manager can open a case without holding the confirmation authority.
     ExitCaseReport,
@@ -160,7 +160,7 @@ pub enum Feature {
     /// a DIFFERENT actor is.
     ExitCaseHqConfirm,
     /// Generate/draft the exit settlement package + submit it for approval
-    /// (퇴직 정산 초안/승인 상신). ADMIN + SUPER_ADMIN — the HR settlement tier.
+    /// (exit settlement draft/submit for approval). ADMIN + SUPER_ADMIN — the HR settlement tier.
     ExitSettlementManage,
     /// Manage attendance exceptions. ADMIN + SUPER_ADMIN only; the Attendance
     /// REST boundary continues to enforce branch/resource scope independently.
@@ -175,7 +175,7 @@ pub enum Feature {
     /// Read the audit-of-access stream for CEO/top-clearance audit reads.
     /// Deliberately Cedar-only like [`Self::AuditStreamRead`].
     AuditStreamAccessLogRead,
-    /// Lock/unlock payroll & accounting freeze windows (월마감/마감). Locking a
+    /// Lock/unlock payroll & accounting freeze windows (month-end close/close). Locking a
     /// period makes every date-stamping write inside it fail closed, so this is
     /// the close authority: ADMIN + EXECUTIVE + SUPER_ADMIN.
     PeriodLockManage,
@@ -203,7 +203,7 @@ pub enum Feature {
     PayrollRunManage,
     /// Create a draft board notice, publish it (issues the NT- code, snapshots
     /// every active org member as a recipient, and fans out a notification to
-    /// each), and read 수령확인 progress. The HQ/announcement tier: ADMIN +
+    /// each), and read the receipt acknowledgment progress. The HQ/announcement tier: ADMIN +
     /// EXECUTIVE + SUPER_ADMIN. Reading a PUBLISHED notice is open to any
     /// authenticated org member — this feature gates only draft visibility and
     /// the publish/progress mutations.
@@ -308,10 +308,12 @@ pub enum Feature {
     RetainedRecordsRead,
     /// Start tenant offboarding (BW-36; deferred, OD-7: inert).
     TenantOffboard,
-    /// Register and revise 법인 · 사업자등록 · 사업장 (decisions #14.2), apart from
+    /// Register and revise legal entity · business registration · workplace
+    /// (decisions #14.2), apart from
     /// the org-change grants. Cedar-only: its per-action schema decides.
     LegalEntityManage,
-    /// Erase a never-used 부서, and 폐지 or set 부서장 · 부서 코드 directly after go-live
+    /// Erase a never-used department, and dissolve or set department head · department
+    /// code directly after go-live
     /// (decisions #21, #26; CRUD). Cedar-only (`actions/org_unit_manage.rs`).
     OrgUnitManage,
 }

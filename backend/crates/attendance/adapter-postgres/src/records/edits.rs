@@ -1,4 +1,4 @@
-//! 정정 (A3-correct), 기록 취소 (A3-void) and 일괄 취소 (A3-receipt).
+//! Correction (A3-correct), record void (A3-void) and bulk undo (A3-receipt).
 
 use console_attendance_application::CallerScope;
 use console_attendance_application::records::{
@@ -48,7 +48,7 @@ async fn current_entry(
 }
 
 impl PgAttendanceStore {
-    /// 정정 (`value = Some`) or 기록 취소 (`None`) of one current entry.
+    /// Correction (`value = Some`) or record void (`None`) of one current entry.
     async fn amend(
         &self,
         caller: &CallerScope,
@@ -129,7 +129,7 @@ impl PgAttendanceStore {
             .await
     }
 
-    /// 일괄 취소: the whole batch stops counting until its month closes.
+    /// Bulk undo: the whole batch stops counting until its month closes.
     pub async fn undo_batch(
         &self,
         caller: &CallerScope,

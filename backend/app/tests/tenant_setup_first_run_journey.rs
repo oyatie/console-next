@@ -1,8 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! The solo first run, end to end through the real router as `console_rt`,
 //! with ONE person and no helper account (walk.md §0.1 dead end):
-//! 이용약관 → 법인 → 사업자등록 → 사업장 → 부서 (no approval) → 직원 →
-//! 운영 시작 (preview digest + passkey step-up, Cedar + Rust backstop), then
+//! terms of service → legal entity → business registration → workplace →
+//! department (no approval) → employee → go-live (preview digest + passkey
+//! step-up, Cedar + Rust backstop), then
 //! the setup-only acts are refused with their remedy, and an org change
 //! applies at submit with no approval step (decisions #26).
 
@@ -118,7 +119,7 @@ async fn one_person_goes_from_an_empty_tenant_to_operating(pool: PgPool) {
     assert_eq!(rail["steps"][0]["key"], "entity");
     assert_eq!(rail["steps"][1]["state"], "blocked");
     assert_eq!(rail["steps"][1]["remedy"], "create_legal_entity");
-    // regression (W10): no 결재선 step while approval.policy.org_structure = none.
+    // regression (W10): no approval line step while approval.policy.org_structure = none.
     assert!(!rail.to_string().contains("\"approval\""), "{rail}");
 
     let (status, _) = ctx
@@ -268,7 +269,7 @@ async fn one_person_goes_from_an_empty_tenant_to_operating(pool: PgPool) {
         })))
         .await;
     assert_eq!(status, StatusCode::CREATED, "{bound}");
-    // decisions #26: a 휴직 brought in while migrating is a setup record, not a 409.
+    // decisions #26: a leave of absence brought in while migrating is a setup record, not a 409.
     let (status, leave) = ctx
         .call("POST", &format!("/api/v1/employees/{employee}/lifecycle-events"), Some(json!({
             "event_type": "LEAVE_OF_ABSENCE", "effective_date": "2026-03-02", "leave_type": "ILLNESS",
@@ -449,8 +450,8 @@ fn app_state(runtime: PgPool, leave_command: PgPool, keys: &(String, String)) ->
 }
 
 /// MR-12 over HTTP: the tree carries versions, a stale pin is 409 with the
-/// current version, a nested batch applies and its 되돌리기 takes it back,
-/// an empty 부서 dissolves (DELETE) and comes back by undo.
+/// current version, a nested batch applies and its undo takes it back,
+/// an empty department dissolves (DELETE) and comes back by undo.
 async fn org_setup_routes(ctx: &Ctx, dept: &str, tree: &Value) {
     assert_eq!(
         tree["entities"][0]["children"][0]["children"][0]["version"], 1,

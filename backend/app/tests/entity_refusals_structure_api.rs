@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Negative suite, part two: setup 부서 batches, a voided 법인 and two editors
-//! on one 부서 version (split from entity_refusals_api for the file-size
+//! Negative suite, part two: setup department batches, a voided legal entity and two
+//! editors on one department version (split from entity_refusals_api for the file-size
 //! ceiling). Same rules: status, stable code, nothing written, a retry still
 //! refused.
 
@@ -19,7 +19,7 @@ use refusals::{code, refused};
 
 const ADMIN: &[&str] = &["SUPER_ADMIN"];
 
-/// Setup 부서 batches: a ref used twice and a unit with two parents are 422
+/// Setup department batches: a ref used twice and a unit with two parents are 422
 /// naming the op; the batch applies nothing.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_setup_batch_with_a_duplicate_ref_or_two_parents_applies_nothing(pool: PgPool) {
@@ -59,7 +59,7 @@ async fn a_setup_batch_with_a_duplicate_ref_or_two_parents_applies_nothing(pool:
     assert_eq!(count(&pool, "org_units", org).await, units);
 }
 
-/// A voided 법인 refuses revision; the void stays (no un-void by revise).
+/// A voided legal entity refuses revision; the void stays (no un-void by revise).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_voided_entity_refuses_revision(pool: PgPool) {
     let (org, user) = tenant(&pool, ADMIN).await;
@@ -94,7 +94,7 @@ async fn a_voided_entity_refuses_revision(pool: PgPool) {
     .await;
 }
 
-/// Two editors on one 부서 version: exactly one rename wins; the other is 409
+/// Two editors on one department version: exactly one rename wins; the other is 409
 /// `stale_revision` with the current version, and changes nothing.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn concurrent_renames_of_one_unit_version_let_exactly_one_win(pool: PgPool) {
@@ -136,7 +136,7 @@ async fn concurrent_renames_of_one_unit_version_let_exactly_one_win(pool: PgPool
     assert_eq!(loser["error"]["current_version"], 2);
 }
 
-/// The tenant's 법인 order (no parent named) is the tenant manager's: an
+/// The tenant's order of legal entities (no parent named) is the tenant manager's: an
 /// ADMIN or MEMBER is 403 `forbidden` and nothing is written; the
 /// SUPER_ADMIN's same reorder applies (org-sibling-order).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

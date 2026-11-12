@@ -1,12 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! RUNTIME RLS gate for the console equipment 호기 lookup (#18.5 + #18.6).
+//! RUNTIME RLS gate for the console equipment unit-number lookup (#18.5 + #18.6).
 //!
 //! `find_model_by_management_no` is the adapter twin of the workorder-rest
 //! `lookup_equipment` / `autocomplete_equipment` handlers: both arm
 //! `app.current_org` transaction-locally (`with_org_conn(current_org()?, ..)`)
-//! and both normalize the typed 호기 (strip a leading '#' and a trailing '호기')
+//! and both normalize the typed unit number (strip a leading '#' and a trailing Korean
+//! unit-number suffix, "hogi")
 //! then match leading-zero-insensitively (`ltrim(management_no,'0') =
-//! ltrim($1,'0')`) so the floor-typed '10' / '10호기' / '#10호기' all match the
+//! ltrim($1,'0')`) so the floor-typed '10' / '10' + "hogi" / '#10' + "hogi" all match the
 //! stored zero-padded '010'.
 //!
 //! This runs as the genuine non-owner runtime role `console_rt` (NOSUPERUSER,
@@ -22,9 +23,9 @@
 //!       returns ZERO rows (FORCE RLS filters every row): the #18.6 prod bug;
 //!   (b) ARMED — under the row's org GUC, `find_model_by_management_no` returns
 //!       the model (the arming fix);
-//!   (c) NORMALIZATION — '10호기', '#10호기', '#010호기' and '10' all return that
-//!       row under the armed GUC (#18.5 호기-suffix + leading-zero match), while
-//!       a different 호기 ('11') does NOT.
+//!   (c) NORMALIZATION — '10', '#10' and '#010', each with the "hogi" suffix, and
+//!       '10' all return that row under the armed GUC (#18.5 unit-number suffix +
+//!       leading-zero match), while a different unit number ('11') does NOT.
 
 use console_kernel_core::OrgId;
 use console_platform_request_context::scope_org;
@@ -33,7 +34,7 @@ use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
-/// The stored, zero-padded management number for 호기 10 (live DB confirmed
+/// The stored, zero-padded management number for unit number 10 (live DB confirmed
 /// '010' → equipment_no 'DFO30-0010'). The normalization must match it from the
 /// bare '10' the caller types.
 const STORED_MANAGEMENT_NO: &str = "010";
@@ -173,7 +174,7 @@ async fn equipment_hogi_lookup_normalizes_and_is_rls_armed_as_runtime_role(owner
         "with app.current_org armed the row must be visible to console_rt"
     );
 
-    // (c) NORMALIZATION: the floor-typed 호기 forms all resolve to stored '010'.
+    // (c) NORMALIZATION: the floor-typed unit-number forms all resolve to stored '010'.
     for typed in ["10호기", "#10호기", "#010호기", "10", " 10호기 "] {
         let found = scope_org(org, store.find_model_by_management_no(typed))
             .await
@@ -185,7 +186,7 @@ async fn equipment_hogi_lookup_normalizes_and_is_rls_armed_as_runtime_role(owner
         );
     }
 
-    // A different 호기 must NOT match (the normalization is exact, not a prefix).
+    // A different unit number must NOT match (the normalization is exact, not a prefix).
     let other = scope_org(org, store.find_model_by_management_no("11호기"))
         .await
         .expect("lookup of a non-existent 호기 returns Ok(None), not an error");

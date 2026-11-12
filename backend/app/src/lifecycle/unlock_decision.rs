@@ -1,5 +1,5 @@
 //! BW-15 second-person decision on a waiting unlock: who may decide it (shared
-//! by approve, reject and the lock list's `canDecide`), and the refusal (반려).
+//! by approve, reject and the lock list's `canDecide`), and the refusal.
 //!
 //! Cedar `period_unlock_decide` decides: another person than the requester
 //! (the `independent_people` bindings) who is an eligible second person

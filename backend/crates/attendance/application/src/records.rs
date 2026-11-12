@@ -1,4 +1,4 @@
-//! 근태 기록 (ATT S2) commands. Read models are in `records_read`.
+//! Attendance records (ATT S2) commands. Read models are in `records_read`.
 
 pub mod thresholds;
 

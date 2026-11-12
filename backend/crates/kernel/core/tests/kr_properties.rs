@@ -49,7 +49,7 @@ fn non_zero_digits(len: usize) -> impl Strategy<Value = String> {
 }
 
 proptest! {
-    // ---- 사업자등록번호 ----------------------------------------------------
+    // ---- Business registration number -------------------------------------
 
     #[test]
     fn brn_canonical_display_and_noise_all_parse_to_the_same_value(
@@ -111,7 +111,7 @@ proptest! {
         }
     }
 
-    // ---- 법인등록번호 ------------------------------------------------------
+    // ---- Corporate registration number ------------------------------------
 
     #[test]
     fn crn_canonical_display_and_noise_all_parse_to_the_same_value(
@@ -149,7 +149,7 @@ proptest! {
         prop_assert_eq!(warned, known && date < CRN_CHECK_DIGIT_RETIRED_ON && !crn.checksum_matches());
     }
 
-    // ---- 종사업장 일련번호 · 사업장관리번호 ----------------------------------
+    // ---- Sub-workplace serial number · workplace management number ----------
 
     #[test]
     fn sub_serial_round_trips_and_keeps_leading_zeros(n in 1u16..10_000) {
@@ -166,7 +166,7 @@ proptest! {
         prop_assert_eq!(&InsuranceMgmtNo::parse(&raw).unwrap(), &no);
     }
 
-    // ---- 전화번호 ----------------------------------------------------------
+    // ---- Phone number ------------------------------------------------------
 
     /// Any Korean domestic number (0 + area/mobile prefix + subscriber)
     /// stores as +82 without the trunk 0 and its display parses back.

@@ -1,4 +1,4 @@
-//! BW-06 rule registry: every soft rule a governed exception (예외 처리) may
+//! BW-06 rule registry: every soft rule a governed exception may
 //! override, and every offline fact an attestation records
 //! (`rule_code = fact_code`, decisions.md #3). Code-defined, never seeded.
 //!
@@ -96,7 +96,8 @@ rules! {
     ElevatedRoleSingleAdmin => "ELEVATED_ROLE_SINGLE_ADMIN", High, SoftRule;
     HeadcountClassOverride => "HEADCOUNT_CLASS_OVERRIDE", High, SoftRule;
     SecondPersonSharedAuthenticator => "SECOND_PERSON_SHARED_AUTHENTICATOR", High, SoftRule;
-    // ENT-REG (MR-17): 사업자 구분 / 법인등록번호 / 사업자등록번호 corrected after 운영 시작.
+    // ENT-REG (MR-17): business-operator category / corporate registration number /
+    // business registration number corrected after go-live.
     EntityIdentifierCorrection => "ENTITY_IDENTIFIER_CORRECTION", High, SoftRule;
     // A sole holder unlocks a closed period with no other eligible holder (#7 case B, #8b).
     PeriodUnlockSoleHolder => "PERIOD_UNLOCK_SOLE_HOLDER", High, SoftRule;
@@ -129,9 +130,9 @@ pub enum SubjectType {
     UserAccount,
     PayrollRun,
     Organization,
-    /// A 법인 (ENT-REG identifier corrections).
+    /// A legal entity (ENT-REG identifier corrections).
     LegalEntity,
-    /// A 사업자등록 (ENT-REG 사업자등록번호 corrections).
+    /// A business registration (ENT-REG business registration number corrections).
     BusinessRegistration,
     PeriodLock,
     /// A lifecycle case item's attestation or waiver (lifecycle-events §6.2).

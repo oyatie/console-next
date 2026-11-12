@@ -1,4 +1,4 @@
-//! BW-06 governed exception record (예외 처리) and attestations. Pure: the
+//! BW-06 governed exception record and attestations. Pure: the
 //! adapter stores `governed_exceptions` / `governed_exception_attestations`,
 //! hashes the fingerprint and writes `settings_snapshot`.
 

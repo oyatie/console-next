@@ -1,9 +1,9 @@
-//! Pure sales-catalog domain (#6 지게차 매매/부가서비스).
+//! Pure sales-catalog domain (#6 forklift sales/add-on services).
 //!
 //! Holds the classification enums and small business rules for forklift sales
 //! listings and customer inquiries. Depends only on the kernel (layer-boundary):
 //! capacity is carried as plain milli-tons and price as plain KRW won — display
-//! formatting (e.g. "2.5톤", "₩12,000,000") is a presentation concern.
+//! formatting (e.g. 2.5 with the Korean ton suffix, "₩12,000,000") is a presentation concern.
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 
 use console_kernel_core::KernelError;
@@ -46,10 +46,11 @@ impl ListingKind {
     }
 }
 
-/// Whether a listed unit is used (중고) or brand-new (신차). Mirrors the
+/// Whether a listed unit is used or brand-new. Mirrors the
 /// `sales_listings.condition` CHECK and drives the public storefront's
-/// 중고/신차 sub-category filter. Orthogonal to the free-text `condition_label`
-/// display copy ("검수 완료", "A급"), which describes a used unit's grade.
+/// used/new sub-category filter. Orthogonal to the free-text `condition_label`
+/// display copy (Korean labels such as "inspection complete" or "grade A"), which
+/// describes a used unit's grade.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ListingCondition {
@@ -114,7 +115,7 @@ impl ListingType {
 }
 
 /// Publication lifecycle of a listing. Mirrors the `sales_listings.status`
-/// CHECK. Only `Published` (and `Reserved`, shown as "상담중") is visible to the
+/// CHECK. Only `Published` (and `Reserved`, shown as "In consultation") is visible to the
 /// public catalog.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -154,7 +155,7 @@ impl ListingStatus {
     }
 
     /// Whether a listing in this status appears in the public storefront catalog.
-    /// Reserved units stay visible (marked 상담중) so buyers see the full range.
+    /// Reserved units stay visible (marked "In consultation") so buyers see the full range.
     #[must_use]
     pub const fn is_public(self) -> bool {
         matches!(self, Self::Published | Self::Reserved)

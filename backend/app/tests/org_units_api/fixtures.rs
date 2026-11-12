@@ -43,7 +43,7 @@ pub(super) async fn seed_branch(pool: &PgPool, org: Uuid) -> Uuid {
     .unwrap()
 }
 
-/// An ACTIVE site as fixture rows (a 사업장's own unit is made by the entity
+/// An ACTIVE site as fixture rows (a workplace's own unit is made by the entity
 /// face; decisions #18 retired bare SITE proposals).
 pub(super) async fn seed_fixture_unit(pool: &PgPool, org: Uuid, name: &str) -> Uuid {
     let id = Uuid::new_v4();

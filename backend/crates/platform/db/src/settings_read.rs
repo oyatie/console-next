@@ -29,7 +29,8 @@ pub struct SettingScope {
 pub type ResolvedSettings = BTreeMap<SettingKey, Result<Resolved<SettingValue>, SettingError>>;
 
 /// Every override row of `keys` for the armed tenant, at the tenant scope
-/// and the scope chain (사업장, then its legal entity), plus platform rows. Returns the chain beside the rows on the caller's armed
+/// and the scope chain (workplace, then its legal entity), plus platform rows.
+/// Returns the chain beside the rows on the caller's armed
 /// transaction (`with_org_conn` / `with_audits`).
 ///
 /// # Errors

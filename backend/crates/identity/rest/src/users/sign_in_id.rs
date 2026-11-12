@@ -1,6 +1,6 @@
-//! 아이디 변경 and history (decisions #33; sign-in-identifier.md §7): a
-//! `user_manage` holder over the account, a reason, a 기준일, an audit row;
-//! the old 아이디 stays an alias and is never reissued. No passkey step-up: a
+//! Sign-in ID change and history (decisions #33; sign-in-identifier.md §7): a
+//! `user_manage` holder over the account, a reason, an effective date, an audit
+//! row; the old sign-in ID stays an alias and is never reissued. No passkey step-up: a
 //! rename grants and removes nothing (the passkeys stay bound to the UUID).
 
 use crate::authz::authorize_org_manage;
@@ -25,7 +25,7 @@ use time::macros::format_description;
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ChangeSignInIdRequest {
-    /// The new 아이디 (the part before `@`).
+    /// The new sign-in ID (the part before `@`).
     pub(crate) login: String,
     /// `YYYY-MM-DD`, today or earlier.
     pub(crate) effective_date: String,
