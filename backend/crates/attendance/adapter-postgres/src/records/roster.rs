@@ -1,5 +1,5 @@
 //! Who is placed where on each day of a range: dated assignments (legal entity ·
-//! workplace) and dated shifts, with today's department (the dated department
+//! workplace) and dated crew memberships, with today's department (the dated department
 //! read is the
 //! org-history reader's; see `schedule::org`).
 
