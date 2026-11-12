@@ -237,8 +237,8 @@ async fn account_link_notice(
     employee: Option<uuid::Uuid>,
 ) -> Result<(), PgOrgError> {
     let link = employee.map_or_else(
-        || serde_json::json!({ "screen": "account" }),
-        |id| serde_json::json!({ "kind": "employee", "id": id }),
+        || serde_json::json!({ "type": "screen", "screen": "account" }),
+        |id| serde_json::json!({ "type": "object", "kind": "employee", "id": id }),
     );
     sqlx::query("INSERT INTO notifications (org_id, recipient_user_id, category, body, link, dedup_key) VALUES ($1,$2,'account_link',$3,$4,$5) ON CONFLICT (org_id, recipient_user_id, dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING")
         .bind(org.as_uuid()).bind(recipient.as_uuid()).bind(message).bind(link).bind(format!("account_link:{request}:{status}"))

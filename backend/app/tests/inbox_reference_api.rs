@@ -82,3 +82,45 @@ async fn my_notices_list_newest_first_and_only_i_can_mark_mine_read(pool: PgPool
     let (_, none) = stranger.call("GET", REFERENCE, None).await;
     assert!(ids(&none).is_empty(), "{none}");
 }
+
+/// Notices stored before their writers tagged the link still list, once the backfill has run.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn untagged_go_live_and_account_link_notices_list_after_the_backfill(pool: PgPool) {
+    let (org, me) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, me, &["SUPER_ADMIN"], None).await;
+    for link in [
+        serde_json::json!({"screen": "settings/audit"}),
+        serde_json::json!({"screen": "account"}),
+        serde_json::json!({"kind": "employee", "id": Uuid::new_v4()}),
+    ] {
+        sqlx::query("INSERT INTO notifications (org_id, recipient_user_id, category, body, link) VALUES ($1, $2, 'account_link', '안내', $3)")
+            .bind(org)
+            .bind(*me.as_uuid())
+            .bind(link)
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+    let (status, _) = ctx.call("GET", REFERENCE, None).await;
+    assert_eq!(
+        status,
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "untagged rows are what the backfill repairs"
+    );
+    sqlx::raw_sql(include_str!(
+        "../../crates/platform/db/migrations/20261112090000000_notification_link_type.sql"
+    ))
+    .execute(&pool)
+    .await
+    .unwrap();
+    let (status, page) = ctx.call("GET", REFERENCE, None).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    let types: Vec<_> = page["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["link"]["type"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(types.len(), 3);
+    assert_eq!(types.iter().filter(|t| *t == "screen").count(), 2);
+}
