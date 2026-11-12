@@ -13,6 +13,7 @@ import { STALE_TIME_MS } from "./lib/freshness";
 import { queryDefaults } from "./lib/react/query-defaults";
 import { sessionStream } from "./lib/live/session-stream";
 import { EmptyState } from "./ui/empty-state";
+import { ReadSkeleton } from "./ui/skeleton/skeleton";
 import { initLocale } from "./shell/locale";
 import { IDLE_EXPIRED, watchSession } from "./auth/idle";
 import { pauseAutofill } from "./auth/sign-in-id";
@@ -46,6 +47,10 @@ const router = createRouter({
   routeTree: routeTree,
   defaultPreload: "intent",
   scrollRestoration: true,
+  // Paint resolved parents while a screen chunk loads, retaining the shell and its session observers.
+  defaultPendingComponent: ReadSkeleton,
+  defaultPendingMs: 0,
+  defaultPendingMinMs: 0,
   defaultNotFoundComponent: () => (
     <main className="page">
       <EmptyState
