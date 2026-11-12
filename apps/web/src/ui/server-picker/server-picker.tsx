@@ -52,10 +52,19 @@ export function ServerPicker(p: {
   const popover = useRef<HTMLDivElement>(null);
   const onOpenChange = useNonModalSurroundings(input, popover);
   const homonyms = homonymOf(p.options, pending);
+  const picked = useRef<string | null>(null);
   const pick = (key: string | null) => {
     if (p.readOnly || p.disabledReason) return;
     // React Aria re-reports the current key (e.g. on blur); a confirmed namesake must not be asked again.
     if (key !== null && key === p.value) return;
+    // Tab commits the highlighted option, then the blur re-commits the selection from before React re-rendered.
+    // Firefox fires that blur inside the same keydown, so it reports null: an echo of the old state, not a clear.
+    // A real clear (emptying the field) always arrives in a later task.
+    if (key === null && picked.current !== null) return;
+    if (key !== null) {
+      picked.current = key;
+      setTimeout(() => { picked.current = null; });
+    }
     const o = p.options.find((x) => x.id === key);
     setSuffix("");
     if (o?.code?.trim() && homonymOf(p.options, o).length > 1) {
