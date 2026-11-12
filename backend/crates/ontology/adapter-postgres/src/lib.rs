@@ -829,7 +829,7 @@ impl PgOntologyStore {
     }
 
     /// The same §2 "dynamics" read as `acting_on_instance`, keyed by the object
-    /// type itself (the 자동화 subtab of the Ontology Manager, which is
+    /// type itself (the Automation subtab of the Ontology Manager, which is
     /// type-centric and may have no instances). RLS-scoped; an unknown key yields
     /// `NotFound`. Resolves the key to its head version so property-policy
     /// attachments (per-version `property_def_id`) line up with the shown schema.

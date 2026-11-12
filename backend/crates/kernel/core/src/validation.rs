@@ -118,17 +118,17 @@ pub fn validate_coordinate_pair(
     }
 }
 
-/// Max code points for a site representative-contact name (담당자명). Matches the
+/// Max code points for a site representative-contact name. Matches the
 /// `registry_sites_contact_name_max_chars` CHECK in migration 0040.
 pub const CONTACT_NAME_MAX_CHARS: usize = 100;
-/// Max code points for a site contact phone (연락처). Matches the
+/// Max code points for a site contact phone. Matches the
 /// `registry_sites_contact_phone_max_chars` CHECK in migration 0040.
 pub const CONTACT_PHONE_MAX_CHARS: usize = 40;
 /// Max code points for a site contact email. Matches the
 /// `registry_sites_contact_email_max_chars` CHECK in migration 0040.
 pub const CONTACT_EMAIL_MAX_CHARS: usize = 320;
 
-/// Max code points for a customer or site name (고객명 / 현장명). Matches the
+/// Max code points for a customer or site name. Matches the
 /// `registry_customers_name_max_chars` / `registry_sites_name_max_chars` CHECKs
 /// in migration 0047. The base `name <> ''` CHECK (migration 0007) already
 /// rejects an empty name; this only bounds the upper length so an over-long
@@ -138,11 +138,11 @@ pub const CUSTOMER_SITE_NAME_MAX_CHARS: usize = 200;
 /// Max code points for a site street address. Matches the address CHECK in
 /// migration 0039 (`char_length(address) <= 500`).
 pub const ADDRESS_MAX_CHARS: usize = 500;
-/// Max code points for a site province (시/도). Matches migration 0039.
+/// Max code points for a site province (province or metropolitan city). Matches migration 0039.
 pub const PROVINCE_MAX_CHARS: usize = 100;
-/// Max code points for a site city (시/군/구). Matches migration 0039.
+/// Max code points for a site city (city, county or district). Matches migration 0039.
 pub const CITY_MAX_CHARS: usize = 100;
-/// Max code points for a site postal code (우편번호). Matches migration 0039.
+/// Max code points for a site postal code. Matches migration 0039.
 pub const POSTAL_CODE_MAX_CHARS: usize = 20;
 
 /// Reject NUL and text longer than `max_chars` Unicode code points (counted via

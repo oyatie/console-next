@@ -8,7 +8,7 @@
 //!   * a locked legal notice's body is withheld until receipt is confirmed;
 //!   * confirm-receipt without a fresh passkey step-up is 428 (precondition
 //!     required), and a valid step-up confirms + unlocks + is idempotent;
-//!   * ESS 명세서 lives here (`filter=payslip`/`filter=pay`, `kind=payslip`),
+//!   * ESS payslips live here (`filter=payslip`/`filter=pay`, `kind=payslip`),
 //!     not payroll REST `/payroll/payslips/me`: a MEMBER JWT with empty
 //!     `feature_grants` (no `PayrollRunRead`) still GETs 200 with their
 //!     payslip and body without receipt/passkey, `filter=payslip` excludes a
@@ -340,7 +340,7 @@ async fn inbox_payslip_filter_is_person_scoped_and_not_receipt_gated(pool: PgPoo
     )
     .unwrap();
     // Recipient JWT already has empty feature_grants — no PayrollRunRead.
-    // GET filter=payslip must still be 200 with the issued 명세서: this is
+    // GET filter=payslip must still be 200 with the issued payslip: this is
     // ESS vault (`/api/v1/me/inbox-docs`), not payroll REST `/payslips/me`.
     let recipient_claims = verifier
         .verify_access_token(&token_a)
@@ -368,7 +368,7 @@ async fn inbox_payslip_filter_is_person_scoped_and_not_receipt_gated(pool: PgPoo
     let payslip_id = payslip.id.to_string();
     let legal_id = legal.id.to_string();
 
-    // MEMBER A lists 급여명세 via both aliases without PayrollRunRead: own
+    // MEMBER A lists payslips via both aliases without PayrollRunRead: own
     // payslip only, never locked. ESS vault, not payroll REST.
     for filter in ["payslip", "pay"] {
         let list = get_json(
@@ -401,7 +401,7 @@ async fn inbox_payslip_filter_is_person_scoped_and_not_receipt_gated(pool: PgPoo
         );
     }
 
-    // 전체 returns the payslip and the co-emitted legal_notice.
+    // The "all" filter returns the payslip and the co-emitted legal_notice.
     let all = get_json(
         service.clone(),
         "/api/v1/me/inbox-docs?filter=all",

@@ -2,7 +2,7 @@
 //! Authenticated, runtime-role (`console_rt`) story for the notice board across
 //! the ASSEMBLED app router (not per-crate routers): ES256 signature chain,
 //! PBAC denial without leakage (draft 404/omission for non-managers, 403 only
-//! on manager-only aggregates), branch-scoped audience snapshot + 수령확인,
+//! on manager-only aggregates), branch-scoped audience snapshot + receipt acknowledgment,
 //! cross-tenant isolation, and audit readback.
 
 use axum::body::{Body, to_bytes};
@@ -77,7 +77,7 @@ async fn board_notice_publishes_to_scoped_audience_with_ack_tracking(pool: PgPoo
     let (status, _) = send(&rt, &keys, "GET", NOTICES, Some(&forged), None).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED, "foreign-key signature");
 
-    // Manager drafts a branch-scoped 법정 통지.
+    // Manager drafts a branch-scoped statutory notice.
     let (status, created) = send(
         &rt,
         &keys,
@@ -146,7 +146,7 @@ async fn board_notice_publishes_to_scoped_audience_with_ack_tracking(pool: PgPoo
     assert!(published["code"].as_str().unwrap().starts_with("NT-"));
     assert_eq!(published["progress"]["total"].as_i64(), Some(1));
 
-    // 수령확인: the audience member acks (idempotent); the out-of-audience
+    // Receipt acknowledgment: the audience member acks (idempotent); the out-of-audience
     // member gets 404 — never a receipt, never a 403 that would confirm
     // membership semantics.
     let ack_path = format!("{NOTICES}/{notice_id}/ack");

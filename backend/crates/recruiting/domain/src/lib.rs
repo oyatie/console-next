@@ -96,7 +96,7 @@ impl PostingStatus {
 impl EmploymentType {
     /// The HR employment-profile vocabulary the hire handshake maps into.
     /// `POOL_DAILY` maps to nothing: pool postings never create an employee
-    /// (재직 명부 비합산) until the workforce-pool registry exists.
+    /// (not counted on the employed roster) until the workforce-pool registry exists.
     #[must_use]
     pub const fn hr_employment_type(self) -> Option<&'static str> {
         match self {

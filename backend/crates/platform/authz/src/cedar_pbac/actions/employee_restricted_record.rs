@@ -1,15 +1,16 @@
-//! `employee_restricted_record`: read, write or void a restricted 인사카드
-//! entry (징계, 장애, 보훈; EMP-RECORD MR-33/35). 장애 is 건강 information,
-//! 민감정보 under 개인정보 보호법 §23①; knowing a record exists is itself
+//! `employee_restricted_record`: read, write or void a restricted HR record card
+//! entry (discipline, disability, veterans' status; EMP-RECORD MR-33/35). Disability
+//! is health information, sensitive data under the Personal Information Protection
+//! Act §23①; knowing a record exists is itself
 //! sensitive (access-model §6.3 item 9), so every read names a purpose.
 //!
 //! The HR adapter computes every fact in the use-case transaction. No policy
 //! reads `principal.roles` (no preset roles, no title-implied access): the
-//! holder fact is the org-wide 인사기본 manage permission until the access
-//! model's 건강·민감 domain grant exists.
+//! holder fact is the org-wide HR basics manage permission until the access
+//! model's health/sensitive domain grant exists.
 //!
 //! holder = `employee_directory_manage` org-wide (A2-15 wants a
-//! separate 건강·민감 grant); add an `actor_holds_sensitive` fact when the
+//! separate health/sensitive grant); add an `actor_holds_sensitive` fact when the
 //! access-model domain catalog lands.
 
 use std::sync::OnceLock;
@@ -48,7 +49,7 @@ unless { ["read", "write", "void"].contains(context.operation) };
 "#;
 
 /// What the actor asks to do. A void retires data, so it stays open with the
-/// section switched off (as for every 인사카드 section).
+/// section switched off (as for every HR record card section).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Operation {
     Read,

@@ -1,6 +1,6 @@
 //! UX-R3 STRUCT org-16: a unit held by an open org change names that change
 //! as its one blocker on the end options (with its code, to link), even when
-//! people are still in it; before, it said 「구성원 1명이 아직 있습니다」.
+//! people are still in it; before, it said "1 member is still in it".
 
 use http::StatusCode;
 use serde_json::json;
@@ -10,7 +10,8 @@ use super::fixture::{CHANGES, day, tenant};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_held_unit_names_its_change_as_the_blocker(pool: PgPool) {
-    // regression: r3 org-16 — the held 품질팀's 폐지 row gave its members as the reason.
+    // regression: r3 org-16 — the held quality team's dissolution row gave its members
+    // as the reason.
     let t = tenant(pool).await;
     let [_, pangyo] = t.workplaces;
     let qa = t.dept("품질팀", t.sites[1]).await;

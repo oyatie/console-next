@@ -1,5 +1,5 @@
 //! The label routes of the first run (decisions #18; review R15, R16): the
-//! 사업장 kind list and a 사업장's kind, its code, and 부서 order.
+//! workplace kind list and a workplace's kind, its code, and department order.
 
 use http::StatusCode;
 use serde_json::{Value, json};
@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use super::Ctx;
 
 /// MR-19 over HTTP: the kind list (platform defaults, then the tenant's), a
-/// tenant kind, a relabelled default, and the 사업장's kind set directly.
+/// tenant kind, a relabelled default, and the workplace's kind set directly.
 pub(super) async fn workplace_kind_routes(ctx: &Ctx, workplace: &str) {
     let (status, list) = ctx.call("GET", "/api/v1/workplace-kinds", None).await;
     assert_eq!(status, StatusCode::OK, "{list}");
@@ -61,8 +61,8 @@ pub(super) async fn workplace_kind_routes(ctx: &Ctx, workplace: &str) {
     );
 }
 
-/// 사업장 code and 부서 order through the router (review R15, R16), and the
-/// chart's 사업장 직속 count (spec D2).
+/// Workplace code and department order through the router (review R15, R16), and the
+/// chart's directly-under-the-workplace count (spec D2).
 pub(super) async fn structure_label_routes(ctx: &Ctx, workplace: &str) {
     let uri = format!("/api/v1/workplaces/{workplace}/code");
     let (status, set) = ctx
@@ -103,7 +103,7 @@ pub(super) async fn structure_label_routes(ctx: &Ctx, workplace: &str) {
         .call("PUT", "/api/v1/org-structure/order", Some(stale))
         .await;
     assert_eq!(status, StatusCode::CONFLICT, "{refused}");
-    // The tenant's 법인 (no parent named), pinned to the order read: a
+    // The tenant's legal entities (no parent named), pinned to the order read: a
     // stale pin is 409 and writes nothing (org-sibling-order).
     let entities: Vec<Value> = tree["entities"]
         .as_array()

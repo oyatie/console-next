@@ -2,7 +2,8 @@
 //! Contract proof for `data_import_runs.pay_period_start/_end` (migration 0224).
 //!
 //! The pay period is what scopes a payroll roster. Before it existed, the only
-//! scope was `source_filename LIKE '2026/5월/%'` in a one-off script — a literal
+//! scope was a `source_filename` LIKE prefix for the 2026 month-5 (May) folder, named
+//! in Korean, in a one-off script — a literal
 //! matching whatever an operator happened to name the upload. These tests prove
 //! the three properties that make the replacement worth having, against a real
 //! database rather than from the DDL text:

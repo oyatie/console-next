@@ -1,5 +1,5 @@
-//! An operating tenant with one 법인, two 사업장 (본사, 판교) each with its
-//! SITE unit, 부서 under them, people placed in those 부서, and an ops caller
+//! An operating tenant with one legal entity, two workplaces (head office, Pangyo) each with its
+//! SITE unit, departments under them, people placed in those departments, and an ops caller
 //! on the default `approval.policy.org_structure = none` (decisions #26).
 
 use http::StatusCode;
@@ -35,9 +35,9 @@ pub struct Tenant {
     pub actor: Uuid,
     pub ops: Caller,
     pub entity: Uuid,
-    /// 본사, 판교.
+    /// Head office, Pangyo.
     pub workplaces: [Uuid; 2],
-    /// The SITE unit of each 사업장.
+    /// The SITE unit of each workplace.
     pub sites: [Uuid; 2],
 }
 
@@ -130,7 +130,7 @@ impl Tenant {
         }
     }
 
-    /// Routes org changes through 결재 (`approval.policy.org_structure = route`).
+    /// Routes org changes through approval (`approval.policy.org_structure = route`).
     pub async fn route_org_changes(&self) {
         let (org, actor) = (self.org, self.actor);
         let sql = format!(
@@ -140,7 +140,7 @@ impl Tenant {
         seed(&self.owner, org, sql).await;
     }
 
-    /// The SITE unit of a 사업장 of another 법인.
+    /// The SITE unit of a workplace of another legal entity.
     pub async fn other_entity_site(&self) -> Uuid {
         let (org, actor) = (self.org, self.actor);
         let (entity, workplace, site) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
@@ -202,7 +202,7 @@ impl Tenant {
         draft["id"].as_str().unwrap().to_owned()
     }
 
-    /// A 부서 under `parent` (a SITE unit or another 부서).
+    /// A department under `parent` (a SITE unit or another department).
     pub async fn dept(&self, name: &str, parent: Uuid) -> Uuid {
         let id = Uuid::new_v4();
         let sql = unit_sql(self.org, self.actor, id, name, "department", Some(parent));
@@ -280,7 +280,7 @@ impl Tenant {
     }
 
     /// People on the roll whose live assignment today is not at their unit's
-    /// 사업장 (the unit's nearest placed ancestor's): the data check.
+    /// workplace (the unit's nearest placed ancestor's): the data check.
     pub async fn mismatches(&self) -> Vec<Uuid> {
         sqlx::query_scalar(
             "WITH RECURSIVE heads AS ( \

@@ -1,58 +1,73 @@
-//! 근로기준법 제61조 (연차 유급휴가의 사용 촉진) — the statutory timing rules.
+//! Labor Standards Act Article 61 (promotion of the use of annual paid leave)
+//! — the statutory timing rules.
 //!
 //! # Why this module exists
 //!
 //! The previous implementation validated a §61 push with a single check —
 //! `round ∈ {1, 2}` — while the notice it produced asserted that the employer's
-//! 미사용 연차 보상 의무 had been extinguished. §61 grants that relief **only**
-//! when each 촉진 step was taken inside its own statutory window, in 서면, in
+//! obligation to compensate unused annual leave had been extinguished. §61
+//! grants that relief **only** when each promotion step was taken inside its
+//! own statutory window, in writing, in
 //! order. A push served on any other date produces a document that looks
 //! authoritative and is legally void. This module makes the windows real.
 //!
 //! # Statutory source (verified LIVE, not from model memory)
 //!
-//! - 근로기준법 제61조, quoted verbatim from 국가법령정보센터
+//! - Labor Standards Act Article 61, quoted verbatim (in English translation
+//!   below) from the National Law Information Center
 //!   <https://www.law.go.kr/lsLinkProc.do?ancYd=20160302&lsClsCd=L&lsNm=%EA%B7%BC%EB%A1%9C%EA%B8%B0%EC%A4%80%EB%B2%95&lsId=2031481&joNo=006100000&mode=4>
 //!   and cross-checked against CaseNote
-//!   <https://casenote.kr/법령/근로기준법/제61조> — accessed 2026-07-25.
-//!   Current text: [시행 2020. 3. 31.] [법률 제17185호, 2020. 3. 31., 일부개정].
-//! - 근로기준법 제60조제7항 (the 소멸 period this article counts back from),
-//!   <https://casenote.kr/법령/근로기준법/제60조> — accessed 2026-07-25.
-//! - 노무수령 거부: 고용노동부 빠른인터넷상담
+//!   <https://casenote.kr/%EB%B2%95%EB%A0%B9/%EA%B7%BC%EB%A1%9C%EA%B8%B0%EC%A4%80%EB%B2%95/%EC%A0%9C61%EC%A1%B0>
+//!   — accessed 2026-07-25.
+//!   Current text: [in force 2020. 3. 31.] [Act No. 17185, 2020. 3. 31.,
+//!   partial amendment].
+//! - Labor Standards Act Article 60(7) (the expiry period this article counts
+//!   back from),
+//!   <https://casenote.kr/%EB%B2%95%EB%A0%B9/%EA%B7%BC%EB%A1%9C%EA%B8%B0%EC%A4%80%EB%B2%95/%EC%A0%9C60%EC%A1%B0>
+//!   — accessed 2026-07-25.
+//! - Refusal to accept labour: Ministry of Employment and Labor quick online
+//!   consultation
 //!   <https://www.moel.go.kr/minwon/fastcounsel/fastcounselView.do?inetDcssMngId=202310041607201011000>
-//!   — accessed 2026-07-25 — citing 대법원 2019다279283 (2020. 2. 27. 선고):
-//!   "해당 근로자가 자신의 휴가 지정일에 출근하는 경우 사용자는 '노무수령 거부의사'를
-//!   명확히 표하시어야 할 것". The refusal is therefore a **factual act** by the
+//!   — accessed 2026-07-25 — citing Supreme Court 2019Da279283 (decided
+//!   2020. 2. 27.): "where the worker comes to work on their designated leave
+//!   day, the employer should clearly express an 'intent to refuse to accept
+//!   the labour'". The refusal is therefore a **factual act** by the
 //!   employer, not a computable consequence — see [`crate::PromotionKind`].
 //!
 //! # The two windows, verbatim
 //!
-//! §61①1 — "제60조제7항 본문에 따른 기간이 끝나기 **6개월 전을 기준으로 10일 이내**에
-//! 사용자가 근로자별로 사용하지 아니한 휴가 일수를 알려주고, 근로자가 그 사용 시기를
-//! 정하여 사용자에게 통보하도록 **서면으로** 촉구할 것".
+//! §61①1 — "within **10 days counted from 6 months before** the end of the
+//! period under the main text of Article 60(7), the employer shall tell each
+//! worker the number of their unused leave days and urge the worker **in
+//! writing** to set the timing of its use and notify the employer".
 //!
-//! §61①2 — "…근로자가 촉구를 받은 때부터 **10일 이내**에 …통보하지 아니하면 …기간이
-//! 끝나기 **2개월 전까지** 사용자가 사용하지 아니한 휴가의 **사용 시기를 정하여**
-//! 근로자에게 **서면으로** 통보할 것".
+//! §61①2 — "…if the worker does not … notify **within 10 days** of receiving
+//! the urging, … the employer shall, **no later than 2 months before** the
+//! period ends, **set the timing of use** of the unused leave and notify the
+//! worker of it **in writing**".
 //!
-//! §61②1 — "최초 1년의 근로기간이 끝나기 **3개월 전을 기준으로 10일 이내**… 다만,
-//! 사용자가 서면 촉구한 후 발생한 휴가에 대해서는 최초 1년의 근로기간이 끝나기
-//! **1개월 전을 기준으로 5일 이내**에 촉구하여야 한다."
+//! §61②1 — "**within 10 days counted from 3 months before** the first year of
+//! employment ends … Provided, that for leave that arises after the employer's
+//! written urging, the urging shall be made **within 5 days counted from 1
+//! month before** the first year of employment ends."
 //!
-//! §61②2 — "…최초 1년의 근로기간이 끝나기 **1개월 전까지**… 다만, 제1호 단서에 따라
-//! 촉구한 휴가에 대해서는 최초 1년의 근로기간이 끝나기 **10일 전까지** 서면으로
-//! 통보하여야 한다."
+//! §61②2 — "…**no later than 1 month before** the first year of employment
+//! ends … Provided, that for leave urged under the proviso to subparagraph 1,
+//! the notice shall be given in writing **no later than 10 days before** the
+//! first year of employment ends."
 //!
 //! # Day-count convention
 //!
-//! `…끝나기 N개월 전` is read as the calendar date N months before the period
-//! end, and the window opens the **following** day, so that the remaining span
-//! is exactly N months. For the 회계연도(1/1–12/31) case this yields the
-//! published administrative answer — 1차 촉구 2026-07-01 ~ 2026-07-10, 2차 통보
-//! 기한 2026-10-31 — see 샤플 (근로기준법 §61 운영 가이드),
+//! The statute's "N months before … ends" is read as the calendar date N months
+//! before the period end, and the window opens the **following** day, so that
+//! the remaining span is exactly N months. For the fiscal-year (1/1–12/31) case
+//! this yields the published administrative answer — first-round urging
+//! 2026-07-01 ~ 2026-07-10, second-round notice deadline 2026-10-31 — see Shopl
+//! (Labor Standards Act §61 operating guide),
 //! <https://www.shoplworks.com/blog-insight/annual-leave-promotion-procedure-calculation-jun>
-//! — accessed 2026-07-25: "회계연도 기준으로 12월 31일에 연차가 소멸된다면, 7월 1일부터
-//! 7월 10일 사이에 통지를 완료해야 합니다." The same convention is applied to every
+//! — accessed 2026-07-25: "If annual leave expires on December 31 on a
+//! fiscal-year basis, the notice must be completed between July 1 and July
+//! 10." The same convention is applied to every
 //! other lead period in this module; each computed window is written into the
 //! push's audit snapshot so the arithmetic is inspectable after the fact.
 
@@ -60,27 +75,28 @@ use console_kernel_core::{Date, KernelError};
 use serde::{Deserialize, Serialize};
 use time::{Duration, Month};
 
-/// §61①1 — "기간이 끝나기 6개월 전을 기준으로".
+/// §61①1 — "counted from 6 months before the period ends".
 const ANNUAL_FIRST_LEAD_MONTHS: i32 = 6;
-/// §61②1 본문 — "최초 1년의 근로기간이 끝나기 3개월 전을 기준으로".
+/// §61②1 main text — "counted from 3 months before the first year of employment ends".
 const FIRST_YEAR_EARLY_FIRST_LEAD_MONTHS: i32 = 3;
-/// §61②1 단서 — "최초 1년의 근로기간이 끝나기 1개월 전을 기준으로".
+/// §61②1 proviso — "counted from 1 month before the first year of employment ends".
 const FIRST_YEAR_LATE_FIRST_LEAD_MONTHS: i32 = 1;
-/// §61①1 / §61②1 본문 — "10일 이내".
+/// §61①1 / §61②1 main text — "within 10 days".
 const TEN_DAY_SPAN: i64 = 10;
-/// §61②1 단서 — "5일 이내".
+/// §61②1 proviso — "within 5 days".
 const FIVE_DAY_SPAN: i64 = 5;
-/// §61①2 — "기간이 끝나기 2개월 전까지".
+/// §61①2 — "no later than 2 months before the period ends".
 const ANNUAL_SECOND_LEAD_MONTHS: i32 = 2;
-/// §61②2 본문 — "최초 1년의 근로기간이 끝나기 1개월 전까지".
+/// §61②2 main text — "no later than 1 month before the first year of employment ends".
 const FIRST_YEAR_EARLY_SECOND_LEAD_MONTHS: i32 = 1;
-/// §61②2 단서 — "최초 1년의 근로기간이 끝나기 10일 전까지".
+/// §61②2 proviso — "no later than 10 days before the first year of employment ends".
 const FIRST_YEAR_LATE_SECOND_LEAD_DAYS: i64 = 10;
-/// §61①2 / §61②2 — "근로자가 촉구를 받은 때부터 10일 이내에 …통보하지 아니하면".
+/// §61①2 / §61②2 — "if the worker does not … notify within 10 days of
+/// receiving the urging".
 /// Round 2 only becomes available once that reply window has closed.
 const REPLY_WINDOW_DAYS: i64 = 10;
 /// Bound on a round-2 designation so one notice cannot carry an unbounded
-/// payload. 25 is the statutory maximum annual entitlement (제60조제4항 단서).
+/// payload. 25 is the statutory maximum annual entitlement (Article 60(4) proviso).
 const MAX_DESIGNATED_DATES: usize = 25;
 
 /// Which §61 track the promoted leave sits on. The tracks have *different*
@@ -88,13 +104,13 @@ const MAX_DESIGNATED_DATES: usize = 25;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PromotionTrack {
-    /// §61① — 제60조제1항·제2항·제4항 연차 on the ordinary 1-year 사용기간.
+    /// §61① — annual leave under Article 60(1), (2) and (4) on the ordinary 1-year use period.
     Annual,
-    /// §61②1 본문 — 계속근로 1년 미만, for leave that accrued **before** the
-    /// 1차 촉구 (the first nine monthly days).
+    /// §61②1 main text — under 1 year of continuous service, for leave that
+    /// accrued **before** the first-round urging (the first nine monthly days).
     FirstYearEarly,
-    /// §61②1 단서 — 계속근로 1년 미만, for leave that accrued **after** the
-    /// 1차 촉구 (the last two monthly days).
+    /// §61②1 proviso — under 1 year of continuous service, for leave that
+    /// accrued **after** the first-round urging (the last two monthly days).
     FirstYearLate,
 }
 
@@ -164,8 +180,8 @@ impl PromotionWindow {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PromotionContext {
     pub track: PromotionTrack,
-    /// 제60조제7항 본문에 따른 기간의 **마지막 날** — for §61② tracks, 최초 1년의
-    /// 근로기간 종료일.
+    /// The **last day** of the period under the main text of Article 60(7) — for
+    /// §61② tracks, the end date of the first year of employment.
     pub period_end: Date,
     /// The org-local (KST) date the notice is served on.
     pub served_on: Date,
@@ -175,7 +191,7 @@ pub struct PromotionContext {
     pub second_round_served_on: Option<Date>,
 }
 
-/// The 1차 촉구 window: [`period_end` − lead months + 1 day, + span − 1 day].
+/// The first-round urging window: [`period_end` − lead months + 1 day, + span − 1 day].
 pub fn first_round_window(
     track: PromotionTrack,
     period_end: Date,
@@ -194,7 +210,7 @@ pub fn first_round_window(
     })
 }
 
-/// The 2차 통보 deadline — the last day the employer may designate use dates.
+/// The second-round notice deadline — the last day the employer may designate use dates.
 pub fn second_round_deadline(track: PromotionTrack, period_end: Date) -> Result<Date, KernelError> {
     match track {
         PromotionTrack::Annual => minus_months(period_end, ANNUAL_SECOND_LEAD_MONTHS),
@@ -208,11 +224,12 @@ pub fn second_round_deadline(track: PromotionTrack, period_end: Date) -> Result<
     .ok_or_else(|| out_of_range(period_end))
 }
 
-/// Validate one 연차 사용 촉진 round against §61. Returns the canonical round.
+/// Validate one annual-leave use promotion round against §61. Returns the
+/// canonical round.
 ///
 /// Round 1 must land inside its statutory window. Round 2 additionally requires
 /// a recorded round 1, the worker's 10-day reply window to have closed, and
-/// service on or before the 2차 통보 기한.
+/// service on or before the second-round notice deadline.
 pub fn validate_promotion(context: &PromotionContext, round: i16) -> Result<i16, KernelError> {
     match round {
         1 => {
@@ -262,9 +279,10 @@ pub fn validate_promotion(context: &PromotionContext, round: i16) -> Result<i16,
     }
 }
 
-/// Validate a 노무수령거부 notice. §61 does not time this act — it is the
-/// employer's factual refusal of labour on a designated day, required by
-/// 대법원 2019다279283 for the §61 relief to hold — so the only checks are that
+/// Validate a refusal-to-accept-labour notice. §61 does not time this act — it
+/// is the employer's factual refusal of labour on a designated day, required
+/// by Supreme Court 2019Da279283 for the §61 relief to hold — so the only
+/// checks are that
 /// a round-2 designation exists, that the refusal does not precede it, and that
 /// it falls inside the leave period it refuses labour within.
 ///
@@ -292,8 +310,9 @@ pub fn validate_refusal(context: &PromotionContext) -> Result<i16, KernelError> 
     Ok(2)
 }
 
-/// Validate the 사용 시기 a round-2 notice designates. §61①2 requires the notice
-/// to *designate the dates*; a round-2 notice with no dates is not a §61 통보 at
+/// Validate the timing of use a round-2 notice designates. §61①2 requires the
+/// notice to *designate the dates*; a round-2 notice with no dates is not a §61
+/// notice at
 /// all, however authoritative it reads.
 pub fn validate_designated_dates(
     dates: &[Date],
@@ -367,7 +386,7 @@ mod tests {
 
     #[test]
     fn annual_first_round_window_matches_the_published_fiscal_year_answer() {
-        // 회계연도 기준 1/1–12/31 → 1차 촉구 7/1 ~ 7/10 (샤플, MOEL practice).
+        // Fiscal year 1/1–12/31 → first-round urging 7/1 ~ 7/10 (Shopl, MOEL practice).
         let window = first_round_window(PromotionTrack::Annual, date!(2026 - 12 - 31)).unwrap();
         assert_eq!(window.opens_on, date!(2026 - 07 - 01));
         assert_eq!(window.closes_on, date!(2026 - 07 - 10));
@@ -441,7 +460,7 @@ mod tests {
             date!(2026 - 07 - 11),
         );
         context.first_round_served_on = Some(date!(2026 - 07 - 01));
-        // Day 10 after the 촉구 is still the worker's; day 11 is the employer's.
+        // Day 10 after the urging is still the worker's; day 11 is the employer's.
         context.served_on = date!(2026 - 07 - 11);
         assert!(validate_promotion(&context, 2).is_err());
         context.served_on = date!(2026 - 07 - 12);
@@ -463,7 +482,7 @@ mod tests {
 
     #[test]
     fn first_year_early_track_uses_the_three_month_and_one_month_periods() {
-        // 2025-03-01 입사 → 최초 1년의 근로기간 종료일 2026-02-28.
+        // Joined 2025-03-01 → first year of employment ends 2026-02-28.
         let period_end = date!(2026 - 02 - 28);
         let window = first_round_window(PromotionTrack::FirstYearEarly, period_end).unwrap();
         assert_eq!(window.opens_on, date!(2025 - 11 - 29));

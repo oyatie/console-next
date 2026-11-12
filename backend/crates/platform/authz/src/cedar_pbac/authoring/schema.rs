@@ -91,7 +91,7 @@ pub(super) fn object_authoring_schema(declared: &[DeclaredAttr]) -> String {
 
 /// Actions the authoring schema declares.
 // `console:configure` (internal-employee console configuration) and
-// `console:deploy` (elevated / 민감정보+ clearance deployment) are console-authority
+// `console:deploy` (elevated / sensitive-data+ clearance deployment) are console-authority
 // verbs (design change-log 86). They are authorizable but carry NO seeded permit,
 // so deny-by-omission denies external/candidate principals (configure) and any
 // principal lacking the clearance (deploy) fail-closed until an org authors a

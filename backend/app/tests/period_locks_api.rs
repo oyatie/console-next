@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Period locks (마감 freeze windows), as `console_rt`: lock → overlap refused →
+//! Period locks (close freeze windows), as `console_rt`: lock → overlap refused →
 //! unlock → re-unlock refused, reason bounds, the close-authority floor, and
 //! the audit rows (the unlock audit names the window that reopened).
 

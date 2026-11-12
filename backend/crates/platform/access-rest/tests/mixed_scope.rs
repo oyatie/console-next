@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! governance-02 / people-self-01 (regression): an HR worker holding 인사 실무
-//! over a 법인 AND 권한 관리 over 회사 전체 could not open the people list —
+//! governance-02 / people-self-01 (regression): an HR worker holding HR operations over
+//! a legal entity AND access management company-wide could not open the people list —
 //! the tenant-level grant widened the principal to every branch, so the HR list
 //! door (`authorize_hr_scoped`: an all-branch principal must pass the org-wide
-//! gate) refused the 법인-scoped HR grant. A grant in a tenant-level domain
-//! (권한 관리, 감사, 설정, 보존, 테넌트, 공지) must not move the branch scope the
+//! gate) refused the legal-entity-scoped HR grant. A grant in a tenant-level domain
+//! (access management, audit, settings, retention, tenant, notices) must not move the
+//! branch scope the
 //! data doors filter by.
 
 mod support;
@@ -86,7 +87,7 @@ async fn a_tenant_wide_access_grant_does_not_break_a_legal_entity_hr_grant(pool:
         hr_list_door(&p, Feature::OrgChangeRead),
         "조직 조회 opens the org reads"
     );
-    // Negative: the 권한 관리 grant over 회사 전체 does not reach 법인 B's people.
+    // Negative: the company-wide access management grant does not reach legal entity B's people.
     assert!(
         authorize(
             &p,
@@ -121,7 +122,7 @@ async fn a_lone_access_grant_still_reaches_its_doors(pool: PgPool) {
     );
 }
 
-/// The pilot shape for registration: 인사 실무 over 회사 전체 passes the
+/// The pilot shape for registration: HR operations company-wide passes the
 /// org-wide gate the HR create doors use, even next to a narrower grant.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_tenant_wide_hr_grant_passes_the_registration_gate(pool: PgPool) {

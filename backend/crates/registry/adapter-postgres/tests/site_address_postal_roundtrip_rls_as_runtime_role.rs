@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! RUNTIME RLS round-trip gate for a customer site's ADDRESS + POSTAL CODE
-//! (issue #19.4 — the 고객 현장관리 form reported address/postal_code vanishing
+//! (issue #19.4 — the customer site management form reported address/postal_code vanishing
 //! after a save).
 //!
 //! Proves, as the genuine non-owner `console_rt` role (NOSUPERUSER, NOBYPASSRLS,

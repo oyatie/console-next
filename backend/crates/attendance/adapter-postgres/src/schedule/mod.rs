@@ -1,4 +1,4 @@
-//! 근무 일정 persistence (ATT S1). Reads run on one RLS-bound snapshot;
+//! Work schedule persistence (ATT S1). Reads run on one RLS-bound snapshot;
 //! writes run in one transaction with their audit event (#27 topic
 //! `attendance_schedule`).
 
@@ -93,7 +93,7 @@ pub(crate) fn fingerprint(value: &Value) -> String {
 
 const MONTH_STATE_DECISIONS_TOTAL: &str = "attendance_month_state_decisions_total";
 
-/// Every 근태 month close and the payroll lock windows that can reopen them;
+/// Every attendance month close and the payroll lock windows that can reopen them;
 /// `console_attendance_domain::close` decides from these.
 pub(crate) struct Closes {
     closes: Vec<MonthClose>,

@@ -1,4 +1,4 @@
-//! Tenant setup phase (SETUP → 운영 시작 → OPERATING), shared by every context
+//! Tenant setup phase (SETUP → go-live → OPERATING), shared by every context
 //! that must refuse or relax a write depending on it.
 //!
 //! The phase row lives in `tenant_phase` (onboarding owns it). A missing row
@@ -67,7 +67,8 @@ impl ChangeMode {
 pub enum WriteClass {
     /// Legal entity / registration / workplace create or revise.
     EntityStructure,
-    /// Identifier correction (사업자등록번호, 법인등록번호, 사업자 구분).
+    /// Identifier correction (business registration number, corporate registration
+    /// number, business kind).
     IdentifierCorrection,
     /// Org units created or changed without an org-change proposal.
     OrgStructure,
@@ -75,8 +76,9 @@ pub enum WriteClass {
     SetupVoid,
     /// Exits, payroll apply, period close.
     Operational,
-    /// Leave (휴직 / 복직) and transfers (전근 / 전적): a setup record while
-    /// migrating in, governed after 운영 시작 (decisions #26).
+    /// Leave (leave of absence / return from leave) and transfers (relocation /
+    /// inter-company transfer): a setup record while migrating in, governed after
+    /// go-live (decisions #26).
     LifecycleRecord,
 }
 
@@ -86,12 +88,12 @@ pub const IDENTIFIER_LOCKED: &str = "identifier_locked";
 
 /// Admit a write in `phase`, or refuse it with a stable code. The caller reads
 /// the phase under `FOR SHARE` in the write's transaction, so a concurrent
-/// 운영 시작 (which takes `FOR UPDATE`) cannot interleave.
+/// go-live (which takes `FOR UPDATE`) cannot interleave.
 ///
 /// # Errors
 /// - `phase_not_operating` for an operational write during SETUP;
-/// - `phase_not_setup` for a setup-only write after 운영 시작;
-/// - `identifier_locked` for an identifier correction after 운영 시작
+/// - `phase_not_setup` for a setup-only write after go-live;
+/// - `identifier_locked` for an identifier correction after go-live
 ///   (BW-06 high exception path; not built yet).
 pub fn admit_write(phase: TenantPhase, class: WriteClass) -> Result<ChangeMode, KernelError> {
     match (phase, class) {

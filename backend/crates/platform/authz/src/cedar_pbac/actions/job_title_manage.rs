@@ -1,5 +1,5 @@
 //! `job_title_manage` (BW-13 / MR-25; decisions #19, #26): add to or change
-//! the tenant's 직급 · 직위 · 직책 · 직무 · 직군 lists. The lists are
+//! the tenant's grade · position · title · job · job family lists. The lists are
 //! tenant-wide, so the holder is whoever holds the catalog grant or the org
 //! structure grant over the whole tenant; the use case computes that as
 //! `actor_holds_permission` from the principal's existing doors (no role is

@@ -1,13 +1,15 @@
-//! 4대보험 사업장관리번호 (국민연금 · 건강보험 · 고용보험 · 산재보험).
+//! Workplace management numbers for the four social insurances (National Pension ·
+//! National Health Insurance · Employment Insurance · Industrial Accident Compensation
+//! Insurance).
 
 use super::{canonical_serde, digits_only, refusal};
 use crate::KernelError;
 
-/// An insurer-issued 사업장관리번호, stored as digits.
+/// An insurer-issued workplace management number, stored as digits.
 ///
 /// no primary source defines the per-insurer format (`law.md` §6),
 /// so this checks digits and a length band only. Tighten per insurer when a
-/// 공단 publishes the format; the band is a validation rule, not a setting.
+/// public insurance corporation publishes the format; the band is a validation rule, not a setting.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct InsuranceMgmtNo(String);
 

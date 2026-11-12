@@ -1,4 +1,5 @@
-//! `insurance_loss_codes` rows: the 고용보험, 국민연금 and 건강보험 상실 codes.
+//! `insurance_loss_codes` rows: the Employment Insurance, National Pension and
+//! National Health Insurance loss codes.
 
 use console_kernel_core::KernelError;
 use serde::{Deserialize, Serialize};
@@ -6,15 +7,15 @@ use time::Date;
 
 use super::{Citation, ReleaseDisposition};
 
-/// Which insurer a 상실 code belongs to.
+/// Which insurer a loss code belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Insurer {
-    /// 고용보험
+    /// Employment Insurance
     Ei,
-    /// 국민연금
+    /// National Pension
     Nps,
-    /// 건강보험
+    /// National Health Insurance
     Nhis,
 }
 
@@ -31,7 +32,7 @@ impl Insurer {
     }
 }
 
-/// How a 상실 reason is classed; drives evidence and blind re-entry controls.
+/// How a loss reason is classed; drives evidence and blind re-entry controls.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LossReasonGroup {

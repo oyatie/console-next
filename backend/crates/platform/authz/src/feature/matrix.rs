@@ -180,7 +180,8 @@ impl Feature {
             // decisions #14.2: entity administration decides in Cedar
             // (`actions/legal_entity_manage.rs`), never in the legacy matrix.
             | Self::LegalEntityManage
-            // CRUD: direct 부서 erase / 폐지 / 부서장 · 코드 (`actions/org_unit_manage.rs`).
+            // CRUD: direct department erase / abolition / department head · code
+            // (`actions/org_unit_manage.rs`).
             | Self::OrgUnitManage => [D, D, D, D, D, D],
         }
     }

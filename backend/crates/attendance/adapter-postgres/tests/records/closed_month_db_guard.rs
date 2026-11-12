@@ -82,7 +82,7 @@ async fn a_direct_write_into_a_closed_month_is_refused_unless_an_unlock_reopens_
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_direct_write_into_a_branch_closed_month_with_no_lock_is_refused(owner: sqlx::PgPool) {
     let w = scheduled(owner).await;
-    // people[0] works at 평택 (branches[0]); a close of the other branch does not reach them.
+    // people[0] works at Pyeongtaek (branches[0]); a close of the other branch does not reach them.
     for (branch, refused) in [(w.branches[1], false), (w.branches[0], true)] {
         sqlx::query("INSERT INTO attendance_month_closes (org_id, month, branch_id, checks, attested_by) VALUES ($1, '2026-09-01', $2, '{}', $3)")
             .bind(w.org).bind(branch).bind(w.admin).execute(&w.owner).await.unwrap();

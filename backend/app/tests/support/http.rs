@@ -24,7 +24,8 @@ mod terms;
 
 const ISSUER: &str = "console-platform-auth";
 const AUDIENCE: &str = "console-api";
-/// The 사업자등록번호 `structure()` registers. A reissue states the same number with a new
+/// The business registration number `structure()` registers. A reissue states the same
+/// number with a new
 /// certificate, so the reissue suites send this one (a different number is an identifier correction).
 pub const STRUCTURE_BRN: &str = "000-81-00009";
 
@@ -168,7 +169,8 @@ pub fn entity_body() -> Value {
     })
 }
 
-/// 이용약관 → 법인 → 사업자등록 → 본사 사업장, through the API. Returns
+/// Terms of service → legal entity → business registration → head-office workplace, through the
+/// API. Returns
 /// (legal entity, workplace, the workplace's default branch, its org unit).
 pub async fn structure(ctx: &Ctx) -> (String, String, String, String) {
     let (status, terms) = ctx.call("GET", "/api/v1/onboarding/terms", None).await;

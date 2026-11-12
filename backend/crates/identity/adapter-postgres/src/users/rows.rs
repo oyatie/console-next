@@ -11,7 +11,7 @@ use sqlx::{PgPool, Postgres, Row, Transaction};
 /// The `has_passkey` flag is computed inline via an EXISTS over the FORCE-RLS
 /// `auth_webauthn_credentials` table; those call sites run inside an org-armed
 /// scope (`with_org_conn` or the audited tx), so the subquery only ever sees
-/// THIS tenant's credentials and the account-setup state (활성 vs 설정 대기) is
+/// THIS tenant's credentials and the account-setup state (active vs awaiting setup) is
 /// derived correctly. Directory list uses `USER_SELECT_DIRECTORY` instead so it
 /// never reads `users.phone`.
 pub(crate) const USER_SELECT_WITH_PASSKEY: &str = r#"

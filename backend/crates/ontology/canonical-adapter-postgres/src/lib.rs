@@ -46,7 +46,7 @@ pub mod catalog;
 pub mod company;
 /// BW-18 legacy-head corrections (lane PEOPLE-A).
 pub mod employee_correction;
-/// MR-26 등록 취소 and its tombstone (lane PEOPLE-A).
+/// MR-26 registration void and its tombstone (lane PEOPLE-A).
 pub mod employee_void;
 pub mod employment;
 /// BW-13 (LIFE): the employee's catalog title.

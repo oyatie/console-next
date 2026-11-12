@@ -1,4 +1,4 @@
-//! The 운영 시작 preview and the Rust backstop of the go-live decision.
+//! The go-live preview and the Rust backstop of the go-live decision.
 
 use std::collections::BTreeMap;
 
@@ -14,7 +14,7 @@ pub struct Record {
     pub kind: String,
     pub id: String,
     pub name: String,
-    /// The 법인 whose record holds the fix.
+    /// The legal entity whose record holds the fix.
     pub legal_entity_id: String,
 }
 
@@ -49,10 +49,10 @@ pub struct Preview {
     pub phase: &'static str,
     pub blockers: Vec<Item>,
     pub warnings: Vec<Item>,
-    /// What changes at 운영 시작 (design §5.2 right-hand column), as codes.
+    /// What changes at go-live (design §5.2 right-hand column), as codes.
     pub becomes_governed: Vec<&'static str>,
     pub facts: SetupFacts,
-    /// SHA-256 over everything above; 운영 시작 must send it back unchanged.
+    /// SHA-256 over everything above; go-live must send it back unchanged.
     pub digest: String,
     pub line_digests: BTreeMap<String, String>,
     #[serde(flatten)]

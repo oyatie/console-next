@@ -1,5 +1,5 @@
 //! The per-request audit metadata captured at the authenticated boundary
-//! (INF-02 접속기록: 접속지, and the session the 취급자 acted in).
+//! (INF-02 access log: access location, and the session the personal-data handler acted in).
 
 pub mod access_log;
 

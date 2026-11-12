@@ -62,7 +62,7 @@ pub struct Receipt {
     pub controller: Controller,
     pub channel: Channel,
     pub agent: AgentKind,
-    /// Required for both legal representatives and authorized agents (영 §45②).
+    /// Required for both legal representatives and authorized agents (Enforcement Decree §45②).
     pub mandate_received: bool,
     pub identity_method: IdentityMethod,
     #[serde(with = "time::serde::rfc3339")]
@@ -102,7 +102,7 @@ pub struct Due {
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct KindState {
-    /// None means 기한 확인 불가; intake remains recorded.
+    /// None means "deadline cannot be determined"; intake remains recorded.
     pub due: Option<Due>,
     pub decisions: Vec<RecordedDecision>,
 }

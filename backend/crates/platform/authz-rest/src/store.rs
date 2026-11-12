@@ -969,7 +969,7 @@ mod serde_tests {
 
     // Regression guard (R9 policy HARD FAIL): `time::OffsetDateTime` with serde's
     // default impl serializes as a numeric `[year, ordinal, hour, …]` array, which
-    // the web client's `str(row, "updated_at")` parser rejects → the whole 권한·정책
+    // the web client's `str(row, "updated_at")` parser rejects → the whole access/policy
     // surface collapsed to its error banner. Every timestamp the policy REST reads
     // back MUST serialize as an RFC3339 string (the openapi/client contract).
     #[test]

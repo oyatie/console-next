@@ -1,6 +1,6 @@
-//! The 아이디 of an account (decisions #33; sign-in-identifier.md §7). Set at
+//! The sign-in ID of an account (decisions #33; sign-in-identifier.md §7). Set at
 //! invite (or the system default at commit), changed by a `user_manage` holder
-//! with a reason and a 기준일. The old value stays an alias (sign-in for
+//! with a reason and an effective date. The old value stays an alias (sign-in for
 //! [`SIGN_IN_ALIAS_DAYS`], search for good) and is never reissued: its row
 //! keeps `PRIMARY KEY (org_id, login)`.
 
@@ -16,7 +16,7 @@ use sqlx::{Postgres, Transaction};
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
-/// A 아이디 change as the REST face validated its shape.
+/// A sign-in ID change as the REST face validated its shape.
 #[derive(Debug, Clone)]
 pub struct SignInIdChange {
     pub login: String,
@@ -25,12 +25,12 @@ pub struct SignInIdChange {
     pub note: Option<String>,
 }
 
-/// One 아이디 an account held, newest first in a history.
+/// One sign-in ID an account held, newest first in a history.
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 pub struct SignInIdRecord {
-    /// The 아이디 part.
+    /// The sign-in ID part.
     pub login: String,
-    /// `<아이디>@<회사 도메인>` as a person types it.
+    /// The sign-in ID, `@` and the company domain, as a person types it.
     pub sign_in_id: String,
     pub effective_date: Date,
     pub reason_code: String,
@@ -41,7 +41,7 @@ pub struct SignInIdRecord {
     pub assigned_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339::option")]
     pub retired_at: Option<OffsetDateTime>,
-    /// The old 아이디 signs in until then; `None` for the current one.
+    /// The old sign-in ID signs in until then; `None` for the current one.
     #[serde(with = "time::serde::rfc3339::option")]
     pub alias_until: Option<OffsetDateTime>,
     /// `CURRENT`, `ALIAS` (still signs in) or `RESERVED` (searchable only).
@@ -67,7 +67,7 @@ fn coded(kernel: KernelError, code: &'static str) -> PgOrgError {
     PgOrgError::Domain(kernel.with_code(code))
 }
 
-/// The normalised 아이디, or the typed 422.
+/// The normalised sign-in ID, or the typed 422.
 pub fn parse_login(raw: &str) -> Result<String, PgOrgError> {
     normalize_login(raw).ok_or_else(|| {
         coded(
@@ -103,7 +103,7 @@ fn taken() -> PgOrgError {
     )
 }
 
-/// Set the 아이디 an invite names, in the creating transaction (the default
+/// Set the sign-in ID an invite names, in the creating transaction (the default
 /// trigger then sees a current row and stays out).
 pub(crate) async fn insert_invite_login_tx(
     tx: &mut Transaction<'_, Postgres>,
@@ -128,7 +128,7 @@ pub(crate) async fn insert_invite_login_tx(
     Ok(())
 }
 
-/// Give a new account its default 아이디 in the creating transaction, so the
+/// Give a new account its default sign-in ID in the creating transaction, so the
 /// create response already names it (the deferred trigger then stays out).
 pub(crate) async fn assign_default_login_tx(
     tx: &mut Transaction<'_, Postgres>,
@@ -147,7 +147,7 @@ pub(crate) async fn assign_default_login_tx(
 }
 
 impl PgOrgStore {
-    /// Change an account's 아이디. 404 unknown account; 409 `sign_in_id_taken`
+    /// Change an account's sign-in ID. 404 unknown account; 409 `sign_in_id_taken`
     /// (held or held before, including its own old values); 422
     /// `sign_in_id_unchanged`, `effective_date_in_future`, reason codes.
     pub async fn change_sign_in_id(
@@ -255,7 +255,7 @@ impl PgOrgStore {
         .await
     }
 
-    /// Every 아이디 the account held, newest first.
+    /// Every sign-in ID the account held, newest first.
     pub async fn sign_in_id_history(
         &self,
         user_id: UserId,

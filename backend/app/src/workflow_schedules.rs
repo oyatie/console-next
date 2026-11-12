@@ -25,7 +25,7 @@
 //! `next_run_at` advances to the next occurrence AFTER `max(now, fire)`: a
 //! poller that was down over several slots fires ONCE for the oldest missed
 //! slot and then jumps to the future — recurring business workflows (e.g.
-//! 일일 점검 상신) must not stampede N make-up runs after an outage.
+//! daily inspection submissions) must not stampede N make-up runs after an outage.
 //!
 //! ## Timezone
 //! `cron_expr` is evaluated in the schedule's IANA `timezone` (default

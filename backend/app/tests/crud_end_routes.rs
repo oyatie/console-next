@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! CRUD over HTTP: the end-options reads and the direct 부서 writes are
+//! CRUD over HTTP: the end-options reads and the direct department writes are
 //! mounted behind the request context, Cedar `org_unit_manage` refuses a
 //! caller without the tenant-wide org-change door (403, nothing written), and
-//! the 퇴직 report's refusals reach the wire with their codes. The adapter
+//! the exit report's refusals reach the wire with their codes. The adapter
 //! suites (entity org_end/record_end, hr emp_ui crud_ends) prove the rest.
 
 use http::StatusCode;
@@ -48,7 +48,7 @@ async fn the_crud_routes_are_mounted_decided_in_cedar_and_refuse_on_the_wire(poo
     let unit = Uuid::new_v4();
     let pinned = json!({ "expected_version": 1 });
 
-    // Without the tenant-wide org-change door Cedar refuses every direct 부서 write.
+    // Without the tenant-wide org-change door Cedar refuses every direct department write.
     for (method, path, body) in [
         (
             "POST",
@@ -91,7 +91,7 @@ async fn the_crud_routes_are_mounted_decided_in_cedar_and_refuse_on_the_wire(poo
         .await;
     assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
 
-    // A person: the end-options read, and the 퇴직 report's refusals on the wire.
+    // A person: the end-options read, and the exit report's refusals on the wire.
     let employee: Uuid = sqlx::query_scalar(
         "INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, \
          source_key, hire_date) VALUES ($1, 'Co', '한결', 'console', 'console', 1, $2, '2025-01-02') RETURNING id",

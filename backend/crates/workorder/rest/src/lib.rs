@@ -109,7 +109,7 @@ pub const EVIDENCE_CONFIRM_PATH_TEMPLATE: &str = "/api/v1/evidence/{evidenceId}/
 /// Media-processing staging-upload presign: the mechanic PUTs the ORIGINAL to a
 /// tenant-scoped staging key and a PROCESSING row + transcode job are created.
 pub const EVIDENCE_STAGING_PRESIGN_PATH: &str = "/api/v1/evidence/staging-presign";
-/// Per-row processing-status poll (처리 중 → 완료 / 실패) for the web UI.
+/// Per-row processing-status poll (processing → done / failed) for the web UI.
 pub const EVIDENCE_STATUS_PATH_TEMPLATE: &str = "/api/v1/evidence/{evidenceId}/status";
 pub const DEVICES_PATH: &str = "/api/v1/devices";
 pub const MOBILE_APPROVE_WORK_ORDER_PATH_TEMPLATE: &str =
@@ -340,11 +340,11 @@ struct CreateWorkOrderRequest {
     customer_request: Option<String>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     target_due_at: Option<time::OffsetDateTime>,
-    /// Typed maintenance classification (유형). Optional on the wire so legacy
+    /// Typed maintenance classification (type). Optional on the wire so legacy
     /// mobile callers stay valid; the console intake requires it client-side.
     #[serde(default)]
     maintenance_type: Option<MaintenanceType>,
-    /// Typed maintenance cause (원인). Optional on the wire.
+    /// Typed maintenance cause. Optional on the wire.
     #[serde(default)]
     maintenance_cause: Option<MaintenanceCause>,
 }
@@ -692,7 +692,7 @@ struct WorkOrderDetail {
     equipment: EquipmentSummary,
     customer: NamedEntity,
     site: NamedEntity,
-    // The site's registered representative contact (대표 담당자 연락처, #13), so the
+    // The site's registered representative contact (#13), so the
     // dispatched mechanic/admin can see who to call on site. None when the site
     // has no contact registered.
     site_contact: Option<SiteContact>,
@@ -2059,8 +2059,8 @@ where
     }))
 }
 
-/// Poll the server-side processing status of an evidence row (처리 중 → 완료 /
-/// 실패). Read access follows branch-scoped work-order visibility.
+/// Poll the server-side processing status of an evidence row (processing → done /
+/// failed). Read access follows branch-scoped work-order visibility.
 async fn evidence_status<S>(
     State(state): State<MobileRestState<S>>,
     headers: HeaderMap,
@@ -3001,7 +3001,7 @@ async fn autocomplete_equipment(
         BranchColumn::new("e.branch_id").map_err(RestError::from_kernel)?,
     );
     // management_no is leading-zero-insensitive (stored '010' matches typed
-    // '10' / '10호기'); equipment_no/model keep the plain normalized prefix so
+    // '10' / '10' + "hogi"); equipment_no/model keep the plain normalized prefix so
     // model / equipment-number search still works.
     builder.push(" AND (ltrim(e.management_no, '0') ILIKE ltrim(");
     builder.push_bind(raw_query.clone());
@@ -5694,8 +5694,9 @@ mod tests {
         );
     }
 
-    /// The console equipment search lets a user type the 호기 the way it appears
-    /// on the floor: a leading '#', a trailing '호기', or both, with stray
+    /// The console equipment search lets a user type the unit number the way it
+    /// appears on the floor: a leading '#', a trailing Korean unit-number suffix
+    /// ("hogi"), or both, with stray
     /// whitespace. They must all normalize to the same bare token, which the
     /// leading-zero-insensitive SQL then matches against the stored zero-padded
     /// `management_no` (e.g. '010').

@@ -1,4 +1,4 @@
-//! 약정휴일 writes: preview, add, 사용 중지.
+//! Contractual-holiday writes: preview, add, deactivate.
 
 use console_attendance_application::CallerScope;
 use console_attendance_application::calendar::{

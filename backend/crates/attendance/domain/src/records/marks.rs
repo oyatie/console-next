@@ -11,21 +11,21 @@ use crate::schedule::DayKind;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Mark {
-    /// ▲ a past work day with nothing recorded (미기록).
+    /// ▲ a past work day with nothing recorded.
     NoRecord,
-    /// ▲ 출근 without 퇴근 (퇴근 누락).
+    /// ▲ clock-in without clock-out (missing clock-out).
     MissingOut,
-    /// ▲ no resolved 근무 일정, whether or not time has been recorded.
+    /// ▲ no resolved work schedule, whether or not time has been recorded.
     NoSchedule,
     /// ◆ any early or late worked time outside the schedule, with no approval.
     UnapprovedExcess,
-    /// ◆ work recorded on a 휴일 or 휴무일 with no 승인.
+    /// ◆ work recorded on a holiday or rest day with no approval.
     WorkOnRestDay,
-    /// ● 지각 · 조퇴 · 이탈 (미근로).
+    /// ● late arrival · early leave · away (not worked).
     Late,
     EarlyOut,
     Away,
-    /// ● 결근 recorded on a work day.
+    /// ● absence recorded on a work day.
     Absent,
 }
 
@@ -55,7 +55,7 @@ pub enum Recorded {
     Times,
     ClockInOnly,
     Absent,
-    /// 외근 · 출장: worked elsewhere, recognised as scheduled.
+    /// Field work · business trip: worked elsewhere, recognised as scheduled.
     Away,
 }
 
@@ -70,7 +70,7 @@ pub struct Thresholds {
 }
 
 /// Marks of one person-day. `past` is a day before today (KST): today is
-/// judged only after it ends (A1 「판정은 근무가 끝난 뒤」).
+/// judged only after it ends (A1 "the ruling comes after the work ends").
 #[must_use]
 pub fn marks(
     day: DayKind,

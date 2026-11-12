@@ -1,4 +1,4 @@
-//! Access-grant fixtures for the D0.2 tests over the 권한 screen's grants:
+//! Access-grant fixtures for the D0.2 tests over the access screen's grants:
 //! a one-line tenant role granted as the screen writes it, aged and noticed.
 
 use std::collections::BTreeMap;
@@ -15,7 +15,7 @@ use super::{MIN_GRANT_AGE_DAYS, org, query};
 pub struct Grant {
     pub domain: &'static str,
     pub level: &'static str,
-    /// `None`: 회사 전체; `Some(le)`: that 법인.
+    /// `None`: company-wide; `Some(le)`: that legal entity.
     pub entity: Option<Uuid>,
     pub age_days: i32,
     pub notified: bool,
@@ -36,7 +36,7 @@ pub fn close() -> SecondPersonQuery {
     }
 }
 
-/// `grantor` grants `account` a one-line role over the scope, as the 권한
+/// `grantor` grants `account` a one-line role over the scope, as the access
 /// screen writes it; then the ledger and the role are aged and the notice
 /// recorded as the holder's own confirmation.
 pub async fn grant(owner: &PgPool, org: Uuid, grantor: Uuid, account: Uuid, g: Grant) -> Uuid {
@@ -117,7 +117,7 @@ pub async fn grant(owner: &PgPool, org: Uuid, grantor: Uuid, account: Uuid, g: G
     id
 }
 
-/// 운영 시작: before it, a grant not marked 「설정 단계부터 적용」 counts for nothing.
+/// Go-live: before it, a grant not marked "Apply from the setup phase" counts for nothing.
 pub async fn go_live(owner: &PgPool, org: Uuid, by: Uuid) {
     sqlx::query(
         "UPDATE tenant_phase SET phase = 'OPERATING', go_live_at = now(), go_live_by = $2, \

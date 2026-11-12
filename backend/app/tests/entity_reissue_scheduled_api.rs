@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Verify #2 regression (red on 922cda41b): a reissue changing 대표자 while a later 법인 state is
-//! scheduled must not undo that scheduled change (the 법인 part was clamped to
+//! Verify #2 regression (red on 922cda41b): a reissue changing the representative while a
+//! later legal entity state is scheduled must not undo that scheduled change (the
+//! legal entity part was clamped to
 //! the later date, but built on the state in force today, as the sheet sends it).
 //! Refused on effective_from, nothing written; the same for a scheduled registration state.
 
@@ -108,7 +109,8 @@ async fn a_reissue_never_undoes_a_scheduled_entity_change(pool: PgPool) {
         "the move is scheduled"
     );
 
-    // The sheet's body: the 법인 part built on the state in force on the change date (today), its
+    // The sheet's body: the legal entity part built on the state in force on the change
+    // date (today), its
     // expected_version the newest read (the scheduled one), the registration's state as it is.
     let e = entity(&c, &id).await;
     let newest = e["scheduled"]

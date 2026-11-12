@@ -16,7 +16,8 @@ pub struct UserSummary {
     pub display_name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name_unset: Option<bool>,
-    /// The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33). A label:
+    /// The current sign-in ID: a sign-in ID part, `@`, then the company domain
+    /// (decisions #33). A label:
     /// the account is keyed by `id` only.
     pub sign_in_id: Option<String>,
     pub employee_id: Option<uuid::Uuid>,
@@ -34,7 +35,7 @@ pub struct UserSummary {
     pub branch_ids: Vec<BranchId>,
     pub is_active: bool,
     /// The tenant's one ops account (break-glass; never a role). The console
-    /// shows it as 운영 계정 and offers no 비활성화 on it.
+    /// shows it as "Operations account" and offers no "Deactivate" on it.
     pub is_tenant_ops: bool,
     /// Whether the user has at least one enrolled passkey credential. A user can
     /// only actually sign in once this is true; until then they are pending setup.
@@ -73,7 +74,7 @@ pub struct DirectoryPerson {
     pub branch_ids: Vec<BranchId>,
     pub is_active: bool,
     /// The tenant's one ops account (break-glass; never a role). The console
-    /// shows it as 운영 계정 and offers no 비활성화 on it.
+    /// shows it as "Operations account" and offers no "Deactivate" on it.
     pub is_tenant_ops: bool,
     pub has_passkey: bool,
     pub account_status: AccountStatus,

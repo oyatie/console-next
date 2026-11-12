@@ -5,7 +5,7 @@ use serde_json::Value;
 use tower::ServiceExt;
 use uuid::Uuid;
 
-/// 업무함 완료 after a decision: the decider (first token) sees the request
+/// Inbox Done after a decision: the decider (first token) sees the request
 /// with its outcome, the requester (second token) sees nothing.
 pub async fn finished(
     service: &axum::Router,

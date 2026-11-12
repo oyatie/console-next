@@ -33,7 +33,7 @@ pub struct NewEmployeeRecord<'a> {
 /// the status is `EXITED`; any other admitted status clears `exit_date` so a
 /// reactivation cannot leave status and exit date disagreeing. `position: None`
 /// keeps the current text: a canonical revision with no JobPosition (an HR
-/// free-text title such as "사원") must not erase the title the person holds.
+/// free-text title such as "Staff") must not erase the title the person holds.
 #[derive(Debug, Clone, Copy)]
 pub struct EmploymentChange<'a> {
     pub company: &'a str,
@@ -84,7 +84,7 @@ pub async fn insert_employee_record(
 /// Applies one employment change to the legacy `employees` head, inside the
 /// caller's transaction.
 ///
-/// §3.9.1 변경 동결 창: before the UPDATE, the effective date is checked against
+/// §3.9.1 change-freeze window: before the UPDATE, the effective date is checked against
 /// the platform period locks (Payroll + Accounting). A change whose effective
 /// date falls inside a closed period is refused and the caller's transaction
 /// rolls back whole. This statement is the LIVE-head rewrite, so the port calls

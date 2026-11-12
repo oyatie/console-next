@@ -1,7 +1,7 @@
 //! Every active layer, pattern and holiday of the tenant in memory, and the
 //! resolution of one person (or one scope's default) on a date.
 // whole-tenant load per request (layers and patterns are hundreds of
-// rows at 2,000 people); a per-사업장 cache keyed by the schedule topic if it
+// rows at 2,000 people); a per-workplace cache keyed by the schedule topic if it
 // ever shows in p95.
 
 use std::collections::HashMap;
@@ -115,7 +115,7 @@ impl Universe {
         })
     }
 
-    /// The layers that reach `p`, with 부서 depth.
+    /// The layers that reach `p`, with department depth.
     pub(crate) fn layers_for(&self, p: &Person) -> Vec<LayerRef> {
         let chain = p.unit.map(|u| self.org.chain(u)).unwrap_or_default();
         self.layers
@@ -146,7 +146,7 @@ impl Universe {
             .collect()
     }
 
-    /// The holiday on `date` for a person at this 법인 / 사업장.
+    /// The holiday on `date` for a person at this legal entity / workplace.
     pub(crate) fn holiday(&self, p: &Person, date: Date) -> Option<HolidayFact> {
         if let Some(h) = self.public.get(&date) {
             return Some(h.clone());

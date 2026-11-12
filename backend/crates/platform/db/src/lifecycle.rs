@@ -34,27 +34,29 @@ pub const DISPOSED_STATE: &str = "disposed";
 /// triples whose actor MUST differ from the maker who moved the object into
 /// `from_state`.
 ///
-/// **Requirement.** DESIGN §3.9.1 «maker-checker · 직무분리(SoD, SOX): 기안자 ≠
-/// 승인자. 승인 매트릭스·전결규정(DoA)», §3.10 ③ «기안자≠검토자, 승인 전 제2자
-/// 검토 … 자기검토 시스템 차단» and ④ 결재(SoD·DoA), §3.9.3 anti-pattern
-/// «기안자=승인자(SoD 위반)», HANDOFF §15 «maker-checker/SoD(SOX): 기안자≠승인자»
+/// **Requirement.** DESIGN §3.9.1 «maker-checker · segregation of duties (SoD, SOX):
+/// drafter ≠ approver. Approval matrix · delegated-approval rules (DoA)», §3.10 ③
+/// «drafter≠reviewer, second-person review before approval … self-review blocked by
+/// the system» and ④ approval (SoD·DoA), §3.9.3 anti-pattern
+/// «drafter=approver (SoD violation)», HANDOFF §15 «maker-checker/SoD(SOX): drafter≠approver»
 /// and §16 «approval(SoD/DoA) … fail-closed».
 ///
 /// The set is deliberately **narrow — only the approval step of each chain**.
-/// The design names 기안자≠승인자, not "every step needs two people": authoring
+/// The design names drafter≠approver, not "every step needs two people": authoring
 /// (draft→submitted, active→revised), publication of an already-approved object
 /// (approved→active, finalized→implemented — DESIGN §3.9.0 whitelist ④,
-/// 게시 단계 권한 + 감사), scheduled retirement (retiring→retired, 폐지일 preset)
+/// publication-stage permission + audit), scheduled retirement (retiring→retired,
+/// abolition date preset)
 /// and retention-gated disposal are legitimate single-actor acts. A blanket
 /// same-actor ban would break them.
 ///
 /// - `document` (0107): draft→submitted→**approved**→active→revised→archived→disposed.
-/// - `benefit_catalog_item` (0157/0175; DESIGN §3.9 복리후생 정책 수명주기
-///   «초안(draft) → 승인 대기(pending) → 확정(finalized) → 시행(implemented) →
-///   폐지 예정(retiring) → 폐지(retired)»): draft→pending→**finalized**→…
+/// - `benefit_catalog_item` (0157/0175; DESIGN §3.9 benefits policy lifecycle
+///   «draft → pending approval (pending) → finalized → implemented →
+///   scheduled for retirement (retiring) → retired»): draft→pending→**finalized**→…
 ///
 /// Adding an object type to `lifecycle_transition_rules` therefore also means
-/// deciding, here, which of its transitions is the 승인.
+/// deciding, here, which of its transitions is the approval.
 const CHECKER_TRANSITIONS: &[(&str, &str, &str)] = &[
     ("document", "submitted", "approved"),
     ("benefit_catalog_item", "pending", "finalized"),
@@ -309,7 +311,7 @@ pub async fn transition_lifecycle(
         )));
     }
 
-    // Maker–checker (SoD): the approver must not be the 기안자.
+    // Maker–checker (SoD): the approver must not be the drafter.
     if is_checker_transition(object_type, &current.current_state, to_state) {
         enforce_maker_checker(tx, &current, actor).await?;
     }

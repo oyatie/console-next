@@ -1,6 +1,7 @@
-//! org-01: a 부서 moved under another 사업장 takes its people with it, each as
-//! a dated 전근 caused by the org change; a move inside the 사업장 records no
-//! 전근; the data check finds nobody whose 사업장 contradicts their 부서.
+//! org-01: a department moved under another workplace takes its people with it,
+//! each as a dated relocation caused by the org change; a move inside the
+//! workplace records no relocation; the data check finds nobody whose workplace
+//! contradicts their department.
 
 use http::StatusCode;
 use serde_json::json;
@@ -10,7 +11,7 @@ use super::fixture::{HIRE, day, tenant};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn moving_a_dept_to_another_workplace_moves_its_people_as_dated_transfers(pool: PgPool) {
-    // regression: org-01 (P0) — the unit moved, its people stayed at 판교.
+    // regression: org-01 (P0) — the unit moved, its people stayed at Pangyo.
     let t = tenant(pool).await;
     let [hq, pangyo] = t.workplaces;
     let support = t.dept("경영지원본부", t.sites[0]).await;
@@ -43,7 +44,7 @@ async fn moving_a_dept_to_another_workplace_moves_its_people_as_dated_transfers(
             "the person's 사업장 follows the 부서 from the 시행일"
         );
     }
-    // The active people carry a dated 전근 caused by (batched under) the change.
+    // The active people carry a dated relocation caused by (batched under) the change.
     let cause = uuid::Uuid::parse_str(&id).unwrap();
     for (person, unit) in [(park, dev), (lee, squad)] {
         let events = t.events(person).await;

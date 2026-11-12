@@ -1018,7 +1018,7 @@ async fn a_stored_receipt_naming_no_dispatch_target_is_refused(owner_pool: PgPoo
 /// `hr.appoint` already consumes — without a developer INSERT into `org_units`.
 ///
 /// Not a tree: 0215 refuses `parent_id` on the identity anchor. Not Group /
-/// 다법인: PRODUCT is one Company per tenant. Frontend stays HOLD.
+/// multiple legal entities: PRODUCT is one Company per tenant. Frontend stays HOLD.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn empty_tenant_company_org_unit_and_job_position_round_trip(owner_pool: PgPool) {
     let actor = seed_org_and_super_admin(&owner_pool, ORG, "org-unit").await;

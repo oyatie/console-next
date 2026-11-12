@@ -17,7 +17,7 @@ async fn employee_create_records_hire_date_and_contract_window(pool: PgPool) {
     );
     let token = bearer(&pool, &keys, org, user, &["SUPER_ADMIN"]).await;
 
-    // hire_date is required; a future one registers 입사 예정 (BW-19).
+    // hire_date is required; a future one registers as pre-hire (BW-19).
     let mut missing = create_body(
         branch,
         "HIRE-001",

@@ -176,13 +176,13 @@ pub struct NotificationCountsSummary {
     pub total_unread: i64,
     pub by_category: Vec<NotificationCategoryCount>,
     /// Unread rows suppressed by the caller's mute policies — surfaced so the
-    /// UI can show a truthful "숨김 N" instead of silently losing data.
+    /// UI can show a truthful "Hidden N" instead of silently losing data.
     #[serde(default)]
     pub muted_unread: i64,
 }
 
 // ---------------------------------------------------------------------------
-// Aggregate-by-object read path (개체별 view)
+// Aggregate-by-object read path (per-object view)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -282,7 +282,7 @@ pub struct NotificationPolicyList {
 /// Mark every still-open notification pointing at `link` as resolved, in one
 /// audited sweep. A producer calls this with the SAME [`NotificationLink`]
 /// shape it originally emitted (e.g. `Object { kind: "attendance_gap", id }`)
-/// when the resolving domain event fires (e.g. 대근 편성 covers a 미편성 결원
+/// when the resolving domain event fires (e.g. substitute staffing covers an unstaffed-vacancy
 /// breach) — generic to any producer, never hardcoded to one domain.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolveNotificationsByLinkCommand {

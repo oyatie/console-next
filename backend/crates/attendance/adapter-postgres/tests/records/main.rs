@@ -1,5 +1,5 @@
 #![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
-//! 근태 기록 (ATT S2) against Postgres with RLS, one test binary.
+//! Attendance records (ATT S2) against Postgres with RLS, one test binary.
 
 mod closed_month;
 mod closed_month_db_guard;

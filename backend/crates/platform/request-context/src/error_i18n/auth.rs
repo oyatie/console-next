@@ -1,6 +1,6 @@
 //! [`super::korean_message`] exact messages, part: Idempotency-Key and authentication / authorization.
 
-/// Exact English message → Korean (합니다체).
+/// Exact English message → Korean (formal polite style).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
     // Idempotency-Key (org change, users, lifecycle events, exit cases)
     (

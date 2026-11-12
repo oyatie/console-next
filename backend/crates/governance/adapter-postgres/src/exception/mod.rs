@@ -133,7 +133,7 @@ pub struct ExceptionDecision<'a> {
     /// The decider drafted or edited the subject (decisions.md #5).
     pub contributed: bool,
     /// The decider holds this rule's approving permission, computed by the
-    /// caller in this transaction (e.g. period-lock managers for a 소급).
+    /// caller in this transaction (e.g. period-lock managers for a retroactive change).
     pub holds_permission: bool,
     /// A verified `EXCEPTION_DECIDE` step-up bound to the payload hash.
     pub step_up_assertion_id: Option<Uuid>,

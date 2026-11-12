@@ -34,8 +34,8 @@ pub struct CreateUserCommand {
     pub roles: Vec<String>,
     /// Branch memberships to insert into `user_branches`.
     pub branch_ids: Vec<BranchId>,
-    /// The 아이디 HR set at invite, normalised (decisions #33); `None` takes
-    /// the default (사번, else `u` + the UUID's random tail).
+    /// The sign-in ID HR set at invite, normalised (decisions #33); `None` takes
+    /// the default (employee number, else `u` + the UUID's random tail).
     pub sign_in_id: Option<String>,
     pub trace: TraceContext,
     pub occurred_at: Timestamp,
@@ -311,9 +311,9 @@ pub struct UserPage {
 ///
 /// `is_active` alone is insufficient: a freshly-created user (admin issued an OTP
 /// but the user has not yet enrolled a passkey) is `is_active = true` yet cannot
-/// actually sign in. The console must show "활성" ONLY once the account is set up
+/// actually sign in. The console must show "Active" ONLY once the account is set up
 /// with a credential, so this enum distinguishes pending setup from the
-/// fully-active state and the archived/보관 lifecycle state. It is derived (never
+/// fully-active state and the archived lifecycle state. It is derived (never
 /// stored): see `account_status_for`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -322,7 +322,7 @@ pub enum AccountStatus {
     Active,
     /// Active but has NO passkey yet — created / OTP-issued, awaiting enrollment.
     PendingSetup,
-    /// Archived/보관 — sign-in is blocked regardless of credentials.
+    /// Archived — sign-in is blocked regardless of credentials.
     Archived,
 }
 

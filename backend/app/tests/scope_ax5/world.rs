@@ -1,9 +1,11 @@
 //! One tenant for the AX-5 suite, built through the real router: the ops
 //! account (a SUPER_ADMIN title + the ops flag, as the first account is),
-//! 법인 A (본사 · 인사부 · 총무부) and 법인 B (물류센터 · 영업부), three people —
-//! a1 placed in A (인사부), a2 unplaced (총무부, no 법인/사업장 assignment and
+//! legal entity A (head office · HR department · general affairs department) and
+//! legal entity B (logistics center · sales department), three people — a1 placed
+//! in A (HR department), a2 unplaced (general affairs department, no legal
+//! entity/workplace assignment and
 //! no home branch: the imported-row shape of governance-01), b1 placed in B — and HR accounts with
-//! no legacy role, each granted 인사 실무 over one scope node.
+//! no legacy role, each granted the HR operations role over one scope node.
 #![allow(dead_code)]
 
 use console_kernel_core::FixedClock;
@@ -82,7 +84,7 @@ impl World {
         emp
     }
 
-    /// A new account with no legacy role, holding 인사 실무 over one node.
+    /// A new account with no legacy role, holding the HR operations role over one node.
     pub async fn holder(&mut self, kind: &str, node: Option<&str>) -> Ctx {
         let user = add_user(&self.pool, self.org, &[]).await;
         let op = json!({
@@ -196,7 +198,7 @@ pub async fn world_with_lines(pool: PgPool, lines: Value) -> World {
         .execute(&mut *tx)
         .await
         .unwrap();
-    // MR-22 places a registration at its 부서's 사업장; an imported row has no such row.
+    // MR-22 places a registration at its department's workplace; an imported row has no such row.
     sqlx::query("DELETE FROM employment_assignments WHERE employee_id = $1::uuid")
         .bind(&w.a2)
         .execute(&mut *tx)
@@ -210,7 +212,7 @@ pub async fn world_with_lines(pool: PgPool, lines: Value) -> World {
     w
 }
 
-/// 법인 B (주식회사 다라) with its 사업자등록 and one 사업장.
+/// Legal entity B (Dara Co., Ltd.) with its business registration and one workplace.
 async fn entity_b(ops: &Ctx) -> (String, String, String) {
     let mut body = entity_body();
     body["name"] = json!("주식회사 다라");
