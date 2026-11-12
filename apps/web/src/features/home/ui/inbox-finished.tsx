@@ -55,7 +55,7 @@ function DoneTarget({ item }: { item: Done }) {
   const link = item.links[0];
   const text = t(DONE_KIND[item.kind] ?? "home.inbox.unknown");
   switch (link?.kind) {
-    case "change_request": return <Link to="/people/requests" search={{ sel: link.id }}>{text}</Link>;
+    case "change_request": return <Link to="/people/requests" search={{ sel: link.id, status: "ALL" }}>{text}</Link>;
     case "period_lock": return <Link to="/people/period-locks" search={{ review: link.id }}>{text}</Link>;
     case "identifier_correction": return <Link to="/org/entities" search={{ correction: link.id }} hash="identifier-corrections">{text}</Link>;
     default: return <>{text}</>;

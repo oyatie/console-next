@@ -230,6 +230,8 @@ async fn the_second_person_refuses_with_a_note_and_every_refusal_leaves_no_trace
     assert_eq!(seen["status"], "REJECTED", "{seen}");
     assert_eq!(seen["decidedByName"], "결정자");
     assert_eq!(seen["decisionNote"], "9월 마감 뒤 다시 요청");
+    let both = [&decider.token[..], &requester.token[..]];
+    period_unlock_support::done::finished(&service, both, request_id, lock_id, "REJECTED").await;
     assert_eq!(seen["canDecide"], false);
     let audit: Value = sqlx::query_scalar(
         "SELECT after_snap FROM audit_events WHERE action = 'period_lock.unlock_reject' AND target_id = $1",
@@ -335,11 +337,6 @@ async fn a_replaced_or_expired_request_is_refused_and_the_reviewed_one_is_approv
     );
 
     // 업무함 완료: the approver finds it there; the requester decided nothing.
-    period_unlock_support::finished(
-        &service,
-        [&approver.token, &requester.token],
-        second,
-        lock_id,
-    )
-    .await;
+    let both = [&approver.token[..], &requester.token[..]];
+    period_unlock_support::done::finished(&service, both, second, lock_id, "APPROVED").await;
 }

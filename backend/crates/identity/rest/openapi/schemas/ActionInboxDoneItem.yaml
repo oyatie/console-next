@@ -13,7 +13,7 @@ properties:
     description: The subject (a person or legal entity name).
   outcome:
     type: string
-    x-extensible-enum: [APPLIED, DECLINED, APPROVED]
+    x-extensible-enum: [APPLIED, DECLINED, APPROVED, REJECTED]
     description: The source's own end state.
   completed_at:
     type: string

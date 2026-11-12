@@ -29,6 +29,7 @@ export const koHome = {
   "home.inbox.done.empty": "처리한 일이 아직 없습니다",
   "home.inbox.outcome.APPLIED": "반영",
   "home.inbox.outcome.APPROVED": "승인",
+  "home.inbox.outcome.REJECTED": "반려",
   "home.inbox.outcome.DECLINED": "반려",
   "home.inbox.filter.all": "전체",
   "home.inbox.filter.turn": "내 차례",
