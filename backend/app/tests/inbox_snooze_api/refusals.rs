@@ -87,8 +87,14 @@ async fn each_refusal_names_its_reason_and_writes_nothing(pool: PgPool) {
     assert_eq!(http::audits(&pool, org, "action_inbox.snooze").await, 0);
 
     // The requester only waits on it, and the last legal day is allowed.
+    assert!(
+        item(&list(&ctx, "?limit=200").await, &decision).is_some(),
+        "the requester sees the decision they wait on"
+    );
     let (status, body) = until(&ctx, &decision, &day(1)).await;
     assert_eq!(status, StatusCode::NO_CONTENT, "{body}");
+    // The version the command stored is the one the list compares, so the decision stays postponed.
+    assert!(item(&list(&ctx, "?limit=200").await, &decision).is_none());
     let (status, body) = until(&ctx, id, latest).await;
     assert_eq!(status, StatusCode::NO_CONTENT, "{body}");
     assert_eq!(rows(&pool, org).await, 2);
