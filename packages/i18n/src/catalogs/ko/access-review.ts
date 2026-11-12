@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koAccessReview = {
+import type { enAccessReview } from "../en/access-review";
+export const koAccessReview: Record<keyof typeof enAccessReview, string> = {
   "accessReview.title": "권한 검토",
   "accessReview.empty": "검토할 권한 부여가 없습니다",
   "accessReview.emptyReason": "현재 유효하거나 예정된 권한 부여가 없습니다.",
@@ -12,4 +13,4 @@ export const koAccessReview = {
   "accessReview.scope": "범위",
   "accessReview.period": "적용 기간",
   "accessReview.state": "상태",
-} as const;
+};

@@ -1,6 +1,7 @@
-// Korean source for `uiDate.` ids (apps/web/src/ui/date): presets, the relative echo, the server
+// Korean copy for `uiDate.` ids (apps/web/src/ui/date): presets, the relative echo, the server
 // bounds line and the weekend suggestion. `{date}`, `{min}`, `{max}` and `{next}` come preformatted.
-export const koUiDate = {
+import type { enUiDate } from "../en/ui-date";
+export const koUiDate: Record<keyof typeof enUiDate, string> = {
   "uiDate.presets": "{label} 빠른 선택",
   "uiDate.placeholder": "연도. 월. 일.",
   "uiDate.calendar.open": "달력 열기",
@@ -21,4 +22,4 @@ export const koUiDate = {
   "uiDate.preset.today": "오늘",
   "uiDate.preset.nextMonday": "다음 주 월요일",
   "uiDate.preset.nextMonthFirst": "다음 달 1일",
-} as const;
+};

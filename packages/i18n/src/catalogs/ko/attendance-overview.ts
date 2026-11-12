@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koAttendanceOverview = {
+import type { enAttendanceOverview } from "../en/attendance-overview";
+export const koAttendanceOverview: Record<keyof typeof enAttendanceOverview, string> = {
   "attendanceOverview.issues.groups": "확인 필요 유형",
   "attendanceOverview.issues.count": "건수",
   "attendanceOverview.issues.oldest": "가장 오래된 날짜",

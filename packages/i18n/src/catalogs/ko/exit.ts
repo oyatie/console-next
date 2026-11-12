@@ -1,5 +1,6 @@
-// Korean source for `exit.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koExit = {
+// Korean copy for `exit.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enExit } from "../en/exit";
+export const koExit: Record<keyof typeof enExit, string> = {
   "exit.board.board": "단계별 업무",
   "exit.board.ribbon": "사건 일정",
   "exit.board.leg.approval": "결재",
@@ -206,4 +207,4 @@ export const koExit = {
   "exit.leave.protection": "해고 보호: 휴직 기간과 그 뒤 {days}일",
   "exit.noticePay.reason.figures_withheld": "급여 금액을 열람할 권한이 없습니다",
   "exit.noticePay.exceptionApplied": "해고예고 대장 단서 적용 기록",
-} as const;
+};

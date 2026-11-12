@@ -1,4 +1,5 @@
-export const koAsof = {
+import type { enAsof } from "../en/asof";
+export const koAsof: Record<keyof typeof enAsof, string> = {
   "asof.viewMoment": "이 시점으로 보기",
   "asof.label": "기준일",
   "asof.today": "오늘",
@@ -35,4 +36,4 @@ export const koAsof = {
   "asof.retry": "다시 시도",
   "asof.dateInvalid": "올바른 날짜를 선택하십시오",
   "asof.clearRange": "기간 조건 초기화",
-} as const;
+};

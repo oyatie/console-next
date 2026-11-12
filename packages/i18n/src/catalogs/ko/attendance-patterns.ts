@@ -1,6 +1,7 @@
-// Korean source for `attendancePatterns.` ids: A2-types (근무 유형 list, the add sheet, its day and slot editors and
+// Korean copy for `attendancePatterns.` ids: A2-types (근무 유형 list, the add sheet, its day and slot editors and
 // legal checks). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koAttendancePatterns = {
+import type { enAttendancePatterns } from "../en/attendance-patterns";
+export const koAttendancePatterns: Record<keyof typeof enAttendancePatterns, string> = {
   "attendancePatterns.types.title": "근무 유형",
   "attendancePatterns.types.meta": "범위에 지정하는 근무 일정의 모양 · 시업 · 종업 · 휴게",
   "attendancePatterns.types.add": "근무 유형 추가",
@@ -92,4 +93,4 @@ export const koAttendancePatterns = {
   "attendancePatterns.checks.rest": "7일마다 주휴일 하루 이상",
   "attendancePatterns.checks.starts": "출근 시각 선택지 두 개 이상 · 모든 근무가 하루 안에 끝남",
   "attendancePatterns.checks.night": "야간 칸(22:00–06:00)은 인정되면 야간 가산 대상입니다 · 지정할 때 여성 근로자의 야간근로 동의와 보호 대상(18세 미만 · 임신 중 · 산후 1년 이내)의 인가를 확인합니다",
-} as const;
+};

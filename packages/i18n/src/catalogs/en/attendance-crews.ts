@@ -1,6 +1,4 @@
-import type { koAttendanceCrews } from "../ko/attendance-crews";
-
-export const enAttendanceCrews: Partial<Record<keyof typeof koAttendanceCrews, string>> = {
+export const enAttendanceCrews = {
   "attendanceCrews.crews.title": "Crews",
   "attendanceCrews.crews.meta": "People who rotate together on one schedule · set apart from departments · departments are unchanged",
   "attendanceCrews.crews.add": "Add crew",
@@ -38,4 +36,4 @@ export const enAttendanceCrews: Partial<Record<keyof typeof koAttendanceCrews, s
   "attendanceCrews.crews.placeCommit": "Add {count, number} · from {date}",
   "attendanceCrews.crews.placeConsequence": "Anyone in another crew stays there until the day before and follows this crew from the start date · kept in history",
   "attendanceCrews.crews.placed": "Added {count, number} to “{name}” from {date}",
-};
+} as const;

@@ -1,6 +1,4 @@
-import type { koTitles } from "../ko/titles";
-
-export const enTitles: Partial<Record<keyof typeof koTitles, string>> = {
+export const enTitles = {
   "titles.title": "Positions",
   "titles.list": "Positions",
   "titles.col.label": "Position",
@@ -27,4 +25,4 @@ export const enTitles: Partial<Record<keyof typeof koTitles, string>> = {
   "titles.edit": "Edit {label}",
   "titles.edit.title": "Edit catalog entry: {label}",
   "titles.edit.commit": "Save catalog entry",
-};
+} as const;

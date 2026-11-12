@@ -1,6 +1,4 @@
-import type { koAttendance } from "../ko/attendance";
-
-export const enAttendance: Partial<Record<keyof typeof koAttendance, string>> = {
+export const enAttendance = {
   "attendance.refuse.missing_grant": "Attendance was not recorded because you lack attendance write permission. Ask an access administrator for permission covering the affected employees.",
   "attendance.period.label": "Period navigation",
   "attendance.period.thisMonth": "This month",
@@ -116,4 +114,4 @@ export const enAttendance: Partial<Record<keyof typeof koAttendance, string>> = 
   "attendance.refusal.holiday_month_closed": "A company holiday cannot fall in a closed month. Change the start year or request a period unlock.",
   "attendance.refusal.holiday_retire_year_invalid": "A holiday can be retired from this year or a later one.",
   "attendance.refusal.holiday_rule_invalid": "The date rule does not fit. Choose a date for one day, or a month and day for every year.",
-};
+} as const;

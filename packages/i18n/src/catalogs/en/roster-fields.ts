@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { koRosterFields } from "../ko/roster-fields";
-
-export const enRosterFields: Partial<Record<keyof typeof koRosterFields, string>> = {
+export const enRosterFields = {
   "rosterFields.title": "Personnel card fields",
   "rosterFields.list": "Added fields",
   "rosterFields.col.label": "Field name",
@@ -37,4 +35,4 @@ export const enRosterFields: Partial<Record<keyof typeof koRosterFields, string>
   "rosterFields.edit.commit": "Save field",
   "rosterFields.retire": "Retire {label}",
   "rosterFields.restore": "Use {label} again",
-};
+} as const;

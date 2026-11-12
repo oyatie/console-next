@@ -1,6 +1,7 @@
-// Korean source for `notice.` ids (features/people/ui/notice-*.tsx): 발령 공고 — issued with its 발령 번호 and printed
+// Korean copy for `notice.` ids (features/people/ui/notice-*.tsx): 발령 공고 — issued with its 발령 번호 and printed
 // (spec E5-notice, BE-EMP-UI §4).
-export const koNotice = {
+import type { enNotice } from "../en/notice";
+export const koNotice: Record<keyof typeof enNotice, string> = {
   "notice.crumb": "발령 공고",
   "notice.title": "발령 공고",
   "notice.new.title": "공고 작성",
@@ -38,4 +39,4 @@ export const koNotice = {
   "notice.pick.empty": "공고에 넣을 발령이 없습니다",
   "notice.pick.more": "발령 더 보기",
   "notice.preview.title": "공고 미리보기",
-} as const;
+};

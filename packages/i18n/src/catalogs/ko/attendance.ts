@@ -1,6 +1,7 @@
-// Korean source for `attendance.` ids: the 근태 page, its chain strip, first run and the shared enum words.
+// Korean copy for `attendance.` ids: the 근태 page, its chain strip, first run and the shared enum words.
 // Rules: the header of ../ko.ts and packages/i18n/GUIDE.md; words per docs/design/copy-conventions.md.
-export const koAttendance = {
+import type { enAttendance } from "../en/attendance";
+export const koAttendance: Record<keyof typeof enAttendance, string> = {
   "attendance.refuse.missing_grant": "근태를 기록할 권한이 없어 처리하지 않았습니다. 권한 관리 담당자에게 해당 직원의 근태 기록 권한을 요청하십시오.",
   "attendance.period.label": "기간 이동",
   "attendance.period.thisMonth": "이번 달",
@@ -123,4 +124,4 @@ export const koAttendance = {
   "attendance.refusal.holiday_month_closed": "마감된 달에 걸리는 약정휴일은 추가할 수 없습니다. 시작 연도를 변경하거나 기간 잠금 해제를 요청하십시오.",
   "attendance.refusal.holiday_retire_year_invalid": "사용 중지는 올해나 그 뒤 연도부터 할 수 있습니다.",
   "attendance.refusal.holiday_rule_invalid": "날짜 규칙이 맞지 않습니다. 하루는 날짜를, 매년은 월과 일을 선택하십시오.",
-} as const;
+};

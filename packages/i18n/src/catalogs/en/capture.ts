@@ -1,6 +1,4 @@
-import type { koCapture } from "../ko/capture";
-
-export const enCapture: Record<keyof typeof koCapture, string> = {
+export const enCapture = {
   "capture.headcount.label": "Regular headcount",
   "capture.headcount.value": "{count, number}",
   "capture.headcount.held": "Not computed yet",
@@ -20,4 +18,4 @@ export const enCapture: Record<keyof typeof koCapture, string> = {
   "capture.docs.openLabel": "Open the original of {file}",
   "capture.list.brn_classification": "Registration number classification",
   "capture.list.workplace_not_registered_reason": "Reason for exemption from business registration",
-};
+} as const;

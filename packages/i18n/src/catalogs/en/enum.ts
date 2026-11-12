@@ -1,6 +1,4 @@
-import type { koEnum } from "../ko/enum";
-
-export const enEnum: Partial<Record<keyof typeof koEnum, string>> = {
+export const enEnum = {
   "enum.role.SUPER_ADMIN": "Super admin",
   "enum.role.EXECUTIVE": "Executive",
   "enum.role.ADMIN": "Admin",
@@ -242,4 +240,4 @@ export const enEnum: Partial<Record<keyof typeof koEnum, string>> = {
   "enum.tenantLifecycle.ENROLLED": "Passkey registered",
   "enum.tenantLifecycle.SETUP": "Setup",
   "enum.tenantLifecycle.OPERATING": "Operating",
-};
+} as const;

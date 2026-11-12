@@ -1,6 +1,4 @@
-import type { koUiConflict } from "../ko/ui-conflict";
-
-export const enUiConflict: Record<keyof typeof koUiConflict, string> = {
+export const enUiConflict = {
   "uiConflict.field_conflict": "{count, plural, one {# field} other {# fields}} changed while you were saving. Your entries are kept. Select a value for each field to save.",
   "uiConflict.stale_facts": "{count, plural, one {# fact} other {# facts}} changed after you checked, so nothing was applied. Review the new values, select one for each, then run it again.",
   "uiConflict.left": "{count, plural, one {# field} other {# fields}} left to select",
@@ -14,4 +12,4 @@ export const enUiConflict: Record<keyof typeof koUiConflict, string> = {
   "uiConflict.useTheirs": "Use that value",
   "uiConflict.keepMine": "Keep my value",
   "uiConflict.empty": "No value",
-};
+} as const;

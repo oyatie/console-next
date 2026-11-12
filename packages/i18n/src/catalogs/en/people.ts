@@ -1,6 +1,4 @@
-import type { koPeople } from "../ko/people";
-
-export const enPeople: Partial<Record<keyof typeof koPeople, string>> = {
+export const enPeople = {
   "people.label.unnamed": "Unnamed person",
   "people.label.identityMissing": "No identifying details",
   "people.label.accountCreated": "Account created {at}",
@@ -154,4 +152,4 @@ export const enPeople: Partial<Record<keyof typeof koPeople, string>> = {
   "people.event.group.SETTLED": "settled",
   "people.event.group.CARRIED": "carried",
   "people.event.group.RESTART": "restarted",
-};
+} as const;

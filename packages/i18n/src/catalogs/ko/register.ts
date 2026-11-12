@@ -1,6 +1,7 @@
-// Korean source for `register.` ids (apps/web/src/features/people/register): 직원 등록 (spec E3), 동명이인 guard,
+// Korean copy for `register.` ids (apps/web/src/features/people/register): 직원 등록 (spec E3), 동명이인 guard,
 // 연속 등록 and 재입사. 합니다체, no exclamation marks.
-export const koRegister = {
+import type { enRegister } from "../en/register";
+export const koRegister: Record<keyof typeof enRegister, string> = {
   "register.err.beforeOpening": "{site} 개설일({date}) 전 입사자는 입사일을 그대로 두고 명부 가져오기로 등록합니다.",
   "register.err.beforeOpeningUnknown": "사업장 또는 법인의 개설일 전 입사자는 입사일을 그대로 두고 명부 가져오기로 등록합니다.",
   "register.kicker": "직원 › 한 명씩 · 범위 {scope}",
@@ -148,4 +149,4 @@ export const koRegister = {
   "register.run.batchOp": "운영 중이라 등록은 변경 이력에 남고 되돌리지 않습니다. 잘못 적었으면 인사카드에서 정정합니다.",
   "register.run.undoAll": "{n, number}명 한 번에 되돌리기",
   "register.run.submit": "등록",
-} as const;
+};

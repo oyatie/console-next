@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koCrud = {
+import type { enCrud } from "../en/crud";
+export const koCrud: Record<keyof typeof enCrud, string> = {
   "crud.menu.endSite": "삭제 · 폐쇄",
   "crud.loading": "확인 중…",
   "crud.noPermission": "이 계정에는 이 일을 할 권한이 없습니다 · 운영 계정 담당자에게 요청하십시오",
@@ -82,4 +83,4 @@ export const koCrud = {
   "crud.bulkExit.openList": "퇴직 관리 열기",
   "crud.bulkExit.results": "사람마다 결과",
   "crud.bulkExit.reported": "보고함",
-} as const;
+};

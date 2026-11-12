@@ -1,5 +1,6 @@
-// Korean source for `empContact.` ids (features/people: the card's emergency contacts).
-export const koEmpContact = {
+// Korean copy for `empContact.` ids (features/people: the card's emergency contacts).
+import type { enEmpContact } from "../en/emp-contact";
+export const koEmpContact: Record<keyof typeof enEmpContact, string> = {
   "empContact.add": "비상연락처 추가",
   "empContact.edit": "비상연락처 수정",
   "empContact.added": "비상연락처를 추가했습니다",
@@ -22,4 +23,4 @@ export const koEmpContact = {
   "empContact.need.notice": "연락처 당사자에게 알렸는지 확인하십시오",
   "empContact.recorded": "근거 {basis} ({label}) · 기록 {by} · {at}",
   "empContact.of": "비상연락처 {who}",
-} as const;
+};
