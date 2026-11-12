@@ -17,6 +17,7 @@ CREATE TABLE country_code_versions (
     code TEXT NOT NULL,
     label_ko TEXT NOT NULL CHECK (btrim(label_ko) <> ''),
     label_en TEXT NOT NULL CHECK (btrim(label_en) <> ''),
+    search_terms TEXT NOT NULL DEFAULT '',
     publisher TEXT NOT NULL CHECK (btrim(publisher) <> ''),
     valid_from DATE NOT NULL,
     valid_to DATE CHECK (valid_to > valid_from),
@@ -29,6 +30,7 @@ COMMENT ON TABLE country_code_versions IS 'Global dated ISO country catalog with
 COMMENT ON COLUMN country_code_versions.code IS 'pd:none — ISO country identity';
 COMMENT ON COLUMN country_code_versions.label_ko IS 'pd:none — Korean display label (CLDR)';
 COMMENT ON COLUMN country_code_versions.label_en IS 'pd:none — English display label (CLDR)';
+COMMENT ON COLUMN country_code_versions.search_terms IS 'pd:none — alternate country search names and codes';
 COMMENT ON COLUMN country_code_versions.publisher IS 'pd:none — code list publisher';
 COMMENT ON COLUMN country_code_versions.valid_from IS 'pd:none — inclusive catalog validity start';
 COMMENT ON COLUMN country_code_versions.valid_to IS 'pd:none — exclusive catalog validity end; NULL is open';
@@ -288,6 +290,11 @@ FROM (VALUES
     ('ZM', '잠비아', 'Zambia'),
     ('ZW', '짐바브웨', 'Zimbabwe')
 ) AS labels(code, label_ko, label_en);
+
+-- Common search forms belong to the reference catalog, alongside its display labels.
+UPDATE country_code_versions SET search_terms = terms
+FROM (VALUES ('KR', '한국'), ('US', 'USA'), ('GB', 'UK'), ('KP', '조선')) AS aliases(country, terms)
+WHERE code = country;
 
 INSERT INTO country_codes(code) SELECT DISTINCT code FROM country_code_versions;
 ALTER TABLE country_code_versions ADD CONSTRAINT country_code_versions_code_fkey

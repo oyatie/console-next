@@ -20759,10 +20759,12 @@ export interface components {
             /** Format: date */
             group_service_start_date: string | null;
             /** @description Active ISO country catalog options for nationality. */
-            countries: {
+            countries?: {
                 code: string;
                 label_ko: string;
                 label_en: string;
+                /** @description Alternate country names and codes for search, owned by the catalog. */
+                search_terms?: string;
             }[];
         };
         EmployeePhotoUpload: {

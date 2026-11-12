@@ -13,9 +13,13 @@ async fn nationality_editor_reads_active_catalog_labels(pool: PgPool) {
     let read = || w.hr.personal_facts(w.hr(w.hr_one), w.in_a);
     let facts = serde_json::to_value(read().await.unwrap()).unwrap();
     let options = facts["countries"].as_array().unwrap();
+    for (code, term) in [("KR", "한국"), ("US", "USA")] {
+        let country = options.iter().find(|c| c["code"] == code).unwrap();
+        assert!(country["search_terms"].as_str().unwrap().contains(term));
+    }
     assert_eq!(options.len(), 249);
     assert!(
-        options.contains(&json!({"code": "GB", "label_ko": "영국", "label_en": "United Kingdom"}))
+        options.contains(&json!({"code": "GB", "label_ko": "영국", "label_en": "United Kingdom", "search_terms": "UK"}))
     );
     sqlx::query("UPDATE country_code_versions SET valid_from = CURRENT_DATE - 1, valid_to = CURRENT_DATE WHERE code = 'GB'").execute(&pool).await.unwrap();
     sqlx::query("UPDATE country_code_versions SET valid_from = CURRENT_DATE + 1 WHERE code = 'VN'")

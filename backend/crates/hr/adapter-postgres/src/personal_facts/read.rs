@@ -33,6 +33,8 @@ pub struct CountryOption {
     pub code: String,
     pub label_ko: String,
     pub label_en: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub search_terms: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -100,12 +102,12 @@ impl HrService {
                     ))
                 })?;
                 let row = load_in_tx(tx, org_uuid, employee_id).await?;
-                let countries = sqlx::query_as::<_, (String, String, String)>(
-                    "SELECT code, label_ko, label_en FROM country_code_versions \
+                let countries = sqlx::query_as::<_, (String, String, String, String)>(
+                    "SELECT code, label_ko, label_en, search_terms FROM country_code_versions \
                      WHERE valid_from <= CURRENT_DATE AND (valid_to IS NULL OR CURRENT_DATE < valid_to) \
                      ORDER BY code",
                 ).fetch_all(tx.as_mut()).await?.into_iter()
-                    .map(|(code, label_ko, label_en)| CountryOption { code, label_ko, label_en }).collect();
+                    .map(|(code, label_ko, label_en, search_terms)| CountryOption { code, label_ko, label_en, search_terms }).collect();
                 let photo = match row.photo.as_deref().map(Uuid::parse_str) {
                     Some(Ok(upload_id)) => {
                         let found = sqlx::query(

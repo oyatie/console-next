@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { t } from "@console/i18n";
 import { RowInput, Saving } from "../../../ui/record/inline";
 import { FieldMark, FieldRow } from "../../../ui/record/field-row";
@@ -11,7 +11,7 @@ import s from "./card.module.css";
  * A quick edit field (Class I): F2 or the mark opens the editor in place; Enter saves, Esc puts the value back.
  * While the save is out the typed value shows with a quiet tick (no layout shift); `sending` is that value.
  */
-export function InlineField({ label, children, raw, sub, sending, onSave, placeholder, wide, manage, conflict }: {
+export function InlineField({ label, children, raw, sub, sending, onSave, placeholder, wide, manage, conflict, editor, display = (value) => value || "—" }: {
   label: string;
   children: ReactNode;
   raw: string;
@@ -23,43 +23,47 @@ export function InlineField({ label, children, raw, sub, sending, onSave, placeh
   manage: boolean;
   /** This field's save met someone else's: the choice opens under it. */
   conflict?: FieldConflict;
+  editor?: (draft: string, onChange: (next: string) => void, save: (next: string) => void, close: () => void) => ReactNode;
+  display?: (value: string) => ReactNode;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const editing = draft !== null;
-  const done = () => setDraft(null);
+  const mark = useRef<HTMLButtonElement>(null);
+  const [restoreFocus, setRestoreFocus] = useState(false);
+  const done = (returnFocus = true) => { setRestoreFocus(returnFocus); setDraft(null); };
+  useLayoutEffect(() => {
+    if (!editing && restoreFocus) mark.current?.focus();
+  }, [editing, restoreFocus]);
+  const save = (next: string) => { done(); if (next !== raw) onSave(next); };
   const value = editing ? (
-    <RowInput
-      ref={focusOnce}
+    <div ref={el => focusOnce(el?.querySelector("input") ?? null)}
+      onKeyDownCapture={e => {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(); }
+      }}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) done(false); }}>
+    {editor ? editor(draft, setDraft, save, () => done()) : <RowInput
       aria-label={label}
       value={draft}
       placeholder={placeholder}
       onChange={(e) => setDraft(e.target.value)}
       onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          e.stopPropagation();
-          done();
-        } else if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-          const next = draft.trim();
-          done();
-          if (next !== raw) onSave(next);
-        }
+        if (e.key === "Enter" && !e.nativeEvent.isComposing) save(draft.trim());
       }}
-      onBlur={done}
-    />
+    />}
+    </div>
   ) : sending !== undefined ? (
-    <Saving label={t("empCard.quick.tick")}>{sending || "—"}</Saving>
+    <Saving label={t("empCard.quick.tick")}>{display(sending)}</Saving>
   ) : (
     children
   );
   return (
     <>
     <FieldRow
-      label={label}
+      label={editing && editor ? "" : label}
       edit={editing}
       wide={wide}
-      sub={editing ? <span className={s.keys}><Kbd k="Enter" /> {t("empCard.inline.save")} <Kbd k="Esc" /> {t("empCard.inline.cancel")}</span> : sub}
-      mark={manage && !editing && <FieldMark kind="inline" field={label} onPress={() => setDraft(raw)} />}
+      sub={editing && !editor ? <span className={s.keys}><Kbd k="Enter" /> {t("empCard.inline.save")} <Kbd k="Esc" /> {t("empCard.inline.cancel")}</span> : sub}
+      mark={manage && !editing && <FieldMark ref={mark} kind="inline" field={label} onPress={() => { setRestoreFocus(false); setDraft(raw); }} />}
     >
       {value}
     </FieldRow>
