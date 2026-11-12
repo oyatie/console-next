@@ -63,17 +63,22 @@ test("one server queue supplies Home and every inbox filter and holds remote res
   for (const item of body.items.filter((item) => !item.kind.startsWith("setup_")))
     await expect(inbox(reader).getByText(item.title, { exact: false }).first()).toBeVisible();
 
-  for (const [filter, label] of [["waiting", "기다리는 중"], ["scheduled", "예정"], ["deadlines", "기한 임박"], ["failures", "실패·예외"]] as const) {
+  // 예정 and 실패 are chips under 해야 할 일 (기한 임박 leads it as a bucket); 요청한 일 is a tab of its own.
+  for (const [filter, control] of [
+    ["scheduled", inbox(reader).getByRole("button", { name: /^예정/ })],
+    ["failures", inbox(reader).getByRole("button", { name: /^실패·예외/ })],
+    ["waiting", inbox(reader).getByRole("link", { name: /^요청한 일 \d+\+?$/ })],
+  ] as const) {
     const reading = readFilter(reader, filter);
-    const button = inbox(reader).getByRole("link", { name: new RegExp(`^${label} \\d+\\+?$`) });
-    await button.click();
+    await control.click();
     const response = await reading;
     expect(response.status()).toBe(200);
-    await expect(button).toHaveAttribute("aria-current", "page");
+    if (filter === "waiting") await expect(control).toHaveAttribute("aria-current", "page");
+    else await expect(control).toHaveAttribute("aria-pressed", "true");
     const filtered = await response.json() as Inbox;
     if (filter === "waiting" || filter === "scheduled") expect(filtered.items.every((item) => item.lane === filter)).toBe(true);
   }
-  const turn = inbox(reader).getByRole("link", { name: /^내 차례 \d+\+?$/ });
+  const turn = inbox(reader).getByRole("link", { name: /^해야 할 일 \d+\+?$/ });
   await turn.click();
   await expect(turn).toHaveAttribute("aria-current", "page");
   await expect(row).toHaveCount(1);

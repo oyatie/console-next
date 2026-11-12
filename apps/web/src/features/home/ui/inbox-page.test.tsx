@@ -67,7 +67,7 @@ test.each([
   expect(view.reads).toContainEqual([path, { query: {} }, "cursor"]);
   expect(markup).toContain(`aria-current="page" href="/inbox?tab=${tab}"`);
   expect(markup.match(/aria-current="page"/g)).toHaveLength(1);
-  expect(markup).toContain(`href="/inbox">${t("home.inbox.filterCount", { filter: t("home.inbox.tab.turn"), count: 1 })}</a>`);
+  expect(markup).toMatch(new RegExp(`href="/inbox">${t("home.inbox.tab.turn")} <span[^>]*>1</span></a>`));
   expect(markup).toContain(t("home.inbox.done.empty"));
 });
 
