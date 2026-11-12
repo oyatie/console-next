@@ -1,16 +1,17 @@
 //! Setup decisions use the same live Cedar slice as the record's own door.
 use console_kernel_core::ErrorKind;
 use console_onboarding_domain::Checklist;
-use console_platform_authz::access::{AccessSlice, Domain, Level, NodePath, load_access_subject};
+use console_platform_authz::access::{
+    AccessSlice, AccessSubject, Domain, Level, NodePath, load_access_subject,
+};
 use sqlx::{Postgres, Transaction};
 
 use crate::{OnboardingActor, PgOnboardingError, refused};
 
-pub(crate) async fn checklist_permissions(
+pub(crate) async fn load_permissions(
     tx: &mut Transaction<'_, Postgres>,
     actor: &OnboardingActor,
-    checklist: &mut Checklist,
-) -> Result<(), PgOnboardingError> {
+) -> Result<(AccessSubject, AccessSlice), PgOnboardingError> {
     let subject = load_access_subject(
         tx,
         actor.org,
@@ -18,20 +19,21 @@ pub(crate) async fn checklist_permissions(
         time::OffsetDateTime::now_utc(),
     )
     .await?;
-    apply_permissions(&subject, checklist)
-}
-
-fn apply_permissions(
-    subject: &console_platform_authz::access::AccessSubject,
-    checklist: &mut Checklist,
-) -> Result<(), PgOnboardingError> {
-    let slice = AccessSlice::compile(subject).map_err(|_| {
+    let slice = AccessSlice::compile(&subject).map_err(|_| {
         refused(
             ErrorKind::Forbidden,
             "forbidden",
             Some("request_setup_permission"),
         )
     })?;
+    Ok((subject, slice))
+}
+
+pub(crate) fn apply_permissions(
+    subject: &AccessSubject,
+    slice: &AccessSlice,
+    checklist: &mut Checklist,
+) -> Result<(), PgOnboardingError> {
     let readable = subject.grants.iter().any(|g| {
         g.lines.iter().any(|line| {
             line.levels.iter().any(|level| {
@@ -159,7 +161,7 @@ mod tests {
         let mut c = checklist(&SetupFacts::default());
         let before = c.clone();
         assert!(matches!(
-            apply_permissions(&s, &mut c),
+            apply_permissions(&s, &AccessSlice::compile(&s).unwrap(), &mut c),
             Err(PgOnboardingError::Refused {
                 kind: ErrorKind::Forbidden,
                 code: "forbidden",
@@ -185,7 +187,7 @@ mod tests {
             branches: BranchScope::All,
         });
         let mut c = checklist(&SetupFacts::default());
-        apply_permissions(&s, &mut c).unwrap();
+        apply_permissions(&s, &AccessSlice::compile(&s).unwrap(), &mut c).unwrap();
         assert_eq!(
             c.steps
                 .iter()

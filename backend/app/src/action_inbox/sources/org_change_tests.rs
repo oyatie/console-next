@@ -82,6 +82,7 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
         &principal,
         query.clone(),
         None,
+        &Default::default(),
     )
     .await
     .unwrap();
@@ -125,9 +126,15 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
         .execute(&pool)
         .await
         .unwrap();
-    let without_grant = page(&runtime_role_pool(&pool).await, &principal, query, None)
-        .await
-        .unwrap();
+    let without_grant = page(
+        &runtime_role_pool(&pool).await,
+        &principal,
+        query,
+        None,
+        &Default::default(),
+    )
+    .await
+    .unwrap();
     assert_eq!(without_grant.total, 7);
     assert_eq!(without_grant.items.len(), 7);
     assert!(without_grant.total_is_exact);
@@ -151,6 +158,7 @@ async fn org_change_inbox_preserves_every_home_lane_and_refuses_self_approval(po
             limit: 20,
         },
         None,
+        &Default::default(),
     )
     .await
     .unwrap();
@@ -181,6 +189,7 @@ async fn no_org_change_grant_does_not_query_or_disclose_a_source() {
             limit: 10,
         },
         None,
+        &Default::default(),
     )
     .await
     .unwrap();
@@ -222,9 +231,15 @@ async fn draft_only_holder_applies_and_settles_own_work_only_without_routing(poo
             false,
             false,
         ));
-        let actual = page(&runtime, &principal, query.clone(), policy)
-            .await
-            .unwrap();
+        let actual = page(
+            &runtime,
+            &principal,
+            query.clone(),
+            policy,
+            &Default::default(),
+        )
+        .await
+        .unwrap();
         assert_eq!(actual.total, if routed { 0 } else { 2 });
         let kinds: BTreeSet<_> = actual.items.iter().map(|row| row.kind.as_str()).collect();
         assert_eq!(

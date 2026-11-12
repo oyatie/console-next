@@ -3,7 +3,10 @@
 use crate::*;
 use console_platform_authz::{
     access::{NodeKind, NodeRef},
-    cedar_pbac::{actions::org_change_step_decide::Facts, visible::load_facts},
+    cedar_pbac::{
+        actions::org_change_step_decide::Facts,
+        visible::{DecisionFacts, load_facts},
+    },
 };
 
 #[derive(Clone)]
@@ -49,6 +52,18 @@ pub async fn step_decision_facts_in_tx(
     scope: StepDecisionScope,
 ) -> Result<Vec<StepDecisionFacts>, PgOrgChangeError> {
     let access = load_facts(tx, org, *actor.as_uuid()).await?;
+    step_decision_facts_with_access_in_tx(tx, org, actor, scope, &access).await
+}
+
+/// Keep record/person decisions live while sharing a read request's account facts.
+pub async fn step_decision_facts_with_access_in_tx(
+    tx: Tx<'_, '_>,
+    org: OrgId,
+    actor: UserId,
+    scope: StepDecisionScope,
+    access: &DecisionFacts,
+) -> Result<Vec<StepDecisionFacts>, PgOrgChangeError> {
+    access.access_permissions(org, *actor.as_uuid())?;
     // shortcut: tenant-wide approval authority, bind each step when tenant role bindings are stored.
     let node = NodeRef {
         kind: NodeKind::Tenant,

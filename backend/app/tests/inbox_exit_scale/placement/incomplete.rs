@@ -180,9 +180,15 @@ async fn incomplete_placements_keep_home_exit_work_visible(pool: PgPool) {
         .await
         .unwrap();
     for (label, reader, expected) in f.readers {
-        let home = page(&runtime, &reader, query(now, 20), &Default::default())
-            .await
-            .unwrap();
+        let home = page(
+            &runtime,
+            &reader,
+            query(now, 20),
+            &Default::default(),
+            &Default::default(),
+        )
+        .await
+        .unwrap();
         let cases: BTreeSet<_> = f
             .people
             .iter()

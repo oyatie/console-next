@@ -91,24 +91,20 @@ async fn get_my_workbench(
     let query = WorkbenchQuery::parse(uri.query(), request_now)?;
     let scope = EffectiveScope::from_query(&principal.branch_scope, query.branch_id)?;
     preflight_explicit_branch(&*state.readers, &principal, &scope).await?;
-    let context = build_context(principal, query, scope, request_now);
-    let response = compose(&*state.readers, context).await?;
-    Ok(Json(response))
-}
-
-fn build_context(
-    principal: Principal,
-    query: WorkbenchQuery,
-    scope: EffectiveScope,
-    request_now: OffsetDateTime,
-) -> WorkbenchReadContext {
-    WorkbenchReadContext {
+    let context = WorkbenchReadContext {
+        authorization: Default::default(),
         principal,
         range: query.range,
         scope,
         limits: query.limits,
         as_of: request_now,
-    }
+    };
+    context
+        .authorization
+        .prepare(&state.pool, &context.principal)
+        .await;
+    let response = compose(&*state.readers, context).await?;
+    Ok(Json(response))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,6 +183,7 @@ impl EffectiveScope {
 
 #[derive(Debug, Clone)]
 pub struct WorkbenchReadContext {
+    pub authorization: console_platform_request_context::Authorization,
     pub principal: Principal,
     pub range: WorkbenchRange,
     pub scope: EffectiveScope,
@@ -751,6 +748,22 @@ mod tests {
     use std::collections::BTreeSet;
 
     use console_kernel_core::{OrgId, UserId};
+
+    fn build_context(
+        principal: Principal,
+        query: WorkbenchQuery,
+        scope: EffectiveScope,
+        request_now: OffsetDateTime,
+    ) -> WorkbenchReadContext {
+        WorkbenchReadContext {
+            authorization: Default::default(),
+            principal,
+            range: query.range,
+            scope,
+            limits: query.limits,
+            as_of: request_now,
+        }
+    }
 
     #[test]
     fn rejects_unknown_one_sided_malformed_and_overlong_queries() {

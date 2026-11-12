@@ -142,7 +142,20 @@ impl HrService {
         register: StatutoryRegister,
         after: Option<(Option<time::OffsetDateTime>, time::OffsetDateTime, String)>,
     ) -> Result<(FilingPage, bool), HrError> {
+        self.insurance_inbox_page_with_register(principal, query, async { Ok(register) }, after)
+            .await
+    }
+
+    /// Refused readers do not load or decode the statutory register.
+    pub async fn insurance_inbox_page_with_register(
+        &self,
+        principal: Principal,
+        query: FilingQuery,
+        register: impl Future<Output = Result<StatutoryRegister, HrError>> + Send,
+        after: Option<(Option<time::OffsetDateTime>, time::OffsetDateTime, String)>,
+    ) -> Result<(FilingPage, bool), HrError> {
         hr_reach_in(&principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
+        let register = register.await?;
         with_audits::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
             Box::pin(async move {
                 let page =
@@ -165,5 +178,34 @@ impl HrService {
             })
         })
         .await
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)]
+mod tests {
+    use super::*;
+    use console_kernel_core::{BranchScope, OrgId, UserId};
+
+    #[tokio::test]
+    async fn refused_inbox_reader_never_polls_the_register_loader() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://unused:unused@127.0.0.1:1/unused")
+            .unwrap();
+        let principal = Principal::new(
+            UserId::new(),
+            OrgId::new(),
+            Default::default(),
+            BranchScope::All,
+        );
+        let result = HrService::new(pool)
+            .insurance_inbox_page_with_register(
+                principal,
+                FilingQuery::default(),
+                async { panic!("a refused reader must not load statutory rules") },
+                None,
+            )
+            .await;
+        assert_eq!(result.unwrap_err().status.as_u16(), 403);
     }
 }

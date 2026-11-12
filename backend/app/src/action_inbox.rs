@@ -18,6 +18,10 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 use tracing::Instrument;
 
+use console_platform_request_context::Authorization;
+#[cfg(all(test, feature = "test-postgres"))]
+#[path = "../tests/action_inbox/authorization.rs"]
+mod authorization_tests;
 mod decisions;
 mod done;
 pub(crate) mod error;
@@ -126,6 +130,7 @@ async fn list_action_inbox(
     .await
     .map_err(|e| source_failure("tenant", format!("{e:?}")))?;
     let sources = PgActionInboxSources {
+        authorization: Authorization::default(),
         pool: state.pool,
         principal,
         read_permits: state.read_permits,
@@ -167,6 +172,7 @@ async fn list_action_inbox(
 /// dependency seam only; it does not claim the source adapters have been split
 /// into a dedicated infrastructure crate.
 struct PgActionInboxSources {
+    authorization: Authorization,
     pool: PgPool,
     principal: Principal,
     setup: tokio::sync::OnceCell<Option<serde_json::Value>>,
@@ -227,7 +233,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 ActionInboxSource::Setup => {
                     let setup = self
                         .setup
-                        .get_or_try_init(|| sources::setup::load(&self.pool, &self.principal))
+                        .get_or_try_init(|| sources::setup::load(&self.pool, &self.principal, &self.authorization))
                         .await;
                     setup.map(|setup| sources::setup::page(
                         setup.as_ref(),
@@ -240,10 +246,10 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     sources::grants::page(&self.pool, &self.principal, query).await
                 }
                 ActionInboxSource::SupportAccess => {
-                    sources::support_access::page(&self.pool, &self.principal, query, &self.support_can_approve).await
+                    sources::support_access::page(&self.pool, &self.principal, query, &self.support_can_approve, &self.authorization).await
                 }
                 ActionInboxSource::PrivacyRequests => {
-                    sources::privacy_requests::page(&self.pool, &self.principal, query, &self.privacy_can_handle).await
+                    sources::privacy_requests::page(&self.pool, &self.principal, query, &self.privacy_can_handle, &self.authorization).await
                 }
                 ActionInboxSource::EntityCorrections => {
                     sources::entity_corrections::page(&self.pool, &self.principal, query).await
@@ -252,10 +258,10 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     sources::registration_checks::page(&self.pool, &self.principal, query).await
                 }
                 ActionInboxSource::OrgChange => {
-                    sources::org_change::page(&self.pool, &self.principal, query, self.org_policy).await
+                    sources::org_change::page(&self.pool, &self.principal, query, self.org_policy, &self.authorization).await
                 }
                 ActionInboxSource::HrExit => {
-                    sources::hr_exit::page(&self.pool, &self.principal, query, &self.statutory_register).await
+                    sources::hr_exit::page(&self.pool, &self.principal, query, &self.statutory_register, &self.authorization).await
                 }
                 ActionInboxSource::HrLifecycle => {
                     sources::hr_lifecycle::page(&self.pool, &self.principal, query).await

@@ -139,13 +139,31 @@ fn count(records: &Records, code: &str) -> i64 {
         .map_or(0, |r| i64::try_from(r.len()).unwrap_or(i64::MAX))
 }
 
+pub(crate) async fn permission_facts(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    phase_is_setup: bool,
+) -> Result<SetupFacts, PgOnboardingError> {
+    Ok(SetupFacts {
+        phase_is_setup,
+        org_change_routed: approval_routes_in_tx(
+            tx.as_mut(),
+            org,
+            SettingKey::ApprovalPolicyOrgStructure,
+        )
+        .await?,
+        security_contact_store_available: SECURITY_CONTACT_STORE_AVAILABLE,
+        ..SetupFacts::default()
+    })
+}
+
 pub(crate) async fn setup_facts(
     tx: &mut Transaction<'_, Postgres>,
     (org, actor): (OrgId, Uuid),
     phase_is_setup: bool,
 ) -> Result<(SetupFacts, Records, PreviewDetails), PgOnboardingError> {
-    let org_change_routed =
-        approval_routes_in_tx(tx.as_mut(), org, SettingKey::ApprovalPolicyOrgStructure).await?;
+    let permissions = permission_facts(tx, org, phase_is_setup).await?;
+    let org_change_routed = permissions.org_change_routed;
     let r = sqlx::query(SCALARS)
         .bind(actor)
         .fetch_one(tx.as_mut())
@@ -184,7 +202,7 @@ pub(crate) async fn setup_facts(
         org_change_approvers: approvers,
         other_eligible_holders: others,
         security_contact_recorded: false,
-        security_contact_store_available: SECURITY_CONTACT_STORE_AVAILABLE,
+        security_contact_store_available: permissions.security_contact_store_available,
         employees: r.try_get("employees")?,
         employees_starting_later: r.try_get("starting_later")?,
         employees_step_deferred: r.try_get("employees_deferred")?,

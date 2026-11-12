@@ -7,13 +7,57 @@
 //! resource over those, so a 법인, 사업장 or 부서 grant reaches its people
 //! whatever their legacy branch.
 
-use console_kernel_core::BranchScope;
+use console_kernel_core::{BranchScope, KernelError, OrgId};
+use std::sync::OnceLock;
 
 use super::catalog::Domain;
 use super::cedar::{AccessEngineError, AccessSlice};
 use super::model::{AccessSubject, ScopeGrant, union_branches};
 use super::tags::tagged;
 use crate::{EffectiveFeatureGrant, Feature, PermissionLevel};
+
+/// The loaded request subject and its lazily compiled Cedar policy slice.
+#[derive(Debug)]
+pub struct AccessSnapshot {
+    subject: AccessSubject,
+    slice: OnceLock<Result<AccessSlice, AccessEngineError>>,
+}
+
+impl AccessSnapshot {
+    pub fn new(subject: AccessSubject) -> Self {
+        Self {
+            subject,
+            slice: OnceLock::new(),
+        }
+    }
+
+    pub fn subject(&self) -> &AccessSubject {
+        &self.subject
+    }
+
+    pub fn permissions(
+        &self,
+        org: OrgId,
+        actor: uuid::Uuid,
+    ) -> Result<(&AccessSubject, &AccessSlice), KernelError> {
+        if self.subject.org != org || self.subject.account != actor {
+            return Err(KernelError::forbidden(
+                "authorization snapshot identity mismatch",
+            ));
+        }
+        let slice = self
+            .slice()
+            .map_err(|e| KernelError::internal(format!("Cedar facts unavailable: {e}")))?;
+        Ok((&self.subject, slice))
+    }
+
+    pub fn slice(&self) -> Result<&AccessSlice, AccessEngineError> {
+        self.slice
+            .get_or_init(|| AccessSlice::compile(&self.subject))
+            .as_ref()
+            .map_err(Clone::clone)
+    }
+}
 
 /// What a subject's grants add to its principal.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,11 +110,16 @@ const fn moves_data_scope(domain: Domain) -> bool {
 // doors. AX-5 (Cedar at each door) removes the scalar.
 #[must_use]
 pub fn project(subject: &AccessSubject) -> Projection {
+    project_with_access(&AccessSnapshot::new(subject.clone()))
+}
+
+pub fn project_with_access(access: &AccessSnapshot) -> Projection {
+    let subject = access.subject();
     let mut out = Projection::empty();
     if subject.is_ops || subject.grants.is_empty() {
         return out;
     }
-    let slice = match AccessSlice::compile(subject) {
+    let slice = match access.slice() {
         Ok(slice) => slice,
         Err(err) => {
             out.errors.push(err);
