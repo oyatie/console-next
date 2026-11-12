@@ -223,6 +223,7 @@ pub struct WorkplaceState {
     pub before_first_record: bool,
     pub name: String,
     pub address: Option<KrAddress>,
+    pub same_address_as_registration: bool,
     pub mail_address: Option<KrAddress>,
     #[serde(with = "crate::iso_date::option")]
     pub opened_on: Option<time::Date>,

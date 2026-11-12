@@ -43,7 +43,7 @@ export const CRN_BAD_CHECK = (() => {
  * The next `method` answer on a path matching `path`; take it before the press that sends the request. A round trip's
  * time grows with the host's load, so a step waits for the answer (and asserts it) rather than a fixed time after a press.
  */
-const answer = (page: Page, method: string, path: RegExp) =>
+export const answer = (page: Page, method: string, path: RegExp) =>
   page.waitForResponse((r) => r.request().method() === method && path.test(new URL(r.url()).pathname));
 
 /**
@@ -116,7 +116,9 @@ export async function fillEntity(page: Page, name: string, c: C = plain, ids: Re
   await page.getByLabel("법인명(단체명)").fill(`주식회사 ${name}`);
   await c.click(page.getByRole("button", { name: "다음", exact: true }));
   if (upload) {
+    const uploaded = answer(page, "POST", /^\/api\/v1\/entity-documents$/);
     await page.locator('input[type="file"]').setInputFiles(upload);
+    await expectStatus(uploaded, 201, "certificate upload");
     await expect(page.getByText(upload.name)).toBeVisible();
   }
   await page.getByLabel("사업자등록번호").fill(ids.brn);
