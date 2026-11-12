@@ -1,6 +1,7 @@
-// Korean source for `groupTransfer.` ids (apps/web/src/features/people/ui/group-transfer-*.tsx): the 전적 sheet
+// Korean copy for `groupTransfer.` ids (apps/web/src/features/people/ui/group-transfer-*.tsx): the 전적 sheet
 // (decisions #30) — its blocked states, consent, continuity, the two-sided preview and its refusals.
-export const koGroupTransfer = {
+import type { enGroupTransfer } from "../en/group-transfer";
+export const koGroupTransfer: Record<keyof typeof enGroupTransfer, string> = {
   "groupTransfer.title": "전적",
   "groupTransfer.placeholder": "받을 법인",
   "groupTransfer.blocked.solo": "전적할 다른 법인이 없습니다",
@@ -83,4 +84,4 @@ export const koGroupTransfer = {
   "groupTransfer.preview.seniority.RESTART": "{date}부터 새로 셈",
   "groupTransfer.preview.seniority.CARRIED": "{start}부터 이어 셈",
   "groupTransfer.receipt.settlement": "{entity} 퇴직 정산 열기",
-} as const;
+};

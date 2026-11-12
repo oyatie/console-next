@@ -1,5 +1,6 @@
-// Korean source for `org.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koOrg = {
+// Korean copy for `org.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enOrg } from "../en/org";
+export const koOrg: Record<keyof typeof enOrg, string> = {
   // Org: branches and regions
 
   // Org: proposal form
@@ -45,4 +46,4 @@ export const koOrg = {
   "org.change.effectuate.apply": "{code} 조직 변경을 시행하면 조직에 즉시 반영됩니다. 되돌리려면 새 조직 변경을 상신해야 합니다.",
   "org.change.effectuate.reassign": "{code} 조직 개편을 시행하면 {from} 소속 직원 {count, plural, other {#명}}(휴직자 포함)을 {to|으로로} 지금 전보합니다. 휴직 등 각자의 상태는 그대로 유지됩니다. 되돌릴 수 없고 한 명씩 인사 이력과 감사 기록에 남습니다.",
   "org.change.rejected.next": "반려된 변경은 다시 상신할 수 없습니다. 의견을 반영해 조직 화면에서 새 변경을 상신하십시오.",
-} as const;
+};

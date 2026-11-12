@@ -1,6 +1,7 @@
-// Korean source for `attendanceSchedule.` ids: A2 달력 (scope tree, month, layer stack and history), the assign sheet
+// Korean copy for `attendanceSchedule.` ids: A2 달력 (scope tree, month, layer stack and history), the assign sheet
 // with its preview, and the cancel sheet. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koAttendanceSchedule = {
+import type { enAttendanceSchedule } from "../en/attendance-schedule";
+export const koAttendanceSchedule: Record<keyof typeof enAttendanceSchedule, string> = {
   "attendanceSchedule.calendar.empty": "근무 일정이 없습니다",
   "attendanceSchedule.calendar.empty.reason": "근무 유형을 추가하면 사업장과 직원에게 일정을 지정할 수 있습니다.",
   "attendanceSchedule.tree.inherited": "{pattern} · {from} 기준",
@@ -99,4 +100,4 @@ export const koAttendanceSchedule = {
   "attendanceSchedule.cancel.commit": "적용 전 취소",
   "attendanceSchedule.cancel.consequence": "{scope}의 {date} 일정을 취소합니다 · 이력에 취소됨으로 남고, 그 범위는 지금 일정을 그대로 따릅니다",
   "attendanceSchedule.cancel.done": "{scope}의 {pattern} 일정({date}부터)을 취소했습니다",
-} as const;
+};

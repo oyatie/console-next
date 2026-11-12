@@ -1,6 +1,4 @@
-import type { koNotice } from "../ko/notice";
-
-export const enNotice: Record<keyof typeof koNotice, string> = {
+export const enNotice = {
   "notice.crumb": "Appointment notice",
   "notice.title": "Appointment notice",
   "notice.new.title": "Compose notice",
@@ -38,4 +36,4 @@ export const enNotice: Record<keyof typeof koNotice, string> = {
   "notice.pick.empty": "No unannounced personnel actions",
   "notice.pick.more": "More personnel actions",
   "notice.preview.title": "Notice preview",
-};
+} as const;

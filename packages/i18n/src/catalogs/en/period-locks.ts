@@ -1,6 +1,4 @@
-import type { koPeriodLocks } from "../ko/period-locks";
-
-export const enPeriodLocks: Partial<Record<keyof typeof koPeriodLocks, string>> = {
+export const enPeriodLocks = {
   "periodLocks.title": "Period locks",
   "periodLocks.new": "New period lock",
   "periodLocks.views": "Lock views",
@@ -128,4 +126,4 @@ export const enPeriodLocks: Partial<Record<keyof typeof koPeriodLocks, string>> 
   "periodLocks.request.refused.period_unlock_request_expired": "This unlock request expired. The lock stays in force; request it again if needed.",
   "periodLocks.request.refused.period_unlock_reject_note_invalid": "Enter a reason of at most 1,000 characters.",
   "periodLocks.request.refused.not_found": "This unlock request was already decided. Check its current state in the list.",
-};
+} as const;

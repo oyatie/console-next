@@ -1,5 +1,6 @@
-// Korean source for `bulkMove.` ids: moving several 부서 at once (S8, apps/web/src/features/org/structure).
-export const koBulkMove = {
+// Korean copy for `bulkMove.` ids: moving several 부서 at once (S8, apps/web/src/features/org/structure).
+import type { enBulkMove } from "../en/bulk-move";
+export const koBulkMove: Record<keyof typeof enBulkMove, string> = {
   "bulkMove.title": "부서 {n, number}개 이동",
   "bulkMove.titleSub": "(하위 포함 {m, number}개)",
   "bulkMove.collapsed": "{names|은는} {parent} 아래에 있어 함께 이동합니다. 실제로 이동하는 묶음은 {n, number}개입니다.",
@@ -44,4 +45,4 @@ export const koBulkMove = {
   "bulkMove.addTaken": "이미 고름",
   "bulkMove.titleOne": "{name} 이동",
   "bulkMove.from": "지금 위치",
-} as const;
+};

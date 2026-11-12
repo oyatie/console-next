@@ -1,6 +1,7 @@
-// Korean source for `roster.` ids (the people list: features/people/ui/roster-*.tsx). Rules: the header of
+// Korean copy for `roster.` ids (the people list: features/people/ui/roster-*.tsx). Rules: the header of
 // ../ko.ts and packages/i18n/GUIDE.md. Counts arrive as numbers; `{date}` and `{rel}` come preformatted.
-export const koRoster = {
+import type { enRoster } from "../en/roster";
+export const koRoster: Record<keyof typeof enRoster, string> = {
   "roster.page.roster": "명부",
   "roster.page.appointments": "발령",
   "roster.page.exits": "퇴직 진행",
@@ -165,4 +166,4 @@ export const koRoster = {
   "roster.foot.open": "미리 보기",
   "roster.foot.card": "인사카드",
   "roster.foot.find": "찾기",
-} as const;
+};

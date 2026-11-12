@@ -1,6 +1,4 @@
-import type { koImportValues } from "../ko/import-values";
-
-export const enImportValues: Record<keyof typeof koImportValues, string> = {
+export const enImportValues = {
   "importValues.title": "Value links · {kind}",
   "importValues.counts": "{all, number} values · {open, number} to choose",
   "importValues.col.text": "In the file",
@@ -22,4 +20,4 @@ export const enImportValues: Record<keyof typeof koImportValues, string> = {
   "importValues.why.remembered": "Selected before",
   "importValues.basis.registration_number": "Registration number matches",
   "importValues.basis.alias": "Short-label candidate",
-};
+} as const;

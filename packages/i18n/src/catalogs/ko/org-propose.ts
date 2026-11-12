@@ -1,6 +1,7 @@
-// Korean source for `orgPropose.` ids: the org change proposal card (features/org/ui/propose-*, unit-*, branch-*).
+// Korean copy for `orgPropose.` ids: the org change proposal card (features/org/ui/propose-*, unit-*, branch-*).
 // Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koOrgPropose = {
+import type { enOrgPropose } from "../en/org-propose";
+export const koOrgPropose: Record<keyof typeof enOrgPropose, string> = {
   "orgPropose.unsaved": "아직 저장하지 않았습니다",
 
   "orgPropose.title.create": "{parent} 아래에 {kind} 신설",
@@ -133,4 +134,4 @@ export const koOrgPropose = {
   "orgPropose.done.notSent": "초안을 저장했지만 상신하지 못했습니다 · {code} · {reason}",
   "orgPropose.done.undated": "초안을 저장했지만 적용일과 사유를 입력하지 못했습니다 · {code} · {reason}",
   "orgPropose.done.unsent": "상신하지 못했습니다 · 사전 점검에서 막힌 사항이 있습니다 · {code}",
-} as const;
+};

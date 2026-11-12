@@ -1,6 +1,7 @@
-// Korean source for `orgHistory.` ids (apps/web/src/features/org-bulk): 변경 이력 (S9), the 기준일 control,
+// Korean copy for `orgHistory.` ids (apps/web/src/features/org-bulk): 변경 이력 (S9), the 기준일 control,
 // and the stale-move banner (S11). Rows say what the server recorded; nothing is drawn that it does not keep.
-export const koOrgHistory = {
+import type { enOrgHistory } from "../en/org-history";
+export const koOrgHistory: Record<keyof typeof enOrgHistory, string> = {
   "orgHistory.title": "변경 이력",
   "orgHistory.scheduled": "예정된 변경 {count, number}건 · 가장 가까운 날 {date} ({label}{more, plural, =0 {} other { 외 #건}})",
   "orgHistory.scheduledOpen": "조직 변경 목록에서 보기",
@@ -43,4 +44,4 @@ export const koOrgHistory = {
   "orgHistory.foot": "불러온 최근 기록 {count, number}건 · 되돌리기는 설정 단계의 아직 되돌리지 않은 일괄 기록에만 표시됩니다. 등록은 해당 기록에서 정정하고, 운영 시작 후 조직 변경은 새 조직 변경으로 정정합니다.",
   "orgHistory.empty": "아직 기록된 변경이 없습니다. 조직도에서 변경하거나 목록을 붙여 넣으면 여기에 쌓입니다.",
   "orgHistory.emptyFiltered": "불러온 최근 기록 중 {filters} 조건에 맞는 변경이 없습니다. 조건을 초기화하면 불러온 기록을 볼 수 있습니다.",
-} as const;
+};

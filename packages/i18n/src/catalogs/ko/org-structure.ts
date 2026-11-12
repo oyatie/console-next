@@ -1,5 +1,6 @@
-// Korean source for `orgStructure.` ids: the 사업장 · 부서 panels and sheets of 회사 구조 (apps/web/src/features/org/structure).
-export const koOrgStructure = {
+// Korean copy for `orgStructure.` ids: the 사업장 · 부서 panels and sheets of 회사 구조 (apps/web/src/features/org/structure).
+import type { enOrgStructure } from "../en/org-structure";
+export const koOrgStructure: Record<keyof typeof enOrgStructure, string> = {
   "orgStructure.asOf": "{date} 기준",
   "orgStructure.title": "조직 구조",
   "orgStructure.cancel": "취소",
@@ -69,4 +70,4 @@ export const koOrgStructure = {
   "orgStructure.order.upDone": "{name|을를} 한 칸 위로 옮겼습니다",
   "orgStructure.order.downDone": "{name|을를} 한 칸 아래로 옮겼습니다",
   "orgStructure.members.joinersFailed": "입사 예정 인원을 불러오지 못했습니다",
-} as const;
+};

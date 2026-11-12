@@ -1,6 +1,4 @@
-import type { koBulkMove } from "../ko/bulk-move";
-
-export const enBulkMove: Record<keyof typeof koBulkMove, string> = {
+export const enBulkMove = {
   "bulkMove.title": "Move {n, number} departments",
   "bulkMove.titleSub": "({m, number} with sub-departments)",
   "bulkMove.collapsed": "{names} sits under {parent} and moves with it. {n, number} groups actually move.",
@@ -45,4 +43,4 @@ export const enBulkMove: Record<keyof typeof koBulkMove, string> = {
   "bulkMove.addTaken": "Already chosen",
   "bulkMove.titleOne": "Move {name}",
   "bulkMove.from": "Now under",
-};
+} as const;

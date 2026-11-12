@@ -1,6 +1,4 @@
-import type { koExit } from "../ko/exit";
-
-export const enExit: Partial<Record<keyof typeof koExit, string>> = {
+export const enExit = {
   "exit.board.board": "Tasks by leg",
   "exit.board.ribbon": "Case timeline",
   "exit.board.leg.approval": "Approval",
@@ -207,4 +205,4 @@ export const enExit: Partial<Record<keyof typeof koExit, string>> = {
   "exit.leave.protection": "Dismissal protection: leave and {days} days afterward",
   "exit.noticePay.reason.figures_withheld": "You do not have permission to read pay figures",
   "exit.noticePay.exceptionApplied": "Recorded dismissal notice proviso",
-};
+} as const;

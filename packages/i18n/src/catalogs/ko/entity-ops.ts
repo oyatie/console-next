@@ -1,6 +1,7 @@
 // 법인 · 사업장 operations added in UX-R1 ENTITY: 등록증 연결 (company-18), 이전 (company-12), 휴업·재개 (company-07),
 // 설립 중 (company-04), the read-only record and the reader's reach (company-03, worst-case-08).
-export const koEntityOps = {
+import type { enEntityOps } from "../en/entity-ops";
+export const koEntityOps: Record<keyof typeof enEntityOps, string> = {
   "entityOps.attach.action": "등록증 연결",
   "entityOps.attach.actionOf": "{name} 등록증 연결",
   "entityOps.attach.kicker": "{entity} · {name}",
@@ -127,4 +128,4 @@ export const koEntityOps = {
   "entityOps.reason.CERT_CHANGE_REPORT": "등록증 변경 (정정신고)",
   "entityOps.reason.CERT_REISSUE": "등록증 재발급",
   "entityOps.reason.CERT_ERROR_CORRECTION": "등록증 정정",
-} as const;
+};

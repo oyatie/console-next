@@ -1,6 +1,7 @@
-// Korean source for `facts.` ids (the employee page's employment record, contract history and onboarding
+// Korean copy for `facts.` ids (the employee page's employment record, contract history and onboarding
 // checklist; EMP-MODEL). Rules: the header of ../ko.ts and GUIDE.md. `{date}` arrives preformatted.
-export const koFacts = {
+import type { enFacts } from "../en/facts";
+export const koFacts: Record<keyof typeof enFacts, string> = {
   "facts.title": "고용 기록",
   "facts.noProfile": "고용 정보가 없어 고용 형태·기본급·수습을 기록할 수 없습니다.",
   "facts.birthDate": "생년월일",
@@ -65,4 +66,4 @@ export const koFacts = {
   "facts.errors": "{count}개 항목을 확인하십시오",
   "facts.contract.overlap": "{kind} 계약({start} ~ {end})과 기간이 겹칩니다. 새로 등록하는 대신 이 계약을 정정하십시오.",
   "facts.contract.overlap.correct": "{start} 계약 정정",
-} as const;
+};

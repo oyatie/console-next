@@ -1,6 +1,7 @@
-// Korean source for `importChanges.` ids (features/import/ui/changed-cells.tsx): the cells a file changes for people
+// Korean copy for `importChanges.` ids (features/import/ui/changed-cells.tsx): the cells a file changes for people
 // already on file (spec E7-update).
-export const koImportChanges = {
+import type { enImportChanges } from "../en/import-changes";
+export const koImportChanges: Record<keyof typeof enImportChanges, string> = {
   "importChanges.title": "바뀐 칸 {cells, number} · 사람 {people, number}",
   "importChanges.changed": "바뀜 {n, number}",
   "importChanges.same": "그대로 {n, number}",
@@ -13,4 +14,4 @@ export const koImportChanges = {
   "importChanges.col.record": "기록",
   "importChanges.correction": "정정",
   "importChanges.route": "{route}에서",
-} as const;
+};

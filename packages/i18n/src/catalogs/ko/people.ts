@@ -1,5 +1,6 @@
-// Korean source for `people.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koPeople = {
+// Korean copy for `people.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enPeople } from "../en/people";
+export const koPeople: Record<keyof typeof enPeople, string> = {
   "people.label.unnamed": "이름 없음",
   "people.label.identityMissing": "식별 정보 없음",
   "people.label.accountCreated": "계정 생성 {at}",
@@ -157,4 +158,4 @@ export const koPeople = {
   "people.event.group.SETTLED": "정산",
   "people.event.group.CARRIED": "승계",
   "people.event.group.RESTART": "새로",
-} as const;
+};

@@ -3,8 +3,9 @@ import { koOrgBulk } from "./org-bulk";
 import { koWorkplace } from "./workplace";
 import { koEntityRecord } from "./entity-record";
 import { koEntity } from "./entity";
-// Korean source for `entityHistoryField.` ids (history diff field labels and enum/boolean values).
-export const koEntityHistoryField = {
+// Korean copy for `entityHistoryField.` ids (history diff field labels and enum/boolean values).
+import type { enEntityHistoryField } from "../en/entity-history-field";
+export const koEntityHistoryField: Record<keyof typeof enEntityHistoryField, string> = {
   "entityHistoryField.priority_support_basis": "우선지원대상 판단 근거",
   "entityHistoryField.main_ksic_code": "주된 업종 코드",
   "entityHistoryField.main_ksic_version": "표준산업분류 차수",
@@ -113,4 +114,4 @@ export const koEntityHistoryField = {
   "entityHistoryField.not_registered_reason_version": "미등록 사유 목록 판",
   "entityHistoryField.unitMode.OWN": "이 사업장 단독",
   "entityHistoryField.unitMode.PART_OF": "다른 사업장에 포함",
-} as const;
+};

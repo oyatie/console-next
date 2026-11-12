@@ -1,5 +1,3 @@
-import type { koUiCommandPalette } from "../ko/ui-command-palette";
-
-export const enUiCommandPalette: Record<keyof typeof koUiCommandPalette, string> = {
+export const enUiCommandPalette = {
   "uiCommandPalette.esc": "Esc",
-};
+} as const;

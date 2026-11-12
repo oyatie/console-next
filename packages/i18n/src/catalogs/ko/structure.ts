@@ -1,6 +1,7 @@
-// Korean source for `structure.` ids (features/structure): 회사 구조 — 조직도, 목록, 아웃라인, first run, export.
+// Korean copy for `structure.` ids (features/structure): 회사 구조 — 조직도, 목록, 아웃라인, first run, export.
 // Copy follows mockups S1, S2, S2b, S2-registry and S10 (structure-ux final/spec.md). Rules: ../ko.ts header and GUIDE.md.
-export const koStructure = {
+import type { enStructure } from "../en/structure";
+export const koStructure: Record<keyof typeof enStructure, string> = {
   "structure.head.missing": "부서장 없음",
   "structure.head.missingCount": "부서장 없음 {count, number}",
   "structure.head.appoint": "부서장 지정",
@@ -214,4 +215,4 @@ export const koStructure = {
   "structure.shortcuts.addBelow": "다음 부서 추가",
   "structure.shortcuts.nest": "입력 중 하위로 · 상위로 (부서는 사업장 안에서만 이동)",
   "structure.shortcuts.finish": "편집 종료",
-} as const;
+};

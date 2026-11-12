@@ -1,4 +1,5 @@
-export const koTimeline = {
+import type { enTimeline } from "../en/timeline";
+export const koTimeline: Record<keyof typeof enTimeline, string> = {
   "timeline.state.changed": "변경",
   "timeline.state.corrected": "정정",
   "timeline.state.withdrawn": "철회",
@@ -19,4 +20,4 @@ export const koTimeline = {
   "timeline.hold": "보존 연장 · {reason}",
   "timeline.retention.due": "파기 대상",
   "timeline.retention.destroyed": "파기됨",
-} as const;
+};

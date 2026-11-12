@@ -1,6 +1,4 @@
-import type { koImportSheet } from "../ko/import-sheet";
-
-export const enImportSheet: Partial<Record<keyof typeof koImportSheet, string>> = {
+export const enImportSheet = {
   "importSheet.title": "{count, plural, one {# sheet} other {# sheets}}",
   "importSheet.needs": "{count, plural, one {# sheet has} other {# sheets have}} no header the import could find. Choose the header row and an employee field per column, or skip the sheet.",
   "importSheet.sheet": "Sheet {name}",
@@ -35,4 +33,4 @@ export const enImportSheet: Partial<Record<keyof typeof koImportSheet, string>> 
   "importSheet.status.remembered": "Skipped last time",
   "importSheet.unskip": "Import the {name} sheet this time",
   "importSheet.map.reread": "The {name} sheet was skipped, so it has not been read. Reading it again finds its header.",
-};
+} as const;

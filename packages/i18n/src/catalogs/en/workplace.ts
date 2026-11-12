@@ -1,6 +1,4 @@
-import type { koWorkplace } from "../ko/workplace";
-
-export const enWorkplace: Record<keyof typeof koWorkplace, string> = {
+export const enWorkplace = {
   "workplace.answer.consequence": "Record {name} as not required to register from {date}, with history.",
   "workplace.filing.entityBasis": "Legal entity filing registration",
   "workplace.registration.prompt": "Review registration answer",
@@ -290,4 +288,4 @@ export const enWorkplace: Record<keyof typeof koWorkplace, string> = {
   "workplace.code.reused": "A closed workplace used this code · the history shows both with it.",
   "workplace.close.target.closingDept": "A department of the closing workplace",
   "workplace.closed.noEdit": "A closed workplace is not edited · its history stays readable",
-};
+} as const;

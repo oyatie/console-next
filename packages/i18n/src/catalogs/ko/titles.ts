@@ -1,5 +1,6 @@
-// Korean source for `titles.` ids (features/people/ui/job-titles-page.tsx): the company's position catalog (BW-13).
-export const koTitles = {
+// Korean copy for `titles.` ids (features/people/ui/job-titles-page.tsx): the company's position catalog (BW-13).
+import type { enTitles } from "../en/titles";
+export const koTitles: Record<keyof typeof enTitles, string> = {
   "titles.title": "직위 목록",
   "titles.list": "직위",
   "titles.col.label": "직위 이름",
@@ -26,4 +27,4 @@ export const koTitles = {
   "titles.edit": "{label} 수정",
   "titles.edit.title": "{label} 목록 항목 수정",
   "titles.edit.commit": "목록 항목 저장",
-} as const;
+};

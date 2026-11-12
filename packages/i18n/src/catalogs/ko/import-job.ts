@@ -1,5 +1,6 @@
-// Korean source for `importJob.` ids (features/import/ui/job-step.tsx): the apply running as a job (r3:hire-02).
-export const koImportJob = {
+// Korean copy for `importJob.` ids (features/import/ui/job-step.tsx): the apply running as a job (r3:hire-02).
+import type { enImportJob } from "../en/import-job";
+export const koImportJob: Record<keyof typeof enImportJob, string> = {
   "importJob.title": "명부 반영 중",
   "importJob.state.queued": "반영을 시작합니다 · 모의 반영에서 승인한 내용 그대로 씁니다",
   "importJob.state.applying": "직원을 명부에 넣는 중입니다",
@@ -14,4 +15,4 @@ export const koImportJob = {
   "importJob.error.apply_interrupted": "반영이 아무것도 쓰기 전에 멈췄습니다. 모의 반영으로 돌아가 다시 반영하십시오.",
   "importJob.error.other": "반영이 멈췄습니다. 아무 행도 저장하지 않았습니다. 모의 반영으로 돌아가 확인한 뒤 다시 반영하십시오.",
   "importJob.started": "명부 반영을 시작했습니다",
-} as const;
+};

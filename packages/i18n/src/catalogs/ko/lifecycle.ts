@@ -1,10 +1,11 @@
 import { koLifecycleTrail } from "../lifecycle-trail/ko";
-// Korean source for `lifecycle.` ids (apps/web/src/features/people/ui/lifecycle-*.tsx): the action sheets for
+// Korean copy for `lifecycle.` ids (apps/web/src/features/people/ui/lifecycle-*.tsx): the action sheets for
 // 전보·승진·휴직·복직·계약 갱신 and withdrawing a reservation. A date after today schedules; today or
 // earlier applies now (only a correction or rescission from the history undoes it), which the sentence and the
 // commit's colour both say.
 // `{date}` and friends come preformatted ("11월 2일 (월)" in sentences, "11월 2일" on buttons).
-export const koLifecycle = {
+import type { enLifecycle } from "../en/lifecycle";
+export const koLifecycle: Record<keyof typeof enLifecycle, string> = {
   "lifecycle.title.TRANSFER": "전보",
   "lifecycle.title.relocate": "전근",
   "lifecycle.title.PROMOTE": "승진 · 강등",
@@ -300,4 +301,4 @@ export const koLifecycle = {
   "lifecycle.consequence.job.past": "{name} · 직무 · 직군 변경 · {date} 시행",
   "lifecycle.consequence.job.future": "{name} · 직무 · 직군 변경 · {date} 시행 예약",
   ...koLifecycleTrail,
-} as const;
+};

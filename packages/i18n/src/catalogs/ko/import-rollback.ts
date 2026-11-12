@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koImportRollback = {
+import type { enImportRollback } from "../en/import-rollback";
+export const koImportRollback: Record<keyof typeof enImportRollback, string> = {
   "importRollback.homeBranch": "지점",
   "importRollback.branchUnset": "미지정",
   "importRollback.runs.title": "최근 가져오기",
@@ -48,4 +49,4 @@ export const koImportRollback = {
   "importRollback.blocker.account_linked": "연결된 계정",
   "importRollback.reviewRun": "되돌릴 가져오기 기록 열기",
   "importRollback.applyConsequence": "요청자가 확인한 내용 그대로 가져오기 전체를 되돌립니다. 이후 기록이 있으면 아무것도 되돌리지 않습니다.",
-} as const;
+};

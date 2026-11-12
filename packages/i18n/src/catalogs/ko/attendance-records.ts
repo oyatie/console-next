@@ -1,6 +1,7 @@
-// Korean source for `attendanceRecords.` ids: 월간 근무표 (A3), 일별 (A1, A3-entry), 하루 창, 정정 · 기록 취소 · 일괄 취소,
+// Korean copy for `attendanceRecords.` ids: 월간 근무표 (A3), 일별 (A1, A3-entry), 하루 창, 정정 · 기록 취소 · 일괄 취소,
 // 개인 근태 카드 (A7). Rules: the header of ../ko.ts, packages/i18n/GUIDE.md and docs/design/copy-conventions.md.
-export const koAttendanceRecords = {
+import type { enAttendanceRecords } from "../en/attendance-records";
+export const koAttendanceRecords: Record<keyof typeof enAttendanceRecords, string> = {
   "attendanceRecords.drafts.unavailable": "초안을 이 탭에 보관하지 못했습니다 · 새로고침하기 전에 근태를 저장하십시오",
   "attendanceRecords.drafts.unreadable": "보관한 초안을 읽지 못했습니다 · 원본은 그대로 남아 있습니다 · 새 입력은 새로고침 전에 저장하십시오",
   "attendanceRecords.back": "돌아가기",
