@@ -9,6 +9,9 @@ use crate::{
     ListActionInboxQuery, MAX_PAGE_LIMIT, encode_cursor, list_action_inbox, parse_cursor,
 };
 
+/// Kinds that are FYI for their holder: listed under 참조, never counted as 해야 할 일.
+const NOTICE_KINDS: [&str; 1] = ["grant_notice"];
+
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum InboxFilter {
@@ -19,6 +22,8 @@ pub enum InboxFilter {
     Scheduled,
     Deadlines,
     Failures,
+    /// 참조: notices addressed to me that ask only to be confirmed (FYI), kept out of 해야 할 일.
+    Notices,
     #[serde(skip)]
     Approvals,
     #[serde(skip)]
@@ -34,6 +39,7 @@ impl InboxFilter {
             InboxFilter::Waiting => matches!(source, S::OrgChange | S::EntityCorrections),
             InboxFilter::Scheduled => source == S::OrgChange,
             InboxFilter::Failures => source == S::HrLifecycle,
+            InboxFilter::Notices => source == S::GrantNotice,
             InboxFilter::Approvals => matches!(
                 source,
                 S::Workflow
@@ -68,11 +74,12 @@ impl InboxFilter {
             Self::Approvals => crate::Attention::Approvals.includes(item),
             Self::Today => crate::Attention::Today.includes(item),
             Self::Overdue => crate::Attention::Overdue.includes(item),
-            Self::Turn => item.lane == "turn",
+            Self::Turn => item.lane == "turn" && !NOTICE_KINDS.contains(&item.kind.as_str()),
             Self::Waiting => item.lane == "waiting",
             Self::Scheduled => item.lane == "scheduled",
             Self::Deadlines => item.lane == "turn" && matches!(item.due_tone, "danger" | "warn"),
             Self::Failures => item.kind == "lifecycle_apply_failed",
+            Self::Notices => NOTICE_KINDS.contains(&item.kind.as_str()),
         }
     }
 }
@@ -220,6 +227,7 @@ pub(crate) fn counts(
         ("scheduled", InboxFilter::Scheduled),
         ("deadlines", InboxFilter::Deadlines),
         ("failures", InboxFilter::Failures),
+        ("notices", InboxFilter::Notices),
     ]
     .into_iter()
     .map(|(key, filter)| {
@@ -380,6 +388,22 @@ mod tests {
     }
 
     #[test]
+    fn a_grant_notice_is_a_notice_not_work_to_do() {
+        // A second passkey is work to do (Home prompts it from the turn read), not a notice.
+        let security = item("turn", "neutral", "account_security");
+        assert!(InboxFilter::Turn.includes(&security) && !InboxFilter::Notices.includes(&security));
+        let notice = item("turn", "neutral", "grant_notice");
+        assert!(!InboxFilter::Turn.includes(&notice));
+        assert!(InboxFilter::Notices.includes(&notice));
+        assert!(InboxFilter::All.includes(&notice));
+        assert!(!InboxFilter::Notices.includes(&item("turn", "neutral", "workflow")));
+        let both = counts(&[notice, security], true);
+        assert_eq!((both["turn"].total, both["notices"].total), (1, 1));
+        assert!(InboxFilter::Notices.includes_source(crate::ActionInboxSource::GrantNotice));
+        assert!(!InboxFilter::Notices.includes_source(crate::ActionInboxSource::Workflow));
+    }
+
+    #[test]
     fn counts_preserve_each_view_predicate_and_exactness() {
         let items = [
             item("turn", "danger", "workflow"),
@@ -392,13 +416,14 @@ mod tests {
         ];
         for exact in [true, false] {
             let result = counts(&items, exact);
-            assert_eq!(result.len(), 5);
+            assert_eq!(result.len(), 6);
             for (key, total) in [
                 ("turn", 3),
                 ("waiting", 2),
                 ("scheduled", 2),
                 ("deadlines", 2),
                 ("failures", 2),
+                ("notices", 0),
             ] {
                 assert_eq!(
                     result[key],

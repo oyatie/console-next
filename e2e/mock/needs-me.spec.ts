@@ -161,12 +161,15 @@ for (const [tab, filter] of [["all", "turn"], ["waiting", "waiting"], ["schedule
     await expect(page.locator("main h1")).toBeVisible({ timeout: 20_000 });
     const trigger = page.locator("#top-needs-me");
     await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
-    expect(reads).toEqual([filter]);
+    // 참조 also reads the notices view for the grants I have not confirmed; it never feeds the badge.
+    const queueReads = () => reads.filter(read => read !== "notices");
+    expect(queueReads()).toEqual([filter]);
+    expect(reads.includes("notices")).toBe(tab === "reference");
     await trigger.click();
     const panel = page.getByRole("dialog", { name: t("shell.needsMe"), exact: true });
     await expect(panel.getByRole("link", { name: /검증직원/ })).toHaveCount(3);
     await expect(panel.getByText("다른 차례 업무", { exact: true })).toHaveCount(0);
-    expect(reads).toEqual(filter === "turn" ? [filter] : [filter, "turn"]);
+    expect(queueReads()).toEqual(filter === "turn" ? [filter] : [filter, "turn"]);
     expect(mock.unexpected).toEqual([]);
   });
 }
