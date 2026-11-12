@@ -2113,7 +2113,7 @@ mod tests {
 
         // Every National Pension amount is now a 10-won multiple, at every wage
         // — the property the single wage above only samples.
-        for gross in (0..12_000_000).step_by(9_973) {
+        for (step, gross) in (0..12_000_000).step_by(9_973).enumerate() {
             let draft = build_statutory_insurance_draft(&StatutoryInsuranceInput {
                 pay_date: date!(2026 - 08 - 10),
                 monthly_remuneration_won: gross,
@@ -2124,7 +2124,8 @@ mod tests {
             let won = component(&draft, ContributionCode::NationalPension)
                 .employee_won
                 .unwrap();
-            assert_eq!(won % 10, 0, "보수월액 {gross} → 연금보험료 {won}");
+            // The message names the step, not the amounts: wage figures stay out of test output.
+            assert_eq!(won % 10, 0, "off the 10-won grid at step {step}");
         }
     }
 
