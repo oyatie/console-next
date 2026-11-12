@@ -55,7 +55,7 @@ properties:
     type:
     - string
     - 'null'
-    description: 'Workplace kind code (decisions #18); null when unassigned.'
+    description: Workplace kind code from the tenant's workplace kind list; null when unassigned.
   code:
     type:
     - string
@@ -93,7 +93,7 @@ properties:
     - string
     - 'null'
     format: uuid
-    description: "The workplace's own SITE org unit (decisions #14.1)."
+    description: The workplace's own SITE org unit; people with no department are registered there, and it can be named as a parent unit.
   regular_workers:
     $ref: '#/components/schemas/RegularWorkers'
   as_of:

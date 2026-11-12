@@ -76,7 +76,7 @@ properties:
   id_type:
     type: string
     enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED]
-    description: 'Identification document type only; the number is never sent or stored (decisions #6).'
+    description: Identification document type only; the document number is never sent or stored.
   base_pay_won:
     type: integer
     format: int64

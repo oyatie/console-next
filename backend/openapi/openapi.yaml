@@ -39479,7 +39479,7 @@ components:
         id_type:
           type: string
           enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED]
-          description: 'Identification document type only; the number is never sent or stored (decisions #6).'
+          description: Identification document type only; the document number is never sent or stored.
         base_pay_won:
           type: integer
           format: int64
@@ -47017,7 +47017,7 @@ components:
           format: int64
         org_change_routed:
           type: boolean
-          description: 'True when approval.policy.org_structure = route (decisions #26): org changes are routed for approval.'
+          description: True when approval.policy.org_structure is route, so an org change goes through approval before it applies.
         employees:
           type: integer
           format: int64
@@ -60991,7 +60991,7 @@ components:
           format: int64
         org_change_routed:
           type: boolean
-          description: 'True when approval.policy.org_structure = route (decisions #26): org changes are routed for approval.'
+          description: True when approval.policy.org_structure is route, so an org change goes through approval before it applies.
         employees:
           type: integer
           format: int64
@@ -65542,7 +65542,7 @@ components:
           type:
           - string
           - 'null'
-          description: 'Workplace kind code (decisions #18); null when unassigned.'
+          description: Workplace kind code from the tenant's workplace kind list; null when unassigned.
         code:
           type:
           - string
@@ -65580,7 +65580,7 @@ components:
           - string
           - 'null'
           format: uuid
-          description: "The workplace's own SITE org unit (decisions #14.1)."
+          description: The workplace's own SITE org unit; people with no department are registered there, and it can be named as a parent unit.
         regular_workers:
           $ref: '#/components/schemas/RegularWorkers'
         as_of:
