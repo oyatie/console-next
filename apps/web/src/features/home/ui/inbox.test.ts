@@ -163,8 +163,7 @@ test("each filter shows its server count and an inexact lower bound without inve
   view.list.data = { pages: [page([item("work")], { counts: { turn: { total: 7, total_is_exact: true }, waiting: { total: 2, total_is_exact: false } } })] };
   const markup = html();
   // Counts sit in their own slot after the label; an inexact one keeps its "+".
-  expect(markup).toMatch(new RegExp(`${t("home.inbox.tab.turn")} <span[^>]*>7</span>`));
-  expect(markup).toMatch(new RegExp(`${t("home.inbox.tab.waiting")} <span[^>]*>2\\+</span>`));
+  for (const [tab, count] of [["turn", "7"], ["waiting", "2\\+"]] as const) expect(markup).toMatch(new RegExp(`${t(`home.inbox.tab.${tab}`)} <span[^>]*>${count}</span>`));
   // 예정 is a chip under 해야 할 일: the tab keeps its own count and stays current.
   view.filter = "scheduled";
   view.list.data = { pages: [page([], { total: 0, available_filters: ["turn", "scheduled"], counts: { turn: { total: 7, total_is_exact: true }, scheduled: { total: 0, total_is_exact: true } } })] };
@@ -188,8 +187,7 @@ test("no work grant shows the honest account page without dead filters", () => {
   expect(markup).toContain(t("home.noWork.title"));
   expect(markup).toContain('href="/account"');
   // No 요청한 일 or chips without work; 완료 stays reachable for my own decisions.
-  expect(markup).not.toContain('href="/inbox?tab=waiting"');
-  expect(markup).not.toContain('aria-pressed=');
+  for (const part of ['href="/inbox?tab=waiting"', "aria-pressed="]) expect(markup).not.toContain(part);
   expect(markup).toContain('href="/inbox?tab=done"');
 });
 test("empty turn offers permitted starts, next scheduled work and the as-of stamp", () => {
@@ -213,9 +211,7 @@ test("only usable server filters are offered", () => {
   const markup = html();
   // 기한 임박 is no tab of its own: those rows lead 해야 할 일 in its due-soon bucket.
   expect(markup).toContain(t("home.inbox.tab.turn"));
-  expect(markup).not.toContain(t("home.inbox.tab.waiting"));
-  expect(markup).not.toContain(t("home.inbox.filter.failures"));
-  expect(markup).not.toContain(t("home.inbox.filter.scheduled"));
+  for (const label of [t("home.inbox.tab.waiting"), t("home.inbox.filter.failures"), t("home.inbox.filter.scheduled")]) expect(markup).not.toContain(label);
 });
 test("the server can offer a personal view without work capabilities", () => {
   view.list.data = { pages: [page([], { has_work: false, available_filters: ["waiting"] })] };
