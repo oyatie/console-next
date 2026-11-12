@@ -115,3 +115,8 @@ test.each([
   view.list.data = { pages: [samplePage({ counts: { turn: { total: 1, total_is_exact: true }, snoozed } })] };
   expect(html().includes(`id="inbox-chip-snoozed"`)).toBe(shown);
 });
+
+test("a row that cannot be postponed leaves no actions column behind", () => {
+  view.list.data = { pages: [samplePage({ items: [{ ...samplePage().items[0]!, links: [], snooze: { allowed: false, reason: "blocks_others" } }] })] };
+  expect(html()).not.toContain(`>${t("home.inbox.column.actions")}<`);
+});
