@@ -93,7 +93,8 @@ async fn mine(
     principal: &Principal,
     id: &str,
 ) -> Result<(serde_json::Value, OffsetDateTime), Refused> {
-    let item = match resolve(state, principal, id).await? {
+    // Resolving shows the caller no rows, so it writes none to the access log.
+    let item = match resolve(state, principal, id, false).await? {
         Resolved::Found(item) => item,
         Resolved::Missing => {
             return Err(KernelError::not_found("no such inbox item")

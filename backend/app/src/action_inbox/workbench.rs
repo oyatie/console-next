@@ -59,6 +59,7 @@ pub(crate) async fn read_workbench_action_inbox(
             .to_owned(),
         // What the account postponed is off the workbench too.
         snoozes: Snoozes::new(snoozed, SnoozeMode::Exclude, as_of),
+        log_access: true,
     };
     let page = list_complete_action_inbox(&sources, as_of)
         .await

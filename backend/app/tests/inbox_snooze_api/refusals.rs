@@ -16,6 +16,9 @@ async fn each_refusal_names_its_reason_and_writes_nothing(pool: PgPool) {
     let page = list(&ctx, "?limit=200").await;
     let legal = filing(&page);
     let id = legal["id"].as_str().unwrap();
+    // The list read logged the personnel rows it showed; a command shows none, so it logs none.
+    let shown = access_logged(&pool, org).await;
+    assert!(shown > 0, "the fixture shows personnel rows: {page}");
 
     // Today or earlier is not later.
     for date in [day(0), day(-1)] {
@@ -52,6 +55,8 @@ async fn each_refusal_names_its_reason_and_writes_nothing(pool: PgPool) {
         }
     }
 
+    assert_eq!(access_logged(&pool, org).await, shown);
+
     // A decision someone is waiting on cannot be postponed by the one who decides.
     let checker = http::add_user(&pool, org, &["EXECUTIVE"]).await;
     person_fixtures::bind_user_to_distinct_person(&pool, checker).await;
@@ -69,9 +74,11 @@ async fn each_refusal_names_its_reason_and_writes_nothing(pool: PgPool) {
         row["snooze"],
         json!({"allowed": false, "reason": "blocks_others"})
     );
+    let shown = access_logged(&pool, org).await;
     let (status, body) = until(&decider, &decision, &day(1)).await;
     assert_eq!(status, StatusCode::CONFLICT, "{body}");
     assert_eq!(body["error"]["code"], "snooze_not_allowed", "{body}");
+    assert_eq!(access_logged(&pool, org).await, shown);
 
     assert_eq!(rows(&pool, org).await, 0);
     assert_eq!(http::audits(&pool, org, "action_inbox.snooze").await, 0);
@@ -86,4 +93,13 @@ async fn each_refusal_names_its_reason_and_writes_nothing(pool: PgPool) {
         .call("GET", &format!("{INBOX}?snoozed=only&limit=0"), None)
         .await;
     assert_eq!(status, StatusCode::OK, "{body}");
+}
+
+/// Personnel access events written by inbox reads.
+async fn access_logged(pool: &PgPool, org: Uuid) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE org_id = $1 AND action IN ('employee.list_read','employee_exit_case.list_read')")
+        .bind(org)
+        .fetch_one(pool)
+        .await
+        .unwrap()
 }

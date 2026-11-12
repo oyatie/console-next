@@ -134,6 +134,7 @@ impl ActionInboxSourcePort for Raw<'_> {
                         &sources.principal,
                         query,
                         &sources.statutory_register,
+                        sources.log_access,
                     )
                     .await
                 }

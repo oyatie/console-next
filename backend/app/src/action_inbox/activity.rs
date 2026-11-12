@@ -86,10 +86,12 @@ pub(super) enum Resolved {
 
 /// The item as the list serves it when it is in my inbox now, snoozed or not. Pages through the same read as the
 /// list, stopping at the item or after a bounded scan; a miss while a source was unavailable is not a 404.
+/// `log_access` writes the rows read to the personnel access log, as the list does.
 pub(super) async fn resolve(
     state: &ActionInboxState,
     principal: &Principal,
     id: &str,
+    log_access: bool,
 ) -> Result<Resolved, InboxError> {
     let mut cursor = None;
     let mut unavailable = false;
@@ -103,6 +105,7 @@ pub(super) async fn resolve(
                 ..Default::default()
             },
             SnoozeMode::Include,
+            log_access,
         )
         .await?;
         unavailable |= page["unavailable"]
@@ -133,7 +136,7 @@ pub(super) async fn list(
     Extension(principal): Extension<Principal>,
     Path(id): Path<String>,
 ) -> Result<Json<ActivityPage>, InboxError> {
-    let (link_kind, record) = match resolve(&state, &principal, &id).await? {
+    let (link_kind, record) = match resolve(&state, &principal, &id, true).await? {
         Resolved::Found(item) => {
             let field = |name: &str| {
                 item["links"][0][name]

@@ -112,15 +112,17 @@ async fn list_action_inbox(
             return Err(KernelError::validation("the snoozed view takes no other filter").into());
         }
     };
-    read(state, principal, query, mode).await
+    read(state, principal, query, mode, true).await
 }
 
 /// The list read. Only this module chooses the mode: no query string reaches `Include`.
+/// `log_access` is false for a command that resolves an item without showing the list.
 async fn read(
     state: ActionInboxState,
     principal: Principal,
     query: ActionInboxQuery,
     mode: SnoozeMode,
+    log_access: bool,
 ) -> Result<Json<serde_json::Value>, InboxError> {
     if query.attention.is_some() && !matches!(query.filter, InboxFilter::All | InboxFilter::Turn) {
         return Err(
@@ -179,6 +181,7 @@ async fn read(
         deadline_due_soon_days,
         policies,
         snoozes: Snoozes::new(snoozed, mode, now),
+        log_access,
     };
     let mut page = run_action_inbox(
         &sources,
@@ -229,6 +232,8 @@ struct PgActionInboxSources {
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
     support_reference: String,
     snoozes: Snoozes,
+    /// Whether the rows read are shown to the caller, and so written to the personnel access log.
+    log_access: bool,
 }
 
 impl ActionInboxSourcePort for PgActionInboxSources {
@@ -254,13 +259,15 @@ impl ActionInboxSourcePort for PgActionInboxSources {
             let _permit = permit.map_err(|_| KernelError::internal("inbox reader closed"))?;
             let started = std::time::Instant::now();
             let result = async {
-            // Snoozed rows leave the page before the access log is written, so only revealed rows are logged.
+            // Snoozed rows leave the page before the access log is written, so only revealed rows are logged;
+            // a command that only resolves an item reveals none. The insurance source logs inside its own read,
+            // before snoozed rows leave, so its entry can name a postponed row.
             let mut page = SnoozedPort { port: &raw::Raw(self), snoozes: &self.snoozes }
                 .list_source_page(source, query).await.map_err(|error| {
                 tracing::error!(source = ?source, support_reference = %self.support_reference, error = %error, "inbox source unavailable");
                 error
             })?;
-            if matches!(
+            if self.log_access && matches!(
                 source,
                 ActionInboxSource::HrIdentity
                     | ActionInboxSource::HrUnplaced

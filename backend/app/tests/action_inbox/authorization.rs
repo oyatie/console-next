@@ -43,6 +43,7 @@ async fn sources(pool: &PgPool, org: OrgId, actor: UserId) -> PgActionInboxSourc
         read_permits: Arc::new(tokio::sync::Semaphore::new(1)),
         support_reference: String::new(),
         snoozes: Default::default(),
+        log_access: true,
     }
 }
 
