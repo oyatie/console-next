@@ -33,8 +33,8 @@ test("route navigation focuses h1 and announces the page title with the current 
   // Programmatic navigation starts from the already managed heading, which must not acquire a keyboard ring.
   await expect(heading).toHaveCSS("outline-style", "none");
   await orgLink.focus();
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Shift+Tab");
+  // Keyboard modality must not assume the host's Tab preference includes links.
+  await orgLink.press("ArrowDown");
   await expect(orgLink).toBeFocused();
   await orgLink.press("Enter");
   await expect(page).toHaveURL(/\/org$/);

@@ -2,7 +2,8 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { createServer } from "vite";
-import { firefox } from "@playwright/test";
+import { firefox, webkit } from "@playwright/test";
+import { e2eBrowser } from "./browser";
 import { loadCatalog } from "@console/i18n";
 import { browserTestOptimizeDeps, chromium } from "../apps/web/src/lib/browser-test";
 
@@ -75,7 +76,7 @@ export async function tableTest() {
     }],
   });
   await server.listen();
-  const browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
+  const browser = await ({ chromium, firefox, webkit }[e2eBrowser()]).launch();
   const page = await (await browser.newContext()).newPage();
   return { server, browser, page };
 }
