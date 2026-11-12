@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { api, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
 import { t, type MessageId } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
+import { markNoticeRead } from "../api";
 import { cursorPages } from "../../../lib/query";
 import { QueryState } from "../../../lib/react/query-state";
 import { codeText } from "../../../lib/code-text";
@@ -30,7 +30,7 @@ function NoticeTarget({ link, children }: { link: Notice["link"]; children: stri
 
 function NoticeRow({ notice }: { notice: Notice }) {
   const confirm = useCommand({
-    run: () => unwrap(api.POST("/api/v1/me/action-inbox/reference/{id}/read", { params: { path: { id: notice.id } } })),
+    run: () => markNoticeRead(notice.id),
     invalidates: [REFERENCE],
     announce: () => t("home.inbox.reference.confirmed"),
   });
