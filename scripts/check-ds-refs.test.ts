@@ -210,3 +210,34 @@ test("quoted CSS strings and TSX comments cannot create references or definition
   });
   expect(checkBrokenRefs(root)).toHaveLength(2);
 });
+
+const experience = "packages/tokens/experiences/calm.css";
+const calm = (light: string, dark = "") => `:root[data-experience="calm"] { ${light} }\n:root[data-experience="calm"][data-theme="dark"] { ${dark} }`;
+
+test("an experience token file resolves its references over the base tokens and its own blocks", () => {
+  const ok = gate(fixture({ [experience]: calm(
+    "--calm-line: var(--border); --chart-grid: var(--calm-line);",
+    "--calm-night: var(--muted); --chart-grid: var(--calm-night);",
+  ) }));
+  expect(ok.stderr).toBe("");
+  expect(ok.status).toBe(0);
+  for (const [css, name] of [
+    [calm("--chart-grid: var(--nope);"), "--nope"],
+    // The light block still applies in dark, but the dark block never applies in light.
+    [calm("--chart-grid: var(--calm-night);", "--calm-night: var(--muted);"), "--calm-night"],
+  ]) {
+    const r = gate(fixture({ [experience]: css }));
+    expect(r.status, r.stderr).toBe(1);
+    expect(r.stderr).toContain(`${experience}: broken var reference var(${name})`);
+  }
+});
+
+test("a token only an experience defines cannot satisfy the app's stylesheets", () => {
+  const r = gate(fixture({
+    [experience]: calm("--calm-line: var(--border);"),
+    "apps/web/src/ui/x/bad.module.css": ".bad { border-color: var(--calm-line); }",
+  }));
+  expect(r.status, r.stderr).toBe(1);
+  expect(r.stderr.match(/broken var reference/g)).toHaveLength(1);
+  expect(r.stderr).toContain("apps/web/src/ui/x/bad.module.css: broken var reference var(--calm-line)");
+});

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,13 +11,19 @@ const tokens = fileURLToPath(new URL("../packages/tokens/tokens.css", import.met
 const roots: string[] = [];
 afterAll(() => roots.forEach((root) => rmSync(root, { recursive: true, force: true })));
 const api = async () => import(/* @vite-ignore */ script);
-const run = (css: string) => {
+/** The gate over a base token file and, beside it, `experiences/<id>.css` for each given experience. */
+const run = (css: string, experiences: Record<string, string> = {}) => {
   const root = mkdtempSync(path.join(tmpdir(), "check-contrast-"));
   roots.push(root);
   const file = path.join(root, "tokens.css");
   writeFileSync(file, css);
+  for (const [id, source] of Object.entries(experiences)) {
+    mkdirSync(path.join(root, "experiences"), { recursive: true });
+    writeFileSync(path.join(root, "experiences", `${id}.css`), source);
+  }
   return spawnSync("node", [script, "--tokens", file], { encoding: "utf8" });
 };
+const blocks = (id: string, light: string, dark = "") => `:root[data-experience="${id}"] { ${light} }\n:root[data-experience="${id}"][data-theme="dark"] { ${dark} }`;
 
 test("all declared text and meaningful non-text pairs pass in light and dark", async () => {
   const { checkContrast } = await api();
@@ -82,4 +88,66 @@ test("the pair matrix retains muted surfaces, refused/selected outlines and ever
     }
     for (const [fg, bg] of expected) expect(problems.some((problem: string) => problem.startsWith(`${theme}: ${fg}/${bg} 1.0000:1`)), `${theme} ${fg}/${bg}`).toBe(true);
   }
+});
+
+test("an experience overlays the base by specificity, then by source order", async () => {
+  const { experienceThemes, themeTokens } = await api();
+  const { experienceBlocks } = await import(/* @vite-ignore */ fileURLToPath(new URL("./check-ds-refs.mjs", import.meta.url)));
+  const base = themeTokens(':root { --a: #000; --b: #000; --c: #000; } :root[data-theme="dark"] { --a: #fff; --b: #fff; --c: #fff; }');
+  // The dark block is written first: its extra attribute outranks the light block wherever it sits.
+  const own = experienceBlocks(':root[data-experience="calm"][data-theme="dark"] { --c: #333; } :root[data-experience="calm"] { --b: #222; --c: #222; }', "calm");
+  expect(experienceThemes(base, own)).toEqual({
+    light: { "--a": "#000", "--b": "#222", "--c": "#222" },
+    // --b: the experience's light block ties the base's dark block and is the later rule, so it wins in dark too.
+    dark: { "--a": "#fff", "--b": "#222", "--c": "#333" },
+  });
+});
+
+test("the pair list runs per experience and per theme, and a failure names the experience", () => {
+  const css = readFileSync(tokens, "utf8");
+  const checks = (r: { stdout: string }) => Number(r.stdout.match(/contrast: (\d+) checks/)![1]);
+  const base = run(css);
+  const clean = run(css, { calm: blocks("calm", "--chart-grid: var(--border);"), warm: blocks("warm", "") });
+  expect(clean.stderr).toBe("");
+  expect(clean.status).toBe(0);
+  expect(checks(clean)).toBe(3 * checks(base));
+
+  const dark = run(css, { calm: blocks("calm", "", "--ink: var(--surface);"), warm: blocks("warm", "") });
+  expect(dark.status).toBe(1);
+  expect(dark.stderr).toContain("experience calm, dark: --ink/--surface 1.0000:1 < 4.5:1");
+  expect(dark.stderr).not.toMatch(/experience calm, light:|warm|^(?:light|dark):/m);
+
+  // A light-block value with no dark counterpart is what dark resolves too, not the base's dark value.
+  const both = run(css, { calm: blocks("calm", "--ink: var(--canvas);") });
+  expect(both.stderr).toContain("experience calm, light: --ink/--surface");
+  expect(both.stderr).toContain("experience calm, dark: --ink/--surface");
+});
+
+test("with no experience file the gate reports the base file alone", () => {
+  const css = readFileSync(tokens, "utf8");
+  const bare = run(css);
+  const root = roots.at(-1)!;
+  mkdirSync(path.join(root, "experiences"));
+  writeFileSync(path.join(root, "experiences", "notes.txt"), ":root { --ink: var(--surface); }");
+  const empty = spawnSync("node", [script, "--tokens", path.join(root, "tokens.css")], { encoding: "utf8" });
+  expect([empty.status, empty.stdout, empty.stderr]).toEqual([bare.status, bare.stdout, bare.stderr]);
+  expect(bare.stdout).toMatch(/^contrast: \d+ checks, 0 problem\(s\)\n$/);
+});
+
+test.each([
+  [":root { --row-h: 36px; }", ":root"],
+  [':root[data-theme="dark"] { --row-h: 36px; }', ':root[data-theme="dark"]'],
+  [':root[data-experience="warm"] { --row-h: 36px; }', ':root[data-experience="warm"]'],
+  [':root[data-experience="calm"], .card { --row-h: 36px; }', ':root[data-experience="calm"], .card'],
+  [':root[data-experience="calm"] .card { --row-h: 36px; }', ':root[data-experience="calm"] .card'],
+  // A space makes the theme attribute a descendant's, not the root's.
+  [':root[data-experience="calm"] [data-theme="dark"] { --row-h: 36px; }', ':root[data-experience="calm"] [data-theme="dark"]'],
+  [':root[data-experience="calm"] { .card { --row-h: 36px; } }', ".card"],
+  ["@font-face { font-family: Calm; }", "@font-face"],
+  ['@media (min-width: 640px) { :root[data-experience="calm"] { --row-h: 36px; } }', "@media (min-width: 640px)"],
+])("an experience file holds only its own light and dark blocks: %s", (css, where) => {
+  const r = run(readFileSync(tokens, "utf8"), { calm: css });
+  expect(r.status, r.stderr).toBe(1);
+  expect(r.stderr).toContain(`experiences/calm.css: ${where} `);
+  expect(r.stderr).toContain(':root[data-experience="calm"] or :root[data-experience="calm"][data-theme="dark"]');
 });

@@ -32,6 +32,33 @@ export function context(node) {
 export function rootDeclaration(decl) {
   return decl.parent?.type === "rule" && /:root\b/.test(decl.parent.selector);
 }
+
+/**
+ * An experience file's own declarations, by block. The gates compute its overlay on the base from the specificity
+ * of exactly two selectors, so a declaration anywhere else would cascade in a way they do not model: it is refused.
+ */
+export function experienceBlocks(css, id) {
+  const light = `:root[data-experience="${id}"]`, dark = `${light}[data-theme="dark"]`;
+  const own = { light: {}, dark: {}, problems: [] };
+  const refused = new Set();
+  parseCss(css).walkDecls((decl) => {
+    const rule = decl.parent;
+    const selector = rule.type === "rule" && rule.parent.type === "root" ? rule.selector.replaceAll("'", '"') : "";
+    const block = selector === light ? own.light : selector === dark ? own.dark : null;
+    if (block) {
+      const name = decodeIdent(decl.prop);
+      if (name.startsWith("--")) block[name] = decl.value.trim();
+      return;
+    }
+    // A rule inside a condition is refused for the condition; anything else for itself.
+    const outside = rule.parent?.type === "atrule" ? rule.parent : rule;
+    if (refused.has(outside)) return;
+    refused.add(outside);
+    const where = outside.selector ?? (outside.name ? `@${outside.name} ${outside.params}`.trim() : "a declaration outside any rule");
+    own.problems.push(`${where} is not one of the experience's blocks; move its declarations under ${light} or ${dark}`);
+  });
+  return own;
+}
 const permits = (definition, use, theme) => (!definition.theme || definition.theme === theme)
   && definition.conditions.every((condition) => use.conditions.includes(condition));
 
