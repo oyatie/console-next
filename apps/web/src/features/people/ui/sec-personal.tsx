@@ -17,6 +17,7 @@ import { RrnField } from "./rrn-field";
 import { EmergencyContacts } from "./emergency-contacts";
 import { PhotoRow } from "./photo-row";
 import { Muted } from "../../../ui/muted/muted";
+import { NationalityField } from "./nationality-field";
 
 const SEX = { MALE: "empCard.sex.MALE", FEMALE: "empCard.sex.FEMALE" } as const;
 
@@ -81,9 +82,10 @@ export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix:
       <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.registerNote"))} label={t("empCard.f.registerNote")} raw={r?.register_note ?? ""} sending={sending("register_note")} placeholder={t("empCard.f.registerNote.hint")} onSave={(v) => quick.save(t("empCard.f.registerNote"), { register_note: v || null }, { register_note: r?.register_note ?? null })}>
         {r?.register_note ?? none}
       </InlineField>
-      <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.nationality"))} label={t("empCard.f.nationality")} raw={p?.nationality ?? ""} sending={sending("nationality")} placeholder={t("empCard.f.nationality.hint")} onSave={(v) => quick.save(t("empCard.f.nationality"), { nationality: v.toUpperCase() || null }, { nationality: p?.nationality ?? null })}>
-        {[p?.nationality && t("empCard.nationality", { code: p.nationality }), f?.id_type && label(ID_TYPE, f.id_type)].filter(Boolean).join(" · ") || none}
-      </InlineField>
+      <NationalityField facts={p} manage={c.editable && !!p} conflict={quick.conflictFor(t("empCard.f.nationality"))} sending={sending("nationality")}
+        onSave={(v) => quick.save(t("empCard.f.nationality"), { nationality: v || null }, { nationality: p?.nationality ?? null })}>
+        {f?.id_type && ` · ${label(ID_TYPE, f.id_type)}`}
+      </NationalityField>
       <FieldRow label={t("empCard.f.notCollected")} >
         <Muted>{t("empCard.notCollected")}</Muted>
       </FieldRow>

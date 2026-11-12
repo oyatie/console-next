@@ -9,6 +9,14 @@
 pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
     &[
         (
+            "country_codes",
+            "ISO 3166-1 identities; migration-owned public reference data, SELECT-only to console_rt",
+        ),
+        (
+            "country_code_versions",
+            "dated ISO 3166-1 labels; migration-owned public reference data, SELECT-only to console_rt",
+        ),
+        (
             "platform_setting_overrides",
             "operator-owned registry values, no tenant content or secrets; runtime SELECT only",
         ),

@@ -59,9 +59,15 @@ async fn candidate_sql_is_bounded_and_deadline_keyset_exhausts_without_loss(pool
         .fetch_one(&pool)
         .await
         .unwrap();
-    let all = page(&runtime, &principal, query(now, 200), &Default::default())
-        .await
-        .unwrap();
+    let all = page(
+        &runtime,
+        &principal,
+        query(now, 200),
+        &Default::default(),
+        &Default::default(),
+    )
+    .await
+    .unwrap();
     assert_eq!(all.items.len(), 37);
     assert_eq!(
         all.items.last().unwrap().due,
@@ -72,10 +78,16 @@ async fn candidate_sql_is_bounded_and_deadline_keyset_exhausts_without_loss(pool
     let mut seen = Vec::new();
     loop {
         let queries = trail_queries::Queries::default();
-        let actual = page(&runtime, &principal, input.clone(), &Default::default())
-            .with_subscriber(queries.clone())
-            .await
-            .unwrap();
+        let actual = page(
+            &runtime,
+            &principal,
+            input.clone(),
+            &Default::default(),
+            &Default::default(),
+        )
+        .with_subscriber(queries.clone())
+        .await
+        .unwrap();
         let statements = queries.statements();
         let candidates = statements
             .iter()
@@ -195,10 +207,16 @@ async fn scoped_reported_authorization_is_flat_and_does_not_leak_other_departmen
             .await
             .unwrap();
         let queries = trail_queries::Queries::default();
-        let actual = page(&runtime, &principal, query(now, 50), &Default::default())
-            .with_subscriber(queries.clone())
-            .await
-            .unwrap();
+        let actual = page(
+            &runtime,
+            &principal,
+            query(now, 50),
+            &Default::default(),
+            &Default::default(),
+        )
+        .with_subscriber(queries.clone())
+        .await
+        .unwrap();
         assert_eq!(actual.items.len(), count as usize);
         assert!(actual.items.iter().all(|i| i.kind == "hr_exit_confirm"));
         let allowed: BTreeSet<Uuid> =
@@ -229,11 +247,17 @@ async fn scoped_reported_authorization_is_flat_and_does_not_leak_other_departmen
                 "one batched Cedar scope check at 1 and 20 rows: {counts:?}"
             );
             assert_eq!(
-                page(&runtime, &projected, query(now, 50), &Default::default())
-                    .await
-                    .unwrap()
-                    .items
-                    .len(),
+                page(
+                    &runtime,
+                    &projected,
+                    query(now, 50),
+                    &Default::default(),
+                    &Default::default()
+                )
+                .await
+                .unwrap()
+                .items
+                .len(),
                 count as usize,
                 "a department grant needs no legacy role or branch projection"
             );

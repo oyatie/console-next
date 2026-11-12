@@ -9,13 +9,16 @@
 use std::collections::BTreeSet;
 
 use console_kernel_core::{AccessScope, OrgId, UserId};
-use console_platform_authz::access::{Projection, load_access_subject, project, union_branches};
+use console_platform_authz::access::{
+    AccessSnapshot, Projection, load_access_subject, project_with_access, union_branches,
+};
 use console_platform_authz::{
     Principal, Role, SubjectFreshness, effective_branch_scope_for_tenant,
     resolve_branch_scope_in_org, resolve_effective_feature_grants_in_org,
 };
 use console_platform_db::{DbError, with_org_conn};
 use sqlx::PgPool;
+use std::sync::{Arc, OnceLock};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -25,6 +28,7 @@ tokio::task_local! {
     /// Method and path of the in-flight HTTP request, scoped once at the
     /// ingress boundary ([`crate::with_trusted_client_ip`]).
     static REQUEST_LINE: RequestLine;
+    static ACCESS_SNAPSHOT: OnceLock<Arc<AccessSnapshot>>;
 }
 
 #[derive(Clone, Debug)]
@@ -44,7 +48,24 @@ impl RequestLine {
 
 /// Run `fut` with `line` as the request line.
 pub(crate) async fn with_request_line<F: Future>(line: RequestLine, fut: F) -> F::Output {
-    REQUEST_LINE.scope(line, fut).await
+    REQUEST_LINE
+        .scope(line, ACCESS_SNAPSHOT.scope(OnceLock::new(), fut))
+        .await
+}
+
+/// Reuse only the same account's read snapshot; writes keep their live loaders.
+pub fn current_access_snapshot(org: OrgId, actor: Uuid) -> Option<Arc<AccessSnapshot>> {
+    if !REQUEST_LINE
+        .try_with(|line| matches!(line.method.as_str(), "GET" | "HEAD"))
+        .unwrap_or(false)
+    {
+        return None;
+    }
+    let access = ACCESS_SNAPSHOT
+        .try_with(|slot| slot.get().cloned())
+        .ok()
+        .flatten()?;
+    (access.subject().org == org && access.subject().account == actor).then_some(access)
 }
 
 /// The tenant principal: legacy branches and custom-role grants, widened by
@@ -141,12 +162,18 @@ async fn resolve_access(
     })
     .await
     .map_err(|LoadError(e)| e)?;
-    let projection = project(&subject);
+    let access = Arc::new(AccessSnapshot::new(subject));
+    let projection = project_with_access(&access);
+    let _ = ACCESS_SNAPSHOT.try_with(|slot| slot.set(access.clone()));
     for err in &projection.errors {
         tracing::warn!(org = %org, error = %err, "authz_eval_error: an access grant was denied");
     }
     Ok(AccessResolution {
-        is_ops: subject.is_ops,
+        is_ops: access.subject().is_ops,
         projection,
     })
 }
+
+#[cfg(test)]
+#[path = "access_tests.rs"]
+mod tests;

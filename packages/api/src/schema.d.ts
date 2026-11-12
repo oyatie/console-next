@@ -18182,7 +18182,7 @@ export interface components {
                 name_hanja?: string | null;
                 /** @description 영문 성명 (Latin letters, spaces, - ' . ,). */
                 name_en?: string | null;
-                /** @description 국적, ISO 3166-1 alpha-2. */
+                /** @description 국적, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it. */
                 nationality?: string | null;
                 /** @description 개인 메일. */
                 personal_email?: string | null;
@@ -20778,6 +20778,14 @@ export interface components {
             };
             /** Format: date */
             group_service_start_date: string | null;
+            /** @description Active ISO country catalog options for nationality. */
+            countries?: {
+                code: string;
+                label_ko: string;
+                label_en: string;
+                /** @description Alternate country names and codes for search, owned by the catalog. */
+                search_terms?: string;
+            }[];
         };
         EmployeePhotoUpload: {
             upload_id: components["schemas"]["Uuid"];
@@ -49873,7 +49881,7 @@ export interface operations {
                 /** @description Home attention view over the same authorized work. Approvals are pending decisions; today means an actionable source deadline on today's Korean calendar date; overdue means that source deadline has expired (including statutory-register deadlines). All preserves filter=all or filter=turn; the other attention views take precedence. Counts honor filter=turn for Home; other saved views require attention to be omitted. */
                 attention?: "all" | "approvals" | "today" | "overdue";
                 /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
-                filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures";
+                filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures" | "notices";
                 /** @description Page size, clamped server-side to 1..=200. */
                 limit?: number;
                 /** @description Opaque immutable-traversal cursor returned as `next_cursor` by the previous page. */

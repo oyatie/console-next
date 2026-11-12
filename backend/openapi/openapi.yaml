@@ -19374,7 +19374,7 @@ paths:
         required: false
         schema:
           type: string
-          enum: [all, turn, waiting, scheduled, deadlines, failures]
+          enum: [all, turn, waiting, scheduled, deadlines, failures, notices]
           default: all
         description: Server-owned view; ownership and deadlines are never merged or filtered in the browser.
       - name: limit
@@ -38921,7 +38921,7 @@ components:
               type: [string, 'null']
               maxLength: 100
             nationality:
-              description: 국적, ISO 3166-1 alpha-2.
+              description: '국적, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it.'
               type: [string, 'null']
               pattern: '^[A-Za-z]{2}$'
             personal_email:
@@ -44312,6 +44312,23 @@ components:
         group_service_start_date:
           type: [string, 'null']
           format: date
+        countries:
+          type: array
+          description: Active ISO country catalog options for nationality.
+          items:
+            type: object
+            required: [code, label_ko, label_en]
+            properties:
+              code:
+                type: string
+                pattern: '^[A-Z]{2}$'
+              label_ko:
+                type: string
+              label_en:
+                type: string
+              search_terms:
+                type: string
+                description: Alternate country names and codes for search, owned by the catalog.
     EmployeePhotoUpload:
       type: object
       required: [upload_id, employee_id, content_type, byte_size, confirmed]

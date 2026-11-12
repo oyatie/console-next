@@ -24,13 +24,21 @@ pub(crate) async fn page(
     principal: &Principal,
     query: ActionInboxSourceQuery,
     permission: &tokio::sync::OnceCell<bool>,
+    authorization: &console_platform_request_context::Authorization,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     let failure = |_| KernelError::internal("failed to load support approvals");
     let mut tx = pool.begin().await.map_err(failure)?;
-    let allowed = console_platform_rest::tenant_support_permission(
+    console_platform_db::support::arm(&mut tx, principal.org_id)
+        .await
+        .map_err(|_| KernelError::internal("failed to authorize support approvals"))?;
+    let facts = authorization
+        .get_in(&mut tx, principal.org_id, *principal.user_id.as_uuid())
+        .await?;
+    let allowed = console_platform_rest::tenant_support_permission_with_facts(
         &mut tx,
         principal.org_id,
         *principal.user_id.as_uuid(),
+        &facts,
     )
     .await
     .map_err(|_| KernelError::internal("failed to authorize support approvals"))?;
@@ -123,9 +131,15 @@ mod tests {
             after: None,
             limit: 1,
         };
-        let first = page(&pool, &principal, query.clone(), &permission)
-            .await
-            .unwrap();
+        let first = page(
+            &pool,
+            &principal,
+            query.clone(),
+            &permission,
+            &Default::default(),
+        )
+        .await
+        .unwrap();
         assert_eq!(first.total, 2);
         assert!(first.total_is_exact);
         assert!(first.has_more);
@@ -135,24 +149,38 @@ mod tests {
             due: first.items[0].due,
             id: first.items[0].id.clone(),
         });
-        let second = page(&pool, &principal, query.clone(), &permission)
-            .await
-            .unwrap();
+        let second = page(
+            &pool,
+            &principal,
+            query.clone(),
+            &permission,
+            &Default::default(),
+        )
+        .await
+        .unwrap();
         assert_eq!(second.total, 2);
         assert!(!second.has_more);
         assert_eq!(second.items.len(), 1);
         assert_eq!(second.items[0].id, ids[0]);
         query.after = None;
         query.limit = 10;
-        let all = page(&pool, &principal, query.clone(), &permission)
-            .await
-            .unwrap();
+        let all = page(
+            &pool,
+            &principal,
+            query.clone(),
+            &permission,
+            &Default::default(),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             all.items.iter().map(|item| &item.id).collect::<Vec<_>>(),
             vec![&ids[1], &ids[0]]
         );
         query.as_of -= Duration::seconds(2);
-        let empty = page(&pool, &principal, query, &permission).await.unwrap();
+        let empty = page(&pool, &principal, query, &permission, &Default::default())
+            .await
+            .unwrap();
         assert_eq!(empty.total, 0);
         assert!(empty.items.is_empty());
         assert!(!empty.has_more);

@@ -35,3 +35,20 @@ properties:
   group_service_start_date:
     type: [string, 'null']
     format: date
+  countries:
+    type: array
+    description: Active ISO country catalog options for nationality.
+    items:
+      type: object
+      required: [code, label_ko, label_en]
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        label_ko:
+          type: string
+        label_en:
+          type: string
+        search_terms:
+          type: string
+          description: Alternate country names and codes for search, owned by the catalog.

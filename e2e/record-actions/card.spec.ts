@@ -192,7 +192,7 @@ test("setup phase: contacts, photo, entries and careers are added, edited, trace
   await expect(admin.getByRole("dialog", { name: "비상연락처 추가" })).toBeHidden();
 
   // 주민등록번호: the honest state, no dead control; 문서: no upload button the server cannot take.
-  await expect(personal.getByText(/번호 입력·정정은 승인 절차/)).toBeVisible();
+  await expect(personal.getByRole("link", { name: "사번·주민등록번호 ›", exact: true })).toBeVisible();
   await expect(admin.getByRole("region", { name: "문서" }).getByRole("button")).toHaveCount(0);
   await expectAccessible(admin, "personnel card, record actions");
 
@@ -228,9 +228,10 @@ test("after 운영 시작: the same 수정 is recorded as a correction and no ha
   const other = await admin.context().newPage();
   await go(other, `/people/${w.personId}`);
   await other.getByRole("button", { name: "국적 · 신분증 수정" }).click();
-  await other.getByRole("textbox", { name: "국적 · 신분증" }).fill("KR");
+  await other.getByRole("combobox", { name: "국적 · 신분증" }).fill("KR");
+  await other.getByRole("combobox", { name: "국적 · 신분증" }).press("ArrowDown");
   const saved = other.waitForResponse((r) => r.request().method() === "PATCH" && DETAIL.test(r.url()));
-  await other.getByRole("textbox", { name: "국적 · 신분증" }).press("Enter");
+  await other.getByRole("combobox", { name: "국적 · 신분증" }).press("Enter");
   expect((await saved).status()).toBe(200);
   await expect(other.getByText(/국적 · 신분증.*저장했습니다/)).toBeVisible();
   const stale = admin.getByRole("dialog", { name: "비상연락처 추가" });
@@ -245,6 +246,9 @@ test("after 운영 시작: the same 수정 is recorded as a correction and no ha
   await expect(personal.getByText("자녀 이••")).toHaveCount(0);
   await other.close();
   await stale.getByRole("button", { name: "닫기", exact: true }).last().click();
+  await expect(stale.getByText("작성 중인 내용이 있습니다 · 한 번 더 누르면 닫습니다", { exact: true })).toBeVisible();
+  await stale.getByRole("button", { name: "닫기", exact: true }).last().click();
+  await expect(stale).toBeHidden();
 
   // 경력 수정 after 운영 시작: the why asked is the correction's reason on the server, as in the setup phase.
   await careerWithWhy(admin, admin.getByRole("region", { name: "이력" }), "누리정밀", "누리정밀공업");

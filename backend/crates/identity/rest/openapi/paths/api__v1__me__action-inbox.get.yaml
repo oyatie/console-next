@@ -44,7 +44,7 @@ parameters:
   required: false
   schema:
     type: string
-    enum: [all, turn, waiting, scheduled, deadlines, failures]
+    enum: [all, turn, waiting, scheduled, deadlines, failures, notices]
     default: all
   description: Server-owned view; ownership and deadlines are never merged or filtered in the browser.
 - name: limit

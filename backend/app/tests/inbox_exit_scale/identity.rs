@@ -38,6 +38,7 @@ async fn batched_identity_keeps_own_record_refused_and_other_people_visible(pool
         &p,
         query(now, 20),
         &Default::default(),
+        &Default::default(),
     )
     .await
     .unwrap();
