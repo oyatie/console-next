@@ -314,7 +314,6 @@ impl ActionInboxSourcePort for SnoozedPort<'_> {
                 .count();
             let unseen = mine.iter().filter(|id| !seen.contains_key(**id)).count();
             Ok(ActionInboxSourcePage {
-                items: kept,
                 // An id not seen may be hidden further on, so the lower bound leaves it out too.
                 total: if only {
                     hidden
@@ -322,7 +321,9 @@ impl ActionInboxSourcePort for SnoozedPort<'_> {
                     raw_total.saturating_sub(hidden + unseen)
                 },
                 total_is_exact: unseen == 0 && (only || raw_exact),
-                has_more: overflow || (!only && more),
+                // The snoozed view goes on only from a full page that left a snoozed id unread.
+                has_more: overflow || (more && (!only || (unseen > 0 && kept.len() >= limit))),
+                items: kept,
             })
         })
     }
