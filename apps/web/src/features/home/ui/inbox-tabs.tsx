@@ -10,7 +10,7 @@ import { useInboxRead } from "./use-inbox-read";
 import css from "./inbox-queue.module.css";
 
 type Count = { total: number; total_is_exact: boolean } | undefined;
-// 참조 counts the grants waiting for my confirmation (the server's notices view); 완료 has no count.
+// The reference tab counts the grants waiting for my confirmation (the server's notices view); done has no count.
 const TAB_COUNT = { turn: "turn", waiting: "waiting", reference: "notices" } as const;
 // An exact count stays a number (TabCount formats it); a lower bound arrives formatted with its "+".
 const shown = (count: Count) => count && (count.total_is_exact ? count.total : `${fmtNumber(count.total)}+`);
