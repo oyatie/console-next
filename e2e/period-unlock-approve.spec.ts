@@ -193,6 +193,7 @@ test("a sole close authority delivers separate inbox reviews before and after go
   test.setTimeout(8 * 60_000);
   const slug = "unlocksolo";
   const { admin: operator } = await tenantInSetup(browser, slug, "단독마감회사", false, "본사", "none");
+  const operatorBearer = bearerOf(operator);
   await registerEmployee(operator, { name: "단독마감", number: "UL-0003", hired: "2024-03-04", unit: SETUP_DEPARTMENT });
   await operator.getByRole("button", { name: "계정 초대" }).click();
   await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
@@ -265,9 +266,11 @@ test("a sole close authority delivers separate inbox reviews before and after go
   await go(human, LOCKS);
   await human.getByRole("button", { name: /^해제됨 / }).click();
   await expect(human.getByText("사후 검토 필요", { exact: true })).toHaveCount(0);
-  const api = apiOf(operator, bearerOf(operator));
-  const locks = await (await api("/period-locks?active=false")).json();
+  const api = apiOf(operator, operatorBearer);
+  const lockResponse = await api("/period-locks?active=false");
+  expect(lockResponse.status(), await lockResponse.text()).toBe(200);
+  const locks = await lockResponse.json();
   for (const unlocked of [outcome, recorded]) {
-    expect(locks.items.find((lock: { id: string }) => lock.id === unlocked.lock.id).unlockReviewRequired).toBe(false);
+    expect(locks.items).toContainEqual(expect.objectContaining({ id: unlocked.lock.id, unlockReviewRequired: false }));
   }
 });
