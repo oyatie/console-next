@@ -186,8 +186,8 @@ test("no work grant shows the honest account page without dead filters", () => {
   const markup = html();
   expect(markup).toContain(t("home.noWork.title"));
   expect(markup).toContain('href="/account"');
-  // No 요청한 일 or chips without work; 완료 stays reachable for my own decisions.
-  for (const part of ['href="/inbox?tab=waiting"', "aria-pressed="]) expect(markup).not.toContain(part);
+  // No chips without work; the relation tabs stay, so 완료 is reachable for my own decisions.
+  expect(markup).not.toContain("aria-pressed=");
   expect(markup).toContain('href="/inbox?tab=done"');
 });
 test("empty turn offers permitted starts, next scheduled work and the as-of stamp", () => {
@@ -211,7 +211,7 @@ test("only usable server filters are offered", () => {
   const markup = html();
   // 기한 임박 is no tab of its own: those rows lead 해야 할 일 in its due-soon bucket.
   expect(markup).toContain(t("home.inbox.tab.turn"));
-  for (const label of [t("home.inbox.tab.waiting"), t("home.inbox.filter.failures"), t("home.inbox.filter.scheduled")]) expect(markup).not.toContain(label);
+  for (const label of [t("home.inbox.filter.failures"), t("home.inbox.filter.scheduled")]) expect(markup).not.toContain(label);
 });
 test("the server can offer a personal view without work capabilities", () => {
   view.list.data = { pages: [page([], { has_work: false, available_filters: ["waiting"] })] };
