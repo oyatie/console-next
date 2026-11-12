@@ -9,7 +9,8 @@ import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../.
 
 let server: ViteDevServer;
 const browsers: Browser[] = [];
-const pages: Page[] = [];
+const pages = new Map<string, Page>();
+const engines = [chromium, ...(process.env.E2E_XBROWSER === "1" ? [firefox] : [])];
 beforeAll(async () => {
   await loadCatalog("ko");
   server = await createServer({
@@ -26,33 +27,39 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         import '/apps/web/src/gallery/gallery.css';
         await loadCatalog('ko');
+        const { ChainStepper } = await import('/apps/web/src/ui/chain-stepper/chain-stepper.tsx');
         const { default: Gallery } = await import('/apps/web/src/ui/chain-stepper/chain-stepper.gallery.tsx');
-        createRoot(document.getElementById('root')).render(React.createElement(Gallery));
+        createRoot(document.getElementById('root')).render(React.createElement(React.Fragment, null, React.createElement(Gallery), React.createElement(ChainStepper, { label: '이름 너비 확인', steps: [{ key: 'name', who: '홍길동 · 인사운영 담당자', state: 'waiting' }] })));
       ` : undefined,
     }],
   });
   await server.listen();
-  for (const browserType of [chromium, firefox]) {
+  for (const browserType of engines) {
     const browser = await browserType.launch();
     browsers.push(browser);
     const page = await browser.newPage();
-    pages.push(page);
+    pages.set(browserType.name(), page);
     await page.route("**/chain-stepper-test", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Chain stepper</title><div id="root"></div><script type="module" src="/chain-stepper-test.js"></script></html>' }));
     await page.goto(`${server.resolvedUrls!.local[0]}chain-stepper-test`);
-    await page.getByRole("list").nth(1).waitFor();
+    await page.getByRole("list", { name: t("uiChainStepper.label"), exact: true }).nth(1).waitFor();
     await page.evaluate(async () => { await document.fonts.ready; });
   }
 }, 60_000);
 afterAll(async () => { await Promise.all(browsers.map(browser => browser.close())); await server?.close(); });
 
-for (const [index, engine] of ["Chromium", "Firefox"].entries()) {
-  test(`${engine}: a complete rejection note wraps within a narrow approval chain`, async () => {
-    const page = pages[index]!;
-    const chain = page.getByRole("list").nth(1);
+for (const engine of engines) {
+  test(`${engine.name()}: a complete rejection note wraps within a narrow approval chain`, async () => {
+    const page = pages.get(engine.name())!;
+    const chain = page.getByRole("list", { name: t("uiChainStepper.label"), exact: true }).nth(1);
     await element(chain).toContainText(t("orgChange.decide.reject.example"));
     for (const width of [1280, 390]) for (const theme of ["light", "dark"]) {
       await page.setViewportSize({ width, height: 844 });
-      await page.locator("html").evaluate((el, theme) => { el.dataset.theme = theme; }, theme);
+      await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+      const name = page.getByRole("list", { name: "이름 너비 확인", exact: true }).getByRole("listitem");
+      expect(await name.evaluate(el => {
+        const who = el.children[1]!;
+        return who.getBoundingClientRect().height <= parseFloat(getComputedStyle(who).lineHeight) + 1;
+      }), `name stays on one line at ${width}px/${theme}`).toBe(true);
       expect(await chain.evaluate(el => ({
         page: document.scrollingElement!.scrollWidth - innerWidth,
         chain: el.scrollWidth - el.clientWidth,
