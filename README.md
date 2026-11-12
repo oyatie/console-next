@@ -30,3 +30,6 @@ build, a secret scan of the history, licence headers and fixture identifiers. `.
 these steps on pushes to `dev` and on pull requests while GitHub Actions is enabled for the repository.
 The backend's database tests and the browser end-to-end
 suite need a Postgres topology this repository does not carry yet.
+
+How a change and a screen are proved, and the conventions the checks enforce, are in the
+[engineering guide](docs/engineering.md).
