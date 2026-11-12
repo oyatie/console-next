@@ -64,8 +64,9 @@ export function literalColour(value) {
  * of exactly two selectors, so anything that would cascade another way is refused: a rule or statement other than
  * the two blocks, a property that is not a token, an !important. So is a colour the light block sets and the dark
  * block does not; `baseDark` names the tokens the base sets for dark, which are colours however the value is written.
+ * `file` is the path a syntax error names.
  */
-export function experienceBlocks(css, id, baseDark = new Set()) {
+export function experienceBlocks(css, id, baseDark = new Set(), file) {
   const light = `:root[data-experience="${id}"]`, dark = `${light}[data-theme="dark"]`;
   const own = { light: {}, dark: {}, problems: [] };
   const refuse = (node) => {
@@ -73,7 +74,7 @@ export function experienceBlocks(css, id, baseDark = new Set()) {
     own.problems.push(`${where} is not one of the experience's blocks; move its declarations under ${light} or ${dark}`);
   };
   // Every top-level node, not every declaration: an @import carries none, and brings in rules no gate reads.
-  for (const node of parseCss(css).nodes) {
+  for (const node of parseCss(css, file).nodes) {
     if (node.type === "comment") continue;
     const selector = node.type === "rule" ? node.selector.replaceAll("'", '"') : "";
     const block = selector === light ? own.light : selector === dark ? own.dark : null;

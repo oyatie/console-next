@@ -127,12 +127,26 @@ test("the pair list runs per experience and per theme, and a failure names the e
 test("with no experience file the gate reports the base file alone", () => {
   const css = readFileSync(tokens, "utf8");
   const bare = run(css);
-  const root = roots.at(-1)!;
-  mkdirSync(path.join(root, "experiences"));
-  writeFileSync(path.join(root, "experiences", "notes.txt"), ":root { --ink: var(--surface); }");
-  const empty = spawnSync("node", [script, "--tokens", path.join(root, "tokens.css")], { encoding: "utf8" });
-  expect([empty.status, empty.stdout, empty.stderr]).toEqual([bare.status, bare.stdout, bare.stderr]);
   expect(bare.stdout).toMatch(/^contrast: \d+ checks, 0 problem\(s\)\n$/);
+  const root = roots.at(-1)!, experiences = path.join(root, "experiences");
+  const again = () => {
+    const r = spawnSync("node", [script, "--tokens", path.join(root, "tokens.css")], { encoding: "utf8" });
+    return [r.status, r.stdout, r.stderr];
+  };
+  // A file that has the folder's name is no folder of experiences.
+  writeFileSync(experiences, ":root { --ink: var(--surface); }");
+  expect(again()).toEqual([bare.status, bare.stdout, bare.stderr]);
+  // In the folder, only a regular .css file is an experience: not another file, and not a folder named like one.
+  rmSync(experiences);
+  mkdirSync(path.join(experiences, "shelf.css"), { recursive: true });
+  writeFileSync(path.join(experiences, "notes.txt"), ":root { --ink: var(--surface); }");
+  expect(again()).toEqual([bare.status, bare.stdout, bare.stderr]);
+});
+
+test("a syntax error in an experience file is reported with the file's name", () => {
+  const r = run(readFileSync(tokens, "utf8"), { calm: ':root[data-experience="calm"] {\n  --row-h: 36px;\n}}' });
+  expect(r.status).toBe(1);
+  expect(r.stderr).toMatch(/^contrast: .*experiences\/calm\.css:3:2: Unexpected }\n$/);
 });
 
 test.each([

@@ -2,16 +2,21 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // WCAG contrast and the catalogue's Machado severity-1 CVD / OKLab separation proof, from tokens.css.
 // Each experience file beside it (experiences/<id>.css) is checked again as an overlay on those tokens.
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { context, decodeIdent, experienceBlocks, parseCss, rootDeclaration } from "./check-ds-refs.mjs";
 
-/** The experience token files beside a base token file: `experiences/<id>.css`, none when the folder is absent. */
+/**
+ * The experience token files beside a base token file: the regular files `experiences/<id>.css`. There are none when
+ * the folder is absent, and none either in a file that has its name or in a folder named like an experience.
+ */
 export function experienceFiles(tokensFile) {
   const dir = path.join(path.dirname(tokensFile), "experiences");
-  return existsSync(dir) ? readdirSync(dir).filter((name) => name.endsWith(".css")).sort().map((name) => path.join(dir, name)) : [];
+  if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return [];
+  const regular = (name) => statSync(path.join(dir, name), { throwIfNoEntry: false })?.isFile();
+  return readdirSync(dir).filter((name) => name.endsWith(".css") && regular(name)).sort().map((name) => path.join(dir, name));
 }
 
 export function themeTokens(css) {
@@ -89,7 +94,7 @@ export function checkTokens(file) {
   });
   for (const overlay of experienceFiles(file)) {
     const id = path.basename(overlay, ".css");
-    const own = experienceBlocks(readFileSync(overlay, "utf8"), id, baseDark);
+    const own = experienceBlocks(readFileSync(overlay, "utf8"), id, baseDark, overlay);
     const contrast = checkThemes(experienceThemes(base, own), `experience ${id}, `);
     result.checked += contrast.checked;
     result.problems.push(...own.problems.map((problem) => `${overlay.split(path.sep).join("/")}: ${problem}`), ...contrast.problems);

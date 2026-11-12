@@ -241,3 +241,12 @@ test("a token only an experience defines cannot satisfy the app's stylesheets", 
   expect(r.stderr.match(/broken var reference/g)).toHaveLength(1);
   expect(r.stderr).toContain("apps/web/src/ui/x/bad.module.css: broken var reference var(--calm-line)");
 });
+
+test("only a regular .css file in the experiences folder is an experience", () => {
+  // A file that has the folder's name, then a folder named like an experience.
+  for (const stray of ["packages/tokens/experiences", "packages/tokens/experiences/shelf.css/notes.txt"]) {
+    const r = gate(fixture({ [stray]: ":root { --ink: var(--nope); }" }));
+    expect(r.stderr, stray).toBe("");
+    expect(r.status, stray).toBe(0);
+  }
+});
