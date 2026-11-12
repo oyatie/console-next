@@ -4,7 +4,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::DbError;
 use crate::audit_tx::set_current_org;
-use crate::audit_write::insert_audit_event_tx;
+use crate::audit_write::insert_audit_events_tx;
 
 /// Execute a mutation closure that returns one or more audit events computed
 /// from rows locked inside the same transaction.
@@ -92,10 +92,10 @@ where
                 event.command_context =
                     Some(crate::command_context::for_event(context.clone(), event));
                 crate::command_context::remember(event);
-                insert_audit_event_tx(&mut tx, event)
-                    .await
-                    .map_err(E::from)?;
             }
+            insert_audit_events_tx(&mut tx, org, &events)
+                .await
+                .map_err(E::from)?;
             crate::command_outcomes::settle_applied(&mut tx, &events)
                 .await
                 .map_err(E::from)?;

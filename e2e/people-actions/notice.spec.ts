@@ -37,7 +37,7 @@ test("notice: a bulk transfer's 발령 공고 takes the next number; the same ac
   await expect(admin.getByRole("status").filter({ hasText: "2명 전보 반영함" })).toBeVisible();
 
   // From the receipt: the notice for this batch. A commit without a date names the gap and makes nothing.
-  await admin.getByRole("link", { name: "공고 작성" }).click();
+  await admin.getByRole("link", { name: "발령 공고 작성", exact: true }).click();
   await expect(admin.getByRole("heading", { name: "발령 공고", level: 1 })).toBeVisible();
   // The checks below are this page's (the workspace before it is j6-bulk's).
   await forgetResize(admin);
@@ -70,6 +70,9 @@ test("notice: a bulk transfer's 발령 공고 takes the next number; the same ac
   const [first] = ((await (await api("/appointment-notices")).json()) as { items: { id: string; notice_no: string }[] }).items;
   const detail = (await (await api(`/appointment-notices/${first!.id}`)).json()) as { lines: { event: { batch_id?: string } }[] };
   const batch = detail.lines[0]!.event.batch_id!;
+  expect(detail.lines).toHaveLength(names.length);
+  expect(batch).toBeTruthy();
+  expect(new Set(detail.lines.map(line => line.event.batch_id))).toEqual(new Set([batch]));
   const body = { title: "인사발령", notice_date: `${year}-12-01`, batch_id: batch };
   const again = await api("/appointment-notices", "POST", body, { "Idempotency-Key": crypto.randomUUID() });
   expect([again.status(), await codeOf(again)]).toEqual([409, "appointment_notice_event_taken"]);
