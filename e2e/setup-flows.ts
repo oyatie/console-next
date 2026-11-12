@@ -152,6 +152,7 @@ export async function pickKind(sheet: Locator, c: C = plain, kind = "사업장")
 /** In the 사업장 추가 sheet: the 법인's first certificate (already entered, no 사업장 holds it) as this 사업장's own. */
 export async function registerWorkplace(page: Page, entity: string, name: string, audit = false, c: C = plain) {
   const sheet = workplaceSheet(page);
+  await routeReady(page, "/org");
   await expect(sheet).toBeVisible();
   await sheet.getByLabel("사업장 이름").fill(name);
   await c.click(option(page, "사업자등록", "이미 입력한 등록증"));

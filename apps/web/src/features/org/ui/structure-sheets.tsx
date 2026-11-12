@@ -47,7 +47,7 @@ export function StructureSheets() {
       return at.kind === "dept" && !open.setup ? <DeptNameComposer key={`rename:${at.node.id}`} mode="rename" place={at} onClose={close} /> : null;
     // CRUD: one sheet in both phases; the server says whether it is deleted (never used) or dissolution (used).
     case "dept-delete":
-      return at.kind === "dept" ? <DeptEndSheet place={at} setup={open.setup} onClose={close} onDone={() => void select(at.parent?.id)} onPropose={() => void onAct("dept-dissolve")} /> : null;
+      return at.kind === "dept" ? <DeptEndSheet place={at} setup={open.setup} onClose={close} onDone={() => select(at.parent?.id)} onPropose={() => void onAct("dept-dissolve")} /> : null;
     // The dissolution proposal: members moved in the same change, or a tenant that routes org changes.
     case "dept-dissolve":
       return at.kind === "dept" && !open.setup ? <DeptDissolveSheet place={at} places={open.places} company={open.tenant} onClose={close} /> : null;

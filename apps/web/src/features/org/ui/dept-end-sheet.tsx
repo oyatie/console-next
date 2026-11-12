@@ -28,14 +28,24 @@ type Plan = "erase" | "dissolve" | "raise";
  * In setup, a department with sub-departments and no direct members asks first, nothing preselected (S6-delete): end them with
  * it, or move them one level up (then this one is dissolved in the same undoable batch, since they sat under it).
  */
-export function DeptEndSheet({ place: initialPlace, setup, onClose, onDone, onPropose }: { place: Place; setup: boolean; onClose: () => void; onDone: () => void; onPropose: () => void }) {
+export function DeptEndSheet({ place: initialPlace, setup, onClose, onDone, onPropose }: { place: Place; setup: boolean; onClose: () => void; onDone: () => Promise<void>; onPropose: () => void }) {
   const [place] = useState(initialPlace);
   const d = place.node;
   const subs = depts(d);
   const q = useQuery({ ...unitEndQuery(d.id), refetchOnMount: "always" });
   const [children, setChildren] = useState<ChildrenChoice | null>(null);
   const done = { invalidates: STRUCTURE_READS, settle: true, onSuccess: onDone };
-  const erase = useCommand({ ...done, run: (v: number, key: string) => eraseUnit(key, d.id, v), announce: () => t("crud.unit.erased", { name: d.name }) });
+  const erase = useCommand({
+    ...done,
+    run: async (v: number, key: string) => {
+      const result = await eraseUnit(key, d.id, v);
+      // Leave the erased unit's panel and sheet before invalidation re-reads their resources.
+      await onDone();
+      return result;
+    },
+    onSuccess: undefined,
+    announce: () => t("crud.unit.erased", { name: d.name }),
+  });
   const dissolve = useCommand({ ...done, run: (v: number, key: string) => dissolveUnit(key, d.id, v), announce: () => t("crud.unit.dissolved", { name: d.name }) });
   const raise = useCommand({ ...done, run: (_: number, key: string) => applySetup(key, deletePlan(place, "raise").ops), announce: () => t("crud.unit.dissolved", { name: d.name }) });
   const o = q.data;
