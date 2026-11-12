@@ -66,6 +66,19 @@ async fn grant_notices_appear_once_only_for_the_holder_and_leave_on_confirmation
         2,
         "multiple role levels must not duplicate a grant"
     );
+    // A grant notice is FYI: listed under 참조 (filter=notices), never as 해야 할 일 (filter=turn).
+    for (filter, want) in [("notices", 2), ("turn", 0)] {
+        let (status, view) = ctx
+            .call("GET", &format!("{INBOX}?filter={filter}&limit=200"), None)
+            .await;
+        assert_eq!(status, StatusCode::OK, "{view}");
+        assert_eq!(
+            items_of(&view, "grant_notice").len(),
+            want,
+            "{filter}: {view}"
+        );
+        assert_eq!(view["counts"]["turn"]["total"], 0, "{filter}: {view}");
+    }
     for row in rows {
         let grant: Uuid = row["links"][0]["id"].as_str().unwrap().parse().unwrap();
         let (valid_from, valid_to): (time::OffsetDateTime, Option<time::OffsetDateTime>) =

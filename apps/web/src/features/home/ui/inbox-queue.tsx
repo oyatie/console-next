@@ -110,7 +110,7 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
           {t(`home.attention.${key}`)}
         </ToggleButton>)}
       </div> : null}
-      {!preview && !setupPhase && !first?.setup && <InboxTabs view={filter === "all" || filter === "deadlines" ? "turn" : filter} />}
+      {!preview && !setupPhase && !first?.setup && <InboxTabs view={filter === "notices" ? "reference" : filter === "all" || filter === "deadlines" ? "turn" : filter} />}
       {preview && !first?.attention_filters?.length && !setupPhase && !first?.setup && !!first?.available_filters.length && <TabNav label={t("home.lanes")} overflow="scroll">
         {first.available_filters.map(key => {
           const count = first.counts[key];

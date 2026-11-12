@@ -49783,7 +49783,7 @@ export interface operations {
                 /** @description Home attention view over the same authorized work. Approvals are pending decisions; today means an actionable source deadline on today's Korean calendar date; overdue means that source deadline has expired (including statutory-register deadlines). All preserves filter=all or filter=turn; the other attention views take precedence. Counts honor filter=turn for Home; other saved views require attention to be omitted. */
                 attention?: "all" | "approvals" | "today" | "overdue";
                 /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
-                filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures";
+                filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures" | "notices";
                 /** @description Page size, clamped server-side to 1..=200. */
                 limit?: number;
                 /** @description Opaque immutable-traversal cursor returned as `next_cursor` by the previous page. */

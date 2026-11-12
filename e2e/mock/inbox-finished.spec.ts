@@ -48,9 +48,21 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "populated");
-    await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(3) });
-    let read = false;
     const writes: string[] = [];
+    // The notices view answers the grant I have not confirmed; every other view is my ordinary queue.
+    const grant = { ...inbox(1).items[0]!, id: "grant_notice:g1", kind: "grant_notice", title: "급여 담당", links: [{ kind: "access", id: "g1" }], context: { grants: [{
+      grant_id: "g1", role_id: "role", role_name_ko: "급여 담당", domain: "hr_basic", level: "view",
+      scope: { kind: "TENANT", node_id: null, include_descendants: true }, valid_from: "2026-01-01T00:00:00Z", valid_to: null, enforcement: "ENFORCED", caveats: [] as string[],
+    } as const] } };
+    let confirmed = false;
+    await mockRoute(page, "get", "/api/v1/me/action-inbox", request => ({ status: 200, json: new URL(request.url()).searchParams.get("filter") === "notices"
+      ? { ...inbox(0), items: confirmed ? [] : [grant] } : inbox(3) }));
+    await mockRoute(page, "post", "/api/v1/access/grants/{grantId}/notice", request => {
+      writes.push(new URL(request.url()).pathname);
+      confirmed = true;
+      return { status: 200, json: { grant_id: "g1", noticed_at: "2026-11-12T00:00:00Z", channel: "IN_APP" } };
+    });
+    let read = false;
     const unreadId = "10000000-0000-4000-8000-000000000001";
     await mockRoute(page, "get", "/api/v1/me/action-inbox/reference", () => ({ status: 200, json: { next_cursor: null, items: [
       notice(unreadId, "조직 변경 안내", { type: "object", kind: "org_change", id: "c1" }, !read),
@@ -65,6 +77,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     });
     await page.goto("/inbox?tab=reference");
     const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("listitem");
+    await expect(list).toHaveCount(5);
+    await expect(list.nth(0).getByRole("button", { name: t("home.grantNotices.confirm", { role: "급여 담당" }), exact: true })).toBeVisible();
+    await list.nth(0).getByRole("button", { name: t("home.grantNotices.confirm", { role: "급여 담당" }), exact: true }).click();
     await expect(list).toHaveCount(4);
     await expect(list.nth(0).getByRole("link", { name: "조직 변경 안내", exact: true })).toHaveAttribute("href", "/org/changes/c1");
     await expect(list.nth(1).getByRole("link", { name: "계정 연결 안내", exact: true })).toHaveAttribute("href", "/people/e1");
@@ -77,7 +92,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await list.nth(0).getByRole("button", { name: t("home.inbox.reference.confirm"), exact: true }).click();
     await expect(list.nth(0)).not.toContainText(t("home.inbox.reference.unread"));
     await expect(list.getByRole("button")).toHaveCount(0);
-    expect(writes).toEqual([`/api/v1/me/action-inbox/reference/${unreadId}/read`]);
+    expect(writes).toEqual(["/api/v1/access/grants/g1/notice", `/api/v1/me/action-inbox/reference/${unreadId}/read`]);
     expect(mock.unexpected).toEqual([]);
   });
 }

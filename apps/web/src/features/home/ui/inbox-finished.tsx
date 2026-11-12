@@ -11,7 +11,9 @@ import { QueryState } from "../../../lib/react/query-state";
 import { codeText } from "../../../lib/code-text";
 import { Button } from "../../../ui/button/button";
 import { EmptyState } from "../../../ui/empty-state";
+import { GrantNotice } from "./grant-notices";
 
+const INBOX = "/api/v1/me/action-inbox";
 const REFERENCE = "/api/v1/me/action-inbox/reference";
 const DONE = "/api/v1/me/action-inbox/done";
 type Notice = components["schemas"]["NotificationSummary"];
@@ -40,15 +42,25 @@ function NoticeRow({ notice }: { notice: Notice }) {
   </li>;
 }
 
-/** The reference tab: notices addressed to me, newest first; confirming marks one read. */
+/**
+ * The reference tab: grants given to me that I have not yet confirmed (the server's notices view), then the notices
+ * addressed to me, newest first. Confirming a grant records that I was told of it; confirming a notice marks it read.
+ */
 export function ReferenceList() {
+  const grants = useInfiniteQuery(cursorPages(INBOX, { filter: "notices" }));
   const notices = useInfiniteQuery(cursorPages(REFERENCE, {}));
-  return <QueryState q={notices} layout="list">{data => {
+  return <QueryState q={grants} layout="list">{pending => <QueryState q={notices} layout="list">{data => {
+    const asks = pending.pages.flatMap(page => page.items);
     const rows = data.pages.flatMap(page => page.items);
-    if (!rows.length) return <EmptyState title={t("home.inbox.reference.empty")} reason={null} />;
-    return <><ul className="list-plain">{rows.map(notice => <NoticeRow key={notice.id} notice={notice} />)}</ul>
-      {notices.hasNextPage && <Button disabled={notices.isFetchingNextPage} onClick={() => void notices.fetchNextPage()}>{t("home.inbox.more")}</Button>}</>;
-  }}</QueryState>;
+    if (!asks.length && !rows.length) return <EmptyState title={t("home.inbox.reference.empty")} reason={null} />;
+    return <>
+      {asks.length > 0 && <ul className="list-plain">{asks.map(item => <li key={item.id}>
+        <GrantNotice id={item.links[0]?.id ?? ""} role={item.title} entries={item.context?.grants ?? []} />
+      </li>)}</ul>}
+      <ul className="list-plain">{rows.map(notice => <NoticeRow key={notice.id} notice={notice} />)}</ul>
+      {notices.hasNextPage && <Button disabled={notices.isFetchingNextPage} onClick={() => void notices.fetchNextPage()}>{t("home.inbox.more")}</Button>}
+    </>;
+  }}</QueryState>}</QueryState>;
 }
 
 function DoneTarget({ item }: { item: Done }) {
