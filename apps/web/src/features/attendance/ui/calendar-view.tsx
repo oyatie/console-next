@@ -6,12 +6,13 @@ import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
 import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { ItemList } from "../../../ui/item-list/item-list";
 import { SectionHead } from "../../../ui/card/section-head";
 import { MonthGrid, type DayTone } from "../../../ui/month-grid/month-grid";
-import { calendarQuery, type Calendar, type Layer, type ScheduleDay, type ScheduleTree, type ScopeKind } from "../api";
+import { calendarQuery, layersQuery, type Calendar, type Layer, type ScheduleDay, type ScheduleTree, type ScopeKind } from "../api";
 import { monthOf, monthWeeks, shiftMonth } from "../domain/month";
 import type { TreeNode } from "../domain/tree";
 import { dateText, monthText, shiftText, weekdayText } from "../present";
@@ -67,6 +68,7 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
   const month = search.month ?? monthOf(todayKst());
   const weeks = useMemo(() => monthWeeks(month), [month]);
   const cal = useQuery({ ...calendarQuery(scope?.kind ?? "WORKPLACE", scope?.id ?? "", month), placeholderData: keepPreviousData, enabled: !!scope });
+  const history = useQuery({ ...layersQuery(scope?.kind ?? "WORKPLACE", scope?.id ?? ""), enabled: !!scope });
   const keys = useKeys<HTMLDivElement>((e) => {
     if (inField(e) || (e.key !== "[" && e.key !== "]")) return false;
     onMonth(shiftMonth(month, e.key === "[" ? -1 : 1));
@@ -74,12 +76,15 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
   });
   if (!scope) return <EmptyState title={t("attendanceSchedule.calendar.empty")} reason={t("attendanceSchedule.calendar.empty.reason")} actions={<Button variant="primary" onClick={onAddPattern}>{t("attendancePatterns.types.add")}</Button>} />;
   return (
-    <QueryState q={cal} layout="grid">{c => <div ref={keys} className={s.calendarLayout}>
+    // History sets the shared grid row's height; settle both reads before exposing the action below it.
+    <QueryState q={readGroup([cal, history])} layout="grid">{() => {
+      const c = cal.data!;
+      return <div ref={keys} className={s.calendarLayout}>
       <ScopeTree tree={tree} selected={scope.id} onSelect={(n: TreeNode) => onScope(n.kind, n.id)} onPerson={(id) => onScope("PERSON", id)} />
       <div className={s.centerCol}>
         <PeriodStepper unit="month" value={month} onChange={onMonth} />
         <Month c={c} month={month} weeks={weeks} />
-        <LayerHistory kind={scope.kind} id={scope.id} onCancel={onCancel} />
+        <LayerHistory layers={history.data!.items} onCancel={onCancel} />
       </div>
       <aside className={s.sideCol} aria-label={t("attendanceSchedule.side.label")}>
         <LayerStack calendar={c} />
@@ -88,7 +93,8 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
               </Button>
         <MonthHolidays c={c} />
       </aside>
-    </div>}</QueryState>
+    </div>;
+    }}</QueryState>
   );
 }
 
