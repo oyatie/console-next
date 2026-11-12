@@ -17,14 +17,14 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 // One outstanding-review predicate for inbox delivery and the lock's current warning.
-macro_rules! pending_review {
+macro_rules! unreviewed_unlock {
     () => {
         "e.rule_code='PERIOD_UNLOCK_SOLE_HOLDER' AND e.subject_type='PERIOD_LOCK' \
          AND e.fallback_kind='SOLE_HOLDER' AND e.status='RECORDED' AND e.consumed_at IS NOT NULL \
          AND NOT EXISTS(SELECT 1 FROM audit_events a WHERE a.org_id=e.org_id AND a.target_type='governed_exception' AND a.target_id=e.id::text AND a.action='exception.review')"
     };
 }
-pub(super) use pending_review;
+pub(super) use unreviewed_unlock;
 
 async fn load_reviewers(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -80,7 +80,7 @@ pub(super) async fn items(
         "SELECT e.id,e.subject_id,e.requested_by,u.person_id,e.reason_code,e.note,e.review_due_at,e.consumed_at,l.domain,l.period_start,l.period_end,u.display_name, \
          (SELECT jsonb_build_object('system',false,'label_ko',c.label_ko,'label_en',c.label_en) FROM reason_codes c WHERE c.org_id=e.org_id AND c.domain='period_unlock' AND c.code=e.reason_code) \
          FROM governed_exceptions e JOIN period_locks l ON l.org_id=e.org_id AND l.id=e.subject_id JOIN person_accounts_current u ON u.org_id=e.org_id AND u.id=e.requested_by \
-         WHERE e.org_id=$1 AND e.consumed_at<=$2 AND ", pending_review!(), " ORDER BY e.consumed_at,e.id"))
+         WHERE e.org_id=$1 AND e.consumed_at<=$2 AND ", unreviewed_unlock!(), " ORDER BY e.consumed_at,e.id"))
         .bind(principal.org_id.as_uuid()).bind(as_of).fetch_all(tx.as_mut()).await?;
     if rows.is_empty() {
         return Ok(Vec::new());
