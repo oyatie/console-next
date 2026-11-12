@@ -148,6 +148,10 @@ mod tests {
             employee_import_column_classification("연락처", Some("phone")),
             "restricted"
         );
+        assert_eq!(
+            employee_import_column_classification("주민등록번호", Some("rrn")),
+            "restricted"
+        );
         // A header's own wording is judged apart from the mapping: a column the
         // operator maps under a custom header still reaches the stored row.
         assert!(!is_dropped_employee_import_header("소속팀"));
