@@ -58,7 +58,7 @@ async function fixture(page: Page, delay?: number) {
   return { ...screen, search, searches, release, failRefetch: () => { failRefetch = true; } };
 }
 
-test("account search uses server matches and counts, and selecting opens the existing account panel", async ({ page }) => {
+test("account search uses server matches and counts, and selecting opens the existing account panel", { tag: "@webkit-pr" }, async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
   await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(50);
@@ -74,7 +74,7 @@ test("account search uses server matches and counts, and selecting opens the exi
   expect(f.unexpected).toEqual([]);
 });
 
-test("Tab after hovering and editing preserves the query until a result is explicitly focused", async ({ page }) => {
+test("Tab after hovering and editing preserves the query until a result is explicitly focused", { tag: "@webkit-pr" }, async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
   await page.getByRole("listbox").getByRole("option", { name: /검색계정 2 PICK-2/ }).hover();
@@ -115,7 +115,7 @@ test("account search debounces typing and waits for IME composition to end", asy
   expect(f.unexpected).toEqual([]);
 });
 
-test("Tab preserves keyboard selection and never commits an unmatched hovered result", async ({ page }) => {
+test("Tab preserves keyboard selection and never commits an unmatched hovered result", { tag: "@webkit-pr" }, async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
   await page.getByRole("listbox").getByRole("option", { name: /검색계정 2 PICK-2/ }).hover();

@@ -26,7 +26,7 @@ async function openChart(page: Page, width: number) {
 }
 
 for (const width of [1440, 390]) {
-  test(`org: a workplace centre click after find selects it at ${width}px @ui-state`, async ({ page }) => {
+  test(`org: a workplace centre click after find selects it at ${width}px @ui-state`, { tag: "@webkit-pr" }, async ({ page }) => {
     const { fixture, tree } = await openChart(page, width);
     try {
       await page.goto("/org");
@@ -91,7 +91,7 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`org: workplace tools leave the parent corner clear at ${width}px @ui-state`, async ({ page }) => {
+  test(`org: workplace tools leave the parent corner clear at ${width}px @ui-state`, { tag: "@webkit-pr" }, async ({ page }) => {
     const { fixture, tree } = await openChart(page, width);
     try {
       await page.goto("/org");

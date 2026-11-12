@@ -19,7 +19,7 @@ import { throttleCPU } from "./helpers/cpu-throttle";
 // person and no approval wait. Needs the backend's setup phase (branch hard/entity-depth, not yet merged).
 // Clicks are counted per task (fills are typing, not clicks); each ceiling is the measured count + 2.
 
-test("a solo administrator goes from an empty tenant to operating", { tag: "@first-run" }, async ({ browser }) => {
+test("a solo administrator goes from an empty tenant to operating", { tag: ["@first-run", "@webkit-pr"] }, async ({ browser }) => {
   const c = clickCounter();
   const companyDomain = unique("ganasol");
   const replacement = await test.step("J0 Provision tenant and replace cancelled code", async () => {

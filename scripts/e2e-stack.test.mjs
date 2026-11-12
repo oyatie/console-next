@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -74,4 +76,64 @@ test("Home CI runs the served scale probe with the selected release artifact", (
   assert.equal(home.steps.find(s => s.name === "Solo journey on Chromium and Firefox").env.CONSOLE_APP_BIN, probe.env.CONSOLE_APP_BIN);
   assert.ok(home.steps.some(s => s.with?.name === "d7-playwright"));
   assert.ok(!jobs["backend-release"].steps.some(s => s.run?.includes("playwright test")));
+});
+
+test("WebKit PR coverage shares Home without adding a job or extending its timeout", () => {
+  const { jobs } = yaml.load(readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8"));
+  assert.equal(Object.keys(jobs).length, 16);
+  const home = jobs.home;
+  assert.equal(home["timeout-minutes"], 45);
+  assert.match(home.if, /github.event_name != 'push'/);
+  const install = home.steps.find(s => s.name === "WebKit for focused PR coverage");
+  assert.equal(install?.if, undefined);
+  assert.equal(install?.run, "npx playwright install --with-deps webkit");
+  for (const name of ["Focused WebKit states", "Solo journey on WebKit"]) {
+    const step = home.steps.find(s => s.name === name);
+    assert.ok(step, name);
+    assert.equal(step.if, "${{ !cancelled() }}");
+    assert.equal(step.env.E2E_BROWSER, "webkit");
+    assert.match(step.run, /--grep @webkit-pr/);
+    assert.ok(step.env.PLAYWRIGHT_JSON_OUTPUT_FILE.startsWith(".cache/webkit/"));
+  }
+  const live = home.steps.find(s => s.name === "Solo journey on WebKit");
+  assert.equal(live.env.CONSOLE_APP_BIN, ".cache/home-backend/console-app");
+  assert.equal(live.env.E2E_SERVED, "1");
+  assert.equal(live.env.E2E_PREBUILT, "1");
+  const report = home.steps.find(s => s.name === "WebKit results by spec");
+  assert.equal(report?.if, "${{ !cancelled() }}");
+  assert.match(report?.run, /node scripts\/e2e-live-report.mjs .cache\/webkit\/\*.json/);
+  const artifact = home.steps.find(s => s.with?.name === "webkit-pr");
+  assert.equal(artifact?.if, "${{ !cancelled() }}");
+  assert.ok(artifact?.with["include-hidden-files"]);
+});
+
+test("the focused tag selects the same risk surfaces on all three engines", t => {
+  const directory = mkdtempSync(path.join(tmpdir(), "webkit-pr-inventory-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  for (const browser of ["chromium", "firefox", "webkit"]) {
+    for (const mock of [true, false]) {
+      const output = path.join(directory, `${browser}-${mock}.json`);
+      const env = { ...process.env, E2E_BROWSER: browser, PLAYWRIGHT_JSON_OUTPUT_FILE: output };
+      delete env.NODE_TEST_CONTEXT;
+      const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test",
+        ...(mock ? ["--config=e2e/mock/playwright.config.ts"] : ["e2e/first-run-solo.spec.ts"]), "--grep=@webkit-pr", "--list", "--reporter=json"], {
+        cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024,
+        env,
+      });
+      assert.equal(result.status, 0, result.stderr + result.stdout);
+      const report = JSON.parse(readFileSync(output, "utf8"));
+      assert.deepEqual(report.errors, []);
+      const specs = [];
+      const visit = suites => suites.forEach(suite => { specs.push(...(suite.specs ?? [])); visit(suite.suites ?? []); });
+      visit(report.suites);
+      const files = [...new Set(specs.map(s => s.file))].sort();
+      assert.deepEqual(files, mock ? [
+        "mock/account-picker.spec.ts", "mock/date-calendar.spec.ts", "mock/route-focus-title.spec.ts",
+        "mock/session-stream.spec.ts", "mock/sheet-interactions.spec.ts", "mock/structure-inline-targets.spec.ts",
+        "states/org-toolbar.spec.ts",
+      ] : ["first-run-solo.spec.ts"]);
+      assert.ok(specs.every(s => s.tags.includes("webkit-pr")));
+      assert.ok(specs.every(s => s.tests.every(t => t.expectedStatus === "passed")), "the PR set must execute, not skip");
+    }
+  }
 });
