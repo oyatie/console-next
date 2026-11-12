@@ -66,29 +66,8 @@ jobs:
   notify:
     needs: probe
     if: failure() && needs.probe.outputs.page == 'true'
-    runs-on: ubuntu-24.04-arm
-    environment: probe
-    timeout-minutes: 10
-    permissions: {}
-    steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
-        with:
-          egress-policy: audit
-      # The official OCI CLI image, pinned by digest (multi-arch index of tag 20261007).
-      - name: Notify the owner (ONS, console-ci-notify)
-        env:
-          OCI_CONFIG: ${{ secrets.OCI_CONFIG }}
-          OCI_API_KEY: ${{ secrets.OCI_API_KEY }}
-          ONS_TOPIC_ID: ${{ secrets.ONS_TOPIC_ID }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          umask 077
-          d="${RUNNER_TEMP}/oci"; mkdir -p "${d}"
-          printf '%s\n' "${OCI_API_KEY}" >"${d}/key.pem"
-          printf '%s\nkey_file=/oci/key.pem\n' "${OCI_CONFIG}" >"${d}/config"
-          docker run --rm --user "$(id -u):$(id -g)" -v "${d}:/oci:ro" -e OCI_CLI_CONFIG_FILE=/oci/config \
-            -e OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=True \
-            ghcr.io/oracle/oci-cli:20261007@sha256:48884d8710d30356cac71c7aa678873a97c53c594fefdf2724c80270f3ca563b \
-            ons message publish --auth api_key --topic-id "${ONS_TOPIC_ID}" --title "console probe failed" \
-            --body "GET / or its module entry under /assets/ failed from a GitHub runner (edge, tunnel, host or release assets). console-infra RUNBOOK.md, alarm-probe. ${RUN_URL}" >/dev/null
-          rm -rf "${d}"
+    permissions: {contents: read, actions: read}
+    uses: ./.github/workflows/notify.yml
+    with:
+      title: console probe failed
+      body: GET / or its module entry under /assets/ failed from a GitHub runner (edge, tunnel, host or release assets). console-infra RUNBOOK.md, alarm-probe.

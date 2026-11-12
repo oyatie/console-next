@@ -390,10 +390,10 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   assert.equal(results.if, "${{ !cancelled() }}");
   assert.equal(results.with["if-no-files-found"], "error");
   const alert = dbWorkflow.jobs["alert-nightly"];
-  assert.deepEqual(alert.permissions, { contents: "read", issues: "write" });
-  assert.equal(alert.if, "${{ always() && github.event_name == 'schedule' && (needs.db-test-timing-source.result != 'success' || needs.db-tests.result != 'success' || needs.db-test-timings.result != 'success') }}");
-  assert.match(alert.steps.map((step) => step.run ?? "").join("\n"), /issues.*comments|comments.*issues/s);
-  for (const workflowJob of Object.values(dbWorkflow.jobs)) for (const step of workflowJob.steps) {
+  assert.deepEqual(alert.permissions, { contents: "read", actions: "read" });
+  assert.match(alert.if, /always\(\).*schedule.*alert_dry_run/);
+  assert.equal(alert.uses, "./.github/workflows/notify.yml");
+  for (const workflowJob of Object.values(dbWorkflow.jobs)) for (const step of workflowJob.steps ?? []) {
     if (step.uses) assert.match(step.uses, /@[a-f0-9]{40}$/);
     assert.ok(!step["continue-on-error"]);
   }

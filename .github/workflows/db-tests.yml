@@ -13,6 +13,10 @@ on:
     branches: [dev]
   workflow_dispatch:
     inputs:
+      alert_dry_run:
+        description: Rehearse the failure alert without publishing a notification
+        type: boolean
+        default: false
       disk_min_bytes:
         description: Free disk reserve in bytes (override for guard rehearsals)
         type: string
@@ -261,34 +265,12 @@ jobs:
           if-no-files-found: error
 
   alert-nightly:
-    if: ${{ always() && github.event_name == 'schedule' && (needs.db-test-timing-source.result != 'success' || needs.db-tests.result != 'success' || needs.db-test-timings.result != 'success') }}
+    if: ${{ always() && ((github.event_name == 'schedule' && (needs.db-test-timing-source.result != 'success' || needs.db-tests.result != 'success' || needs.db-test-timings.result != 'success')) || (github.event_name == 'workflow_dispatch' && inputs.alert_dry_run)) }}
     needs: [db-test-timing-source, db-tests, db-test-timings]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions: {contents: read, issues: write}
-    steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
-        with: {egress-policy: audit}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: {persist-credentials: false}
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: {node-version-file: .node-version}
-      - name: Open or update the nightly failure issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          JOB_RESULTS: timing-source=${{ needs.db-test-timing-source.result }}, shards=${{ needs.db-tests.result }}, reconciliation=${{ needs.db-test-timings.result }}
-        run: |
-          node --input-type=module <<'JS'
-          const headers = { Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: "application/vnd.github+json", "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28" };
-          const base = `${process.env.GITHUB_API_URL}/repos/${process.env.GITHUB_REPOSITORY}/issues`;
-          const request = async (url, init = {}) => {
-            const response = await fetch(url, { ...init, headers: { ...headers, ...init.headers } });
-            if (!response.ok) throw new Error(`${response.status}: ${await response.text()}`);
-            return response.json();
-          };
-          const title = "Nightly database tests failed";
-          const body = `${process.env.RUN_URL}\n\nJob results: ${process.env.JOB_RESULTS}`;
-          const issue = (await request(`${base}?state=open&per_page=100`)).find(candidate => candidate.title === title);
-          await request(issue ? `${base}/${issue.number}/comments` : base, { method: "POST", body: JSON.stringify(issue ? { body } : { title, body }) });
-          JS
+    permissions: {contents: read, actions: read}
+    uses: ./.github/workflows/notify.yml
+    with:
+      title: Nightly database tests failed
+      body: 'Job results: timing-source=${{ needs.db-test-timing-source.result }}, shards=${{ needs.db-tests.result }}, reconciliation=${{ needs.db-test-timings.result }}'
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.alert_dry_run }}
+      failed-jobs: true

@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+name: Notify
+on:
+  workflow_call:
+    inputs:
+      title: {type: string, required: true}
+      body: {type: string, required: true}
+      dry-run: {type: boolean, default: false}
+      failed-jobs: {type: boolean, default: false}
+permissions: {}
+jobs:
+  notify:
+    runs-on: ubuntu-24.04-arm
+    environment: ${{ !inputs.dry-run && 'probe' || '' }}
+    timeout-minutes: 10
+    permissions: {contents: read, actions: read}
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - name: Publish through the notification adapter
+        env:
+          OCI_CONFIG: ${{ secrets.OCI_CONFIG }}
+          OCI_API_KEY: ${{ secrets.OCI_API_KEY }}
+          ONS_TOPIC_ID: ${{ secrets.ONS_TOPIC_ID }}
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NOTIFY_TITLE: ${{ inputs.title }}
+          NOTIFY_BODY: ${{ inputs.body }}
+          NOTIFY_DRY_RUN: ${{ inputs.dry-run }}
+          NOTIFY_FAILED_JOBS: ${{ inputs.failed-jobs }}
+        run: node scripts/ci-notify.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: notification-evidence
+          path: .cache/ci-alert/
+          include-hidden-files: true
+          if-no-files-found: error
