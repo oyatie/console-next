@@ -99,7 +99,7 @@ properties:
     format: int64
   org_change_routed:
     type: boolean
-    description: approval.policy.org_structure = route (decisions
+    description: 'True when approval.policy.org_structure = route (decisions #26): org changes are routed for approval.'
   employees:
     type: integer
     format: int64
