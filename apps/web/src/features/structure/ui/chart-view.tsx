@@ -118,11 +118,12 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
   };
   const only = c.sel.size === 1 ? [...c.sel][0] : undefined;
   const hoverBox = hover && !drag.dragging ? c.shown.get(hover) : undefined;
-  // The root's header carries its own entries (RootActions): no hover toolbar over it.
-  const toolsBoxes = covered || drag.dragging || c.renaming ? [] : [...new Set([only, menu ?? hover])].flatMap((id) => {
+  // One active toolbar keeps a hovered box's actions from covering the selection's targets.
+  const toolsBoxes = covered || drag.dragging || c.renaming ? [] : [menu, only, hover].flatMap((id) => {
+    // Root actions live in RootActions; hidden selections leave the toolbar to hover.
     const b = id && id !== s.root.id ? c.shown.get(id) : undefined;
     return b ? [b] : [];
-  });
+  }).slice(0, 1);
   const gestures: Gestures = { add: g.add, rename: g.rename, move: (n) => g.move(pickMoving(n)), remove: (n) => g.remove(n.kind === "site" ? [n] : pickMoving(n)), focusOn: g.focusOn, merge: g.merge, order: g.order, open: (n) => open(n) };
   const pickMoving = (n: ChartNode) => (c.sel.has(n.id) ? collapseSelection(s, c.sel).top : [n]).filter(movable);
   const keys = useChartKeys(c, { ...gestures, open, menu: (n) => (setHover(n.id), setMenu(n.id)), find: () => focusSoon("structure-find") });
@@ -200,7 +201,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
         <ChartBoxes s={s} c={c} g={gestures} canEdit={g.canEdit} menu={menu} onMenu={setMenu} drag={drag.view} moved={cmd.last && !cmd.last.undone ? cmd.last.moved : undefined} onActivate={(id, mode) => (c.select(id, mode), c.setCursor(id))} onPointerDown={drag.onPointerDown} />
       </OrgCanvas>
       {drag.view && <span className={`${css.dragGhost} card`} ref={(el) => el?.style.setProperty("transform", `translate(${drag.view!.at.x + 12}px, ${drag.view!.at.y + 12}px)`)}>{drag.view.nodes.map((n) => n.name).join(", ")}</span>}
-      {moving && moving.length > 0 && <MovePicker s={s} moving={moving} onClose={() => setMoving(null)} onMove={(tgt) => (g.moveTo(moving, tgt), setMoving(null))} />}
+      {moving && moving.length > 0 && <MovePicker s={s} moving={moving} onClose={() => setMoving(null)} onMove={(tgt, day) => (g.moveTo(moving, tgt, day), setMoving(null))} />}
       {deleting && deleting.length > 0 && <DeleteDialog nodes={deleting} operating={!g.setup} onClose={() => setDeleting(null)} onDelete={() => (g.dissolve(deleting), setDeleting(null))} onOne={(n) => (setDeleting(null), g.dissolveOne(n))} />}
     </div>
   );

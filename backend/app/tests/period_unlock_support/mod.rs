@@ -247,6 +247,23 @@ pub async fn send(
     (status, serde_json::from_slice(&bytes).unwrap_or(json!({})))
 }
 
+pub async fn read(service: &axum::Router, uri: &str, token: &str) -> (StatusCode, Value) {
+    let response = service
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(uri)
+                .header(header::AUTHORIZATION, format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let status = response.status();
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    (status, serde_json::from_slice(&bytes).unwrap())
+}
+
 pub async fn router(owner: &PgPool) -> (axum::Router, JwtIssuer) {
     let signing = SigningKey::generate();
     let private_pem = signing.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();

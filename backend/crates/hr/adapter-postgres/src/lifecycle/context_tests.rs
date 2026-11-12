@@ -132,3 +132,111 @@ async fn batched_schedules_preserve_exit_ownership_instead_of_replacing_the_exit
     );
     assert!(error.message.contains(&on.to_string()));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn batched_heads_do_not_admit_another_tenants_employee(pool: PgPool) {
+    let (org, employee, _) = person(&pool).await;
+    let (_, foreign, _) = person(&pool).await;
+    // The owner connection bypasses RLS, so the loader must enforce its own tenant boundary.
+    let mut tx = pool.begin().await.unwrap();
+    let heads = load_employee_heads(&mut tx, org, &[employee, foreign])
+        .await
+        .unwrap();
+    assert_eq!(heads.keys().copied().collect::<Vec<_>>(), vec![employee]);
+    let transition = normalize_lifecycle_transition(
+        serde_json::from_value(json!({
+            "event_type":"APPOINT", "to_job":"개발", "effective_date":today_kst().to_string(),
+            "comment":"직무 발령"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let error = prepare_lifecycle_event_with_context(
+        &mut tx,
+        org,
+        foreign,
+        transition,
+        today_kst(),
+        Some((heads.get(&foreign).map(|head| &head.current), &[])),
+    )
+    .await
+    .err()
+    .expect("a foreign head must not be available to bulk preparation");
+    assert_eq!((error.status.as_u16(), error.code), (404, "not_found"));
+    tx.rollback().await.unwrap();
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn batched_schedules_do_not_read_another_tenants_reservations(pool: PgPool) {
+    let (org, employee, actor) = person(&pool).await;
+    let (foreign_org, foreign, foreign_actor) = person(&pool).await;
+    let on = today_kst() + Duration::days(10);
+    for (tenant, id, by) in [
+        (org, employee, actor),
+        (foreign_org, foreign, foreign_actor),
+    ] {
+        sqlx::query("INSERT INTO employee_lifecycle_events(org_id,employee_id,event_type,from_status,to_status,effective_date,comment,created_by,state,scheduled_request) \
+            VALUES ($1,$2,'APPOINT','ACTIVE','ACTIVE',$3,'직무 발령',$4,'SCHEDULED',$5)")
+            .bind(tenant).bind(id).bind(on.to_string()).bind(by)
+            .bind(json!({"event_type":"APPOINT","to_status":"ACTIVE","to_job":"개발",
+                "effective_date":on.to_string(),"comment":"직무 발령","signoffs":{}}))
+            .execute(&pool).await.unwrap();
+    }
+    let mut tx = pool.begin().await.unwrap();
+    let schedules = load_schedules_many(&mut tx, org, &[employee, foreign])
+        .await
+        .unwrap();
+    assert_eq!(
+        schedules.keys().copied().collect::<Vec<_>>(),
+        vec![employee],
+        "a mixed-tenant selection must return only this tenant's reservations"
+    );
+    let heads = load_employee_heads(&mut tx, org, &[employee])
+        .await
+        .unwrap();
+    let mut transition = normalize_lifecycle_transition(serde_json::from_value(json!({
+        "event_type":"APPOINT","to_job":"영업","effective_date":on.to_string(),"comment":"직무 정정"
+    })).unwrap()).unwrap();
+    let (_, replaces) = super::schedule_sql::replay_loaded_schedule(
+        &schedules[&employee],
+        &heads[&employee].current,
+        console_hr_domain::lifecycle::schedule::ScheduleChange::Insert(&mut transition),
+    )
+    .expect("the local reservation remains replaceable with foreign data present");
+    assert_eq!(replaces, Some(schedules[&employee][0].id));
+    tx.rollback().await.unwrap();
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_group_transfer_linked_to_an_exit_case_remains_replaceable(pool: PgPool) {
+    let (org, employee, actor) = person(&pool).await;
+    let on = today_kst() + Duration::days(10);
+    let request = json!({"event_type":"GROUP_TRANSFER","to_status":"ACTIVE","to_company":"Receiving Co",
+        "effective_date":on.to_string(),"comment":"전적 예약","signoffs":{}});
+    let event: Uuid = sqlx::query_scalar("INSERT INTO employee_lifecycle_events(org_id,employee_id,event_type,from_status,to_status,effective_date,comment,created_by,state,scheduled_request) \
+        VALUES ($1,$2,'GROUP_TRANSFER','ACTIVE','ACTIVE',$3,'전적 예약',$4,'SCHEDULED',$5) RETURNING id")
+        .bind(org).bind(employee).bind(on.to_string()).bind(actor).bind(&request)
+        .fetch_one(&pool).await.unwrap();
+    sqlx::query("INSERT INTO employee_exit_cases(org_id,employee_id,effective_exit_date,site_manager_note,reported_by,exit_lifecycle_event_id) VALUES ($1,$2,$3,'전적 신고',$4,$5)")
+        .bind(org).bind(employee).bind(on).bind(actor).bind(event).execute(&pool).await.unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    let heads = load_employee_heads(&mut tx, org, &[employee])
+        .await
+        .unwrap();
+    let schedules = load_schedules_many(&mut tx, org, &[employee])
+        .await
+        .unwrap();
+    let mut transition = serde_json::from_value(request).unwrap();
+    let (_, replaces) = super::schedule_sql::replay_loaded_schedule(
+        &schedules[&employee],
+        &heads[&employee].current,
+        console_hr_domain::lifecycle::schedule::ScheduleChange::Insert(&mut transition),
+    )
+    .expect("linking a group transfer to its exit case must not prevent replacement");
+    assert_eq!(
+        replaces,
+        Some(event),
+        "group transfers keep same-date replacement semantics"
+    );
+    tx.rollback().await.unwrap();
+}

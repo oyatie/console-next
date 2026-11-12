@@ -31,7 +31,7 @@ pub fn employee_import_mapping_profile(columns: &[EmployeeImportColumn]) -> Valu
         "target_catalog": target_catalog,
         "columns": columns,
         "policy": {
-            "unknown_columns": "retain_raw_only",
+            "unknown_columns": "drop_header_only",
             "restricted_columns": "drop_header_only",
             "resident_registration_number_values": "drop_any_column",
             "blank_name_rows": "preserve_raw_only",

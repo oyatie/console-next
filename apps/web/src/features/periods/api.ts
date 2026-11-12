@@ -50,3 +50,6 @@ export const settingsQuery = { ...get("/api/v1/settings"), staleTime: 5 * 60_000
 
 /** True for a failed request the server answered with `status` (views may not import ApiError). */
 export const failedWith = (e: unknown, status: number) => e instanceof ApiError && e.status === status;
+
+export const acknowledgeUnlockReview = (lockId: string, exceptionId: string) =>
+  unwrap(api.POST("/api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge", { params: { path: { lockId, exceptionId } } }));

@@ -71,6 +71,10 @@ pub enum OrgSetupOp {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrgSetupBatch {
     pub ops: Vec<OrgSetupOp>,
+    /// The day every change of the batch takes effect; today when absent.
+    /// Never after today, never before the record it stands on.
+    #[serde(default, with = "crate::iso_date::option")]
+    pub effective_date: Option<time::Date>,
 }
 
 /// One unit a batch (or its undo) changed, and the version it left it at.
@@ -113,4 +117,24 @@ pub struct OrgSetupBatchView {
     pub change_mode: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
+}
+
+#[cfg(test)]
+mod dated_tests {
+    use super::OrgSetupBatch;
+
+    #[test]
+    fn a_batch_reads_its_date_and_needs_none() -> Result<(), serde_json::Error> {
+        let dated: OrgSetupBatch =
+            serde_json::from_str(r#"{"ops":[],"effective_date":"2021-03-02"}"#)?;
+        assert_eq!(
+            dated.effective_date,
+            Some(time::macros::date!(2021 - 03 - 02))
+        );
+        let undated: OrgSetupBatch = serde_json::from_str(r#"{"ops":[]}"#)?;
+        assert_eq!(undated.effective_date, None);
+        let two_digit = r#"{"ops":[],"effective_date":"21.03.02"}"#;
+        assert!(serde_json::from_str::<OrgSetupBatch>(two_digit).is_err());
+        Ok(())
+    }
 }

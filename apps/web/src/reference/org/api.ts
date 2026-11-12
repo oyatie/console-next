@@ -5,6 +5,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { get, type PathPrefix } from "../../lib/query";
 import { landed } from "../../lib/react/landed";
+import { todayKst } from "../../lib/pure/today";
 import { isDate } from "../../ui/date/days";
 
 export const regionsQuery = get("/api/v1/regions");
@@ -21,7 +22,10 @@ export const ORG_READS: PathPrefix[] = ["/api/v1/regions", "/api/v1/branches", "
 /** Every read a structure command may change: the tree, units, entities and workplaces, setup, changes and people. */
 export const STRUCTURE_READS: PathPrefix[] = ["/api/v1/org-structure", "/api/v1/org-units", "/api/v1/branches", "/api/v1/legal-entities", "/api/v1/workplaces", "/api/v1/onboarding", "/api/v1/org-changes", "/api/v1/employees"];
 /** Applies setup department ops in one transaction (at once, during setup); the receipt's batch_id undoes them all. */
-export const applySetup = (key: string, ops: SetupOp[]) => unwrap(api.POST("/api/v1/org-structure/batches", { params: { header: { "Idempotency-Key": key } }, body: { ops } }));
+export const applySetup = (key: string, ops: SetupOp[], effectiveDate?: string) => unwrap(api.POST("/api/v1/org-structure/batches", { params: { header: { "Idempotency-Key": key } }, body: { ops, effective_date: effectiveDate } }));
+/** A setup change dated before today: its day for the batch and a receipt naming it. Today sends no day (the server's today). */
+export const setupDated = (message: string, day: string) =>
+  day < todayKst() ? { effectiveDate: day, message: t("orgUnit.gov.datedReceipt", { message, date: fmtDate(day) }) } : { effectiveDate: undefined, message };
 /** Sets the order of a parent's children (a legal entity's workplaces, a workplace's or department's departments): every current child once. */
 export const reorder = (key: string, body: ReorderRequest) => unwrap(api.PUT("/api/v1/org-structure/order", { params: { header: { "Idempotency-Key": key } }, body }));
 
@@ -30,7 +34,10 @@ export const defaultEffectiveDate = (today: string, asOf?: string): string => {
   return q && isDate(q) && q > today ? q : today;
 };
 
-export type InlineUnitValues = { effectiveDate: string; reason: string; submit: boolean };
+/** Setup applies at once, so it takes today or an earlier day; after go-live a change waits for today or later. */
+export const dayAllowed = (setup: boolean, today: string, value: string) => isDate(value) && (setup ? value <= today : value >= today);
+
+export type InlineUnitValues ={ effectiveDate: string; reason: string; submit: boolean };
 export type InlineUnitSpec = InlineUnitValues & (
   | { kind: "create"; parentUnitId: string; name: string; onDone?: (unitIds: string[]) => void }
   | { kind: "rename"; orgUnitId: string; fromName: string; name: string; onDone?: () => void });

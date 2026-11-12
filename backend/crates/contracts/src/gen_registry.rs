@@ -4895,6 +4895,15 @@ const FINANCE_GL_FRAGMENT_PATHS: &[PathItem] = &[
             ),
         }],
     },
+    PathItem {
+        path: "/api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../finance-gl/rest/openapi/paths/api__v1__period-locks__lockId__unlock__reviews__exceptionId__acknowledge.post.yaml"
+            ),
+        }],
+    },
 ];
 
 const FINANCE_GL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[

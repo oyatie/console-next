@@ -76,6 +76,7 @@ pub(crate) struct Run<'a> {
     pub actor: &'a Actor,
     pub port: &'a dyn OrgUnitSetupWritePort,
     pub admitted: Admitted,
+    /// The day the batch takes effect: today, or the setup batch's own date.
     pub today: time::Date,
     pub batch: Uuid,
     /// The single-unit routes name fields without the `ops[i].` prefix.
@@ -137,7 +138,10 @@ impl Run<'_> {
         mut attributes: Value,
         action: &str,
     ) -> Result<Uuid, PgEntityError> {
-        attributes["effective_from"] = json!(self.today.to_string());
+        let on = self.today.to_string();
+        crate::org_batch_date::stands(tx, &on, unit.as_ref().map(|(_, head)| head), &attributes)
+            .await?;
+        attributes["effective_from"] = json!(on);
         let (id, before) = unit.map_or((None, None), |(id, head)| (Some(id), Some(head)));
         let reparented = before
             .as_ref()
@@ -249,13 +253,35 @@ impl PgEntityStore {
         ops: Vec<OrgSetupOp>,
         port: Arc<dyn OrgUnitSetupWritePort>,
     ) -> Result<OrgSetupReceipt, PgEntityError> {
-        let request = json!({ "ops": ops });
-        self.run_batch(
+        self.apply_org_setup_batch_on(actor, ops, None, port).await
+    }
+
+    /// [`Self::apply_org_setup_batch`] taking effect on `effective_date`
+    /// (today when `None`): every revision the batch writes is dated so.
+    ///
+    /// # Errors
+    /// As above, and on `effective_date`: `org_setup_date_future` (setup
+    /// applies at once), `org_setup_date_before_parent`,
+    /// `org_setup_date_before_current`.
+    pub async fn apply_org_setup_batch_on(
+        &self,
+        actor: &Actor,
+        ops: Vec<OrgSetupOp>,
+        effective_date: Option<time::Date>,
+        port: Arc<dyn OrgUnitSetupWritePort>,
+    ) -> Result<OrgSetupReceipt, PgEntityError> {
+        // The date is part of the command: the same ops on another day are another command.
+        let request = match effective_date {
+            Some(date) => json!({ "ops": ops, "effective_date": date.to_string() }),
+            None => json!({ "ops": ops }),
+        };
+        self.run_batch_on(
             actor,
             "org_unit.setup_batch",
             request,
             ops,
             BatchMode::Setup,
+            effective_date,
             port,
         )
         .await
@@ -269,6 +295,22 @@ impl PgEntityStore {
         request: Value,
         ops: Vec<OrgSetupOp>,
         mode: BatchMode,
+        port: Arc<dyn OrgUnitSetupWritePort>,
+    ) -> Result<OrgSetupReceipt, PgEntityError> {
+        self.run_batch_on(actor, action, request, ops, mode, None, port)
+            .await
+    }
+
+    /// [`Self::run_batch`] dated `effective` (today when `None`).
+    #[allow(clippy::too_many_arguments)]
+    async fn run_batch_on(
+        &self,
+        actor: &Actor,
+        action: &'static str,
+        request: Value,
+        ops: Vec<OrgSetupOp>,
+        mode: BatchMode,
+        effective: Option<time::Date>,
         port: Arc<dyn OrgUnitSetupWritePort>,
     ) -> Result<OrgSetupReceipt, PgEntityError> {
         let actor = actor.clone();
@@ -287,11 +329,12 @@ impl PgEntityStore {
                 }
                 let named: Vec<Uuid> = ops.iter().flat_map(crate::org_ops::named_units).collect();
                 org_tree::lock_units(tx, &named).await?;
+                let today = crate::org_batch_date::effective(effective, today_kst(tx).await?)?;
                 let mut run = Run {
                     actor: &actor,
                     port: port.as_ref(),
                     admitted,
-                    today: today_kst(tx).await?,
+                    today,
                     batch: Uuid::new_v4(),
                     legacy: mode != BatchMode::Setup,
                     refs: HashMap::new(),

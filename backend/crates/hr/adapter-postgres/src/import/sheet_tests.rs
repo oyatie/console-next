@@ -104,8 +104,10 @@ fn a_header_below_title_rows_maps_moved_columns() {
     );
 }
 
+/// Only a column a field takes is stored: a restricted one never, and one
+/// no field takes (a note, a pay amount under any header) never either.
 #[test]
-fn restricted_cells_never_enter_a_raw_row_and_previews_mask() {
+fn only_mapped_cells_enter_a_raw_row_and_previews_mask() {
     let sheet = grid(
         "새온",
         &[
@@ -114,11 +116,15 @@ fn restricted_cells_never_enter_a_raw_row_and_previews_mask() {
             (0, 2, t("계좌번호")),
             (0, 3, t("퇴직금 중간정산일")),
             (0, 4, t("메모")),
+            (0, 5, t("기본급")),
+            (0, 6, t("국적")),
             (1, 0, t("홍길동")),
             (1, 1, t("서울")),
             (1, 2, t("123-456")),
             (1, 3, t("2025-12-31")),
             (1, 4, t("현장 배치")),
+            (1, 5, t("2500000")),
+            (1, 6, t("대한민국")),
             (2, 2, t("빈 이름 원천 행")),
         ],
     );
@@ -129,13 +135,27 @@ fn restricted_cells_never_enter_a_raw_row_and_previews_mask() {
     assert_eq!(parsed.rows[0].raw_row["근무지(주소)"], json!("서울"));
     assert_eq!(parsed.rows[1].raw_row.get("계좌번호"), None);
     assert_eq!(
-        parsed.rows[0].source_metadata["dropped_restricted_columns"],
-        json!(["계좌번호", "퇴직금중간정산일"])
+        parsed.rows[0].raw_row,
+        json!({ "성명": "홍길동", "근무지(주소)": "서울" }),
+        "nothing but the mapped columns"
     );
+    assert_eq!(
+        parsed.rows[0].source_metadata["dropped_restricted_columns"],
+        json!(["계좌번호", "퇴직금중간정산일", "메모", "기본급", "국적"])
+    );
+    for header in ["메모", "기본급", "국적"] {
+        let column = parsed.columns.iter().find(|c| c.source_header == header);
+        let column = column.unwrap_or_else(|| panic!("{header} is still listed"));
+        assert_eq!(
+            (column.classification.as_str(), column.preview_allowed),
+            ("restricted", false),
+            "{header}"
+        );
+    }
     let preview = masked_preview_values(&parsed.rows[0].raw_row, &parsed.columns);
     assert_eq!(preview["근무지(주소)"], json!("••••"));
     assert_eq!(preview.get("계좌번호"), None);
-    assert_eq!(preview["메모"], json!("현장 배치"));
+    assert_eq!(preview.get("메모"), None);
 }
 
 #[test]

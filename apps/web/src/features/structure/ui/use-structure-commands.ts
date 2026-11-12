@@ -12,7 +12,8 @@ import { applyBatch, reorder, undoBatch, type ReorderRequest, type SetupOp } fro
  * A setup batch is undone by its `batchId`; a reorder by `back`, the order it replaced pinned to the one it left.
  */
 export type Applied = { batchId?: string; back?: ReorderRequest; message: string; undone?: boolean; moved?: ReadonlyMap<string, string> };
-type Change = { ops: SetupOp[]; message: string; onDone?: (unitIds: string[]) => void; moved?: ReadonlyMap<string, string> };
+/** `effectiveDate`: the day the batch takes effect (today when absent). */
+type Change = { ops: SetupOp[]; message: string; effectiveDate?: string; onDone?: (unitIds: string[]) => void; moved?: ReadonlyMap<string, string> };
 
 /**
  * The setup writes behind every gesture (add, rename, move, delete; one or many): one batch each, applied at once,
@@ -33,7 +34,7 @@ export function useStructureCommands(readOnly = false) {
     if (newest.at > since && !own.current.has(newest.vars)) setLast(null);
   }, [newest.at, newest.vars, since]);
   const change = useCommand({
-    run: (c: Change, key: string) => applyBatch(key, c.ops),
+    run: (c: Change, key: string) => applyBatch(key, c.ops, c.effectiveDate),
     invalidates: STRUCTURE_READS,
     awaitFirstRead: true,
     announce: (_, c) => c.message,

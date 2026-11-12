@@ -163,6 +163,7 @@ export const koStructure = {
   "structure.list.showOnChart": "조직도에서 보기",
   "structure.outline.title": "{name} 아웃라인",
   "structure.outline.label": "아웃라인",
+  "structure.outline.dropIdle": "이동할 곳 위에 놓으십시오 · 선이 놓일 곳입니다 · Esc 취소",
   "structure.outline.levelHint": "위치로 정해집니다",
   "structure.outline.levelCol": "단계",
   "structure.outline.newUnder": "부서 · {parent} 아래",

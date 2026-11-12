@@ -125,6 +125,45 @@ async fn scoped_register_resolves_a_negative_loss_offset_across_the_previous_rul
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn scoped_register_preserves_the_first_filing_date_outside_the_requested_period(
+    pool: PgPool,
+) {
+    let code = console_compliance_domain::statutory::codes::resolve("ins.deadline.lose.nhis");
+    let first = date!(2034 - 01 - 01);
+    let on = date!(2036 - 06 - 01);
+    periods(
+        &pool,
+        code,
+        [first, date!(2035 - 01 - 01), date!(2036 - 01 - 01)],
+        0,
+        false,
+    )
+    .await;
+    let mut conn = pool.acquire().await.unwrap();
+    let scoped = load_statutory_register_for_codes(&mut conn, &[code.into()], &[on])
+        .await
+        .unwrap();
+    let full = load_statutory_register(&mut conn).await.unwrap();
+    assert_eq!(
+        scoped.first_filing_date("NHIS", "LOSE").unwrap(),
+        Some(first),
+        "a current-period case must retain the duty's original introduction date"
+    );
+    assert_eq!(
+        scoped.first_filing_date("NHIS", "LOSE").unwrap(),
+        full.first_filing_date("NHIS", "LOSE").unwrap()
+    );
+    assert_eq!(
+        scoped
+            .filing_rule_by_code(code, on)
+            .unwrap()
+            .expect("the requested period is also loaded")
+            .effective_from,
+        "2036-01-01"
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn opening_a_historical_hire_case_includes_todays_age_trigger_rule(pool: PgPool) {
     let today = today_kst();
     // A test country pack assigns an age-triggered obligation to an existing hire item.

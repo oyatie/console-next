@@ -11271,6 +11271,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge a consumed sole-holder unlock exception
+         * @description Cedar rechecks current close entitlement and requires an independent reviewer when available.
+         */
+        post: operations["acknowledgePeriodUnlockReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/person-binding-reviews": {
         parameters: {
             query?: never;
@@ -15239,6 +15259,11 @@ export interface components {
                     periodEnd: string;
                     requester: string | null;
                     reason_code: string;
+                    /**
+                     * Format: uuid
+                     * @description Consumed sole-holder exception awaiting acknowledgement, rather than an unlock approval.
+                     */
+                    exceptionId?: string;
                     /** @description Tenant-defined reason labels, using the owning reason catalog's presentation contract. */
                     reason_entry?: {
                         system: boolean;
@@ -16207,7 +16232,7 @@ export interface components {
             /** @enum {string|null} */
             target?: "employee_number" | "employee_name" | "branch_name" | "work_date" | "check_in_at" | "check_out_at" | "minutes_worked" | null;
             /**
-             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`.
+             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no longer produced and appears only on runs made before that rule.
              * @enum {string}
              */
             classification: "canonical" | "retained" | "restricted";
@@ -19890,7 +19915,7 @@ export interface components {
             normalized_header: string;
             target?: string | null;
             /**
-             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`.
+             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no longer produced and appears only on runs made before that rule.
              * @enum {string}
              */
             classification: "canonical" | "retained" | "restricted" | "location";
@@ -25212,6 +25237,11 @@ export interface components {
         };
         OrgSetupBatchRequest: {
             ops: components["schemas"]["OrgSetupOp"][];
+            /**
+             * Format: date
+             * @description The day every change of the batch takes effect; today (KST) when absent. Refused on effective_date, nothing written: org_setup_date_future (setup applies at once; a change that waits for its day is an org change), org_setup_date_before_parent (a unit dated before the first record of the unit or 사업장 it goes under), org_setup_date_before_current (a change dated before the unit's current record).
+             */
+            effective_date?: string;
         };
         OrgSetupBatchView: {
             /** Format: uuid */
@@ -54832,6 +54862,43 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    acknowledgePeriodUnlockReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lockId: string;
+                exceptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review acknowledged; repeated acknowledgement returns the same receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        status: "REVIEWED";
+                    };
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listPersonBindingReviews: {

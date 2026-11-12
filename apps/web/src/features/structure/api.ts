@@ -14,8 +14,8 @@ export { reorder } from "../../reference/org/api";
 const once = (key: string) => ({ "Idempotency-Key": key });
 
 /** Create, rename, move and dissolve department in one transaction (all or nothing; a stale pin names its op). */
-export const applyBatch = (key: string, ops: SetupOp[]) =>
-  unwrap(api.POST("/api/v1/org-structure/batches", { params: { header: once(key) }, body: { ops } }));
+export const applyBatch = (key: string, ops: SetupOp[], effectiveDate?: string) =>
+  unwrap(api.POST("/api/v1/org-structure/batches", { params: { header: once(key) }, body: { ops, effective_date: effectiveDate } }));
 /** Puts back every unit a batch touched (undo). */
 export const undoBatch = (key: string, batchId: string) =>
   unwrap(api.POST("/api/v1/org-structure/batches/{batchId}/undo", { params: { header: once(key), path: { batchId } } }));

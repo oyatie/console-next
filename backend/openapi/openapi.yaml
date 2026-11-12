@@ -24881,6 +24881,41 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [period-locks]
+      operationId: acknowledgePeriodUnlockReview
+      summary: Acknowledge a consumed sole-holder unlock exception
+      description: Cedar rechecks current close entitlement and requires an independent reviewer when available.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: lockId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: exceptionId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Review acknowledged; repeated acknowledgement returns the same receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [REVIEWED] }
+        '401':
+          description: No session.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/person-binding-reviews:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -34320,6 +34355,10 @@ components:
                   type: [string, 'null']
                 reason_code:
                   type: string
+                exceptionId:
+                  type: string
+                  format: uuid
+                  description: Consumed sole-holder exception awaiting acknowledgement, rather than an unlock approval.
                 reason_entry:
                   type: [object, 'null']
                   description: Tenant-defined reason labels, using the owning reason catalog's presentation contract.
@@ -35847,7 +35886,8 @@ components:
         classification:
           type: string
           description: '`restricted` columns are dropped at import: their values are never stored and never appear in preview
-            `values`.'
+            `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no
+            longer produced and appears only on runs made before that rule.'
           enum:
           - canonical
           - retained
@@ -42354,7 +42394,8 @@ components:
         classification:
           type: string
           description: '`restricted` columns are dropped at import: their values are never stored and never appear in preview
-            `values`.'
+            `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no
+            longer produced and appears only on runs made before that rule.'
           enum:
           - canonical
           - retained
@@ -53133,6 +53174,14 @@ components:
           maxItems: 1000
           items:
             $ref: '#/components/schemas/OrgSetupOp'
+        effective_date:
+          type: string
+          format: date
+          description: >-
+            The day every change of the batch takes effect; today (KST) when absent. Refused on effective_date, nothing
+            written: org_setup_date_future (setup applies at once; a change that waits for its day is an org change),
+            org_setup_date_before_parent (a unit dated before the first record of the unit or 사업장 it goes under),
+            org_setup_date_before_current (a change dated before the unit's current record).
     OrgSetupBatchView:
       type: object
       required:

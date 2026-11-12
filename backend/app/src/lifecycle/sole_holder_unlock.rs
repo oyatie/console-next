@@ -6,8 +6,7 @@
 //! (`review.sole_holder_exception.due`) is the 사후 검토 item, and consumes it
 //! with this write in the same transaction (the ORG-SOLE pattern).
 //!
-//! the notice to every other EXECUTIVE and SUPER_ADMIN waits for
-//! MAIL's NOTIFY port; the exception row and the audit are the record.
+//! The work inbox reads each consumed exception until its review is acknowledged.
 
 use std::time::Duration;
 
