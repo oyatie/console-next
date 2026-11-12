@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! 미루기 (`/api/v1/me/action-inbox/items/{id}/snooze`): the caller postpones
-//! one of their own inbox items to a later day, or brings it back (다시 보기).
+//! Snooze (`/api/v1/me/action-inbox/items/{id}/snooze`): the caller postpones
+//! one of their own inbox items to a later day, or brings it back.
 //! A snooze is the caller's view only: nothing on the item changes and nobody
 //! else's list does. The item is resolved through the caller's own inbox read,
 //! so someone else's item, an unknown id and a malformed id answer one 404.
@@ -198,7 +198,7 @@ pub(super) async fn put(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// 다시 보기. Bringing back an item that is not snoozed changes nothing and still succeeds.
+/// Bringing back an item that is not snoozed changes nothing and still succeeds.
 // console-gate: state-changing-handler
 pub(super) async fn remove(
     State(state): State<ActionInboxState>,
