@@ -20,11 +20,12 @@ use tracing::Instrument;
 
 mod decisions;
 mod done;
-pub use done::ME_ACTION_INBOX_DONE_PATH;
 pub(crate) mod error;
 mod policy;
+mod reference;
 mod request_register;
 mod response;
+pub(crate) mod tabs;
 use error::InboxError;
 
 #[cfg(any(
@@ -69,9 +70,7 @@ impl ActionInboxState {
 pub fn router(state: ActionInboxState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.pool.clone();
-    let router = Router::new()
-        .route(ME_ACTION_INBOX_PATH, get(list_action_inbox))
-        .route(ME_ACTION_INBOX_DONE_PATH, get(done::list))
+    let router = tabs::routes(Router::new().route(ME_ACTION_INBOX_PATH, get(list_action_inbox)))
         .with_state(state);
     console_platform_request_context::with_request_context(router, verifier, pool)
 }

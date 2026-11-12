@@ -9035,6 +9035,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/action-inbox/reference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 참조 - the notices addressed to the caller
+         * @description The 업무함 참조 tab: the notifications addressed to the caller (FYI, no action needed), newest first, with the notification center's own recipient and mute rules. Served on the inbox surface so the tab works while the notifications module's own routes are off.
+         */
+        get: operations["listMyActionInboxReference"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/action-inbox/reference/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 확인 - mark one of the caller's notices read
+         * @description Marks one of the caller's own notices read. A notice that is not the caller's is 404, indistinguishable from an unknown id.
+         */
+        post: operations["markMyActionInboxReferenceRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/authz": {
         parameters: {
             query?: never;
@@ -49902,6 +49942,59 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    listMyActionInboxReference: {
+        parameters: {
+            query?: {
+                /** @description When true, only unread notices. */
+                unread?: boolean;
+                /** @description The previous page's next_cursor (strictly older notices). */
+                cursor?: components["schemas"]["Uuid"];
+                /** @description Page size, clamped to 1..=200 (default 50). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of the caller's notices. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    markMyActionInboxReferenceRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The notice, now read. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     getCurrentUserAuthz: {

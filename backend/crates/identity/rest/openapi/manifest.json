@@ -252,6 +252,12 @@
     "/api/v1/me/action-inbox/done": [
       "get"
     ],
+    "/api/v1/me/action-inbox/reference": [
+      "get"
+    ],
+    "/api/v1/me/action-inbox/reference/{id}/read": [
+      "post"
+    ],
     "/api/v1/me/authz": [
       "get"
     ],
@@ -614,6 +620,9 @@
     "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",
+    "NotificationLink",
+    "NotificationPage",
+    "NotificationSummary",
     "OrgChangeApprovalRoleKey",
     "OrgChangeApprovalStep",
     "OrgChangeDetail",

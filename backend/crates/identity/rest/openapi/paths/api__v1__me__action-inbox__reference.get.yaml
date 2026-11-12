@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - me
+operationId: listMyActionInboxReference
+summary: 참조 - the notices addressed to the caller
+description: >-
+  The 업무함 참조 tab: the notifications addressed to the caller (FYI, no action needed),
+  newest first, with the notification center's own recipient and mute rules. Served on the
+  inbox surface so the tab works while the notifications module's own routes are off.
+security:
+- bearerAuth: []
+parameters:
+- name: unread
+  in: query
+  required: false
+  description: When true, only unread notices.
+  schema:
+    type: boolean
+- name: cursor
+  in: query
+  required: false
+  description: The previous page's next_cursor (strictly older notices).
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: limit
+  in: query
+  required: false
+  description: Page size, clamped to 1..=200 (default 50).
+  schema:
+    type: integer
+    format: int64
+responses:
+  '200':
+    description: One page of the caller's notices.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/NotificationPage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '422':
+    $ref: '#/components/responses/ValidationError'

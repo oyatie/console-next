@@ -105,7 +105,7 @@ impl PgOnboardingStore {
                 let notified = sqlx::query(
                     "INSERT INTO notifications (org_id, recipient_user_id, category, body, link, dedup_key) \
                      SELECT org_id, id, 'tenant.go_live', $1, \
-                            jsonb_build_object('screen', 'settings/audit'), 'tenant.go_live:' || id \
+                            jsonb_build_object('type', 'screen', 'screen', 'settings/audit'), 'tenant.go_live:' || id \
                      FROM users WHERE is_active AND roles && ARRAY['EXECUTIVE', 'SUPER_ADMIN'] \
                      ON CONFLICT DO NOTHING",
                 )

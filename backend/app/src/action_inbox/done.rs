@@ -19,8 +19,6 @@ use uuid::Uuid;
 
 use super::{ActionInboxState, error::InboxError, sources::audit_personnel};
 
-pub const ME_ACTION_INBOX_DONE_PATH: &str = "/api/v1/me/action-inbox/done";
-
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct DoneQuery {

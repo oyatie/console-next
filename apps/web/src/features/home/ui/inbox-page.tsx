@@ -7,7 +7,7 @@ import type { RowAction } from "./grouped-queue";
 import { InboxQueue } from "./inbox-queue";
 import { inboxReadFilter, inboxView, INBOX_TABS, TODO_CHIPS, type InboxView } from "../domain/inbox-filter";
 import { InboxTabs } from "./inbox-tabs";
-import { DoneList } from "./inbox-finished";
+import { DoneList, ReferenceList } from "./inbox-finished";
 import { Card } from "../../../ui/card/card";
 import { useTabSearch } from "../../../lib/react/use-tab-search";
 import { freshOnOpen } from "../../../lib/query";
@@ -29,8 +29,8 @@ function InboxContent({ view, action }: { view: InboxView; action?: RowAction })
   const asOf = !me.isPending && me.data?.tenant?.phase !== "SETUP" && !first?.setup && !inbox.error ? first?.as_of : undefined;
   useLiveHold(!me.isPending && !!inbox.data?.pages.some(page => page.items.length > 0), true);
   return <Page floorplan="P-03" head={{ title: t("home.inbox.title"), titleId: "inbox-title", tools: asOf ? <time className="muted t-sm" dateTime={asOf}>{t("home.asOf", { time: fmtDateTime(asOf) })}</time> : undefined }} q={me}>
-    {user => view === "done"
-      ? <Card label={t("home.inbox.title")}><InboxTabs view={view} /><DoneList /></Card>
+    {user => view === "reference" || view === "done"
+      ? <Card label={t("home.inbox.title")}><InboxTabs view={view} />{view === "reference" ? <ReferenceList /> : <DoneList />}</Card>
       : <InboxQueue filter={view} action={action} setupPhase={user.tenant?.phase === "SETUP"} />}
   </Page>;
 }

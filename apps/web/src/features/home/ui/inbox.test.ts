@@ -186,9 +186,9 @@ test("no work grant shows the honest account page without dead filters", () => {
   const markup = html();
   expect(markup).toContain(t("home.noWork.title"));
   expect(markup).toContain('href="/account"');
-  // No chips without work; the relation tabs stay, so 완료 is reachable for my own decisions.
+  // No chips without work; the relation tabs stay, so 참조 and 완료 are reachable for my own notices and decisions.
   expect(markup).not.toContain("aria-pressed=");
-  expect(markup).toContain('href="/inbox?tab=done"');
+  expect(markup).toContain('href="/inbox?tab=reference"');
 });
 test("empty turn offers permitted starts, next scheduled work and the as-of stamp", () => {
   view.list.data = { pages: [page([], { quick_starts: ["register", "import", "org", "invite"], upcoming: [item("next change", { kind: "org_change_scheduled", lane: "scheduled", links: [{ kind: "org_change", id: "next" }] })] })] };

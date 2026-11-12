@@ -116,8 +116,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(page.locator("main header time[datetime]")).toBeVisible();
     await expect(preview.locator(":scope > div")).toHaveCount(1);
     const tabs = page.getByRole("navigation", { name: t("home.lanes"), exact: true });
-    // 해야 할 일 · 요청한 일 · 완료; 예정 and 실패 are chips under 해야 할 일.
-    await expect(tabs.getByRole("link")).toHaveCount(3);
+    // 해야 할 일 · 요청한 일 · 참조 · 완료; 예정 and 실패 are chips under 해야 할 일.
+    await expect(tabs.getByRole("link")).toHaveCount(4);
     const myTurn = tabs.getByRole("link", { name: /^해야 할 일\s*31\+$/ });
     await expect(myTurn).toHaveAttribute("href", "/inbox");
     await expect(myTurn).toHaveAttribute("aria-current", "page");

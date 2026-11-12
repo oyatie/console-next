@@ -14,7 +14,7 @@ type Count = { total: number; total_is_exact: boolean } | undefined;
 const shown = (count: Count) => count && (count.total_is_exact ? count.total : `${fmtNumber(count.total)}+`);
 const chipCount = (count: Count) => count ? `${fmtNumber(count.total)}${count.total_is_exact ? "" : "+"}` : "";
 
-/** To do, requested and done tabs; scheduled and failures are chips beside them when the server offers them. */
+/** To do, requested, reference and done tabs; scheduled and failures are chips beside them when the server offers them. */
 export function InboxTabs({ view }: { view: InboxView }) {
   const first = useInboxRead().inbox.data?.pages[0];
   const navigate = useNavigate();

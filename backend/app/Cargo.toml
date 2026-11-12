@@ -145,6 +145,7 @@ console-kernel-core = { workspace = true }
 console-messenger-adapter-postgres = { workspace = true }
 console-messenger-rest = { workspace = true, optional = true }
 console-notifications-adapter-postgres = { workspace = true }
+console-notifications-application = { workspace = true }
 console-notifications-rest = { workspace = true, optional = true }
 console-inbox-adapter-postgres = { workspace = true }
 console-inbox-rest = { workspace = true, optional = true }

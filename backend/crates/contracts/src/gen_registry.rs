@@ -287,6 +287,18 @@ const SHARED_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../../openapi/shared/schemas/NamedEntity.yaml"),
     },
     NamedYaml {
+        name: "NotificationLink",
+        body: include_str!("../../../openapi/shared/schemas/NotificationLink.yaml"),
+    },
+    NamedYaml {
+        name: "NotificationPage",
+        body: include_str!("../../../openapi/shared/schemas/NotificationPage.yaml"),
+    },
+    NamedYaml {
+        name: "NotificationSummary",
+        body: include_str!("../../../openapi/shared/schemas/NotificationSummary.yaml"),
+    },
+    NamedYaml {
         name: "OrgChangeApprovalRoleKey",
         body: include_str!("../../../openapi/shared/schemas/OrgChangeApprovalRoleKey.yaml"),
     },
@@ -533,7 +545,13 @@ pub const ATTENDANCE_FRAGMENT: Fragment = Fragment {
     external_schemas: ATTENDANCE_FRAGMENT_EXTERNAL,
 };
 
-const ATTENDANCE_FRAGMENT_EXTERNAL: &[&str] = &["Uuid"];
+const ATTENDANCE_FRAGMENT_EXTERNAL: &[&str] = &[
+    "ActorKind",
+    "AuditLastChange",
+    "ErrorBody",
+    "FieldError",
+    "Uuid",
+];
 
 const ATTENDANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -1741,7 +1759,14 @@ pub const COMPLIANCE_FRAGMENT: Fragment = Fragment {
     external_schemas: COMPLIANCE_FRAGMENT_EXTERNAL,
 };
 
-const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &["MobilePasskeyStepUpEnvelope", "Timestamp", "Uuid"];
+const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &[
+    "MobilePasskeyStepUpBinding",
+    "MobilePasskeyStepUpEnvelope",
+    "MobileStepUpActionKind",
+    "PasskeyStepUpAssertion",
+    "Timestamp",
+    "Uuid",
+];
 
 const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -5540,6 +5565,9 @@ const IDENTITY_FRAGMENT_EXTERNAL: &[&str] = &[
     "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",
+    "NotificationLink",
+    "NotificationPage",
+    "NotificationSummary",
     "OrgChangeApprovalRoleKey",
     "OrgChangeApprovalStep",
     "OrgChangeDetail",
@@ -6397,6 +6425,24 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "get",
             body: include_str!(
                 "../../identity/rest/openapi/paths/api__v1__me__action-inbox__done.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/action-inbox/reference",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__action-inbox__reference.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/action-inbox/reference/{id}/read",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__action-inbox__reference__id__read.post.yaml"
             ),
         }],
     },
@@ -8882,6 +8928,9 @@ const NOTIFICATIONS_FRAGMENT_EXTERNAL: &[&str] = &[
     "AuditLastChange",
     "ErrorBody",
     "FieldError",
+    "NotificationLink",
+    "NotificationPage",
+    "NotificationSummary",
     "Timestamp",
     "Uuid",
 ];
@@ -8992,10 +9041,6 @@ const NOTIFICATIONS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         ),
     },
     NamedYaml {
-        name: "NotificationLink",
-        body: include_str!("../../notifications/rest/openapi/schemas/NotificationLink.yaml"),
-    },
-    NamedYaml {
         name: "NotificationObjectGroup",
         body: include_str!("../../notifications/rest/openapi/schemas/NotificationObjectGroup.yaml"),
     },
@@ -9004,10 +9049,6 @@ const NOTIFICATIONS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!(
             "../../notifications/rest/openapi/schemas/NotificationObjectGroupPage.yaml"
         ),
-    },
-    NamedYaml {
-        name: "NotificationPage",
-        body: include_str!("../../notifications/rest/openapi/schemas/NotificationPage.yaml"),
     },
     NamedYaml {
         name: "NotificationPolicyList",
@@ -9024,10 +9065,6 @@ const NOTIFICATIONS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!(
             "../../notifications/rest/openapi/schemas/NotificationReadAllResponse.yaml"
         ),
-    },
-    NamedYaml {
-        name: "NotificationSummary",
-        body: include_str!("../../notifications/rest/openapi/schemas/NotificationSummary.yaml"),
     },
     NamedYaml {
         name: "UnreadNotificationCountResponse",
@@ -11838,7 +11875,14 @@ pub const PAYROLL_FRAGMENT: Fragment = Fragment {
     external_schemas: PAYROLL_FRAGMENT_EXTERNAL,
 };
 
-const PAYROLL_FRAGMENT_EXTERNAL: &[&str] = &["Timestamp", "Uuid"];
+const PAYROLL_FRAGMENT_EXTERNAL: &[&str] = &[
+    "ActorKind",
+    "AuditLastChange",
+    "ErrorBody",
+    "FieldError",
+    "Timestamp",
+    "Uuid",
+];
 
 const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
