@@ -16,13 +16,15 @@ use crate::{Admitted, PgEntityError, PgEntityStore, Tx, read_phase};
 pub struct RecordEndOptions {
     pub id: Uuid,
     pub phase: &'static str,
-    /// 삭제: the void (never used; during setup, nobody placed now).
+    /// Deletion: the void (never used; during setup, nobody placed now).
     pub delete: EndOffer,
-    /// 폐쇄 (사업장) / 폐업 (법인): the close, history kept. Its own blockers
-    /// (people still placed, 대표 사업장 …) are the close sheet's to show.
+    /// Closure (workplace) / business closure (legal entity): the close,
+    /// history kept. Its own blockers (people still placed, the representative
+    /// workplace …) are the close sheet's to show.
     pub close: EndOffer,
     /// UX-R2 ENDS (company-52): exit cases still open for anyone ever placed
-    /// here, so a close never hides a 퇴직 (and its 금품청산 clock) in flight.
+    /// here, so a close never hides an exit (and its final-settlement clock)
+    /// in flight.
     pub open_exit_cases: Vec<OpenExitCase>,
 }
 
@@ -67,9 +69,10 @@ async fn open_exit_cases(
         .collect())
 }
 
-/// Why the record cannot be deleted after 운영 시작, if it cannot:
-/// `record_has_units` (부서 that can be erased first) or `record_has_history`
-/// (anyone ever assigned or placed there, or a 부서 that was ever under it).
+/// Why the record cannot be deleted after go-live, if it cannot:
+/// `record_has_units` (departments that can be erased first) or
+/// `record_has_history` (anyone ever assigned or placed there, or a
+/// department that was ever under it).
 async fn used(
     tx: &mut Tx<'_>,
     column: &'static str,
@@ -121,9 +124,9 @@ fn refusal(code: &'static str) -> PgEntityError {
     Refusal::conflict(code, message).with_remedy(remedy).into()
 }
 
-/// Admit the void of the 사업장 or 법인 `id` (`column` = `workplace_id` /
-/// `legal_entity_id`): a setup undo during SETUP; after 운영 시작 GOVERNED,
-/// for a record nothing ever used.
+/// Admit the void of the workplace or legal entity `id` (`column` =
+/// `workplace_id` / `legal_entity_id`): a setup undo during SETUP; after
+/// go-live GOVERNED, for a record nothing ever used.
 pub(crate) async fn admit_void(
     tx: &mut Tx<'_>,
     column: &'static str,
@@ -146,7 +149,7 @@ pub(crate) async fn admit_void(
 }
 
 impl PgEntityStore {
-    /// Whether the 사업장 or 법인 `id` is deleted or closed, and why not the other.
+    /// Whether the workplace or legal entity `id` is deleted or closed, and why not the other.
     ///
     /// # Errors
     /// Database faults.

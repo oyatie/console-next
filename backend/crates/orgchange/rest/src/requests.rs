@@ -207,7 +207,7 @@ pub(crate) async fn effectuate(
 ) -> Result<Json<serde_json::Value>, RestError> {
     let p = principal(&s, &h).await?;
     // Under approval.policy.org_structure = none (decisions #26) a drafter
-    // applies their own change on its 시행일; the store decides in-tx.
+    // applies their own change on its effective date; the store decides in-tx.
     let holds_apply = allow_apply(&p).is_ok();
     if !holds_apply {
         allow_draft(&p)?;

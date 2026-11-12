@@ -1,4 +1,4 @@
-//! 사업장 kind list (decisions #18): commands and the wire view.
+//! Workplace kind list (decisions #18): commands and the wire view.
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -10,7 +10,7 @@ pub struct WorkplaceKindView {
     pub label: Option<String>,
     /// A platform default (labelled by the catalog unless relabelled).
     pub platform: bool,
-    /// Offered in the picker. A deactivated kind still reads on its 사업장.
+    /// Offered in the picker. A deactivated kind still reads on its workplace.
     pub active: bool,
 }
 
@@ -29,7 +29,7 @@ pub struct UpdateWorkplaceKind {
     pub active: Option<bool>,
 }
 
-/// Set (or clear, `null` = 미지정) the kind of one 사업장.
+/// Set (or clear, `null` = unassigned) the kind of one workplace.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetWorkplaceKind {
     pub kind_code: Option<String>,

@@ -1,5 +1,5 @@
-//! Bulk 법인 · 사업장 batch receipts (MR-29): the list, one receipt, and the
-//! records a batch touched (for the per-subject check of its undo).
+//! Bulk legal entity · workplace batch receipts (MR-29): the list, one
+//! receipt, and the records a batch touched (for the per-subject check of its undo).
 
 use console_entity_application::{Actor, EntitySetupBatchView};
 use console_entity_domain::Refusal;
@@ -45,7 +45,8 @@ impl PgEntityStore {
         .await
     }
 
-    /// The 법인 · 사업장 a batch touched, for the per-subject authorization of its undo.
+    /// The legal entities · workplaces a batch touched, for the per-subject
+    /// authorization of its undo.
     ///
     /// # Errors
     /// `entity_setup_batch_not_found`, or database faults.

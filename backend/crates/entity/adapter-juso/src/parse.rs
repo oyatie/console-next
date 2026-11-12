@@ -1,10 +1,10 @@
 //! juso.go.kr responses → wire shapes. Pure; tested on recorded responses.
 //!
 //! Formats and error codes were read from the official guide pages
-//! (business.juso.go.kr 「도로명주소 검색 API」 and 「상세주소 검색 API」,
-//! 2026-10-05) and checked against live responses the same day:
+//! (business.juso.go.kr "road-name address search API" and "detailed address
+//! search API", 2026-10-05) and checked against live responses the same day:
 //! every field arrives as a JSON string; `countPerPage` is capped at 100;
-//! the 상세주소 API answers only GET query parameters.
+//! the detailed address API answers only GET query parameters.
 
 use console_entity_domain::KrAddress;
 use console_entity_domain::codes::AddressSource;
@@ -18,7 +18,7 @@ pub(crate) enum Answer<T> {
         items: Vec<T>,
         total: u64,
     },
-    /// 「주소를 상세히」(E0006) or 「검색 범위 초과」(E0015).
+    /// "enter a more detailed address" (E0006) or "search range exceeded" (E0015).
     TooBroad,
     /// The keyword itself is refused; the code names why (field `q`).
     InvalidQuery(&'static str),
@@ -28,7 +28,8 @@ pub(crate) enum Answer<T> {
     Failed,
 }
 
-/// One 상세주소 option. A building may have 동 only, 층·호 only, or all three.
+/// One detailed-address option. A building may have a wing ("dong") only,
+/// floor and unit only, or all three.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DetailOption {
     pub dong: Option<String>,
@@ -64,7 +65,7 @@ fn common(body: &Value) -> Option<(&str, u64, &Value)> {
     Some((code, total, results.get("juso").unwrap_or(&Value::Null)))
 }
 
-/// One road-address hit as a full `KrAddress` (codes included, no 상세주소 yet).
+/// One road-address hit as a full `KrAddress` (codes included, no detailed address yet).
 fn address(j: &Value) -> Option<KrAddress> {
     Some(KrAddress {
         source: AddressSource::Juso,
@@ -92,7 +93,7 @@ fn address(j: &Value) -> Option<KrAddress> {
     })
 }
 
-/// 도로명주소 검색 API (`addrLinkApi.do`).
+/// Road-name address search API (`addrLinkApi.do`).
 pub(crate) fn road(body: &str) -> Answer<KrAddress> {
     let Ok(body) = serde_json::from_str::<Value>(body) else {
         return Answer::Failed;
@@ -119,8 +120,8 @@ pub(crate) fn road(body: &str) -> Answer<KrAddress> {
     }
 }
 
-/// 상세주소 검색 API (`addrDetailApi.do`). Its E0002–E0006 mean a building
-/// identifier was missing: our request was wrong, so they are failures.
+/// Detailed address search API (`addrDetailApi.do`). Its E0002–E0006 mean a
+/// building identifier was missing: our request was wrong, so they are failures.
 pub(crate) fn detail(body: &str) -> Answer<DetailOption> {
     let Ok(body) = serde_json::from_str::<Value>(body) else {
         return Answer::Failed;

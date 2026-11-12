@@ -19,7 +19,7 @@ const META: &str = "ARRAY['org_id','id','legal_entity_id','registration_id','wor
     'command_id','effective_from','change_mode','reason_code','actor_id','payload_digest','settings_snapshot',\
     'created_at','head_office_address_id','business_address_id','address_id','mail_address_id']";
 
-/// One address as display text (road address, then 상세).
+/// One address as display text (road address, then the detailed address).
 const ADDR: &str = "(SELECT a.road_addr_part1 || COALESCE(', ' || a.detail, '') FROM entity_addresses a WHERE a.id = {})";
 
 #[derive(Clone, Copy)]
@@ -91,7 +91,8 @@ fn sql(record: Record) -> String {
         ledger(record)
     );
     let combined = match record {
-        // 4대보험 relations are dated changes of the 사업장 too: one chain per insurer.
+        // The four social insurances' relations are dated changes of the workplace too: one
+        // chain per insurer.
         Record::Workplace => format!(
             "{rows} UNION ALL \
              SELECT i.insurer, i.version, i.effective_from, i.created_at, i.change_mode, i.reason_code, u.display_name, i.actor_id, \
@@ -306,8 +307,8 @@ impl PgEntityStore {
         .await
     }
 
-    /// The 사업장's revisions and its 4대보험 revisions, interleaved by when
-    /// they were recorded.
+    /// The workplace's revisions and its four-social-insurance revisions,
+    /// interleaved by when they were recorded.
     ///
     /// # Errors
     /// `workplace_not_found`, or database faults.

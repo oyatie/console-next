@@ -1,5 +1,5 @@
 //! Kept originals: upload, list, read back; and the creates/revises that
-//! attach one (`document_id`) to the 법인 or 사업자등록 it backs.
+//! attach one (`document_id`) to the legal entity or business registration it backs.
 
 use axum::Json;
 use axum::body::Body;

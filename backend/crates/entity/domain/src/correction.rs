@@ -1,4 +1,4 @@
-//! Identifier corrections (MR-17) and 사업장 registration-link changes (MR-18):
+//! Identifier corrections (MR-17) and workplace registration-link changes (MR-18):
 //! input validation into typed commands. Pure; the adapter checks the facts
 //! (current values, the registration chosen, the tenant phase).
 
@@ -11,7 +11,8 @@ use crate::codes::{BizKind, CertificateRevisionReason};
 use crate::refusal::{Issues, NOT_APPLICABLE, REQUIRED, Refusal};
 
 code_enum! {
-    /// The locked identifiers (사업자 구분, 법인등록번호 on the 법인; 사업자등록번호 on a 등록).
+    /// The locked identifiers (business type, corporate registration number on
+    /// the legal entity; business registration number on a registration).
     IdentifierField { BizKind => "biz_kind", Crn => "crn", Brn => "brn" }
 }
 
@@ -32,10 +33,10 @@ pub struct IdentifierCorrectionInput {
     /// The evidence, uploaded first (`POST /entity-documents`).
     pub document_id: Option<Uuid>,
     pub reason_code: Option<String>,
-    /// After 운영 시작: the approved (or sole-holder recorded) governed
+    /// After go-live: the approved (or sole-holder recorded) governed
     /// exception for exactly this correction.
     pub exception_id: Option<Uuid>,
-    /// After 운영 시작, the tenant ops account covering the correction itself
+    /// After go-live, the tenant ops account covering the correction itself
     /// (decisions #26 item d): its passkey step-up envelope, bound to
     /// [`IdentifierCorrection::ops_step_up_line`]. Not part of the command's
     /// fingerprint, so a retry with a fresh step-up replays.
@@ -89,8 +90,8 @@ pub struct GovernedCorrectionPayload<'a> {
     pub document_id: Uuid,
 }
 
-/// Validate a correction aimed at a 법인 (`on_registration = false`: biz_kind
-/// or crn) or at a 사업자등록 (`true`: brn).
+/// Validate a correction aimed at a legal entity (`on_registration = false`:
+/// biz_kind or crn) or at a business registration (`true`: brn).
 ///
 /// # Errors
 /// Every field issue at once (`validation_failed`).
@@ -141,12 +142,14 @@ pub fn validate_correction(
     })
 }
 
-/// Move a 사업장 to another 사업자등록 and/or 종사업장 일련번호, from a date.
+/// Move a workplace to another business registration and/or sub-workplace
+/// serial number, from a date.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RegistrationChangeInput {
-    /// The 사업자등록 it files VAT under from `effective_from` (`null`: none).
+    /// The business registration it files VAT under from `effective_from` (`null`: none).
     pub registration_id: Option<Uuid>,
-    /// 종사업장 일련번호 under a 사업자단위과세 registration held by another 사업장.
+    /// Sub-workplace serial number under a business-unit taxation registration
+    /// held by another workplace.
     pub sub_serial: Option<String>,
     pub effective_from: Option<String>,
     pub reason_code: Option<String>,
@@ -160,8 +163,8 @@ pub struct RegistrationChange {
     pub reason_code: crate::PersonReason,
 }
 
-/// `unit_of_other`: the target registration is a 사업자단위과세 one held by
-/// another 사업장 (then the serial is required; otherwise it is refused).
+/// `unit_of_other`: the target registration is a business-unit taxation one
+/// held by another workplace (then the serial is required; otherwise it is refused).
 ///
 /// # Errors
 /// Field issues: a future date is `date_in_future` (a dated link
@@ -198,8 +201,8 @@ pub fn validate_registration_change(
     })
 }
 
-/// 등록증 재발급·정정: the newly issued certificate (kept evidence), why it
-/// was issued, and from when the facts it prints hold.
+/// Certificate reissue / correction: the newly issued certificate (kept
+/// evidence), why it was issued, and from when the facts it prints hold.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ReissueInput {
     pub document_id: Option<Uuid>,
@@ -214,7 +217,7 @@ pub struct Reissue {
     pub effective_from: time::Date,
 }
 
-/// The new certificate is required, so is its 발급일 (`cert_issued_on`, the
+/// The new certificate is required, so is its issue date (`cert_issued_on`, the
 /// registration input's): neither the change nor the issue lies after today.
 ///
 /// # Errors

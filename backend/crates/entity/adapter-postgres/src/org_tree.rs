@@ -1,12 +1,12 @@
-//! Reads over the canonical OrgUnit tree for setup 부서 changes: the current
-//! head of a unit, its subtree, the 사업장 it sits in, who is placed in it,
-//! and the one write that keeps people's 사업장 in step when a 부서 moves to
-//! another 사업장. The tree is the latest `org_unit_revisions` row per unit
-//! (RLS keeps it to the tenant).
+//! Reads over the canonical OrgUnit tree for setup department changes: the
+//! current head of a unit, its subtree, the workplace it sits in, who is
+//! placed in it, and the one write that keeps people's workplace in step when
+//! a department moves to another workplace. The tree is the latest
+//! `org_unit_revisions` row per unit (RLS keeps it to the tenant).
 //!
 //! every walk re-reads the tenant's heads (DISTINCT ON over all
-//! revisions); fine at setup scale (≈ 400 부서 in the P2b group), add a head
-//! view or index if a tenant's tree grows past a few thousand units.
+//! revisions); fine at setup scale (≈ 400 departments in the P2b group), add
+//! a head view or index if a tenant's tree grows past a few thousand units.
 
 use console_entity_application::Actor;
 use serde_json::Value;
@@ -68,8 +68,8 @@ pub(crate) async fn head(tx: &mut Tx<'_>, id: Uuid) -> Result<Option<Head>, PgEn
 /// deadlocking). Transaction-scoped advisory locks: the runtime role may not
 /// row-lock `org_units`, and the canonical owner's revise takes none.
 ///
-/// only setup 부서 writes take these; the 사업장 rename/void paths
-/// write SITE units unlocked (one writer per 사업장 in practice).
+/// only setup department writes take these; the workplace rename/void paths
+/// write SITE units unlocked (one writer per workplace in practice).
 pub(crate) async fn lock_units(tx: &mut Tx<'_>, ids: &[Uuid]) -> Result<(), PgEntityError> {
     let mut ids = ids.to_vec();
     ids.sort_unstable();
@@ -124,8 +124,8 @@ pub(crate) async fn is_ancestor(
     .await?)
 }
 
-/// The 사업장 a unit sits in: the one its nearest SITE ancestor (or itself)
-/// represents. `None` for a legacy unit under no 사업장.
+/// The workplace a unit sits in: the one its nearest SITE ancestor (or
+/// itself) represents. `None` for a legacy unit under no workplace.
 pub(crate) async fn workplace_of(
     tx: &mut Tx<'_>,
     unit: Uuid,
@@ -144,7 +144,7 @@ pub(crate) async fn workplace_of(
     .await?)
 }
 
-/// Whether the 사업장 (and its 법인) is open for new 부서 and people.
+/// Whether the workplace (and its legal entity) is open for new departments and people.
 pub(crate) async fn workplace_open(
     tx: &mut Tx<'_>,
     workplace: Uuid,
@@ -192,10 +192,11 @@ pub(crate) async fn sibling_taken(
     .await?)
 }
 
-/// A 부서 moved from one 사업장 to another: the people in it (and under it)
-/// who have not left get their open placement at `from` corrected to `to`
-/// (and its 법인), from the same first day. The old row is superseded, never
-/// rewritten (0259). Setup only: after go-live a move is a governed 전보.
+/// A department moved from one workplace to another: the people in it (and
+/// under it) who have not left get their open placement at `from` corrected
+/// to `to` (and its legal entity), from the same first day. The old row is
+/// superseded, never rewritten (0259). Setup only: after go-live a move is a
+/// governed reassignment.
 pub(crate) async fn rebind_members(
     tx: &mut Tx<'_>,
     actor: &Actor,

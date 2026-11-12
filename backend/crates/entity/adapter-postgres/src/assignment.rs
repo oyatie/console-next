@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Employment ↔ 법인/사업장 by id, the 「회사 이름 정리」 cleanup, and 사업장 void.
+//! Employment ↔ legal entity/workplace by id, the "tidy up company names"
+//! cleanup, and workplace void.
 
 use console_entity_application::{
     Actor, AssignmentView, BindAssignment, MapCompanyText, UnmappedCompany, VoidRecord,
@@ -17,7 +18,7 @@ use crate::org_units::OrgUnitSetupWritePort;
 use crate::{PgEntityError, PgEntityStore, Tx, admit, audit};
 use std::sync::Arc;
 
-/// The 사업장 must belong to the 법인 and be open (MR-14: never closed).
+/// The workplace must belong to the legal entity and be open (MR-14: never closed).
 async fn check_pair(tx: &mut Tx<'_>, entity: Uuid, workplace: Uuid) -> Result<(), PgEntityError> {
     let closed: Option<bool> = sqlx::query_scalar(
         "SELECT w.closed_on IS NOT NULL OR e.closed_on IS NOT NULL FROM workplaces w JOIN legal_entities e ON e.id = w.legal_entity_id \
@@ -59,10 +60,10 @@ async fn one(tx: &mut Tx<'_>, id: Option<Uuid>) -> Result<AssignmentView, PgEnti
 }
 
 impl PgEntityStore {
-    /// Bind an employee to a 법인 and 사업장 from `valid_from`, closing the
-    /// open assignment the day before (a 전근/전적 split). The employee row is
-    /// locked first, which serialises concurrent writers (overlap backstop:
-    /// the assignment no-overlap trigger).
+    /// Bind an employee to a legal entity and workplace from `valid_from`,
+    /// closing the open assignment the day before (a relocation/group-transfer
+    /// split). The employee row is locked first, which serialises concurrent
+    /// writers (overlap backstop: the assignment no-overlap trigger).
     ///
     /// # Errors
     /// Field issues, `employee_not_found`, `assignment_overlap`, or database faults.
@@ -128,7 +129,8 @@ impl PgEntityStore {
                         sqlx::query("UPDATE employment_assignments SET valid_to = $2 WHERE id = $1")
                             .bind(open_id).bind(from).execute(tx.as_mut()).await?;
                         if open_entity.is_some_and(|e| e != entity) {
-                            // 전적 needs the group-transfer command (exit + rehire, consent evidence).
+                            // A group transfer needs the group-transfer command (exit +
+                            // rehire, consent evidence).
                             return Err(Refusal::conflict("entity_change_needs_group_transfer",
                                 "moving to another legal entity is a 전적 (exit and re-hire)")
                                 .with_remedy("start_group_transfer").into());
@@ -136,8 +138,9 @@ impl PgEntityStore {
                         cause = "TRANSFER";
                     }
                 }
-                // UX-R1 PLACEMENT (org-01): the 사업장 follows the 부서; a 전보 moves both. After
-                // the 법인 check, so a change of 법인 still reads as a 전적.
+                // UX-R1 PLACEMENT (org-01): the workplace follows the department; a
+                // reassignment moves both. After the legal entity check, so a change of
+                // legal entity still reads as a group transfer.
                 if crate::employment_hire::unit_contradicts(tx.as_mut(), *actor.org.as_uuid(), cmd.employee_id, workplace).await?.is_some() {
                     let mut refused = Refusal::field("workplace_id", "org_unit_at_other_workplace").with_remedy("transfer_instead");
                     refused.code = "org_unit_at_other_workplace";
@@ -196,7 +199,7 @@ impl PgEntityStore {
         .await
     }
 
-    /// Distinct legacy company texts whose employees have no mapped 법인.
+    /// Distinct legacy company texts whose employees have no mapped legal entity.
     ///
     /// # Errors
     /// Database faults.
@@ -219,8 +222,8 @@ impl PgEntityStore {
         .await
     }
 
-    /// Map every unmapped employee with this company text to one 법인 (and
-    /// 사업장), per text not per person. Returns how many were mapped.
+    /// Map every unmapped employee with this company text to one legal entity
+    /// (and workplace), per text not per person. Returns how many were mapped.
     ///
     /// # Errors
     /// Field issues or database faults.
@@ -280,7 +283,7 @@ impl PgEntityStore {
         .await
     }
 
-    /// Undo a mistaken 사업장 during setup.
+    /// Undo a mistaken workplace during setup.
     ///
     /// # Errors
     /// `phase_not_setup`, `record_in_use`, or database faults.

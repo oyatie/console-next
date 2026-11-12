@@ -1,6 +1,6 @@
-//! The setup 부서 ops (create, rename, move, dissolve, details), applied inside
-//! a [`Run`]. There is one 부서 kind (decisions #18): the level follows from
-//! where the unit goes, never from a type the client picks.
+//! The setup department ops (create, rename, move, dissolve, details),
+//! applied inside a [`Run`]. There is one department kind (decisions #18):
+//! the level follows from where the unit goes, never from a type the client picks.
 
 use console_entity_application::{OrgParent, OrgSetupOp};
 use console_entity_domain::{Issues, Refusal};
@@ -132,8 +132,8 @@ pub(crate) async fn apply(
                     "org_unit.setup_move",
                 )
                 .await?;
-                // A moved 부서 goes last among its new siblings, never at the
-                // place its old position number happens to land.
+                // A moved department goes last among its new siblings, never at
+                // the place its old position number happens to land.
                 crate::org_position::append(tx, parent, id, *run.actor.user.as_uuid()).await?;
             }
         }
@@ -214,7 +214,7 @@ fn text(run: &Run<'_>, i: usize, raw: Option<&str>) -> Result<String, PgEntityEr
     Ok(is.finish_opt(|| name)?)
 }
 
-/// An existing, active 부서. A 사업장's own unit is changed through the 사업장.
+/// An existing, active department. A workplace's own unit is changed through the workplace.
 async fn target(
     tx: &mut Tx<'_>,
     run: &Run<'_>,
@@ -237,8 +237,9 @@ async fn target(
     Ok((id, head))
 }
 
-/// The unit a created or moved 부서 goes under: a 사업장's own unit, an
-/// active 부서, or a unit created earlier in the batch, in an open 사업장.
+/// The unit a created or moved department goes under: a workplace's own
+/// unit, an active department, or a unit created earlier in the batch, in an
+/// open workplace.
 async fn resolve_parent(
     tx: &mut Tx<'_>,
     run: &mut Run<'_>,
@@ -287,7 +288,7 @@ async fn resolve_parent(
     Ok(parent)
 }
 
-/// Two active 부서 under one parent never share a name (the import's
+/// Two active departments under one parent never share a name (the import's
 /// exact-name linking would be ambiguous).
 async fn free_name(
     tx: &mut Tx<'_>,

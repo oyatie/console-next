@@ -1,7 +1,8 @@
-//! 회사 구조 labels (decisions #18, #21; review R15, R16, R17): a 사업장's
-//! code and the sibling order of 법인, 사업장 and 부서. Labels are written in
-//! place in both phases and audited (onboarding-and-migration §7.2); the
-//! phase is still admitted so the audit row says SETUP or GOVERNED.
+//! Company structure labels (decisions #18, #21; review R15, R16, R17): a
+//! workplace's code and the sibling order of legal entities, workplaces and
+//! departments. Labels are written in place in both phases and audited
+//! (onboarding-and-migration §7.2); the phase is still admitted so the audit
+//! row says SETUP or GOVERNED.
 
 use console_entity_application::{
     Actor, ReorderStructure, Saved, SetWorkplaceCode, StructureOrder, StructureParent,
@@ -25,7 +26,7 @@ async fn children(tx: &mut Tx<'_>, parent: &StructureParent) -> Result<Vec<Uuid>
         parent.workplace_id,
         parent.org_unit_id,
     ) {
-        // The tenant's 법인, as the entity reads list them (`read::entities_at`).
+        // The tenant's legal entities, as the entity reads list them (`read::entities_at`).
         (None, None, None) => {
             sqlx::query_scalar(
                 "SELECT id FROM legal_entities WHERE voided_at IS NULL \
@@ -78,8 +79,8 @@ async fn units_under(tx: &mut Tx<'_>, parent: Uuid) -> Result<Vec<Uuid>, PgEntit
 }
 
 impl PgEntityStore {
-    /// Set (or clear) a 사업장's code. A code a closed or voided 사업장 had
-    /// is accepted with the warning `code_reused` (R17).
+    /// Set (or clear) a workplace's code. A code a closed or voided workplace
+    /// had is accepted with the warning `code_reused` (R17).
     ///
     /// # Errors
     /// `workplace_not_found`, `workplace_voided`, `code: invalid_format | code_taken`.
@@ -105,7 +106,7 @@ impl PgEntityStore {
                 let code = structure_code("code", cmd.code.as_deref())?;
                 let mut warnings = Vec::new();
                 if let Some(code) = &code {
-                    // (open taken, held before by a closed or voided 사업장)
+                    // (open taken, held before by a closed or voided workplace)
                     let (taken, reused): (bool, bool) = sqlx::query_as(
                         "SELECT COALESCE(bool_or(voided_at IS NULL AND closed_on IS NULL), false), count(*) > 0 \
                          FROM workplaces WHERE code = $1 AND id <> $2",
@@ -142,11 +143,11 @@ impl PgEntityStore {
         .await
     }
 
-    /// Put one parent's children in the given order: the tenant's 법인 (no
-    /// parent named), 사업장 of a 법인, or 부서 directly in a 사업장 or under
-    /// a 부서. `children` must name every current child exactly once, and
-    /// `expected_children`, when given, the current order (else 409
-    /// `children_changed`: reload).
+    /// Put one parent's children in the given order: the tenant's legal
+    /// entities (no parent named), workplaces of a legal entity, or
+    /// departments directly in a workplace or under a department. `children`
+    /// must name every current child exactly once, and `expected_children`,
+    /// when given, the current order (else 409 `children_changed`: reload).
     ///
     /// # Errors
     /// `one_parent_required`, `parent_not_found`, `children_changed`, or database faults.

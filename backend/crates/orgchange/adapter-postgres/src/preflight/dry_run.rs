@@ -2,7 +2,7 @@ use crate::*;
 
 /// UX-R3 STRUCT org-01: the preflight runs what submit runs. A change that
 /// would apply is replayed inside a savepoint and rolled back, and a refusal becomes a
-/// named blocker with its fix, so 「사전 점검 통과」 is never followed by a 409.
+/// named blocker with its fix, so "preflight passed" is never followed by a 409.
 /// A freeze stays the compute's warning (the hard stop is effectuate's).
 pub(crate) async fn dry_run_apply(
     tx: Tx<'_, '_>,

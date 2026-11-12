@@ -1,9 +1,9 @@
-//! MR-17: correct a locked identifier (사업자 구분, 법인등록번호,
-//! 사업자등록번호) with evidence. One audited transaction: the evidence is
-//! attached, a ledger row records before/after, then the head changes.
-//! SETUP applies at once; after 운영 시작 the governed exception for exactly
-//! this correction is consumed first (the 0263 lock trigger checks the ledger
-//! row of this transaction).
+//! MR-17: correct a locked identifier (business type, corporate registration
+//! number, business registration number) with evidence. One audited
+//! transaction: the evidence is attached, a ledger row records before/after,
+//! then the head changes. SETUP applies at once; after go-live the governed
+//! exception for exactly this correction is consumed first (the 0263 lock
+//! trigger checks the ledger row of this transaction).
 
 use console_entity_application::{Actor, LegalEntityView, RegistrationView, Saved};
 use console_entity_domain::Refusal;
@@ -175,8 +175,9 @@ fn unchanged() -> PgEntityError {
 }
 
 impl PgEntityStore {
-    /// Correct 사업자 구분 or 법인등록번호 of a 법인. Leaving CORPORATION
-    /// clears the 법인등록번호 in the same command (it no longer applies).
+    /// Correct the business type or corporate registration number of a legal
+    /// entity. Leaving CORPORATION clears the corporate registration number in
+    /// the same command (it no longer applies).
     ///
     /// # Errors
     /// Field issues, `identifier_unchanged`, `identifier_correction_needs_exception`,
@@ -265,7 +266,7 @@ impl PgEntityStore {
         .await
     }
 
-    /// Correct the 사업자등록번호 of a 사업자등록.
+    /// Correct the business registration number of a business registration.
     /// Errors: as entity correction, plus `registration_not_found`.
     pub async fn correct_registration_number(
         &self,

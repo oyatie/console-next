@@ -30,17 +30,17 @@ pub enum OrgProposalOp {
     },
     #[serde(rename_all = "camelCase")]
     DeactivateBranch { branch_id: Uuid },
-    /// Slice 1 covers the org-tree edit semantics (사업장 추가 / rename);
+    /// Slice 1 covers the org-tree edit semantics (add workplace / rename);
     /// extended site fields keep routing through the registry REST surface.
     #[serde(rename_all = "camelCase")]
     CreateSite { customer_id: Uuid, name: String },
     #[serde(rename_all = "camelCase")]
     UpdateSite { site_id: Uuid, name: String },
-    /// Members move: a dated 전보 (and 전근 when the target sits at another
-    /// 사업장) per person, batched under the change. `from_org_unit` /
-    /// `to_org_unit` are OrgUnit UUID strings (not free-text team labels).
-    /// `employee_ids`, when given, moves only those members of the source
-    /// (org-06: per-person destinations are one op per destination).
+    /// Members move: a dated reassignment (and relocation when the target sits
+    /// at another workplace) per person, batched under the change.
+    /// `from_org_unit` / `to_org_unit` are OrgUnit UUID strings (not free-text
+    /// team labels). `employee_ids`, when given, moves only those members of
+    /// the source (org-06: per-person destinations are one op per destination).
     #[serde(rename_all = "camelCase")]
     ReassignOrgUnit {
         from_org_unit: String,
@@ -67,7 +67,7 @@ pub enum OrgProposalOp {
     MoveOrgUnit { org_unit_id: Uuid, parent_id: Uuid },
     /// `organization.revise_org_unit` with `status = dissolved`. Blocked while
     /// the unit has active members or active children. `merged_into` names
-    /// the unit it was merged into (합치기, org-07): kept on the dissolved
+    /// the unit it was merged into (merge, org-07): kept on the dissolved
     /// revision as its successor, so history and grants can follow it.
     #[serde(rename_all = "camelCase")]
     DissolveOrgUnit {
@@ -81,9 +81,10 @@ pub enum OrgProposalOp {
 /// stored lowercase). The Company is not an OrgUnit kind: it is the tenant
 /// (`organizations`), projected as the tree root by the read API only.
 ///
-/// One 부서 kind (decisions #18): a 부서 sits in a 사업장 (SITE) or in another
-/// 부서, to any depth. The retired `TEAM` is read as `DEPARTMENT` (stored
-/// proposals and older clients still send it; 0262 relabelled the units).
+/// One department kind (decisions #18): a department sits in a workplace (SITE)
+/// or in another department, to any depth. The retired `TEAM` is read as
+/// `DEPARTMENT` (stored proposals and older clients still send it; 0262
+/// relabelled the units).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrgUnitKind {
@@ -133,16 +134,16 @@ pub(crate) fn bounded(value: &str, name: &str, max: usize) -> Result<(), KernelE
     Ok(())
 }
 
-/// A bare SITE unit is never created: a 사업장 is created through its 법인
-/// (`POST /api/v1/legal-entities/{id}/workplaces`), which makes its own unit
-/// (decisions #14.1, #18).
+/// A bare SITE unit is never created: a workplace is created through its legal
+/// entity (`POST /api/v1/legal-entities/{id}/workplaces`), which makes its own
+/// unit (decisions #14.1, #18).
 pub const SITE_NEEDS_WORKPLACE: &str = "site_needs_workplace";
-/// 지역 and 지점 are retired as separate concepts (decisions #18): a 지점 is a
-/// 사업장 of kind 지점, created and renamed through its 법인.
+/// Region and branch are retired as separate concepts (decisions #18): a branch
+/// is a workplace of kind branch, created and renamed through its legal entity.
 pub const REGION_BRANCH_RETIRED: &str = "region_branch_retired";
-/// A branch that backs a 사업장 closes with its 사업장, never on its own.
+/// A branch that backs a workplace closes with its workplace, never on its own.
 pub const BRANCH_BACKS_WORKPLACE: &str = "branch_backs_workplace";
-/// A 사업장's own SITE unit is renamed and closed with its 사업장 (the entity
+/// A workplace's own SITE unit is renamed and closed with its workplace (the entity
 /// face's code for the same refusal).
 pub const SITE_IS_A_WORKPLACE: &str = "site_is_a_workplace";
 /// The codes above, which the REST face answers as `error.code`.
@@ -153,13 +154,14 @@ pub const ORG_STRUCTURE_CODES: [&str; 4] = [
     SITE_IS_A_WORKPLACE,
 ];
 
-/// A scheduled change keeps its content (예약 수정 moves its date or reason).
+/// A scheduled change keeps its content (a scheduled-change edit moves its date
+/// or reason).
 pub const ORG_CHANGE_SCHEDULED_CONTENT: &str = "org_change_scheduled_content";
 /// Under routing, an approved change is moved or cancelled only by an applier.
 pub const ORG_CHANGE_SCHEDULED_LOCKED: &str = "org_change_scheduled_locked";
 /// The codes an org change answers with when it cannot move its people
 /// (org-01, org-04): the person-move refusals keep their own code, so the
-/// console names the reason (a 법인 crossed, a later scheduled event …).
+/// console names the reason (a legal entity crossed, a later scheduled event …).
 pub const ORG_CHANGE_CODES: [&str; 15] = [
     "org_change_sod_violation",
     "org_change.refuse.missing_grant",

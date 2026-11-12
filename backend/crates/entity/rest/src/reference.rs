@@ -1,6 +1,6 @@
 //! Reference reads for the entity forms: official code lists (bundled,
-//! versioned) and the 도로명주소 / 상세주소 proxies (juso.go.kr through the
-//! server; `UNAVAILABLE` when no usable key is configured).
+//! versioned) and the road-name address / detailed address proxies
+//! (juso.go.kr through the server; `UNAVAILABLE` when no usable key is configured).
 
 use axum::Json;
 use axum::extract::{Path, Query, State};
@@ -95,8 +95,8 @@ pub(crate) async fn address_search(
     Ok(Json(out).into_response())
 }
 
-/// The building a picked road address names (its juso codes), and the 동
-/// whose 층·호 are wanted (absent: list the 동).
+/// The building a picked road address names (its juso codes), and the wing
+/// ("dong") whose floors and units are wanted (absent: list the wings).
 #[derive(Debug, Deserialize)]
 pub(crate) struct DetailQuery {
     adm_cd: Option<String>,

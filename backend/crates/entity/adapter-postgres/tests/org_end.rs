@@ -147,7 +147,7 @@ async fn a_used_department_is_dissolved_not_erased_and_the_refusals_change_nothi
     assert_eq!(unit_head(&owner, used).await.1, "active");
     assert_eq!(audits(&owner, "org_unit.erase").await, 0);
 
-    // Once nobody is placed there, 폐지 applies at once, GOVERNED, history kept.
+    // Once nobody is placed there, abolition applies at once, GOVERNED, history kept.
     sqlx::query("UPDATE employees SET employment_status = 'EXITED' WHERE id = $1")
         .bind(kim)
         .execute(&owner)
@@ -167,7 +167,7 @@ async fn a_used_department_is_dissolved_not_erased_and_the_refusals_change_nothi
     assert_eq!(unit_head(&owner, used).await.1, "dissolved");
     assert_eq!(exists(&owner, &[used]).await, (1, 2));
 
-    // A never-used unit after go-live is erased (not 폐지), recorded GOVERNED.
+    // A never-used unit after go-live is erased (not abolished), recorded GOVERNED.
     let (c, _, _) = code(
         store
             .dissolve_org_unit(&cmd(&actor), unused, 1, port())
@@ -179,7 +179,7 @@ async fn a_used_department_is_dissolved_not_erased_and_the_refusals_change_nothi
     assert_eq!(erased.change_mode, "GOVERNED");
     assert_eq!(exists(&owner, &[unused]).await, (0, 0));
 
-    // 부서장 and 부서 코드 after go-live, directly.
+    // Department head and department code after go-live, directly.
     let set = store
         .set_org_unit_details(&cmd(&actor), other, 1, Some("GA-01".into()), None, port())
         .await
@@ -221,7 +221,7 @@ async fn a_routed_tenant_gets_no_direct_dissolve_or_details_after_go_live(owner:
         ("org_change_routed", Some("submit_org_change"))
     );
     assert_eq!(unit_head(&owner, ids[0]).await.3, 1, "nothing written");
-    // A never-used unit is still erased: there is no history for 결재 to keep.
+    // A never-used unit is still erased: there is no history for approval to keep.
     let options = store
         .org_unit_end_options(&actor, ids[0], port())
         .await

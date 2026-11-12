@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R1 ENTITY org-03 (P0; catalog company-18) as `console_rt`: a 사업장
-//! added with 「나중에 연결」 gets its own 사업자등록증 later — the certificate
-//! is recorded, then linked by the dated registration change, and the 사업장
-//! holds it. Also worst-case-08's reach: the 사업장 a caller's branches back.
+//! UX-R1 ENTITY org-03 (P0; catalog company-18) as `console_rt`: a workplace added with
+//! "link later" gets its own business registration certificate later — the certificate is
+//! recorded, then linked by the dated registration change, and the workplace holds it.
+//! Also worst-case-08's reach: the workplace a caller's branches back.
 
 mod common;
 
@@ -64,7 +64,7 @@ async fn a_workplace_added_without_a_certificate_attaches_its_own(owner: PgPool)
         .record;
     assert_eq!(plant.registration_id, None);
 
-    // Its own certificate, recorded and then linked from its 개업일.
+    // Its own certificate, recorded and then linked from its business start date.
     let own = store
         .create_registration(&cmd(&actor), entity, certificate("000-81-00071"))
         .await
@@ -123,7 +123,7 @@ async fn a_workplace_added_without_a_certificate_attaches_its_own(owner: PgPool)
     .unwrap();
     assert_eq!(rows, 1);
 
-    // Another 법인's certificate is refused, and nothing changes.
+    // Another legal entity's certificate is refused, and nothing changes.
     let elsewhere = store
         .create_entity(&cmd(&actor), corporation("주식회사 다라", "000111-0000003"))
         .await
@@ -181,7 +181,7 @@ async fn a_branch_reach_names_the_workplaces_it_backs(owner: PgPool) {
             .unwrap()
             .is_empty()
     );
-    // That reach lists only that 사업장 of its 법인, and counts only it.
+    // That reach lists only that workplace of its legal entity, and counts only it.
     let only = console_entity_application::Actor {
         scope: EntityScope::Only(vec![hq]),
         ..actor.clone()

@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! The 0263 data step (decisions #18, MR-20), replayed over seeded legacy
-//! data (sqlx::test migrates an empty database): a 지점 bound by the old
-//! flow to a name-only anchor unit, now backing a 사업장, gets kind 지점 and
-//! its binding re-pointed at the 사업장's own unit; a second run changes
-//! nothing. The anchor has no kind, so it is never drawn in the tree.
+//! The 0263 data step (decisions #18, MR-20), replayed over seeded legacy data
+//! (sqlx::test migrates an empty database): a branch bound by the old flow to a name-only
+//! anchor unit, now backing a workplace, gets the branch kind and its binding re-pointed at
+//! the workplace's own unit; a second run changes nothing. The anchor has no kind, so it
+//! is never drawn in the tree.
 
 mod common;
 
@@ -40,7 +40,7 @@ async fn a_legacy_branch_maps_onto_its_workplace(owner: PgPool) {
         .unwrap()
         .record;
     let (branch, site) = (wp.default_branch_id.unwrap(), wp.org_unit_id.unwrap());
-    // The old 지점 flow bound the branch to a name-only anchor unit.
+    // The old branch flow bound the branch to a name-only anchor unit.
     let anchor = Uuid::new_v4();
     let mut tx = owner.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org', $1, true)")

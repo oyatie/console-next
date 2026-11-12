@@ -2,7 +2,7 @@
 //! The employment-assignment data migration, re-run over seeded legacy data (sqlx::test
 //! migrates an empty database, so the block is replayed here verbatim):
 //! company text and SITE units become records needing confirmation, people
-//! map by id where nothing is ambiguous, the rest surface for 「회사 이름 정리」,
+//! map by id where nothing is ambiguous, the rest surface for "company name cleanup",
 //! and a second run changes nothing.
 
 mod common;
@@ -106,7 +106,7 @@ async fn legacy_company_text_and_sites_become_records(owner: PgPool) {
         .await
         .unwrap();
 
-    // X: one entity + the SITE as a 사업장, both people mapped by id.
+    // X: one entity + the SITE as a workplace, both people mapped by id.
     assert_eq!(
         count(
             &owner,
@@ -131,7 +131,7 @@ async fn legacy_company_text_and_sites_become_records(owner: PgPool) {
     assert_eq!(from.to_string(), "2021-05-01");
     assert_eq!(workplace, Some(x[0].workplaces[0].id));
     // INTEG-3: the migrated records start at the earliest employment, so no
-    // live assignment predates its 법인 or 사업장.
+    // live assignment predates its legal entity or workplace.
     let first = x[0].current.as_ref().unwrap();
     assert_eq!(
         (
@@ -181,7 +181,7 @@ async fn legacy_company_text_and_sites_become_records(owner: PgPool) {
             },
         )
         .await;
-    // The migrated 사업장 has no default branch yet, which is fine for mapping.
+    // The migrated workplace has no default branch yet, which is fine for mapping.
     assert_eq!(mapped.unwrap(), 1);
     assert_eq!(store_y.unmapped_companies(&actor_y).await.unwrap().len(), 1);
 

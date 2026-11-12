@@ -60,8 +60,8 @@ impl PgOrgChangeStore {
     /// Submit a draft. Under `approval.policy.org_structure = route` it goes
     /// IN_APPROVAL with the ordered steps (BW-01). Under `none` (decisions
     /// #26, the default) no step is created: it is APPROVED at once and, once
-    /// its 시행일 has come, applied in the same transaction; a future-dated
-    /// one waits as APPROVED for [`Self::effectuate`] on its 시행일.
+    /// its effective date has come, applied in the same transaction; a future-dated
+    /// one waits as APPROVED for [`Self::effectuate`] on its effective date.
     pub async fn submit(
         &self,
         actor: UserId,

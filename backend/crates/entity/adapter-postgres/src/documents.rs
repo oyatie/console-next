@@ -149,10 +149,10 @@ impl PgEntityStore {
         .await
     }
 
-    /// Attach a kept document to the 법인 (and, for a certificate, the
-    /// 사업자등록) it backs. A newer document of the same kind on the same
-    /// record supersedes the older one (its retention clock starts). Attaching
-    /// it again to the same record changes nothing.
+    /// Attach a kept document to the legal entity (and, for a certificate, the
+    /// business registration) it backs. A newer document of the same kind on
+    /// the same record supersedes the older one (its retention clock starts).
+    /// Attaching it again to the same record changes nothing.
     ///
     /// # Errors
     /// `document_id` field refusals (`document_not_found`,
@@ -190,7 +190,7 @@ impl PgEntityStore {
         .await
     }
 
-    /// The documents attached to a 법인, newest first (superseded ones too).
+    /// The documents attached to a legal entity, newest first (superseded ones too).
     ///
     /// # Errors
     /// `legal_entity_not_found`, or database faults.
@@ -222,8 +222,8 @@ impl PgEntityStore {
         .await
     }
 
-    /// The kept bytes. Every read is an audit row (접속기록: the original
-    /// holds a representative's name and, for 개인사업자, a birth date).
+    /// The kept bytes. Every read is an audit row (an access log: the original
+    /// holds a representative's name and, for a sole proprietor, a birth date).
     ///
     /// # Errors
     /// `document_not_found`, or database faults.
@@ -269,7 +269,7 @@ pub(crate) async fn attach_in_tx(
         }
         other => other?,
     };
-    // Only a certificate backs a 사업자등록; other kinds stay on the 법인.
+    // Only a certificate backs a business registration; other kinds stay on the legal entity.
     let registration = registration.filter(|_| doc.kind == DocumentKind::BizRegCert);
     let issued_on: Option<time::Date> = match registration {
         None => None,

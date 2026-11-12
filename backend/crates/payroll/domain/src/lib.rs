@@ -3,7 +3,7 @@
 //! This crate intentionally contains pure, source-versioned data and guardrail
 //! math only. It must not call external services, read environment variables, or
 //! silently estimate tax-table values. Production payroll release remains gated
-//! by licensed 노무사/세무사 validation artifacts.
+//! by licensed labor attorney / tax accountant validation artifacts.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 pub mod minimum_wage;
 pub mod pay_groups;
@@ -33,19 +33,19 @@ pub enum ContributionCode {
 /// A named legal instrument — the document that actually sets a number.
 ///
 /// Deliberately NOT an agency explainer page. The version anchor is
-/// `(법령ID, MST, 시행일자)` for a 법령 and `(행정규칙일련번호, 발령번호)` for a
-/// 고시; `promulgation_ko` + `enforced_on` carry the citable half of that here.
-/// A `flSeq` file handle is never an anchor: three different `flSeq` values
-/// serve byte-identical 별표 2 content.
+/// (statute ID, MST, enforcement date) for a statute and (administrative-rule
+/// serial number, issuance number) for a public notice; `promulgation_ko` +
+/// `enforced_on` carry the citable half of that here. A `flSeq` file handle is
+/// never an anchor: three different `flSeq` values serve byte-identical Annex 2 content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Instrument {
-    /// 법령명 or 행정규칙명.
+    /// Statute name or administrative-rule name.
     pub name_ko: &'static str,
     /// The article carrying the number, quoted tightly enough to diff.
     pub article_ko: &'static str,
-    /// 공포번호 (법령) or 발령번호 (고시).
+    /// Promulgation number (statute) or issuance number (public notice).
     pub promulgation_ko: &'static str,
-    /// 시행일자 of the text quoted in `article_ko`.
+    /// Enforcement date of the text quoted in `article_ko`.
     pub enforced_on: Date,
     pub url: &'static str,
     pub retrieved_on: Date,
@@ -53,43 +53,47 @@ pub struct Instrument {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContributionBasis {
-    /// 기준소득월액 (국민연금법 제3조제1항제5호), clamped by the 고시 band.
+    /// Standard monthly income (National Pension Act Article 3(1) item 5),
+    /// clamped by the public-notice band.
     MonthlyStandardIncome,
-    /// 보수월액 (국민건강보험법 제70조).
+    /// Monthly remuneration (National Health Insurance Act Article 70).
     MonthlyRemuneration,
-    /// 건강보험료액 — 장기요양's statutory basis under 노인장기요양보험법
-    /// 제9조제1항. NOT 보수월액: modelling it as a direct rate on 보수월액 is
-    /// only arithmetically close, and is wrong by a multiple for anyone with a
-    /// 경감/면제.
+    /// Health insurance premium amount — long-term care's statutory basis under
+    /// Long-Term Care Insurance Act Article 9(1). NOT monthly remuneration:
+    /// modelling it as a direct rate on monthly remuneration is only
+    /// arithmetically close, and is wrong by a multiple for anyone with a reduction/exemption.
     HealthInsurancePremium,
-    /// 사업종류별 요율 — employer-side, per-entity, never an employee line.
+    /// Per-industry rate — employer-side, per-entity, never an employee line.
     IndustryTariff,
 }
 
-/// 10원 미만 절사. 국고금 관리법 제47조제1항 verbatim (법령ID 009409, MST
-/// 218677, efYd 20200609 — the slice in force at every citing row's
-/// `effective_from`; MST 276079 / 시행 2026-01-02 is the LATER slice an earlier
-/// round read, and its 제47조제1항 is word-for-word the same):
-/// 「국고금의 수입 또는 지출에서 10원 미만의 끝수가
-/// 있을 때에는 그 끝수는 계산하지 아니하고, 전액이 10원 미만일 때에도 그 전액을
-/// 계산하지 아니한다」. The statute says 끝수, not 단수 — the two bridges that
-/// reach it use the other word, and quoting either loosely is how a citation
-/// stops being checkable.
+/// Truncate below 10 won. National Treasury Management Act Article 47(1)
+/// verbatim, quoted here in translation (statute ID 009409, MST 218677, efYd
+/// 20200609 — the slice in force at every citing row's `effective_from`; MST
+/// 276079 / in force 2026-01-02 is the LATER slice an earlier round read, and
+/// its Article 47(1) is word-for-word the same): "Where the receipt or
+/// payment of national treasury funds has an odd remainder of less than 10
+/// won, the odd remainder shall not be counted, and where the whole amount is
+/// less than 10 won, the whole amount shall not be counted either". The
+/// statute says 'kkeutsu' (odd remainder), not 'dansu' (fraction) — the two
+/// bridges that reach it use the other word, and quoting either loosely is how
+/// a citation stops being checkable.
 ///
-/// Three bridges reach it: 국민건강보험법 제107조, 노인장기요양보험법 제64조
-/// (준용), and 국민연금법 제117조. Non-negative input only.
+/// Three bridges reach it: National Health Insurance Act Article 107,
+/// Long-Term Care Insurance Act Article 64 (applied mutatis mutandis), and
+/// National Pension Act Article 117. Non-negative input only.
 const fn trunc10(won: i128) -> i128 {
     won - won % 10
 }
 
-/// The competing candidate when 절사 vs 반올림 is not settled by any text read.
+/// The competing candidate when truncation vs rounding is not settled by any text read.
 const fn round10(won: i128) -> i128 {
     (won + 5) / 10 * 10
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoundingUnit {
-    /// The exact won after integer division — no 단수 rule applied.
+    /// The exact won after integer division — no fraction rule applied.
     ExactWon,
     Trunc10,
     Round10,
@@ -166,17 +170,20 @@ impl Rounding {
 /// Who bears the premium, and how the bearer's share is derived from the total.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShareRule {
-    /// 각각 보험료액의 100분의 50씩 (국민건강보험법 제76조제1항; 준용 for
-    /// 장기요양 via 노인장기요양보험법 제11조).
+    /// "50/100 of the premium amount each" (National Health Insurance Act
+    /// Article 76(1); applied mutatis mutandis to long-term care via
+    /// Long-Term Care Insurance Act Article 11).
     Half { rounding: Rounding },
     /// The rate already IS the employee share — there is no halving step.
     WholeOfRate,
-    /// 사업주 전액 부담 (징수법 제13조제5항). No employee line exists at all.
+    /// Borne in full by the employer (Insurance Premium Collection Act Article
+    /// 13(5)). No employee line exists at all.
     EmployerOnly,
 }
 
-/// 「월별 건강보험료액의 상한과 하한에 관한 고시」 — the fifth 고시 the source
-/// register never listed. Applied to the TOTAL premium, after 단수 절사.
+/// "Public Notice on the Upper and Lower Limits of Monthly Health Insurance
+/// Premiums" — the fifth public notice the source register never listed.
+/// Applied to the TOTAL premium, after fraction truncation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MonthlyPremiumClamp {
     pub floor_won: i64,
@@ -190,8 +197,8 @@ pub struct StatutoryRate {
     pub code: ContributionCode,
     pub period: EffectivePeriod,
     pub basis: ContributionBasis,
-    /// Integer rate/ratio on the basis — NEVER a decimal literal. 장기요양 is
-    /// exactly 9,448/71,900 of the 건강보험료액 before 2026-11-27.
+    /// Integer rate/ratio on the basis — NEVER a decimal literal. Long-term care
+    /// is exactly 9,448/71,900 of the health insurance premium amount before 2026-11-27.
     pub rate_num: i64,
     pub rate_den: i64,
     pub total_rounding: Rounding,
@@ -265,16 +272,18 @@ pub struct SeverancePayInput {
     pub average_wage_period_end: Date,
     pub average_wage_calendar_days: i64,
     pub average_wage_total_won: i64,
-    /// 1-day 통상임금 (ordinary wage) in won.
+    /// 1-day ordinary wage in won.
     ///
-    /// MANDATORY (not `Option`) by design: 근로기준법 시행령 제2조② requires
+    /// MANDATORY (not `Option`) by design: Labor Standards Act Enforcement Decree
+    /// Article 2(2) requires
     /// severance to use the HIGHER of the average wage and the ordinary wage, so
     /// every caller must supply this. A plain field makes omission a *compile*
     /// error rather than a silent average-wage-only fall back — which is exactly
     /// the under-calculation bug that hurts the absence→exit population whose
     /// depressed 3-month window yields an artificially low average wage. The
     /// caller is responsible for deriving this daily figure from the monthly
-    /// 통상임금 (e.g. via the 기준시간 209h rule); the kernel keeps that policy out.
+    /// ordinary wage (e.g. via the 209h standard-hours rule); the kernel keeps
+    /// that policy out.
     /// A non-positive value is rejected in `build_severance_pay_draft`.
     pub ordinary_daily_wage_won: i64,
 }
@@ -443,7 +452,7 @@ pub struct PayrollRunTransition {
 /// make. What it must not do is let a reader mistake it for the guard that
 /// blocks payment, because the release gate is consulted in exactly one place
 /// (`load_payslip_issuance_in_tx`, after `status == "PAID"`), which withholds
-/// the 임금명세서 and not the money.
+/// the wage statement and not the money.
 pub fn transition_payroll_run(
     current: PayrollRunStatus,
     command: PayrollRunCommand,
@@ -651,16 +660,18 @@ pub const fn minimum_wage_source() -> OfficialSource {
 /// The date this crate's statutory instruments were last retrieved from
 /// law.go.kr. Every `Instrument` below carries it.
 ///
-/// # `조문시행일자` is not a second witness
+/// # The per-article enforcement date is not a second witness
 ///
-/// The citations below used to quote a `조문시행일자` beside the law-level
-/// `efYd`/시행일자, as if the two corroborated each other. They are **one**
-/// observation, not two: a `target=eflaw` response for a pinned `efYd` reports
-/// that same date back on every 조문단위 it contains, so both numbers come from
-/// one fetch of one document. The pairing is gone from every citation in this
-/// crate. Measured directly — 지방세법 MST 282559 제103조의13 is byte-identical
-/// across efYd 20260101, 20260424, 20260701 and 20270101, while `조문시행일자`
-/// dutifully reports each of those four dates in turn. It records which slice
+/// The citations below used to quote a per-article enforcement date (the
+/// response's 'jomun sihaeng ilja' field) beside the law-level
+/// `efYd`/enforcement date, as if the two corroborated each other. They are
+/// **one** observation, not two: a `target=eflaw` response for a pinned `efYd`
+/// reports that same date back on every article unit it contains, so both
+/// numbers come from one fetch of one document. The pairing is gone from every
+/// citation in this crate. Measured directly — Local Tax Act MST 282559
+/// Article 103-13 is byte-identical across efYd 20260101, 20260424, 20260701
+/// and 20270101, while the per-article enforcement date dutifully reports each
+/// of those four dates in turn. It records which slice
 /// was asked for; it corroborates nothing about the slice. The load-bearing
 /// evidence is the pinned `efYd` plus the article text.
 ///
@@ -673,9 +684,10 @@ pub const fn statutory_instruments_retrieved_on() -> Date {
     date!(2026 - 08 - 01)
 }
 
-/// The one unresolved rounding question that reaches an amount. 국민건강보험법
-/// 제76조제1항 says `100분의 50씩`; 제107조 truncates 끝수 on `보험료등`. Which
-/// unit governs the HALF is settled by no text read. It needs NHIS practice or
+/// The one unresolved rounding question that reaches an amount. National Health
+/// Insurance Act Article 76(1) says "50/100 each"; Article 107 truncates the
+/// odd remainder on "premiums, etc.". Which unit governs the HALF is settled by
+/// no text read. It needs NHIS practice or
 /// counsel; until then the agreement gate emits only when both candidates agree.
 pub const QUESTION_HALF_SHARE_ROUNDING: &str = "Q-HALF-SHARE-ROUNDING-UNIT";
 
@@ -684,35 +696,43 @@ const HALF_SHARE_ROUNDING: Rounding = Rounding::Unresolved {
     question_id: QUESTION_HALF_SHARE_ROUNDING,
 };
 
-/// The negative search result the 고용보험·산재 rounding rests on, re-run
-/// 2026-08-01 against both in-force texts: 단수 / 끝수 / 국고금 occur **zero**
-/// times in 징수법 (법령ID 009589, MST 247481, efYd 20240101, 101개 조문단위), and
-/// its 시행령 (법령ID 009842, MST 280527, efYd 20251223, 118개 조문단위) has exactly
-/// one 국고금 hit — **제41조의5**, not 제41조, and its 제2항제1호, verbatim:
+/// The negative search result the Employment Insurance / industrial accident
+/// insurance rounding rests on, re-run 2026-08-01 against both in-force texts:
+/// 'dansu' (fraction) / 'kkeutsu' (odd remainder) / 'gukgogeum' (national
+/// treasury funds) occur **zero** times in the Insurance Premium Collection Act
+/// (statute ID 009589, MST 247481, efYd 20240101, 101 article units), and its
+/// Enforcement Decree (statute ID 009842, MST 280527, efYd 20251223, 118
+/// article units) has exactly one 'gukgogeum' hit — **Article 41-5**, not
+/// Article 41, and its paragraph 2 item 1, verbatim (in translation):
 ///
-/// > 1. 「국가를 당사자로 하는 계약에 관한 법률」 제2조에 따른 계약. 다만,
-/// >    「국고금 관리법 시행령」 제31조에 따른 관서운영경비로 그 대가를
-/// >    지급받는 계약은 제외한다.
+/// > 1. A contract under Article 2 of the "Act on Contracts to Which the State
+/// >    Is a Party". However, a contract whose consideration is paid out of
+/// >    government office operating expenses under Article 31 of the
+/// >    "Enforcement Decree of the National Treasury Management Act" is excluded.
 ///
-/// That is 제41조의5(보험료등의 완납증명이 필요한 경우 등) carving 관서운영경비
-/// contracts out of the 완납증명 duty. It cites 「국고금 관리법 시행령」 제31조,
-/// not 국고금관리법 제47조, and prescribes nothing about 단수. (The neighbouring
-/// 제2호 is the 「지방회계법 시행령」 one — a different 호 that contains no 국고금
-/// at all, which an earlier revision of this comment conflated with the hit.)
+/// That is Article 41-5 (cases requiring proof of full payment of premiums,
+/// etc.) carving government-office-operating-expense contracts out of the
+/// proof-of-full-payment duty. It cites Article 31 of the "Enforcement Decree
+/// of the National Treasury Management Act", not National Treasury Management
+/// Act Article 47, and prescribes nothing about fractions. (The neighbouring
+/// item 2 is the "Enforcement Decree of the Local Accounting Act" one — a
+/// different item that contains no 'gukgogeum' at all, which an earlier
+/// revision of this comment conflated with the hit.)
 ///
-/// This is what `Rounding::Assumed` records. 국민건강보험법 제107조 truncates
-/// 「보험료등」 under **국민건강보험법**; 징수법 provides no 준용 bridge to it, so
-/// citing it for a 징수법 premium would be a false citation, not a conservative
-/// one.
+/// This is what `Rounding::Assumed` records. National Health Insurance Act
+/// Article 107 truncates "premiums, etc." under the **National Health Insurance
+/// Act**; the Insurance Premium Collection Act provides no mutatis mutandis
+/// bridge to it, so citing it for an Insurance Premium Collection Act premium
+/// would be a false citation, not a conservative one.
 const NO_FRACTION_RULE_IN_COLLECTION_ACT: &str = "단수 규정 미발견 — 징수법 본문(MST 247481, efYd 20240101)과 같은 법 시행령(MST 280527, efYd 20251223) 어디에도 단수·끝수 조문이 없고 국고금관리법을 준용하는 조항도 없다. 시행령의 유일한 국고금 언급은 제41조의5제2항제1호가 「국고금 관리법 시행령」 제31조의 관서운영경비 계약을 완납증명 대상에서 제외한 것으로, 단수와 무관하다. 국민건강보험법 제107조는 같은 법 「보험료등」에만 미치므로 징수법 보험료에 준용할 근거가 없다. 절사 없는 정확분은 확인된 규칙이 아니라 공개된 가정이다(오차 <10원).";
 
-/// 국민건강보험법 제107조 → 국고금관리법 제47조제1항.
+/// National Health Insurance Act Article 107 → National Treasury Management Act Article 47(1).
 ///
-/// Anchored to the slice in force at the rows it governs (효력 2026-01-01):
-/// 법령ID 001971, MST 265877, **efYd 20250423** — one pinned fetch, one anchor
-/// (see `statutory_instruments_retrieved_on` on why the response's own
-/// `조문시행일자` is not a second one). The earlier
-/// anchor — 법률 제21065호 / 2026-01-02 — was the NEXT slice, enforced a day
+/// Anchored to the slice in force at the rows it governs (effective
+/// 2026-01-01): statute ID 001971, MST 265877, **efYd 20250423** — one pinned
+/// fetch, one anchor (see `statutory_instruments_retrieved_on` on why the
+/// response's own per-article enforcement date is not a second one). The
+/// earlier anchor — Act No. 21065 / 2026-01-02 — was the NEXT slice, enforced a day
 /// AFTER every row citing it began; it escaped
 /// `no_rate_row_is_in_force_before_the_instrument_that_sets_it` only because
 /// that test read `rate.instrument` and never the rounding instrument.
@@ -728,20 +748,22 @@ pub const fn national_treasury_fraction_instrument() -> Instrument {
     }
 }
 
-/// 국민연금법 제117조 → 국고금 관리법 제47조제1항 — the bridge an earlier round
-/// recorded as **absent**, and which the 10원 절사 for 연금보험료 rests on.
+/// National Pension Act Article 117 → National Treasury Management Act Article
+/// 47(1) — the bridge an earlier round recorded as **absent**, and which the
+/// 10-won truncation for pension premiums rests on.
 ///
-/// Read via `target=eflaw` at the date the rows citing it begin: 법령ID 001781,
-/// MST 280269, **efYd 20260101** (공포번호 법률 제21203호, 공포일자 2025-12-16).
-/// The evidence is that the pinned 20260101 fetch returns 제117조's text; the
-/// `조문시행일자` it prints alongside is the same response echoing the same date,
-/// not a second witness. "No rule was located" was a statement about the search,
-/// not about the statute book; it is now a located rule and the 절사 is no longer
-/// a disclosed assumption.
+/// Read via `target=eflaw` at the date the rows citing it begin: statute ID
+/// 001781, MST 280269, **efYd 20260101** (promulgation number Act No. 21203,
+/// promulgated 2025-12-16). The evidence is that the pinned 20260101 fetch
+/// returns Article 117's text; the per-article enforcement date it prints
+/// alongside is the same response echoing the same date, not a second witness.
+/// "No rule was located" was a statement about the search, not about the
+/// statute book; it is now a located rule and the truncation is no longer a disclosed assumption.
 ///
-/// The earlier anchor 2026-06-17 was the trap: **MST 280269 carries two 시행일자
-/// slices, 20260101 and 20260617**, and any fetch that does not pin `efYd`
-/// returns the later one. 제117조 is present verbatim in the 20260101 slice, so
+/// The earlier anchor 2026-06-17 was the trap: **MST 280269 carries two
+/// enforcement-date slices, 20260101 and 20260617**, and any fetch that does
+/// not pin `efYd` returns the later one. Article 117 is present verbatim in the
+/// 20260101 slice, so
 /// the rule is in force on the row's own `effective_from`.
 #[must_use]
 pub const fn national_pension_fraction_instrument() -> Instrument {
@@ -780,7 +802,7 @@ pub const fn employment_insurance_rate_instrument() -> Instrument {
 }
 
 /// Same slice, same correction as `national_treasury_fraction_instrument`:
-/// 법령ID 001971, MST 265877, efYd 20250423 (one pinned fetch, one anchor).
+/// statute ID 001971, MST 265877, efYd 20250423 (one pinned fetch, one anchor).
 #[must_use]
 pub const fn fifty_fifty_share_instrument() -> Instrument {
     Instrument {
@@ -793,27 +815,29 @@ pub const fn fifty_fifty_share_instrument() -> Instrument {
     }
 }
 
-/// 장기요양 does not reach 국민건강보험법 directly — it gets there by 준용, and
-/// **the bridge is part of the citation**.
+/// Long-term care does not reach the National Health Insurance Act directly —
+/// it gets there by mutatis mutandis application, and **the bridge is part of the citation**.
 ///
 /// The two functions below exist because naming only the destination
-/// (국민건강보험법 제107조 / 제76조제1항) makes the citation checkable only by a
-/// reader who already knows the chain — 국민건강보험법 says nothing about
-/// 장기요양보험료 on its own face. 노인장기요양보험법 supplies the chain in two
-/// different articles, both read at the slice in force when the LTC rows begin:
-/// 법령ID 010436, MST 281921, **efYd 20251230**, 법률 제21257호.
+/// (National Health Insurance Act Article 107 / Article 76(1)) makes the
+/// citation checkable only by a reader who already knows the chain — the
+/// National Health Insurance Act says nothing about long-term care insurance
+/// premiums on its own face. The Long-Term Care Insurance Act supplies the
+/// chain in two different articles, both read at the slice in force when the
+/// LTC rows begin: statute ID 010436, MST 281921, **efYd 20251230**, Act No. 21257.
 ///
 /// Both are anchored at that earliest in-force slice, which is the F1 rule, and
 /// each was checked against the later slice the 2026-11-27 row runs under
-/// (MST 286217, efYd 20261127, 법률 제21690호):
+/// (MST 286217, efYd 20261127, Act No. 21690):
 ///
-/// * 제11조 — rendered text **byte-identical** in both. (`조문시행일자` moves
-///   20251230 → 20261127 while the article does not; see
-///   `statutory_instruments_retrieved_on`.)
-/// * 제64조 — **amended** by 법률 제21690호, 시행 2026-11-27: 제91조의2 and
-///   「보험료 등 부과의 제척기간」 are inserted into the list. 제107조 and
-///   「단수처리 … 준용한다」 survive verbatim, which is the only part cited here,
-///   so the fragment quoted below is present in both slices.
+/// * Article 11 — rendered text **byte-identical** in both. (The per-article
+///   enforcement date moves 20251230 → 20261127 while the article does not;
+///   see `statutory_instruments_retrieved_on`.)
+/// * Article 64 — **amended** by Act No. 21690, in force 2026-11-27: Article
+///   91-2 and "limitation period for imposing premiums, etc." are inserted
+///   into the list. Article 107 and "fraction handling … applies mutatis
+///   mutandis" survive verbatim, which is the only part cited here, so the
+///   fragment quoted below is present in both slices.
 #[must_use]
 pub const fn long_term_care_fraction_instrument() -> Instrument {
     Instrument {
@@ -826,8 +850,9 @@ pub const fn long_term_care_fraction_instrument() -> Instrument {
     }
 }
 
-/// The 50/50 half of the same bridge — 제11조, a different 준용 article from the
-/// 단수 one above, and the reason 「제107조 준용」 cannot be made to carry both.
+/// The 50/50 half of the same bridge — Article 11, a different mutatis mutandis
+/// article from the fraction one above, and the reason "Article 107 applied
+/// mutatis mutandis" cannot be made to carry both.
 #[must_use]
 pub const fn long_term_care_half_share_instrument() -> Instrument {
     Instrument {
@@ -872,18 +897,18 @@ pub fn national_pension_base_limits() -> Vec<MonthlyBaseLimit> {
     ]
 }
 
-/// 소득세법 시행령 별표 2 — the instrument step 1 refuses to guess at.
+/// Income Tax Act Enforcement Decree Annex 2 — the instrument step 1 refuses to guess at.
 ///
-/// FOUR rows for one calendar year, because the 별표 carries its OWN 시행일자,
-/// separate from the decree's, and the version anchor is the semantic
-/// 별표HWP파일명 rather than the unstable `flSeq` handle.
+/// FOUR rows for one calendar year, because the Annex carries its OWN
+/// enforcement date, separate from the decree's, and the version anchor is the
+/// semantic Annex HWP file name rather than the unstable `flSeq` handle.
 ///
 /// The 2026-02-27 boundary is the dangerous one. Across it the 646 × 11 bracket
-/// grid is BYTE-IDENTICAL; only note 3's 자녀세액공제 changed (1명 12,500 →
-/// 20,830원). An engine that ingests the grid and hard-codes the credits
-/// withholds 8,330원/month too much for a one-child employee — and gets a
-/// January 2026 recomputation wrong in the other direction. Watch the whole
-/// 별표, not the grid.
+/// grid is BYTE-IDENTICAL; only note 3's child tax credit changed (one child
+/// 12,500 → 20,830 won). An engine that ingests the grid and hard-codes the
+/// credits withholds 8,330 won/month too much for a one-child employee — and
+/// gets a January 2026 recomputation wrong in the other direction. Watch the
+/// whole Annex, not the grid.
 #[must_use]
 pub fn simplified_withholding_table_instruments() -> Vec<(EffectivePeriod, Instrument)> {
     vec![
@@ -914,10 +939,12 @@ pub fn simplified_withholding_table_instruments() -> Vec<(EffectivePeriod, Instr
             Instrument {
                 name_ko: "소득세법 시행령 별표 2 (근로소득 간이세액표)",
                 article_ko: "별표 2 (근로소득 간이세액표, 제189조제1항 관련) — 별표시행일자 2026-04-23, 별표HWP파일명 law0039562026042336276KC_000200E_20260423.hwp",
-                // The HWP filename carries the 공포번호: `...36276KC...`. The
-                // decree in force on 2026-04-23 is 제36276호 (공포·시행 같은 날),
-                // confirmed by eflaw. 제36343호 is enforced 2026-05-22 — a month
-                // AFTER this slice begins, so it cannot be what set this 별표.
+                // The HWP filename carries the promulgation number:
+                // `...36276KC...`. The decree in force on 2026-04-23 is
+                // Presidential Decree No. 36276 (promulgated and in force the
+                // same day), confirmed by eflaw. No. 36343 is enforced
+                // 2026-05-22 — a month AFTER this slice begins, so it cannot be
+                // what set this Annex.
                 promulgation_ko: "대통령령 제36276호",
                 enforced_on: date!(2026 - 04 - 23),
                 url: "https://www.law.go.kr/법령/소득세법시행령",
@@ -938,14 +965,15 @@ pub fn simplified_withholding_table_instruments() -> Vec<(EffectivePeriod, Instr
     ]
 }
 
-/// 지방소득세 특별징수 — served on **every** draft, so anchored at the earliest
-/// slice in force on the dates it is served.
+/// Special collection (withholding) of local income tax — served on **every**
+/// draft, so anchored at the earliest slice in force on the dates it is served.
 ///
-/// The previous round moved this to 시행 2026-07-01 and recorded the move as a
-/// correction. It was the same wrong-slice defect the round was closing: MST
-/// 282559 (법령ID 001649, 공포번호 21308) serves four 시행일자 slices — 20260101,
-/// 20260424, 20260701, 20270101 — and 제103조의13 is **byte-identical** across
-/// all four. `local_income_tax_instrument` is returned unconditionally by
+/// The previous round moved this to the 2026-07-01 enforcement slice and
+/// recorded the move as a correction. It was the same wrong-slice defect the
+/// round was closing: MST 282559 (statute ID 001649, promulgation number 21308)
+/// serves four enforcement-date slices — 20260101, 20260424, 20260701,
+/// 20270101 — and Article 103-13 is **byte-identical** across all four.
+/// `local_income_tax_instrument` is returned unconditionally by
 /// `build_statutory_insurance_draft`, so a 2026-07-01 anchor post-dated every
 /// pay date from January to June. Reverted to 20260101.
 ///
@@ -953,26 +981,32 @@ pub fn simplified_withholding_table_instruments() -> Vec<(EffectivePeriod, Instr
 ///
 /// An earlier revision recorded the digest with no normalization beside it,
 /// which made it unfalsifiable: a reviewer who tried four other readings of
-/// "sha256 of the 조문단위" reproduced none of them and could not tell a wrong
-/// number from a wrong method. The method is the evidence, so it is written out
-/// here, and this is the only copy of it in the tree.
+/// "sha256 of the article unit" reproduced none of them and could not tell a
+/// wrong number from a wrong method. The method is the evidence, so it is
+/// written out here, and this is the only copy of it in the tree. The XML
+/// element names are Korean; they are given below in English with a
+/// romanisation of each tag.
 ///
 /// 1. `lawService.do?target=eflaw&MST=282559&efYd=<slice>&type=XML`.
-/// 2. Select the `<조문단위>` with 조문번호 103, 조문가지번호 13, 조문여부 조문,
-///    and take its **inner** content — the `<조문단위>`/`</조문단위>` tags
+/// 2. Select the article-unit element ('jomundanwi') with article number
+///    ('jomunbeonho') 103, article branch number ('jomungajibeonho') 13 and
+///    article flag ('jomunyeobu') set to article ('jomun'), and take its
+///    **inner** content — the opening and closing article-unit tags
 ///    themselves excluded.
-/// 3. Delete every `<조문시행일자>…</조문시행일자>` element. Change nothing else:
-///    no trimming, no whitespace or newline normalization.
+/// 3. Delete every per-article enforcement date element
+///    ('jomunsihaengilja'), tags and content. Change nothing else: no
+///    trimming, no whitespace or newline normalization.
 /// 4. sha256 over the UTF-8 bytes.
 ///
 /// Yields `c1cb99797adb21bbb4eddb3b42808c8c291611226ca15173c1f5e6731f8fc8a1` at
 /// all four slices. Two near misses, recorded so the next mismatch is diagnosed
-/// instead of re-measured: keeping the `<조문단위>` tags gives `cece5eff…`
+/// instead of re-measured: keeping the article-unit tags gives `cece5eff…`
 /// (also stable across the four), and trimming the inner content gives
 /// `f7f21af8…`.
 ///
-/// Neither round-2 guard could see it: 지방세법 has no `payroll_statutory_rates`
-/// row, so `CHECK (effective_from >= enforced_on)` has nothing to check, and
+/// Neither round-2 guard could see it: the Local Tax Act has no
+/// `payroll_statutory_rates` row, so `CHECK (effective_from >= enforced_on)`
+/// has nothing to check, and
 /// `no_rate_row_is_in_force_before_the_instrument_that_sets_it` walks the rate
 /// table. `no_instrument_the_draft_emits_post_dates_the_pay_date_it_is_emitted_on`
 /// is the one that can — it reads what the engine actually returns.
@@ -998,37 +1032,43 @@ pub fn contribution_rate_on(
         .ok_or_else(|| KernelError::validation(format!("missing payroll rate {code:?} for {day}")))
 }
 
-/// 기준소득월액 from the declared 소득월액 — 국민연금법 시행령 제5조.
+/// Standard monthly income from the declared monthly income — National Pension
+/// Act Enforcement Decree Article 5.
 ///
-/// Read in force on 2026-08-01 from **`target=eflaw`** — `(법령ID 002833,
-/// MST 272577, efYd 2026-01-01)`, 대통령령 제35602호. The pinned `efYd` is the
-/// anchor; the response's `조문시행일자` restates it and is not a second
-/// observation. The earlier record said `target=law` and 시행 2025-07-01; that
-/// endpoint returns the latest **promulgated** text, which is how a
-/// not-yet-effective rounding clause reached a record in this crate once
-/// already. Re-read under eflaw the text is identical but the anchor is not:
-/// the article moved to a 2026-01-01 slice.
+/// Read in force on 2026-08-01 from **`target=eflaw`** — (statute ID 002833,
+/// MST 272577, efYd 2026-01-01), Presidential Decree No. 35602. The pinned
+/// `efYd` is the anchor; the response's per-article enforcement date restates
+/// it and is not a second observation. The earlier record said `target=law`
+/// and in force 2025-07-01; that endpoint returns the latest **promulgated**
+/// text, which is how a not-yet-effective rounding clause reached a record in
+/// this crate once already. Re-read under eflaw the text is identical but the
+/// anchor is not: the article moved to a 2026-01-01 slice.
 ///
-/// The two 항 this function implements, verbatim:
+/// The two paragraphs this function implements, verbatim (in translation):
 ///
-/// * 제1항 「법 제3조제1항제5호에 따른 기준소득월액은 다음 각 호의 하한액과
-///   상한액의 범위에서 … 신고한 소득월액에서 **천원 미만을 버린 금액**으로
-///   한다」
-/// * 제5항 「사용자나 가입자가 신고한 소득월액이 … 고시된 하한액보다 적으면 그
-///   하한액을, … 상한액보다 많으면 그 상한액을 기준소득월액으로 한다」
+/// * Paragraph 1 "The standard monthly income under Article 3(1) item 5 of the
+///   Act shall be, within the range of the lower limit and upper limit in the
+///   following items, … the amount obtained by **discarding any amount below
+///   1,000 won** from the declared monthly income"
+/// * Paragraph 5 "Where the monthly income declared by the employer or the
+///   subscriber is … less than the publicly notified lower limit, that lower
+///   limit, and where it is … more than the upper limit, that upper limit,
+///   shall be the standard monthly income"
 ///
 /// # The article that decides the order
 ///
-/// **제5항.** The band comparison is made on the 신고한 **소득월액** — the figure
-/// as declared, before any 절사 — and when it falls outside the band the answer
-/// is the 고시 bound *itself*, not a truncated bound. 절사 (제1항) therefore
-/// governs only inside the band. That is written here as the statute's own two
-/// steps rather than as a composed clamp/truncate pair, because either
-/// composition order merely *happens* to agree today: 제1항제1호·제2호 both end
-/// 「이 경우 만원 미만은 반올림한다」, so every bound is a 만원 — hence a 천원 —
-/// multiple, and on such bounds truncate-then-clamp and clamp-then-truncate are
-/// identical. `the_truncate_clamp_order_is_unobservable_only_because_every_band_bound_is_a_10_000_multiple`
-/// pins that and fails the day a 고시 breaks it.
+/// **Paragraph 5.** The band comparison is made on the declared **monthly
+/// income** — the figure as declared, before any truncation — and when it falls
+/// outside the band the answer is the public-notice bound *itself*, not a
+/// truncated bound. Truncation (paragraph 1) therefore governs only inside the
+/// band. That is written here as the statute's own two steps rather than as a
+/// composed clamp/truncate pair, because either composition order merely
+/// *happens* to agree today: paragraph 1 items 1 and 2 both end "in this case,
+/// amounts below 10,000 won are rounded", so every bound is a 10,000-won —
+/// hence a 1,000-won — multiple, and on such bounds truncate-then-clamp and
+/// clamp-then-truncate are identical.
+/// `the_truncate_clamp_order_is_unobservable_only_because_every_band_bound_is_a_10_000_multiple`
+/// pins that and fails the day a public notice breaks it.
 fn national_pension_standard_income(declared_won: i64, limit: MonthlyBaseLimit) -> i64 {
     if declared_won < limit.minimum_won {
         limit.minimum_won
@@ -1094,7 +1134,7 @@ pub fn build_employee_payroll_draft(input: PayrollDraftInput) -> Result<PayrollD
     })
 }
 
-/// An NTS 간이세액표 row whose figures were materialized from a verified
+/// An NTS simplified withholding tax table row whose figures were materialized from a verified
 /// imported source ledger row (`data_import_rows.canonical_row`), so its table
 /// version is a runtime string — unlike [`NtsWithholdingTaxRow`], whose
 /// `&'static` fields exist for in-crate verified constants. The amounts are
@@ -1168,46 +1208,50 @@ pub fn build_line_calculation(input: LineCalculationInput) -> Result<LineCalcula
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// The 4대보험 pipeline.
+// The four social insurances pipeline.
 //
-// ORDERED, not merely sequential: 장기요양's basis is the computed 건강보험료액
-// (노인장기요양보험법 제9조제1항), so 건강보험 must be resolved first. That
-// dependency is an accumulator the pipeline reads, and an unresolved one is a
-// loud computation error — never a silent zero.
+// ORDERED, not merely sequential: long-term care's basis is the computed health
+// insurance premium amount (Long-Term Care Insurance Act Article 9(1)), so
+// National Health Insurance must be resolved first. That dependency is an
+// accumulator the pipeline reads, and an unresolved one is a loud computation
+// error — never a silent zero.
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatutoryInsuranceInput {
     pub pay_date: Date,
-    /// 보수월액.
+    /// Monthly remuneration.
     pub monthly_remuneration_won: i64,
-    /// 기준소득월액 when it differs from 보수월액; clamped by the 고시 band
-    /// either way.
+    /// Standard monthly income when it differs from monthly remuneration;
+    /// clamped by the public-notice band either way.
     pub pension_standard_monthly_income_won: Option<i64>,
-    /// 월 소정근로시간 — the minimum-wage comparator's denominator. `None`
+    /// Monthly prescribed working hours — the minimum-wage comparator's
+    /// denominator. `None`
     /// means the comparison cannot be made and is reported as such, never as a
     /// pass.
     pub monthly_standard_hours: Option<i32>,
 }
 
-/// One computed 공제 component, carrying its own basis, rate and instrument so
-/// the payslip is self-describing under 근로기준법 제42조's 3-year
-/// recomputability.
+/// One computed deduction component, carrying its own basis, rate and
+/// instrument so the payslip is self-describing under Labor Standards Act
+/// Article 42's 3-year recomputability.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatutoryComponent {
     pub code: ContributionCode,
     pub label_ko: &'static str,
     pub basis: ContributionBasis,
-    /// `None` for 산재 alone: its 사업종류별 요율 and the basis that rate applies
-    /// to are set per employer by an un-ingested 별지, so this engine computes
-    /// neither. A `0` here would be a claim about a figure nobody read.
+    /// `None` for industrial accident insurance alone: its per-industry rate and
+    /// the basis that rate applies to are set per employer by an un-ingested
+    /// annexed form, so this engine computes neither. A `0` here would be a
+    /// claim about a figure nobody read.
     pub basis_won: Option<i64>,
     /// `None` with `basis_won`, and for the same reason — see above.
     pub rate_num: Option<i64>,
     pub rate_den: Option<i64>,
     pub total_won: Option<i64>,
     pub employee_won: Option<i64>,
-    /// `true` for 산재: the absence of an employee line is STATED, not silent.
+    /// `true` for industrial accident insurance: the absence of an employee
+    /// line is STATED, not silent.
     pub employer_only: bool,
     /// The unresolved question id that withheld this amount, if any.
     pub blocked_by: Option<&'static str>,
@@ -1233,7 +1277,8 @@ pub struct MinimumWageCheck {
     pub hourly_floor_won: i64,
     pub monthly_209h_floor_won: i64,
     pub monthly_standard_hours: Option<i32>,
-    /// 보수월액 ÷ 월 소정근로시간, floored. `None` without the hours.
+    /// Monthly remuneration ÷ monthly prescribed working hours, floored. `None`
+    /// without the hours.
     pub effective_hourly_won: Option<i64>,
     /// `None` means "not comparable", which is not a pass.
     pub passes: Option<bool>,
@@ -1251,7 +1296,7 @@ pub struct StatutoryInsuranceDraft {
     pub total_employee_insurance_won: Option<i64>,
     pub remainder_after_insurance_won: Option<i64>,
     /// Always false while withholding is not computed. A draft that cannot
-    /// state 차인지급액 is not a 급여명세서.
+    /// state the net pay amount is not a payslip.
     pub issuable: bool,
     pub blockers: Vec<String>,
 }
@@ -1264,8 +1309,8 @@ const PIPELINE_ORDER: [(ContributionCode, &str); 5] = [
     (ContributionCode::IndustrialAccident, "산업재해보상보험"),
 ];
 
-/// The 4대보험 half of a 급여명세서, to the won, every figure carrying its
-/// instrument. Withholding is refused, not approximated.
+/// The four social insurances half of a payslip, to the won, every figure
+/// carrying its instrument. Withholding is refused, not approximated.
 pub fn build_statutory_insurance_draft(
     input: &StatutoryInsuranceInput,
 ) -> Result<StatutoryInsuranceDraft, KernelError> {
@@ -1289,12 +1334,15 @@ pub fn build_statutory_insurance_draft(
 
     for (code, label_ko) in PIPELINE_ORDER {
         let rate = contribution_rate_on(code, input.pay_date)?;
-        // 산재's 사업종류별 요율 lives in 고용노동부고시 제2025-91호's 별지, which
-        // is NOT ingested. The employee rate is a true 0 (징수법 제13조제5항 sets
-        // 산재보험료 as a 사업주 charge and no 항 charges the worker), but the
-        // EMPLOYER figures — the rate, the basis it applies to, and the premium
-        // — are unknown, not zero. Emitting 0 for any of them would publish
-        // "산재 costs nothing", the silently-zero failure this engine refuses.
+        // Industrial accident insurance's per-industry rate lives in the
+        // annexed form of Ministry of Employment and Labor Public Notice No.
+        // 2025-91, which is NOT ingested. The employee rate is a true 0
+        // (Insurance Premium Collection Act Article 13(5) sets the industrial
+        // accident insurance premium as an employer charge and no paragraph
+        // charges the worker), but the EMPLOYER figures — the rate, the basis
+        // it applies to, and the premium — are unknown, not zero. Emitting 0
+        // for any of them would publish "industrial accident insurance costs
+        // nothing", the silently-zero failure this engine refuses.
         // `employee_won` stays None via `ShareRule::EmployerOnly`.
         let basis_won = match rate.basis {
             ContributionBasis::MonthlyStandardIncome => Some(national_pension_standard_income(
@@ -1304,9 +1352,9 @@ pub fn build_statutory_insurance_draft(
                 national_pension_limit_on(input.pay_date)?,
             )),
             ContributionBasis::MonthlyRemuneration => Some(input.monthly_remuneration_won),
-            // FAIL LOUD. If 건강보험 has not been resolved by the time
-            // 장기요양 is reached, the pipeline order is broken; producing 0
-            // here would under-deduct every payslip silently.
+            // FAIL LOUD. If National Health Insurance has not been resolved by
+            // the time long-term care is reached, the pipeline order is broken;
+            // producing 0 here would under-deduct every payslip silently.
             ContributionBasis::HealthInsurancePremium => Some(health_total_won.ok_or_else(|| {
                 KernelError::internal(
                     "장기요양보험료의 산정기초는 건강보험료액(노인장기요양보험법 제9조제1항)이다: \
@@ -1376,8 +1424,8 @@ pub fn build_statutory_insurance_draft(
         total_employee_insurance_won,
         remainder_after_insurance_won,
         // Withholding is always absent in this slice, so this is always false.
-        // It is computed rather than hard-coded so that adding the 별표 flips it
-        // without a second edit here.
+        // It is computed rather than hard-coded so that adding the Annex flips
+        // it without a second edit here.
         issuable: blockers.is_empty(),
         blockers,
     })
@@ -1390,7 +1438,7 @@ fn rounding_unit_label(rounding: Rounding) -> &'static str {
     }
 }
 
-/// 최저임금법 제10조 — the comparator `minimum_wage_on` never had.
+/// Minimum Wage Act Article 10 — the comparator `minimum_wage_on` never had.
 pub fn check_minimum_wage(
     monthly_remuneration_won: i64,
     monthly_standard_hours: Option<i32>,
@@ -1409,8 +1457,8 @@ pub fn check_minimum_wage(
     })
 }
 
-/// The six employee-side deduction lines: the 4대보험 pipeline above + the two
-/// income-tax lines verbatim from a verified NTS row (never estimated).
+/// The six employee-side deduction lines: the four social insurances pipeline
+/// above + the two income-tax lines verbatim from a verified NTS row (never estimated).
 ///
 /// This is the ONLY arithmetic path. `calculate_run_in_tx` reaches it through
 /// [`build_line_calculation`], so the run path and the payslip-draft route
@@ -1520,9 +1568,9 @@ pub fn build_severance_pay_draft(
             "average wage total must be positive",
         ));
     }
-    // FAIL LOUD: the 통상임금 floor cannot be applied without the ordinary wage.
-    // Reject rather than silently compute severance from the average wage alone,
-    // which under-pays the absence→exit population this feature targets.
+    // FAIL LOUD: the ordinary-wage floor cannot be applied without the ordinary
+    // wage. Reject rather than silently compute severance from the average wage
+    // alone, which under-pays the absence→exit population this feature targets.
     if input.ordinary_daily_wage_won <= 0 {
         return Err(KernelError::validation(
             "ordinary daily wage (통상임금) is required and must be positive; severance must never fall back to the average-wage-only figure",
@@ -1547,11 +1595,12 @@ pub fn build_severance_pay_draft(
             / i128::from(input.average_wage_calendar_days),
     )?;
 
-    // 통상임금 floor (근로기준법 시행령 제2조②): severance uses the HIGHER of the
-    // 1-day average wage and the 1-day ordinary wage. Decide which governs by
-    // cross-multiplying (ordinary_daily > average_daily  <=>  ordinary_daily *
-    // calendar_days > average_wage_total), so the comparison never loses the
-    // fractional part that flooring `average_daily_wage_milliwon` would drop.
+    // Ordinary-wage floor (Labor Standards Act Enforcement Decree Article
+    // 2(2)): severance uses the HIGHER of the 1-day average wage and the 1-day
+    // ordinary wage. Decide which governs by cross-multiplying (ordinary_daily >
+    // average_daily  <=>  ordinary_daily * calendar_days > average_wage_total),
+    // so the comparison never loses the fractional part that flooring
+    // `average_daily_wage_milliwon` would drop.
     let ordinary_governs = checked_mul_i128(
         input.ordinary_daily_wage_won,
         input.average_wage_calendar_days,
@@ -1991,15 +2040,17 @@ mod tests {
         })
         .unwrap();
 
-        // 기준소득월액 상한 6,590,000 × 475/10,000 = 313,025 → 제117조 절사 →
-        // 313,020. The run path reaches the same 절사 as the payslip route
-        // because both go through `build_statutory_insurance_draft`.
+        // Standard monthly income upper limit 6,590,000 × 475/10,000 = 313,025
+        // → Article 117 truncation → 313,020. The run path reaches the same
+        // truncation as the payslip route because both go through
+        // `build_statutory_insurance_draft`.
         assert_eq!(line_amount(&draft, DeductionCode::NationalPension), 313_020);
     }
 
-    /// 국민연금법 시행령 제5조제1항 — 「신고한 소득월액에서 천원 미만을 버린
-    /// 금액」. Without it every wage that is not already a 천원 multiple is
-    /// over-deducted, which for an engine that claims to match a hand
+    /// National Pension Act Enforcement Decree Article 5(1) — "the amount
+    /// obtained by discarding any amount below 1,000 won from the declared
+    /// monthly income". Without it every wage that is not already a 1,000-won
+    /// multiple is over-deducted, which for an engine that claims to match a hand
     /// calculation to the won is simply a wrong figure.
     #[test]
     fn truncates_the_pension_basis_below_1_000_won_before_applying_the_rate() {
@@ -2012,15 +2063,17 @@ mod tests {
         .unwrap();
 
         let pension = component(&draft, ContributionCode::NationalPension);
-        // 3,000,999 → 기준소득월액 3,000,000 (NOT 3,000,999).
+        // 3,000,999 → standard monthly income 3,000,000 (NOT 3,000,999).
         assert_eq!(pension.basis_won, Some(3_000_000));
         // 3,000,000 × 475/10,000 = 142,500. The untruncated basis would give
-        // 142,547 — 47원 too much, every month, for this employee.
+        // 142,547 — 47 won too much, every month, for this employee.
         assert_eq!(pension.employee_won, Some(142_500));
         assert_ne!(pension.employee_won, Some(3_000_999 * 475 / 10_000));
 
-        // 보수월액 itself is untouched: 절사 is a 기준소득월액 rule, not a
-        // 건강보험 one (건강보험 keeps 국민건강보험법 제70조's 보수월액).
+        // Monthly remuneration itself is untouched: truncation is a standard monthly
+        // income rule, not a National Health Insurance one (National Health
+        // Insurance keeps National Health Insurance Act Article 70's monthly
+        // remuneration).
         assert_eq!(draft.gross_won, 3_000_999);
         assert_eq!(
             component(&draft, ContributionCode::HealthInsurance).basis_won,
@@ -2028,19 +2081,19 @@ mod tests {
         );
     }
 
-    /// 국민연금법 제117조(단수의 처리) — the bridge an earlier round recorded as
-    /// absent.
+    /// National Pension Act Article 117 (handling of fractions) — the bridge an
+    /// earlier round recorded as absent.
     ///
     /// The golden case cannot catch this: 3,000,000 × 475/10,000 = 142,500 is
-    /// already a 10원 multiple, so 절사 and no-절사 agree there and the missing
-    /// rule stayed invisible through a full review. This test is at a wage where
+    /// already a 10-won multiple, so truncation and no truncation agree there
+    /// and the missing rule stayed invisible through a full review. This test is at a wage where
     /// it bites.
     #[test]
     fn national_pension_truncates_the_10_won_remainder_under_article_117() {
         let draft = build_statutory_insurance_draft(&StatutoryInsuranceInput {
             pay_date: date!(2026 - 08 - 10),
-            // Already a 천원 multiple, so 시행령 제5조제1항 moves nothing and the
-            // only rule left to observe is 제117조.
+            // Already a 1,000-won multiple, so Enforcement Decree Article 5(1)
+            // moves nothing and the only rule left to observe is Article 117.
             monthly_remuneration_won: 3_001_000,
             pension_standard_monthly_income_won: None,
             monthly_standard_hours: Some(209),
@@ -2049,7 +2102,7 @@ mod tests {
 
         let pension = component(&draft, ContributionCode::NationalPension);
         assert_eq!(pension.basis_won, Some(3_001_000));
-        // 3,001,000 × 475/10,000 = 142,547.5 → 정확분 142,547 → 절사 142,540.
+        // 3,001,000 × 475/10,000 = 142,547.5 → exact amount 142,547 → truncated 142,540.
         assert_eq!(pension.employee_won, Some(142_540));
         // The figure this crate emitted while the bridge was recorded as absent.
         assert_ne!(pension.employee_won, Some(142_547));
@@ -2060,8 +2113,8 @@ mod tests {
             pension.instrument.article_ko
         );
 
-        // Every 국민연금 amount is now a 10원 multiple, at every wage — the
-        // property the single wage above only samples.
+        // Every National Pension amount is now a 10-won multiple, at every wage
+        // — the property the single wage above only samples.
         for gross in (0..12_000_000).step_by(9_973) {
             let draft = build_statutory_insurance_draft(&StatutoryInsuranceInput {
                 pay_date: date!(2026 - 08 - 10),
@@ -2077,21 +2130,23 @@ mod tests {
         }
     }
 
-    /// 산재 serves no figure this engine can ground, so it serves none at all.
+    /// Industrial accident insurance serves no figure this engine can ground,
+    /// so it serves none at all.
     #[test]
     fn industrial_accident_emits_null_basis_and_null_rate_never_a_zero() {
         let draft = build_statutory_insurance_draft(&golden_case_input()).unwrap();
         let industrial = component(&draft, ContributionCode::IndustrialAccident);
 
-        // The 사업종류별 요율 is in 고용노동부고시 제2025-91호's un-ingested 별지
-        // and is per-employer. A 0 would read as "산재 costs nothing".
+        // The per-industry rate is in the un-ingested annexed form of Ministry
+        // of Employment and Labor Public Notice No. 2025-91 and is
+        // per-employer. A 0 would read as "industrial accident insurance costs nothing".
         assert_eq!(industrial.basis_won, None);
         assert_eq!(industrial.rate_num, None);
         assert_eq!(industrial.rate_den, None);
         assert_eq!(industrial.total_won, None);
-        // The employee side is a REAL absence, not an unknown: 징수법 제13조제5항
-        // charges the 사업주 and no 항 charges the worker. That distinction is
-        // what `employer_only` carries.
+        // The employee side is a REAL absence, not an unknown: Insurance
+        // Premium Collection Act Article 13(5) charges the employer and no
+        // paragraph charges the worker. That distinction is what `employer_only` carries.
         assert_eq!(industrial.employee_won, None);
         assert!(industrial.employer_only);
         // And no other component was quietly nulled along with it.
@@ -2108,13 +2163,14 @@ mod tests {
         }
     }
 
-    /// The order question 제5조 poses — 절사 then clamp, or clamp then 절사 —
-    /// and the article that makes it unobservable.
+    /// The order question Article 5 poses — truncation then clamp, or clamp then
+    /// truncation — and the article that makes it unobservable.
     #[test]
     fn the_truncate_clamp_order_is_unobservable_only_because_every_band_bound_is_a_10_000_multiple()
     {
-        // 제5조제1항제1호·제2호: 「이 경우 만원 미만은 반올림한다」. Every
-        // 하한액/상한액 the 고시 may publish is therefore a 만원 multiple.
+        // Article 5(1) items 1 and 2: "in this case, amounts below 10,000 won
+        // are rounded". Every lower/upper limit the public notice may publish
+        // is therefore a 10,000-won multiple.
         for limit in national_pension_base_limits() {
             assert_eq!(
                 limit.minimum_won % 10_000,
@@ -2133,7 +2189,7 @@ mod tests {
 
         // On such bounds the two candidate orders agree at every won, including
         // across both band edges. `national_pension_standard_income` implements
-        // 제5항-then-제1항 and matches both.
+        // paragraph 5 then paragraph 1 and matches both.
         let limit = national_pension_limit_on(date!(2026 - 08 - 10)).unwrap();
         let edges = [limit.minimum_won, limit.maximum_won];
         for anchor in edges {
@@ -2152,10 +2208,10 @@ mod tests {
             }
         }
 
-        // And the divergence is real, not theoretical: give the band a 하한액
-        // that is NOT a 천원 multiple and the two orders disagree by 500원 at
-        // 410,400. No lawful 고시 can produce that band — which is exactly why
-        // the assertion above is the load-bearing one.
+        // And the divergence is real, not theoretical: give the band a lower
+        // limit that is NOT a 1,000-won multiple and the two orders disagree by
+        // 500 won at 410,400. No lawful public notice can produce that band —
+        // which is exactly why the assertion above is the load-bearing one.
         let unlawful = MonthlyBaseLimit {
             minimum_won: 410_500,
             ..limit
@@ -2168,7 +2224,8 @@ mod tests {
         assert_eq!(truncate_then_clamp, 410_500);
         assert_eq!(clamp_then_truncate, 410_000);
         assert_ne!(truncate_then_clamp, clamp_then_truncate);
-        // 제5항 governs: 410,400 < 하한액 → 기준소득월액 IS the 하한액.
+        // Paragraph 5 governs: 410,400 < lower limit → standard monthly income
+        // IS the lower limit.
         assert_eq!(
             national_pension_standard_income(declared, unlawful),
             410_500
@@ -2178,8 +2235,8 @@ mod tests {
     /// The measured cost of `Q-HALF-SHARE-ROUNDING-UNIT`, computed rather than
     /// asserted in prose. `docs/specs/payroll.md` quotes this number; the test
     /// exists so the doc can never drift from the engine again — the previous
-    /// figure (4,500 / 50.0%) counted only 건강보험's half and silently omitted
-    /// 장기요양's.
+    /// figure (4,500 / 50.0%) counted only National Health Insurance's half and
+    /// silently omitted long-term care's.
     #[test]
     fn the_agreement_gate_blocks_6_762_of_9_001_sampled_wages() {
         let mut blocked = 0_usize;
@@ -2210,7 +2267,7 @@ mod tests {
         assert_eq!(total, 9_001);
         assert_eq!(blocked, 6_762, "보수월액 1M–10M in 1,000원 steps");
         // The old doc figure, reproduced so its provenance is not a mystery: it
-        // is 건강보험's half counted alone.
+        // is National Health Insurance's half counted alone.
         assert_eq!(health_half_alone, 4_500);
     }
 
@@ -2439,8 +2496,8 @@ mod tests {
 
     #[test]
     fn release_gate_rejects_a_blank_reviewer_reference() {
-        // The remaining unexercised pre-existing condition. A 노무사/세무사
-        // sign-off whose reviewer cannot be identified is an anonymous one.
+        // The remaining unexercised pre-existing condition. A labor attorney /
+        // tax accountant sign-off whose reviewer cannot be identified is an anonymous one.
         let mut anonymous = satisfied_release_gate();
         anonymous
             .professional_validation
@@ -2459,8 +2516,8 @@ mod tests {
         // `pension_standard_monthly_income_won` is the one optional kernel
         // input, and it is the only one that changes a figure without changing
         // the gross. 2,000,000 sits inside the 2026-06 base window
-        // (400,000..6,370,000), so the clamp does not erase it: the 국민연금
-        // line drops by 47,500 and the total with it. A gate that ignored the
+        // (400,000..6,370,000), so the clamp does not erase it: the National
+        // Pension line drops by 47,500 and the total with it. A gate that ignored the
         // declared basis would compute 373,302 here.
         let mut capped = satisfied_release_gate();
         capped.golden_cases[0]
@@ -2508,8 +2565,8 @@ mod tests {
     fn ordinary_wage_floor_governs_when_three_month_window_is_depressed() {
         // Absence→exit population: unpaid leave halved the 3-month wage total, so
         // the average daily wage collapses to 50,000/day. The employee's ordinary
-        // daily wage is still 100,000. 통상임금 floor must govern and roughly double
-        // the severance versus the average-wage-only figure.
+        // daily wage is still 100,000. The ordinary-wage floor must govern and
+        // roughly double the severance versus the average-wage-only figure.
         let draft = build_severance_pay_draft(SeverancePayInput {
             hire_date: date!(2024 - 01 - 01),
             exit_date: date!(2026 - 06 - 30),
@@ -2590,8 +2647,9 @@ mod tests {
     // ─────────────────────────────────────────────────────────────────────
     // GC-2026-07-KR-MONTHLY-A — the golden case.
     //
-    // 월급제 정규직, 완전출근, 무공제사유. 보수월액 3,000,000 is chosen so every
-    // component lands on a 10원 boundary, which makes the case independent of
+    // Monthly-salaried regular employee, full attendance, no deduction events.
+    // Monthly remuneration 3,000,000 is chosen so every component lands on a
+    // 10-won boundary, which makes the case independent of
     // the two UNRESOLVED rounding questions: a golden case whose answer depends
     // on an unanswered question is not a golden case.
     //
@@ -2619,20 +2677,20 @@ mod tests {
     fn golden_case_gc_2026_07_kr_monthly_a_matches_the_hand_calculation_to_the_won() {
         let draft = build_statutory_insurance_draft(&golden_case_input()).unwrap();
 
-        // 1. 기준소득월액 = clamp(3,000,000, 410,000, 6,590,000) — unbound.
+        // 1. Standard monthly income = clamp(3,000,000, 410,000, 6,590,000) — unbound.
         let pension = component(&draft, ContributionCode::NationalPension);
         assert_eq!(pension.basis_won, Some(3_000_000));
-        // 2. 3,000,000 × 475/10,000 = 142,500.0 — 단수 없음.
+        // 2. 3,000,000 × 475/10,000 = 142,500.0 — no fraction.
         assert_eq!(pension.employee_won, Some(142_500));
 
-        // 3. 3,000,000 × 719/10,000 = 215,700 → trunc10 215,700 → clamp 미구속.
+        // 3. 3,000,000 × 719/10,000 = 215,700 → trunc10 215,700 → clamp not binding.
         let health = component(&draft, ContributionCode::HealthInsurance);
         assert_eq!(health.total_won, Some(215_700));
-        // 4. 215,700 × 50/100 = 107,850 — 10원 배수라 trunc10 ≡ round10.
+        // 4. 215,700 × 50/100 = 107,850 — a 10-won multiple, so trunc10 ≡ round10.
         assert_eq!(health.employee_won, Some(107_850));
 
         // 5. 215,700 × 9,448/71,900 = 28,344 EXACTLY → trunc10 → 28,340.
-        //    This is the one place 단수 절사 actually bites.
+        //    This is the one place fraction truncation actually bites.
         let ltc = component(&draft, ContributionCode::LongTermCare);
         assert_eq!(ltc.basis, ContributionBasis::HealthInsurancePremium);
         assert_eq!(ltc.basis_won, Some(215_700));
@@ -2640,23 +2698,26 @@ mod tests {
         // 6. 28,340 × 50/100 = 14,170.
         assert_eq!(ltc.employee_won, Some(14_170));
 
-        // 7. 3,000,000 × 9/1,000 = 27,000.0 — 단수 없음.
+        // 7. 3,000,000 × 9/1,000 = 27,000.0 — no fraction.
         let employment = component(&draft, ContributionCode::EmploymentUnemployment);
         assert_eq!(employment.employee_won, Some(27_000));
         // The exact won is an ASSUMPTION, not a rule, and the type says so.
-        // `Resolved` here would name 시행령 제12조제1항제2호 — which sets a rate
-        // and prescribes no 단수 — as the instrument settling the rounding.
+        // `Resolved` here would name Enforcement Decree Article 12(1) item 2 —
+        // which sets a rate and prescribes no fraction rule — as the instrument
+        // settling the rounding.
         assert_eq!(employment.total_rounding_unit, "EXACT_WON");
 
-        // 8. 산재 — 사업주 전액 부담. STATED absent, never a zero deduction.
+        // 8. Industrial accident insurance — borne in full by the employer.
+        //    STATED absent, never a zero deduction.
         let iacc = component(&draft, ContributionCode::IndustrialAccident);
         assert!(iacc.employer_only);
         assert_eq!(iacc.employee_won, None);
         assert!(iacc.instrument.article_ko.contains("제13조제5항"));
 
-        // Neither 징수법 row cites an instrument for its 단수: none exists.
-        // 국민건강보험법 제107조, which 산재 used to cite, does not reach 징수법
-        // 보험료 by any 준용.
+        // Neither Insurance Premium Collection Act row cites an instrument for
+        // its fraction: none exists. National Health Insurance Act Article 107,
+        // which industrial accident insurance used to cite, does not reach
+        // Insurance Premium Collection Act premiums by any mutatis mutandis application.
         for code in [
             ContributionCode::EmploymentUnemployment,
             ContributionCode::IndustrialAccident,
@@ -2675,16 +2736,17 @@ mod tests {
                 "{code:?}: 단수 근거가 없는데 인용하는 형태로 되돌아갔다 ({rounding:?})"
             );
         }
-        // And the EMPLOYER total is absent, not 0. The 사업종류별 요율 lives in
-        // 고시 제2025-91호's unparsed 별지, so "산재 premium = 0원" would be a
-        // false statement — the exact silently-zero failure this engine refuses.
+        // And the EMPLOYER total is absent, not 0. The per-industry rate lives
+        // in the unparsed annexed form of Public Notice No. 2025-91, so
+        // "industrial accident insurance premium = 0 won" would be a false
+        // statement — the exact silently-zero failure this engine refuses.
         assert_eq!(iacc.total_won, None);
 
-        // 4대보험 공제계 / 잔액.
+        // Four social insurances deduction total / remainder.
         assert_eq!(draft.total_employee_insurance_won, Some(291_520));
         assert_eq!(draft.remainder_after_insurance_won, Some(2_708_480));
 
-        // 최저임금: 3,000,000 ÷ 209 = 14,354 ≥ 10,320.
+        // Minimum wage: 3,000,000 ÷ 209 = 14,354 ≥ 10,320.
         assert_eq!(draft.minimum_wage.effective_hourly_won, Some(14_354));
         assert_eq!(draft.minimum_wage.passes, Some(true));
         assert_eq!(draft.minimum_wage.hourly_floor_won, 10_320);
@@ -2694,8 +2756,8 @@ mod tests {
     #[test]
     fn golden_case_refuses_withholding_and_is_not_issuable() {
         // The deferral is EXPLICIT, in the draft, naming the instrument — never
-        // a silent zero. 차인지급액 is therefore unavailable, which is exactly
-        // why the draft cannot be issued.
+        // a silent zero. The net pay amount is therefore unavailable, which is
+        // exactly why the draft cannot be issued.
         let draft = build_statutory_insurance_draft(&golden_case_input()).unwrap();
 
         assert!(!draft.issuable);
@@ -2716,7 +2778,7 @@ mod tests {
                 .name_ko
                 .contains("소득세법 시행령 별표 2")
         );
-        // The version anchor is the semantic 별표HWP파일명, not the unstable flSeq.
+        // The version anchor is the semantic Annex HWP file name, not the unstable flSeq.
         assert!(
             income_tax
                 .instrument
@@ -2746,7 +2808,8 @@ mod tests {
         // The defect this increment exists to fix. The pre-existing model was
         // `employee_ppm: 4_724, basis: MonthlyRemuneration`:
         //   3,000,000 × 4,724/1,000,000 = 14,172.
-        // The statutory chain (제9조제1항: basis is the 건강보험료액) gives 14,170.
+        // The statutory chain (Article 9(1): basis is the health insurance
+        // premium amount) gives 14,170.
         // Two won, on the simplest possible employee — which is why it survived.
         let naive = 3_000_000_i64 * 4_724 / 1_000_000;
         assert_eq!(naive, 14_172);
@@ -2764,9 +2827,9 @@ mod tests {
 
     #[test]
     fn golden_case_survives_the_2026_11_27_ratio_amendment() {
-        // From 2026-11-27 제9조제1항's 반올림 clause enters force and the ratio
-        // becomes 1,314/10,000: 215,700 × 1,314 / 10,000 = 28,342 → trunc10
-        // 28,340. Identical. This also proves the engine reads the effective-date
+        // From 2026-11-27 Article 9(1)'s rounding clause enters force and the
+        // ratio becomes 1,314/10,000: 215,700 × 1,314 / 10,000 = 28,342 →
+        // trunc10 28,340. Identical. This also proves the engine reads the effective-date
         // slice rather than the latest promulgated text — `target=law` would have
         // handed it the 2026-11-27 wording four months early.
         let mut december = golden_case_input();
@@ -2791,8 +2854,9 @@ mod tests {
 
     #[test]
     fn the_agreement_gate_blocks_rather_than_picking_a_rounding_default() {
-        // 보수월액 1,000,010 → 건강보험 총 = 71,900.719 → trunc10 = 71,900.
-        // Half = 35,950 → 10원 배수 → agree. Find one that does NOT agree and
+        // Monthly remuneration 1,000,010 → National Health Insurance total =
+        // 71,900.719 → trunc10 = 71,900. Half = 35,950 → a 10-won multiple →
+        // agree. Find one that does NOT agree and
         // prove the component is withheld, not guessed.
         let disagreeing = (1_000_000..1_100_000)
             .find(|gross| {
@@ -2844,8 +2908,9 @@ mod tests {
 
     #[test]
     fn health_premium_floor_binds_for_a_low_paid_part_timer() {
-        // 「월별 건강보험료액의 상한과 하한에 관한 고시」 제2025-222호: the 하한
-        // 20,160원 binds below 보수월액 280,389원.
+        // "Public Notice on the Upper and Lower Limits of Monthly Health
+        // Insurance Premiums" No. 2025-222: the lower limit 20,160 won binds
+        // below monthly remuneration 280,389 won.
         let draft = build_statutory_insurance_draft(&StatutoryInsuranceInput {
             pay_date: date!(2026 - 08 - 10),
             monthly_remuneration_won: 200_000,
@@ -2858,13 +2923,13 @@ mod tests {
         // Unclamped this would be 200,000 × 719/10,000 = 14,380.
         assert_eq!(health.total_won, Some(20_160));
         assert_eq!(health.employee_won, Some(10_080));
-        // 장기요양's basis follows the CLAMPED health premium, not 보수월액.
+        // Long-term care's basis follows the CLAMPED health premium, not monthly remuneration.
         assert_eq!(
             component(&draft, ContributionCode::LongTermCare).basis_won,
             Some(20_160)
         );
-        // 기준소득월액 하한 410,000 also binds: 410,000 × 475/10,000 = 19,475
-        // → 국민연금법 제117조 절사 → 19,470.
+        // The standard monthly income lower limit 410,000 also binds: 410,000
+        // × 475/10,000 = 19,475 → National Pension Act Article 117 truncation → 19,470.
         assert_eq!(
             component(&draft, ContributionCode::NationalPension).employee_won,
             Some(19_470)
@@ -3007,7 +3072,7 @@ mod tests {
 
     #[test]
     fn the_withholding_table_version_is_resolved_per_pay_date_across_all_of_2026() {
-        // Four 별표 slices in one calendar year. A missing slice would make the
+        // Four Annex slices in one calendar year. A missing slice would make the
         // whole draft error for that month, so the coverage is the assertion.
         for (pay_date, expected_hwp) in [
             (
@@ -3033,7 +3098,7 @@ mod tests {
                 "{pay_date}: expected 별표 {expected_hwp}, got {}",
                 instrument.article_ko
             );
-            // And a whole-2026 draft never fails for want of a 별표 version.
+            // And a whole-2026 draft never fails for want of an Annex version.
             build_statutory_insurance_draft(&StatutoryInsuranceInput {
                 pay_date,
                 ..golden_case_input()
@@ -3041,9 +3106,9 @@ mod tests {
             .unwrap();
         }
 
-        // Note 3's 자녀세액공제 changed at 2026-02-27 while the 646 × 11 grid
-        // stayed byte-identical. Pin BOTH figures so an ingest that reads only
-        // the grid cannot pass: it would withhold 8,330원/month too much.
+        // Note 3's child tax credit changed at 2026-02-27 while the 646 × 11
+        // grid stayed byte-identical. Pin BOTH figures so an ingest that reads
+        // only the grid cannot pass: it would withhold 8,330 won/month too much.
         assert!(
             withholding_table_instrument_on(date!(2026 - 01 - 15))
                 .unwrap()
@@ -3097,9 +3162,9 @@ mod tests {
     fn no_rate_row_is_in_force_before_the_instrument_that_sets_it() {
         for rate in statutory_contribution_rates() {
             // EVERY instrument the row carries, not just the rate one. Reading
-            // only `rate.instrument` is how 제107조 and 제76조제1항 sat at
-            // 시행 2026-01-02 on rows in force from 2026-01-01 while both this
-            // test and the DB CHECK stayed green: neither could see them.
+            // only `rate.instrument` is how Article 107 and Article 76(1) sat at
+            // enforcement 2026-01-02 on rows in force from 2026-01-01 while both
+            // this test and the DB CHECK stayed green: neither could see them.
             let rounding_instrument = match rate.total_rounding {
                 Rounding::Resolved { instrument, .. } => Some(instrument),
                 Rounding::Assumed { .. } | Rounding::Unresolved { .. } => None,
@@ -3154,9 +3219,10 @@ mod tests {
     /// The same rule, applied to what the engine actually HANDS OUT.
     ///
     /// The loop above walks the rate table, so it can only see instruments that
-    /// hang off a rate row. `local_income_tax_instrument()` has no row — 지방세법
-    /// is not a 요율 — and is returned unconditionally on every draft, which is
-    /// how it came to sit at 시행 2026-07-01 while both that loop and the DB's
+    /// hang off a rate row. `local_income_tax_instrument()` has no row — the
+    /// Local Tax Act is not a rate — and is returned unconditionally on every
+    /// draft, which is how it came to sit at enforcement 2026-07-01 while both
+    /// that loop and the DB's
     /// `CHECK (effective_from >= enforced_on)` stayed green through a January
     /// pay date. This test needs no enumeration: it sweeps the year, builds the
     /// draft, and checks every instrument in the value returned. A new

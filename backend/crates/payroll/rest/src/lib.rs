@@ -11,7 +11,7 @@
 //! `/payslips/me` (`/me/lines` below) is therefore a self-service view of
 //! draft READINESS data, not an issued payslip: it must not return vault
 //! document fields (`kind`, `legal_basis`, `confirmed_at`, inbox doc id) or
-//! won amounts. Issued 명세서 live in the statutory-notice vault
+//! won amounts. Issued payslips live in the statutory-notice vault
 //! (`GET /api/v1/me/inbox-docs?filter=kind:payslip`, `console-inbox-rest`).
 //!
 //! # Access

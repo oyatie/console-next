@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! ENT-REG as the runtime role `console_rt`: 임원 read back and kept (MR-5),
-//! and identifier corrections with evidence in SETUP (MR-17).
+//! ENT-REG as the runtime role `console_rt`: executives read back and kept (MR-5), and
+//! identifier corrections with evidence in SETUP (MR-17).
 
 mod common;
 mod corrections_support;
@@ -49,7 +49,7 @@ async fn directors_are_read_back_kept_when_omitted_and_cleared_on_empty(owner: P
         "restricted like 대표자"
     );
 
-    // A form that never shows 임원 (directors omitted) keeps them.
+    // A form that never shows executives (directors omitted) keeps them.
     let revise = |version, from: &str, directors| LegalEntityRevision {
         expected_version: Some(version),
         effective_from: Some(from.into()),
@@ -167,7 +167,7 @@ async fn setup_correction_needs_evidence_writes_the_ledger_and_revise_refuses(ow
     );
     assert_eq!(fields, vec![("value".into(), "identifier_unchanged")]);
 
-    // Leaving CORPORATION clears the 법인등록번호 in the same command.
+    // Leaving CORPORATION clears the corporate registration number in the same command.
     let kind = IdentifierCorrectionInput {
         field: Some("biz_kind".into()),
         value: Some("INDIVIDUAL".into()),

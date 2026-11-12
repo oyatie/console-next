@@ -1,4 +1,5 @@
-//! 업태 · 종목 as printed on a 사업자등록증, with an optional KSIC code.
+//! Business type and business item as printed on a business registration
+//! certificate, with an optional KSIC code.
 
 use serde::{Deserialize, Serialize};
 

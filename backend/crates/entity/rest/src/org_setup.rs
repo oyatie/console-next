@@ -1,5 +1,5 @@
-//! Setup 부서 routes (MR-12): one unit at a time, a batch, its undo and the
-//! batch list. All take the org-change apply permission; every write is
+//! Setup department routes (MR-12): one unit at a time, a batch, its undo and
+//! the batch list. All take the org-change apply permission; every write is
 //! admitted for SETUP only by the adapter (after go-live: `phase_not_setup`,
 //! remedy `submit_org_change`).
 

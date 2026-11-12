@@ -1,4 +1,4 @@
-//! 법인 typed revision rows: the full-state insert and the VAT-unit-only append.
+//! Legal entity typed revision rows: the full-state insert and the VAT-unit-only append.
 
 use console_entity_domain::codes::VatUnitMode;
 use console_entity_domain::legal_entity::LegalEntityDraft;
@@ -88,7 +88,7 @@ pub(crate) async fn insert_revision(
 }
 
 /// A revise that omits `directors` keeps the ones of the latest other
-/// revision (MR-5: a form that never shows 임원 must not erase them).
+/// revision (MR-5: a form that never shows executives must not erase them).
 async fn carry_directors(tx: &mut Tx<'_>, entity: Uuid, rev: Uuid) -> Result<(), PgEntityError> {
     sqlx::query(
         "INSERT INTO legal_entity_directors (org_id, revision_id, seq, role, name, appointed_on) \
