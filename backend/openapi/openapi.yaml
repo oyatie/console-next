@@ -19479,6 +19479,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/me/action-inbox/reference:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - me
       operationId: listMyActionInboxReference
@@ -19522,6 +19523,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/me/action-inbox/reference/{id}/read:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - me
       operationId: markMyActionInboxReferenceRead
