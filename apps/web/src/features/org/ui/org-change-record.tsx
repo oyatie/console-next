@@ -14,6 +14,7 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import { unitsQuery } from "../../../reference/org/api";
 import { GateRail } from "../../../ui/gate-rail";
 import { Receipt } from "../../../ui/receipt/receipt";
+import { StatusDock } from "../../../ui/status-dock/status-dock";
 import { TimelineLanes } from "../../../ui/timeline-lanes/timeline-lanes";
 import { changeCommands, changeQuery, changeUnitId, me } from "../api";
 import { changeRail, changeTitle, describeOp, reasonText, eventTitle, nextStep, submittedText, type Names } from "../present";
@@ -37,19 +38,19 @@ export function OrgChange() {
   const { id } = route.useParams();
   // Opened from the list or Home, the record re-reads at once: the row just seen may be newer than the cache.
   const change = useQuery({ ...changeQuery(id), refetchOnMount: "always" });
+  const n = useChangeNames();
   // Until that re-read lands, a cached record stays off screen: a newer one (rejected meanwhile, say) would
   // otherwise land a moment later and move every action on the page under a pointer already on one.
   const [opened] = useState(Date.now);
-  const settling = change.isFetching && change.dataUpdatedAt < opened;
+  const settling = n.pending || (change.isFetching && change.dataUpdatedAt < opened);
   return (
     <div className="page">
-      <QueryState q={settling ? { ...change, isPending: true } : change} keepOnLoss back={{ to: "/org/changes", label: t("structure.tab.changes") }} layout="record">{(d) => <Record key={d.id} d={d} refetch={change.refetch} />}</QueryState>
+      <QueryState q={settling ? { ...change, isPending: true } : change} keepOnLoss back={{ to: "/org/changes", label: t("structure.tab.changes") }} layout="record">{(d) => <Record key={d.id} d={d} n={n} refetch={change.refetch} />}</QueryState>
     </div>
   );
 }
 
-function Record({ d, refetch }: { d: Detail; refetch: () => Promise<{ data?: Detail }> }) {
-  const n = useChangeNames();
+function Record({ d, n, refetch }: { d: Detail; n: Names; refetch: () => Promise<{ data?: Detail }> }) {
   const can = useCan();
   const today = todayKst();
   const routed = useOrgRouted();
@@ -91,22 +92,24 @@ function Record({ d, refetch }: { d: Detail; refetch: () => Promise<{ data?: Det
   const leftDraft = editing && !editable;
 
   const rail = changeRail(d);
-  const deciding = s.kind === "decide" && !note?.hold;
   const unit = changeUnitId(d);
   const place = unit ? { sel: unit } : undefined;
   return (
     <>
       <ChangeHead d={d} title={title} today={today} />
       {note && (
-        <div id="change-receipt" tabIndex={-1} className={css.receipt}>
-          <Receipt state="recorded" message={note.message} meta={<ReceiptReference value={d.code} />} actions={note.actions} />
-        </div>
+        <StatusDock>
+          <div id="change-receipt" tabIndex={-1} className={css.receipt}>
+            <Receipt state="recorded" message={note.message} meta={<ReceiptReference value={d.code} />} actions={note.actions} />
+          </div>
+        </StatusDock>
       )}
       {unsent && editable && report && report.blockers.length > 0 && <div className="alert" role="alert">{t("orgChange.unsent", { count: report.blockers.length })}</div>}
       {leftDraft && <p className="notice" role="status">{t("orgChange.edit.submittedElsewhere", { time: fmtDateTime(d.updatedAt) })}</p>}
       <GateRail steps={rail.steps} current={rail.current} failed={rail.failed} />
       <div className={css.cols}>
         <div className={`page__sub ${css.main}`}>
+          <Proposal d={d} n={n} headcount={report?.headcount ?? d.headcount} />
           <ChangeNextStep
             d={d}
             s={s}
@@ -122,7 +125,6 @@ function Record({ d, refetch }: { d: Detail; refetch: () => Promise<{ data?: Det
             onEdit={() => setEditing(true)}
             onPreflight={() => preflight.mutate(undefined)}
           />
-          <Proposal d={d} n={n} brief={deciding} />
           {report && (
             <ChangePreflight d={d} report={report} checking={preflight.isPending} onRerun={() => preflight.mutate(undefined)} onEdit={() => setEditing(true)} />
           )}
@@ -143,27 +145,17 @@ function Record({ d, refetch }: { d: Detail; refetch: () => Promise<{ data?: Det
   );
 }
 
-/**
- * What the change does, and why. The affected-people count shows here once it is no longer a draft (D3).
- * `brief` while the viewer decides: the decision card already states the ops, reason and count, so only the
- * before/after preview is added, which the approver needs to judge a move or a dissolution.
- */
-function Proposal({ d, n, brief }: { d: Detail; n: Names; brief: boolean }) {
-  const draft = d.status === "DRAFT" || d.status === "PRECHECKED";
-  if (brief) return <Preview d={d} n={n} card />;
+/** The summary stays above the decision while its controls and result change. */
+function Proposal({ d, n, headcount }: { d: Detail; n: Names; headcount: number }) {
   return (
     <section className="card panel" aria-labelledby="proposal">
       <h2 id="proposal" className="panel__title">{t("orgChange.proposal")}</h2>
       <ol className={css.ops}>{d.proposal.map((op, i) => <li key={i}>{describeOp(op, n)}</li>)}</ol>
       <dl className="kv">
         <dt>{t("orgChange.reason")}</dt>
-        <dd>{reasonText(d)}</dd>
-        {!draft && (
-          <>
-            <dt>{t("orgChange.headcount")}</dt>
-            <dd className="num">{t(d.status === "APPLIED" ? "orgChange.headcount.moved" : "orgChange.headcount.value", { count: d.headcount })}</dd>
-          </>
-        )}
+        <dd><blockquote className={css.quote}>{reasonText(d)}</blockquote></dd>
+        <dt>{t("orgChange.headcount")}</dt>
+        <dd className="num">{t(d.status === "APPLIED" ? "orgChange.headcount.moved" : "orgChange.headcount.value", { count: headcount })}</dd>
       </dl>
       <Preview d={d} n={n} />
     </section>
@@ -177,17 +169,16 @@ const PREVIEWED = new Set<string>(["CREATE_ORG_UNIT", "RENAME_ORG_UNIT", "MOVE_O
  * each op is previewed on its own against today's tree, so an op under a unit the same draft creates
  * shows no tree; replay the ops in order when multi-op drafts need it.
  */
-function Preview({ d, n, card }: { d: Detail; n: Names; card?: boolean }) {
+function Preview({ d, n }: { d: Detail; n: Names }) {
   const units = useQuery(unitsQuery);
-  const pending = d.status === "DRAFT" || d.status === "PRECHECKED" || d.status === "IN_APPROVAL" || d.status === "APPROVED";
+  const pending = d.status === "DRAFT" || d.status === "PRECHECKED" || d.status === "IN_APPROVAL" || d.status === "APPROVED" || d.status === "REJECTED";
   const ops = d.proposal.filter((op) => PREVIEWED.has(op.op));
   if (!pending || !units.data || ops.length === 0) return null;
   const then = t("orgPropose.diff.then", { date: fmtDate(d.effectiveDate) });
-  const body = (
+  return (
     <>
       <h3 className={css.formHead}>{t("orgChange.preview")}</h3>
       {ops.map((op, i) => <UnitDiff key={i} units={units.data.items} op={op} summary={describeOp(op, n)} then={then} />)}
     </>
   );
-  return card ? <section className="card panel" aria-label={t("orgChange.proposal")}>{body}</section> : body;
 }

@@ -69,7 +69,9 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   await card.getByLabel("사유").fill("영남 거점 검토");
   const drafted = answer(admin, "POST", /^\/api\/v1\/org-changes$/);
   await card.getByRole("button", { name: "임시 저장" }).click();
-  expect((await drafted).status()).toBe(201);
+  const draftResponse = await drafted;
+  expect(draftResponse.status()).toBe(201);
+  await routeReady(admin, `/org/changes/${(await draftResponse.json() as components["schemas"]["OrgChangeDetail"]).id}`);
 
   // The draft names what it changes, and shows its own preflight without a click. No precheck step on the rail.
   await expect(admin.getByRole("heading", { name: "영남권 신설", level: 1 })).toBeVisible();
@@ -120,7 +122,7 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   // The approver sees what is decided above the decision; rejecting needs a reason.
   await exec.bringToFront();
   await go(exec, changeUrl);
-  await expect(exec.getByRole("region", { name: "다음 할 일" })).toContainText(/부서 신설 — .*영남권/);
+  await expect(exec.getByRole("region", { name: "변경 내용", exact: true })).toContainText(/부서 신설 — .*영남권/);
   await expect(exec.getByRole("button", { name: "조직 변경 승인" })).toBeEnabled();
   await exec.getByRole("button", { name: "조직 변경 반려", exact: true }).click();
   const reject = exec.getByRole("button", { name: "조직 변경 반려" });
@@ -175,7 +177,9 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   await admin.getByRole("button", { name: /^오늘/ }).click();
   const redrafted = answer(admin, "POST", /\/org-changes\/[^/]+\/submit$/);
   await admin.getByRole("button", { name: "조직 변경 결재 요청" }).click();
-  expect((await redrafted).status()).toBe(200);
+  const redraftResponse = await redrafted;
+  expect(redraftResponse.status()).toBe(200);
+  const redraft = await redraftResponse.json() as components["schemas"]["OrgChangeDetail"];
   await expect(admin.getByRole("status").filter({ hasText: "다시 기안해 상신했습니다" })).toBeVisible();
   await expect(admin.getByRole("link", { name: /^반려된 OC-\d{4}-\d{4}의 재기안$/ })).toBeVisible();
   await expect(admin.locator('.rail-steps [aria-current="step"]')).toHaveText("결재 0/4");
@@ -189,9 +193,16 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   await expect(admin.getByRole("link", { name: "요청한 일 1" })).toHaveAttribute("aria-current", "page");
   await expect(admin.getByRole("link", { name: "반려 사유 보기" })).toHaveCount(0);
 
-  // The rejected 부서 was never created.
+  // IN_APPROVAL projections (661f066a32) include the pending redraft; neither proposal created a unit.
+  const currentUnits = await api("/org-units");
+  expect(currentUnits.status()).toBe(200);
+  expect((await currentUnits.json()).items.filter((unit: { name: string }) => unit.name === "영남권")).toEqual([]);
   await go(admin, "/org?view=list");
-  await expect(admin.getByRole("row", { name: /영남권/ })).toHaveCount(0);
+  const structure = admin.getByRole("grid", { name: "조직 구조 목록", exact: true });
+  await expect(structure).toBeVisible();
+  const planned = structure.getByRole("row", { name: /영남권/ });
+  await expect(planned).toHaveCount(1);
+  await expect(planned).toContainText(`예정 · ${redraft.code}`);
 });
 
 async function checkScreen(page: Page, context: string) {

@@ -17,7 +17,7 @@ import { Button } from "../../../ui/button/button";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { changeCommands, changesByStatusQuery, me, refusalOf } from "../api";
-import { describeOp, reasonText, type Names, type NextStep } from "../present";
+import type { NextStep } from "../present";
 import type { Note } from "./use-note";
 import css from "./org-change.module.css";
 
@@ -26,16 +26,14 @@ type Decide = Extract<NextStep, { kind: "decide" }>;
 type Refetch = () => Promise<{ data?: Detail }>;
 
 /**
- * The decision on the step this person holds, on the shared approval card: what is decided (ops, reason,
- * people, the previous step's note) sits above approve and reject, which stand side by side; reject needs a
+ * The decision on the step this person holds, below the record's summary. Approve and reject stand side by side; reject needs a
  * reason. There is no request-changes yet (BW-02), so the card draws none. Key it by the step id: after a
  * decision only the receipt shows, and the next step's card opens only on request, so a second click can
  * never land on the next step (role keys are not checked yet, BW-01).
  */
-export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
+export function ChangeDecision({ d, s, refetch, onNote, onReopen }: {
   d: Detail;
   s: Decide;
-  n: Names;
   refetch: Refetch;
   onNote: (note: Note) => void;
   onReopen: () => void;
@@ -111,9 +109,6 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
           </Field>
           {armed && <p className="muted" role="status">{t("orgChange.escConfirm")}</p>}
         </>}
-        <ol className={css.ops}>{d.proposal.map((op, i) => <li key={i}>{describeOp(op, n)}</li>)}</ol>
-        <blockquote className={css.quote}>{reasonText(d)}</blockquote>
-        <p className="num">{t("orgChange.headcount")} · {t("orgChange.headcount.value", { count: d.headcount })}</p>
         {prev?.memo && <p className="muted">{t("orgChange.decide.prevMemo", { role: label(APPROVAL_ROLE, prev.roleKey), name: actor(prev.decidedByName), memo: prev.memo })}</p>}
         {s.prevByMe && <p className={css.caution}>{t("orgChange.decide.sameDecider")}</p>}
         <details>

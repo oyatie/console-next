@@ -48,7 +48,7 @@ export function ChangeNextStep(p: {
   // The decision is its own card (the shared approval card), not a card inside this one.
   if (d.status === "IN_APPROVAL" && d.sole_holder_decision && !p.hold)
     return <SoleHolderDecisionCard key={d.sole_holder_decision.step_id} d={d} offer={d.sole_holder_decision} n={p.n} onNote={p.onNote} onReopen={p.onReopen} />;
-  if (s.kind === "decide" && !p.hold) return <ChangeDecision key={s.step.id} d={d} s={s} n={p.n} refetch={p.refetch} onNote={p.onNote} onReopen={p.onReopen} />;
+  if (s.kind === "decide" && !p.hold) return <ChangeDecision key={s.step.id} d={d} s={s} refetch={p.refetch} onNote={p.onNote} onReopen={p.onReopen} />;
   return (
     <section className="card panel" aria-labelledby="next-step">
       <h2 id="next-step" className="panel__title" tabIndex={-1}>{t("orgChange.next.title")}</h2>
