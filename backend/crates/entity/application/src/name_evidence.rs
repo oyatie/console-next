@@ -1,4 +1,5 @@
-//! Typed identity problems of a 법인, computed on every read from its one stored name.
+//! Typed identity problems of a legal entity, computed on every read from its
+//! one stored name.
 use crate::LegalEntityView;
 use console_entity_domain::{
     Warning,
@@ -17,8 +18,8 @@ pub fn identity_problems(e: &LegalEntityView) -> Vec<Warning> {
         .and_then(|w| w.registration_id);
     let reg = primary.and_then(|id| e.registrations.iter().find(|r| r.id == id));
     let reg = reg.or_else(|| (e.registrations.len() == 1).then(|| &e.registrations[0]));
-    // Existing data is held to the entry rule: a 지점 number (or one of another
-    // kind) as 대표 등록번호 needs its recorded reason.
+    // Existing data is held to the entry rule: a branch number (or one of
+    // another kind) as the representative registration number needs its recorded reason.
     let mut problems: Vec<Warning> = reg
         .and_then(|r| r.brn.as_ref().map(|b| (b, r.current.as_ref())))
         .filter(|(brn, facts)| {
@@ -51,8 +52,9 @@ pub fn identity_problems(e: &LegalEntityView) -> Vec<Warning> {
     let Some(c) = e.current.as_ref() else {
         return problems;
     };
-    // 상업등기규칙 §2: a 법인's registered 상호 is written in 한글 (로마자 only in
-    // parentheses after it), so a 법인명 without 한글 was mis-entered.
+    // Commercial Registration Rules §2: a legal entity's registered trade name
+    // is written in Hangul (Roman letters only in parentheses after it), so a
+    // legal entity name without Hangul was mis-entered.
     if e.biz_kind == Some(BizKind::Corporation)
         && !c.name.chars().any(|c| ('가'..='힣').contains(&c))
     {
@@ -61,7 +63,7 @@ pub fn identity_problems(e: &LegalEntityView) -> Vec<Warning> {
             code: "legal_name_not_hangul",
         });
     }
-    // Saved before the guard existed: person data in a name field goes to 확인 필요.
+    // Saved before the guard existed: person data in a name field goes to "needs checking".
     let reps = c.representatives.as_deref().unwrap_or_default();
     let names = [
         Some(c.name.as_str()),

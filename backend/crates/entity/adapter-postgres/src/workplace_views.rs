@@ -1,5 +1,5 @@
-//! 사업장 views: current revision, current 4대보험 per insurer, derived
-//! withholding unit and today's headcount.
+//! Workplace views: current revision, current four-social-insurance rows per
+//! insurer, derived withholding unit and today's headcount.
 
 use std::collections::HashMap;
 
@@ -19,9 +19,9 @@ use crate::address::load_addresses;
 use crate::read::fmt_phone;
 use crate::{PgEntityError, Tx};
 
-/// Every non-voided 사업장 of `entities`, keyed by entity. The 사업장's own
-/// 대표자, 휴대전화 and 이메일 are personal: only for `personal` callers
-/// (INTEG-6, the same rule as the entity's 대표자).
+/// Every non-voided workplace of `entities`, keyed by entity. The workplace's
+/// own representative, mobile phone and email are personal: only for
+/// `personal` callers (INTEG-6, the same rule as the entity's representative).
 pub(crate) async fn views(
     tx: &mut Tx<'_>,
     entities: &[Uuid],

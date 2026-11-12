@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R1 ENTITY company-03 (catalog company-19) as `console_rt`: a closed
-//! 법인's 종료일 / 종료 사유 is corrected, with the 사업장 and 사업자등록 that
+//! UX-R1 ENTITY company-03 (catalog company-19) as `console_rt`: a closed legal entity's
+//! end date / end reason is corrected, with the workplace and business registration that
 //! closed with it, and nothing reopens. Refusals write nothing.
 
 mod close_support;
@@ -31,7 +31,7 @@ async fn audits(owner: &PgPool, action: &str) -> i64 {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_recorded_close_is_corrected_and_never_reopens(owner: PgPool) {
     let w = world(&owner).await;
-    // Only a closed 법인's close is corrected.
+    // Only a closed legal entity's close is corrected.
     let open = w
         .store
         .correct_close(
@@ -84,7 +84,7 @@ async fn a_recorded_close_is_corrected_and_never_reopens(owner: PgPool) {
         Some(date("2026-01-31"))
     );
 
-    // The right date and reason: the 법인, its 사업장 and its 등록증 move together.
+    // The right date and reason: the legal entity, its workplace and its certificate move together.
     let once = cmd(&w.actor);
     let saved = w
         .store

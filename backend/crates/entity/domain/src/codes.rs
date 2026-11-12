@@ -4,17 +4,19 @@
 use crate::code_enum;
 
 code_enum! {
-    /// 사업자 구분 (공통서식 「사업장 형태」; 국세청 tax_type_cd 05/06 for 단체).
+    /// Business type (the common form's "workplace type"; National Tax Service
+    /// tax_type_cd 05/06 for organisations).
     BizKind { Corporation => "CORPORATION", Individual => "INDIVIDUAL", IdNumberOrg => "ID_NUMBER_ORG" }
 }
 
 code_enum! {
-    /// How the 법인 is represented: 단독, 각자대표, 공동대표 (상법 §389②).
+    /// How the legal entity is represented: sole, separate (independent)
+    /// representatives, co-representatives (Commercial Act §389②).
     RepresentationMode { Single => "SINGLE", Several => "SEVERAL", Joint => "JOINT" }
 }
 
 code_enum! {
-    /// 법인등기 임원 구분.
+    /// Executive role as entered in the corporate registry.
     DirectorRole {
         RepresentativeDirector => "REPRESENTATIVE_DIRECTOR",
         InsideDirector => "INSIDE_DIRECTOR",
@@ -25,7 +27,8 @@ code_enum! {
 }
 
 code_enum! {
-    /// 과세유형: 국세청 사업자등록 상태조회 `tax_type_cd` (verified 2026-10-02).
+    /// Taxation type: the National Tax Service business registration status
+    /// lookup's `tax_type_cd` (verified 2026-10-02).
     NtsTaxType {
         General => "01",
         Simplified => "02",
@@ -38,15 +41,16 @@ code_enum! {
 }
 
 code_enum! {
-    /// 발급 사유 kind. No official list exists; the printed text is always kept.
+    /// Issue reason kind. No official list exists; the printed text is always kept.
     IssueReasonKind { New => "NEW", Reissue => "REISSUE", Correction => "CORRECTION", OtherAsPrinted => "OTHER_AS_PRINTED" }
 }
 
 code_enum! {
-    /// Why a newly issued 사업자등록증 is recorded (등록증 재발급·정정): 재발급
-    /// (lost or damaged, the facts unchanged), 정정 신고 (the facts changed
-    /// from a date, 부가세법 §11), or 오류 정정 (the record was wrong from the
-    /// start; the certificate is the evidence). The revision's reason code.
+    /// Why a newly issued business registration certificate is recorded
+    /// (certificate reissue / correction): reissue (lost or damaged, the facts
+    /// unchanged), correction report (the facts changed from a date, VAT Act
+    /// §11), or error correction (the record was wrong from the start; the
+    /// certificate is the evidence). The revision's reason code.
     CertificateRevisionReason {
         Reissue => "CERT_REISSUE",
         ChangeReport => "CERT_CHANGE_REPORT",
@@ -55,7 +59,7 @@ code_enum! {
 }
 
 code_enum! {
-    /// 정정 sub-reason (부가세법 시행령 §14①).
+    /// Correction sub-reason (Enforcement Decree of the VAT Act §14①).
     CorrectionReason {
         TradeName => "TRADE_NAME",
         Relocation => "RELOCATION",
@@ -67,7 +71,8 @@ code_enum! {
 }
 
 code_enum! {
-    /// VAT unit of the 법인 (부가세법 §8③ 사업자단위과세, §51 주사업장 총괄납부).
+    /// VAT unit of the legal entity (VAT Act §8③ business-unit taxation, §51
+    /// principal-workplace consolidated payment).
     VatUnitMode { PerWorkplace => "PER_WORKPLACE", ConsolidatedPayment => "CONSOLIDATED_PAYMENT", UnitTaxation => "UNIT_TAXATION" }
 }
 
@@ -82,23 +87,26 @@ code_enum! {
 }
 
 code_enum! {
-    /// 원천징수 단위 of a 사업장 (소득세법 §7①3·4; 원천징수사무처리규정 §34).
+    /// Withholding unit of a workplace (Income Tax Act §7①3·4; Withholding Tax
+    /// Administration Regulation §34).
     WithholdingMode { HeadOffice => "HEAD_OFFICE", OwnIndependentAccounts => "OWN_INDEPENDENT_ACCOUNTS", HeadOfficeBulk => "HEAD_OFFICE_BULK" }
 }
 
 code_enum! {
-    /// Confirmed status of a registration or 사업장 (부가세법 §8⑧ 휴업·폐업).
+    /// Confirmed status of a registration or workplace (VAT Act §8⑧ business
+    /// suspension / closure).
     OperatingStatus { Continuing => "CONTINUING", Suspended => "SUSPENDED", Closed => "CLOSED" }
 }
 
 code_enum! {
-    /// Why a 법인 closed (MR-15): 해산 (the 법인 is dissolved) or 폐업 (the
-    /// business ends). Recorded with `legal_entities.closed_on`, once.
+    /// Why a legal entity closed (MR-15): dissolution (the legal entity is
+    /// dissolved) or business closure (the business ends). Recorded with
+    /// `legal_entities.closed_on`, once.
     CloseReason { Dissolved => "DISSOLVED", BusinessClosed => "BUSINESS_CLOSED" }
 }
 
 code_enum! {
-    /// Why a 사업자등록번호 is not entered yet.
+    /// Why a business registration number is not entered yet.
     BrnPendingReason { NewRegistrationPending => "NEW_REGISTRATION_PENDING" }
 }
 
@@ -116,8 +124,9 @@ code_enum! {
 }
 
 code_enum! {
-    /// 보험관계 status. ESTABLISHED_NUMBER_PENDING: 성립했지만 번호는 나중에
-    /// (challenge A-8) — a to-do, no clock, blocks only the first 취득/상실 filing.
+    /// Insurance relationship status. ESTABLISHED_NUMBER_PENDING: established,
+    /// but the number comes later (challenge A-8) — a to-do, no clock, blocks
+    /// only the first acquisition / loss filing.
     InsuranceStatus {
         NotEstablished => "NOT_ESTABLISHED",
         Established => "ESTABLISHED",
@@ -127,7 +136,7 @@ code_enum! {
 }
 
 code_enum! {
-    /// 분리적용 or part of the 주된 사업장 (공통서식).
+    /// Separate application or part of the main workplace (common form).
     InsuranceUnitMode { Own => "OWN", PartOf => "PART_OF" }
 }
 
@@ -140,7 +149,8 @@ code_enum! {
 }
 
 code_enum! {
-    /// 우선지원대상기업 (고용보험법 시행령 §12).
+    /// Priority support enterprise (Enforcement Decree of the Employment
+    /// Insurance Act §12).
     PrioritySupport { Yes => "YES", No => "NO" }
 }
 
@@ -149,13 +159,13 @@ code_enum! {
 }
 
 code_enum! {
-    /// Address provenance: a 도로명주소 search result, or structured manual entry
-    /// (juso unavailable; re-matched later, shown with 「주소 검증 필요」).
+    /// Address provenance: a road-name address search result, or structured
+    /// manual entry (juso unavailable; re-matched later, shown with "address needs verification").
     AddressSource { Juso => "JUSO", ManualUnverified => "MANUAL_UNVERIFIED" }
 }
 
 code_enum! {
-    /// One-choice 4대보험 setup shortcut (no default).
+    /// One-choice setup shortcut for the four social insurances (no default).
     InsuranceShortcut {
         AllEstablishedNumbersLater => "ALL_ESTABLISHED_NUMBERS_LATER",
         AllEstablishedNow => "ALL_ESTABLISHED_NOW",

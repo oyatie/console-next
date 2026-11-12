@@ -1,7 +1,7 @@
 use crate::*;
 
 impl PgOrgChangeStore {
-    /// Apply an APPROVED request on or after its 시행일. `holds_apply`: the
+    /// Apply an APPROVED request on or after its effective date. `holds_apply`: the
     /// caller holds `org_change_apply`. Without it only a tenant on
     /// `approval.policy.org_structure = none` admits the apply (decisions
     /// #26: the change needs no approval, so whoever may propose it may apply
@@ -50,12 +50,12 @@ impl PgOrgChangeStore {
     }
 }
 
-/// Apply an APPROVED request whose 시행일 has come (`today`, KST; the
+/// Apply an APPROVED request whose effective date has come (`today`, KST; the
 /// scheduled-change worker passes its own), inside the caller's transaction:
-/// every kind replays its ops and is APPLIED. A 폐지 closes the unit on its
-/// 시행일 (org-05): the people and sub-units it moves go first, as ops of the
-/// same change, and no tick list follows. The people the ops moved are the
-/// change's 영향 인원 (org-01, org-04). Shared by
+/// every kind replays its ops and is APPLIED. An abolition closes the unit on
+/// its effective date (org-05): the people and sub-units it moves go first, as
+/// ops of the same change, and no tick list follows. The people the ops moved
+/// are the change's affected headcount (org-01, org-04). Shared by
 /// [`PgOrgChangeStore::effectuate`], a submit under
 /// `approval.policy.org_structure = none` (decisions #26) and the worker.
 pub(crate) async fn effectuate_in_tx(

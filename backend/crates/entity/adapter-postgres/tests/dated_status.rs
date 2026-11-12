@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R1 ENTITY company-06 (catalog company-07) as `console_rt`: 휴업 is a
-//! dated status revision of a 사업장 or a 사업자등록 with its expected end, and
-//! 재개 a later revision back to 계속. A wrong expected end is refused with
-//! nothing written.
+//! UX-R1 ENTITY company-06 (catalog company-07) as `console_rt`: business suspension is a
+//! dated status revision of a workplace or a business registration with its expected end,
+//! and resumption a later revision back to continuing. A wrong expected end is refused
+//! with nothing written.
 
 mod common;
 
@@ -70,7 +70,7 @@ async fn a_workplace_suspends_with_its_expected_end_and_resumes(owner: PgPool) {
         .record
         .id;
 
-    // Refusals: an end before the start, and an end on a 계속 status. Nothing is written.
+    // Refusals: an end before the start, and an end on a continuing status. Nothing is written.
     for (status, since, until, field_code) in [
         (
             "SUSPENDED",
@@ -113,7 +113,7 @@ async fn a_workplace_suspends_with_its_expected_end_and_resumes(owner: PgPool) {
         Some("2026-12-31".into())
     );
 
-    // 재개: back to 계속; the expected end goes with the 휴업.
+    // Resumption: back to continuing; the expected end goes with the business suspension.
     let mut back = suspend(reg, 2, "CONTINUING", None, None);
     back.effective_from = Some("2026-03-02".into());
     let resumed = store

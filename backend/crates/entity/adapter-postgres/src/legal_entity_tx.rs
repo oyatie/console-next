@@ -1,5 +1,6 @@
-//! 법인 writes inside the caller's transaction: the one-by-one create,
-//! revise and void (`legal_entity.rs`) and the bulk batch (MR-29) share them.
+//! Legal entity writes inside the caller's transaction: the one-by-one
+//! create, revise and void (`legal_entity.rs`) and the bulk batch (MR-29)
+//! share them.
 
 use console_entity_application::{Actor, LegalEntityRevision};
 use console_entity_domain::codes::VatUnitMode;
@@ -16,8 +17,8 @@ use crate::revision_copy::{RevisionAt, append_renamed_registrations};
 use crate::site_unit::{dissolve_sites, ensure_unused};
 use crate::{Admitted, PgEntityError, RevisionMeta, Tx, audit, today_kst};
 
-/// Register a 법인 inside the caller's transaction, admitted as `admitted`
-/// (the one-by-one create and the bulk batch share it).
+/// Register a legal entity inside the caller's transaction, admitted as
+/// `admitted` (the one-by-one create and the bulk batch share it).
 pub(crate) async fn create_entity_in_tx(
     tx: &mut Tx<'_>,
     actor: &Actor,
@@ -38,8 +39,9 @@ pub(crate) async fn create_entity_in_tx(
     .fetch_one(tx.as_mut())
     .await?;
     let vat = draft.declared_vat_unit_mode.map(|m| (m, "DECLARED"));
-    // INTEG-3: the first record starts at 설립일 when it is known, else at the
-    // 개업연월일 of the certificate typed with it (company-21), else today.
+    // INTEG-3: the first record starts at the incorporation date when it is
+    // known, else at the business start date of the certificate typed with it
+    // (company-21), else today.
     let effective_from = draft.incorporated_on.or(draft.opened_on).unwrap_or(today);
     let meta = RevisionMeta {
         version: 1,
@@ -61,7 +63,7 @@ pub(crate) async fn create_entity_in_tx(
     Ok((id, warnings, event))
 }
 
-/// Append a full-state revision of 법인 `id` inside the caller's transaction.
+/// Append a full-state revision of legal entity `id` inside the caller's transaction.
 pub(crate) async fn revise_entity_in_tx(
     tx: &mut Tx<'_>,
     actor: &Actor,
@@ -95,7 +97,7 @@ pub(crate) async fn revise_entity_in_tx(
     }
     crate::ensure_version(env.expected_version, head.try_get("version")?)?;
     let today = today_kst(tx).await?;
-    // 설립 중 is the record's, never the client's: it only ever ends (0308).
+    // "Being incorporated" is the record's, never the client's: it only ever ends (0308).
     let input = LegalEntityInput {
         founding: Some(head.try_get("founding")?),
         opened_on: None,
@@ -169,7 +171,7 @@ pub(crate) async fn revise_entity_in_tx(
     Ok((warnings, event))
 }
 
-/// Void 법인 `id` (setup undo) inside the caller's transaction.
+/// Void legal entity `id` (setup undo) inside the caller's transaction.
 pub(crate) async fn void_entity_in_tx(
     tx: &mut Tx<'_>,
     actor: &Actor,

@@ -1,6 +1,6 @@
 import { useId, useRef } from "react";
 import { Check, ChevronRight, Network, TriangleAlert, X } from "lucide-react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { BizKind } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
@@ -17,14 +17,21 @@ import { RegistryForm } from "./create-registry-form";
 import { ReviewStep } from "./create-review-step";
 import { useCreate, WIZARD_DRAFT, type CreateState, type Then } from "./use-create";
 import s from "./entity-create.module.css";
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { Muted } from "../../../ui/muted/muted";
+
+const route = getRouteApi("/app/org/entities/new");
+export function NewEntityScreen() {
+  const { kind, name } = route.useSearch();
+  return <AccessGate domain="org" level="edit" tenant><EntityWizard kind={kind} name={name} /></AccessGate>;
+}
 
 /**
  * add entity as a full page (spec S4, D9): basics → certificate → (corporations) registry → review, with the certificate
  * typed beside its kept original. Any step can save what is there ("save so far"); only a value that cannot be
  * right holds the save and the next step back, and the foot names those fields.
  */
-export function EntityWizard({ kind, name }: { kind?: BizKind; name?: string }) {
+function EntityWizard({ kind, name }: { kind?: BizKind; name?: string }) {
   // A wizard opened from the quick sheet starts from what it chose, never from an older kept draft.
   const entry = useLocation({ select: (l) => l.state.key });
   const c = useCreate({ bizKind: kind ?? null, name: name ?? "" }, kind && name ? undefined : { key: WIZARD_DRAFT, entry });

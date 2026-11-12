@@ -1,38 +1,46 @@
-//! 근로기준법 시행령 §2①: the eight classes of period removed from the
-//! average-wage window, and the span each one actually removes.
+//! Enforcement Decree of the Labor Standards Act §2①: the eight classes of
+//! period removed from the average-wage window, and the span each one actually
+//! removes.
 //!
-//! §2② (임시로 지급된 임금·수당, 통화 외 임금) shapes the wage total, not the
-//! days; it belongs to whoever sums the wages.
+//! §2② (wages and allowances paid temporarily, wages paid other than in
+//! currency) shapes the wage total, not the days; it belongs to whoever sums
+//! the wages.
 
 use console_kernel_core::KernelError;
 use time::Date;
 
-/// Why a span leaves the window: exactly the 영 §2① 각 호, nothing else.
-/// A 휴업 that is neither 사용자 귀책 (2호) nor approved by the employer
-/// (8호) has no variant, so it can never be excluded.
+/// Why a span leaves the window: exactly the items of Decree §2①, nothing else.
+/// A suspension of work that is neither attributable to the employer (item 2)
+/// nor approved by the employer (item 8) has no variant, so it can never be
+/// excluded.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExclusionReason {
-    /// 1호: 수습 — only the 3 months from the day 수습 started.
+    /// Item 1: probation — only the 3 months from the day probation started.
     Probation,
-    /// 2호: 법 §46 사용자의 귀책사유로 휴업한 기간.
+    /// Item 2: Act §46, a period of work suspension for a reason attributable
+    /// to the employer.
     EmployerFaultShutdown,
-    /// 3호: 법 §74①–③ 출산전후휴가 및 유산·사산 휴가.
+    /// Item 3: Act §74①–③, maternity leave before and after childbirth, and
+    /// miscarriage or stillbirth leave.
     MaternityLeave,
-    /// 4호: 법 §78 업무상 부상·질병 요양 휴업.
+    /// Item 4: Act §78, time off for medical care of an occupational injury or
+    /// illness.
     OccupationalInjuryLeave,
-    /// 5호: 남녀고용평등법 §19 육아휴직.
+    /// Item 5: Equal Employment Opportunity Act §19, childcare leave.
     ChildcareLeave,
-    /// 6호: 노동조합법 §2(6) 쟁의행위기간.
+    /// Item 6: Trade Union Act §2(6), a period of industrial action.
     IndustrialAction,
-    /// 7호: 병역법·예비군법·민방위기본법 의무 이행 휴직·결근.
-    /// 단서: not excluded when wages were paid for it.
+    /// Item 7: leave or absence to perform a duty under the Military Service
+    /// Act, the Reserve Forces Act or the Framework Act on Civil Defense.
+    /// Proviso: not excluded when wages were paid for it.
     MilitaryDuty { paid: bool },
-    /// 8호: 업무 외 부상·질병, 그 밖의 사유로 사용자의 승인을 받아 휴업한 기간.
+    /// Item 8: a period off work, with the employer's approval, for a
+    /// non-occupational injury or illness or another reason.
     ApprovedLeave,
 }
 
 impl ExclusionReason {
-    /// The 영 §2① 호 this class is, for the audit trail.
+    /// The Decree §2① item this class is, for the audit trail.
     #[must_use]
     pub const fn decree_item(self) -> u8 {
         match self {
@@ -49,7 +57,7 @@ impl ExclusionReason {
 }
 
 /// A recorded span, both ends inclusive. For [`ExclusionReason::Probation`]
-/// `from` must be the day 수습 started, not a date clipped to the window.
+/// `from` must be the day probation started, not a date clipped to the window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExclusionPeriod {
     pub from: Date,
@@ -58,8 +66,8 @@ pub struct ExclusionPeriod {
 }
 
 impl ExclusionPeriod {
-    /// The part 영 §2① removes, before clipping to the window; `None` when
-    /// the class removes nothing (7호 단서: paid).
+    /// The part Decree §2① removes, before clipping to the window; `None` when
+    /// the class removes nothing (item 7 proviso: paid).
     pub(super) fn statutory_span(&self) -> Result<Option<(Date, Date)>, KernelError> {
         if self.to < self.from {
             return Err(KernelError::validation(
@@ -75,9 +83,9 @@ impl ExclusionPeriod {
     }
 }
 
-/// Last day of 「수습을 시작한 날부터 3개월 이내」: the day before the
+/// Last day of "within 3 months from the day probation started": the day before the
 /// corresponding day 3 months on, or that month's last day when there is
-/// none (민법 §160②③: 11/30 → 2/28).
+/// none (Civil Act §160②③: 11/30 → 2/28).
 fn probation_last_day(start: Date) -> Result<Date, KernelError> {
     super::months_before(start, -3)?
         .previous_day()
@@ -96,7 +104,7 @@ mod tests {
 
     #[test]
     fn decree_has_exactly_eight_classes() {
-        // 영 §2① 1호–8호; the paid flag does not change the class.
+        // Decree §2① items 1–8; the paid flag does not change the class.
         let items: Vec<u8> = [
             ExclusionReason::Probation,
             ExclusionReason::EmployerFaultShutdown,
@@ -114,7 +122,7 @@ mod tests {
 
     #[test]
     fn probation_counts_only_its_first_three_months() {
-        // 영 §2①1: 수습 6/15–10/31 removes 6/15–9/14; in the 7/1–9/30
+        // Decree §2①1: probation 6/15–10/31 removes 6/15–9/14; in the 7/1–9/30
         // window that is 7/1–9/14 = 76 days, leaving 16.
         let p = period(
             date!(2026 - 06 - 15),
@@ -131,7 +139,7 @@ mod tests {
 
     #[test]
     fn probation_cap_uses_month_end_without_a_corresponding_day() {
-        // 영 §2①1 with 민법 §160③: started 11/30 → last excluded day 2/28.
+        // Decree §2①1 with Civil Act §160③: started 11/30 → last excluded day 2/28.
         let p = period(
             date!(2025 - 11 - 30),
             date!(2026 - 05 - 31),
@@ -145,7 +153,8 @@ mod tests {
 
     #[test]
     fn paid_military_duty_is_not_excluded() {
-        // 영 §2①7 단서: 그 기간 중 임금을 지급받은 경우에는 그러하지 아니하다.
+        // Decree §2①7 proviso: "This shall not apply where wages were paid
+        // during that period."
         let exit = date!(2026 - 09 - 30);
         let duty = |paid| {
             period(
@@ -162,7 +171,7 @@ mod tests {
 
     #[test]
     fn other_classes_remove_the_whole_recorded_span() {
-        // 영 §2①2–6, 8: no cap; only the window clips them.
+        // Decree §2①2–6, 8: no cap; only the window clips them.
         for reason in [
             ExclusionReason::EmployerFaultShutdown,
             ExclusionReason::MaternityLeave,

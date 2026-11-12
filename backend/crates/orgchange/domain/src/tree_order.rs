@@ -1,5 +1,5 @@
 //! The one order every org-unit surface shows (the chart's): each parent
-//! before its children, depth first; siblings by their stored 순서, the
+//! before its children, depth first; siblings by their stored order, the
 //! unplaced after them by name (byte order, the SQL `COLLATE "C"`), then id.
 
 use std::cmp::Ordering;

@@ -34,7 +34,8 @@ impl PgOrgChangeStore {
                     actor,
                     patch.proposal.as_deref().unwrap_or(&request.proposal),
                 )?;
-                // 예약 수정 (org-02): a scheduled change moves its date or reason.
+                // Scheduled-change edit (org-02): a scheduled change moves its
+                // date or reason.
                 if request.status == OrgChangeStatus::Approved {
                     let holds_apply = super::draft_admission::allows(
                         &access,

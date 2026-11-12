@@ -14,11 +14,11 @@
 //! Four deliberate differences, each with a reason:
 //!
 //! 1. SCOPE IS THE DECLARED PAY PERIOD, BY EQUALITY. The script scoped with
-//!    `source_filename LIKE '2026/5월/%'` — one operator's folder layout, and the
-//!    only thing keeping material from the wrong month out of a roster.
-//!    `data_import_runs.pay_period_*` (migration 0224) replaces it. Equality, not
-//!    overlap: an import declared for May is material for the May run, not for a
-//!    run that happens to straddle May.
+//!    a `source_filename LIKE` on the 2026 May folder (named in Korean) — one
+//!    operator's folder layout, and the only thing keeping material from the
+//!    wrong month out of a roster. `data_import_runs.pay_period_*` (migration
+//!    0224) replaces it. Equality, not overlap: an import declared for May is
+//!    material for the May run, not for a run that happens to straddle May.
 //! 2. NO `leave_remaining` ADMISSION DISJUNCT. The script admitted an employee
 //!    with `leave_remaining > 0` and no imported rows at all. Such a line carries
 //!    no attendance and no payroll evidence, so it exists only to be counted —
@@ -243,8 +243,8 @@ ON CONFLICT (org_id, run_id, employee_source_key) DO UPDATE SET
 /// caller stages runs from a workflow drain that leaves a failed event PENDING
 /// without incrementing its attempt count, so returning `Err` here would be an
 /// unbounded hot retry. The close preflight already refuses an empty roster
-/// legibly, with `명세 대상 없음(로스터 0명)`, which is where an operator should
-/// meet this problem.
+/// legibly, with its "no payslip subjects (roster: 0 people)" blocker, which is
+/// where an operator should meet this problem.
 pub async fn materialise_roster_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org_id: Uuid,

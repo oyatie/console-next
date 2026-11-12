@@ -76,7 +76,7 @@ pub(crate) fn push_dependent(
         return;
     }
     if kind == OrgChangeKind::Dissolve {
-        // Dissolve resolves dependents during 정산; archive re-verifies.
+        // Dissolve resolves dependents during settlement; archive re-verifies.
         warnings.push(PreflightWarning {
             code: code.to_owned(),
             label: label.to_owned(),

@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { ReadSkeleton } from "../ui/skeleton/skeleton";
 import { readRequirement } from "./route-reads";
 import { TABS, type Tab } from "../features/entity/domain/tabs";
 import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
@@ -18,7 +20,8 @@ const newEntity = createRoute({
   getParentRoute: () => app,
   path: "/org/entities/new", staticData: { access: readRequirement("/org/entities/new") },
   validateSearch: (s: Record<string, unknown>): { kind?: Kind; name?: string } => ({ kind: KINDS.includes(s.kind as Kind) ? (s.kind as Kind) : undefined, name: str(s.name) }),
-  component: lazyRouteComponent(screen(load), "NewEntityScreen"),
+  component: lazyRouteComponent(screen(() => import("../features/entity/ui/entity-wizard")), "NewEntityScreen"),
+  pendingComponent: () => createElement(ReadSkeleton, { layout: "form" }),
 });
 const entity = createRoute({
   getParentRoute: () => app,
@@ -26,7 +29,8 @@ const entity = createRoute({
   // `wp` opens the workplaces tab with that workplace selected (setup and Home link straight to it). `reissue` opens the
   // certificate reissue sheet for that registration (its one host; the workplace panel on the chart links here).
   validateSearch: (s: Record<string, unknown>): { wp?: string; as_of?: string; known_at?: string; tab?: Tab; reissue?: string; nts?: string } => ({ wp: str(s.wp), as_of: str(s.as_of), known_at: str(s.known_at), tab: TABS.includes(s.tab as Tab) ? s.tab as Tab : undefined, reissue: str(s.reissue), nts: str(s.nts) }),
-  component: lazyRouteComponent(screen(load), "EntityScreen"),
+  component: lazyRouteComponent(screen(() => import("../features/entity/ui/entity-record")), "EntityScreen"),
+  pendingComponent: () => createElement(ReadSkeleton, { layout: "record" }),
 });
 const newWorkplace = createRoute({ getParentRoute: () => app, path: "/org/entities/$id/workplaces/new", staticData: { access: readRequirement("/org/entities/$id/workplaces/new") }, component: lazyRouteComponent(screen(load), "NewWorkplaceScreen") });
 

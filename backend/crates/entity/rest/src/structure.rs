@@ -1,8 +1,9 @@
-//! 회사 구조 labels (review R15, R16): a 사업장's code takes
-//! `legal_entity_manage` on that 사업장; the order of a 법인's 사업장 takes it
-//! on the 법인, the order of the tenant's 법인 on the tenant (a tenant grant,
-//! like a new 법인); the order of 부서 takes the org-change apply permission,
-//! like every other setup 부서 write.
+//! Company structure labels (review R15, R16): a workplace's code takes
+//! `legal_entity_manage` on that workplace; the order of a legal entity's
+//! workplaces takes it on the legal entity, the order of the tenant's legal
+//! entities on the tenant (a tenant grant, like a new legal entity); the order
+//! of departments takes the org-change apply permission, like every other
+//! setup department write.
 
 use axum::Json;
 use axum::extract::{Path, State};

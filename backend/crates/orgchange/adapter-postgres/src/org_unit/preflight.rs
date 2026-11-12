@@ -42,13 +42,14 @@ pub(crate) async fn org_unit_preflight(
         "소속 직원(휴직자 포함) 전보 필요",
     );
     const CHILDREN: (&str, &str) = ("ORG_UNIT_ACTIVE_CHILDREN", "하위 조직 해산·이동 필요");
-    // A 사업장's own unit is renamed and closed with its 사업장 (decisions #14.1, #18).
+    // A workplace's own unit is renamed and closed with its workplace
+    // (decisions #14.1, #18).
     const WORKPLACE: (&str, &str) = (
         "ORG_UNIT_SITE_IS_WORKPLACE",
         "rename or close the workplace instead",
     );
     // What earlier ops of this change carry out of a unit before it is
-    // dissolved (one 폐지 sheet moves people and sub-units first, org-06).
+    // dissolved (one abolition sheet moves people and sub-units first, org-06).
     let mut carried_all: Vec<Uuid> = Vec::new();
     let mut carried_people: Vec<Uuid> = Vec::new();
     let mut carried_units: Vec<Uuid> = Vec::new();
@@ -161,8 +162,8 @@ pub(crate) fn port_refusal(error: KernelError) -> PgOrgChangeError {
     ))
 }
 
-/// Whether `unit` is a 사업장's own SITE unit (an open placement that
-/// represents the 사업장; SELECT only, the entity face owns the writes).
+/// Whether `unit` is a workplace's own SITE unit (an open placement that
+/// represents the workplace; SELECT only, the entity face owns the writes).
 pub(crate) async fn represents_workplace(
     tx: Tx<'_, '_>,
     unit: Uuid,

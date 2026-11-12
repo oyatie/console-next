@@ -1,4 +1,4 @@
-//! 법인 writes: create, revise (full state, effective-dated), roles, void.
+//! Legal entity writes: create, revise (full state, effective-dated), roles, void.
 
 use console_entity_application::{
     Actor, EntityRoles, LegalEntityRevision, LegalEntityView, Saved, VoidRecord,
@@ -46,10 +46,10 @@ impl PgEntityStore {
         .await
     }
 
-    /// Register a 법인 / 개인사업자 (SETUP: immediate; OPERATING: governed).
+    /// Register a legal entity / sole proprietor (SETUP: immediate; OPERATING: governed).
     ///
     /// # Errors
-    /// Field issues, duplicate 법인등록번호, or database faults.
+    /// Field issues, duplicate corporate registration number, or database faults.
     pub async fn create_entity(
         &self,
         actor: &Actor,
@@ -96,8 +96,9 @@ impl PgEntityStore {
     }
 
     /// A new revision with the full state. Confirms a migrated or vendor draft
-    /// (clears `needs_confirmation`). A set 사업자 구분 or 법인등록번호 is not
-    /// changed here: `use_identifier_correction` (MR-17); a missing one is filled.
+    /// (clears `needs_confirmation`). A set business type or corporate
+    /// registration number is not changed here: `use_identifier_correction`
+    /// (MR-17); a missing one is filled.
     ///
     /// # Errors
     /// Field issues, `use_identifier_correction`, or database faults.
@@ -146,7 +147,8 @@ impl PgEntityStore {
         .await
     }
 
-    /// Set 대표 사업장 / 본점 사업장 (or 「본점은 사무실만 있음」).
+    /// Set the representative workplace / head-office workplace (or "the head
+    /// office is an office only").
     ///
     /// # Errors
     /// `workplace_of_other_entity`, field issues, or database faults.
@@ -204,8 +206,9 @@ impl PgEntityStore {
         .await
     }
 
-    /// Undo a mistaken 법인 during setup, with its own 사업장 and 등록. Refused
-    /// when people or org units point at it (the refusal says which).
+    /// Undo a mistaken legal entity during setup, with its own workplaces and
+    /// registrations. Refused when people or org units point at it (the
+    /// refusal says which).
     ///
     /// # Errors
     /// `phase_not_setup`, `record_in_use`, or database faults.
@@ -248,8 +251,8 @@ pub(crate) fn void_reason(raw: Option<&str>) -> Result<String, PgEntityError> {
     Ok(is.finish_opt(|| reason)?.as_str().to_owned())
 }
 
-/// One 법인 within `granted` (`None`: the whole tenant, as every writer
-/// reading back its own record).
+/// One legal entity within `granted` (`None`: the whole tenant, as every
+/// writer reading back its own record).
 pub(crate) async fn one(
     tx: &mut Tx<'_>,
     id: Uuid,
@@ -263,7 +266,7 @@ pub(crate) async fn one(
         .ok_or_else(|| Refusal::not_found("legal_entity_not_found").into())
 }
 
-/// A replayed 법인 command: the record as it is now, saved as it was then.
+/// A replayed legal entity command: the record as it is now, saved as it was then.
 pub(crate) async fn replay(
     tx: &mut Tx<'_>,
     done: Outcome,

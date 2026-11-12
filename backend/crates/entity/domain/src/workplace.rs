@@ -1,4 +1,4 @@
-//! Workplace (사업장): input validation and the derived 원천징수 unit.
+//! Workplace: input validation and the derived withholding unit.
 
 use console_kernel_core::kr::{Email, PhoneE164, SubWorkplaceSerial};
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ pub struct WorkplaceInput {
     pub name: Option<String>,
     pub registration_id: Option<Uuid>,
     pub sub_serial: Option<String>,
-    /// Reuse the registration's 사업장 소재지 (the certificate's own 사업장).
+    /// Reuse the registration's workplace address (the certificate's own workplace).
     #[serde(default)]
     pub same_address_as_registration: bool,
     pub address: Option<AddressInput>,
@@ -36,7 +36,7 @@ pub struct WorkplaceInput {
     pub insurance: Option<InsuranceSetupInput>,
     pub status: Option<String>,
     pub status_since: Option<String>,
-    /// 휴업's expected end (SUSPENDED only).
+    /// The business suspension's expected end (SUSPENDED only).
     pub status_until: Option<String>,
     pub is_abstract: Option<bool>,
     pub reg_mode: Option<String>,
@@ -84,7 +84,7 @@ pub struct WorkplaceDraft {
 #[derive(Debug, Clone, Copy)]
 pub struct WorkplaceContext {
     pub biz_kind: Option<BizKind>,
-    /// The chosen registration is a 사업자단위과세 one held by another 사업장.
+    /// The chosen registration is a business-unit taxation one held by another workplace.
     pub registration_is_unit_taxation_of_other: bool,
     pub creating: bool,
 }
@@ -181,7 +181,7 @@ pub fn validate_workplace_resolved(
         500,
         input.independent_lsa_unit == Some(true),
     );
-    // Create: a 사업장 is created CONTINUING (closing is a later revision).
+    // Create: a workplace is created CONTINUING (closing is a later revision).
     // Revise: the full state is sent, so the status is required.
     let status = is
         .choice(
@@ -254,18 +254,18 @@ pub fn validate_workplace_resolved(
     })
 }
 
-/// Where a 사업장's 원천세 is filed (challenge A-4: derived, with its basis).
+/// Where a workplace's withholding tax is filed (challenge A-4: derived, with its basis).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum WithholdingTarget {
-    /// This 사업장 is its own unit.
+    /// This workplace is its own unit.
     SelfUnit { basis: &'static str },
-    /// Filed through another 사업장 (the 본점).
+    /// Filed through another workplace (the head office).
     Workplace {
         workplace_id: Uuid,
         basis: &'static str,
     },
-    /// The 본점 is an office with no 사업장 record.
+    /// The head office is an office with no workplace record.
     EntityHeadOffice { basis: &'static str },
     /// Not decidable yet; the fix is named.
     Undecided { remedy: &'static str },
@@ -281,10 +281,10 @@ pub struct WithholdingFacts {
     pub head_office_has_no_workplace: bool,
 }
 
-/// 소득세법 §7①3: a 법인's 원천징수 납세지 is its 본점 unless the 지점 keeps
-/// independent accounts (§7①4) or bulk filing is approved (규정 §34).
-/// For a 개인사업자 the rule (§7①1) is UNKNOWN pending verification, so the
-/// mode must be chosen (no default).
+/// Income Tax Act §7①3: a legal entity's withholding tax place is its head
+/// office unless the branch keeps independent accounts (§7①4) or bulk filing
+/// is approved (Regulation §34). For a sole proprietor the rule (§7①1) is
+/// UNKNOWN pending verification, so the mode must be chosen (no default).
 #[must_use]
 pub fn withholding_target(f: WithholdingFacts) -> WithholdingTarget {
     const HEAD: &str = "income_tax_act_7_1_3";

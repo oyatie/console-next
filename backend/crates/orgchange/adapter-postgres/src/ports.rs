@@ -21,9 +21,9 @@ pub trait SoleHolderDecisionPort: Send + Sync {
     ) -> OrgUnitWriteFuture<'tx>;
 }
 
-/// Why people move: the org change that moves them and its 시행일. Every
+/// Why people move: the org change that moves them and its effective date. Every
 /// event the move records carries the change's id as its batch, so a person's
-/// 인사 이력 links back to the change.
+/// HR history links back to the change.
 #[derive(Debug, Clone)]
 pub struct PeopleMoveCause {
     pub request_id: Uuid,
@@ -36,8 +36,8 @@ pub struct PeopleMoveCause {
 #[derive(Debug, Clone)]
 pub enum PeopleMove {
     /// `REASSIGN_ORG_UNIT`: the members of `from` (every one, or only
-    /// `people`) go to `to` — a 전보, and a 전근 too when `to` sits at another
-    /// 사업장.
+    /// `people`) go to `to` — a reassignment, and a relocation too when `to`
+    /// sits at another workplace.
     Reassign {
         from: Uuid,
         to: Uuid,
@@ -45,7 +45,7 @@ pub enum PeopleMove {
     },
     /// `MOVE_ORG_UNIT`: the members of `units` (the moved unit and its
     /// subtree, already re-parented in this transaction) stay in their unit
-    /// and follow its 사업장 — a 전근 for each whose 사업장 changes.
+    /// and follow its workplace — a relocation for each whose workplace changes.
     Follow { units: Vec<Uuid> },
 }
 
@@ -69,16 +69,16 @@ pub type TransferPortFuture<'a> = std::pin::Pin<
 /// The people-move seam, declared by the CONSUMER because the layer-boundary
 /// gate forbids one adapter depending on another. The composition root
 /// (`console-app`) implements it over the owners' own writes — hr's lifecycle
-/// record (the dated 전보/전근 event) and entity's assignment split — so this
-/// crate keeps the org-change apply transaction and compiles no Employment DML.
-/// The 사업장 a unit sits at is the ONE resolver's (the unit's nearest placed
-/// ancestor, `employment_hire::unit_placement`).
+/// record (the dated reassignment/relocation event) and entity's assignment
+/// split — so this crate keeps the org-change apply transaction and compiles no
+/// Employment DML. The workplace a unit sits at is the ONE resolver's (the
+/// unit's nearest placed ancestor, `employment_hire::unit_placement`).
 pub trait EmploymentTransferPort: Send + Sync {
     /// Move `what` inside the caller's org-armed apply transaction. A person
-    /// the move does not change (already at that 사업장 and unit) is skipped.
-    /// A refusal (a 법인 crossed, a closed period, a later scheduled event the
-    /// move would break) keeps its kind and code, and the whole change rolls
-    /// back.
+    /// the move does not change (already at that workplace and unit) is
+    /// skipped. A refusal (a legal entity crossed, a closed period, a later
+    /// scheduled event the move would break) keeps its kind and code, and the
+    /// whole change rolls back.
     fn move_people<'tx>(
         &self,
         tx: &'tx mut Transaction<'_, Postgres>,

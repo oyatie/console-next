@@ -4,7 +4,7 @@
 //!
 //! Proves:
 //!  * `GET /api/v1/payroll/payslips/me` is draft READINESS, not issued
-//!    명세서: no vault document fields (`kind`, `legal_basis`,
+//!    payslips: no vault document fields (`kind`, `legal_basis`,
 //!    `confirmed_at`, inbox doc id) and no won amounts;
 //!  * it is self-scoped, not `PayrollRunRead`-gated, mirroring
 //!    `GET /api/v1/hr/attendance-records/me`: MEMBER without that capability
@@ -466,7 +466,7 @@ fn assert_payslips_me_is_own_readiness(body: &Value, expected_run: Uuid, forbidd
 
     // Item keys plus one nested object level: none may contain "won"
     // (`gross_won`, `net_won`, `amount_won`, `total_deductions_won`,
-    // `monthly_remuneration_won`, …). This is not the issued 명세서
+    // `monthly_remuneration_won`, …). This is not the issued payslip
     // (`GET /api/v1/me/inbox-docs?filter=payslip`).
     for key in object_keys_one_level(item) {
         assert!(

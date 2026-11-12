@@ -4,9 +4,10 @@
 //!
 //! - [`move_in_tx`] splits the employee's assignment on the event date: the
 //!   covering row ends there (`valid_to` is exclusive) and a row at the new
-//!   법인 · 사업장 starts. 전근 (`TRANSFER`, same 법인) and 전적
-//!   (`GROUP_TRANSFER`, another 법인) differ only in the cause and the
-//!   `group_transfer_id`; which move is lawful is hr's decision.
+//!   legal entity · workplace starts. A relocation (`TRANSFER`, same legal
+//!   entity) and a group transfer (`GROUP_TRANSFER`, another legal entity)
+//!   differ only in the cause and the `group_transfer_id`; which move is
+//!   lawful is hr's decision.
 //! - [`undo_move_in_tx`] reverses the move of the employee's latest event
 //!   when it is rescinded or corrected: the row the move started and the row
 //!   it ended are superseded, and one row spanning both takes their place.
@@ -85,7 +86,7 @@ pub async fn placement_on(
     row.as_ref().map(placement).transpose().map_err(internal)
 }
 
-/// The 법인 of an open 사업장 (neither closed nor voided, nor its 법인).
+/// The legal entity of an open workplace (neither closed nor voided, nor its legal entity).
 ///
 /// # Errors
 /// 422 `workplace_not_open` on `to_workplace_id`; internal on a database fault.
@@ -119,7 +120,7 @@ pub async fn open_workplace_entity(
     Ok(entity)
 }
 
-/// The 법인's exact name on `on` when it has a confirmed, non-voided
+/// The legal entity's exact name on `on` when it has a confirmed, non-voided
 /// registration open on the date; no imported label is evidence.
 ///
 /// # Errors
@@ -148,9 +149,9 @@ pub async fn entity_label(
     .map_err(internal)
 }
 
-/// The 사업장 an org unit sits at today: its own open placement, else its
-/// nearest placed ancestor's (a 부서 under a 사업장's SITE unit has no
-/// placement of its own; UX-R1 PLACEMENT move-01/move-02).
+/// The workplace an org unit sits at today: its own open placement, else its
+/// nearest placed ancestor's (a department under a workplace's SITE unit has
+/// no placement of its own; UX-R1 PLACEMENT move-01/move-02).
 ///
 /// # Errors
 /// Internal on a database fault.
@@ -194,7 +195,7 @@ fn later_refusal() -> KernelError {
 /// Returns the row the move ended.
 ///
 /// # Errors
-/// 409 `employee_unassigned` (no 법인 · 사업장 recorded on `on`), 409
+/// 409 `employee_unassigned` (no legal entity · workplace recorded on `on`), 409
 /// `assignment_after_move` (a later assignment exists), 409
 /// `assignment_starts_on_move_date` (the placement starts that day: correct
 /// it instead); internal on a database fault.

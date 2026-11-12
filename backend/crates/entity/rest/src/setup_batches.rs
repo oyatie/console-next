@@ -1,5 +1,5 @@
-//! Bulk 법인 · 사업장 create and update from a sheet (MR-29): dry run, apply,
-//! the receipt list and the SETUP undo.
+//! Bulk legal entity and workplace create and update from a sheet (MR-29): dry
+//! run, apply, the receipt list and the SETUP undo.
 
 use axum::Json;
 use axum::extract::{Path, State};
@@ -16,8 +16,8 @@ use crate::org_setup::port;
 
 type Result<T> = std::result::Result<T, RestError>;
 
-/// The subjects a batch writes: each revised record, the 법인 a new 사업장
-/// joins, and the tenant for a new 법인.
+/// The subjects a batch writes: each revised record, the legal entity a new
+/// workplace joins, and the tenant for a new legal entity.
 fn targets(b: &EntitySetupBatch) -> Vec<Target> {
     b.ops
         .iter()
