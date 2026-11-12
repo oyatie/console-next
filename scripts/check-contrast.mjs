@@ -30,9 +30,10 @@ export function themeTokens(css) {
 
 /**
  * The tokens in force when an experience is set, from the base themes and the experience's own blocks. The browser
- * orders the four rules by specificity, then source order. The experience's light block (:root and one attribute)
- * ties the base's dark block and wins, because experience files load after the base file; the experience's dark
- * block (:root and two attributes) outranks both.
+ * orders the four rules by specificity: the experience's dark block (:root and two attributes) outranks the rest and
+ * its light block (:root and one attribute) outranks the base's light block. The light block only ties the base's
+ * dark block, where stylesheet order would decide. experienceBlocks refuses a token left to that tie, so a file that
+ * passes resolves the same in either order; a refused one is read here as if the experience file came later.
  */
 export const experienceThemes = (base, own) => ({
   light: { ...base.light, ...own.light },
@@ -78,11 +79,17 @@ export const checkContrast = (css) => checkThemes(themeTokens(css));
 
 /** The base token file, then every experience file beside it as an overlay on it. */
 export function checkTokens(file) {
-  const base = themeTokens(readFileSync(file, "utf8"));
+  const css = readFileSync(file, "utf8");
+  const base = themeTokens(css);
   const result = checkThemes(base);
+  // Declared names, not a comparison of the merged themes: a token may hold one value in both of the base's blocks.
+  const baseDark = new Set();
+  parseCss(css).walkDecls((decl) => {
+    if (rootDeclaration(decl) && context(decl).theme === "dark") baseDark.add(decodeIdent(decl.prop));
+  });
   for (const overlay of experienceFiles(file)) {
     const id = path.basename(overlay, ".css");
-    const own = experienceBlocks(readFileSync(overlay, "utf8"), id);
+    const own = experienceBlocks(readFileSync(overlay, "utf8"), id, baseDark);
     const contrast = checkThemes(experienceThemes(base, own), `experience ${id}, `);
     result.checked += contrast.checked;
     result.problems.push(...own.problems.map((problem) => `${overlay.split(path.sep).join("/")}: ${problem}`), ...contrast.problems);

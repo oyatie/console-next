@@ -90,7 +90,7 @@ test("the pair matrix retains muted surfaces, refused/selected outlines and ever
   }
 });
 
-test("an experience overlays the base by specificity, then by source order", async () => {
+test("an experience's light block applies in both themes and its dark block over that, by specificity", async () => {
   const { experienceThemes, themeTokens } = await api();
   const { experienceBlocks } = await import(/* @vite-ignore */ fileURLToPath(new URL("./check-ds-refs.mjs", import.meta.url)));
   const base = themeTokens(':root { --a: #000; --b: #000; --c: #000; } :root[data-theme="dark"] { --a: #fff; --b: #fff; --c: #fff; }');
@@ -98,10 +98,9 @@ test("an experience overlays the base by specificity, then by source order", asy
   const own = experienceBlocks(':root[data-experience="calm"][data-theme="dark"] { --c: #333; } :root[data-experience="calm"] { --b: #222; --c: #222; }', "calm");
   expect(experienceThemes(base, own)).toEqual({
     light: { "--a": "#000", "--b": "#222", "--c": "#222" },
-    // --b: the experience's light block ties the base's dark block and is the later rule, so it wins in dark too.
+    // --b: the experience's light block only ties the base's dark block. It is read as the later rule, and refused.
     dark: { "--a": "#fff", "--b": "#222", "--c": "#333" },
   });
-  // Which is why a colour set for light alone is refused.
   expect(own.problems).toEqual([expect.stringContaining("--b is a colour set for light only")]);
 });
 
@@ -180,13 +179,18 @@ test("every colour an experience sets for light is also set for dark", () => {
     ["--scrim: oklch(20% 0.02 250 / 0.3);", "--scrim"],
     // A name the base does not have is held to the same rule.
     ["--calm-band: #102030;", "--calm-band"],
+    // No colour is written, but the base sets these for dark: its rule ties the light block, so stylesheet order would decide.
+    ["--border: var(--border-soft);", "--border"],
+    ["--shadow: none;", "--shadow"],
+    ["--scrim: transparent;", "--scrim"],
   ]) {
     const r = run(css, { calm: blocks("calm", light) });
     expect(r.status, light).toBe(1);
     expect(r.stderr).toContain(`experiences/calm.css: ${token} is a colour set for light only, so dark would show its light value; set it in :root[data-experience="calm"][data-theme="dark"] too`);
   }
   expect(run(css, { calm: blocks("calm", "--border: #d0d7e0;", "--border: #2b3542;") }).status).toBe(0);
-  // Sizes, fonts and values that only name other tokens have no light value of their own to leak into dark.
+  expect(run(css, { calm: blocks("calm", "--border: var(--border-soft);", "--border: var(--border-soft);") }).status).toBe(0);
+  // Sizes, fonts and tokens the base leaves to its light block: the experience's light block outranks that block outright.
   const exempt = run(css, { calm: blocks("calm", '--row-h: 36px; --radius: 0; --font-mono: "SF Mono", Menlo, monospace; --chart-grid: var(--border); --selected-bar: inset 4px 0 0 var(--primary); --calm-clear: transparent;') });
   expect(exempt.stderr).toBe("");
   expect(exempt.status).toBe(0);

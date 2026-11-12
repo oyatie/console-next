@@ -63,9 +63,9 @@ export function literalColour(value) {
  * An experience file's own declarations, by block. The gates compute its overlay on the base from the specificity
  * of exactly two selectors, so anything that would cascade another way is refused: a rule or statement other than
  * the two blocks, a property that is not a token, an !important. So is a colour the light block sets and the dark
- * block does not.
+ * block does not; `baseDark` names the tokens the base sets for dark, which are colours however the value is written.
  */
-export function experienceBlocks(css, id) {
+export function experienceBlocks(css, id, baseDark = new Set()) {
   const light = `:root[data-experience="${id}"]`, dark = `${light}[data-theme="dark"]`;
   const own = { light: {}, dark: {}, problems: [] };
   const refuse = (node) => {
@@ -87,9 +87,11 @@ export function experienceBlocks(css, id) {
       else block[name] = child.value.trim();
     }
   }
-  // In dark the light block still applies, ahead of the base's dark block: a light colour with no dark value shows in dark.
+  // In dark the light block still applies, so a colour written there shows in dark. Where the base sets the token for
+  // dark, its rule and the light block have equal specificity and stylesheet order alone would pick one: only the
+  // dark block, with its second attribute, settles it.
   for (const [name, value] of Object.entries(own.light)) {
-    if (literalColour(value) && !Object.hasOwn(own.dark, name))
+    if ((literalColour(value) || baseDark.has(name)) && !Object.hasOwn(own.dark, name))
       own.problems.push(`${name} is a colour set for light only, so dark would show its light value; set it in ${dark} too`);
   }
   return own;
