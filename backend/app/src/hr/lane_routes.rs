@@ -48,6 +48,7 @@ pub(super) fn merge(router: Router, state: &HrState) -> Router {
         .merge(fixed_term::router(hr.clone()))
         .merge(console_hr_rest::exit_guards::router(hr.clone()))
         .merge(job_title::router(hr.clone()))
+        .merge(console_hr_rest::roster_field::router(hr.clone()))
         .merge(lifecycle_void::router(
             hr.clone(),
             state.passkey_step_up.clone(),

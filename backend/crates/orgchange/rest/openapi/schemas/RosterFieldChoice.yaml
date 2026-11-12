@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [id, label]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  label:
+    type: string

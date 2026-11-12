@@ -118,6 +118,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         console_hr_rest::job_title::JOB_TITLE_ROUTE_PATHS,
     ),
     surface(
+        "hr-roster-fields",
+        console_hr_rest::roster_field::ROSTER_FIELD_ROUTE_PATHS,
+    ),
+    surface(
         "hr-lifecycle-void",
         console_hr_rest::lifecycle_void::LIFECYCLE_VOID_ROUTE_PATHS,
     ),

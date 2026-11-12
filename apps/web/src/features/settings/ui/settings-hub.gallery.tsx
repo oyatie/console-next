@@ -21,6 +21,7 @@ export default function SettingsHubGallery() {
       { id: "inactive", kind: "GRADE", label: t("enum.jobTitleKind.GRADE"), grade_rank: 2, active: false },
     ] }];
     values.forEach((value, index) => query.setQueryData(SETTINGS_VIEWS[index]!.summary.queryKey, value));
+    query.setQueryData(get("/api/v1/roster-fields").queryKey, { can_manage: false, active_limit: 30, items: [] });
     return query;
   });
   const rows = SETTINGS_VIEWS.map(row => row.to === "/people/period-locks"

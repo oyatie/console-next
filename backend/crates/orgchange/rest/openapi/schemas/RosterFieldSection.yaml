@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: string
+x-extensible-enum: [PERSONAL, JOB]
+description: The card section a field sits in - PERSONAL 인적사항, JOB 재직·배치.

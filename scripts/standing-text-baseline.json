@@ -36,6 +36,7 @@
   "apps/web/src/features/people/ui/exit-page.tsx#ExitCasePage": 96,
   "apps/web/src/features/people/ui/grid-page.tsx#GridPage": 68,
   "apps/web/src/features/people/ui/job-titles-page.tsx#JobTitlesPage": 35,
+  "apps/web/src/features/people/ui/roster-fields-page.tsx#RosterFieldsPage": 26,
   "apps/web/src/features/people/ui/notice-list-page.tsx#NoticeListPage": 32,
   "apps/web/src/features/people/ui/notice-new-page.tsx#NoticeNewPage": 25,
   "apps/web/src/features/people/ui/notice-page.tsx#NoticePage": 35,

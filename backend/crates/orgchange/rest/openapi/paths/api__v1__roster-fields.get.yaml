@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
+tags:
+  - employees
+operationId: listRosterFields
+summary: The fields the tenant adds to its personnel card
+description: Every field definition of the tenant, active first, then in the order they were added; retired
+  fields (active false) stay listed so their values keep resolving. No field is seeded. Takes
+  employee_directory_read.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The definitions.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [items, can_manage, active_limit]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/RosterField'
+            can_manage:
+              type: boolean
+              description: The caller may add or change fields (Cedar roster_field_manage).
+            active_limit:
+              type: integer
+              description: The most active fields a tenant may have; a retired field frees its place.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

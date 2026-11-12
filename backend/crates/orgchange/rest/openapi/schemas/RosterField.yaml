@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+description: A field the tenant adds to its personnel card.
+required: [id, label, value_type, section, visibility, choices, active]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  label:
+    type: string
+  value_type:
+    $ref: '#/components/schemas/RosterFieldValueType'
+  section:
+    $ref: '#/components/schemas/RosterFieldSection'
+  visibility:
+    type: string
+    x-extensible-enum: [MANAGERS]
+    description: Who reads the field's values. MANAGERS, not the person themselves (first release).
+  choices:
+    type: array
+    description: A CHOICE field's options; empty for any other type. An option keeps its id when relabelled.
+    items:
+      $ref: '#/components/schemas/RosterFieldChoice'
+  active:
+    type: boolean
+    description: false = retired (hidden from new entry, values kept).

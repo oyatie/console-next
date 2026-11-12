@@ -5,6 +5,7 @@ export const koSettingsHub = {
   "settingsHub.approval.direct": "모두 바로 적용",
   "settingsHub.domain.pending": "{domain} · 신청 중",
   "settingsHub.numbering.empty": "규칙 없음",
+  "settingsHub.rosterFields.empty": "추가한 항목 없음",
   "settingsHub.titles.empty": "등록된 항목 없음",
   "settingsHub.periods.empty": "마감 없음",
   "settingsHub.number": "{value, number}",
