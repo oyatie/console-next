@@ -25,6 +25,7 @@ export const enHome: Partial<Record<keyof typeof koHome, string>> = {
   "home.inbox.done.empty": "Nothing finished yet",
   "home.inbox.outcome.APPLIED": "Applied",
   "home.inbox.outcome.APPROVED": "Approved",
+  "home.inbox.outcome.REJECTED": "Rejected",
   "home.inbox.outcome.DECLINED": "Declined",
   "home.inbox.filter.all": "All",
   "home.inbox.filter.turn": "My turn",

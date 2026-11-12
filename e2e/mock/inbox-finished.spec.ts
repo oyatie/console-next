@@ -27,7 +27,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(list).toHaveCount(3);
     await expect(page.getByRole("navigation", { name: t("home.lanes"), exact: true }).getByRole("link", { name: t("home.inbox.tab.done"), exact: true })).toHaveAttribute("aria-current", "page");
     for (const [row, outcome] of [[0, "APPLIED"], [1, "APPROVED"], [2, "DECLINED"]] as const) await expect(list.nth(row)).toContainText(t(`home.inbox.outcome.${outcome}`));
-    await expect(list.nth(0).getByRole("link", { name: t("home.part.requests"), exact: true })).toHaveAttribute("href", "/people/requests?sel=r1");
+    await expect(list.nth(0).getByRole("link", { name: t("home.part.requests"), exact: true })).toHaveAttribute("href", "/people/requests?sel=r1&status=ALL");
     await expect(list.nth(1).getByRole("link", { name: t("home.part.unlocks"), exact: true })).toHaveAttribute("href", "/people/period-locks?review=l1");
     await expect(list.nth(2).getByRole("link", { name: t("entityRecord.corrections.title"), exact: true })).toHaveAttribute("href", "/org/entities?correction=c1#identifier-corrections");
     await fits(page, `inbox done ${width}px ${theme}`);

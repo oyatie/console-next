@@ -27,7 +27,7 @@ pub(crate) async fn done(
                 Ok(sqlx::query_as(
                     "SELECT r.id, r.lock_id, r.outcome, r.decided_at, \
                      (SELECT u.display_name FROM person_accounts_current u WHERE u.org_id = r.org_id AND u.id = r.requested_by) \
-                     FROM period_unlock_requests r WHERE r.org_id = $1 AND r.decided_by = $2 AND r.outcome = 'APPROVED' \
+                     FROM period_unlock_requests r WHERE r.org_id = $1 AND r.decided_by = $2 AND r.outcome IN ('APPROVED', 'REJECTED') \
                      AND ($3::timestamptz IS NULL OR r.decided_at < $3 OR (r.decided_at = $3 \
                        AND ('period_unlock:' || r.id::text) COLLATE \"C\" < $4)) \
                      ORDER BY r.decided_at DESC, ('period_unlock:' || r.id::text) COLLATE \"C\" DESC LIMIT $5",
