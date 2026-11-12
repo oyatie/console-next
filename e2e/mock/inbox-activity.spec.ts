@@ -9,7 +9,7 @@ import { screens } from "../states/registry";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-for (const width of [1440, 390]) test(`an opened item shows its 활동 내역 at ${width}px`, async ({ page }, info) => {
+for (const width of [1440, 390]) test(`an opened item shows its activity at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
   const mock = await mockScreen(page, screens[0], "populated");
   const data = inbox(3);

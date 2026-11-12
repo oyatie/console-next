@@ -2,14 +2,16 @@
 tags:
   - me
 operationId: listMyActionInboxItemActivity
-summary: 활동 내역 - what happened to one of my inbox items
+summary: Activity on one of my inbox items
 description: >-
-  The record column's 활동 내역 for an item in the caller's 업무함. The item is resolved through
-  the caller's own sources, the same read as the list, so another person's item, an unknown id
-  and a malformed id answer the same 404 inbox_item_not_found. Rows are the audit events on the
-  item and on its subject, newest first, at most 50: what happened (a verb from a closed set,
-  other for anything else), who did it (absent for system events) and when. Audit snapshots are
-  never served. 503 when the inbox sources cannot be read.
+  The record column's activity list for an item in the caller's inbox. The item is resolved
+  through the caller's own sources, the same read as the list, so another person's item, an
+  unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item
+  was not found while a source was unavailable. Rows are the audit events on the item's own
+  record (the request, change, lock, grant or case its first link names; for an org change,
+  also its approval steps), newest first, at most 50: what happened (a verb from a closed set,
+  other for anything else), who did it (absent for system events) and when. Events on the
+  person or account behind an item are not served, and audit snapshots never are.
 security:
 - bearerAuth: []
 parameters:

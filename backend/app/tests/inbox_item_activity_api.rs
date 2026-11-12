@@ -26,12 +26,34 @@ async fn audited(
     target: Uuid,
     minutes_ago: i64,
 ) {
+    audited_as(
+        pool,
+        org,
+        actor,
+        action,
+        "access_grants",
+        target,
+        minutes_ago,
+    )
+    .await;
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn audited_as(
+    pool: &PgPool,
+    org: Uuid,
+    actor: Option<Uuid>,
+    action: &str,
+    target_type: &str,
+    target: Uuid,
+    minutes_ago: i64,
+) {
     sqlx::query(
         "INSERT INTO audit_events (id,actor,action,target_type,target_id,before_snap,after_snap,trace_id,span_id,occurred_at,org_id) \
-         VALUES (gen_random_uuid(),$1,$2,'access_grants',$3,'{\"secret\":\"before-snapshot\"}','{\"secret\":\"after-snapshot\"}', \
+         VALUES (gen_random_uuid(),$1,$2,$6,$3,'{\"secret\":\"before-snapshot\"}','{\"secret\":\"after-snapshot\"}', \
                  '0123456789abcdef0123456789abcdef','0123456789abcdef',now()-($4 * interval '1 minute'),$5)",
     )
-    .bind(actor).bind(action).bind(target.to_string()).bind(minutes_ago).bind(org)
+    .bind(actor).bind(action).bind(target.to_string()).bind(minutes_ago).bind(org).bind(target_type)
     .execute(pool).await.unwrap();
 }
 
@@ -58,6 +80,17 @@ async fn an_items_activity_is_who_what_and_when_for_its_holder_only(pool: PgPool
         "access.grant.create",
         Uuid::new_v4(),
         1,
+    )
+    .await;
+    // The same id under another record type (the person, say) is not the item's record.
+    audited_as(
+        &pool,
+        org,
+        Some(*ops.as_uuid()),
+        "employee.update",
+        "employee",
+        grant,
+        2,
     )
     .await;
     let path = format!("/api/v1/me/action-inbox/items/grant_notice:{grant}/activity");
@@ -120,4 +153,70 @@ async fn an_items_activity_is_who_what_and_when_for_its_holder_only(pool: PgPool
         .call("GET", &path, None)
         .await;
     assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_real_change_request_shows_its_own_events_not_the_employees(pool: PgPool) {
+    let (org, requester_id) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let requester = http::ctx(&pool, org, requester_id, &["SUPER_ADMIN"], None).await;
+    let reviewer_id = http::add_user(&pool, org, &["SUPER_ADMIN"]).await;
+    let reviewer = http::ctx(&pool, org, reviewer_id, &["SUPER_ADMIN"], None).await;
+    let (_, _, branch, unit) = http::structure(&requester).await;
+    let (status, created) = requester
+        .call(
+            "POST",
+            "/api/v1/employees",
+            Some(http::employee_body("ACT-1", &branch, &unit)),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    let employee = created["employee"]["id"].as_str().unwrap().to_owned();
+    let (status, request) = requester
+        .call(
+            "POST",
+            "/api/v1/change-requests",
+            Some(serde_json::json!({
+                "kind": "PROFILE_CORRECTION", "subject_type": "EMPLOYEE", "subject_id": employee,
+                "payload": {"changes": {"name": "Activity Probe"}}, "reason_code": "DATA_ENTRY_ERROR", "note": "activity"
+            })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{request}");
+    let request = request["id"].as_str().unwrap().to_owned();
+    let (status, inbox) = reviewer
+        .call("GET", "/api/v1/me/action-inbox?limit=200", None)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{inbox}");
+    let item = inbox["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|item| {
+            item["links"][0]["kind"] == "change_request"
+                && item["links"][0]["id"] == request.as_str()
+        })
+        .unwrap_or_else(|| panic!("the request is in the reviewer's inbox: {inbox}"));
+    let path = format!(
+        "/api/v1/me/action-inbox/items/{}/activity",
+        item["id"].as_str().unwrap()
+    );
+    let (status, body) = reviewer.call("GET", &path, None).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let verbs: Vec<&str> = body["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row["verb"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        verbs,
+        ["create"],
+        "the request's own create event, not the employee's: {body}"
+    );
+    assert!(
+        body["items"][0]["actor_name"]
+            .as_str()
+            .is_some_and(|name| !name.is_empty()),
+        "{body}"
+    );
 }
