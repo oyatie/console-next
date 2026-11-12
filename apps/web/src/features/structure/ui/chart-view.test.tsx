@@ -56,16 +56,15 @@ test.each([
   expect(html.includes("data-tools")).toBe(hasTools);
 });
 
-test("NameBox renders a static 적용일 · 오늘 chip in setup and a picker chip clamping past asOf after go-live", () => {
+test("NameBox's date chip starts at today in setup, whatever day is viewed, and clamps a past asOf after go-live", () => {
   const s = buildStructure(structure(2));
   const site = [...s.byId.values()].find((n) => n.kind === "site")!;
   const box = { node: site, lod: "m" as const, x: 0, y: 0, w: 280, h: 132 };
   const chipLabel = `aria-label="${t("orgUnit.gov.date")} · ${t("asof.today")}"`;
   const setupHtml = renderToStaticMarkup(
-    <NameBox box={box} parent={site} setup={true} pending={false} onSubmit={vi.fn()} onCancel={vi.fn()} />,
+    <NameBox box={box} parent={site} setup={true} asOf="2020-01-01" pending={false} onSubmit={vi.fn()} onCancel={vi.fn()} />,
   );
-  expect(setupHtml).toContain(`${t("orgUnit.gov.date")} · ${t("asof.today")}`);
-  expect(setupHtml).not.toContain(chipLabel);
+  expect(setupHtml).toContain(chipLabel);
   const opHtml = renderToStaticMarkup(
     <NameBox box={box} parent={site} setup={false} asOf="2020-01-01" pending={false} onSubmit={vi.fn()} onCancel={vi.fn()} />,
   );

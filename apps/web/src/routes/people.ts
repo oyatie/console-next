@@ -61,6 +61,7 @@ const changeRequests = createRoute({
   }),
   component: lazyRouteComponent(screen(() => import("../features/people/ui/requests-page")), "RequestsPage"),
 });
+const rosterFields = createRoute({ getParentRoute: () => app, path: "/people/roster-fields", staticData: { access: readRequirement("/people/roster-fields"), floorplan: "P-05" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/roster-fields-page")), "RosterFieldsPage") });
 const jobTitles = createRoute({ getParentRoute: () => app, path: "/people/job-titles", staticData: { access: readRequirement("/people/job-titles"), floorplan: "P-05" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/job-titles-page")), "JobTitlesPage") });
 const exitCases = createRoute({
   getParentRoute: () => app,
@@ -107,4 +108,4 @@ const people = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/people/ui/people-route")), "PeopleRoute"),
 });
 
-export const peopleRoutes = [people.addChildren([registerEmployee]), peopleImport, unplaced, bulk, run, renew, notices, noticeNew, notice, certificates, certificate, grid, periodLocks, exitCases, exitCase, changeRequests, jobTitles, employee];
+export const peopleRoutes = [people.addChildren([registerEmployee]), peopleImport, unplaced, bulk, run, renew, notices, noticeNew, notice, certificates, certificate, grid, periodLocks, exitCases, exitCase, changeRequests, jobTitles, rosterFields, employee];

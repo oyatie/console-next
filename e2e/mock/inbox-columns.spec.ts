@@ -38,7 +38,8 @@ for (const path of ["/", "/inbox"]) {
       await expect(pane).toContainText(data.items[index]!.title);
     }
     expect(await page.evaluate(() => window.history.length)).toBe(history);
-    if (path === "/inbox") expect(new URL(page.url()).searchParams.get("tab")).toBe("turn");
+    // 해야 할 일 is the inbox's first tab, so its address carries no tab.
+    if (path === "/inbox") expect(new URL(page.url()).searchParams.get("tab")).toBeNull();
     await page.keyboard.press("/");
     await expect(listRows.first()).toBeFocused();
     await page.keyboard.press("Enter");

@@ -4,6 +4,7 @@
 pub mod cedar;
 pub mod create;
 pub mod decide;
+pub mod done;
 pub mod inbox;
 pub mod read;
 

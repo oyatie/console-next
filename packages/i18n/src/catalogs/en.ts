@@ -111,6 +111,7 @@ import { enProfile } from "./en/profile";
 import { enIdentity } from "./en/identity";
 import { enRequests } from "./en/requests";
 import { enTitles } from "./en/titles";
+import { enRosterFields } from "./en/roster-fields";
 import { enOrgBulk } from "./en/org-bulk";
 import { enOrgHistory } from "./en/org-history";
 import { enOrgConflict } from "./en/org-conflict";
@@ -236,6 +237,7 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enIdentity,
   ...enRequests,
   ...enTitles,
+  ...enRosterFields,
   ...enOrgBulk,
   ...enOrgHistory,
   ...enOrgConflict,

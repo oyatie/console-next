@@ -47,6 +47,7 @@ pub(crate) async fn page(
                 links: vec![ActionInboxLink { kind: "period_lock".into(), id: lock_id.to_string(), label: None }],
             });
         }
+        items.extend(super::unlock_review::items(tx, &principal, query.as_of).await?);
         let total = items.len();
         let (items, has_more) = console_action_inbox_application::page_source_items(items, &query);
         Ok(ActionInboxSourcePage { items, total, total_is_exact: true, has_more })

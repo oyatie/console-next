@@ -142,7 +142,6 @@
   "unused-export:apps/web/src/features/people/api.ts:statusParam": 1,
   "unused-export:apps/web/src/features/people/api.ts:unplacedQuery": 1,
   "unused-export:apps/web/src/features/people/api/record.ts:EmploymentFacts": 1,
-  "unused-export:apps/web/src/features/people/api/record.ts:PersonalFacts": 1,
   "unused-export:apps/web/src/features/people/api/record.ts:RecordList": 1,
   "unused-export:apps/web/src/features/people/api/record.ts:RegisterFacts": 1,
   "unused-export:apps/web/src/features/people/api/record.ts:Segment": 1,

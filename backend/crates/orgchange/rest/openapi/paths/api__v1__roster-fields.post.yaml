@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - employees
+operationId: createRosterField
+summary: Add a field to the personnel card
+description: Adds a field definition. Type and section are fixed once added. First release, the 인적사항
+  (PERSONAL) and 재직·배치 (JOB) sections only, values read by managers only; a field is never a pay item. Who
+  may add is Cedar's roster_field_manage (fail-closed), a tenant-wide holder of roster_field_manage or
+  employee_directory_manage; a 법인/사업장-scoped grant is 403. 409 roster_field_label_taken (any field of
+  the tenant, retired included, has the label ignoring case), roster_field_limit (the tenant has active_limit
+  active fields); 422 roster_field_label_invalid, roster_field_choices_invalid. Audited as
+  roster_field.create.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [label, value_type, section]
+        properties:
+          label:
+            type: string
+            minLength: 1
+            maxLength: 60
+          value_type:
+            $ref: '#/components/schemas/RosterFieldValueType'
+          section:
+            $ref: '#/components/schemas/RosterFieldSection'
+          choices:
+            description: CHOICE only, 1 to 50 options with distinct labels; new options carry no id.
+            type: array
+            maxItems: 50
+            items:
+              $ref: '#/components/schemas/RosterFieldChoiceInput'
+responses:
+  '201':
+    description: Added.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RosterField'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used)]
 use super::*;
+use serde_json::json;
 
 fn run(status: StatusCode, json: bool, body: &str) -> (StatusCode, Value) {
     let rewritten = rewrite(status, (json, false), body.as_bytes(), || "t-1".to_owned()).unwrap();
@@ -16,6 +17,42 @@ fn a_500_keeps_its_code_and_loses_the_sql_text() {
         json,
         json!({"error": {"code": "internal", "message": "internal server error", "trace_id": "t-1"}})
     );
+}
+
+#[test]
+fn client_refusals_keep_structured_response_fields() {
+    let body = json!({
+        "error": {"code": "PREFLIGHT_FAILED", "message": "publish preflight failed"},
+        "checks": [{"key": "exposure_attested", "ok": false}],
+        "publishable": false,
+    });
+    for status in [StatusCode::UNPROCESSABLE_ENTITY, StatusCode::CONFLICT] {
+        let (actual_status, rewritten) = run(status, true, &body.to_string());
+        assert_eq!(actual_status, status);
+        assert_eq!(rewritten, body);
+    }
+}
+
+#[test]
+fn server_errors_discard_sibling_details_and_mask_internal_messages() {
+    let body = json!({
+        "error": {"code": "internal", "message": "database password rejected for internal_user"},
+        "debug": {"sql": "SELECT email FROM applicants", "email": "applicant@example.invalid"},
+        "checks": [{"key": "database", "detail": "private database host"}],
+    });
+    for status in [
+        StatusCode::INTERNAL_SERVER_ERROR,
+        StatusCode::SERVICE_UNAVAILABLE,
+    ] {
+        let (actual_status, rewritten) = run(status, true, &body.to_string());
+        assert_eq!(actual_status, status);
+        assert_eq!(
+            rewritten,
+            json!({"error": {
+                "code": "internal", "message": generic_message(status), "trace_id": "t-1",
+            }})
+        );
+    }
 }
 
 #[test]

@@ -35,6 +35,9 @@
     ],
     "/api/v1/period-locks/{lockId}/unlock/reject": [
       "post"
+    ],
+    "/api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge": [
+      "post"
     ]
   },
   "schemas": [

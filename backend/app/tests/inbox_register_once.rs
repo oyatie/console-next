@@ -102,11 +102,30 @@ fn register_reads(events: &[Value]) -> usize {
         .iter()
         .filter(|e| {
             e["target"] == "sqlx::query"
-                && e["fields"]["db.statement"]
-                    .as_str()
-                    .is_some_and(|s| s.contains("FROM lifecycle_statutory_rules ORDER BY"))
+                && e["fields"]["db.statement"].as_str().is_some_and(|s| {
+                    s.contains("SELECT code, effective_from")
+                        && s.contains("FROM lifecycle_statutory_rules")
+                })
         })
         .count()
+}
+
+#[test]
+fn register_counter_observes_plain_and_scoped_reads_without_counting_filing_queries() {
+    let events: Vec<_> = [
+        "SELECT code, effective_from FROM lifecycle_statutory_rules ORDER BY code, effective_from",
+        "WITH available AS MATERIALIZED (SELECT r.* FROM lifecycle_statutory_rules r) SELECT code, effective_from FROM available ORDER BY code,effective_from",
+        "SELECT filing_rule,trigger_event_kinds FROM lifecycle_statutory_rules WHERE filing_rule IS NOT NULL ORDER BY code,effective_from",
+        "WITH available AS MATERIALIZED (SELECT r.* FROM lifecycle_statutory_rules r) SELECT filing_rule,trigger_event_kinds FROM available WHERE filing_rule IS NOT NULL ORDER BY code,effective_from",
+        "SELECT code, effective_from FROM insurance_loss_codes ORDER BY code, effective_from",
+    ]
+    .into_iter()
+    .map(|sql| serde_json::json!({"target":"sqlx::query","fields":{"db.statement":sql}}))
+    .collect();
+    assert_eq!(register_reads(&events[..1]), 1);
+    assert_eq!(register_reads(&events[1..2]), 1);
+    assert_eq!(register_reads(&events[2..]), 0);
+    assert_eq!(register_reads(&events), 2);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

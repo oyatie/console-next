@@ -33,6 +33,8 @@ pub const PERIOD_LOCK_UNLOCK_APPROVE_PATH_TEMPLATE: &str =
     "/api/v1/period-locks/{lockId}/unlock/approve";
 pub const PERIOD_LOCK_UNLOCK_REJECT_PATH_TEMPLATE: &str =
     "/api/v1/period-locks/{lockId}/unlock/reject";
+pub const PERIOD_LOCK_UNLOCK_REVIEW_PATH_TEMPLATE: &str =
+    "/api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge";
 pub const LIFECYCLE_PATH_TEMPLATE: &str = "/api/v1/lifecycles/{objectType}/{objectId}";
 pub const LIFECYCLE_TRANSITION_PATH_TEMPLATE: &str =
     "/api/v1/lifecycles/{objectType}/{objectId}/transition";
@@ -43,6 +45,7 @@ pub const LIFECYCLE_ROUTE_PATHS: &[&str] = &[
     PERIOD_LOCK_UNLOCK_PATH_TEMPLATE,
     PERIOD_LOCK_UNLOCK_APPROVE_PATH_TEMPLATE,
     PERIOD_LOCK_UNLOCK_REJECT_PATH_TEMPLATE,
+    PERIOD_LOCK_UNLOCK_REVIEW_PATH_TEMPLATE,
     LIFECYCLE_PATH_TEMPLATE,
     LIFECYCLE_TRANSITION_PATH_TEMPLATE,
     LIFECYCLE_HOLD_PATH_TEMPLATE,
@@ -84,6 +87,10 @@ pub fn router(state: LifecycleState) -> Router {
             PERIOD_LOCK_UNLOCK_REJECT_PATH_TEMPLATE,
             post(reject_period_unlock),
         )
+        .route(
+            PERIOD_LOCK_UNLOCK_REVIEW_PATH_TEMPLATE,
+            post(unlock_review::acknowledge),
+        )
         .route(LIFECYCLE_PATH_TEMPLATE, get(get_lifecycle))
         .route(
             LIFECYCLE_TRANSITION_PATH_TEMPLATE,
@@ -96,6 +103,7 @@ pub fn router(state: LifecycleState) -> Router {
 
 mod error;
 pub(crate) mod inbox;
+pub(crate) mod inbox_done;
 mod period_lock_view;
 mod period_locks;
 pub(crate) mod period_relock;
@@ -103,6 +111,7 @@ mod period_unlock;
 mod sole_holder_unlock;
 mod unlock_decision;
 mod unlock_handlers;
+mod unlock_review;
 use period_locks::{create_period_lock, list_period_locks};
 use unlock_decision::reject_period_unlock;
 use unlock_handlers::{approve_period_unlock, unlock_period_lock};

@@ -35,7 +35,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       for (const key of queue.available_filters) {
         const count = queue.counts[key]!;
         const label = t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total });
-        await expect(lanes.getByRole("link", { name: label, exact: true })).toHaveAttribute("href", `/inbox?tab=${key}`);
+        // My turn and its due-soon slice open 해야 할 일, the inbox's first tab.
+        await expect(lanes.getByRole("link", { name: label, exact: true })).toHaveAttribute("href", key === "turn" || key === "deadlines" ? "/inbox" : `/inbox?tab=${key}`);
       }
       await fits(page, `Home live lanes at ${width}px ${theme}`);
       await expectAxe(page, `Home live lanes at ${width}px ${theme}`);
@@ -47,9 +48,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(page).toHaveURL(/\/$/);
       await expect(preview).toBeVisible();
       await expect(lanes.getByRole("link")).toHaveCount(queue.available_filters.length);
-      await expect(lanes.locator('a[href="/inbox"]')).toHaveCount(0);
+      await expect(lanes.locator('a[href="/inbox"]')).toHaveCount(2);
       await expect(lanes.locator('[aria-current="page"]')).toHaveCount(0);
-      await expect(lanes.locator('a[href="/inbox?tab=turn"]')).toHaveAttribute("aria-current", "true");
+      await expect(lanes.locator('[aria-current="true"]')).toHaveAttribute("href", "/inbox");
       expect(mock.unexpected).toEqual([]);
     });
   }
@@ -71,7 +72,6 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       { key: "today", total: 1, total_is_exact: true },
       { key: "overdue", total: 1, total_is_exact: false },
     ] as const;
-    const scheduled = t("home.inbox.filterCount", { filter: t("home.inbox.filter.scheduled"), count: 0 });
     await mockRoute(page, "get", "/api/v1/me/action-inbox", request => {
       const query = new URL(request.url()).searchParams;
       const offset = query.has("cursor") ? 8 : 0;
@@ -116,10 +116,14 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(page.locator("main header time[datetime]")).toBeVisible();
     await expect(preview.locator(":scope > div")).toHaveCount(1);
     const tabs = page.getByRole("navigation", { name: t("home.lanes"), exact: true });
-    await expect(tabs.getByRole("link")).toHaveCount(queue.available_filters.length + 1);
-    const myTurn = tabs.getByRole("link", { name: /^내 차례\s*31\+$/ });
-    await expect(myTurn).toHaveAttribute("href", "/inbox?tab=turn");
-    await expect(tabs.getByRole("link").nth(2)).toContainText("0");
+    // 해야 할 일 · 요청한 일 · 참조 · 완료; 예정 and 실패 are chips under 해야 할 일.
+    await expect(tabs.getByRole("link")).toHaveCount(4);
+    const myTurn = tabs.getByRole("link", { name: /^해야 할 일\s*31\+$/ });
+    await expect(myTurn).toHaveAttribute("href", "/inbox");
+    await expect(myTurn).toHaveAttribute("aria-current", "page");
+    const chips = page.getByRole("group", { name: t("home.inbox.tab.turn"), exact: true });
+    await expect(chips.getByRole("button")).toHaveCount(2);
+    const scheduled = chips.getByRole("button", { name: /^예정\s*0$/ });
     if (width === 390) expect(new Set(await tabs.getByRole("link").evaluateAll(links => links.map(link => Math.round(link.getBoundingClientRect().top)))).size).toBe(1);
     await expect(preview.locator("[data-id]")).toHaveCount(8);
     await expect(preview.locator("[data-id]").first()).toContainText("계약 만료가 다가옵니다");
@@ -128,13 +132,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     await preview.getByRole("button", { name: t("home.inbox.more"), exact: true }).click();
     await expect(preview.locator('[data-id="second-page"]')).toContainText("다음 페이지 직원");
-    await tabs.getByRole("link", { name: scheduled, exact: true }).click();
+    await scheduled.click();
     await expect(page).toHaveURL(/\?tab=scheduled$/);
-    await expect(tabs.getByRole("link", { name: scheduled, exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(tabs.getByRole("link").first()).toHaveText(t("home.inbox.filter.all"));
+    await expect(scheduled).toHaveAttribute("aria-pressed", "true");
+    await expect(myTurn).toHaveAttribute("aria-current", "page");
     await expect(preview.getByRole("heading", { name: t("home.inbox.empty.title"), exact: true })).toBeVisible();
     await page.reload();
-    await expect(tabs.getByRole("link", { name: scheduled, exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(scheduled).toHaveAttribute("aria-pressed", "true");
     expect(await page.locator("main").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     await page.screenshot({ path: info.outputPath(`inbox-${width}-${theme}.png`), fullPage: true });

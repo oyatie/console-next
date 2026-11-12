@@ -51,15 +51,22 @@ pub(crate) async fn reach(
         BranchScope::Branches(set) => set.iter().map(|b| *b.as_uuid()).collect::<Vec<_>>(),
     };
     let (org, account) = (p.org_id, *p.user_id.as_uuid());
-    let subject = with_org_conn::<_, _, Load>(store.pool(), org, move |tx| {
-        Box::pin(async move {
-            load_access_subject(tx, org, account, OffsetDateTime::now_utc())
-                .await
-                .map_err(|e| Load(e.to_string()))
+    let cached = console_platform_request_context::current_access_snapshot(org, account);
+    let loaded;
+    let subject = if let Some(access) = &cached {
+        access.subject()
+    } else {
+        loaded = with_org_conn::<_, _, Load>(store.pool(), org, move |tx| {
+            Box::pin(async move {
+                load_access_subject(tx, org, account, OffsetDateTime::now_utc())
+                    .await
+                    .map_err(|e| Load(e.to_string()))
+            })
         })
-    })
-    .await
-    .map_err(|Load(e)| KernelError::internal(format!("access grants unavailable: {e}")))?;
+        .await
+        .map_err(|Load(e)| KernelError::internal(format!("access grants unavailable: {e}")))?;
+        &loaded
+    };
     let nodes = subject
         .grants
         .iter()

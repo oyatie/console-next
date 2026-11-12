@@ -2,7 +2,7 @@
 use console_action_inbox_application::{
     ActionInboxLink, ActionInboxSourceItem, ActionInboxSourcePage, ActionInboxSourceQuery,
 };
-use console_hr_adapter_postgres::{HrService, statutory::FilingQuery};
+use console_hr_adapter_postgres::{HrError, HrService, statutory::FilingQuery};
 use console_kernel_core::KernelError;
 use console_platform_authz::Principal;
 use sqlx::PgPool;
@@ -14,9 +14,13 @@ pub(crate) async fn page(
     query: ActionInboxSourceQuery,
     register: &super::super::request_register::Register,
 ) -> Result<ActionInboxSourcePage, KernelError> {
-    let register = super::super::request_register::get(pool, register)
-        .await
-        .map_err(|error| super::super::source_failure("hr_insurance", error))?;
+    let register = async {
+        super::super::request_register::get(pool, register)
+            .await
+            .map_err(|error| {
+                HrError::from_kernel(super::super::source_failure("hr_insurance", error))
+            })
+    };
     let service = HrService::new(pool.clone());
     let request = FilingQuery {
         state: Some("PENDING".into()),
@@ -25,7 +29,7 @@ pub(crate) async fn page(
         ..FilingQuery::default()
     };
     let (page, total_is_exact) = match service
-        .insurance_inbox_page(
+        .insurance_inbox_page_with_register(
             principal.clone(),
             request,
             register,

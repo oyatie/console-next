@@ -6,7 +6,7 @@ import { SETUP_DEPARTMENT, setupCompany, tenantBeforeSetup } from "./setup-flows
 import { openAsOf } from "./dates";
 
 const cases = [
-  { path: "/inbox", read: "/api/v1/me/action-inbox", button: /^기다리는 중/ },
+  { path: "/inbox", read: "/api/v1/me/action-inbox", button: /^요청한 일/ },
   { path: "/statutory?tab=register", read: "/api/v1/statutory/workplaces", date: true },
   { path: "/statutory", read: "/api/v1/statutory/insurance-filings", button: "처리 내역" },
   { path: "/statutory", read: "/api/v1/statutory/insurance-filings", search: "이름·사번 검색" },

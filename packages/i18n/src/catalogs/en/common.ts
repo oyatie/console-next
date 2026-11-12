@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only copy loads with the locale catalog, after sign-in.
 export const enCommon = {
+  "common.failed.code.nationality_unknown": "This code is not in the country catalog. Select a country from the list. The United Kingdom uses GB.",
   "common.failed.code.bulk_register_facts_refused": "Nothing was saved because some register entries cannot be recorded. Review the indicated employees and fields, then apply again.",
   "common.failed.code.bulk_selection_changed": "Nothing was processed because the selected employee count changed. Refresh the list and review the selection.",
   "common.failed.code.correction_required": "An existing value must be changed through a correction. Correct this field on the personnel card.",
@@ -76,6 +77,9 @@ export const enCommon = {
   "common.failed.code.batch_already_undone": "This change was already undone.",
   "common.failed.code.org_setup_batch_not_found": "The change to undo wasn’t found. Reload the page.",
   "common.failed.code.phase_not_setup": "Operations have started, so this can’t change directly. Draft an org change instead.",
+  "common.failed.code.org_setup_date_future": "Not saved: setup changes apply at once, so the date can’t be after today. Choose today or an earlier day.",
+  "common.failed.code.org_setup_date_before_parent": "Not saved: the date is before the parent department or workplace began. Choose a day on or after it began.",
+  "common.failed.code.org_setup_date_before_current": "Not saved: the date is before this department’s current record. Choose a day on or after that record.",
   "common.failed.code.contract_overlap": "The period overlaps an existing contract. Correct the overlapping contract in contract history.",
   "common.failed.code.workplace_not_open_on_date": "Placement cannot start before the workplace or employer opened. Choose a date on or after opening, or another workplace.",
   "common.failed.code.rehire_date_not_after_exit": "Choose a rehire date on or after the retirement date.",

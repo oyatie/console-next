@@ -10,24 +10,28 @@ test("ci-ok cannot succeed when the reusable commit check fails or is skipped", 
   const ci = read("ci");
   expect(ci.on).toHaveProperty("pull_request");
   expect(ci.on).toHaveProperty("merge_group");
-  expect(ci.jobs.commits.uses).toBe("./.github/workflows/commits.yml");
-  expect(ci.jobs.commits.if).toBe("github.event_name != 'push'");
-  expect(ci.jobs.commits["continue-on-error"]).toBeUndefined();
-  expect(ci.jobs.web.needs ?? []).not.toContain("commits");
+  expect(ci.jobs.workflows.uses).toBe("./.github/workflows/workflows-check.yml");
+  expect(ci.jobs.workflows.if).toBe("github.event_name != 'push'");
+  expect(ci.jobs.workflows["continue-on-error"]).toBeUndefined();
+  expect(ci.jobs.web.needs ?? []).not.toContain("workflows");
   expect(ci.jobs.web.if).toContain("needs.affected.outputs.web == 'true'");
-  expect(ci.jobs["ci-ok"].needs).toContain("commits");
+  expect(ci.jobs["ci-ok"].needs).toContain("workflows");
   expect(ci.jobs["ci-ok"].needs).toContain("web");
-  for (const name of ["commits", "web"]) for (const result of ["success", "failure", "skipped", "cancelled"]) {
+  for (const name of ["workflows", "web"]) for (const result of ["success", "failure", "skipped", "cancelled"]) {
     const needs = Object.fromEntries(ci.jobs["ci-ok"].needs.map(job => [job, { result: job === name ? result : ["states-timings", "dev-artifacts", "backend-cache", "release-evidence"].includes(job) ? "skipped" : "success", outputs: { backend: "true", web: "true" } }]));
     expect(spawnSync("bash", ["-e", "-c", ci.jobs["ci-ok"].steps[0].run], { env: { ...process.env, NEEDS: JSON.stringify(needs), GITHUB_EVENT_NAME: "pull_request" } }).status).toBe(result === "success" ? 0 : 1);
   }
 });
 
 test("the commit workflow checks event head commits with full history and read-only credentials", () => {
-  const workflow = read("commits");
+  const workflow = read("workflows-check");
   expect(workflow.on).toHaveProperty("workflow_call");
   expect(workflow.permissions).toEqual({});
-  const job = workflow.jobs.subjects;
+  const job = workflow.jobs.workflows;
+  const lint = job.steps.find((step) => step.name === "actionlint");
+  expect(lint.run).toContain("rhysd/actionlint@sha256:");
+  expect(lint.if).toBeUndefined();
+  expect(lint["continue-on-error"]).toBeUndefined();
   expect(job.permissions).toEqual({ contents: "read" });
   expect(job.if).toBeUndefined();
   expect(job["continue-on-error"]).toBeUndefined();

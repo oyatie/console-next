@@ -21,6 +21,9 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
     "AuditLastChange",
     "ErrorBody",
     "FieldError",
+    "NotificationLink",
+    "NotificationPage",
+    "NotificationSummary",
     "Timestamp",
     "Uuid",
 ];
@@ -111,20 +114,12 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/NotificationCountsSummary.yaml"),
     },
     NamedYaml {
-        name: "NotificationLink",
-        body: include_str!("../openapi/schemas/NotificationLink.yaml"),
-    },
-    NamedYaml {
         name: "NotificationObjectGroup",
         body: include_str!("../openapi/schemas/NotificationObjectGroup.yaml"),
     },
     NamedYaml {
         name: "NotificationObjectGroupPage",
         body: include_str!("../openapi/schemas/NotificationObjectGroupPage.yaml"),
-    },
-    NamedYaml {
-        name: "NotificationPage",
-        body: include_str!("../openapi/schemas/NotificationPage.yaml"),
     },
     NamedYaml {
         name: "NotificationPolicyList",
@@ -137,10 +132,6 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "NotificationReadAllResponse",
         body: include_str!("../openapi/schemas/NotificationReadAllResponse.yaml"),
-    },
-    NamedYaml {
-        name: "NotificationSummary",
-        body: include_str!("../openapi/schemas/NotificationSummary.yaml"),
     },
     NamedYaml {
         name: "UnreadNotificationCountResponse",

@@ -14,6 +14,7 @@ use console_settings_adapter_postgres::resolve_in_tx;
 use super::LifecycleError;
 use super::period_unlock::{SETTING_KEYS, request_status};
 use super::unlock_decision::decider_stands;
+use super::unlock_review::unreviewed_unlock;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -183,13 +184,16 @@ fn period_lock_from_row(row: &sqlx::postgres::PgRow) -> Result<PeriodLockRespons
 /// lookups: a removed account reads as no name, never another tenant's user.
 macro_rules! lock_columns {
     () => {
-        "id, domain, period_start, period_end, reason, reason_code, \
+        concat!("id, domain, period_start, period_end, reason, reason_code, \
      locked_by, locked_at, unlocked_by, unlocked_at, unlock_reason, unlock_reason_code, relock_at, \
-     unlock_approved_by, unlock_review_required, period_lock_effective(period_locks) AS active, \
-     (SELECT u.display_name FROM users u WHERE u.id = period_locks.locked_by) AS locked_by_name, \
-     (SELECT u.display_name FROM users u WHERE u.id = period_locks.unlocked_by) AS unlocked_by_name, \
-     (SELECT u.display_name FROM users u WHERE u.id = period_locks.unlock_approved_by) \
-         AS unlock_approved_by_name"
+     unlock_approved_by, \
+     ((unlock_review_required AND unlock_approved_by IS NOT NULL) OR EXISTS( \
+         SELECT 1 FROM governed_exceptions e WHERE e.org_id=period_locks.org_id AND e.subject_id=period_locks.id AND ",
+         unreviewed_unlock!(), ")) AS unlock_review_required, period_lock_effective(period_locks) AS active, \
+     (SELECT u.display_name FROM person_accounts_current u WHERE u.id = period_locks.locked_by) AS locked_by_name, \
+     (SELECT u.display_name FROM person_accounts_current u WHERE u.id = period_locks.unlocked_by) AS unlocked_by_name, \
+     (SELECT u.display_name FROM person_accounts_current u WHERE u.id = period_locks.unlock_approved_by) \
+         AS unlock_approved_by_name")
     };
 }
 

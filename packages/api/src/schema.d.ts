@@ -9015,6 +9015,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/action-inbox/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 완료 - what the caller decided, newest first
+         * @description The 업무함 완료 tab. Items the caller decided, newest first by completed_at, merged across sources with one keyset: change requests the caller applied or declined, period unlocks the caller approved, and 정정 the caller approved or declined. Each source keeps the grant its open queue requires, so a row shows only while the caller may still read it (a revoked grant hides it). Not counted and never part of the open list or its filters. A name on a row is a personnel read and is access-logged like the open list. 422 validation on a cursor this route did not issue.
+         */
+        get: operations["listMyActionInboxDone"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/action-inbox/reference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 참조 - the notices addressed to the caller
+         * @description The 업무함 참조 tab: the notifications addressed to the caller (FYI, no action needed), newest first, with the notification center's own recipient and mute rules. Served on the inbox surface so the tab works while the notifications module's own routes are off.
+         */
+        get: operations["listMyActionInboxReference"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/action-inbox/reference/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 확인 - mark one of the caller's notices read
+         * @description Marks one of the caller's own notices read. A notice that is not the caller's is 404, indistinguishable from an unknown id.
+         */
+        post: operations["markMyActionInboxReferenceRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/authz": {
         parameters: {
             query?: never;
@@ -11211,6 +11271,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge a consumed sole-holder unlock exception
+         * @description Cedar rechecks current close entitlement and requires an independent reviewer when available.
+         */
+        post: operations["acknowledgePeriodUnlockReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/person-binding-reviews": {
         parameters: {
             query?: never;
@@ -12469,6 +12549,50 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The fields the tenant adds to its personnel card
+         * @description Every field definition of the tenant, active first, then in the order they were added; retired fields (active false) stay listed so their values keep resolving. No field is seeded. Takes employee_directory_read.
+         */
+        get: operations["listRosterFields"];
+        put?: never;
+        /**
+         * Add a field to the personnel card
+         * @description Adds a field definition. Type and section are fixed once added. First release, the 인적사항 (PERSONAL) and 재직·배치 (JOB) sections only, values read by managers only; a field is never a pay item. Who may add is Cedar's roster_field_manage (fail-closed), a tenant-wide holder of roster_field_manage or employee_directory_manage; a 법인/사업장-scoped grant is 403. 409 roster_field_label_taken (any field of the tenant, retired included, has the label ignoring case), roster_field_limit (the tenant has active_limit active fields); 422 roster_field_label_invalid, roster_field_choices_invalid. Audited as roster_field.create.
+         */
+        post: operations["createRosterField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster-fields/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename a field, change its options, or retire or restore it
+         * @description Omitted parts stay; type and section never change. choices replaces the option list and must name every existing option by id exactly once (relabelled as sent); an option without an id is added. A field is never deleted; active false retires it (hidden from new entry, values kept) and active true restores it within active_limit. Who may change is Cedar's roster_field_manage, as for POST. 404 roster_field_not_found; 409 roster_field_label_taken, roster_field_limit; 422 roster_field_label_invalid, roster_field_choices_invalid. Audited as roster_field.update.
+         */
+        patch: operations["updateRosterField"];
         trace?: never;
     };
     "/api/v1/sales/inquiries": {
@@ -15117,6 +15241,19 @@ export interface components {
             /** @enum {string} */
             kind: "automation" | "policy";
         };
+        /** @description An item the caller decided, as the 완료 tab lists it. */
+        ActionInboxDoneItem: {
+            /** @description The namespaced id the open item had ("{kind}:{uuid}"). */
+            id: string;
+            kind: string;
+            /** @description The subject (a person or legal entity name). */
+            title: string;
+            /** @description The source's own end state. */
+            outcome: string;
+            /** Format: date-time */
+            completed_at: string;
+            links: components["schemas"]["ActionInboxLink"][];
+        };
         /** @description One unified actionable item. Field names mirror the overview prototype's items[] shape. Source-partial fields (site/who/due/submitted) are absent when the originating source does not carry them. */
         ActionInboxItem: {
             /** @description Korean calendar days since this item's own creation, using the database clock; never the tenant's age. */
@@ -15166,6 +15303,11 @@ export interface components {
                     periodEnd: string;
                     requester: string | null;
                     reason_code: string;
+                    /**
+                     * Format: uuid
+                     * @description Consumed sole-holder exception awaiting acknowledgement, rather than an unlock approval.
+                     */
+                    exceptionId?: string;
                     /** @description Tenant-defined reason labels, using the owning reason catalog's presentation contract. */
                     reason_entry?: {
                         system: boolean;
@@ -16134,7 +16276,7 @@ export interface components {
             /** @enum {string|null} */
             target?: "employee_number" | "employee_name" | "branch_name" | "work_date" | "check_in_at" | "check_out_at" | "minutes_worked" | null;
             /**
-             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`.
+             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no longer produced and appears only on runs made before that rule.
              * @enum {string}
              */
             classification: "canonical" | "retained" | "restricted";
@@ -18020,7 +18162,7 @@ export interface components {
                 name_hanja?: string | null;
                 /** @description 영문 성명 (Latin letters, spaces, - ' . ,). */
                 name_en?: string | null;
-                /** @description 국적, ISO 3166-1 alpha-2. */
+                /** @description 국적, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it. */
                 nationality?: string | null;
                 /** @description 개인 메일. */
                 personal_email?: string | null;
@@ -19817,7 +19959,7 @@ export interface components {
             normalized_header: string;
             target?: string | null;
             /**
-             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`.
+             * @description `restricted` columns are dropped at import: their values are never stored and never appear in preview `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no longer produced and appears only on runs made before that rule.
              * @enum {string}
              */
             classification: "canonical" | "retained" | "restricted" | "location";
@@ -20616,6 +20758,14 @@ export interface components {
             };
             /** Format: date */
             group_service_start_date: string | null;
+            /** @description Active ISO country catalog options for nationality. */
+            countries?: {
+                code: string;
+                label_ko: string;
+                label_en: string;
+                /** @description Alternate country names and codes for search, owned by the catalog. */
+                search_terms?: string;
+            }[];
         };
         EmployeePhotoUpload: {
             upload_id: components["schemas"]["Uuid"];
@@ -25139,6 +25289,11 @@ export interface components {
         };
         OrgSetupBatchRequest: {
             ops: components["schemas"]["OrgSetupOp"][];
+            /**
+             * Format: date
+             * @description The day every change of the batch takes effect; today (KST) when absent. Refused on effective_date, nothing written: org_setup_date_future (setup applies at once; a change that waits for its day is an org change), org_setup_date_before_parent (a unit dated before the first record of the unit or 사업장 it goes under), org_setup_date_before_current (a change dated before the unit's current record).
+             */
+            effective_date?: string;
         };
         OrgSetupBatchView: {
             /** Format: uuid */
@@ -28206,6 +28361,32 @@ export interface components {
             target_version: number;
             step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
+        /** @description A field the tenant adds to its personnel card. */
+        RosterField: {
+            id: components["schemas"]["Uuid"];
+            label: string;
+            value_type: components["schemas"]["RosterFieldValueType"];
+            section: components["schemas"]["RosterFieldSection"];
+            /** @description Who reads the field's values. MANAGERS, not the person themselves (first release). */
+            visibility: string;
+            /** @description A CHOICE field's options; empty for any other type. An option keeps its id when relabelled. */
+            choices: components["schemas"]["RosterFieldChoice"][];
+            /** @description false = retired (hidden from new entry, values kept). */
+            active: boolean;
+        };
+        RosterFieldChoice: {
+            id: components["schemas"]["Uuid"];
+            label: string;
+        };
+        RosterFieldChoiceInput: {
+            /** @description An existing option's id; absent for a new option. */
+            id?: components["schemas"]["Uuid"];
+            label: string;
+        };
+        /** @description The card section a field sits in - PERSONAL 인적사항, JOB 재직·배치. */
+        RosterFieldSection: string;
+        /** @description TEXT, INTEGER (whole number), DECIMAL, DATE, or CHOICE (one option from the field's list). */
+        RosterFieldValueType: string;
         RouteAdoptionMetric: {
             release_cycle: string;
             /** Format: int64 */
@@ -49680,7 +49861,7 @@ export interface operations {
                 /** @description Home attention view over the same authorized work. Approvals are pending decisions; today means an actionable source deadline on today's Korean calendar date; overdue means that source deadline has expired (including statutory-register deadlines). All preserves filter=all or filter=turn; the other attention views take precedence. Counts honor filter=turn for Home; other saved views require attention to be omitted. */
                 attention?: "all" | "approvals" | "today" | "overdue";
                 /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
-                filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures";
+                filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures" | "notices";
                 /** @description Page size, clamped server-side to 1..=200. */
                 limit?: number;
                 /** @description Opaque immutable-traversal cursor returned as `next_cursor` by the previous page. */
@@ -49738,6 +49919,90 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    listMyActionInboxDone: {
+        parameters: {
+            query?: {
+                /** @description Rows per page, 1 to 100 (default 50). */
+                limit?: number;
+                /** @description The previous page's next_cursor. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of finished items. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["ActionInboxDoneItem"][];
+                        /** @description Present when another page exists. */
+                        next_cursor: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    listMyActionInboxReference: {
+        parameters: {
+            query?: {
+                /** @description When true, only unread notices. */
+                unread?: boolean;
+                /** @description The previous page's next_cursor (strictly older notices). */
+                cursor?: components["schemas"]["Uuid"];
+                /** @description Page size, clamped to 1..=200 (default 50). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of the caller's notices. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    markMyActionInboxReferenceRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The notice, now read. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     getCurrentUserAuthz: {
@@ -54677,6 +54942,43 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    acknowledgePeriodUnlockReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lockId: string;
+                exceptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review acknowledged; repeated acknowledgement returns the same receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        status: "REVIEWED";
+                    };
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listPersonBindingReviews: {
         parameters: {
             query?: {
@@ -57195,6 +57497,103 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    listRosterFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The definitions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["RosterField"][];
+                        /** @description The caller may add or change fields (Cedar roster_field_manage). */
+                        can_manage: boolean;
+                        /** @description The most active fields a tenant may have; a retired field frees its place. */
+                        active_limit: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createRosterField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    label: string;
+                    value_type: components["schemas"]["RosterFieldValueType"];
+                    section: components["schemas"]["RosterFieldSection"];
+                    /** @description CHOICE only, 1 to 50 options with distinct labels; new options carry no id. */
+                    choices?: components["schemas"]["RosterFieldChoiceInput"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterField"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    updateRosterField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    label?: string;
+                    choices?: components["schemas"]["RosterFieldChoiceInput"][];
+                    active?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The changed field. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterField"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };

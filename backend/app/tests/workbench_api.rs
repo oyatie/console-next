@@ -86,6 +86,7 @@ fn now() -> OffsetDateTime {
 
 fn context() -> WorkbenchReadContext {
     WorkbenchReadContext {
+        authorization: Default::default(),
         principal: Principal::new(
             UserId::new(),
             OrgId::one(),

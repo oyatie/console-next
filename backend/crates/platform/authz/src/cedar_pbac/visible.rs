@@ -5,6 +5,7 @@
 //! floor, never OR it with another predicate. No live surface switches here.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use console_kernel_core::{KernelError, OrgId, Timestamp};
 use sqlx::{Postgres, Transaction};
@@ -23,7 +24,8 @@ mod payroll_module;
 pub use payroll_module::{PayrollModuleFactLoader, require_payroll_module};
 
 use crate::access::{
-    AccessEngineError, AccessSlice, NodeKind, NodePath, NodeRef, load_access_subject, scope_path,
+    AccessEngineError, AccessSlice, AccessSnapshot, NodeKind, NodePath, NodeRef,
+    load_access_subject, scope_path,
 };
 
 use crate::access::load::dept_paths;
@@ -34,11 +36,11 @@ use super::residual::{
     SubjectAttrs, lower,
 };
 
-/// Immutable request facts. Only the loader can construct them; refresh them for
-/// each decision transaction, including after a policy, grant or tree change.
+/// Immutable request facts. Only the loader can construct them. A read composition
+/// may share one snapshot; writes reload after any policy, grant or tree change.
 #[derive(Debug)]
 pub struct DecisionFacts {
-    slice: AccessSlice,
+    access: Arc<AccessSnapshot>,
     paths: BTreeMap<NodeRef, NodePath>,
     department_placements: BTreeMap<Uuid, NodePath>,
     roles: Vec<String>,
@@ -48,6 +50,18 @@ pub struct DecisionFacts {
 }
 
 impl DecisionFacts {
+    /// Reuse this read request's subject and compiled policies for source decisions.
+    ///
+    /// # Errors
+    /// A snapshot belonging to another tenant or account is refused.
+    pub fn access_permissions(
+        &self,
+        org: OrgId,
+        actor: Uuid,
+    ) -> Result<(&crate::access::AccessSubject, &AccessSlice), KernelError> {
+        self.access.permissions(org, actor)
+    }
+
     /// Request writes use the live account and Cedar's access-management decision.
     ///
     /// # Errors
@@ -151,7 +165,7 @@ impl DecisionFacts {
         let Some(path) = self.paths.get(&resource) else {
             return Ok(false);
         };
-        match self.slice.allows(action, path) {
+        match self.access.slice()?.allows(action, path) {
             // An incomplete/dissolved path cannot grant access to a node.
             Err(AccessEngineError::FactMissing(_)) => Ok(false),
             decision => decision,
@@ -232,6 +246,16 @@ pub async fn load_facts(
     org: OrgId,
     actor: Uuid,
 ) -> Result<DecisionFacts, KernelError> {
+    load_facts_with_access(tx, org, actor, None).await
+}
+
+/// Read compositions may supply their principal's immutable access snapshot.
+pub async fn load_facts_with_access(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: Uuid,
+    access: Option<Arc<AccessSnapshot>>,
+) -> Result<DecisionFacts, KernelError> {
     let armed: bool = sqlx::query_scalar(
         "SELECT COALESCE(current_setting('app.current_org', true) = $1, false)
             AND row_security_active('access_grants') AND row_security_active('users')
@@ -257,9 +281,13 @@ pub async fn load_facts(
     .map_err(db)?;
     let (roles, employee_id) =
         account.ok_or_else(|| KernelError::forbidden("Cedar facts require an active account"))?;
-    let subject = load_access_subject(tx, org, actor, Timestamp::now_utc()).await?;
-    let slice = AccessSlice::compile(&subject)
-        .map_err(|e| KernelError::internal(format!("Cedar facts unavailable: {e}")))?;
+    let access = match access {
+        Some(access) => access,
+        None => Arc::new(AccessSnapshot::new(
+            load_access_subject(tx, org, actor, Timestamp::now_utc()).await?,
+        )),
+    };
+    access.permissions(org, actor)?;
     let tenant = NodePath::tenant(org);
     let mut paths = BTreeMap::from([(
         NodeRef {
@@ -327,7 +355,7 @@ pub async fn load_facts(
         }
     }
     Ok(DecisionFacts {
-        slice,
+        access,
         paths,
         department_placements,
         roles,

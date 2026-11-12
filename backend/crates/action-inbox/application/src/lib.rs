@@ -3,6 +3,7 @@
 
 mod attention;
 pub mod decision;
+pub mod done;
 pub use attention::{Attention, AttentionCount};
 mod projection;
 use projection::project_item;

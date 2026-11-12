@@ -117,6 +117,7 @@ import { koProfile } from "./ko/profile";
 import { koIdentity } from "./ko/identity";
 import { koRequests } from "./ko/requests";
 import { koTitles } from "./ko/titles";
+import { koRosterFields } from "./ko/roster-fields";
 import { koOrgBulk } from "./ko/org-bulk";
 import { koOrgHistory } from "./ko/org-history";
 import { koOrgConflict } from "./ko/org-conflict";
@@ -242,6 +243,7 @@ export const ko = {
   ...koIdentity,
   ...koRequests,
   ...koTitles,
+  ...koRosterFields,
   ...koOrgBulk,
   ...koOrgHistory,
   ...koOrgConflict,

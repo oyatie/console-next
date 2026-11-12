@@ -5,6 +5,7 @@ import type { components } from "@console/api/schema";
 import { COMPANY, importPeople } from "../people-directory.fixture";
 import { tenantWithExecutive } from "../setup-flows";
 import { apiOf, bearerOf, headcount } from "../helpers/api";
+import { seedUnlockReview } from "./sole-unlock-fixture";
 
 test("served 2,000-person Home and its inbox stay within 2 seconds under burst", { tag: ["@hr", "@performance"] }, async ({ browser }, info) => {
   test.skip(process.env.E2E_SERVED !== "1", "Requires the served production web build");
@@ -15,6 +16,7 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
     await importPeople(admin);
     const api = apiOf(admin, bearer);
     expect(await headcount(api)).toBe(2000);
+    const review = seedUnlockReview(bearer());
     const settings = await api("/settings");
     expect(settings.status()).toBe(200);
     const { items } = await settings.json() as { items: { key: string; value: unknown }[] };
@@ -48,6 +50,7 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
       const body = await response.json() as components["schemas"]["ActionInboxResponse"];
       expect(body.unavailable).toEqual([]);
       expect(body.items.length).toBeGreaterThan(0);
+      expect(body.items.some(item => item.id === `period_unlock:${review}`)).toBe(true);
       await expect(admin.getByRole("region", { name: "업무함", exact: true }).locator("[data-id]").first()).toBeVisible();
       await admin.waitForFunction(() => performance.getEntriesByName("home:first-rows").length > 0);
       const timing = await admin.evaluate(() => {

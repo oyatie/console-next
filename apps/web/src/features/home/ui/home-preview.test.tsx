@@ -76,13 +76,13 @@ test.each([
   expect(markup).toContain(`aria-label="${t("home.lanes")}"`);
   expect(markup).not.toContain(`aria-label="${t("home.attention.label")}"`);
   const lanes = markup.match(/<nav[^>]*>[\s\S]*?<\/nav>/)![0];
-  expect(lanes).not.toContain('href="/inbox"');
   expect(lanes).not.toContain('aria-current="page"');
   expect(lanes).toContain('aria-current="true"');
   for (const key of view.pages[0]!.available_filters) {
     const count = view.pages[0]!.counts[key]!;
     const label = t(count.total_is_exact ? "home.inbox.filterCount" : "home.inbox.filterCount.lower", { filter: t(`home.inbox.filter.${key}`), count: count.total });
-    expect(markup).toContain(`href="/inbox?tab=${key}"`);
+    // My turn and its due-soon slice open 해야 할 일, the inbox's first tab.
+    expect(lanes).toContain(key === "turn" || key === "deadlines" ? `href="/inbox">${label}` : `href="/inbox?tab=${key}"`);
     expect(markup).toContain(label);
   }
 });

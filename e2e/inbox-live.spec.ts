@@ -5,10 +5,11 @@ import { go, kstDate, unique } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { staffedTenant } from "./setup-flows";
 
-const INBOX = "/api/v1/me/action-inbox";
+const INBOX_API = "/me/action-inbox";
+const INBOX = `/api/v1${INBOX_API}`;
 const SOURCE_READ = /^\/api\/v1\/(employees|org-changes|org-units|branches|hr\/exit-cases|change-requests|period-locks|statutory\/insurance-filings)(\?|$)/;
 type Item = { id: string; kind: string; title: string; lane: string; links: { kind: string; id: string }[] };
-type Inbox = { items: Item[]; total: number; next_cursor: string | null };
+type Inbox = { items: Item[]; total: number; next_cursor: string | null; unavailable: unknown[] };
 const inbox = (page: Page) => page.getByRole("region", { name: "업무함", exact: true });
 const readFilter = (page: Page, filter: string) => page.waitForResponse((response) => {
   const url = new URL(response.url());
@@ -52,8 +53,16 @@ test("one server queue supplies Home and every inbox filter and holds remote res
   const first = await firstRead;
   expect(first.status()).toBe(200);
   const body = await first.json() as Inbox;
+  expect(body.unavailable).toEqual([]);
   expect(body.items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "org_change_draft", links: expect.arrayContaining([expect.objectContaining({ kind: "org_change", id: draft.id })]) })]));
   const draftItem = body.items.find(item => item.links.some(link => link.kind === "org_change" && link.id === draft.id))!;
+  const concurrentReads = await Promise.all(Array.from({ length: 3 }, () => api(`${INBOX_API}?filter=turn`)));
+  for (const response of concurrentReads) {
+    expect(response.status()).toBe(200);
+    const queue = await response.json() as Inbox;
+    expect(queue.unavailable).toEqual([]);
+    expect(queue.items.some(item => item.id === draftItem.id)).toBe(true);
+  }
   const row = inbox(reader).locator(`[data-id="${draftItem.id}"]`);
   await expect(row).toHaveCount(1);
   await inbox(reader).getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
@@ -63,17 +72,22 @@ test("one server queue supplies Home and every inbox filter and holds remote res
   for (const item of body.items.filter((item) => !item.kind.startsWith("setup_")))
     await expect(inbox(reader).getByText(item.title, { exact: false }).first()).toBeVisible();
 
-  for (const [filter, label] of [["waiting", "기다리는 중"], ["scheduled", "예정"], ["deadlines", "기한 임박"], ["failures", "실패·예외"]] as const) {
+  // 예정 and 실패 are chips under 해야 할 일 (기한 임박 leads it as a bucket); 요청한 일 is a tab of its own.
+  for (const [filter, control] of [
+    ["scheduled", inbox(reader).getByRole("button", { name: /^예정/ })],
+    ["failures", inbox(reader).getByRole("button", { name: /^실패·예외/ })],
+    ["waiting", inbox(reader).getByRole("link", { name: /^요청한 일 \d+\+?$/ })],
+  ] as const) {
     const reading = readFilter(reader, filter);
-    const button = inbox(reader).getByRole("link", { name: new RegExp(`^${label} \\d+\\+?$`) });
-    await button.click();
+    await control.click();
     const response = await reading;
     expect(response.status()).toBe(200);
-    await expect(button).toHaveAttribute("aria-current", "page");
+    if (filter === "waiting") await expect(control).toHaveAttribute("aria-current", "page");
+    else await expect(control).toHaveAttribute("aria-pressed", "true");
     const filtered = await response.json() as Inbox;
     if (filter === "waiting" || filter === "scheduled") expect(filtered.items.every((item) => item.lane === filter)).toBe(true);
   }
-  const turn = inbox(reader).getByRole("link", { name: /^내 차례 \d+\+?$/ });
+  const turn = inbox(reader).getByRole("link", { name: /^해야 할 일 \d+\+?$/ });
   await turn.click();
   await expect(turn).toHaveAttribute("aria-current", "page");
   await expect(row).toHaveCount(1);
@@ -106,7 +120,9 @@ test("one server queue supplies Home and every inbox filter and holds remote res
   await held.click();
   const updated = await refreshed;
   expect(updated.status()).toBe(200);
-  expect((await updated.json() as Inbox).items.some((item) => item.links.some((link) => link.kind === "org_change" && link.id === draft.id))).toBe(false);
+  const queue = await updated.json() as Inbox;
+  expect(queue.unavailable).toEqual([]);
+  expect(queue.items.some((item) => item.links.some((link) => link.kind === "org_change" && link.id === draft.id))).toBe(false);
   await expect(row).toHaveCount(0);
   await admin.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ }).click();
   await expect(homeRow).toHaveCount(0);

@@ -19,6 +19,7 @@ pub(crate) async fn read_workbench_action_inbox(
     as_of: OffsetDateTime,
     _limit: usize,
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
+    authorization: Authorization,
 ) -> Result<WorkbenchActionInboxPage, WorkbenchSourceFailure> {
     let org = principal.org_id;
     let (deadline_due_soon_days, policies) = console_platform_db::with_org_conn::<
@@ -36,6 +37,7 @@ pub(crate) async fn read_workbench_action_inbox(
         }
     })?;
     let sources = PgActionInboxSources {
+        authorization,
         pool: pool.clone(),
         principal: principal.clone(),
         setup: tokio::sync::OnceCell::new(),

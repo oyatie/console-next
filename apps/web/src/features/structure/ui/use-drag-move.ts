@@ -70,9 +70,20 @@ export function useDragMove(s: Structure, sel: ReadonlySet<string>, onDrop: (nod
         at: { x: ev.clientX, y: ev.clientY },
       });
     };
-    const up = () => {
+    const end = () => {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
+      document.removeEventListener("pointercancel", cancel);
+    };
+    // A gesture the browser takes over (a touch that turns into a scroll) ends with no release: nothing stays armed,
+    // so a later release can never drop what this press started.
+    const cancel = () => {
+      end();
+      start.current = null;
+      show(null);
+    };
+    const up = () => {
+      end();
       const v = live.current;
       start.current = null;
       show(null);
@@ -81,6 +92,7 @@ export function useDragMove(s: Structure, sel: ReadonlySet<string>, onDrop: (nod
     };
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
+    document.addEventListener("pointercancel", cancel);
   };
 
   return { view, onPointerDown, dragging };

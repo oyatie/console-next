@@ -19374,7 +19374,7 @@ paths:
         required: false
         schema:
           type: string
-          enum: [all, turn, waiting, scheduled, deadlines, failures]
+          enum: [all, turn, waiting, scheduled, deadlines, failures, notices]
           default: all
         description: Server-owned view; ownership and deadlines are never merged or filtered in the browser.
       - name: limit
@@ -19425,6 +19425,131 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/action-inbox/done:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - me
+      operationId: listMyActionInboxDone
+      summary: 완료 - what the caller decided, newest first
+      description: >-
+        The 업무함 완료 tab. Items the caller decided, newest first by completed_at, merged across
+        sources with one keyset: change requests the caller applied or declined, period unlocks the
+        caller approved, and 정정 the caller approved or declined. Each source keeps the grant its
+        open queue requires, so a row shows only while the caller may still read it (a revoked grant
+        hides it). Not counted and never part of the open list or its filters. A name on a row is a
+        personnel read and is access-logged like the open list. 422 validation on a cursor this
+        route did not issue.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        description: Rows per page, 1 to 100 (default 50).
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+      - name: cursor
+        in: query
+        required: false
+        description: The previous page's next_cursor.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: One page of finished items.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActionInboxDoneItem'
+                  next_cursor:
+                    type: [string, 'null']
+                    description: Present when another page exists.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/me/action-inbox/reference:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - me
+      operationId: listMyActionInboxReference
+      summary: 참조 - the notices addressed to the caller
+      description: >-
+        The 업무함 참조 tab: the notifications addressed to the caller (FYI, no action needed),
+        newest first, with the notification center's own recipient and mute rules. Served on the
+        inbox surface so the tab works while the notifications module's own routes are off.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: unread
+        in: query
+        required: false
+        description: When true, only unread notices.
+        schema:
+          type: boolean
+      - name: cursor
+        in: query
+        required: false
+        description: The previous page's next_cursor (strictly older notices).
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - name: limit
+        in: query
+        required: false
+        description: Page size, clamped to 1..=200 (default 50).
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: One page of the caller's notices.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/me/action-inbox/reference/{id}/read:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - me
+      operationId: markMyActionInboxReferenceRead
+      summary: 확인 - mark one of the caller's notices read
+      description: >-
+        Marks one of the caller's own notices read. A notice that is not the caller's is 404,
+        indistinguishable from an unknown id.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: The notice, now read.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/me/authz:
     get:
       tags:
@@ -24756,6 +24881,41 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [period-locks]
+      operationId: acknowledgePeriodUnlockReview
+      summary: Acknowledge a consumed sole-holder unlock exception
+      description: Cedar rechecks current close entitlement and requires an independent reviewer when available.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: lockId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: exceptionId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Review acknowledged; repeated acknowledgement returns the same receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [REVIEWED] }
+        '401':
+          description: No session.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/person-binding-reviews:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -27317,6 +27477,149 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
         '422': {$ref: '#/components/responses/ValidationError'}
+  /api/v1/roster-fields:
+    get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
+      tags:
+        - employees
+      operationId: listRosterFields
+      summary: The fields the tenant adds to its personnel card
+      description: Every field definition of the tenant, active first, then in the order they were added; retired
+        fields (active false) stay listed so their values keep resolving. No field is seeded. Takes
+        employee_directory_read.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: The definitions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, can_manage, active_limit]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RosterField'
+                  can_manage:
+                    type: boolean
+                    description: The caller may add or change fields (Cedar roster_field_manage).
+                  active_limit:
+                    type: integer
+                    description: The most active fields a tenant may have; a retired field frees its place.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - employees
+      operationId: createRosterField
+      summary: Add a field to the personnel card
+      description: Adds a field definition. Type and section are fixed once added. First release, the 인적사항
+        (PERSONAL) and 재직·배치 (JOB) sections only, values read by managers only; a field is never a pay item. Who
+        may add is Cedar's roster_field_manage (fail-closed), a tenant-wide holder of roster_field_manage or
+        employee_directory_manage; a 법인/사업장-scoped grant is 403. 409 roster_field_label_taken (any field of
+        the tenant, retired included, has the label ignoring case), roster_field_limit (the tenant has active_limit
+        active fields); 422 roster_field_label_invalid, roster_field_choices_invalid. Audited as
+        roster_field.create.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [label, value_type, section]
+              properties:
+                label:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                value_type:
+                  $ref: '#/components/schemas/RosterFieldValueType'
+                section:
+                  $ref: '#/components/schemas/RosterFieldSection'
+                choices:
+                  description: CHOICE only, 1 to 50 options with distinct labels; new options carry no id.
+                  type: array
+                  maxItems: 50
+                  items:
+                    $ref: '#/components/schemas/RosterFieldChoiceInput'
+      responses:
+        '201':
+          description: Added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RosterField'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/roster-fields/{id}:
+    patch:
+      tags:
+        - employees
+      operationId: updateRosterField
+      summary: Rename a field, change its options, or retire or restore it
+      description: Omitted parts stay; type and section never change. choices replaces the option list and must
+        name every existing option by id exactly once (relabelled as sent); an option without an id is added. A
+        field is never deleted; active false retires it (hidden from new entry, values kept) and active true
+        restores it within active_limit. Who may change is Cedar's roster_field_manage, as for POST. 404
+        roster_field_not_found; 409 roster_field_label_taken, roster_field_limit; 422 roster_field_label_invalid,
+        roster_field_choices_invalid. Audited as roster_field.update.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                label:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                choices:
+                  type: array
+                  maxItems: 50
+                  items:
+                    $ref: '#/components/schemas/RosterFieldChoiceInput'
+                active:
+                  type: boolean
+      responses:
+        '200':
+          description: The changed field.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RosterField'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/sales/inquiries:
     get:
       tags:
@@ -34008,6 +34311,32 @@ components:
         id: { type: string, format: uuid }
         label: { type: string }
         kind: { type: string, enum: [automation, policy] }
+    ActionInboxDoneItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      description: An item the caller decided, as the 완료 tab lists it.
+      required: [id, kind, title, outcome, completed_at, links]
+      properties:
+        id:
+          type: string
+          description: The namespaced id the open item had ("{kind}:{uuid}").
+        kind:
+          type: string
+          x-extensible-enum: [hr_request, period_unlock, identifier_correction]
+        title:
+          type: string
+          description: The subject (a person or legal entity name).
+        outcome:
+          type: string
+          x-extensible-enum: [APPLIED, DECLINED, APPROVED, REJECTED]
+          description: The source's own end state.
+        completed_at:
+          type: string
+          format: date-time
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionInboxLink'
     ActionInboxItem:
       type: object
       description: >-
@@ -34169,6 +34498,10 @@ components:
                   type: [string, 'null']
                 reason_code:
                   type: string
+                exceptionId:
+                  type: string
+                  format: uuid
+                  description: Consumed sole-holder exception awaiting acknowledgement, rather than an unlock approval.
                 reason_entry:
                   type: [object, 'null']
                   description: Tenant-defined reason labels, using the owning reason catalog's presentation contract.
@@ -35696,7 +36029,8 @@ components:
         classification:
           type: string
           description: '`restricted` columns are dropped at import: their values are never stored and never appear in preview
-            `values`.'
+            `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no
+            longer produced and appears only on runs made before that rule.'
           enum:
           - canonical
           - retained
@@ -38530,7 +38864,7 @@ components:
               type: [string, 'null']
               maxLength: 100
             nationality:
-              description: 국적, ISO 3166-1 alpha-2.
+              description: '국적, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it.'
               type: [string, 'null']
               pattern: '^[A-Za-z]{2}$'
             personal_email:
@@ -42203,7 +42537,8 @@ components:
         classification:
           type: string
           description: '`restricted` columns are dropped at import: their values are never stored and never appear in preview
-            `values`.'
+            `values`. A column no field takes is always `restricted`; `retained` (raw text kept without a field) is no
+            longer produced and appears only on runs made before that rule.'
           enum:
           - canonical
           - retained
@@ -43920,6 +44255,23 @@ components:
         group_service_start_date:
           type: [string, 'null']
           format: date
+        countries:
+          type: array
+          description: Active ISO country catalog options for nationality.
+          items:
+            type: object
+            required: [code, label_ko, label_en]
+            properties:
+              code:
+                type: string
+                pattern: '^[A-Z]{2}$'
+              label_ko:
+                type: string
+              label_en:
+                type: string
+              search_terms:
+                type: string
+                description: Alternate country names and codes for search, owned by the catalog.
     EmployeePhotoUpload:
       type: object
       required: [upload_id, employee_id, content_type, byte_size, confirmed]
@@ -51424,6 +51776,7 @@ components:
           format: int64
           description: Unread rows suppressed by the caller's mute policies, across all categories.
     NotificationLink:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       description: Deep-link target — an object reference (kind + id) or a bare app screen.
       oneOf:
       - type: object
@@ -51496,6 +51849,7 @@ components:
           - 'null'
           description: Opaque keyset cursor for the next page; null at the end.
     NotificationPage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - items
@@ -51555,6 +51909,7 @@ components:
           format: int64
           description: The number of notifications marked read.
     NotificationSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - id
@@ -52979,6 +53334,14 @@ components:
           maxItems: 1000
           items:
             $ref: '#/components/schemas/OrgSetupOp'
+        effective_date:
+          type: string
+          format: date
+          description: >-
+            The day every change of the batch takes effect; today (KST) when absent. Refused on effective_date, nothing
+            written: org_setup_date_future (setup applies at once; a change that waits for its day is an org change),
+            org_setup_date_before_parent (a unit dated before the first record of the unit or 사업장 it goes under),
+            org_setup_date_before_current (a change dated before the unit's current record).
     OrgSetupBatchView:
       type: object
       required:
@@ -59464,6 +59827,60 @@ components:
           minimum: 1
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    RosterField:
+      type: object
+      description: A field the tenant adds to its personnel card.
+      required: [id, label, value_type, section, visibility, choices, active]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        label:
+          type: string
+        value_type:
+          $ref: '#/components/schemas/RosterFieldValueType'
+        section:
+          $ref: '#/components/schemas/RosterFieldSection'
+        visibility:
+          type: string
+          x-extensible-enum: [MANAGERS]
+          description: Who reads the field's values. MANAGERS, not the person themselves (first release).
+        choices:
+          type: array
+          description: A CHOICE field's options; empty for any other type. An option keeps its id when relabelled.
+          items:
+            $ref: '#/components/schemas/RosterFieldChoice'
+        active:
+          type: boolean
+          description: false = retired (hidden from new entry, values kept).
+    RosterFieldChoice:
+      type: object
+      required: [id, label]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        label:
+          type: string
+    RosterFieldChoiceInput:
+      type: object
+      additionalProperties: false
+      required: [label]
+      properties:
+        id:
+          description: An existing option's id; absent for a new option.
+          allOf:
+          - $ref: '#/components/schemas/Uuid'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 40
+    RosterFieldSection:
+      type: string
+      x-extensible-enum: [PERSONAL, JOB]
+      description: The card section a field sits in - PERSONAL 인적사항, JOB 재직·배치.
+    RosterFieldValueType:
+      type: string
+      x-extensible-enum: [TEXT, INTEGER, DECIMAL, DATE, CHOICE]
+      description: TEXT, INTEGER (whole number), DECIMAL, DATE, or CHOICE (one option from the field's list).
     RouteAdoptionMetric:
       type: object
       required:

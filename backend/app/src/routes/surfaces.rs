@@ -46,7 +46,15 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     ),
     #[cfg(feature = "support")]
     surface("support", console_support_rest::SUPPORT_ROUTE_PATHS),
-    surface("action-inbox", &[crate::action_inbox::ME_ACTION_INBOX_PATH]),
+    surface(
+        "action-inbox",
+        &[
+            crate::action_inbox::ME_ACTION_INBOX_PATH,
+            crate::action_inbox::tabs::ME_ACTION_INBOX_DONE_PATH,
+            crate::action_inbox::tabs::ME_ACTION_INBOX_REFERENCE_PATH,
+            crate::action_inbox::tabs::ME_ACTION_INBOX_REFERENCE_READ_PATH,
+        ],
+    ),
     surface(
         "approvals",
         &[
@@ -110,6 +118,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     surface(
         "hr-job-titles",
         console_hr_rest::job_title::JOB_TITLE_ROUTE_PATHS,
+    ),
+    surface(
+        "hr-roster-fields",
+        console_hr_rest::roster_field::ROSTER_FIELD_ROUTE_PATHS,
     ),
     surface(
         "hr-lifecycle-void",

@@ -14,7 +14,7 @@ import { Card } from "../ui/card/card";
 import { Checks } from "../ui/choice/checks";
 import { PageHead } from "../ui/page-head/page-head";
 import { Skeleton } from "../ui/skeleton/skeleton";
-import { rememberDomain } from "./sign-in-id";
+import { pauseAutofill, rememberDomain } from "./sign-in-id";
 
 export function SetupPasskey() {
   const nav = useNavigate();
@@ -46,7 +46,10 @@ export function SetupPasskey() {
       await nav({ href: consentDestination() });
     } catch (e) {
       // Registration succeeded; a failed automatic sign-in continues on the login screen.
-      if (e instanceof Error && e.message === PASSKEY_ENROLLED) return void (await nav({ to: "/login", search: { enrolled: true } }));
+      if (e instanceof Error && e.message === PASSKEY_ENROLLED) {
+        pauseAutofill();
+        return void (await nav({ to: "/login", search: { enrolled: true } }));
+      }
       setError(signInError(e));
     } finally {
       setBusy(false);

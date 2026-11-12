@@ -8,11 +8,20 @@
 .row:focus-visible { --shadow-x: inset 0 0 0 2px var(--ink); box-shadow: var(--shadow-x); }
 .row[data-current] { box-shadow: var(--selected-bar); background: var(--primary-soft); }
 .row[data-new] { background: var(--ok-bg); }
+/* Drag to move: the row that takes the drop is ringed, the moving row is outlined, a line marks where the unit will
+ * land. Nothing is dimmed: a faded row fails text contrast, and the status line says why a place cannot take it. */
+.rows[data-dragging] { user-select: none; cursor: grabbing; }
+.row[data-drop="ok"] { outline: 2px solid var(--ok-solid); outline-offset: -2px; }
+.row[data-drop="no"] { cursor: not-allowed; }
+.row[data-moving] { outline: 2px dashed var(--control-border); outline-offset: -2px; }
+.insert { height: calc(var(--space-1) / 2); box-shadow: var(--tab-selected); }
+/* The drag's status line is a row of its own, spanning the columns. */
+.dropHint { grid-column: 1 / -1; }
 .row > :last-child { text-align: right; }
 .edit { display: flex; flex: 1; flex-wrap: wrap; gap: var(--space-1); min-width: 0; }
 .edit .input { width: 100%; }
 .name { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
-.grip { color: var(--faint); flex: none; }
+.grip { color: var(--faint); flex: none; cursor: grab; }
 .sp { width: 14px; flex: none; }
 .strong { font-weight: var(--fw-strong); }
 .level { font-size: var(--text-xs); color: var(--steel); }

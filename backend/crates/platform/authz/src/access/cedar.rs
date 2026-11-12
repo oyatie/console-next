@@ -100,6 +100,7 @@ impl AccessSlice {
     /// # Errors
     /// Any schema, parse, link or strict-validation error or warning.
     pub fn compile(subject: &AccessSubject) -> Result<Self, AccessEngineError> {
+        tracing::debug!(account = %subject.account, phase = ?subject.phase, "compiling Cedar access slice");
         crate::cedar_stack::with_cedar_stack(|| {
             let schema = schema()?;
             let mut policies = PolicySet::new();

@@ -18,6 +18,7 @@ mod exit_reason;
 mod go_live;
 mod notices;
 mod preflight_access;
+mod roster_fields;
 
 use std::collections::BTreeSet;
 

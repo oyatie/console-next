@@ -302,6 +302,8 @@ pub enum Feature {
     ChangeRequestDecide,
     /// Manage the tenant job-title list (BW-13).
     JobTitleManage,
+    /// Define the fields a tenant adds to its personnel card (Cedar-only).
+    RosterFieldManage,
     /// Read records retained after tenant offboarding (BW-36; deferred, OD-7: inert).
     RetainedRecordsRead,
     /// Start tenant offboarding (BW-36; deferred, OD-7: inert).
@@ -315,7 +317,7 @@ pub enum Feature {
 }
 
 impl Feature {
-    pub const ALL: [Self; 112] = [
+    pub const ALL: [Self; 113] = [
         Self::Login,
         Self::WorkOrderCreate,
         Self::WorkOrderEditIntake,
@@ -424,6 +426,7 @@ impl Feature {
         Self::ApprovalRouteManage,
         Self::ChangeRequestDecide,
         Self::JobTitleManage,
+        Self::RosterFieldManage,
         Self::RetainedRecordsRead,
         Self::TenantOffboard,
         Self::LegalEntityManage,

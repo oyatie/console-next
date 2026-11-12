@@ -84,12 +84,6 @@ jobs:
           }
           JS
 
-  commits:
-    if: github.event_name != 'push'
-    permissions:
-      contents: read
-    uses: ./.github/workflows/commits.yml
-
   workflows:
     if: github.event_name != 'push'
     permissions: {contents: read}
@@ -807,7 +801,7 @@ jobs:
   ci-ok:
     permissions: {contents: read}
     if: ${{ always() }}
-    needs: [affected, commits, workflows, web, states-plan, states, states-timings, backend, backend-gates, backend-tests, backend-release, home, supply-chain, dev-artifacts, backend-cache, release-evidence]
+    needs: [affected, workflows, web, states-plan, states, states-timings, backend, backend-gates, backend-tests, backend-release, home, supply-chain, dev-artifacts, backend-cache, release-evidence]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

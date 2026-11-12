@@ -46,7 +46,7 @@ async fn change_request_keeps_workbench_action_list_available(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn unlock_request_keeps_workbench_action_list_available(pool: PgPool) {
+async fn unlock_request_has_one_task_surface_and_only_eligible_approvers_can_decide(pool: PgPool) {
     let (service, issuer) = period_support::router(&pool).await;
     let svc = passkey_service();
     let mut requester = period_support::admin(&pool, &svc, &issuer, "해제 요청자").await;
@@ -76,16 +76,65 @@ async fn unlock_request_keeps_workbench_action_list_available(pool: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::ACCEPTED, "{pending}");
-    assert_action(
-        service,
-        &approver.token,
-        &format!(
-            "period_unlock:{}",
-            pending["request"]["id"].as_str().unwrap()
-        ),
-        "해제 요청자",
+    let request = pending["request"]["id"].as_str().unwrap();
+    let item_id = format!("period_unlock:{request}");
+    assert_action(service.clone(), &approver.token, &item_id, "해제 요청자").await;
+    let queue = native_http::get(service.clone(), "/api/v1/me/action-inbox", &approver.token).await;
+    assert_eq!(queue.status, StatusCode::OK, "{}", queue.json);
+    assert!(
+        queue.json["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["id"] == item_id)
+    );
+    let before = queue.json["counts"]["turn"]["total"].as_u64().unwrap();
+    let own = native_http::get(service.clone(), "/api/v1/me/action-inbox", &requester.token).await;
+    assert_eq!(own.status, StatusCode::OK, "{}", own.json);
+    assert!(
+        own.json["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|item| item["id"] != item_id)
+    );
+    let reject = format!("{}/{lock}/unlock/reject", period_support::LOCKS);
+    let (status, refused) = period_support::send(
+        &service,
+        &reject,
+        &requester.token,
+        None,
+        json!({"requestId":request,"note":"본인 반려"}),
     )
     .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(refused["error"]["code"], "second_person_required");
+    let (status, decided) = period_support::send(
+        &service,
+        &reject,
+        &approver.token,
+        None,
+        json!({"requestId":request,"note":"정정 근거 보완"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{decided}");
+    let after = native_http::get(service.clone(), "/api/v1/me/action-inbox", &approver.token).await;
+    assert_eq!(after.status, StatusCode::OK, "{}", after.json);
+    assert!(
+        after.json["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|item| item["id"] != item_id)
+    );
+    assert_eq!(after.json["counts"]["turn"]["total"], before - 1);
+    let (status, locks) =
+        period_support::read(&service, period_support::LOCKS, &approver.token).await;
+    assert_eq!(status, StatusCode::OK, "{locks}");
+    assert!(
+        locks.get("soleHolderNotices").is_none(),
+        "inbox owns task counts: {locks}"
+    );
 }
 
 async fn assert_action(service: axum::Router, token: &str, id: &str, title: &str) {

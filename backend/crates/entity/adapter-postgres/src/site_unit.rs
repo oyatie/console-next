@@ -33,8 +33,15 @@ pub(crate) async fn workplace_unit(
     if let Some(id) = existing {
         return Ok(id);
     }
+    // A 사업장's first unit starts at 개설일, like the 사업장 record itself: a
+    // structure is dated at its real start, never at the day it was entered,
+    // so a 부서 under it can be dated from the day it really began. A unit
+    // made after an earlier one ended (a reopened 사업장) starts today.
     let row = sqlx::query(
-        "SELECT w.legal_entity_id, r.name FROM workplaces w JOIN LATERAL (SELECT name FROM workplace_revisions x \
+        "SELECT w.legal_entity_id, r.name, \
+           CASE WHEN EXISTS (SELECT 1 FROM org_unit_placements p WHERE p.workplace_id = w.id AND p.represents_workplace) \
+                THEN NULL ELSE (SELECT min(x.effective_from) FROM workplace_revisions x WHERE x.workplace_id = w.id) END AS opened \
+         FROM workplaces w JOIN LATERAL (SELECT name FROM workplace_revisions x \
            WHERE x.workplace_id = w.id ORDER BY x.effective_from DESC, x.version DESC LIMIT 1) r ON true \
          WHERE w.id = $1 AND w.voided_at IS NULL AND w.closed_on IS NULL",
     )
@@ -44,6 +51,8 @@ pub(crate) async fn workplace_unit(
     .ok_or_else(|| Refusal::field("workplace_id", "workplace_not_found"))?;
     let entity: Uuid = row.try_get("legal_entity_id")?;
     let name: String = row.try_get("name")?;
+    let opened: Option<time::Date> = row.try_get("opened")?;
+    let today = opened.map_or(today, |opened| opened.min(today));
     let attributes = json!({ "name": name.chars().take(120).collect::<String>(), "kind": "site", "status": "active", "effective_from": today.to_string() });
     let site = port
         .write(tx, actor.org, actor.user, Uuid::new_v4(), None, attributes)

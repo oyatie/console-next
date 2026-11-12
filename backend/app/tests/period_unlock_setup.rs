@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Solo unlock depends on eligible people and ends at go-live.
+//! Solo unlock depends on eligible people, including after go-live.
 
 mod period_unlock_support;
 
 use console_kernel_core::OrgId;
 use console_platform_test_support::soft_passkey::passkey_service;
 use http::StatusCode;
-use period_unlock_support::{LOCKS, admin_in, router, send, step_up};
+use period_unlock_support::{LOCKS, admin_in, read, router, send, step_up};
 use serde_json::json;
 use sqlx::PgPool;
 use time::format_description::well_known::Rfc3339;
@@ -73,17 +73,23 @@ async fn setup_with_ops_and_one_linked_admin_unlocks_via_solo_review(owner: PgPo
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn operating_bound_sole_holder_is_refused_without_side_effects(owner: PgPool) {
+async fn operating_bound_sole_holder_unlocks_with_exception_and_inbox_review(owner: PgPool) {
     let (service, issuer) = router(&owner).await;
     let svc = passkey_service();
     let org = setup_tenant(&owner).await;
     let mut human = admin_in(&owner, &svc, &issuer, org, "단독 관리자").await;
+    let ops = admin_in(&owner, &svc, &issuer, org, "운영 계정").await;
+    sqlx::query("UPDATE users SET employee_id=NULL,is_tenant_ops=true WHERE id=$1")
+        .bind(ops.id)
+        .execute(&owner)
+        .await
+        .unwrap();
     sqlx::query("UPDATE tenant_phase SET phase='OPERATING',go_live_at=now(),go_live_by=$2,go_live_preview_digest=repeat('a',64) WHERE org_id=$1")
         .bind(org.as_uuid()).bind(human.id).execute(&owner).await.unwrap();
     let (id, relock_at) = lock(&service, &human.token).await;
     let payload = format!("PERIOD_UNLOCK\n{id}\nAUDIT_FINDING\n{relock_at}");
     let assertion = step_up(&owner, &svc, &mut human, id, &payload).await;
-    let (status, refused) = send(
+    let (status, unlocked) = send(
         &service,
         &format!("{LOCKS}/{id}/unlock"),
         &human.token,
@@ -92,14 +98,15 @@ async fn operating_bound_sole_holder_is_refused_without_side_effects(owner: PgPo
             "stepUp":assertion}),
     )
     .await;
-    assert_eq!(status, StatusCode::CONFLICT, "{refused}");
-    assert_eq!(
-        refused["error"]["code"],
-        "period_unlock_sole_holder_refused"
-    );
-    let unchanged: (bool, i64, i64) = sqlx::query_as(
+    assert_eq!(status, StatusCode::OK, "{unlocked}");
+    assert_eq!(unlocked["status"], "UNLOCKED");
+    assert_eq!(unlocked["lock"]["unlockReviewRequired"], true);
+    assert!(unlocked["exception"]["reviewDueAt"].is_string());
+    let recorded: (bool, i64, i64) = sqlx::query_as(
         "SELECT period_lock_effective(l), \
-         (SELECT count(*) FROM governed_exceptions WHERE org_id=l.org_id), \
+         (SELECT count(*) FROM governed_exceptions WHERE org_id=l.org_id \
+          AND subject_id=l.id AND fallback_kind='SOLE_HOLDER' AND consumed_at IS NOT NULL \
+          AND review_due_at>now()), \
          (SELECT count(*) FROM audit_events WHERE target_id=l.id::text AND action='period_lock.unlock') \
          FROM period_locks l WHERE id=$1",
     )
@@ -107,7 +114,16 @@ async fn operating_bound_sole_holder_is_refused_without_side_effects(owner: PgPo
     .fetch_one(&owner)
     .await
     .unwrap();
-    assert_eq!(unchanged, (true, 0, 0));
+    assert_eq!(recorded, (false, 1, 1));
+    let (status, inbox) = read(&service, "/api/v1/me/action-inbox", &ops.token).await;
+    assert_eq!(status, StatusCode::OK, "{inbox}");
+    assert!(
+        inbox["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["context"]["unlock"]["exceptionId"] == unlocked["exception"]["id"])
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

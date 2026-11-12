@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only copy loads with the locale catalog, after sign-in.
 export const koCommon = {
+  "common.failed.code.nationality_unknown": "국가 목록에 없는 코드입니다. 목록에서 국가를 선택하십시오. 영국의 국가 코드는 GB입니다.",
   "common.failed.code.bulk_register_facts_refused": "입력할 수 없는 명부 항목이 있어 아무것도 저장하지 않았습니다. 표시된 직원과 항목을 확인하고 다시 적용하십시오.",
   "common.failed.code.bulk_selection_changed": "선택한 직원 수가 달라져 처리하지 않았습니다. 목록을 다시 조회하고 대상을 확인하십시오.",
   "common.failed.code.correction_required": "이미 기록된 값은 정정으로 변경합니다. 인사카드에서 해당 항목을 정정하십시오.",
@@ -76,6 +77,9 @@ export const koCommon = {
   "common.failed.code.batch_already_undone": "이미 되돌린 변경입니다.",
   "common.failed.code.org_setup_batch_not_found": "되돌릴 변경을 찾지 못했습니다. 화면을 다시 불러오십시오.",
   "common.failed.code.phase_not_setup": "운영이 시작되어 바로 변경할 수 없습니다. 조직 변경을 기안하십시오.",
+  "common.failed.code.org_setup_date_future": "설정 중 변경은 바로 적용되어 오늘 이후 날짜로는 저장하지 않았습니다. 오늘이나 지난 날짜를 선택하십시오.",
+  "common.failed.code.org_setup_date_before_parent": "상위 부서나 사업장이 생기기 전 날짜라 저장하지 않았습니다. 상위의 시작일 이후 날짜를 선택하십시오.",
+  "common.failed.code.org_setup_date_before_current": "이 부서의 현재 기록보다 이른 날짜라 저장하지 않았습니다. 현재 기록의 날짜 이후를 선택하십시오.",
   "common.failed.code.contract_overlap": "기존 계약과 기간이 겹칩니다. 계약 내역에서 겹치는 계약을 정정하십시오.",
   "common.failed.code.workplace_not_open_on_date": "사업장 또는 법인의 개설일 전에는 배치할 수 없습니다. 개설일 이후 날짜를 선택하거나 다른 사업장을 선택하십시오.",
   "common.failed.code.rehire_date_not_after_exit": "재입사일은 퇴직일부터 선택하십시오.",

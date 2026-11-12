@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
 description: Deep-link target — an object reference (kind + id) or a bare app screen.
 oneOf:
 - type: object

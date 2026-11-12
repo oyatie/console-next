@@ -61,6 +61,8 @@ export const koOrgUnit = {
   "orgUnit.gov.addTitle": "부서 신설",
   "orgUnit.gov.name": "부서 이름",
   "orgUnit.gov.date": "적용일",
+  "orgUnit.gov.setupPast": "설정 중 변경은 바로 적용되어 오늘 이후로는 정할 수 없습니다. 오늘이나 지난 날짜를 선택하십시오.",
+  "orgUnit.gov.datedReceipt": "{message} · 적용일 {date}",
   "orgUnit.gov.today": "오늘",
   "orgUnit.gov.reason": "사유",
   "orgUnit.gov.reasonFilled": "입력함",
