@@ -1,6 +1,6 @@
 //! MR-27: a change set goes beyond TRANSFER / PROMOTE. Each line carries its
-//! own MR-24/25 values (an APPOINT per person, a 고용형태 전환, a 직급 PROMOTE)
-//! and the commit records them as one lifecycle batch.
+//! own MR-24/25 values (an APPOINT per person, an employment type change, a
+//! grade PROMOTE) and the commit records them as one lifecycle batch.
 
 use console_hr_adapter_postgres::change_sets::{
     CommitChangeSetRequest, OpenChangeSetRequest, PutChangeSetLineRequest,

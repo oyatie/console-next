@@ -102,7 +102,7 @@ pub async fn assign_home_branch_if_unset(
     }
 }
 
-/// The branch of the 사업장 the employee is placed at today (KST), if any.
+/// The branch of the workplace the employee is placed at today (KST), if any.
 async fn placed_branch(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     org: Uuid,
@@ -179,8 +179,8 @@ impl HrService {
             })?;
                     let prior_branch_id: Option<Uuid> = employee.try_get("home_branch_id")?;
                     let prior_updated_at: OffsetDateTime = employee.try_get("updated_at")?;
-                    // UX-R1 PLACEMENT (org-19): a placed person's branch is their 사업장's;
-                    // changing where they work is a dated 전보, never this one click.
+                    // UX-R1 PLACEMENT (org-19): a placed person's branch is their workplace's;
+                    // changing where they work is a dated reassignment, never this one click.
                     if placed_branch(tx, org_uuid, employee_id)
                         .await?
                         .is_some_and(|branch| branch != target_branch_id)

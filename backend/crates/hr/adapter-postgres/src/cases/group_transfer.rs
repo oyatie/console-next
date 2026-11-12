@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! A 전적 links the sending employer's exit and receiving employer's hire in its transaction.
+//! A group transfer links the sending employer's exit and receiving employer's hire in its
+//! transaction.
 
 use crate::HrError;
 use sqlx::{Postgres, Transaction};

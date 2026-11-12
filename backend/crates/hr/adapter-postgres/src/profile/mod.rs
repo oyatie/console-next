@@ -1,5 +1,5 @@
 //! EMP-MODEL facts (parity E3, E4, E5, E12/F5, E13): the facts record, its
-//! field PATCH and the 수습 종료 confirmation.
+//! field PATCH and the probation end confirmation.
 
 mod min_wage;
 mod patch;

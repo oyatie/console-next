@@ -92,7 +92,7 @@ pub fn plan_digest(rows: &[PlannedRow]) -> Result<String, HrError> {
 }
 /// Every decision names a row of this run; exclusion reasons are BW-07
 /// `import_exclude` codes; mapped units are ACTIVE units of this tenant,
-/// mapped 사업장 open ones, mapped 고용형태 known codes.
+/// mapped workplaces open ones, mapped employment types known codes.
 async fn check_decisions(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: OrgId,

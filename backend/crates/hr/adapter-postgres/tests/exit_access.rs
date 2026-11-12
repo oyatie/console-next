@@ -3,8 +3,8 @@
 //! grant, an active account and a working session after HR confirmed the exit.
 //! The HR confirmation now ends the linked account's grants at the instant
 //! `exit.access.revoke_mode.voluntary` names (END_OF_EXIT_DATE: KST midnight
-//! after the 퇴직일) and, once that has passed, suspends the account and ends
-//! its sessions — in the exit's own transaction. Red on 99dafebc.
+//! after the exit date) and, once that has passed, suspends the account and
+//! ends its sessions — in the exit's own transaction. Red on 99dafebc.
 
 #[path = "support/go_live.rs"]
 mod go_live;
@@ -177,7 +177,7 @@ fn kst_today() -> Date {
     console_hr_adapter_postgres::clock::today_kst()
 }
 
-/// regression: governance-04 — a 퇴직일 that has passed ends everything now.
+/// regression: governance-04 — an exit date that has passed ends everything now.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_past_exit_suspends_the_account_and_ends_grants_and_sessions(pool: PgPool) {
     let w = world(pool).await;
@@ -231,8 +231,8 @@ async fn a_past_exit_suspends_the_account_and_ends_grants_and_sessions(pool: PgP
     assert_eq!(audited, 1);
 }
 
-/// A 퇴직일 still ahead: the grants end at KST midnight after it (never later
-/// than they would have), and the account stays usable until then.
+/// An exit date still ahead: the grants end at KST midnight after it (never
+/// later than they would have), and the account stays usable until then.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_future_exit_ends_grants_at_the_exit_date_and_keeps_the_account(pool: PgPool) {
     let w = world(pool).await;

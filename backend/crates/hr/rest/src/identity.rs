@@ -1,9 +1,9 @@
-//! IMPORT-2 identity routes (decisions #25): an employee's 주민등록번호
-//! (masked read; full reveal with a 사유 code, both in 접속기록), 사번 변경
-//! with history and alias lookup, the tenant's numbering rules, and bulk
-//! renumbering (preview → apply → SETUP undo). INTEG mounts [`router`] inside
-//! the authenticated HR router with the shell's vault and registers
-//! [`IDENTITY_ROUTE_PATHS`].
+//! IMPORT-2 identity routes (decisions #25): an employee's resident
+//! registration number (masked read; full reveal with a reason code, both in
+//! the access log), employee number change with history and alias lookup, the
+//! tenant's numbering rules, and bulk renumbering (preview → apply → SETUP
+//! undo). INTEG mounts [`router`] inside the authenticated HR router with the
+//! shell's vault and registers [`IDENTITY_ROUTE_PATHS`].
 
 use std::sync::Arc;
 

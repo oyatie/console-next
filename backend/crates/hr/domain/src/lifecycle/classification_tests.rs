@@ -109,7 +109,7 @@ fn appoint_keeps_what_it_does_not_name() {
         (Some(job), Some("인사"))
     );
     assert_eq!(classification_noop(&head, &t), Some(false));
-    // Free text clears the 직무 id.
+    // Free text clears the job id.
     t.classify = ClassificationChange {
         to_job: Some("영업".into()),
         ..ClassificationChange::default()

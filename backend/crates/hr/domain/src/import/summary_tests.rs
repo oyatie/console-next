@@ -10,8 +10,9 @@ use crate::import::summary::{
     auto_mapped, employment_type_empty_rows, phone_unstored_rows, unplaced,
 };
 
-/// regression (W02 / W03): the walkthrough's file — 정규직 rows applied
-/// with no 고용형태, near-miss 부서 applied 미배치 — with nothing counted.
+/// regression (W02 / W03): the walkthrough's file — regular rows applied
+/// with no employment type, near-miss departments applied unplaced — with
+/// nothing counted.
 #[test]
 fn regression_labels_and_unplaced_people_are_counted() {
     let mut world = World::new(vec![]);
@@ -55,7 +56,7 @@ fn regression_labels_and_unplaced_people_are_counted() {
             ("정규직".into(), "REGULAR", 2)
         ]
     );
-    // 촉탁 answered `null` and the row with no cell.
+    // The "post-retirement contract" label answered `null` and the row with no cell.
     assert_eq!(employment_type_empty_rows(&plan), 2);
     let u = unplaced(&plan);
     assert_eq!(u.rows, 4);
@@ -113,7 +114,7 @@ fn regression_a_phone_not_stored_is_counted_never_silent() {
     let plan = world.plan(&rows, &Decisions::default());
     assert_eq!(phone_unstored_rows(&rows, &plan), 1);
 
-    // A person on file keeps their phone (인사카드): counted, never silent.
+    // A person on file keeps their phone (personnel card): counted, never silent.
     let world = World::new(vec![super::person("E-9", "김구", "ACTIVE")]);
     let mut on_file = row("d", Some("E-9"), "김구");
     on_file.has_phone = true;

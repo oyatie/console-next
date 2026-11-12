@@ -189,9 +189,9 @@ pub fn progress_audit(org: OrgId, job: &ApplyJob) -> Result<AuditEvent, HrError>
 /// # Errors
 /// `import_row_limit` with `{max, rows}`.
 /// The run's rows that count against `import.apply.max_rows`: current
-/// people only. r3:hire-17: former employees (a 퇴사일 on the row) come in
+/// people only. r3:hire-17: former employees (an exit date on the row) come in
 /// the same run apart from the cap, so a 2,000-person tenant migrates its
-/// staff and its 퇴사자 sheet in one pass (#28).
+/// staff and its former-employee sheet in one pass (#28).
 pub async fn require_row_limit(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: Uuid,

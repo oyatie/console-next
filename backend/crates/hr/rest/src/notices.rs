@@ -1,5 +1,5 @@
-//! 발령 공고 routes (BE-EMP-UI, EMP-UI 10). Issue needs the Idempotency-Key
-//! header; the gates are in the service.
+//! Personnel order notice routes (BE-EMP-UI, EMP-UI 10). Issue needs the
+//! Idempotency-Key header; the gates are in the service.
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};

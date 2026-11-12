@@ -4,9 +4,9 @@
 //! A due rule is `{anchor, kind, register code}`. The number always comes from
 //! the statutory register through [`DueRegister`] (no day count lives here);
 //! the register answers SF's `ins.deadline.*` keys too. Pure: the caller loads
-//! the register and passes the anchors. Where the law says 「지체 없이」 the
+//! the register and passes the anchors. Where the law says "without delay" the
 //! clock is [`Clock::WithoutDelay`]; where the deadline was not verified it is
-//! [`Clock::Unknown`] (「기한 미확인」) — never a guessed date.
+//! [`Clock::Unknown`] ("deadline unconfirmed") — never a guessed date.
 
 use std::collections::BTreeMap;
 
@@ -19,9 +19,9 @@ use crate::exits::clocks::add_months;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Anchor {
     EffectiveDate,
-    /// 마지막 근무일 (#9).
+    /// Last working day (#9).
     ExitDate,
-    /// 상실일 = the day after the exit date.
+    /// Loss-of-coverage date = the day after the exit date.
     LossDate,
     StartDate,
     RequestDate,
@@ -177,9 +177,9 @@ pub trait DueRegister {
 pub enum Clock {
     /// A due date; `held` when the register row behind it is HOLD.
     Due { date: Date, held: bool },
-    /// 「지체 없이」: no date; days are counted from `since`.
+    /// "Without delay": no date; days are counted from `since`.
     WithoutDelay { since: Date },
-    /// 「기한 미확인」.
+    /// "Deadline unconfirmed".
     Unknown,
     /// The anchor has not happened yet (a request, a payment).
     AwaitingAnchor(Anchor),

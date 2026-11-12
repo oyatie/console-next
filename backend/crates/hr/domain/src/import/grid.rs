@@ -14,7 +14,7 @@ pub enum Cell {
 
 impl Cell {
     /// The cell as the import compares it: trimmed text; a whole float
-    /// without `.0` (a 사번 or a phone number typed as a number).
+    /// without `.0` (an employee number or a phone number typed as a number).
     #[must_use]
     pub fn text(&self) -> String {
         match self {

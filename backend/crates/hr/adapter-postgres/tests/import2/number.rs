@@ -1,5 +1,6 @@
-//! 사번 변경 keeps the old number as an alias that still finds the person;
-//! a renumbering previews old → new, applies as one job and undoes in SETUP.
+//! An employee number change keeps the old number as an alias that still finds
+//! the person; a renumbering previews old → new, applies as one job and undoes
+//! in SETUP.
 
 use console_hr_adapter_postgres::employee_number::change::EmployeeNumberChangeRequest;
 use console_hr_adapter_postgres::employee_number::renumber::RenumberRequest;
@@ -147,7 +148,7 @@ async fn a_changed_number_stays_an_alias_and_a_renumbering_undoes_in_setup(pool:
         "renumber_already_undone"
     );
 
-    // After 운영 시작 there is no bulk renumbering (or its undo) yet.
+    // After go-live there is no bulk renumbering (or its undo) yet.
     sqlx::query("UPDATE tenant_phase SET phase = 'OPERATING' WHERE org_id = $1")
         .bind(i.org())
         .execute(&pool)
@@ -172,9 +173,9 @@ async fn a_changed_number_stays_an_alias_and_a_renumbering_undoes_in_setup(pool:
 }
 
 /// regression (records-02, r2): once the auto-issued E-000001 was retired by
-/// a 사번 변경, every registration with 사번 empty was issued E-000001 again
-/// and refused 409 `employee_number_taken`. The next number skips every 사번
-/// ever used, aliases included.
+/// an employee number change, every registration with an empty employee number
+/// was issued E-000001 again and refused 409 `employee_number_taken`. The next
+/// number skips every employee number ever used, aliases included.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn auto_numbering_skips_a_retired_alias(pool: PgPool) {
     let i = importer(pool).await;

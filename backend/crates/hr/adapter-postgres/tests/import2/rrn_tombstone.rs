@@ -1,5 +1,5 @@
-//! A voided record's sealed 주민등록번호 goes with its personal data (0296
-//! trigger under the 0292 SECURITY DEFINER tombstone).
+//! A voided record's sealed resident registration number goes with its
+//! personal data (0296 trigger under the 0292 SECURITY DEFINER tombstone).
 
 use console_hr_adapter_postgres::registration_void::SetupDeleteRequest;
 use serde_json::json;

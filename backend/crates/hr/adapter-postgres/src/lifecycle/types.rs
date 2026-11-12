@@ -81,10 +81,10 @@ pub struct EmployeeLifecycleEventResponse {
     /// BW-11: the correction or RESCIND row that voided this event.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub voided_by: Option<Uuid>,
-    /// TRANSFER (E-S3b): the 사업장 of the same 법인 it moves the employee to.
+    /// TRANSFER (E-S3b): the workplace of the same legal entity it moves the employee to.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub to_workplace_id: Option<Uuid>,
-    /// GROUP_TRANSFER (E-S3b): the facts recorded with the 전적.
+    /// GROUP_TRANSFER (E-S3b): the facts recorded with the group transfer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_transfer: Option<GroupTransferView>,
     /// MR-24/25: PROMOTE `from/to_grade_id`; APPOINT `from/to_position_kind_id`,
@@ -108,18 +108,19 @@ pub struct EmployeeLifecycleEventResponse {
     pub created_at: time::OffsetDateTime,
 }
 
-/// The facts of a 전적, as read back.
+/// The facts of a group transfer, as read back.
 #[derive(Debug, Serialize)]
 pub struct GroupTransferView {
     pub from_legal_entity_id: Uuid,
     pub to_legal_entity_id: Uuid,
-    /// 퇴직금: SETTLED or CARRIED.
+    /// Severance pay: SETTLED or CARRIED.
     pub continuity: String,
-    /// 연차: SETTLED or CARRIED.
+    /// Annual leave: SETTLED or CARRIED.
     pub annual_leave_continuity: String,
-    /// 근속: RESTART or CARRIED.
+    /// Length of service: RESTART or CARRIED.
     pub seniority_continuity: String,
-    /// The sending 법인's settlement case the 전적 opened (퇴직금 settled there).
+    /// The sending legal entity's settlement case the group transfer opened
+    /// (severance pay settled there).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub settlement_case_id: Option<Uuid>,
     pub group_service_start_date: String,
@@ -133,8 +134,8 @@ pub struct GroupTransferView {
 
 impl EmployeeLifecycleEventResponse {
     /// The read-only (`employee_directory_read` without manage) view: the
-    /// leave type (ILLNESS and MATERNITY reveal health, 개보법 제23조) and the
-    /// free-text cancel reason are omitted.
+    /// leave type (ILLNESS and MATERNITY reveal health, Personal Information
+    /// Protection Act Article 23) and the free-text cancel reason are omitted.
     pub fn redact_for_reader(mut self) -> Self {
         self.leave_type = None;
         self.cancel_reason = None;

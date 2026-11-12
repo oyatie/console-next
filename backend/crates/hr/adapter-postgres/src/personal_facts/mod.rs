@@ -1,16 +1,17 @@
-//! 인적사항 extras (MR-34, lane EMP-FACTS): 한자 · 영문 성명, 국적, 개인 메일,
-//! 비상연락처, 사진 and 그룹 입사일.
+//! Personal details extras (MR-34, lane EMP-FACTS): name in Chinese characters
+//! and English name, nationality, personal email, emergency contact, photo
+//! and group hire date.
 //!
-//! They change only through the MR-8 correction path (`PATCH
-//! /employees/{id}`, its BW-17 request, the bulk profile), one
+//! They change only through the MR-8 correction path
+//! (`PATCH /employees/{id}`, its BW-17 request, the bulk profile), one
 //! `employee_corrections` row per item: `corrections` calls [`normalize`],
-//! [`store::check_in_tx`] and [`store::write_in_tx`]. A 사진 is uploaded first
-//! ([`photo`]: issue a presigned PUT, then confirm), and its upload id is the
-//! correction value.
+//! [`store::check_in_tx`] and [`store::write_in_tx`]. A photo is uploaded
+//! first ([`photo`]: issue a presigned PUT, then confirm), and its upload id
+//! is the correction value.
 //!
 //! A normalized value is text the same function accepts again (a filed
 //! request stores it and the decision re-normalizes it); `None` clears the
-//! item back to 미입력; the 비상연락처 list is its JSON.
+//! item back to not entered; the emergency contact list is its JSON.
 
 //! Every write must use the governed correction paths, with routing facts from the caller.
 //! A shortcut that supplied its own second-person routing must stay unavailable.
@@ -42,7 +43,7 @@ pub fn is_personal_field(field: &str) -> bool {
     PERSONAL_FIELDS.contains(&field)
 }
 
-/// The stored text of one item; `None` clears it (미입력).
+/// The stored text of one item; `None` clears it (not entered).
 pub fn normalize(field: &str, value: &Value) -> Result<Option<String>, HrError> {
     if field == "emergency_contacts" {
         return emergency_contacts(value);
@@ -85,7 +86,7 @@ pub fn normalize(field: &str, value: &Value) -> Result<Option<String>, HrError> 
     }
 }
 
-/// The 비상연락처 list as JSON, phones in E.164; an empty list clears it.
+/// The emergency contact list as JSON, phones in E.164; an empty list clears it.
 fn emergency_contacts(value: &Value) -> Result<Option<String>, HrError> {
     let value = match value {
         Value::Null => return Ok(None),
@@ -126,8 +127,8 @@ fn shape() -> HrError {
     )
 }
 
-/// The ledger value of a stored text: JSON null for 미입력, the 비상연락처
-/// list as JSON, any other item as a string.
+/// The ledger value of a stored text: JSON null for not entered, the emergency
+/// contact list as JSON, any other item as a string.
 #[must_use]
 pub fn ledger_value(field: &str, stored: Option<&str>) -> Value {
     match (field, stored) {

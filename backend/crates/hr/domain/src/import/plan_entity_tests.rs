@@ -1,5 +1,6 @@
-//! r3:worst-case-22: a file that names another 법인 for a person on file is
-//! a 전적 to settle (or a mistake), never 「발령으로 처리합니다」.
+//! r3:worst-case-22: a file that names another legal entity for a person on
+//! file is a group transfer to settle (or a mistake), never "processed as a
+//! personnel order".
 
 use super::{World, person, row};
 use crate::import::plan::{Decisions, ENTITY_UNDECIDED, ImportRow};
@@ -34,8 +35,9 @@ fn routes(
         .collect()
 }
 
-/// regression (r3:worst-case-22): the 법인 change went unreported and the 부서
-/// change was routed to 발령, which is refused across a 법인.
+/// regression (r3:worst-case-22): the legal entity change went unreported and
+/// the department change was routed to a personnel order, which is refused
+/// across a legal entity.
 #[test]
 fn regression_another_entity_is_an_entity_transfer_never_an_appointment() {
     assert_eq!(

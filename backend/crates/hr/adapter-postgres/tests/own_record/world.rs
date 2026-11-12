@@ -98,7 +98,8 @@ impl World {
     }
 
     /// An HR worker linked to their own employee record, holding every HR
-    /// write tenant-wide (the projection BE-ROLES gives 인사 실무 over 법인).
+    /// write tenant-wide (the projection BE-ROLES gives the HR practitioner role
+    /// over a legal entity).
     pub async fn hr_worker(&self) -> (Principal, Uuid) {
         let employee = self.employee("박인사").await;
         let account = Uuid::new_v4();
@@ -125,7 +126,7 @@ impl World {
         (principal, employee)
     }
 
-    /// A tenant-wide grant of a role with 퇴직 등록·수정 to `account`.
+    /// A tenant-wide grant of a role with "exit register/edit" to `account`.
     pub async fn grant_exit_role(&self, account: Uuid) {
         let ops = *self.ops.user_id.as_uuid();
         let role: Uuid = sqlx::query_scalar(

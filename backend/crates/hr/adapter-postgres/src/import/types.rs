@@ -26,18 +26,18 @@ pub struct EmployeeImportReport {
     /// exactly one ACTIVE unit. Units are never created by an import.
     #[serde(default)]
     pub org_units_bound: usize,
-    /// W03: the new people the run brought in 미배치, by reason (the dry
+    /// W03: the new people the run brought in unplaced, by reason (the dry
     /// run's count); absent on runs applied before it existed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unplaced: Option<Unplaced>,
-    /// r3:hire-16 / records-02: the 근로자 명부 (근기법 시행령 §20) items the
-    /// run's new people still lack, said at the end of the import; absent on
-    /// runs applied before it existed.
+    /// r3:hire-16 / records-02: the worker register (Enforcement Decree of the
+    /// Labor Standards Act §20) items the run's new people still lack, said at
+    /// the end of the import; absent on runs applied before it existed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub register_gaps: Option<RegisterGaps>,
 }
 
-/// New people of the run missing each 명부 item (the 퇴직 사유: former
+/// New people of the run missing each register item (the exit reason: former
 /// employees only).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegisterGaps {
@@ -100,7 +100,7 @@ pub struct EmployeeImportPreviewResponse {
     pub sheets_needing_mapping: usize,
     /// IMPORT-2: the targets a column may be mapped to.
     pub available_targets: Vec<&'static str>,
-    /// IMPORT-2: rows whose 주민등록번호 was sealed for matching.
+    /// IMPORT-2: rows whose resident registration number was sealed for matching.
     pub sealed_identities: usize,
 }
 
@@ -180,18 +180,19 @@ pub struct EmployeeImportDryRunSummary {
     pub dry_run_digest: String,
     pub decisions: Decisions,
     pub rows: Vec<PlannedRow>,
-    /// IMPORT-2: the 「확인 필요」 queue (counted; `blocking` keeps apply closed).
+    /// IMPORT-2: the "needs review" queue (counted; `blocking` keeps apply closed).
     pub review: ReviewQueue,
     /// IMPORT-2: `(decision, key)` entries filled from the tenant's memory.
     pub remembered: Vec<RememberedEntry>,
-    /// W02: 고용형태 labels the catalog mapped (overridable).
+    /// W02: employment type labels the catalog mapped (overridable).
     pub auto_mapped: Vec<AutoMapped>,
-    /// W02: new people who come in with no 고용형태 (the apply button names it).
+    /// W02: new people who come in with no employment type (the apply button names it).
     pub employment_type_empty_rows: usize,
-    /// W03: new people who come in 미배치, by reason (the apply button names it).
+    /// W03: new people who come in unplaced, by reason (the apply button names it).
     pub unplaced: Unplaced,
-    /// W12: rows whose 휴대전화 is not stored (a new person with no 고용형태; a
-    /// person on file, whose phone is changed on the 인사카드).
+    /// W12: rows whose mobile phone is not stored (a new person with no
+    /// employment type; a person on file, whose phone is changed on the
+    /// personnel card).
     pub phone_unstored_rows: usize,
 }
 
@@ -234,9 +235,9 @@ pub struct StoredEmployeeImportRow {
     pub canonical: EmployeeCanonicalFields,
 }
 
-/// Optional body for the attendance ingest-commit ("적재") apply call.
+/// Optional body for the attendance ingest-commit ("load") apply call.
 /// `checklist_all_acknowledged` is the §16 self-checklist evidence the gate
-/// chain requires (85 판정). The employee apply binds a digest instead.
+/// chain requires (ruling 85). The employee apply binds a digest instead.
 #[derive(Debug, Default, Deserialize)]
 pub struct ImportApplyRequest {
     #[serde(default)]

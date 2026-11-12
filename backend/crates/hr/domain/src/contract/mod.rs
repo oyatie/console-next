@@ -1,6 +1,6 @@
-//! G1 contract history: the kinds, the terms this MVP types (근기법 §17①:
-//! period, wage + unit, 소정근로시간), and the fold from append-only rows to
-//! the live history. Pure.
+//! G1 contract history: the kinds, the terms this MVP types (Labor Standards
+//! Act §17①: period, wage + unit, contractual working hours), and the fold
+//! from append-only rows to the live history. Pure.
 
 use console_kernel_core::KernelError;
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::profile::enums::PayUnit;
 
-/// 계약 종류 (prototype `CONTRACT_KINDS` plus 일용).
+/// Contract kind (prototype `CONTRACT_KINDS` plus daily).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ContractKind {
@@ -55,11 +55,12 @@ impl ContractKind {
             .ok_or_else(|| KernelError::validation("kind is not a known contract kind"))
     }
 
-    /// Kinds that must state an end date (parity G2). 기간제: 기간제법 §4 and
-    /// 근기법 §17. 파견: 파견법 §20① puts the 근로자파견기간 in the written
-    /// contract and §6 caps it. 프리랜서 용역: no statute; the prototype's G2
-    /// rule. Domain-only: 0256's `employee_contracts_fixed_term_end` CHECK
-    /// stays FIXED_TERM-only (frozen migration) and this crate is the one writer.
+    /// Kinds that must state an end date (parity G2). Fixed-term: Fixed-Term
+    /// Workers Act §4 and Labor Standards Act §17. Dispatched: Temporary Agency
+    /// Workers Act §20① puts the worker dispatch period in the written contract
+    /// and §6 caps it. Freelance service: no statute; the prototype's G2 rule.
+    /// Domain-only: 0256's `employee_contracts_fixed_term_end` CHECK stays
+    /// FIXED_TERM-only (frozen migration) and this crate is the one writer.
     #[must_use]
     pub const fn requires_end_date(self) -> bool {
         matches!(
@@ -68,7 +69,8 @@ impl ContractKind {
         )
     }
 
-    /// A 근로계약 (근기법 §17 applies): it must state 소정근로시간 and a wage.
+    /// A labor contract (Labor Standards Act §17 applies): it must state
+    /// contractual working hours and a wage.
     #[must_use]
     pub const fn is_labour_contract(self) -> bool {
         matches!(
@@ -89,8 +91,8 @@ pub struct ContractTerms {
     pub weekly_minutes: Option<i32>,
 }
 
-/// Minutes in a week: a physical bound, not a legal one (the legal 소정근로
-/// limits are register facts and are checked where they apply).
+/// Minutes in a week: a physical bound, not a legal one (the legal contractual
+/// working-hours limits are register facts and are checked where they apply).
 const WEEK_MINUTES: i32 = 7 * 24 * 60;
 
 /// # Errors

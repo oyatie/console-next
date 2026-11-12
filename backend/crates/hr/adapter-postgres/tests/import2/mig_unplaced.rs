@@ -1,5 +1,5 @@
-//! BE-MIG W03 / E8: the 미배치 queue after an import — counted, with the
-//! file's 부서 text and why, keyset-paged, narrowed to one run; a reader
+//! BE-MIG W03 / E8: the unplaced queue after an import — counted, with the
+//! file's department text and why, keyset-paged, narrowed to one run; a reader
 //! without directory management is refused and a forged cursor is 422.
 
 use console_hr_adapter_postgres::import::unplaced::UnplacedQuery;
@@ -37,7 +37,7 @@ fn query(run_id: Option<uuid::Uuid>, after: Option<String>, limit: i64) -> Unpla
     }
 }
 
-/// regression (W03): 125 people came in 미배치 with nowhere to find them.
+/// regression (W03): 125 people came in unplaced with nowhere to find them.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_unplaced_people_are_listed_counted_and_paged(pool: PgPool) {
     let i = importer(pool).await;

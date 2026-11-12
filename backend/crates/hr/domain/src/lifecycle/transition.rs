@@ -3,9 +3,10 @@
 //! the transition rules here).
 
 /// The events `allowed_events` evaluates: every recordable type except the
-/// exits (OFFBOARD/TERMINATE go through exit cases). GROUP_TRANSFER (전적)
-/// is listed by its state rule alone; whether another 법인 can receive the
-/// employee is the target's question, answered when it is recorded.
+/// exits (OFFBOARD/TERMINATE go through exit cases). GROUP_TRANSFER (group
+/// transfer) is listed by its state rule alone; whether another legal entity
+/// can receive the employee is the target's question, answered when it is
+/// recorded.
 pub const RECORDABLE_LIFECYCLE_EVENT_TYPES: [&str; 9] = [
     "ONBOARD",
     "TRANSFER",

@@ -1,4 +1,4 @@
-//! An org, a SUPER_ADMIN, an active branch and an assignable 사업장 unit.
+//! An org, a SUPER_ADMIN, an active branch and an assignable workplace unit.
 
 use std::collections::BTreeSet;
 

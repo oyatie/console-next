@@ -20,7 +20,7 @@ pub struct ReportEmployeeExitCaseRequest {
     pub absence_alert_id: Option<Uuid>,
     pub effective_exit_date: String,
     pub site_manager_note: String,
-    /// 퇴직 사유 (BW-07 `exit_reason` catalog), asked at the report.
+    /// Exit reason (BW-07 `exit_reason` catalog), asked at the report.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exit_reason_code: Option<String>,
 }
@@ -75,9 +75,9 @@ pub struct ExitSettlementInput {
     pub average_wage_period_end: String,
     pub average_wage_calendar_days: i64,
     pub average_wage_total_won: i64,
-    /// Monthly 통상임금 (ordinary wage) in won, gathered alongside the average-wage
+    /// Monthly ordinary wage in won, gathered alongside the average-wage
     /// source fields. Mandatory (no `#[serde(default)]`): the request fails to
-    /// deserialize when absent, so the statutory 통상임금 floor can never be
+    /// deserialize when absent, so the statutory ordinary-wage floor can never be
     /// silently skipped for the depressed-window absence→exit population.
     pub monthly_ordinary_wage_won: i64,
 }
@@ -103,7 +103,7 @@ pub struct EmployeeExitCaseResponse {
     pub status: String,
     pub effective_exit_date: String,
     pub site_manager_note: String,
-    /// The report's 퇴직 사유 code; omitted when the report gave none.
+    /// The report's exit reason code; omitted when the report gave none.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_reason_code: Option<String>,
     pub involuntary: bool,
@@ -166,11 +166,11 @@ pub struct EmployeeExitCaseResponse {
 }
 
 /// One payment the leaving employer settles: open from `opens_on` (the
-/// 퇴직일), due by `due_date` (RELEASED, or HOLD before a qualified review;
+/// exit date), due by `due_date` (RELEASED, or HOLD before a qualified review;
 /// UNKNOWN never carries a date), under the cited article.
 #[derive(Debug, Serialize)]
 pub struct ExitSettlementDeadline {
-    /// FINAL_PAY (금품청산) or SEVERANCE_PAY (퇴직금).
+    /// FINAL_PAY (settlement of money and valuables) or SEVERANCE_PAY (severance pay).
     pub kind: &'static str,
     pub opens_on: Option<String>,
     pub due_date: Option<String>,
@@ -199,11 +199,11 @@ pub struct EmployeeExitSettlementPackageResponse {
     pub average_daily_wage_milliwon: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub severance_pay_won: Option<i64>,
-    /// 통상임금 (ordinary-wage) statutory basis (0093 review HIGH #2): the monthly
-    /// ordinary wage a reviewer signs, the 통상일급 derived from it via the 209h/8h
-    /// rule, and the daily wage that actually governed severance = max(average,
-    /// ordinary). Persisted, digest-covered, and exposed so the money trail is
-    /// auditable.
+    /// Ordinary-wage statutory basis (0093 review HIGH #2): the monthly
+    /// ordinary wage a reviewer signs, the ordinary daily wage derived from it
+    /// via the 209h/8h rule, and the daily wage that actually governed
+    /// severance = max(average, ordinary). Persisted, digest-covered, and
+    /// exposed so the money trail is auditable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub monthly_ordinary_wage_won: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -220,10 +220,11 @@ pub struct EmployeeExitSettlementPackageResponse {
     /// The generated approval-submission document. Same
     /// `certification_status` stamping as `insurance_loss_payload`.
     pub approval_payload: Value,
-    /// EFFECTIVE certification state (single source for the "산정 초안 — 노무사
-    /// 검증 전" label): reported `CERTIFIED` only when the stored
-    /// `certification_status` is CERTIFIED AND the stored digest still binds the
-    /// current numbers; a stale/absent digest is reported `UNCERTIFIED_DRAFT`.
+    /// EFFECTIVE certification state (single source for the "calculation draft
+    /// — not yet verified by a labor attorney" label): reported `CERTIFIED` only
+    /// when the stored `certification_status` is CERTIFIED AND the stored digest
+    /// still binds the current numbers; a stale/absent digest is reported
+    /// `UNCERTIFIED_DRAFT`.
     pub certification_status: String,
     #[serde(with = "time::serde::rfc3339")]
     pub generated_at: OffsetDateTime,
@@ -258,7 +259,7 @@ impl EmployeeExitSettlementPackageResponse {
 }
 
 impl EmployeeExitCaseResponse {
-    /// Value-based masking (BW-26, prototype-parity J7 「팀장 sees no 급여」):
+    /// Value-based masking (BW-26, prototype-parity J7 "team lead sees no pay"):
     /// the settlement's pay figures reach only a holder of the capability that
     /// writes them, over this case's branch. Every case response passes here.
     #[must_use]

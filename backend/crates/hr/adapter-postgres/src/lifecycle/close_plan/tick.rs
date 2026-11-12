@@ -1,4 +1,4 @@
-//! The lifecycle tick's 사업장 close step: every due job of every tenant,
+//! The lifecycle tick's workplace close step: every due job of every tenant,
 //! each in its own transaction. A refused line FAILS the job (nothing of that
 //! attempt applies); a fault leaves it for the next tick.
 
@@ -21,7 +21,7 @@ impl HrService {
     /// The lifecycle tick's call: advance every due job of every tenant, each
     /// in its own transaction. A refused line FAILS the job (nothing of that
     /// attempt applies); a fault leaves it for the next tick. Returns how many
-    /// jobs closed their 사업장.
+    /// jobs closed their workplace.
     pub async fn advance_due_workplace_closes(
         &self,
         today: Date,

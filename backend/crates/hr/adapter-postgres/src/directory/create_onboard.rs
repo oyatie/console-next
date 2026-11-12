@@ -1,6 +1,6 @@
 //! BW-19 4: the registration's ONBOARD. A hire date on or before today (KST)
-//! records it APPLIED, as before; a later one makes the employee 입사 예정
-//! (PRE_HIRE) and stores the ONBOARD SCHEDULED, so the lifecycle runner
+//! records it APPLIED, as before; a later one makes the employee a pending
+//! hire (PRE_HIRE) and stores the ONBOARD SCHEDULED, so the lifecycle runner
 //! (`HrService::apply_due`) makes them ACTIVE on the hire date. Before this a
 //! future hire date was refused, which left pre-boarding a dead end.
 

@@ -1,5 +1,6 @@
-//! 이관 확인 (BE-EMP-UI; spec E7-reconcile, E7-row, E7-signoff): the server's
-//! funnel, 배치 대조, per-row state and the one HR sign-off of an applied run.
+//! Migration review (BE-EMP-UI; spec E7-reconcile, E7-row, E7-signoff): the
+//! server's funnel, placement reconciliation, per-row state and the one HR
+//! sign-off of an applied run.
 
 use console_hr_adapter_postgres::HrError;
 use console_hr_adapter_postgres::import::reconcile::ReconcileRowsQuery;
@@ -144,7 +145,7 @@ async fn an_applied_run_is_reconciled_checked_and_signed_off_once(pool: PgPool) 
         json!({"rows": 3, "confirmed": 0, "needs_check": 0, "unchecked": 3})
     );
     assert!(rec["signoff"].is_null());
-    // Rows: name and 사번 only, never the 주민등록번호.
+    // Rows: name and employee number only, never the resident registration number.
     let rows =
         i.f.hr
             .import_reconcile_rows(p(), run, ReconcileRowsQuery::default())

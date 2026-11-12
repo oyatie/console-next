@@ -23,7 +23,7 @@ fn bases(text: &str, index: &BTreeMap<String, Vec<Uuid>>) -> Vec<(String, &'stat
 }
 
 /// regression (W03): the walkthrough's near-miss names matched nothing and
-/// 125 people came in 미배치 with no candidate offered.
+/// 125 people came in unplaced with no candidate offered.
 #[test]
 fn regression_walkthrough_near_misses_are_offered() {
     let (units, _) = index(&[
@@ -81,7 +81,7 @@ fn unrelated_names_are_never_candidates() {
     let (units, _) = index(&["영업1팀", "개발팀", "공장"]);
     assert!(candidates("영업 2팀", &units).is_empty());
     assert!(candidates("인사", &units).is_empty());
-    // A bare suffix is not a name: `팀` never strips to empty.
+    // A bare suffix is not a name: the bare "team" suffix never strips to empty.
     assert!(candidates("팀", &units).is_empty());
     assert!(candidates("", &units).is_empty());
 }

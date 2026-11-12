@@ -125,7 +125,8 @@ pub fn exit_case_from_row(row: sqlx::postgres::PgRow) -> Result<EmployeeExitCase
                 .unwrap_or_default(),
         });
     let exit_event_state: Option<String> = row.try_get("exit_event_state")?;
-    // A 전적 that failed to apply left an ordinary dead case: it closes alone.
+    // A group transfer that failed to apply left an ordinary dead case: it
+    // closes alone.
     let follows_group_transfer = exit_reason_code.as_deref() == Some(GROUP_TRANSFER_EXIT_REASON)
         && exit_event_state.as_deref() != Some("APPLY_FAILED");
     Ok(EmployeeExitCaseResponse {

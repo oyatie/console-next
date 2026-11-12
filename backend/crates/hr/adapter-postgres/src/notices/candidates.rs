@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Recorded, unannounced events available to a 발령 공고 composer.
+//! Recorded, unannounced events available to a personnel order notice composer.
 
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_org_conn;

@@ -1,14 +1,14 @@
-//! BE-MIG W11 × BE-EMP-UI 이관 확인: reconcile opens only once the apply job
-//! is done.
+//! BE-MIG W11 × BE-EMP-UI migration review: reconcile opens only once the
+//! apply job is done.
 
 use sqlx::PgPool;
 
 use crate::harness::importer;
 use crate::mig_job::staged;
 
-/// 이관 확인 reads the run's people: while its job still settles (the run is
-/// APPLIED before they are placed) it is 409 `apply_in_progress`, never a
-/// half-settled count; once the job is done it opens.
+/// Migration review reads the run's people: while its job still settles (the
+/// run is APPLIED before they are placed) it is 409 `apply_in_progress`, never
+/// a half-settled count; once the job is done it opens.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn reconcile_waits_for_the_apply_job(pool: PgPool) {
     let i = importer(pool).await;

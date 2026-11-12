@@ -1,12 +1,13 @@
-//! CAP-04 (decisions #27, #28): the bulk 발령 as a job. `Prefer:
-//! respond-async` makes `POST /employees/lifecycle-events/bulk` answer 202
-//! once the request's own checks pass and the job row is written; a driver
-//! then runs the batch exactly as the synchronous request does (one
+//! CAP-04 (decisions #27, #28): the bulk personnel order as a job.
+//! `Prefer: respond-async` makes `POST /employees/lifecycle-events/bulk`
+//! answer 202 once the request's own checks pass and the job row is written;
+//! a driver then runs the batch exactly as the synchronous request does (one
 //! transaction, all or nothing, the same Idempotency-Key claim and audit
 //! rows). Each progress step is audited (`employee.lifecycle.bulk.progress`,
 //! ids and counts only), the job's realtime topic; `GET …/bulk/jobs/{id}`
 //! reads it. The batch's atomicity is kept on purpose: a crash leaves no half
-//! 발령, and the job is finished by the schedule loop from what committed.
+//! personnel order, and the job is finished by the schedule loop from what
+//! committed.
 
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
 use console_platform_authz::Principal;
@@ -203,10 +204,11 @@ impl BulkProgress {
 }
 
 impl HrService {
-    /// Accepts a bulk 발령 as a job: the request's own checks refuse at once
-    /// (422, nothing written); the job row is the Idempotency-Key's, so the
-    /// same key and body answer the same job (`false`: nothing to drive) and
-    /// another body is 409 `idempotency_key_reused`.
+    /// Accepts a bulk personnel order as a job: the request's own checks
+    /// refuse at once (422, nothing written); the job row is the
+    /// Idempotency-Key's, so the same key and body answer the same job
+    /// (`false`: nothing to drive) and another body is 409
+    /// `idempotency_key_reused`.
     pub async fn accept_bulk_lifecycle_job(
         &self,
         principal: &Principal,

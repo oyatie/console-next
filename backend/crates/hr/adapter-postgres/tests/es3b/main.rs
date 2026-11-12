@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! E-S3b through the `HrService` entry points, on a `console_rt` pool: leave
 //! and transfers recorded in SETUP are setup records (decisions #26); a TRANSFER moves the employee between
-//! 사업장 of one 법인 (전근), by name or with the unit it moves them to, now or
-//! on its date; rescinding it moves them back; a move to another 법인 is a
-//! 전적 and never a TRANSFER. A GROUP_TRANSFER (전적) moves them to another
-//! 법인 with the consent and the continuity choice, until rescinded.
+//! workplaces of one legal entity (a transfer), by name or with the unit it
+//! moves them to, now or on its date; rescinding it moves them back; a move to
+//! another legal entity is a group transfer and never a TRANSFER. A
+//! GROUP_TRANSFER (group transfer) moves them to another legal entity with the
+//! consent and the continuity choice, until rescinded.
 
 mod cross_entity;
 mod filing_review;
@@ -73,7 +74,7 @@ async fn fixture(pool: PgPool, live: bool) -> Fixture {
     .await
     .unwrap();
     if live {
-        // rls-arming: ok test fixture moves the tenant past 운영 시작 as owner
+        // rls-arming: ok test fixture moves the tenant past go-live as owner
         let sql = format!("UPDATE tenant_phase SET phase = 'OPERATING' WHERE org_id = '{org}'");
         seed(&pool, org, sql).await;
     }
@@ -140,7 +141,7 @@ async fn seed(pool: &PgPool, org: Uuid, sql: String) {
 }
 
 impl Fixture {
-    /// A 법인 with `n` open 사업장: `(entity, workplaces)`.
+    /// A legal entity with `n` open workplaces: `(entity, workplaces)`.
     async fn entity(&self, n: usize) -> (Uuid, Vec<Uuid>) {
         let (org, entity) = (self.org, Uuid::new_v4());
         let workplaces: Vec<Uuid> = (0..n).map(|_| Uuid::new_v4()).collect();

@@ -39,8 +39,8 @@ async fn only_the_owner_reaches_a_set(pool: PgPool) {
     );
     assert!(f.hr.change_sets(o.clone()).await.unwrap().is_empty());
 
-    // 「+ 발령안」 by the other actor opens their own draft, never this one;
-    // their line on A shows as another draft on that person.
+    // "+ Draft personnel order" by the other actor opens their own draft, never
+    // this one; their line on A shows as another draft on that person.
     let theirs =
         f.hr.open_change_set(o.clone(), promote())
             .await

@@ -93,7 +93,7 @@ pub(super) async fn record_in_tx(
             "change_mode": change_mode.map(ChangeMode::as_str),
         })),
     )
-    // The 운영 시작 preview includes leave and transfer records entered during setup.
+    // The go-live preview includes leave and transfer records entered during setup.
     .with_classification(AuditClassification {
         badges: (*change_mode == Some(ChangeMode::Setup)).then(|| vec!["setup".to_owned()]),
         anomaly: None,

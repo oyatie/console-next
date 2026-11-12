@@ -136,8 +136,8 @@ async fn plan_row(
     }
     checked.retain(|((field, value), _)| current(&head, field) != value.as_deref());
     checked.sort_by(|a, b| a.0.0.cmp(&b.0.0));
-    // check_against_record sees the database only: a 사번 given twice in one
-    // batch is refused here, before the commit could meet it.
+    // check_against_record sees the database only: an employee number given
+    // twice in one batch is refused here, before the commit could meet it.
     let number = checked
         .iter()
         .find_map(|((field, value), _)| (field == "employee_number").then(|| value.clone()))

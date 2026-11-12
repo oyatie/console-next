@@ -238,7 +238,7 @@ async fn pre_console_hire_history_is_preserved_without_overdue_filings_by_entry_
 
     let f = fixture::fixture(pool.clone()).await;
     let org = *f.principal.org_id.as_uuid();
-    // rls-arming: ok test fixture records the tenant's actual 운영 시작 as owner.
+    // rls-arming: ok test fixture records the tenant's actual go-live as owner.
     sqlx::query("UPDATE tenant_phase SET phase='OPERATING',go_live_at=now(),go_live_by=$2,go_live_preview_digest=repeat('0',64) WHERE org_id=$1")
         .bind(org).bind(f.principal.user_id.as_uuid()).execute(&pool).await.unwrap();
     let hired_on = (today_kst() - Duration::days(90)).to_string();

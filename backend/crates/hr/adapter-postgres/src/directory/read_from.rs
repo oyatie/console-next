@@ -55,9 +55,10 @@ macro_rules! status_since_lateral {
     };
 }
 
-/// `ea`: the employee's 법인 / 사업장 by id (E-S3a): the live assignment
-/// covering today (KST), else the last one before it (an exited employee), else
-/// the first future one (a pre-hire). Superseded rows never count.
+/// `ea`: the employee's legal entity / workplace by id (E-S3a): the live
+/// assignment covering today (KST), else the last one before it (an exited
+/// employee), else the first future one (a pre-hire). Superseded rows never
+/// count.
 #[macro_export]
 macro_rules! assignment_lateral {
     () => {

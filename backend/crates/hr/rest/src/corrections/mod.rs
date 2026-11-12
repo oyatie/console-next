@@ -29,13 +29,13 @@ use crate::HrApiError;
 
 pub const EMPLOYEE_CORRECTION_PATH: &str = "/api/v1/employees/{id}";
 pub const IDENTITY_RESOLUTION_PATH: &str = "/api/v1/employees/{id}/identity-resolution";
-/// MR-26: 등록 취소 after 운영 시작 (`DELETE` on [`EMPLOYEE_CORRECTION_PATH`]
-/// is the SETUP delete).
+/// MR-26: registration void after go-live (`DELETE` on
+/// [`EMPLOYEE_CORRECTION_PATH`] is the SETUP delete).
 pub const EMPLOYEE_VOID_PATH: &str = "/api/v1/employees/{id}/void";
-/// MR-26: the 「취소된 등록」 list.
+/// MR-26: the "voided registrations" list.
 pub const EMPLOYEE_VOIDS_PATH: &str = "/api/v1/employees/voided";
 // --- lane: CRUD ---
-/// 등록 취소 or 퇴직: which way the record ends, and why not the other.
+/// Registration void or exit: which way the record ends, and why not the other.
 pub const EMPLOYEE_END_OPTIONS_PATH: &str = "/api/v1/employees/{id}/end-options";
 pub const CORRECTIONS_ROUTE_PATHS: &[&str] = &[
     EMPLOYEE_CORRECTION_PATH,

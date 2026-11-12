@@ -68,8 +68,9 @@ impl HrService {
                 })));
             }
             own_record_guard(tx, org, actor, context.employee_id, Feature::ExitCaseHrConfirm).await?;
-            // A 전적's case goes back with the 전적, unless the 전적 failed to
-            // apply on its date: then nothing happened and the case closes alone.
+            // A group transfer's case goes back with the group transfer, unless the
+            // group transfer failed to apply on its date: then nothing happened and
+            // the case closes alone.
             let follows: bool = sqlx::query_scalar(
                 "SELECT c.exit_reason_code IS NOT DISTINCT FROM $3 AND l.state IS DISTINCT FROM 'APPLY_FAILED' \
                  FROM employee_exit_cases c LEFT JOIN employee_lifecycle_events l \

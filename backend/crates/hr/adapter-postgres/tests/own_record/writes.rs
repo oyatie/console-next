@@ -1,7 +1,7 @@
 //! regression: people-self-33 — the self rule also covers a contract, the
-//! employment facts, a 사번 변경 and a 인사기록카드 entry on one's own record:
-//! 403 `own_record_forbidden`, nothing written. Someone else's record is the
-//! worker's ordinary work.
+//! employment facts, an employee number change and a personnel record card
+//! entry on one's own record: 403 `own_record_forbidden`, nothing written.
+//! Someone else's record is the worker's ordinary work.
 
 use console_hr_adapter_postgres::contract::RecordContractRequest;
 use console_hr_adapter_postgres::employee_number::change::EmployeeNumberChangeRequest;

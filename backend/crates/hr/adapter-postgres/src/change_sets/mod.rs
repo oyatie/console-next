@@ -1,8 +1,9 @@
-//! BW-38: the server change set behind the grid and bulk 발령 edits. One draft
-//! per (owner, intent); one line per employee, pinned to the `head_version` it
-//! was drafted against; committed as one lifecycle batch (all or nothing, the
-//! bulk path's rules per line) or discarded. Only the owner sees or touches a
-//! set: anyone else gets 404, so a set's existence does not leak.
+//! BW-38: the server change set behind the grid and bulk personnel order
+//! edits. One draft per (owner, intent); one line per employee, pinned to the
+//! `head_version` it was drafted against; committed as one lifecycle batch
+//! (all or nothing, the bulk path's rules per line) or discarded. Only the
+//! owner sees or touches a set: anyone else gets 404, so a set's existence
+//! does not leak.
 //!
 //! Every route needs `employee_directory_manage` org-wide, the gate the bulk
 //! lifecycle endpoint (the act a commit performs) uses.
@@ -122,7 +123,7 @@ pub struct ChangeSetSummary {
     pub state: String,
     /// The lifecycle batch a commit recorded.
     pub batch_id: Option<Uuid>,
-    /// 「저장 안 됨 · n건」: the lines not yet committed.
+    /// "Not saved · n items": the lines not yet committed.
     pub line_count: i64,
     /// Lines whose employee changed since they were drafted (a commit refuses them).
     pub stale_count: i64,

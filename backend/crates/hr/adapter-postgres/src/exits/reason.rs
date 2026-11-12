@@ -1,4 +1,4 @@
-//! The 퇴직 사유 an exit report gives (EMP-UI 14): a BW-07 `exit_reason`
+//! The exit reason an exit report gives (EMP-UI 14): a BW-07 `exit_reason`
 //! code, system or the tenant's active one, with the report's note when the
 //! code requires one. Checked inside the report's transaction.
 

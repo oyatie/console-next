@@ -1,7 +1,8 @@
-//! MR-24 / MR-25 lifecycle seams: the catalog ids a PROMOTE (직급) or APPOINT
-//! (직책, 직무, 직군) names, the 강등 check on the 직급, the head they leave,
-//! the 고용형태 전환 written to the employment profile, and the restore of
-//! all of them by a rescission. Pure rules: hr-domain `classification`.
+//! MR-24 / MR-25 lifecycle seams: the catalog ids a PROMOTE (grade) or
+//! APPOINT (position, job, job family) names, the demotion check on the
+//! grade, the head they leave, the employment type change written to the
+//! employment profile, and the restore of all of them by a rescission. Pure
+//! rules: hr-domain `classification`.
 
 use console_hr_domain::lifecycle::classification::{
     ClassificationColumns, EmploymentWindow, keeps_status,
@@ -24,8 +25,8 @@ use super::prepare::LifecycleTarget;
 use super::title_reason::coded;
 use crate::HrError;
 
-/// An event that keeps the status meets the head's (a renewal, an APPOINT, a
-/// 전환 never change it).
+/// An event that keeps the status meets the head's (a renewal, an APPOINT, an
+/// employment type change never change it).
 pub fn resolve_kept_status(
     transition: &mut NormalizedEmployeeLifecycleTransition,
     head: &EmployeeForLifecycle,
@@ -36,7 +37,7 @@ pub fn resolve_kept_status(
 }
 
 /// Checks each catalog id the event names (active, of its kind) and fills the
-/// 직무 label into `to_job`.
+/// job label into `to_job`.
 ///
 /// # Errors
 /// 422 `job_title_unknown` naming the field.
@@ -97,7 +98,7 @@ async fn ranks(
     .await?)
 }
 
-/// The 강등 check of a PROMOTE on one ranked pair (직급 or 직위).
+/// The demotion check of a PROMOTE on one ranked pair (grade or title).
 ///
 /// # Errors
 /// 422 `demotion_reason_required`.
@@ -114,8 +115,9 @@ pub async fn check_demotion(
     check_demotion_reason(from_rank, to_rank, reason_code).map_err(coded)
 }
 
-/// 409 `employment_profile_missing`: a 전환 needs the employment profile
-/// (an imported person has none until IMPORT creates it, MR-7).
+/// 409 `employment_profile_missing`: an employment type change needs the
+/// employment profile (an imported person has none until IMPORT creates it,
+/// MR-7).
 pub fn profile_missing() -> HrError {
     coded(
         KernelError::conflict(
@@ -166,7 +168,7 @@ async fn write_classification(
     Ok(())
 }
 
-/// Writes what a PROMOTE, APPOINT or 전환 leaves on the employee.
+/// Writes what a PROMOTE, APPOINT or employment type change leaves on the employee.
 pub async fn apply_classification(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: Uuid,
@@ -227,7 +229,7 @@ pub async fn load_before(
     ))
 }
 
-/// The head with a voided PROMOTE (직급), APPOINT or 전환 undone, in memory.
+/// The head with a voided PROMOTE (grade), APPOINT or employment type change undone, in memory.
 pub fn restore_classification(
     head: &mut EmployeeForLifecycle,
     event_type: &str,
@@ -254,7 +256,8 @@ pub fn restore_classification(
     }
 }
 
-/// Writes the restored head of a voided PROMOTE (직위 and 직급), APPOINT or 전환.
+/// Writes the restored head of a voided PROMOTE (title and grade), APPOINT or employment
+/// type change.
 pub async fn write_restored(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: Uuid,
@@ -280,8 +283,9 @@ pub async fn write_restored(
     }
 }
 
-/// The fixed-term windows that applied (not voided) 전환 away from CONTRACT
-/// closed, each ending the day before its 전환 at the latest, oldest first.
+/// The fixed-term windows that applied (not voided) employment type changes
+/// away from CONTRACT closed, each ending the day before its employment type
+/// change at the latest, oldest first.
 pub async fn closed_contract_windows(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: Uuid,

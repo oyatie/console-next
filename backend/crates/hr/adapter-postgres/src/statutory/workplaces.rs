@@ -42,7 +42,7 @@ impl HrService {
                 CROSS JOIN LATERAL (SELECT u.org_unit_id, NULL::uuid AS home_branch_id FROM org_unit_placements u WHERE u.org_id=w.org_id AND u.workplace_id=w.id AND u.valid_from<=(SELECT on_date FROM point) AND (u.valid_to IS NULL OR u.valid_to>(SELECT on_date FROM point)) UNION SELECT NULL::uuid,NULL::uuid) e \
                 WHERE w.org_id=").push_bind(*p.org_id.as_uuid()).push(" AND ");
             push_reach(&mut q,&reach);
-            // The stored order, as the chart and every other 법인/사업장 list show it.
+            // The stored order, as the chart and every other legal entity/workplace list show it.
             q.push(" ORDER BY e_order NULLS LAST, e_created, e_id, w.sort_order NULLS LAST, w.created_at, w.id");
             Ok(q.build_query_as().fetch_all(tx.as_mut()).await?)
         })).await

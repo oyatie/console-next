@@ -1,8 +1,8 @@
-//! r3:hire-01: the 법인 text (`employees.company`, the display snapshot) of a
-//! person an import inserts. It is the name of the 법인 of the 사업장 the
-//! plan places them at, as a registration writes it; with no 사업장 it is
-//! 「법인 미정」 until someone places them. Never the sheet's name, never a
-//! free-text guess.
+//! r3:hire-01: the legal entity text (`employees.company`, the display
+//! snapshot) of a person an import inserts. It is the name of the legal entity
+//! of the workplace the plan places them at, as a registration writes it; with
+//! no workplace it is "legal entity undetermined" until someone places them.
+//! Never the sheet's name, never a free-text guess.
 
 use std::collections::BTreeMap;
 
@@ -15,8 +15,9 @@ use crate::HrError;
 use crate::clock::today_kst;
 use crate::lifecycle::title_reason::coded;
 
-/// The text of a person whose 법인 nobody decided (the column is NOT NULL
-/// and non-blank; the 미배치 queue and the roster show them 법인 미정).
+/// The text of a person whose legal entity nobody decided (the column is NOT
+/// NULL and non-blank; the unplaced queue and the roster show them as "legal
+/// entity undetermined").
 pub use console_hr_domain::import::plan::ENTITY_UNDECIDED;
 
 pub(super) fn proposals(
@@ -45,11 +46,11 @@ pub(super) fn proposals(
         .collect()
 }
 
-/// 사업장 id → the name of its 법인 today, for every 사업장 the plan places
-/// a new person at.
+/// Workplace id → the name of its legal entity today, for every workplace the
+/// plan places a new person at.
 ///
 /// # Errors
-/// 422 `workplace_not_open` when a 사업장 closed after the re-plan; a
+/// 422 `workplace_not_open` when a workplace closed after the re-plan; a
 /// database fault.
 pub async fn entity_names(
     tx: &mut sqlx::Transaction<'_, Postgres>,
@@ -77,7 +78,7 @@ pub async fn entity_names(
     Ok(names)
 }
 
-/// The 법인 text of one planned new person.
+/// The legal entity text of one planned new person.
 #[must_use]
 pub fn company_of(workplace: Option<Uuid>, names: &BTreeMap<Uuid, String>) -> String {
     workplace
