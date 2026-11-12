@@ -1,0 +1,10 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.dock {
+  position: fixed; left: calc(var(--rail-w) + var(--space-4)); bottom: calc(var(--space-4) + var(--dock-clearance, 0px)); z-index: 40;
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+  max-width: min(calc(var(--panel-w) * 1.75), calc(100vw - var(--rail-w) - var(--space-4) * 2));
+  max-height: calc(100dvh - var(--space-4) * 2 - var(--dock-clearance, 0px)); overflow: auto; pointer-events: none;
+}
+.dock > * { flex-shrink: 0; min-width: 0; max-width: 100%; pointer-events: auto; }
+.dock > * > * { max-width: 100%; }
+@media (max-width: 767px) { .dock { left: var(--space-2); right: var(--space-2); max-width: none; align-items: stretch; } }

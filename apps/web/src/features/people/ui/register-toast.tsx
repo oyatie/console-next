@@ -6,7 +6,7 @@ import { Receipt } from "../../../ui/receipt/receipt";
 import { employeeWarningText } from "../present";
 import { receipts, useReceipts } from "./use-register-receipts";
 import { useUndoRegister } from "./use-register";
-import s from "./register-toast.module.css";
+import { StatusDock } from "../../../ui/status-dock/status-dock";
 
 /**
  * The newest registration as a receipt (spec §1.4 R37: bottom-left): who, and the employee number the server gave; in the setup
@@ -17,8 +17,8 @@ export function RegisterToast({ inline = false }: { inline?: boolean }) {
   const [last] = useReceipts();
   const undo = useUndoRegister();
   if (!last) return null;
-  return (
-    <div className={inline ? undefined : s.dock}>
+  const content = (
+    <div>
       <Receipt
         state="applied"
         message={[t("register.saved", { name: last.name, number: last.number }), ...(last.warnings ?? []).map(employeeWarningText)].join(" · ")}
@@ -30,4 +30,5 @@ export function RegisterToast({ inline = false }: { inline?: boolean }) {
       <CommandError error={undo.error} />
     </div>
   );
+  return inline ? content : <StatusDock>{content}</StatusDock>;
 }

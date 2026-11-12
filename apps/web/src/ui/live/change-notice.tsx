@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { onRecordChange, type RecordChange } from "../../lib/live/live";
+import { StatusDock } from "../status-dock/status-dock";
 import s from "./live.module.css";
 
 /**
@@ -15,9 +16,9 @@ export function ChangeNotice() {
   useEffect(() => onRecordChange(setChange), []);
   if (!change) return null;
   return (
-    <div className={`notice ${s.notice}`} role="status">
+    <StatusDock><div className={`notice ${s.notice}`} role="status">
       <span>{t("live.notice.changed_elsewhere", { time: fmtDateTime(change.at) })}</span>
       <button className="btn btn--ghost" onClick={() => setChange(null)}>{t("live.notice.dismiss")}</button>
-    </div>
+    </div></StatusDock>
   );
 }

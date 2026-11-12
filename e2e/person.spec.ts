@@ -66,7 +66,7 @@ test("employee page: effective-date history, change a reservation, statutory pla
   await backdated.click();
   const promoted = history.getByRole("listitem").filter({ hasText: "소급 승진" });
   await expect(promoted).toBeFocused();
-  await expect(history.getByRole("status").filter({ hasText: "정기록님을 대리로 승진 처리했습니다" })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: "정기록님을 대리로 승진 처리했습니다" })).toBeVisible();
   await expect(history.getByRole("listitem")).toHaveText([/채용팀으로 전보했습니다/, /소급 승진/, /직원 등록/]);
   await expect(history.getByRole("separator", { name: /^오늘 · / })).toBeVisible();
   await expectAccessible(admin, "employee page: history by effective date with a receipt");

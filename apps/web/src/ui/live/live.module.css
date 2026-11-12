@@ -1,12 +1,9 @@
 .status { display: contents; }
-/* Keep record updates in flow so the notice never hides a page's actions. */
-.notice {
-  position: relative; z-index: 25; box-shadow: var(--shadow-pop);
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-block-end: var(--space-3);
-}
+/* The shared fixed dock keeps remote changes visible without moving record controls. */
+.notice { box-shadow: var(--shadow-pop); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .notice > span { flex: 1; min-width: 0; }
-/* A dashboard's held changes: fixed at the foot, clear of the in-flow record notice. */
-.held { position: fixed; bottom: var(--space-4); left: 50%; transform: translateX(-50%); z-index: 25; box-shadow: var(--shadow-pop); }
+/* Held changes share the dock with record changes and receipts. */
+.held { box-shadow: var(--shadow-pop); }
 /* Zero layout height: announcing a held change must not move the row under the pointer. */
 .list { position: sticky; top: var(--space-2); height: 0; z-index: var(--z-panel); pointer-events: none; }
 .listChip {

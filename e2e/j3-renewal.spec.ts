@@ -38,14 +38,15 @@ test("J3 contract renewal from Home's queue, then the next one", { tag: "@hr" },
   await expect(renewal).toBeHidden();
   const history = admin.getByRole("region", { name: "인사 이력" });
   await expect(history.getByRole("listitem").filter({ hasText: /갑계약의 계약을 .+까지 갱신하도록 예약했습니다/ })).toBeVisible();
-  await expect(history.getByRole("status")).toContainText("갑계약님의 계약 갱신을");
+  const receipt = admin.getByRole("status").filter({ hasText: "갑계약님의 계약 갱신을" });
+  await expect(receipt).toBeVisible();
   // Base 2 (queue row, commit) + 1 period preset for both dates; no statement to tick (BW-11 A13).
   expect(c.done("J3 renew from queue")).toBeLessThanOrEqual(3);
 
   // The receipt offers the next renewal in Home's queue; it opens that person's renewal sheet directly.
   const contracts = await holdRead(admin, nextContracts);
   const person = await holdRead(admin, `**${nextEmployee}`);
-  await history.getByRole("link", { name: "다음 갱신 열기 (1건 남음)" }).click();
+  await receipt.getByRole("link", { name: "다음 갱신 열기 (1건 남음)" }).click();
   await Promise.all([contracts.requested, person.requested]);
   try {
     await expect(sheet(admin, "을계약 계약 갱신")).toBeHidden();
