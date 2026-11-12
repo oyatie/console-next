@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "@console/i18n";
+import { failureText } from "../../../lib/refusal";
 import { useCommand } from "../../../lib/react/command";
 import { Button } from "../../../ui/button/button";
 import { editable } from "../../../ui/long-table/row-keys";
@@ -72,7 +73,7 @@ export function useQuick(c: Card) {
   const toast = run.isPending ? (
     <Toast state="sending">{t("empCard.quick.sending", { field: pending?.field ?? "" })}</Toast>
   ) : stale ? null : run.isError ? (
-    <Toast state="error" actions={<Button variant="ghost" onClick={() => run.reset()}>{t("empCard.quick.dismiss")}</Button>}>{t("empCard.quick.failed", { field: pending?.field ?? "" })}</Toast>
+    <Toast state="error" actions={<Button variant="ghost" onClick={() => run.reset()}>{t("empCard.quick.dismiss")}</Button>}>{t("empCard.quick.failed", { field: pending?.field ?? "" })} · {failureText(run.error)}</Toast>
   ) : last ? (
     <Toast state="done" actions={<Button variant="ghost" onClick={undo}>{t("empCard.quick.undo")}</Button>}>{t("empCard.quick.done", { field: last.edit.field })}</Toast>
   ) : null;

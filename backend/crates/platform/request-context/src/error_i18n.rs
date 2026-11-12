@@ -33,6 +33,10 @@ const MESSAGES: &[&[(&str, &str)]] = &[
 /// Per-code fallback when the exact message is not in [`MESSAGES`].
 const CODES: &[(&str, &str)] = &[
     (
+        "nationality_unknown",
+        "국가 목록에 없는 코드입니다. 목록에서 국가를 선택하십시오. 영국의 국가 코드는 GB입니다.",
+    ),
+    (
         "emergency_contact_notice_unconfirmed",
         "비상연락처 당사자에게 등록 사실을 알렸는지 확인해야 저장할 수 있습니다. (검토 전)",
     ),
@@ -297,6 +301,14 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert(header::ACCEPT_LANGUAGE, value.parse().unwrap());
         headers
+    }
+
+    #[test]
+    fn unknown_nationality_has_actionable_korean_copy() {
+        assert_eq!(
+            korean_message("nationality_unknown", "unknown country"),
+            "국가 목록에 없는 코드입니다. 목록에서 국가를 선택하십시오. 영국의 국가 코드는 GB입니다."
+        );
     }
 
     #[test]

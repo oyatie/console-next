@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useId, type ReactNode, type Ref } from "react";
 import { Button } from "react-aria-components";
 import { ChevronRight, Lock, Pencil } from "lucide-react";
 import { t } from "@console/i18n";
@@ -33,7 +33,7 @@ export function FieldRow({ label, no, children, sub, mark, edit, wide, id }: { l
  */
 export type MarkKind = "rc" | "cor" | "corTwo" | "first" | "inline" | "verb" | "lock";
 
-export function FieldMark({ kind, field, text, onPress, name }: { kind: MarkKind; field: string; text?: string; onPress?: () => void; name?: string }) {
+export function FieldMark({ kind, field, text, onPress, name, ref }: { kind: MarkKind; field: string; text?: string; onPress?: () => void; name?: string; ref?: Ref<HTMLButtonElement> }) {
   const id = useId();
   const cls = t(`uiRecord.mark.${kind}`);
   if (kind === "lock")
@@ -48,7 +48,7 @@ export function FieldMark({ kind, field, text, onPress, name }: { kind: MarkKind
   return (
     <span className={s.markRow}>
       {hint && <span id={id} className={s.markHint}>{hint}</span>}
-      <Button className={s.mark} data-k={kind === "corTwo" ? "cor" : kind} aria-label={name ?? t("uiRecord.markOf", { field, mark: verb })} aria-describedby={hint ? id : undefined} onPress={onPress}>
+      <Button ref={ref} className={s.mark} data-k={kind === "corTwo" ? "cor" : kind} aria-label={name ?? t("uiRecord.markOf", { field, mark: verb })} aria-describedby={hint ? id : undefined} onPress={onPress}>
         <Pencil size={12} aria-hidden />
         {verb}
         {kind === "verb" && <ChevronRight size={12} aria-hidden />}

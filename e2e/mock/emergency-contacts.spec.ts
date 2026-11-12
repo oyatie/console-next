@@ -13,7 +13,7 @@ for (const width of [1440, 390]) {
     await mockRoute(page, "get", "/api/v1/employees/{id}/personal-facts", { status: 200, json: {
       employee_id: moveDetail.employee.id, updated_at: AT,
       name_hanja: null, name_en: null, nationality: null, personal_email: null,
-      photo: null, group_service_start_date: null,
+      photo: null, group_service_start_date: null, countries: [],
       emergency_contacts: [{ name: "이세리", relation: "SIBLING", phone: "+821055556666", contact_notified: false }],
     } });
     await page.goto(`/people/${moveDetail.employee.id}`);
