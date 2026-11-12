@@ -1,4 +1,4 @@
-//! Shifts and holidays (ATT S1) commands and read models.
+//! Crews and holidays (ATT S1) commands and read models.
 
 use serde::{Deserialize, Serialize};
 use time::{Date, Month, OffsetDateTime};

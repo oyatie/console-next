@@ -1,5 +1,5 @@
 //! Which layer decides a person's day, and what that day is.
-//! Precedence: person › shift › department (nearest ancestor first) › workplace › legal entity.
+//! Precedence: person › crew › department (nearest ancestor first) › workplace › legal entity.
 //! At one level the latest start wins; a bounded layer stops at its end.
 
 use serde::{Deserialize, Serialize};
