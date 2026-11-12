@@ -16,6 +16,7 @@
   },
   "list": {
     "budget_kb": 300,
+    "deferred": ["src/features/entity/ui/entity-record.tsx", "src/features/entity/ui/entity-wizard.tsx"],
     "routes": [
       "src/features/access-log/ui/access-log-page.tsx",
       "src/features/access/ui/access-routes.tsx",
@@ -59,6 +60,7 @@
     "routes": [
       "src/features/account/Account.tsx",
       "src/features/approvals/ui/approval-viewer.tsx",
+      "src/features/entity/ui/entity-record.tsx",
       "src/features/org/OrgChange.tsx",
       "src/features/payroll/ui/run-page.tsx",
       "src/features/payroll/ui/employee-pay-page.tsx",
@@ -75,6 +77,7 @@
     "budget_kb": 167,
     "deferred": ["src/ui/date/date-calendar.tsx", "src/features/import/ui/resolve-controls.tsx"],
     "routes": [
+      "src/features/entity/ui/entity-wizard.tsx",
       "src/features/import/ui/dryrun-step.tsx",
       "src/features/import/ui/import-page.tsx",
       "src/features/onboarding/ui/go-live.tsx",
