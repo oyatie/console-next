@@ -83,8 +83,10 @@ export function experienceBlocks(css, id, baseDark = new Set()) {
       const name = child.type === "decl" ? decodeIdent(child.prop) : "";
       if (child.type !== "decl") refuse(child);
       else if (!name.startsWith("--")) own.problems.push(`${name} is not a token; an experience file sets custom properties only, so remove it`);
-      else if (child.important) own.problems.push(`${name} is marked !important, which the order of the light and dark blocks does not account for; drop !important`);
-      else block[name] = child.value.trim();
+      else {
+        if (child.important) own.problems.push(`${name} is marked !important, which the order of the light and dark blocks does not account for; drop !important`);
+        block[name] = child.value.trim();
+      }
     }
   }
   // In dark the light block still applies, so a colour written there shows in dark. Where the base sets the token for

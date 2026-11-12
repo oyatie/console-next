@@ -163,6 +163,8 @@ test("an experience block declares tokens only, and none of them !important", ()
     const r = run(css, { calm: blocks("calm", light, dark) });
     expect(r.status, r.stderr).toBe(1);
     expect(r.stderr).toContain("experiences/calm.css: --ink is marked !important, which the order of the light and dark blocks does not account for; drop !important\n");
+    // The marked value still counts as set: the one fix asked for is to drop the mark.
+    expect(r.stderr).not.toContain("light only");
   }
   // A property on the root ties the base's dark rule as a token does, and no dark rule covers it.
   const property = run(css, { calm: blocks("calm", "--border: #d0d7e0; color-scheme: light;", "--border: #2b3542;") });
@@ -183,6 +185,8 @@ test("every colour an experience sets for light is also set for dark", () => {
     ["--border: var(--border-soft);", "--border"],
     ["--shadow: none;", "--shadow"],
     ["--scrim: transparent;", "--scrim"],
+    // The base holds one value for this in both of its blocks; it is the declaration in the dark block that ties.
+    ["--on-signal: var(--ink);", "--on-signal"],
   ]) {
     const r = run(css, { calm: blocks("calm", light) });
     expect(r.status, light).toBe(1);
