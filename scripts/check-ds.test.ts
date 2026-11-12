@@ -242,7 +242,7 @@ test("literal token values in an experience file are not design-system debt", ()
   expect(r.status).toBe(0);
 });
 
-test("check-ds runs the contrast pairs and the block rule on every experience file", () => {
+test("check-ds runs the contrast pairs, the block rule and the dark rule on every experience file", () => {
   const css = readFileSync(new URL("../packages/tokens/tokens.css", import.meta.url), "utf8");
   const contrast = gate(fixture({ [tokenFile]: css, [experienceFile]: calm("", "--control-border: var(--surface);") }));
   expect(contrast.status).toBe(1);
@@ -250,4 +250,7 @@ test("check-ds runs the contrast pairs and the block rule on every experience fi
   const shape = gate(fixture({ [tokenFile]: css, [experienceFile]: ":root { --row-h: 36px; }" }));
   expect(shape.status).toBe(1);
   expect(shape.stderr).toContain(`${experienceFile}: :root is not one of the experience's blocks`);
+  const lightOnly = gate(fixture({ [tokenFile]: css, [experienceFile]: calm("--border: #d0d7e0;") }));
+  expect(lightOnly.status).toBe(1);
+  expect(lightOnly.stderr).toContain(`${experienceFile}: --border is a colour set for light only`);
 });

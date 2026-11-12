@@ -101,6 +101,8 @@ test("an experience overlays the base by specificity, then by source order", asy
     // --b: the experience's light block ties the base's dark block and is the later rule, so it wins in dark too.
     dark: { "--a": "#fff", "--b": "#222", "--c": "#333" },
   });
+  // Which is why a colour set for light alone is refused.
+  expect(own.problems).toEqual([expect.stringContaining("--b is a colour set for light only")]);
 });
 
 test("the pair list runs per experience and per theme, and a failure names the experience", () => {
@@ -150,4 +152,36 @@ test.each([
   expect(r.status, r.stderr).toBe(1);
   expect(r.stderr).toContain(`experiences/calm.css: ${where} `);
   expect(r.stderr).toContain(':root[data-experience="calm"] or :root[data-experience="calm"][data-theme="dark"]');
+});
+
+test("every colour an experience sets for light is also set for dark", () => {
+  const css = readFileSync(tokens, "utf8");
+  for (const [light, token] of [
+    ["--border: #d0d7e0;", "--border"],
+    ["--shadow: 0 1px 2px rgba(20, 26, 33, 0.08);", "--shadow"],
+    ["--border-soft: gainsboro;", "--border-soft"],
+    ["--scrim: oklch(20% 0.02 250 / 0.3);", "--scrim"],
+    // A name the base does not have is held to the same rule.
+    ["--calm-band: #102030;", "--calm-band"],
+  ]) {
+    const r = run(css, { calm: blocks("calm", light) });
+    expect(r.status, light).toBe(1);
+    expect(r.stderr).toContain(`experiences/calm.css: ${token} is a colour set for light only, so dark would show its light value; set it in :root[data-experience="calm"][data-theme="dark"] too`);
+  }
+  expect(run(css, { calm: blocks("calm", "--border: #d0d7e0;", "--border: #2b3542;") }).status).toBe(0);
+  // Sizes, fonts and values that only name other tokens have no light value of their own to leak into dark.
+  const exempt = run(css, { calm: blocks("calm", '--row-h: 36px; --radius: 0; --font-mono: "SF Mono", Menlo, monospace; --chart-grid: var(--border); --selected-bar: inset 4px 0 0 var(--primary); --calm-clear: transparent;') });
+  expect(exempt.stderr).toBe("");
+  expect(exempt.status).toBe(0);
+});
+
+test("the colour test picks out of the base's light block exactly the tokens its dark block sets", async () => {
+  const { literalColour, parseCss } = await import(/* @vite-ignore */ fileURLToPath(new URL("./check-ds-refs.mjs", import.meta.url)));
+  const light: string[] = [], dark: string[] = [];
+  parseCss(readFileSync(tokens, "utf8")).walkDecls(/^--/, (decl: { prop: string; value: string; parent: { selector: string } }) => {
+    if (decl.parent.selector !== ":root") dark.push(decl.prop);
+    else if (literalColour(decl.value)) light.push(decl.prop);
+  });
+  expect(dark.length).toBeGreaterThan(50);
+  expect(light.sort()).toEqual(dark.sort());
 });

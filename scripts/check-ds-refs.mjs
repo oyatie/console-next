@@ -33,9 +33,36 @@ export function rootDeclaration(decl) {
   return decl.parent?.type === "rule" && /:root\b/.test(decl.parent.selector);
 }
 
+const COLOUR_FUNCTIONS = new Set(["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color", "color-mix", "light-dark", "device-cmyk"]);
+// Every CSS colour name except transparent and currentcolor, which read the same in both themes.
+const NAMED_COLOURS = new Set(("aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood cadetblue "
+  + "chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta "
+  + "darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink "
+  + "deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey "
+  + "honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow "
+  + "lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime "
+  + "limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen "
+  + "mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid "
+  + "palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue "
+  + "saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle "
+  + "tomato turquoise violet wheat white whitesmoke yellow yellowgreen").split(" "));
+/**
+ * Whether a declared value writes a colour itself: a hex colour, a colour function or a colour name, anywhere in it
+ * (a shadow counts). A value that only names other tokens does not: it follows the theme of what it names.
+ */
+export function literalColour(value) {
+  let found = false;
+  valueParser(normalize(value)).walk((node) => {
+    const word = decodeIdent(node.value).toLowerCase();
+    if (node.type === "function" ? COLOUR_FUNCTIONS.has(word) : node.type === "word" && (/^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/.test(word) || NAMED_COLOURS.has(word))) found = true;
+  });
+  return found;
+}
+
 /**
  * An experience file's own declarations, by block. The gates compute its overlay on the base from the specificity
  * of exactly two selectors, so a declaration anywhere else would cascade in a way they do not model: it is refused.
+ * So is a colour the light block sets and the dark block does not.
  */
 export function experienceBlocks(css, id) {
   const light = `:root[data-experience="${id}"]`, dark = `${light}[data-theme="dark"]`;
@@ -57,6 +84,11 @@ export function experienceBlocks(css, id) {
     const where = outside.selector ?? (outside.name ? `@${outside.name} ${outside.params}`.trim() : "a declaration outside any rule");
     own.problems.push(`${where} is not one of the experience's blocks; move its declarations under ${light} or ${dark}`);
   });
+  // In dark the light block still applies, ahead of the base's dark block: a light colour with no dark value shows in dark.
+  for (const [name, value] of Object.entries(own.light)) {
+    if (literalColour(value) && !Object.hasOwn(own.dark, name))
+      own.problems.push(`${name} is a colour set for light only, so dark would show its light value; set it in ${dark} too`);
+  }
   return own;
 }
 const permits = (definition, use, theme) => (!definition.theme || definition.theme === theme)
