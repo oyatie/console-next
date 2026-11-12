@@ -75,6 +75,14 @@ async fn bulk_cases_roll_back_with_the_event_and_scheduled_replay_keeps_one_pend
         .await
         .unwrap();
     let statements = queries.statements();
+    assert_eq!(
+        statements
+            .iter()
+            .filter(|sql| sql.contains("INSERT INTO audit_events"))
+            .count(),
+        1,
+        "the real bulk command writes its audits in one insert"
+    );
     for query in ["FOR UPDATE OF e", "AS exit_owned"] {
         assert_eq!(
             statements.iter().filter(|sql| sql.contains(query)).count(),
