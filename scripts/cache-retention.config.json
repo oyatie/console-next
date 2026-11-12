@@ -1,0 +1,14 @@
+{
+  "trustedRef": "refs/heads/dev",
+  "budgetBytes": 10737418240,
+  "targetFraction": 0.7,
+  "families": {
+    "backend": {
+      "purpose": "Reuse compiled Rust targets and downloaded crates across builds",
+      "readers": ["ci.yml backend, backend-gates, backend-tests, backend-release and backend-cache on dev and PRs"],
+      "keyPattern": "^(backend-[^-]+-[^-]+-)([a-f0-9]{64}-)[a-f0-9]{40}$",
+      "copies": 2,
+      "restoreCopies": 1
+    }
+  }
+}

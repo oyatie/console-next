@@ -154,6 +154,7 @@ jobs:
         run: |
           npm run check
           node --test scripts/ci-backend.test.mjs
+          node --test scripts/cache-retention.test.mjs
           node --test scripts/ghcr-retention.test.mjs
           node --test scripts/negative-index.test.mjs
           python3 scripts/d7_evidence_test.py
@@ -334,6 +335,19 @@ jobs:
           key: backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-${{ github.sha }}
           restore-keys: |
             backend-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-
+      - &rust-cache-report
+        name: Report Rust cache restore
+        env:
+          CACHE_PRIMARY: ${{ steps.rust-cache.outputs.cache-primary-key }}
+          CACHE_MATCHED: ${{ steps.rust-cache.outputs.cache-matched-key }}
+        run: |
+          node --input-type=module <<'JS'
+          import {appendFileSync} from 'node:fs';
+          const {restoreSummary} = await import(`${process.env.GITHUB_WORKSPACE}/scripts/cache-retention.mjs`);
+          const report = restoreSummary('backend', process.env.CACHE_PRIMARY, process.env.CACHE_MATCHED);
+          console.log(report);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, report);
+          JS
       - &cache-mark
         name: Mark restored cache
         run: |
@@ -384,6 +398,7 @@ jobs:
       - *backend-harden
       - *backend-checkout
       - *rust-cache
+      - *rust-cache-report
       - *cache-mark
       - run: cargo test --locked -p console-gate-migration-safety
       - name: Backend code gates (release parity)
@@ -415,6 +430,7 @@ jobs:
       - *backend-harden
       - *backend-checkout
       - *rust-cache
+      - *rust-cache-report
       - *cache-mark
       - name: Release backend for Home probe
         run: cargo build --release --locked -p console-app --features e2e-test-support
@@ -449,6 +465,7 @@ jobs:
       - *backend-harden
       - *backend-checkout
       - *rust-cache
+      - *rust-cache-report
       - *cache-mark
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version}
@@ -477,11 +494,12 @@ jobs:
     needs: [affected]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
-    permissions: {contents: read, actions: read}
+    permissions: {contents: read, actions: write}
     steps:
       - *backend-harden
       - *backend-checkout
       - *rust-cache
+      - *rust-cache-report
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         continue-on-error: true
         timeout-minutes: 2
@@ -492,6 +510,7 @@ jobs:
           merge-multiple: true
           path: ${{ runner.temp }}/rust-cache
       - name: Merge Rust cache changes
+        id: rust-cache-merge
         continue-on-error: true
         timeout-minutes: 5
         run: |
@@ -499,6 +518,7 @@ jobs:
           for archive in "$RUNNER_TEMP"/rust-cache/registry-*.tgz; do tar -xzf "$archive" -C "$HOME"; done
           for archive in "$RUNNER_TEMP"/rust-cache/target-*.tgz; do tar -xzf "$archive" -C "$GITHUB_WORKSPACE"; done
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: rust-cache-save
         continue-on-error: true
         timeout-minutes: 5
         with:
@@ -508,6 +528,22 @@ jobs:
             ~/.cargo/git/db
             backend/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+      - name: Retain Rust caches by purpose and count
+        if: steps.rust-cache-save.outcome == 'success' && steps.rust-cache-merge.outcome == 'success'
+        timeout-minutes: 2
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CACHE_RETENTION_APPLY: ${{ vars.CACHE_RETENTION_APPLY }}
+          SAVED_KEY: ${{ steps.rust-cache.outputs.cache-primary-key }}
+          RESTORED_KEY: ${{ steps.rust-cache.outputs.cache-matched-key }}
+        with:
+          script: |
+            const {maintainCaches} = await import(`${process.env.GITHUB_WORKSPACE}/scripts/cache-retention.mjs`);
+            const result = await maintainCaches(github, context, {
+              family: 'backend', savedKey: process.env.SAVED_KEY, restoredKey: process.env.RESTORED_KEY,
+              dryRun: process.env.CACHE_RETENTION_APPLY !== 'true',
+            });
+            await core.summary.addRaw(result.summary).write();
 
   home:
     needs: [affected, backend-release]
