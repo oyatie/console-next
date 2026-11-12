@@ -2,10 +2,13 @@
 /* Fixed under the top bar, like the idle warning: a change made elsewhere never moves the page under someone typing. */
 .notice {
   position: fixed; top: calc(var(--topbar-h) + var(--space-3)); left: 50%; transform: translateX(-50%); z-index: 25;
-  max-width: calc(100vw - var(--space-4) * 2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  width: max-content; max-width: calc(100vw - var(--space-4) * 2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
   box-shadow: var(--shadow-pop);
+  /* The persistent status must not swallow presses on the record underneath. */
+  pointer-events: none;
 }
 .notice > span { flex: 1; min-width: 0; }
+.notice > button { pointer-events: auto; }
 /* A dashboard's held changes: fixed at the foot, clear of the change notice under the top bar. */
 .held { position: fixed; bottom: var(--space-4); left: 50%; transform: translateX(-50%); z-index: 25; box-shadow: var(--shadow-pop); }
 /* Zero layout height: announcing a held change must not move the row under the pointer. */
