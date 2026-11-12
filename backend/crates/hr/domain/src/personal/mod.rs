@@ -98,8 +98,8 @@ pub fn normalize_name_en(raw: &str) -> Result<Option<String>, KernelError> {
 
 /// 국적: an ISO 3166-1 alpha-2 code, upper case. NULL is 미입력 (never KR by
 /// default).
-// shape check only (no bundled ISO 3166-1 list in the repo yet);
-// check membership once crates/refdata carries the cited code list.
+/// This pure normalizer checks shape; the correction transaction checks
+/// membership against the dated database catalog.
 ///
 /// # Errors
 /// Validation when the value is not two letters.

@@ -38864,7 +38864,7 @@ components:
               type: [string, 'null']
               maxLength: 100
             nationality:
-              description: 국적, ISO 3166-1 alpha-2.
+              description: '국적, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it.'
               type: [string, 'null']
               pattern: '^[A-Za-z]{2}$'
             personal_email:

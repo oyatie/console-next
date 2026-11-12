@@ -8,6 +8,8 @@
 mod compat;
 #[path = "personal_facts/evidence.rs"]
 mod evidence;
+#[path = "personal_facts/nationality.rs"]
+mod nationality;
 #[path = "personal_facts/notice.rs"]
 mod notice;
 #[path = "personal_facts/photo.rs"]

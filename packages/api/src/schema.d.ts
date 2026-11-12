@@ -18162,7 +18162,7 @@ export interface components {
                 name_hanja?: string | null;
                 /** @description 영문 성명 (Latin letters, spaces, - ' . ,). */
                 name_en?: string | null;
-                /** @description 국적, ISO 3166-1 alpha-2. */
+                /** @description 국적, ISO 3166-1 alpha-2. Normalized to upper case and checked against the dated country catalog on the server date; an unknown or inactive code is refused with 422 nationality_unknown. Null clears it. */
                 nationality?: string | null;
                 /** @description 개인 메일. */
                 personal_email?: string | null;

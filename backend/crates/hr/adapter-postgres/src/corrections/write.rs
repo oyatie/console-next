@@ -59,6 +59,22 @@ pub(crate) async fn check_against_record(
     fields: &[FieldValue],
 ) -> Result<(), HrError> {
     super::catalog::check_in_tx(tx, org, fields).await?;
+    if let Some(Some(code)) = value_of(fields, "nationality") {
+        let known: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM country_code_versions WHERE code = $1 \
+             AND valid_from <= CURRENT_DATE AND (valid_to IS NULL OR CURRENT_DATE < valid_to))",
+        )
+        .bind(code)
+        .fetch_one(tx.as_mut())
+        .await?;
+        if !known {
+            return Err(refusal(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "nationality_unknown",
+                "nationality must be an active ISO 3166-1 alpha-2 country code",
+            ));
+        }
+    }
     register_facts::store::check_in_tx(
         tx,
         org,
