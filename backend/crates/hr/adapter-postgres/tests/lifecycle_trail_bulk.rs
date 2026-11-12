@@ -67,6 +67,20 @@ async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointm
         .await;
     let statements = queries.statements();
     eprintln!("bulk SQL statements: {}", statements.len());
+    for kind in [
+        "AS is_self",
+        "INSERT INTO employee_lifecycle_events",
+        "pg_advisory_xact_lock",
+        "FROM period_locks",
+        "UPDATE employees",
+        "FROM person_accounts_current",
+        "INSERT INTO audit_events",
+    ] {
+        eprintln!(
+            "{kind}: {}",
+            statements.iter().filter(|sql| sql.contains(kind)).count()
+        );
+    }
     let (state, result, error): (String, Option<serde_json::Value>, Option<serde_json::Value>) =
         sqlx::query_as(
             "SELECT state,result,error FROM employee_lifecycle_bulk_jobs WHERE org_id=$1 AND id=$2",
@@ -117,5 +131,13 @@ async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointm
     assert_eq!(
         observed, expected,
         "each case observes its actual event in the bulk transaction"
+    );
+    assert_eq!(
+        statements
+            .iter()
+            .filter(|sql| sql.contains("INSERT INTO audit_events"))
+            .count(),
+        2,
+        "one audit insert for the bulk command and one for its job completion"
     );
 }
