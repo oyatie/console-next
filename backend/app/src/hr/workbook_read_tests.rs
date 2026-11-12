@@ -247,6 +247,9 @@ fn markup_bypasses_return_the_catalogued_refusal_without_panicking() {
         include_bytes!("fixtures/dimension-namespace.xlsx").as_slice(),
         include_bytes!("fixtures/dimension-doctype-lower.xlsx").as_slice(),
         include_bytes!("fixtures/dimension-doctype-mixed.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-slash.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-comment-overlap.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-duplicate-rels.xlsx").as_slice(),
     ] {
         let error = read_workbook(book, &default_caps().unwrap()).unwrap_err();
         assert_eq!(error.status, StatusCode::UNPROCESSABLE_ENTITY);

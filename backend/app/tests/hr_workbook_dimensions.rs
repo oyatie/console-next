@@ -28,6 +28,9 @@ async fn reversed_dimensions_are_refused_without_creating_an_import_run(pool: Pg
         include_bytes!("../../fuzz/regressions/fz5-reversed-dimension.xlsx").as_slice(),
         include_bytes!("../src/hr/fixtures/dimension-doctype-lower.xlsx").as_slice(),
         include_bytes!("../src/hr/fixtures/dimension-doctype-mixed.xlsx").as_slice(),
+        include_bytes!("../src/hr/fixtures/dimension-slash.xlsx").as_slice(),
+        include_bytes!("../src/hr/fixtures/dimension-comment-overlap.xlsx").as_slice(),
+        include_bytes!("../src/hr/fixtures/dimension-duplicate-rels.xlsx").as_slice(),
         include_bytes!("../src/hr/fixtures/dimension-namespace.xlsx").as_slice(),
     ] {
         let mut body = b"--workbook\r\nContent-Disposition: form-data; name=\"file\"; filename=\"roster.xlsx\"\r\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n".to_vec();

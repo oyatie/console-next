@@ -4,7 +4,7 @@
 //! ZIP64, encryption and any method but stored/deflate.
 
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::inflate::{InflateError, inflated_bytes, inflated_len};
 use super::{WorkbookCaps, codes};
@@ -187,17 +187,28 @@ pub fn check_dimensions(bytes: &[u8], caps: &WorkbookCaps) -> Result<(), &'stati
                 } else {
                     format!("xl/{target}")
                 };
-                relationships.insert(id.to_vec(), path);
+                if relationships.insert(id.to_vec(), path).is_some() {
+                    return Err(codes::CORRUPT);
+                }
             }
         }
         Ok(true)
     })?;
+    let mut sheets = 0;
+    let mut screened = HashSet::new();
     super::dimension::tags(&part("xl/workbook.xml")?, |name, attributes| {
         if name == b"sheet" {
+            // Sheet declarations consume the same configured budget as ZIP entries.
+            sheets += 1;
+            if sheets > caps.max_entries {
+                return Err(codes::TOO_MANY_ENTRIES);
+            }
             for (key, id) in super::dimension::attributes(attributes).ok_or(codes::CORRUPT)? {
                 if key.splitn(2, |b| *b == b':').last() == Some(b"id".as_slice()) {
                     let path = relationships.get(id).ok_or(codes::CORRUPT)?;
-                    super::dimension::check(&part(path)?)?;
+                    if screened.insert(path.to_ascii_lowercase()) {
+                        super::dimension::check(&part(path)?)?;
+                    }
                 }
             }
         }

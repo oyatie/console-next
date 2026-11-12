@@ -41,6 +41,9 @@ test("reversed worksheet dimensions show the corrupt-file refusal and allow a va
     "backend/app/src/hr/fixtures/dimension-doctype-lower.xlsx",
     "backend/app/src/hr/fixtures/dimension-doctype-mixed.xlsx",
     "backend/app/src/hr/fixtures/dimension-namespace.xlsx",
+    "backend/app/src/hr/fixtures/dimension-slash.xlsx",
+    "backend/app/src/hr/fixtures/dimension-comment-overlap.xlsx",
+    "backend/app/src/hr/fixtures/dimension-duplicate-rels.xlsx",
   ]) {
     const reversed = await readFile(new URL(`../../${fixture}`, import.meta.url));
     await chooseWorkbook(admin, "reversed.xlsx", reversed);

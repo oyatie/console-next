@@ -139,16 +139,19 @@ fn declared_sheet_targets_are_checked_with_the_readers_path_rules() {
             "XL/WORKSHEETS/RENAMED.XML",
             "xl\\worksheets\\renamed.xml",
         ] {
-            let book = worksheet_zip(
-                target,
-                name,
-                "<worksheet><dimension ref='B2:A1'/></worksheet>",
-            );
-            assert_eq!(
-                check_dimensions(&book, &CAPS),
-                Err(codes::CORRUPT),
-                "{target}: {name}"
-            );
+            for (xml, expected) in [
+                (
+                    "<worksheet><dimension ref='B2:A1'/></worksheet>",
+                    Err(codes::CORRUPT),
+                ),
+                (
+                    "<worksheet><dimension ref='A1'/><sheetData/></worksheet>",
+                    Ok(()),
+                ),
+            ] {
+                let book = worksheet_zip(target, name, xml);
+                assert_eq!(check_dimensions(&book, &CAPS), expected, "{target}: {name}");
+            }
         }
     }
 }
@@ -180,4 +183,81 @@ fn unreferenced_relationships_and_orphan_sheets_are_not_screened() {
     .map(|(name, xml)| (name, 0, xml.as_bytes().to_vec(), xml.len() as u32))
     .collect();
     assert_eq!(check_dimensions(&zip(&parts), &CAPS), Ok(()));
+}
+
+#[test]
+fn malformed_sheet_data_names_do_not_end_dimension_screening() {
+    for decoy in [
+        "<sheetData/x>",
+        "<sheetData\x0c>",
+        "<sheetData\x0c/>",
+        "<x:sheetData/y>",
+    ] {
+        let xml = format!("{decoy}<dimension ref='B2:A1'/><sheetData/>");
+        assert_eq!(check(xml.as_bytes()), Err(codes::CORRUPT), "{decoy}");
+    }
+}
+
+#[test]
+fn overlapping_comment_terminators_do_not_expose_hidden_sheet_data() {
+    for opener in ["<!-->", "<!--->"] {
+        let xml = format!("{opener}<sheetData/> --><dimension ref='B2:A1'/><sheetData/>");
+        assert_eq!(check(xml.as_bytes()), Err(codes::CORRUPT), "{opener}");
+    }
+}
+
+#[test]
+fn duplicate_relationship_ids_are_corrupt_even_after_the_root_closes() {
+    for close in ["", "</Relationships>"] {
+        let workbook = "<workbook><sheet r:id='sheet'/></workbook>";
+        let rels = format!(
+            "<Relationships><Relationship Id='sheet' Target='bad.xml'/>{close}<Relationship Id='sheet' Target='good.xml'/></Relationships>"
+        );
+        let parts: Vec<_> = [
+            ("xl/workbook.xml", workbook),
+            ("xl/_rels/workbook.xml.rels", rels.as_str()),
+            (
+                "xl/bad.xml",
+                "<worksheet><dimension ref='B2:A1'/></worksheet>",
+            ),
+            (
+                "xl/good.xml",
+                "<worksheet><dimension ref='A1'/><sheetData/></worksheet>",
+            ),
+        ]
+        .into_iter()
+        .map(|(name, xml)| (name, 0, xml.as_bytes().to_vec(), xml.len() as u32))
+        .collect();
+        assert_eq!(check_dimensions(&zip(&parts), &CAPS), Err(codes::CORRUPT));
+    }
+}
+
+#[test]
+fn sheet_declarations_share_the_configured_entry_budget() {
+    let caps = WorkbookCaps {
+        max_entries: 4,
+        ..CAPS
+    };
+    for count in [1, 4, 5, 64] {
+        let workbook = format!(
+            "<workbook>{}</workbook>",
+            "<sheet r:id='sheet'/>".repeat(count)
+        );
+        let rels = "<Relationships><Relationship Id='sheet' Target='worksheets/sheet1.xml'/></Relationships>";
+        let sheet = "<worksheet><dimension ref='A1'/><sheetData/></worksheet>";
+        let parts: Vec<_> = [
+            ("xl/workbook.xml", workbook.as_str()),
+            ("xl/_rels/workbook.xml.rels", rels),
+            ("xl/worksheets/sheet1.xml", sheet),
+        ]
+        .into_iter()
+        .map(|(name, xml)| (name, 0, xml.as_bytes().to_vec(), xml.len() as u32))
+        .collect();
+        let expected = if count > caps.max_entries {
+            Err(codes::TOO_MANY_ENTRIES)
+        } else {
+            Ok(())
+        };
+        assert_eq!(check_dimensions(&zip(&parts), &caps), expected, "{count}");
+    }
 }

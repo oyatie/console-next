@@ -105,10 +105,15 @@ pub(super) fn tags(
             None
         };
         if let Some(end) = terminator {
-            let Some(at) = xml.windows(end.len()).position(|w| w == end) else {
+            let open = match end {
+                b"-->" => 3,
+                b"]]>" => 8,
+                _ => 1,
+            };
+            let Some(at) = xml[open..].windows(end.len()).position(|w| w == end) else {
                 return Ok(()); // The XML reader reports unfinished markup.
             };
-            xml = &xml[at + end.len()..];
+            xml = &xml[open + at + end.len()..];
             continue;
         }
         if xml
@@ -133,9 +138,14 @@ pub(super) fn tags(
             return Ok(());
         };
         let tag = &xml[..end];
+        if tag.starts_with(b"/") {
+            xml = &xml[end + 1..];
+            continue;
+        }
+        let tag = tag.strip_suffix(b"/").unwrap_or(tag);
         let name_end = tag
             .iter()
-            .position(|b| b.is_ascii_whitespace() || *b == b'/')
+            .position(|b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'))
             .unwrap_or(tag.len());
         let name = tag[..name_end]
             .splitn(2, |b| *b == b':')
