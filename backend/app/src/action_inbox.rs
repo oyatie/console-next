@@ -18,6 +18,7 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 use tracing::Instrument;
 
+mod activity;
 mod decisions;
 mod done;
 pub(crate) mod error;
