@@ -9,6 +9,8 @@ on:
   schedule:
     - cron: '19 3 * * 1'
 permissions: {}
+env:
+  RUNNER_DISK_MIN_BYTES: ${{ vars.RUNNER_DISK_MIN_BYTES || '2147483648' }}
 concurrency:
   group: platform-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: false
@@ -26,20 +28,36 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version, cache: npm}
+      - &disk-start
+        name: Check runner disk before restores
+        working-directory: .
+        run: |
+          node scripts/runner-disk.mjs before-cache
+          echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
       - name: Locked tools
         run: python3 deploy/ci/tools.py flux cosign kind buildx conftest kubeconform syft kustomize actionlint helm kubectl
       - name: Contracts and strict manifests
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           python3 -m unittest discover -s deploy/ci -p '*_test.py'
           node --test deploy/ci/*.test.mjs
           bash deploy/ci/validate.sh
       - name: ValidatingAdmissionPolicy server dry-run and refusals
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           export KUBECONFIG="${RUNNER_TEMP}/platform-admission.kubeconfig"
           trap 'kind delete cluster --name platform-admission' EXIT
           kind create cluster --name platform-admission --image "$(jq -r .images.kind deploy/versions.json)" --wait 120s
           node deploy/ci/admission.mjs
+      - &disk-evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: runner-disk-${{ github.job }}-${{ strategy.job-index || '0' }}
+          path: .cache/runner-disk/
+          include-hidden-files: true
+          if-no-files-found: error
 
   prune-image-cache:
     if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.ref == 'refs/heads/dev'
@@ -87,6 +105,9 @@ jobs:
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - *disk-start
       - name: Locked Buildx
         run: python3 deploy/ci/tools.py buildx
       - name: Export GHA cache credentials
@@ -102,6 +123,7 @@ jobs:
         env:
           ARCH: ${{ matrix.arch }}
           CACHE_WRITE: ${{ github.event_name == 'push' && github.ref_name == github.event.repository.default_branch }}
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           case "${ARCH}/$(docker info --format '{{.Architecture}}')" in
             amd64/x86_64|arm64/aarch64) ;;
@@ -122,6 +144,7 @@ jobs:
             --output "type=docker,dest=${RUNNER_TEMP}/console-${ARCH}.tar" .
       - name: Test native image
         env: {ARCH: '${{ matrix.arch }}'}
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           docker load --input "${RUNNER_TEMP}/console-${ARCH}.tar"
           bash deploy/ci/image-smoke.sh "console-platform:${ARCH}"
@@ -131,6 +154,7 @@ jobs:
           path: ${{ runner.temp }}/console-${{ matrix.arch }}.tar
           retention-days: 2
           compression-level: 0
+      - *disk-evidence
 
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
@@ -152,10 +176,12 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version, cache: npm}
+      - *disk-start
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with: {pattern: 'console-*', merge-multiple: true, path: '.tmp/images'}
       - name: Tools and registry login
         env: {REGISTRY_TOKEN: '${{ secrets.GITHUB_TOKEN }}'}
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           python3 deploy/ci/tools.py buildx cosign syft flux kustomize kubeconform conftest
           npm ci --ignore-scripts --no-audit --no-fund
@@ -165,6 +191,7 @@ jobs:
       - name: Push native manifests and merge OCI index
         id: image
         env: {GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'}
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           sources=()
           unsigned_sources=()
@@ -239,6 +266,7 @@ jobs:
           digest="$(jq -er '.digest' .tmp/artifact.json)"
           cosign sign --yes "${DEPLOY}@${digest}"
           echo "reference=oci://${DEPLOY}@${digest}" >> "${GITHUB_OUTPUT}"
+      - *disk-evidence
 
   scan:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
@@ -251,11 +279,16 @@ jobs:
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
-      - run: python3 deploy/ci/tools.py cosign grype
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - *disk-start
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: python3 deploy/ci/tools.py cosign grype
       - name: Scan the image's verified SPDX attestation
         env:
           IMAGE: ${{ needs.publish.outputs.image }}
           REGISTRY_TOKEN: ${{ github.token }}
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
           cosign verify-attestation --type=https://spdx.dev/Document/v2.3 --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
@@ -268,6 +301,7 @@ jobs:
             printf '%s\n' "${sbom}" > "${RUNNER_TEMP}/image-sbom.json"
             grype "sbom:${RUNNER_TEMP}/image-sbom.json" --only-fixed --fail-on high
           done < "${RUNNER_TEMP}/image-sboms.jsonl"
+      - *disk-evidence
 
   negative-signer:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
@@ -301,7 +335,9 @@ jobs:
         with: {persist-credentials: false, ref: dev}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version, cache: npm}
+      - *disk-start
       - name: Locked tools
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           python3 deploy/ci/tools.py kind kubectl flux cosign kustomize
           npm ci --ignore-scripts --no-audit --no-fund
@@ -312,6 +348,7 @@ jobs:
           PLATFORM_WORKFLOW_IDENTITY: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/platform.yml@refs/heads/dev
           ARTIFACT: ${{ needs.publish.outputs.artifact }}
           WRONG_ARTIFACT: ${{ needs.negative-signer.outputs.artifact }}
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: bash deploy/ci/exit-test.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
@@ -320,3 +357,4 @@ jobs:
           path: .tmp/evidence
           if-no-files-found: error
           retention-days: 14
+      - *disk-evidence

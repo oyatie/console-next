@@ -420,7 +420,7 @@ test("database builds reclaim hosted disk before restoring Rust and report disk 
     for (const status of [0, 73]) {
       const calls = path.join(root, `calls-${status}`);
       const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", cleanup.run], { encoding: "utf8", env: {
-        ...process.env, PATH: `${root}:${process.env.PATH}`, CALLS: calls, CLEANUP_STATUS: String(status), GITHUB_WORKSPACE: root, RUNNER_DISK_MIN_BYTES: "1",
+        ...process.env, PATH: `${root}:${process.env.PATH}`, GITHUB_PATH: path.join(root, "github-path"), CALLS: calls, CLEANUP_STATUS: String(status), GITHUB_WORKSPACE: root, RUNNER_DISK_MIN_BYTES: "1",
       } });
       assert.equal(result.status, status, result.stdout + result.stderr);
       const events = readFileSync(calls, "utf8").trim().split("\n");

@@ -5,6 +5,8 @@ on:
     - cron: "17 18 * * *"
   workflow_dispatch:
 permissions: {}
+env:
+  RUNNER_DISK_MIN_BYTES: ${{ vars.RUNNER_DISK_MIN_BYTES || '2147483648' }}
 concurrency:
   group: route-load-${{ github.ref }}
   cancel-in-progress: false
@@ -25,11 +27,20 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
-      - run: npm ci --no-audit --no-fund
+      - &disk-start
+        name: Check runner disk before restores
+        working-directory: .
+        run: |
+          node scripts/runner-disk.mjs before-cache
+          echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: npm ci --no-audit --no-fund
       - name: Build the full E2E backend once
         working-directory: backend
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: cargo build --release --locked -p console-app --features full,e2e-test-support
       - name: Build the served web client once
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: npm run build
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -38,6 +49,14 @@ jobs:
             backend/target/release/console-app
             apps/web/dist
           retention-days: 1
+          if-no-files-found: error
+      - &disk-evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: runner-disk-${{ github.job }}-${{ strategy.job-index || '0' }}
+          path: .cache/runner-disk/
+          include-hidden-files: true
           if-no-files-found: error
 
   route-load:
@@ -75,8 +94,11 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
-      - run: npm ci --no-audit --no-fund
-      - run: npx playwright install --with-deps --only-shell chromium
+      - *disk-start
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: npm ci --no-audit --no-fund
+      - shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
+        run: npx playwright install --with-deps --only-shell chromium
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: {name: e2e-live-runtime, path: .cache/e2e-live-runtime}
       - run: chmod +x "$CONSOLE_APP_BIN"
@@ -84,6 +106,7 @@ jobs:
         env:
           CONSOLE_DEV_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
           PERF_EVIDENCE_DIR: ${{ runner.temp }}/route-load
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: npx playwright test e2e/perf/route-load.spec.ts e2e/perf/record-routes.spec.ts --project=parallel --retries=0
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
@@ -91,3 +114,4 @@ jobs:
           name: route-load-evidence
           path: ${{ runner.temp }}/route-load/route-load.json
           if-no-files-found: error
+      - *disk-evidence

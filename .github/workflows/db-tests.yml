@@ -117,6 +117,7 @@ jobs:
           echo 'Disk after cleanup, before cache restore and build:'
           df -h "$GITHUB_WORKSPACE"
           node scripts/runner-disk.mjs before-cache
+          echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: rust-cache
         with:
@@ -128,6 +129,7 @@ jobs:
           key: db-tests-${{ runner.os }}-${{ runner.arch }}-debug${{ env.CARGO_PROFILE_TEST_DEBUG }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-${{ github.sha }}
           restore-keys: db-tests-${{ runner.os }}-${{ runner.arch }}-debug${{ env.CARGO_PROFILE_TEST_DEBUG }}-${{ hashFiles('backend/rust-toolchain.toml', 'backend/Cargo.lock', 'backend/**/Cargo.toml') }}-
       - name: Install pinned Rust test runner
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           node scripts/runner-disk.mjs after-cache
           curl --fail --silent --show-error --location -o "${RUNNER_TEMP}/nextest.tar.gz" \
@@ -210,6 +212,7 @@ jobs:
         if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' }}
         env:
           RUST_CACHE_MAX_BYTES: '3221225472'
+        shell: bash -e -o pipefail -c "exec runner-disk-shell.sh {0}"
         run: |
           find "$HOME/.cargo/registry" -type f -print0 > "${RUNNER_TEMP}/db-tests-rust-cache-files"
           find backend/target -type f \( -path 'backend/target/*/.fingerprint/*' -o -path 'backend/target/*/build/*' -o -path 'backend/target/*/deps/*' \) -print0 >> "${RUNNER_TEMP}/db-tests-rust-cache-files"
