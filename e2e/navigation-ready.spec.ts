@@ -22,10 +22,12 @@ test.beforeAll(async () => {
       },
       resolveId: id => id.startsWith("/__navigation-") ? id : undefined,
       load: id => id === "/__navigation-ready.tsx" ? `
+        import { lazy, Suspense } from "react";
         import { createRoot } from "react-dom/client";
         import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
         import { createRoute, createRouter, lazyRouteComponent, Navigate, Outlet, RouterProvider } from "@tanstack/react-router";
         import { root } from "/apps/web/src/routes/app.ts";
+        import { ReadSkeleton } from "/apps/web/src/ui/skeleton/skeleton.tsx";
         window.addEventListener("network-online", event => onlineManager.setOnline(event.detail));
         const shell = createRoute({ getParentRoute: () => root, id: "shell", component: () => <main><Outlet /></main> });
         const start = createRoute({ getParentRoute: () => shell, path: "/", component: () => <h1>Start</h1> });
@@ -36,9 +38,12 @@ test.beforeAll(async () => {
           component: lazyRouteComponent(() => import("/__navigation-screen.tsx"), "Screen"),
         });
         const redirect = createRoute({ getParentRoute: () => shell, path: "/redirect", component: () => <Navigate to="/destination" search={{ revision: "redirect" }} /> });
+        const Suspended = lazy(() => import("/__navigation-suspended.tsx"));
+        const suspended = createRoute({ getParentRoute: () => shell, path: "/suspended", component: () => <Suspense fallback={<ReadSkeleton />}><Suspended /></Suspense> });
+        const standalone = createRoute({ getParentRoute: () => root, path: "/document", component: () => <Suspense fallback={null}><main><Suspended /></main></Suspense> });
         createRoot(document.getElementById("root")).render(
           <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-            <RouterProvider router={createRouter({ routeTree: root.addChildren([shell.addChildren([start, destination, redirect])]) })} />
+            <RouterProvider router={createRouter({ routeTree: root.addChildren([shell.addChildren([start, destination, redirect, suspended]), standalone]) })} />
           </QueryClientProvider>);
       ` : id === "/__navigation-screen.tsx" ? `
         import { useQuery } from "@tanstack/react-query";
@@ -46,12 +51,56 @@ test.beforeAll(async () => {
           const q = useQuery({ queryKey: ["navigation", location.search], queryFn: () => fetch("/read" + location.search).then(r => r.text()) });
           return <><h1>Destination</h1>{q.isPending ? <p role="status">Loading</p> : <button>{q.data}</button>}</>;
         }
+      ` : id === "/__navigation-suspended.tsx" ? `
+        import { useQuery } from "@tanstack/react-query";
+        import { ReadSkeleton } from "/apps/web/src/ui/skeleton/skeleton.tsx";
+        export default function Screen() {
+          const q = useQuery({ queryKey: ["primary"], queryFn: () => fetch("/primary").then(r => r.text()) });
+          return q.isPending ? <ReadSkeleton layout="record" /> : <>
+            <h1 ref={element => { if (element) requestAnimationFrame(() => requestAnimationFrame(() => { element.dataset.presented = ""; })); }}>{q.data}</h1>
+            <div hidden><ReadSkeleton /></div><div inert><ReadSkeleton /></div>
+            <div style={{ visibility: "hidden" }}><ReadSkeleton /></div>
+          </>;
+        }
       ` : undefined,
     }],
   });
   await server.listen();
 });
 test.afterAll(async () => { await server?.close(); });
+
+for (const path of ["/suspended", "/document"]) test(`a suspended screen at ${path} never reports ready before its chunk and primary read render`, async ({ page }) => {
+  await page.addInitScript(() => {
+    const reports: { heading: string | null; presented: boolean }[] = [];
+    new MutationObserver(records => {
+      for (const record of records) if (record.oldValue === null && (record.target as HTMLElement).hasAttribute("data-route-ready")) {
+        const heading = document.querySelector("h1");
+        reports.push({ heading: heading?.textContent ?? null, presented: heading?.hasAttribute("data-presented") ?? false });
+      }
+      Object.assign(window, { readyReports: reports });
+    }).observe(document, { subtree: true, attributes: true, attributeOldValue: true, attributeFilter: ["data-route-ready"] });
+  });
+  const chunk = Promise.withResolvers<void>();
+  const read = Promise.withResolvers<void>();
+  await page.route("**/__navigation-suspended.tsx", async route => { await chunk.promise; await route.continue(); });
+  await page.route("**/primary", async route => { await read.promise; await route.fulfill({ body: "Rendered content" }); });
+  const requested = page.waitForRequest("**/__navigation-suspended.tsx");
+  await page.goto(new URL(path, server.resolvedUrls!.local[0]).href);
+  await requested;
+  try {
+    if (path === "/suspended") await expect(page.locator('[data-read-layout="list"]')).toBeAttached();
+    else await expect(page.getByRole("main")).toHaveCount(0);
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await expect(page.locator("[data-route-ready]")).toHaveCount(0);
+    chunk.resolve();
+    await expect(page.locator('main [data-read-layout="record"]')).toBeAttached();
+    await expect(page.locator("[data-route-ready]")).toHaveCount(0);
+    read.resolve();
+    await expect(page.getByRole("heading", { name: "Rendered content" })).toBeVisible();
+    await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", path);
+    expect(await page.evaluate(() => (window as unknown as { readyReports: { heading: string | null; presented: boolean }[] }).readyReports)).toEqual([{ heading: "Rendered content", presented: true }]);
+  } finally { chunk.resolve(); read.resolve(); }
+});
 
 test("go waits for the destination render, loader and initial read before absence assertions", async ({ page }) => {
   await page.goto(server.resolvedUrls!.local[0]!);
@@ -76,7 +125,7 @@ test("go waits for the destination render, loader and initial read before absenc
   await navigating;
   // With old go(), the same immediate absence assertion above wrongly passes after navigation.
   await expect(page.getByRole("button", { name: "Late action" })).toBeVisible();
-  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("status")).toHaveCount(0);
 
   // Same-path search navigation and redirects must identify the new committed route, not reuse its old marker.
   await go(page, "/destination?revision=second");
@@ -101,7 +150,7 @@ test("a paused destination read is not ready until it resumes and renders", asyn
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("network-online", { detail: false })));
   let returned = false;
   const navigating = go(page, "/destination?revision=paused").then(() => { returned = true; });
-  await expect(page.getByRole("status")).toHaveText("Loading");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Loading");
   await expect(page.locator("[data-route-ready]")).toHaveCount(0);
   expect(returned, "a paused read still owes the destination its answer").toBe(false);
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("network-online", { detail: true })));
