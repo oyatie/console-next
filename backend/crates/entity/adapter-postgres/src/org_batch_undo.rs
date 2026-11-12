@@ -181,6 +181,14 @@ impl PgEntityStore {
                             attributes
                         }
                     };
+                    // The revert takes the day of the change it takes back, so a dated batch
+                    // leaves no trace in its own past and can be entered again on that day.
+                    if let Some(day) = head.attributes["effective_from"]
+                        .as_str()
+                        .and_then(|d| time::Date::parse(d, &time::format_description::well_known::Iso8601::DATE).ok())
+                    {
+                        run.today = day;
+                    }
                     run.write(tx, i, None, Some((id, head)), attributes, "org_unit.setup_revert").await?;
                 }
                 let undo = run.batch;
