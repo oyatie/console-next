@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Fields a tenant adds to its personnel card: their definitions.
 
 use axum::extract::{Path, State};

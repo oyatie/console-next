@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Fields a tenant adds to its personnel card: definitions through Cedar
 //! `roster_field_manage`, their shape rules, and the active limit.
 

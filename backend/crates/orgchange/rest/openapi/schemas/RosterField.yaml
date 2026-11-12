@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
 description: A field the tenant adds to its personnel card.
 required: [id, label, value_type, section, visibility, choices, active]

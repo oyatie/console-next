@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Korean source for `rosterFields.` ids (features/people/ui/roster-fields-page.tsx): fields a company adds to its personnel card.
 export const koRosterFields = {
   "rosterFields.title": "인사카드 항목",

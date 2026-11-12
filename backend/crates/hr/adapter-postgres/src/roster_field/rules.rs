@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! What a definition may hold: its label, its options, and how a change to
 //! the options keeps every option that already exists.
 

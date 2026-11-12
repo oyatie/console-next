@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Fields a tenant adds to its personnel card: the definitions (list, add,
 //! change). A definition has a label, a value type and a card section, both
 //! fixed once added, and is retired rather than deleted. First release: the

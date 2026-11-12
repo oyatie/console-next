@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import type { koRosterFields } from "../ko/roster-fields";
 
 export const enRosterFields: Partial<Record<keyof typeof koRosterFields, string>> = {
