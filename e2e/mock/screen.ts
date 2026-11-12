@@ -41,6 +41,8 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
     json: screenAccess(new URL(request.headers().referer ?? request.url()).pathname),
   }));
   await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
+  // An opened 업무함 record reads its item's activity; a spec that cares overrides this empty answer.
+  await mockRoute(page, "get", "/api/v1/me/action-inbox/items/{id}/activity", { status: 200, json: { items: [] } });
   await mockDirectorySettings(page);
   await page.route("**/api/v1/me/employee-views", route => route.fulfill({ status: 404, json: failure("not_found") }));
   // route.fulfill buffers bodies; a browser stream keeps the shell healthy without fake reconnects.
