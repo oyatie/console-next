@@ -226,10 +226,17 @@ fn the_reference_workbooks_are_not_rosters_and_ask_for_a_mapping() {
 /// panic wherever overflow checks are on (dev and test builds). An upload is
 /// refused or read, never a panic.
 #[test]
-#[ignore = "owner=import; reason=FZ-5 calamine get_dimension underflows on a reversed dimension; expires=2026-11-20"]
 fn regression_fz5_a_reversed_dimension_is_read_or_refused_without_panicking() {
     let book = include_bytes!("../../../fuzz/regressions/fz5-reversed-dimension.xlsx");
     let caps = default_caps().unwrap();
     let read = std::panic::catch_unwind(|| read_workbook(book, &caps).map(|s| s.len()).ok());
     assert!(read.is_ok(), "a reversed <dimension> panicked the reader");
+}
+
+#[test]
+fn a_reversed_dimension_returns_the_catalogued_corrupt_refusal() {
+    let book = include_bytes!("../../../fuzz/regressions/fz5-reversed-dimension.xlsx");
+    let error = read_workbook(book, &default_caps().unwrap()).unwrap_err();
+    assert_eq!(error.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(error.code, "workbook_corrupt");
 }

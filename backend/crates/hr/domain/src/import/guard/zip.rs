@@ -3,7 +3,7 @@
 //! declared one) and the caps of [`WorkbookCaps`]. Stdlib only; refuses
 //! ZIP64, encryption and any method but stored/deflate.
 
-use super::inflate::{InflateError, inflated_len};
+use super::inflate::{InflateError, inflated_bytes, inflated_len};
 use super::{WorkbookCaps, codes};
 
 const EOCD_SIG: u32 = 0x0605_4b50;
@@ -126,4 +126,25 @@ pub fn scan_zip(bytes: &[u8], caps: &WorkbookCaps) -> Result<ZipStats, &'static 
         stats.expanded_bytes += size;
     }
     Ok(stats)
+}
+
+/// Validate worksheet dimension declarations after the container has passed its caps.
+///
+/// # Errors
+/// [`codes::CORRUPT`] for invalid dimensions, or a container refusal from [`scan_zip`].
+pub fn check_dimensions(bytes: &[u8], caps: &WorkbookCaps) -> Result<(), &'static str> {
+    scan_zip(bytes, caps)?;
+    // shortcut: all parts are screened; resolve sheet relationships if custom XML uses dimension tags.
+    for entry in entries(bytes, caps)? {
+        let raw = data(bytes, &entry)?;
+        let decoded;
+        let xml = if entry.method == 8 {
+            decoded = inflated_bytes(raw, entry.declared).map_err(|_| codes::CORRUPT)?;
+            decoded.as_slice()
+        } else {
+            raw
+        };
+        super::dimension::check(xml)?;
+    }
+    Ok(())
 }
