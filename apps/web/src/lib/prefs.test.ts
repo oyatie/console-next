@@ -77,6 +77,7 @@ test("the bundle's known experiences are the boot script's own list", () => {
 test("the known experiences are exactly the ones with a token file", () => {
   // The token gates take an experience's id from its file name; a list that differed would apply nothing, or an id with no tokens.
   const dir = new URL("../../../../packages/tokens/experiences/", import.meta.url);
+  expect(existsSync(new URL("../tokens.css", dir)), "the folder is looked for beside the base token file").toBe(true);
   const files = existsSync(dir) ? readdirSync(dir).filter((name) => name.endsWith(".css")).map((name) => name.slice(0, -".css".length)) : [];
   expect([...boot({}).published.experience.values].sort()).toEqual(files.sort());
 });
