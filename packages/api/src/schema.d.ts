@@ -9035,6 +9035,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/action-inbox/items/{id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 활동 내역 - what happened to one of my inbox items
+         * @description The record column's 활동 내역 for an item in the caller's 업무함. The item is resolved through the caller's own sources, the same read as the list, so another person's item, an unknown id and a malformed id answer the same 404 inbox_item_not_found. Rows are the audit events on the item and on its subject, newest first, at most 50: what happened (a verb from a closed set, other for anything else), who did it (absent for system events) and when. Audit snapshots are never served. 503 when the inbox sources cannot be read.
+         */
+        get: operations["listMyActionInboxItemActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/action-inbox/reference": {
         parameters: {
             query?: never;
@@ -49942,6 +49962,40 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    listMyActionInboxItemActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The item id as the list serves it (kind:uuid). */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The item's activity, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            verb: string;
+                            /** @description The acting account's display name; absent for system events. */
+                            actor_name?: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     listMyActionInboxReference: {
