@@ -62,6 +62,8 @@ export const enOrgUnit: Record<keyof typeof koOrgUnit, string> = {
   "orgUnit.gov.addTitle": "New department",
   "orgUnit.gov.name": "Department name",
   "orgUnit.gov.date": "Effective date",
+  "orgUnit.gov.setupPast": "Setup changes apply at once, so the date can’t be after today. Choose today or an earlier day.",
+  "orgUnit.gov.datedReceipt": "{message} · effective {date}",
   "orgUnit.gov.today": "Today",
   "orgUnit.gov.reason": "Reason",
   "orgUnit.gov.reasonFilled": "Filled",

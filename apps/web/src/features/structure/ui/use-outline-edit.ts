@@ -1,7 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useUnitEdit } from "../../../reference/org/ui/use-unit-edit";
-import type { InlineUnitValues } from "../../../reference/org/api";
+import { setupDated, type InlineUnitValues } from "../../../reference/org/api";
 import { t } from "@console/i18n";
+import { todayKst } from "../../../lib/pure/today";
 import type { ChartNode, Structure } from "../domain/model";
 import { parentOf, placeAfter, reorderedByDrag, transfers } from "../domain/rules";
 import { moveEffect } from "../present";
@@ -23,7 +24,8 @@ export function useStructureGesturesBare(s: Structure, cmd: Commands) {
      * either phase): it lands right after the sibling it is dropped on. A department moves at once in setup; after
      * go-live the move page asks for the date and reason.
      */
-    moveTo: (nodes: ChartNode[], target: ChartNode) => {
+    /** `day`: the move's effective date in setup (the picker asks; a drag applies today). */
+    moveTo: (nodes: ChartNode[], target: ChartNode, day = todayKst()) => {
       const first = nodes[0];
       if (readOnly || !first) return;
       if (reorderedByDrag(first)) {
@@ -36,7 +38,7 @@ export function useStructureGesturesBare(s: Structure, cmd: Commands) {
       const sub = nodes.reduce((k, n) => k + n.children.length, 0);
       // Each moved unit says where it came from until the receipt goes (S2-chart-moved).
       const from = new Map(nodes.map((n) => [n.id, (n.parentId && s.byId.get(n.parentId)?.name) || ""]));
-      cmd.apply({ ops: nodes.map((n) => ({ op: "MOVE", ...pin(n), ...parentOf(target) })), message: t("structure.receipt.moved", { name, target: target.name, sub, moved }), moved: from });
+      cmd.apply({ ops: nodes.map((n) => ({ op: "MOVE", ...pin(n), ...parentOf(target) })), ...setupDated(t("structure.receipt.moved", { name, target: target.name, sub, moved }), day), moved: from });
     },
     /** What dropping `nodes` on `overId` does, in one sentence. */
     effect: (nodes: ChartNode[], overId: string) => {
@@ -46,11 +48,11 @@ export function useStructureGesturesBare(s: Structure, cmd: Commands) {
     },
     create: (parent: ChartNode, name: string, values: InlineUnitValues, onDone: () => void) =>
       !canEdit ? undefined : setup
-        ? cmd.apply({ ops: [{ op: "CREATE", name, ...(parent.kind === "site" ? { workplace_id: parent.id } : { parent_org_unit_id: parent.id }) }], message: t("structure.receipt.created", { name }), onDone: () => onDone() })
+        ? cmd.apply({ ops: [{ op: "CREATE", name, ...(parent.kind === "site" ? { workplace_id: parent.id } : { parent_org_unit_id: parent.id }) }], ...setupDated(t("structure.receipt.created", { name }), values.effectiveDate), onDone: () => onDone() })
         : cmd.propose({ kind: "create", parentUnitId: parent.unitId ?? parent.id, name, ...values, onDone: () => onDone() }),
     rename: (n: ChartNode, name: string, values: InlineUnitValues, onDone?: () => void) =>
       !canEdit ? undefined : setup
-        ? cmd.apply({ ops: [{ op: "RENAME", org_unit_id: n.id, expected_version: n.version ?? 1, name }], message: t("structure.receipt.renamed", { from: n.name, name }), onDone: () => onDone?.() })
+        ? cmd.apply({ ops: [{ op: "RENAME", org_unit_id: n.id, expected_version: n.version ?? 1, name }], ...setupDated(t("structure.receipt.renamed", { from: n.name, name }), values.effectiveDate), onDone: () => onDone?.() })
         : cmd.propose({ kind: "rename", orgUnitId: n.id, fromName: n.name, name, ...values, onDone }),
   };
 }

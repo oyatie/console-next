@@ -1,8 +1,9 @@
 import { useNavigate, getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { todayKst } from "../../../lib/pure/today";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { useUnitEdit } from "../../../reference/org/ui/use-unit-edit";
-import type { InlineUnitValues } from "../../../reference/org/api";
+import { setupDated, type InlineUnitValues } from "../../../reference/org/api";
 import type { SetupOp } from "../api";
 import type { ChartNode, Structure } from "../domain/model";
 import { orderStep, reorderedByDrag } from "../domain/rules";
@@ -56,7 +57,7 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
     }
     const op: SetupOp = { op: "CREATE", name, ...(p.kind === "site" ? { workplace_id: p.id } : { parent_org_unit_id: p.id }) };
     // The new box comes into view (the add box stays open under it for the next name).
-    cmd.apply({ ops: [op], message: t("structure.receipt.created", { name }), onDone: (ids) => { done?.(); if (ids[0]) c.setCursor(ids[0]); } });
+    cmd.apply({ ops: [op], ...setupDated(t("structure.receipt.created", { name }), values.effectiveDate), onDone: (ids) => { done?.(); if (ids[0]) c.setCursor(ids[0]); } });
   };
   const rename = (n: ChartNode) => (!canEdit || n.kind !== "dept" ? undefined : c.setRenaming(n.id));
   const saveName = (id: string, name: string, values: InlineUnitValues) => {
@@ -65,12 +66,13 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
     if (!n) return;
     if (!setup) return cmd.propose({ kind: "rename", orgUnitId: n.id, fromName: n.name, name, ...values, onDone: () => c.setRenaming(null) });
     c.setRenaming(null);
-    cmd.apply({ ops: [{ op: "RENAME", ...pin(n), name }], message: t("structure.receipt.renamed", { from: n.name, name }) });
+    cmd.apply({ ops: [{ op: "RENAME", ...pin(n), name }], ...setupDated(t("structure.receipt.renamed", { from: n.name, name }), values.effectiveDate) });
   };
-  const moveTo = (nodes: ChartNode[], target: ChartNode) => {
+  /** `day`: the move's effective date in setup (the picker asks; a drag applies today). */
+  const moveTo = (nodes: ChartNode[], target: ChartNode, day = todayKst()) => {
     // The new parent opens, so the moved boxes are in view where they landed once the tree is read again.
     if (!readOnly && setup && nodes[0] && !reorderedByDrag(nodes[0])) c.toggle(target.id, true);
-    bare.moveTo(nodes, target);
+    bare.moveTo(nodes, target, day);
   };
   const dissolve = (nodes: ChartNode[]) => {
     if (readOnly || !nodes.length) return;

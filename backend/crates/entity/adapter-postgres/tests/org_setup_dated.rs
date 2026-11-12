@@ -113,6 +113,49 @@ async fn a_batch_takes_effect_on_its_date_and_today_when_it_names_none(owner: Pg
         .unwrap();
     let (_, status, _, _) = unit_head(&owner, dated.units[0].org_unit_id).await;
     assert_ne!(status, "active");
+    // ...and leaves no trace in its own past: on its day the 부서 was never entered.
+    assert!(names_on(began).await.is_empty());
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn an_undone_dated_rename_can_be_entered_again_on_its_day(owner: PgPool) {
+    let (store, actor) = tenant(&owner, ORG, "A").await;
+    let (_, [(hq, _), _]) = two_workplaces(&store, &actor).await;
+    let made = store
+        .apply_org_setup_batch_on(
+            &cmd(&actor),
+            vec![under_workplace("a", "총무부", hq)],
+            Some(date!(2021 - 03 - 02)),
+            port(),
+        )
+        .await
+        .unwrap();
+    let unit = made.units[0].org_unit_id;
+    let renamed_on = Some(date!(2022 - 01 - 03));
+    let renamed = store
+        .apply_org_setup_batch_on(
+            &cmd(&actor),
+            vec![rename(unit, 1, "경영지원부")],
+            renamed_on,
+            port(),
+        )
+        .await
+        .unwrap();
+    store
+        .undo_org_setup_batch(&cmd(&actor), renamed.batch_id, port())
+        .await
+        .unwrap();
+    // The revert is dated with the rename it takes back, so the same rename can be entered again.
+    assert_eq!(record(&owner, unit).await, ("2022-01-03".to_owned(), 3));
+    store
+        .apply_org_setup_batch_on(
+            &cmd(&actor),
+            vec![rename(unit, 3, "경영지원부")],
+            renamed_on,
+            port(),
+        )
+        .await
+        .unwrap();
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

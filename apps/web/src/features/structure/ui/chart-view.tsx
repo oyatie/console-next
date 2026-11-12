@@ -201,7 +201,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
         <ChartBoxes s={s} c={c} g={gestures} canEdit={g.canEdit} menu={menu} onMenu={setMenu} drag={drag.view} moved={cmd.last && !cmd.last.undone ? cmd.last.moved : undefined} onActivate={(id, mode) => (c.select(id, mode), c.setCursor(id))} onPointerDown={drag.onPointerDown} />
       </OrgCanvas>
       {drag.view && <span className={`${css.dragGhost} card`} ref={(el) => el?.style.setProperty("transform", `translate(${drag.view!.at.x + 12}px, ${drag.view!.at.y + 12}px)`)}>{drag.view.nodes.map((n) => n.name).join(", ")}</span>}
-      {moving && moving.length > 0 && <MovePicker s={s} moving={moving} onClose={() => setMoving(null)} onMove={(tgt) => (g.moveTo(moving, tgt), setMoving(null))} />}
+      {moving && moving.length > 0 && <MovePicker s={s} moving={moving} onClose={() => setMoving(null)} onMove={(tgt, day) => (g.moveTo(moving, tgt, day), setMoving(null))} />}
       {deleting && deleting.length > 0 && <DeleteDialog nodes={deleting} operating={!g.setup} onClose={() => setDeleting(null)} onDelete={() => (g.dissolve(deleting), setDeleting(null))} onOne={(n) => (setDeleting(null), g.dissolveOne(n))} />}
     </div>
   );
