@@ -323,7 +323,7 @@ test.each([
 const cliDirs: string[] = [];
 afterAll(() => cliDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 
-function runtimeCli() {
+function runtimeCli(extra: Record<string, string> = {}) {
   const root = fileURLToPath(new URL("..", import.meta.url));
   const dir = realpathSync(mkdtempSync(path.join(tmpdir(), "copy-cli-")));
   cliDirs.push(dir);
@@ -339,9 +339,11 @@ function runtimeCli() {
     "runtime.mixed": "mixed: {name|을를} · {note} · {total, number} · {count, plural, =2 {두 건} other {#건}}",
   }, null, 2)};`;
   for (const [file, text] of Object.entries({
-    ".gitignore": "node_modules/\n",
+    ".gitignore": "node_modules\noutput/\n",
     "package.json": '{"type":"module"}',
     "scripts/check-copy.mjs": readFileSync(path.join(root, "scripts/check-copy.mjs"), "utf8"),
+    "scripts/check-hangul.mjs": readFileSync(path.join(root, "scripts/check-hangul.mjs"), "utf8"),
+    "scripts/quality/base.mjs": readFileSync(path.join(root, "scripts/quality/base.mjs"), "utf8"),
     "scripts/quality/ratchet.mjs": readFileSync(path.join(root, "scripts/quality/ratchet.mjs"), "utf8"),
     "scripts/copy-maturity-baseline.json": "{}",
     "scripts/copy-unused-baseline.json": '{"unused":[]}',
@@ -352,7 +354,11 @@ function runtimeCli() {
     "output/nested/broken.txt": "HK-0001이(가) 있습니다\nABC을(를) 등록했습니다",
     ...catalogs,
     "apps/web/src/readers.ts": Object.values(catalogs).flatMap(catalogIds).map((id) => `t(${JSON.stringify(id)})`).join("\n"),
-  })) writeFileSync(path.join(dir, file), text);
+    ...extra,
+  })) {
+    mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+    writeFileSync(path.join(dir, file), text);
+  }
   const josaFile = path.join(dir, "packages/i18n/src/josa.ts");
   const josaSource = readFileSync(path.join(root, "packages/i18n/src/josa.ts"), "utf8");
   writeFileSync(josaFile, josaSource);
@@ -362,10 +368,41 @@ function runtimeCli() {
   };
   git("init", "--initial-branch=dev");
   git("add", ".");
+  writeFileSync(path.join(dir, "scripts/copy-hangul-baseline.json"), JSON.stringify({ allow: [] }));
+  git("add", ".");
   git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "runtime fixture");
   const cli = (...args: string[]) => spawnSync(process.execPath, [path.join(dir, "scripts/check-copy.mjs"), ...args], { cwd: dir, encoding: "utf8", env: { ...process.env, QUALITY_BASE: "dev" } });
   return { cli, dir, josaFile, josaSource, git };
 }
+
+test.each([
+  ["backend/app/src/planted.rs", "rustSource"],
+  ["e2e/planted.spec.ts", "e2e"],
+])("CLI and report mode refuse an untracked Korean comment in %s", (file, category) => {
+  const { cli, dir } = runtimeCli();
+  mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+  writeFileSync(path.join(dir, file), "// \uD55C\uAE00\n");
+  const result = cli();
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain(`${category}: now 1, baseline 0; new debt`);
+  expect(cli("--report").stderr).toContain(`${category}: now 1, baseline 0; new debt`);
+  rmSync(path.join(dir, file));
+  expect(cli().status).toBe(0);
+});
+
+test("first Hangul adoption reads UTF-8 fixtures marked binary and refuses fresh debt", () => {
+  const { cli, dir, git } = runtimeCli({ ".gitattributes": "*.fixture binary\n", "names.fixture": "\uD55C\uAE00" });
+  const file = path.join(dir, "scripts/copy-hangul-baseline.json");
+  git("rm", "scripts/copy-hangul-baseline.json");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: first Hangul adoption");
+  writeFileSync(file, JSON.stringify({ allow: [] }));
+  const seeded = cli("--report");
+  expect(seeded.status, seeded.stderr).toBe(0);
+  expect(cli().status).toBe(0);
+  mkdirSync(path.join(dir, "e2e"));
+  writeFileSync(path.join(dir, "e2e/planted.spec.ts"), "// \uD55C\uAE00");
+  expect(cli("--report").stderr).toContain("e2e: now 1, baseline 0; new debt");
+});
 
 test("CLI refuses a planted commit in a newly added sheet without a path exception", () => {
   const { cli, dir } = runtimeCli();
@@ -431,11 +468,11 @@ test("default CLI catches unresolved particles in real catalog receipts and refu
 });
 
 test("CLI scans backend display strings, excluding comments and test fixtures", () => {
-  const { cli, dir } = runtimeCli();
+  const source = '// "퇴사"\npub const MESSAGES: &[(&str, &str)] = &[("exit", "퇴직 기록")];\n#[cfg(test)]\nmod tests {\n    const OLD: &str = "퇴사";\n}\n';
+  const { cli, dir } = runtimeCli({ "backend/crates/platform/request-context/src/error_i18n/employees.rs": source, "rustfmt.toml": 'edition = "2024"\n' });
   const folder = path.join(dir, "backend/crates/platform/request-context/src/error_i18n");
   mkdirSync(folder, { recursive: true });
   const file = path.join(folder, "employees.rs");
-  writeFileSync(file, '// "퇴사"\npub const MESSAGES: &[(&str, &str)] = &[("exit", "퇴직 기록")];\n#[cfg(test)]\nmod tests { const OLD: &str = "퇴사"; }');
   expect(cli().status).toBe(0);
   writeFileSync(file, 'pub const MESSAGES: &[(&str, &str)] = &[("exit", "퇴사 기록")];');
   const result = cli();
@@ -491,13 +528,14 @@ test("catalog parsing covers single quotes, templates and multiline values", () 
   expect(checkTerms(entries, []).map((p) => p.split(": ")[1])).toEqual(["term.직원", "term.이력"]);
 });
 
-function debtFixture() {
+function debtFixture(englishRule = false) {
   const fixture = runtimeCli();
   const file = "packages/i18n/src/catalogs/ko/debt.ts";
-  const set = (text: string) => writeFileSync(path.join(fixture.dir, file), `export const ko = {\n "org.footnote": ${JSON.stringify(text)},\n};`);
+  const id = englishRule ? "orgUnit.label" : "org.footnote";
+  const set = (text: string) => writeFileSync(path.join(fixture.dir, file), `export const ko = {\n ${JSON.stringify(id)}: ${JSON.stringify(text)},\n};`);
   rmSync(path.join(fixture.dir, "scripts/copy-maturity-baseline.json"));
-  set("변경 사항은 이력에 남습니다.");
-  writeFileSync(path.join(fixture.dir, "apps/web/src/debt.ts"), 't("org.footnote")');
+  set(englishRule ? "\uC2DC\uD589\uC77C" : "변경 사항은 이력에 남습니다.");
+  writeFileSync(path.join(fixture.dir, "apps/web/src/debt.ts"), `t(${JSON.stringify(id)})`);
   const { git } = fixture;
   git("add", ".");
   git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test fixture");
@@ -505,7 +543,7 @@ function debtFixture() {
 }
 
 test("CLI resolves seeded and stored composer debt against dev when public/dev is absent", () => {
-  const { dir, cli, git } = debtFixture();
+  const { dir, cli, git } = debtFixture(true);
   const file = "apps/web/src/features/entity/ui/x-sheet.tsx";
   const source = "useCommand({}); <Sheet />";
   mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
@@ -529,7 +567,7 @@ test("CLI resolves seeded and stored composer debt against dev when public/dev i
 });
 
 test("CLI generates exact debt and requires stale entries to shrink", () => {
-  const { cli, set, baseline, git } = debtFixture();
+  const { cli, set, baseline, git } = debtFixture(true);
   const seeded = cli("--write-baseline");
   expect(seeded.status, seeded.stderr).toBe(0);
   expect(Object.keys(JSON.parse(readFileSync(baseline, "utf8")))).toHaveLength(1);
@@ -544,7 +582,7 @@ test("CLI generates exact debt and requires stale entries to shrink", () => {
 });
 
 test("dev advancing cannot turn inherited copy debt into baseline growth", () => {
-  const { cli, set, git, dir } = debtFixture();
+  const { cli, set, git, dir } = debtFixture(true);
   const commit = (message: string) => {
     git("add", ".");
     git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", message);
@@ -561,7 +599,7 @@ test("dev advancing cannot turn inherited copy debt into baseline growth", () =>
   git("switch", "lane");
   const unchanged = cli();
   expect(unchanged.status, unchanged.stderr).toBe(0);
-  set("지금 추가한 각주입니다.");
+  set("\uC2DC\uD589\uC77C today");
   expect(cli("--write-baseline").stderr).toContain("baseline must only shrink");
 });
 

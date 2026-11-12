@@ -10,6 +10,30 @@ while each locale's screen catalog loads with the first screen.
 A new string: add the id with its English text to `en/<ns>.ts`, then its Korean to `ko/<ns>.ts`.
 Components never contain literal text; `npm run lint` fails on Hangul outside the catalogs.
 
+The same lint step and the dependency-free `node scripts/check-hangul.mjs` gate ratchet
+Hangul across repository text files. Counts are lines containing Hangul (including Jamo),
+per category: Rust source, Rust test files, E2E, web test files, scripts, migrations,
+docs, and other text. Inline Rust test modules remain in the source-file category.
+Tracked and non-ignored new UTF-8 files are checked; binary files, locale catalog source,
+and the generated API declaration `packages/api/src/schema.d.ts` are excluded.
+Web product source keeps its zero-debt rule; only `.test.ts` and `.test.tsx` files are exempt.
+
+Each category must stay at or below its count in `git merge-base HEAD origin/dev`.
+`QUALITY_BASE` overrides the target; local checkouts prefer `public/dev` when available.
+Reductions automatically lower the ceiling on merge; no stored counts need updating.
+Run `node scripts/check-hangul.mjs --report` (or `node scripts/check-copy.mjs --report`)
+to print candidate and merge-base counts.
+
+`scripts/copy-hangul-baseline.json` stores only named exceptions, sorted by name.
+Each entry needs an exact path, regex pattern, and reason. Official reference labels
+in refdata or migrations also require a `source` URL identifying the statute or publishing
+agency (or the official translation dataset). Synthetic Korean-input test fixtures may be
+named separately. Matched fragments count as `allowed.<name>`; comments and unmatched
+fragments remain debt. Existing definitions cannot be widened or edited, and unused entries
+must be removed. A new exception may cover a new file, or reclassify existing labels without
+increasing their count. Existing exception counts still cannot grow. Ordinary translated UI
+assertions, comments, and test names remain debt.
+
 ## Ids
 `<area>.<screen or component>.<element>` — e.g. `org.unit.action.createChild`, `people.exit.confirm`.
 Enums: `enum.<type>.<VALUE>` — e.g. `enum.orgChangeStatus.IN_APPROVAL`.
