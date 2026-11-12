@@ -118,11 +118,12 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
   };
   const only = c.sel.size === 1 ? [...c.sel][0] : undefined;
   const hoverBox = hover && !drag.dragging ? c.shown.get(hover) : undefined;
-  // The root's header carries its own entries (RootActions): no hover toolbar over it.
-  const toolsBoxes = covered || drag.dragging || c.renaming ? [] : [...new Set([only, menu ?? hover])].flatMap((id) => {
+  // One active toolbar keeps a hovered box's actions from covering the selection's targets.
+  const toolsBoxes = covered || drag.dragging || c.renaming ? [] : [menu, only, hover].flatMap((id) => {
+    // Root actions live in RootActions; hidden selections leave the toolbar to hover.
     const b = id && id !== s.root.id ? c.shown.get(id) : undefined;
     return b ? [b] : [];
-  });
+  }).slice(0, 1);
   const gestures: Gestures = { add: g.add, rename: g.rename, move: (n) => g.move(pickMoving(n)), remove: (n) => g.remove(n.kind === "site" ? [n] : pickMoving(n)), focusOn: g.focusOn, merge: g.merge, order: g.order, open: (n) => open(n) };
   const pickMoving = (n: ChartNode) => (c.sel.has(n.id) ? collapseSelection(s, c.sel).top : [n]).filter(movable);
   const keys = useChartKeys(c, { ...gestures, open, menu: (n) => (setHover(n.id), setMenu(n.id)), find: () => focusSoon("structure-find") });
