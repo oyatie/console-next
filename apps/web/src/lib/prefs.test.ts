@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { runInNewContext } from "node:vm";
-import { afterEach, expect, test, vi } from "vitest";
-import { THEME_KEY, THEMES, knownExperiences } from "./prefs";
+import { expect, test } from "vitest";
+import { THEME_KEY, THEMES } from "./prefs";
 
 const SRC = readFileSync(new URL("../../public/prefs.js", import.meta.url), "utf8");
 type Published = Record<"theme" | "experience", { key: string; values: string[] }>;
@@ -28,8 +28,6 @@ function boot(stored: Record<string, string> | "blocked" | "unreadable", source 
 }
 // The same script once an experience id has been added to its list.
 const withCalm = SRC.replace('experience: { key: "console.experience", values: [] }', 'experience: { key: "console.experience", values: ["calm"] }');
-
-afterEach(() => vi.unstubAllGlobals());
 
 test("a stored theme is on <html> as soon as the script has run", () => {
   expect(boot({ "console.theme": "dark" }).attributes).toEqual({ "data-theme": "dark" });
@@ -66,12 +64,6 @@ test("adding an id to the one list is all it takes for that experience to be app
 
 test("the bundle uses the key and the themes the boot script applies", () => {
   expect(boot({}).published.theme).toEqual({ key: THEME_KEY, values: [...THEMES] });
-});
-
-test("the bundle's known experiences are the boot script's own list", () => {
-  expect(knownExperiences()).toEqual([]);
-  vi.stubGlobal("consolePrefs", boot({}, withCalm).published);
-  expect(knownExperiences()).toEqual(["calm"]);
 });
 
 test("the known experiences are exactly the ones with a token file", () => {

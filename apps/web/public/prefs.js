@@ -19,6 +19,6 @@
     }
     if (prefs[name].values.indexOf(value) >= 0) document.documentElement.setAttribute("data-" + name, value);
   }
-  // The bundle checks a choice against these same lists (src/lib/prefs.ts), so the two cannot disagree.
+  // Published so there is one list of each. Today only tests read them; choosing an experience will check against them.
   window.consolePrefs = prefs;
 })();
