@@ -28,8 +28,9 @@ npm ci && npm run check
 `npm run check` covers the web client: the API contract against `backend/openapi`, types, lint, unit tests, the
 build, a secret scan of the history, licence headers and fixture identifiers. `.github/workflows/ci.yml` runs
 these steps on pushes to `dev` and on pull requests while GitHub Actions is enabled for the repository.
-The backend's database tests and the browser end-to-end
-suite need a Postgres topology this repository does not carry yet.
+The backend's database tests run against the Postgres roles that `deploy/dev/postgres-init.sh` provisions,
+as `.github/workflows/db-tests.yml` does. The browser end-to-end suite starts its own Postgres and
+object-store stack from `deploy/dev/`; see [deploy/dev/README.md](deploy/dev/README.md).
 
 How a change and a screen are proved, and the conventions the checks enforce, are in the
 [engineering guide](docs/engineering.md).
