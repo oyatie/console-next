@@ -13,8 +13,8 @@
 //!
 //! # Statutory source (verified LIVE, not from model memory)
 //!
-//! - Labor Standards Act Article 61, quoted verbatim (in English translation
-//!   below) from the National Law Information Center
+//! - Labor Standards Act Article 61, quoted below in English translation of the
+//!   text at the National Law Information Center
 //!   <https://www.law.go.kr/lsLinkProc.do?ancYd=20160302&lsClsCd=L&lsNm=%EA%B7%BC%EB%A1%9C%EA%B8%B0%EC%A4%80%EB%B2%95&lsId=2031481&joNo=006100000&mode=4>
 //!   and cross-checked against CaseNote
 //!   <https://casenote.kr/%EB%B2%95%EB%A0%B9/%EA%B7%BC%EB%A1%9C%EA%B8%B0%EC%A4%80%EB%B2%95/%EC%A0%9C61%EC%A1%B0>
@@ -34,7 +34,7 @@
 //!   the labour'". The refusal is therefore a **factual act** by the
 //!   employer, not a computable consequence — see [`crate::PromotionKind`].
 //!
-//! # The two windows, verbatim
+//! # The two windows (statute text, in English translation)
 //!
 //! §61①1 — "within **10 days counted from 6 months before** the end of the
 //! period under the main text of Article 60(7), the employer shall tell each

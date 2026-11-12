@@ -27,7 +27,7 @@
 //! refusal-to-accept-labour notice. Each push is delivered as a receipt-gated
 //! document into the target's personal inbox.
 //! The statutory timing of those steps lives in [`promotion`], which carries the
-//! verbatim statute text and its live citations.
+//! statute text (in English translation) and its live citations.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 pub mod consult;
