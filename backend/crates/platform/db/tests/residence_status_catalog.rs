@@ -64,6 +64,17 @@ async fn residence_catalog_matches_all_three_current_annexes(pool: PgPool) {
         assert_eq!(from, date!(2026 - 10 - 02));
         assert_eq!(to, None);
     }
+    let countries: Vec<String> = sqlx::query_scalar("SELECT DISTINCT c.code FROM residence_status_codes r JOIN country_codes c ON c.code=r.country_code")
+        .fetch_all(&pool).await.unwrap();
+    assert_eq!(countries, ["KR"]);
+    let error = sqlx::query("UPDATE residence_status_codes SET country_code='ZZ' WHERE code='E-7'")
+        .execute(&pool)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("23503")
+    );
     let identities: Vec<String> =
         sqlx::query_scalar("SELECT code FROM residence_status_codes ORDER BY code")
             .fetch_all(&pool)
@@ -76,7 +87,7 @@ async fn residence_catalog_matches_all_three_current_annexes(pool: PgPool) {
 async fn residence_versions_preserve_history_and_reject_invalid_metadata(pool: PgPool) {
     for (sql, state) in [
         (
-            "INSERT INTO residence_status_codes VALUES ('E-7-1')",
+            "INSERT INTO residence_status_codes(code,country_code) VALUES ('E-7-1','KR')",
             "23514",
         ),
         (
@@ -156,7 +167,7 @@ async fn residence_reference_is_global_and_runtime_read_only(pool: PgPool) {
         assert_eq!(count, 37);
     }
     for sql in [
-        "INSERT INTO residence_status_codes VALUES ('Z-1')",
+        "INSERT INTO residence_status_codes(code,country_code) VALUES ('Z-1','KR')",
         "UPDATE residence_status_codes SET code='Z-1' WHERE code='E-7'",
         "DELETE FROM residence_status_codes WHERE code='E-7'",
         "TRUNCATE residence_status_codes CASCADE",

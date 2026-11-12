@@ -1,5 +1,10 @@
 // English for `facts.` ids (the employee page's employment record, contract history and onboarding checklist).
 export const enFacts = {
+  "facts.residence.refuse.nationality_required": "Enter a nationality before recording a residence status.",
+  "facts.residence.refuse.not_applicable": "A national of the issuing country cannot have a residence status for that country.",
+  "facts.residence.refuse.dates": "The end date must be after the start date.",
+  "facts.residence.refuse.unknown": "Select an official residence status valid for this period from the catalog.",
+  "facts.residence.refuse.overlap": "The period overlaps an existing residence status.",
   "facts.title": "Employment record",
   "facts.noProfile": "There is no employment record, so employment type, base pay and probation cannot be recorded.",
   "facts.birthDate": "Date of birth",

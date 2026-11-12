@@ -12,7 +12,8 @@
 SET LOCAL lock_timeout = '2s';
 
 CREATE TABLE residence_status_codes (
-    code TEXT PRIMARY KEY CHECK (code ~ '^[A-Z]-[1-9][0-9]*$')
+    code TEXT PRIMARY KEY CHECK (code ~ '^[A-Z]-[1-9][0-9]*$'),
+    country_code TEXT NOT NULL REFERENCES country_codes(code) ON DELETE RESTRICT
 );
 CREATE TABLE residence_status_versions (
     code TEXT NOT NULL REFERENCES residence_status_codes(code) ON DELETE RESTRICT,
@@ -26,6 +27,7 @@ CREATE TABLE residence_status_versions (
 CREATE UNIQUE INDEX residence_status_versions_current ON residence_status_versions(code) WHERE valid_to IS NULL;
 COMMENT ON TABLE residence_status_codes IS 'Global residence-status identities from the Immigration Act Enforcement Decree; retained for historical references';
 COMMENT ON COLUMN residence_status_codes.code IS 'pd:none — official residence-status identity';
+COMMENT ON COLUMN residence_status_codes.country_code IS 'pd:none — issuing jurisdiction from the country catalog';
 COMMENT ON TABLE residence_status_versions IS 'Global dated residence-status labels; no insurance or employment applicability rules';
 COMMENT ON COLUMN residence_status_versions.code IS 'pd:none — official residence-status identity';
 COMMENT ON COLUMN residence_status_versions.label_ko IS 'pd:none — statutory Korean status name';
@@ -78,7 +80,9 @@ WITH labels(code, label_ko, label_en) AS (VALUES
     -- 별표 1의3: 영주자격에 부합하는 사람.
     ('F-5', '영주', 'Permanent residence')
 ), identities AS (
-    INSERT INTO residence_status_codes(code) SELECT code FROM labels RETURNING code
+    INSERT INTO residence_status_codes(code, country_code)
+    SELECT labels.code, country.code FROM labels CROSS JOIN country_codes country
+    WHERE country.code = 'KR' RETURNING code
 )
 INSERT INTO residence_status_versions(code, label_ko, label_en, publisher, valid_from)
 SELECT labels.code, label_ko, label_en, '법무부', DATE '2026-10-02'

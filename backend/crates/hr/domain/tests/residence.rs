@@ -18,26 +18,26 @@ fn catalog() -> Vec<StatusVersion> {
     }]
 }
 #[test]
-fn refusal_codes_have_korean_messages() {
+fn refusal_codes_have_message_ids() {
     let status = row();
     for (nationality, expected) in [
         (Some("KR"), "residence_status_not_applicable"),
         (None, "residence_status_nationality_required"),
     ] {
-        let error = validate(&status, nationality, &catalog(), &[]).unwrap_err();
+        let error = validate(&status, nationality, "KR", &catalog(), &[]).unwrap_err();
         assert_eq!(error.code, Some(expected));
-        assert!(error.message.contains("국적"));
+        assert!(error.message.starts_with("facts.residence.refuse."));
     }
-    let error = validate(&status, Some("VN"), &[], &[]).unwrap_err();
+    let error = validate(&status, Some("VN"), "KR", &[], &[]).unwrap_err();
     assert_eq!(error.code, Some("residence_status_unknown"));
-    assert!(error.message.contains("체류자격"));
-    assert!(validate(&status, Some("VN"), &catalog(), &[]).is_ok());
+    assert_eq!(error.message, "facts.residence.refuse.unknown");
+    assert!(validate(&status, Some("VN"), "KR", &catalog(), &[]).is_ok());
     let unknown = ResidenceStatus {
         code: "Z-1".into(),
         ..row()
     };
     assert_eq!(
-        validate(&unknown, Some("VN"), &catalog(), &[])
+        validate(&unknown, Some("VN"), "KR", &catalog(), &[])
             .unwrap_err()
             .code,
         Some("residence_status_unknown")
@@ -49,7 +49,7 @@ fn invalid_period_and_overlap_are_refused() {
     for end in [status.valid_from, status.valid_from.previous_day().unwrap()] {
         status.valid_to = Some(end);
         assert_eq!(
-            validate(&status, Some("VN"), &catalog(), &[])
+            validate(&status, Some("VN"), "KR", &catalog(), &[])
                 .unwrap_err()
                 .code,
             Some("residence_status_dates")
@@ -57,7 +57,7 @@ fn invalid_period_and_overlap_are_refused() {
     }
     let status = row();
     assert_eq!(
-        validate(&status, Some("VN"), &catalog(), &[row()])
+        validate(&status, Some("VN"), "KR", &catalog(), &[row()])
             .unwrap_err()
             .code,
         Some("residence_status_overlap")
@@ -67,36 +67,72 @@ fn invalid_period_and_overlap_are_refused() {
         valid_to: None,
         ..row()
     };
-    assert!(validate(&next, Some("VN"), &catalog(), &[row()]).is_ok());
-    assert!(validate(&status, Some("VN"), &catalog(), std::slice::from_ref(&next)).is_ok());
+    assert!(validate(&next, Some("VN"), "KR", &catalog(), &[row()]).is_ok());
+    assert!(
+        validate(
+            &status,
+            Some("VN"),
+            "KR",
+            &catalog(),
+            std::slice::from_ref(&next)
+        )
+        .is_ok()
+    );
     assert_eq!(
-        validate(&next, Some("VN"), &catalog(), std::slice::from_ref(&next))
-            .unwrap_err()
-            .code,
+        validate(
+            &next,
+            Some("VN"),
+            "KR",
+            &catalog(),
+            std::slice::from_ref(&next)
+        )
+        .unwrap_err()
+        .code,
         Some("residence_status_overlap")
     );
 }
 #[test]
-fn reference_membership_uses_effective_start_and_exclusive_end() {
-    let status = row();
+fn reference_membership_accepts_history_before_snapshot_but_rejects_retired_codes_and_gaps() {
+    let mut status = ResidenceStatus {
+        valid_from: date!(2025 - 03 - 01),
+        ..row()
+    };
     let mut versions = catalog();
+    assert!(validate(&status, Some("VN"), "KR", &versions, &[]).is_ok());
+    // Coverage is catalog-wide: a later-added code cannot be backdated.
+    versions.push(StatusVersion {
+        code: "E-9".into(),
+        valid_from: date!(2027 - 01 - 01),
+        valid_to: None,
+    });
+    status.code = "E-9".into();
+    assert_eq!(
+        validate(&status, Some("VN"), "KR", &versions, &[])
+            .unwrap_err()
+            .code,
+        Some("residence_status_unknown")
+    );
+    status = row();
     versions[0].valid_to = Some(status.valid_from);
     assert_eq!(
-        validate(&status, Some("VN"), &versions, &[])
+        validate(&status, Some("VN"), "KR", &versions, &[])
             .unwrap_err()
             .code,
         Some("residence_status_unknown")
     );
-    versions[0].valid_from = status.valid_from.next_day().unwrap();
-    versions[0].valid_to = None;
+    versions.push(StatusVersion {
+        code: status.code.clone(),
+        valid_from: status.valid_from.next_day().unwrap(),
+        valid_to: None,
+    });
     assert_eq!(
-        validate(&status, Some("VN"), &versions, &[])
+        validate(&status, Some("VN"), "KR", &versions, &[])
             .unwrap_err()
             .code,
         Some("residence_status_unknown")
     );
-    versions[0].valid_from = status.valid_from;
-    assert!(validate(&status, Some("VN"), &versions, &[]).is_ok());
+    status.valid_from = status.valid_from.next_day().unwrap();
+    assert!(validate(&status, Some("VN"), "KR", &versions, &[]).is_ok());
 }
 #[test]
 fn lookup_preserves_gaps_history_and_open_ends() {
@@ -126,4 +162,12 @@ fn lookup_preserves_gaps_history_and_open_ends() {
             .code,
         Some("residence_status_overlap")
     );
+}
+
+#[test]
+fn domestic_nationality_comes_from_the_catalog_country() {
+    assert!(validate(&row(), Some("KR"), "VN", &catalog(), &[]).is_ok());
+    let error = validate(&row(), Some("VN"), "VN", &catalog(), &[]).unwrap_err();
+    assert_eq!(error.code, Some("residence_status_not_applicable"));
+    assert_eq!(error.message, "facts.residence.refuse.not_applicable");
 }

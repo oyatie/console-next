@@ -121,3 +121,112 @@ async fn storage_is_tenant_isolated_and_unavailable_to_runtime_until_cedar_api_e
     }
     tx.rollback().await.unwrap();
 }
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn adjacent_history_and_in_place_corrections_succeed_but_overlapping_updates_fail(
+    pool: PgPool,
+) {
+    let (org, person) = employee(&pool).await;
+    insert(&pool, org, person, "E-7", "2026-11-12", Some("2027-11-12"))
+        .await
+        .unwrap();
+    // Insert the earlier interval second to exercise the new range's exclusive end.
+    insert(&pool, org, person, "E-9", "2025-03-01", Some("2026-11-12"))
+        .await
+        .unwrap();
+    let earlier: Uuid = sqlx::query_scalar(
+        "SELECT id FROM employee_residence_statuses WHERE org_id=$1 AND code='E-9'",
+    )
+    .bind(org)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    sqlx::query("UPDATE employee_residence_statuses SET code='E-7' WHERE org_id=$1 AND id=$2")
+        .bind(org)
+        .bind(earlier)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let error = sqlx::query(
+        "UPDATE employee_residence_statuses SET valid_to='2026-11-13' WHERE org_id=$1 AND id=$2",
+    )
+    .bind(org)
+    .bind(earlier)
+    .execute(&pool)
+    .await
+    .unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("23P01")
+    );
+    let error = insert(&pool, org, person, "F-5", "2024-01-01", Some("2025-03-02"))
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("23P01")
+    );
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn concurrent_writers_serialize_on_the_employee_then_recheck_overlap(pool: PgPool) {
+    let (org, person) = employee(&pool).await;
+    let mut first = pool.begin().await.unwrap();
+    sqlx::query("INSERT INTO employee_residence_statuses(org_id,employee_id,code,valid_from) VALUES($1,$2,'E-7','2025-03-01')")
+        .bind(org).bind(person).execute(first.as_mut()).await.unwrap();
+    let mut second = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL lock_timeout='250ms'")
+        .execute(second.as_mut())
+        .await
+        .unwrap();
+    let error = sqlx::query("INSERT INTO employee_residence_statuses(org_id,employee_id,code,valid_from) VALUES($1,$2,'E-9','2026-11-12')")
+        .bind(org).bind(person).execute(second.as_mut()).await.unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("55P03")
+    );
+    second.rollback().await.unwrap();
+    first.commit().await.unwrap();
+    let error = insert(&pool, org, person, "E-9", "2026-11-12", None)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("23P01")
+    );
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn runtime_insert_cannot_write_another_tenants_row_even_with_a_table_grant(pool: PgPool) {
+    let (org, _) = employee(&pool).await;
+    let (other, person) = employee(&pool).await;
+    let mut tx = pool.begin().await.unwrap();
+    // Isolate WITH CHECK from the intentionally absent runtime write grant.
+    sqlx::query("GRANT INSERT, SELECT ON employee_residence_statuses TO console_rt")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("SET LOCAL ROLE console_rt")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let error = sqlx::query("INSERT INTO employee_residence_statuses(org_id,employee_id,code,valid_from) VALUES($1,$2,'E-7','2025-03-01')")
+        .bind(other).bind(person).execute(tx.as_mut()).await.unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("42501")
+    );
+    assert!(
+        error
+            .as_database_error()
+            .unwrap()
+            .message()
+            .contains("row-level security")
+    );
+    tx.rollback().await.unwrap();
+}

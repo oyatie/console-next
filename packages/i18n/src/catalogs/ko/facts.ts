@@ -2,6 +2,11 @@
 // checklist; EMP-MODEL). Rules: the header of ../ko.ts and GUIDE.md. `{date}` arrives preformatted.
 import type { enFacts } from "../en/facts";
 export const koFacts: Record<keyof typeof enFacts, string> = {
+  "facts.residence.refuse.nationality_required": "체류자격을 기록하기 전에 국적을 입력하십시오.",
+  "facts.residence.refuse.not_applicable": "해당 국가의 국적을 가진 직원에게는 그 국가의 체류자격을 기록할 수 없습니다.",
+  "facts.residence.refuse.dates": "종료일은 시작일 이후여야 합니다.",
+  "facts.residence.refuse.unknown": "목록에서 해당 기간에 유효한 공식 체류자격을 선택하십시오.",
+  "facts.residence.refuse.overlap": "이미 기록된 체류자격 기간과 겹칩니다.",
   "facts.title": "고용 기록",
   "facts.noProfile": "고용 정보가 없어 고용 형태·기본급·수습을 기록할 수 없습니다.",
   "facts.birthDate": "생년월일",

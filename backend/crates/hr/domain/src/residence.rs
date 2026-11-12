@@ -29,11 +29,14 @@ fn refusal(code: &'static str, field: &str, message: &str) -> KernelError {
 
 /// Validate a new or corrected fact against the employee and official edition.
 /// Historical rows remain after a later nationality change.
+/// `catalog_country` comes from `residence_status_codes.country_code`; versions
+/// must belong to that jurisdiction. Membership before coverage uses its first edition.
 /// # Errors
-/// Missing/Korean nationality, invalid dates, unknown code or overlapping history.
+/// Missing/domestic nationality, invalid dates, unknown code or overlapping history.
 pub fn validate(
     status: &ResidenceStatus,
     nationality: Option<&str>,
+    catalog_country: &str,
     catalog: &[StatusVersion],
     history: &[ResidenceStatus],
 ) -> Result<(), KernelError> {
@@ -42,14 +45,14 @@ pub fn validate(
             return Err(refusal(
                 "residence_status_nationality_required",
                 "nationality",
-                "체류자격을 기록하기 전에 국적을 입력해 주세요.",
+                "facts.residence.refuse.nationality_required",
             ));
         }
-        Some("KR") => {
+        Some(country) if country == catalog_country => {
             return Err(refusal(
                 "residence_status_not_applicable",
                 "nationality",
-                "대한민국 국적 직원에게는 체류자격을 기록할 수 없습니다.",
+                "facts.residence.refuse.not_applicable",
             ));
         }
         Some(_) => {}
@@ -58,18 +61,24 @@ pub fn validate(
         return Err(refusal(
             "residence_status_dates",
             "valid_to",
-            "종료일은 시작일 이후여야 합니다.",
+            "facts.residence.refuse.dates",
         ));
     }
+    // The first verified edition is coverage, not each code's introduction date.
+    let membership_on = catalog
+        .iter()
+        .map(|version| version.valid_from)
+        .min()
+        .map_or(status.valid_from, |start| status.valid_from.max(start));
     if !catalog.iter().any(|version| {
         version.code == status.code
-            && version.valid_from <= status.valid_from
-            && version.valid_to.is_none_or(|end| status.valid_from < end)
+            && version.valid_from <= membership_on
+            && version.valid_to.is_none_or(|end| membership_on < end)
     }) {
         return Err(refusal(
             "residence_status_unknown",
             "code",
-            "시작일에 유효한 공식 체류자격을 선택해 주세요.",
+            "facts.residence.refuse.unknown",
         ));
     }
     if history.iter().any(|old| {
@@ -85,7 +94,7 @@ fn overlap() -> KernelError {
     refusal(
         "residence_status_overlap",
         "valid_from",
-        "이미 기록된 체류자격 기간과 겹칩니다.",
+        "facts.residence.refuse.overlap",
     )
 }
 
