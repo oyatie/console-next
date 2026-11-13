@@ -52,12 +52,12 @@ test("document load faults show a retry and never enable commit", () => {
   expect(commit).toBeDefined();
   expect(commit?.[1]).toMatch(/\bdisabled/);
 });
-test("pending documents keep required confirmations disabled", () => {
+test("pending documents defer consent controls until their layout is known", () => {
   query.pending = true;
   const html = renderToStaticMarkup(<SetupPasskey />);
   expect(html).toContain('role="status"');
-  expect(html).toContain('type="checkbox"');
-  expect(html).toMatch(/<input[^>]*disabled/);
+  expect(html).not.toContain('type="checkbox"');
+  expect(html).not.toContain("<button");
 });
 
 test("cached consent text cannot stand in for a fresh document read", () => {
