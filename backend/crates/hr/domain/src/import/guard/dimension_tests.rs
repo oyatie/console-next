@@ -44,6 +44,8 @@ fn invalid_dimensions_are_corrupt_before_the_library_reads_them() {
 fn valid_dimensions_and_xml_text_do_not_trigger_a_refusal() {
     for xml in [
         "<worksheet><dimension ref='A1'/><sheetData/></worksheet>",
+        "<!-- <?xml encoding='windows-1252'?> --><worksheet><sheetData/></worksheet>",
+        "<![CDATA[<?xml encoding='windows-1252'?>]]><worksheet><sheetData/></worksheet>",
         "<worksheet><s:dimension other='>' ref = 'a1:b2'></s:dimension><sheetData/></worksheet>",
         "<worksheet><dimension ref='XFD1048576'/><sheetData/></worksheet>",
         "<worksheet><dimension ref='A1:XFD1048576'/><sheetData/></worksheet>",
@@ -74,6 +76,7 @@ fn namespace_attributes_and_markup_do_not_bypass_dimension_validation() {
         "<!doctype worksheet [<!ELEMENT x ANY><sheetData>]><dimension ref='B2:A1'/>",
         "<!DocType w [<!ATTLIST w a CDATA #IMPLIED><sheetData/>]><dimension ref='B2:A1'/>",
         "<!dOcTyPe worksheet><dimension ref='A1'/><sheetData/>",
+        "<worksheet><sheetData/><!dOcTyPe worksheet></worksheet>",
     ] {
         assert_eq!(check(xml.as_bytes()), Err(codes::CORRUPT), "{xml}");
     }
@@ -261,3 +264,6 @@ fn sheet_declarations_share_the_configured_entry_budget() {
         assert_eq!(check_dimensions(&zip(&parts), &caps), expected, "{count}");
     }
 }
+
+#[path = "xml_tests.rs"]
+mod xml_tests;

@@ -250,6 +250,8 @@ fn markup_bypasses_return_the_catalogued_refusal_without_panicking() {
         include_bytes!("fixtures/dimension-slash.xlsx").as_slice(),
         include_bytes!("fixtures/dimension-comment-overlap.xlsx").as_slice(),
         include_bytes!("fixtures/dimension-duplicate-rels.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-encoding.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-encoding-late.xlsx").as_slice(),
     ] {
         let error = read_workbook(book, &default_caps().unwrap()).unwrap_err();
         assert_eq!(error.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -279,4 +281,35 @@ fn assert_valid_dimension_corpus(book: &[u8]) {
     assert_eq!(sheets[0].rows.len(), 2);
     assert_eq!(sheets[0].rows[0].text(0), "성명");
     assert_eq!(sheets[0].rows[1].text(0), "가");
+}
+
+#[test]
+fn the_library_refuses_invalid_coordinates_even_without_preflight() {
+    for bytes in [
+        include_bytes!("../../../fuzz/regressions/fz5-reversed-dimension.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-reversed-row.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-reversed-column.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-column-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-row-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/cell-column-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/cell-column-add-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/cell-lowercase-column-add-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/cell-lowercase-column-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/row-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-encoding.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-encoding-late.xlsx").as_slice(),
+    ] {
+        let mut book = Xlsx::new(Cursor::new(bytes)).unwrap();
+        let name = book.sheet_names()[0].clone();
+        let result = book.worksheet_cells_reader(&name).and_then(|mut reader| {
+            while reader.next_cell()?.is_some() {}
+            Ok(())
+        });
+        assert!(result.is_err(), "the reader accepted invalid coordinates");
+    }
+}
+
+#[test]
+fn explicit_utf8_relationships_preserve_the_selected_sheet() {
+    assert_valid_dimension_corpus(include_bytes!("fixtures/dimension-encoding-utf8.xlsx"));
 }

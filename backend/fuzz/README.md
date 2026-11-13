@@ -40,7 +40,7 @@ product fix is open the test is `#[ignore]`d (it fails on the current tree:
 | FZ-2 | `import-cells` | (withdrawn: the target's own invariant was wrong; `is_rrn_value` is a superset of `contains_rrn_shaped` by design) | — | — |
 | FZ-3 | `kr-ids` | `PhoneE164` stores `00 82 10-…` / `+82 0…` as `+820…`, which re-parses to another number | `kernel/core/tests/fuzz_regressions.rs` | open, kernel |
 | FZ-4 | `import-cells` | Every RRN spelling accepted by the vault is caught by the import scrub | `hr/domain/tests/fuzz_regressions.rs` | fixed |
-| FZ-5 | `xlsx-read` | a reversed `<dimension ref="B2:A1"/>` underflows in calamine `get_dimension` (panic wherever overflow checks are on) | `app/src/hr/workbook_read_tests.rs`, input `regressions/fz5-reversed-dimension.xlsx` | fixed; workbook preflight refuses invalid dimensions |
+| FZ-5 | `xlsx-read` | a reversed `<dimension ref="B2:A1"/>` underflows in calamine `get_dimension` (panic wherever overflow checks are on) | `app/src/hr/workbook_read_tests.rs`, input `regressions/fz5-reversed-dimension.xlsx` | fixed; preflight refuses invalid dimensions and non-UTF-8 XML; vendored calamine checks dimension, cell and row arithmetic |
 
 | FZ-6 | `attendance-entry` | `3~4/59` creates an empty span before the break | `attendance/domain/src/records/grammar_tests.rs` | fixed, CX-att-s2-repair |
 | FZ-7 | `attendance-entry` | `9-18,24-0+` creates an empty midnight span | `attendance/domain/src/records/grammar_tests.rs` | fixed, CX-att-s2-repair |

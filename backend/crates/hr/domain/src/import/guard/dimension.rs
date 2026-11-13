@@ -68,12 +68,19 @@ pub(super) fn attributes(mut attributes: &[u8]) -> Option<HashMap<&[u8], &[u8]>>
     }
 }
 
+#[cfg(test)]
+std::thread_local! {
+    pub(super) static CHECKS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// Inspect markup, skipping comments, processing instructions and CDATA so text
 /// resembling a dimension does not refuse an otherwise valid workbook.
 ///
 /// # Errors
 /// [`codes::CORRUPT`] for an invalid dimension or a DTD (not used by XLSX).
 pub(super) fn check(xml: &[u8]) -> Result<(), &'static str> {
+    #[cfg(test)]
+    CHECKS.update(|count| count + 1);
     tags(xml, |name, attributes| {
         if name == b"sheetData" {
             return Ok(false);
@@ -93,6 +100,10 @@ pub(super) fn tags(
     mut xml: &[u8],
     mut visit: impl FnMut(&[u8], &[u8]) -> Result<bool, &'static str>,
 ) -> Result<(), &'static str> {
+    if std::str::from_utf8(xml).is_err() || xml.contains(&0) {
+        return Err(codes::CORRUPT);
+    }
+    let mut visiting = true;
     while let Some(start) = xml.iter().position(|b| *b == b'<') {
         xml = &xml[start + 1..];
         let terminator = if xml.starts_with(b"!--") {
@@ -113,6 +124,19 @@ pub(super) fn tags(
             let Some(at) = xml[open..].windows(end.len()).position(|w| w == end) else {
                 return Ok(()); // The XML reader reports unfinished markup.
             };
+            if end == b"?>"
+                && xml.starts_with(b"?xml")
+                && xml.get(4).is_some_and(u8::is_ascii_whitespace)
+            {
+                // The reader can switch decoders even for a declaration mid-part.
+                let values = attributes(&xml[4..open + at]).ok_or(codes::CORRUPT)?;
+                if values.get(b"encoding".as_slice()).is_some_and(|encoding| {
+                    !encoding.eq_ignore_ascii_case(b"utf-8")
+                        && !encoding.eq_ignore_ascii_case(b"utf8")
+                }) {
+                    return Err(codes::CORRUPT);
+                }
+            }
             xml = &xml[open + at + end.len()..];
             continue;
         }
@@ -151,8 +175,8 @@ pub(super) fn tags(
             .splitn(2, |b| *b == b':')
             .last()
             .unwrap_or_default();
-        if !visit(name, &tag[name_end..])? {
-            return Ok(());
+        if visiting {
+            visiting = visit(name, &tag[name_end..])?;
         }
         xml = &xml[end + 1..];
     }
