@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! The prepared-event write, shared by individual and batch response readers.
 use super::{
-    hooks::LifecycleTrailHooks, insert::insert_lifecycle_row, prepare::PreparedLifecycleEvent,
+    hooks::LifecycleTrailHooks, insert::insert_lifecycle_rows, prepare::PreparedLifecycleEvent,
     record::apply_lifecycle_head,
 };
 use crate::{HrError, cases::open::event_with_register, own_record::own_record_guard};
@@ -24,12 +24,37 @@ pub(super) async fn record_in_tx(
     batch_id: Option<Uuid>,
     hooks: &LifecycleTrailHooks<'_>,
 ) -> Result<(Uuid, AuditEvent), HrError> {
+    let (id, audit) = prepare_record_in_tx(tx, org, actor, employee_id, prepared, batch_id).await?;
+    insert_lifecycle_rows(
+        tx,
+        (*org.as_uuid(), *actor.as_uuid(), batch_id),
+        &[(id, employee_id, prepared)],
+    )
+    .await?;
+    apply_record_in_tx(
+        tx,
+        (*org.as_uuid(), id, *actor.as_uuid(), employee_id),
+        prepared,
+        hooks,
+    )
+    .await?;
+    Ok((id, audit))
+}
+
+/// Runs the same self-record check and audit construction before either writer inserts.
+pub(super) async fn prepare_record_in_tx(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: UserId,
+    employee_id: Uuid,
+    prepared: &PreparedLifecycleEvent,
+    batch_id: Option<Uuid>,
+) -> Result<(Uuid, AuditEvent), HrError> {
     // Every write path meets the self-record rule here.
     own_record_guard(tx, org, actor, employee_id, EmployeeDirectoryManage).await?;
     let org_uuid = *org.as_uuid();
     let PreparedLifecycleEvent {
         transition,
-        target,
         scheduled,
         replaces,
         replace_reason_code,
@@ -99,30 +124,31 @@ pub(super) async fn record_in_tx(
         anomaly: None,
         reason: None,
     });
-    let scheduled_request = scheduled
-        .then(|| serde_json::to_value(transition))
-        .transpose()
-        .map_err(|_| HrError::internal("scheduled request serialization failed"))?;
+    Ok((lifecycle_id, event))
+}
 
-    insert_lifecycle_row(
-        tx,
-        (org_uuid, lifecycle_id, *actor.as_uuid(), batch_id),
-        employee_id,
-        prepared,
-        scheduled_request,
-    )
-    .await?;
-
-    if scheduled && !hooks.defer_cases {
+pub(super) async fn apply_record_in_tx(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    (org_uuid, lifecycle_id, actor, employee_id): (Uuid, Uuid, Uuid, Uuid),
+    prepared: &PreparedLifecycleEvent,
+    hooks: &LifecycleTrailHooks<'_>,
+) -> Result<(), HrError> {
+    let PreparedLifecycleEvent {
+        transition,
+        target,
+        scheduled,
+        ..
+    } = prepared;
+    if *scheduled && !hooks.defer_cases {
         let register = hooks.register;
         event_with_register(tx, org_uuid, lifecycle_id, register).await?;
-    } else if !scheduled {
+    } else if !*scheduled {
         apply_lifecycle_head(
             tx,
             hooks,
             org_uuid,
             lifecycle_id,
-            *actor.as_uuid(),
+            actor,
             employee_id,
             transition,
             target,
@@ -130,5 +156,5 @@ pub(super) async fn record_in_tx(
         .await?;
     }
 
-    Ok((lifecycle_id, event))
+    Ok(())
 }

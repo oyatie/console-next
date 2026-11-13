@@ -2,7 +2,7 @@ import { personName } from "../reference/person/present";
 import { activeSupportQuery } from "../reference/support-access/api";
 import { ActiveSupportBanner, SupportAccessIndicator } from "../features/support-access/ui/support-access-status";
 import { DomainNotice } from "../auth/domain-notice";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link, Outlet, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, Menu, Moon, Search, Sun, UserRound } from "lucide-react";
@@ -21,13 +21,14 @@ import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
 import { useTheme } from "./theme";
 import { PLATFORM_NAV, TENANT_NAV, activeLink, rememberedRail, tenantNav } from "./nav";
-import { Skeleton } from "../ui/skeleton/skeleton";
+import { ReadSkeleton, Skeleton } from "../ui/skeleton/skeleton";
 import { PhaseBand } from "./phase-band";
 import { SessionRecovery } from "./session-recovery";
 import { streamReady } from "../lib/live/session-stream";
 import { RouteGuard } from "../reference/authz/ui/access-gate";
 import { PageMain } from "../ui/page/page-main";
 import { meQuery } from "../features/account/api";
+import { useMainScrollRestoration } from "./scroll-restoration";
 import { checklistQuery, modulesQuery } from "../features/onboarding/api";
 import { fixFor } from "../features/onboarding/domain/rail";
 import type { NavHub } from "./nav";
@@ -36,7 +37,7 @@ import type { NavHub } from "./nav";
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
 const NeedsMeMenu = lazy(() => chunk(import("./top-bar/needs-me")).then(m => ({ default: m.NeedsMeMenu })));
 
-export function Shell() {
+export function Shell({ children = <Outlet />, pending = false }: { children?: ReactNode; pending?: boolean }) {
   const nav = useNavigate();
   const { pathname } = useLocation();
   const [theme, toggle] = useTheme();
@@ -50,12 +51,13 @@ export function Shell() {
   const [savedRail, setSavedRail] = useState(() => ({ key: railKey, answer: rememberedRail(railKey) }));
   if (savedRail.key !== railKey) setSavedRail({ key: railKey, answer: rememberedRail(railKey) });
   const platform = !!claims?.platform;
-  const identity = useQuery({ ...meQuery, enabled: !platform && active });
+  const identity = useQuery({ ...meQuery, enabled: !platform && active && !pending });
   const router = useRouter();
+  useMainScrollRestoration(router);
   const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
   // Keep the rail snapshot separate, but share the identity request with the shell and page.
-  const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active });
+  const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
   const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP", retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
@@ -177,10 +179,10 @@ export function Shell() {
           <Menu size={16} aria-hidden /> {t("shell.menu")}
         </button>
         {!platform && (
-          <button type="button" className="btn top__jump" onClick={() => setJump(true)} aria-label={t("shell.jumpLabel")} aria-keyshortcuts="Meta+K Control+K">
+          <button type="button" className="btn top__jump" onClick={() => setJump(true)} aria-keyshortcuts="Meta+K Control+K">
             <Search size={16} aria-hidden />
             <span className="top__jumpText"><span className="top__jumpHint">{t("shell.jump")}</span><span className="top__jumpLabel">{t("shell.jumpLabel")}</span></span>
-            <kbd className="top__kbd">{t("shell.jumpKey")}</kbd>
+            <kbd className="top__kbd" aria-hidden>{t("shell.jumpKey")}</kbd>
           </button>
         )}
         <span className="top__spacer" />
@@ -208,7 +210,7 @@ export function Shell() {
           {!platform && <DomainNotice />}{!platform && !((access.isError || pageFailures > 0) && supportFault && !hasSupportNotice) && <ActiveSupportBanner />}
         </ReadFailureContext.Provider>
         <ReadFailureContext.Provider value={recovery}>
-          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand key={principal}><Outlet /></PhaseBand>}</RouteGuard>
+          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
         </ReadFailureContext.Provider>
         </SessionRecovery>
       </PageMain>

@@ -69,7 +69,8 @@ test("org: structure list becomes readable cards at 390px @ui-state", async ({ p
     await expect(grid).toHaveAttribute("data-layout", "cards");
     await expect(grid.getByRole("rowheader").first()).toBeVisible();
     await expect(grid.locator("dt").filter({ hasText: t("structure.list.code") }).first()).toBeVisible();
-    await expect(grid.locator("dt").filter({ hasText: t("structure.list.people") }).first()).toHaveText(t("structure.list.people"));
+    await expect(grid.getByRole("term").filter({ hasText: t("structure.list.people") }).first()).toHaveText(t("structure.list.people"));
+    await expect(grid.getByRole("button", { name: t("structure.headcount.explain"), exact: true })).toHaveCount(0);
     await expect(grid.locator("[data-row-id]").first().getByText(t("entityOps.info.none"), { exact: true })).toHaveCount(2);
     await expect(grid.locator(`[data-row-id="${site.id}"]`).getByText(t("structure.chip.suspended"), { exact: true })).toBeVisible();
     const region = grid.locator("xpath=ancestor::section");
@@ -139,7 +140,9 @@ for (const view of ["chart", "list", "outline"] as const) {
       await expect(main.getByRole(view === "list" ? "grid" : "tree").first()).toBeVisible();
       await expect(main.locator("p:visible").filter({ hasText: /키보드로 빠르게|Enter 아래에 추가|인원은 하위 조직|퇴직자를 제외한/ })).toHaveCount(0);
       if (view === "list") {
-        await main.getByRole("columnheader").getByRole("button", { name: t("structure.headcount.explain"), exact: true }).click();
+        const basis = main.getByRole("button", { name: t("structure.headcount.explain"), exact: true });
+        await expect(basis).toHaveCount(1);
+        await basis.click();
         await expect(page.getByRole("dialog", { name: t("structure.headcount.label"), exact: true }).getByText(t("structure.headcount.basis"), { exact: true })).toBeVisible();
         expect(fixture.unexpected).toEqual([]);
         return;

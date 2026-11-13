@@ -16,7 +16,7 @@ pub(crate) async fn page(
     log_access: bool,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     let register = async {
-        super::super::request_register::get(pool, register)
+        super::super::request_register::get(pool, register, principal.org_id, query.as_of)
             .await
             .map_err(|error| {
                 HrError::from_kernel(super::super::source_failure("hr_insurance", error))

@@ -168,6 +168,12 @@ pub(super) async fn query_rows(
     if let Some(as_of) = query.inbox_as_of {
         q.push(" AND l.created_at <= ").push_bind(as_of);
     }
+    if let Some(ids) = &selected {
+        // Restrict native event keys before the per-person lateral; the full task key is checked below.
+        q.push(" AND l.id IN (SELECT split_part(value, ':', 2)::uuid FROM unnest(")
+            .push_bind(ids.clone())
+            .push("::text[]) AS selected(value))");
+    }
     for (column, value) in [
         ("ea.workplace_id", query.workplace_id),
         ("ea.legal_entity_id", query.legal_entity_id),

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { expect } from "@playwright/test";
+import { test } from "../locale-fixture";
+import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { id, inbox, screenAccess, user } from "../mock/fixtures";
 import { previewData } from "../mock/onboarding";
@@ -8,7 +9,7 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { homeSetupChecklist, homeSetupScreen } from "./home-setup";
 
-for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
+for (const locale of LOCALES) for (const width of [1440, 390]) {
   test(`missing registration: named blocker and server recovery in ${locale} at ${width}px @ui-state`, async ({ page }) => {
     await loadCatalog(locale);
     i18n.set(locale);
@@ -72,7 +73,6 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
       await expect(entity.getByRole("link", { name: t("setup.fix.add_registration"), exact: true })).toHaveCount(0);
       expect(commands).toBe(0);
     } finally {
-      i18n.set("ko");
       fixture.release();
       expect(fixture.unexpected).toEqual([]);
     }

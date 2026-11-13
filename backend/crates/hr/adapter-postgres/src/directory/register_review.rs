@@ -26,17 +26,29 @@ macro_rules! register_missing_fields_sql {
     };
 }
 
-/// The one register predicate used by the roster and inbox, derived from its named gaps.
+/// Gaps that do not require reading canonical person facts.
 #[macro_export]
-macro_rules! register_review_sql {
+macro_rules! register_non_person_gaps_sql {
     () => {
-        "(e.birth_date IS NULL OR NULLIF(btrim(e.job), '') IS NULL \
+        "(NULLIF(btrim(e.job), '') IS NULL \
          OR e.hire_on IS NULL \
          OR (COALESCE(p.employment_type = 'CONTRACT', false) AND p.contract_end_date IS NULL) \
          OR NOT EXISTS (SELECT 1 FROM employee_register_facts rf \
              WHERE rf.org_id = e.org_id AND rf.employee_id = e.id \
                AND rf.sex IS NOT NULL AND rf.address_id IS NOT NULL \
                AND rf.career_none IS NOT NULL))"
+    };
+}
+
+/// The one register predicate used by the roster and inbox, derived from its named gaps.
+#[macro_export]
+macro_rules! register_review_sql {
+    () => {
+        concat!(
+            "(e.birth_date IS NULL OR ",
+            $crate::register_non_person_gaps_sql!(),
+            ")"
+        )
     };
 }
 
@@ -64,29 +76,37 @@ impl HrService {
         };
         let org = principal.org_id;
         let limit = limit.clamp(1, 200);
-        let push_where = move |q: &mut QueryBuilder<Postgres>| {
+        let push_base = move |q: &mut QueryBuilder<Postgres>, from: &'static str| {
+            q.push(from);
+            if matches!(&reach, crate::authz::HrReach::Within { scope, .. } if !scope.is_empty()) {
+                q.push(crate::assignment_lateral!());
+            }
             q.push(concat!(
-                " FROM person_employees_current e ",
-                crate::assignment_lateral!(),
                 " LEFT JOIN employee_employment_profiles p ",
                 "ON p.org_id = e.org_id AND p.employee_id = e.id WHERE e.org_id = "
             ));
             q.push_bind(*org.as_uuid());
             q.push(" AND e.created_at <= ").push_bind(as_of);
             q.push(" AND e.employment_status <> 'VOIDED' AND ");
-            q.push(crate::register_review_sql!()).push(" AND ");
             push_reach(q, &reach);
         };
         with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                let mut count = QueryBuilder::<Postgres>::new("SELECT count(*)");
-                push_where(&mut count);
+                // Count disjoint cohorts in one snapshot; obvious gaps need no person hydration.
+                let mut count = QueryBuilder::<Postgres>::new("SELECT (SELECT count(*)");
+                push_base(&mut count, " FROM (SELECT g.id,g.org_id,g.created_at,g.employment_status,g.home_branch_id,g.org_unit_id,g.job,g.hire_on FROM employees g) e ");
+                count.push(" AND ").push(crate::register_non_person_gaps_sql!());
+                count.push(") + (SELECT count(*)");
+                push_base(&mut count, " FROM person_employees_current e ");
+                count.push(" AND NOT ").push(crate::register_non_person_gaps_sql!())
+                    .push(" AND e.birth_date IS NULL)");
                 let total = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
                 let mut q = QueryBuilder::<Postgres>::new(concat!(
                     "SELECT e.id, e.name, e.created_at, ",
                     crate::register_missing_fields_sql!()
                 ));
-                push_where(&mut q);
+                push_base(&mut q, " FROM person_employees_current e ");
+                q.push(" AND ").push(crate::register_review_sql!());
                 console_platform_db::inbox::push_page(
                     &mut q,
                     "NULL::timestamptz",
