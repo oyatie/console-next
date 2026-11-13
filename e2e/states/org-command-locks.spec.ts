@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { expect, type Page } from "@playwright/test";
+import { test } from "../locale-fixture";
+import { t } from "@console/i18n";
 import { commitLabel } from "../../apps/web/src/ui/composer/actions";
 import { expectAxe, fits } from "../a11y";
 import { authz, failure, id } from "../mock/fixtures";
@@ -10,8 +11,6 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { entityRecordPath, mockEntityRecord } from "./entity-record";
 import { orgChangeScreens, screens } from "./registry";
-
-test.beforeEach(async () => { await loadCatalog("ko"); i18n.set("ko"); });
 
 async function inspect(page: Page, label: string) {
   for (const theme of ["light", "dark"]) {

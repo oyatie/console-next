@@ -66,12 +66,16 @@ export function CommandError({
   formFields?: string[];
 }) {
   const refusal = useRef<HTMLDivElement>(null);
-  const refused = !read && error instanceof ApiError && error.status === 403;
-  useEffect(() => {
-    if (refused) refusal.current?.focus();
-  }, [error, refused]);
-  if (!error) return null;
+  const focusedKey = useRef<string | undefined>(undefined);
   const api = error instanceof ApiError ? error : undefined;
+  const refused = !read && api?.status === 403 && Boolean(api.requestKey);
+  const focusKey = refused ? JSON.stringify([api?.requestKey, api?.code]) : undefined;
+  useEffect(() => {
+    if (!focusKey || focusedKey.current === focusKey) return;
+    focusedKey.current = focusKey;
+    refusal.current?.focus();
+  }, [focusKey]);
+  if (!error) return null;
   // The transport and useCommand attach intent keys to commands; a read's operation ID is only a support reference.
   const uncertain = outcomeUnknown(error);
   const readFailure = read || (uncertain && !api?.requestKey);

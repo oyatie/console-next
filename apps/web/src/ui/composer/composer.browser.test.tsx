@@ -24,6 +24,7 @@ beforeAll(async () => {
       load: (id) => id === "\0composer-test" ? `
         import { createElement as h, useState } from 'react';
         import { createRoot } from 'react-dom/client';
+        import { createRootRoute, createRouter, RouterProvider, createMemoryHistory } from '@tanstack/react-router';
         import { loadCatalog } from '@console/i18n';
         import { ApiError } from '@console/api';
         import { CommandError } from '/apps/web/src/lib/react/command-error.tsx';
@@ -31,17 +32,33 @@ beforeAll(async () => {
         import { TextArea } from '/apps/web/src/ui/field/text-area.tsx';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
+        function FocusProbe() {
+          const [requestKey, setRequestKey] = useState();
+          const [code, setCode] = useState('forbidden');
+          const [renders, setRenders] = useState(0);
+          const [visible, setVisible] = useState(true);
+          const error = new ApiError(403, code, 'Server refusal', [], 'stored-operation', true, [], { requestKey });
+          return h('main', null,
+            h('h1', null, 'Record'),
+            h('button', { id: 'repeat', autoFocus: true, onClick: () => setRenders(x => x + 1) }, 'Render again'),
+            h('button', { id: 'send', onClick: () => setRequestKey('first-request') }, 'Send'),
+            h('button', { id: 'next-request', onClick: () => setRequestKey('second-request') }, 'Next request'),
+            h('button', { id: 'next-code', onClick: () => setCode('missing_grant') }, 'Next code'),
+            h('button', { id: 'visibility', onClick: () => setVisible(x => !x) }, 'Toggle error'),
+            h(CommandError, { error: visible ? error : undefined }), h('output', { id: 'renders' }, renders));
+        }
         function Demo() {
           const [long, setLong] = useState(false);
           const [submits, setSubmits] = useState(0);
           const [remedies, setRemedies] = useState(0);
           const [error, setError] = useState();
           const state = new URLSearchParams(location.search).get('state');
+          if (state === 'focus') return h(FocusProbe);
           return h('main', null, h('h1', null, 'Record'),
             h('button', { id: 'toggle', onClick: () => setLong(x => !x) }, 'Change action'),
             h(Composer, { layout: state === 'drawer' || state === 'command-drawer-403' ? 'drawer' : state?.startsWith('page') || state === 'command-page-403' ? 'page' : 'inline', headingLevel: 3, commitId: 'commit',
               title: 'Review', action: { kind: long ? 'EMPLOYMENT_TYPE_CHANGE' : 'appointment', mode: long ? 'apply' : 'schedule', count: 3 },
-              onClose: () => {}, onSubmit: state === 'refusal' ? undefined : () => { setSubmits(x => x + 1); if (state?.startsWith('command')) setError(new ApiError(Number(state.split('-')[2]), 'permission_denied', 'Server refusal')); },
+              onClose: () => {}, onSubmit: state === 'refusal' ? undefined : () => { setSubmits(x => x + 1); if (state?.startsWith('command')) setError(new ApiError(Number(state.split('-')[2]), 'permission_denied', 'Server refusal', [], undefined, true, [], { requestKey: 'command-request' })); },
               error, notice: h(CommandError, { error, read: state === 'command-read-403' }), secondary: state?.startsWith('command') || state === 'locked' ? h('button', { id: 'alternate', onClick: () => setRemedies(x => x + 1) }, 'Alternate') : undefined, onSaveDraft: state?.startsWith('command') ? () => setRemedies(x => x + 1) : undefined,
               blocked: (error && state === 'command-blocked-403') || state === 'blocked' || state?.startsWith('locate') || (state === 'page-blocked' && !long) ? { reason: 'Resolve first', remedy: h('button', { id: 'remedy', onClick: () => setRemedies(x => x + 1) }, 'Register entity'), press: state?.startsWith('locate') ? () => setRemedies(x => x + 1) : undefined } : undefined,
               pending: state === 'locate-pending', loading: state === 'locate-loading',
@@ -50,7 +67,9 @@ beforeAll(async () => {
             }, state === 'refusal' ? h('form', { onSubmit: event => { event.preventDefault(); setRemedies(x => x + 1); } }, h('input', { 'aria-label': 'Reason' }), h('button', { type: 'submit' }, 'Request access')) : h(TextArea, { 'aria-label': 'Reason' })),
             h('output', { id: 'submits' }, submits), h('output', { id: 'remedies' }, remedies));
         }
-        createRoot(document.getElementById('root')).render(h(Demo));
+        const route = createRootRoute({ component: Demo });
+        const router = createRouter({ routeTree: route, history: createMemoryHistory({ initialEntries: ['/'] }) });
+        createRoot(document.getElementById('root')).render(h(RouterProvider, { router }));
       ` : undefined,
       configureServer: (vite) => { vite.middlewares.use((req, res, next) => {
         if (!req.url?.startsWith("/composer-test?")) return next();
@@ -77,7 +96,7 @@ afterAll(async () => { await browser?.close(); await server?.close(); });
 
 const open = async (state: string) => {
   await page.goto(`${server.resolvedUrls!.local[0]}composer-test?state=${state}`);
-  await page.getByRole("heading", { name: "Review" }).waitFor();
+  await page.getByRole("heading", { name: state === "focus" ? "Record" : "Review" }).waitFor();
 };
 
 test("immediate routing explains the policy with a keyboard disclosure", async () => {
@@ -215,4 +234,43 @@ test.each(["command-read-403", "command-inline-409", "command-inline-422"])("%s 
   await page.getByRole("button", { name: commitLabel({ kind: "appointment", mode: "schedule", count: 3 }), exact: true }).click();
   await page.getByRole("alert").waitFor();
   expect(await page.getByRole("alert").evaluate(el => el === document.activeElement)).toBe(false);
+});
+
+
+test("a stored refusal on load leaves page focus alone, including after a render", async () => {
+  await open("focus");
+  await page.getByRole("alert").waitFor();
+  expect(await page.locator("#repeat").evaluate(el => el === document.activeElement)).toBe(true);
+  await page.locator("#repeat").click();
+  await page.waitForFunction(() => document.querySelector("#renders")?.textContent === "1");
+  expect(await page.locator("#repeat").evaluate(el => el === document.activeElement)).toBe(true);
+});
+
+test("an equal command refusal rebuilt during render does not take focus again", async () => {
+  await open("focus");
+  await page.locator("#send").click();
+  await expect.poll(() => page.getByRole("alert").evaluate(el => el === document.activeElement)).toBe(true);
+  await page.locator("#repeat").click();
+  await page.waitForFunction(() => document.querySelector("#renders")?.textContent === "1");
+  expect(await page.locator("#repeat").evaluate(el => el === document.activeElement)).toBe(true);
+});
+
+test.each(["next-request", "next-code"])("a different refusal (%s) takes focus again", async (button) => {
+  await open("focus");
+  await page.locator("#send").click();
+  await expect.poll(() => page.getByRole("alert").evaluate(el => el === document.activeElement)).toBe(true);
+  await page.locator(`#${button}`).click();
+  await expect.poll(() => page.getByRole("alert").evaluate(el => el === document.activeElement)).toBe(true);
+});
+
+
+test("showing the same command refusal again does not take focus again", async () => {
+  await open("focus");
+  await page.locator("#send").click();
+  await expect.poll(() => page.getByRole("alert").evaluate(el => el === document.activeElement)).toBe(true);
+  await page.locator("#visibility").click();
+  await page.getByRole("alert").waitFor({ state: "detached" });
+  await page.locator("#visibility").click();
+  await page.getByRole("alert").waitFor();
+  expect(await page.locator("#visibility").evaluate(el => el === document.activeElement)).toBe(true);
 });
