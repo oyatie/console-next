@@ -63,6 +63,33 @@ test.each(["GET", "POST"])("a command waits for its slow %s refresh before the r
   await page.unroute("**/api/v1/refresh");
 });
 
+test("a command sent in the same tick as its press keeps its exemption", async () => {
+  await page.goto("https://stability.test/");
+  await page.route("**/api/v1/refresh", async route => {
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    await route.fulfill({ json: {} });
+  });
+  await page.getByRole("button", { name: "Save", exact: true }).evaluate(button => {
+    (button as HTMLElement).onclick = async () => {
+      await fetch("/api/v1/record", { method: "POST" });
+      await fetch("/api/v1/refresh");
+      document.getElementById("content")!.style.marginTop = "200px";
+    };
+    // Force the coarsened-clock tie regardless of this browser's timer precision.
+    const clock = performance.now;
+    const now = clock.call(performance);
+    performance.now = () => now;
+    try {
+      button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      (button as HTMLElement).click();
+    } finally { performance.now = clock; }
+  });
+  await page.waitForFunction(() => document.getElementById("content")!.style.marginTop === "200px");
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => window.__shifts)).toEqual([]);
+  await page.unroute("**/api/v1/refresh");
+});
+
 test("a read started after the command continuation window still counts", async () => {
   await page.goto("https://stability.test/");
   await page.evaluate(() => {

@@ -62,7 +62,8 @@ export function recordShifts() {
   // When responses landed (not when they were asked: hovering prefetches before a click), and when the last
   // command (a write) was sent and answered.
   let landed: number[] = [];
-  let lastCommand = -Infinity;
+  // The input a command answered (NaN: none). Compared by identity: the click's fetch can share its timestamp.
+  let commandInput = NaN;
   let commandLanded = -Infinity;
   let writeLanded = -Infinity;
   let commandPending = 0;
@@ -74,8 +75,8 @@ export function recordShifts() {
     const read = /^(GET|HEAD)$/i.test(method);
     const command = !read && (now - lastInput < 500 || now - writeLanded < 500);
     // A chained write or refresh dispatched with the command's answer is still work it awaits.
-    const continuation = read && lastCommand > lastInput && now - writeLanded < 500;
-    if (command) lastCommand = now;
+    const continuation = read && commandInput === lastInput && now - writeLanded < 500;
+    if (command) commandInput = lastInput;
     if (command || continuation) commandPending++;
     return fetch0(...args).finally(() => {
       landed = [...landed.slice(-20), performance.now()];
@@ -107,7 +108,7 @@ export function recordShifts() {
     for (const e of list.getEntries() as Shift[]) {
       // A command's own result (the record it made, its refusal) is what the user pressed for and is waiting on:
       // from the press that sent it until a second after its last refresh (a slow machine renders it past 500 ms).
-      if (lastCommand > lastInput && (commandPending > 0 || e.startTime - commandLanded < 1000)) continue;
+      if (commandInput === lastInput && (commandPending > 0 || e.startTime - commandLanded < 1000)) continue;
       const attended = e.hadRecentInput || e.startTime - lastInput < 500;
       if (attended && !landed.some((t) => t > lastInput && t <= e.startTime)) continue;
       // An element that was not in view before (a recycled virtual row, a block scrolled in) appeared; it did not move.
