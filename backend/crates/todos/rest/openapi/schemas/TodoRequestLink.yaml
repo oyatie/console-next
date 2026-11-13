@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+description: >-
+  A record a request is about, named by kind and id only; the reader's own
+  rights decide what it shows. kind is one of the record kinds the work inbox
+  opens from an id.
+required:
+- kind
+- id
+properties:
+  kind:
+    type: string
+    enum:
+    - change_request
+    - employee
+    - exit_case
+    - identifier_correction
+    - org_change
+    - period_lock
+    - privacy_request
+    - statutory
+    - support_session
+  id:
+    $ref: '#/components/schemas/Uuid'

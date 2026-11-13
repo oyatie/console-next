@@ -33,7 +33,7 @@ import s from "./access.module.css";
 
 const OTHER = "OTHER";
 type Draft = { name: string; description: string; grid: Chosen };
-const sameLines = (a: Chosen, b: Chosen, order: string[]) => JSON.stringify(toLines(a, order)) === JSON.stringify(toLines(b, order));
+const sameLines = (a: Chosen, b: Chosen, cat: AccessCatalog) => JSON.stringify(toLines(a, cat.domains)) === JSON.stringify(toLines(b, cat.domains));
 
 /** Who a change reaches, by name (mockup M2), and whether any of them already works under it (granted from setup). */
 function useHolders(role: AccessRole | undefined) {
@@ -77,12 +77,12 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
   const routed = new Set([...(exitRouted ? ["exit"] : []), ...(orgRouted ? ["org_structure"] : [])]);
   const editing = role && !copy ? role : undefined;
   // Changing what a held role allows changes access for its holders now: it carries a reason and a passkey.
-  const changed = !sameLines(d.grid, start.grid, order);
+  const changed = !sameLines(d.grid, start.grid, cat);
   const held = !!editing && editing.holder_count > 0 && changed;
   const problems = !d.name.trim() || isEmpty(d.grid) || (held && reasonProblem(reason, OTHER) !== null);
   const run = useCommand({
     run: () => {
-      const body = { name_ko: d.name.trim(), description: d.description.trim() || null, lines: toLines(d.grid, order) };
+      const body = { name_ko: d.name.trim(), description: d.description.trim() || null, lines: toLines(d.grid, cat.domains) };
       return editing ? updateRole(editing, body, changed, held ? { reason_code: reason.code!, reason_note: reason.memo.trim() || null } : undefined) : createRole(body);
     },
     invalidates: ACCESS_READS,
