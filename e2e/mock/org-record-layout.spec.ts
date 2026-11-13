@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
+import { clearShifts, expectStable, recordShifts } from "../stability";
 import { commitLabel } from "../../apps/web/src/ui/composer/actions";
 import { AT, authz, id, user } from "./fixtures";
 import { orgChange } from "./org-changes";
@@ -12,9 +13,10 @@ import type { components } from "@console/api/schema";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+for (const width of [1280, 1440, 390]) for (const theme of ["light", "dark"]) {
   test(`org summary keeps its content and desktop position after rejection at ${width}px ${theme}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height: width === 1280 ? 720 : 900 });
+    await page.addInitScript(recordShifts);
     await page.emulateMedia({ colorScheme: theme as "light" | "dark" });
     const screen = orgChangeScreens[1];
     const fixture = await mockScreen(page, screen, "approval");
@@ -26,11 +28,20 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       { at: AT, actor: id(5), actorName: "김기안", action: "draft.update" },
       { at: AT, actor: id(5), actorName: "김기안", action: "submit" },
     ] };
-    await mockRoute(page, "get", "/api/v1/org-changes/{id}", () => ({ status: 200, json: record }));
+    let decided = false;
+    let releaseRead!: () => void;
+    const heldRead = new Promise<void>(resolve => { releaseRead = resolve; });
+    let readStarted!: () => void;
+    const reading = new Promise<void>(resolve => { readStarted = resolve; });
+    await mockRoute(page, "get", "/api/v1/org-changes/{id}", async () => {
+      if (decided) { readStarted(); await heldRead; }
+      return { status: 200, json: record };
+    });
     await mockRoute(page, "post", "/api/v1/org-changes/{id}/approval-steps/{stepId}/decision", () => {
       record = { ...record, status: "REJECTED", approvalSteps: record.approvalSteps.map(step => ({ ...step, decision: "REJECTED", decidedBy: user.id, decidedAt: AT, memo: "시행일 재검토" })),
         events: [...record.events, { at: AT, actor: user.id, actorName: user.display_name, action: "step.decide", reason: "hr:REJECTED" }],
       };
+      decided = true;
       return { status: 200, json: record };
     });
     try {
@@ -45,8 +56,6 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(rows).toHaveCount(record.events.length);
       await expect(rows.first()).toContainText(t("orgChange.event.submit", { actor: "김기안" }));
       const rowPositions = () => rows.evaluateAll(elements => elements.map(el => ({ text: el.textContent, y: el.getBoundingClientRect().top })));
-      const existingRows = await rowPositions();
-      const relative = (items: typeof existingRows) => items.map(row => ({ text: row.text, y: row.y - items[0]!.y }));
       const position = () => page.evaluate(desktop => {
         const main = document.getElementById("main")!;
         const proposal = document.getElementById("proposal")!.parentElement!.getBoundingClientRect();
@@ -56,15 +65,23 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const before = await position();
       await reject.click();
       await page.getByLabel(t("orgChange.decide.reject.reason")).fill("시행일 재검토");
+      await page.evaluate(clearShifts);
+      const answer = page.waitForResponse(response => response.request().method() === "POST" && response.url().endsWith("/decision"));
       await reject.click();
+      await (await answer).finished();
+      await reading;
+      // A loaded host can deliver the re-read after the command's layout-stability window.
+      await page.waitForTimeout(1800);
+      const existingRows = await rowPositions();
+      releaseRead();
       await expect(page.getByRole("status").filter({ hasText: t("orgChange.decided.REJECTED", { role: "인사", code: record.code }) })).toBeVisible();
       await expect(proposal).toContainText(record.reason);
       expect(await position()).toEqual(before);
       await expect(rows).toHaveCount(record.events.length);
       await expect(rows.first()).toContainText(t("orgChange.event.rejected", { actor: user.display_name, role: "인사" }));
-      // The attended decision adds the newest row first; existing rows keep their order and spacing.
-      expect(relative((await rowPositions()).filter(row => existingRows.some(existing => existing.text === row.text))))
-        .toEqual(relative(existingRows));
+      await expectStable(page, "org change page (rejected)");
+      expect((await rowPositions()).filter(row => existingRows.some(existing => existing.text === row.text)))
+        .toEqual(existingRows);
       if (width === 390) {
         const dock = page.locator("[data-status-dock]");
         // Clearance must exist before scrolling, including receipts that wrap after they mount.
@@ -79,7 +96,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await fits(page, "org rejection");
       await page.screenshot({ path: test.info().outputPath("rejected.png") });
       expect(fixture.unexpected).toEqual([]);
-    } finally { await page.close(); fixture.release(); }
+    } finally { releaseRead(); await page.close(); fixture.release(); }
   });
 }
 

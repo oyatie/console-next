@@ -2,15 +2,15 @@
 import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { firefox, expect as element } from "@playwright/test";
+import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { loadCatalog, t } from "@console/i18n";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
+import { browserEngine, browserTestOptimizeDeps, type Browser, type Page } from "../../lib/browser-test";
 
 let server: ViteDevServer;
 const browsers: Browser[] = [];
 const pages = new Map<string, Page>();
-const engines = [chromium, ...(process.env.E2E_XBROWSER === "1" ? [firefox] : [])];
+const engines = [browserEngine()];
 beforeAll(async () => {
   await loadCatalog("ko");
   server = await createServer({

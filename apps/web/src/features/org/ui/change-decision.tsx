@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+// eslint-disable-next-line no-restricted-imports -- Publish the server-confirmed decision with its receipt.
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -8,7 +10,7 @@ import { focusSoon } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { useDirtyEscape } from "../../../lib/react/dirty-escape";
-import { landed } from "../../../lib/react/landed";
+import { landed, LANDED } from "../../../lib/react/landed";
 import { APPROVAL_ROLE, actor, label } from "../../../lib/labels";
 import { ORG_READS } from "../../../reference/org/api";
 import { Composer } from "../../../ui/composer/composer";
@@ -16,7 +18,7 @@ import { commitLabel } from "../../../ui/composer/actions";
 import { Button } from "../../../ui/button/button";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
-import { changeCommands, changesByStatusQuery, me, refusalOf } from "../api";
+import { changeCommands, changeQuery, changesByStatusQuery, me, refusalOf } from "../api";
 import type { NextStep } from "../present";
 import type { Note } from "./use-note";
 import css from "./org-change.module.css";
@@ -44,19 +46,18 @@ export function ChangeDecision({ d, s, refetch, onNote, onReopen }: {
   const [rejecting, setRejecting] = useState(false);
   const role = label(APPROVAL_ROLE, s.step.roleKey);
   const self = me();
+  const qc = useQueryClient();
   const decide = useCommand({
     run: async (decision: "APPROVED" | "REJECTED") => {
       const memo = (decision === "REJECTED" ? reason : comment).trim() || undefined;
       try {
-        await landed(() => changeCommands(d.id).decide(s.step.id, decision, memo), refetch, (x) => {
+        const detail = await landed(() => changeCommands(d.id).decide(s.step.id, decision, memo), refetch, (x) => {
           // Landed only as this decision: the same person may have decided the step otherwise in another tab.
           const st = x.approvalSteps.find((y) => y.id === s.step.id);
           return st?.decidedBy === self && st?.decision === decision;
         });
-        // The record must show this step decided before the receipt offers the next one: re-arming on the
-        // cached copy would put this step's decision back under the viewer's next click.
-        await refetch();
-        return { decision };
+        if (detail === LANDED) await refetch();
+        return { decision, detail: detail === LANDED ? undefined : detail };
       } catch (e) {
         // Someone else decided this step first: say who and when, never a generic error.
         const now = refusalOf(e) === "conflict" ? (await refetch()).data?.approvalSteps.find((st) => st.id === s.step.id) : undefined;
@@ -65,9 +66,11 @@ export function ChangeDecision({ d, s, refetch, onNote, onReopen }: {
       }
     },
     invalidates: ORG_READS,
-    onSuccess: ({ decision, elsewhere }) => {
+    onSuccess: ({ decision, detail, elsewhere }) => {
       if (elsewhere)
         return onNote({ message: t("live.notice.done_elsewhere", { actor: actor(elsewhere.decidedByName), time: fmtDateTime(elsewhere.decidedAt) }) });
+      // Publish the confirmed record with its receipt; a slow re-read must not prepend history later.
+      if (detail) qc.setQueryData(changeQuery(d.id).queryKey, detail);
       const next = decision === "APPROVED" ? s.next : undefined;
       onNote({
         message: t(`orgChange.decided.${decision}`, { role, code: d.code }),
