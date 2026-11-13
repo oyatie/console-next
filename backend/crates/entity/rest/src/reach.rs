@@ -1,7 +1,8 @@
 //! The caller's reach over legal entities and workplaces (decisions #15;
 //! worst-case-08): the ops account and a whole-tenant reach see everything;
-//! anyone else reaches only the legal entities and workplaces their grants
-//! that count now and read name, plus the workplaces their legacy branches back. Reads,
+//! anyone else reaches only the legal entities and workplaces named by their
+//! grants that count now and read records (a grant that only lets its holder
+//! ask names none), plus the workplaces their legacy branches back. Reads,
 //! counts and Cedar scope facts all take it, so an out-of-scope workplace is
 //! neither listed nor counted.
 
