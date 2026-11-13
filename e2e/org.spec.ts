@@ -2,9 +2,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
-import { firstSignIn, go, kstDate, routeReady, stepUp, takeCode } from "./flows";
+import { firstSignIn, go, kstDate, routeReady } from "./flows";
 import { answer, SETUP_DEPARTMENT, setupCompany, startOperations } from "./setup-flows";
-import { grantAccess } from "./access-flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { leaveScreen, revealUnit } from "./structure-flows";
@@ -17,7 +16,6 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   const operator = await openTenant(browser, "orgco", "조직주식회사");
   const token = bearerOf(operator);
   await setupCompany(operator, "조직주식회사");
-  await startOperations(operator);
   const api = apiOf(operator, token);
   const policy = await api("/settings/approval.policy.org_structure", "POST", { value: "route", reason_code: "POLICY_REVIEW" });
   expect(policy.status(), await policy.text()).toBe(201);
@@ -30,9 +28,15 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   const entity = (await entities.json()).items[0];
   const workplace = entity.workplaces[0];
   expect(workplace.default_branch_id).toBeTruthy();
-  // Seed employees through the real registration API; invites and grants still use product controls.
+  const roleResponse = await api("/access/roles", "POST", {
+    name_ko: "조직 업무", status: "ACTIVE", lines: [{ domain: "org", levels: ["view", "edit", "approve"] }],
+  } satisfies components["schemas"]["CreateAccessRoleRequest"]);
+  expect(roleResponse.status(), await roleResponse.text()).toBe(201);
+  const role = await roleResponse.json() as components["schemas"]["AccessRole"];
+  // Setup through the API; the journey below exercises the org controls, not account and grant editors.
   // Both sides of a governed decision need distinct, verified natural-person identities.
-  const people: Page[] = [];
+  const codes: string[] = [];
+  const grants: components["schemas"]["AccessGrantOperation"][] = [];
   for (const name of ["김기안", "이임원"]) {
     const registered = await api("/employees", "POST", {
       name, hire_date: kstDate(), org_unit_id: department.id, idempotency_key: crypto.randomUUID(),
@@ -40,13 +44,27 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
     });
     expect(registered.status(), await registered.text()).toBe(201);
     const person = await registered.json() as components["schemas"]["EmployeeDetail"];
-    await go(operator, `/people/${person.employee.id}`);
-    await operator.getByRole("button", { name: "계정 초대" }).click();
-    await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
-    const code = await takeCode(operator);
-    await grantAccess(operator, name, "org");
-    people.push(await firstSignIn(browser, code));
+    const accountResponse = await api("/users", "POST", { display_name: name, employee_id: person.employee.id }, { "Idempotency-Key": crypto.randomUUID() });
+    expect(accountResponse.status(), await accountResponse.text()).toBe(201);
+    const account = await accountResponse.json() as components["schemas"]["UserSummary"];
+    const issued = await api("/auth/admin/otp/issue", "POST", { user_id: account.id, step_up: await setupAssertion(operator, api) });
+    expect(issued.status(), await issued.text()).toBe(200);
+    codes.push((await issued.json() as components["schemas"]["AdminIssueOtpResponse"]).otp);
+    grants.push({ op: "grant", account_id: account.id, role_id: role.id, scope: { kind: "TENANT", include_descendants: true }, effective_in_setup: true });
   }
+  // Grants made during setup are enforced by the server without a sole-admin activation delay.
+  const previewResponse = await api("/access/grants/preview", "POST", { operations: grants, reason_code: "PROMOTION_OR_REASSIGNMENT" } satisfies components["schemas"]["AccessGrantBatchRequest"]);
+  expect(previewResponse.status(), await previewResponse.text()).toBe(200);
+  const preview = await previewResponse.json() as components["schemas"]["AccessGrantPreview"];
+  expect(preview.refused).toBe(0);
+  const applied = await api("/access/grants/apply", "POST", { receipt_id: preview.receipt_id, step_up: await setupAssertion(operator, api) }, { "Idempotency-Key": crypto.randomUUID() });
+  expect(applied.status(), await applied.text()).toBe(200);
+  const outcome = await applied.json() as components["schemas"]["ApplyGrantsOutcome"];
+  expect(outcome.items).toHaveLength(grants.length);
+  expect(outcome.items.every(grant => grant.enforcement === "ENFORCED")).toBe(true);
+  await startOperations(operator);
+  const people: Page[] = [];
+  for (const code of codes) people.push(await firstSignIn(browser, code));
   const [admin, exec] = people as [Page, Page];
   for (const page of [admin, exec]) {
     await page.bringToFront();
@@ -204,6 +222,19 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   await expect(planned).toHaveCount(1);
   await expect(planned).toContainText(`예정 · ${redraft.code}`);
 });
+
+/** A fresh assertion from the operator's enrolled passkey for API-only fixture setup. */
+async function setupAssertion(page: Page, api: ReturnType<typeof apiOf>): Promise<components["schemas"]["PasskeyStepUpAssertion"]> {
+  const response = await api("/auth/passkey/login/start", "POST", {});
+  expect(response.status(), await response.text()).toBe(200);
+  const ceremony = await response.json() as components["schemas"]["PasskeyLoginStartResponse"];
+  const credential = await page.evaluate(async options => {
+    const assertion = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) }) as PublicKeyCredential | null;
+    return assertion?.toJSON();
+  }, ceremony.challenge.publicKey as PublicKeyCredentialRequestOptionsJSON);
+  expect(credential).toBeTruthy();
+  return { ceremony_id: ceremony.ceremony_id, credential: credential as Record<string, unknown> };
+}
 
 async function checkScreen(page: Page, context: string) {
   await expectAccessible(page, context);

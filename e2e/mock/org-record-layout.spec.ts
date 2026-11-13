@@ -8,6 +8,7 @@ import { orgChange } from "./org-changes";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { orgChangeScreens } from "../states/registry";
+import type { components } from "@console/api/schema";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -20,10 +21,16 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities,
       { feature: "org_change_approve", permission: "allow", branch_scope: { kind: "all" }, org_wide: true, scoped: false },
     ] } });
-    let record = { ...orgChange("approval"), draftedBy: id(5) };
+    let record: components["schemas"]["OrgChangeDetail"] = { ...orgChange("approval"), draftedBy: id(5), events: [
+      { at: AT, actor: id(5), actorName: "김기안", action: "create" },
+      { at: AT, actor: id(5), actorName: "김기안", action: "draft.update" },
+      { at: AT, actor: id(5), actorName: "김기안", action: "submit" },
+    ] };
     await mockRoute(page, "get", "/api/v1/org-changes/{id}", () => ({ status: 200, json: record }));
     await mockRoute(page, "post", "/api/v1/org-changes/{id}/approval-steps/{stepId}/decision", () => {
-      record = { ...record, status: "REJECTED", approvalSteps: record.approvalSteps.map(step => ({ ...step, decision: "REJECTED", decidedBy: user.id, decidedAt: AT, memo: "시행일 재검토" })) };
+      record = { ...record, status: "REJECTED", approvalSteps: record.approvalSteps.map(step => ({ ...step, decision: "REJECTED", decidedBy: user.id, decidedAt: AT, memo: "시행일 재검토" })),
+        events: [...record.events, { at: AT, actor: user.id, actorName: user.display_name, action: "step.decide", reason: "hr:REJECTED" }],
+      };
       return { status: 200, json: record };
     });
     try {
@@ -33,6 +40,16 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(reject).toBeEnabled();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await expect(proposal).toContainText(record.reason);
+      const history = page.getByRole("complementary", { name: t("orgChange.history"), exact: true });
+      const rows = history.getByRole("listitem");
+      await expect(rows).toHaveCount(record.events.length);
+      const rowPositions = () => rows.evaluateAll(elements => {
+        const main = document.getElementById("main")!;
+        const history = document.getElementById("history")!.parentElement!.getBoundingClientRect();
+        return elements.map(el => ({ text: el.textContent, y: el.getBoundingClientRect().top + main.scrollTop,
+          historyY: el.getBoundingClientRect().top - history.top }));
+      });
+      const existingRows = await rowPositions();
       const position = () => page.evaluate(desktop => {
         const main = document.getElementById("main")!;
         const proposal = document.getElementById("proposal")!.parentElement!.getBoundingClientRect();
@@ -46,6 +63,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(page.getByRole("status").filter({ hasText: t("orgChange.decided.REJECTED", { role: "인사", code: record.code }) })).toBeVisible();
       await expect(proposal).toContainText(record.reason);
       expect(await position()).toEqual(before);
+      await expect(rows).toHaveCount(existingRows.length + 1);
+      // On phones the main column can grow; the history rows keep their positions within the history card.
+      expect((await rowPositions()).filter(row => existingRows.some(existing => existing.text === row.text)).map(row => ({ text: row.text, y: width === 1440 ? row.y : row.historyY })))
+        .toEqual(existingRows.map(row => ({ text: row.text, y: width === 1440 ? row.y : row.historyY })));
       await fits(page, "org rejection");
       await page.screenshot({ path: test.info().outputPath("rejected.png") });
       expect(fixture.unexpected).toEqual([]);
