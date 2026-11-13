@@ -148,6 +148,8 @@ function sourceContracts(file, source) {
   return { defined: [...names].map((name) => ({ name, theme: null, conditions: [] })), uses, modules };
 }
 
+const SHELL_SIZE = new Set(["--rail-w", "--topbar-h"]);
+const FRAME = /^apps\/web\/src\/(shell\/|app\.css$)/;
 /** One hard-failure list, shared by the gate and reference fixtures; no baseline can admit a name. */
 export function brokenRefs(sources, sheets, tokensFile) {
   const globals = sheets.has(tokensFile) ? definitions(sheets.get(tokensFile), true) : [];
@@ -168,10 +170,17 @@ export function brokenRefs(sources, sheets, tokensFile) {
         problems.push(`${file}: broken var reference var(${name}) — token undefined in packages/tokens/tokens.css or local module (visual-language §10)`);
       }
     };
+    // Only the shell reads its own sizes; everything else clears it through the frame's insets, which each shell sets.
+    const read = (name) => {
+      if (SHELL_SIZE.has(name) && file.startsWith("apps/web/src/") && !FRAME.test(file) && !seen.has(`frame:${name}`)) {
+        seen.add(`frame:${name}`);
+        problems.push(`${file}: reads the shell's size var(${name}) — clear the frame with --frame-top, --frame-start or --frame-bottom`);
+      }
+    };
     if (sheet) sheet.walkDecls((decl) => {
-      for (const name of references(decl.raws.value?.raw ?? decl.value)) check(name, context(decl));
+      for (const name of references(decl.raws.value?.raw ?? decl.value)) { check(name, context(decl)); read(name); }
     });
-    else for (const name of contracts.get(file)?.uses ?? []) check(name, { theme: null, conditions: [] });
+    else for (const name of contracts.get(file)?.uses ?? []) { check(name, { theme: null, conditions: [] }); read(name); }
   }
   return problems;
 }

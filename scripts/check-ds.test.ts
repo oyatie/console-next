@@ -161,17 +161,17 @@ test("only the shell reads its own sizes; everything else clears the frame throu
   const tokens = ":root { --rail-w: 1px; --topbar-h: 1px; --frame-top: var(--topbar-h); --space-4: 1px; }";
   const root = fixture({
     [tokenFile]: tokens,
-    "apps/web/src/ui/toast/toast.module.css": ".t { left: calc(var(--rail-w) + var(--space-4)); }",
+    "apps/web/src/ui/toast/toast.module.css": ".t { left: calc(VAR(--rail-w) + var(--space-4)); }",
+    "apps/web/src/ui/note.module.css": "/* never var(--rail-w) here */ .n { top: var(--frame-top); }",
     "apps/web/src/features/x/ui/x.tsx": 'const style = { top: "var(--topbar-h)" };',
     "apps/web/src/ui/ok.module.css": ".o { top: var(--frame-top); }",
     "apps/web/src/shell/top.module.css": ".a { max-width: var(--rail-w); }",
     "apps/web/src/app.css": ".shell { grid-template-columns: var(--rail-w) 1fr; }",
   }, {});
-  const problems: string[] = [];
-  measure(root, problems);
-  expect(problems.filter((p) => p.includes("shell's size")).map((p) => p.split(":")[0]).sort())
+  const frame = (p: string) => p.includes("shell's size");
+  expect(checkBrokenRefs(root).filter(frame).map((p: string) => p.split(":")[0]).sort())
     .toEqual(["apps/web/src/features/x/ui/x.tsx", "apps/web/src/ui/toast/toast.module.css"]);
-  expect(gate(root).status).toBe(1);
+  expect(gate(root).stderr.split("\n").filter(frame)).toHaveLength(2);
 });
 
 test("dark-only and conditional definitions cannot satisfy light or unconditional refs", () => {

@@ -7,4 +7,4 @@
 .spin { animation: spin 1s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 767px) { .toast { left: var(--space-2); right: var(--space-2); } }
+@media (--phone) { .toast { left: var(--space-2); right: var(--space-2); } }

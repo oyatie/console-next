@@ -34,8 +34,6 @@ const DS_CLASS = /^(btn(--[\w-]+)?|field(__[\w-]+)?|chip(--[\w-]+)?|card(__[\w-]
 const LOOK = /^(color|background(-color)?|border(-[\w-]+)?|font-size|font-weight)$/;
 const BOX = /^(height|min-height|padding(-[\w-]+)?)$/;
 const NATIVE_CONTROL = /(^|[\s>+~,(])(button|input|select|textarea|a)(?=[\s.:[>+~,)]|$)|\[aria-pressed|:global\(\.(btn|field__input)/;
-const FRAME = /^apps\/web\/src\/(shell\/|app\.css$)/;
-const SHELL_SIZE = /var\(\s*--(rail-w|topbar-h)(?![\w-])/;
 const CONTROL_TAGS = "Button|ToggleButton|IconButton|TextInput|SelectInput|TextArea|DisabledReason|Chip";
 
 /** raw and dsClass counts of one .tsx source. */
@@ -110,9 +108,6 @@ export function measure(root, problems = []) {
   }
   const sheets = new Map([...sources].filter(([f]) => f.endsWith(".css")).map(([f, src]) => [f, parseCss(src, f)]));
   problems.push(...brokenRefs(sources, sheets, TOKENS));
-  // Only the shell reads its own sizes; everything else clears it through the frame's insets, which each shell sets.
-  for (const [f, src] of sources) if (f.startsWith(`${APP}/`) && !FRAME.test(f) && SHELL_SIZE.test(src))
-    problems.push(`${f}: reads the shell's size (--rail-w, --topbar-h) — clear the frame with --frame-top, --frame-start or --frame-bottom`);
   for (const [f, sheet] of sheets) {
     if (!EXEMPT.test(f) && f !== TOKENS)
       add(f, countCss(sheet, f.endsWith(".module.css") ? controlsByDir.get(path.dirname(f)) : undefined));
