@@ -37,6 +37,8 @@ export const enAccessCodes = {
   "accessCodes.domain.support_access.help": "Approve and end vendor support reads",
   "accessCodes.domain.tenant": "Customer account operations",
   "accessCodes.domain.tenant.help": "Starting operations",
+  "accessCodes.domain.todo_request": "To-do requests",
+  "accessCodes.domain.todo_request.help": "Ask colleagues in scope for a to-do with a due date",
   "accessCodes.operation.support_access::approve": "Approve",
   "accessCodes.level.view": "View",
   "accessCodes.level.edit": "Create & edit",

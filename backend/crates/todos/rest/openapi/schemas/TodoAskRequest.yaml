@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- assignee_account_id
+- text
+properties:
+  assignee_account_id:
+    $ref: '#/components/schemas/Uuid'
+  text:
+    type: string
+    description: 1..=500 characters after trimming.
+  due_on:
+    type: string
+    format: date
+    description: Today or later in KST.
+  links:
+    type: array
+    description: Records the request is about; at most 20.
+    items:
+      $ref: '#/components/schemas/TodoRequestLink'
