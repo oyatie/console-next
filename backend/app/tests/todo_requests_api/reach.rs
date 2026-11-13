@@ -23,7 +23,7 @@ pub async fn asking_world(pool: PgPool) -> World {
 }
 
 /// A new account, linked to `employee` when one is given.
-pub async fn account(w: &World, employee: Option<&str>) -> Uuid {
+async fn account(w: &World, employee: Option<&str>) -> Uuid {
     let user = *add_user(&w.pool, w.org, &[]).await.as_uuid();
     if let Some(employee) = employee {
         sqlx::query("UPDATE users SET employee_id = $1::uuid WHERE id = $2")
@@ -36,8 +36,38 @@ pub async fn account(w: &World, employee: Option<&str>) -> Uuid {
     user
 }
 
+/// A second workplace of legal entity A with one person registered and placed
+/// there: under A, outside workplace A and its departments. A department
+/// opened after go-live is an org change, so the person sits on the
+/// workplace's own unit. Returns the employee.
+async fn second_workplace(w: &World) -> String {
+    let le_a = &w.le_a;
+    let reg: String = sqlx::query_scalar(
+        "SELECT id::text FROM business_registrations WHERE legal_entity_id = $1::uuid",
+    )
+    .bind(le_a)
+    .fetch_one(&w.pool)
+    .await
+    .unwrap();
+    let wp = w
+        .ok(
+            "POST",
+            &format!("/api/v1/legal-entities/{le_a}/workplaces"),
+            json!({
+                "name": "공장", "registration_id": reg, "same_address_as_registration": true,
+                "opened_on": "2021-01-04", "is_head_office": false, "kind_code": "BRANCH",
+                "insurance": { "shortcut": "ALL_ESTABLISHED_NUMBERS_LATER" },
+            }),
+        )
+        .await;
+    let text = |at: &str| wp["record"][at].as_str().unwrap().to_owned();
+    let (wp_a2, branch, unit) = (text("id"), text("default_branch_id"), text("org_unit_id"));
+    w.person("A-009", &branch, &unit, Some((le_a, &wp_a2)))
+        .await
+}
+
 /// Asks `to`; the status and the refusal code.
-pub async fn ask(who: &Ctx, to: Uuid) -> (StatusCode, String) {
+async fn ask(who: &Ctx, to: Uuid) -> (StatusCode, String) {
     let (status, out) = who.call("POST", REQUESTS, Some(ask_id(to))).await;
     (status, code(&out).to_owned())
 }
@@ -46,9 +76,11 @@ pub async fn ask(who: &Ctx, to: Uuid) -> (StatusCode, String) {
 async fn each_grant_scope_reaches_the_people_placed_under_it(pool: PgPool) {
     let mut w = asking_world(pool).await;
     let (a1, a2, b1) = (w.a1.clone(), w.a2.clone(), w.b1.clone());
+    let a3 = second_workplace(&w).await;
     let targets = [
         ("a1", account(&w, Some(&a1)).await),
         ("a2", account(&w, Some(&a2)).await),
+        ("a3", account(&w, Some(&a3)).await),
         ("b1", account(&w, Some(&b1)).await),
         ("unlinked", account(&w, None).await),
     ];
@@ -57,12 +89,12 @@ async fn each_grant_scope_reaches_the_people_placed_under_it(pool: PgPool) {
         (
             "tenant",
             w.holder("TENANT", None).await,
-            &["a1", "a2", "b1", "unlinked"][..],
+            &["a1", "a2", "a3", "b1", "unlinked"][..],
         ),
         (
             "legal entity",
             w.holder("LEGAL_ENTITY", Some(&le_a)).await,
-            &["a1", "a2"][..],
+            &["a1", "a2", "a3"][..],
         ),
         (
             "workplace",
@@ -99,7 +131,8 @@ async fn each_grant_scope_reaches_the_people_placed_under_it(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn the_picker_lists_exactly_whom_an_ask_accepts(pool: PgPool) {
     let mut w = asking_world(pool).await;
-    for employee in [w.a1.clone(), w.a2.clone(), w.b1.clone()] {
+    let a3 = second_workplace(&w).await;
+    for employee in [w.a1.clone(), w.a2.clone(), a3, w.b1.clone()] {
         account(&w, Some(&employee)).await;
     }
     account(&w, None).await;
