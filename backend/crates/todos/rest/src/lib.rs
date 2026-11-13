@@ -3,9 +3,9 @@
 //! Every route is person-scoped: the caller is the authenticated principal
 //! (`/api/v1/me/...`), never taken from the request body or path. A route
 //! reaches only the caller's own todos, or the requests the caller made; the
-//! one input naming someone else is a request's assignee, which the request
-//! routes check against the caller's grant and directory scope. Mirrors the
-//! notification-center REST template.
+//! one input naming someone else is a request's assignee, which Cedar checks
+//! against the caller's to-do request grants. Mirrors the notification-center
+//! REST template.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
@@ -35,6 +35,7 @@ pub const ME_TODO_DONE_PATH_TEMPLATE: &str = "/api/v1/me/todos/{todoId}/done";
 pub const ME_TODO_RETURN_PATH_TEMPLATE: &str = "/api/v1/me/todos/{todoId}/return";
 pub const ME_TODO_REQUESTS_PATH: &str = "/api/v1/me/todos/requests";
 pub const ME_TODO_REQUEST_PATH_TEMPLATE: &str = "/api/v1/me/todos/requests/{todoId}";
+pub const ME_TODO_REQUEST_ASSIGNEES_PATH: &str = "/api/v1/me/todos/requests/assignees";
 
 /// Every route this face serves, as the single table [`router`] is built from.
 ///
@@ -56,6 +57,10 @@ fn routes() -> Vec<(&'static str, MethodRouter<TodoRestState>)> {
             get(requests::list_requests).post(requests::create_request),
         ),
         (ME_TODO_REQUEST_PATH_TEMPLATE, delete(requests::withdraw)),
+        (
+            ME_TODO_REQUEST_ASSIGNEES_PATH,
+            get(requests::list_assignees),
+        ),
     ]
 }
 

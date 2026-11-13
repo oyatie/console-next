@@ -4,7 +4,7 @@
 //! the owner only to finish it or send it back. Every refusal is raised inside
 //! the audited transaction, after the row lock, so it writes and audits nothing.
 
-use console_kernel_core::{BranchScope, KernelError, TodoId};
+use console_kernel_core::{KernelError, TodoId};
 use console_platform_db::{with_audit, with_org_conn};
 use console_platform_request_context::current_org;
 use console_todos_application::{
@@ -15,7 +15,7 @@ use console_todos_domain::{
     RequestState, TodoText, ensure_due, ensure_not_self, request_links, return_note,
 };
 use serde_json::json;
-use sqlx::{Postgres, Transaction};
+use sqlx::{Postgres, QueryBuilder, Transaction};
 use uuid::Uuid;
 
 use crate::{PgTodoError, PgTodoStore, refs_to_json, summary_from_row};
@@ -52,8 +52,9 @@ fn assignee_refused(message: &str, code: &'static str) -> PgTodoError {
 impl PgTodoStore {
     /// Ask a colleague for a follow-up (audited as `todo.request`, naming only
     /// whom and by when). The assignee is an active account of this tenant
-    /// inside the requester's directory scope, held `FOR SHARE` so a
-    /// concurrent deactivation cannot slip between the check and the insert.
+    /// placed under a node where Cedar permits the requester's `todo_assign`,
+    /// decided in this transaction and held `FOR SHARE`, so neither a revoked
+    /// grant nor a concurrent deactivation slips between check and insert.
     pub async fn create_request(
         &self,
         command: CreateTodoRequestCommand,
@@ -70,10 +71,7 @@ impl PgTodoStore {
             .occurred_at
             .to_offset(time::macros::offset!(+9))
             .date();
-        let branches: Option<Vec<Uuid>> = match command.assignee_scope {
-            BranchScope::All => None,
-            BranchScope::Branches(set) => Some(set.iter().map(|b| *b.as_uuid()).collect()),
-        };
+        let asker = command.requester;
         let after =
             json!({ "assignee_user_id": assignee, "due_on": due_on.map(|d| d.to_string()) });
         let event = todo_audit_event(
@@ -88,17 +86,14 @@ impl PgTodoStore {
 
         with_audit::<_, TodoSummary, PgTodoError>(&self.pool, event, move |tx| {
             Box::pin(async move {
-                let active: Option<bool> = sqlx::query_scalar(
-                    "SELECT u.is_active FROM users u WHERE u.org_id = $1 AND u.id = $2 \
-                     AND ($3::uuid[] IS NULL OR EXISTS (SELECT 1 FROM user_branches ub \
-                          WHERE ub.user_id = u.id AND ub.branch_id = ANY($3))) \
-                     FOR SHARE OF u",
-                )
-                .bind(org_uuid)
-                .bind(assignee)
-                .bind(branches)
-                .fetch_optional(tx.as_mut())
-                .await?;
+                let vis = crate::assignees::reach(tx, org, asker).await?;
+                let mut q = QueryBuilder::new("SELECT u.is_active FROM users u");
+                crate::assignees::push_reach(&mut q, org_uuid, &vis);
+                q.push(" AND u.id = ");
+                q.push_bind(assignee);
+                q.push(" FOR SHARE OF u");
+                let active: Option<bool> =
+                    q.build_query_scalar().fetch_optional(tx.as_mut()).await?;
                 match active {
                     None => {
                         return Err(assignee_refused(

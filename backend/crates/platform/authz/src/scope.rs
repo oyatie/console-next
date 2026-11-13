@@ -4,7 +4,7 @@ use console_kernel_core::{
 };
 use sqlx::{PgPool, Postgres, Transaction};
 
-use crate::{Feature, PermissionLevel, Principal, Role, permission_for};
+use crate::Role;
 
 /// Resolve branch scope from `user_branches` under an explicitly-armed tenant.
 ///
@@ -103,39 +103,4 @@ pub fn effective_branch_scope_for_tenant(
     };
 
     Ok(live_scope.intersect(&projected_scope))
-}
-
-/// The exact branch scope of a people-directory read, or `None` when nothing
-/// allows one. Built-in grants hold across the caller's live membership scope;
-/// custom grants contribute only their resolved scope, re-intersected here with
-/// live membership. Choosing a person anywhere (the directory, a request's
-/// assignee) reads this one scope, so the two cannot disagree.
-#[must_use]
-pub fn directory_read_scope(principal: &Principal) -> Option<BranchScope> {
-    let union = |a: &BranchScope, b: &BranchScope| match (a, b) {
-        (BranchScope::All, _) | (_, BranchScope::All) => BranchScope::All,
-        (BranchScope::Branches(x), BranchScope::Branches(y)) => {
-            BranchScope::Branches(x.union(y).copied().collect())
-        }
-    };
-    let mut effective = BranchScope::Branches(std::collections::BTreeSet::new());
-    let role_allows = principal.roles.iter().any(|role| {
-        permission_for(*role, Feature::EmployeeDirectoryRead) == PermissionLevel::Allow
-    });
-    if role_allows {
-        effective = union(&effective, &principal.branch_scope);
-    }
-    for grant in principal.effective_feature_grants.iter().filter(|grant| {
-        grant.feature == Feature::EmployeeDirectoryRead
-            && grant.permission == PermissionLevel::Allow
-    }) {
-        effective = union(
-            &effective,
-            &principal.branch_scope.intersect(&grant.branch_scope),
-        );
-    }
-    match &effective {
-        BranchScope::Branches(branches) if branches.is_empty() => None,
-        _ => Some(effective),
-    }
 }

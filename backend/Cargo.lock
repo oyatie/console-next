@@ -4056,6 +4056,7 @@ name = "console-todos-adapter-postgres"
 version = "0.1.0"
 dependencies = [
  "console-kernel-core",
+ "console-platform-authz",
  "console-platform-db",
  "console-platform-request-context",
  "console-platform-test-support",

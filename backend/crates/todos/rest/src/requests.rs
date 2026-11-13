@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Asking a colleague for a follow-up, and the owner's answer. Only asking is
-//! gated: listing and withdrawing reach the caller's own requests, and the
-//! return reaches only the caller's own todos, so a caller without the grant
-//! or of another tenant finds nothing there to act on.
+//! Asking a colleague for a follow-up, and the owner's answer. Asking and the
+//! picker of whom to ask need a to-do request grant; whom it reaches is decided
+//! by Cedar in the store. Listing and withdrawing reach the caller's own
+//! requests, and the return only the caller's own todos, so a caller without
+//! the grant or of another tenant finds nothing there to act on.
 
 use axum::Json;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use console_kernel_core::{BranchScope, KernelError, TodoId, TraceContext, UserId};
-use console_platform_authz::cedar_pbac::actions::todo_assign;
-use console_platform_authz::{
-    Action, Feature, Principal, authorize_org_wide, directory_read_scope,
-};
+use console_kernel_core::{KernelError, TodoId, TraceContext, UserId};
+use console_platform_authz::{Feature, Principal};
 use console_todos_application::{
-    CreateTodoRequestCommand, ListTodoRequestsQuery, ReturnTodoCommand, WithdrawTodoRequestCommand,
+    CreateTodoRequestCommand, ListTodoAssigneesQuery, ListTodoRequestsQuery, ReturnTodoCommand,
+    WithdrawTodoRequestCommand,
 };
 use console_todos_domain::{RequestLink, RequestState};
 use serde::Deserialize;
@@ -46,18 +45,26 @@ pub(crate) struct ListRequestsParams {
     limit: Option<i64>,
 }
 
-/// Cedar's `todo_assign`, fail-closed. The fact is the tenant-wide people
-/// directory manage authority, so existing HR managers need no new grant.
-fn authorize_assign(principal: &Principal) -> Result<(), RestError> {
-    let holds =
-        authorize_org_wide(principal, Action::new(Feature::EmployeeDirectoryManage)).is_ok();
-    let org = principal.org_id.to_string();
-    let support = principal.support.is_some();
-    if todo_assign::decide(&principal.user_id.to_string(), &org, &org, holds, support) {
+#[derive(Debug, Deserialize)]
+pub(crate) struct ListAssigneesParams {
+    search: Option<String>,
+    limit: Option<i64>,
+}
+
+/// Whether the caller may ask anyone at all: never a support session, else
+/// the tenant's ops account or a holder of a to-do request grant. Whom it may
+/// ask is decided by Cedar in the store, inside the same transaction.
+pub(crate) fn may_ask(principal: &Principal) -> bool {
+    principal.support.is_none()
+        && (principal.is_tenant_ops || principal.scopes_for(Feature::TodoAssign).next().is_some())
+}
+
+fn ensure_may_ask(principal: &Principal) -> Result<(), RestError> {
+    if may_ask(principal) {
         return Ok(());
     }
     Err(RestError::from_kernel(
-        KernelError::forbidden("asking a colleague needs tenant-wide people management")
+        KernelError::forbidden("asking a colleague needs a to-do request grant")
             .with_code("todo_assign_forbidden"),
     ))
 }
@@ -68,16 +75,13 @@ pub(crate) async fn create_request(
     body: Result<Json<TodoAskRequest>, JsonRejection>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    authorize_assign(&principal)?;
+    ensure_may_ask(&principal)?;
     // The parser's own text can quote what was sent, so it never reaches the caller.
     let Json(body) = body.map_err(|_| {
         RestError::from_kernel(KernelError::validation(
             "the body must carry assignee_account_id and text, with an optional due_on and links",
         ))
     })?;
-    // No directory read reaches nobody, so every assignee is out of scope.
-    let assignee_scope = directory_read_scope(&principal)
-        .unwrap_or_else(|| BranchScope::Branches(Default::default()));
     let summary = state
         .store
         .create_request(CreateTodoRequestCommand {
@@ -86,13 +90,31 @@ pub(crate) async fn create_request(
             text: body.text,
             due_on: body.due_on,
             links: body.links,
-            assignee_scope,
             trace: TraceContext::generate(),
             occurred_at: OffsetDateTime::now_utc(),
         })
         .await
         .map_err(RestError::from_store)?;
     Ok((StatusCode::CREATED, Json(summary)).into_response())
+}
+
+pub(crate) async fn list_assignees(
+    State(state): State<TodoRestState>,
+    headers: HeaderMap,
+    Query(params): Query<ListAssigneesParams>,
+) -> Result<Response, RestError> {
+    let principal = principal_from_headers(&state, &headers).await?;
+    ensure_may_ask(&principal)?;
+    let page = state
+        .store
+        .list_assignees(ListTodoAssigneesQuery {
+            requester: principal.user_id,
+            search: params.search,
+            limit: params.limit.unwrap_or(20),
+        })
+        .await
+        .map_err(RestError::from_store)?;
+    Ok(Json(page).into_response())
 }
 
 pub(crate) async fn list_requests(

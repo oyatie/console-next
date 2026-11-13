@@ -3,12 +3,12 @@
 //! Owner-scoped CRUD shapes the Postgres adapter implements. Every command
 //! carries the caller bound from the authenticated principal — never from
 //! request input — mirroring the notifications recipient-scoping idiom. The one
-//! account named by input is a request's assignee, checked against the
-//! requester's directory scope.
+//! account named by input is a request's assignee, checked by Cedar against the
+//! requester's to-do request grants.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use console_kernel_core::{
-    AuditAction, AuditEvent, BranchScope, KernelError, Timestamp, TodoId, TraceContext, UserId,
+    AuditAction, AuditEvent, KernelError, Timestamp, TodoId, TraceContext, UserId,
 };
 use console_todos_domain::{RequestLink, RequestState, TodoRef};
 use serde::{Deserialize, Serialize};
@@ -98,8 +98,6 @@ pub struct CreateTodoRequestCommand {
     pub text: String,
     pub due_on: Option<Date>,
     pub links: Vec<RequestLink>,
-    /// The requester's people-directory scope; the assignee must sit inside it.
-    pub assignee_scope: BranchScope,
     pub trace: TraceContext,
     pub occurred_at: Timestamp,
 }
@@ -134,6 +132,27 @@ pub struct ReturnTodoCommand {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TodoPage {
     pub items: Vec<TodoSummary>,
+}
+
+/// The active accounts, other than the requester, it may ask.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListTodoAssigneesQuery {
+    pub requester: UserId,
+    /// Matched case-insensitively anywhere in the display name.
+    pub search: Option<String>,
+    pub limit: i64,
+}
+
+/// An account a requester may ask, by name only.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TodoAssignee {
+    pub account_id: UserId,
+    pub display_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TodoAssigneePage {
+    pub items: Vec<TodoAssignee>,
 }
 
 /// Build the audit event for an owner self-action on a todo.

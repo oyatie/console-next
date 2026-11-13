@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "TodoAssign", "scope": "any"}
+tags:
+  - me
+operationId: listMyTodoAssignees
+summary: List the colleagues the caller may ask for a follow-up
+description: >-
+  The active accounts of the caller's tenant, other than the caller, that an
+  ask from the caller accepts: those placed under a node where the caller's
+  to-do request grants permit asking (every account for the tenant's ops
+  account). Names only, ordered by display name then id. Who may read it is
+  who may ask; anyone else, and every support session, gets 403
+  todo_assign_forbidden.
+security:
+- bearerAuth: []
+parameters:
+- name: search
+  in: query
+  required: false
+  description: Case-insensitive match anywhere in the display name, after trimming.
+  schema:
+    type: string
+- name: limit
+  in: query
+  required: false
+  description: Page size (clamped server-side to 1..=50; default 20).
+  schema:
+    type: integer
+    format: int64
+responses:
+  '200':
+    description: The accounts the caller may ask.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TodoAssigneePage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '503':
+    description: JWT verification is not configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

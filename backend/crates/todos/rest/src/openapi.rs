@@ -53,6 +53,13 @@ const PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/me/todos/requests/assignees",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__me__todos__requests__assignees.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/todos/requests/{todoId}",
         operations: &[Operation {
             method: "delete",
@@ -98,6 +105,14 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "TodoAskRequest",
         body: include_str!("../openapi/schemas/TodoAskRequest.yaml"),
+    },
+    NamedYaml {
+        name: "TodoAssignee",
+        body: include_str!("../openapi/schemas/TodoAssignee.yaml"),
+    },
+    NamedYaml {
+        name: "TodoAssigneePage",
+        body: include_str!("../openapi/schemas/TodoAssigneePage.yaml"),
     },
     NamedYaml {
         name: "TodoPage",

@@ -9,6 +9,9 @@
       "get",
       "post"
     ],
+    "/api/v1/me/todos/requests/assignees": [
+      "get"
+    ],
     "/api/v1/me/todos/requests/{todoId}": [
       "delete"
     ],
@@ -27,6 +30,8 @@
     "ReturnTodoRequest",
     "SetTodoDoneRequest",
     "TodoAskRequest",
+    "TodoAssignee",
+    "TodoAssigneePage",
     "TodoPage",
     "TodoRef",
     "TodoRequestLink",

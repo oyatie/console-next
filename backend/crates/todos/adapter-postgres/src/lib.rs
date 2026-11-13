@@ -26,6 +26,7 @@ macro_rules! columns {
     };
 }
 
+mod assignees;
 mod requests;
 use requests::{lock_owned, not_found};
 

@@ -4,11 +4,16 @@
 //! these tests hold the schema YAML to the Rust bodies. Limit: an optional
 //! Rust field that the YAML never names is not caught.
 
+use std::collections::BTreeSet;
+
+use console_kernel_core::{BranchScope, OrgId, UserId};
+use console_platform_authz::access::{NodeKind, ScopeGrant};
+use console_platform_authz::{Feature, Principal, Role};
 use console_todos_domain::{REQUEST_LINK_KINDS, RequestLink};
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
-use super::{ReturnTodoRequest, TodoAskRequest};
+use super::{ReturnTodoRequest, TodoAskRequest, may_ask};
 
 const ASK: &str = include_str!("../../openapi/schemas/TodoAskRequest.yaml");
 const RETURN: &str = include_str!("../../openapi/schemas/ReturnTodoRequest.yaml");
@@ -100,4 +105,51 @@ fn the_return_body_is_the_published_one() {
 fn a_link_is_the_published_one_and_its_kinds_are_the_servers() {
     holds::<RequestLink>(LINK);
     assert_eq!(list(LINK, "enum:"), REQUEST_LINK_KINDS);
+}
+
+fn principal(roles: &[Role]) -> Principal {
+    Principal::new(
+        UserId::new(),
+        OrgId::new(),
+        roles.iter().copied().collect::<BTreeSet<_>>(),
+        BranchScope::All,
+    )
+}
+
+fn in_support(mut principal: Principal) -> Principal {
+    principal.support = Some(
+        serde_json::from_value(json!({
+            "active": true, "org_id": principal.org_id.as_uuid(), "operator_approved": true,
+            "tenant_approved": true, "session_id": "00000000-0000-4000-8000-000000000009",
+            "operator_label": "operator", "scope": ["org", "hr_basic"], "reveal_classes": [],
+        }))
+        .unwrap(),
+    );
+    principal
+}
+
+#[test]
+fn asking_needs_a_request_grant_or_the_ops_account_and_never_a_support_session() {
+    let ops = principal(&[]).with_tenant_ops(true);
+    assert!(may_ask(&ops), "the ops account asks with no grant");
+    for titles in [&[Role::SuperAdmin][..], &[Role::Admin]] {
+        assert!(
+            !may_ask(&principal(titles)),
+            "{titles:?} is a title, not a grant"
+        );
+    }
+    let holder = principal(&[]).with_scope_grants(vec![ScopeGrant {
+        feature: Feature::TodoAssign,
+        kind: NodeKind::Department,
+        id: *UserId::new().as_uuid(),
+    }]);
+    let hr = principal(&[]).with_scope_grants(vec![ScopeGrant {
+        feature: Feature::EmployeeDirectoryManage,
+        kind: NodeKind::Tenant,
+        id: *UserId::new().as_uuid(),
+    }]);
+    assert!(may_ask(&holder));
+    assert!(!may_ask(&hr), "another key's grant is not a request grant");
+    assert!(!may_ask(&in_support(holder)));
+    assert!(!may_ask(&in_support(ops)));
 }
