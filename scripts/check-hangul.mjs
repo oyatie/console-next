@@ -74,7 +74,7 @@ export function hangulDebt(sources, allow) {
     }
     return { ...entry, re };
   });
-  const counts = {}, problems = [], encodedProblems = [];
+  const counts = {}, problems = [], encodedProblems = [], lines = {};
   const add = category => { counts[category] = (counts[category] ?? 0) + 1; };
   for (const { file, text } of sources) {
     if ((file.startsWith(`${CATALOGS}/`) && /\.(?:ts|json)$/.test(file) && !isDebtTest(file)) || file === "packages/api/src/schema.d.ts") continue;
@@ -88,6 +88,7 @@ export function hangulDebt(sources, allow) {
       const blockComment = blockDepth > 0 || line.includes("/*");
       for (const marker of line.matchAll(/\/\*|\*\//g)) blockDepth = Math.max(0, blockDepth + (marker[0] === "/*" ? 1 : -1));
       if (!HANGUL.test(line)) return;
+      lines[file] = (lines[file] ?? 0) + 1;
       // Exceptions never weaken the existing zero-debt product-source rule.
       if (product) {
         const problem = `${file}:${i + 1}: literal outside the i18n catalogs: ${line.trim().slice(0, 100)}`;
@@ -111,7 +112,7 @@ export function hangulDebt(sources, allow) {
       if (HANGUL.test(code + comment)) add(category);
     });
   }
-  return { counts, problems, encodedProblems };
+  return { counts, problems, encodedProblems, lines };
 }
 
 export function repositoryHangul(base, allow) {
@@ -195,8 +196,14 @@ export function checkRepositoryHangul(base) {
     console.log(report.trimEnd());
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${report}\n`);
   }
+  // Exceptions split lines between buckets, so a file with a test exception may not gain Hangul lines at all.
+  const grown = allow.filter(entry => !canRefresh(entry)).flatMap(entry => {
+    const origin = copies.has(entry.path) ? undefined : origins.get(entry.path) ?? entry.path;
+    const was = origin ? before.lines[origin] ?? 0 : 0, is = now.lines[entry.path] ?? 0;
+    return is > was ? [`${entry.path}: ${is} Hangul lines, merge base ${was}; a file with a test exception cannot add Hangul lines`] : [];
+  });
   const existingEncoded = new Set(before.encodedProblems.map(problem => problem.replace(/:\d+:/, ":")));
-  return { ...now, baseline, problems: [...now.problems.filter(problem => !now.encodedProblems.includes(problem) || !existingEncoded.has(problem.replace(/:\d+:/, ":"))), ...checkHangulBaseline(now.counts, baseline, allow, approved)] };
+  return { ...now, baseline, problems: [...now.problems.filter(problem => !now.encodedProblems.includes(problem) || !existingEncoded.has(problem.replace(/:\d+:/, ":"))), ...checkHangulBaseline(now.counts, baseline, allow, approved), ...grown] };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

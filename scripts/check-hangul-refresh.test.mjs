@@ -6,6 +6,51 @@ import { fixture, ko } from "./test-fixtures/hangul.mjs";
 const official = { name: "official-labels", path: "backend/refdata/labels.tsv", pattern: '"[^"\\r\\n]*"', reason: "Official Korean labels.", source: "https://www.law.go.kr/" };
 const baselineFile = "scripts/copy-hangul-baseline.json";
 
+test("an existing test exception cannot trade double-counted fragments for new lines", t => {
+  const entry = { name: "synthetic-input", path: "packages/i18n/src/input.test.ts", pattern: '"[^"\\r\\n]*"', reason: "Korean input." };
+  const lines = Array.from({ length: 5 }, (_, i) => `test("${ko} ${i}"); // ${ko}`);
+  const f = fixture(t, { [entry.path]: lines.join("\n"), [baselineFile]: JSON.stringify({ allow: [entry] }) });
+  f.write(entry.path, [...lines.map(line => line.replace(ko, "English")), ...lines.map((_, i) => `test("${ko} added ${i}");`)].join("\n"));
+  const result = f.run();
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /10 Hangul lines, merge base 5; a file with a test exception cannot add Hangul lines/);
+});
+
+for (const operation of ["in place", "rename"]) {
+  test(`a new test exception cannot trade two-string fragments for new lines: ${operation}`, t => {
+    const results = [];
+    for (const existing of operation === "rename" ? [false, true] : [false]) {
+      const original = "backend/tests/input_tests.rs", target = operation === "rename" ? "backend/tests/moved_tests.rs" : original;
+      const entry = { name: "synthetic-input", path: original, pattern: '"[^"\\r\\n]*"', reason: "Korean input." };
+      const lines = Array.from({ length: 7 }, (_, i) => `assert_eq!(normalize_${i}("${ko}"), "${ko}");`);
+      const padding = Array.from({ length: 60 }, (_, i) => `assert_eq!(normalize_${i}("English input"), "English output");`);
+      const f = fixture(t, { [original]: [...lines, ...padding].join("\n") + "\n", [baselineFile]: JSON.stringify({ allow: existing ? [entry] : [] }) });
+      if (operation === "rename") f.git("mv", original, target);
+      f.write(target, [
+        ...lines.map(line => line.replace(`, "${ko}"`, ', "English"')),
+        ...padding,
+        ...lines.map((_, i) => `assert_eq!(error_${i}, E("${ko}"));`),
+      ].join("\n"));
+      f.allow([{ ...entry, name: "synthetic-added", path: target, pattern: '(?<=, )"[^"\\r\\n]*"|(?<=E\\()"[^"\\r\\n]*"' }]);
+      f.git("add", ".");
+      if (operation === "rename") assert.match(f.git("diff", "--name-status", "-M", "HEAD"), /R\d+\s+backend\/tests\/input_tests.rs\s+backend\/tests\/moved_tests.rs/);
+      results.push(f.run());
+    }
+    for (const result of results) {
+      assert.equal(result.status, 1, result.stdout);
+      assert.match(result.stderr, /14 Hangul lines, merge base 7; a file with a test exception cannot add Hangul lines/);
+    }
+  });
+}
+
+test("translating a comment on an excepted line remains a permitted reduction", t => {
+  const entry = { name: "synthetic-input", path: "packages/i18n/src/input.test.ts", pattern: '"[^"\\r\\n]*"', reason: "Korean input." };
+  const f = fixture(t, { [entry.path]: `test("${ko}"); // ${ko}`, [baselineFile]: JSON.stringify({ allow: [entry] }) });
+  f.write(entry.path, `test("${ko}"); // English comment`);
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+});
+
 for (const [covered, name] of [[true, "synthetic-a-copy"], [true, "synthetic-z-copy"], [false, "synthetic-a-copy"]]) {
   test(`different-pattern copy cannot claim two-string source lines: covered=${covered}, ${name}`, t => {
     const entry = { ...official, name: "synthetic-names", path: "backend/tests/names_tests.rs", source: undefined };
