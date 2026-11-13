@@ -2,9 +2,10 @@
 //!
 //! Owner scoping is enforced here in code (there is no per-person GUC): the
 //! caller passes the authenticated principal's `UserId`, and every query
-//! filters `owner_user_id`. RLS narrows to the tenant on top of that. A
-//! cross-user read or mutation therefore returns *nothing* (or NotFound),
-//! never another user's row.
+//! filters `owner_user_id`, or `assigned_by_user_id` on the requester's own
+//! request routes. RLS narrows to the tenant on top of that. A cross-user read
+//! or mutation therefore returns *nothing* (or NotFound), never another user's
+//! row.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use console_kernel_core::{ErrorKind, KernelError, Timestamp, TodoId, UserId};

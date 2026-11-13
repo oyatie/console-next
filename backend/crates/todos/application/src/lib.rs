@@ -1,8 +1,10 @@
 //! Todos application contracts.
 //!
 //! Owner-scoped CRUD shapes the Postgres adapter implements. Every command
-//! carries the owner bound from the authenticated principal — never from
-//! request input — mirroring the notifications recipient-scoping idiom.
+//! carries the caller bound from the authenticated principal — never from
+//! request input — mirroring the notifications recipient-scoping idiom. The one
+//! account named by input is a request's assignee, checked against the
+//! requester's directory scope.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use console_kernel_core::{

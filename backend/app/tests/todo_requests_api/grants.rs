@@ -94,3 +94,37 @@ async fn a_tenant_wide_hr_editor_asks_and_a_legal_entity_hr_editor_cannot(pool: 
     .unwrap();
     assert_eq!(asked, 0);
 }
+
+/// Each party reaches a live request only in its own role: the requester
+/// cannot finish, return or delete it as an owner, nor the assignee withdraw it.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn each_party_reaches_a_request_only_in_its_own_role(pool: PgPool) {
+    let o = office(pool).await;
+    let id = o.ask(&o.colleague).await;
+    let written = o.written().await;
+    let todo = format!("/api/v1/me/todos/{id}");
+    for (who, method, uri, body) in [
+        (
+            &o.admin,
+            "POST",
+            format!("{todo}/done"),
+            Some(json!({ "done": true })),
+        ),
+        (
+            &o.admin,
+            "POST",
+            format!("{todo}/return"),
+            Some(json!({ "note": "취소" })),
+        ),
+        (&o.admin, "DELETE", todo.clone(), None),
+        (&o.colleague, "DELETE", format!("{REQUESTS}/{id}"), None),
+    ] {
+        let (status, out) = who.call(method, &uri, body).await;
+        assert_eq!(
+            (status, code(&out)),
+            (StatusCode::NOT_FOUND, "not_found"),
+            "{method} {uri}"
+        );
+    }
+    assert_eq!(o.written().await, written, "nothing written or audited");
+}

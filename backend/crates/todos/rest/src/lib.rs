@@ -1,8 +1,10 @@
 //! Personal-todos REST API.
 //!
-//! Every route is person-scoped: the owner is taken from the authenticated
-//! principal (`/api/v1/me/...`), never from the request body or path, so one
-//! user can neither list nor mutate another user's todos. Mirrors the
+//! Every route is person-scoped: the caller is the authenticated principal
+//! (`/api/v1/me/...`), never taken from the request body or path. A route
+//! reaches only the caller's own todos, or the requests the caller made; the
+//! one input naming someone else is a request's assignee, which the request
+//! routes check against the caller's grant and directory scope. Mirrors the
 //! notification-center REST template.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
