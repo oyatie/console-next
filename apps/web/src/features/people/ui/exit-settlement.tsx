@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { retirementDate } from "../domain/employment";
 import { useId, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
+import { buttonClass } from "../../../ui/button/button-class";
 import { DateField } from "../../../ui/date/date-field";
 import { Field, TextInput } from "../../../ui/field/field";
 import { CommandError } from "../../../lib/react/command-error";
@@ -87,6 +90,13 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
     : c.exit_event_state === "SCHEDULED" ? t("exit.settlement.why.scheduled", { date: fmtDate(retirementDate(c.effective_exit_date)) })
     : c.exit_event_state === "APPLY_FAILED" ? t("exit.settlement.why.failed")
     : null;
+  const sourceLabels: Record<string, string> = {
+    average_wage_period_start: t("exit.settlement.periodStart"),
+    average_wage_period_end: t("exit.settlement.periodEnd"),
+    average_wage_calendar_days: t("exit.settlement.calendarDays"),
+    average_wage_total_won: t("exit.settlement.totalWage"),
+    monthly_ordinary_wage_won: t("exit.settlement.ordinaryWage"),
+  };
   const empty = ineligible ? [] : KEYS.filter((k) => !f[k]);
   // The server's missing-source list marks a field only once a draft was saved with figures: on a fresh form
   // every field is empty and nothing has been tried, so nothing is shown as wrong yet.
@@ -127,6 +137,16 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
       }}
 
     >
+      {Boolean(p?.missing_source_fields.length) && <section className={s.blocking} aria-label={t("exit.settlement.sources.title")}>
+        <h3 className={s.groupTitle}>{t("exit.settlement.sources.title")}</h3>
+        <ul className={s.lines}>
+          {p?.missing_source_fields.map(source => <li key={source}>
+            {source === "hire_date" ? <Link to="/people/$id" params={{ id: c.employee_id }} search={{ act: "fix:hire_date" }} className={buttonClass("ghost", { size: "sm" })}>{t("exit.settlement.sources.hire")}</Link>
+              : source === "statutory_rules" ? t("exit.settlement.sources.rules")
+              : <>{sourceLabels[source] ?? source} · {t("exit.settlement.sources.enter")}</>}
+          </li>)}
+        </ul>
+      </section>}
       {!ineligible && <fieldset className={s.group} disabled={locked}>
         <legend className={s.groupTitle}>{t("exit.settlement.period")}</legend>
         <div className={s.pair}>

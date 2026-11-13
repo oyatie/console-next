@@ -9,6 +9,7 @@
 .title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
 .subtitle { margin: 0; font-size: var(--text-sm); color: var(--steel); }
 .body { display: flex; flex: 1; flex-direction: column; gap: var(--space-5); min-height: 0; padding: var(--space-4) var(--space-5); overflow: auto; overscroll-behavior: contain; }
+.body[inert] { opacity: 0.5; }
 .foot { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--border); background: var(--canvas); }
 .consequence { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
 .consequence b, .consequence strong { font-weight: var(--fw-strong); }

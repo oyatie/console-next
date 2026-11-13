@@ -154,6 +154,7 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
       open
       onClose={onClose}
       pending={save.isPending}
+      error={save.error}
       size="lg"
       title={title}
       subtitle={<><span className={s.kicker}><Building2 size={14} aria-hidden /> {entityName(e)} · {spec.group} · {spec.label}</span>{!spec.empty && t("entityRecord.revise.now", { value: spec.current, date: fmtDate(since) })}</>}

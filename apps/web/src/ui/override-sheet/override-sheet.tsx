@@ -42,7 +42,11 @@ export function OverrideSheet(p: {
   onCommit: () => void;
   onClose: () => void;
   pending?: boolean;
+  error?: unknown;
 }) {
+  // A failed passkey assertion can be tried again; an authorization refusal cannot.
+  const refused = typeof p.error === "object" && p.error !== null && "status" in p.error && p.error.status === 403
+    && !("code" in p.error && p.error.code === "step_up_failed");
   const r = p.route;
   const binding = r.kind === "step-up" || r.kind === "sole-holder" ? r.binding : undefined;
   const owesPasskey = binding !== undefined && !binding.confirmedAt;
@@ -81,7 +85,7 @@ export function OverrideSheet(p: {
       <div className="form__actions">
         <Button disabled={p.pending} onClick={p.onClose}>{t("uiOverrideSheet.back")}</Button>
         {!p.reasonComplete && <span className={css.why}>{t("uiOverrideSheet.reasonMissing")}</span>}
-        <Button variant="primary" disabled={!p.reasonComplete || p.pending} aria-busy={p.pending || undefined} onClick={p.onCommit}>
+        <Button variant="primary" disabled={!p.reasonComplete || p.pending || refused} aria-busy={p.pending || undefined} onClick={p.onCommit}>
           {owesPasskey && <KeyRound aria-hidden="true" />}
           {label}
         </Button>

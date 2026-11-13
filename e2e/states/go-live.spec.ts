@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { expect } from "@playwright/test";
+import { test } from "../locale-fixture";
+import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { failure, id, screenAccess, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
@@ -10,7 +11,7 @@ import { homeSetupChecklist, homeSetupScreen } from "./home-setup";
 
 const states = ["loading", "failed", "refused", "blocked", "ready", "receipt", "legacy-receipt", "missing-receipt", "unknown-receipt"] as const;
 
-for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) for (const changedDigest of [false, true]) {
+for (const locale of LOCALES) for (const width of [1440, 390]) for (const changedDigest of [false, true]) {
   test(`go-live: failed refresh recovers with ${changedDigest ? "changed" : "same"} digest in ${locale} at ${width}px @ui-state`, async ({ page }, info) => {
     await loadCatalog(locale);
     i18n.set(locale);
@@ -80,9 +81,6 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) for
     } finally { await page.close(); fixture.release(); }
   });
 }
-
-test.beforeAll(() => loadCatalog("ko"));
-test.beforeEach(() => i18n.set("ko"));
 
 for (const state of states) for (const width of [1440, 390]) {
   test(`go-live: ${state} at ${width}px @ui-state`, async ({ page }, info) => {

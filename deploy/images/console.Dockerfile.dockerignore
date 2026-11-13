@@ -6,6 +6,7 @@
 !tsconfig.base.json
 !postcss.config.mjs
 !scripts/font-subsets.mjs
+!deploy/ci/api-probe.mjs
 !rustfmt.toml
 !packages/**
 !apps/web/**

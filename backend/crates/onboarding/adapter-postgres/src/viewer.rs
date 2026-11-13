@@ -36,12 +36,13 @@ pub(crate) fn apply_permissions(
 ) -> Result<(), PgOnboardingError> {
     let readable = subject.grants.iter().any(|g| {
         g.lines.iter().any(|line| {
-            line.levels.iter().any(|level| {
-                slice.allows(
-                    &format!("{}::{}", line.domain.as_str(), level.as_str()),
-                    &g.scope,
-                ) == Ok(true)
-            })
+            line.domain.reads()
+                && line.levels.iter().any(|level| {
+                    slice.allows(
+                        &format!("{}::{}", line.domain.as_str(), level.as_str()),
+                        &g.scope,
+                    ) == Ok(true)
+                })
         })
     }) || slice.allows("tenant::approve", &NodePath::tenant(subject.org))
         == Ok(true);

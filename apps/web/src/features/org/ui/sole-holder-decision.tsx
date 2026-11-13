@@ -54,7 +54,7 @@ export function SoleHolderDecisionCard({ d, offer, n, onNote, onReopen }: {
           : <CommandError error={run.error} own={code => code === "step_up_failed" ? t("orgChange.sole.stepUpFailed")
             : code === "lifecycle.refuse.stale_version" ? t("orgChange.sole.offerChanged") : undefined} />}
       </>}
-      reasonComplete commitLabel={t("orgChange.sole.approve")} pending={run.isPending}
+      reasonComplete commitLabel={t("orgChange.sole.approve")} pending={run.isPending} error={run.error}
       onCommit={() => run.mutate(undefined)} onClose={() => setOpen(false)} />
   </Card>;
 }

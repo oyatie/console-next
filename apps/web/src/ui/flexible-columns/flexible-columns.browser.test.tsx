@@ -2,9 +2,9 @@
 import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { firefox, expect as element } from "@playwright/test";
+import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
+import { browserEngine, browserTestOptimizeDeps, type Browser, type Page } from "../../lib/browser-test";
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -89,7 +89,7 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
+  browser = await browserEngine().launch();
   page = await browser.newPage();
   await page.route("**/columns-test*", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Columns</title><div id="root"></div><script type="module" src="/flexible-columns-test.js"></script></html>' }));
 }, 60_000);
