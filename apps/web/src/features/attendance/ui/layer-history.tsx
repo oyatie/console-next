@@ -1,31 +1,33 @@
-import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
-import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { EnumValue } from "../../../ui/enum-value";
 import { ATTENDANCE_LAYER_STATE } from "../../../lib/labels";
 import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
-import { layersQuery, type Layer, type ScopeKind } from "../api";
+import type { Layer } from "../api";
 import { dateText } from "../present";
+import s from "./attendance.module.css";
 
 /**
  * Every layer this scope ever held, newest first: scheduled · in effect · past · cancelled, who assigned it and when, and
  * the one verb a layer has — "cancel" until its start date. After that it stays in history and a new layer replaces it.
  */
-export function LayerHistory({ kind, id, onCancel }: { kind: ScopeKind; id: string; onCancel: (l: Layer) => void }) {
-  const q = useQuery(layersQuery(kind, id));
+export function LayerHistory({ layers, disabled, onCancel }: { layers: Layer[]; disabled?: boolean; onCancel: (l: Layer) => void }) {
   const period = (l: Layer) =>
     l.effective_to ? t("attendanceSchedule.history.range", { from: dateText(l.effective_from), to: dateText(l.effective_to) }) : t("attendanceSchedule.history.from", { from: dateText(l.effective_from) });
   return (
     <Card title={t("attendanceSchedule.history.title")} flush meta={t("attendanceSchedule.history.rule")}>
-      <QueryState q={q} empty={(d) => (d.items.length ? null : <EmptyState title={t("attendanceSchedule.history.none")} reason={t("attendanceSchedule.history.none.reason")} />)}>
-        {(d) => (
+      <div className={s.historyBody}>
+        {/* Keep the empty state's intrinsic height when the first row replaces it. */}
+        <div className={layers.length ? s.historyReserve : undefined} aria-hidden={layers.length > 0 || undefined}>
+          <EmptyState title={t("attendanceSchedule.history.none")} reason={t("attendanceSchedule.history.none.reason")} />
+        </div>
+        {layers.length > 0 && (
           <Table
             label={t("attendanceSchedule.history.title")}
-            rows={d.items}
+            rows={layers}
             rowId={(l) => l.id}
             columns={[
               { header: t("attendanceSchedule.history.col.pattern"), cell: (l) => <strong>{l.pattern_name}</strong> },
@@ -36,12 +38,12 @@ export function LayerHistory({ kind, id, onCancel }: { kind: ScopeKind; id: stri
               {
                 header: t("attendanceSchedule.history.col.actions"),
                 fit: true,
-                cell: (l) => (l.state === "SCHEDULED" ? <Button size="sm" variant="ghost-danger" onClick={() => onCancel(l)} aria-label={t("attendanceSchedule.history.cancelOne", { pattern: l.pattern_name })}>{t("attendanceSchedule.history.cancel")}</Button> : null),
+                cell: (l) => (l.state === "SCHEDULED" ? <Button size="sm" variant="ghost-danger" disabled={disabled} onClick={() => onCancel(l)} aria-label={t("attendanceSchedule.history.cancelOne", { pattern: l.pattern_name })}>{t("attendanceSchedule.history.cancel")}</Button> : null),
               },
             ]}
           />
         )}
-      </QueryState>
+      </div>
     </Card>
   );
 }

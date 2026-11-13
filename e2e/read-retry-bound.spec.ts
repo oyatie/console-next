@@ -11,6 +11,7 @@ for (const [index, path] of routes.entries()) {
   test(`failed reads stay bounded for 15 s on ${path}`, { tag: ["@regression", "@negative"] }, async ({ browser }) => {
     const page = await soloTenant(browser, `retry-bound-${index}`, "읽기복구그룹");
     const counts = new Map<string, number>();
+    const references = new Map<string, string>();
     await page.route("**/api/**", async (route) => {
       const request = route.request();
       const url = new URL(request.url());
@@ -19,7 +20,8 @@ for (const [index, path] of routes.entries()) {
       url.searchParams.sort();
       const key = url.pathname + url.search;
       counts.set(key, (counts.get(key) ?? 0) + 1);
-      await route.fulfill({ status: 503, contentType: "application/json", headers: { "operation-id": reference }, body: JSON.stringify({ error: { code: "service_unavailable", message: "일시적으로 불러올 수 없습니다." } }) });
+      if (!references.has(key)) references.set(key, `${reference}-${references.size}`);
+      await route.fulfill({ status: 503, contentType: "application/json", headers: { "operation-id": references.get(key)! }, body: JSON.stringify({ error: { code: "service_unavailable", message: "일시적으로 불러올 수 없습니다." } }) });
     });
     await page.goto(path);
     await page.waitForTimeout(15_000);
@@ -29,17 +31,13 @@ for (const [index, path] of routes.entries()) {
     await expect(failed).toContainText(reference);
     await expect(failed).toContainText("불러오지 못했습니다");
     await expect(failed.getByRole("button", { name: "다시 불러오기", exact: true })).toBeVisible();
-    // Recovery is a person's action, with the same failure reference available to support.
+    // 87ccb7560a retired the phase-band error; retry belongs to the read named by this alert.
+    const operationId = await failed.locator("[data-support-reference]").getAttribute("data-support-reference");
+    const key = [...references].find(([, id]) => id === operationId)?.[0];
+    expect(key, "the displayed reference identifies the failed read").toBeDefined();
     counts.clear();
     await failed.getByRole("button", { name: "다시 불러오기", exact: true }).click();
-    await expect.poll(() => [...counts].filter(([key]) => key.startsWith(path === "/" ? "/api/v1/me/action-inbox" : "/api/v1/onboarding/checklist")).reduce((sum, [, count]) => sum + count, 0)).toBe(1);
-    if (path === "/") {
-      const phase = page.getByRole("main").getByRole("alert").filter({ hasText: reference }).first();
-      await expect(phase).toContainText(reference);
-      counts.clear();
-      await phase.getByRole("button", { name: "다시 불러오기", exact: true }).click();
-      await expect.poll(() => [...counts].filter(([key]) => key.startsWith("/api/v1/onboarding/checklist")).reduce((sum, [, count]) => sum + count, 0)).toBe(1);
-    }
+    await expect.poll(() => counts.get(key!) ?? 0, `retry ${key}`).toBe(1);
     await page.context().close();
   });
 }

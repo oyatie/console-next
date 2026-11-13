@@ -29,6 +29,10 @@ pub(super) const MESSAGES: &[(&str, &str)] = &[
     ),
     // Exit guard refusals
     (
+        "No usable severance service rule covers the exit date. Request a statutory register review.",
+        "퇴직일에 적용할 퇴직금 근속 기준을 확인할 수 없습니다. 법정 기준 대장 검토를 요청하십시오.",
+    ),
+    (
         "dismissal is blocked during a protected leave period",
         "해고 보호기간에는 해고할 수 없습니다.",
     ),

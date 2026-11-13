@@ -12,6 +12,8 @@ mod statutory_component;
 mod statutory_rates;
 pub use premium_bands::{health_premium_band_on, health_premium_bands};
 pub use statutory_rates::{reference_value, statutory_contribution_rates};
+mod severance;
+pub use severance::SeverancePayInput;
 pub mod severance_window;
 
 pub use minimum_wage::*;
@@ -262,30 +264,6 @@ pub struct PayrollDraft {
     pub lines: Vec<DeductionLine>,
     pub total_employee_deductions_won: i64,
     pub net_pay_won: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SeverancePayInput {
-    pub hire_date: Date,
-    pub exit_date: Date,
-    pub average_wage_period_start: Date,
-    pub average_wage_period_end: Date,
-    pub average_wage_calendar_days: i64,
-    pub average_wage_total_won: i64,
-    /// 1-day ordinary wage in won.
-    ///
-    /// MANDATORY (not `Option`) by design: Labor Standards Act Enforcement Decree
-    /// Article 2(2) requires
-    /// severance to use the HIGHER of the average wage and the ordinary wage, so
-    /// every caller must supply this. A plain field makes omission a *compile*
-    /// error rather than a silent average-wage-only fall back — which is exactly
-    /// the under-calculation bug that hurts the absence→exit population whose
-    /// depressed 3-month window yields an artificially low average wage. The
-    /// caller is responsible for deriving this daily figure from the monthly
-    /// ordinary wage (e.g. via the 209h standard-hours rule); the kernel keeps
-    /// that policy out.
-    /// A non-positive value is rejected in `build_severance_pay_draft`.
-    pub ordinary_daily_wage_won: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1538,13 +1516,22 @@ fn deduction_totals(lines: &[DeductionLine], gross_won: i64) -> Result<(i64, i64
     Ok((total, net))
 }
 
+/// `None` is a statutory service exclusion, decided before requesting wage sources.
 pub fn build_severance_pay_draft(
     input: SeverancePayInput,
-) -> Result<SeverancePayDraft, KernelError> {
+    minimum_service_years: i32,
+) -> Result<Option<SeverancePayDraft>, KernelError> {
     if input.exit_date < input.hire_date {
         return Err(KernelError::validation(
             "exit date must be on or after hire date",
         ));
+    }
+    if !severance_window::completes_service_years(
+        input.service_start_date,
+        input.exit_date,
+        minimum_service_years,
+    )? {
+        return Ok(None);
     }
     if input.average_wage_period_end < input.average_wage_period_start {
         return Err(KernelError::validation(
@@ -1582,11 +1569,6 @@ pub fn build_severance_pay_draft(
             .saturating_sub(input.hire_date.to_julian_day())
             + 1,
     );
-    if service_days < 365 {
-        return Err(KernelError::validation(
-            "statutory severance pay requires at least one year of service",
-        ));
-    }
 
     let average_daily_wage_milliwon = checked_i128_to_i64(
         checked_mul_i128(input.average_wage_total_won, 1_000)?
@@ -1633,7 +1615,7 @@ pub fn build_severance_pay_draft(
             / 365,
     )?;
 
-    Ok(SeverancePayDraft {
+    Ok(Some(SeverancePayDraft {
         hire_date: input.hire_date,
         exit_date: input.exit_date,
         service_days,
@@ -1647,7 +1629,7 @@ pub fn build_severance_pay_draft(
         statutory_30_day_wage_won,
         severance_pay_won,
         source: moel_retirement_pay_source(),
-    })
+    }))
 }
 
 pub fn validate_release_gate(input: &PayrollReleaseGateInput) -> Result<(), KernelError> {
@@ -2540,15 +2522,20 @@ mod tests {
         // Ordinary daily wage (90,000) is BELOW the average daily wage (100,000),
         // so the average-wage path governs and the historical figures must be
         // byte-for-byte unchanged.
-        let draft = build_severance_pay_draft(SeverancePayInput {
-            hire_date: date!(2024 - 01 - 01),
-            exit_date: date!(2026 - 06 - 30),
-            average_wage_period_start: date!(2026 - 04 - 01),
-            average_wage_period_end: date!(2026 - 06 - 30),
-            average_wage_calendar_days: 91,
-            average_wage_total_won: 9_100_000,
-            ordinary_daily_wage_won: 90_000,
-        })
+        let draft = build_severance_pay_draft(
+            SeverancePayInput {
+                hire_date: date!(2024 - 01 - 01),
+                service_start_date: date!(2024 - 01 - 01),
+                exit_date: date!(2026 - 06 - 30),
+                average_wage_period_start: date!(2026 - 04 - 01),
+                average_wage_period_end: date!(2026 - 06 - 30),
+                average_wage_calendar_days: 91,
+                average_wage_total_won: 9_100_000,
+                ordinary_daily_wage_won: 90_000,
+            },
+            1,
+        )
+        .unwrap()
         .unwrap();
 
         assert_eq!(draft.service_days, 912);
@@ -2566,15 +2553,20 @@ mod tests {
         // the average daily wage collapses to 50,000/day. The employee's ordinary
         // daily wage is still 100,000. The ordinary-wage floor must govern and
         // roughly double the severance versus the average-wage-only figure.
-        let draft = build_severance_pay_draft(SeverancePayInput {
-            hire_date: date!(2024 - 01 - 01),
-            exit_date: date!(2026 - 06 - 30),
-            average_wage_period_start: date!(2026 - 04 - 01),
-            average_wage_period_end: date!(2026 - 06 - 30),
-            average_wage_calendar_days: 91,
-            average_wage_total_won: 4_550_000, // depressed window: 50,000/day
-            ordinary_daily_wage_won: 100_000,
-        })
+        let draft = build_severance_pay_draft(
+            SeverancePayInput {
+                hire_date: date!(2024 - 01 - 01),
+                service_start_date: date!(2024 - 01 - 01),
+                exit_date: date!(2026 - 06 - 30),
+                average_wage_period_start: date!(2026 - 04 - 01),
+                average_wage_period_end: date!(2026 - 06 - 30),
+                average_wage_calendar_days: 91,
+                average_wage_total_won: 4_550_000, // depressed window: 50,000/day
+                ordinary_daily_wage_won: 100_000,
+            },
+            1,
+        )
+        .unwrap()
         .unwrap();
 
         // Average path would have produced only the depressed figure.
@@ -2593,43 +2585,104 @@ mod tests {
     }
 
     #[test]
-    fn severance_pay_refuses_short_service_or_missing_wage_basis() {
-        let short_service = build_severance_pay_draft(SeverancePayInput {
-            hire_date: date!(2026 - 01 - 01),
-            exit_date: date!(2026 - 06 - 30),
-            average_wage_period_start: date!(2026 - 04 - 01),
-            average_wage_period_end: date!(2026 - 06 - 30),
-            average_wage_calendar_days: 91,
-            average_wage_total_won: 9_100_000,
-            ordinary_daily_wage_won: 100_000,
-        });
-        assert!(short_service.is_err());
+    fn severance_pay_excludes_short_service_and_refuses_missing_wage_basis() {
+        let short_service = build_severance_pay_draft(
+            SeverancePayInput {
+                hire_date: date!(2026 - 01 - 01),
+                service_start_date: date!(2026 - 01 - 01),
+                exit_date: date!(2026 - 06 - 30),
+                average_wage_period_start: date!(2026 - 04 - 01),
+                average_wage_period_end: date!(2026 - 06 - 30),
+                average_wage_calendar_days: 91,
+                average_wage_total_won: 9_100_000,
+                ordinary_daily_wage_won: 100_000,
+            },
+            1,
+        );
+        assert!(short_service.unwrap().is_none());
 
-        let missing_wage = build_severance_pay_draft(SeverancePayInput {
-            hire_date: date!(2024 - 01 - 01),
-            exit_date: date!(2026 - 06 - 30),
-            average_wage_period_start: date!(2026 - 04 - 01),
-            average_wage_period_end: date!(2026 - 06 - 30),
-            average_wage_calendar_days: 91,
-            average_wage_total_won: 0,
-            ordinary_daily_wage_won: 100_000,
-        });
+        let missing_wage = build_severance_pay_draft(
+            SeverancePayInput {
+                hire_date: date!(2024 - 01 - 01),
+                service_start_date: date!(2024 - 01 - 01),
+                exit_date: date!(2026 - 06 - 30),
+                average_wage_period_start: date!(2026 - 04 - 01),
+                average_wage_period_end: date!(2026 - 06 - 30),
+                average_wage_calendar_days: 91,
+                average_wage_total_won: 0,
+                ordinary_daily_wage_won: 100_000,
+            },
+            1,
+        );
         assert!(missing_wage.is_err());
+    }
+
+    #[test]
+    fn severance_service_decision_precedes_wage_collection_at_calendar_boundaries() {
+        for (hire_date, exit_date, eligible) in [
+            (date!(2025 - 01 - 01), date!(2025 - 12 - 30), false), // 364 inclusive days
+            (date!(2025 - 01 - 01), date!(2025 - 12 - 31), true),  // 365 inclusive days
+            (date!(2023 - 03 - 01), date!(2024 - 02 - 28), false), // leap year: 365 is short
+            (date!(2023 - 03 - 01), date!(2024 - 02 - 29), true),
+            (date!(2024 - 02 - 29), date!(2025 - 02 - 28), true),
+            (date!(2026 - 10 - 13), date!(2026 - 10 - 13), false),
+        ] {
+            let result = build_severance_pay_draft(
+                SeverancePayInput {
+                    hire_date,
+                    service_start_date: hire_date,
+                    exit_date,
+                    average_wage_period_start: exit_date,
+                    average_wage_period_end: exit_date,
+                    average_wage_calendar_days: 1,
+                    average_wage_total_won: 100_000,
+                    ordinary_daily_wage_won: 100_000,
+                },
+                1,
+            )
+            .unwrap();
+            assert_eq!(result.is_some(), eligible, "{hire_date}..={exit_date}");
+            if let Some(draft) = result {
+                assert!(draft.severance_pay_won > 0);
+            }
+        }
+        let day = date!(2026 - 10 - 13);
+        assert!(
+            build_severance_pay_draft(
+                SeverancePayInput {
+                    hire_date: day,
+                    service_start_date: day,
+                    exit_date: day,
+                    average_wage_period_start: day,
+                    average_wage_period_end: day,
+                    average_wage_calendar_days: 0,
+                    average_wage_total_won: 0,
+                    ordinary_daily_wage_won: 0,
+                },
+                1
+            )
+            .unwrap()
+            .is_none()
+        );
     }
 
     #[test]
     fn severance_pay_refuses_missing_ordinary_wage_floor() {
         // FAIL LOUD: absent/non-positive ordinary wage must be rejected, never
         // silently degraded to average-wage-only.
-        let missing_ordinary = build_severance_pay_draft(SeverancePayInput {
-            hire_date: date!(2024 - 01 - 01),
-            exit_date: date!(2026 - 06 - 30),
-            average_wage_period_start: date!(2026 - 04 - 01),
-            average_wage_period_end: date!(2026 - 06 - 30),
-            average_wage_calendar_days: 91,
-            average_wage_total_won: 9_100_000,
-            ordinary_daily_wage_won: 0,
-        });
+        let missing_ordinary = build_severance_pay_draft(
+            SeverancePayInput {
+                hire_date: date!(2024 - 01 - 01),
+                service_start_date: date!(2024 - 01 - 01),
+                exit_date: date!(2026 - 06 - 30),
+                average_wage_period_start: date!(2026 - 04 - 01),
+                average_wage_period_end: date!(2026 - 06 - 30),
+                average_wage_calendar_days: 91,
+                average_wage_total_won: 9_100_000,
+                ordinary_daily_wage_won: 0,
+            },
+            1,
+        );
         assert!(missing_ordinary.is_err());
         assert!(format!("{:?}", missing_ordinary.err().unwrap()).contains("ordinary daily wage"));
     }

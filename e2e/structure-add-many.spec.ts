@@ -1,8 +1,12 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { pickKind, registerEntity, registerWorkplace, typeAddress } from "./setup-flows";
 import { box, leaveScreen, revealUnit } from "./structure-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 async function emptyEntity(browser: Browser, slug: string, width = 1280, height = 720) {
   const vendor = await vendorPage(browser);
@@ -15,7 +19,7 @@ async function emptyEntity(browser: Browser, slug: string, width = 1280, height 
   await page.setViewportSize({ width, height });
   await page.locator("html").evaluate((el) => { el.dataset.theme = "light"; });
   await go(page, "/org");
-  await page.getByRole("link", { name: "법인 추가" }).click();
+  await page.getByRole("link", { name: t("structure.first.addEntity"), exact: true }).click();
   await registerEntity(page, "자녀추가");
   return page;
 }
@@ -31,7 +35,7 @@ async function furtherWorkplace(page: Page, name: string) {
   await expect(sheet).toBeHidden();
 }
 
-for (const [width, height] of [[1280, 720], [1920, 1080]]) {
+for (const [width, height] of [[1280, 720], [1440, 900], [1920, 1080]]) {
   for (const view of ["chart", "outline"] as const) {
     test(`${view} adds three siblings at every level by mouse at ${width}×${height}`, { tag: "@org" }, async ({ browser }) => {
       const page = await emptyEntity(browser, `add-many-${view}-${width}`, width, height);
@@ -106,8 +110,12 @@ for (const [width, height] of [[1280, 720], [1920, 1080]]) {
       // The list has the same visible per-row add, even with existing children.
       await page.getByRole("button", { name: "목록", exact: true }).click();
       const grid = page.getByRole("grid", { name: "조직 구조 목록" });
-      for (const [name, label] of [[entity, "사업장 추가"], ["사업장1", "부서 추가"], ["부서1", "하위 부서 추가"]] as const)
-        await expect(grid.getByRole("row", { name: new RegExp(name) }).filter({ has: page.getByText(name, { exact: true }) }).getByRole(name === entity ? "link" : "button", { name: label, exact: true })).toBeVisible();
+      for (const [name, label] of [[entity, "사업장 추가"], ["사업장1", "부서 추가"], ["부서1", "하위 부서 추가"]] as const) {
+        const row = grid.locator("[data-row-id]").filter({ has: page.getByRole("rowheader").getByText(name, { exact: true }) });
+        await row.getByRole("rowheader").scrollIntoViewIfNeeded();
+        await expect(row.getByRole("rowheader").getByText(name, { exact: true })).toBeInViewport({ ratio: 1 });
+        await expect(row.getByRole(name === entity ? "link" : "button", { name: label, exact: true })).toBeInViewport({ ratio: 1 });
+      }
     });
   }
 }
