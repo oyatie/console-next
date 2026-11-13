@@ -3,6 +3,7 @@
 //! sheets (rows × columns box, non-empty cells). The caps are registry keys
 //! (`import.*`, platform switches); the shell resolves them and passes them in.
 
+mod dimension;
 pub mod inflate;
 pub mod zip;
 
@@ -73,3 +74,6 @@ impl CellBudget {
 #[cfg(test)]
 #[path = "guard_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod dimension_tests;
