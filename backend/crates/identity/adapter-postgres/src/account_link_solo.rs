@@ -20,6 +20,30 @@ pub async fn eligibility_in_tx(
     actor: UserId,
     target: UserId,
 ) -> Result<bool, KernelError> {
+    let facts = facts_in_tx(tx, org, actor, target).await?;
+    decide(org, actor, facts)
+}
+
+pub(crate) fn decide(
+    org: OrgId,
+    actor: UserId,
+    facts: account_link_solo::Facts,
+) -> Result<bool, KernelError> {
+    account_link_solo::decide(
+        &actor.to_string(),
+        &org.to_string(),
+        &org.to_string(),
+        facts,
+    )
+    .map_err(KernelError::internal)
+}
+
+pub(crate) async fn facts_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: UserId,
+    target: UserId,
+) -> Result<account_link_solo::Facts, KernelError> {
     let account = load_facts(tx, org, *actor.as_uuid()).await?;
     let (subject, _) = account.access_permissions(org, *actor.as_uuid())?;
     let holds_permission = account
@@ -38,17 +62,8 @@ pub async fn eligibility_in_tx(
         holds_permission,
         other_holder: false,
     };
-    let decide = |facts| {
-        account_link_solo::decide(
-            &actor.to_string(),
-            &org.to_string(),
-            &org.to_string(),
-            facts,
-        )
-        .map_err(KernelError::internal)
-    };
-    if !decide(facts)? {
-        return Ok(false);
+    if !decide(org, actor, facts)? {
+        return Ok(facts);
     }
     // The set-based resolver uses one query, including every active operations account.
     facts.other_holder = !PgHolderResolver {
@@ -63,5 +78,5 @@ pub async fn eligibility_in_tx(
     .resolve_at_most(1)
     .await?
     .is_empty();
-    decide(facts)
+    Ok(facts)
 }
