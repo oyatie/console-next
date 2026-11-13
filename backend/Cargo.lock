@@ -4087,6 +4087,8 @@ dependencies = [
  "console-kernel-core",
  "serde",
  "serde_json",
+ "time",
+ "uuid",
 ]
 
 [[package]]
