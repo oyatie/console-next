@@ -53,8 +53,9 @@ impl PgTodoStore {
     /// Ask a colleague for a follow-up (audited as `todo.request`, naming only
     /// whom and by when). The assignee is an active account of this tenant
     /// placed under a node where Cedar permits the requester's `todo_assign`,
-    /// decided in this transaction and held `FOR SHARE`, so neither a revoked
-    /// grant nor a concurrent deactivation slips between check and insert.
+    /// decided in this transaction. The assignee's row is held `FOR SHARE`, so
+    /// its deactivation cannot slip between check and insert; the requester's
+    /// grants are decided as of the moment they are loaded here.
     pub async fn create_request(
         &self,
         command: CreateTodoRequestCommand,
