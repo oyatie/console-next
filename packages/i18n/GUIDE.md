@@ -27,11 +27,20 @@ to print candidate and merge-base counts.
 `scripts/copy-hangul-baseline.json` stores only named exceptions, sorted by name.
 Each entry needs an exact path, regex pattern, and reason. Official reference labels
 in refdata or migrations also require a `source` URL identifying the statute or publishing
-agency (or the official translation dataset). Synthetic Korean-input test fixtures may be
-named separately. Matched fragments count as `allowed.<name>`; comments and unmatched
+agency (or the official translation dataset). Publishers are restricted to law.go.kr,
+nts.go.kr, nps.or.kr, nhis.or.kr, comwel.or.kr, ei.go.kr, kosis.kr and juso.go.kr.
+Two existing datasets also need their official publishers: [MOIS administrative codes](https://www.code.go.kr/stdcode/regCodeL.do)
+use code.go.kr; the country migration cites [Unicode CLDR](https://github.com/unicode-org/cldr-json/tree/48.0.0/cldr-json/cldr-localenames-full/main),
+so only that GitHub repository is accepted. Add a cited publisher reason here before extending the list.
+Test-like filenames under migrations or refdata still require an official source.
+Synthetic Korean-input test fixtures may be named separately outside `e2e/` and `apps/web/`;
+UI tests use catalog lookups and cannot declare exceptions. Whole-line regexes and matches
+are refused. Matched fragments count as `allowed.<name>`; comments and unmatched
 fragments remain debt. Existing definitions cannot be widened or edited, and unused entries
 must be removed. A new exception may cover a new file, or reclassify existing labels without
-increasing their count. Existing exception counts still cannot grow. Ordinary translated UI
+increasing their count. Git renames and copies retain their original path's ceiling.
+Every added or changed definition is printed in the gate output and CI step summary,
+including definitions the gate refuses. Existing exception counts still cannot grow. Ordinary translated UI
 assertions, comments, and test names remain debt.
 
 ## Ids

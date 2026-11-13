@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { isUtf8 } from "node:buffer";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,15 @@ import { atBase, qualityRef } from "./quality/base.mjs";
 export const HANGUL = /\p{Script=Hangul}/u;
 const CATALOGS = "packages/i18n/src/catalogs";
 const HANGUL_BASELINE = "scripts/copy-hangul-baseline.json";
+const OFFICIAL_DOMAINS = ["law.go.kr", "nts.go.kr", "nps.or.kr", "nhis.or.kr", "comwel.or.kr", "ei.go.kr", "kosis.kr", "juso.go.kr", "code.go.kr"];
+// The existing country catalog cites Unicode's official CLDR dataset; other GitHub repositories are not publishers.
+const officialSource = source => {
+  if (!URL.canParse(source)) return false;
+  const url = new URL(source);
+  return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password
+    && (OFFICIAL_DOMAINS.some(domain => url.hostname === domain || url.hostname.endsWith(`.${domain}`))
+      || (url.hostname === "github.com" && url.pathname.startsWith("/unicode-org/cldr-json/")));
+};
 const isDebtTest = file => /(?:^|\/)(?:tests?|__tests__)(?:\/|\.)|(?:[._-](?:tests?|spec))\.[^.]+$/.test(file);
 const hangulCategory = file => {
   if (/(?:^|\/)migrations\//.test(file)) return "migrations";
@@ -24,14 +33,19 @@ const hangulCategory = file => {
 export function hangulDebt(sources, allow) {
   const names = new Set();
   const rules = allow.map(entry => {
+    if (/^(?:e2e|apps\/web)\//.test(entry.path)) throw new Error(`${entry.name}: UI tests cannot declare a Hangul exception; use catalog lookups`);
     if (!entry.name?.trim() || names.has(entry.name) || !entry.reason?.trim()
       || !(isDebtTest(entry.path) || /(?:^|\/)(?:migrations|refdata)\//.test(entry.path))) throw new Error("Hangul exception needs a unique name, eligible path and reason");
     names.add(entry.name);
     if (entry.name !== [...names].sort().at(-1)) throw new Error("Hangul exceptions must be sorted by name");
-    if (!isDebtTest(entry.path) || entry.name.startsWith("official-")) {
-      if (!URL.canParse(entry.source) || !["http:", "https:"].includes(new URL(entry.source).protocol)) throw new Error(`${entry.name}: official Hangul exception needs a source URL`);
+    if (/(?:^|\/)(?:migrations|refdata)\//.test(entry.path) || entry.name.startsWith("official-")) {
+      if (!officialSource(entry.source)) throw new Error(`${entry.name}: official Hangul exception needs an allow-listed publisher source URL`);
     }
-    return { ...entry, re: new RegExp(entry.pattern, "gu") };
+    const re = new RegExp(entry.pattern, "gu");
+    for (const probe of ["", "x", "English words", "\u1100"]) {
+      if ([...probe.matchAll(re)].some(match => match[0] === probe)) throw new Error(`${entry.name}: whole-line Hangul exception patterns are forbidden`);
+    }
+    return { ...entry, re };
   });
   const counts = {}, problems = [];
   const add = category => { counts[category] = (counts[category] ?? 0) + 1; };
@@ -55,6 +69,7 @@ export function hangulDebt(sources, allow) {
         let used = false;
         code = code.replace(entry.re, match => {
           if (!HANGUL.test(match)) return match;
+          if (match.trim() === code.trim()) throw new Error(`${entry.name}: whole-line Hangul exception match at ${file}:${i + 1}`);
           used = true;
           return "";
         });
@@ -112,11 +127,20 @@ export function checkHangulBaseline(counts, baseline, allow = [], previous = all
 export function checkRepositoryHangul(base) {
   const allow = JSON.parse(readFileSync(HANGUL_BASELINE, "utf8")).allow;
   const previous = JSON.parse(atBase(process.cwd(), base, HANGUL_BASELINE) ?? '{"allow":[]}').allow;
+  const changes = allow.filter(entry => !previous.some(old => JSON.stringify(old) === JSON.stringify(entry)));
+  if (changes.length) {
+    const report = `Hangul exception additions/changes:\n${changes.map(entry => JSON.stringify(entry)).join("\n")}\n`;
+    console.log(report.trimEnd());
+    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n<pre>${report.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</pre>\n`);
+  }
+  const moved = execFileSync("git", ["diff", "--name-status", "-z", "-M", "-C", "--find-copies-harder", "--diff-filter=RC", base], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }).split("\0").filter(Boolean);
+  const origins = new Map();
+  for (let i = 0; i < moved.length; i += 3) origins.set(moved[i + 2], moved[i + 1]);
   const now = repositoryHangul(undefined, allow);
   // Apply the same exceptions on both trees so existing labels can be reclassified without blessing growth.
-  const baseline = repositoryHangul(base, allow).counts;
+  const baseline = repositoryHangul(base, allow.map(entry => ({ ...entry, path: origins.get(entry.path) ?? entry.path }))).counts;
   const files = new Set(execFileSync("git", ["ls-tree", "-r", "--name-only", "-z", base], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }).split("\0"));
-  const added = new Set(allow.filter(entry => !files.has(entry.path)).map(entry => entry.path));
+  const added = new Set(allow.filter(entry => !files.has(entry.path) && !origins.has(entry.path)).map(entry => entry.path));
   return { ...now, baseline, problems: [...now.problems, ...checkHangulBaseline(now.counts, baseline, allow, previous, added)] };
 }
 

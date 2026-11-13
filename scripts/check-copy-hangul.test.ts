@@ -109,3 +109,35 @@ test("reclassifying existing labels passes but adding more labels to that file f
 test("non-Hangul exception matches never increment allowed counts", () => {
   expect(hangulDebt([{ file: allow[0]!.path, text: `let name = "English"; // ${ko}` }], allow).counts).toEqual({ rustTests: 1 });
 });
+
+test("path eligibility refuses product code even with a valid official source", () => {
+  expect(() => hangulDebt([], [{ ...official, path: "backend/src/main.rs" }])).toThrow(/eligible path/);
+});
+
+test("official test entries need an allow-listed source even outside migrations", () => {
+  expect(() => hangulDebt([], [{ ...official, path: "backend/tests/labels.rs", source: undefined }])).toThrow(/source/);
+});
+
+test.each(["e2e/example.spec.ts", "apps/web/src/example.test.tsx"])("UI exceptions are refused in %s", file => {
+  expect(() => hangulDebt([], [{ ...allow[0], path: file }])).toThrow(/UI.*exception/);
+});
+
+test.each([".+", ".*", "^.*$", "[\\s\\S]+", "[^\\n]+", "(?:.){1,}", "(?:.+?)", "^.+$|unused"])("whole-line exception pattern %s is refused", pattern => {
+  expect(() => hangulDebt([], [{ ...official, pattern }])).toThrow(/whole.line/);
+});
+
+test("a data-specific pattern cannot consume a complete line at runtime", () => {
+  expect(() => hangulDebt([{ file: official.path, text: `INSERT '${ko}';` }], [{ ...official, pattern: "INSERT [^\\n]+" }])).toThrow(/whole.line/);
+});
+
+test.each(["backend/migrations/labels_tests.sql", "backend/refdata/labels.test.ts"])("official data requires a source regardless of test naming: %s", file => {
+  expect(() => hangulDebt([], [{ ...allow[0], path: file }])).toThrow(/source/);
+});
+
+test.each(["https://example.com", "https://law.go.kr.example.com", "https://example.com/law.go.kr", "https://law.go.kr@example.com", "https://github.com/other/repo", "https://github.com/unicode-org/cldr-json-fake"])("nonofficial source %s is refused", source => {
+  expect(() => hangulDebt([], [{ ...official, source }])).toThrow(/allow-listed.*source/);
+});
+
+test.each(["law.go.kr", "nts.go.kr", "nps.or.kr", "nhis.or.kr", "comwel.or.kr", "ei.go.kr", "kosis.kr", "juso.go.kr", "code.go.kr"])("official publisher %s is accepted", host => {
+  expect(() => hangulDebt([], [{ ...official, source: `https://www.${host}/labels` }])).not.toThrow();
+});
