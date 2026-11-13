@@ -4,6 +4,7 @@
 //! needs-review queue, mapping memory, employee number change and
 //! renumbering.
 
+mod apply_authorization;
 mod apply_progress;
 mod atomic_apply;
 mod company_names;

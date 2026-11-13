@@ -24,7 +24,10 @@ pub struct ExitCaseContext {
     pub org_unit: Option<String>,
     pub position: Option<String>,
     pub worksite_name: Option<String>,
+    /// Severance accrual start; prior settlement can make it later than service start.
     pub hire_date: Option<String>,
+    /// Continuous service for eligibility, independent of a severance reset.
+    pub service_start_date: Option<String>,
     pub branch_id: Option<Uuid>,
     pub branch_name: Option<String>,
     pub status: String,

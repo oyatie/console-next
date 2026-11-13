@@ -1,110 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { resolve } from "node:path";
-import { realpathSync } from "node:fs";
 import { AxeBuilder } from "@axe-core/playwright";
-import { chromium, expect as visible, firefox, type Browser, type Page } from "@playwright/test";
-import { createServer, type ViteDevServer } from "vite";
+import { expect as visible, type Browser, type Page } from "@playwright/test";
+import type { ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
+import { columnWidths, paging, phoneTableTest } from "../../../../../e2e/phone-table-fixture";
 
 let server: ViteDevServer;
 let browser: Browser, page: Page;
-
-// Stratified pages and repeated end-jumps, fixed seed so the old blank-viewport failure is reproducible.
-const paging = (() => {
-  let seed = 0x4d4f42;
-  const next = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0);
-  return [1, ...Array.from({ length: 6 }, (_, i) => 2 + i * 3 + next() % 3), 20]
-    .map(n => ({ loaded: n * 100, jumps: 1 + next() % 3 }));
-})();
-
-beforeAll(async () => {
-  server = await createServer({
-    configFile: false, cacheDir: ".cache/phone-tables", logLevel: "error",
-    define: { "process.env.VIRT_ON": JSON.stringify("1") },
-    resolve: { dedupe: ["react", "react-dom"] },
-    optimizeDeps: { include: ["react", "react/jsx-runtime", "react-dom/client", "react-aria-components", "intl-messageformat", "@tanstack/react-query"] },
-    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
-    plugins: [{
-      name: "phone-tables-test",
-      resolveId: (id) => id === "/phone-tables.js" ? "\0phone-tables" : undefined,
-      load: (id) => id === "\0phone-tables" ? `
-        import { createElement as h, useState } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { i18n, loadCatalog } from '@console/i18n';
-        import { Table } from '/apps/web/src/ui/table.tsx';
-        import { LongTable } from '/apps/web/src/ui/long-table/long-table.tsx';
-        import { NO_SELECTION } from '/apps/web/src/ui/long-table/selection.ts';
-        import { RosterTable } from '/apps/web/src/features/people/ui/roster-table.tsx';
-        import { OPTIONAL_COLUMNS } from '/apps/web/src/features/people/domain/columns.ts';
-        import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-        import '/apps/web/src/app.css';
-        await loadCatalog('en');
-        i18n.set('en');
-        const client = new QueryClient({defaultOptions: {queries: {enabled: false}}});
-        const rows = Array.from({length: 100}, (_, i) => ({id: 'MOB-' + i}));
-        const columns = [
-          {id: 'name', header: 'Name', rowHeader: true, cell: r => r.id, width: 120},
-          {id: 'status', header: 'Status', card: 'status', cell: () => 'Active', width: 100},
-          ...['Unit', 'Position', 'Hired', 'Extra'].map(id => ({id, header: id, cell: () => 'Long unbroken value '.repeat(4), width: 160})),
-          {id: 'action', header: 'Action', card: 'action', cell: r => h('button', {onClick: () => document.getElementById('action').textContent = r.id}, 'Open ' + r.id), width: 120}
-        ];
-        const pagedRows = Array.from({length: 2000}, (_, i) => ({id: 'PAGE-' + i}));
-        const paging = ${JSON.stringify(paging)};
-        function Paged() {
-          const [step, setStep] = useState(0);
-          const loaded = paging[step].loaded;
-          const [loadingMore, setLoadingMore] = useState(false);
-          const rowMode = location.hash === '#paged-rows';
-          const pagedColumns = columns.slice(0, -1).map(({card, ...column}) => ({...column,
-            ...(rowMode ? {} : {card}), cell: r => column.id === 'name' ? r.id : 'A fictional department and position'}));
-          return h('main', {'data-loaded': loaded, 'data-loading': loadingMore}, h('h1', null, 'Paged people'),
-            h(LongTable, {label: 'Paged', rows: pagedRows.slice(0, loaded), columns: pagedColumns, rowId: r => r.id,
-              density: location.hash === '#paged-compact' ? 'compact' : 'regular',
-              hasMore: loaded < pagedRows.length, loadingMore, empty: 'Empty', onLoadMore() {
-                if (loadingMore) return;
-                setLoadingMore(true);
-                requestAnimationFrame(() => {setStep(n => Math.min(n + 1, paging.length - 1)); setLoadingMore(false);});
-              }}));
-        }
-        function App() {
-          const [selected, select] = useState('');
-          const [selection, setSelection] = useState(NO_SELECTION);
-          const [open, setOpen] = useState('');
-          if (location.hash.startsWith('#paged')) return h(Paged);
-          if (location.hash === '#uncontained') return h('main', null,
-            h('h1', null, 'Tables without cards'),
-            ...['short', 'long'].map(kind => h('div', {id: kind + '-flex', style: {display: 'flex', containerType: 'inline-size', containerName: 'list-table'}},
-              kind === 'short' ? h(Table, {label: 'Uncontained short', rows: rows.slice(0, 3), columns: columns.map(({card, ...c}) => ({...c, width: innerWidth / columns.length})), rowId: r => r.id})
-              : h(LongTable, {label: 'Uncontained long', rows: rows.slice(0, 3), columns: columns.map(({card, ...c}) => ({...c, width: innerWidth / columns.length})), rowId: r => r.id, hasMore: false, onLoadMore() {}, empty: 'Empty'}))));
-          if (location.hash === '#stack') return h('main', null, h('h1', null, 'Stack'), h(LongTable, {
-            label: 'Stacked', caption: '2', find: {label: 'Find', onFind() {}}, rows: rows.slice(0, 2), columns, rowId: r => r.id, hasMore: false, onLoadMore() {}, empty: 'Empty'}));
-          if (location.hash === '#roster') return h(QueryClientProvider, {client}, h('main', null,
-            h('h1', null, 'People roster'), h(RosterTable, {label: 'Roster', today: '2026-01-01', density: 'compact', shown: OPTIONAL_COLUMNS,
-              rows: [{id: 'roster-0', employee_number: 'MOB-ROSTER', name: '박모바일', company: '가상상사', org_unit: '아주긴가상지점소속부서', position: '사원', employment_type: 'REGULAR', status: 'ON_LEAVE', hire_date: '2025-01-01'}],
-              hasMore: false, onLoadMore() {}, empty: 'Empty', selection, onSelectionChange: setSelection})));
-          return h('main', null,
-            h('h1', null, 'Phone tables'),
-            h('div', {id: 'container'},
-              h(Table, {label: 'Short', rows: rows.slice(0, 2), columns, rowId: r => r.id, selected, onSelect: select,
-                detail: r => r.id === selected && h('span', null, 'Detail ' + r.id)}),
-              h(LongTable, {label: 'Long', rows, columns, rowId: r => r.id, hasMore: false, onLoadMore() {}, empty: 'Empty',
-                selection, onSelectionChange: setSelection, onRowAction: setOpen, rowKeys: {}})),
-            h('output', {id: 'action'}, selected), h('output', {id: 'open'}, open));
-        }
-        createRoot(document.getElementById('root')).render(h(App));
-      ` : undefined,
-      configureServer: (vite) => { vite.middlewares.use((req, res, next) => {
-        if (req.url !== "/phone-tables") return next();
-        res.setHeader("Content-Type", "text/html");
-        res.end('<html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Phone tables</title><div id="root"></div><script type="module" src="/phone-tables.js"></script></html>');
-      }); },
-    }],
-  });
-  await server.listen();
-  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
-  page = await (await browser.newContext()).newPage();
-}, 60_000);
-
+beforeAll(async () => { ({ server, browser, page } = await phoneTableTest()); }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 test("390px cards expose identifiers, status, labelled facts and actions without overflow; axe passes", async () => {
@@ -235,6 +138,32 @@ test.each(["cards", "compact", "rows"])("paged 2,000-row %s at 390px never leave
     expect(await grid.evaluate(el => el.scrollHeight)).toBeGreaterThan(resized * 2000 * 0.85);
   }).toPass();
 }, 30_000);
+test.each([564, 724])("%spx containers keep row identity and actions together in light and dark", async width => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const grid = page.getByRole("grid", { name: "Long", exact: true });
+  const row = grid.getByRole("row").filter({ hasText: "MOB-0" });
+  for (const theme of ["light", "dark"]) {
+    await page.goto(`${server.resolvedUrls!.local[0]}phone-tables`);
+    await page.locator("#container").evaluate((el, value) => el.style.width = `${value}px`, width);
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    await visible(grid).toHaveAttribute("data-layout", "cards");
+    await grid.scrollIntoViewIfNeeded();
+    await visible(row.getByText("MOB-0", { exact: true })).toBeInViewport({ ratio: 1 });
+    const action = row.getByRole("button", { name: "Open MOB-0", exact: true });
+    await visible(action).toBeInViewport({ ratio: 1 });
+    await action.click();
+    await visible(page.locator("#action")).toHaveText("MOB-0");
+    expect(await grid.evaluate(el => el.scrollWidth)).toBeLessThanOrEqual(width);
+    // Enter from outside after scrolling: focus must not restore an old position between press and release.
+    await page.getByRole("heading", { name: "Phone tables", exact: true }).click();
+    const next = grid.getByRole("button", { name: "Open MOB-2", exact: true });
+    await next.evaluate(el => el.focus());
+    await visible(next).toBeInViewport({ ratio: 1 });
+    await next.click();
+    await visible(page.locator("#action")).toHaveText("MOB-2");
+  }
+}, 30_000);
+
 test("container boundary, virtualization and keyboard state survive card/row changes; desktop widths return", async () => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`${server.resolvedUrls!.local[0]}phone-tables`);
@@ -242,9 +171,10 @@ test("container boundary, virtualization and keyboard state survive card/row cha
   await visible(long.getByRole("rowheader", { name: "MOB-0", exact: true })).toBeVisible();
   const widths = await long.getByRole("columnheader").evaluateAll(cells => cells.map(cell => cell.getBoundingClientRect().width));
   // Near miss: the viewport stays wide; only the table's container crosses the boundary.
-  await page.locator("#container").evaluate(el => el.style.width = "481px");
+  const minimum = columnWidths.name + columnWidths.status + columnWidths.fact * 4 + columnWidths.action;
+  await page.locator("#container").evaluate((el, width) => el.style.width = `${width}px`, widths.reduce((sum, width) => sum + width, 0));
   await visible(long).toHaveAttribute("aria-colcount", String(widths.length));
-  await page.locator("#container").evaluate(el => el.style.width = "480px");
+  await page.locator("#container").evaluate((el, width) => el.style.width = `${width - 1}px`, minimum);
   await visible(long.getByRole("columnheader")).toHaveCount(2);
   await visible(long).toHaveAttribute("data-layout", "cards");
   const row = long.getByRole("row").filter({ hasText: "MOB-0" });

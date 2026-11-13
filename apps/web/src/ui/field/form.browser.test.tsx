@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import { expect as dom, firefox } from "@playwright/test";
+import { expect as dom } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
+import { browserEngine, browserTestOptimizeDeps, type Browser, type Page } from "../../lib/browser-test";
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -66,7 +66,7 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
+  browser = await browserEngine().launch();
   page = await browser.newPage();
   page.setDefaultTimeout(4000);
 }, 60_000);

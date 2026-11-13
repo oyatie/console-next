@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { DepOptimizationOptions } from "vite";
 import type { Locator, Page } from "@playwright/test";
-import { chromium, firefox } from "@playwright/test";
+import { chromium, firefox, webkit } from "@playwright/test";
+import { e2eBrowser } from "../../../../e2e/browser";
 export { chromium, type Browser, type Page } from "@playwright/test";
 
-export function browserEngine() {
-  return process.env.E2E_XBROWSER === "1" ? firefox : chromium;
-}
+export const browserEngine = () => ({ chromium, firefox, webkit }[e2eBrowser()]);
 
 // Virtual fixtures evade Vite's scanner; prebundle their shared dependencies before the browser loads React.
 export const browserTestOptimizeDeps: DepOptimizationOptions = {

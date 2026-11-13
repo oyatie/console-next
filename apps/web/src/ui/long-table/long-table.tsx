@@ -12,7 +12,7 @@ import type { CardColumn } from "./card-columns";
 import { CardContent } from "./card-content";
 import { useCardLayout } from "./use-card-layout";
 import { SelectInput } from "../field/select-input";
-import { columnWidths, type ColumnType } from "./column-types";
+import { columnWidths, minimumColumnWidth, type ColumnType } from "./column-types";
 import types from "./column-types.module.css";
 import { elementVisible } from "../../lib/element-visible";
 
@@ -101,7 +101,7 @@ export function LongTable<R>(p: {
   const search = useRef<HTMLInputElement>(null);
   const region = useRef<HTMLElement>(null);
   const grid = useRef<HTMLElement | null>(null);
-  const cardLayout = useCardLayout(region, grid);
+  const cardLayout = useCardLayout(region, grid, minimumColumnWidth(p.columns) + (p.selection ? SELECT_WIDTH : 0));
   const { sortDescriptor: sort, onSortChange } = p;
   const sortable = p.columns.filter(column => column.allowsSorting);
   const [cardHeight, setCardHeight] = useState<number>();
@@ -221,8 +221,8 @@ export function LongTable<R>(p: {
           render={(props, { state }) => <div {...props} aria-rowcount={p.total === undefined ? (p.hasMore ? -1 : loaded.length + 1) : p.total === null ? -1 : p.total + 1}
             onFocusCapture={event => {
               const cell = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("[data-cell-key]") : null;
-              // Adopt the focused control before the grid restores its previous row on keyboard entry.
-              if (cell && event.target !== cell && event.currentTarget.contains(cell)) state.selectionManager.setFocusedKey(cell.dataset.cellKey!);
+              // Adopt a control before the grid restores its previous row or scroll position.
+              if (cell && event.target !== cell && event.currentTarget.contains(cell)) { state.selectionManager.setFocused(true); state.selectionManager.setFocusedKey(cell.dataset.cellKey!); }
               // A card merges columns: direct entry starts at the first control rather than a remembered column.
               if (cardLayout && event.target === cell && cell.matches('[role="rowheader"]') && content[0]?.focusMode === "child") [...cell.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]')].find(control => elementVisible(control) && !control.matches(':disabled, [inert], [inert] *'))?.focus();
             }} />}

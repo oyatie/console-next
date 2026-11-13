@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
+import { e2eBrowser } from "../../../../../e2e/browser";
 
 const repo = path.resolve(import.meta.dirname, "../../../../../");
 const port = Number(process.env.CONSOLE_WEB_PORT ?? 58741);
 const origin = `http://127.0.0.1:${port}`;
-const browserName = process.env.E2E_XBROWSER === "1" ? "firefox" : "chromium";
+const browserName = e2eBrowser();
 
 // These are component journeys in the unauthenticated gallery; they use no database or record fixtures.
 export default defineConfig({

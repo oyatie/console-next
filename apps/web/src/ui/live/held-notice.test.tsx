@@ -5,9 +5,9 @@ import { resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
-import { expect as element, firefox } from "@playwright/test";
+import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
-import { browserTestOptimizeDeps, chromium, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
+import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -74,7 +74,7 @@ beforeAll(async () => {
       ` : undefined }],
   });
   await server.listen();
-  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
+  browser = await browserEngine().launch();
   page = await browser.newPage();
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}held-notice-test?lists=1`, page.locator('[data-id="row-1"]'));
 }, 60_000);
