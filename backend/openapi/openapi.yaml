@@ -20310,18 +20310,22 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
     post:
       # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "TodoAssign", "scope": "any"}
       tags:
         - me
       operationId: createMyTodoRequest
       summary: Ask a colleague for a follow-up
       description: >-
         Creates a todo owned by the assignee and asked by the caller. Who may ask is
-        Cedar's todo_assign: the caller holds tenant-wide people-directory manage
-        authority and is not in a support session (403 todo_assign_forbidden). The
-        assignee is an active account of the caller's tenant inside the caller's
-        people-directory scope. Refusals, in order: 403 todo_assign_forbidden; 422
-        validation (text, links); 422 todo_assign_self; 422
-        todo_assignee_out_of_scope (unknown and other-tenant accounts alike); 422
+        any holder of a to-do request grant (a role line todo_request edit), over the
+        people placed under that grant's scope node, and the tenant's ops account;
+        never a support session (403 todo_assign_forbidden). Cedar decides, inside
+        the write, that the assignee is an active account of the caller's tenant
+        placed under a node the caller's grants permit; an account with no linked
+        employee or no current placement sits at the tenant node. Refusals, in
+        order: 403 todo_assign_forbidden; 422 validation (text, links); 422
+        todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and
+        out-of-scope accounts alike, and a grant revoked mid-request); 422
         todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name
         records by kind and id; a sent label is ignored and never stored. Audited as
         todo.request with the assignee and the due date only.
@@ -20346,6 +20350,54 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '503':
+          description: JWT verification is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/todos/requests/assignees:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "TodoAssign", "scope": "any"}
+      tags:
+        - me
+      operationId: listMyTodoAssignees
+      summary: List the colleagues the caller may ask for a follow-up
+      description: >-
+        The active accounts of the caller's tenant, other than the caller, that an
+        ask from the caller accepts: those placed under a node where the caller's
+        to-do request grants permit asking (every account for the tenant's ops
+        account). Names only, ordered by display name then id. Who may read it is
+        who may ask; anyone else, and every support session, gets 403
+        todo_assign_forbidden.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: search
+        in: query
+        required: false
+        description: Case-insensitive match anywhere in the display name, after trimming.
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        description: Page size (clamped server-side to 1..=50; default 20).
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: The accounts the caller may ask.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoAssigneePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '503':
           description: JWT verification is not configured.
           content:
@@ -33668,6 +33720,7 @@ components:
       - retention
       - tenant
       - support_access
+      - todo_request
     AccessEffectLine:
       type: object
       required:
@@ -34408,6 +34461,7 @@ components:
           - retention
           - tenant
           - support_access
+          - todo_request
 
         levels:
           type: array
@@ -63030,6 +63084,28 @@ components:
           description: Records the request is about; at most 20.
           items:
             $ref: '#/components/schemas/TodoRequestLink'
+    TodoAssignee:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      description: An account the caller may ask, by name only.
+      required:
+      - account_id
+      - display_name
+      properties:
+        account_id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+    TodoAssigneePage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TodoAssignee'
     TodoPage:
       type: object
       required:
