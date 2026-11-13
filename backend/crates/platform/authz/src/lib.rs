@@ -1106,6 +1106,7 @@ mod tests {
             Feature::ChangeRequestDecide,
             Feature::JobTitleManage,
             Feature::RosterFieldManage,
+            Feature::TodoAssign,
             Feature::RetainedRecordsRead,
             Feature::TenantOffboard,
             Feature::LegalEntityManage,
