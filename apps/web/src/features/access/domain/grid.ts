@@ -40,7 +40,7 @@ export const isEmpty = (grid: Chosen) => Object.values(grid).every((v) => !v.len
 
 type Offered = { domain: string; grantable: boolean; levels: readonly Level[]; operations: readonly { level: Level }[] };
 /** Domains with no console screen in the MVP (Org + HR first): listed as "not yet", never sold as a permission. */
-const NO_SCREEN = new Set(["evaluation", "notice"]);
+const NO_SCREEN = new Set(["evaluation", "notice", "todo_request"]);
 const ROUTE_CLASS: Readonly<Record<string, string>> = { org: "org_structure", exit: "exit" };
 /** The approval classes the tenant routes (settings `approval.policy.<class>` = route). */
 export type Routed = ReadonlySet<string> | undefined;
