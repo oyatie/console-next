@@ -43,13 +43,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const history = page.getByRole("complementary", { name: t("orgChange.history"), exact: true });
       const rows = history.getByRole("listitem");
       await expect(rows).toHaveCount(record.events.length);
-      const rowPositions = () => rows.evaluateAll(elements => {
-        const main = document.getElementById("main")!;
-        const history = document.getElementById("history")!.parentElement!.getBoundingClientRect();
-        return elements.map(el => ({ text: el.textContent, y: el.getBoundingClientRect().top + main.scrollTop,
-          historyY: el.getBoundingClientRect().top - history.top }));
-      });
+      await expect(rows.first()).toContainText(t("orgChange.event.submit", { actor: "김기안" }));
+      const rowPositions = () => rows.evaluateAll(elements => elements.map(el => ({ text: el.textContent, y: el.getBoundingClientRect().top })));
       const existingRows = await rowPositions();
+      const relative = (items: typeof existingRows) => items.map(row => ({ text: row.text, y: row.y - items[0]!.y }));
       const position = () => page.evaluate(desktop => {
         const main = document.getElementById("main")!;
         const proposal = document.getElementById("proposal")!.parentElement!.getBoundingClientRect();
@@ -63,10 +60,22 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(page.getByRole("status").filter({ hasText: t("orgChange.decided.REJECTED", { role: "인사", code: record.code }) })).toBeVisible();
       await expect(proposal).toContainText(record.reason);
       expect(await position()).toEqual(before);
-      await expect(rows).toHaveCount(existingRows.length + 1);
-      // On phones the main column can grow; the history rows keep their positions within the history card.
-      expect((await rowPositions()).filter(row => existingRows.some(existing => existing.text === row.text)).map(row => ({ text: row.text, y: width === 1440 ? row.y : row.historyY })))
-        .toEqual(existingRows.map(row => ({ text: row.text, y: width === 1440 ? row.y : row.historyY })));
+      await expect(rows).toHaveCount(record.events.length);
+      await expect(rows.first()).toContainText(t("orgChange.event.rejected", { actor: user.display_name, role: "인사" }));
+      // The attended decision adds the newest row first; existing rows keep their order and spacing.
+      expect(relative((await rowPositions()).filter(row => existingRows.some(existing => existing.text === row.text))))
+        .toEqual(relative(existingRows));
+      if (width === 390) {
+        const dock = page.locator("[data-status-dock]");
+        // Clearance must exist before scrolling, including receipts that wrap after they mount.
+        await expect.poll(() => rows.last().evaluate(row => {
+          const main = document.getElementById("main")!;
+          return row.getBoundingClientRect().bottom - (main.scrollHeight - main.clientHeight - main.scrollTop);
+        })).toBeLessThanOrEqual((await dock.boundingBox())!.y);
+        await page.locator("#main").evaluate(main => { main.scrollTop = main.scrollHeight; });
+        await expect.poll(async () => (await rows.last().boundingBox())!.y + (await rows.last().boundingBox())!.height)
+          .toBeLessThanOrEqual((await dock.boundingBox())!.y);
+      }
       await fits(page, "org rejection");
       await page.screenshot({ path: test.info().outputPath("rejected.png") });
       expect(fixture.unexpected).toEqual([]);
@@ -102,3 +111,28 @@ for (const width of [1440, 390]) {
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+// Older pages retain their first event when a new decision arrives; the first page shows the newest event.
+test("org history opens newest-first and keeps an older page anchored on refresh", async ({ page }) => {
+  const screen = orgChangeScreens[1];
+  const fixture = await mockScreen(page, screen, "large");
+  let record = orgChange("large");
+  record.events = record.events.map((event, i) => ({ ...event, actorName: `기록자 ${i}` }));
+  await mockRoute(page, "get", "/api/v1/org-changes/{id}", () => ({ status: 200, json: record }));
+  try {
+    await page.goto(screen.path);
+    const history = page.getByRole("complementary", { name: t("orgChange.history"), exact: true });
+    const rows = history.getByRole("listitem");
+    await expect(rows).toHaveCount(50);
+    await expect(rows.first()).toContainText("기록자 1999님");
+    await history.getByRole("button", { name: t("common.page.next"), exact: true }).click();
+    await expect(rows.first()).toContainText("기록자 1949님");
+    record = { ...record, events: [...record.events, { at: AT, actor: user.id, actorName: "새 기록자", action: "submit" }] };
+    await page.evaluate(() => { window.dispatchEvent(new Event("offline")); window.dispatchEvent(new Event("online")); });
+    await expect(history).toContainText("2,001");
+    await expect(rows.first()).toContainText("기록자 1949님");
+    await history.getByRole("button", { name: t("common.page.prev"), exact: true }).click();
+    await expect(rows.first()).toContainText("새 기록자님");
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

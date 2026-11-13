@@ -7,4 +7,8 @@
 }
 .dock > * { flex-shrink: 0; min-width: 0; max-width: 100%; pointer-events: auto; }
 .dock > * > * { max-width: 100%; }
+:global(body):has(.dock) :global(#main) {
+  padding-bottom: calc(var(--status-dock-space, 0px) + var(--space-4));
+  scroll-padding-bottom: calc(var(--status-dock-space, 0px) + var(--space-4));
+}
 @media (max-width: 767px) { .dock { left: var(--space-2); right: var(--space-2); max-width: none; align-items: stretch; } }

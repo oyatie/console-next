@@ -136,7 +136,7 @@ function Record({ d, n, refetch }: { d: Detail; n: Names; refetch: () => Promise
           <h2 id="history" className="panel__title">{t("orgChange.history")}</h2>
           {place && <Link to="/org" search={place}>{t("orgChange.openUnit")}</Link>}
           <TimelineLanes
-            items={d.events.map((e, i) => ({ key: `${i}`, date: fmtDateTime(e.at), ...eventTitle(e) }))}
+            items={d.events.map((e, i) => ({ key: `${i}`, date: fmtDateTime(e.at), ...eventTitle(e) })).reverse()}
             empty={t("orgChange.history.empty")}
           />
         </aside>

@@ -4,6 +4,7 @@ import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { firstSignIn, go, kstDate, routeReady } from "./flows";
 import { answer, SETUP_DEPARTMENT, setupCompany, startOperations } from "./setup-flows";
+import { passkeyAssertion } from "./auth";
 import { apiOf, bearerOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { leaveScreen, revealUnit } from "./structure-flows";
@@ -132,6 +133,7 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   });
   await stale.bringToFront();
   await stale.goto(changeUrl);
+  await routeReady(stale, changeUrl);
   await expect(stale.getByRole("button", { name: "조직 변경 승인" })).toBeEnabled();
   await admin.bringToFront();
   await go(admin, "/org/changes");
@@ -228,12 +230,7 @@ async function setupAssertion(page: Page, api: ReturnType<typeof apiOf>): Promis
   const response = await api("/auth/passkey/login/start", "POST", {});
   expect(response.status(), await response.text()).toBe(200);
   const ceremony = await response.json() as components["schemas"]["PasskeyLoginStartResponse"];
-  const credential = await page.evaluate(async options => {
-    const assertion = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) }) as PublicKeyCredential | null;
-    return assertion?.toJSON();
-  }, ceremony.challenge.publicKey as PublicKeyCredentialRequestOptionsJSON);
-  expect(credential).toBeTruthy();
-  return { ceremony_id: ceremony.ceremony_id, credential: credential as Record<string, unknown> };
+  return passkeyAssertion(page, { ...ceremony, challenge: { publicKey: ceremony.challenge.publicKey as PublicKeyCredentialRequestOptionsJSON } });
 }
 
 async function checkScreen(page: Page, context: string) {

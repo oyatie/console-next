@@ -205,6 +205,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     await addInput.press("Enter");
     const created = await (await applied).json() as { created_unit_ids: string[] };
     expect(created.created_unit_ids).toHaveLength(1);
+    await routeReady(admin);
     // org-19: stay on the chart, select the department the server created, and link its record in the receipt.
     await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(created.created_unit_ids[0]);
     await addInput.press("Escape");
