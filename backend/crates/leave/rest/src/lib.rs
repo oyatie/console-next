@@ -1,4 +1,4 @@
-//! Leave-request REST API (연차 결재 + §61 촉진).
+//! Leave-request REST API (annual-leave approval + §61 use promotion).
 //!
 //! Reads are gated on `employee_directory_read`, mutations on
 //! `employee_directory_manage` — the branch HR/manager tier. The tenant (org)
@@ -133,7 +133,7 @@ struct ListParams {
 /// Frozen v1 response DTO. Deployed Kotlin clients reject unknown JSON keys,
 /// so the exact pre-v2 field set must remain stable even though the internal
 /// application view has grown exact-charge and CAS metadata. `reason` stays in
-/// the key set for that reason only; requests filed after the 근로기준법 §60
+/// the key set for that reason only; requests filed after the Labor Standards Act §60
 /// guardrail have none and project as an empty string.
 #[derive(Debug, Serialize)]
 struct LegacyLeaveRequestView {
@@ -267,8 +267,8 @@ async fn list_requests_v2(
     Ok(Json(page).into_response())
 }
 
-/// 근로기준법 §60 guardrail (charter §4-31): there is deliberately **no
-/// `reason` field** — 연차 requires no 사유, and `deny_unknown_fields` turns a
+/// Labor Standards Act §60 guardrail (charter §4-31): there is deliberately **no
+/// `reason` field** — annual leave requires no reason, and `deny_unknown_fields` turns a
 /// client that still sends one into a 4xx instead of silently storing it.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -296,7 +296,7 @@ fn parse_iso_date(value: &str, field: &'static str) -> Result<Date, RestError> {
     })
 }
 
-/// Self-service 연차/반차 신청 (POST /api/v2/leave/requests). The caller files a
+/// Self-service annual/half-day leave request (POST /api/v2/leave/requests). The caller files a
 /// request for THEMSELVES: `subject_employee_id` and the routing `branch_id` are
 /// resolved server-side from the caller's own account (`users.employee_id` +
 /// `employees.home_branch_id`), never from input, so a caller can only ever file for their
@@ -432,7 +432,7 @@ async fn decide_v2(
     Ok(Json(view).into_response())
 }
 
-/// Worker-chosen alternate 시기 on a §60⑤ `time_change_consult` (charter
+/// Worker-chosen alternate timing on a §60⑤ `time_change_consult` (charter
 /// §4-31). No manage capability — only the original requester may propose.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -654,7 +654,7 @@ async fn list_balances(
 /// A §61 push request.
 ///
 /// `leave_period_end` and `track` are required: the statutory windows are all
-/// counted back from the end of the 연차 사용기간, and §61① and §61② have
+/// counted back from the end of the annual-leave use period, and §61① and §61② have
 /// different periods, so neither can be defaulted. The unused-day count is
 /// *not* accepted from the caller — §61①1 requires the employee's own figure,
 /// which the store reads from the authoritative roster.
@@ -669,9 +669,9 @@ struct PromotionRequest {
     round: i16,
     /// annual | first_year_early | first_year_late.
     track: String,
-    /// 제60조제7항 본문에 따른 기간의 마지막 날 (ISO 8601).
+    /// The last day of the period under the main text of §60⑦ (ISO 8601).
     leave_period_end: String,
-    /// The 사용 시기 a round-2 notice designates (ISO 8601). Round 1 and the
+    /// The leave timing a round-2 notice designates (ISO 8601). Round 1 and the
     /// refusal must not carry any.
     #[serde(default)]
     designated_dates: Vec<String>,
@@ -709,7 +709,7 @@ async fn push_refusal(
         round: 2,
         track: body.track,
         leave_period_end: body.leave_period_end,
-        // The refused days are read back from the recorded 2차 통보, never
+        // The refused days are read back from the recorded round-2 notice, never
         // restated by the caller.
         designated_dates: Vec::new(),
     };
@@ -1033,7 +1033,7 @@ mod tests {
         assert_eq!(body.decision, "time_change");
     }
 
-    /// Charter §4-31 / 근로기준법 §60: refusal decisions must die at the
+    /// Charter §4-31 / Labor Standards Act §60: refusal decisions must die at the
     /// domain parse — the REST layer maps that to a 422, never a decision.
     #[test]
     fn kr_charter_refusal_decisions_are_unprocessable() {
@@ -1065,8 +1065,8 @@ mod tests {
         assert!(missing_key.is_err());
     }
 
-    /// Charter §4-31 / 근로기준법 §60: "연차=사유란 없음". A client that still
-    /// submits a 사유 is refused at the boundary instead of the field being
+    /// Charter §4-31 / Labor Standards Act §60: "annual leave = no reason field". A client
+    /// that still submits a reason is refused at the boundary instead of the field being
     /// stored (or silently dropped, which would keep soliciting it).
     #[test]
     fn kr_charter_create_body_has_no_reason_field() {

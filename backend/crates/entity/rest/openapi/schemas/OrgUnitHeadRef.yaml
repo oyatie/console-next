@@ -1,5 +1,5 @@
 type: object
-description: A 부서's head as of today (dated; may belong to another unit).
+description: A department's head as of today (dated; may belong to another unit).
 required:
 - employee_id
 - name
@@ -20,4 +20,4 @@ properties:
     format: date
   concurrent:
     type: boolean
-    description: 「(겸)」 — the head belongs to another unit, or heads another unit too.
+    description: The "(concurrent)" marker — the head belongs to another unit, or heads another unit too.

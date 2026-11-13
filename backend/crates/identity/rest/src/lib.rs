@@ -111,7 +111,7 @@ pub const ME_AUTHZ_PATH: &str = "/api/v1/me/authz";
 pub const USER_PATH_TEMPLATE: &str = "/api/v1/users/{id}";
 pub const USER_DEACTIVATE_PATH_TEMPLATE: &str = "/api/v1/users/{id}/deactivate";
 pub const USER_ACTIVATE_PATH_TEMPLATE: &str = "/api/v1/users/{id}/activate";
-/// 아이디 변경 (decisions #33) and the account's 아이디 history.
+/// Sign-in ID change (decisions #33) and the account's sign-in ID history.
 pub const USER_SIGN_IN_ID_PATH_TEMPLATE: &str = "/api/v1/users/{id}/sign-in-id";
 pub const USER_SIGN_IN_IDS_PATH_TEMPLATE: &str = "/api/v1/users/{id}/sign-in-ids";
 pub const REGIONS_PATH: &str = "/api/v1/regions";

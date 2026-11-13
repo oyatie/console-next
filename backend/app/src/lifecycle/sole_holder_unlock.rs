@@ -1,9 +1,9 @@
 //! Decisions #7 case B on a period unlock (#8b): with no other eligible holder
 //! and `authz.sole_holder.mode = step_up_notice_review`, the holder unlocks at
 //! once, no delay. Beside the step-up bound to the payload hash and the lock
-//! row's review flag, the unlock records a governed exception (예외 처리,
+//! row's review flag, the unlock records a governed exception (exception handling,
 //! `PERIOD_UNLOCK_SOLE_HOLDER`, SOLE_HOLDER fallback) whose `review_due_at`
-//! (`review.sole_holder_exception.due`) is the 사후 검토 item, and consumes it
+//! (`review.sole_holder_exception.due`) is the after-the-fact review item, and consumes it
 //! with this write in the same transaction (the ORG-SOLE pattern).
 //!
 //! The work inbox reads each consumed exception until its review is acknowledged.
@@ -29,7 +29,7 @@ use super::period_unlock::{int_setting, internal};
 
 const RULE: RuleCode = RuleCode::PeriodUnlockSoleHolder;
 
-/// The recorded exception: its id and the 사후 검토 due time.
+/// The recorded exception: its id and the after-the-fact review due time.
 pub(super) struct SoleHolderException {
     pub(super) id: Uuid,
     pub(super) review_due_at: Option<OffsetDateTime>,
@@ -45,7 +45,7 @@ pub(super) struct SoleHolderUnlock<'a> {
     pub(super) step_up: Uuid,
 }
 
-/// Record the 예외 처리 for `unlock` and consume it with the unlock write.
+/// Record the exception handling for `unlock` and consume it with the unlock write.
 pub(super) async fn record_sole_holder_exception(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     unlock: &SoleHolderUnlock<'_>,

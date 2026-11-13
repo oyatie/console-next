@@ -1,6 +1,7 @@
-// Korean source for `profile.` ids (features/people/ui/profile-sheet.tsx, profile-host.tsx): correcting an
+// Korean copy for `profile.` ids (features/people/ui/profile-sheet.tsx, profile-host.tsx): correcting an
 // employee's master data (정정, BW-18) and asking HR for a change (변경 요청, BW-17).
-export const koProfile = {
+import type { enProfile } from "../en/profile";
+export const koProfile: Record<keyof typeof enProfile, string> = {
   "profile.correct.title": "{name} 정보 정정",
   "profile.request.title": "{name} 변경 요청",
   "profile.section.what": "변경할 내용",
@@ -31,4 +32,4 @@ export const koProfile = {
   "profile.receipt.requested": "인사팀에 변경 요청을 보냈습니다.",
   "profile.receipt.requests": "변경 요청 보기",
   "profile.request.kind.missing": "요청 종류를 선택하십시오",
-} as const;
+};

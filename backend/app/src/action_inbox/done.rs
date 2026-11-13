@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! 완료 (`GET /api/v1/me/action-inbox/done`): what the caller decided, newest
+//! Done (`GET /api/v1/me/action-inbox/done`): what the caller decided, newest
 //! first across sources. Each source keeps its open queue's grant, so a row
 //! shows only while the caller may still read it. Not counted, not in `all`.
 use axum::Extension;
@@ -84,7 +84,7 @@ async fn hr_requests(
         .collect())
 }
 
-/// 정정 the caller approved or declined, under the open queue's tenant-wide grant.
+/// Corrections the caller approved or declined, under the open queue's tenant-wide grant.
 async fn identifier_corrections(
     pool: &PgPool,
     principal: &Principal,
@@ -155,6 +155,7 @@ async fn record_access(
         items: items
             .iter()
             .map(|i| ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: i.id.clone(),
                 kind: i.kind.clone(),

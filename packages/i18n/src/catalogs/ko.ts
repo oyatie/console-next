@@ -16,12 +16,8 @@ import { koImportRollback } from "./ko/import-rollback";
 import { koComposer } from "./ko/composer";
 import { koStatutory } from "./ko/statutory";
 import { koRequestOutcome } from "./ko/request-outcome";
-// Source catalog for the screens (Korean first); other locales translate these ids. Sign-in,
-// shell and shared-state copy (app., auth., common., shell.) is in boot.ts. ICU MessageFormat;
-// Korean particles via `{name|을를}`.
-// Never put an ASCII apostrophe before `{` (ICU quoting) — use “ ” for quotes.
-// One file per id prefix: `<ns>.` ids live in ko/<ns>.ts and en/<ns>.ts (kebab-case file name).
-// A new namespace appends one import and one spread line here and in en.ts.
+// Korean for every screen id that en.ts defines; a missing id fails typecheck. Rules: en.ts.
+import type { ScreenMessageId } from "./en";
 import { koFormat } from "./ko/format";
 import { koAsof } from "./ko/asof";
 import { koTimeline } from "./ko/timeline";
@@ -137,7 +133,7 @@ import { koEmpDoc } from "./ko/emp-doc";
 import { koPeopleJump } from "./ko/people-jump";
 import { koSettingsHub } from "./ko/settings-hub";
 
-export const ko = {
+export const ko: Record<ScreenMessageId, string> = {
   ...koUiFlexibleColumns,
   ...koSettingsHub,
   ...koGovernanceRefusals,
@@ -269,6 +265,4 @@ export const ko = {
   ...koSupport,
   ...koSupportAccess,
   ...koDirectoryViews,
-} as const;
-
-export type ScreenMessageId = keyof typeof ko;
+};

@@ -30,8 +30,10 @@ use sqlx::{PgPool, Row};
 // vocabulary is not a weaker classification; it is a violation, and unlike a
 // MISSING marker no baseline entry shelters it.
 //
-// 개인정보 보호법 시행령 제19조 fixes the four 고유식별정보; 제23조제1항 and
-// 시행령 제18조 fix the 민감정보 sub-categories. Both must name WHICH, because
+// Personal Information Protection Act Enforcement Decree Article 19 fixes the
+// four kinds of unique identifying information; Article 23(1) and Enforcement
+// Decree Article 18 fix the sensitive-data sub-categories. Both must name
+// WHICH, because
 // the whole point of the marker is that the judgement is auditable.
 // ---------------------------------------------------------------------------
 
@@ -206,10 +208,11 @@ const PROBE_PSEUDONYMOUS: &str =
     "COMMENT ON COLUMN pd_probe.probe_column IS 'pd:pseudonymous — probe'";
 const PROBE_UNDECLARED: &str = "COMMENT ON COLUMN pd_probe.probe_column IS 'pd:undeclared — probe'";
 
-/// The plaintext 주민등록번호 finding lives in the schema, not only in a
-/// document. `0066_hr_core_employee_fields.sql` states in its own header that
-/// resident-registration and disability values remain in `employees.raw_row`,
-/// and `hr.rs` classifies the 주민 and 장애 import headers `restricted` under a
+/// The plaintext resident registration number finding lives in the schema, not
+/// only in a document. `0066_hr_core_employee_fields.sql` states in its own
+/// header that resident-registration and disability values remain in
+/// `employees.raw_row`, and `hr.rs` classifies the Korean resident-number and
+/// disability import headers `restricted` under a
 /// `retain_raw_mask_preview` policy — the mask applies to the preview
 /// projection, not to storage. If that ever stops being true, this assertion is
 /// where it gets noticed.
@@ -279,11 +282,13 @@ async fn shipped_classification_derives_the_two_year_floor(pool: PgPool) {
 
 /// THE CORRECTION, and the reason this test is not optional.
 ///
-/// 「개인정보의 안전성 확보조치 기준」 제8조제1항제2호 reads
-/// `고유식별정보 **또는** 민감정보`. A derivation that fires the two-year floor
-/// only off 고유식별정보 UNDER-RETAINS for a system holding 민감정보 and no
-/// 고유식별정보 — and under-retention is the legally dangerous direction. This
-/// asserts the 민감정보 limb fires on its own, with every 고유식별정보 marker
+/// Article 8(1)2 of the Standards for Personal Information Security Measures
+/// reads "unique identifying information **or** sensitive data". A derivation
+/// that fires the two-year floor only off unique identifying information
+/// UNDER-RETAINS for a system holding sensitive data and no unique identifying
+/// information — and under-retention is the legally dangerous direction. This
+/// asserts the sensitive-data limb fires on its own, with every unique
+/// identifying information marker
 /// removed from the database.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn sensitive_alone_raises_the_floor_with_no_unique_id_present(pool: PgPool) {
@@ -411,7 +416,7 @@ async fn sensitive_on_a_foreign_table_raises_the_floor(pool: PgPool) {
     assert_eq!(floor_years(&pool).await, 2);
 }
 
-/// The 고유식별정보 limb, likewise on its own.
+/// The unique identifying information limb, likewise on its own.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn unique_id_alone_raises_the_floor(pool: PgPool) {
     strip_all_markers(&pool).await;
@@ -419,8 +424,9 @@ async fn unique_id_alone_raises_the_floor(pool: PgPool) {
     assert_eq!(floor_years(&pool).await, 2);
 }
 
-/// 가명정보 is exempt from a list of duties that widens on 2026-09-11
-/// (개보법 제28조의7, 개정 2026.3.10). It must not be what raises the floor.
+/// Pseudonymized information is exempt from a list of duties that widens on
+/// 2026-09-11 (Personal Information Protection Act Article 28-7, amended
+/// 2026.3.10). It must not be what raises the floor.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn pseudonymous_alone_does_not_raise_the_floor(pool: PgPool) {
     strip_all_markers(&pool).await;
@@ -433,8 +439,9 @@ async fn pseudonymous_alone_does_not_raise_the_floor(pool: PgPool) {
 }
 
 /// `undeclared` is an admission that the content is unknown. It must not be
-/// read as a clean bill — but it is also not 민감정보, so it does not fabricate
-/// a 2-year floor either. The floor falls back to 제8조제1항 본문's 1 year.
+/// read as a clean bill — but it is also not sensitive data, so it does not
+/// fabricate a 2-year floor either. The floor falls back to the 1 year of the
+/// main text of Article 8(1).
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn undeclared_alone_does_not_fabricate_a_two_year_floor(pool: PgPool) {
     strip_all_markers(&pool).await;
@@ -444,7 +451,7 @@ async fn undeclared_alone_does_not_fabricate_a_two_year_floor(pool: PgPool) {
 
 /// With nothing classified at all the derivation must not invent an obligation.
 /// This is the lower-bound property stated plainly: an empty classification
-/// yields 제8조제1항 본문's floor, never the 제2호 floor.
+/// yields the floor of the main text of Article 8(1), never the subparagraph 2 floor.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn an_empty_classification_derives_the_base_floor(pool: PgPool) {
     strip_all_markers(&pool).await;
@@ -496,7 +503,8 @@ async fn every_catalog_token_is_in_the_closed_vocabulary(pool: PgPool) {
     );
 }
 
-/// 신정법 제2조제7호's applicability to an HR and payroll console is unresolved,
+/// The applicability of Credit Information Act Article 2 subparagraph 7 to an
+/// HR and payroll console is unresolved,
 /// so `credit` is a token a human must not yet use. The gate accepts it by
 /// design; this asserts nobody has.
 #[sqlx::test(migrator = "MIGRATOR")]
@@ -600,7 +608,8 @@ async fn schema_derivation_is_owner_only(pool: PgPool) {
 //   `location_pings_create_day_partition()` / `location_pings_ensure_partition()`,
 //   which run `EXECUTE format('CREATE TABLE IF NOT EXISTS %I PARTITION OF
 //   location_pings …')` once per day. All ten columns of `location_pings` carry
-//   `pd:personal — 개인위치정보` (0211:306-315), and every ping row is stored in
+//   `pd:personal`, annotated as personal location information (0211:306-315),
+//   and every ping row is stored in
 //   a day partition that carries no COMMENT of its own and appears in neither
 //   reader: the migration text names it nowhere, and a catalog built from
 //   `./migrations` holds only what the migrations made.
@@ -4523,7 +4532,7 @@ fn completeness_violations(columns: &[CatalogColumn], baseline: &[(&str, &[&str]
 /// succeeds where it otherwise raises `42939 unacceptable schema name`. A
 /// migration doing `PERFORM set_config('allow_system_table_mods','on',true)`
 /// then a concat-split `CREATE SCHEMA pg_evil` / `CREATE TABLE pg_evil.pd_leak
-/// (rrn TEXT, employee_name TEXT)` / `INSERT` of a 주민등록번호 gave gate EXIT=0
+/// (rrn TEXT, employee_name TEXT)` / `INSERT` of a resident registration number gave gate EXIT=0
 /// AND catalog EXIT=0, printing counts byte-identical to a clean tree.
 ///
 /// So the sweep now names what it drops instead of matching a prefix, and the
@@ -4577,7 +4586,8 @@ fn completeness_violations(columns: &[CatalogColumn], baseline: &[(&str, &[&str]
 ///   `reltoastrelid`. Its content is a swept table's own out-of-line values.
 /// * `v` — `relfilenode = 0`, `pg_relation_size = 0`, `INSERT` refused `55000`.
 ///   It stores no row. `CREATE VIEW v AS SELECT '900101-…'::text AS rrn` does
-///   put a 주민등록번호 in the catalog, but in the rewrite rule, not in a heap;
+///   put a resident registration number in the catalog, but in the rewrite
+///   rule, not in a heap;
 ///   a view over base relations reads relations this sweep already has.
 /// * `c` — composite type. `relfilenode = 0`; `INSERT` and `SELECT` both refused
 ///   `42809 cannot open relation`. It is a type definition, not storage.

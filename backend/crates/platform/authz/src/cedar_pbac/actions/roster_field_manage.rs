@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! `roster_field_manage`: define the fields a tenant adds to its personnel
 //! card (add one, rename it, retire it). The definitions are tenant-wide, so
-//! the holder is whoever holds this grant or the HR 등록·수정 grant over the
+//! the holder is whoever holds this grant or the HR edit grant over the
 //! whole tenant; the use case computes that as `actor_holds_permission` from
 //! the principal's existing doors. Fail-closed: there is no legacy decision.
 

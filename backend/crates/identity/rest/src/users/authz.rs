@@ -60,11 +60,11 @@ pub(crate) fn authorize_user_write(
     Ok(())
 }
 
-/// The accounts a caller may list and open: where its 권한 관리 (`UserManage`)
+/// The accounts a caller may list and open: where its access management (`UserManage`)
 /// authority holds — a role over the caller's scope, a tenant role grant over
-/// the grant's own scope (회사 전체 = every account) — never the data scope
-/// another grant gives (governance-02: a 법인 인사 grant must not hide the
-/// roleless accounts a 회사 전체 권한 관리 grant manages).
+/// the grant's own scope (company-wide = every account) — never the data scope
+/// another grant gives (governance-02: a legal-entity HR grant must not hide the
+/// roleless accounts a company-wide access management grant manages).
 pub(crate) fn account_scope(principal: &Principal) -> BranchScope {
     crate::me::authz::feature_capability(principal, Feature::UserManage)
         .map_or_else(|| principal.branch_scope.clone(), |(_, scope)| scope)
@@ -72,7 +72,7 @@ pub(crate) fn account_scope(principal: &Principal) -> BranchScope {
 
 /// governance-01 (#19, #18): no preset roles and no title-implied access. An
 /// invite creates an account with NO access, and an account never gains a
-/// legacy role or 지점 membership again; removing one stays allowed so legacy
+/// legacy role or branch membership again; removing one stays allowed so legacy
 /// accounts can be cleaned. Access comes only from tenant roles granted under
 /// `/access/grants` (Cedar, fail closed).
 pub(crate) fn refuse_added_access(
@@ -100,7 +100,7 @@ pub(crate) fn refuse_added_access(
 
 /// governance-22: the tenant's ops account is never deactivated and never has
 /// its roles changed here (lockout invariant; its holder changes only through
-/// the vendor-assisted 운영 계정 인계).
+/// the vendor-assisted ops account handover).
 pub(crate) fn refuse_ops_target(is_tenant_ops: bool) -> Result<(), RestError> {
     if is_tenant_ops {
         return Err(RestError::new(

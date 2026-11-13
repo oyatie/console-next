@@ -1,7 +1,7 @@
 tags:
 - finance-gl
 operationId: createVoucherDraft
-summary: Open a draft voucher (기표)
+summary: Open a draft voucher
 security:
 - bearerAuth: []
 requestBody:

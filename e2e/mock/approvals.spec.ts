@@ -30,19 +30,26 @@ const response = (box = "pending") => ({
   sources: [{ key: "org_change", label: "조직 변경", count: 2 }, { key: "governance", label: "예외 승인", count: 1 }],
 });
 
-for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`an identity-blocked approval explains the fix and opens the source record at ${width}px ${theme}`, async ({ page }, info) => {
+for (const { code, message } of [
+  { code: "org_change.refuse.identity_unbound", message: "org_change.refuse.identity_unbound" },
+  { code: "org_change_sod_violation", message: "requestOutcome.code.org_change_sod_violation" },
+  { code: "future_refusal", message: "approvals.viewer.blockedHint" },
+] as const) for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`a ${code} approval explains the fix and opens the source record at ${width}px ${theme}`, async ({ page }, info) => {
   await mockScreen(page, screens[0], "empty");
   await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ status: 200, json: {
-    ...response(), items: [{ ...item, decision_refusal: "org_change.refuse.identity_unbound" }],
+    ...response(), items: [{ ...item, decision_refusal: code }],
   } }));
-  await mockDocument(page, { ...item, decision_refusal: "org_change.refuse.identity_unbound" });
+  await mockDocument(page, { ...item, decision_refusal: code });
   await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
   await page.setViewportSize({ width, height: 900 });
   await page.goto("/approvals");
   await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
   await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
   const panel = column(page);
-  await expect(panel).toContainText("계정을 인사카드에 연결하거나 동일인 확인을 완료");
+  const facts = panel.getByRole("region", { name: t("approvals.preview.facts"), exact: true });
+  await expect(facts.getByText(t("approvals.field.verification"), { exact: true })).toHaveCount(1);
+  await expect(facts.getByText(t(message), { exact: true })).toBeVisible();
+  await expect(panel.getByRole("region", { name: t("approvals.preview.route"), exact: true })).not.toContainText("내 차례");
   await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
   await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);

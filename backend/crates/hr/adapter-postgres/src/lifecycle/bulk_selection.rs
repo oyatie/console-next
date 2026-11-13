@@ -1,8 +1,9 @@
 //! Who a bulk appointment names (hr-polish A4, A5; data-display-and-realtime
 //! §6.1 bulk selection): an explicit id list, per-line destination units
 //! (a pasted TRANSFER sheet across units, still one all-or-nothing batch), or
-//! 「필터와 일치하는 {n}명 모두 선택」 — a server-side selection by the list
-//! filters minus exclusions, checked against the count the user confirmed.
+//! "Select all {n} matching the filter" — a server-side selection by the
+//! list filters minus exclusions, checked against the count the user
+//! confirmed.
 
 use std::collections::BTreeSet;
 

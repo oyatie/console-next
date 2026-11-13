@@ -1,7 +1,8 @@
-//! `PATCH /employees/{id}`: an HR person corrects master data (정정). Low-risk
-//! fields apply at once; a high-risk field goes to a second person through a
-//! BW-17 request, or, for a sole holder, applies after a step-up bound to the
-//! payload, with the review flag (decisions #7 case B; 401 without).
+//! `PATCH /employees/{id}`: an HR person corrects master data (correction).
+//! Low-risk fields apply at once; a high-risk field goes to a second person
+//! through a BW-17 request, or, for a sole holder, applies after a step-up
+//! bound to the payload, with the review flag (decisions #7 case B; 401
+//! without).
 
 use console_hr_domain::corrections::{CorrectionRoute, HighRiskPath, route_for_current};
 use console_hr_domain::requests::ChangeRequestKind;
@@ -154,9 +155,9 @@ impl HrService {
                             unauthorized("step_up_failed", "the passkey step-up did not verify")
                         })?;
                     sole_holder_cedar(&principal, employee_id, holders)?;
-                    // review_required is the only 예외 처리 mark;
-                    // the governed-exception row and 사후 검토 item land with
-                    // BW-06/F-EXC (decisions #7 case B).
+                    // review_required is the only exception-handling mark;
+                    // the governed-exception row and after-the-fact review item
+                    // land with BW-06/F-EXC (decisions #7 case B).
                     assertion = Some(verified);
                 }
                 let mut now: Vec<FieldValue> = low;

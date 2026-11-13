@@ -17,7 +17,7 @@ properties:
     - type: 'null'
   line_count:
     type: integer
-    description: 「저장 안 됨 · n건」 — lines not yet committed.
+    description: The "Not saved · n items" count — lines not yet committed.
   stale_count:
     type: integer
     description: Lines whose employee changed since they were drafted; a commit refuses them.

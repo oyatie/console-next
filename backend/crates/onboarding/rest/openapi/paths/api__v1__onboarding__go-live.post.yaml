@@ -1,7 +1,7 @@
 tags:
 - onboarding
 operationId: goLive
-summary: 운영 시작 (one-way)
+summary: Go-live (one-way)
 description: SUPER_ADMIN, a fresh passkey step-up and the confirmed digest; the Rust backstop and the Cedar tenant_go_live
   bundle must both allow.
 security:

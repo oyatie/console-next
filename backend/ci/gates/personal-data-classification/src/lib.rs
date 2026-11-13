@@ -66,7 +66,7 @@ pub use waivers::UNSUPPORTED_WAIVERS;
 ///
 /// The citation lives here, in executable code, rather than only in prose, so
 /// that a rejection message names the instrument a author must read. `verified`
-/// is the 시행일자 of the version checked against the official legislation
+/// is the effective date of the version checked against the official legislation
 /// portal (law.go.kr) on 2026-08-01.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClassCitation {
@@ -76,43 +76,47 @@ pub struct ClassCitation {
     pub instrument: &'static str,
     /// Article the classification rests on.
     pub article: &'static str,
-    /// 시행일자 of the version verified.
+    /// Effective date of the version verified.
     pub effective: &'static str,
     /// Sub-tokens this class requires, empty when the class takes none.
     pub subtokens: &'static [&'static str],
 }
 
-/// 고유식별정보 — 개인정보 보호법 시행령 제19조 is a CLOSED set of exactly four,
-/// each pinned to its own defining Act. That is why this is an enum and not an
-/// open category, and why a column claiming membership must name which of the
-/// four: 고시 제2026-9호 제7조제3항제2호 makes 주민등록번호 unconditional while
-/// the other three may be scoped by a documented 위험도 분석, so `rrn` is
+/// Unique identifying information — Personal Information Protection Act
+/// Enforcement Decree Article 19 is a CLOSED set of exactly four, each pinned
+/// to its own defining Act. That is why this is an enum and not an open
+/// category, and why a column claiming membership must name which of the
+/// four: Public Notice No. 2026-9, Article 7(3)2 makes the resident
+/// registration number unconditional while the other three may be scoped by
+/// a documented risk analysis, so `rrn` is
 /// legally distinct from its three siblings and a bare `unique-id` would erase
 /// that distinction.
 const UNIQUE_ID_SUBTOKENS: &[&str] = &[
-    // 「주민등록법」 제7조의2제1항에 따른 주민등록번호
+    // Resident registration number under Article 7-2(1) of the Resident Registration Act
     "rrn",
-    // 「여권법」 제7조제1항제1호에 따른 여권번호
+    // Passport number under Article 7(1)1 of the Passport Act
     "passport",
-    // 「도로교통법」 제80조에 따른 운전면허의 면허번호
+    // Driver's license number under Article 80 of the Road Traffic Act
     "driver-license",
-    // 「출입국관리법」 제31조제5항에 따른 외국인등록번호
+    // Alien registration number under Article 31(5) of the Immigration Act
     "arc",
 ];
 
-/// 민감정보 — unlike 고유식별정보 this list is NOT closed. 개인정보 보호법
-/// 제23조제1항 says `사상ㆍ신념 … 성생활 등에 관한 정보` and then adds a
-/// 사생활 현저 침해 catch-all, so assigning a column to this class is a legal
+/// Sensitive data — unlike unique identifying information this list is NOT
+/// closed. Personal Information Protection Act Article 23(1) says
+/// "information on ideology, belief … sex life, etc." and then adds a
+/// catch-all for information likely to markedly infringe privacy, so
+/// assigning a column to this class is a legal
 /// judgement. Encoding the sub-category makes each judgement auditable per
 /// column instead of hiding nine different decisions behind one boolean.
 const SENSITIVE_SUBTOKENS: &[&str] = &[
-    // 제23조제1항 본문
+    // Article 23(1), main text
     "belief",
     "union",
     "political",
     "health",
     "sex-life",
-    // 시행령 제18조
+    // Enforcement Decree Article 18
     "genetic",
     "criminal-record",
     "biometric-id",

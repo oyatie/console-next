@@ -55,7 +55,7 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
         aliases: &[
             "업무",
             "담당업무",
-            // r3:records-02: 근로자 명부 「종사하는 업무의 종류」.
+            // r3:records-02: worker register "kind of work engaged in".
             "종사업무",
             "종사하는업무",
             "직무",
@@ -69,8 +69,8 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
     },
     EmployeeImportFieldDefinition {
         target: "position",
-        // r3:hire-16: 직급 (a grade) is not 직위 (a post); it stays 원본만 보관
-        // rather than overwriting the person's 직위.
+        // r3:hire-16: a grade is not a title (a post); it stays "keep original
+        // only" rather than overwriting the person's title.
         aliases: &["직책", "직위", "직함", "position", "title"],
         classification: "canonical",
         required: false,
@@ -110,9 +110,11 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
         classification: "canonical",
         required: false,
     },
-    // BW-10 / decisions #6: 생년월일 is the identity discriminator and a 명부
-    // fact (근기법 시행령 §20), so this column is kept, typed and checked.
-    // r3:hire-16 / records-02: 근로자 명부 (근기법 시행령 §20) facts.
+    // BW-10 / decisions #6: date of birth is the identity discriminator and a
+    // register fact (Enforcement Decree of the Labor Standards Act §20), so this
+    // column is kept, typed and checked.
+    // r3:hire-16 / records-02: worker register (Enforcement Decree of the Labor
+    // Standards Act §20) facts.
     fields_register::SEX,
     fields_register::CONTRACT_END_DATE,
     fields_register::PROBATION_END_DATE,
@@ -201,9 +203,9 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
         classification: "canonical",
         required: false,
     },
-    // MR-7: 고용형태, recorded on the employment profile. A code maps as is;
-    // a label (정규직, 촉탁) is mapped by the operator, since the labels live
-    // in the client catalogs.
+    // MR-7: employment type, recorded on the employment profile. A code maps as
+    // is; a label (regular, post-retirement contract) is mapped by the operator,
+    // since the labels live in the client catalogs.
     EmployeeImportFieldDefinition {
         target: "employment_type",
         aliases: &[
@@ -263,10 +265,10 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
         classification: "restricted",
         required: false,
     },
-    // W12: the person's 휴대전화 (restricted; stored on the profile at apply).
+    // W12: the person's mobile phone (restricted; stored on the profile at apply).
     fields_register::PHONE,
-    // IMPORT-2 (decisions #26): the current status and a 휴직's start, recorded
-    // as setup facts.
+    // IMPORT-2 (decisions #26): the current status and a leave of absence's
+    // start, recorded as setup facts.
     EmployeeImportFieldDefinition {
         target: "employment_status",
         aliases: &[

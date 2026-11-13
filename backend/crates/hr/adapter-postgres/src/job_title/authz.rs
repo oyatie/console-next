@@ -1,8 +1,8 @@
 //! Who may change the classification catalog: Cedar's `job_title_manage`
 //! (fail-closed). The one fact is computed from the principal's own doors:
 //! a tenant-wide `job_title_manage` or `org_change_apply` (the org structure
-//! grant; the tenant ops account holds it). A 법인/사업장-scoped grant never
-//! reaches the tenant-wide lists.
+//! grant; the tenant ops account holds it). A legal-entity- or
+//! workplace-scoped grant never reaches the tenant-wide lists.
 
 use console_platform_authz::cedar_pbac::enforce::enforce_action;
 use console_platform_authz::cedar_pbac::facts::Facts;
@@ -25,7 +25,7 @@ pub(super) fn authorize_manage(principal: &Principal) -> Result<(), HrError> {
         .map_err(HrError::from_kernel)
 }
 
-/// Whether the inline 「+ 추가」 is offered (the same decision, no error).
+/// Whether the inline "+ Add" is offered (the same decision, no error).
 pub(super) fn may_manage(principal: &Principal) -> bool {
     authorize_manage(principal).is_ok()
 }

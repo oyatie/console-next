@@ -1,7 +1,8 @@
-//! The gate of the restricted sections (징계, 장애, 보훈; MR-33/35): every
-//! fact of the `employee_restricted_record` Cedar action, computed in the
-//! use-case transaction, and the read purpose (reason domain
-//! `restricted_record_purpose`). Cedar decides; nothing here permits.
+//! The gate of the restricted sections (disciplinary action, disability,
+//! veteran status; MR-33/35): every fact of the `employee_restricted_record`
+//! Cedar action, computed in the use-case transaction, and the read purpose
+//! (reason domain `restricted_record_purpose`). Cedar decides; nothing here
+//! permits.
 
 use console_hr_domain::import::rrn::is_rrn_value;
 use console_hr_domain::record::Section;
@@ -133,8 +134,8 @@ pub(crate) async fn gate(
     })
 }
 
-/// [`gate`] for one subject: 인사기본 등록·수정 is decided over the grant
-/// set on this person (AX-5), not over the whole tenant.
+/// [`gate`] for one subject: "HR basics register/edit" is decided over the
+/// grant set on this person (AX-5), not over the whole tenant.
 pub(crate) async fn gate_for(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,

@@ -1,5 +1,5 @@
 //! Tenant setup phase (entity-depth design §5–§6): the server-computed setup
-//! rail, the 운영 시작 preview (blockers with their fix, warnings, what becomes
+//! rail, the go-live preview (blockers with their fix, warnings, what becomes
 //! governed, counts, digest) and the Rust backstop of the go-live decision.
 //! Pure: the adapter computes [`SetupFacts`] inside the transaction.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
@@ -53,10 +53,10 @@ pub struct SetupFacts {
     /// #7's contact store has not landed yet; until it does the contact is a
     /// warning, never a blocker (a missing feature must not dead-end go-live).
     pub security_contact_store_available: bool,
-    /// People employed today (재직 · 휴직): never a 입사 예정, a 퇴직 or a
+    /// People employed today (employed · on leave of absence): never a pre-hire, an exit or a
     /// cancelled registration.
     pub employees: i64,
-    /// 입사 예정 (PRE_HIRE): shown apart from the headcount.
+    /// Pre-hire (PRE_HIRE): shown apart from the headcount.
     pub employees_starting_later: i64,
     pub employees_step_deferred: bool,
     pub unplaced_people: i64,
@@ -101,7 +101,7 @@ impl SetupFacts {
             && self.registrations_needing_confirmation == 0
     }
 
-    /// Every entity has a complete 대표 사업장. Registration answers are optional.
+    /// Every entity has a complete primary workplace. Registration answers are optional.
     #[must_use]
     pub fn primary_workplaces_ready(&self) -> bool {
         self.workplaces > 0

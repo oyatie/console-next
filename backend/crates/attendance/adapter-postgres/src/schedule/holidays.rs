@@ -1,4 +1,4 @@
-//! 공휴일 (bundled reference rows, read-only) and 약정휴일.
+//! Public holidays (bundled reference rows, read-only) and contractual holidays.
 
 use std::collections::HashMap;
 

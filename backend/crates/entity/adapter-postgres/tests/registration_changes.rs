@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! ENT-REG as the runtime role `console_rt`: a 사업장 moves to another
-//! 사업자등록 or 종사업장 일련번호 as a dated, ledgered change (MR-18), and
-//! the 독립 근기법 사업장 evidence is read back so a revise can resend it (MR-6).
+//! ENT-REG as the runtime role `console_rt`: a workplace moves to another business
+//! registration or sub-workplace serial number as a dated, ledgered change (MR-18), and the
+//! evidence for an independent workplace under the Labor Standards Act is read back so a
+//! revise can resend it (MR-6).
 
 mod common;
 
@@ -109,7 +110,7 @@ async fn a_workplace_moves_to_another_registration_with_its_holder(owner: PgPool
         .unwrap();
     assert_eq!(link.after, Some(seoul.to_string()));
 
-    // The 본사 holds 서울 and the branch files under it now: it cannot leave.
+    // The headquarters holds Seoul and the branch files under it now: it cannot leave.
     let (code_, _, remedy) = code(
         store
             .change_workplace_registration(&cmd(&actor), hq.id, change(busan, None, "2026-01-01"))

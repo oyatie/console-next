@@ -19,11 +19,11 @@ properties:
     format: date
   before_first_record:
     type: boolean
-    description: Today is before the first record takes effect (e.g. before 개설일); this is that first record.
+    description: Today is before the first record takes effect (e.g. before the opening date); this is that first record.
   trade_name:
     type: string
     readOnly: true
-    description: "INDIVIDUAL: the certificate's own 상호; otherwise the entity's 법인명 (derived). Legacy NULL falls back to the entity name."
+    description: "INDIVIDUAL: the certificate's own trade name; otherwise the entity's legal entity name (derived). Legacy NULL falls back to the entity name."
   opened_on:
     type:
     - string
@@ -96,7 +96,7 @@ properties:
     - 'null'
     format: date
   status_until:
-    description: 휴업's expected end as reported (SUSPENDED only; a plan, not a clock).
+    description: The business suspension's expected end as reported (SUSPENDED only; a plan, not a clock).
     type:
     - string
     - 'null'

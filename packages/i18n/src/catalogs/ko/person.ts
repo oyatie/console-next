@@ -1,6 +1,7 @@
-// Korean source for `person.` ids (the employee page: head, verbs, next box, history, cards). Rules: the
+// Korean copy for `person.` ids (the employee page: head, verbs, next box, history, cards). Rules: the
 // header of ../ko.ts and GUIDE.md. `{date}` arrives preformatted (long form 「11월 2일 (월)」).
-export const koPerson = {
+import type { enPerson } from "../en/person";
+export const koPerson: Record<keyof typeof enPerson, string> = {
   "person.exit.open": "퇴직 건 보기",
   "person.record.actions": "기록 정정",
   "person.readOnly": "인사 발령은 인사 담당자가 기록합니다.",
@@ -50,4 +51,4 @@ export const koPerson = {
   "person.request": "인사팀에 변경 요청",
   "person.identity": "동일인 확인",
   "person.identifiers": "사번·주민등록번호",
-} as const;
+};

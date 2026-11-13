@@ -12,7 +12,7 @@
 //!   * titles do not permit self-approval; missing staging identity fails closed;
 //!   * withdraw discards the staged revision (pending cleared, active unchanged).
 //!
-//! §16 org-scope automation gate (85 판정, BE-ingest-checklist-gates): direct
+//! §16 org-scope automation gate (ruling 85, BE-ingest-checklist-gates): direct
 //! activation of an org-scope automation additionally requires a distinct
 //! four-eyes approval — `create_and_activate` seeds one via
 //! `PgGovernanceStore::decide_approval` (mirrors the ontology action lane's
@@ -854,7 +854,7 @@ async fn withdraw_discards_staged_revision(owner_pool: PgPool) {
 }
 
 // ===========================================================================
-// §16 org-scope automation gate (85 판정, BE-ingest-checklist-gates).
+// §16 org-scope automation gate (ruling 85, BE-ingest-checklist-gates).
 // ===========================================================================
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

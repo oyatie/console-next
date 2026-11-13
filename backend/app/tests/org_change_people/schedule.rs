@@ -1,5 +1,6 @@
-//! org-02: a scheduled change can be cancelled (예약 취소) and moved (예약
-//! 수정), and applies on its 시행일 with nobody pressing 시행 — once.
+//! org-02: a scheduled change can be cancelled (cancel the schedule) and moved
+//! (edit the schedule), and applies on its effective date with nobody pressing
+//! apply — once.
 
 use console_app::org_change_schedule::apply_due_org_changes;
 use http::StatusCode;
@@ -10,7 +11,7 @@ use super::fixture::{CHANGES, HIRE, code, day, tenant, today};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_scheduled_change_is_cancelled_moved_and_applied_on_its_date(pool: PgPool) {
-    // regression: org-02 — no 예약 취소, never applied by itself.
+    // regression: org-02 — no way to cancel the schedule, never applied by itself.
     let t = tenant(pool).await;
     let [hq, pangyo] = t.workplaces;
     let support = t.dept("경영지원본부", t.sites[0]).await;
@@ -18,7 +19,7 @@ async fn a_scheduled_change_is_cancelled_moved_and_applied_on_its_date(pool: PgP
     let park = t.person("박개발", dev, pangyo, "ACTIVE").await;
     let move_dev = json!([{"op": "MOVE_ORG_UNIT", "orgUnitId": dev, "parentId": support}]);
 
-    // 예약 취소.
+    // Cancel the schedule.
     let (status, scheduled) = t.change("REORG", dev, move_dev.clone(), &day(7)).await;
     assert_eq!(status, StatusCode::OK, "{scheduled}");
     assert_eq!(scheduled["status"], json!("APPROVED"));
@@ -42,7 +43,7 @@ async fn a_scheduled_change_is_cancelled_moved_and_applied_on_its_date(pool: PgP
     );
     assert_eq!(t.head(dev).await.0, 1, "a cancelled change never applies");
 
-    // 예약 수정: the content stays, the date moves; a content change is refused.
+    // Edit the schedule: the content stays, the date moves; a content change is refused.
     let (_, scheduled) = t.change("REORG", dev, move_dev, &day(7)).await;
     let id = scheduled["id"].as_str().unwrap().to_owned();
     let path = format!("{CHANGES}/{id}");
@@ -100,7 +101,7 @@ async fn a_scheduled_change_is_cancelled_moved_and_applied_on_its_date(pool: PgP
         "the refused cancel wrote nothing"
     );
 
-    // The worker applies it on its 시행일, with the people, once.
+    // The worker applies it on its effective date, with the people, once.
     let on = today() + time::Duration::days(3);
     assert_eq!(
         apply_due_org_changes(&t.owner, on - time::Duration::days(1)).await,

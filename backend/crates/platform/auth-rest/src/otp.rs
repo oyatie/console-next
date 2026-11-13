@@ -164,13 +164,13 @@ pub(crate) async fn redeem_otp(
 ///   can ever reach here; `caller_is_super_admin` is re-asserted as defense in
 ///   depth so a future refactor of that guard cannot open a hole.
 /// * an empty branch set → `None` only for a roleless account (governance-01: no
-///   title, no 지점; it carries no access of its own) when the caller manages
+///   title, no branch; it carries no access of its own) when the caller manages
 ///   accounts (`caller_manages_roleless`); otherwise, and for any other scope,
 ///   403 (nothing issuable).
 ///
 /// Shared by `issue_admin_otp` and `admin_credential_reset` so the two cannot
 /// drift: both previously matched only `Branches(non-empty)` and so 403'd on an
-/// `All`-scope (privileged) target — the "코드를 발급하지 못했습니다" OTP-issuance
+/// `All`-scope (privileged) target — the "Could not issue the code" OTP-issuance
 /// failure from issue #18. An org-wide target now resolves to `None` (authorized,
 /// no per-branch basis) instead of a hard 403.
 pub(crate) fn authorizable_target_branches(

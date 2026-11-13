@@ -1,7 +1,7 @@
-//! 「권한 요청」 (governance-22): a refused screen files a request record; the
-//! holders of 권한 관리 see the open ones and close them; the requester sees
+//! "Access request" (governance-22): a refused screen files a request record; the
+//! holders of access management see the open ones and close them; the requester sees
 //! and may withdraw its own. Also who can grant — the count and names a
-//! refusal shows (「이 범위의 권한을 가진 사람 n명」).
+//! refusal shows ("n people have access in this scope").
 
 use console_kernel_core::OrgId;
 use console_platform_authz::Principal;
@@ -155,7 +155,7 @@ pub async fn create(
     .await
 }
 
-/// The open requests for a 권한 관리 holder; otherwise the caller's own.
+/// The open requests for an access management holder; otherwise the caller's own.
 pub async fn list(s: &AccessService, p: Principal) -> AccessResult<Vec<Value>> {
     with_org_conn::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
         Box::pin(async move {
@@ -176,7 +176,7 @@ pub async fn list(s: &AccessService, p: Principal) -> AccessResult<Vec<Value>> {
     .await
 }
 
-/// DONE / DECLINED by a 권한 관리 editor; WITHDRAWN by the requester.
+/// DONE / DECLINED by an access management editor; WITHDRAWN by the requester.
 pub async fn close(s: &AccessService, p: Principal, id: Uuid, body: Close) -> AccessResult<Value> {
     let status = body.status;
     if !["DONE", "DECLINED", "WITHDRAWN"].contains(&status.as_str()) {
@@ -217,8 +217,8 @@ pub async fn close(s: &AccessService, p: Principal, id: Uuid, body: Close) -> Ac
     .await
 }
 
-/// Who can grant (the ops account and every account holding 권한 관리
-/// 등록·수정 that counts now): a count and up to five names, for a refusal.
+/// Who can grant (the ops account and every account holding access management
+/// edit that counts now): a count and up to five names, for a refusal.
 pub async fn granters(s: &AccessService, p: Principal) -> AccessResult<Value> {
     with_org_conn::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
         Box::pin(async move {

@@ -9,7 +9,7 @@ use crate::{
     ListActionInboxQuery, MAX_PAGE_LIMIT, encode_cursor, list_action_inbox, parse_cursor,
 };
 
-/// Kinds that are FYI for their holder: listed under 참조, never counted as 해야 할 일.
+/// Kinds that are FYI for their holder: listed under Reference, never counted as to-do.
 const NOTICE_KINDS: [&str; 1] = ["grant_notice"];
 
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
@@ -22,7 +22,7 @@ pub enum InboxFilter {
     Scheduled,
     Deadlines,
     Failures,
-    /// 참조: notices addressed to me that ask only to be confirmed (FYI), kept out of 해야 할 일.
+    /// Reference: notices addressed to me that ask only to be confirmed (FYI), kept out of to-do.
     Notices,
     #[serde(skip)]
     Approvals,
@@ -367,6 +367,7 @@ mod tests {
     fn item(lane: &'static str, due_tone: &'static str, kind: &str) -> ActionInboxItem {
         ActionInboxItem {
             age_days: 0,
+            due_basis: None,
             fold_key: String::new(),
             context: None,
             id: String::new(),

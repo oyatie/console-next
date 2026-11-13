@@ -67,7 +67,7 @@ pub const MAIL_KEY: &str = "mail";
 /// and a newly reviewed database allowlist digest.
 pub const BUILTIN_CATALOG_VERSION: &str = "2026-07-19.1";
 
-// C-chain (거래처 계약 → 직무/직위 → 채용 공고 → 직원): the client-contract-to-hire
+// C-chain (client contract → job/position → job posting → employee): the client-contract-to-hire
 // spine. Each is an `instance`-backed engine type; the forward links form the
 // traversable chain contract → position → posting → employee.
 pub const CONTRACT_KEY: &str = "contract";
@@ -122,7 +122,7 @@ pub(crate) fn create_action(props: &[PropertyDefInput]) -> ActionTypeInput {
         side_effects: json!([]),
         dispatch: ActionDispatch::InstanceRevision,
         dispatch_target: None,
-        // Authority gate only; team-scope gating (§19 팀 배포) is opened as a
+        // Authority gate only; team-scope gating (§19 team rollout) is opened as a
         // governance approval by the caller, not encoded on the action here.
         control_points: json!(["authority"]),
     }
@@ -566,7 +566,7 @@ pub fn compliance_framework_draft() -> CreateObjectTypeDraft {
     )
 }
 
-/// 연차 leave request (`leave_requests`), FK-linked to the subject employee.
+/// Annual leave request (`leave_requests`), FK-linked to the subject employee.
 #[must_use]
 pub fn leave_request_draft(employee_type_id: ObjectTypeId) -> CreateObjectTypeDraft {
     let properties = vec![
@@ -769,7 +769,7 @@ pub fn sla_setting_draft() -> CreateObjectTypeDraft {
     }
 }
 
-/// HO- handover policy (인수인계): who acts automatically, when it escalates,
+/// HO- handover policy: who acts automatically, when it escalates,
 /// the minimum fit-for-duty staffing floor, and the department heads on point.
 #[must_use]
 pub fn handover_policy_draft() -> CreateObjectTypeDraft {
@@ -803,7 +803,7 @@ pub fn handover_policy_draft() -> CreateObjectTypeDraft {
     }
 }
 
-/// 교대 shift timetable: named shift with a time-of-day window.
+/// Shift timetable: named shift with a time-of-day window.
 #[must_use]
 pub fn shift_timetable_draft() -> CreateObjectTypeDraft {
     let properties = vec![
@@ -826,7 +826,7 @@ pub fn shift_timetable_draft() -> CreateObjectTypeDraft {
     }
 }
 
-/// 노무수령거부 labor refusal: a legal-status record for a refusal to receive
+/// Labor refusal: a legal-status record for a refusal to receive
 /// an employee's labor.
 #[must_use]
 pub fn labor_refusal_draft() -> CreateObjectTypeDraft {
@@ -859,7 +859,7 @@ pub fn labor_refusal_draft() -> CreateObjectTypeDraft {
     }
 }
 
-/// RG- regulation parameter (최저임금, 주52h): an org-scoped statutory value
+/// RG- regulation parameter (minimum wage, 52-hour week): an org-scoped statutory value
 /// with an effective date and its impact.
 #[must_use]
 pub fn regulation_param_draft() -> CreateObjectTypeDraft {
@@ -892,7 +892,7 @@ pub fn regulation_param_draft() -> CreateObjectTypeDraft {
     }
 }
 
-/// 현장 site coverage: required vs. assigned headcount for a worksite as of a
+/// Site coverage: required vs. assigned headcount for a worksite as of a
 /// given date.
 #[must_use]
 pub fn site_coverage_draft() -> CreateObjectTypeDraft {
@@ -916,7 +916,7 @@ pub fn site_coverage_draft() -> CreateObjectTypeDraft {
     }
 }
 
-/// 수익성 profitability analytic: a contract's revenue/cost with the margin
+/// Profitability analytic: a contract's revenue/cost with the margin
 /// formula that derives it.
 #[must_use]
 pub fn profitability_analytic_draft() -> CreateObjectTypeDraft {
@@ -966,7 +966,7 @@ fn link(
     }
 }
 
-/// C- contract (거래처 계약): the client-contract head of the chain. Links forward
+/// C- contract (client contract): the client-contract head of the chain. Links forward
 /// (one → many) to the positions it authorizes.
 #[must_use]
 pub fn contract_draft(position_type_id: ObjectTypeId) -> CreateObjectTypeDraft {
@@ -1012,7 +1012,7 @@ pub fn contract_draft(position_type_id: ObjectTypeId) -> CreateObjectTypeDraft {
     }
 }
 
-/// Position (직무/직위): a site × 직무 × 직책 × TO opening the contract authorizes.
+/// Position (job/position): a site × job × title × TO opening the contract authorizes.
 /// Links forward (one → many) to the postings raised to fill it.
 #[must_use]
 pub fn position_draft(posting_type_id: ObjectTypeId) -> CreateObjectTypeDraft {
@@ -1047,7 +1047,7 @@ pub fn position_draft(posting_type_id: ObjectTypeId) -> CreateObjectTypeDraft {
     }
 }
 
-/// Posting (채용 공고): an internal/external hiring notice for a position. Links
+/// Posting (job posting): an internal/external hiring notice for a position. Links
 /// forward (one → many) to the employees it fills — the employee type is not yet
 /// registered, so that link is authored unresolved (see [`POSTING_EMPLOYEE_LINK_KEY`]).
 #[must_use]

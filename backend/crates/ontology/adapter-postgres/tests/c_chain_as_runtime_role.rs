@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! RUNTIME proofs for the C-chain (거래처 계약 → 직무 → 채용 공고) engine types,
+//! RUNTIME proofs for the C-chain (client contract → job → job posting) engine types,
 //! exercised as the genuine non-owner `console_rt` role (NOSUPERUSER, NOBYPASSRLS,
 //! FORCE RLS) — the only faithful exercise of `org_isolation`. The default
 //! `#[sqlx::test]` pool is a BYPASSRLS superuser that would green-light a broken

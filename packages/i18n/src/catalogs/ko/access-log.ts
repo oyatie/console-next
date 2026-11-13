@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const koAccessLog = {
+import type { enAccessLog } from "../en/access-log";
+export const koAccessLog: Record<keyof typeof enAccessLog, string> = {
   "accessLog.action.privacy_request.intake_read": "개인정보 권리 요구 조회",
   "accessLog.target.privacy_rights_request": "개인정보 권리 요구",
   "accessLog.target.employee": "직원",
@@ -106,4 +107,4 @@ export const koAccessLog = {
   "accessLog.action.employee.rrn_reveal": "주민등록번호 열람",
   "accessLog.action.employee.field_reveal": "민감정보 열람",
   "accessLog.action.employee.record.restricted_read": "제한 정보 열람",
-} as const;
+};

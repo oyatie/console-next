@@ -1,7 +1,7 @@
 tags:
 - finance-gl
 operationId: reverseVoucher
-summary: 전기 → 역분개; creates a linked contra voucher (returns the contra)
+summary: POSTED → REVERSED; creates a linked contra voucher (returns the contra)
 security:
 - bearerAuth: []
 parameters:

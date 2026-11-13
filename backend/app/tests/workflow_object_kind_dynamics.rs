@@ -10,7 +10,7 @@
 //!     (unknown → 422);
 //!   * GET .../definitions/by-object-kind/{kind} returns the definitions (by
 //!     primary object_type OR declared object_kinds) and the bindings scoped to
-//!     that kind — the explore "작용 자동화" panel source.
+//!     that kind — the explore "Acting automations" panel source.
 
 use axum::body::{Body, to_bytes};
 use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};

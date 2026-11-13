@@ -1,5 +1,5 @@
 //! BW-11 HrService entry points: rescind one event, rescind a bulk batch, and
-//! correct (정정) one event on the same date.
+//! correct (correction) one event on the same date.
 
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
 use console_platform_auth::{MobilePasskeyStepUpEnvelope, PasskeyService};
@@ -89,7 +89,7 @@ impl HrService {
                 .await?;
                 let audits = match &outcome.rescinded {
                     Some(row) => {
-                        // A rescinded 전적 takes its open settlement case with it.
+                        // A rescinded group transfer takes its open settlement case with it.
                         let why = request
                             .note
                             .as_deref()
@@ -250,7 +250,7 @@ impl HrService {
                         tx, &principal, employee_id, event_id, passkeys.as_ref(), request.step_up, &binding,
                     ).await?
                 } else { None };
-                // The undo of a 전근 is its own assignment command (E-S3b).
+                // The undo of a transfer is its own assignment command (E-S3b).
                 let undo = (*actor.as_uuid(), Uuid::new_v4());
                 restore_head(tx, org_uuid, employee_id, &original, undo).await?;
                 let mut prepared =

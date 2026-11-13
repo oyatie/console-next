@@ -32,6 +32,73 @@ export function context(node) {
 export function rootDeclaration(decl) {
   return decl.parent?.type === "rule" && /:root\b/.test(decl.parent.selector);
 }
+
+const COLOUR_FUNCTIONS = new Set(["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color", "color-mix", "light-dark", "device-cmyk"]);
+// Every CSS colour name except transparent and currentcolor, which read the same in both themes.
+const NAMED_COLOURS = new Set(("aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood cadetblue "
+  + "chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta "
+  + "darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink "
+  + "deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey "
+  + "honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow "
+  + "lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime "
+  + "limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen "
+  + "mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid "
+  + "palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue "
+  + "saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle "
+  + "tomato turquoise violet wheat white whitesmoke yellow yellowgreen").split(" "));
+/**
+ * Whether a declared value writes a colour itself: a hex colour, a colour function or a colour name, anywhere in it
+ * (a shadow counts). A value that only names other tokens does not: it follows the theme of what it names.
+ */
+export function literalColour(value) {
+  let found = false;
+  valueParser(normalize(value)).walk((node) => {
+    const word = decodeIdent(node.value).toLowerCase();
+    if (node.type === "function" ? COLOUR_FUNCTIONS.has(word) : node.type === "word" && (/^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/.test(word) || NAMED_COLOURS.has(word))) found = true;
+  });
+  return found;
+}
+
+/**
+ * An experience file's own declarations, by block. The gates compute its overlay on the base from the specificity
+ * of exactly two selectors, so anything that would cascade another way is refused: a rule or statement other than
+ * the two blocks, a property that is not a token, an !important. So is a colour the light block sets and the dark
+ * block does not; `baseDark` names the tokens the base sets for dark, which are colours however the value is written.
+ * `file` is the path a syntax error names.
+ */
+export function experienceBlocks(css, id, baseDark = new Set(), file) {
+  const light = `:root[data-experience="${id}"]`, dark = `${light}[data-theme="dark"]`;
+  const own = { light: {}, dark: {}, problems: [] };
+  const refuse = (node) => {
+    const where = node.selector ?? (node.name ? `@${node.name} ${node.params}`.trim() : "a declaration outside any rule");
+    own.problems.push(`${where} is not one of the experience's blocks; move its declarations under ${light} or ${dark}`);
+  };
+  // Every top-level node, not every declaration: an @import carries none, and brings in rules no gate reads.
+  for (const node of parseCss(css, file).nodes) {
+    if (node.type === "comment") continue;
+    const selector = node.type === "rule" ? node.selector.replaceAll("'", '"') : "";
+    const block = selector === light ? own.light : selector === dark ? own.dark : null;
+    if (!block) { refuse(node); continue; }
+    for (const child of node.nodes) {
+      if (child.type === "comment") continue;
+      const name = child.type === "decl" ? decodeIdent(child.prop) : "";
+      if (child.type !== "decl") refuse(child);
+      else if (!name.startsWith("--")) own.problems.push(`${name} is not a token; an experience file sets custom properties only, so remove it`);
+      else {
+        if (child.important) own.problems.push(`${name} is marked !important, which the order of the light and dark blocks does not account for; drop !important`);
+        block[name] = child.value.trim();
+      }
+    }
+  }
+  // In dark the light block still applies, so a colour written there shows in dark. Where the base sets the token for
+  // dark, its rule and the light block have equal specificity and stylesheet order alone would pick one: only the
+  // dark block, with its second attribute, settles it.
+  for (const [name, value] of Object.entries(own.light)) {
+    if ((literalColour(value) || baseDark.has(name)) && !Object.hasOwn(own.dark, name))
+      own.problems.push(`${name} is a colour set for light only, so dark would show its light value; set it in ${dark} too`);
+  }
+  return own;
+}
 const permits = (definition, use, theme) => (!definition.theme || definition.theme === theme)
   && definition.conditions.every((condition) => use.conditions.includes(condition));
 

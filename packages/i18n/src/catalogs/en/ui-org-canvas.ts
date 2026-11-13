@@ -1,6 +1,4 @@
-import type { koUiOrgCanvas } from "../ko/ui-org-canvas";
-
-export const enUiOrgCanvas: Record<keyof typeof koUiOrgCanvas, string> = {
+export const enUiOrgCanvas = {
   "uiOrgCanvas.zoom": "Zoom",
   "uiOrgCanvas.zoomIn": "Zoom in",
   "uiOrgCanvas.zoomOut": "Zoom out",
@@ -9,4 +7,4 @@ export const enUiOrgCanvas: Record<keyof typeof koUiOrgCanvas, string> = {
   "uiOrgCanvas.minimap": "Overview",
   "uiOrgCanvas.collapseMinimap": "Collapse overview",
   "uiOrgCanvas.expandMinimap": "Expand overview",
-};
+} as const;

@@ -1,5 +1,5 @@
 type: object
-description: 전체 → 법인 → 사업장 → 부서 (one 부서 kind, any depth; decision 18).
+description: All → legal entity → workplace → department (one department kind, any depth; decision 18).
 required:
 - tenant_name
 - phase
@@ -24,7 +24,7 @@ properties:
   entity_unknown_headcount:
     type: integer
     format: int64
-    description: '「법인 미정」: people who have not left and have no 법인 today. Only for a tenant-wide caller; absent
+    description: '"Legal entity not set": people who have not left and have no legal entity today. Only for a tenant-wide caller; absent
       for a scoped one.'
   as_of:
     type: string

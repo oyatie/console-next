@@ -22,10 +22,10 @@ properties:
   legal_entity_id:
     type: string
     format: uuid
-    description: CREATE_WORKPLACE, an existing 법인 (or entity_ref).
+    description: CREATE_WORKPLACE, an existing legal entity (or entity_ref).
   entity_ref:
     type: string
-    description: CREATE_WORKPLACE, a 법인 created earlier in the batch.
+    description: CREATE_WORKPLACE, a legal entity created earlier in the batch.
   effective_from:
     type: string
     format: date

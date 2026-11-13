@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: correctLegalEntityIdentifier
-summary: Correct 사업자 구분 or 법인등록번호 with evidence (MR-17)
+summary: Correct the business kind or corporate registration number with evidence (MR-17)
 security:
 - bearerAuth: []
 parameters:
@@ -52,7 +52,7 @@ responses:
   '401':
     $ref: '#/components/responses/Unauthorized'
   '428':
-    description: 'After 운영 시작, the tenant ops account sent no step_up: passkey_step_up_required (remedy passkey_step_up).'
+    description: 'After go-live, the tenant ops account sent no step_up: passkey_step_up_required (remedy passkey_step_up).'
     content:
       application/json:
         schema:
@@ -70,7 +70,7 @@ responses:
         schema:
           $ref: '#/components/schemas/ErrorBody'
   '409':
-    description: 'After 운영 시작 identifier_correction_needs_exception (remedy request_governed_exception: rule ENTITY_IDENTIFIER_CORRECTION over {field, value, document_id}), identifier_correction_unavailable, or the exception''s own refusal (exception_not_approved, exception_consumed, exception_expired, exception_scope_changed).'
+    description: 'After go-live identifier_correction_needs_exception (remedy request_governed_exception: rule ENTITY_IDENTIFIER_CORRECTION over {field, value, document_id}), identifier_correction_unavailable, or the exception''s own refusal (exception_not_approved, exception_consumed, exception_expired, exception_scope_changed).'
     content:
       application/json:
         schema:

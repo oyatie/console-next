@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! BW-15 second-person decision through the router: the lock list carries the
 //! waiting request and who may decide it; the second person refuses it with a
-//! note (반려) or approves the request they reviewed; every refusal code —
+//! note (rejection) or approves the request they reviewed; every refusal code —
 //! the requester's own person (Cedar independent_people), an ineligible
 //! holder, a lower grant, another tenant, a replaced or expired request, a
 //! blank note — leaves the lock and the request untouched.
@@ -336,7 +336,7 @@ async fn a_replaced_or_expired_request_is_refused_and_the_reviewed_one_is_approv
         "{seen}"
     );
 
-    // 업무함 완료: the approver finds it there; the requester decided nothing.
+    // Inbox Done: the approver finds it there; the requester decided nothing.
     let both = [&approver.token[..], &requester.token[..]];
     period_unlock_support::done::finished(&service, both, second, lock_id, "APPROVED").await;
 }

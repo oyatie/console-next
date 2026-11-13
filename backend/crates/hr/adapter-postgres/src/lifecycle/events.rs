@@ -160,7 +160,7 @@ impl HrService {
         let item = with_audits::<_, _, HrError>(&self.pool, org, |tx| {
             Box::pin(async move {
                 // AX-5: the person, and any place they move to, inside the
-                // grant set of a 발령 key.
+                // grant set of a personnel order key.
                 authorize_hr_person_any(tx, &principal, &APPOINTMENT_KEYS, employee_id).await?;
                 if transition.to_workplace_id.is_some() || transition.to_org_unit_id.is_some() {
                     let place = (None, transition.to_workplace_id, transition.to_org_unit_id);
@@ -195,7 +195,8 @@ impl HrService {
                     record_lifecycle_event_tx(tx, org, actor, employee_id, &prepared, None).await?;
                 let mut events = vec![event];
                 if let (Some(facts), Some(to)) = (&facts, prepared.target.workplace) {
-                    // A scheduled 전적 replaced on its date takes its settlement case with it.
+                    // A scheduled group transfer replaced on its date takes its settlement
+                    // case with it.
                     if let Some(replaced) = prepared.replaces {
                         let reason = &prepared.transition.comment;
                         events.extend(

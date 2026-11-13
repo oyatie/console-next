@@ -1,6 +1,4 @@
-import type { koRequests } from "../ko/requests";
-
-export const enRequests: Partial<Record<keyof typeof koRequests, string>> = {
+export const enRequests = {
   "requests.none.filtered": "No requests match {filters}.",
   "requests.filters.reset": "Reset filters",
   "requests.reason.DATA_ENTRY_ERROR": "Data entry error",
@@ -67,4 +65,4 @@ export const enRequests: Partial<Record<keyof typeof koRequests, string>> = {
   "requests.done.WITHDRAWN": "Withdrew the {kind} request",
   "requests.kind.IMPORT_ROLLBACK": "Import rollback",
   "requests.subject.DATA_IMPORT_RUN": "Import run",
-};
+} as const;

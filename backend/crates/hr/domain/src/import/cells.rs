@@ -4,14 +4,16 @@
 use time::{Date, Duration, Month};
 
 /// A date cell as Korean HR workbooks write it: `2024-03-04`, `2024.03.04`,
-/// `2024/3/4`, `2024. 3. 4.`, `20240304`, `2024년 3월 4일` (W05), a trailing
-/// time (`… 00:00:00`), or an Excel serial day number (what a date-formatted
-/// cell reads as). Full-width digits read as digits. `None` for anything
-/// else (a two-digit year included); never a guess.
+/// `2024/3/4`, `2024. 3. 4.`, `20240304`, 2024, 3 and 4 each followed by its
+/// Korean year, month or day marker (W05), a trailing time (`… 00:00:00`), or an Excel
+/// serial day number (what a date-formatted cell reads as). Full-width digits
+/// read as digits. `None` for anything else (a two-digit year included); never
+/// a guess.
 #[must_use]
 pub fn parse_import_date(raw: &str) -> Option<Date> {
     let text = half_width(raw.trim());
-    // `2024년 3월 4일` → `2024.3.4`: only with all three markers, in order.
+    // 2024, 3 and 4 each followed by its Korean year, month or day marker →
+    // `2024.3.4`: only with all three markers, in order.
     let text = match korean_ymd(&text) {
         Some(dotted) => dotted,
         None => text,
@@ -51,7 +53,8 @@ pub fn half_width(text: &str) -> String {
         .collect()
 }
 
-/// `YYYY년 M월 D일` (any spacing, an optional trailing `.`) as `YYYY.M.D`.
+/// A year, month and day each followed by its Korean marker (any spacing, an
+/// optional trailing `.`) as `YYYY.M.D`.
 fn korean_ymd(text: &str) -> Option<String> {
     let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
     let compact = compact.strip_suffix('.').unwrap_or(&compact);
@@ -86,7 +89,8 @@ fn excel_serial(text: &str) -> Option<Date> {
     epoch.checked_add(Duration::days(days as i64))
 }
 
-/// A name as identity compares it: whitespace removed (`김 등록` = `김등록`).
+/// A name as identity compares it: whitespace removed (a name with an inner
+/// space equals the same name without it).
 #[must_use]
 pub fn name_key(name: &str) -> String {
     name.chars().filter(|c| !c.is_whitespace()).collect()
@@ -143,8 +147,9 @@ mod tests {
         }
     }
 
-    /// regression (W05): the walkthrough's 75 rows of 「2011년 4월 10일」 were
-    /// refused `invalid_date`; full-width digits likewise.
+    /// regression (W05): the walkthrough's 75 rows of 2011, 4 and 10 each
+    /// followed by its Korean year, month or day marker were refused
+    /// `invalid_date`; full-width digits likewise.
     #[test]
     fn regression_korean_word_dates_parse() {
         for raw in [

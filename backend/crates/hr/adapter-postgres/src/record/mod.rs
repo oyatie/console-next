@@ -1,5 +1,6 @@
-//! 인사카드 이력 sections (MR-31): 학력, 자격·면허, 병역, 교육 이수 as child
-//! records of the natural person (`persons`, 0213), keyed through
+//! Personnel card history sections (MR-31): education, qualifications and
+//! licenses, military service, training completed as child records of the
+//! natural person (`persons`, 0213), keyed through
 //! `employee_person_bindings`. Create, correct (UPDATE) and void append
 //! revisions to `person_record_revisions` (0261); history is the revision
 //! list. Each section has a tenant switch (`hr.record.<section>.enabled`):
@@ -7,7 +8,7 @@
 //! open so collected data can still be seen and voided.
 //!
 //! Access: org-wide `employee_directory_manage` for reads and writes, as the
-//! other 인사카드 surfaces (EMP-MODEL contracts). Audit rows carry the
+//! other personnel card surfaces (EMP-MODEL contracts). Audit rows carry the
 //! section, entry and version, never the values.
 
 mod commands;

@@ -7,10 +7,10 @@
 
 use crate::{DailyStatusSection, SectionDescriptor, TemplateDescriptor};
 
-/// The daily-status (일일업무진행현황) workbook that [`DAILY_STATUS_TEMPLATE`] describes.
+/// The daily-status workbook that [`DAILY_STATUS_TEMPLATE`] describes.
 pub const DAILY_STATUS_TEMPLATE_XLSX: &[u8] = include_bytes!("../templates/daily-status.xlsx");
 
-/// The work-diary (업무일지) workbook: one sheet the export renames to the diary date and fills.
+/// The work-diary workbook: one sheet the export renames to the diary date and fills.
 pub const WORK_DIARY_TEMPLATE_XLSX: &[u8] = include_bytes!("../templates/work-diary.xlsx");
 
 const DAILY_STATUS_SECTIONS: [SectionDescriptor; 4] = [

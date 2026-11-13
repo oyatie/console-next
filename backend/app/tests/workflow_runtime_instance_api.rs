@@ -238,7 +238,7 @@ async fn decision_approve_advances_the_line(pool: PgPool) {
 }
 
 // ===========================================================================
-// 3b. SoD / maker-checker (기안자 ≠ 승인자): the run initiator cannot APPROVE
+// 3b. SoD / maker-checker (drafter ≠ approver): the run initiator cannot APPROVE
 //     their own approval task; a different approver can. Exercised at the store
 //     boundary (like `financial`'s self-approval tests) so the actor is the
 //     genuine decider — the REST policy guard only admits SUPER_ADMIN-tier roles
@@ -247,7 +247,7 @@ async fn decision_approve_advances_the_line(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn initiator_cannot_approve_own_run_but_other_approver_can(pool: PgPool) {
     let branch = seed_branch(&pool).await;
-    // ADMIN is a valid, NON-exempt role (not SUPER_ADMIN, not org 대표) — the
+    // ADMIN is a valid, NON-exempt role (not SUPER_ADMIN, not the org representative) — the
     // case the SoD guard must hard-block.
     let initiator = UserId::new();
     seed_user(&pool, initiator, "ADMIN", branch).await;
@@ -773,7 +773,7 @@ async fn start_policy_gates_run_initiation_and_caps_payload(pool: PgPool) {
     let branch = seed_branch(&pool).await;
     // Operational pipeline: start_policy = completion_review (NOT self-service).
     let payroll_definition = seed_start_policy_definition(&pool, "ops.completion.start").await;
-    // Approval template: no start_policy — self-service 기안/상신 (DESIGN §4.8).
+    // Approval template: no start_policy — self-service draft/submit (DESIGN §4.8).
     let approval_definition = seed_approval_definition(&pool, "approval.selfservice").await;
     let service =
         build_router(app_state(runtime_role_pool(&pool).await, keys.public_pem.clone()).unwrap());

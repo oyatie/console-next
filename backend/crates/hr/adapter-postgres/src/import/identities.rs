@@ -1,7 +1,7 @@
-//! IMPORT-2 (decisions #25): the sealed 주민등록번호 of import rows. Staged
-//! at the preview (`data_import_row_identities`, never in a raw row), read as
-//! keyed hashes by the plan, and moved to `employee_rrn` when the run is
-//! applied. A run never applied loses them after
+//! IMPORT-2 (decisions #25): the sealed resident registration numbers of
+//! import rows. Staged at the preview (`data_import_row_identities`, never in
+//! a raw row), read as keyed hashes by the plan, and moved to `employee_rrn`
+//! when the run is applied. A run never applied loses them after
 //! `import.staged_identity.ttl_days` (purged at the tenant's next preview).
 
 use std::collections::BTreeMap;
@@ -95,7 +95,7 @@ pub async fn purge_expired(
         .and_then(|v| v.as_int())
         .ok_or_else(|| HrError::internal("staged identity TTL did not resolve"))?;
     let days = i32::try_from(days).unwrap_or(i32::MAX);
-    // W12: the staged 휴대전화 of such runs go with them.
+    // W12: the staged mobile phones of such runs go with them.
     crate::import::phones::drop_staged(tx, org, None, days).await?;
     Ok(sqlx::query(
         "DELETE FROM data_import_row_identities WHERE org_id = $1 \

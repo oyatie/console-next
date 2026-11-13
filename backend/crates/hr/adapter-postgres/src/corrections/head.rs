@@ -1,5 +1,5 @@
-//! The employee record a 정정 works on, locked for the transaction, with the
-//! current value of every correctable field as stored text.
+//! The employee record a correction works on, locked for the transaction, with
+//! the current value of every correctable field as stored text.
 
 use console_kernel_core::KernelError;
 use http::StatusCode;
@@ -31,9 +31,9 @@ pub(crate) struct LockedEmployee {
     pub updated_at: OffsetDateTime,
     pub identity_review_required: bool,
     pub profile: Option<ProfileValues>,
-    /// The 근로자 명부 items (MR-23).
+    /// The worker register items (MR-23).
     pub register: RegisterRow,
-    /// The 인적사항 extras (MR-34).
+    /// The personal details extras (MR-34).
     pub personal: PersonalRow,
 }
 

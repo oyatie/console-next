@@ -1,6 +1,4 @@
-import type { koUiField } from "../ko/ui-field";
-
-export const enUiField: Record<keyof typeof koUiField, string> = {
+export const enUiField = {
   "uiField.required": "Required",
   "uiField.optional": "Optional",
   "uiField.valueMissing": "This field is required.",
@@ -21,4 +19,4 @@ export const enUiField: Record<keyof typeof koUiField, string> = {
   "uiField.copyUrlFailed": "Couldn’t copy the address. Select it and copy it yourself.",
   "uiField.copyUrl": "Copy address",
   "uiField.copiedUrl": "Address copied",
-};
+} as const;

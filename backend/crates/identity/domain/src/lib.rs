@@ -19,19 +19,19 @@ pub const MAX_ORG_NAME_CHARS: usize = 200;
 /// Maximum length (Unicode scalar values) of a directory search term.
 pub const MAX_DIRECTORY_SEARCH_CHARS: usize = 200;
 
-/// Field-technician team affiliation (정비/예방), plus the back-office
-/// affiliations (관리/접수). Mirrors the `users.team` CHECK constraint in
+/// Field-technician team affiliation (maintenance/prevention), plus the back-office
+/// affiliations (management/reception). Mirrors the `users.team` CHECK constraint in
 /// migration 0002. A `null` team (not modeled here) means "no affiliation".
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Team {
-    /// 정비 — maintenance/repair field team.
+    /// Maintenance/repair field team.
     Maintenance,
-    /// 예방 — preventive-inspection field team.
+    /// Preventive-inspection field team.
     Prevention,
-    /// 관리 — back-office management.
+    /// Back-office management.
     Management,
-    /// 접수 — reception desk.
+    /// Reception desk.
     Reception,
 }
 

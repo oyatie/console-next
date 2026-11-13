@@ -1,5 +1,5 @@
 type: object
-description: A 노무수령거부 notice served after a round-2 promotion.
+description: A refusal-to-accept-work notice served after a round-2 promotion.
 required:
 - branch_id
 - target_user_id

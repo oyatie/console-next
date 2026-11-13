@@ -1,7 +1,7 @@
 tags:
   - financial
 operationId: createPurchaseRequest
-summary: Attach a 거래명세표 evidence record and open a purchase request
+summary: Attach a transaction statement evidence record and open a purchase request
 security:
 - bearerAuth: []
 requestBody:

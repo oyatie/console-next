@@ -1,5 +1,5 @@
 //! Consumer-declared seam to the BW-06 governed exceptions (governance owns
-//! `governed_exceptions`): after 운영 시작 an identifier correction is admitted
+//! `governed_exceptions`): after go-live an identifier correction is admitted
 //! only by consuming the approved, or sole-holder recorded, exception for
 //! exactly that correction, inside the correction's own transaction.
 //!
@@ -21,9 +21,9 @@ use uuid::Uuid;
 /// What the correction corrects (`governed_exceptions.subject_type`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CorrectionSubject {
-    /// `LEGAL_ENTITY`: 사업자 구분 or 법인등록번호.
+    /// `LEGAL_ENTITY`: business type or corporate registration number.
     LegalEntity(Uuid),
-    /// `BUSINESS_REGISTRATION`: 사업자등록번호.
+    /// `BUSINESS_REGISTRATION`: business registration number.
     BusinessRegistration(Uuid),
 }
 

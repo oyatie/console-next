@@ -8,9 +8,10 @@ import { DeadlineChip } from "../../../ui/deadline-chip/deadline-chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
+import { InboxActivity } from "./inbox-activity";
 import { KIND_TEXT, Subject, reasonLines, recordAction, type RowAction } from "./grouped-queue";
 
-/** Item facts come from the loaded queue; opening a column never starts a source read. */
+/** Item facts come from the loaded queue; opening a column reads only the item's own activity. */
 export function InboxRecord({ item, action, onBack }: { item?: AttentionInboxItem; action?: RowAction; onBack: () => void }) {
   if (!item) return <EmptyState title={t("common.read.notFound.title")} reason={t("common.read.notFound.reason")} actions={<Button onClick={onBack}>{t("home.inbox.record.back")}</Button>} />;
   const facts = [
@@ -29,5 +30,6 @@ export function InboxRecord({ item, action, onBack }: { item?: AttentionInboxIte
     <div><Chip tone={item.dueTone}>{t(`home.inbox.filter.${item.lane}`)}</Chip></div>
     <KeyValue items={facts} />
     <div className="row">{action?.(item)}{recordAction(item, undefined, "home.inbox.record.original")}</div>
+    <InboxActivity id={item.id} />
   </>;
 }

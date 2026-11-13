@@ -7,7 +7,7 @@ description: 'One to 200 operations. Each item is checked on its own and returns
 
   receipt binds the normalized batch, the caller and the tenant''s access state, and expires after
 
-  10 minutes. Nothing is written except the receipt. A non-ops caller needs 권한 관리 등록·수정
+  10 minutes. Nothing is written except the receipt. A non-ops caller needs access management edit
 
   over each operation''s scope and must already hold every line of the role over that scope.
 

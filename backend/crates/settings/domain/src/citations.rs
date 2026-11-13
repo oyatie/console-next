@@ -48,8 +48,9 @@ pub const SAFETY_MEASURES_NOTICE_5: OfficialSource = source(
     "개인정보의 안전성 확보조치 기준 제5조제3항",
     "https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준",
 );
-/// 고시 제2025-9호 §8①: the base period is 1 year; 단서 2호 requires 2 years
-/// for 고유식별정보 or 민감정보. Production's floor rests on 민감정보 processing.
+/// Public notice No. 2025-9 §8①: the base period is 1 year; proviso subparagraph 2 requires
+/// 2 years for unique identifying information or sensitive data. Production's floor rests
+/// on sensitive-data processing.
 pub const SAFETY_MEASURES_NOTICE_8: OfficialSource = source(
     PIPC,
     "개인정보의 안전성 확보조치 기준 제8조제1항제2호",
@@ -70,7 +71,7 @@ pub const BASIC_NATIONAL_TAX_ACT_85_3: OfficialSource = source(
     "국세기본법 제85조의3제2항",
     "https://www.law.go.kr/법령/국세기본법",
 );
-/// 위탁자 must disclose the 위탁 업무 and the 수탁자 (via the 처리방침, §30).
+/// The entrustor must disclose the entrusted work and the entrustee (via the privacy policy, §30).
 pub const PIPA_26_2: OfficialSource = source(
     NATIONAL_ASSEMBLY,
     "개인정보 보호법 제26조제2항",

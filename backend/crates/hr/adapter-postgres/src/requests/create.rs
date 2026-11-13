@@ -180,9 +180,10 @@ impl HrService {
         body: CreateChangeRequest,
     ) -> Result<ChangeRequestResponse, HrError> {
         let kind = ChangeRequestKind::parse(body.kind.trim())?;
-        // A 소명 요청 comes out of the 접속기록 review: only an org-wide
-        // access-log reader asks a 취급자 to explain an access (no directory
-        // access needed); every other kind is filed by a directory reader.
+        // A request for explanation comes out of the access log review: only
+        // an org-wide access-log reader asks a handler to explain an access (no
+        // directory access needed); every other kind is filed by a directory
+        // reader.
         if kind == ChangeRequestKind::AccessExplanation {
             authorize_hr_org_wide(&principal, Feature::AuditLogRead)?;
         } else {

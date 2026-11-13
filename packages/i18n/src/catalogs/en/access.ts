@@ -1,6 +1,4 @@
-import type { koAccess } from "../ko/access";
-
-export const enAccess: Partial<Record<keyof typeof koAccess, string>> = {
+export const enAccess = {
   "access.title": "Access",
   "access.nav": "Access views",
   "access.nav.ops": "Emergency admin account",
@@ -273,4 +271,4 @@ export const enAccess: Partial<Record<keyof typeof koAccess, string>> = {
   "access.person.rest": "Other areas",
   "access.person.rest.text": "{domains} · no access",
   "access.ready.spread": "{people, plural, one {# person} other {# people}} · {roles, plural, one {# role} other {# roles}}",
-};
+} as const;

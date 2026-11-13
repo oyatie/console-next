@@ -1,9 +1,9 @@
 //! Effective-dated grants — ADR-0032 §1, §3 and §6.
 //!
-//! A 발령 (appointment) has a date; a grant row until now did not. The interval
+//! An appointment has a date; a grant row until now did not. The interval
 //! goes on the grant and only on the grant, and it is **half-open**:
 //! `[valid_from, valid_to)`. `valid_from` is inside, `valid_to` is outside. That
-//! is not a stylistic choice — it is what makes "this 발령 ends the instant the
+//! is not a stylistic choice — it is what makes "this appointment ends the instant the
 //! next one begins" expressible without the two claiming a shared instant, and
 //! it matches the predicate `PgInstanceStore::get_as_of` already ships.
 //!
@@ -74,7 +74,7 @@ pub struct GrantValidity {
 /// BOTH bounds must be PRESENT. `serde` fills a missing `Option` field with
 /// `None` instead of failing, and each absence widens a grant on its own: a
 /// dropped `valid_from` reads as "effective since forever" and a dropped
-/// `valid_to` turns a bounded 발령 into one that never expires. A truncated
+/// `valid_to` turns a bounded appointment into one that never expires. A truncated
 /// payload must deny, so each bound is nested one level deeper: the outer
 /// `Option` is "the field was there at all" (`serde` cannot express that on a
 /// bare `Option` — its missing-field shim answers `deserialize_option` with
@@ -84,7 +84,7 @@ pub struct GrantValidity {
 /// # An explicitly null PAIR is `always()`, and it is the only null that widens
 ///
 /// It is the value [`GrantValidity::always`] serialises to, and the row the
-/// still-unwritten `valid_from`/`valid_to` columns produce when a 발령 records
+/// still-unwritten `valid_from`/`valid_to` columns produce when an appointment records
 /// no interval. Refusing it — while [`Serialize`](serde::Serialize) kept
 /// emitting it — made this type unable to read back its own output, an
 /// invariant that reads as a guard and is a latent decode failure on the first
@@ -297,7 +297,7 @@ mod tests {
         assert!(always.contains(ts(4_000_000_000)));
     }
 
-    /// The half-open payoff: a 발령 that ends the instant the next one begins is
+    /// The half-open payoff: an appointment that ends the instant the next one begins is
     /// the NORMAL shape, and a closed-interval model would reject it.
     #[test]
     fn touching_half_open_intervals_for_one_role_do_not_overlap() {

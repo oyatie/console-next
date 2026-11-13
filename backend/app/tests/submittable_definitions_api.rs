@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Submittable-templates catalog (GET /api/v1/workflow-studio/submittable-definitions).
 //!
-//! Runs the REAL router on a genuine non-owner `console_rt` pool. Proves the 기안
+//! Runs the REAL router on a genuine non-owner `console_rt` pool. Proves the draft
 //! gallery source is all-employee AND deny-by-omission on start authority:
 //! - a member sees ACTIVE self-service definitions (no affordance gap);
 //! - DRAFT / PAUSED definitions are never listed;

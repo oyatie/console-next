@@ -51,7 +51,7 @@ properties:
     oneOf:
     - $ref: '#/components/schemas/NoticeMyReceipt'
     - type: 'null'
-    description: The caller's own 수령확인 state; null when the caller is not a snapshotted recipient.
+    description: The caller's own receipt acknowledgement state; null when the caller is not a snapshotted recipient.
   progress:
     oneOf:
     - $ref: '#/components/schemas/NoticeProgress'

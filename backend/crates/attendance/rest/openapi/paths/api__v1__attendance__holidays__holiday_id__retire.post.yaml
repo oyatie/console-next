@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: retireAttendanceHoliday
-summary: Stop a 약정휴일 from a year on (사용 중지); earlier years keep it
+summary: Stop a contractual holiday from a year on; earlier years keep it
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: holiday_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }

@@ -1,6 +1,6 @@
 //! W02 / W03: what the dry run counts so the apply button can name it — the
 //! labels the catalog mapped without asking, the new people who come in with
-//! no 고용형태, and the 미배치 people by reason.
+//! no employment type, and the unplaced people by reason.
 
 use std::collections::BTreeMap;
 
@@ -25,8 +25,8 @@ pub struct Unplaced {
     pub by_reason: BTreeMap<String, usize>,
 }
 
-/// Every 고용형태 label of an imported row the catalog mapped (not a code,
-/// not the operator's answer), with its row count.
+/// Every employment type label of an imported row the catalog mapped (not a
+/// code, not the operator's answer), with its row count.
 #[must_use]
 pub fn auto_mapped(
     rows: &[ImportRow],
@@ -60,8 +60,8 @@ pub fn auto_mapped(
         .collect()
 }
 
-/// New people who come in with no 고용형태 (an empty cell or the operator's
-/// `null`): the count the apply button names.
+/// New people who come in with no employment type (an empty cell or the
+/// operator's `null`): the count the apply button names.
 #[must_use]
 pub fn employment_type_empty_rows(plans: &[PlannedRow]) -> usize {
     plans
@@ -71,9 +71,9 @@ pub fn employment_type_empty_rows(plans: &[PlannedRow]) -> usize {
         .count()
 }
 
-/// W12: rows whose 휴대전화 is not stored. It lives on the employment
-/// profile, so a new person needs a 고용형태; a person on file is never
-/// changed by an import (their phone is changed on the 인사카드).
+/// W12: rows whose mobile phone is not stored. It lives on the employment
+/// profile, so a new person needs an employment type; a person on file is
+/// never changed by an import (their phone is changed on the personnel card).
 #[must_use]
 pub fn phone_unstored_rows(rows: &[ImportRow], plans: &[PlannedRow]) -> usize {
     rows.iter()
@@ -92,7 +92,7 @@ pub fn phone_unstored_rows(rows: &[ImportRow], plans: &[PlannedRow]) -> usize {
         .count()
 }
 
-/// New people who come in 미배치, by reason.
+/// New people who come in unplaced, by reason.
 #[must_use]
 pub fn unplaced(plans: &[PlannedRow]) -> Unplaced {
     let mut out = Unplaced::default();

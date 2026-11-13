@@ -1,6 +1,7 @@
 //! UX-R3 STRUCT (company-01/02, move-02, records-04): one headcount rule. A
-//! confirmed exit ends the person's assignment the day after the 마지막
-//! 근무일 and every 사업장 · 법인 count drops them (the 법인 list, record and
+//! confirmed exit ends the person's assignment the day after the last
+//! working day and every workplace · legal entity count drops them (the
+//! legal-entity list, record and
 //! close sheet read these; the close itself is entity-ops' and the E2E's).
 //! Withdrawing the exit reopens the assignment.
 
@@ -34,7 +35,7 @@ async fn exit(t: &Tenant, employee: Uuid, last_day: &str) -> String {
     id
 }
 
-/// `(entity, [본사, 판교])` headcounts on /org-structure.
+/// The (entity, [head office, Pangyo]) headcounts on /org-structure.
 async fn chart(t: &Tenant) -> (i64, Vec<i64>) {
     let (status, s) = t.ops.call("GET", "/api/v1/org-structure", None).await;
     assert_eq!(status, StatusCode::OK, "{s}");
@@ -57,7 +58,8 @@ async fn chart(t: &Tenant) -> (i64, Vec<i64>) {
     (e["headcount"].as_i64().unwrap(), wps.collect())
 }
 
-/// The 법인 record's [본사, 판교] headcounts (the 법인 list, the record and the close sheet read these).
+/// The legal-entity record's [head office, Pangyo] headcounts (the legal-entity list, the record
+/// and the close sheet read these).
 async fn record(t: &Tenant) -> Vec<i64> {
     let (status, e) = t
         .ops
@@ -75,14 +77,15 @@ async fn record(t: &Tenant) -> Vec<i64> {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_an_exited_person_leaves_every_count(pool: PgPool) {
-    // regression: r3 company-01 (P0) — HR- and HQ-confirmed, still 「재직자 1명」; the close never opened.
+    // regression: r3 company-01 (P0) — HR- and HQ-confirmed, still "1 employed person"; the close
+    // never opened.
     let t = tenant(pool).await;
     let [_, pangyo] = t.workplaces;
     let leaver = t.person("떠날사람", t.sites[1], pangyo, "ACTIVE").await;
     assert_eq!(chart(&t).await, (1, vec![0, 1]));
     assert_eq!(record(&t).await, [0, 1]);
     exit(&t, leaver, &day(-1)).await;
-    // The exit ended the assignment the day after the 마지막 근무일.
+    // The exit ended the assignment the day after the last working day.
     assert_eq!(
         t.live(leaver).await,
         [(HIRE.to_owned(), Some(day(0)), pangyo, "HIRE".to_owned())]
@@ -97,7 +100,8 @@ async fn regression_an_exited_person_leaves_every_count(pool: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_same_day_exit_keeps_every_count_through_the_last_working_day(pool: PgPool) {
-    // regression: r3 records-04 — 마지막 근무일 today: the 부서 dropped them, the 사업장 and 법인 did not.
+    // regression: r3 records-04 — last working day today: the department dropped them, the
+    // workplace and legal entity did not.
     let t = tenant(pool).await;
     let [_, pangyo] = t.workplaces;
     let sales = t.dept("영업팀", t.sites[1]).await;

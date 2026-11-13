@@ -1,8 +1,9 @@
 //! IMPORT-2: what an applied run records beyond MR-7's settle, from the plan
-//! the operator saw (the stored dry run): a 휴직 the file recorded for a new
-//! person, as an APPLIED LEAVE_OF_ABSENCE from its start date — a setup fact,
-//! not a 발령 (decisions #26); the staged 주민등록번호 of every person the run
-//! inserted or matched; and the value maps the run used (mapping memory).
+//! the operator saw (the stored dry run): a leave of absence the file recorded
+//! for a new person, as an APPLIED LEAVE_OF_ABSENCE from its start date — a
+//! setup fact, not a personnel order (decisions #26); the staged resident
+//! registration number of every person the run inserted or matched; and the
+//! value maps the run used (mapping memory).
 //! Each write is skipped when already there, so a replayed settle completes.
 
 use std::collections::BTreeMap;
@@ -88,9 +89,9 @@ async fn setup_leave(
     Ok(true)
 }
 
-/// Records the 휴직, the sealed RRNs and the value memory of the rows `keys`
-/// of an applied run (W11: one settle chunk); `last` drops what is left of
-/// the run's staged identities.
+/// Records the leave of absence, the sealed RRNs and the value memory of the
+/// rows `keys` of an applied run (W11: one settle chunk); `last` drops what is
+/// left of the run's staged identities.
 pub async fn record_setup_facts(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: Uuid,

@@ -2,11 +2,11 @@
 tags:
   - me
 operationId: listMyActionInboxDone
-summary: 완료 - what the caller decided, newest first
+summary: Done - what the caller decided, newest first
 description: >-
-  The 업무함 완료 tab. Items the caller decided, newest first by completed_at, merged across
+  The inbox done tab. Items the caller decided, newest first by completed_at, merged across
   sources with one keyset: change requests the caller applied or declined, period unlocks the
-  caller approved, and 정정 the caller approved or declined. Each source keeps the grant its
+  caller approved, and corrections the caller approved or declined. Each source keeps the grant its
   open queue requires, so a row shows only while the caller may still read it (a revoked grant
   hides it). Not counted and never part of the open list or its filters. A name on a row is a
   personnel read and is access-logged like the open list. 422 validation on a cursor this

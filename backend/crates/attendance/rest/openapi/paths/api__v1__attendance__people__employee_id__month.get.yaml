@@ -1,7 +1,7 @@
 x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "entity", "engine": "cedar"}
 tags: [attendance]
 operationId: readAttendancePersonMonth
-summary: One person's month (개인 근태 카드) — every day with its plan, entry, recognition and marks, and the entry history (잠정 until closed)
+summary: One person's month (personal attendance card) — every day with its plan, entry, recognition and marks, and the entry history (provisional until closed)
 description: Cedar EmployeeDirectoryRead authorizes every dated workplace in the requested month from one fact snapshot.
 security: [{ bearerAuth: [] }]
 parameters:

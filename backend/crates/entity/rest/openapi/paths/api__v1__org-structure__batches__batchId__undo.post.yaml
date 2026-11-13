@@ -1,11 +1,11 @@
 tags:
 - entity
 operationId: undoOrgSetupBatch
-summary: Undo a setup 부서 batch (되돌리기)
-description: SETUP only. Puts every unit the batch touched back (a unit it created is dissolved; a 부서 moved back
-  takes its people's 사업장 placement back). Refused, applying nothing, when a unit no longer holds what the batch
+summary: Undo a setup department batch
+description: SETUP only. Puts every unit the batch touched back (a unit it created is dissolved; a department moved back
+  takes its people's workplace placement back). Refused, applying nothing, when a unit no longer holds what the batch
   left (undo_conflict, remedy undo_later_batches_first; errors[].field = the unit id), when a created unit has
-  people or 부서 of its own (undo_unit_in_use), or when the batch is an undo (batch_not_undoable) or was undone
+  people or departments of its own (undo_unit_in_use), or when the batch is an undo (batch_not_undoable) or was undone
   (batch_already_undone).
 security:
 - bearerAuth: []

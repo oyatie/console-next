@@ -3,16 +3,24 @@
 //! every value it saves. Both run every case in
 //! `scripts/fixtures/attendance-grammar-cases.json`.
 //!   9-18 · 0900-1800 · 09:00~18:00 · 9:30-18:15 · 6:50-16 (H:MM-H) · 09.30-18
-//!   9시-18시 · 오전 9-오후 6 · AM9-PM6 · full-width digits and any dash (9–18)
+//!   9-18 with the Korean hour suffix ("si") · 9-6 with the Korean AM/PM words ("ojeon",
+//!     "ohu") · AM9-PM6 · full-width digits and any dash (9–18)
 //!   22-6+ or 22-30 (ends the next day; 22-7 alone when the plan crosses midnight)
-//!   9-18/90 or 9-18 휴1 · 휴60 · 휴1:30 (time away in the middle)
-//!   9-12,13:30-18 (외출 between spans) · 7:52- (출근만) · -18 (퇴근만)
-//!   = 소정 (the 근무 일정's shift) · x 결근 결 · o 외근 외 · 출장
-//!   휴 휴무 OFF (day off) · D E N 주 야 비 당 S1 (shift codes) · 연차 반 병가 … (휴가):
+//!   9-18/90 or 9-18 then the Korean break word ("hyu") with 1 · 60 · 1:30 (time away
+//!     in the middle)
+//!   9-12,13:30-18 (stepping out between spans) · 7:52- (clock-in only) · -18 (clock-out only)
+//!   = or the Korean word for contractual hours ("sojeong") (the work schedule's shift) · x
+//!     or the Korean words for absence ("gyeolgeun", "gyeol") · o or the Korean words for
+//!     field work ("oegeun", "oe") · the Korean word for business trip ("chuljang")
+//!   the Korean day-off words ("hyu", "hyumu") or OFF (day off) · D E N, the Korean shift
+//!     syllables ("ju", "ya", "bi", "dang") or S1 (shift codes) · the Korean words for
+//!     annual leave, half-day and sick leave ("yeoncha", "ban", "byeongga") … (leave):
 //!   read here, resolved against the day's plan by `resolve_value`.
-//! Refused: +2, 18+2 or 연장2 (record overtime using clock times), 지각 · 조퇴 (derived),
-//! 8 or 8:00 alone (hours, not times), 0.375 (an Excel fraction), 출 (출근 or
-//! 출장?), unconfirmed policy-long spans, 22-6 without + off a night plan.
+//! Refused: +2, 18+2 or the Korean overtime word with 2 ("yeonjang") (record overtime
+//! using clock times), the Korean late-arrival and early-leave words ("jigak", "jotoe")
+//! (derived), 8 or 8:00 alone (hours, not times), 0.375 (an Excel fraction), the Korean
+//! syllable "chul" (clock-in or business trip?), unconfirmed policy-long spans, 22-6
+//! without + off a night plan.
 
 use crate::schedule::Window;
 use unicode_normalization::UnicodeNormalization;
@@ -21,17 +29,20 @@ use unicode_normalization::UnicodeNormalization;
 pub enum Entry {
     Times(Vec<Window>),
     ClockInOnly(u16),
-    /// `-18`: 퇴근 only, 출근 missing.
+    /// `-18`: clock-out only, clock-in missing.
     ClockOutOnly(u16),
     AsScheduled,
     Absent,
     OutsideWork,
     BusinessTrip,
-    /// `휴` · `휴무` · `OFF`: a day off, which only the 근무 일정 makes.
+    /// The Korean day-off words ("hyu", "hyumu") · `OFF`: a day off, which only the work
+    /// schedule makes.
     DayOff,
-    /// `D` · `야` · `S1`: a shift code, read against the day's planned slot.
+    /// `D` · the Korean night-shift syllable ("ya") · `S1`: a shift code, read against the
+    /// day's planned slot.
     Shift(String),
-    /// `연차` · `반` · `병가` …: a leave word as typed; the tenant's leave types resolve it.
+    /// The Korean words for annual leave, half-day and sick leave ("yeoncha", "ban",
+    /// "byeongga") …: a leave word as typed; the tenant's leave types resolve it.
     Leave(String),
 }
 
@@ -47,15 +58,17 @@ pub enum ParseRefusal {
     SpanTooLong,
     /// Spans overlap or run backwards.
     SpansOverlap,
-    /// `지각` · `조퇴`: derived from the times and the schedule, never typed.
+    /// The Korean words for late arrival and early leave ("jigak", "jotoe"): derived from
+    /// the times and the schedule, never typed.
     StatusIsDerived,
     /// `8` · `8:00` alone: hours worked or a clock time.
     HoursWithoutTimes,
     /// `0.375`: an Excel time fraction from a General-format cell.
     ExcelFraction,
-    /// `출`: 출근 or 출장.
+    /// The Korean syllable "chul": clock-in or business trip.
     CodeAmbiguous,
-    /// `재택` · `교육`: the store cannot preserve the activity attribute yet.
+    /// The Korean words for remote work and training ("jaetaek", "gyoyuk"): the store
+    /// cannot preserve the activity attribute yet.
     ActivityNotStored,
 }
 
@@ -130,7 +143,8 @@ fn code(v: &str) -> Option<Result<Entry, ParseRefusal>> {
     }))
 }
 
-/// `오전` · `오후` · `AM` · `PM` before a clock: whether it is the afternoon.
+/// The Korean AM/PM words ("ojeon", "ohu") · `AM` · `PM` before a clock: whether it is
+/// the afternoon.
 fn meridiem(raw: &str) -> (Option<bool>, &str) {
     if let Some(rest) = raw.strip_prefix("오전") {
         return (Some(false), rest.trim_start_matches(' '));
@@ -145,8 +159,9 @@ fn meridiem(raw: &str) -> (Option<bool>, &str) {
     }
 }
 
-/// `9`, `09`, `9:30`, `09.30`, `0930`, `9시`, with an optional 오전/오후 →
-/// minutes; 24:00 only as 1440. A `late` end (no 오전/오후) may run to 47:59,
+/// `9`, `09`, `9:30`, `09.30`, `0930`, 9 with the Korean hour suffix ("si"), with an
+/// optional Korean AM/PM word ("ojeon"/"ohu") → minutes; 24:00 only as 1440. A `late`
+/// end (no Korean AM/PM word) may run to 47:59,
 /// the next day in shift-sheet notation.
 fn clock(raw: &str, late: bool) -> Option<u16> {
     let (half, raw) = meridiem(raw.trim_matches(' '));
@@ -170,7 +185,8 @@ fn clock(raw: &str, late: bool) -> Option<u16> {
     (m < 60 && (t <= 1440 || (late && half.is_none() && t < 2880))).then_some(t)
 }
 
-/// `9-18 휴1`: the break word at the end — under 10 counts hours, else
+/// 9-18 then the Korean break word and 1 ("hyu1"): the break word at the end — under
+/// 10 counts hours, else
 /// minutes, or h:mm — split off, the next-day `+` kept on the body.
 fn break_suffix(body: &str) -> Result<(String, Option<u16>), ParseRefusal> {
     let Some((head, tail)) = body.rsplit_once('휴') else {

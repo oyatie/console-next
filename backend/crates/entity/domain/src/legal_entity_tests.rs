@@ -71,7 +71,7 @@ fn joint_representation_needs_two_including_unnamed() {
             "representation_count_mismatch"
         )]
     );
-    // 「홍길동 외 1명」: one name printed, one more counted.
+    // "<name> and 1 other" as printed: one name printed, one more counted.
     let printed = LegalEntityInput {
         additional_representatives: Some(1),
         ..joint

@@ -1,8 +1,8 @@
 //! An exit's half of the assignment (UX-R3 STRUCT company-01, records-04):
 //! the TERMINATE an exit records ends the person's live assignment the day
-//! after their 마지막 근무일 (`valid_to` is exclusive, as on
-//! `employment_heads`), so no 사업장 or 법인 counts them past it; reversing
-//! the exit reopens it. ADR-004: this crate stays the one writer of
+//! after their last working day (`valid_to` is exclusive, as on
+//! `employment_heads`), so no workplace or legal entity counts them past it;
+//! reversing the exit reopens it. ADR-004: this crate stays the one writer of
 //! `employment_assignments`. The caller holds the employee row `FOR UPDATE`.
 
 use console_kernel_core::KernelError;
@@ -18,7 +18,7 @@ fn internal(error: sqlx::Error) -> KernelError {
     KernelError::internal(format!("employment assignment end failed: {error}"))
 }
 
-/// The first non-employed day after the stored 마지막 근무일.
+/// The first non-employed day after the stored last working day.
 #[must_use]
 pub fn retirement_date(last_day: Date) -> Date {
     last_day.next_day().unwrap_or(last_day)
@@ -105,8 +105,8 @@ pub async fn reopen_on_exit_in_tx(
 }
 
 /// A rehire's half (UX-R3 STRUCT): the exit ended the last assignment, so the
-/// new period is placed again at the 사업장 its org unit sits in, from the
-/// rehire date; `None` (미배치) when the unit has no 사업장.
+/// new period is placed again at the workplace its org unit sits in, from the
+/// rehire date; `None` (unplaced) when the unit has no workplace.
 ///
 /// # Errors
 /// 422 `workplace_not_open`; 409 `employee_already_placed` when an

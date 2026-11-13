@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: listUnmappedCompanies
-summary: '「회사 이름 정리」: legacy company texts with no mapped 법인'
+summary: '"Clean up company names": legacy company texts with no mapped legal entity'
 security:
 - bearerAuth: []
 responses:

@@ -1,7 +1,7 @@
-//! IMPORT-2 typed normalisation of the cells a plan decides on: 재직상태,
-//! 휴직 유형 and 사번. A text the catalog does not know is `None`, and the
-//! dry run turns that into a 확인 필요 item the operator maps (remembered per
-//! tenant); nothing is guessed.
+//! IMPORT-2 typed normalisation of the cells a plan decides on: employment
+//! status, leave type and employee number. A text the catalog does not know is
+//! `None`, and the dry run turns that into a needs-review item the operator
+//! maps (remembered per tenant); nothing is guessed.
 
 use super::classification::import_header_match_key;
 use crate::lifecycle::leave_facts::LEAVE_TYPES;
@@ -42,7 +42,7 @@ const LEAVE_WORDS: &[(&str, &str)] = &[
     ("기타", "OTHER"),
 ];
 
-/// W02: 고용형태 labels with one meaning in a Korean roster. A label that
+/// W02: employment type labels with one meaning in a Korean roster. A label that
 /// could mean two codes is not here: it is asked, with [`EMPLOYMENT_TYPE_LIKELY`]
 /// first among the choices. The codes themselves map too.
 const EMPLOYMENT_TYPE_WORDS: &[(&str, &str)] = &[
@@ -98,27 +98,27 @@ fn lookup(
         })
 }
 
-/// A 재직상태 cell as a status code; `None`: not in the catalog.
+/// An employment status cell as a status code; `None`: not in the catalog.
 #[must_use]
 pub fn status_code(text: &str) -> Option<&'static str> {
     lookup(STATUS_WORDS, &STATUS_CODES, text)
 }
 
-/// A 휴직 유형 cell as a `LEAVE_TYPES` code; `None`: not in the catalog.
+/// A leave type cell as a `LEAVE_TYPES` code; `None`: not in the catalog.
 #[must_use]
 pub fn leave_type_code(text: &str) -> Option<&'static str> {
     lookup(LEAVE_WORDS, &LEAVE_TYPES, text)
 }
 
-/// A 고용형태 cell as an employment type code: the code itself or a label
-/// with one meaning (W02); `None`: the operator is asked.
+/// An employment type cell as an employment type code: the code itself or a
+/// label with one meaning (W02); `None`: the operator is asked.
 #[must_use]
 pub fn employment_type_code(text: &str) -> Option<&'static str> {
     lookup(EMPLOYMENT_TYPE_WORDS, EMPLOYMENT_TYPE_CODES, text)
 }
 
-/// The choices offered for a 고용형태 label nobody mapped: the likely code
-/// first (if the label has one), then every code.
+/// The choices offered for an employment type label nobody mapped: the likely
+/// code first (if the label has one), then every code.
 #[must_use]
 pub fn employment_type_choices(text: &str) -> Vec<&'static str> {
     let likely = lookup(EMPLOYMENT_TYPE_LIKELY, &[], text);
@@ -155,7 +155,7 @@ pub fn known_code(kind: &str, code: &str) -> Option<&'static str> {
     codes.iter().find(|c| **c == code).copied()
 }
 
-/// A 사번 cell: trimmed, and a whole number Excel stored as a float
+/// An employee number cell: trimmed, and a whole number Excel stored as a float
 /// (`1001.0`) without its fraction. `None` when empty.
 #[must_use]
 pub fn employee_number(text: &str) -> Option<String> {
@@ -185,8 +185,8 @@ mod tests {
         assert_eq!(known_code("leave_type", "EXITED"), None);
     }
 
-    /// regression (W02): 「정규직」 and 「정규」 came back unmapped and 300
-    /// people were applied with no 고용형태.
+    /// regression (W02): "regular employee" and "regular" came back unmapped and
+    /// 300 people were applied with no employment type.
     #[test]
     fn regression_common_employment_type_labels_map_without_asking() {
         for (label, code) in [

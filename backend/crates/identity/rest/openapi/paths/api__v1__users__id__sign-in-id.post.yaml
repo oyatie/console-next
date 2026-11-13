@@ -1,9 +1,9 @@
 tags:
   - users
 operationId: changeUserSignInId
-summary: Change an account's 아이디
-description: 'Decisions #33. A `user_manage` holder over the account sets a new 아이디 with a reason
-  (`sign_in_id_change` domain) and a 기준일 of today or earlier. The old 아이디 still signs in for 90 days, stays
+summary: Change an account's sign-in ID
+description: 'Decisions #33. A `user_manage` holder over the account sets a new sign-in ID with a reason
+  (`sign_in_id_change` domain) and a reference date of today or earlier. The old sign-in ID still signs in for 90 days, stays
   searchable for good and is never reissued to anyone in the tenant. Audited as `user.sign_in_id.change`. 409
   sign_in_id_taken (held or held before, including the account''s own old values); 422 sign_in_id_invalid,
   sign_in_id_unchanged, effective_date_in_future and the reason-code refusals.'
@@ -23,7 +23,7 @@ requestBody:
         $ref: '#/components/schemas/ChangeSignInIdRequest'
 responses:
   '200':
-    description: The new current 아이디.
+    description: The new current sign-in ID.
     content:
       application/json:
         schema:

@@ -1,9 +1,10 @@
 //! The worker tick's void PII destruction: a voided record keeps its personal
 //! data for `people.void_pii_retention` days (a dispute or a mistaken void
-//! can still be looked into), then becomes a tombstone (id, 사번, dates, void
-//! facts). Claimed with `FOR UPDATE SKIP LOCKED`, so replicas never collide.
-//! The 3-year 근로자 명부 floor of an EXITED record is not here: its disposal
-//! is the tenant's governed retention review (decisions #10), never a timer.
+//! can still be looked into), then becomes a tombstone (id, employee number,
+//! dates, void facts). Claimed with `FOR UPDATE SKIP LOCKED`, so replicas
+//! never collide. The 3-year worker register floor of an EXITED record is not
+//! here: its disposal is the tenant's governed retention review (decisions
+//! #10), never a timer.
 
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext};
 use console_ontology_canonical_adapter_postgres::employee_void::{

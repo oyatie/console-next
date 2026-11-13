@@ -3,7 +3,7 @@
 //!
 //! Identity (decisions #6): never a legal ID and never a name alone. A
 //! candidate is the same name (spaces ignored) with the same phone or the same
-//! 생년월일. A registration that names every candidate with a reason goes
+//! date of birth. A registration that names every candidate with a reason goes
 //! through as the governed exception `DUPLICATE_NAME_CONFIRMED` (low risk).
 
 use serde::{Deserialize, Serialize};

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! F5 수습 종료: HR records that the probation ended (본채용 확정). A command
-//! (ME-7): the body asserts the end date it was shown; a changed date is a
-//! 409 `stale_facts`. A repeat on a confirmed probation replays the record.
+//! F5 probation end: HR records that the probation ended (confirmation of
+//! regular hire). A command (ME-7): the body asserts the end date it was
+//! shown; a changed date is a 409 `stale_facts`. A repeat on a confirmed
+//! probation replays the record.
 
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
 use console_ontology_canonical_adapter_postgres::employee_facts::touch_employee;

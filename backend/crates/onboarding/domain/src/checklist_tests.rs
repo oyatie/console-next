@@ -58,7 +58,7 @@ fn regression_w10_org_units_and_deferring_people_complete_their_steps() {
     };
     let c = checklist(&f);
     let keys: Vec<_> = c.steps.iter().map(|s| s.key).collect();
-    // regression (W10): approval.policy.org_structure = none shows no 결재선 step.
+    // regression (W10): approval.policy.org_structure = none shows no approval line step.
     assert_eq!(
         keys,
         [
@@ -113,7 +113,7 @@ fn regression_governance_20_the_rail_asks_for_a_second_passkey_until_there_are_t
         c.done + 1,
         "the second passkey counts toward readiness"
     );
-    // Asked in every phase: Home keeps it after 운영 시작 until two exist.
+    // Asked in every phase: Home keeps it after go-live until two exist.
     let operating = checklist(&SetupFacts {
         phase_is_setup: false,
         ..one
@@ -127,7 +127,7 @@ fn regression_governance_20_the_rail_asks_for_a_second_passkey_until_there_are_t
 }
 
 // regression (governance-07, worst-case-38): with no contact store the
-// step was Attention, which counted as 완료.
+// step was Attention, which counted as done.
 #[test]
 fn regression_governance_07_a_security_contact_that_cannot_be_recorded_is_never_counted_done() {
     let base = SetupFacts {

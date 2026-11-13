@@ -2,9 +2,9 @@ x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
 tags:
   - employees
 operationId: listEmployeeNumberRules
-summary: The tenant's 사번 numbering rules with each rule's next number (IMPORT-2)
-description: 'Decisions #25. Most specific first at numbering: 사업장, its 법인, the tenant; no rule: E- + 6
-  digits. Whether an import numbers rows without a 사번 at all is the registry key
+summary: The tenant's employee-number rules with each rule's next number (IMPORT-2)
+description: 'Decisions #25. Most specific first at numbering: workplace, its legal entity, the tenant; no rule: E- + 6
+  digits. Whether an import numbers rows without an employee number at all is the registry key
   import.employee_number.unnumbered (assign_by_rule | queue).'
 security:
 - bearerAuth: []

@@ -15,4 +15,4 @@ export const enEntityQuick = {
   "entityQuick.open": "Open entity",
   "entityQuick.undo": "Undo",
   "entityQuick.undone": "Undid {name}",
-};
+} as const;

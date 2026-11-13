@@ -1,4 +1,4 @@
-//! The wire of a 사업장 close plan (`/api/v1/workplaces/{id}/close-plan`).
+//! The wire of a workplace close plan (`/api/v1/workplaces/{id}/close-plan`).
 
 use console_entity_adapter_postgres::PgEntityError;
 use console_entity_adapter_postgres::workplace_close_plan::{ClosePerson, CloseScope, ScopeUnit};
@@ -11,26 +11,28 @@ use uuid::Uuid;
 use crate::HrError;
 use crate::lifecycle::group_transfer::GroupTransferRequest;
 
-/// What happens to one person on the 폐쇄일.
+/// What happens to one person on the closure date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PersonAction {
-    /// 전근 to a 부서 (or 사업장 unit) of another open 사업장 of the same 법인.
+    /// Transfer to a department (or workplace unit) of another open workplace
+    /// of the same legal entity.
     Transfer,
-    /// 퇴직: an exit case with 마지막 근무일 = the day before the 폐쇄일.
+    /// Exit: an exit case with last working day = the day before the closure date.
     Exit,
-    /// 전적 to a 부서 at another 법인's open 사업장, with the person's consent
-    /// and continuity: recorded when the plan is, effective on the 폐쇄일.
+    /// Group transfer to a department at another legal entity's open
+    /// workplace, with the person's consent and continuity: recorded when the
+    /// plan is, effective on the closure date.
     GroupTransfer,
 }
 
-/// What happens to one 부서 directly under the 사업장 (its sub-부서 go with it).
+/// What happens to one department directly under the workplace (its sub-departments go with it).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum UnitAction {
-    /// Moved under another open 사업장's unit or one of its 부서.
+    /// Moved under another open workplace's unit or one of its departments.
     Move,
-    /// 폐지, once nobody is placed in it.
+    /// Abolished, once nobody is placed in it.
     Dissolve,
 }
 
@@ -41,13 +43,14 @@ pub struct PersonLine {
     pub action: PersonAction,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to_org_unit_id: Option<Uuid>,
-    /// EXIT: a BW-07 `exit_reason` code (`CLOSURE` 폐업 by default, or `INSOLVENCY` 도산).
+    /// EXIT: a BW-07 `exit_reason` code (`CLOSURE` business closure by default,
+    /// or `INSOLVENCY` insolvency).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exit_reason_code: Option<String>,
-    /// GROUP_TRANSFER: the receiving 사업장 (`to_org_unit_id` sits at it).
+    /// GROUP_TRANSFER: the receiving workplace (`to_org_unit_id` sits at it).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to_workplace_id: Option<Uuid>,
-    /// GROUP_TRANSFER: the consent and continuity, as a single 전적 takes them.
+    /// GROUP_TRANSFER: the consent and continuity, as a single group transfer takes them.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group_transfer: Option<GroupTransferRequest>,
 }
@@ -74,7 +77,7 @@ pub struct WorkplaceClosePlanRequest {
     pub units: Vec<UnitLine>,
 }
 
-/// An open exit case of someone still at the 사업장 (company-52).
+/// An open exit case of someone still at the workplace (company-52).
 #[derive(Debug, Clone, Serialize)]
 pub struct OpenExitCase {
     pub employee_id: Uuid,

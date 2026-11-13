@@ -10,7 +10,8 @@ use crate::{Instrument, statutory_instruments_retrieved_on};
 pub struct MinimumWageRate {
     pub period: EffectivePeriod,
     pub hourly_won: i64,
-    /// 10,320 × 8. OURS, not the Minister's — the 고시 carries no daily figure.
+    /// 10,320 × 8. OURS, not the Minister's — the public notice carries no
+    /// daily figure.
     pub daily_8h_won: i64,
     pub monthly_209h_won: i64,
     pub instrument: Instrument,
@@ -44,7 +45,9 @@ pub fn minimum_wage_rates() -> Vec<MinimumWageRate> {
                 promulgation_ko: "고용노동부고시 제2026-60호 (발령 2026. 8. 5.)",
                 enforced_on: date!(2027 - 01 - 01),
                 url: "https://www.law.go.kr/LSW/admRulInfoR.do?admRulSeq=2100000283564",
-                // Read directly from law.go.kr admRulSeq=2100000283564 (발령 2026-08-05, 시행 2027-01-01, flSeq=167847381) on 2026-10-20 UTC.
+                // Read directly from law.go.kr admRulSeq=2100000283564 (issued
+                // 2026-08-05, effective 2027-01-01, flSeq=167847381) on
+                // 2026-10-20 UTC.
                 retrieved_on: date!(2026 - 10 - 20),
             },
         },

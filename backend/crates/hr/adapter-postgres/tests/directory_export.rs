@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! PEOPLE-B export: the 용도 is required (a refusal is logged), the download
+//! PEOPLE-B export: the purpose is required (a refusal is logged), the download
 //! is logged before the first byte, the list filters apply, every row comes
 //! (no LIMIT 10000) and the body starts with a UTF-8 BOM. Plus the exit-case
 //! search and the 409 exit_case_open for a second open case.

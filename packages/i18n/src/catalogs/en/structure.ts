@@ -1,6 +1,4 @@
-import type { koStructure } from "../ko/structure";
-
-export const enStructure: Record<keyof typeof koStructure, string> = {
+export const enStructure = {
   "structure.head.missing": "No department head",
   "structure.head.missingCount": "No department head {count, number}",
   "structure.head.appoint": "Appoint department head",
@@ -214,4 +212,4 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.shortcuts.addBelow": "Add the next department",
   "structure.shortcuts.nest": "While typing: nest or unnest (departments stay within their workplace)",
   "structure.shortcuts.finish": "Finish editing",
-};
+} as const;

@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! 0h: a one-time 법인명 review is settled only by a `legal_entity_manage`
+//! 0h: a one-time legal entity name review is settled only by a `legal_entity_manage`
 //! holder of its own tenant; a lower grant is 403 and another tenant 404, each
 //! without a write. The registration body an N-1 client still sends with a
 //! `trade_name` is accepted and the name stays the entity's.
@@ -33,7 +33,7 @@ async fn a_name_review_is_settled_only_by_its_own_manager(pool: PgPool) {
         "주식회사 가나"
     );
 
-    // The old code's own 상호 on the registration, raised by the 20261013153646645 backfill.
+    // The old code's own trade name on the registration, raised by the 20261013153646645 backfill.
     sqlx::query(
         "INSERT INTO business_registration_revisions (org_id, registration_id, version, effective_from, trade_name, opened_on, \
            business_address_id, unit_taxation, tax_office_label, tax_type, status, change_mode, reason_code, actor_id, \

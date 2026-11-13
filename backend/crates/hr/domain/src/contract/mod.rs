@@ -1,6 +1,6 @@
-//! G1 contract history: the kinds, the terms this MVP types (근기법 §17①:
-//! period, wage + unit, 소정근로시간), and the fold from append-only rows to
-//! the live history. Pure.
+//! G1 contract history: the kinds, the terms this MVP types (Labor Standards
+//! Act §17①: period, wage + unit, contractual working hours), and the fold
+//! from append-only rows to the live history. Pure.
 
 use console_kernel_core::KernelError;
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::profile::enums::PayUnit;
 
-/// 계약 종류 (prototype `CONTRACT_KINDS` plus 일용).
+/// Contract kind (prototype `CONTRACT_KINDS` plus daily).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ContractKind {
@@ -55,11 +55,12 @@ impl ContractKind {
             .ok_or_else(|| KernelError::validation("kind is not a known contract kind"))
     }
 
-    /// Kinds that must state an end date (parity G2). 기간제: 기간제법 §4 and
-    /// 근기법 §17. 파견: 파견법 §20① puts the 근로자파견기간 in the written
-    /// contract and §6 caps it. 프리랜서 용역: no statute; the prototype's G2
-    /// rule. Domain-only: 0256's `employee_contracts_fixed_term_end` CHECK
-    /// stays FIXED_TERM-only (frozen migration) and this crate is the one writer.
+    /// Kinds that must state an end date (parity G2). Fixed-term: Fixed-Term
+    /// Workers Act §4 and Labor Standards Act §17. Dispatched: Temporary Agency
+    /// Workers Act §20① puts the worker dispatch period in the written contract
+    /// and §6 caps it. Freelance service: no statute; the prototype's G2 rule.
+    /// Domain-only: 0256's `employee_contracts_fixed_term_end` CHECK stays
+    /// FIXED_TERM-only (frozen migration) and this crate is the one writer.
     #[must_use]
     pub const fn requires_end_date(self) -> bool {
         matches!(
@@ -68,7 +69,8 @@ impl ContractKind {
         )
     }
 
-    /// A 근로계약 (근기법 §17 applies): it must state 소정근로시간 and a wage.
+    /// A labor contract (Labor Standards Act §17 applies): it must state
+    /// contractual working hours and a wage.
     #[must_use]
     pub const fn is_labour_contract(self) -> bool {
         matches!(
@@ -87,10 +89,14 @@ pub struct ContractTerms {
     pub wage_won: i64,
     pub pay_unit: PayUnit,
     pub weekly_minutes: Option<i32>,
+    pub daily_minutes: Option<i32>,
+    pub scheduled_days_per_week: Option<i32>,
+    pub weekly_paid_minutes: Option<i32>,
+    pub terms_effective_from: Option<Date>,
 }
 
-/// Minutes in a week: a physical bound, not a legal one (the legal 소정근로
-/// limits are register facts and are checked where they apply).
+/// Minutes in a week: a physical bound, not a legal one (the legal contractual
+/// working-hours limits are register facts and are checked where they apply).
 const WEEK_MINUTES: i32 = 7 * 24 * 60;
 
 /// # Errors
@@ -128,6 +134,30 @@ pub fn validate_terms(terms: &ContractTerms) -> Result<(), KernelError> {
         .is_some_and(|minutes| minutes <= 0 || minutes > WEEK_MINUTES)
     {
         return refuse("weekly_minutes must be between 1 and 10080");
+    }
+    if terms
+        .daily_minutes
+        .is_some_and(|n| !(1..=1440).contains(&n))
+        || terms
+            .scheduled_days_per_week
+            .is_some_and(|n| !(1..=7).contains(&n))
+        || terms
+            .weekly_paid_minutes
+            .is_some_and(|n| !(0..=WEEK_MINUTES).contains(&n))
+    {
+        return Err(
+            KernelError::validation("contract schedule is outside physical bounds")
+                .with_code("contract_schedule_invalid"),
+        );
+    }
+    if terms
+        .terms_effective_from
+        .is_some_and(|on| on < terms.start_date || terms.end_date.is_some_and(|end| on > end))
+    {
+        return Err(KernelError::validation(
+            "terms effective date must be within the contract period",
+        )
+        .with_code("contract_terms_effective_date_invalid"));
     }
     Ok(())
 }
@@ -168,13 +198,14 @@ pub fn overlapping<'a>(
     })
 }
 
-/// The live contract covering `day`, if any (latest start wins).
+/// The contract covering `day`; ambiguous or invalid history has no usable terms.
 #[must_use]
 pub fn in_force(rows: &[ContractRow], day: Date) -> Option<&ContractRow> {
-    live_history(rows)
-        .into_iter()
-        .find(|row| row.terms.start_date <= day && row.terms.end_date.is_none_or(|end| day <= end))
+    terms_on(rows, day).ok().flatten()
 }
+
+mod dated;
+pub use dated::{MonthlyStandardHours, correction_terms, monthly_standard_hours, terms_on};
 
 #[cfg(test)]
 mod tests {
@@ -189,6 +220,10 @@ mod tests {
             wage_won: 2_500_000,
             pay_unit: PayUnit::Monthly,
             weekly_minutes: Some(2400),
+            daily_minutes: None,
+            scheduled_days_per_week: None,
+            weekly_paid_minutes: None,
+            terms_effective_from: None,
         }
     }
 

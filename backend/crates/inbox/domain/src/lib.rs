@@ -1,11 +1,12 @@
-//! InboxDoc domain — the statutory-notice vault (개인 수신함).
+//! InboxDoc domain — the statutory-notice vault (personal inbox).
 //!
 //! Pure value objects and validation only. Persistence, audit, passkey step-up,
 //! and REST live in outer layers. A document is either a `payslip` (frictionless
-//! self-view, never audited, never receipt-gated) or a `legal_notice` (근로계약/
-//! 취업규칙/연차촉진/노무수령거부) whose body is LOCKED until the recipient confirms
+//! self-view, never audited, never receipt-gated) or a `legal_notice` (employment
+//! contract/work rules/annual-leave use promotion/refusal to accept labor) whose body is
+//! LOCKED until the recipient confirms
 //! receipt with a fresh passkey — that confirmation is the legal receipt
-//! evidence (열람 = 법적 수령).
+//! evidence (viewing = legal receipt).
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use console_kernel_core::KernelError;

@@ -1,6 +1,4 @@
-import type { koSetup } from "../ko/setup";
-
-export const enSetup: Record<keyof typeof koSetup, string> = {
+export const enSetup = {
   "setup.group.company": "Company",
   "setup.group.operations": "Operations",
   "setup.group.people": "People",
@@ -273,4 +271,4 @@ export const enSetup: Record<keyof typeof koSetup, string> = {
   "setup.entityBulk.datedNeeded": "Enter the effective date and reason.",
   "setup.entityBulk.records": "Entities · workplaces",
   "setup.entityBulk.recordNeeded": "Choose a readable record to revise.",
-};
+} as const;

@@ -168,9 +168,9 @@ pub(crate) async fn compute_preflight(
         dependents_total += scoped_people;
     }
 
-    // No uncomputed reminder chips (UX-R2 org-05): 공고, positions, cost
-    // centres and assets do not exist here, and 결재 is off by default (#26).
-    // §3.9.1 동결 창 — computed, not a reminder: literally the read
+    // No uncomputed reminder chips (UX-R2 org-05): announcements, positions, cost
+    // centres and assets do not exist here, and approval is off by default (#26).
+    // §3.9.1 freeze window — computed, not a reminder: literally the read
     // `assert_change_window_open` enforces at apply time, so the chip and the
     // refusal can never disagree. Surfaced early so the approval chain is not
     // spent on a change effectuate would refuse. It stays a warning rather than

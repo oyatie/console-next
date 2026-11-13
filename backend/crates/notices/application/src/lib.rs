@@ -74,7 +74,7 @@ pub struct ListNoticesQuery {
     pub viewer: UserId,
 }
 
-/// 수령확인 (receipt acknowledgment): a recipient confirms they have seen a
+/// Receipt acknowledgment: a recipient confirms they have seen a
 /// published notice. Owner-scoped like notifications — the recipient is
 /// always bound from the authenticated principal, never from request input.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,7 +100,7 @@ pub struct ListNoticeReceiptsQuery {
     pub offset: i64,
 }
 
-/// One audience branch, hydrated with its display name (대상 column).
+/// One audience branch, hydrated with its display name (audience column).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NoticeAudienceBranch {
     pub id: BranchId,

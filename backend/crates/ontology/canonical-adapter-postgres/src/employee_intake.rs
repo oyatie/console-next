@@ -6,7 +6,7 @@
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
-/// BW-19 4: a registration dated after today is 입사 예정. Called right after
+/// BW-19 4: a registration dated after today is a scheduled hire. Called right after
 /// [`crate::employment::insert_employee_record`] in the same transaction, so
 /// the row is never seen ACTIVE; the scheduled ONBOARD makes it ACTIVE on the
 /// hire date.
@@ -42,7 +42,7 @@ pub struct RehirePeriod<'a> {
 }
 
 /// BW-19 2: starts a new employment period on an EXITED head (the same
-/// person, the same 사번): status, hire date and placement; `exit_date`
+/// person, the same employee number): status, hire date and placement; `exit_date`
 /// clears. Returns false when the head is no longer EXITED (nothing written).
 ///
 /// # Errors

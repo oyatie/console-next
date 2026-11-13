@@ -1,10 +1,10 @@
 type: object
 description: 'One change. CREATE — name and one of workplace_id, parent_org_unit_id, parent_ref (the ref of a unit
   created earlier in the batch). RENAME — org_unit_id, expected_version, name. MOVE — org_unit_id, expected_version
-  and one parent. DISSOLVE — org_unit_id, expected_version (the 부서 and the 부서 under it). SET_DETAILS —
+  and one parent. DISSOLVE — org_unit_id, expected_version (the department and the departments under it). SET_DETAILS —
   org_unit_id, expected_version, code and head_employee_id, both the full new values (null clears; the head is
   dated from today). CREATE also takes code and head_employee_id. Field codes: code invalid_format | code_taken
-  (another active 부서 has it), head_employee_id head_unavailable (not found or left).'
+  (another active department has it), head_employee_id head_unavailable (not found or left).'
 required:
 - op
 properties:
@@ -43,10 +43,10 @@ properties:
     - 'null'
     maxLength: 30
     pattern: ^[A-Za-z0-9._-]{1,30}$
-    description: 'CREATE, SET_DETAILS: 부서 코드, unique among active 부서 (the org change''s rule).'
+    description: 'CREATE, SET_DETAILS: department code, unique among active departments (the org change''s rule).'
   head_employee_id:
     type:
     - string
     - 'null'
     format: uuid
-    description: 'CREATE, SET_DETAILS: 부서장, someone who has not left; may belong to another unit.'
+    description: 'CREATE, SET_DETAILS: department head, someone who has not left; may belong to another unit.'

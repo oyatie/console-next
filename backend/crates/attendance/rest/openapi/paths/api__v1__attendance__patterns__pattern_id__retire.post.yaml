@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: retireAttendancePattern
-summary: Stop using a 근무 유형 (사용 중지); refused while a current or future layer uses it
+summary: Stop using a work pattern; refused while a current or future layer uses it
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: pattern_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }

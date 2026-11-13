@@ -2,40 +2,48 @@
 //! card and the action inbox. The server computes them here; clients never do.
 //!
 //! Every statutory number arrives in [`ExitClockRules`], loaded by the caller
-//! from the `statutory_rules` register (HOLD rows until a 노무사 lifts them).
-//! Where a day count is ambiguous, the register carries the earlier reading.
+//! from the `statutory_rules` register (HOLD rows until a labor attorney lifts
+//! them). Where a day count is ambiguous, the register carries the earlier
+//! reading.
 
 use console_kernel_core::KernelError;
 use time::{Date, Duration};
 
-/// Which date's month starts the 고용보험/국민연금 상실신고 clock.
+/// Which date's month starts the employment insurance / National Pension
+/// loss-of-coverage report clock.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LossReportMonthAnchor {
     /// The month of `exit_date`: the earlier reading, kept until confirmed.
     /// It differs from [`Self::LossDate`] only for a month-end exit.
     ExitDate,
-    /// The month of the 상실일.
+    /// The month of the loss-of-coverage date.
     LossDate,
 }
 
 /// Statutory numbers for the exit clocks, one field per register row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExitClockRules {
-    /// 근기법 §36 금품청산: days after `exit_date`.
+    /// Labor Standards Act §36 settlement of money and valuables: days after
+    /// `exit_date`.
     pub final_pay_days: u16,
-    /// 근퇴법 §9 퇴직금: days after `exit_date`.
+    /// Employee Retirement Benefit Security Act §9 severance pay: days after
+    /// `exit_date`.
     pub severance_pay_days: u16,
-    /// 상실일 = 퇴직일 다음날: days after `exit_date`.
+    /// Loss-of-coverage date = the day after the exit date: days after
+    /// `exit_date`.
     pub insurance_loss_offset_days: u16,
-    /// 고용보험법 시행령 §7①, 국민연금법 시행규칙 §6: day of the following month.
+    /// Employment Insurance Act Enforcement Decree §7①, National Pension Act
+    /// Enforcement Rule §6: day of the following month.
     pub ei_nps_report_day: u8,
     /// Which month the following month is counted from.
     pub ei_nps_report_anchor: LossReportMonthAnchor,
-    /// 건보법 §9①3·②, §10②; 시행규칙 §4① 단서·④2: days after `exit_date`.
+    /// National Health Insurance Act §9①3·②, §10②; Enforcement Rule §4①
+    /// proviso·④2: days after `exit_date`.
     pub nhis_report_days: u16,
-    /// 근기법 §26: notice owed before a dismissal, in days.
+    /// Labor Standards Act §26: notice owed before a dismissal, in days.
     pub dismissal_notice_days: u16,
-    /// 근기법 §26 단서: below this many months of service no notice is owed.
+    /// Labor Standards Act §26 proviso: below this many months of service no
+    /// notice is owed.
     pub dismissal_notice_min_service_months: u8,
 }
 
@@ -44,18 +52,22 @@ pub struct ExitClockRules {
 pub struct ExitClocks {
     pub insurance_loss_date: Date,
     pub final_pay_due: Date,
-    /// 근기법 §48②: the final 임금명세서 goes out with the final pay.
+    /// Labor Standards Act §48②: the final wage statement goes out with the
+    /// final pay.
     pub final_payslip_due: Date,
     pub severance_due: Date,
-    /// 고용보험 and 국민연금 상실신고. 산재 follows 고용보험 until confirmed.
+    /// Employment insurance and National Pension loss-of-coverage reports.
+    /// Industrial accident insurance follows employment insurance until
+    /// confirmed.
     pub ei_nps_loss_report_due: Date,
     pub nhis_loss_report_due: Date,
-    /// 소득세법 §137 중도퇴사 연말정산, settled in the final pay [U].
-    /// A payroll-owned queue item linked to the case.
+    /// Income Tax Act §137 year-end tax settlement for a mid-year leaver,
+    /// settled in the final pay [U]. A payroll-owned queue item linked to the
+    /// case.
     pub mid_year_tax_settlement_due: Date,
 }
 
-/// Computes every calendar clock for a 마지막 근무일 of `exit_date`.
+/// Computes every calendar clock for a last working day of `exit_date`.
 ///
 /// # Errors
 /// Validation when a computed date leaves the supported calendar range, or the
@@ -81,13 +93,15 @@ pub fn exit_clocks(exit_date: Date, rules: &ExitClockRules) -> Result<ExitClocks
     })
 }
 
-/// 근기법 §26 gap line: whether a 해고예고수당 line is owed.
+/// Labor Standards Act §26 gap line: whether a line for pay in lieu of
+/// dismissal notice is owed.
 ///
 /// The gap is measured from `notice_date` to `exit_date`, the
-/// worker-favourable reading until a 노무사 confirms; no notice at all
+/// worker-favourable reading until a labor attorney confirms; no notice at all
 /// (`None`) is always short. Service is counted to
-/// the 상실일 (`exit_date + 1`), the convention 퇴직금 eligibility uses, with
-/// month-end clamping (11/30 + 3 months = the last day of February).
+/// the loss-of-coverage date (`exit_date + 1`), the convention severance pay
+/// eligibility uses, with month-end clamping (11/30 + 3 months = the last day
+/// of February).
 ///
 /// # Errors
 /// Validation when a computed date leaves the supported calendar range.
@@ -106,10 +120,11 @@ pub fn dismissal_notice_pay_owed(
 }
 
 /// A clock that starts on an event rather than on `exit_date`:
-/// - request-triggered items, started by an attestation: 사용증명서 (근기법 §39,
-///   즉시 = 0 days), 이직확인서 (고용보험법 §42③, register days [U]), an early
-///   상실신고 on the worker's request (「지체 없이」);
-/// - 퇴직일 미정: the report date plus the tenant's
+/// - request-triggered items, started by an attestation: certificate of
+///   employment (Labor Standards Act §39, immediately = 0 days), separation
+///   certificate (Employment Insurance Act §42③, register days [U]), an early
+///   loss-of-coverage report on the worker's request ("without delay");
+/// - exit date unknown: the report date plus the tenant's
 ///   `exit.date_unknown.resolve_days` setting.
 ///
 /// # Errors
@@ -135,7 +150,7 @@ pub fn check_snooze(until: Date, due: Date) -> Result<(), KernelError> {
 }
 
 /// `date` plus whole calendar months; the day clamps to the target month's
-/// last day (민법 §160③).
+/// last day (Civil Act §160③).
 pub(crate) fn add_months(date: Date, months: u8) -> Result<Date, KernelError> {
     let month_index = u16::from(u8::from(date.month()) - 1) + u16::from(months);
     let year = date.year() + i32::from(month_index / 12);

@@ -1,5 +1,5 @@
 type: string
-description: 'NEW_DUTY 맡은 일이 바뀜 · COVER 다른 사람 대신 · NEEDED_NOW 지금 처리할 일 · OTHER 기타 (note required)'
+description: 'NEW_DUTY my duties changed · COVER covering for someone else · NEEDED_NOW work to handle now · OTHER other (note required)'
 enum:
 - NEW_DUTY
 - COVER

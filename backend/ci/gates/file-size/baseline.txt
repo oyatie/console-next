@@ -170,7 +170,7 @@ crates/ontology/adapter-postgres/tests/property_link_sync_as_runtime_role.rs	432
 crates/ontology/adapter-postgres/tests/registry_rls_surfaces_as_runtime_role.rs	1831
 crates/ontology/canonical-adapter-postgres/src/job_position.rs	493
 crates/ontology/canonical-adapter-postgres/src/org_unit.rs	605
-crates/ontology/canonical-adapter-postgres/src/person.rs	445
+crates/ontology/canonical-adapter-postgres/src/person.rs	429
 crates/ontology/canonical-adapter-postgres/tests/employment_effective_projection_as_runtime_role.rs	779
 crates/ontology/canonical-adapter-postgres/tests/employment_port_as_runtime_role.rs	2726
 crates/ontology/canonical-adapter-postgres/tests/job_position_port_as_runtime_role.rs	820

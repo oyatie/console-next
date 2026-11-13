@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { koAccessReview } from "../ko/access-review";
-export const enAccessReview: Record<keyof typeof koAccessReview, string> = {
+export const enAccessReview = {
   "accessReview.title": "Access review",
   "accessReview.empty": "No access grants to review",
   "accessReview.emptyReason": "There are no current or scheduled access grants.",
@@ -13,4 +12,4 @@ export const enAccessReview: Record<keyof typeof koAccessReview, string> = {
   "accessReview.scope": "Scope",
   "accessReview.period": "Effective period",
   "accessReview.state": "State",
-};
+} as const;

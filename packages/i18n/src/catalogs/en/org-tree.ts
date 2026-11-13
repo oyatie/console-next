@@ -1,6 +1,4 @@
-import type { koOrgTree } from "../ko/org-tree";
-
-export const enOrgTree: Record<keyof typeof koOrgTree, string> = {
+export const enOrgTree = {
   "orgTree.act.register": "Register an employee in {name}",
   "orgTree.history.title": "History ({count, number})",
   "orgTree.history.created": "Created {date} · {name}",
@@ -13,4 +11,4 @@ export const enOrgTree: Record<keyof typeof koOrgTree, string> = {
   "orgTree.history.merged": "{date} merged · into {into}, dissolved (kept in the history)",
   "orgTree.history.none": "none",
   "orgTree.history.vacant": "vacant",
-};
+} as const;

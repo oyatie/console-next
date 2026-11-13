@@ -4,16 +4,16 @@
 //! NOBYPASSRLS, FORCE RLS) — a superuser session would BYPASSRLS and mask both
 //! the tenant policy and the `governance_findings` write.
 //!
-//! Requirement (DESIGN §3.9.1 / §3.10 ③④, §3.9.3, HANDOFF §15/§16): 기안자 ≠
-//! 승인자 on the approval step, fail closed for every title. Authoring, publication and
+//! Requirement (DESIGN §3.9.1 / §3.10 ③④, §3.9.3, HANDOFF §15/§16): drafter ≠
+//! approver on the approval step, fail closed for every title. Authoring, publication and
 //! archival steps stay single-actor.
 //!
-//! 1. The maker cannot approve their own 기안; a second actor can.
+//! 1. The maker cannot approve their own draft; a second actor can.
 //! 2. Legitimate same-actor NON-checker transitions still pass (regression).
-//! 3. The org 대표 and SUPER_ADMIN cannot self-approve.
+//! 3. The org CEO and SUPER_ADMIN cannot self-approve.
 //! 4. The gate is declarative, not `document`-specific: `benefit_catalog_item`
 //!    pending→finalized is gated by the same rule.
-//! 5. A checker transition with no recorded 기안 fails closed.
+//! 5. A checker transition with no recorded draft fails closed.
 
 use console_kernel_core::{ErrorKind, OrgId};
 use console_platform_db::{lifecycle, with_org_conn};
@@ -100,7 +100,7 @@ async fn transition(
 }
 
 // ===========================================================================
-// 1 + 2. The 기안자 is refused, a second actor is accepted, and the
+// 1 + 2. The drafter is refused, a second actor is accepted, and the
 //        single-actor steps around the approval keep working.
 // ===========================================================================
 #[sqlx::test(migrator = "MIGRATOR")]
@@ -112,7 +112,7 @@ async fn checker_transition_refuses_the_maker_and_accepts_a_second_actor(owner_p
     let rt_pool = runtime_role_pool(&owner_pool).await;
     let object_id = Uuid::new_v4();
 
-    // draft → submitted by the author: a legitimate same-actor 상신.
+    // draft → submitted by the author: a legitimate same-actor submission.
     let submitted = transition(
         &rt_pool,
         org,
@@ -289,7 +289,7 @@ async fn missing_either_maker_or_checker_fails_closed(owner_pool: PgPool) {
 }
 
 // ===========================================================================
-// 4. Not document-specific: the benefit catalog 승인 is gated by the same rule.
+// 4. Not document-specific: the benefit catalog approval is gated by the same rule.
 // ===========================================================================
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn benefit_catalog_finalization_is_checker_gated_too(owner_pool: PgPool) {
@@ -335,7 +335,7 @@ async fn benefit_catalog_finalization_is_checker_gated_too(owner_pool: PgPool) {
     .expect("확정 by a second actor must succeed");
     assert_eq!(finalized.current_state, "finalized");
 
-    // 시행(finalized → implemented) is the preset effective date firing, not a
+    // Implementation (finalized → implemented) is the preset effective date firing, not a
     // second approval: the same actor may carry it out.
     let implemented = transition(
         &rt_pool,
@@ -385,7 +385,7 @@ async fn checker_transition_without_a_recorded_maker_fails_closed(owner_pool: Pg
     .expect_err("no recorded 기안 → the four-eyes control cannot be evaluated");
     assert_eq!(err.kind, ErrorKind::Forbidden);
 
-    // Same for an unattributed (system) approval of an unattributed 기안.
+    // Same for an unattributed (system) approval of an unattributed draft.
     let anonymous_object = Uuid::new_v4();
     transition(
         &rt_pool,

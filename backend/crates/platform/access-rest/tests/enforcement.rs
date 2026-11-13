@@ -2,7 +2,7 @@
 //! The proof that grants reach the existing doors: an account with NO legacy
 //! role (AX-0) signs in, and the request context projects its Cedar-allowed
 //! grants onto the same `authorize*` doors the HR and org handlers call —
-//! inside its 법인, not outside it, not before 운영 시작 unless marked for
+//! inside its legal entity, not outside it, not before go-live unless marked for
 //! setup, not after its end date. Ops is logged on every request.
 
 mod support;

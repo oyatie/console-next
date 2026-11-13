@@ -1,7 +1,8 @@
-//! BW-19 2: 재입사. A former employee comes back as the same person (same
-//! 사번, same history), not as a new one: a REHIRE lifecycle event starts a
-//! new employment period on the EXITED head. A future first day makes them
-//! 입사 예정 (PRE_HIRE) with a SCHEDULED ONBOARD, exactly as a registration.
+//! BW-19 2: rehire. A former employee comes back as the same person (same
+//! employee number, same history), not as a new one: a REHIRE lifecycle event
+//! starts a new employment period on the EXITED head. A future first day makes
+//! them a pending hire (PRE_HIRE) with a SCHEDULED ONBOARD, exactly as a
+//! registration.
 //!
 //! the canonical employment of the first period stays bound (the
 //! legacy head carries the new period); a second canonical employment per
@@ -194,7 +195,7 @@ async fn record_rehire_event(
 }
 
 impl HrService {
-    /// 재입사: a new employment period for an EXITED person. Replays by
+    /// Rehire: a new employment period for an EXITED person. Replays by
     /// `idempotency_key` (the registration reservation table).
     pub async fn rehire_employee(
         &self,
@@ -256,7 +257,8 @@ impl HrService {
                 if !start_rehire_period(tx, org_uuid, employee_id, &period).await? {
                     return Err(HrError::internal("the EXITED head moved under its lock"));
                 }
-                // UX-R3 STRUCT: the exit ended the last 법인 · 사업장 assignment; the new period is placed again.
+                // UX-R3 STRUCT: the exit ended the last legal entity · workplace assignment;
+                // the new period is placed again.
                 let write = MoveWrite {
                     org_id: org_uuid,
                     employee_id,

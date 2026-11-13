@@ -83,7 +83,7 @@ pub(crate) struct NewLine {
     pub target_workplace_id: Option<Uuid>,
     pub exit_reason_code: Option<String>,
     pub exit_case_id: Option<Uuid>,
-    /// GROUP_TRANSFER: the 전적 the plan recorded.
+    /// GROUP_TRANSFER: the group transfer the plan recorded.
     pub lifecycle_event_id: Option<Uuid>,
     /// GROUP_TRANSFER: the checked facts to record it with (not stored here).
     pub group_transfer: Option<GroupTransferFacts>,
@@ -145,7 +145,7 @@ pub(crate) async fn head(
     .map_err(|e: sqlx::Error| e.into())
 }
 
-/// The newest job of a 사업장 (the open one when there is one).
+/// The newest job of a workplace (the open one when there is one).
 pub(crate) async fn latest_for(
     tx: &mut Transaction<'_, Postgres>,
     workplace: Uuid,
@@ -159,7 +159,7 @@ pub(crate) async fn latest_for(
     .await?)
 }
 
-/// Jobs whose 폐쇄일 has come and that have not settled.
+/// Jobs whose closure date has come and that have not settled.
 pub(crate) async fn due(
     tx: &mut Transaction<'_, Postgres>,
     today: Date,

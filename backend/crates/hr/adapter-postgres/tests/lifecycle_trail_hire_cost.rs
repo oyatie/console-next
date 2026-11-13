@@ -31,6 +31,20 @@ async fn hire_trail_writes_are_batched(pool: PgPool) {
     for statement in &statements {
         eprintln!("{statement}");
     }
+    assert_eq!(
+        statements
+            .iter()
+            .filter(|sql| [
+                "INSERT INTO persons",
+                "INSERT INTO person_revisions",
+                "INSERT INTO employee_person_bindings",
+            ]
+            .iter()
+            .any(|table| sql.contains(table)))
+            .count(),
+        1,
+        "create the canonical person, revision and binding in one round trip"
+    );
     assert!(
         statements.len() <= 75,
         "a hire must keep its trail writes batched: {} statements",

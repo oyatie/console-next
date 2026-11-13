@@ -15,9 +15,9 @@ use console_kernel_core::OrgId;
 
 impl PasskeyService {
     /// Start an identifier-first ceremony (decisions #33): `identifier` is a
-    /// normalised `<아이디>@<domain>`. The challenge's `allowCredentials` names
+    /// normalised sign-in ID and domain joined by `@`. The challenge's `allowCredentials` names
     /// the account's credentials, so a non-resident key signs in too. Anything
-    /// unusable (unknown 아이디 or domain, no passkey, deactivated account,
+    /// unusable (unknown sign-in ID or domain, no passkey, deactivated account,
     /// expired alias) gets one synthetic id from `platform_sign_in_options`,
     /// stable per identifier: the response never tells the cases apart.
     pub async fn start_identified_authentication(

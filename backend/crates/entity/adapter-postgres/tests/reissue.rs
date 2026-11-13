@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! 등록증 재발급·정정 as `console_rt`: a new certificate changing 대표자 and
-//! 소재지 is one dated, evidenced change (the registration's and the 법인's
-//! revisions, the certificate linked, the old one superseded); every guard
-//! refuses with its code and writes nothing.
+//! Certificate reissue/correction as `console_rt`: a new certificate changing the
+//! representative and the location is one dated, evidenced change (the registration's and
+//! the legal entity's revisions, the certificate linked, the old one superseded); every
+//! guard refuses with its code and writes nothing.
 
 mod common;
 mod reissue_support;
@@ -23,7 +23,8 @@ async fn a_new_certificate_changes_its_facts_as_one_evidenced_change(owner: PgPo
         .await
         .unwrap();
     assert_eq!(saved.change_mode, "SETUP");
-    // The 법인's VAT unit was recorded today, after 10-01: its 대표자 change starts there, and the save says so.
+    // The legal entity's VAT unit was recorded today, after 10-01: its representative change
+    // starts there, and the save says so.
     assert!(
         saved
             .warnings
@@ -35,7 +36,8 @@ async fn a_new_certificate_changes_its_facts_as_one_evidenced_change(owner: PgPo
     let c = saved.record.current.as_ref().unwrap();
     assert_eq!(c.business_address.as_ref().unwrap().road_addr_part1, BUSAN);
     assert_eq!(c.cert_issued_on.unwrap().to_string(), "2026-10-02");
-    // Every surface derives from the one record: the 법인's 대표자 is the certificate's.
+    // Every surface derives from the one record: the legal entity's representative is the
+    // certificate's.
     let e = store.get_entity(&actor, entity, true).await.unwrap();
     assert_eq!(
         e.current.as_ref().unwrap().representatives.as_deref(),
@@ -201,7 +203,8 @@ async fn every_guard_refuses_with_its_code_and_writes_nothing(owner: PgPool) {
         ["registration_not_found"]
     );
 
-    // Nothing was written by any refusal: versions, the 대표자 and the documents as before.
+    // Nothing was written by any refusal: versions, the representative and the documents
+    // as before.
     assert_eq!(versions(&store, &actor, entity, reg).await, before);
     let docs = store.list_documents(&actor, entity).await.unwrap();
     assert!(

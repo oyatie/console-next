@@ -177,10 +177,10 @@ export function Shell() {
           <Menu size={16} aria-hidden /> {t("shell.menu")}
         </button>
         {!platform && (
-          <button type="button" className="btn top__jump" onClick={() => setJump(true)} aria-label={t("shell.jumpLabel")} aria-keyshortcuts="Meta+K Control+K">
+          <button type="button" className="btn top__jump" onClick={() => setJump(true)} aria-keyshortcuts="Meta+K Control+K">
             <Search size={16} aria-hidden />
             <span className="top__jumpText"><span className="top__jumpHint">{t("shell.jump")}</span><span className="top__jumpLabel">{t("shell.jumpLabel")}</span></span>
-            <kbd className="top__kbd">{t("shell.jumpKey")}</kbd>
+            <kbd className="top__kbd" aria-hidden>{t("shell.jumpKey")}</kbd>
           </button>
         )}
         <span className="top__spacer" />

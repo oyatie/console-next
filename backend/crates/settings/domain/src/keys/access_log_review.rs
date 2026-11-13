@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! 접속기록 점검 policy (internal management plan §8.3–8.6).
+//! Access log review policy (internal management plan §8.3–8.6).
 macro_rules! access_log_review { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     AccessLogReviewCadenceMonths => "access_log_review.cadence_months" = D::int(Months, Some(1), Some(3), 1, Higher);
     AccessLogReviewDueBusinessDays => "access_log_review.due_business_days" = D::int(BusinessDays, Some(1), Some(10), 1, Higher);

@@ -2,7 +2,7 @@ x-console-authz: {"permission": "tenant:approve", "scope": "ops"}
 tags:
 - onboarding
 operationId: getGoLivePreview
-summary: 운영 시작 preview
+summary: Go-live preview
 security:
 - bearerAuth: []
 responses:

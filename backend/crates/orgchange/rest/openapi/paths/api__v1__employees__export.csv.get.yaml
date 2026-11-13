@@ -4,8 +4,8 @@ operationId: exportEmployeesCsv
 summary: Export standardized employee directory CSV
 description: Exports canonical employee fields only. Raw import ledger values, payroll data, account numbers, resident
   identifiers, and import provenance are not included. Takes the GET /api/v1/employees filters and every matching
-  row (no cap), streamed as UTF-8 with a BOM and Cache-Control no-store. export_purpose (다운로드 용도) is required;
-  the download is logged (excel_export_logs and an employee.export 접속기록 event with the row count) before the
+  row (no cap), streamed as UTF-8 with a BOM and Cache-Control no-store. export_purpose (the download purpose) is required;
+  the download is logged (excel_export_logs and an employee.export access log event with the row count) before the
   first byte, and a refusal is logged as employee.export_refused.
 security:
 - bearerAuth: []
@@ -51,13 +51,13 @@ parameters:
   schema:
     $ref: '#/components/schemas/Uuid'
   description: Only employees whose current employment assignment (the last one once exited, the first one
-    before the hire date) names this 법인.
+    before the hire date) names this legal entity.
 - name: workplace_id
   in: query
   required: false
   schema:
     $ref: '#/components/schemas/Uuid'
-  description: Only employees whose current employment assignment names this 사업장.
+  description: Only employees whose current employment assignment names this workplace.
 - name: status
   in: query
   required: false
@@ -103,7 +103,7 @@ parameters:
   schema:
     type: string
     enum: [AUDIT_RESPONSE, INTERNAL_REVIEW, DISPUTE_RESPONSE, DATA_SUBJECT_REQUEST, OTHER]
-  description: The download 용도 (고시 2023-6 §8②). Missing or unknown is 422 export_purpose_required.
+  description: The download purpose (public notice 2023-6 §8②). Missing or unknown is 422 export_purpose_required.
 - name: layout
   in: query
   required: false
@@ -112,13 +112,13 @@ parameters:
     enum: [standard, register]
     default: standard
   description: >-
-    register writes the 근로자 명부 (근로기준법 §41, 시행령 §20) in 시행규칙 별지 제16호서식 order as
-    employees-register.csv: 사번, 성명, 성별, 생년월일, 주소, 전화번호, 사업장, 소속, 종사 업무, 고용일, 갱신일
+    register writes the worker register (Labor Standards Act §41, Enforcement Decree §20) in the order of Enforcement Rule Form No. 16 as
+    employees-register.csv with the headers 사번, 성명, 성별, 생년월일, 주소, 전화번호, 사업장, 소속, 종사 업무, 고용일, 갱신일
     (latest applied CONTRACT_RENEWAL), 계약기간 (start~end of the current contract), 마지막 근무일, 퇴직일
-    (마지막 근무일 + 1), 퇴직(해고) 사유, 이력, 그 밖에 필요한 사항. Items not held yet (성별, 주소, 이력, 기타,
-    퇴직 사유) are empty cells. Labels only: no codes or internal ids. 사업장 is the assigned workplace's current
-    name (else the imported worksite text); pass workplace_id for one 사업장's register (§41① 각 사업장별로).
-    register needs employee_directory_manage (it carries 생년월일 and the personal phone); a reader gets 403.
+    (last working day + 1), 퇴직(해고) 사유, 이력, 그 밖에 필요한 사항. Items not held yet (sex, address, history, other,
+    exit reason) are empty cells. Labels only: no codes or internal ids. The workplace column is the assigned workplace's current
+    name (else the imported worksite text); pass workplace_id for one workplace's register (§41①, for each workplace).
+    register needs employee_directory_manage (it carries the date of birth and the personal phone); a reader gets 403.
 responses:
   '200':
     description: Standardized employee CSV (employees-standard.csv), or the register layout.

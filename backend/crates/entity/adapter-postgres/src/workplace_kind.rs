@@ -1,7 +1,7 @@
-//! 사업장 kind (decisions #18): the tenant's code list and the kind of one
-//! 사업장. A label only, so every write is direct in both phases and audited
-//! (onboarding-and-migration §7.2); the phase is still admitted, so the audit
-//! row says SETUP or GOVERNED like every other 사업장 write.
+//! Workplace kind (decisions #18): the tenant's code list and the kind of one
+//! workplace. A label only, so every write is direct in both phases and
+//! audited (onboarding-and-migration §7.2); the phase is still admitted, so
+//! the audit row says SETUP or GOVERNED like every other workplace write.
 
 use console_entity_application::{
     Actor, CreateWorkplaceKind, Saved, SetWorkplaceKind, UpdateWorkplaceKind, WorkplaceKindView,
@@ -65,8 +65,8 @@ async fn one(tx: &mut Tx<'_>, code: &str) -> Result<WorkplaceKindView, PgEntityE
         .ok_or_else(|| Refusal::not_found("workplace_kind_not_found").into())
 }
 
-/// The kind a 사업장 may be given: `None` (미지정), or an active kind of the
-/// list. `current` (the kind it already has) stays valid even if deactivated.
+/// The kind a workplace may be given: `None` (unassigned), or an active kind
+/// of the list. `current` (the kind it already has) stays valid even if deactivated.
 pub(crate) async fn usable_kind(
     tx: &mut Tx<'_>,
     raw: Option<&str>,
@@ -187,7 +187,7 @@ impl PgEntityStore {
         .await
     }
 
-    /// Set (or clear) the kind of one 사업장.
+    /// Set (or clear) the kind of one workplace.
     ///
     /// # Errors
     /// `workplace_not_found`, `workplace_voided`, `kind_code: invalid_choice | inactive_choice`.

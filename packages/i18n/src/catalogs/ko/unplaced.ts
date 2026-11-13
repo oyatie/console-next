@@ -1,5 +1,6 @@
-// Korean source for `unplaced.` ids (apps/web/src/features/people/ui/unplaced-*): 미배치 처리 (spec E8).
-export const koUnplaced = {
+// Korean copy for `unplaced.` ids (apps/web/src/features/people/ui/unplaced-*): 미배치 처리 (spec E8).
+import type { enUnplaced } from "../en/unplaced";
+export const koUnplaced: Record<keyof typeof enUnplaced, string> = {
   "unplaced.crumbTodo": "할 일",
   "unplaced.title": "미배치 처리",
   "unplaced.phaseSetup": "설정 단계 · 선택하면 바로 적용됩니다",
@@ -70,4 +71,4 @@ export const koUnplaced = {
   "unplaced.why.stale_record": "방금 다른 사람이 이 직원을 변경했습니다 · 다시 선택하십시오",
   "unplaced.why.lifecycle_schedule_conflict": "예약된 발령과 겹칩니다 · 인사카드에서 예약을 확인하십시오",
   "unplaced.why.scheduled_conflict": "예약된 발령과 겹칩니다 · 인사카드에서 예약을 확인하십시오",
-} as const;
+};

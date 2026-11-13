@@ -88,6 +88,8 @@ for (const selection of ["none", "root", "collapsed"] as const) {
         await page.getByRole("button", { name: t("structure.node.collapseLabel", { name: parent.name }), exact: true }).click();
         await expect(dept).toHaveCount(0);
       }
+      // The clicks leave the real pointer on a box, and the browser re-sends pointerover to it when the layout shifts.
+      await page.mouse.move(0, 0);
       for (const node of [parent, entity]) {
         await box(page, node.name).dispatchEvent("pointerover");
         await expect(page.getByRole("toolbar")).toHaveCount(1);

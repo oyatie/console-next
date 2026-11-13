@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: createWorkplace
-summary: Create a 사업장 (with its default branch and 4대보험 rows)
+summary: Create a workplace (with its default branch and four-social-insurance rows)
 security:
 - bearerAuth: []
 parameters:

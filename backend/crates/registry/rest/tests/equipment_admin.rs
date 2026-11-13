@@ -161,7 +161,7 @@ async fn equipment_crud_create_update_soft_delete_is_audited(pool: PgPool) {
             "operator/customer is a separate field from legal owner"
         );
 
-        // Update: flip status to 예비 and clear the model.
+        // Update: flip status to spare and clear the model.
         let update_body = json!({ "status": "spare", "model": null, "residual_value": 7_500_000 });
         let (status, _) = harness
             .send(
@@ -231,7 +231,7 @@ async fn equipment_crud_create_update_soft_delete_is_audited(pool: PgPool) {
             None
         );
 
-        // Soft delete: marks 폐기, never removes the row.
+        // Soft delete: marks it scrapped, never removes the row.
         let (status, _) = harness
             .send("DELETE", &format!("/api/v1/equipment/{id}"), None)
             .await;
@@ -457,7 +457,7 @@ async fn substitute_assign_and_return_are_audited(pool: PgPool) {
         let source = create_equipment(&harness, "CFO25-7777", "777").await;
         let substitute = create_equipment(&harness, "CFO25-8888", "888").await;
 
-        // Assign the substitute (대차).
+        // Assign the substitute unit.
         let assign_body = json!({
             "source_equipment_id": source,
             "substitute_equipment_id": substitute,

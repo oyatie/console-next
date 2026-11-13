@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { koNts } from "../ko/nts";
-
-export const enNts: Record<keyof typeof koNts, string> = {
+export const enNts = {
   "nts.original.title": "Current registration certificate original",
   "nts.original.consequence": "The original is kept as evidence. The issue date and recorded facts stay unchanged.",
   "nts.original.saved": "Registration certificate original attached",
@@ -56,4 +54,4 @@ export const enNts: Record<keyof typeof koNts, string> = {
   "nts.ops.REJECTED": "The provider rejected the {env} key. Check its registration.",
   "nts.ops.expiry": "Expires on",
   "nts.ops.daysLeft": "Days remaining"
-};
+} as const;

@@ -1,4 +1,4 @@
-//! BW-12 fixed-term service read (기간제법 §4①).
+//! BW-12 fixed-term service read (Fixed-Term Workers Act §4①).
 
 use axum::extract::{Path, Query, State};
 use axum::routing::get;

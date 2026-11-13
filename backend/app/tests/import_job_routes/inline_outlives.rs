@@ -1,7 +1,7 @@
 //! regression (r3:hire-02): an inline apply (no `Prefer: respond-async`)
 //! whose request is dropped mid-way — the 30 s request timeout under load —
 //! stopped its driver with it: the roster was left half settled (no
-//! 고용형태, people 미배치) until the schedule loop resumed it minutes later,
+//! employment type, people unplaced) until the schedule loop resumed it minutes later,
 //! and the screen offered the apply again. The driver now outlives the request.
 
 use std::time::Duration;
@@ -77,7 +77,7 @@ async fn regression_an_inline_apply_whose_request_is_dropped_still_finishes(
     drop(response);
     holder.commit().await.map_err(e)?;
 
-    // The job still reaches done, settled: the person is in, 미배치 counted.
+    // The job still reaches done, settled: the person is in, unplaced counted.
     let job = completed_job(&ops, &apply).await;
     assert_eq!(job["report"]["inserted"], 1, "{job}");
     let (_, unplaced) = ops

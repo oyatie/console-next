@@ -1,6 +1,7 @@
-//! The 사업장 every close_plan case closes: 부산지점 of 주식회사 가나, with
-//! 개발팀 › 품질팀 and 물류팀 under it and one person placed directly; 본사
-//! has 인사팀. Four people, each placed at 부산지점, the tenant past 운영 시작.
+//! The workplace every close_plan case closes: the Busan branch of "Gana Co.,
+//! Ltd.", with the development team › quality team and the logistics team under
+//! it and one person placed directly; the head office has the HR team. Four
+//! people, each placed at the Busan branch, the tenant past go-live.
 
 use console_entity_application::OrgSetupOp;
 use console_hr_adapter_postgres::lifecycle::close_plan::Planner;
@@ -158,7 +159,8 @@ pub async fn state(owner: &PgPool, job: Uuid) -> String {
         .unwrap()
 }
 
-/// What nothing-written means for a refused plan: no job, no 전근, no exit case, no plan audit.
+/// What nothing-written means for a refused plan: no job, no transfer, no exit
+/// case, no plan audit.
 pub async fn nothing_written(owner: &PgPool) -> (i64, i64, i64, i64) {
     sqlx::query_as(
         "SELECT (SELECT count(*) FROM workplace_close_jobs), (SELECT count(*) FROM employee_lifecycle_events WHERE event_type = 'TRANSFER'), \

@@ -1,9 +1,9 @@
 tags:
 - entity
 operationId: renameSetupOrgUnit
-summary: Rename and/or move a 부서 during setup
-description: A batch of one or two ops (undoable by its batch_id). A move to another 사업장 corrects its people's
-  사업장 placement too. Send expected_version from the tree; stale is 409 stale_revision.
+summary: Rename and/or move a department during setup
+description: A batch of one or two ops (undoable by its batch_id). A move to another workplace corrects its people's
+  workplace placement too. Send expected_version from the tree; stale is 409 stale_revision.
 security:
 - bearerAuth: []
 parameters:

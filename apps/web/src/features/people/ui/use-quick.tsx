@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "@console/i18n";
 import { failureText } from "../../../lib/refusal";
 import { useCommand } from "../../../lib/react/command";
 import { Button } from "../../../ui/button/button";
-import { editable } from "../../../ui/long-table/row-keys";
+import { useKeys } from "../../../lib/react/use-keys";
 import { Toast } from "../../../ui/toast/toast";
 import { correctEmployee, isStale, type CorrectionChanges } from "../api";
 import type { FieldConflict } from "./inline-conflict";
@@ -45,19 +45,8 @@ export function useQuick(c: Card) {
     setLast(null);
     save(field, back, changes);
   };
-  const undoRef = useRef(undo);
-  useEffect(() => void (undoRef.current = undo));
   // ⌘Z / Ctrl+Z outside a field undoes the last receipt (inside a field it is the text's own undo).
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey && !editable(e.target)) {
-        e.preventDefault();
-        undoRef.current();
-      }
-    };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
-  }, []);
+  useKeys({ "quick.undo": undo });
   useEffect(() => {
     if (!last) return;
     const id = setTimeout(() => setLast(null), UNDO_MS - (Date.now() - last.at));

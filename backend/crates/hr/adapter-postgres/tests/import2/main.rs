@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! IMPORT-2 (decisions #25, #26) on a `console_rt` pool: the sealed
-//! 주민등록번호 and its tombstone, any-layout import, the 확인 필요 queue,
-//! mapping memory, 사번 변경 and renumbering.
+//! resident registration number and its tombstone, any-layout import, the
+//! needs-review queue, mapping memory, employee number change and
+//! renumbering.
 
 mod apply_progress;
 mod atomic_apply;

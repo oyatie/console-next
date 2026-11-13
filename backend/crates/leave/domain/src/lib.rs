@@ -1,4 +1,5 @@
-//! Leave-request domain — 연차 신청/결재 + 근로기준법 §61 statutory push.
+//! Leave-request domain — annual-leave requests/approval + Labor Standards Act
+//! §61 statutory push.
 //!
 //! Pure value objects and validation only. Persistence, audit, org/branch
 //! scoping, and REST live in outer layers. A [`LeaveRequest`] moves through a
@@ -6,24 +7,27 @@
 //! `pending` request can be decided, and the decider is always separated from
 //! the requester (SoD, mirroring the workflow-engine initiator guard #205).
 //!
-//! 근로기준법 §60 guardrail (charter §4-31, "연차=사유란 없음·거부 불가 (시기
-//! 변경 협의만)"): a 연차/반차 request carries **no reason field** — the law
-//! grants the worker the 시기지정권 and the employer may not demand a 사유 —
-//! and **refusal is not representable**. The only lawful non-approve outcome
-//! is opening a 시기변경 협의 under the §60⑤ proviso (사업 운영에 막대한 지장).
+//! Labor Standards Act §60 guardrail (charter §4-31, "annual leave = no reason
+//! field, cannot be refused (timing-change consultation only)"): an
+//! annual/half-day leave request carries **no reason field** — the law grants
+//! the worker the right to designate the timing and the employer may not
+//! demand a reason — and **refusal is not representable**. The only lawful
+//! non-approve outcome is opening a timing-change consultation under the §60⑤
+//! proviso (a serious disruption to business operations).
 //! The retired `returned`/`rejected` statuses survive only as read-only
 //! historical row states; no decision can produce them.
 //!
 //! Full §60⑤ consult mechanics live in [`consult`]: automatic coverage
-//! eligibility (요건 자동 판정), worker-only alternate-date proposals, and
-//! repeat-exercise audit rollup. Opening `time_change` without an eligible
-//! system verdict is refused fail-closed at the SQL gate.
+//! eligibility (automatic requirement ruling), worker-only alternate-date
+//! proposals, and repeat-exercise audit rollup. Opening `time_change` without
+//! an eligible system verdict is refused fail-closed at the SQL gate.
 //!
-//! The statutory push ([`PromotionKind`]) is the employer's 연차 사용 촉진
-//! (§61, two rounds) and, after the second round, the 노무수령거부 notice. Each
-//! push is delivered as a receipt-gated document into the target's 개인 수신함.
+//! The statutory push ([`PromotionKind`]) is the employer's annual-leave use
+//! promotion (§61, two rounds) and, after the second round, the
+//! refusal-to-accept-labour notice. Each push is delivered as a receipt-gated
+//! document into the target's personal inbox.
 //! The statutory timing of those steps lives in [`promotion`], which carries the
-//! verbatim statute text and its live citations.
+//! statute text (in English translation) and its live citations.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 pub mod consult;
@@ -48,13 +52,13 @@ const COMMENT_MAX: usize = 500;
 const LEAVE_UNITS_PER_DAY: i64 = 1_000_000;
 const LEAVE_UNITS_STORAGE_MAX: i64 = 9_999_999_999_999_999;
 
-/// 연차 (full annual-leave day) vs 반차 (half day).
+/// Annual leave (a full day) vs half-day leave.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LeaveType {
-    /// 연차 — a full annual-leave day.
+    /// A full annual-leave day.
     Annual,
-    /// 반차 — a half day.
+    /// A half day.
     HalfDay,
 }
 
@@ -456,7 +460,7 @@ impl LeaveType {
 /// The lifecycle status of a leave request.
 ///
 /// `Returned` and `Rejected` are **read-only historical states**: rows decided
-/// before the 근로기준법 §60 guardrail landed still carry them and must remain
+/// before the Labor Standards Act §60 guardrail landed still carry them and must remain
 /// readable, but no [`LeaveDecision`] can produce them and the database
 /// refuses any new transition into them (fail-closed).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -464,14 +468,15 @@ impl LeaveType {
 pub enum LeaveStatus {
     Pending,
     Approved,
-    /// 시기변경 협의 opened under the §60⑤ proviso — the lawful non-approve
-    /// outcome. The request row is terminal for ledger purposes; the worker
-    /// records a chosen alternate 시기 on the consult ([`consult`]) and
+    /// Timing-change consultation opened under the §60⑤ proviso — the lawful
+    /// non-approve outcome. The request row is terminal for ledger purposes;
+    /// the worker records a chosen alternate timing on the consult
+    /// ([`consult`]) and
     /// refiles from that proposal.
     TimeChangeConsult,
-    /// Historical rows only (pre-guardrail 반려). Not reachable by decision.
+    /// Historical rows only (pre-guardrail return). Not reachable by decision.
     Returned,
-    /// Historical rows only (pre-guardrail 거부). Not reachable by decision.
+    /// Historical rows only (pre-guardrail rejection). Not reachable by decision.
     Rejected,
 }
 
@@ -502,9 +507,10 @@ impl LeaveStatus {
 }
 
 /// A decision on a pending leave request. `Approve` is the only action that
-/// writes the leave ledger (used += days, remaining -= days). 근로기준법 §60
-/// forbids refusing 연차 (charter §4-31: "거부 불가"), so the only other
-/// decision is `TimeChange` — opening a 시기변경 협의 under the §60⑤ proviso.
+/// writes the leave ledger (used += days, remaining -= days). Labor Standards
+/// Act §60 forbids refusing annual leave (charter §4-31: "cannot be refused"),
+/// so the only other decision is `TimeChange` — opening a timing-change
+/// consultation under the §60⑤ proviso.
 /// `TimeChange` requires a comment **and** a system-eligible coverage verdict
 /// ([`judge_time_change_eligibility`]); a comment alone cannot open a consult.
 /// `Approve`'s comment is optional.
@@ -557,25 +563,27 @@ impl LeaveDecision {
     }
 }
 
-/// The two statutory-push kinds. 연차 사용 촉진 has two rounds under 근로기준법
-/// 제61조 (round 1 = 사용 촉구, round 2 = 사용 시기 지정 통보), each with its own
-/// mandatory window — see [`crate::promotion`]. After round 2 the employer may
-/// serve a 노무수령거부 notice declining the labour on the designated days.
+/// The two statutory-push kinds. Annual-leave use promotion has two rounds
+/// under Labor Standards Act Article 61 (round 1 = urging use, round 2 = notice
+/// designating the timing of use), each with its own mandatory window — see
+/// [`crate::promotion`]. After round 2 the employer may serve a
+/// refusal-to-accept-labour notice declining the labour on the designated days.
 ///
 /// **The refusal notice does not itself extinguish anything.** §61 relieves the
-/// employer of the 미사용수당 obligation only where every step was taken in
-/// 서면 inside its window *and* the worker still did not use the leave; and
-/// 대법원 2019다279283 (2020. 2. 27.) holds that where the worker nonetheless
-/// works on a designated day and the employer accepts the labour, the
-/// obligation survives. Whether that condition was met is a matter of fact for
-/// the employer's 노무사 to certify — this system records the acts, and never
+/// employer of the unused-leave allowance obligation only where every step was
+/// taken in writing inside its window *and* the worker still did not use the
+/// leave; and Supreme Court 2019Da279283 (2020. 2. 27.) holds that where the
+/// worker nonetheless works on a designated day and the employer accepts the
+/// labour, the obligation survives. Whether that condition was met is a matter
+/// of fact for the employer's certified labour attorney to certify — this
+/// system records the acts, and never
 /// asserts their legal effect.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PromotionKind {
-    /// 연차 사용 촉진 (§61), round 1 or 2.
+    /// Annual-leave use promotion (§61), round 1 or 2.
     Promotion,
-    /// 노무수령거부 — served only after a round-2 promotion.
+    /// Refusal to accept labour — served only after a round-2 promotion.
     Refusal,
 }
 
@@ -598,7 +606,7 @@ impl PromotionKind {
         }
     }
 
-    /// The statutory notice subtype delivered into the 개인 수신함 and the legal
+    /// The statutory notice subtype delivered into the personal inbox and the legal
     /// basis surfaced in the passkey receipt gate.
     #[must_use]
     pub fn notice_type(self) -> &'static str {
@@ -618,7 +626,7 @@ impl PromotionKind {
     }
 }
 
-/// Validate a statutory push against 근로기준법 제61조 and return the canonical
+/// Validate a statutory push against Labor Standards Act Article 61 and return the canonical
 /// stored round (`1`/`2` for a promotion, `2` for a refusal — the round it
 /// follows). Delegates to [`crate::promotion`], which holds the statutory
 /// windows and their citations.
@@ -635,9 +643,9 @@ pub fn validate_push(
 
 /// A validated leave intent. Quantity is deliberately absent: it is resolved
 /// from authoritative work-calendar and policy evidence after filing. A reason
-/// is deliberately **unrepresentable**: 근로기준법 §60 gives the worker the
-/// 시기지정권, and the charter (§4-31) forbids demanding — or even offering a
-/// place to store — a 사유 for 연차/반차.
+/// is deliberately **unrepresentable**: Labor Standards Act §60 gives the worker
+/// the right to designate the timing, and the charter (§4-31) forbids demanding
+/// — or even offering a place to store — a reason for annual or half-day leave.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NewLeaveRequest {
     pub leave_type: LeaveType,
@@ -773,7 +781,8 @@ mod tests {
 
     #[test]
     fn time_change_needs_the_employer_grounds_comment() {
-        // §60⑤: the employer invokes 사업 운영에 막대한 지장 — the grounds must
+        // §60⑤: the employer invokes a serious disruption to business
+        // operations — the grounds must
         // be stated to the requester.
         assert!(validate_decision_comment(LeaveDecision::TimeChange, None).is_err());
         assert!(validate_decision_comment(LeaveDecision::TimeChange, Some("   ")).is_err());
@@ -816,8 +825,9 @@ mod tests {
         );
     }
 
-    /// Charter §4-31 / 근로기준법 §60: "연차=사유란 없음". Filing 연차 must not
-    /// demand any 사유 from the employee — the intent type has no reason slot.
+    /// Charter §4-31 / Labor Standards Act §60: "annual leave = no reason
+    /// field". Filing annual leave must not demand any reason from the employee
+    /// — the intent type has no reason slot.
     #[test]
     fn kr_charter_annual_leave_never_demands_a_reason() {
         assert!(
@@ -826,9 +836,10 @@ mod tests {
         );
     }
 
-    /// Charter §4-31 / 근로기준법 §60: "거부 불가 (시기변경 협의만)". Refusal of a
-    /// 연차 request must not be expressible; the only lawful non-approve
-    /// outcome is a 시기변경 협의.
+    /// Charter §4-31 / Labor Standards Act §60: "cannot be refused (timing-change
+    /// consultation only)". Refusal of an annual-leave request must not be
+    /// expressible; the only lawful non-approve outcome is a timing-change
+    /// consultation.
     #[test]
     fn kr_charter_refusal_is_not_a_decision() {
         assert!(

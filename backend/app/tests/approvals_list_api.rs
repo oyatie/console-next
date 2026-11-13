@@ -18,6 +18,8 @@ use uuid::Uuid;
 mod delivery;
 #[path = "approvals_list_api/errors.rs"]
 mod errors;
+#[path = "approvals_list_api/summary.rs"]
+mod summary;
 
 async fn get(ctx: &http::Ctx, query: &str) -> Value {
     let _ = tracing_subscriber::fmt()
@@ -29,20 +31,6 @@ async fn get(ctx: &http::Ctx, query: &str) -> Value {
         .await;
     assert_eq!(status, StatusCode::OK, "{body}");
     body
-}
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn machine_kind_fallback_is_not_an_approval_summary(pool: PgPool) {
-    let (org, maker, checker) = setup(&pool).await;
-    let id = document(&pool, org, maker, "OC-2026-0001").await;
-    sqlx::query("UPDATE org_change_requests SET reason=kind WHERE id=$1")
-        .bind(id)
-        .execute(&pool)
-        .await
-        .unwrap();
-    let ctx = fixtures::ctx(&pool, org, checker, &["EXECUTIVE"], None).await;
-    let page = get(&ctx, &format!("box=pending&focus=org_change:{id}")).await;
-    assert_eq!(page["items"][0]["summary"], "");
-    assert_eq!(page["focused"]["summary"], "");
 }
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn canonical_list_counts_focus_and_keyset_share_visibility(pool: PgPool) {

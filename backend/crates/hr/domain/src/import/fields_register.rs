@@ -1,7 +1,8 @@
-//! r3:hire-16 / records-02: the 근로자 명부 (근기법 시행령 §20) targets of the
-//! import catalog — facts a new person's first records take — and the
-//! 휴대전화 the register sheet needs (W12: stored E.164 on the employment
-//! profile at apply; never in a raw row or a preview, "restricted").
+//! r3:hire-16 / records-02: the worker register (Enforcement Decree of the
+//! Labor Standards Act §20) targets of the import catalog — facts a new
+//! person's first records take — and the mobile phone the register sheet needs
+//! (W12: stored E.164 on the employment profile at apply; never in a raw row or
+//! a preview, "restricted").
 
 use super::fields::EmployeeImportFieldDefinition;
 

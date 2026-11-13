@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: correctAttendanceEntry
-summary: 정정 — a new value replaces the entry with a reason and its 근거; both values stay in the history
+summary: Correction — a new value replaces the entry with a reason and its basis; both values stay in the history
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: entry_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }

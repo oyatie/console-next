@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! PEOPLE-B directory reads: the employee_number filter, employment_type and
-//! expected_return_date on the row, the facet counts, and the 접속기록 row
+//! expected_return_date on the row, the facet counts, and the access log row
 //! every list and detail read writes (INF-02, GOV-PEO-1 self-read capture).
 
 mod support;
@@ -135,7 +135,7 @@ async fn facets_count_each_chip_group_without_its_own_filter(pool: PgPool) {
     assert_eq!(facets.review.contract_ending_before, None);
     assert_eq!(facets.employment_type.len(), 1);
     assert_eq!(facets.employment_type[0].value, None);
-    // A count read names no one: no 접속기록 row.
+    // A count read names no one: no access log row.
     assert!(access_rows(&pool, t.org).await.is_empty());
 }
 
@@ -175,7 +175,7 @@ async fn list_and_detail_reads_write_one_access_row_each_including_self_reads(po
     assert_eq!(rows[1].0, "employee.read");
     assert_eq!(rows[1].1, other.to_string());
     assert_eq!(rows[1].2["self_read"], false);
-    // GOV-PEO-1: a 취급자 reading their own record is logged too.
+    // GOV-PEO-1: a handler reading their own record is logged too.
     assert_eq!(rows[2].1, me.to_string());
     assert_eq!(rows[2].2["self_read"], true);
     assert_eq!(rows[2].2["actor_employee_id"], me.to_string());

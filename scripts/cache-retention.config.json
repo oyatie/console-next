@@ -1,0 +1,74 @@
+{
+  "trustedRef": "refs/heads/dev",
+  "budgetBytes": 10737418240,
+  "targetFraction": 0.7,
+  "families": {
+    "backend": {
+      "purpose": "Reuse compiled Rust targets and downloaded crates across builds",
+      "readers": [
+        "ci.yml Rust jobs on dev and PRs: current manifest prefix, then runner fallback"
+      ],
+      "keyPattern": "^(backend-[^-]+-[^-]+-)([a-f0-9]{64}-)[a-f0-9]{40}$",
+      "copies": 2,
+      "restoreCopies": 1,
+      "prefixes": 1
+    },
+    "db-tests": {
+      "purpose": "Reuse compiled DB test targets and crates",
+      "readers": [
+        "db-tests.yml Rust test shards on dev and PRs"
+      ],
+      "keyPattern": "^(db-tests-[^-]+-[^-]+-debug\\d+-)([a-f0-9]{64}-)[a-f0-9]{40}$",
+      "copies": 1,
+      "restoreCopies": 1,
+      "prefixes": 1
+    },
+    "npm": {
+      "purpose": "Reuse downloaded npm packages",
+      "readers": [
+        "setup-node npm cache in all workflows on dev and PRs"
+      ],
+      "keyPattern": "^(node-cache-[^-]+-[^-]+-npm-)([a-f0-9]{64})$",
+      "copies": 1,
+      "restoreCopies": 1,
+      "prefixes": 1
+    },
+    "playwright": {
+      "purpose": "Reuse the installed browser revision",
+      "readers": [
+        "ci.yml web and states jobs on dev and PRs"
+      ],
+      "keyPattern": "^(playwright-[^-]+-[^-]+-[^-]+-)(.+)$",
+      "copies": 1,
+      "restoreCopies": 1,
+      "prefixes": 1
+    },
+    "codeql": {
+      "purpose": "Reuse CodeQL overlay base databases",
+      "readers": [
+        "codeql.yml analysis per language and query configuration"
+      ],
+      "keyPattern": "^codeql-overlay-base-database-\\d+-[a-f0-9]+-([^-]+-)([^-]+)-[a-f0-9]{40}-\\d+-\\d+$",
+      "copies": 1,
+      "restoreCopies": 1,
+      "prefixes": 1
+    },
+    "buildkit": {
+      "purpose": "Reuse image build layers and their indexes",
+      "readers": [
+        "platform.yml native image build per architecture; blobs are shared by indexes"
+      ],
+      "keyPattern": "^(index-(?:console-)?platform-(?:amd64|arm64)-\\d+-[a-f0-9]+#)(\\d+)$|^buildkit-blob-\\d+-sha256:[a-f0-9]{64}$",
+      "copies": 2,
+      "restoreCopies": 1,
+      "prefixes": 1,
+      "legacyPattern": "^index-platform-(amd64|arm64)-1-[a-f0-9]{8}#\\d+$",
+      "blobPattern": "^buildkit-blob-1-sha256:[a-f0-9]{64}$",
+      "blobBuilds": 2,
+      "blobScopes": [
+        "index-console-platform-amd64-",
+        "index-console-platform-arm64-"
+      ]
+    }
+  }
+}

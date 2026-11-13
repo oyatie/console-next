@@ -1,6 +1,4 @@
-import type { koOrgUnit } from "../ko/org-unit";
-
-export const enOrgUnit: Record<keyof typeof koOrgUnit, string> = {
+export const enOrgUnit = {
   "orgUnit.kind": "Department",
   "orgUnit.tab.members": "Employees {count, number}",
   "orgUnit.stat.total": "With sub-units",
@@ -131,4 +129,4 @@ export const enOrgUnit: Record<keyof typeof koOrgUnit, string> = {
   "orgUnit.dissolve.loading": "the member list",
   "orgUnit.act.blocking": "{code} in progress",
   "orgUnit.fact.name": "Department name",
-};
+} as const;

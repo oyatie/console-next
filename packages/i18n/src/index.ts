@@ -1,6 +1,6 @@
 import { IntlMessageFormat } from "intl-messageformat";
 import { bootEn, bootKo, type BootMessageId } from "./catalogs/boot";
-import type { ScreenMessageId } from "./catalogs/ko";
+import type { ScreenMessageId } from "./catalogs/en";
 import { applyJosa, resolveJosa } from "./josa";
 
 export { josa } from "./josa";
@@ -61,17 +61,18 @@ function format(source: string, values?: Values): string {
 }
 
 /**
- * A translator over `catalogs` (Korean source plus other locales): the message for `id` in the
- * current locale, falling back to Korean, ICU-formatted with `values`.
+ * A translator over `catalogs` (English source, Korean complete, other locales partial): the message for
+ * `id` in the current locale, falling back to English, ICU-formatted with `values`.
  */
-export function createT<K extends string>(cats: { ko: Record<K, string> } & Partial<Record<Locale, Partial<Record<K, string>>>>) {
-  return (id: K, values?: Values): string => format(cats[locale]?.[id] ?? cats.ko[id], values);
+export function createT<K extends string>(cats: { en: Record<K, string>; ko: Record<K, string> } & Partial<Record<Locale, Partial<Record<K, string>>>>) {
+  return (id: K, values?: Values): string => format(cats[locale]?.[id] ?? cats.en[id], values);
 }
 
-const lookup = (id: MessageId) => screens[locale]?.[id] ?? boot[locale][id] ?? screens.ko?.[id] ?? boot.ko[id];
+// Korean is complete by type, so the English fallback only serves partial locales.
+const lookup = (id: MessageId) => screens[locale]?.[id] ?? boot[locale][id] ?? screens.en?.[id] ?? boot.en[id];
 
 /**
- * The app catalog's translator: the current locale's message, falling back to Korean. An id whose
+ * The app catalog's translator: the current locale's message, falling back to English. An id whose
  * screen catalog has not loaded renders as the id itself (visible drift, never a crash).
  */
 export const t = (id: MessageId, values?: Values): string => format(lookup(id) ?? id, values);

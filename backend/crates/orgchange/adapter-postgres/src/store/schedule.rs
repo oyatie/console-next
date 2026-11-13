@@ -1,6 +1,6 @@
 use crate::*;
 
-/// A scheduled change (APPROVED, its 시행일 not come) is its drafter's to
+/// A scheduled change (APPROVED, its effective date not come) is its drafter's to
 /// move or cancel under `approval.policy.org_structure = none` (decisions
 /// #26); once a routed change is approved, only someone who may apply it
 /// changes it (403 `org_change_scheduled_locked`).
@@ -23,9 +23,9 @@ pub(crate) async fn may_touch_scheduled(
     Ok(())
 }
 
-/// 예약 수정 (org-02): a scheduled change keeps its content and moves its
-/// 시행일 and/or reason. Moved to today, it applies at once, as a change
-/// dated today does on submit.
+/// Scheduled-change edit (org-02): a scheduled change keeps its content and
+/// moves its effective date and/or reason. Moved to today, it applies at once,
+/// as a change dated today does on submit.
 pub(crate) async fn reschedule_in_tx(
     tx: Tx<'_, '_>,
     (org, actor, now): (OrgId, UserId, OffsetDateTime),
@@ -86,13 +86,14 @@ pub(crate) async fn reschedule_in_tx(
 
 impl PgOrgChangeStore {
     /// The scheduled-change worker's one call (org-02): applies every APPROVED
-    /// change whose 시행일 is `through` or earlier, in every tenant, oldest
-    /// first, each in its own audited transaction (the same apply a submit or
-    /// 시행 runs; its audits feed the event stream, decisions #27). A refused
-    /// change stays APPROVED with the refusal on its record (once per reason),
-    /// so its page says why and offers 예약 수정 · 예약 취소; a server fault
-    /// is retried next run. Idempotent across replicas: the row lock and the
-    /// re-read status admit each change once. Returns how many applied.
+    /// change whose effective date is `through` or earlier, in every tenant,
+    /// oldest first, each in its own audited transaction (the same apply a
+    /// submit or effectuate runs; its audits feed the event stream, decisions
+    /// #27). A refused change stays APPROVED with the refusal on its record
+    /// (once per reason), so its page says why and offers edit schedule ·
+    /// cancel schedule; a server fault is retried next run. Idempotent across
+    /// replicas: the row lock and the re-read status admit each change once.
+    /// Returns how many applied.
     pub async fn effectuate_due(&self, through: Date) -> Result<usize, String> {
         self.effectuate_due_at(through, OffsetDateTime::now_utc())
             .await

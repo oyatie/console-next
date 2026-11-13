@@ -1,9 +1,9 @@
-//! IMPORT-2 (decisions #25): the shell's 주민등록번호 vault. Sealing reuses the
+//! IMPORT-2 (decisions #25): the shell's resident registration number vault. Sealing reuses the
 //! versioned webmail envelope AEAD (v1 writes during dual-reader rollout) under
 //! its own master key; matching is HMAC-SHA256 under a separate
 //! key. Both keys come from the environment (Vault-injected in production),
 //! never from the database, and are never logged. Without both keys the
-//! import drops 주민등록번호 cells and the reveal answers 503.
+//! import drops resident registration number cells and the reveal answers 503.
 
 use aws_lc_rs::hmac;
 use console_comms_credential_cipher::{

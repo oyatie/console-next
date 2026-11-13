@@ -1,4 +1,4 @@
-//! 정정, 기록 취소 then 재기록, and 일괄 취소, each with its refusals.
+//! Correction, record void then re-record, and batch undo, each with its refusals.
 
 use console_attendance_adapter_postgres::GridQuery;
 use console_attendance_application::records::{CorrectInput, UndoInput, VoidInput};
@@ -104,7 +104,7 @@ async fn a_correction_keeps_both_values_and_a_void_can_be_restored(owner: PgPool
         voided.entry_kind.is_none() && voided.entry_id.is_some(),
         "empty again, its history kept"
     );
-    // 재기록: the next save names the void as its base.
+    // Re-record: the next save names the void as its base.
     let mut again = cell(&w, 0, TUE, "9-18");
     again.base_entry_id = voided.entry_id;
     w.store

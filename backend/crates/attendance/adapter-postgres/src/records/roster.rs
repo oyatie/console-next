@@ -1,5 +1,6 @@
-//! Who is placed where on each day of a range: dated assignments (법인 ·
-//! 사업장) and dated 근무조, with today's 부서 (the dated 부서 read is the
+//! Who is placed where on each day of a range: dated assignments (legal entity ·
+//! workplace) and dated crew memberships, with today's department (the dated department
+//! read is the
 //! org-history reader's; see `schedule::org`).
 
 use std::collections::BTreeMap;
@@ -71,7 +72,7 @@ const PEOPLE_SQL: &str = "SELECT e.id, e.employee_number, e.name, e.org_unit_id,
 const CREWS_SQL: &str = "SELECT employee_id, crew_id, valid_from, valid_to FROM attendance_crew_members \
      WHERE valid_from <= $2 AND (valid_to IS NULL OR valid_to > $1) AND ($3::uuid[] IS NULL OR employee_id = ANY($3))";
 
-/// Everyone employed at some point of [first, last], in 사번 order.
+/// Everyone employed at some point of [first, last], in employee number order.
 pub(crate) async fn load_members(
     tx: &mut Transaction<'_, Postgres>,
     first: Date,
@@ -135,7 +136,7 @@ pub(crate) async fn load_members(
         .collect())
 }
 
-/// The caller's own employee record, whose 근태 they may read but not write.
+/// The caller's own employee record, whose attendance they may read but not write.
 pub(crate) async fn own_employee(
     tx: &mut Transaction<'_, Postgres>,
     user: Uuid,

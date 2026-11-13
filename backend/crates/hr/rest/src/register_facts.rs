@@ -1,4 +1,4 @@
-//! 근로자 명부 item routes (MR-23, lane EMP-FACTS). INTEG mounts [`router`]
+//! Worker register item routes (MR-23, lane EMP-FACTS). INTEG mounts [`router`]
 //! inside the authenticated HR router and registers
 //! [`REGISTER_FACTS_ROUTE_PATHS`]. One-by-one changes of these items are
 //! corrections: `PATCH /employees/{id}` (the corrections router).

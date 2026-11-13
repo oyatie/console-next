@@ -1,5 +1,6 @@
-// Korean source for `uiRecord.` ids (apps/web/src/ui/record: the personnel record's field grammar).
-export const koUiRecord = {
+// Korean copy for `uiRecord.` ids (apps/web/src/ui/record: the personnel record's field grammar).
+import type { enUiRecord } from "../en/ui-record";
+export const koUiRecord: Record<keyof typeof enUiRecord, string> = {
   "uiRecord.registerItem": "근로자 명부 항목 {no}",
   "uiRecord.sections": "인사카드 구획",
   "uiRecord.markOf": "{field} {mark}",
@@ -11,4 +12,4 @@ export const koUiRecord = {
   "uiRecord.mark.inline": "바로 수정",
   "uiRecord.mark.verb": "발령으로",
   "uiRecord.mark.lock": "발령·퇴직으로만",
-} as const;
+};

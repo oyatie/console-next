@@ -1,4 +1,4 @@
-//! BW-18 employee master-data corrections (정정) and identity resolution.
+//! BW-18 employee master-data corrections and identity resolution.
 //! Lane PEOPLE-A.
 //!
 //! `employees` writes go through the Employment owner

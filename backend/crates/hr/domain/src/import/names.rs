@@ -1,8 +1,9 @@
-//! W03: 부서 / 사업장 names a file wrote that bind nothing exactly, offered as
-//! candidates (never bound): the same text after normalising whitespace,
-//! full/half width and separators, then after dropping a 공장/지점-style
-//! suffix, then the last segment of a path (`경영지원본부>총무팀`). The
-//! operator's click (`unit_map` / `workplace_map`) is what binds.
+//! W03: department / workplace names a file wrote that bind nothing exactly,
+//! offered as candidates (never bound): the same text after normalising
+//! whitespace, full/half width and separators, then after dropping a
+//! plant/branch-style suffix, then the last segment of a path (a division
+//! name, `>`, then a team name). The operator's click (`unit_map` /
+//! `workplace_map`) is what binds.
 
 use std::collections::BTreeMap;
 
@@ -38,7 +39,8 @@ pub struct NameCandidate {
 }
 
 /// The comparison key of an org name: half-width, lower case, without
-/// whitespace or separators (`영업 2팀` = `영업2팀`, `ＱＡ팀` = `qa팀`).
+/// whitespace or separators (a team name with an inner space equals the same
+/// name without it, and a full-width `ＱＡ` team name equals its `qa` form).
 #[must_use]
 pub fn org_name_key(text: &str) -> String {
     half_width(text)
@@ -63,7 +65,8 @@ pub fn bound_name(text: &str, index: &BTreeMap<String, Vec<Uuid>>) -> Option<Uui
     (ids.len() == 1).then(|| ids.into_iter().next()).flatten()
 }
 
-/// The key without one trailing suffix (`평택공장` → `평택`); never empty.
+/// The key without one trailing suffix (a place name with the Korean "plant"
+/// suffix → the bare place name); never empty.
 fn base(key: &str) -> &str {
     SUFFIXES
         .iter()
@@ -117,7 +120,7 @@ pub fn candidates(text: &str, index: &BTreeMap<String, Vec<Uuid>>) -> Vec<NameCa
     out
 }
 
-/// Fills every unit / 사업장 item of `queue` with its candidates; their ids
+/// Fills every unit / workplace item of `queue` with its candidates; their ids
 /// become the item's choices (one click binds).
 pub fn with_candidates(
     queue: &mut ReviewQueue,

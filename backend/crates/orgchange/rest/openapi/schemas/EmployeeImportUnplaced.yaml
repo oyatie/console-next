@@ -1,5 +1,5 @@
 type: object
-description: 'W03: new people who come in 미배치, by reason (unit_unknown, unit_ambiguous, unit_left_unplaced,
+description: 'W03: new people who come in as unplaced, by reason (unit_unknown, unit_ambiguous, unit_left_unplaced,
   workplace_unknown, no_place).'
 required: [rows, by_reason]
 properties:

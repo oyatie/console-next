@@ -28,7 +28,7 @@ pub(crate) fn fmt_phone(raw: Option<String>) -> Option<Formatted> {
         })
 }
 
-/// The 임원 of one revision row (`director_roles/names/dates`, printed order).
+/// The executives of one revision row (`director_roles/names/dates`, printed order).
 pub(crate) fn directors(r: &sqlx::postgres::PgRow) -> Result<Vec<DirectorView>, sqlx::Error> {
     use sqlx::Row;
     let roles: Vec<String> = r

@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! The /statutory 사업장 picker lists in the stored order (법인, then its 사업장), never by name.
+//! The /statutory workplace picker lists in the stored order (legal entity, then
+//! its workplaces), never by name.
 mod support;
 #[path = "statutory/world.rs"]
 mod world;
@@ -41,7 +42,8 @@ async fn statutory_workplace_picker_follows_the_stored_order_not_names(pool: PgP
         .execute(tx.as_mut())
         .await
         .unwrap();
-    // Stored order runs against name order at both levels; one 사업장 has no stored position (after the ordered ones).
+    // Stored order runs against name order at both levels; one workplace has no
+    // stored position (after the ordered ones).
     let na = entity(&mut tx, org, "나법인", Some(0)).await;
     let ga = entity(&mut tx, org, "가법인", Some(1)).await;
     let da = site(&mut tx, org, na, "다사업장", Some(1)).await;
@@ -58,6 +60,7 @@ async fn statutory_workplace_picker_follows_the_stored_order_not_names(pool: PgP
         .into_iter()
         .map(|x| x.id)
         .collect();
-    // The world's own 법인 has no stored position, so it and its 사업장 come last.
+    // The world's own legal entity has no stored position, so it and its
+    // workplaces come last.
     assert_eq!(got, vec![ra, da, aa, sa, w.site]);
 }

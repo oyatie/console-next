@@ -1,6 +1,7 @@
 // 등록증 재발급·정정 (owner 2026-10-14): a newly issued 사업자등록증 and the facts it changed, recorded as one dated change from
 // the certificate card on the 법인 page and the 사업장 panel; the first certificate entry reuses one already attached.
-export const koEntityReissue = {
+import type { enEntityReissue } from "../en/entity-reissue";
+export const koEntityReissue: Record<keyof typeof enEntityReissue, string> = {
   "entityReissue.action": "등록증 재발급·정정",
   "entityReissue.actionOf": "{brn} 등록증 재발급·정정",
   "entityReissue.title": "등록증 재발급·정정",
@@ -35,4 +36,4 @@ export const koEntityReissue = {
   "entityReissue.save": "재발급·정정 기록",
   "entityReissue.saved": "{brn} 등록증 재발급·정정을 기록했습니다",
   "entityReissue.history.evidence": "등록증 · {name}",
-} as const;
+};

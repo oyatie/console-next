@@ -2,7 +2,7 @@ tags:
   - equipment
 operationId: deleteEquipment
 summary: Soft-delete one equipment master row
-description: Admin-gated (EquipmentManage). Marks the row 폐기 (disposed) rather than hard-deleting, so work-order and
+description: Admin-gated (EquipmentManage). Marks the row disposed rather than hard-deleting, so work-order and
   substitution references stay intact.
 security:
 - bearerAuth: []

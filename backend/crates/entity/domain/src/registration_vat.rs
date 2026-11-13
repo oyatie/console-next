@@ -8,8 +8,8 @@ use crate::refusal::REQUIRED;
 ///
 /// - certificate ⑩ = Y → UNIT_TAXATION (derived), and it must be the only
 ///   open registration of the entity;
-/// - one registration, ⑩ = N → PER_WORKPLACE (derived: 총괄납부 is meaningless
-///   with one 사업장);
+/// - one registration, ⑩ = N → PER_WORKPLACE (derived: consolidated payment is
+///   meaningless with one workplace);
 /// - two or more → a declaration is required (no default).
 ///
 /// # Errors

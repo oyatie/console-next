@@ -3,7 +3,7 @@ tags:
 - access
 operationId: listAccessGrants
 summary: List grants
-description: Needs 권한 관리 조회 over any node, or ops. A holder scoped below the tenant sees only the grants over nodes it may view. Revoked and expired grants are listed only on request.
+description: Needs access management view over any node, or ops. A holder scoped below the tenant sees only the grants over nodes it may view. Revoked and expired grants are listed only on request.
 security:
 - bearerAuth: []
 parameters:

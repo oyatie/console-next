@@ -1,7 +1,7 @@
 //! MR-7: what an imported row records beyond the person itself: the unit
-//! (or 미배치), the 사업장 the person is placed at, and the 고용형태 of the
-//! employment profile. Never a refusal for a value nobody answered: the
-//! field stays empty and the plan row says why.
+//! (or unplaced), the workplace the person is placed at, and the employment
+//! type of the employment profile. Never a refusal for a value nobody
+//! answered: the field stays empty and the plan row says why.
 
 use uuid::Uuid;
 
@@ -9,7 +9,8 @@ use super::normalize::employment_type_code;
 use super::plan::{Decisions, Deferred, ImportRow, PlanFacts};
 
 /// The unit a current person is bound to, and the file's unit name when it
-/// resolves to none (the operator's 미배치, an unknown or an ambiguous name).
+/// resolves to none (the operator's "unplaced", an unknown or an ambiguous
+/// name).
 pub(super) fn unit(
     name: Option<&String>,
     facts: &PlanFacts<'_>,
@@ -28,10 +29,10 @@ pub(super) fn unit(
     (id, id.is_none().then(|| name.clone()))
 }
 
-/// The 사업장 of a current person: the one the unit sits in, else the one the
-/// 사업장 text names (the operator's answer, else the one open 사업장 of that
-/// exact name). `Err` when the two disagree; the second value is the text
-/// when it named no 사업장.
+/// The workplace of a current person: the one the unit sits in, else the one
+/// the workplace text names (the operator's answer, else the one open
+/// workplace of that exact name). `Err` when the two disagree; the second
+/// value is the text when it named no workplace.
 pub(super) fn workplace(
     unit: Option<Uuid>,
     text: Option<&String>,
@@ -54,9 +55,10 @@ pub(super) fn workplace(
     Ok((at_unit.or(named), unnamed))
 }
 
-/// A current person's place: the 부서 (if it binds), the 사업장 and the
-/// 사업장 text that bound none; `Err` when the 부서's 사업장 is not the
-/// named 사업장 and no group answer says which one wins (r3:hire-19).
+/// A current person's place: the department (if it binds), the workplace and
+/// the workplace text that bound none; `Err` when the department's workplace
+/// is not the named workplace and no group answer says which one wins
+/// (r3:hire-19).
 pub(super) fn current_place(
     row: &ImportRow,
     facts: &PlanFacts<'_>,
@@ -122,8 +124,8 @@ pub(super) fn current_place(
     Ok(place)
 }
 
-/// Where [`current_place`] puts a person; `left`: the 부서 is left 미배치 by
-/// the operator's group answer.
+/// Where [`current_place`] puts a person; `left`: the department is left
+/// unplaced by the operator's group answer.
 pub(super) struct Place {
     pub unit: Option<Uuid>,
     pub unresolved: Option<String>,
@@ -132,8 +134,9 @@ pub(super) struct Place {
     pub left: bool,
 }
 
-/// W03: why a current person comes in 미배치, counted by the dry run. A
-/// person with no 부서 text at a 사업장 is placed (사업장 직속).
+/// W03: why a current person comes in unplaced, counted by the dry run. A
+/// person with no department text at a workplace is placed (directly under
+/// the workplace).
 pub(super) fn unplaced_reason(
     row: &ImportRow,
     unit: Option<Uuid>,
@@ -154,10 +157,10 @@ pub(super) fn unplaced_reason(
     })
 }
 
-/// The 고용형태 code of the row: the operator's answer, else the code or a
-/// label with one meaning (W02, reported as `auto_mapped`). A label nobody
-/// mapped stays empty and comes back deferred (`value_map`), which the review
-/// queue makes a blocking question.
+/// The employment type code of the row: the operator's answer, else the code
+/// or a label with one meaning (W02, reported as `auto_mapped`). A label
+/// nobody mapped stays empty and comes back deferred (`value_map`), which the
+/// review queue makes a blocking question.
 pub(super) fn employment_type(
     text: Option<&String>,
     decisions: &Decisions,

@@ -2,7 +2,7 @@ tags:
 - access
 operationId: getOpsAccount
 summary: The tenant's ops account (break-glass, exactly one)
-description: Needs 권한 관리 조회 over the whole tenant, or ops.
+description: Needs access management view over the whole tenant, or ops.
 security:
 - bearerAuth: []
 responses:

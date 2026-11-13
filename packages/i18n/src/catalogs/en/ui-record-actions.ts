@@ -1,7 +1,5 @@
 // English for `uiRecordActions.` ids (apps/web/src/ui/record-actions).
-import type { koUiRecordActions } from "../ko/ui-record-actions";
-
-export const enUiRecordActions: Partial<Record<keyof typeof koUiRecordActions, string>> = {
+export const enUiRecordActions = {
   "uiRecordActions.edit": "Edit",
   "uiRecordActions.add": "Add",
   "uiRecordActions.of": "{verb} {field}",
@@ -17,4 +15,4 @@ export const enUiRecordActions: Partial<Record<keyof typeof koUiRecordActions, s
   "uiRecordActions.path.approval": "Applies after approval · kept in the history",
   "uiRecordActions.path.second": "Applies once a second person confirms · kept as a correction record",
   "uiRecordActions.path.stepUp": "Applies after your passkey · kept as a correction record",
-};
+} as const;

@@ -1,21 +1,22 @@
 //! UX-R2 ENDS (company-01, worst-case-18, move-17; decisions #21, #28): a
-//! 사업장 that still has people or 부서 closes in one act, by a plan with a
-//! line for every person (전근 | 퇴직 | 전적, recorded with the plan)
-//! and every 부서 directly under it (moved under another open 사업장 | 폐지).
+//! workplace that still has people or departments closes in one act, by a
+//! plan with a line for every person (transfer | exit | group transfer,
+//! recorded with the plan) and every department directly under it (moved
+//! under another open workplace | abolished).
 //!
 //! - Planned once, fail-closed: 422 `close_plan_incomplete` names everyone and
-//!   every 부서 without a line; 422 `close_plan_refused` every line that cannot
-//!   apply (checked by actually applying it in a rolled-back savepoint when the
-//!   폐쇄일 is later). Nothing is written then.
-//! - 퇴직 lines open (or join) exit cases at once: they need their own HR
-//!   confirmation before the 폐쇄일.
-//! - Applied all-or-none on the 폐쇄일: inline when that is today and the plan
-//!   fits a request (`INLINE_LINES`), else by the lifecycle tick
+//!   every department without a line; 422 `close_plan_refused` every line that
+//!   cannot apply (checked by actually applying it in a rolled-back savepoint
+//!   when the closure date is later). Nothing is written then.
+//! - Exit lines open (or join) exit cases at once: they need their own HR
+//!   confirmation before the closure date.
+//! - Applied all-or-none on the closure date: inline when that is today and
+//!   the plan fits a request (`INLINE_LINES`), else by the lifecycle tick
 //!   (`advance_due_workplace_closes`), which also finishes a job that WAITED
-//!   for its 퇴직 to take effect.
+//!   for its exit to take effect.
 //! - Every write is audited in its transaction (`workplace.close_plan`,
-//!   `workplace.close_job.*`, and each 전근's own `employee.lifecycle.record`):
-//!   the event stream's source (#27, 0311).
+//!   `workplace.close_job.*`, and each transfer's own
+//!   `employee.lifecycle.record`): the event stream's source (#27, 0311).
 
 mod apply;
 mod exits;
@@ -63,7 +64,7 @@ pub struct Planner {
     pub user: UserId,
     /// The request's Idempotency-Key.
     pub command: Uuid,
-    /// Their grants: a 전적 line is authorized on its receiving place.
+    /// Their grants: a group transfer line is authorized on its receiving place.
     pub principal: Principal,
 }
 
@@ -121,7 +122,8 @@ impl HrService {
     }
 
     /// `POST /api/v1/workplaces/{workplaceId}/close-plan`: check the plan,
-    /// open its 퇴직 cases, and apply it now (폐쇄일 today) or schedule it.
+    /// open its exit cases, and apply it now (closure date today) or schedule
+    /// it.
     ///
     /// # Errors
     /// 409 `workplace_not_open` / `workplace_holds_entity_role` /
@@ -182,7 +184,7 @@ impl HrService {
                     }
                 } else {
                     if inline {
-                        // A dry run on the 폐쇄일: every line is applied in a
+                        // A dry run on the closure date: every line is applied in a
                         // savepoint and rolled back, so a refusal surfaces now.
                         let mut dry = sqlx::Acquire::begin(&mut *tx).await?;
                         advance(&mut dry, who.org, &head, on, port.as_ref(), &mut Vec::new()).await?;
@@ -209,7 +211,8 @@ impl HrService {
     }
 
     /// `POST /api/v1/workplaces/{workplaceId}/close-plan/cancel`: withdraw the
-    /// open job. Its 퇴직 cases and 전적 stay (withdraw them on their own).
+    /// open job. Its exit cases and group transfers stay (withdraw them on
+    /// their own).
     ///
     /// # Errors
     /// 409 `close_job_not_open`.
@@ -266,7 +269,7 @@ async fn open_job(
     .await?)
 }
 
-/// Open (or join) each 퇴직 line's exit case; any person who cannot leave
+/// Open (or join) each exit line's exit case; any person who cannot leave
 /// that day refuses the plan.
 async fn open_exits(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,

@@ -1,7 +1,7 @@
 tags:
 - entity
 operationId: settleLegalEntityNameReview
-summary: Settle a one-time 법인명 review (keep the name, or take the registration 상호 by 정정)
+summary: Settle a one-time legal entity name review (keep the name, or take the registration trade name by correction)
 security:
 - bearerAuth: []
 parameters:
@@ -33,7 +33,7 @@ requestBody:
         $ref: '#/components/schemas/SettleNameReviewRequest'
 responses:
   '200':
-    description: Settled; the 법인 as it is now.
+    description: Settled; the legal entity as it is now.
     content:
       application/json:
         schema:
@@ -47,7 +47,7 @@ responses:
         schema:
           $ref: '#/components/schemas/ErrorBody'
   '422':
-    description: 'Field issues: errors[{field, code}] (name_review_choice, or the 정정''s own).'
+    description: 'Field issues: errors[{field, code}] (name_review_choice, or the correction''s own).'
     content:
       application/json:
         schema:
@@ -59,7 +59,7 @@ responses:
         schema:
           $ref: '#/components/schemas/ErrorBody'
   '404':
-    description: name_review_not_found (unknown, settled or another 법인's) or not in this tenant.
+    description: name_review_not_found (unknown, settled or another legal entity's) or not in this tenant.
     content:
       application/json:
         schema:

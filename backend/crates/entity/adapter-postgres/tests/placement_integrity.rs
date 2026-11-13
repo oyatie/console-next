@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R1 PLACEMENT (regression: org-01, move-21, hire-26): a person's 사업장
-//! follows their 부서, the counts agree at every level, and the one-time
-//! correction (0319) finds and repairs what an older binary wrote.
+//! UX-R1 PLACEMENT (regression: org-01, move-21, hire-26): a person's workplace follows
+//! their department, the counts agree at every level, and the one-time correction (0319)
+//! finds and repairs what an older binary wrote.
 
 mod common;
 #[path = "placement_integrity/exits.rs"]
@@ -17,8 +17,8 @@ use uuid::Uuid;
 
 const ORG: Uuid = Uuid::from_u128(0xA000_0000_0000_0000_0000_0000_0000_0C52);
 
-/// 본사 and 공장 of one 법인, with 공장 › 생산팀 › 조립파트:
-/// `(entity, 본사, 공장, 생산팀, 조립파트)`.
+/// Headquarters and factory of one legal entity, with factory › production team › assembly
+/// part: `(entity, headquarters, factory, production team, assembly part)`.
 async fn chart(
     store: &console_entity_adapter_postgres::PgEntityStore,
     actor: &console_entity_application::Actor,
@@ -94,7 +94,8 @@ fn find(nodes: &[OrgStructureNode], id: Uuid) -> Option<&OrgStructureNode> {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_a_binding_that_contradicts_the_department_is_refused(owner: PgPool) {
-    // org-01: 생산팀 sits under 공장, the person was bound at 본사 the same day.
+    // org-01: the production team sits under the factory, the person was bound at
+    // headquarters the same day.
     let (store, actor) = tenant(&owner, ORG, "A").await;
     let (entity, hq, plant, _, team) = chart(&store, &actor).await;
     let p = person(&owner, &store, &actor, (entity, plant, team), "p1").await;
@@ -119,7 +120,7 @@ async fn regression_a_binding_that_contradicts_the_department_is_refused(owner: 
             )
         );
     }
-    // Another 법인's 사업장 still reads as a 전적 first (its own refusal).
+    // Another legal entity's workplace still reads as a group transfer first (its own refusal).
     let (other, far) = (Uuid::new_v4(), Uuid::new_v4());
     raw(
         &owner,
@@ -145,8 +146,8 @@ async fn regression_a_binding_that_contradicts_the_department_is_refused(owner: 
         ),
         before
     );
-    // The 부서's own 사업장 still binds (an identical re-bind is a no-op), and a
-    // person in no 부서 binds anywhere.
+    // The department's own workplace still binds (an identical re-bind is a no-op), and a
+    // person in no department binds anywhere.
     store
         .bind_assignment(&cmd(&actor), bind(p, entity, plant, "2026-01-02"))
         .await
@@ -167,7 +168,7 @@ async fn regression_a_binding_that_contradicts_the_department_is_refused(owner: 
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_counts_agree_and_leave_out_who_is_not_on_the_roll(owner: PgPool) {
-    // move-21 / hire-26: 입사 예정, a cancelled registration and a 퇴직자 whose
+    // move-21 / hire-26: a pending hire, a cancelled registration and an exited person whose
     // assignment nobody closed were counted at one level and not another.
     let (store, actor) = tenant(&owner, ORG, "A").await;
     let (entity, _, plant, dept, team) = chart(&store, &actor).await;
@@ -197,7 +198,8 @@ async fn regression_counts_agree_and_leave_out_who_is_not_on_the_roll(owner: PgP
     let tree = store.org_structure(&actor).await.unwrap();
     let e = &tree.entities[0];
     let counts = |id: Uuid| find(&e.children, id).map(|n| n.headcount);
-    // 재직 and 휴직 count; 입사 예정, 등록 취소 and 퇴직 do not, at any level.
+    // Employed and on leave of absence count; pending hire, registration cancelled and
+    // exited do not, at any level.
     assert_eq!(
         (counts(team), counts(dept), counts(plant), e.headcount),
         (Some(2), Some(2), Some(2), 2)

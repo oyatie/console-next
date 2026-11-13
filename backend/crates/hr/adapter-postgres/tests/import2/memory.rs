@@ -1,5 +1,5 @@
-//! What the operator mapped once — a header label, a 재직상태 text — is
-//! offered again on the next file.
+//! What the operator mapped once — a header label, an employment status text —
+//! is offered again on the next file.
 
 use console_hr_domain::import::detect::{SheetMappingRequest, WorkbookMappingRequest};
 use sqlx::PgPool;

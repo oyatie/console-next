@@ -2,8 +2,9 @@
 //! Fields a tenant adds to its personnel card: the definitions (list, add,
 //! change). A definition has a label, a value type and a card section, both
 //! fixed once added, and is retired rather than deleted. First release: the
-//! 인적사항 and 재직·배치 sections, values read by managers only, at most
-//! [`ACTIVE_LIMIT`] active fields. A field is never a pay item.
+//! personal details and employment and placement sections, values read by
+//! managers only, at most [`ACTIVE_LIMIT`] active fields. A field is never a
+//! pay item.
 
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
 use console_platform_authz::cedar_pbac::enforce::enforce_action;
@@ -38,7 +39,7 @@ pub struct RosterFieldView {
     pub label: String,
     /// TEXT, INTEGER, DECIMAL, DATE or CHOICE.
     pub value_type: String,
-    /// PERSONAL (인적사항) or JOB (재직·배치).
+    /// PERSONAL (personal details) or JOB (employment and placement).
     pub section: String,
     /// MANAGERS: values are read by managers, not by the person themselves.
     pub visibility: String,
@@ -79,8 +80,9 @@ pub struct UpdateRosterFieldRequest {
 }
 
 /// Cedar's `roster_field_manage`, fail-closed. The fact: a tenant-wide
-/// `roster_field_manage` or HR 등록·수정 (`employee_directory_manage`); a
-/// 법인/사업장-scoped grant never reaches the tenant-wide definitions.
+/// `roster_field_manage` or HR register/edit
+/// (`employee_directory_manage`); a grant scoped to a legal entity or
+/// workplace never reaches the tenant-wide definitions.
 fn authorize_manage(principal: &Principal) -> Result<(), HrError> {
     let holds = [Feature::RosterFieldManage, Feature::EmployeeDirectoryManage]
         .into_iter()

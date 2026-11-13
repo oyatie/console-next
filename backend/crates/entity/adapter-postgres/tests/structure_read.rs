@@ -1,8 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! The 회사 구조 read model and labels (spec D1, D2, D19; review R13, R15,
-//! R16, R17), as `console_rt` with the canonical OrgUnit owner behind the
-//! port: counts per node (직속, 미배치, 법인 미정, 파견·협력), 부서 코드 and a
-//! dated 부서장 with 「(겸)」, 사업장 code, and sibling order of 사업장 and 부서.
+//! The company structure read model and labels (spec D1, D2, D19; review R13, R15, R16,
+//! R17), as `console_rt` with the canonical OrgUnit owner behind the port: counts per node
+//! (direct, unplaced, legal entity undecided, dispatched and contractor), department code
+//! and a dated department head with the "(concurrent)" mark, workplace code, and sibling
+//! order of workplaces and departments.
 
 mod common;
 
@@ -15,7 +16,7 @@ use uuid::Uuid;
 
 const ORG: Uuid = Uuid::from_u128(0xA000_0000_0000_0000_0000_0000_0000_0C51);
 
-/// A person with no 부서 and no assignment (법인 미정 until placed).
+/// A person with no department and no assignment (legal entity undecided until placed).
 async fn bare_person(owner: &PgPool, key: &str, unit: Option<Uuid>) -> Uuid {
     sqlx::query_scalar(
         "INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, source_key, org_unit_id) \
@@ -44,7 +45,7 @@ async fn employment_type(owner: &PgPool, employee: Uuid, kind: &str, by: Uuid) {
     .unwrap();
 }
 
-/// A migrated person known to the 법인 but at no 사업장 (미배치).
+/// A migrated person known to the legal entity but at no workplace (unplaced).
 async fn unplaced_at(owner: &PgPool, employee: Uuid, entity: Uuid) {
     sqlx::query(
         "INSERT INTO employment_assignments (org_id, employee_id, legal_entity_id, workplace_id, valid_from, cause, command_id) \
@@ -81,7 +82,8 @@ async fn the_chart_reads_counts_codes_heads_and_order(owner: PgPool) {
         .unwrap();
     let [made, cut, share] = [0, 1, 2].map(|i| receipt.units[i].org_unit_id);
 
-    // Two in 생산부 (one 파견), one 사업장 직속, one 미배치, one 법인 미정.
+    // Two in the production department (one dispatched), one directly under the
+    // workplace, one unplaced, one with legal entity undecided.
     let worker = person(&owner, &store, &actor, (entity, hq, made), "p1").await;
     let dispatched = person(&owner, &store, &actor, (entity, hq, made), "p2").await;
     employment_type(&owner, dispatched, "DISPATCHED_IN", user).await;
@@ -90,7 +92,8 @@ async fn the_chart_reads_counts_codes_heads_and_order(owner: PgPool) {
     unplaced_at(&owner, unplaced, entity).await;
     bare_person(&owner, "p5", None).await;
 
-    // 부서 코드 and a 부서장 from another 부서 (「(겸)」), in one setup batch.
+    // Department code and a department head from another department (the "(concurrent)"
+    // mark), in one setup batch.
     store
         .apply_org_setup_batch(
             &cmd(&actor),
@@ -119,7 +122,7 @@ async fn the_chart_reads_counts_codes_heads_and_order(owner: PgPool) {
         .unwrap_err();
     assert_eq!(code(taken).1, vec![("ops[0].code".into(), "code_taken")]);
 
-    // 사업장 code; a code a voided 사업장 held comes back with a warning.
+    // Workplace code; a code a voided workplace held comes back with a warning.
     let set = |c: &str| SetWorkplaceCode {
         code: Some(c.into()),
     };
@@ -158,7 +161,7 @@ async fn the_chart_reads_counts_codes_heads_and_order(owner: PgPool) {
         vec!["code_reused"]
     );
 
-    // 부서 order: 나눔부 first; the versions setup batches pin do not move.
+    // Department order: "Nanum-bu" first; the versions setup batches pin do not move.
     let order = |children| ReorderStructure {
         parent: StructureParent {
             workplace_id: Some(hq),
@@ -194,7 +197,7 @@ async fn the_chart_reads_counts_codes_heads_and_order(owner: PgPool) {
     let tree = store.org_structure(&actor).await.unwrap();
     assert_eq!(tree.entity_unknown_headcount, Some(1));
     let e = &tree.entities[0];
-    // 법인 = 사업장 (3) + 미배치 (1); 파견 counted where they sit.
+    // Legal entity = workplaces (3) + unplaced (1); dispatched counted where they sit.
     assert_eq!(
         (e.headcount, e.direct_headcount, e.dispatched_headcount),
         (4, 1, 1)
@@ -286,7 +289,7 @@ async fn workplaces_reorder_inside_their_entity_in_both_phases(owner: PgPool) {
         plant
     );
     assert_eq!(tree.entity_unknown_headcount, Some(0));
-    // A scoped reader never sees 법인 미정: they belong to no 법인.
+    // A scoped reader never sees "legal entity undecided": they belong to no legal entity.
     let scoped = console_entity_application::Actor {
         scope: console_entity_application::EntityScope::Only(vec![entity]),
         ..actor.clone()

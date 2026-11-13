@@ -47,10 +47,16 @@ impl DecisionPolicy {
 }
 
 #[derive(Debug, Serialize)]
-pub struct DecisionFacts {
+pub struct DecisionEvidence {
     pub version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub policy: Option<DecisionPolicy>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DecisionFacts {
+    #[serde(flatten)]
+    pub evidence: DecisionEvidence,
     pub can_decide: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cannot_reason: Option<&'static str>,
@@ -64,8 +70,7 @@ impl DecisionFacts {
         decision: Result<(), KernelError>,
     ) -> Self {
         Self {
-            version,
-            policy,
+            evidence: DecisionEvidence { version, policy },
             can_decide: decision.is_ok(),
             cannot_reason: decision
                 .err()

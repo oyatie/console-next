@@ -28,4 +28,4 @@ export const enAttendanceOverview = {
   "attendanceOverview.reason.HOLIDAY_WORK": "Holiday work",
   "attendanceOverview.reason.CONFIRMED_NOT_WORK": "Confirmed non-work",
   "attendanceOverview.reason.SCHEDULE_MISSING": "No work schedule",
-};
+} as const;

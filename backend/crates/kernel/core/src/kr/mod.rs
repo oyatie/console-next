@@ -4,9 +4,9 @@
 //! Every identifier is stored as digits only and parsed from what a person
 //! types or pastes: spaces, hyphens and full-width digits are accepted. A parse
 //! failure is a refusal (wrong length, not digits). A failed check digit is
-//! never a refusal: no primary source defines the 사업자등록번호 check digit,
-//! and 법인등록번호 issued from 2025-01-31 carry none, so the authoritative
-//! check is the 국세청 / 등기 record, not arithmetic here.
+//! never a refusal: no primary source defines the business registration number check digit,
+//! and corporate registration numbers issued from 2025-01-31 carry none, so the authoritative
+//! check is the National Tax Service / registry record, not arithmetic here.
 //!
 //! Pure: no I/O, std + serde only. Refusal codes are stable snake_case, the
 //! same strings the REST error envelope carries in `errors[].code`.

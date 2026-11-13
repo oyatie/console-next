@@ -1,7 +1,8 @@
-//! MR-35 (and 징계, MR-33): the restricted sections. Off by default for
-//! 장애·보훈 (PIPA §23①), a basis on every revision, left out of the plain
-//! read, read only with a purpose (audited, value-free), never exported as a
-//! sheet, and never handled on one's own record.
+//! MR-35 (and disciplinary action, MR-33): the restricted sections. Off by
+//! default for disability and veteran status (PIPA §23①), a basis on every
+//! revision, left out of the plain read, read only with a purpose (audited,
+//! value-free), never exported as a sheet, and never handled on one's own
+//! record.
 
 use std::collections::BTreeSet;
 
@@ -94,7 +95,7 @@ async fn restricted_entries_are_read_only_with_a_purpose_and_audited(pool: PgPoo
     .await
     .unwrap();
 
-    // The plain read does not show that a 장애 record exists.
+    // The plain read does not show that a disability record exists.
     let plain =
         f.hr.employee_records(p(), emp, None, false, None)
             .await
@@ -119,7 +120,7 @@ async fn restricted_entries_are_read_only_with_a_purpose_and_audited(pool: PgPoo
         seen.items.iter().map(|i| i.id).collect::<Vec<_>>(),
         [row.id]
     );
-    // 보훈 round-trips its typed columns and basis through the service.
+    // Veteran status round-trips its typed columns and basis through the service.
     let veteran = create(json!({ "target": "SELF", "recognised_on": "2001-06-25",
         "basis": { "kind": "STATUTE", "statute": "VETERAN_EMPLOYMENT" } }));
     let (vet, _) =
@@ -191,7 +192,7 @@ async fn restricted_entries_are_read_only_with_a_purpose_and_audited(pool: PgPoo
             .unwrap_err();
     assert_eq!(export.code, "record_restricted_export_unavailable");
 
-    // Switched off: no new 장애 data, but the entry can still be voided.
+    // Switched off: no new disability data, but the entry can still be voided.
     f.switch_off("hr.record.disability.enabled").await;
     let (voided, _) =
         f.hr.void_record(

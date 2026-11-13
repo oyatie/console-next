@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Korean source for `enum.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
-export const koEnum = {
+// Korean copy for `enum.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import type { enEnum } from "../en/enum";
+export const koEnum: Record<keyof typeof enEnum, string> = {
   // Enums
   "enum.role.SUPER_ADMIN": "최고 관리자",
   "enum.role.EXECUTIVE": "임원",
@@ -243,4 +244,4 @@ export const koEnum = {
   "enum.tenantLifecycle.ENROLLED": "패스키 등록",
   "enum.tenantLifecycle.SETUP": "설정 단계",
   "enum.tenantLifecycle.OPERATING": "운영 중",
-} as const;
+};

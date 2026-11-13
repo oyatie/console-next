@@ -1,4 +1,5 @@
-export const koStatutory = {
+import type { enStatutory } from "../en/statutory";
+export const koStatutory: Record<keyof typeof enStatutory, string> = {
   "statutory.CHANGE": "사업장 변경 신고",
   "statutory.title": "법정 신고·서류",
   "statutory.codeHold": "법령 검토 대기",
@@ -164,4 +165,4 @@ export const koStatutory = {
   "statutory.historic_applicability": "노무사 검토 전 · 이전 법령의 적용 대상 확인 필요",
   "statutory.candidateLabel": "법정 최종일 후보",
   "statutory.penaltyPending": "지연 신고 과태료 · 노무사 검토 전",
-} as const;
+};

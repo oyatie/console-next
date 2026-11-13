@@ -73,7 +73,7 @@ pub fn corporation(name: &str, crn: &str) -> LegalEntityInput {
     }
 }
 
-/// A 사업자등록증; its ① is the entity's name (one stored source).
+/// A business registration certificate; its ① is the entity's name (one stored source).
 pub fn certificate(brn: &str) -> RegistrationInput {
     RegistrationInput {
         brn: Some(brn.into()),
@@ -197,7 +197,8 @@ pub fn port() -> std::sync::Arc<dyn console_entity_adapter_postgres::OrgUnitSetu
     std::sync::Arc::new(CanonicalPort)
 }
 
-/// A 법인 with two 사업장 (본사, 공장): (entity, [(workplace, its own unit); 2]).
+/// A legal entity with two workplaces (headquarters, factory):
+/// (entity, [(workplace, its own unit); 2]).
 pub async fn two_workplaces(store: &PgEntityStore, actor: &Actor) -> (Uuid, [(Uuid, Uuid); 2]) {
     let entity = store
         .create_entity(&cmd(actor), corporation("주식회사 가나", "000211-0006241"))
@@ -256,7 +257,7 @@ pub async fn person(
     id
 }
 
-/// The open placement's 사업장 of `employee`.
+/// The workplace of `employee`'s open placement.
 pub async fn placed_at(owner: &PgPool, employee: Uuid) -> Uuid {
     sqlx::query_scalar(
         "SELECT workplace_id FROM employment_assignments WHERE employee_id = $1 AND superseded_at IS NULL AND valid_to IS NULL",
@@ -279,7 +280,7 @@ pub async fn unit_head(owner: &PgPool, unit: Uuid) -> (String, String, Option<St
     .unwrap()
 }
 
-/// Batch op: a 부서 named `name` directly in `workplace`, labelled `r`.
+/// Batch op: a department named `name` directly in `workplace`, labelled `r`.
 pub fn under_workplace(
     r: &str,
     name: &str,
@@ -297,7 +298,7 @@ pub fn under_workplace(
     }
 }
 
-/// Batch op: a 부서 under the unit labelled `parent` in the same batch.
+/// Batch op: a department under the unit labelled `parent` in the same batch.
 pub fn under_ref(r: &str, name: &str, parent: &str) -> console_entity_application::OrgSetupOp {
     console_entity_application::OrgSetupOp::Create {
         client_ref: Some(r.into()),

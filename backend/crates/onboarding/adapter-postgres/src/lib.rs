@@ -1,6 +1,6 @@
 //! Postgres adapter for the tenant setup phase (entity-depth design §5).
 //!
-//! 운영 시작 runs in one audited transaction: lock the phase row `FOR UPDATE`
+//! Go-live runs in one audited transaction: lock the phase row `FOR UPDATE`
 //! (setup writes hold it `FOR SHARE`, so none interleaves), compute the facts,
 //! rebuild the preview and compare its digest, then require BOTH the Rust
 //! backstop and the Cedar `tenant_go_live` bundle to allow. On success the
@@ -67,7 +67,7 @@ impl From<KernelError> for PgOnboardingError {
     }
 }
 
-/// The go-live notice: 결재 only when the tenant routes org changes (decisions #26).
+/// The go-live notice: approval only when the tenant routes org changes (decisions #26).
 const fn go_live_notice(org_change_routed: bool) -> &'static str {
     if org_change_routed {
         "운영이 시작되었습니다. 이제 조직 변경은 결재를 거쳐 시행됩니다."
@@ -232,7 +232,7 @@ impl PgOnboardingStore {
         self.audit_refusal(&refusal_actor, result).await
     }
 
-    /// The 운영 시작 preview (blockers, warnings, becomes-governed, digest).
+    /// The go-live preview (blockers, warnings, becomes-governed, digest).
     ///
     /// # Errors
     /// Database faults.

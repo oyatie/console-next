@@ -1,8 +1,9 @@
-//! 발령 공고 · 발령 번호 (EMP-UI 10, spec E5-notice): an announcement of
-//! recorded lifecycle events with a number the server assigns (YYYY-NNNN per
-//! tenant and notice year, gapless at issue, never reused). Issued once,
-//! never rewritten; a 발령 is on one notice at most. The FE draws the 공고
-//! from the read (no server-side PDF). No approval step (#26).
+//! Personnel order notice · personnel order number (EMP-UI 10, spec
+//! E5-notice): an announcement of recorded lifecycle events with a number the
+//! server assigns (YYYY-NNNN per tenant and notice year, gapless at issue,
+//! never reused). Issued once, never rewritten; a personnel order is on one
+//! notice at most. The FE draws the notice from the read (no server-side
+//! PDF). No approval step (#26).
 //!
 //! Gates: issue needs `employee_directory_manage` org-wide (the lifecycle
 //! writers' gate); reads need `employee_directory_read` org-wide, and a
@@ -25,7 +26,8 @@ pub use crate::lifecycle::events_page::LifecycleEventsQuery as AppointmentNotice
 pub const MAX_NOTICE_LINES: usize = 500;
 
 /// Body of `POST /api/v1/appointment-notices`: exactly one of `event_ids`
-/// (printed in that order) or `batch_id` (a bulk 발령, in employee order).
+/// (printed in that order) or `batch_id` (a bulk personnel order, in employee
+/// order).
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct IssueAppointmentNoticeRequest {
@@ -42,7 +44,7 @@ pub struct IssueAppointmentNoticeRequest {
 #[derive(Debug, Clone, Serialize)]
 pub struct AppointmentNoticeSummary {
     pub id: Uuid,
-    /// 발령 번호, YYYY-NNNN.
+    /// Personnel order number, YYYY-NNNN.
     pub notice_no: String,
     pub title: String,
     pub notice_date: String,

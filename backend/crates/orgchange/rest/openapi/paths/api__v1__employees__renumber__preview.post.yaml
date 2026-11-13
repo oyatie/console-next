@@ -1,9 +1,9 @@
 tags:
   - employees
 operationId: previewEmployeeRenumber
-summary: Old → new 사번 of a scope under a new scheme, with conflicts (IMPORT-2)
-description: 'Decisions #25 bulk renumbering. The current people of the scope (재직, 휴직, 입사 예정; former
-  employees keep their numbers) from 1 by 입사일, then current 사번. A new number someone outside the line holds
+summary: Old → new employee number of a scope under a new scheme, with conflicts (IMPORT-2)
+description: 'Decisions #25 bulk renumbering. The current people of the scope (employed, on leave of absence, pending hire; former
+  employees keep their numbers) from 1 by hire date, then current employee number. A new number someone outside the line holds
   or held is a conflict (number_taken). preview_digest binds the apply.'
 security:
 - bearerAuth: []

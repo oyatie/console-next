@@ -238,7 +238,7 @@ async fn admin_manages_users_and_reads_applied_org_structure(pool: PgPool) {
     let admin = seed_user(&pool, "Ops Admin", &["SUPER_ADMIN"], None).await;
     let token = harness.token(admin, &["SUPER_ADMIN"], vec![]).await;
 
-    // Invite an account: no role, no 지점 (governance-01).
+    // Invite an account: no role, no branch (governance-01).
     let (status, user) = send(
         &harness,
         "POST",
@@ -320,7 +320,7 @@ async fn admin_manages_users_and_reads_applied_org_structure(pool: PgPool) {
     assert_eq!(status, StatusCode::OK, "{fetched:?}");
     assert_eq!(fetched["id"], Value::String(new_user_id.clone()));
 
-    // An invite carries no access: no role, no 지점.
+    // An invite carries no access: no role, no branch.
     assert_eq!(fetched["roles"], json!([]));
     assert_eq!(fetched["branch_ids"], json!([]));
     assert_eq!(fetched["is_tenant_ops"], false);
@@ -489,7 +489,7 @@ async fn people_directory_filters_scope_orders_and_counts_truthfully(pool: PgPoo
     assert_eq!(status, StatusCode::OK, "{scoped:?}");
     // The page order is pinned to the `und-x-icu` collation, so it is the same
     // on every server and is the order a human reads a name list in. A server
-    // whose own collation happened to differ (libc en_US files 김철수 first;
+    // whose own collation happened to differ (libc en_US files the Hangul fixture name first;
     // `C` files every Latin name ahead of it) must not change this page.
     let scoped_names: Vec<&str> = scoped["items"]
         .as_array()
@@ -830,7 +830,7 @@ async fn directory_people_omits_phone_while_user_get_keeps_it(pool: PgPool) {
     .await;
     assert_eq!(status, StatusCode::CREATED, "{created:?}");
     let subject_id = created["id"].as_str().expect("created user id").to_owned();
-    // A legacy 지점 membership, as a fixture (the API no longer adds one).
+    // A legacy branch membership, as a fixture (the API no longer adds one).
     seed_user_branch(
         &pool,
         UserId::from_uuid(subject_id.parse().unwrap()),
@@ -1235,7 +1235,7 @@ async fn user_role_and_branch_update_consumes_policy_preview_receipt_and_audits(
     let current_branch = seed_branch(&pool).await;
     let next_branch = seed_branch(&pool).await;
     let super_admin = seed_user(&pool, "Account Mutation Owner", &["SUPER_ADMIN"], None).await;
-    // A legacy account holding two roles and two 지점: the receipt-gated
+    // A legacy account holding two roles and two branches: the receipt-gated
     // update now only ever removes (governance-01).
     let target = seed_user(
         &pool,
@@ -2523,7 +2523,7 @@ async fn assignment_save_rejects_stale_preview_when_target_branches_changed(pool
         )
         .await;
     let target = seed_user(&pool, "스테일 지점 대상", &["ADMIN"], Some(allowed_branch)).await;
-    // The move is a removal (an added 지점 is refused, governance-01).
+    // The move is a removal (an added branch is refused, governance-01).
     seed_user_branch(&pool, target, blocked_branch).await;
 
     let (status, preview) = send(

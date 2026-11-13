@@ -1,7 +1,7 @@
-//! The 인적사항 extras on Postgres: the stored values (the correction's current
-//! values, the ledger's old values and the read), the checks that need the
-//! record, and the write inside a correction's transaction after
-//! `corrections::lock_employee` locked the employee row.
+//! The personal details extras on Postgres: the stored values (the
+//! correction's current values, the ledger's old values and the read), the
+//! checks that need the record, and the write inside a correction's
+//! transaction after `corrections::lock_employee` locked the employee row.
 
 use console_hr_domain::personal::{
     EmergencyContact, EmergencyContactInput, normalize_emergency_contacts,
@@ -35,7 +35,7 @@ pub struct PersonalRow {
 }
 
 impl PersonalRow {
-    /// The stored value of an item, `None` when 미입력.
+    /// The stored value of an item, `None` when not entered.
     #[must_use]
     pub fn stored(&self, field: &str) -> Option<&str> {
         match field {
@@ -87,9 +87,9 @@ pub async fn load_in_tx(
 }
 
 /// The checks a value cannot pass on its own, run before it is applied or
-/// filed: the 그룹 입사일 in force (`group`, new or stored) on or before the
-/// 입사일 in force (`hire`), and a 사진 only from a confirmed upload of this
-/// employee.
+/// filed: the group hire date in force (`group`, new or stored) on or before
+/// the hire date in force (`hire`), and a photo only from a confirmed upload
+/// of this employee.
 pub(crate) async fn check_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,

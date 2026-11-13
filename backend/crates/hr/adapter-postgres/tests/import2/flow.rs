@@ -1,6 +1,7 @@
 //! A workbook of three layouts: a roster, a titled English sheet and a work
 //! log. The log blocks apply until skipped; then people come in with their
-//! 사번 (or the rule's), their 휴직 as a setup fact and their RRN sealed.
+//! employee number (or the rule's), their leave of absence as a setup fact and
+//! their RRN sealed.
 
 use console_hr_domain::import::detect::{SheetMappingRequest, WorkbookMappingRequest};
 use sqlx::PgPool;

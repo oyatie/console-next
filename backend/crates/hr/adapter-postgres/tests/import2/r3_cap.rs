@@ -1,5 +1,5 @@
 //! UX-R3 IMPORT r3:hire-17: `import.apply.max_rows` counts current people;
-//! a 퇴사자 sheet comes in the same run apart from the cap.
+//! a former-employee sheet comes in the same run apart from the cap.
 
 use console_hr_domain::import::detect::WorkbookMappingRequest;
 use sqlx::PgPool;
@@ -31,7 +31,8 @@ fn view(rows: &[Vec<String>]) -> Vec<Vec<&str>> {
         .collect()
 }
 
-/// `current` people on 「재직자」 and `former` on 「퇴사자」 (a 퇴사일 each).
+/// `current` people on a "current employees" sheet and `former` on a "former
+/// employees" sheet (an exit date each).
 async fn run(i: &Importer, current: usize, former: usize) -> uuid::Uuid {
     let staff: Vec<Vec<String>> = (0..current)
         .map(|n| vec![format!("E-{n}"), format!("직원{n}"), "2024-03-04".into()])
@@ -61,9 +62,9 @@ async fn run(i: &Importer, current: usize, former: usize) -> uuid::Uuid {
     .run_id
 }
 
-/// regression (r3:hire-17): 100 current people and a 퇴사자 sheet under a
-/// cap of 100 were refused as 103 rows; the only way through
-/// was to skip the 퇴사자 sheet.
+/// regression (r3:hire-17): 100 current people and a former-employee sheet
+/// under a cap of 100 were refused as 103 rows; the only way through
+/// was to skip the former-employee sheet.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn regression_former_employees_do_not_count_against_the_row_cap(pool: PgPool) {
     let i = importer(pool).await;
@@ -79,7 +80,8 @@ async fn regression_former_employees_do_not_count_against_the_row_cap(pool: PgPo
 }
 
 /// The cap still holds for current people: 101 over a cap of 100 is 422
-/// `import_row_limit` naming 101 rows (the 퇴사자 apart), nothing stored.
+/// `import_row_limit` naming 101 rows (the former employees apart), nothing
+/// stored.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn current_people_over_the_cap_are_still_refused(pool: PgPool) {
     let i = importer(pool).await;

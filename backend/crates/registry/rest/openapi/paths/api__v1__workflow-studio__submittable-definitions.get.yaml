@@ -1,7 +1,7 @@
 tags:
   - workflow-studio
 operationId: listSubmittableWorkflowDefinitions
-summary: List workflow definitions the caller may start (기안 template gallery)
+summary: List workflow definitions the caller may start (draft template gallery)
 description: 'All-employee (member-gated, not workflow-manage admin) catalog of ACTIVE workflow definitions the
   caller could actually START. Deny-by-omission: a definition is listed only when its start authority admits the
   caller — the identical check the start endpoint (POST /api/v1/workflow-runs) enforces (top-level start_policy,

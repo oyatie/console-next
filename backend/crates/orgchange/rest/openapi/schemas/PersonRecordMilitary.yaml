@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-description: 병역. No 면제 사유 and no 전역 구분 (both can disclose health, 개인정보 보호법 §23). branch, rank and
+description: Military service. No exemption reason and no discharge type (both can disclose health, Personal Information Protection Act §23). branch, rank and
   dates only for COMPLETED or SERVING.
 required: [status]
 properties:

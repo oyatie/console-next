@@ -1,4 +1,4 @@
-//! 근태 기록 (ATT S2) read models: the day board (A1), the month grid (A3),
+//! Attendance records (ATT S2) read models: the day board (A1), the month grid (A3),
 //! one person's month (A7), the save preview and receipt.
 
 use console_attendance_domain::close::MonthState;
@@ -118,7 +118,7 @@ pub struct BoardRow {
 pub struct BoardGroup {
     pub workplace_id: Option<Uuid>,
     pub unit_id: Option<Uuid>,
-    /// 사업장 › 부서 path.
+    /// Workplace › department path.
     pub name: String,
     pub people: i64,
     pub normal: i64,
@@ -167,7 +167,7 @@ pub struct DayBoard {
     pub groups: Vec<BoardGroup>,
 }
 
-/// A grid cell: what the 월간 근무표 draws; the full day is one read away.
+/// A grid cell: what the monthly work sheet draws; the full day is one read away.
 #[derive(Debug, Clone, Serialize)]
 pub struct GridCell {
     #[serde(with = "iso_date")]
@@ -190,16 +190,16 @@ pub struct GridCell {
 
 #[derive(Debug, Clone, Copy, Serialize, Default)]
 pub struct GridTotals {
-    /// 인정 합계.
+    /// Recognised total.
     pub recognised: u32,
     pub outside_scheduled: u32,
     /// Deprecated N-1: approved classification, never the pay gate.
     pub approved: u32,
     /// Deprecated N-1: paid open excess, awaiting disposition.
     pub unrecognised: u32,
-    /// 미근로.
+    /// Not worked.
     pub not_worked: u32,
-    /// 미해결 ▲ / ◆.
+    /// Unresolved ▲ / ◆.
     pub blocking: i64,
     pub decision: i64,
 }
@@ -233,10 +233,10 @@ pub struct PersonMonth {
     pub name: String,
     pub month: String,
     pub days: Vec<DayRead>,
-    /// Every entry of the month, newest first (원천 · 이력).
+    /// Every entry of the month, newest first (source · history).
     pub history: Vec<HistoryRow>,
     pub totals: GridTotals,
-    /// The month is not closed, or reopened: the numbers are 잠정.
+    /// The month is not closed, or reopened: the numbers are provisional.
     pub provisional: bool,
     pub month_state: MonthState,
 }

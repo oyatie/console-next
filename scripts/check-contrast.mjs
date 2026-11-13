@@ -1,11 +1,23 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // WCAG contrast and the catalogue's Machado severity-1 CVD / OKLab separation proof, from tokens.css.
-import { readFileSync } from "node:fs";
+// Each experience file beside it (experiences/<id>.css) is checked again as an overlay on those tokens.
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { context, decodeIdent, parseCss, rootDeclaration } from "./check-ds-refs.mjs";
+import { context, decodeIdent, experienceBlocks, literalColour, parseCss, rootDeclaration } from "./check-ds-refs.mjs";
+
+/**
+ * The experience token files beside a base token file: the regular files `experiences/<id>.css`. There are none when
+ * the folder is absent, and none either in a file that has its name or in a folder named like an experience.
+ */
+export function experienceFiles(tokensFile) {
+  const dir = path.join(path.dirname(tokensFile), "experiences");
+  if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return [];
+  const regular = (name) => statSync(path.join(dir, name), { throwIfNoEntry: false })?.isFile();
+  return readdirSync(dir).filter((name) => name.endsWith(".css") && regular(name)).sort().map((name) => path.join(dir, name));
+}
 
 export function themeTokens(css) {
   const themes = { light: {}, dark: {} };
@@ -20,6 +32,18 @@ export function themeTokens(css) {
   });
   return themes;
 }
+
+/**
+ * The tokens in force when an experience is set, from the base themes and the experience's own blocks. The browser
+ * orders the four rules by specificity: the experience's dark block (:root and two attributes) outranks the rest and
+ * its light block (:root and one attribute) outranks the base's light block. The light block only ties the base's
+ * dark block, where stylesheet order would decide. experienceBlocks refuses a token left to that tie, so a file that
+ * passes resolves the same in either order; a refused one is read here as if the experience file came later.
+ */
+export const experienceThemes = (base, own) => ({
+  light: { ...base.light, ...own.light },
+  dark: { ...base.dark, ...own.light, ...own.dark },
+});
 
 const linear = (v) => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
 function rgb(hex) {
@@ -56,10 +80,38 @@ function oklab([r, g, b]) {
   return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
 }
 
-export function checkContrast(css) {
+export const checkContrast = (css) => checkThemes(themeTokens(css));
+
+/** The base token file, then every experience file beside it as an overlay on it. */
+export function checkTokens(file) {
+  const css = readFileSync(file, "utf8");
+  const base = themeTokens(css);
+  const result = checkThemes(base);
+  // Declared names, not a comparison of the merged themes: a token may hold one value in both of the base's blocks.
+  const baseDark = new Set();
+  parseCss(css).walkDecls((decl) => {
+    if (rootDeclaration(decl) && context(decl).theme === "dark") baseDark.add(decodeIdent(decl.prop));
+  });
+  // The experiences' dark rule takes the base's dark block as the list of its colours: one written for light only escapes it.
+  for (const [name, value] of Object.entries(base.light)) {
+    if (literalColour(value) && !baseDark.has(name))
+      result.problems.push(`${file.split(path.sep).join("/")}: ${name} is a colour set for light only, so dark would show its light value; declare it under :root[data-theme="dark"] too`);
+  }
+  for (const overlay of experienceFiles(file)) {
+    const id = path.basename(overlay, ".css");
+    const own = experienceBlocks(readFileSync(overlay, "utf8"), id, baseDark, overlay);
+    const contrast = checkThemes(experienceThemes(base, own), `experience ${id}, `);
+    result.checked += contrast.checked;
+    result.problems.push(...own.problems.map((problem) => `${overlay.split(path.sep).join("/")}: ${problem}`), ...contrast.problems);
+  }
+  return result;
+}
+
+function checkThemes(themes, label = "") {
   const problems = [];
   let checked = 0;
-  for (const [theme, tokens] of Object.entries(themeTokens(css))) {
+  for (const [mode, tokens] of Object.entries(themes)) {
+    const theme = label + mode;
     const check = (fg, bg, kind) => {
       checked++;
       try {
@@ -105,7 +157,7 @@ export function checkContrast(css) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const at = process.argv.indexOf("--tokens");
   try {
-    const result = checkContrast(readFileSync(at >= 0 ? process.argv[at + 1] : "packages/tokens/tokens.css", "utf8"));
+    const result = checkTokens(at >= 0 ? process.argv[at + 1] : "packages/tokens/tokens.css");
     console.log(`contrast: ${result.checked} checks, ${result.problems.length} problem(s)`);
     if (result.problems.length) console.error(result.problems.join("\n"));
     process.exitCode = result.problems.length ? 1 : 0;

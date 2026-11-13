@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: createAttendanceCrew
-summary: Add a 근무조 to a 사업장
+summary: Add a crew to a workplace
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }

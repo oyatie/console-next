@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Decisions #18 at apply time. 지역 and 지점 are retired as separate
-//! concepts and a 사업장 is created through its 법인, so a request stored
-//! before the retirement (CreateRegion / CreateBranch / RenameBranch, or a
-//! bare SITE CreateOrgUnit) cannot apply even once APPROVED, and nothing is
+//! Decisions #18 at apply time. Region and branch are retired as separate
+//! concepts and a workplace is created through its legal entity, so a request
+//! stored before the retirement (CreateRegion / CreateBranch / RenameBranch, or
+//! a bare SITE CreateOrgUnit) cannot apply even once APPROVED, and nothing is
 //! written. Closing a legacy branch still applies, but never the branch that
-//! backs a live 사업장 (it closes with its 사업장).
+//! backs a live workplace (it closes with its workplace).
 //!
 //! Driven through `PgOrgChangeStore::effectuate` (the shipped apply entry
 //! point). Requests are seeded `APPROVED` so the oracle isolates the apply
@@ -250,7 +250,7 @@ async fn seed_approved(
     id
 }
 
-/// A 사업장 backed by `branch` (minimal MIGRATION-mode rows).
+/// A workplace backed by `branch` (minimal MIGRATION-mode rows).
 async fn seed_workplace(pool: &PgPool, org: OrgId, branch: Uuid) {
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org', $1, true)")

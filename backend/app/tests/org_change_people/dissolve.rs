@@ -1,6 +1,6 @@
-//! org-04, org-05, org-06, org-07: one 폐지 change moves its members (a
-//! dated 전보 each, per-person destinations) and sub-부서 first, closes the
-//! unit on its 시행일 with no tick list, and a merge keeps its successor.
+//! org-04, org-05, org-06, org-07: one dissolution change moves its members (a
+//! dated reassignment each, per-person destinations) and sub-departments first, closes the
+//! unit on its effective date with no tick list, and a merge keeps its successor.
 //! Refusals write nothing.
 
 use http::StatusCode;
@@ -12,7 +12,8 @@ use super::fixture::{CHANGES, HIRE, code, day, tenant};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_dissolution_moves_its_members_with_dated_transfers_and_closes_the_unit(pool: PgPool) {
-    // regression: org-04 (no 발령, 영향 인원 0명) and org-05 (정리 0/6, still on the chart).
+    // regression: org-04 (no appointment, 0 people affected) and org-05
+    // (0/6 cleared, still on the chart).
     let t = tenant(pool).await;
     let [hq, pangyo] = t.workplaces;
     let sales = t.dept("영업2팀", t.sites[0]).await;
@@ -61,7 +62,7 @@ async fn a_dissolution_moves_its_members_with_dated_transfers_and_closes_the_uni
     assert_eq!((jung_events[0].3, jung_events[0].4), (Some(id), Some(hr)));
     assert_eq!(t.unit_of(jung).await, Some(hr));
     assert_eq!(t.live(jung).await.len(), 1, "인사팀 is at 본사: no 전근");
-    // Per-person destination across 사업장: a 전보 that is also a 전근.
+    // Per-person destination across workplaces: a reassignment that is also a relocation.
     assert_eq!(t.events(kim).await[0].4, Some(lab));
     assert_eq!(
         t.live(kim).await,
@@ -70,7 +71,8 @@ async fn a_dissolution_moves_its_members_with_dated_transfers_and_closes_the_uni
             (today.clone(), None, pangyo, "TRANSFER".to_owned()),
         ]
     );
-    // 휴직 (hr refuses a TRANSFER) still leaves with the unit; the record stays whole.
+    // An employee on leave of absence (hr refuses a TRANSFER) still leaves with the
+    // unit; the record stays whole.
     assert_eq!(t.unit_of(away).await, Some(hr));
     assert!(t.events(away).await.is_empty());
     assert!(t.mismatches().await.is_empty());
@@ -78,7 +80,7 @@ async fn a_dissolution_moves_its_members_with_dated_transfers_and_closes_the_uni
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_merge_keeps_its_successor(pool: PgPool) {
-    // regression: org-07 — recorded as a bare 폐지, the successor lost.
+    // regression: org-07 — recorded as a bare dissolution, the successor lost.
     let t = tenant(pool).await;
     let three = t.dept("영업3팀", t.sites[0]).await;
     let hr = t.dept("인사팀", t.sites[0]).await;
@@ -89,7 +91,7 @@ async fn a_merge_keeps_its_successor(pool: PgPool) {
     assert_eq!(attributes["status"], json!("dissolved"));
     assert_eq!(attributes["merged_into"], json!(hr.to_string()));
     assert_eq!(applied["proposal"][0]["mergedInto"], json!(hr.to_string()));
-    // The unit's own history reads the successor (org-17: its 이력 says what happened).
+    // The unit's own history reads the successor (org-17: its history says what happened).
     let (status, unit) = t
         .ops
         .send("GET", &format!("/api/v1/org-units/{three}"), None, false)
@@ -107,7 +109,8 @@ async fn refusals_write_nothing(pool: PgPool) {
     let park = t.person("박개발", dev, pangyo, "ACTIVE").await;
     let lee = t.person("이개발", dev, pangyo, "ACTIVE").await;
 
-    // A unit never crosses 법인: moving it under another 법인's 사업장 is refused whole.
+    // A unit never crosses legal entities: moving it under another legal entity's
+    // workplace is refused whole.
     let foreign = t.other_entity_site().await;
     let ops = json!([{"op": "MOVE_ORG_UNIT", "orgUnitId": dev, "parentId": foreign}]);
     let id = t.draft("REORG", dev, ops, &day(0)).await;
@@ -133,7 +136,7 @@ async fn refusals_write_nothing(pool: PgPool) {
         "no audit of a rolled-back submit"
     );
 
-    // A 폐지 that leaves a member behind is blocked before anything is written.
+    // A dissolution that leaves a member behind is blocked before anything is written.
     let hr = t.dept("인사팀", t.sites[1]).await;
     let ops = json!([
         {"op": "REASSIGN_ORG_UNIT", "fromOrgUnit": dev, "toOrgUnit": hr,

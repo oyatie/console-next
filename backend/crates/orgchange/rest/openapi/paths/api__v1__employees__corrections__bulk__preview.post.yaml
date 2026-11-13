@@ -1,9 +1,9 @@
 tags:
   - employees
 operationId: previewBulkEmployeeCorrection
-summary: Preview a bulk 정정 of scalar employee fields (MR-27)
+summary: Preview a bulk correction of scalar employee fields (MR-27)
 description: >-
-  Grid or 「필터와 일치하는 n명 모두」. Send either selection + changes (one set of values for every
+  Grid or "all n people matching the filter". Send either selection + changes (one set of values for every
   employee the server selection matches; status absent selects everyone but EXITED) or rows (each
   employee with its own values and optional expected_updated_at pin). Nothing is written and no row is
   locked. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk

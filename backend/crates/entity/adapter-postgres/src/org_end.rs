@@ -40,15 +40,15 @@ pub struct OrgUnitEndOptions {
     pub name: String,
     pub version: i64,
     pub phase: &'static str,
-    /// 삭제: erase the unit and its sub-부서 (never used).
+    /// Delete: erase the unit and its sub-departments (never used).
     pub delete: EndOffer,
-    /// 폐지: a dissolved revision, history kept (used).
+    /// Abolish: a dissolved revision, history kept (used).
     pub dissolve: EndOffer,
     /// People placed in it or under it now (scheduled moves in count).
     pub members: i64,
     /// People ever placed in it or under it, or moved through it.
     pub people_ever: i64,
-    /// The unit and its active sub-부서.
+    /// The unit and its active sub-departments.
     pub units: i64,
     /// The open org change that holds the unit (UX-R3 org-16), named as its blocker.
     pub held_by: Option<HeldBy>,
@@ -70,7 +70,8 @@ pub struct OrgUnitErased {
 }
 
 impl PgEntityStore {
-    /// Which way the 부서 `id` ends (삭제 or 폐지), and why the other is not offered.
+    /// Which way the department `id` ends (deletion or abolition), and why the
+    /// other is not offered.
     ///
     /// # Errors
     /// `org_unit_not_found`, `site_is_a_workplace`, or database faults.
@@ -108,7 +109,7 @@ impl PgEntityStore {
         .await
     }
 
-    /// Erase a 부서 that was never used, with its sub-부서, in either phase.
+    /// Erase a department that was never used, with its sub-departments, in either phase.
     ///
     /// # Errors
     /// `org_unit_not_found`, `site_is_a_workplace`, `stale_revision`,
@@ -191,9 +192,10 @@ impl PgEntityStore {
         .await
     }
 
-    /// 폐지 a used 부서 and its empty sub-부서 now, in either phase (after 운영
-    /// 시작 recorded GOVERNED; [`admit_direct`] refuses it while org changes
-    /// are routed, for a never-used unit, or while people are in it).
+    /// Abolish a used department and its empty sub-departments now, in either
+    /// phase (after go-live recorded GOVERNED; [`admit_direct`] refuses it
+    /// while org changes are routed, for a never-used unit, or while people
+    /// are in it).
     ///
     /// # Errors
     /// As [`admit_direct`], `stale_revision`, `site_is_a_workplace`.
@@ -220,8 +222,8 @@ impl PgEntityStore {
         .await
     }
 
-    /// Set a 부서's 부서장 and 부서 코드 now (the full new values; `None`
-    /// clears), in either phase.
+    /// Set a department's department head and department code now (the full
+    /// new values; `None` clears), in either phase.
     ///
     /// # Errors
     /// As [`admit_direct`], `stale_revision`, `code_taken`, `head_unavailable`.

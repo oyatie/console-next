@@ -50,6 +50,7 @@ impl PgActionInboxSources {
                     }]
                 };
                 ActionInboxSourceItem {
+                    due_basis: None,
                     context: None,
                     id: format!("approval:{}", task.task_id),
                     kind: "approval".to_owned(),

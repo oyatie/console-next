@@ -262,7 +262,7 @@ async fn a_stale_line_refuses_the_whole_commit(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_refused_line_rolls_every_line_back(pool: PgPool) {
     let f = fixture(pool).await;
-    // B already holds 사원: a no-op PROMOTE, refused at commit.
+    // B already holds the "staff" title: a no-op PROMOTE, refused at commit.
     let set = f.open_with_lines(&[(f.a, "과장"), (f.b, "사원")]).await;
     let (status, code, refusals) = wire(
         f.hr.commit_change_set(f.me.clone(), set, key(), signed())

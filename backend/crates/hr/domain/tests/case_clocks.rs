@@ -194,7 +194,7 @@ fn every_rule_kind_counts_from_its_anchor() {
                 date: date!(2026 - 10 - 31),
                 held: true
             },
-            // 민법 §160③: 11/30 + 3 months = the last day of February.
+            // Civil Act §160③: 11/30 + 3 months = the last day of February.
             Clock::Due {
                 date: date!(2027 - 02 - 28),
                 held: true
@@ -214,7 +214,7 @@ fn every_rule_kind_counts_from_its_anchor() {
 
 #[test]
 fn an_unverified_rule_never_becomes_a_date() {
-    // [U] rows (DMg2, TE1, X3) are UNKNOWN: 「기한 미확인」 whatever the anchors.
+    // [U] rows (DMg2, TE1, X3) are UNKNOWN: "deadline unconfirmed" whatever the anchors.
     let unknown = rule(None, "UNKNOWN", None);
     let clocks = case_clocks(
         &[unknown],

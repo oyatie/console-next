@@ -1,6 +1,4 @@
-import type { koRenew } from "../ko/renew";
-
-export const enRenew: Record<keyof typeof koRenew, string> = {
+export const enRenew = {
   "renew.crumb": "Bulk · contract renewal",
   "renew.title": "Contracts ending · {n, number}",
   "renew.steps": "Renewal steps",
@@ -52,4 +50,4 @@ export const enRenew: Record<keyof typeof koRenew, string> = {
   "renew.empty.title": "Nobody selected",
   "renew.empty.reason": "Select people whose contracts end soon in the roster, then press “renew contracts”",
   "renew.open": "Renew contracts of the {count, number} picked",
-};
+} as const;

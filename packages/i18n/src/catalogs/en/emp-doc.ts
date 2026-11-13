@@ -1,7 +1,5 @@
 // English for `empDoc.` ids (certificate, record print, row void, registration void).
-import type { koEmpDoc } from "../ko/emp-doc";
-
-export const enEmpDoc: Partial<Record<keyof typeof koEmpDoc, string>> = {
+export const enEmpDoc = {
   "empDoc.reg.counting": "Counting…",
   "empDoc.reg.siteN": "{count, number} workplaces",
   "empDoc.reg.siteCount": "{workers} + {exited} exited",
@@ -149,4 +147,4 @@ export const enEmpDoc: Partial<Record<keyof typeof koEmpDoc, string>> = {
   "empDoc.certificate.sealImage": "Issuer seal image (optional)",
   "empDoc.certificate.sealReadFailed": "Could not read the seal file. Select it again.",
   "empDoc.certificate.clearSeal": "Clear seal image",
-};
+} as const;

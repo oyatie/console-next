@@ -1,7 +1,7 @@
 tags:
   - employees
 operationId: confirmProbation
-summary: Record the 수습 종료 (EMP-MODEL F5)
+summary: Record the end of probation (EMP-MODEL F5)
 description: Closes the probation period. A command (ME-7) that must assert /employment/probation_end_date in
   `expected`; 409 stale_facts when it changed. A repeat on a confirmed probation returns the record unchanged.
   409 invalid_transition when no probation is recorded. Audited as employee.probation.confirm.

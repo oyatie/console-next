@@ -1,6 +1,7 @@
-// Korean source for `bulkGrid.` ids (features/people/ui/grid-*): 일괄 수정, the correction grid, its check and result.
+// Korean copy for `bulkGrid.` ids (features/people/ui/grid-*): 일괄 수정, the correction grid, its check and result.
 // Rules: the header of ../ko.ts and GUIDE.md.
-export const koBulkGrid = {
+import type { enBulkGrid } from "../en/bulk-grid";
+export const koBulkGrid: Record<keyof typeof enBulkGrid, string> = {
   "bulkGrid.crumb": "일괄 수정",
   "bulkGrid.title": "일괄 수정 · {scope}",
   "bulkGrid.scopeAll": "선택한 사람",
@@ -123,4 +124,4 @@ export const koBulkGrid = {
   "bulkGrid.pick.picked": "선택한 열 {n, number} · {names}",
   "bulkGrid.pick.secondNote": "확인 대기 칸(생년월일·입사일·사번·고용형태)은 반영할 때 다른 담당자에게 갑니다",
   "bulkGrid.preview.footClean": "{n, number}명 · {cells, number}칸 반영 (바로 {now, number} · 확인 대기 {second, number})",
-} as const;
+};

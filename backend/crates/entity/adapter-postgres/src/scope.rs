@@ -1,6 +1,6 @@
 //! Scope-grant facts (decisions #15): the resource ids a write touches (a
-//! record's own 법인 id and, for a 사업장, its id too), and the facts a
-//! grant's 업무위탁 basis is checked against.
+//! record's own legal entity id and, for a workplace, its id too), and the
+//! facts a grant's outsourcing basis is checked against.
 
 use console_entity_application::{Actor, GrantBasisFacts, Target};
 use console_entity_domain::Refusal;
@@ -13,9 +13,9 @@ use uuid::Uuid;
 use crate::{PgEntityError, PgEntityStore};
 
 impl PgEntityStore {
-    /// `[법인]`, `[법인, 사업장]`, or nothing for a tenant-level act or an
-    /// unknown record (which then only a tenant-wide scope reaches, and the
-    /// write itself answers not-found).
+    /// `[legal entity]`, `[legal entity, workplace]`, or nothing for a
+    /// tenant-level act or an unknown record (which then only a tenant-wide
+    /// scope reaches, and the write itself answers not-found).
     ///
     /// # Errors
     /// Database faults.
@@ -94,7 +94,7 @@ impl PgEntityStore {
                     SettingValue::Bool(on) => on,
                     _ => return Err(unreadable(key)),
                 };
-                // The target 법인: the record's own, or a 사업장's 법인.
+                // The target legal entity: the record's own, or a workplace's legal entity.
                 let entity: Option<Uuid> = match target {
                     Target::Tenant => None,
                     Target::Entity(id) => Some(id),
@@ -144,8 +144,8 @@ fn unreadable(key: SettingKey) -> PgEntityError {
 }
 
 impl PgEntityStore {
-    /// The open 사업장 backed by `branches` (a caller's legacy branch reach,
-    /// worst-case-08): their ids, for the caller's entity scope.
+    /// The open workplaces backed by `branches` (a caller's legacy branch
+    /// reach, worst-case-08): their ids, for the caller's entity scope.
     ///
     /// # Errors
     /// Database faults.

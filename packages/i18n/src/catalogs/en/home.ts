@@ -1,6 +1,4 @@
-import type { koHome } from "../ko/home";
-
-export const enHome: Partial<Record<keyof typeof koHome, string>> = {
+export const enHome = {
   "home.inbox.privacyRequest": "Rights request",
   "home.inbox.correction.decide": "Review correction request",
   "home.requests.review": "Review request",
@@ -18,6 +16,20 @@ export const enHome: Partial<Record<keyof typeof koHome, string>> = {
   "home.inbox.record.title": "Work item",
   "home.inbox.record.original": "Open original",
   "home.inbox.record.back": "Back to list",
+  "home.inbox.activity.title": "Activity",
+  "home.inbox.activity.empty": "No activity recorded",
+  "home.inbox.activity.system": "System",
+  "home.inbox.activity.verb.create": "Created",
+  "home.inbox.activity.verb.submit": "Submitted",
+  "home.inbox.activity.verb.approve": "Approved",
+  "home.inbox.activity.verb.reject": "Rejected",
+  "home.inbox.activity.verb.decide": "Decided",
+  "home.inbox.activity.verb.apply": "Applied",
+  "home.inbox.activity.verb.withdraw": "Withdrawn",
+  "home.inbox.activity.verb.cancel": "Cancelled",
+  "home.inbox.activity.verb.update": "Changed",
+  "home.inbox.activity.verb.confirm": "Confirmed",
+  "home.inbox.activity.verb.other": "Other change",
   "home.inbox.title": "Inbox",
   "home.inbox.tab.turn": "To do",
   "home.inbox.tab.waiting": "Requested",
@@ -121,4 +133,4 @@ export const enHome: Partial<Record<keyof typeof koHome, string>> = {
   "home.inbox.source.support": "Support",
   "home.inbox.source.workOrder": "Work orders",
   "home.inbox.source.governance": "Governance",
-};
+} as const;

@@ -441,8 +441,8 @@ async fn seed_payroll_period_lock(owner_pool: &PgPool, org: Uuid) {
 /// `missing_total` counts lines that LACK attendance material, so over an empty
 /// roster it is 0, and `ok: missing_total == 0` was `0 == 0` — true. Since
 /// `can_close` is the AND of the hard checks, an empty run closed on the period
-/// lock alone and took a 근태 원천 확보 attestation over zero evidence, then
-/// carried on down the lifecycle toward payment.
+/// lock alone and took an "attendance source secured" attestation over zero
+/// evidence, then carried on down the lifecycle toward payment.
 ///
 /// This is the same rule the repository already applies elsewhere — the
 /// canonical enforcement floor refuses to claim enforcement over zero tables,

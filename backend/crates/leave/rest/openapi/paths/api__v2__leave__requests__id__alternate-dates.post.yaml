@@ -1,13 +1,13 @@
 tags:
   - leave
 operationId: proposeLeaveAlternateDatesV2
-summary: Propose worker-chosen alternate 시기 on a §60⑤ consult
+summary: Propose worker-chosen alternate timing on a §60⑤ consult
 description: >-
   Self-service only: the authenticated caller must be the original
   requester of a `time_change_consult` leave request. No
   `employee_directory_manage` capability is required (or sufficient) —
   managers cannot choose the alternate dates. The body carries a new
-  inclusive date span that must differ from the original 시기; leave
+  inclusive date span that must differ from the original timing; leave
   type and partial-day period are preserved from the consult row.
   Returns the updated v2 leave-request view with `alternate_*` fields
   populated.
@@ -41,7 +41,7 @@ responses:
   '422':
     description: >-
       Request is not in `time_change_consult`, dates are invalid or
-      identical to the original 시기, or the body carries unknown fields.
+      identical to the original timing, or the body carries unknown fields.
     content:
       application/json:
         schema:

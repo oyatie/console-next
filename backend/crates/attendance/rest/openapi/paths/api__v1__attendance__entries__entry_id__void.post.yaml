@@ -1,6 +1,6 @@
 tags: [attendance]
 operationId: voidAttendanceEntry
-summary: 기록 취소 — the day goes back to empty with a reason; the entry stays struck in the history and a 재기록 restores a value
+summary: Entry void — the day goes back to empty with a reason; the entry stays struck in the history and a re-entry restores a value
 security: [{ bearerAuth: [] }]
 parameters:
   - { name: entry_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }

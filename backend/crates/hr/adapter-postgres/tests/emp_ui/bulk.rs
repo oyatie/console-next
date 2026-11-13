@@ -1,5 +1,6 @@
-//! Dated bulk 승진 · 계약 갱신 (EMP-UI 8, 11): the preview's exact counts,
-//! the one-batch commit, and the batch undo that takes back reservations.
+//! Dated bulk promotion · contract renewal (EMP-UI 8, 11): the preview's exact
+//! counts, the one-batch commit, and the batch undo that takes back
+//! reservations.
 
 use console_hr_adapter_postgres::HrError;
 use console_hr_adapter_postgres::lifecycle::requests::BulkEmployeeLifecycleEventRequest;
