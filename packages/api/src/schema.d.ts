@@ -9412,7 +9412,7 @@ export interface paths {
         put?: never;
         /**
          * Ask a colleague for a follow-up
-         * @description Creates a todo owned by the assignee and asked by the caller. Who may ask is any holder of a to-do request grant (a role line todo_request edit), over the people placed under that grant's scope node, and the tenant's ops account; never a support session (403 todo_assign_forbidden). Cedar decides, inside the write, that the assignee is an active account of the caller's tenant placed under a node the caller's grants permit; an account with no linked employee or no current placement sits at the tenant node. Refusals, in order: 403 todo_assign_forbidden; 422 validation (text, links); 422 todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and out-of-scope accounts alike, and a grant revoked mid-request); 422 todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name records by kind and id; a sent label is ignored and never stored. Audited as todo.request with the assignee and the due date only.
+         * @description Creates a todo owned by the assignee and asked by the caller. Who may ask is any holder of a to-do request grant (a role line todo_request edit), over the people placed under that grant's scope node, and the tenant's ops account. A support session is refused first by the platform support guard (403 support.refuse.read_only). Cedar decides, inside the write, that the assignee is an active account of the caller's tenant placed under a node the caller's grants permit; an account with no linked employee or no current placement sits at the tenant node. Refusals, in order: 403 todo_assign_forbidden (neither a to-do request grant nor the ops account); 422 validation (text, links); 422 todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and out-of-scope accounts alike, and a grant revoked mid-request); 422 todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name records by kind and id; a sent label is ignored and never stored. Audited as todo.request with the assignee and the due date only.
          */
         post: operations["createMyTodoRequest"];
         delete?: never;
@@ -9430,7 +9430,7 @@ export interface paths {
         };
         /**
          * List the colleagues the caller may ask for a follow-up
-         * @description The active accounts of the caller's tenant, other than the caller, that an ask from the caller accepts: those placed under a node where the caller's to-do request grants permit asking (every account for the tenant's ops account). Names only, ordered by display name then id. Who may read it is who may ask; anyone else, and every support session, gets 403 todo_assign_forbidden.
+         * @description The active accounts of the caller's tenant, other than the caller, that an ask from the caller accepts: those placed under a node where the caller's to-do request grants permit asking (every account for the tenant's ops account). Names only, ordered by display name then id. Who may read it is who may ask; anyone else gets 403 todo_assign_forbidden. A support session is refused first by the platform support guard (403 support.refuse.out_of_scope).
          */
         get: operations["listMyTodoAssignees"];
         put?: never;
