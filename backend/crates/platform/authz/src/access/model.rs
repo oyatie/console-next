@@ -127,6 +127,18 @@ pub struct AccessSubject {
     pub grants: Vec<HeldGrant>,
 }
 
+impl AccessSubject {
+    /// The scope nodes of the held grants that read ([`Domain::reads`]): the
+    /// nodes whose legal entities and workplaces the holder reaches.
+    pub fn reading_nodes(&self) -> impl Iterator<Item = (NodeKind, Uuid)> + '_ {
+        self.grants
+            .iter()
+            .filter(|g| g.lines.iter().any(|l| l.domain.reads()))
+            .filter_map(|g| g.scope.node())
+            .map(|n| (n.kind, n.id))
+    }
+}
+
 /// Why a grant does or does not count now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

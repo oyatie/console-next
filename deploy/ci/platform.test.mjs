@@ -47,13 +47,9 @@ test('native builds cannot publish or sign a PR; only dev pushes publish', () =>
   assert.match(wf.jobs['exit-test'].if, /workflow_dispatch/);
 });
 
-test('exit tests repeat on both native architectures only on the weekly schedule', () => {
+test('exit tests require four proofs across both native architectures on every platform run', () => {
   const wf = yaml.load(read('.github/workflows/platform.yml'));
-  const value = wf.jobs['exit-test'].strategy.matrix.repetition;
-  assert.equal(typeof value, 'string');
-  const repetitions = new Function('github', 'fromJSON', `return ${value.slice(3, -2)}`);
-  for (const event of ['push', 'workflow_dispatch', 'schedule'])
-    assert.deepEqual(repetitions({event_name:event}, JSON.parse), event === 'schedule' ? [1, 2] : [1]);
+  assert.deepEqual(wf.jobs['exit-test'].strategy.matrix.repetition, [1, 2]);
 });
 
 test('the image ships the real API, worker and migrations without development features', () => {

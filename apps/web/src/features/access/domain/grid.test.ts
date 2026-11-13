@@ -1,5 +1,8 @@
 import { expect, test } from "vitest";
-import { approveWord, autoView, diffLines, effective, fromLines, isEmpty, isRoutedApproval, liveColumns, liveLevels, sellable, toggle, toLines } from "./grid";
+import { approveWord, autoView, diffLines, effective, fromLines, isEmpty, isRoutedApproval, LEVELS, liveColumns, liveLevels, sellable, toggle, toLines } from "./grid";
+
+/** Catalog rows that offer every level, in the given order. */
+const rows = (...domains: string[]) => domains.map((domain) => ({ domain, levels: LEVELS }));
 
 test("any level beyond 조회 includes 조회 automatically", () => {
   expect(effective(["edit"])).toEqual(["view", "edit"]);
@@ -9,6 +12,14 @@ test("any level beyond 조회 includes 조회 automatically", () => {
   expect(autoView(["edit"])).toBe(true);
   expect(autoView(["view", "edit"])).toBe(false);
   expect(autoView([])).toBe(false);
+});
+
+// A row the editor hides (no screen yet) still saves back as stored: view goes out only where the domain offers it.
+test("a hidden line whose domain offers no view saves back unchanged beside an edited one", () => {
+  const cat = [...rows("hr_basic"), { domain: "todo_request", levels: ["edit"] as const }];
+  const grid = toggle(fromLines([{ domain: "todo_request", levels: ["edit"] }, { domain: "hr_basic", levels: ["view"] }]), "hr_basic", "edit");
+  expect(toLines(grid, cat)).toEqual([{ domain: "hr_basic", levels: ["view", "edit"] }, { domain: "todo_request", levels: ["edit"] }]);
+  expect(effective(["approve"], ["approve"])).toEqual(["approve"]);
 });
 
 test("toggling flips one cell; pressing an automatic 조회 clears the row", () => {
@@ -23,7 +34,7 @@ test("toggling flips one cell; pressing an automatic 조회 clears the row", () 
 
 test("lines go out in catalog order with effective levels and read back to the same grid", () => {
   const g = { org: ["view"], hr_basic: ["edit"] } as const;
-  const lines = toLines(g, ["hr_basic", "org", "exit"]);
+  const lines = toLines(g, rows("hr_basic", "org", "exit"));
   expect(lines).toEqual([{ domain: "hr_basic", levels: ["view", "edit"] }, { domain: "org", levels: ["view"] }]);
   expect(fromLines(lines)).toEqual(g);
   expect(isEmpty({})).toBe(true);
@@ -89,10 +100,10 @@ test("payroll and sensitive clearance offer only server-catalogued levels and ro
     expect(sellable(op(domain, []))).toBe(false);
     expect(sellable({ ...offered, grantable: false })).toBe(false);
   }
-  expect(toLines(toggle({}, "pay", "edit"), ["pay", "sensitive"])).toEqual([
+  expect(toLines(toggle({}, "pay", "edit"), rows("pay", "sensitive"))).toEqual([
     { domain: "pay", levels: ["view", "edit"] },
   ]);
-  const lines = toLines(toggle(toggle({}, "pay", "view"), "sensitive", "edit"), ["pay", "sensitive"]);
+  const lines = toLines(toggle(toggle({}, "pay", "view"), "sensitive", "edit"), rows("pay", "sensitive"));
   expect(fromLines(lines)).toEqual({ pay: ["view"], sensitive: ["edit"] });
 });
 
