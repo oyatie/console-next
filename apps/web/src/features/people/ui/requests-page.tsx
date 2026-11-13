@@ -70,15 +70,13 @@ export function RequestsPage() {
           <div className="toolbar">
             <h2 id="rq-list" className="toolbar__title">{t("requests.list")}</h2>
           </div>
-          {hr && (
-            <div className="tabs" role="group" aria-label={t("requests.lanes")}>
-              {LANES.map((l, i) => (
-                <ToggleButton key={l} pressed={active === l} onClick={() => set({ lane: l })}>
-                  {t(`requests.lane.${l}`)} <Count n={counts[i]!.data?.total} />
-                </ToggleButton>
-              ))}
-            </div>
-          )}
+          <div className={`tabs ${s.lanes}`} role="group" aria-label={t("requests.lanes")} aria-hidden={!hr} inert={!hr}>
+            {LANES.map((l, i) => (
+              <ToggleButton key={l} pressed={active === l} onClick={() => set({ lane: l })}>
+                {t(`requests.lane.${l}`)} <Count n={counts[i]!.data?.total} />
+              </ToggleButton>
+            ))}
+          </div>
           <div className="tabs" role="group" aria-label={t("requests.statuses")}>
             {STATUSES.map((x) => (
               <ToggleButton key={x ?? "ALL"} pressed={(status === "ALL" ? undefined : status) === x} onClick={() => set({ status: x ?? "ALL" })}>

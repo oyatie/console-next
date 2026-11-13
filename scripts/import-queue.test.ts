@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { chromium, firefox, type Browser, type Page } from "@playwright/test";
+import { browserEngine } from "../apps/web/src/lib/browser-test";
+import { type Browser, type Page } from "@playwright/test";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { gridRow, queue } from "../e2e/helpers/import-queue";
 
 let browser: Browser;
 let page: Page;
 beforeAll(async () => {
-  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
+  browser = await browserEngine().launch();
   page = await browser.newPage();
 }, 60_000);
 afterAll(async () => { await browser?.close(); });

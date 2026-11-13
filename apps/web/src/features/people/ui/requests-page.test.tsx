@@ -48,7 +48,7 @@ test("mine empty names the person's own requests and ignores an HR lane in the U
   state.search.lane = "role";
   const html = renderToStaticMarkup(<RequestsPage />);
   expect(html).toContain(t("requests.none.filtered", { filters: `${t("requests.mine")} · ${t("requests.status.OPEN")}` }));
-  expect(html).not.toContain(t("requests.lane.role"));
+  expect(html).toContain('aria-hidden="true" inert=""');
 });
 
 test("reset returns every filter and the selected request to the unfiltered first page", () => {
