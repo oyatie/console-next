@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
-import { i18n, loadCatalog } from "@console/i18n";
+import { expect } from "@playwright/test";
+import { test } from "../locale-fixture";
+import { i18n, loadCatalog, LOCALES } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { failure, id, inbox } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
-test.afterEach(() => i18n.set("ko"));
-for (const locale of ["ko", "en"] as const) for (const refused of [false, true]) {
+for (const locale of LOCALES) for (const refused of [false, true]) {
   test(`solo unlock review ${locale} ${refused ? "refused" : "acknowledged"} @ui-state`, async ({ page }) => {
     await loadCatalog(locale);
     i18n.set(locale);

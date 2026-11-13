@@ -121,7 +121,7 @@
 "apps/web/src/features/people/ui/duplicate-candidates.tsx": {"dsClass":2},
 "apps/web/src/features/people/ui/end-actions.tsx": {"dsClass":1},
 "apps/web/src/features/people/ui/exit-block.tsx": {"dsClass":2},
-"apps/web/src/features/people/ui/exit-facts.tsx": {"dsClass":4},
+"apps/web/src/features/people/ui/exit-facts.tsx": {"dsClass":3},
 "apps/web/src/features/people/ui/exit-foot.tsx": {"dsClass":2},
 "apps/web/src/features/people/ui/exit-list.tsx": {"dsClass":3},
 "apps/web/src/features/people/ui/exit-page.tsx": {"dsClass":9},

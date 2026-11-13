@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
-import { firefox, expect as element } from "@playwright/test";
+import { expect as element } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { chromium } from "../lib/browser-test";
+import { browserEngine } from "../lib/browser-test";
 import { navFixture } from "./nav.browser-fixture";
 
-for (const engine of [chromium, ...(process.env.E2E_XBROWSER === "1" ? [firefox] : [])]) test(`a cold modules fault reuses only this principal's remembered readiness in ${engine.name()}`, async () => {
+for (const engine of [browserEngine()]) test(`a cold modules fault reuses only this principal's remembered readiness in ${engine.name()}`, async () => {
   await loadCatalog("ko");
   const { server, browser, page, errors } = await navFixture(engine);
   let failing = false;

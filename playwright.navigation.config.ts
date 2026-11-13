@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { defineConfig } from "@playwright/test";
+import { e2eBrowser } from "./e2e/browser";
 
 // The navigation control uses the real router with gated fixture reads; no backend or tenant is needed.
 export default defineConfig({
@@ -9,5 +10,5 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   workers: 1,
   use: { trace: "retain-on-failure" },
-  projects: [{ name: "chromium", use: { browserName: "chromium" } }, { name: "firefox", use: { browserName: "firefox" } }],
+  projects: [{ name: e2eBrowser(), use: { browserName: e2eBrowser() } }],
 });

@@ -164,12 +164,14 @@ test.each(["inline", "page", "drawer"])("an authoritative command refusal locks 
   expect(await page.getByRole("alert").count()).toBe(1);
   expect(await field.inputValue()).toBe("Reviewed");
   expect(await field.evaluate(el => Boolean(el.closest("[inert]")))).toBe(true);
+  expect(await field.evaluate(el => getComputedStyle(el.closest("[inert]")!).opacity)).toBe("0.5");
   expect(await page.getByRole("button", { name: "임시 저장", exact: true }).isDisabled()).toBe(true);
   await page.locator("form").evaluate(form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   await page.locator("#commit").dispatchEvent("keydown", { key: "Enter", ctrlKey: true });
   expect(await page.locator("#submits").textContent()).toBe("1");
   expect(await page.locator("#remedies").textContent()).toBe("0");
   expect(await page.locator("#alternate").evaluate(el => Boolean(el.closest("[inert]")))).toBe(true);
+  expect(await page.getByRole("button", { name: "Alternate", includeHidden: true }).evaluate(el => getComputedStyle(el.closest("[inert]")!).opacity)).toBe("0.5");
   expect(await page.getByRole("button", { name: "닫기", exact: true }).isEnabled()).toBe(true);
 });
 

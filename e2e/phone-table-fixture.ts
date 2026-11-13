@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { resolve } from "node:path";
 import { realpathSync } from "node:fs";
-import { chromium, firefox } from "@playwright/test";
+import { chromium, firefox, webkit } from "@playwright/test";
+import { e2eBrowser } from "./browser";
 import { createServer } from "vite";
 
 export const columnWidths = { name: 120, status: 100, fact: 160, action: 120 };
@@ -98,7 +99,7 @@ export async function phoneTableTest() {
     }],
   });
   await server.listen();
-  const browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
+  const browser = await { chromium, firefox, webkit }[e2eBrowser()].launch();
   const page = await (await browser.newContext()).newPage();
   return { server, browser, page };
 }

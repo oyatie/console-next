@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore, type ReactNode } from "react";
 import { notifyManager, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { Announcer } from "../../ui/announcer";
@@ -18,7 +18,7 @@ function readyHref(committedHref: string, browserHref: string) {
  * Shared per-route ready marker: the router committed this history entry and the screen's active reads settled.
  * The history key distinguishes revisiting the same URL; inactive prefetches do not hold up the screen.
  */
-export function RouteFrame() {
+export function RouteFrame({ children = <Outlet /> }: { children?: ReactNode }) {
   const { location, status, isLoading } = useRouterState();
   useRoutePresentation(location.pathname, status === "idle" && !isLoading);
   const cache = useQueryClient().getQueryCache();
@@ -29,7 +29,7 @@ export function RouteFrame() {
   );
   const href = typeof window === "undefined" ? location.href : readyHref(location.href, window.location.href);
   return <>
-    <Outlet />
+    {children}
     <Announcer bind={bindAnnouncer} />
     <span hidden data-route-ready={status === "idle" && !isLoading && !reading ? href : undefined} data-route-key={location.state.__TSR_key} />
   </>;

@@ -127,7 +127,7 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
   const rows: ReturnType<typeof summarize>[] = [];
   const report = {
     commit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), run_at: new Date().toISOString(),
-    source_command: `E2E_SERVED=1 E2E_PERF=1 E2E_XBROWSER=${browser.browserType().name() === "firefox" ? "1" : "0"} npx playwright test e2e/perf/route-load.spec.ts --project=${info.project.name}`,
+    source_command: `E2E_SERVED=1 E2E_PERF=1 E2E_BROWSER=${browser.browserType().name()} npx playwright test e2e/perf/route-load.spec.ts --project=${info.project.name}`,
     browser: browser.browserType().name(), build: "served", budget, negative_control: {} as object, failure: null as string | null, rows,
   };
   await mkdir(dir, { recursive: true });

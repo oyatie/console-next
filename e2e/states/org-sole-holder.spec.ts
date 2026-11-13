@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { OrgChangeDetail } from "@console/api/pending";
-import { expect, test, type Page } from "@playwright/test";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { expect, type Page } from "@playwright/test";
+import { test } from "../locale-fixture";
+import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { failure, id } from "../mock/fixtures";
 import { orgChange } from "../mock/org-changes";
@@ -14,6 +15,8 @@ const words = {
   ko: { open: "단독 예외 처리", commit: "패스키로 확인하고 조직 변경 승인", receipt: "단독 예외로 승인했습니다", notices: "알림 기록 2건", changed: "결재 내용이 바뀌어 승인하지 않았습니다. 바뀐 내용을 확인하고 다시 승인하십시오." },
   en: { open: "Sole-holder exception", commit: "Confirm with a passkey and approve org change", receipt: "Approved as a sole-holder exception", notices: "2 notice records", changed: "The approval details changed, so this change was not approved. Review the updated details before approving again." },
 };
+
+test.afterEach(async () => { await loadCatalog("ko"); i18n.set("ko"); });
 
 async function setup(page: Page, locale: "ko" | "en", offered = true) {
   await loadCatalog(locale);
@@ -37,7 +40,7 @@ async function passkey(page: Page, cancel = false) {
   });
 }
 
-for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
+for (const locale of LOCALES) for (const width of [1440, 390]) {
   test(`org sole holder: bound decision and persisted review in ${locale} at ${width}px @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const { fixture, record } = await setup(page, locale);
@@ -88,7 +91,7 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
   });
 }
 
-for (const locale of ["ko", "en"] as const) {
+for (const locale of LOCALES) {
   test(`org sole holder: server absence keeps drafter waiting in ${locale} @ui-state`, async ({ page }) => {
     const { fixture } = await setup(page, locale, false);
     try {
@@ -143,12 +146,13 @@ for (const locale of ["ko", "en"] as const) {
 
   for (const code of ["org_change.refuse.missing_grant", "lifecycle.refuse.stale_version", "step_up_failed"] as const) {
     test(`org sole holder: ${code} retains the review in ${locale} @ui-state`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 900 });
       const { fixture, record } = await setup(page, locale);
       await passkey(page);
       let writes = 0;
       await mockRoute(page, "post", "/api/v1/org-changes/{id}/approval-steps/{stepId}/decision", () => {
         writes++;
-        return { status: code === "step_up_failed" ? 401 : code.includes("stale") ? 409 : 403, json: failure(code) };
+        return { status: code.includes("stale") ? 409 : 403, json: failure(code) };
       });
       try {
         await page.goto(orgChangeScreens[1].path);
@@ -159,8 +163,26 @@ for (const locale of ["ko", "en"] as const) {
         await expect(dialog.getByRole("alert")).toContainText(code === "lifecycle.refuse.stale_version" ? words[locale].changed : t(code === "step_up_failed" ? "orgChange.sole.stepUpFailed" : code));
         await expect(dialog.getByRole("alert")).not.toContainText("Untranslated server message");
         await expect(dialog).toContainText(record.reason);
+        for (const theme of ["light", "dark"]) {
+          await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+          await fits(page, `sole-holder refusal/${code}/${locale}/${theme}`);
+          await expectAxe(page, `sole-holder refusal/${code}/${locale}/${theme}`);
+          await page.screenshot({ path: test.info().outputPath(`refusal-${theme}.png`), fullPage: true });
+        }
+        const commit = dialog.getByRole("button", { name: words[locale].commit, exact: true });
+        if (code === "org_change.refuse.missing_grant") {
+          await expect(commit).toBeDisabled();
+          await commit.dispatchEvent("click");
+          expect(writes).toBe(1);
+          await dialog.getByRole("button", { name: t("uiOverrideSheet.back"), exact: true }).click();
+          await expect(dialog).toHaveCount(0);
+        } else {
+          await expect(commit).toBeEnabled();
+          await commit.click();
+          await expect.poll(() => writes).toBe(2);
+        }
         await expect(page.getByText(words[locale].receipt, { exact: false })).toHaveCount(0);
-        expect(writes).toBe(1);
+        expect(writes).toBe(code === "org_change.refuse.missing_grant" ? 1 : 2);
         expect(fixture.unexpected).toEqual([]);
       } finally { await page.close(); fixture.release(); }
     });

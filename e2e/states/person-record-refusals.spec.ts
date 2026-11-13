@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { expect } from "@playwright/test";
+import { test } from "../locale-fixture";
+import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { moveDetail } from "../mock/lifecycle-sheets";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
 
-for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
+for (const locale of LOCALES) for (const width of [1440, 390]) {
   test(`person record: refused addition keeps input in ${locale} at ${width}px @ui-state`, async ({ page }) => {
     await loadCatalog(locale);
     i18n.set(locale);
@@ -39,6 +40,6 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 390]) {
       }
       await expectAxe(page, `record refusal/${locale}/${width}`);
       expect(fixture.unexpected).toEqual([]);
-    } finally { await page.close(); fixture.release(); i18n.set("ko"); }
+    } finally { await page.close(); fixture.release(); }
   });
 }
