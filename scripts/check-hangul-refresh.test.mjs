@@ -6,6 +6,23 @@ import { fixture, ko } from "./test-fixtures/hangul.mjs";
 const official = { name: "official-labels", path: "backend/refdata/labels.tsv", pattern: '"[^"\\r\\n]*"', reason: "Official Korean labels.", source: "https://www.law.go.kr/" };
 const baselineFile = "scripts/copy-hangul-baseline.json";
 
+for (const added of [false, true]) {
+  test(`relocating an excepted line within its category permits only relocation: added=${added}`, t => {
+    const entry = { name: "synthetic-input", path: "packages/i18n/src/input.test.ts", pattern: '"[^"\\r\\n]*"', reason: "Korean input." };
+    const lines = [0, 1].map(i => `test("${ko} ${i}"); // ${ko}`);
+    const f = fixture(t, { [entry.path]: lines.join("\n"), [baselineFile]: JSON.stringify({ allow: [entry] }) });
+    f.write(entry.path, [lines[1], ...(added ? [`test("${ko} new");`] : [])].join("\n"));
+    f.write("packages/i18n/src/input-notes.test.ts", lines[0]);
+    const result = f.run();
+    assert.equal(result.status, added ? 1 : 0, result.stderr || result.stdout);
+    if (added) {
+      assert.match(result.stderr, /other: 3 Hangul lines, merge base 2; a category cannot add Hangul lines/);
+      assert.doesNotMatch(result.stderr, /new debt|a file with a test exception/);
+      assert.equal(result.stdout, "");
+    }
+  });
+}
+
 test("an existing test exception cannot trade double-counted fragments for new lines", t => {
   const entry = { name: "synthetic-input", path: "packages/i18n/src/input.test.ts", pattern: '"[^"\\r\\n]*"', reason: "Korean input." };
   const lines = Array.from({ length: 5 }, (_, i) => `test("${ko} ${i}"); // ${ko}`);

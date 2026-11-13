@@ -42,6 +42,7 @@ a whole-line match remains debt. Matched fragments count as `allowed.<name>`; co
 be widened, and unused entries must be removed. New test exceptions can only reclassify
 existing fragments measured at the merge base; they cannot approve new test text. Synthetic
 exception counts cannot grow, including in new, renamed or copied files; a file with a test exception cannot gain Hangul lines.
+Hangul lines in a category cannot grow; exceptions only reclassify them.
 Sourced `official-*` entries for `.sql`, `.tsv`, `.csv` or `.json` reference data under refdata or migrations may grow to
 cover additions and refreshes. This allowance excludes test files. Every added Hangul line
 must be covered; comments and unmatched fragments remain subject to the category ceiling.

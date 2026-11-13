@@ -202,8 +202,13 @@ export function checkRepositoryHangul(base) {
     const was = origin ? before.lines[origin] ?? 0 : 0, is = now.lines[entry.path] ?? 0;
     return is > was ? [`${entry.path}: ${is} Hangul lines, merge base ${was}; a file with a test exception cannot add Hangul lines`] : [];
   });
+  // Count each Hangul line once per category, so moving a double-counted line cannot free exception room.
+  const refreshed = new Set(allow.filter(canRefresh).flatMap(entry => [entry.path, origins.get(entry.path) ?? entry.path]));
+  const perCategory = lines => Object.entries(lines).reduce((sum, [file, n]) => refreshed.has(file) ? sum : { ...sum, [hangulCategory(file)]: (sum[hangulCategory(file)] ?? 0) + n }, {});
+  const [wasLines, isLines] = [perCategory(before.lines), perCategory(now.lines)];
+  const pooled = Object.entries(isLines).flatMap(([category, is]) => is > (wasLines[category] ?? 0) ? [`${category}: ${is} Hangul lines, merge base ${wasLines[category] ?? 0}; a category cannot add Hangul lines`] : []);
   const existingEncoded = new Set(before.encodedProblems.map(problem => problem.replace(/:\d+:/, ":")));
-  return { ...now, baseline, problems: [...now.problems.filter(problem => !now.encodedProblems.includes(problem) || !existingEncoded.has(problem.replace(/:\d+:/, ":"))), ...checkHangulBaseline(now.counts, baseline, allow, approved), ...grown] };
+  return { ...now, baseline, problems: [...now.problems.filter(problem => !now.encodedProblems.includes(problem) || !existingEncoded.has(problem.replace(/:\d+:/, ":"))), ...checkHangulBaseline(now.counts, baseline, allow, approved), ...grown, ...pooled] };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
