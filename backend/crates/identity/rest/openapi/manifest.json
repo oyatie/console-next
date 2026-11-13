@@ -394,6 +394,9 @@
     "/api/v1/users/me/employee-link/prepare": [
       "post"
     ],
+    "/api/v1/users/me/employee-link/withdraw": [
+      "post"
+    ],
     "/api/v1/users/{id}": [
       "get",
       "patch"
@@ -569,6 +572,7 @@
     "SelfBindingError",
     "SelfBindingPrepareRequest",
     "SelfBindingRequest",
+    "SelfBindingWithdrawRequest",
     "SetAccessRoleStatusRequest",
     "SignInIdHistory",
     "SignInIdRecord",

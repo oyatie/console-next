@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
 vi.mock("@console/api", async (original) => (await import("./account-link-test-api")).accountLinkApi(await original<object>(), state));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({}) }));
 vi.mock("@tanstack/react-router", () => ({ Link: () => null, useNavigate: () => vi.fn() }));
+vi.mock("./self-account-link", () => ({ SelfAccountLink: () => null }));
 vi.mock("./use-linked-account", () => ({
   directorySearch: () => ({}), useLinkedAccount: () => ({ mine: { isSuccess: true }, linked: state.hasLinked ? state.linked : undefined }),
 }));

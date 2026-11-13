@@ -64,7 +64,7 @@ pub(crate) async fn facts_in_tx(
         revoked: sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM account_link_self_reviews r \
             JOIN account_link_self_attestations a ON a.org_id=r.org_id AND a.id=r.attestation_id \
-            WHERE a.org_id=$1 AND a.account_id=$2 AND r.decision='REVOKE')",
+            WHERE a.org_id=$1 AND a.account_id=$2 AND r.decision='REVOKE' AND r.reviewer_id<>a.account_id)",
         )
         .bind(org.as_uuid())
         .bind(actor.as_uuid())

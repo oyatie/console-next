@@ -14,6 +14,7 @@ use uuid::Uuid;
 pub struct SelfBindingCommand {
     pub actor: UserId,
     pub employee: Uuid,
+    pub confirmed_name: Option<String>,
     pub step_up: MobilePasskeyStepUpEnvelope,
     pub trace: TraceContext,
 }
@@ -31,12 +32,12 @@ impl PgOrgStore {
         let org = current_org().map_err(KernelError::from)?;
         let passkeys = passkeys.clone();
         with_phase_audits(&self.pool, org, move |tx| Box::pin(async move {
-            let SelfBindingCommand { actor, employee, step_up, trace } = command;
-            sqlx::query("SELECT id FROM users WHERE org_id=$1 AND id=$2 FOR UPDATE")
-                .bind(org.as_uuid()).bind(actor.as_uuid()).fetch_optional(tx.as_mut()).await?;
+            let SelfBindingCommand { actor, employee, confirmed_name, step_up, trace } = command;
+            let previous_person: Option<Uuid> = sqlx::query_scalar("SELECT person_id FROM users WHERE org_id=$1 AND id=$2 FOR UPDATE")
+                .bind(org.as_uuid()).bind(actor.as_uuid()).fetch_one(tx.as_mut()).await?;
             let now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
                 .fetch_one(tx.as_mut()).await?;
-            let binding = crate::self_binding_prepare::binding_in_tx(tx, org, actor, employee).await?;
+            let binding = crate::self_binding_prepare::binding_in_tx(tx, org, actor, employee, confirmed_name.as_deref()).await?;
             let assertion = passkeys.verify_and_record_step_up_in_tx(tx, step_up, *actor.as_uuid(), &binding)
                 .await.map_err(|_| KernelError::forbidden("The passkey assertion does not authorize this command").with_code("step_up_failed"))?;
             let facts = account_link_solo::facts_in_tx(tx, org, actor, actor).await?;
@@ -55,17 +56,19 @@ impl PgOrgStore {
                 return Err(KernelError::conflict("Employee is already linked to another account")
                     .with_code("account_link.refuse.employee_taken").into());
             }
+            let record = crate::self_binding_prepare::record_in_tx(tx, org, actor, employee, confirmed_name.as_deref()).await?;
             let key = SettingKey::ReviewSoleHolderExceptionDue;
             let settings = console_settings_adapter_postgres::resolve_in_tx(tx.as_mut(), org, &[key], None, now).await?;
             let days = match settings.get(&key).and_then(|value| value.as_ref().ok()).map(|value| value.value) {
                 Some(SettingValue::Int(days)) => i32::try_from(days).map_err(|_| KernelError::internal("Review deadline is out of range"))?,
                 _ => return Err(KernelError::internal("Review deadline is unavailable").into()),
             };
-            let eligibility = serde_json::to_value(facts).map_err(|error| KernelError::internal(error.to_string()))?;
-            sqlx::query("INSERT INTO account_link_self_attestations(id,org_id,account_id,employee_id,attested_at,eligibility,review_days,review_due_at) \
-                VALUES($1,$2,$3,$4,$5,$6,$7,$8)")
+            let mut eligibility = serde_json::to_value(facts).map_err(|error| KernelError::internal(error.to_string()))?;
+            eligibility["record"] = json!(record);
+            sqlx::query("INSERT INTO account_link_self_attestations(id,org_id,account_id,employee_id,attested_at,eligibility,review_days,review_due_at,previous_person_id) \
+                VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)")
                 .bind(assertion).bind(org.as_uuid()).bind(actor.as_uuid()).bind(employee).bind(now)
-                .bind(&eligibility).bind(days).bind(now + Duration::days(i64::from(days))).execute(tx.as_mut()).await?;
+                .bind(&eligibility).bind(days).bind(now + Duration::days(i64::from(days))).bind(previous_person).execute(tx.as_mut()).await?;
             sqlx::query("UPDATE users SET employee_id=$3,person_id=console_bind_employee_person($1,$3,$2) WHERE org_id=$1 AND id=$2")
                 .bind(org.as_uuid()).bind(actor.as_uuid()).bind(employee).execute(tx.as_mut()).await?;
             bump_subject_version_tx(tx, *org.as_uuid(), *actor.as_uuid(), now).await?;

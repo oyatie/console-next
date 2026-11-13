@@ -95,6 +95,7 @@ pub const PLATFORM_ME_PATH: &str = "/api/platform/users/me";
 pub const USERS_ME_PATH: &str = "/api/v1/users/me";
 pub const SELF_BINDING_PREPARE_PATH: &str = "/api/v1/users/me/employee-link/prepare";
 pub const SELF_BINDING_PATH: &str = "/api/v1/users/me/employee-link";
+pub const SELF_BINDING_WITHDRAW_PATH: &str = "/api/v1/users/me/employee-link/withdraw";
 pub const CONSOLE_ROLLOUT_PATH: &str = "/api/v1/console/rollout";
 pub const CONSOLE_ROLLOUT_OPT_IN_PATH: &str = "/api/v1/console/rollout/opt-in";
 pub const CONSOLE_ROLLOUT_ORG_FLAG_PATH: &str = "/api/v1/console/rollout/org-flag";
@@ -139,6 +140,7 @@ pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
     USERS_ME_PATH,
     SELF_BINDING_PREPARE_PATH,
     SELF_BINDING_PATH,
+    SELF_BINDING_WITHDRAW_PATH,
     PLATFORM_ME_PATH,
     CONSOLE_ROLLOUT_PATH,
     CONSOLE_ROLLOUT_OPT_IN_PATH,
@@ -181,6 +183,10 @@ pub fn router(state: IdentityRestState) -> Router {
             post(users::self_binding::prepare),
         )
         .route(SELF_BINDING_PATH, post(users::self_binding::bind))
+        .route(
+            SELF_BINDING_WITHDRAW_PATH,
+            post(users::self_binding::withdraw),
+        )
         .route(CONSOLE_ROLLOUT_PATH, get(get_console_rollout))
         .route(
             CONSOLE_ROLLOUT_OPT_IN_PATH,

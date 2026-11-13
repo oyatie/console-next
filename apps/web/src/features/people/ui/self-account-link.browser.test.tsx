@@ -44,6 +44,10 @@ test("the own-account gallery action supports keyboard confirmation and stays pe
     ceremony_id: "00000000-0000-4000-8000-000000000003", expires_at: "2099-01-01T00:00:00Z",
     challenge: { publicKey: { challenge: "dGVzdA", rpId: "localhost" } },
   } }));
+  await page.route("**/api/v1/auth/passkey/login/start", route => route.fulfill({ json: {
+    ceremony_id: "00000000-0000-4000-8000-000000000004", expires_at: "2099-01-01T00:00:00Z",
+    challenge: { publicKey: { challenge: "dGVzdA", rpId: "localhost" } },
+  } }));
   await page.addInitScript(() => Object.defineProperty(navigator.credentials, "get", {
     value: async () => ({ toJSON: () => ({ id: "test-passkey", type: "public-key" }) }),
   }));
@@ -59,5 +63,17 @@ test("the own-account gallery action supports keyboard confirmation and stays pe
   await browserExpect(button).toBeDisabled();
   await browserExpect.poll(() => writes).toBe(1);
   release();
-  await browserExpect(button).toBeEnabled();
+  await browserExpect(button).toHaveCount(0);
+  const withdraw = page.getByRole("button", { name: "패스키로 확인하고 내 계정 연결 철회", exact: true });
+  await browserExpect(withdraw).toBeVisible();
+  let releaseWithdrawal!: () => void;
+  const withdrawing = new Promise<void>(done => { releaseWithdrawal = done; });
+  await page.route("**/api/v1/users/me/employee-link/withdraw", async route => {
+    await withdrawing;
+    await route.fulfill({ json: {} });
+  });
+  await withdraw.click();
+  await browserExpect(withdraw).toBeDisabled();
+  releaseWithdrawal();
+  await browserExpect(button).toBeVisible();
 });

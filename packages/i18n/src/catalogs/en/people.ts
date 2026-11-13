@@ -1,6 +1,9 @@
 export const enPeople = {
   "people.account.ownLink": "Link my account",
   "people.account.ownLinked": "Your account has been linked",
+  "people.account.selfAttested": "Self-attested · awaiting review",
+  "people.account.withdrawOwn": "Withdraw my account link",
+  "people.account.ownWithdrawn": "Your self-attested account link has been withdrawn",
   "people.label.unnamed": "Unnamed person",
   "people.label.identityMissing": "No identifying details",
   "people.label.accountCreated": "Account created {at}",

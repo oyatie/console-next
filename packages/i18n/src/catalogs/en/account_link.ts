@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enAccountLinkRefusals = {
+  "account_link.refuse.not_own_record": "Choose the employee matching your account. If none matches, confirm the employee's full name before linking.",
+  "account_link.refuse.withdraw_ineligible": "Only the person who linked their own account can withdraw it before review.",
   "account_link.refuse.review_ineligible": "An independent person with account management permission must review this binding.",
   "account_link.refuse.review_stale": "This binding has changed or this decision has already been recorded. Refresh and check the current binding.",
   "account_link.refuse.solo_ineligible": "You can link your own account only while you are the sole eligible operator and your account is unlinked. Ask another account manager to link it.",

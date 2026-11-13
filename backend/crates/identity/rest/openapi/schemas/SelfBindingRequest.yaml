@@ -3,6 +3,9 @@ type: object
 additionalProperties: false
 required: [employee_id]
 properties:
+  confirmed_name:
+    type: string
+    description: Exact full employee name, deliberately confirmed only when no existing record matches the account. Included in the passkey command binding.
   employee_id:
     $ref: '#/components/schemas/Uuid'
   step_up:

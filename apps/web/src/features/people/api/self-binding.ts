@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { api, assertBoundPasskeyHash, unwrap } from "@console/api";
+import { api, assertBoundPasskeyHash, assertPasskey, unwrap } from "@console/api";
 import { read } from "../../../lib/query";
 
 const prepareSelfBinding = (employeeId: string) =>
@@ -11,4 +11,10 @@ export async function bindOwnAccount(employeeId: string) {
   const binding = await prepareSelfBinding(employeeId);
   const step_up = await assertBoundPasskeyHash("EXCEPTION_DECIDE", binding.object_id, binding.payload_hash ?? "");
   return unwrap(api.POST("/api/v1/users/me/employee-link", { body: { employee_id: employeeId, step_up } }));
+}
+
+export async function withdrawOwnBinding(attestationId: string) {
+  return unwrap(api.POST("/api/v1/users/me/employee-link/withdraw", {
+    body: { attestation_id: attestationId, step_up: await assertPasskey() },
+  }));
 }

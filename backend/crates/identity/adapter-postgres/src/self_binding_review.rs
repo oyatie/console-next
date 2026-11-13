@@ -6,7 +6,7 @@ use console_kernel_core::{KernelError, TraceContext, UserId};
 use console_platform_auth::VerifiedStepUp;
 use console_platform_authz::access::{NodeKind, NodeRef};
 use console_platform_authz::cedar_pbac::{
-    actions::{account_link_review, independent_people},
+    actions::{account_link_review, account_link_withdraw, independent_people},
     visible::load_facts,
 };
 use console_platform_db::with_phase_audits;
@@ -19,6 +19,7 @@ use uuid::Uuid;
 pub enum ReviewDecision {
     Confirm,
     Revoke,
+    Withdraw,
 }
 
 impl PgOrgStore {
@@ -39,7 +40,7 @@ impl PgOrgStore {
             let eligible = facts.authorize(console_platform_authz::Feature::UserManage.as_str(),
                 NodeRef { kind: NodeKind::Tenant, id: *org.as_uuid() })
                 .map_err(|error| KernelError::internal(error.to_string()))?;
-            if !eligible {
+            if !eligible && !matches!(decision, ReviewDecision::Withdraw) {
                 return Err(KernelError::forbidden("Account management permission is required").with_code("account_link.refuse.review_ineligible").into());
             }
             let row: Option<(Uuid, Uuid)> = sqlx::query_as(
@@ -54,29 +55,45 @@ impl PgOrgStore {
                     EXISTS(SELECT 1 FROM account_link_self_reviews WHERE org_id=$1 AND attestation_id=$4 AND decision='REVOKE') \
                  FROM users WHERE org_id=$1 AND id=$2")
                 .bind(org.as_uuid()).bind(account).bind(employee).bind(receipt).fetch_one(tx.as_mut()).await?;
-            if !linked || revoked || (confirmed && matches!(decision, ReviewDecision::Confirm)) {
+            if !linked || revoked || (confirmed && !matches!(decision, ReviewDecision::Revoke)) {
                 return Err(KernelError::conflict("This self-attested binding has already changed").with_code("account_link.refuse.review_stale").into());
             }
-            let independent = independent_people::refusal_in_tx(tx.as_mut(), Some(account), *actor.as_uuid()).await;
-            if !account_link_review::decide(&actor.to_string(), &org.to_string(), &org.to_string(),
-                independent.is_none(), eligible).map_err(KernelError::internal)? {
-                let code = independent.map_or("account_link.refuse.review_ineligible", |refusal|
-                    refusal.code("account_link.refuse.identity_unbound", "account_link.refuse.review_ineligible"));
-                return Err(KernelError::forbidden("An independent account manager must review this binding").with_code(code).into());
+            if matches!(decision, ReviewDecision::Withdraw) {
+                if !account_link_withdraw::decide(&actor.to_string(), &org.to_string(), &org.to_string(),
+                    *actor.as_uuid()==account, linked && !confirmed && !revoked).map_err(KernelError::internal)? {
+                    return Err(KernelError::forbidden("Only the self-attester can withdraw an unreviewed binding")
+                        .with_code("account_link.refuse.withdraw_ineligible").into());
+                }
+            } else {
+                let independent = independent_people::refusal_in_tx(tx.as_mut(), Some(account), *actor.as_uuid()).await;
+                if !account_link_review::decide(&actor.to_string(), &org.to_string(), &org.to_string(),
+                    independent.is_none(), eligible).map_err(KernelError::internal)? {
+                    let code = independent.map_or("account_link.refuse.review_ineligible", |refusal|
+                        refusal.code("account_link.refuse.identity_unbound", "account_link.refuse.review_ineligible"));
+                    return Err(KernelError::forbidden("An independent account manager must review this binding").with_code(code).into());
+                }
             }
             let now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()").fetch_one(tx.as_mut()).await?;
             let (verdict, action) = match decision {
                 ReviewDecision::Confirm => ("CONFIRM", "account_link.confirmed"),
                 ReviewDecision::Revoke => ("REVOKE", "account_link.revoked"),
+                ReviewDecision::Withdraw => ("REVOKE", "account_link.withdrawn"),
             };
             sqlx::query("INSERT INTO account_link_self_reviews(org_id,attestation_id,decision,reviewer_id,reviewed_at) VALUES($1,$2,$3,$4,$5)")
                 .bind(org.as_uuid()).bind(receipt).bind(verdict).bind(actor.as_uuid()).bind(now).execute(tx.as_mut()).await?;
-            if matches!(decision, ReviewDecision::Revoke) {
+            if !matches!(decision, ReviewDecision::Confirm) {
+                if matches!(decision, ReviewDecision::Withdraw) {
+                    let previous: Uuid = sqlx::query_scalar("SELECT COALESCE(previous_person_id,account_id) FROM account_link_self_attestations WHERE org_id=$1 AND id=$2")
+                        .bind(org.as_uuid()).bind(receipt).fetch_one(tx.as_mut()).await?;
+                    // Older receipts lack provenance; restore a separate account identity, never the withdrawn employee's.
+                    sqlx::query("UPDATE users SET person_id=$3 WHERE org_id=$1 AND id=$2")
+                        .bind(org.as_uuid()).bind(account).bind(previous).execute(tx.as_mut()).await?;
+                }
                 sqlx::query("UPDATE users SET employee_id=NULL WHERE org_id=$1 AND id=$2")
                     .bind(org.as_uuid()).bind(account).execute(tx.as_mut()).await?;
             }
             bump_subject_version_tx(tx, *org.as_uuid(), account, now).await?;
-            let after = if matches!(decision, ReviewDecision::Revoke) { None } else { Some(employee) };
+            let after = if matches!(decision, ReviewDecision::Confirm) { Some(employee) } else { None };
             let event = user_audit_event(action, Some(actor), UserId::from_uuid(account), trace, now)?.with_org(org)
                 .with_snapshots(Some(json!({"employee_id":employee})),
                     Some(json!({"employee_id":after,"self_attestation_id":receipt,"decision":verdict})));

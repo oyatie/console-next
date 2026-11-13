@@ -36,7 +36,7 @@ async fn fixture(pool: &PgPool) -> (PgOrgStore, UserId, Uuid, SoftKey) {
 
 async fn employee(pool: &PgPool) -> Uuid {
     sqlx::query_scalar("INSERT INTO employees(org_id,company,name,source_filename,source_sheet,source_row,source_key) \
-        VALUES($1,'Synthetic','Operator','fixture','fixture',1,gen_random_uuid()::text) RETURNING id")
+        VALUES($1,'Synthetic','Holder','fixture','fixture',1,gen_random_uuid()::text) RETURNING id")
         .bind(OrgId::one().as_uuid()).fetch_one(pool).await.unwrap()
 }
 
@@ -80,6 +80,7 @@ async fn bind(
             SelfBindingCommand {
                 actor,
                 employee,
+                confirmed_name: None,
                 step_up: serde_json::from_value::<MobilePasskeyStepUpEnvelope>(proof).unwrap(),
                 trace: TraceContext::generate(),
             },
@@ -130,7 +131,8 @@ async fn solo_binding_commits_identity_attestation_and_audit_once(pool: PgPool) 
         .bind(receipt).fetch_one(&pool).await.unwrap();
     assert_eq!(
         facts,
-        json!({"subject_is_self":true,"operator":true,"unbound":true,"holds_permission":true,"other_holder":false,"revoked":false})
+        json!({"subject_is_self":true,"operator":true,"unbound":true,"holds_permission":true,"other_holder":false,"revoked":false,
+            "record":{"matches_record":true,"any_match":true,"name_confirmed":false}})
     );
     assert!(due);
     assert_eq!(days, 15);

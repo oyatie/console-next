@@ -13,6 +13,10 @@ properties:
           - step_up_failed
           - account_link.refuse.solo_ineligible
           - account_link.refuse.employee_taken
+          - account_link.refuse.not_own_record
+          - account_link.refuse.withdraw_ineligible
+          - account_link.refuse.review_stale
+          - passkey_step_up_required
           - not_found
           - unauthorized
           - unavailable

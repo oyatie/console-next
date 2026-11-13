@@ -25,7 +25,7 @@ responses:
   '401':
     $ref: '#/components/responses/Unauthorized'
   '403':
-    description: step_up_failed (invalid, replayed or bound to another command), or account_link.refuse.solo_ineligible.
+    description: step_up_failed (invalid, replayed or bound to another command), account_link.refuse.solo_ineligible, or account_link.refuse.not_own_record.
     content:
       application/json:
         schema:

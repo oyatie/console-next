@@ -30141,7 +30141,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: step_up_failed (invalid, replayed or bound to another command), or account_link.refuse.solo_ineligible.
+          description: step_up_failed (invalid, replayed or bound to another command), account_link.refuse.solo_ineligible, or account_link.refuse.not_own_record.
           content:
             application/json:
               schema:
@@ -30189,7 +30189,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: account_link.refuse.solo_ineligible
+          description: account_link.refuse.solo_ineligible or account_link.refuse.not_own_record
           content:
             application/json:
               schema:
@@ -30204,6 +30204,55 @@ paths:
                 $ref: '#/components/schemas/SelfBindingError'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '503':
+          description: Passkey service unavailable.
+  /api/v1/users/me/employee-link/withdraw:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: withdrawSelfAccountBinding
+      summary: Withdraw an unreviewed self-attested account binding
+      description: Cedar admits only the original self-attester while the original binding is current and unreviewed. A fresh passkey is required. The binding removal, retained review receipt and audit commit together. Independent revocation continues to prevent another solo binding.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingWithdrawRequest'
+      responses:
+        '200':
+          description: Self-attestation withdrawn.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: account_link.refuse.withdraw_ineligible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.review_stale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: passkey_step_up_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
         '503':
           description: Passkey service unavailable.
   /api/v1/users/{id}:
@@ -60583,6 +60632,10 @@ components:
                 - step_up_failed
                 - account_link.refuse.solo_ineligible
                 - account_link.refuse.employee_taken
+                - account_link.refuse.not_own_record
+                - account_link.refuse.withdraw_ineligible
+                - account_link.refuse.review_stale
+                - passkey_step_up_required
                 - not_found
                 - unauthorized
                 - unavailable
@@ -60595,6 +60648,9 @@ components:
       additionalProperties: false
       required: [employee_id]
       properties:
+        confirmed_name:
+          type: string
+          description: Exact full employee name, deliberately confirmed only when no existing record matches the account.
         employee_id:
           $ref: '#/components/schemas/Uuid'
     SelfBindingRequest:
@@ -60603,11 +60659,24 @@ components:
       additionalProperties: false
       required: [employee_id]
       properties:
+        confirmed_name:
+          type: string
+          description: Exact full employee name, deliberately confirmed only when no existing record matches the account. Included in the passkey command binding.
         employee_id:
           $ref: '#/components/schemas/Uuid'
         step_up:
           $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
       description: Submit the exact envelope returned by preparation after asserting the challenge. Missing step_up is a typed 428 refusal.
+    SelfBindingWithdrawRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [attestation_id]
+      properties:
+        attestation_id:
+          $ref: '#/components/schemas/Uuid'
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
     SelfLeaveBalance:
       type: object
       required:

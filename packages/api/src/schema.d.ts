@@ -13649,6 +13649,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/employee-link/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw an unreviewed self-attested account binding
+         * @description Cedar admits only the original self-attester while the original binding is current and unreviewed. A fresh passkey is required. The binding removal, retained review receipt and audit commit together. Independent revocation continues to prevent another solo binding.
+         */
+        post: operations["withdrawSelfAccountBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}": {
         parameters: {
             query?: never;
@@ -28654,17 +28674,25 @@ export interface components {
         SelfBindingError: {
             error: {
                 /** @enum {string} */
-                code: "step_up_required" | "step_up_failed" | "account_link.refuse.solo_ineligible" | "account_link.refuse.employee_taken" | "not_found" | "unauthorized" | "unavailable" | "internal";
+                code: "step_up_required" | "step_up_failed" | "account_link.refuse.solo_ineligible" | "account_link.refuse.employee_taken" | "account_link.refuse.not_own_record" | "account_link.refuse.withdraw_ineligible" | "account_link.refuse.review_stale" | "passkey_step_up_required" | "not_found" | "unauthorized" | "unavailable" | "internal";
                 message: string;
             };
         };
         SelfBindingPrepareRequest: {
+            /** @description Exact full employee name, deliberately confirmed only when no existing record matches the account. */
+            confirmed_name?: string;
             employee_id: components["schemas"]["Uuid"];
         };
         /** @description Submit the exact envelope returned by preparation after asserting the challenge. Missing step_up is a typed 428 refusal. */
         SelfBindingRequest: {
+            /** @description Exact full employee name, deliberately confirmed only when no existing record matches the account. Included in the passkey command binding. */
+            confirmed_name?: string;
             employee_id: components["schemas"]["Uuid"];
             step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        SelfBindingWithdrawRequest: {
+            attestation_id: components["schemas"]["Uuid"];
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
         SelfLeaveBalance: {
             employee_id: components["schemas"]["Uuid"];
@@ -60121,7 +60149,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description step_up_failed (invalid, replayed or bound to another command), or account_link.refuse.solo_ineligible. */
+            /** @description step_up_failed (invalid, replayed or bound to another command), account_link.refuse.solo_ineligible, or account_link.refuse.not_own_record. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -60182,7 +60210,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description account_link.refuse.solo_ineligible */
+            /** @description account_link.refuse.solo_ineligible or account_link.refuse.not_own_record */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -60202,6 +60230,67 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationError"];
+            /** @description Passkey service unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    withdrawSelfAccountBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfBindingWithdrawRequest"];
+            };
+        };
+        responses: {
+            /** @description Self-attestation withdrawn. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description account_link.refuse.withdraw_ineligible */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description account_link.refuse.review_stale */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            /** @description passkey_step_up_required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
             /** @description Passkey service unavailable. */
             503: {
                 headers: {

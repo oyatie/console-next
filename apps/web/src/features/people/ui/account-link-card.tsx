@@ -66,7 +66,7 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
           </>}
         </div>
       ) : null}
-      {mine.isSuccess && !linked && offer.data && <SelfAccountLink employeeId={employee.id} />}
+      {mine.isSuccess && <SelfAccountLink employeeId={employee.id} offered={!linked && !!offer.data} />}
       <AccountLinkEditor busy={link.isPending} error={link.error}
         pending={pending ? {
           title: t("people.account.pending", {
