@@ -16,6 +16,7 @@ import { HeldNotice } from "../../../ui/live/held-notice";
 import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
 import { columnSelection } from "../../../lib/react/use-column-selection";
 import { InboxRecord } from "./inbox-record";
+import { SnoozeMenu } from "./snooze";
 import { QuietQueue } from "./quiet-queue";
 import { Card } from "../../../ui/card/card";
 import { TabNav } from "../../../ui/tabs/tabs";
@@ -77,6 +78,8 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
   if (!rereading && !inbox.isPending && !caughtUp) setCaughtUp(true);
   const first = inbox.data?.pages[0] as AttentionInboxResponse | undefined;
+  // A row that cannot be postponed returns nothing, so the actions column can still be left out.
+  const snooze: RowAction = item => item.snooze?.allowed ? <SnoozeMenu item={item} presets={first?.snooze_presets ?? []} asOf={first?.as_of} /> : null;
   const applying = useSyncExternalStore(liveApplying.subscribe, liveApplying.get, liveApplying.get);
   const loading = setupPending || rereading || applying;
   const tools = preview ? (first?.as_of ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time> : loading || inbox.isPending ? <Skeleton decorative bones={["short"]} /> : null) : undefined;
@@ -99,7 +102,7 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
             </Banner>)}
             {checklist && setup?.(checklist)}
             {!checklist && noWork && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
-            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} selected={columns ? sel : undefined} onSelect={columns ? selectItem : undefined} onOpen={focusRecord} /> : !checklist && !noWork && head && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
+            {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} extra={snooze} selected={columns ? sel : undefined} onSelect={columns ? selectItem : undefined} onOpen={focusRecord} /> : !checklist && !noWork && head && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
             {!preview && inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
           </>;
         }}</QueryState></>;
@@ -122,7 +125,7 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
       {columns ? <div ref={surface}><FlexibleColumns list={list} onSelect={selectItem} onOpen={focusRecord}
         record={recordVisible && !removed && sel && { id: sel, label: t("home.inbox.record.title"), title: t("home.inbox.record.title"), onClose: () => select(undefined),
           returnFocus: () => surface.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
-          children: <InboxRecord item={selectedItem} action={action} onBack={() => select(undefined)} />,
+          children: <InboxRecord item={selectedItem} action={action} extra={snooze} onBack={() => select(undefined)} />,
         }} /></div> : list}
       {preview && first && (first.has_work || first.available_filters.length > 0) && !loading && !inbox.error && !first.setup && <Link to="/inbox">{t("home.inbox.viewInbox")}</Link>}
     </Card>

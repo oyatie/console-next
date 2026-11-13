@@ -15,6 +15,10 @@ properties:
           current_version:
             type: string
             description: Current opaque decision version; re-read the document before deciding again.
+          latest:
+            type: string
+            format: date
+            description: The last day an inbox item may be postponed to, present on a snooze_past_legal_due refusal.
       code:
         type: string
       message:

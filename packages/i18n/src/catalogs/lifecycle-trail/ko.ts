@@ -51,6 +51,7 @@ export const koLifecycleTrail = {
   "lifecycle.refuse.withdrawn": "철회된 변경은 결재할 수 없습니다. 변경 내역에서 현재 상태를 확인하십시오.",
   "lifecycle.refuse.stale_version": "변경 내용이 달라졌습니다. 최신 내역을 다시 확인한 뒤 진행하십시오.",
   "lifecycle.refuse.merge_not_allowed": "여러 결재 단계를 한 번에 처리할 수 없습니다. 각 단계의 담당자가 차례로 결재하십시오.",
+  "lifecycle.refuse.scope": "내 업무함에 없는 항목입니다. 이미 처리되었거나 다른 담당자에게 넘어갔을 수 있습니다.",
   "lifecycle.trail.documents.hire": "입사 서류 · 근로계약 확인",
   "lifecycle.trail.documents.appoint": "발령 서류 확인",
   "lifecycle.trail.documents.leave_start": "휴직 신청 · 근거 확인",
