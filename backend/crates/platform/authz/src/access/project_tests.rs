@@ -105,6 +105,32 @@ fn a_tenant_level_grant_does_not_widen_the_data_scope() {
     assert_eq!(alone.branches, BranchScope::All);
 }
 
+/// A line that only lets the holder ask colleagues changes nothing it reads.
+#[test]
+fn a_tenant_todo_request_grant_keeps_the_hr_data_scope() {
+    let t = tree();
+    let b1 = BranchId::from_uuid(Uuid::new_v4());
+    let wp_branches = BranchScope::Branches(BTreeSet::from([b1]));
+    let hr = grant(
+        t.wp_a1(),
+        vec![line(Domain::HrBasic, &[Level::View])],
+        wp_branches.clone(),
+    );
+    let ask = grant(
+        t.tenant(),
+        vec![line(Domain::TodoRequest, &[Level::Edit])],
+        BranchScope::All,
+    );
+    let p = project(&subject(&t, false, vec![hr, ask]));
+    assert!(p.errors.is_empty(), "{:?}", p.errors);
+    assert_eq!(p.branches, wp_branches);
+    assert!(p.scoped.contains(&super::model::ScopeGrant {
+        feature: crate::Feature::TodoAssign,
+        kind: NodeKind::Tenant,
+        id: *t.org.as_uuid(),
+    }));
+}
+
 /// A holder of any grant is a working member (the `Login` door opens over its
 /// scope); a subject with no grant gets nothing, not even membership.
 #[test]

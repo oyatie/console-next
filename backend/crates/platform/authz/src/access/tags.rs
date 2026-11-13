@@ -58,6 +58,7 @@ pub const fn tag(feature: Feature) -> Option<(Domain, Level)> {
         F::PeriodLockManage => Some((D::Exceptions, L::Edit)),
         F::ExceptionDecide | F::ChangeRequestDecide => Some((D::Exceptions, L::Approve)),
         F::RetainedRecordsRead => Some((D::Retention, L::View)),
+        F::TodoAssign => Some((D::TodoRequest, L::Edit)),
         F::Login
         | F::PrivacyRequestFile
         | F::TenantOffboard

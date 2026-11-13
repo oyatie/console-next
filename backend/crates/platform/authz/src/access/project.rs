@@ -96,6 +96,7 @@ const fn moves_data_scope(domain: Domain) -> bool {
             | Domain::Retention
             | Domain::Tenant
             | Domain::SupportAccess
+            | Domain::TodoRequest
     )
 }
 

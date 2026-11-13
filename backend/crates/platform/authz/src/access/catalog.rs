@@ -26,6 +26,7 @@ pub enum Domain {
     Retention,
     Tenant,
     SupportAccess,
+    TodoRequest,
 }
 
 /// View · edit · approve · export.
@@ -67,7 +68,7 @@ const VIEW_EDIT_EXPORT: &[Level] = &[Level::View, Level::Edit, Level::Export];
 const VIEW_EDIT_APPROVE: &[Level] = &[Level::View, Level::Edit, Level::Approve];
 
 impl Domain {
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 20] = [
         Self::Org,
         Self::HrBasic,
         Self::Appointment,
@@ -87,6 +88,7 @@ impl Domain {
         Self::Retention,
         Self::Tenant,
         Self::SupportAccess,
+        Self::TodoRequest,
     ];
 
     #[must_use]
@@ -111,6 +113,7 @@ impl Domain {
             Self::Retention => "retention",
             Self::Tenant => "tenant",
             Self::SupportAccess => "support_access",
+            Self::TodoRequest => "todo_request",
         }
     }
 
@@ -142,6 +145,7 @@ impl Domain {
             Self::Audit => &[Level::View, Level::Approve, Level::Export],
             Self::Settings | Self::Exceptions | Self::Retention => VIEW_EDIT_APPROVE,
             Self::Tenant | Self::SupportAccess => &[Level::Approve],
+            Self::TodoRequest => &[Level::Edit],
             Self::Discipline => &[],
         }
     }
