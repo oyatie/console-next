@@ -3,6 +3,8 @@ use super::*;
 
 #[path = "short_tenure/rules.rs"]
 mod rules;
+#[path = "short_tenure/service_dates.rs"]
+mod service_dates;
 use console_kernel_core::BranchScope;
 use console_platform_authz::{EffectiveFeatureGrant, Feature, PermissionLevel, Principal, Role};
 use std::collections::BTreeSet;

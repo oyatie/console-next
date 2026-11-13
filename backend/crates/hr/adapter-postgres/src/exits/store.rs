@@ -48,6 +48,7 @@ pub async fn load_exit_case_context(
          AND e.org_id = c.org_id
         LEFT JOIN employment_heads h
           ON h.org_id = c.org_id AND h.id = c.employment_id AND h.employee_id = c.employee_id
+         AND NOT h.needs_confirmation
         LEFT JOIN branches b
           ON b.id = c.branch_id
          AND b.org_id = c.org_id
