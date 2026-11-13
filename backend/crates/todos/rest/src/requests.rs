@@ -178,4 +178,5 @@ pub(crate) async fn return_todo(
 }
 
 #[cfg(test)]
+#[path = "requests_tests.rs"]
 mod tests;

@@ -15,9 +15,9 @@ use serde_json::{Map, Value, json};
 
 use super::{ReturnTodoRequest, TodoAskRequest, may_ask};
 
-const ASK: &str = include_str!("../../openapi/schemas/TodoAskRequest.yaml");
-const RETURN: &str = include_str!("../../openapi/schemas/ReturnTodoRequest.yaml");
-const LINK: &str = include_str!("../../openapi/schemas/TodoRequestLink.yaml");
+const ASK: &str = include_str!("../openapi/schemas/TodoAskRequest.yaml");
+const RETURN: &str = include_str!("../openapi/schemas/ReturnTodoRequest.yaml");
+const LINK: &str = include_str!("../openapi/schemas/TodoRequestLink.yaml");
 
 /// The `- item` lines right under the first line that reads `header`.
 fn list<'a>(yaml: &'a str, header: &str) -> Vec<&'a str> {
