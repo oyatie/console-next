@@ -7,9 +7,9 @@ export type Level = (typeof LEVELS)[number];
 /** One role line as the editor holds it: the levels the user chose, per domain (view only when chosen on its own). */
 export type Chosen = Readonly<Record<string, readonly Level[]>>;
 
-/** The levels a domain grants: what was chosen plus view when any other level is (sorted in grid order). */
-export const effective = (chosen: readonly Level[]): Level[] =>
-  LEVELS.filter((l) => chosen.includes(l) || (l === "view" && chosen.length > 0));
+/** The levels a domain grants: what was chosen plus view when any other level is and the domain offers it (grid order). */
+export const effective = (chosen: readonly Level[], offered: readonly Level[] = LEVELS): Level[] =>
+  LEVELS.filter((l) => chosen.includes(l) || (l === "view" && chosen.length > 0 && offered.includes("view")));
 
 /** view is lit only because another level is chosen (the "included" cell; it cannot be turned off on its own). */
 export const autoView = (chosen: readonly Level[]) => !chosen.includes("view") && chosen.some((l) => l !== "view");
@@ -27,9 +27,9 @@ export function toggle(grid: Chosen, domain: string, level: Level): Chosen {
   return out;
 }
 
-/** The lines a save sends: each domain with its effective levels, in catalog order. */
-export const toLines = (grid: Chosen, order: readonly string[]) =>
-  order.filter((d) => grid[d]?.length).map((domain) => ({ domain, levels: effective(grid[domain]!) }));
+/** The lines a save sends: each catalog domain with its effective levels, in catalog order. */
+export const toLines = (grid: Chosen, catalog: readonly { domain: string; levels: readonly Level[] }[]) =>
+  catalog.filter((d) => grid[d.domain]?.length).map(({ domain, levels }) => ({ domain, levels: effective(grid[domain]!, levels) }));
 
 /** The grid a stored role reads back as: view stays chosen only where it is the row's only level. */
 export const fromLines = (lines: readonly { domain: string; levels: readonly Level[] }[]): Chosen =>
