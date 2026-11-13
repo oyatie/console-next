@@ -43,7 +43,7 @@ const render = (locale: "ko" | "en", search: typeof state.search) => {
 test.each(["ko", "en"] as const)("%s status tab totals stay global while the rows are searched", (locale) => {
   const html = render(locale, { q: "Alpha" });
   for (const [view, n] of [["active", 2], ["suspended", 1], ["archived", 1], ["all", 4]] as const) {
-    expect(html).toContain(`>${t(`tenants.view.${view}`, { n })}</button>`);
+    expect(html).toContain(`>${t(`tenants.view.${view}`)}<span class="btn__count">${n}</span></button>`);
   }
   expect(html).toContain('data-id="alpha"');
   expect(html).not.toContain('data-id="beta"');

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { announce, focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
 import { TENANT_STATUS, TENANT_LIFECYCLE, labeled } from "../../../lib/labels";
@@ -87,27 +87,23 @@ export function TenantsPage() {
       <h1 id="tenants-title" className="page__title" tabIndex={-1}>{t("tenants.title")}</h1>
       <PageReadGate q={list}>
       <div className="page__head">
-        {!empty && (
-          <div role="group" aria-label={t("tenants.views")} className="tabs">
-            {VIEWS.map((v) => (
-              <ToggleButton key={v} pressed={view === v} onClick={() => set({ view: v === "active" ? undefined : v })}>
-                {t(`tenants.view.${v}`, { n: all.filter((o) => inView(o, v)).length })}
-              </ToggleButton>
-            ))}
-          </div>
-        )}
+        <div role="group" aria-label={t("tenants.views")} className="tabs">
+          {VIEWS.map((v) => (
+            <ToggleButton key={v} pressed={view === v} count={list.data ? fmtNumber(all.filter((o) => inView(o, v)).length) : ""} onClick={() => set({ view: v === "active" ? undefined : v })}>
+              {t(`tenants.view.${v}`)}
+            </ToggleButton>
+          ))}
+        </div>
         <span className="top__spacer" />
-        {!empty && (
-          <Form role="search" className="search" onSubmit={() => undefined}>
-            <Field label={t("tenants.search")} required={null}>{p => <TextInput {...p}
-              placeholder={t("tenants.search.example")}
-              value={q}
-              onKeyDown={toFirstMatch}
-              onChange={(e) => setQ(e.target.value)}
-            />}</Field>
-          </Form>
-        )}
-        {list.data && !empty && <Button variant="primary" onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>}
+        <Form role="search" className="search" onSubmit={() => undefined}>
+          <Field label={t("tenants.search")} required={null}>{p => <TextInput {...p}
+            placeholder={t("tenants.search.example")}
+            value={q}
+            onKeyDown={toFirstMatch}
+            onChange={(e) => setQ(e.target.value)}
+          />}</Field>
+        </Form>
+        <Button variant="primary" disabled={!list.data} onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>
       </div>
       <QueryState q={list} layout="list">{() => <>
       <SupportLookup />
@@ -120,7 +116,7 @@ export function TenantsPage() {
       <div className="split" data-open={Boolean(selected)}>
         <section id="tenants-list" className="card" aria-label={t("tenants.table")}>
           {empty ? (
-                <EmptyState title={t("tenants.empty.title")} reason={t("tenants.empty.reason")} actions={<Button variant="primary" onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>} />
+                <EmptyState title={t("tenants.empty.title")} reason={t("tenants.empty.reason")} />
               ) : found.length === 0 ? (
                 <EmptyState title={t("tenants.search.none", { q: q.trim() })} reason={t("tenants.search.noneReason")} actions={<Button onClick={() => setQ("")}>{t("tenants.search.reset")}</Button>} />
               ) : rows.length === 0 ? (
