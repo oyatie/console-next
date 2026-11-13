@@ -103,6 +103,27 @@ async fn refusals_answer_in_order_gate_body_self_assignee_then_due_date(pool: Pg
         "todo_assign_forbidden",
     )
     .await;
+    // Not even a body that does not parse reaches the colleague ahead of the gate.
+    let admin = o.admin.user.as_uuid();
+    for broken in [
+        json!({}),
+        json!({ "assignee_account_id": "E-1024", "text": "x" }),
+        json!({ "assignee_account_id": admin, "text": "x", "due_on": "2026/11/20" }),
+    ] {
+        refused(
+            &o,
+            &o.colleague,
+            broken.clone(),
+            StatusCode::FORBIDDEN,
+            "todo_assign_forbidden",
+        )
+        .await;
+        refused(&o, &o.admin, broken, unprocessable, "validation").await;
+    }
+    // The refusal names no value that was sent.
+    let echoed = json!({ "assignee_account_id": admin, "text": "x", "links": "인사 메모 원문" });
+    let (_, out) = o.admin.call("POST", REQUESTS, Some(echoed)).await;
+    assert!(!out.to_string().contains("인사 메모 원문"), "{out}");
     // A bad body before asking yourself, yourself before the lookup, the lookup before the date.
     let me = json!({ "assignee_account_id": o.admin.user.as_uuid(), "text": " ", "due_on": past });
     refused(&o, &o.admin, me, unprocessable, "validation").await;

@@ -5,6 +5,7 @@
 //! or of another tenant finds nothing there to act on.
 
 use axum::Json;
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -64,10 +65,16 @@ fn authorize_assign(principal: &Principal) -> Result<(), RestError> {
 pub(crate) async fn create_request(
     State(state): State<TodoRestState>,
     headers: HeaderMap,
-    Json(body): Json<TodoAskRequest>,
+    body: Result<Json<TodoAskRequest>, JsonRejection>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     authorize_assign(&principal)?;
+    // The parser's own text can quote what was sent, so it never reaches the caller.
+    let Json(body) = body.map_err(|_| {
+        RestError::from_kernel(KernelError::validation(
+            "the body must carry assignee_account_id and text, with an optional due_on and links",
+        ))
+    })?;
     // No directory read reaches nobody, so every assignee is out of scope.
     let assignee_scope = directory_read_scope(&principal)
         .unwrap_or_else(|| BranchScope::Branches(Default::default()));
