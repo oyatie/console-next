@@ -13609,6 +13609,46 @@ export interface paths {
         patch: operations["updateCurrentUser"];
         trace?: never;
     };
+    "/api/v1/users/me/employee-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link the sole operator's own account to an employee
+         * @description Consumes a one-use command-bound passkey assertion. Cedar rechecks eligibility under the tenant write lock. The self-attestation, identity binding, configured review deadline and audit commit together. An existing second eligible account prevents this exception.
+         */
+        post: operations["selfBindAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/employee-link/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare a sole operator's own employee link
+         * @description Cedar checks current server facts and returns the binding for the authenticated account and selected employee. Start the existing passkey step-up ceremony with this binding when the user confirms. Submission rechecks eligibility in the locked transaction. No identity number is collected.
+         */
+        post: operations["prepareSelfAccountBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}": {
         parameters: {
             query?: never;
@@ -28610,6 +28650,21 @@ export interface components {
         /** @description Global search hits, each an ObjectHead scoped identically to resolveObject (a hit the caller could not resolve never appears). Grouped by kind; exists is always true for a hit. */
         SearchResponse: {
             results: components["schemas"]["ObjectHead"][];
+        };
+        SelfBindingError: {
+            error: {
+                /** @enum {string} */
+                code: "step_up_required" | "step_up_failed" | "account_link.refuse.solo_ineligible" | "account_link.refuse.employee_taken" | "not_found" | "unauthorized" | "unavailable" | "internal";
+                message: string;
+            };
+        };
+        SelfBindingPrepareRequest: {
+            employee_id: components["schemas"]["Uuid"];
+        };
+        /** @description Submit the exact envelope returned by preparation after asserting the challenge. Missing step_up is a typed 428 refusal. */
+        SelfBindingRequest: {
+            employee_id: components["schemas"]["Uuid"];
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
         };
         SelfLeaveBalance: {
             employee_id: components["schemas"]["Uuid"];
@@ -60038,6 +60093,121 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
+            };
+        };
+    };
+    selfBindAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfBindingRequest"];
+            };
+        };
+        responses: {
+            /** @description Self-attested binding recorded. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attestation_id: components["schemas"]["Uuid"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description step_up_failed (invalid, replayed or bound to another command), or account_link.refuse.solo_ineligible. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description account_link.refuse.employee_taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            /** @description step_up_required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            /** @description Passkey service unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    prepareSelfAccountBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfBindingPrepareRequest"];
+            };
+        };
+        responses: {
+            /** @description Start a passkey step-up ceremony with this exact binding. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobilePasskeyStepUpBinding"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description account_link.refuse.solo_ineligible */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description account_link.refuse.employee_taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            /** @description Passkey service unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

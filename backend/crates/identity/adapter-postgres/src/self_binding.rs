@@ -3,9 +3,7 @@
 use crate::{PgOrgError, PgOrgStore, account_link_solo, policy::versions::bump_subject_version_tx};
 use console_identity_application::user_audit_event;
 use console_kernel_core::{KernelError, TraceContext, UserId};
-use console_platform_auth::{
-    MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind, PasskeyService,
-};
+use console_platform_auth::{MobilePasskeyStepUpEnvelope, PasskeyService};
 use console_platform_db::with_phase_audits;
 use console_platform_request_context::current_org;
 use console_settings_domain::{SettingKey, SettingValue};
@@ -38,10 +36,7 @@ impl PgOrgStore {
                 .bind(org.as_uuid()).bind(actor.as_uuid()).fetch_optional(tx.as_mut()).await?;
             let now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
                 .fetch_one(tx.as_mut()).await?;
-            let payload = json!({"command":"account_link.self_bind","org_id":org,"account_id":actor,"employee_id":employee});
-            let hash: String = sqlx::query_scalar("SELECT governed_exception_fingerprint($1,'{}'::daterange[])")
-                .bind(&payload).fetch_one(tx.as_mut()).await?;
-            let binding = MobilePasskeyStepUpBinding::bound(MobileStepUpActionKind::ExceptionDecide, *actor.as_uuid(), hash);
+            let binding = crate::self_binding_prepare::binding_in_tx(tx, org, actor, employee).await?;
             let assertion = passkeys.verify_and_record_step_up_in_tx(tx, step_up, *actor.as_uuid(), &binding)
                 .await.map_err(|_| KernelError::forbidden("The passkey assertion does not authorize this command").with_code("step_up_failed"))?;
             let facts = account_link_solo::facts_in_tx(tx, org, actor, actor).await?;

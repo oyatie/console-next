@@ -14,6 +14,8 @@ import { Card } from "../../../ui/card/card";
 import { buttonClass } from "../../../ui/button/button-class";
 import { directorySearch, useLinkedAccount } from "./use-linked-account";
 import { AccountLinkEditor } from "./account-link-editor";
+import { SelfAccountLink } from "./self-account-link";
+import { selfBindingOffer } from "../api/self-binding";
 
 type Employee = components["schemas"]["Employee"];
 
@@ -34,6 +36,7 @@ export function OpsExitNote({ employeeId, search }: { employeeId: string; search
  */
 export function AccountLinkCard({ employee, manage }: { employee: Employee; manage: boolean }) {
   const { mine, linked } = useLinkedAccount(employee);
+  const offer = useQuery({ ...selfBindingOffer(employee.id), enabled: mine.isSuccess && !linked, retry: false });
   const [query, setQuery] = useState(employee.name);
   const found = useQuery({ ...directorySearch(query.trim()), enabled: manage && mine.isSuccess && !linked && query.trim().length > 0 });
   const candidates = found.data?.items.filter((p) => p.employee_link_status === "UNLINKED" && p.is_active && p.id !== mySub()) ?? [];
@@ -63,6 +66,7 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
           </>}
         </div>
       ) : null}
+      {mine.isSuccess && !linked && offer.data && <SelfAccountLink employeeId={employee.id} />}
       <AccountLinkEditor busy={link.isPending} error={link.error}
         pending={pending ? {
           title: t("people.account.pending", {
@@ -72,7 +76,7 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
           approve: pending.requested_by !== mySub()
             ? () => link.mutate({ id: pending.employee_id ? pending.user_id : null, requestId: pending.request_id }) : undefined,
         } : undefined}
-        picker={mine.isSuccess && canChange && !linked ? {
+        picker={mine.isSuccess && canChange && !linked && !offer.data ? {
           label: t("person.account.picker"), group: t("person.account.group"), query, onQueryChange: setQuery,
           options: candidates.map((p) => ({ id: p.id, name: personName(p.display_name), status: p.roles.map((r) => label(ROLE, r)).join(", ") })),
           value: account, onChange: setAccount, loading: found.isFetching, empty: t("person.account.empty"),

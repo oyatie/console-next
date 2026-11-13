@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [employee_id]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+description: Submit the exact envelope returned by preparation after asserting the challenge. Missing step_up is a typed 428 refusal.

@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [users]
+operationId: selfBindAccount
+summary: Link the sole operator's own account to an employee
+description: Consumes a one-use command-bound passkey assertion. Cedar rechecks eligibility under the tenant write lock. The self-attestation, identity binding, configured review deadline and audit commit together. An existing second eligible account prevents this exception.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SelfBindingRequest'
+responses:
+  '201':
+    description: Self-attested binding recorded.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [attestation_id]
+          properties:
+            attestation_id:
+              $ref: '#/components/schemas/Uuid'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: step_up_failed (invalid, replayed or bound to another command), or account_link.refuse.solo_ineligible.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: account_link.refuse.employee_taken
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    description: step_up_required
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '503':
+    description: Passkey service unavailable.

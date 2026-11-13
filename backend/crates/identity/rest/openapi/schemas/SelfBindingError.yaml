@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [error]
+properties:
+  error:
+    type: object
+    required: [code, message]
+    properties:
+      code:
+        type: string
+        enum:
+          - step_up_required
+          - step_up_failed
+          - account_link.refuse.solo_ineligible
+          - account_link.refuse.employee_taken
+          - not_found
+          - unauthorized
+          - unavailable
+          - internal
+      message:
+        type: string

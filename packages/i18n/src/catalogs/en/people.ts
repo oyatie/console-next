@@ -1,4 +1,6 @@
 export const enPeople = {
+  "people.account.ownLink": "Link my account",
+  "people.account.ownLinked": "Your account has been linked",
   "people.label.unnamed": "Unnamed person",
   "people.label.identityMissing": "No identifying details",
   "people.label.accountCreated": "Account created {at}",

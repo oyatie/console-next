@@ -6873,6 +6873,24 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/users/me/employee-link",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__users__me__employee-link.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link/prepare",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__users__me__employee-link__prepare.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/users/{id}",
         operations: &[
             Operation {
@@ -7567,6 +7585,18 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "RouteAdoptionMetric",
         body: include_str!("../../identity/rest/openapi/schemas/RouteAdoptionMetric.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingError",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingError.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingPrepareRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingPrepareRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingRequest.yaml"),
     },
     NamedYaml {
         name: "SetAccessRoleStatusRequest",
