@@ -15,6 +15,7 @@ mod error;
 mod org_structure;
 mod policy;
 pub mod second_person;
+pub mod self_binding;
 mod users;
 
 pub use error::PgOrgError;

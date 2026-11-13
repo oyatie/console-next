@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Solo binding offer only; this decision never authorizes an identity write.
+//! Solo binding eligibility; writes also require a command-bound passkey assertion.
 use super::{ActionBundle, Fact};
 use std::sync::OnceLock;
 
@@ -15,7 +15,7 @@ const POLICIES: &str = r#"permit(principal, action == Action::"account_link_solo
 when { principal.org == resource.org && context.subject_is_self && context.operator &&
        context.unbound && context.holds_permission && !context.other_holder };"#;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize)]
 pub struct Facts {
     pub subject_is_self: bool,
     pub operator: bool,
