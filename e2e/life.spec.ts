@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { expectAccessible } from "./a11y";
-import { go, koDate, kstDate, registerEmployee } from "./flows";
+import { atPhoneWidth, expectAccessible, fits } from "./a11y";
+import { chooseRadio, go, koDate, kstDate, passkeyLogin, registerEmployee } from "./flows";
 import { hrAct, openCard, openHistory } from "./record";
-import { staffedTenant } from "./setup-flows";
+import { answer, SETUP_DEPARTMENT, staffedTenant, startOperations, tenantInSetup } from "./setup-flows";
+import { grantAccess } from "./access-flows";
+import { leaveScreen } from "./structure-flows";
 import { reasonChip } from "./helpers/lifecycle";
 import { koMonthDay, reasonBox, sheet, todayPreset, fillDate } from "./sheet";
 
@@ -35,7 +38,7 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
   await reasonChip(correct, "입력 오류", "정정 사유").click();
   await expectAccessible(admin, "life: correct the latest change");
   await correct.getByRole("button", { name: "승진 1명 정정" }).click();
-  await expect(history.getByRole("status").filter({ hasText: "승진 기록을 정정했습니다" })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: "승진 기록을 정정했습니다" })).toBeVisible();
   await expect(history.getByRole("listitem").filter({ hasText: "정정됨" })).toContainText("사원에서 과장으로");
   const corrected = history.getByRole("listitem").filter({ hasText: "앞선 기록을 정정한 기록" });
   await expect(corrected).toContainText("사원에서 대리로");
@@ -58,7 +61,7 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
   await reasonChip(rescind, "계획 철회", "철회 사유").click();
   await expectAccessible(admin, "life: rescind the latest change");
   await rescind.getByRole("button", { name: "승진 1명 철회", exact: true }).click();
-  await expect(history.getByRole("status").filter({ hasText: "정정이님의 승진 기록을 철회했습니다" })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: "정정이님의 승진 기록을 철회했습니다" })).toBeVisible();
   await expect(history.getByRole("listitem").filter({ hasText: "기록을 철회했습니다" })).toContainText("계획 철회");
   await expect(history.getByRole("button", { name: "철회", exact: true })).toHaveCount(0); // nothing in force is left to undo
   await expect(admin.getByRole("group", { name: "소속" })).toContainText("사원");
@@ -81,7 +84,7 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
   await reasonChip(elsewhere, "특별 승진").click();
   await reasonBox(elsewhere).fill("다른 창에서 기록");
   await elsewhere.getByRole("button", { name: "승진 1명 적용", exact: true }).click();
-  await expect(other.getByRole("region", { name: "인사 이력" }).getByRole("status")).toContainText("주임");
+  await expect(other.getByRole("status").filter({ hasText: "정정이님을 주임으로 승진 처리했습니다" })).toBeVisible();
   await other.close();
   await transfer.getByRole("button", { name: "전보 1명 적용", exact: true }).click();
   const stale = transfer.getByRole("alert");
@@ -92,7 +95,7 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
   await expect(transfer).toContainText("최신 기록을 다시 읽었습니다");
   await expect(reasonBox(transfer)).toHaveValue("채용 업무 전담");
   await transfer.getByRole("button", { name: "전보 1명 적용", exact: true }).click();
-  await expect(history.getByRole("status").filter({ hasText: "정정이님을 채용팀으로 전보했습니다" })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: "정정이님을 채용팀으로 전보했습니다" })).toBeVisible();
 
   // A second transfer on a reserved date replaces that reservation by name, with the reason the history keeps.
   const on = kstDate(5);
@@ -123,9 +126,12 @@ test("lifecycle: a renewal past the two-year fixed-term limit is refused with it
   const service = renewal.getByRole("group", { name: "기간제 근속" });
   await expect(service).toContainText("기간제 누적 근속");
   await expect(service).toContainText("2년 한도 마지막 날");
-  await renewal.getByRole("button", { name: /^다음 날부터 1년 · / }).click();
+  // Legal preflight (58cf7409f7) disables crossing presets; a typed date still proves the server refusal.
+  await expect(renewal.getByRole("button", { name: /^다음 날부터 1년 · / })).toHaveAttribute("aria-disabled", "true");
+  await fillDate(renewal, kstDate(21));
+  await fillDate(renewal, kstDate(386), "새 계약 종료일");
   await expect(renewal).toContainText("2년 한도");
-  await expect(renewal).toContainText("단서 사유의 예외가 기록돼 있지 않으면 서버가 거부합니다");
+  await expect(renewal.getByRole("button", { name: "무기계약 전환", exact: true })).toBeVisible();
   await reasonBox(renewal).fill("계약 1년 연장");
   await renewal.getByRole("button", { name: "계약 갱신 1명 예약", exact: true }).click();
   const refused = renewal.getByRole("alert");
@@ -136,7 +142,7 @@ test("lifecycle: a renewal past the two-year fixed-term limit is refused with it
   await refused.getByRole("button", { name: "새 종료일 다시 선택" }).click();
   await fillDate(renewal, kstDate(25), "새 계약 종료일");
   await renewal.getByRole("button", { name: "계약 갱신 1명 예약", exact: true }).click();
-  await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("status")).toContainText("기간이님의 계약 갱신을");
+  await expect(admin.getByRole("status").filter({ hasText: "기간이님의 계약 갱신을" })).toBeVisible();
 });
 
 // PEOPLE lane consumers (BW-17/18/22): HR corrects a record at once (a dated fact as the sole HR person, flagged for
@@ -164,10 +170,57 @@ test("people: HR corrects a record", { tag: "@hr" }, async ({ browser }) => {
 
 });
 
-// governance-01 (no preset roles): this half invited the person as the legacy 「관리자」 title and relied on its
-// title-implied 지점 roster («내 지점에 속한 직원만 보입니다») and 변경 요청 path. A 부서장/사업장 manager account returns
-// with a tenant role over a 사업장 (decision #18: managers sign in after the pilot); its body is at mvp 825e921a,
-// life.spec.ts lines 156-201. Owner: EMP-A (lane-corrections, UX-R1 ACCESS ask).
-// fixme: owner=@jason931225; reason=the manager journey lacks tenant-scoped role setup; expires=2026-11-17
-test.fixme("people: a 사업장 manager asks HR for a change, which HR applies", { tag: "@hr" }, async () => {});
+// Tenant-made roles replace title-implied authority; the scope is the workplace, never the role's name.
+test("people: a 사업장 manager asks HR for a change, which HR applies", { tag: "@hr" }, async ({ browser }) => {
+  const { admin, exec: manager } = await tenantInSetup(browser, "lifemanager", "요청상사", false, "본사", "none");
+  await registerEmployee(admin, { name: "요청이", number: "RQ-0001", unit: SETUP_DEPARTMENT });
+  const personPath = new URL(admin.url()).pathname;
+  await grantAccess(admin, "이임원", "oversight", /^본사/);
+  await startOperations(admin);
+  await leaveScreen(admin);
+
+  await manager.bringToFront();
+  await manager.reload();
+  await passkeyLogin(manager);
+  await go(manager, "/people");
+  await expect(manager.getByRole("row", { name: /요청이/ })).toBeVisible();
+  await go(manager, personPath);
+  await expect(manager.getByRole("button", { name: "휴대전화 수정", exact: true })).toHaveCount(0);
+  await manager.getByRole("button", { name: "인사팀에 변경 요청", exact: true }).click();
+  const ask = sheet(manager, "요청이 변경 요청");
+  await expect(ask.getByRole("radio", { checked: true })).toHaveCount(0);
+  await chooseRadio(ask, /^정보 정정/);
+  await ask.getByRole("textbox", { name: /^이름/ }).fill("요청일");
+  await reasonBox(ask).fill("개명 신고");
+  await expectAccessible(manager, "workplace reader requests a correction");
+  await atPhoneWidth(manager, async () => {
+    for (const theme of ["light", "dark"]) {
+      await manager.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+      await fits(manager, "correction request");
+    }
+  });
+  const filed = answer(manager, "POST", /\/change-requests$/);
+  await ask.getByRole("button", { name: "인사 정보 1명 결재 요청", exact: true }).click();
+  expect((await filed).status()).toBe(201);
+  await expect(ask).toBeHidden();
+  await expect(manager.getByRole("heading", { name: /요청이/, level: 1 })).toBeVisible();
+  await manager.getByRole("link", { name: "변경 요청 보기", exact: true }).click();
+  await expect(manager.getByRole("row", { name: /요청이/ })).toContainText("처리 대기");
+
+  await go(admin, "/people/requests");
+  await admin.getByRole("row", { name: /요청이/ }).getByRole("button", { name: "열기", exact: true }).click();
+  const panel = admin.getByRole("complementary", { name: "요청 상세" });
+  await expect(panel).toContainText("이름: 요청일");
+  await panel.getByRole("button", { name: "반영", exact: true }).click();
+  await panel.getByRole("button", { name: "요청 반영", exact: true }).click();
+  await expect(panel).toContainText("사유를 입력하십시오");
+  await panel.getByRole("textbox", { name: /^처리 사유/ }).fill("개명 확인");
+  await expectAccessible(admin, "HR reviews the requested correction");
+  const decided = answer(admin, "POST", /\/change-requests\/[^/]+\/decide$/);
+  await panel.getByRole("button", { name: "요청 반영", exact: true }).click();
+  expect((await decided).status()).toBe(200);
+  await expect(panel).toBeHidden();
+  await go(admin, personPath);
+  await expect(admin.getByRole("heading", { name: /요청일/, level: 1 })).toBeVisible();
+});
 

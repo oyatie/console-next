@@ -4,7 +4,8 @@ import { expectAccessible } from "./a11y";
 import { go, kstDate, option } from "./flows";
 import { reviseFact } from "./helpers/entity";
 import { openTenant } from "./helpers/tenant";
-import { pickKind, registerEntity, registerWorkplace, typeAddress, workplaceSheet } from "./setup-flows";
+import { answer, pickKind, registerEntity, registerWorkplace, typeAddress, workplaceSheet } from "./setup-flows";
+import { expectStatus } from "./helpers/setup-response";
 
 // 등록증 재발급·정정 (owner 2026-10-14, P0): 「there must be a way to upload a new 사업자등록증 … when we change the ceo, office」.
 // From an empty tenant through the UI only. Red on the parent FE: no action anywhere took a new certificate with the facts it
@@ -50,7 +51,9 @@ test("a new 등록증 changing 대표자 and 소재지 is one dated change every
   await sheet.locator('input[type="file"]').setInputFiles(PDF("v1"));
   await expect(sheet.getByText("이미 보관된 등록증입니다. 새로 발급된 등록증을 첨부하십시오")).toBeVisible();
   await expect(save).toHaveAttribute("aria-disabled", "true");
+  const uploaded = answer(a, "POST", /^\/api\/v1\/entity-documents$/);
   await sheet.locator('input[type="file"]').setInputFiles(PDF("v2"));
+  await expectStatus(uploaded, 201, "certificate upload");
   await expect(sheet.getByText("첨부함 · 사업자등록증-v2.pdf")).toBeVisible();
   await option(a, "발급 사유", "변경 · 정정신고로 다시 받음").click();
   await fillDate(sheet, kstDate(), "발급일");
@@ -109,7 +112,9 @@ test("a new 등록증 changing 대표자 and 소재지 is one dated change every
   await expect(sheet.getByRole("alert")).toContainText("지금 등록증 내용이 시작된 날보다 앞선 날짜입니다");
   await a.unroute(path);
 
+  const recorded = answer(a, "POST", path);
   await save.click();
+  await expectStatus(recorded, 200, "certificate reissue");
   await expect(sheet).toBeHidden({ timeout: 15_000 });
   await tab(a, "개요").click();
   // Every surface derives from the one record: the card's ② and ⑤, the 임원 tab, the history and the documents.
@@ -145,7 +150,9 @@ test("a reissue cannot hide a scheduled 본점 move", { tag: ["@org", "@regressi
   const move = await reviseFact(a, "본점 소재지", "rev", scheduled);
   await move.getByRole("group", { name: "본점 소재지", exact: true }).getByRole("button", { name: "주소 다시 찾기" }).click();
   await typeAddress(a, "본점 소재지", "대전광역시 유성구 대학로 99", "34134");
+  const revised = answer(a, "PUT", /\/api\/v1\/legal-entities\/[^/]+$/);
   await move.getByRole("button", { name: "변경 기록" }).click();
+  await expectStatus(revised, 200, "head office revision");
   await expect(move).toBeHidden();
 
   const card = a.getByRole("region", { name: "사업자등록증 · 본점", exact: true });
@@ -193,7 +200,9 @@ test("the first 등록증 entry reuses the original already attached to the 법�
   await option(a, "사업자 구분", "개인사업자").click();
   await a.getByLabel("상호").fill("새온공방");
   await a.getByRole("button", { name: "다음", exact: true }).click();
+  const uploaded = answer(a, "POST", /^\/api\/v1\/entity-documents$/);
   await a.locator('input[type="file"]').setInputFiles(PDF("kept"));
+  await expectStatus(uploaded, 201, "certificate upload");
   await expect(a.getByText(PDF("kept").name)).toBeVisible();
   await a.getByRole("textbox", { name: /^대표자|^성명/ }).first().fill("박새온");
   await a.getByRole("button", { name: "다음", exact: true }).click();
@@ -247,11 +256,8 @@ test("the first 등록증 entry reuses the original already attached to the 법�
   await expect(a.getByRole("region", { name: "등록증 · 000-12-34560" }).getByText("등록증 · 사업자등록증-kept.pdf")).toHaveCount(1);
 });
 
-// ss-003-address-link (P0, filed 10-13): 「등록증과 같음」 stores a copy of the address, so the 사업장 holding the certificate keeps
-// the old 소재지 after a reissue moves it. Lands with the link (no copy-propagation patch); the BE twin is
-// entity_reissue_propagation_api::the_holder_workplace_shows_the_moved_address.
-// fixme: owner=@jason931225; reason=reissue does not propagate the copied workplace address; expires=2026-11-17
-test.fixme("the 사업장 holding the certificate shows the 소재지 the reissue moved it to", { tag: ["@org", "@regression"] }, async ({ browser }) => {
+// The workplace linked by 「등록증과 같음」 follows the certificate address after a reissue.
+test("the 사업장 holding the certificate shows the 소재지 the reissue moved it to", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const a = await openTenant(browser, "reissue-panel", "새온그룹");
   await go(a, "/org/entities/new");
   await registerEntity(a, "새온정밀", false, undefined, REISSUE_ENTITY_IDS, PDF("v1"));
@@ -269,10 +275,18 @@ test.fixme("the 사업장 holding the certificate shows the 소재지 the reissu
   await sheet.getByRole("group", { name: "바뀐 항목" }).getByRole("button", { name: /^사업장 소재지/ }).click();
   await sheet.getByRole("group", { name: "사업장 소재지", exact: true }).getByRole("button", { name: "주소 다시 찾기" }).click();
   await typeAddress(a, "사업장 소재지", BUSAN, "48058");
+  const recorded = answer(a, "POST", /\/api\/v1\/business-registrations\/[^/]+\/reissues$/);
   await sheet.getByRole("button", { name: "재발급·정정 기록" }).click();
+  await expectStatus(recorded, 200, "certificate reissue");
   await expect(sheet).toBeHidden({ timeout: 15_000 });
   await go(a, record);
   await tab(a, "사업장").click();
   await a.getByRole("row", { name: /서울 본사/ }).click();
-  await expect(a.getByRole("main").getByText(BUSAN).first()).toBeVisible();
+  await a.emulateMedia({ colorScheme: "dark" });
+  for (const width of [1440, 390]) {
+    await a.setViewportSize({ width, height: 900 });
+    await expect(a.getByRole("main").getByText(BUSAN).first()).toBeVisible();
+    await expect(a.getByRole("link", { name: "000-81-00009 등록증 재발급·정정" }).filter({ visible: true })).toHaveCount(1);
+    expect(await a.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
 });

@@ -66492,6 +66492,9 @@ components:
           description: Today is before the first record takes effect (e.g. before the opening date); this is that first record.
         name:
           type: string
+        same_address_as_registration:
+          type: boolean
+          description: The address follows the linked registration at the requested read point. Absent on older servers.
         address:
           anyOf:
           - $ref: '#/components/schemas/KrAddress'

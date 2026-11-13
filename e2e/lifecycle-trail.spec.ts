@@ -289,7 +289,7 @@ test("one intercompany transfer shows two linked cases in one history entry and 
   const history = admin.getByRole("region", { name: "인사 이력", exact: true });
   const entry = history.locator(`[id="ev-${event.id}"]`);
   await expect(entry).toHaveCount(1);
-  await expect(history.getByRole("status").filter({ hasText: /강연결.*전적했습니다/ })).toHaveCount(1);
+  await expect(admin.getByRole("status").filter({ hasText: /강연결.*전적했습니다/ })).toHaveCount(1);
   await entry.getByRole("button", { name: title, exact: true }).click();
   const sheet = admin.getByRole("dialog", { name: title, exact: true });
   await expect(sheet.getByRole("region", { name: "신고", exact: true })).toBeVisible();

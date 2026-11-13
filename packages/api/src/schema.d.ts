@@ -31152,6 +31152,8 @@ export interface components {
             /** @description Today is before the first record takes effect (e.g. before the opening date); this is that first record. */
             before_first_record: boolean;
             name: string;
+            /** @description The address follows the linked registration at the requested read point. Absent on older servers. */
+            same_address_as_registration?: boolean;
             address?: components["schemas"]["KrAddress"] | null;
             mail_address?: components["schemas"]["KrAddress"] | null;
             /** Format: date */

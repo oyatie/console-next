@@ -66,6 +66,25 @@ test("only go-live may synchronize its confirmed phase through the shared profil
   expect(result.stderr).toContain(`${file}: queryKey ×1`);
 });
 
+test("an org decision may seed only its own server-confirmed detail", () => {
+  const { write, git, run } = fixture();
+  const file = "apps/web/src/features/org/ui/change-decision.tsx";
+  const source = "qc.setQueryData(changeQuery(d.id).queryKey, detail);";
+  write(file, source);
+  git("add", ".");
+  expect(run().status).toBe(0);
+  const other = "apps/web/src/features/org/ui/other.tsx";
+  write(other, source);
+  git("add", ".");
+  expect(run().stderr).toContain(`${other}: cacheWrites ×1`);
+  write(other, "");
+  write(file, source + " qc.setQueryData(other.queryKey, []);");
+  const result = run();
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain(`${file}: cacheWrites ×1`);
+  expect(result.stderr).toContain(`${file}: queryKey ×1`);
+});
+
 test.each(["relay/antigravity/reports/ATT-GRAMMAR.1.md", "lanes/proof.txt", "docs/lanes/lmg-depth-ent.md"])("refuses tracked delivery evidence: %s", (file) => {
   const { write, git, run } = fixture();
   write(file, "Delivery proof\n");

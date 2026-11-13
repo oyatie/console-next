@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Check, Loader2 } from "lucide-react";
+import { StatusDock } from "../status-dock/status-dock";
 import s from "./toast.module.css";
 
 /**
@@ -9,10 +10,10 @@ import s from "./toast.module.css";
  */
 export function Toast({ state, children, actions }: { state: "sending" | "done" | "error"; children: ReactNode; actions?: ReactNode }) {
   return (
-    <div role="status" className={s.toast} data-state={state}>
+    <StatusDock><div role="status" className={s.toast} data-state={state}>
       {state === "sending" ? <Loader2 size={16} aria-hidden className={s.spin} /> : state === "done" ? <Check size={16} aria-hidden /> : null}
       <span className={s.text}>{children}</span>
       {actions}
-    </div>
+    </div></StatusDock>
   );
 }

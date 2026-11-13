@@ -1,5 +1,5 @@
 import { createPrivateKey, createPublicKey } from "node:crypto";
-import type { BrowserContext, Page } from "@playwright/test";
+import { expect, type BrowserContext, type Page } from "@playwright/test";
 
 /**
  * A passkey in CDP's WebAuthn.Credential shape (binaries as base64). Both engines export and import it, so a
@@ -127,4 +127,14 @@ function rebuildToJSON() {
   };
   wrap("create");
   wrap("get");
+}
+
+/** Complete the server's request with this page's enrolled passkey. */
+export async function passkeyAssertion(page: Page, ceremony: { ceremony_id: string; challenge: { publicKey: PublicKeyCredentialRequestOptionsJSON } }) {
+  const credential = await page.evaluate(async options => {
+    const assertion = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) }) as PublicKeyCredential | null;
+    return assertion?.toJSON();
+  }, ceremony.challenge.publicKey);
+  expect(credential).toBeTruthy();
+  return { ceremony_id: ceremony.ceremony_id, credential: credential as Record<string, unknown> };
 }

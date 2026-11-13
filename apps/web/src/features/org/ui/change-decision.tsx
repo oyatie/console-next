@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+// eslint-disable-next-line no-restricted-imports -- Publish the server-confirmed decision with its receipt.
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -8,7 +10,7 @@ import { focusSoon } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { useDirtyEscape } from "../../../lib/react/dirty-escape";
-import { landed } from "../../../lib/react/landed";
+import { landed, LANDED } from "../../../lib/react/landed";
 import { APPROVAL_ROLE, actor, label } from "../../../lib/labels";
 import { ORG_READS } from "../../../reference/org/api";
 import { Composer } from "../../../ui/composer/composer";
@@ -16,8 +18,8 @@ import { commitLabel } from "../../../ui/composer/actions";
 import { Button } from "../../../ui/button/button";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
-import { changeCommands, changesByStatusQuery, me, refusalOf } from "../api";
-import { describeOp, reasonText, type Names, type NextStep } from "../present";
+import { changeCommands, changeQuery, changesByStatusQuery, me, refusalOf } from "../api";
+import type { NextStep } from "../present";
 import type { Note } from "./use-note";
 import css from "./org-change.module.css";
 
@@ -26,16 +28,14 @@ type Decide = Extract<NextStep, { kind: "decide" }>;
 type Refetch = () => Promise<{ data?: Detail }>;
 
 /**
- * The decision on the step this person holds, on the shared approval card: what is decided (ops, reason,
- * people, the previous step's note) sits above approve and reject, which stand side by side; reject needs a
+ * The decision on the step this person holds, below the record's summary. Approve and reject stand side by side; reject needs a
  * reason. There is no request-changes yet (BW-02), so the card draws none. Key it by the step id: after a
  * decision only the receipt shows, and the next step's card opens only on request, so a second click can
  * never land on the next step (role keys are not checked yet, BW-01).
  */
-export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
+export function ChangeDecision({ d, s, refetch, onNote, onReopen }: {
   d: Detail;
   s: Decide;
-  n: Names;
   refetch: Refetch;
   onNote: (note: Note) => void;
   onReopen: () => void;
@@ -46,19 +46,18 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
   const [rejecting, setRejecting] = useState(false);
   const role = label(APPROVAL_ROLE, s.step.roleKey);
   const self = me();
+  const qc = useQueryClient();
   const decide = useCommand({
     run: async (decision: "APPROVED" | "REJECTED") => {
       const memo = (decision === "REJECTED" ? reason : comment).trim() || undefined;
       try {
-        await landed(() => changeCommands(d.id).decide(s.step.id, decision, memo), refetch, (x) => {
+        const detail = await landed(() => changeCommands(d.id).decide(s.step.id, decision, memo), refetch, (x) => {
           // Landed only as this decision: the same person may have decided the step otherwise in another tab.
           const st = x.approvalSteps.find((y) => y.id === s.step.id);
           return st?.decidedBy === self && st?.decision === decision;
         });
-        // The record must show this step decided before the receipt offers the next one: re-arming on the
-        // cached copy would put this step's decision back under the viewer's next click.
-        await refetch();
-        return { decision };
+        if (detail === LANDED) await refetch();
+        return { decision, detail: detail === LANDED ? undefined : detail };
       } catch (e) {
         // Someone else decided this step first: say who and when, never a generic error.
         const now = refusalOf(e) === "conflict" ? (await refetch()).data?.approvalSteps.find((st) => st.id === s.step.id) : undefined;
@@ -67,9 +66,11 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
       }
     },
     invalidates: ORG_READS,
-    onSuccess: ({ decision, elsewhere }) => {
+    onSuccess: ({ decision, detail, elsewhere }) => {
       if (elsewhere)
         return onNote({ message: t("live.notice.done_elsewhere", { actor: actor(elsewhere.decidedByName), time: fmtDateTime(elsewhere.decidedAt) }) });
+      // Publish the confirmed record with its receipt; a slow re-read must not prepend history later.
+      if (detail) qc.setQueryData(changeQuery(d.id).queryKey, detail);
       const next = decision === "APPROVED" ? s.next : undefined;
       onNote({
         message: t(`orgChange.decided.${decision}`, { role, code: d.code }),
@@ -111,9 +112,6 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
           </Field>
           {armed && <p className="muted" role="status">{t("orgChange.escConfirm")}</p>}
         </>}
-        <ol className={css.ops}>{d.proposal.map((op, i) => <li key={i}>{describeOp(op, n)}</li>)}</ol>
-        <blockquote className={css.quote}>{reasonText(d)}</blockquote>
-        <p className="num">{t("orgChange.headcount")} · {t("orgChange.headcount.value", { count: d.headcount })}</p>
         {prev?.memo && <p className="muted">{t("orgChange.decide.prevMemo", { role: label(APPROVAL_ROLE, prev.roleKey), name: actor(prev.decidedByName), memo: prev.memo })}</p>}
         {s.prevByMe && <p className={css.caution}>{t("orgChange.decide.sameDecider")}</p>}
         <details>

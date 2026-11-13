@@ -55,7 +55,12 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) for (const 
       const chip = (selected ? page : list).getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true });
       await expect(chip).toBeVisible();
       await expect(page.getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true })).toHaveCount(1);
-      expect(await chip.evaluate(el => getComputedStyle(el.parentElement!).position)).toBe(selected ? "fixed" : "sticky");
+      // Floating notices share the fixed dock; list chips stay sticky inside their own list.
+      const position = await chip.evaluate((el, floating) => {
+        const anchor = floating ? el.closest("[data-status-dock]") : el.parentElement;
+        return anchor && getComputedStyle(anchor).position;
+      }, selected);
+      expect(position).toBe(selected ? "fixed" : "sticky");
       if (selected) {
         expect((await chip.boundingBox())!.x).toBeGreaterThanOrEqual(0);
         const bounds = (await chip.boundingBox())!;

@@ -5,6 +5,7 @@ import { supportSessionsApi, type paths, type components } from "@console/api";
 import { expect, test, type Page } from "@playwright/test";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { firstSignIn, go, registerEmployee, unique, vendorPage, vendorStepUp } from "./flows";
+import { passkeyAssertion } from "./auth";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { tenantInSetup } from "./setup-flows";
 import { addDepartments } from "./structure-flows";
@@ -23,12 +24,7 @@ async function boundStepUp(page: Page, authorization: string, id: string, payloa
   const response = await page.request.post("/api/v1/auth/passkey/step-up/start", { headers: { authorization }, data: { binding } });
   expect(response.status(), "bound support step-up starts").toBe(200);
   const ceremony = await response.json() as { ceremony_id: string; challenge: { publicKey: PublicKeyCredentialRequestOptionsJSON } };
-  const credential = await page.evaluate(async (options) => {
-    const assertion = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) }) as PublicKeyCredential | null;
-    return assertion?.toJSON();
-  }, ceremony.challenge.publicKey);
-  expect(credential).toBeTruthy();
-  return { binding, assertion: { ceremony_id: ceremony.ceremony_id, credential: credential as Record<string, unknown> } };
+  return { binding, assertion: await passkeyAssertion(page, ceremony) };
 }
 
 /** Capture the operator's existing bearer through its own passkey read. */

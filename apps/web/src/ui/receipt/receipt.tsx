@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Check, CheckCircle2, Loader2, SearchCheck, Undo2, X } from "lucide-react";
 import { t } from "@console/i18n";
+import { StatusDock } from "../status-dock/status-dock";
 import s from "./receipt.module.css";
 
 /**
@@ -26,11 +27,12 @@ export type ReceiptProps = Placement & (
   | { state: "applied"; message: string; onUndo?: () => void; onDismiss: () => void; undoing?: boolean; actions?: ReactNode });
 
 export function Receipt(props: ReceiptProps) {
-  return (
+  const content = (
     <div role="status" className={props.placement === "docked" ? `${s.region} ${s.docked}` : s.region}>
       <Body {...props} />
     </div>
   );
+  return props.placement === "docked" ? <StatusDock>{content}</StatusDock> : content;
 }
 
 function Body(props: ReceiptProps) {

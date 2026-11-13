@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { go } from "./flows";
+import { go, routeReady } from "./flows";
 import { openUnit, sheet } from "./helpers/structure";
-import { tenantInSetup } from "./setup-flows";
+import { setupCompany } from "./setup-flows";
+import { openTenant } from "./helpers/tenant";
 import { addDepartments, box, receipt } from "./structure-flows";
 
 // org-13 (UX-R2 ENDS): the chart's receipt belongs to the latest action. A 부서 erased from its panel's sheet ends the
@@ -9,7 +10,8 @@ import { addDepartments, box, receipt } from "./structure-flows";
 // CRUD's hard-delete rule). regression: on the parent the 「…만들었습니다 · 되돌리기」 receipt stayed docked after the erase.
 
 test("regression: an erase from the panel ends the chart's earlier receipt (org-13)", { tag: ["@regression", "@org"] }, async ({ browser }) => {
-  const { admin } = await tenantInSetup(browser, "receipt13", "영수회사", false, "본사");
+  const admin = await openTenant(browser, "receipt13", "영수회사");
+  await setupCompany(admin, "영수회사", "본사");
   await go(admin, "/org");
   await addDepartments(admin, "본사", ["임시팀"]);
   await addDepartments(admin, "본사", ["개발팀"]);
@@ -28,9 +30,9 @@ test("regression: an erase from the panel ends the chart's earlier receipt (org-
 });
 
 // The erased-unit view should close without re-reading the deleted resource.
-// fixme: owner=@jason931225; reason=the erase view re-reads the deleted resource; expires=2026-11-17
-test.fixme("an erase never re-reads the erased unit (org-13)", { tag: ["@regression", "@org"] }, async ({ browser }) => {
-  const { admin } = await tenantInSetup(browser, "receipt13b", "영수회사", false, "본사");
+test("an erase never re-reads the erased unit (org-13)", { tag: ["@regression", "@org"] }, async ({ browser }) => {
+  const admin = await openTenant(browser, "receipt13b", "영수회사");
+  await setupCompany(admin, "영수회사", "본사");
   await go(admin, "/org");
   await addDepartments(admin, "본사", ["임시팀"]);
   const missing: string[] = [];
@@ -43,6 +45,7 @@ test.fixme("an erase never re-reads the erased unit (org-13)", { tag: ["@regress
   await expect(s.getByText("확인 중…")).toHaveCount(0);
   await s.getByRole("button", { name: "부서 1개 삭제" }).click();
   await expect(box(admin, "임시팀")).toHaveCount(0);
-  await admin.waitForLoadState("networkidle");
+  await expect(s).toBeHidden();
+  await routeReady(admin, "/org");
   expect(missing).toEqual([]);
 });
