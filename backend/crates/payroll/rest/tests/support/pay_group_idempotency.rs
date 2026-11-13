@@ -52,6 +52,8 @@ async fn counts(pool: &PgPool, org: OrgId) -> (i64, i64, i64) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn pay_group_retry_replays_concurrent_creates_once(pool: PgPool) {
+    const LOCK_WAIT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+    const CREATE_AND_RETRY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
     let (service, token, input, org, _, _) = fixture(&pool).await;
     let key = Uuid::new_v4().to_string();
     // Hold the INSERT until the retry has observed the admitted, unfinished command.
@@ -66,7 +68,7 @@ async fn pay_group_retry_replays_concurrent_creates_once(pool: PgPool) {
         .unwrap();
     let first = keyed(service.clone(), &token, input.clone(), &key);
     let retry = async {
-        tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        tokio::time::timeout(LOCK_WAIT_TIMEOUT, async {
             loop {
                 let blocked: bool = sqlx::query_scalar(
                     "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND relation='pay_groups'::regclass AND mode='RowExclusiveLock' AND NOT granted AND $1=ANY(pg_blocking_pids(pid)))",
@@ -82,7 +84,9 @@ async fn pay_group_retry_replays_concurrent_creates_once(pool: PgPool) {
             }
         })
         .await
-        .expect("first pay-group create did not reach the held INSERT lock within 30 seconds");
+        .unwrap_or_else(|_| {
+            panic!("first pay-group create did not reach the held INSERT lock within {LOCK_WAIT_TIMEOUT:?}")
+        });
         let state: (String, bool) = sqlx::query_as(
             "SELECT state,execution_token IS NOT NULL FROM command_outcomes WHERE org_id=$1 AND idempotency_key=$2",
         )
@@ -98,7 +102,13 @@ async fn pay_group_retry_replays_concurrent_creates_once(pool: PgPool) {
         assert_eq!(counts(&pool, org).await, (0, 1, 0));
         gate.rollback().await.unwrap();
     };
-    let (created, ()) = tokio::join!(first, retry);
+    let (created, ()) = tokio::time::timeout(CREATE_AND_RETRY_TIMEOUT, async {
+        tokio::join!(first, retry)
+    })
+    .await
+    .unwrap_or_else(|_| {
+        panic!("concurrent create and retry did not settle within {CREATE_AND_RETRY_TIMEOUT:?}")
+    });
     assert_eq!(created.status, StatusCode::CREATED, "{}", created.json);
     let replay = keyed(service, &token, input, &key).await;
     assert_eq!(replay.status, StatusCode::CREATED, "{}", replay.json);
