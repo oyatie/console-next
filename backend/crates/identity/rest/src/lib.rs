@@ -182,7 +182,10 @@ pub fn router(state: IdentityRestState) -> Router {
             SELF_BINDING_PREPARE_PATH,
             post(users::self_binding::prepare),
         )
-        .route(SELF_BINDING_PATH, post(users::self_binding::bind))
+        .route(
+            SELF_BINDING_PATH,
+            get(users::self_binding::receipt).post(users::self_binding::bind),
+        )
         .route(
             SELF_BINDING_WITHDRAW_PATH,
             post(users::self_binding::withdraw),

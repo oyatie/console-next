@@ -30,7 +30,7 @@ async fn rename(pool: &PgPool, employee: Uuid, name: &str) {
         .unwrap();
 }
 
-async fn fresh_token(pool: &PgPool, h: &Harness, actor: UserId) -> String {
+pub(super) async fn fresh_token(pool: &PgPool, h: &Harness, actor: UserId) -> String {
     let mut input = h.access_token_input(actor, &[], vec![]);
     let (version, generation): (i64, i64) = sqlx::query_as("SELECT version,session_generation FROM subject_authz_versions WHERE org_id=$1 AND user_id=$2")
         .bind(OrgId::one().as_uuid()).bind(actor.as_uuid()).fetch_optional(pool).await.unwrap().unwrap_or((0,0));

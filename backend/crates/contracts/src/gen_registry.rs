@@ -545,13 +545,7 @@ pub const ATTENDANCE_FRAGMENT: Fragment = Fragment {
     external_schemas: ATTENDANCE_FRAGMENT_EXTERNAL,
 };
 
-const ATTENDANCE_FRAGMENT_EXTERNAL: &[&str] = &[
-    "ActorKind",
-    "AuditLastChange",
-    "ErrorBody",
-    "FieldError",
-    "Uuid",
-];
+const ATTENDANCE_FRAGMENT_EXTERNAL: &[&str] = &["Uuid"];
 
 const ATTENDANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -1759,14 +1753,7 @@ pub const COMPLIANCE_FRAGMENT: Fragment = Fragment {
     external_schemas: COMPLIANCE_FRAGMENT_EXTERNAL,
 };
 
-const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &[
-    "MobilePasskeyStepUpBinding",
-    "MobilePasskeyStepUpEnvelope",
-    "MobileStepUpActionKind",
-    "PasskeyStepUpAssertion",
-    "Timestamp",
-    "Uuid",
-];
+const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &["MobilePasskeyStepUpEnvelope", "Timestamp", "Uuid"];
 
 const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -6874,12 +6861,20 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
     },
     PathItem {
         path: "/api/v1/users/me/employee-link",
-        operations: &[Operation {
-            method: "post",
-            body: include_str!(
-                "../../identity/rest/openapi/paths/api__v1__users__me__employee-link.post.yaml"
-            ),
-        }],
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__users__me__employee-link.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__users__me__employee-link.post.yaml"
+                ),
+            },
+        ],
     },
     PathItem {
         path: "/api/v1/users/me/employee-link/prepare",
@@ -11927,14 +11922,7 @@ pub const PAYROLL_FRAGMENT: Fragment = Fragment {
     external_schemas: PAYROLL_FRAGMENT_EXTERNAL,
 };
 
-const PAYROLL_FRAGMENT_EXTERNAL: &[&str] = &[
-    "ActorKind",
-    "AuditLastChange",
-    "ErrorBody",
-    "FieldError",
-    "Timestamp",
-    "Uuid",
-];
+const PAYROLL_FRAGMENT_EXTERNAL: &[&str] = &["Timestamp", "Uuid"];
 
 const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {

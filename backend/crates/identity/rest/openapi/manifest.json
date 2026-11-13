@@ -389,6 +389,7 @@
       "patch"
     ],
     "/api/v1/users/me/employee-link": [
+      "get",
       "post"
     ],
     "/api/v1/users/me/employee-link/prepare": [

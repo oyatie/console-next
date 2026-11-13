@@ -13616,7 +13616,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Read the current account's self-attested employee binding
+         * @description Cedar authorizes the live account. Only a receipt matching its current employee link is returned. Revoked or withdrawn bindings return null; confirmed bindings remain visible with can_withdraw false. No employee link or management grant is required to recover the receipt.
+         */
+        get: operations["getSelfAccountBinding"];
         put?: never;
         /**
          * Link the sole operator's own account to an employee
@@ -60122,6 +60126,36 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    getSelfAccountBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current self-attestation and Cedar withdrawal permission. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attestation: {
+                            /** Format: uuid */
+                            attestation_id: string;
+                            /** Format: uuid */
+                            employee_id: string;
+                            can_withdraw: boolean;
+                        } | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     selfBindAccount: {

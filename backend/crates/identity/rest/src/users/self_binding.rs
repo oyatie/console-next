@@ -111,3 +111,16 @@ pub(crate) async fn withdraw(
         .map_err(RestError::from_store)?;
     Ok(Json(json!({})))
 }
+
+/// Receipt recovery uses live Cedar facts even before the account has an employee.
+pub(crate) async fn receipt(
+    State(state): State<IdentityRestState>,
+    Extension(principal): Extension<Principal>,
+) -> Result<Json<Value>, RestError> {
+    state
+        .store
+        .self_binding_receipt(principal.user_id)
+        .await
+        .map(Json)
+        .map_err(RestError::from_store)
+}

@@ -4,6 +4,8 @@ use console_platform_test_support::soft_passkey::SoftKey;
 use uuid::Uuid;
 #[path = "../../../adapter-postgres/tests/second_person_support/mod.rs"]
 mod holders;
+#[path = "self_binding_receipt.rs"]
+mod receipt;
 #[path = "self_binding_safeguards.rs"]
 mod safeguards;
 

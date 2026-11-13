@@ -17,6 +17,7 @@ mod policy;
 pub mod second_person;
 pub mod self_binding;
 mod self_binding_prepare;
+mod self_binding_receipt;
 pub mod self_binding_review;
 mod users;
 
