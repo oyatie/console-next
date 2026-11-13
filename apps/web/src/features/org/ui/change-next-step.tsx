@@ -146,7 +146,7 @@ function Submit({ d, title, report, refetch, onNote, onEdit, onPreflight }: {
         action={{ kind: "orgChange", mode: routed ? "request" : d.effectiveDate > todayKst() ? "schedule" : "apply" }}
         consequence={consequence}
         sections={{ approvals: routed ? t("orgPropose.route") : null }}
-        error={submit.error} notice={<CommandError error={submit.error} />}
+        error={submit.error} notice={<CommandError focusOnRefusal error={submit.error} />}
         blocked={blockers > 0 ? { reason: t("orgChange.submit.blocked", { count: blockers }), remedy: <Button variant="ghost" onClick={() => focusSoon("preflight")}>{t("orgChange.submit.seePreflight")}</Button> } : undefined}
         onSubmit={() => submit.mutate(undefined)}
         secondary={<><Button onClick={onEdit}>{t("orgChange.edit")}</Button><Button variant="ghost-danger" onClick={() => setCancelling(true)}>{t("orgChange.cancel")}</Button></>}

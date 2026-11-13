@@ -172,6 +172,7 @@ for (const locale of LOCALES) {
         const commit = dialog.getByRole("button", { name: words[locale].commit, exact: true });
         if (code === "org_change.refuse.missing_grant") {
           await expect(commit).toBeDisabled();
+          await expect(dialog.getByRole("alert")).toBeFocused();
           await commit.dispatchEvent("click");
           expect(writes).toBe(1);
           await dialog.getByRole("button", { name: t("uiOverrideSheet.back"), exact: true }).click();

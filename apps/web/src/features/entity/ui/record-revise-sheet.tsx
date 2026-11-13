@@ -160,7 +160,7 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
       subtitle={<><span className={s.kicker}><Building2 size={14} aria-hidden /> {entityName(e)} · {spec.group} · {spec.label}</span>{!spec.empty && t("entityRecord.revise.now", { value: spec.current, date: fmtDate(since) })}</>}
       notice={
         <>
-          <EntityError error={save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "stale_revision" ? t("entityRecord.conflict.alert") : undefined)} />
+          <EntityError focusOnRefusal error={save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "stale_revision" ? t("entityRecord.conflict.alert") : undefined)} />
           {rebased && !save.error && <p className="notice" role="status">{t("entityRecord.conflict.reapplied")}</p>}
         </>
       }
