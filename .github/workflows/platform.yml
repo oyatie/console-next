@@ -261,10 +261,11 @@ jobs:
           node deploy/ci/previous-release.mjs .tmp/bundle/revision.json .tmp/previous-revision.json
           cp .tmp/sbom.json .tmp/bundle/image-sbom.json
           bash deploy/ci/validate.sh .tmp/bundle
-          flux push artifact "oci://${DEPLOY}:shadow" --path=.tmp/bundle \
+          flux push artifact "oci://${DEPLOY}:shadow-${GITHUB_SHA}" --path=.tmp/bundle \
             --source="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" --revision="${GITHUB_SHA}" --output=json > .tmp/artifact.json
           digest="$(jq -er '.digest' .tmp/artifact.json)"
           cosign sign --yes "${DEPLOY}@${digest}"
+          flux tag artifact "oci://${DEPLOY}@${digest}" --tag=shadow
           echo "reference=oci://${DEPLOY}@${digest}" >> "${GITHUB_OUTPUT}"
 
   scan:

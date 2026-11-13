@@ -151,7 +151,7 @@ export function publishEnvironment({proof, environment, predicate, runUrl, direc
   assertPromotion({...proof, currentRevision}, root);
   const immutableTag = `${channel}-${proof.sha}`;
   let artifact = resolve(immutableTag, true);
-  const shadow = resolve('shadow');
+  const shadow = resolve(`shadow-${proof.sha}`);
   const {output, revision} = pull(shadow, 'shadow', 'platform');
   assert.equal(revision.revision, proof.sha, 'PROMOTE_NOT_GREEN: shadow must match the platform SHA');
   const imageRepository = `ghcr.io/${proof.repository.toLowerCase()}/console`;

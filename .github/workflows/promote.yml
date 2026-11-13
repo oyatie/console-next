@@ -59,6 +59,7 @@ jobs:
     if: always() && needs.proof.result == 'success' && (needs.gates.result != 'success' || needs.gates.outputs.result != 'pass')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions: {}
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
         with: {egress-policy: audit}
@@ -90,8 +91,16 @@ jobs:
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false, fetch-depth: 0, ref: dev}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: {persist-credentials: false, fetch-depth: 0, ref: '${{ needs.proof.outputs.sha }}', path: .tmp/candidate}
+      - name: Materialise proven candidate data from dev history
+        id: candidate
+        env:
+          CANDIDATE_SHA: ${{ needs.proof.outputs.sha }}
+        run: |
+          if ! git merge-base --is-ancestor "${CANDIDATE_SHA}" HEAD; then
+            echo '::error::PROMOTE_NOT_DESCENDANT: candidate must be an ancestor of dev'
+            exit 1
+          fi
+          git -c core.hooksPath=/dev/null worktree add --detach .tmp/candidate "${CANDIDATE_SHA}"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version}
       - name: Locked promotion tools and registry login

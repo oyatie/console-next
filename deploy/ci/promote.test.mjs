@@ -354,7 +354,8 @@ async function publishingFixture(options = {}) {
     calls.push([bin, ...args]);
     if (bin === 'buildx') {
       const tag = args[2].split(':').at(-1);
-      const kind = tag === 'shadow' ? 'shadow' : tag === 'production' ? 'current' : 'artifact';
+      const kind = tag === `shadow-${sha}` || tag === 'shadow' ? 'shadow' : tag === 'production' ? 'current' : 'artifact';
+      if (tag === 'shadow' && options.shadowMoved) throw new Error('mutable shadow moved to a newer build');
       if ((options.registryError || options.unrelated404) && kind === 'current') throw Object.assign(new Error('registry unavailable'), {stderr:options.unrelated404 ? '404 route not found' : 'UNAUTHORIZED'});
       if (kind === 'current' && !options.current || kind === 'artifact' && !pushed) {
         throw Object.assign(new Error('absent'), {stderr:options.buildxAbsent ? `ERROR: ${deploy}:${tag}: not found\n` : 'MANIFEST_UNKNOWN'});
@@ -533,6 +534,7 @@ for (const failure of ['signFailure', 'attestFailure']) test(`publisher resumes 
     assert.equal(fixture.calls.some(call => call[1] === 'tag'), false);
     const before = fixture.calls.length;
     options[failure] = false;
+    options.shadowMoved = true;
     const ref = fixture.publish();
     assert.equal(ref, `${fixture.deploy}@${fixture.digests.artifact}`);
     assert.equal(fixture.calls.filter(call => call[1] === 'push').length, 1);
@@ -543,6 +545,15 @@ for (const failure of ['signFailure', 'attestFailure']) test(`publisher resumes 
     assert.ok(retry.slice(signed + 1).some(call => call[1] === 'verify' &&
       call.some(arg => arg.includes('promote.yml')) && call.at(-1) === ref));
     assert.deepEqual(retry.at(-1), ['flux', 'tag', 'artifact', `oci://${ref}`, '--tag=production']);
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+test('publisher resolves only the proven SHA shadow even after the mutable tag moves', async () => {
+  const fixture = await publishingFixture({shadowMoved:true});
+  try {
+    fixture.publish();
+    assert.ok(fixture.calls.some(call => call[0] === 'buildx' && call[3] === `${fixture.deploy}:shadow-${sha}`));
+    assert.equal(fixture.calls.some(call => call.includes(`${fixture.deploy}:shadow`)), false);
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
 });
 
@@ -608,14 +619,55 @@ test('publish workflow executes promotion policy from dev and renders the separa
   const {load} = await import('js-yaml');
   const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
   const checkouts = jobs.publish.steps.filter(step => step.uses?.startsWith('actions/checkout@'));
+  assert.equal(checkouts.length, 1);
   assert.equal(checkouts[0].with.ref, 'dev');
   assert.equal(checkouts[0].with.path, undefined);
-  assert.equal(checkouts[1].with.ref, '${{ needs.proof.outputs.sha }}');
-  assert.equal(checkouts[1].with.path, '.tmp/candidate');
   assert.ok(checkouts.every(step => step.with['persist-credentials'] === false && step.with['fetch-depth'] === 0));
   const script = jobs.publish.steps.find(step => step.with?.script?.includes('publishEnvironment')).with.script;
   assert.match(script, /import\(`\$\{process.env.GITHUB_WORKSPACE\}\/deploy\/ci\/promote.mjs`\)/);
   assert.match(script, /candidateRoot:`\$\{process.env.GITHUB_WORKSPACE\}\/\.tmp\/candidate`/);
+});
+
+for (const candidate of ['ancestor', 'tip', 'unmerged', 'newer', 'unknown']) {
+  test(`candidate data worktree ${['ancestor', 'tip'].includes(candidate) ? 'admits' : 'refuses'} ${candidate}`, async () => {
+    const {load} = await import('js-yaml');
+    const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+    const step = jobs.publish.steps.find(step => step.id === 'candidate');
+    assert.ok(step, 'materialise the candidate without a second checkout action');
+    assert.equal(step.env.CANDIDATE_SHA, '${{ needs.proof.outputs.sha }}');
+    assert.doesNotMatch(step.run, /\$\{\{/);
+    const dir = mkdtempSync(join(tmpdir(), 'promotion-worktree-'));
+    try {
+      execFileSync('git', ['clone', '--quiet', historyRoot, dir]);
+      const create = parents => execFileSync('git', ['-c', 'user.name=ci', '-c', 'user.email=ci@example.invalid',
+        'commit-tree', `${sha}^{tree}`, ...parents, '-m', 'unmerged candidate'], {cwd:dir, encoding:'utf8'}).trim();
+      const selected = {ancestor:previous, tip:sha, unmerged:() => create([]), newer:() => create(['-p', sha]), unknown:'f'.repeat(40)}[candidate];
+      const revision = typeof selected === 'function' ? selected() : selected;
+      const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
+        cwd:dir, encoding:'utf8', env:{...process.env, CANDIDATE_SHA:revision},
+      });
+      const output = join(dir, '.tmp/candidate');
+      if (['ancestor', 'tip'].includes(candidate)) {
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], {cwd:output, encoding:'utf8'}).trim(), revision);
+        assert.equal(spawnSync('git', ['symbolic-ref', '-q', 'HEAD'], {cwd:output}).status, 1);
+      } else {
+        assert.notEqual(result.status, 0);
+        assert.match(result.stdout + result.stderr, /PROMOTE_NOT_DESCENDANT/);
+        assert.equal(existsSync(output), false);
+      }
+    } finally { rmSync(dir, {recursive:true, force:true}); }
+  });
+}
+
+test('platform publishes a SHA shadow and signs its digest before moving the mutable shadow tag', async () => {
+  const {load} = await import('js-yaml');
+  const {jobs} = load(readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8'));
+  const script = jobs.publish.steps.find(step => step.id === 'artifact').run;
+  assert.match(script, /flux push artifact "oci:\/\/\$\{DEPLOY\}:shadow-\$\{GITHUB_SHA\}"/);
+  const sign = script.indexOf('cosign sign --yes "${DEPLOY}@${digest}"');
+  const tag = script.indexOf('flux tag artifact "oci://${DEPLOY}@${digest}" --tag=shadow');
+  assert.ok(sign >= 0 && tag > sign, 'publish and sign the fixed digest before advancing shadow');
 });
 
 test('promotion workflow binds reusable gates, proof, permissions and channel serialization', async () => {
