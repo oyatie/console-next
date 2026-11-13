@@ -153,3 +153,25 @@ async fn the_sole_administrator_asks_a_colleague_after_go_live_with_no_grant(poo
     assert_eq!(status, StatusCode::OK, "{mine}");
     assert_eq!(mine["items"][0]["id"], made["id"]);
 }
+
+/// The workbench reads the owner's todos through its own snapshot query.
+#[cfg(feature = "workspace")]
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn requests_stay_off_the_workbench(pool: PgPool) {
+    let office = office(pool).await;
+    let own = json!({ "text": "개인 메모: 서류 정리" });
+    let (status, own) = office
+        .colleague
+        .call("POST", "/api/v1/me/todos", Some(own))
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{own}");
+    let asked = office.ask(&office.colleague).await;
+    let (status, bench) = office
+        .colleague
+        .call("GET", "/api/v1/me/workbench", None)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{bench}");
+    let todos = bench["todos"].to_string();
+    assert!(todos.contains(own["id"].as_str().unwrap()), "{todos}");
+    assert!(!todos.contains(&asked), "{todos}");
+}
