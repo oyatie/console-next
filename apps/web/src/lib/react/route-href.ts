@@ -16,8 +16,9 @@ export function observeRouteReady(signal: HTMLSpanElement, committedHref: string
     // Idle router state can precede a lazy screen's first render (and its first query).
     const main = document.querySelector("main");
     if (!main || !elementVisible(main)) return;
+    // Component previews intentionally demonstrate loading without holding the containing screen.
     const pending = [main, ...main.querySelectorAll('[aria-busy=true]')].some(element =>
-      element.matches('[aria-busy=true]') && !element.closest('[hidden],[inert],[aria-hidden=true]') && elementVisible(element));
+      element.matches('[aria-busy=true]') && !element.closest('[hidden],[inert],[aria-hidden=true],[data-route-preview]') && elementVisible(element));
     return !pending
       ? readyHref(committedHref, window.location.href) : undefined;
   };
@@ -34,7 +35,7 @@ export function observeRouteReady(signal: HTMLSpanElement, committedHref: string
   };
   const observer = new MutationObserver(update);
   observer.observe(document.body, { childList: true, subtree: true, attributes: true,
-    attributeFilter: ["aria-busy", "aria-hidden", "hidden", "inert", "style", "class"] });
+    attributeFilter: ["aria-busy", "aria-hidden", "hidden", "inert", "style", "class", "data-route-preview"] });
   update();
   return () => { observer.disconnect(); cancelAnimationFrame(frame); };
 }

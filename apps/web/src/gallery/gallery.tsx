@@ -24,7 +24,7 @@ export function Gallery() {
   const [theme, toggle] = useTheme();
   const entry = new URLSearchParams(location.search).get("entry");
   return (
-    <PageMain className="page" id="main">
+    <PageMain className="page" id="main" data-route-preview>
       <PageHead title={tg("title")} sub={tg("hint")} tools={<Button onClick={toggle}>{theme === "dark" ? t("shell.theme.toLight") : t("shell.theme.toDark")}</Button>} />
       <PageHeadingLevel value={2}>{entries.filter(([path]) => !entry || path.endsWith(`/${entry}.gallery.tsx`)).map(([path, { default: Demo }]) => <Demo key={path} />)}</PageHeadingLevel>
     </PageMain>
