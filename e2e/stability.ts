@@ -64,6 +64,7 @@ export function recordShifts() {
   let landed: number[] = [];
   let lastCommand = -Infinity;
   let commandLanded = -Infinity;
+  let writeLanded = -Infinity;
   let commandPending = 0;
   const fetch0 = window.fetch;
   window.fetch = (...args) => {
@@ -71,13 +72,14 @@ export function recordShifts() {
     // Background POSTs (session restore, consent status) are reads, not a result the user asked to move.
     const now = performance.now();
     const read = /^(GET|HEAD)$/i.test(method);
-    const command = !read && (now - lastInput < 500 || now - commandLanded < 500);
+    const command = !read && (now - lastInput < 500 || now - writeLanded < 500);
     // A chained write or refresh dispatched with the command's answer is still work it awaits.
-    const continuation = read && lastCommand > lastInput && (commandPending > 0 || now - commandLanded < 500);
+    const continuation = read && lastCommand > lastInput && now - writeLanded < 500;
     if (command) lastCommand = now;
     if (command || continuation) commandPending++;
     return fetch0(...args).finally(() => {
       landed = [...landed.slice(-20), performance.now()];
+      if (command) writeLanded = performance.now();
       if (command || continuation) {
         commandPending--;
         commandLanded = performance.now();
