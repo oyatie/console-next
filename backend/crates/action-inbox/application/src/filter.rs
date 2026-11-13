@@ -36,7 +36,10 @@ impl InboxFilter {
     pub(crate) fn includes_source(self, source: crate::ActionInboxSource) -> bool {
         use crate::ActionInboxSource as S;
         match self {
-            InboxFilter::Waiting => matches!(source, S::OrgChange | S::EntityCorrections),
+            InboxFilter::Waiting => matches!(
+                source,
+                S::OrgChange | S::EntityCorrections | S::TodoRequested
+            ),
             InboxFilter::Scheduled => source == S::OrgChange,
             InboxFilter::Failures => source == S::HrLifecycle,
             InboxFilter::Notices => source == S::GrantNotice,
@@ -63,6 +66,7 @@ impl InboxFilter {
                     | S::Payroll
                     | S::Governance
                     | S::RegistrationChecks
+                    | S::TodoRequested
             ),
             _ => true,
         }
@@ -290,11 +294,12 @@ mod tests {
             S::SupportAccess,
             S::EntityCorrections,
             S::PrivacyRequests,
+            S::TodoAssigned,
         ];
         for (filter, expected) in [
             (
                 InboxFilter::Waiting,
-                &[S::OrgChange, S::EntityCorrections][..],
+                &[S::OrgChange, S::EntityCorrections, S::TodoRequested][..],
             ),
             (InboxFilter::Scheduled, &[S::OrgChange][..]),
             (InboxFilter::Failures, &[S::HrLifecycle][..]),
