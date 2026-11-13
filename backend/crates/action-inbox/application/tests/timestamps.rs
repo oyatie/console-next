@@ -9,6 +9,7 @@ fn inbox_deadlines_and_submissions_are_fractional_utc_strings() {
     for optional in [Some(at), None] {
         let item = ActionInboxItem {
             age_days: 0,
+            due_basis: None,
             fold_key: "item".into(),
             context: None,
             id: "item".into(),

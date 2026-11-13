@@ -3,7 +3,8 @@ import { readGroup } from "../../../lib/react/query-view";
 import { PlacePath } from "./place-path";
 import { EntityName } from "../../../reference/entity/ui/entity-name";
 import { entityNameText } from "../../../reference/entity/present";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useKeys } from "../../../lib/react/use-keys";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
@@ -111,18 +112,14 @@ export function UnplacedPage() {
   const move = (step: number) => (setG(Math.max(0, Math.min(groups.length - 1, g + step))), setSel(new Set()));
 
   // Keys outside fields (spec section 3): J/K between groups, 1-5 place the picked people at that suggestion.
-  const keys = useRef({ move, place, suggestions });
-  useEffect(() => void (keys.current = { move, place, suggestions }));
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || (e.target as HTMLElement).closest("input, textarea, select, [role=combobox]")) return;
-      if (e.key === "j" || e.key === "k") keys.current.move(e.key === "j" ? 1 : -1);
-      const n = Number(e.key);
-      if (n >= 1 && n <= 5 && keys.current.suggestions[n - 1]) keys.current.place(keys.current.suggestions[n - 1]!.unit.id);
-    };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [keys]);
+  useKeys({
+    "unplaced.next": () => move(1),
+    "unplaced.prev": () => move(-1),
+    "unplaced.place": (_, n) => {
+      const suggestion = suggestions[Number(n) - 1];
+      if (suggestion) place(suggestion.unit.id);
+    },
+  });
 
   const open = new Set(groups.map((x) => x.value));
   const tabDone = [...new Set(placements.filter((d) => d.tab === tab && !open.has(d.value)).map((d) => d.value))].map((value) => {

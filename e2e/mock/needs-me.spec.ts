@@ -34,13 +34,13 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
         const surface = path === "/" ? "home" : path.slice(1);
         await page.screenshot({ path: info.outputPath(`${surface}-arrival-${width}-${theme}.png`), fullPage: true });
         const unknown = state === "failed" || state === "refused";
-        const label = unknown ? "업무함 · 확인 불가" : state === "zero" ? t("shell.needsMe") : t(state === "inexact" ? "shell.needsMe.countMore" : "shell.needsMe.count", { count: state === "inexact" ? 12 : 3 });
+        const label = unknown ? "업무함 · 확인 불가" : state === "zero" ? t("home.inbox.title") : t(state === "inexact" ? "shell.needsMe.countMore" : "shell.needsMe.count", { count: state === "inexact" ? 12 : 3 });
         const header = page.locator("header.top");
         const trigger = header.getByRole("button", { name: label, exact: true });
         await expect(trigger).toBeVisible({ timeout: 20_000 });
         if (unknown || state === "zero") await expect(trigger.locator("[data-count]")).toHaveCount(0);
         else await expect(trigger.locator("[data-count]")).toHaveText(state === "inexact" ? "12+" : "3");
-        await expect(header.getByRole("button", { name: t("shell.jumpLabel"), exact: true })).toBeVisible();
+        await expect(header.getByRole("button", { name: t(width === 1440 ? "shell.jump" : "shell.jumpLabel"), exact: true })).toBeVisible();
         if (width === 390) {
           await expect(header.getByRole("button", { name: t("shell.menu"), exact: true })).toBeVisible();
           await expect(trigger.getByText(t("home.inbox.title"), { exact: true })).toBeHidden();

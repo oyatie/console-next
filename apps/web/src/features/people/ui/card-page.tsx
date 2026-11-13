@@ -11,7 +11,7 @@ import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { usePageActive } from "../../../lib/react/page-active";
 import { freshOnOpen } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
-import { editable } from "../../../ui/long-table/row-keys";
+import { useKeys } from "../../../lib/react/use-keys";
 import { contractsQuery, employeeQuery, endOptionsQuery, eventsQuery, exitCasesQuery } from "../api";
 import { rrnStatusQuery } from "../api/record";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
@@ -128,19 +128,12 @@ function Card({ d }: { d: Detail }) {
     // H: the record's history (change history), where every dated fact and correction of its sections is listed.
     keys.current.history = () => onTab("ledger");
   });
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || editable(e.target) || document.querySelector("[role=dialog]")) return;
-      if (/^[1-8]$/.test(e.key)) keys.current.jump(Number(e.key));
-      else if (e.key === "j") keys.current.next?.();
-      else if (e.key === "k") keys.current.prev?.();
-      else if (e.key === "h") keys.current.history();
-      else return;
-      e.preventDefault();
-    };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
-  }, []);
+  useKeys({
+    "card.section": (_, n) => keys.current.jump(Number(n)),
+    "card.next": () => keys.current.next?.(),
+    "card.prev": () => keys.current.prev?.(),
+    "card.history": () => keys.current.history(),
+  });
   // The print view replaces the whole card, so its code load needs the page-shaped wait.
   if (act === "print") return <Suspense fallback={<CardSkeleton />}><CardPrint c={c} onClose={close} /></Suspense>;
   const verbs = c.editable && d.employee.status !== "EXITED" ? verbStates(d, c.events.data?.items ?? []) : [];

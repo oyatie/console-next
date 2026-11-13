@@ -40,6 +40,7 @@ pub(crate) async fn page(
                 .and_then(|key| policies.get(&key).copied().flatten())
                 .and_then(|policy| policy.for_stored_steps(true));
             Ok(ActionInboxSourceItem {
+                due_basis: None,
                 context: Some(serde_json::json!({
                     "request": { "kind": request.kind, "reason_code": request.reason_code },
                     "decision": DecisionEvidence { version: request.version, policy }

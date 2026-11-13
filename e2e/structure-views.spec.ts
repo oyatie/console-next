@@ -25,7 +25,7 @@ test("jump, outline, paste, list and export work on one structure", { tag: "@org
 
   // ⌘K: find the 사업장 by name, Enter lands on the chart with it selected (no single-key badges in the palette).
   await go(admin, "/");
-  await expect(admin.getByRole("button", { name: bootKo["shell.jumpLabel"], exact: true })).toBeVisible();
+  await expect(admin.getByRole("button", { name: bootKo["shell.jump"], exact: true })).toBeVisible();
   await admin.keyboard.press("Control+k");
   const palette = admin.getByRole("dialog", { name: bootKo["shell.jumpLabel"] });
   await expect(palette.getByRole("searchbox")).toHaveAttribute("placeholder", bootKo["shell.jump"]);

@@ -148,6 +148,8 @@ pub(crate) async fn page(
             title: row.name,
             site: row.site,
             who: None,
+            due_basis: (kind == "hr_exit_settle" && row.due.is_some())
+                .then_some(console_action_inbox_application::DueBasis::Statutory),
             due: row.due,
             submitted: None,
             links: vec![

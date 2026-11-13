@@ -15358,6 +15358,11 @@ export interface components {
             site?: string;
             who?: string;
             due?: components["schemas"]["Timestamp"];
+            /**
+             * @description Present when the due date is a legal deadline read from the statutory register, such as a final-pay settlement, a social insurance filing or the answer to a privacy rights request. Absent for every other due date.
+             * @enum {string}
+             */
+            due_basis?: "statutory";
             /** @enum {string} */
             dueTone: "danger" | "warn" | "neutral";
             submitted?: components["schemas"]["Timestamp"];
