@@ -77,6 +77,7 @@ export const koImport: Record<keyof typeof enImport, string> = {
   "import.target.night_hours": "야간 근무시간",
   "import.target.holiday_hours": "휴일 근무시간",
   "import.target.company": "법인",
+  "import.target.company_brn": "사업자등록번호",
   "import.target.phone": "휴대전화",
   "import.target.sex": "성별",
   "import.target.contract_end_date": "계약종료일",

@@ -69,6 +69,7 @@ export const enImport = {
   "import.target.night_hours": "Night hours",
   "import.target.holiday_hours": "Holiday hours",
   "import.target.company": "Legal entity",
+  "import.target.company_brn": "Business registration number",
   "import.target.phone": "Mobile phone",
   "import.target.sex": "Sex",
   "import.target.contract_end_date": "Contract end date",

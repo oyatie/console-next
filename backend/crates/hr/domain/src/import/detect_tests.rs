@@ -47,6 +47,26 @@ fn none() -> BTreeMap<String, Option<String>> {
 }
 
 #[test]
+fn exact_column_key_wins_over_remembered_mapping() {
+    let memory = BTreeMap::from([(memory_key("name"), Some("position".into()))]);
+    assert_eq!(
+        target_of("name", &memory),
+        (Some("name"), MappingSource::Catalog)
+    );
+}
+
+#[test]
+fn every_stable_column_key_is_a_header_even_without_a_synonym() {
+    for field in EMPLOYEE_IMPORT_FIELD_DEFINITIONS.iter() {
+        assert_eq!(target_of(field.target, &none()).0, Some(field.target));
+        assert_eq!(
+            crate::import::classification::employee_import_target_for_header(field.target),
+            Some(field.target)
+        );
+    }
+}
+
+#[test]
 fn a_header_below_title_rows_and_in_english_is_found() {
     let s = sheet(
         "명부",

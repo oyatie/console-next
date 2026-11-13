@@ -47,19 +47,21 @@ pub fn employee_import_column_classification(header: &str, target: Option<&str>)
 
 pub fn employee_import_field_for_header(
     header: &str,
-) -> Option<&'static EmployeeImportFieldDefinition> {
+) -> Option<&'static EmployeeImportFieldDefinition<'static>> {
     let key = import_header_match_key(header);
-    EMPLOYEE_IMPORT_FIELD_DEFINITIONS.iter().find(|field| {
-        field
-            .aliases
-            .iter()
-            .any(|alias| import_header_match_key(alias) == key)
+    employee_import_field_for_target(header).or_else(|| {
+        EMPLOYEE_IMPORT_FIELD_DEFINITIONS.iter().find(|field| {
+            field
+                .aliases
+                .iter()
+                .any(|alias| import_header_match_key(alias) == key)
+        })
     })
 }
 
 pub fn employee_import_field_for_target(
     target: &str,
-) -> Option<&'static EmployeeImportFieldDefinition> {
+) -> Option<&'static EmployeeImportFieldDefinition<'static>> {
     EMPLOYEE_IMPORT_FIELD_DEFINITIONS
         .iter()
         .find(|field| field.target == target)
@@ -112,7 +114,7 @@ pub fn is_restricted_employee_import_header(header: &str) -> bool {
 
 pub fn target_header_aliases(target: &str) -> &'static [&'static str] {
     employee_import_field_for_target(target)
-        .map(|field| field.aliases)
+        .map(|field| field.aliases.as_slice())
         .unwrap_or(&[])
 }
 
