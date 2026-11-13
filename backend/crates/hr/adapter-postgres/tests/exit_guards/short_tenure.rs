@@ -224,11 +224,15 @@ async fn settlement_uses_linked_employment_instead_of_latest_employee_hire(pool:
         .await
         .unwrap();
     tx.commit().await.unwrap();
-    let result = w.hr.draft_exit_approval(w.hr(w.hr_one), id,
-        serde_json::from_value(json!({"submit":false,"settlement_input":{
-            "average_wage_period_start":"2026-10-13","average_wage_period_end":"2026-10-13",
-            "average_wage_calendar_days":0,"average_wage_total_won":0,"monthly_ordinary_wage_won":0
-        }})).unwrap()).await.unwrap();
+    let result =
+        w.hr.draft_exit_approval(
+            w.hr(w.hr_one),
+            id,
+            serde_json::from_value(json!({"submit":false,"settlement_input":wage_input()}))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
     let package = result.settlement_package.unwrap();
     assert_eq!(package.service_days, Some(1));
     let mut tx = pool.begin().await.unwrap();
@@ -258,11 +262,8 @@ async fn settlement_uses_linked_employment_instead_of_latest_employee_hire(pool:
     .await
     .unwrap();
     assert_eq!(context.hire_date.as_deref(), Some("2023-01-01"));
-    assert_eq!(package.severance_pay_won, Some(0));
-    assert_eq!(
-        package.statutory_basis["severance_eligibility"]["reason"],
-        "UNDER_SERVICE_YEARS"
-    );
+    assert_eq!(package.severance_pay_won, Some(9_438));
+    assert!(package.statutory_basis["severance_eligibility"].is_null());
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

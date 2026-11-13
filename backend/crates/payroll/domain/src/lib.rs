@@ -12,6 +12,8 @@ mod statutory_component;
 mod statutory_rates;
 pub use premium_bands::{health_premium_band_on, health_premium_bands};
 pub use statutory_rates::{reference_value, statutory_contribution_rates};
+mod severance;
+pub use severance::SeverancePayInput;
 pub mod severance_window;
 
 pub use minimum_wage::*;
@@ -262,30 +264,6 @@ pub struct PayrollDraft {
     pub lines: Vec<DeductionLine>,
     pub total_employee_deductions_won: i64,
     pub net_pay_won: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SeverancePayInput {
-    pub hire_date: Date,
-    pub exit_date: Date,
-    pub average_wage_period_start: Date,
-    pub average_wage_period_end: Date,
-    pub average_wage_calendar_days: i64,
-    pub average_wage_total_won: i64,
-    /// 1-day ordinary wage in won.
-    ///
-    /// MANDATORY (not `Option`) by design: Labor Standards Act Enforcement Decree
-    /// Article 2(2) requires
-    /// severance to use the HIGHER of the average wage and the ordinary wage, so
-    /// every caller must supply this. A plain field makes omission a *compile*
-    /// error rather than a silent average-wage-only fall back — which is exactly
-    /// the under-calculation bug that hurts the absence→exit population whose
-    /// depressed 3-month window yields an artificially low average wage. The
-    /// caller is responsible for deriving this daily figure from the monthly
-    /// ordinary wage (e.g. via the 209h standard-hours rule); the kernel keeps
-    /// that policy out.
-    /// A payable draft rejects a non-positive value in `build_severance_pay_draft`.
-    pub ordinary_daily_wage_won: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1543,8 +1521,13 @@ pub fn build_severance_pay_draft(
     input: SeverancePayInput,
     minimum_service_years: i32,
 ) -> Result<Option<SeverancePayDraft>, KernelError> {
+    if input.exit_date < input.hire_date {
+        return Err(KernelError::validation(
+            "exit date must be on or after hire date",
+        ));
+    }
     if !severance_window::completes_service_years(
-        input.hire_date,
+        input.service_start_date,
         input.exit_date,
         minimum_service_years,
     )? {
@@ -2542,6 +2525,7 @@ mod tests {
         let draft = build_severance_pay_draft(
             SeverancePayInput {
                 hire_date: date!(2024 - 01 - 01),
+                service_start_date: date!(2024 - 01 - 01),
                 exit_date: date!(2026 - 06 - 30),
                 average_wage_period_start: date!(2026 - 04 - 01),
                 average_wage_period_end: date!(2026 - 06 - 30),
@@ -2572,6 +2556,7 @@ mod tests {
         let draft = build_severance_pay_draft(
             SeverancePayInput {
                 hire_date: date!(2024 - 01 - 01),
+                service_start_date: date!(2024 - 01 - 01),
                 exit_date: date!(2026 - 06 - 30),
                 average_wage_period_start: date!(2026 - 04 - 01),
                 average_wage_period_end: date!(2026 - 06 - 30),
@@ -2604,6 +2589,7 @@ mod tests {
         let short_service = build_severance_pay_draft(
             SeverancePayInput {
                 hire_date: date!(2026 - 01 - 01),
+                service_start_date: date!(2026 - 01 - 01),
                 exit_date: date!(2026 - 06 - 30),
                 average_wage_period_start: date!(2026 - 04 - 01),
                 average_wage_period_end: date!(2026 - 06 - 30),
@@ -2618,6 +2604,7 @@ mod tests {
         let missing_wage = build_severance_pay_draft(
             SeverancePayInput {
                 hire_date: date!(2024 - 01 - 01),
+                service_start_date: date!(2024 - 01 - 01),
                 exit_date: date!(2026 - 06 - 30),
                 average_wage_period_start: date!(2026 - 04 - 01),
                 average_wage_period_end: date!(2026 - 06 - 30),
@@ -2643,6 +2630,7 @@ mod tests {
             let result = build_severance_pay_draft(
                 SeverancePayInput {
                     hire_date,
+                    service_start_date: hire_date,
                     exit_date,
                     average_wage_period_start: exit_date,
                     average_wage_period_end: exit_date,
@@ -2663,6 +2651,7 @@ mod tests {
             build_severance_pay_draft(
                 SeverancePayInput {
                     hire_date: day,
+                    service_start_date: day,
                     exit_date: day,
                     average_wage_period_start: day,
                     average_wage_period_end: day,
@@ -2684,6 +2673,7 @@ mod tests {
         let missing_ordinary = build_severance_pay_draft(
             SeverancePayInput {
                 hire_date: date!(2024 - 01 - 01),
+                service_start_date: date!(2024 - 01 - 01),
                 exit_date: date!(2026 - 06 - 30),
                 average_wage_period_start: date!(2026 - 04 - 01),
                 average_wage_period_end: date!(2026 - 06 - 30),

@@ -228,7 +228,10 @@ pub fn build_settlement_calculation(
     minimum_service_years: Option<i32>,
 ) -> Result<SettlementCalculation, HrError> {
     let mut missing = Vec::new();
-    let Some(hire_date_text) = context.hire_date.as_deref() else {
+    let (Some(hire_date_text), Some(service_start_text)) = (
+        context.hire_date.as_deref(),
+        context.service_start_date.as_deref(),
+    ) else {
         missing.push("hire_date".to_owned());
         missing.extend(missing_wage_source_fields());
         return Ok((
@@ -247,6 +250,7 @@ pub fn build_settlement_calculation(
         ));
     };
     let hire_date = parse_yyyy_mm_dd(hire_date_text)?;
+    let service_start_date = parse_yyyy_mm_dd(service_start_text)?;
     let exit_date = parse_yyyy_mm_dd(&context.effective_exit_date)?;
     let service_days = exit_date
         .to_julian_day()
@@ -255,7 +259,9 @@ pub fn build_settlement_calculation(
 
     if let Some(years) = minimum_service_years {
         if !console_payroll_domain::severance_window::completes_service_years(
-            hire_date, exit_date, years,
+            service_start_date,
+            exit_date,
+            years,
         )? {
             return Ok((
                 "READY_FOR_APPROVAL",
@@ -329,6 +335,7 @@ pub fn build_settlement_calculation(
     let draft = build_severance_pay_draft(
         SeverancePayInput {
             hire_date,
+            service_start_date,
             exit_date,
             average_wage_period_start: period_start,
             average_wage_period_end: period_end,
