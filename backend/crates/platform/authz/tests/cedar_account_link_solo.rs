@@ -7,6 +7,7 @@ const SOLO: Facts = Facts {
     unbound: true,
     holds_permission: true,
     other_holder: false,
+    revoked: false,
 };
 
 #[test]
@@ -31,6 +32,10 @@ fn only_an_unbound_solo_operator_can_receive_the_offer() {
         },
         Facts {
             other_holder: true,
+            ..SOLO
+        },
+        Facts {
+            revoked: true,
             ..SOLO
         },
     ] {

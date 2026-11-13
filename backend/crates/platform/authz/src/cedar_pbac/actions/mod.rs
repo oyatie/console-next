@@ -54,6 +54,7 @@ pub mod employee_pii;
 pub mod employee_restricted_record;
 // --- lane: UX-R2 GUARDS ---
 pub mod account_link;
+pub mod account_link_review;
 pub mod account_link_solo;
 pub mod own_record;
 // --- lane: CX-upstream-ports ---

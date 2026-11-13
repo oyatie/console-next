@@ -61,6 +61,16 @@ pub(crate) async fn facts_in_tx(
         unbound: account.linked_employee_id().is_none(),
         holds_permission,
         other_holder: false,
+        revoked: sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM account_link_self_reviews r \
+            JOIN account_link_self_attestations a ON a.org_id=r.org_id AND a.id=r.attestation_id \
+            WHERE a.org_id=$1 AND a.account_id=$2 AND r.decision='REVOKE')",
+        )
+        .bind(org.as_uuid())
+        .bind(actor.as_uuid())
+        .fetch_one(tx.as_mut())
+        .await
+        .map_err(|error| KernelError::internal(error.to_string()))?,
     };
     if !decide(org, actor, facts)? {
         return Ok(facts);
