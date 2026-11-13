@@ -10,6 +10,7 @@ import { useCommand } from "../../../lib/react/command";
 import { todayKst } from "../../../lib/pure/today";
 import { draftExitApproval } from "../api";
 import type { Effect } from "../domain/exits";
+import { ineligibleSeverance, settlementOutcome } from "../domain/severance";
 import { SettlementFigures } from "./exit-facts";
 import { NoticePayFact } from "./exit-notice-pay";
 import { StepFrame, type SheetSpec } from "./exit-foot";
@@ -44,6 +45,8 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
   onDone: (message: string, reference?: string) => void;
 }) {
   const p = c.settlement_package;
+  const ineligible = ineligibleSeverance(p);
+  const outcome = settlementOutcome(p);
   const stored: Fields = {
     start: p?.average_wage_period_start ?? "",
     end: p?.average_wage_period_end ?? "",
@@ -65,7 +68,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
   };
   // A saved draft keeps the form open: the refreshed package brings its figures here for review.
   const save = useCommand({
-    run: () => draftExitApproval(c.id, { submit: false, settlement_input: input }),
+    run: () => draftExitApproval(c.id, { submit: false, ...(ineligible ? {} : { settlement_input: input }) }),
     invalidates: EXIT_INVALIDATES,
     onSuccess: onSaved,
     announce: () => t("exit.settlement.drafted", { name }),
@@ -76,15 +79,15 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
     run: () => draftExitApproval(c.id, { submit: true }),
     onSuccess: () => onDone(t("exit.settlement.submitted", { name }), c.id),
   });
-  const same = KEYS.every((k) => f[k] === stored[k]);
-  const computed = p && p.severance_pay_won != null && p.missing_source_fields.length === 0;
+  const same = Boolean(ineligible) || KEYS.every((k) => f[k] === stored[k]);
+  const computed = p && (ineligible || ((outcome === undefined || outcome === "ELIGIBLE") && p.severance_pay_won != null)) && p.missing_source_fields.length === 0;
   const why =
     !computed ? t("exit.settlement.why.notComputed")
     : !same ? t("exit.settlement.why.changed")
     : c.exit_event_state === "SCHEDULED" ? t("exit.settlement.why.scheduled", { date: fmtDate(retirementDate(c.effective_exit_date)) })
     : c.exit_event_state === "APPLY_FAILED" ? t("exit.settlement.why.failed")
     : null;
-  const empty = KEYS.filter((k) => !f[k]);
+  const empty = ineligible ? [] : KEYS.filter((k) => !f[k]);
   // The server's missing-source list marks a field only once a draft was saved with figures: on a fresh form
   // every field is empty and nothing has been tried, so nothing is shown as wrong yet.
   const saved = KEYS.some((k) => stored[k]);
@@ -109,7 +112,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
       stale={stale}
       follow={follow}
       employeeId={c.employee_id}
-      consequence={t("exit.settlement.consequence", { name })}
+      consequence={t(ineligible ? "exit.settlement.notEligible.consequence" : "exit.settlement.consequence", { name })}
       missing={tried ? empty.length : 0}
       aside={aside}
       action={{ kind: "settlement", mode: "request", count: 1 }}
@@ -124,7 +127,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
       }}
 
     >
-      <fieldset className={s.group} disabled={locked}>
+      {!ineligible && <fieldset className={s.group} disabled={locked}>
         <legend className={s.groupTitle}>{t("exit.settlement.period")}</legend>
         <div className={s.pair}>
           {date("start", t("exit.settlement.periodStart"))}
@@ -137,7 +140,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
           {amount("total", t("exit.settlement.totalWage"))}
           {amount("ordinary", t("exit.settlement.ordinaryWage"))}
         </div>
-      </fieldset>
+      </fieldset>}
       {p && same && <SettlementFigures pkg={p} />}
       {c.notice_pay && <NoticePayFact pay={c.notice_pay} disposition={c.notice_disposition} />}
       <CommandError error={save.error} />

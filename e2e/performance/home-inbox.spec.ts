@@ -53,6 +53,16 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
       expect(body.unavailable).toEqual([]);
       expect(body.items.length).toBeGreaterThan(0);
       expect(body.items.some(item => item.id === `period_unlock:${review}`)).toBe(true);
+      if (run === 1) {
+        expect(body.next_cursor, "2,000 people require a continuation").not.toBeNull();
+        const continuation = await api(`/me/action-inbox?filter=turn&limit=50&cursor=${encodeURIComponent(body.next_cursor!)}`);
+        expect(continuation.status()).toBe(200);
+        const next = await continuation.json() as components["schemas"]["ActionInboxResponse"];
+        expect(next.unavailable).toEqual([]);
+        const firstIds = new Set(body.items.map(item => item.id));
+        expect(next.items.length).toBeGreaterThan(0);
+        expect(next.items.every(item => !firstIds.has(item.id))).toBe(true);
+      }
       await expect(admin.getByRole("region", { name: "업무함", exact: true }).locator("[data-id]").first()).toBeVisible();
       await admin.waitForFunction(() => performance.getEntriesByName("home:first-rows").length > 0);
       const timing = await admin.evaluate(() => {
