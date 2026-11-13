@@ -203,7 +203,7 @@ impl StatutoryRegister {
             })
     }
 
-    /// The `insurer` 상실 code `code` in force on `on`.
+    /// The `insurer` loss code `code` in force on `on`.
     pub fn loss_code(
         &self,
         insurer: Insurer,
@@ -219,7 +219,7 @@ impl StatutoryRegister {
             })
     }
 
-    /// Every `insurer` 상실 code in force on `on`, for a picker.
+    /// Every `insurer` loss code in force on `on`, for a picker.
     pub fn loss_codes_on(
         &self,
         insurer: Insurer,

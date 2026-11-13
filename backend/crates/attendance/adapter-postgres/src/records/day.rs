@@ -1,4 +1,4 @@
-//! One person-day evaluated: plan from the 근무 일정, the current entry, the
+//! One person-day evaluated: plan from the work schedule, the current entry, the
 //! recognition and the marks. Every read and the save preview share it.
 
 use console_attendance_application::records_read::{

@@ -1,5 +1,6 @@
-//! Korean identifiers as typed or pasted: 사업자등록번호, 종사업장 일련번호,
-//! 법인등록번호, 사업장관리번호, phone (E.164) and e-mail. Invariant: a value
+//! Korean identifiers as typed or pasted: business registration number,
+//! sub-workplace serial number, corporate registration number, workplace
+//! management number, phone (E.164) and e-mail. Invariant: a value
 //! that parses is canonical: its stored and display forms parse back to it.
 #![no_main]
 

@@ -1,6 +1,6 @@
 //! [`super::korean_message`] exact messages, part: Platform tenant admin, period locks and exit cases.
 
-/// Exact English message → Korean (합니다체).
+/// Exact English message → Korean (formal polite style).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
     // Platform tenant admin code reissue
     ("tenant was not found", "테넌트를 찾을 수 없습니다."),
@@ -28,6 +28,10 @@ pub(super) const MESSAGES: &[(&str, &str)] = &[
         "사유는 1000자 이하여야 합니다.",
     ),
     // Exit guard refusals
+    (
+        "No usable severance service rule covers the exit date. Request a statutory register review.",
+        "퇴직일에 적용할 퇴직금 근속 기준을 확인할 수 없습니다. 법정 기준 대장 검토를 요청하십시오.",
+    ),
     (
         "dismissal is blocked during a protected leave period",
         "해고 보호기간에는 해고할 수 없습니다.",

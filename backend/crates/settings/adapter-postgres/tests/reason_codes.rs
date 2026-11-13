@@ -1,4 +1,4 @@
-//! The BW-07 catalog as the runtime role (`console_rt`, RLS armed): 기타
+//! The BW-07 catalog as the runtime role (`console_rt`, RLS armed): "Other"
 //! without a note and an inactive code are refused (422), a tenant code joins
 //! its domain's catalog before `OTHER`, and codes are tenant-isolated.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]

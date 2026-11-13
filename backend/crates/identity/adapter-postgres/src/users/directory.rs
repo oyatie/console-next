@@ -59,7 +59,7 @@ impl PgOrgStore {
             if let Some(search) = &search {
                 // Display name, the employee number of the linked employee
                 // record (0076 explicit link; same tenant by FK and RLS), or
-                // any 아이디 the account holds or held (#33: an old one stays
+                // any sign-in ID the account holds or held (#33: an old one stays
                 // a searchable alias for good).
                 builder
                     .push(" AND (LOWER(u.display_name) LIKE '%' || ")

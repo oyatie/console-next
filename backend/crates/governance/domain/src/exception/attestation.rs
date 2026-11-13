@@ -13,15 +13,15 @@ pub struct AttestationDetails {
     pub evidence_ref: Option<String>,
     /// Delivery or return method code (catalogued by BW-07).
     pub method_code: Option<String>,
-    /// Statutory exception code (근퇴법 §9② IRP).
+    /// Statutory exception code (Employee Retirement Benefit Security Act §9② IRP).
     pub detail_code: Option<String>,
-    /// Agreed new due date (§36 단서 / 근퇴법 §9① 단서).
+    /// Agreed new due date (§36 proviso / Employee Retirement Benefit Security Act §9① proviso).
     pub new_due_date: Option<Date>,
     /// Paid amount in KRW.
     pub amount_krw: Option<i64>,
     /// Payment or filing reference.
     pub reference: Option<String>,
-    /// 접수번호 per insurer.
+    /// Filing receipt number per insurer.
     pub receipt_numbers: Vec<String>,
     /// Filer identity (e.g. the agent's office) when no number or receipt exists.
     pub filer: Option<String>,
@@ -38,7 +38,7 @@ pub struct Attestation {
 /// Outcome of a valid attestation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AttestationCheck {
-    /// 상실신고 완료 attested without a 접수번호.
+    /// Loss report completion attested without a filing receipt number.
     pub review_flag: bool,
 }
 

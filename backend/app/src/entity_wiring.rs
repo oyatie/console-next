@@ -1,4 +1,4 @@
-//! Composition for the 법인 · 사업장 (`console-entity-rest`) and setup-phase
+//! Composition for the legal entity · workplace (`console-entity-rest`) and setup-phase
 //! (`console-onboarding-rest`) faces, kept out of `lib.rs` (R1) so the
 //! router merge there is one line.
 //!
@@ -108,7 +108,7 @@ impl OrgUnitSetupWritePort for CanonicalOrgUnitSetupPort {
     }
 }
 
-/// The canonical OrgUnit seam, for the lifecycle tick's 사업장 close step (UX-R2 ENDS).
+/// The canonical OrgUnit seam, for the lifecycle tick's workplace close step (UX-R2 ENDS).
 pub(crate) fn org_unit_port() -> Arc<dyn OrgUnitSetupWritePort> {
     Arc::new(CanonicalOrgUnitSetupPort)
 }

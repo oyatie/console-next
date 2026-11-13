@@ -1,5 +1,5 @@
 //! EMP-MODEL person facts on the legacy `employees` head (parity E3, E4):
-//! 생년월일, 업무용 이메일 and 신분증명 종류. `employees` belongs to
+//! date of birth, work email and ID document type. `employees` belongs to
 //! `ObjectKey::Employment`, so its DML lives in this crate; the HR adapter
 //! validates and authorizes, then calls this inside its own transaction.
 

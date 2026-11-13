@@ -16,9 +16,10 @@ macro_rules! import2 { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     ImportSheetMaxGridCells => "import.sheet.max_grid_cells" = D::int(Count, Some(1_000), Some(50_000_000), 5_000_000, Higher).governed(Governance::PlatformOnly);
     // Most non-empty cells in one workbook (422 workbook_too_many_cells).
     ImportWorkbookMaxCells => "import.workbook.max_cells" = D::int(Count, Some(1_000), Some(10_000_000), 2_000_000, Higher).governed(Governance::PlatformOnly);
-    // A row without 사번: numbered by the tenant rule (previewed) or left 「사번 미부여」 in the queue.
+    // A row without an employee number: numbered by the tenant rule (previewed) or left
+    // "employee number not assigned" in the queue.
     ImportEmployeeNumberUnnumbered => "import.employee_number.unnumbered" = D::code(UNNUMBERED_MODES, "assign_by_rule", Higher);
-    // Days a never-applied run keeps its sealed 주민등록번호 rows.
+    // Days a never-applied run keeps its sealed resident registration number rows.
     ImportStagedIdentityTtlDays => "import.staged_identity.ttl_days" = D::int(Days, Some(1), Some(30), 7, Higher);
     ImportRollbackWindowDays => "import.rollback.window_days" = D::int(Days, Some(1), Some(30), 14, Higher);
 ] $($rest)* } }; }

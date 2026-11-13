@@ -1,7 +1,7 @@
 //! What a grant line does NOT reach over a scope narrower than the tenant
 //! (AX-5), as stable codes the screens word: every HR door decides per person
 //! over the grant set, and these doors stay whole-tenant (a holder gets the
-//! typed `scope_tenant_wide_only`). A 전체 grant has no caveat.
+//! typed `scope_tenant_wide_only`). A tenant-wide grant has no caveat.
 
 use console_platform_authz::access::{Domain, Level, NodeKind};
 
@@ -12,15 +12,17 @@ pub fn caveats(domain: Domain, level: Level, kind: NodeKind) -> Vec<&'static str
         return Vec::new();
     }
     match (domain, level) {
-        // 명부·인사카드·이력은 이 범위 안 사람만.
+        // Register, HR record cards and history: only people inside this scope.
         (Domain::HrBasic, Level::View) => vec!["scope_people"],
-        // 등록은 이 범위 안으로만; 명부 가져오기, 사번 규칙·일괄 변경, 일괄
-        // 정정, 동일인 병합, 변경 묶음은 전체 권한만.
+        // Registration only into this scope; register import, employee number rules and
+        // bulk changes, bulk correction, same-person merge and change bundles: tenant-wide
+        // access only.
         (Domain::HrBasic, Level::Edit) => vec!["scope_register", "tenant_wide_hr_basic"],
         (Domain::HrBasic, Level::Export) => vec!["scope_export"],
-        // 여러 명 한꺼번에 발령하기는 전체 권한만.
+        // Issuing appointments to several people at once: tenant-wide access only.
         (Domain::Appointment, Level::Edit) => vec!["scope_people", "tenant_wide_bulk_appointment"],
-        // 퇴직 보고·인사 확인은 범위 안 사람; 정산·종결은 아직 지점 기준.
+        // Exit report and HR confirmation: people in scope; settlement and closing are
+        // still by branch.
         (Domain::Exit, Level::Edit) => vec!["scope_people", "exit_settlement_branch"],
         _ => Vec::new(),
     }

@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! UX-R2 ENDS over HTTP: the 사업장 close job is mounted behind the request
+//! UX-R2 ENDS over HTTP: the workplace close job is mounted behind the request
 //! context and needs BOTH `legal_entity_manage` (Cedar) and the HR manage
 //! door — either missing is 403 with nothing written; the ops account passes
 //! both and meets the adapter's own refusals on the wire (404, the
@@ -74,7 +74,7 @@ async fn the_close_job_needs_both_doors_and_refuses_on_the_wire(pool: PgPool) {
     );
     assert_eq!(written(&pool).await, (0, 0));
 
-    // The ops account passes both doors: an unknown 사업장 is 404, never a 500.
+    // The ops account passes both doors: an unknown workplace is 404, never a 500.
     let (status, body) = ops.call("POST", &path, Some(plan.clone())).await;
     assert_eq!(
         (status, code(&body)),
@@ -90,7 +90,7 @@ async fn the_close_job_needs_both_doors_and_refuses_on_the_wire(pool: PgPool) {
     // A write without an Idempotency-Key is refused before anything runs.
     let (status, body) = ops.send("POST", &path, Some(plan), false).await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
-    // 전적 is not a value the wire takes silently: an unknown action is a 4xx.
+    // Inter-company transfer is not a value the wire takes silently: an unknown action is a 4xx.
     let bad = json!({ "closed_on": "2099-01-01", "people": [{ "employee_id": Uuid::new_v4(), "action": "SOMETHING" }] });
     let (status, _) = ops.call("POST", &path, Some(bad)).await;
     assert!(status.is_client_error());

@@ -1070,7 +1070,7 @@ fn normalize_scope_ref(
         // Tenant-/org-wide rows address everyone; a stored ref would be
         // decorative and would desync from the visibility predicate.
         ScopeType::Tenant | ScopeType::Org => Ok(None),
-        // DEPARTMENT audiences are branch ids (the ontology maps 조직/부서 to
+        // DEPARTMENT audiences are branch ids (the ontology maps organization/department to
         // `branches`); anything that does not parse as a uuid could never
         // match a caller's BranchScope and would create an unreachable row.
         ScopeType::Department => {
@@ -1506,7 +1506,7 @@ fn audience_branch_binds(principal: &Principal) -> (bool, Vec<String>) {
 ///   (`org_isolation` on `app.current_org`) pins the tenant; only the
 ///   notice-manage tier can create these rows.
 /// - `DEPARTMENT`: `scope_ref` must be one of the caller's branch ids
-///   (the ontology maps 조직/부서 to `branches`; membership authority is the
+///   (the ontology maps organization/department to `branches`; membership authority is the
 ///   kernel `BranchScope`, `All` = org-wide rollup).
 /// - `TEAM`: `scope_ref` must equal the caller's live `users.team` value.
 /// - `PERSONAL`: the caller's own ref, or rows the caller created.

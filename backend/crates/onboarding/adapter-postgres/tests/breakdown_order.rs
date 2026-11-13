@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! The go-live breakdown and the records under each preview line list 법인 and
-//! their 사업장 in the stored order, never by id or name.
+//! The go-live breakdown and the records under each preview line list legal entities and
+//! their workplaces in the stored order, never by id or name.
 mod common;
 use common::*;
 use console_onboarding_adapter_postgres::{OnboardingActor, PgOnboardingStore};
@@ -32,8 +32,8 @@ async fn site(
 }
 
 /// Stored order runs against name order at both levels; the unpositioned
-/// ones come after the ordered ones. Returns the store, its actor, the 법인 in
-/// stored order and the 사업장 in stored order.
+/// ones come after the ordered ones. Returns the store, its actor, the legal entities in
+/// stored order and the workplaces in stored order.
 async fn seeded(owner: &PgPool) -> (PgOnboardingStore, OnboardingActor, [Uuid; 3], [Uuid; 4]) {
     let (store, a) = tenant(owner).await;
     let org = *a.org.as_uuid();

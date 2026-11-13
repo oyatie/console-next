@@ -1,5 +1,5 @@
 //! Resolution: which value is in force for a key, at a scope, at a moment.
-//! The most specific scope wins (사업장 → legal entity → tenant → code
+//! The most specific scope wins (workplace → legal entity → tenant → code
 //! default); within a scope the latest row with `effective_from <= as_of`
 //! wins. A future row is not in force yet.
 
@@ -12,7 +12,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OverrideRow {
     pub id: Uuid,
-    /// `None` = the tenant-wide row; `Some` = a legal entity or 사업장.
+    /// `None` = the tenant-wide row; `Some` = a legal entity or workplace.
     pub scope_entity_id: Option<Uuid>,
     pub value: SettingValue,
     pub effective_from: Timestamp,

@@ -1,4 +1,4 @@
-//! Whether a 근태 month takes writes. A month close reaching a branch (an
+//! Whether an attendance month takes writes. A month close reaching a branch (an
 //! org-wide close reaches every branch) closes the month there; an approved
 //! payroll period unlock covering the whole month reopens it until the window
 //! re-locks. Period locks are org-wide (BW-15), so a reopen reaches every close

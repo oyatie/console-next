@@ -380,7 +380,8 @@ pub struct CostLedgerEntrySummary {
 pub struct AssetLifecycleCostSummary {
     pub equipment_id: EquipmentId,
     pub equipment_no: String,
-    /// The Korean asset status code ('임대', '예비', '폐기', '대체', '매각').
+    /// The Korean asset status code (the Korean values for rental, spare, disposed,
+    /// replacement and sold).
     pub status: String,
     pub acquisition_cost_won: Option<i64>,
     #[serde(with = "iso_date_opt")]

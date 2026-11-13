@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! regression (governance-02, r2): the only ops holder reset its own only
 //! passkey; the session ended at once and the one-time code hid under the
-//! 「다시 로그인」 dialog, locking the solo tenant out. A credential reset of
+//! "Sign in again" dialog, locking the solo tenant out. A credential reset of
 //! the caller's own account is now 409 `last_sign_in_path` before anything is
 //! checked or written: the passkey stays, no code is minted, no session ends.
 

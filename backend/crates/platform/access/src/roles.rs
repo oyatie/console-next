@@ -1,5 +1,5 @@
-//! Role CRUD. Reads need 권한 관리 조회 over the tenant; writes need 권한 관리
-//! 등록·수정 over the tenant, and a non-ops author must already hold every
+//! Role CRUD. Reads need access management view over the tenant; writes need access
+//! management edit over the tenant, and a non-ops author must already hold every
 //! line they add (GR-7, review S14). Every write is a new version; changing
 //! the lines of a role with live holders is an access change (reason code +
 //! passkey step-up, decision #26).

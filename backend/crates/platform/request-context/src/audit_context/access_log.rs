@@ -1,10 +1,11 @@
-//! 접속기록 rows for 취급자 reads of personal data (INF-02, GOV-PEO-1), shared
+//! Access log rows for personal-data handlers' reads of personal data (INF-02, GOV-PEO-1), shared
 //! by every module that serves such a read.
 //!
-//! 고시 2023-6 §2제3호 lists what a 접속기록 holds: 식별자 (`actor`), 접속일시
-//! (`occurred_at`), 접속지 (the trusted client IP, from the request context),
-//! 처리한 정보주체 (`subject_ids`) and 수행업무 (the action). §8① has no
-//! 정보주체 exclusion, so a 취급자 reading their own record is logged too,
+//! Public notice 2023-6 §2 subparagraph 3 lists what an access log holds: identifier
+//! (`actor`), access date and time (`occurred_at`), access location (the trusted client
+//! IP, from the request context), data subjects processed (`subject_ids`) and task
+//! performed (the action). §8① has no data-subject exclusion, so a personal-data handler
+//! reading their own record is logged too,
 //! marked `self_read` for the review criteria to skip. The caller writes the
 //! event in the read's own transaction (`with_audits`), or before the response
 //! leaves when the read has none, so a read whose record fails returns nothing.
@@ -22,17 +23,17 @@ use crate::current_audit_context;
 /// One read to record.
 #[derive(Debug)]
 pub struct AccessRecord<'a> {
-    /// 수행업무, e.g. `employee.read`.
+    /// Task performed, e.g. `employee.read`.
     pub action: &'static str,
     pub target_type: &'static str,
     /// The read object's id, or `query` for a list.
     pub target_id: String,
-    /// The 정보주체 actually returned, in one id space (employee or user ids).
+    /// The data subjects actually returned, in one id space (employee or user ids).
     /// Counts alone pass no subjects; exports name the exact downloaded set.
     pub subject_ids: &'a [Uuid],
     /// The reader's own id in that same id space, if any (marks `self_read`).
     pub reader_subject: Option<Uuid>,
-    /// Kind-specific fields (export 용도, row counts); ids and codes only.
+    /// Kind-specific fields (export purpose, row counts); ids and codes only.
     pub details: Value,
 }
 
@@ -48,7 +49,7 @@ fn principal_type(principal: &Principal) -> &'static str {
     }
 }
 
-/// Build the 접속기록 event. The trace, 접속지 (IP), user agent and the
+/// Build the access log event. The trace, access location (IP), user agent and the
 /// bearer's session family come from the request context bound by
 /// `with_request_context`; outside an HTTP request they are absent.
 pub fn access_event(

@@ -60,7 +60,7 @@ function Effectuate({ d, title, refetch, onNote }: { d: Detail; title: string; r
         <Button variant={danger ? "danger" : "primary"} aria-describedby="effectuate-consequence" onClick={() => setOpen(true)}>{t("orgChange.effectuate", { title })}</Button>
       </div>
       <Composer open={open} title={t("orgChange.effectuate", { title })} onClose={() => setOpen(false)}
-        pending={effectuate.isPending} tone={danger ? "danger" : "primary"} action={{ kind: "orgChange", mode: "apply" }}
+        error={effectuate.error} pending={effectuate.isPending} tone={danger ? "danger" : "primary"} action={{ kind: "orgChange", mode: "apply" }}
         consequence={consequence("effectuate-confirm")}
         notice={refusalOf(effectuate.error, d.effectiveDate) === "frozen" ? <Frozen d={d} error={effectuate.error} /> : <CommandError error={effectuate.error} />}
         onSubmit={() => effectuate.mutate(undefined)}
@@ -102,7 +102,7 @@ function Archive({ d, s, title, n, refetch, onNote }: { d: Detail; s: Extract<Ap
       {s.open.length > 0 && <p>{t("orgChange.settling.left", { count: s.open.length })}</p>}
       {isBranch && <p className={css.caution}>{t("orgChange.archive.branchUsers")}</p>}
       {s.canArchive && <Composer layout="inline" headingLevel={3} title={t("orgChange.archive", { title })}
-        action={{ kind: "orgDissolve", mode: "complete" }} tone="danger" pending={archive.isPending}
+        action={{ kind: "orgDissolve", mode: "complete" }} tone="danger" error={archive.error} pending={archive.isPending}
         blocked={reasons.length ? { reason: reasons.join(" · ") } : undefined}
         consequence={t("orgChange.archive.consequence", { name })}
         onSubmit={() => archive.mutate(undefined)}

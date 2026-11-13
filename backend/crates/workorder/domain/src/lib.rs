@@ -97,7 +97,7 @@ domain_enum! {
 }
 
 domain_enum! {
-    /// Maintenance classification: what kind of work the order is (유형).
+    /// Maintenance classification: what kind of work the order is (type).
     pub enum MaintenanceType {
         Emergency => "EMERGENCY",
         Corrective => "CORRECTIVE",
@@ -107,7 +107,7 @@ domain_enum! {
 }
 
 domain_enum! {
-    /// Maintenance classification: why the order exists (원인).
+    /// Maintenance classification: why the order exists (cause).
     pub enum MaintenanceCause {
         Breakdown => "BREAKDOWN",
         ReturnPrep => "RETURN_PREP",
@@ -118,7 +118,7 @@ domain_enum! {
 }
 
 domain_enum! {
-    /// Cost-settlement lifecycle (정산 → 전표).
+    /// Cost-settlement lifecycle (settlement → voucher).
     pub enum SettlementStatus {
         Draft => "DRAFT",
         Submitted => "SUBMITTED",
@@ -225,7 +225,7 @@ domain_enum! {
 }
 
 domain_enum! {
-    /// Assignment role for 2-person work: 주/부.
+    /// Assignment role for 2-person work: primary/secondary.
     pub enum AssignmentRole {
         Primary => "PRIMARY",
         Secondary => "SECONDARY",

@@ -43,7 +43,7 @@ async fn lifecycle_mutations_persist_state_and_audit_in_order(pool: PgPool) {
 
         assert_eq!(created.branch_id, seeded.branch_id);
         assert_eq!(created.status, WorkOrderStatus::Received);
-        // The intake submitter cannot set 중요도: CreateWorkOrderCommand carries no
+        // The intake submitter cannot set priority: CreateWorkOrderCommand carries no
         // priority field, so a freshly created work order is server-assigned UNSET
         // and waits for an admin to classify it via update_priority (asserted below).
         assert_eq!(created.priority, PriorityLevel::Unset);

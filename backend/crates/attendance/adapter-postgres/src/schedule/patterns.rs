@@ -1,4 +1,4 @@
-//! 근무 유형: list, add, 사용 중지.
+//! Work patterns: list, add, retire.
 
 use console_attendance_application::CallerScope;
 use console_attendance_application::schedule::{Items, PatternInput, PatternRead, StoredSpec};
@@ -27,7 +27,8 @@ const SELECT: &str = "SELECT p.id, p.name, p.spec, p.weekly_minutes, p.cycle_day
 /// Turns the wire input into a validated spec.
 ///
 /// # Errors
-/// `regime_not_supported_yet` for 탄력 · 선택 · 간주 · 재량, a rule refusal, or
+/// `regime_not_supported_yet` for flexible · selective · deemed · discretionary hours, a
+/// rule refusal, or
 /// `pattern_input_invalid` for a malformed body.
 pub fn parse_input(
     input: &PatternInput,

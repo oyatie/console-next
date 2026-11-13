@@ -10,7 +10,7 @@ use crate::{BULK, perf, transfer, transfers};
 /// regression (e9a50dae): the batch holds a pooled connection and the
 /// tenant's exclusive period lock, and each progress step awaited a SECOND
 /// pooled connection inline. With that connection taken (pool of one), every
-/// step waited out the acquire timeout before the batch went on, so the 발령
+/// step waited out the acquire timeout before the batch went on, so the appointment
 /// held the period lock a timeout per step longer (an 18 s commit stall at
 /// 100 users ran a job to the 45 s transaction timeout). Steps are reported
 /// on their own tasks; the batch never waits for them.

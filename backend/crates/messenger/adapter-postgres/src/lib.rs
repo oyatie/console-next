@@ -694,7 +694,7 @@ impl PgMessengerStore {
                 } else {
                     false
                 };
-                // Acking is a real activity signal (Slack "확인").
+                // Acking is a real activity signal (Slack "Confirm").
                 upsert_presence_tx(tx, org_uuid, actor, command.occurred_at).await?;
                 let ack_count: i64 = sqlx::query_scalar(
                     "SELECT COUNT(*)::BIGINT FROM messenger_message_acks WHERE message_id = $1",
@@ -884,7 +884,7 @@ impl PgMessengerStore {
 
     /// Fetch one branch member's summary for a person pin panel (UI-M2a AC).
     /// Viewing another person records a `person.view` audit event inside the
-    /// read transaction — so the "열람 — 기록 남음" evidence and the read commit
+    /// read transaction — so the "viewing — record kept" evidence and the read commit
     /// or roll back together. A self-view records no audit. A target that is not
     /// a visible active member of the branch yields `not_found` and (for the
     /// audited path) rolls back, so an unauthorized view leaves no audit trail.

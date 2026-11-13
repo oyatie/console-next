@@ -189,11 +189,13 @@ impl MessageAddress {
 
 /// Reply/forward subject prefixes to strip when normalizing for threading.
 /// Lowercased, compared case-insensitively. Includes the common Korean mail
-/// client prefixes (`회신`, `답장`, `전달`) alongside the RFC `re`/`fwd`/`fw`.
+/// client prefixes (Korean "hoesin" and "dapjang" for reply, "jeondal" for
+/// forward) alongside the RFC `re`/`fwd`/`fw`.
 const SUBJECT_PREFIXES: &[&str] = &["re", "fwd", "fw", "회신", "답장", "전달"];
 
 /// Normalize a subject for threading: trim, strip any leading run of
-/// reply/forward prefixes (e.g. `Re:`, `RE[2]:`, `Fwd:`, `회신:`, `답장:`),
+/// reply/forward prefixes (e.g. `Re:`, `RE[2]:`, `Fwd:`, and the Korean
+/// "hoesin:" / "dapjang:"),
 /// and collapse internal whitespace. The result is what `email_threads.
 /// normalized_subject` stores and what the threading fallback groups on.
 ///

@@ -1,6 +1,6 @@
-//! UX-R3 STRUCT org-01 (P0): moving a 부서 to another 사업장 on the day one of
+//! UX-R3 STRUCT org-01 (P0): moving a department to another workplace on the day one of
 //! its people was placed. The preflight runs what submit runs, so it names the
-//! cause and the fix (시행일 the next day); submit refuses with the same code,
+//! cause and the fix (effective date the next day); submit refuses with the same code,
 //! moves nobody and records nothing; the fixed date then goes through.
 
 use http::StatusCode;
@@ -28,7 +28,8 @@ async fn hired_today(t: &Tenant, unit: Uuid, workplace: Uuid) -> Uuid {
 async fn regression_a_move_on_a_placement_day_is_named_before_submit_and_refused_by_it(
     pool: PgPool,
 ) {
-    // regression: r3 org-01 (P0) — 「사전 점검 통과」, then submit 409 {code: conflict} and an orphan draft.
+    // regression: r3 org-01 (P0) — "Preflight passed", then submit 409 {code: conflict}
+    // and an orphan draft.
     let t = tenant(pool).await;
     let [_, pangyo] = t.workplaces;
     let support = t.dept("경영지원본부", t.sites[0]).await;
@@ -76,7 +77,7 @@ async fn regression_a_move_on_a_placement_day_is_named_before_submit_and_refused
         "the 부서 did not move"
     );
 
-    // The fix: 시행일 the next day. It is recorded for that date (policy none).
+    // The fix: effective date the next day. It is recorded for that date (policy none).
     let (status, body) = t
         .ops
         .send(

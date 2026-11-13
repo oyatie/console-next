@@ -1,4 +1,4 @@
-//! Notice-board (게시판 NT- 공지) domain.
+//! Notice-board (bulletin board NT- notices) domain.
 //!
 //! Pure value objects and validation only. Persistence, audit, code
 //! issuance, cross-domain notification fan-out, and REST live in outer
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 const TITLE_MAX: usize = 300;
 const BODY_MAX: usize = 20_000;
 
-/// A notice's 유형 (typed category, matches the DB `category` CHECK).
+/// A notice's type (typed category, matches the DB `category` CHECK).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NoticeCategory {

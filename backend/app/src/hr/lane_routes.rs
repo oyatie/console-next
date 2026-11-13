@@ -1,7 +1,8 @@
 //! The hr-rest routers the B3 lanes ship for INTEG to mount (EMP-MODEL,
-//! LIFE, PEOPLE-A), the B4 IMPORT half (EMP-CREATE 최저임금 hint, BW-19
-//! 재입사) and BW-38 change sets (the EMP-RECORD 인사카드 router is mounted in
-//! routes/people.rs) and the IMPORT-2 identity routes (주민등록번호, 사번 변경,
+//! LIFE, PEOPLE-A), the B4 IMPORT half (EMP-CREATE minimum-wage hint, BW-19
+//! rehire) and BW-38 change sets (the EMP-RECORD HR record card router is mounted in
+//! routes/people.rs) and the IMPORT-2 identity routes (resident registration number,
+//! employee number change,
 //! renumbering). They are merged inside the authenticated HR router, so the `Principal` extension
 //! comes from the same request-context layer; their paths are registered as
 //! their own `CONFIGURED_ROUTE_SURFACES` entries.
@@ -64,7 +65,8 @@ pub(super) fn merge(router: Router, state: &HrState) -> Router {
         .merge(change_sets::router(hr.clone()))
         .merge(register_facts::router(hr.clone()))
         .merge(corrections::setup_router(hr.clone()))
-        // BE-EMP-UI: bulk 발령 preview, 발령 공고, 이관 확인.
+        // BE-EMP-UI: bulk appointment preview, appointment notice,
+        // migration reconciliation.
         .merge(bulk_lifecycle::router(hr.clone()))
         .merge(notices::router(hr.clone()))
         .merge(reconcile::router(hr.clone()));

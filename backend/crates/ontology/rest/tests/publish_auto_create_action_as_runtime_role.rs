@@ -147,7 +147,7 @@ async fn publish_with_four_eyes(
         .expect("reviewed and approved draft must publish")
 }
 
-/// A no-code draft exactly as the Ontology Manager's 타입 추가 flow builds one
+/// A no-code draft exactly as the Ontology Manager's "Add type" flow builds one
 /// today: `actions: []` (`model.ts:121`) — no create-capable action.
 fn no_code_draft(stable_key: &str) -> CreateObjectTypeDraft {
     CreateObjectTypeDraft {
@@ -195,7 +195,7 @@ async fn publish_auto_attaches_create_action_and_instance_creation_works(owner_p
             .expect("no-code draft create must succeed under effective console_rt permissions");
 
         // Confirm the draft truly ships with zero actions, matching the FE's
-        // no-code 타입 추가 flow (the gap this fix closes).
+        // no-code "Add type" flow (the gap this fix closes).
         let draft_detail = store
             .get_object_type("handover_policy", None)
             .await

@@ -90,7 +90,7 @@ impl EnvelopeCredentialCipher {
     }
 
     /// [`CredentialCipher::decrypt`] for a caller outside the comms context
-    /// (IMPORT-2's 주민등록번호 vault, under its own master key): the plain
+    /// (IMPORT-2's resident registration number vault, under its own master key): the plain
     /// bytes, which the caller turns into its own value at once and drops.
     ///
     /// # Errors

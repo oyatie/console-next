@@ -1,4 +1,4 @@
-//! 근무 일정 (ATT S1) against Postgres with RLS: patterns, layers and their
+//! Work schedule (ATT S1) against Postgres with RLS: patterns, layers and their
 //! precedence, cancel before effect, refusals that write nothing, holidays.
 
 use super::support::{assign, future, key, office, refused, rows, world};
@@ -28,7 +28,7 @@ async fn refusals_write_nothing(owner: PgPool) {
         .await
         .unwrap_err();
     assert_eq!(refused(closed), "schedule_month_closed");
-    // 서울 is not closed, so the same pattern lands there.
+    // Seoul is not closed, so the same pattern lands there.
     w.store
         .assign_schedule(
             &w.hr(),
@@ -61,7 +61,8 @@ async fn refusals_write_nothing(owner: PgPool) {
         "substitute_needs_end"
     );
 
-    // 서울-only HR cannot touch 평택 or the 법인, and does not see 평택's people.
+    // Seoul-only HR cannot touch Pyeongtaek or the legal entity, and does not see
+    // Pyeongtaek's people.
     let other = w
         .store
         .assign_schedule(

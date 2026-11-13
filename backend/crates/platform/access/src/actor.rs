@@ -94,7 +94,7 @@ impl Actor {
         Ok(())
     }
 
-    /// 권한 관리 `level` over some node (or ops), or 403 `access_denied`.
+    /// Access management `level` over some node (or ops), or 403 `access_denied`.
     pub(crate) fn require_some_access(&self, level: Level) -> AccessResult<()> {
         let holds = self.subject.is_ops
             || self.subject.grants.iter().any(|g| {
@@ -110,7 +110,7 @@ impl Actor {
         }
     }
 
-    /// 권한 관리 `level` over the whole tenant, or 403 `access_denied`.
+    /// Access management `level` over the whole tenant, or 403 `access_denied`.
     pub(crate) fn require_access(&self, level: Level) -> AccessResult<()> {
         if self.may(Domain::Access, level, &self.tenant()) {
             Ok(())
@@ -228,8 +228,8 @@ pub(crate) fn audit(
     })
 }
 
-/// The scope chain of a live 법인, 사업장 or 부서 (404 `scope_node_not_found`;
-/// a 부서 that is dissolved or sits under no 사업장 has no chain).
+/// The scope chain of a live legal entity, workplace or department (404 `scope_node_not_found`;
+/// a department that is dissolved or sits under no workplace has no chain).
 pub(crate) async fn node_path(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
@@ -265,7 +265,7 @@ pub(crate) async fn node_path(
     Ok(scope_path(org, kind, node, Some(le)))
 }
 
-/// company-21: a new grant never names a closed 법인 or 사업장 (or a 부서
+/// company-21: a new grant never names a closed legal entity or workplace (or a department
 /// inside one): 409 `scope_node_closed`.
 pub(crate) async fn refuse_closed(
     tx: &mut Transaction<'_, Postgres>,

@@ -136,9 +136,10 @@ test.each(["dark", "light"])("theme radio selects %s on the document", async the
 test.each([1440, 390])("needs-me badge shows turn count, opens task panel with /inbox link, and closes on Escape at %spx", async width => {
   await page.setViewportSize({ width, height: 900 });
   await open();
-  const trigger = page.getByRole("button", { name: "업무함 3건", exact: true });
+  const trigger = page.getByRole("button", { name: "업무함 3", exact: true });
   await element(trigger).toBeVisible();
   await element(trigger.locator("[data-count]")).toHaveText("3");
+  await element(trigger).toHaveAccessibleDescription("업무함 3건");
   await element(trigger.getByText("업무함", { exact: true })).toBeVisible({ visible: width > 640 });
   expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
 
@@ -159,7 +160,7 @@ test("needs-me badge omits count pill when 0 items need action and renders empty
     body: JSON.stringify({ as_of: "2026-11-04T09:00:00Z", has_work: false, available_filters: [], counts: { turn: { total: 0, total_is_exact: true } }, unavailable: [], next_cursor: null, items: [] }),
   }));
   await open();
-  const trigger = page.getByRole("button", { name: "대기 업무", exact: true });
+  const trigger = page.getByRole("button", { name: "업무함", exact: true });
   await element(trigger).toBeVisible();
   await element(trigger.locator("[data-count]")).toHaveCount(0);
   await trigger.click();

@@ -55,7 +55,7 @@ pub(super) fn mount_consulting(router: Router, deps: &TenantDeps<'_>) -> Router 
     ))
 }
 
-/// Accounting GL vouchers (전표): create/submit/approve/post/reverse.
+/// Accounting GL vouchers: create/submit/approve/post/reverse.
 #[cfg(feature = "finance-gl")]
 pub(super) fn mount_finance_gl(router: Router, deps: &TenantDeps<'_>) -> Router {
     router.merge(console_finance_gl_rest::router(

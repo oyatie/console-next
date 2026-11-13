@@ -139,11 +139,11 @@ pub struct GrantOut {
     pub id: Uuid,
     pub account_id: Uuid,
     pub account_display_name: Option<String>,
-    /// people-self-46: a grant on a deactivated account grants nothing (멈춤).
+    /// people-self-46: a grant on a deactivated account grants nothing (paused).
     pub account_active: bool,
     /// governance-23/-32: whether the holder can sign in with a passkey yet.
     pub account_has_passkey: bool,
-    /// The holder's 소속 (their employee record's 부서), when linked.
+    /// The holder's affiliation (their employee record's department), when linked.
     pub account_unit: Option<String>,
     pub account_employee_number: Option<String>,
     pub role_id: Uuid,
@@ -208,7 +208,7 @@ mod tests {
         assert!(parse_scope(&scope("TENANT", None, true)).is_ok());
         assert!(parse_scope(&scope("WORKPLACE", id, true)).is_ok());
         let code = |s: ScopeIn| parse_scope(&s).unwrap_err().code;
-        // AX-5 (governance-22): a 부서 subtree is a scope now.
+        // AX-5 (governance-22): a department subtree is a scope now.
         assert!(parse_scope(&scope("DEPARTMENT", id, true)).is_ok());
         assert_eq!(
             code(scope("DEPARTMENT", id, false)),

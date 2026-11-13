@@ -1,11 +1,11 @@
 //! The tenant's structure and roster as the schedule resolver needs them:
-//! 법인, 사업장 (with their branch for scoping), 부서 heads up to their site,
-//! and the people placed on a date. 부서 membership is the current value
-//! (`employees.org_unit_id`); assignments to 법인 · 사업장 are dated. Every
+//! legal entities, workplaces (with their branch for scoping), department heads up to their
+//! site, and the people placed on a date. Department membership is the current value
+//! (`employees.org_unit_id`); assignments to legal entity · workplace are dated. Every
 //! list built from it follows the chart's order ([`OrgModel::tree_rank`]).
-// ponytail: 부서 on a past date is today's 부서 (no dated membership exists on
-//! (`employees.org_unit_id`); assignments to 법인 · 사업장 are dated.
-// 부서 on a past date is today's 부서 (no dated membership exists on
+// ponytail: a department on a past date is today's department (no dated membership exists on
+//! (`employees.org_unit_id`); assignments to legal entity · workplace are dated.
+// a department on a past date is today's department (no dated membership exists on
 // trunk); a dated read lands with the org-history reader.
 
 use std::collections::HashMap;
@@ -29,7 +29,7 @@ pub(crate) struct Unit {
     pub name: String,
     pub parent: Option<Uuid>,
     pub is_site: bool,
-    /// For a site unit, the 사업장 it represents.
+    /// For a site unit, the workplace it represents.
     pub workplace: Option<Uuid>,
 }
 
@@ -38,17 +38,17 @@ pub(crate) struct OrgModel {
     pub entities: HashMap<Uuid, String>,
     pub workplaces: HashMap<Uuid, Workplace>,
     pub units: HashMap<Uuid, Unit>,
-    /// 근무조 id -> (사업장, name).
+    /// Crew id -> (workplace, name).
     pub crews: HashMap<Uuid, (Uuid, String)>,
-    /// 순서 among its siblings: every 법인 and 사업장 (dense, as the chart
-    /// reads them), a 부서 when it has an `org_unit_positions` row.
+    /// Order among its siblings: every legal entity and workplace (dense, as the chart
+    /// reads them), a department when it has an `org_unit_positions` row.
     pub positions: HashMap<Uuid, i32>,
 }
 
 impl OrgModel {
-    /// Every 법인, 사업장 and 부서 by its place in the chart's order
-    /// (`tree_order`, the rule GET /org-units uses): 법인 › 사업장 › 부서,
-    /// siblings in their stored 순서. A 부서 under a site hangs off its 사업장.
+    /// Every legal entity, workplace and department by its place in the chart's order
+    /// (`tree_order`, the rule GET /org-units uses): legal entity › workplace › department,
+    /// siblings in their stored order. A department under a site hangs off its workplace.
     pub fn tree_rank(&self) -> HashMap<Uuid, usize> {
         let entry = |id: &Uuid, parent, name| TreeEntry {
             id: *id,
@@ -82,7 +82,7 @@ impl OrgModel {
             .collect()
     }
 
-    /// A 부서 and its 부서 ancestors with their depth, stopping at the site.
+    /// A department and its department ancestors with their depth, stopping at the site.
     pub fn chain(&self, unit: Uuid) -> Vec<(Uuid, u8)> {
         let mut out = Vec::new();
         let mut at = Some(unit);
@@ -99,7 +99,7 @@ impl OrgModel {
         out
     }
 
-    /// The 사업장 a 부서 sits under (through its site unit).
+    /// The workplace a department sits under (through its site unit).
     pub fn workplace_of_unit(&self, unit: Uuid) -> Option<Uuid> {
         let mut at = Some(unit);
         for _ in 0..64 {

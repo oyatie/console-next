@@ -312,18 +312,21 @@ impl Equipment {
     }
 }
 
-/// Compatibility rules for 대체장비 matching.
+/// Compatibility rules for substitute-equipment matching.
 ///
-/// Source requirement: "대체장비: 유효설비/동일 기종ton수/입식 좌식/납산리튬엔진 유사시".
+/// Source requirement: "substitute equipment: valid unit / same model and tonnage /
+/// stand-up or seated / similar lead-acid, lithium or engine power".
 /// In the imported master-list schema this means:
-/// - candidate equipment must be an active spare (`상태=예비`) selected outside
-///   this pure function by the repository;
-/// - `규격` must match exactly after trimming (for example 입식 vs 좌식);
-/// - 동력 compatibility is derived from the 장비No prefix power code, keeping
+/// - candidate equipment must be an active spare (the status column set to the Korean
+///   value for spare) selected outside this pure function by the repository;
+/// - the specification column must match exactly after trimming (for example
+///   stand-up vs seated);
+/// - power compatibility is derived from the equipment-number prefix power code, keeping
 ///   `B` electric/lead-lithium style units separate from diesel (`O` in the
 ///   workbook, `D` in the brief) and LPG (`L`) units;
 /// - numeric tons match when candidate ton is equal to the down unit or is the
-///   nearest higher capacity; unknown `미정` tons only match the same unknown
+///   nearest higher capacity; unknown tons written as the Korean word for
+///   "undecided" only match the same unknown
 ///   text because no safe capacity ordering exists.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SubstituteEquipmentProfile {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! 완료 for period unlocks: those the caller approved, newest first, while the
+//! Done for period unlocks: those the caller approved, newest first, while the
 //! caller still holds the period-lock grant the open queue requires.
 use super::period_locks::authorize_period_lock_manage;
 use console_action_inbox_application::ActionInboxLink;

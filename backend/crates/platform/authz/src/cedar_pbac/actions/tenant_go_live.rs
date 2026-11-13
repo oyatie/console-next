@@ -1,4 +1,4 @@
-//! `tenant_go_live` (운영 시작): the one-way SETUP → OPERATING transition
+//! `tenant_go_live`: the one-way SETUP → OPERATING transition
 //! (entity-depth design §5.4). The onboarding adapter computes every fact in
 //! the go-live transaction under `FOR UPDATE` on `tenant_phase`; the Rust
 //! backstop checks the same facts, and the transition needs BOTH to allow.

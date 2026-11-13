@@ -218,8 +218,8 @@ async fn object_code_ref_persisted_on_write_and_hashtag_noise_dropped(pool: PgPo
 }
 
 // AC (UI-M2a): opening a person chip pins a summary from a real branch-scoped
-// API and records a `person.view` audit for a non-self view (DESIGN §4.7 "열람
-// — 기록 남음"); a self-view records none; a target outside the branch yields
+// API and records a `person.view` audit for a non-self view (DESIGN §4.7 "viewing
+// — leaves a record"); a self-view records none; a target outside the branch yields
 // not_found with no audit (deny-by-omission).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn member_profile_records_person_view_audit_for_non_self_only(pool: PgPool) {

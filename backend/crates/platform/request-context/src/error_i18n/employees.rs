@@ -1,6 +1,6 @@
 //! [`super::korean_message`] exact messages, part: Employees, lifecycle events and bulk appointment.
 
-/// Exact English message → Korean (합니다체).
+/// Exact English message → Korean (formal polite style).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
     // Employees / lifecycle events
     ("employee not found", "직원을 찾을 수 없습니다."),
@@ -228,7 +228,7 @@ pub(super) const MESSAGES: &[(&str, &str)] = &[
         "layout must be standard or register",
         "내려받기 형식은 standard 또는 register만 쓸 수 있습니다.",
     ),
-    // --- lane: EMP-FACTS --- 근로자 명부 items (MR-23)
+    // --- lane: EMP-FACTS --- employee register items (MR-23)
     (
         "sex must be MALE or FEMALE",
         "성별은 남(MALE) 또는 여(FEMALE)로 입력해야 합니다.",

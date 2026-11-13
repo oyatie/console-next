@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Sensitive access actions covered by monthly 접속기록 점검.
+//! Sensitive access actions covered by the monthly access log inspection.
 mod complete;
 pub mod feed;
 pub mod list;

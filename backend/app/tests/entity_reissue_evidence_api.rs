@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! 등록증 evidence on the first entry and on a revision: a certificate named as a
+//! Business registration certificate evidence on the first entry and on a
+//! revision: a certificate named as a
 //! registration's evidence is checked before anything is written.
 
 use http::StatusCode;
@@ -57,7 +58,7 @@ async fn setup(pool: &PgPool) -> (Ctx, String, Uuid) {
         )
         .await;
     assert_eq!(status, StatusCode::NO_CONTENT);
-    // Production shape: the original kept when the 법인 was created, no registration yet.
+    // Production shape: the original kept when the legal entity was created, no registration yet.
     let kept = upload(&c, "BIZ_REG_CERT", "kept").await;
     let mut body = entity_body();
     body["document_id"] = json!(kept);
@@ -93,7 +94,7 @@ fn issue(v: &Value) -> (String, String) {
 }
 
 /// Fails on dev: dev creates the registration (201) and parks the registry
-/// extract on the 법인, so the certificate record has no evidence.
+/// extract on the legal entity, so the certificate record has no evidence.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_registry_extract_is_no_certificate_and_nothing_is_created(pool: PgPool) {
     let (c, entity, _) = setup(&pool).await;
@@ -110,7 +111,7 @@ async fn a_registry_extract_is_no_certificate_and_nothing_is_created(pool: PgPoo
     assert_eq!(regs(&pool, &entity).await, 0, "a refusal created nothing");
 }
 
-/// The first entry reuses the original already attached to the 법인 (passes
+/// The first entry reuses the original already attached to the legal entity (passes
 /// on both); then a plain revise naming the certificate in force is refused
 /// (fails on dev: dev records a revision "evidenced" by the old original).
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

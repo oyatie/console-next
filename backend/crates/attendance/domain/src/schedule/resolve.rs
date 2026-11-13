@@ -1,5 +1,5 @@
 //! Which layer decides a person's day, and what that day is.
-//! Precedence: 사람 › 근무조 › 부서 (nearest ancestor first) › 사업장 › 법인.
+//! Precedence: person › crew › department (nearest ancestor first) › workplace › legal entity.
 //! At one level the latest start wins; a bounded layer stops at its end.
 
 use serde::{Deserialize, Serialize};
@@ -45,8 +45,8 @@ impl Level {
     }
 }
 
-/// One active layer as the resolver needs it. `depth` orders 부서 layers:
-/// 0 is the person's own 부서, 1 its parent, and so on (0 elsewhere).
+/// One active layer as the resolver needs it. `depth` orders department layers:
+/// 0 is the person's own department, 1 its parent, and so on (0 elsewhere).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LayerRef {
     pub id: Uuid,

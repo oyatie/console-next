@@ -1,4 +1,4 @@
-//! A closed 근태 month refuses writes; an approved period unlock reopens it for
+//! A closed attendance month refuses writes; an approved period unlock reopens it for
 //! its window and a re-lock closes it again (att-closed-month-unlock).
 
 use console_attendance_adapter_postgres::{BoardQuery, GridQuery, ScheduleStoreError};

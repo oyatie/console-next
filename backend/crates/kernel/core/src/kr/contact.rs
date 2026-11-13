@@ -1,4 +1,4 @@
-//! E-mail addresses (전자세금계산서 전용 전자우편주소, 사업장 연락처).
+//! E-mail addresses (the dedicated e-tax-invoice e-mail address, workplace contact).
 
 use super::{canonical_serde, refusal};
 use crate::KernelError;

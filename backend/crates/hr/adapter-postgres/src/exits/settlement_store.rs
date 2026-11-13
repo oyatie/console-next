@@ -1,6 +1,11 @@
 //! The settlement package upsert (moved from `app/src/hr.rs`, R2-exits).
 
+use console_hr_domain::text::parse_yyyy_mm_dd;
+use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext};
+use console_payroll_domain::severance_window::completes_service_years;
+use serde_json::json;
 use sqlx::Postgres;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::HrError;
@@ -16,6 +21,32 @@ pub async fn upsert_exit_settlement_package(
     settlement_input: Option<ExitSettlementInput>,
 ) -> Result<Uuid, HrError> {
     let context = load_exit_case_context(tx, org_uuid, case_id, false).await?;
+    let exit = parse_yyyy_mm_dd(&context.effective_exit_date)?;
+    let rule = crate::legal_rules::rule(
+        tx.as_mut(),
+        console_compliance_domain::statutory::codes::SEVERANCE_MIN_SERVICE_YEARS,
+        exit,
+    )
+    .await?;
+    let years = rule
+        .whole("YEARS")
+        .filter(|years| *years > 0)
+        .and_then(|years| i32::try_from(years).ok());
+    if years.is_none() {
+        return Err(HrError::from_kernel(
+            console_kernel_core::KernelError::conflict(
+                "No usable severance service rule covers the exit date. Request a statutory register review.",
+            )
+            .with_code("severance_statutory_basis_unavailable")
+            .with_field("effective_exit_date"),
+        ));
+    }
+    let under_service = match (context.hire_date.as_deref(), years) {
+        (Some(hire), Some(years)) => {
+            !completes_service_years(parse_yyyy_mm_dd(hire)?, exit, years)?
+        }
+        _ => false,
+    };
     let (
         package_status,
         service_days,
@@ -29,8 +60,31 @@ pub async fn upsert_exit_settlement_package(
         monthly_ordinary_wage_won,
         ordinary_daily_wage_won,
         statutory_daily_wage_milliwon,
-    ) = build_settlement_calculation(&context, settlement_input.as_ref())?;
-    let statutory_basis = exit_statutory_basis();
+    ) = build_settlement_calculation(&context, settlement_input.as_ref(), years)?;
+    let mut statutory_basis = exit_statutory_basis();
+    statutory_basis["calculation_references"] = json!({"rules": [{
+        "code": rule.code, "effective_from": rule.effective_from,
+        "citation": {"instrument_ko": rule.instrument, "article_ko": rule.article},
+    }]});
+    if under_service {
+        statutory_basis["severance_eligibility"] = json!({
+            "outcome": "NOT_ELIGIBLE", "reason": "UNDER_SERVICE_YEARS",
+            "threshold": {"num": years, "den": 1}, "rule": rule,
+            "as_of": exit.to_string(), "review_required": true,
+        });
+        let event = AuditEvent::new(
+            None,
+            AuditAction::new("employee.exit.severance_eligibility")?,
+            "employee_exit_case",
+            case_id.to_string(),
+            TraceContext::generate(),
+            OffsetDateTime::now_utc(),
+        )
+        .with_org(OrgId::from_uuid(org_uuid))
+        .with_snapshots(None, Some(statutory_basis["severance_eligibility"].clone()));
+        console_platform_db::insert_audit_event(tx, &event).await?;
+    }
+
     let insurance_loss_payload = with_ordinary_wage_basis(
         build_insurance_loss_payload(&context),
         monthly_ordinary_wage_won,

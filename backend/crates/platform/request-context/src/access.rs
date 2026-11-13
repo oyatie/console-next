@@ -2,7 +2,7 @@
 //!
 //! For every tenant principal: load the account's grants that count now (the
 //! phase rule included), let Cedar project them onto the existing doors, and —
-//! when the account is the tenant's ops account — append one 「ops 사용 기록」
+//! when the account is the tenant's ops account — append one "ops use record"
 //! row. The row and the grants are read and written in one tenant transaction;
 //! if the row cannot be written the request is refused (every ops use logged).
 

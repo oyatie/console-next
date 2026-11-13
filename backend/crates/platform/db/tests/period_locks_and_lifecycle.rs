@@ -262,7 +262,7 @@ async fn lifecycle_walks_document_chain_and_gates_dispose(owner_pool: PgPool) {
     let object_id = Uuid::new_v4();
     let today = date!(2026 - 07 - 09);
     // Two actors: submitted → approved is a maker–checker transition, so the
-    // 기안자 cannot also be the 승인자 (see lifecycle_maker_checker.rs).
+    // drafter cannot also be the approver (see lifecycle_maker_checker.rs).
     let maker = seed_user(&owner_pool, org_a, "기안자").await;
     let checker = seed_user(&owner_pool, org_a, "승인자").await;
 

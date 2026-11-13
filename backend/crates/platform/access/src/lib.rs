@@ -3,7 +3,7 @@
 //! is `console-platform-access-rest`.
 //!
 //! Every check is a Cedar decision over the caller's own grants
-//! ([`console_platform_authz::access`]): 권한 관리 조회 / 등록·수정 over the
+//! ([`console_platform_authz::access`]): access management view / edit over the
 //! whole tenant or over a grant's scope, and the grantor ceiling (GR-7). The
 //! ops account passes by the platform policy. Nothing here names a role.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
@@ -35,7 +35,7 @@ use sqlx::PgPool;
 #[derive(Clone)]
 pub struct AccessService {
     pool: PgPool,
-    /// Verifies the passkey step-up 권한 부여 needs. `None` refuses it.
+    /// Verifies the passkey step-up that granting access needs. `None` refuses it.
     step_up: Option<PasskeyService>,
 }
 
