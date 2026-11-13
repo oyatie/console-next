@@ -1,13 +1,9 @@
 use crate::error::RestError;
-use crate::me::authz::branch_scope_union;
 use console_kernel_core::BranchScope;
 use console_platform_authz::Action;
 use console_platform_authz::Feature;
-use console_platform_authz::PermissionLevel;
 use console_platform_authz::Principal;
 use console_platform_authz::authorize_capability;
-use console_platform_authz::permission_for;
-use std::collections::BTreeSet;
 
 // ---------------------------------------------------------------------------
 // Passkey self-management handlers (any authenticated user, OWN credentials)
@@ -51,28 +47,8 @@ pub(crate) fn authorize_org_manage(
     authorize_capability(principal, Action::new(feature)).map_err(RestError::from_kernel)
 }
 
-/// Resolve the exact effective scope for a people-directory read. Built-in
-/// grants hold across the caller's live membership scope; custom PBAC grants
-/// contribute only their already-resolved scope, re-intersected here with live
-/// membership as a defense-in-depth boundary. No allow produces no results.
+/// The people-directory read scope; no allow is a 403.
 pub(crate) fn directory_read_scope(principal: &Principal) -> Result<BranchScope, RestError> {
-    let mut effective = BranchScope::Branches(BTreeSet::new());
-    let role_allows = principal.roles.iter().any(|role| {
-        permission_for(*role, Feature::EmployeeDirectoryRead) == PermissionLevel::Allow
-    });
-    if role_allows {
-        effective = branch_scope_union(&effective, &principal.branch_scope);
-    }
-    for grant in principal.effective_feature_grants.iter().filter(|grant| {
-        grant.feature == Feature::EmployeeDirectoryRead
-            && grant.permission == PermissionLevel::Allow
-    }) {
-        let grant_scope = principal.branch_scope.intersect(&grant.branch_scope);
-        effective = branch_scope_union(&effective, &grant_scope);
-    }
-    match &effective {
-        BranchScope::All => Ok(effective),
-        BranchScope::Branches(branches) if !branches.is_empty() => Ok(effective),
-        BranchScope::Branches(_) => Err(RestError::forbidden("people directory access is denied")),
-    }
+    console_platform_authz::directory_read_scope(principal)
+        .ok_or_else(|| RestError::forbidden("people directory access is denied"))
 }
