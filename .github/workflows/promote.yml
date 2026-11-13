@@ -54,6 +54,20 @@ jobs:
     with:
       sha: ${{ needs.proof.outputs.sha }}
 
+  refused:
+    needs: [proof, gates]
+    if: always() && needs.proof.result == 'success' && (needs.gates.result != 'success' || needs.gates.outputs.result != 'pass')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+        with: {egress-policy: audit}
+      - name: Fail the promotion when gate evidence is not passing
+        run: |
+          echo 'PROMOTE_GATES: no environment published; release gates did not pass.' >> "$GITHUB_STEP_SUMMARY"
+          echo '::error::PROMOTE_GATES: release gates did not pass.'
+          exit 1
+
   publish:
     needs: [proof, gates]
     if: needs.gates.outputs.result == 'pass'
@@ -76,6 +90,8 @@ jobs:
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false, fetch-depth: 0, ref: dev}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false, fetch-depth: 0, ref: '${{ needs.proof.outputs.sha }}', path: .tmp/candidate}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version}
       - name: Locked promotion tools and registry login
@@ -102,6 +118,7 @@ jobs:
             const proof = await collectPlatformProof(github, process.env.GITHUB_REPOSITORY, saved.run.id);
             if (proof.sha !== saved.sha || proof.run.run_attempt !== saved.run.run_attempt) throw new Error('PROMOTE_NOT_GREEN: platform attempt changed');
             const artifact = publishEnvironment({proof, environment:process.env.PROMOTION_ENVIRONMENT, directory,
+              candidateRoot:`${process.env.GITHUB_WORKSPACE}/.tmp/candidate`,
               predicate:JSON.parse(readFileSync(`${directory}/console-gates.json`)),
               runUrl:`${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`});
             await core.summary.addRaw(`${process.env.PROMOTION_ENVIRONMENT}: ${artifact}\nVerified promotion signature, gates attestation and identity negative controls.\n`).write();

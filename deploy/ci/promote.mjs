@@ -111,7 +111,7 @@ const executeTool = (bin, args, options = {}) => execFileSync(bin, args, {
 });
 
 // Resolve mutable tags once, then verify and pull only that digest.
-export function publishEnvironment({proof, environment, predicate, runUrl, directory, root = '.'}, execute = executeTool) {
+export function publishEnvironment({proof, environment, predicate, runUrl, directory, root = '.', candidateRoot = root}, execute = executeTool) {
   validatePredicate(predicate, proof.sha, runUrl);
   assertPromotion(proof, root);
   const {channel} = readEnvironment(environment, root);
@@ -135,7 +135,7 @@ export function publishEnvironment({proof, environment, predicate, runUrl, direc
     return `${deploy}@${digest}`;
   };
   const pull = (ref, name, workflow) => {
-    execute('cosign', ['verify', issuer, identity(workflow), ref]);
+    if (workflow) execute('cosign', ['verify', issuer, identity(workflow), ref]);
     const output = join(directory, name);
     mkdirSync(output, {recursive:true});
     execute('flux', ['pull', 'artifact', `oci://${ref}`, `--output=${output}`]);
@@ -151,34 +151,42 @@ export function publishEnvironment({proof, environment, predicate, runUrl, direc
   assertPromotion({...proof, currentRevision}, root);
   const immutableTag = `${channel}-${proof.sha}`;
   let artifact = resolve(immutableTag, true);
+  const shadow = resolve('shadow');
+  const {output, revision} = pull(shadow, 'shadow', 'platform');
+  assert.equal(revision.revision, proof.sha, 'PROMOTE_NOT_GREEN: shadow must match the platform SHA');
+  const imageRepository = `ghcr.io/${proof.repository.toLowerCase()}/console`;
+  assert.ok(revision.image?.startsWith(`${imageRepository}@sha256:`), 'PROMOTE_ARTIFACT: unexpected image repository');
+  assert.match(revision.image, /@sha256:[a-f0-9]{64}$/, 'PROMOTE_ARTIFACT: require the built image digest');
+  const bundle = join(directory, 'bundle');
+  execute(process.execPath, [join(import.meta.dirname, 'render.mjs'), environment, revision.image, bundle],
+    {cwd:candidateRoot, env:{...process.env, GITHUB_SHA:proof.sha}});
+  if (readEnvironment(environment, candidateRoot).target === 'kubernetes') {
+    execute('bash', [join(import.meta.dirname, 'validate.sh'), bundle], {cwd:candidateRoot});
+  }
+  cpSync(join(output, 'image-sbom.json'), join(bundle, 'image-sbom.json'));
   if (artifact) {
-    const {revision} = pull(artifact, 'immutable', 'promote');
-    assert.equal(revision.revision, proof.sha, 'PROMOTE_ARTIFACT: immutable revision mismatch');
-    assert.equal(revision.environment, environment, 'PROMOTE_ENVIRONMENT: immutable environment mismatch');
-    assert.ok(revision.image?.startsWith(`ghcr.io/${proof.repository.toLowerCase()}/console@sha256:`),
-      'PROMOTE_ARTIFACT: unexpected immutable image repository');
-    assert.match(revision.image, /@sha256:[a-f0-9]{64}$/, 'PROMOTE_ARTIFACT: invalid immutable image digest');
+    // A prior attempt may have pushed before signing; authorize its bytes against the verified build.
+    const {output:existing} = pull(artifact, 'immutable');
+    const files = readdirSync(bundle, {recursive:true}).sort();
+    assert.deepEqual(readdirSync(existing, {recursive:true}).sort(), files,
+      'PROMOTE_ARTIFACT: immutable contents differ from the verified build');
+    for (const file of files) {
+      const expected = lstatSync(join(bundle, file));
+      const actual = lstatSync(join(existing, file));
+      assert.ok(expected.isDirectory() ? actual.isDirectory() : expected.isFile() && actual.isFile() &&
+        readFileSync(join(bundle, file)).equals(readFileSync(join(existing, file))),
+      'PROMOTE_ARTIFACT: immutable contents differ from the verified build');
+    }
   } else {
-    const shadow = resolve('shadow');
-    const {output, revision} = pull(shadow, 'shadow', 'platform');
-    assert.equal(revision.revision, proof.sha, 'PROMOTE_NOT_GREEN: shadow must match the platform SHA');
-    const imageRepository = `ghcr.io/${proof.repository.toLowerCase()}/console`;
-    assert.ok(revision.image?.startsWith(`${imageRepository}@sha256:`), 'PROMOTE_ARTIFACT: unexpected image repository');
-    assert.match(revision.image, /@sha256:[a-f0-9]{64}$/, 'PROMOTE_ARTIFACT: require the built image digest');
-    const bundle = join(directory, 'bundle');
-    execute(process.execPath, ['deploy/ci/render.mjs', environment, revision.image, bundle],
-      {cwd:root, env:{...process.env, GITHUB_SHA:proof.sha}});
-    if (readEnvironment(environment, root).target === 'kubernetes') execute('bash', ['deploy/ci/validate.sh', bundle], {cwd:root});
-    cpSync(join(output, 'image-sbom.json'), join(bundle, 'image-sbom.json'));
     const {digest} = JSON.parse(execute('flux', ['push', 'artifact', `oci://${deploy}:${immutableTag}`,
       `--path=${bundle}`, `--source=https://github.com/${proof.repository}`, `--revision=${proof.sha}`, '--output=json']));
     assert.match(digest ?? '', /^sha256:[a-f0-9]{64}$/, 'PROMOTE_ARTIFACT: require the published digest');
     artifact = `${deploy}@${digest}`;
     assert.throws(() => execute('cosign', ['verify', issuer, identity('promote'), artifact]), signatureRefusal,
       'PROMOTE_ARTIFACT: unsigned negative control unexpectedly verified');
-    execute('cosign', ['sign', '--yes', artifact]);
-    execute('cosign', ['attest', '--yes', '--type', type, '--predicate', join(directory, 'console-gates.json'), artifact]);
   }
+  execute('cosign', ['sign', '--yes', artifact]);
+  execute('cosign', ['attest', '--yes', '--type', type, '--predicate', join(directory, 'console-gates.json'), artifact]);
   execute('cosign', ['verify', issuer, identity('promote'), artifact]);
   assert.throws(() => execute('cosign', ['verify', issuer, identity('platform'), artifact]), signatureRefusal,
     'PROMOTE_ARTIFACT: build identity must not verify a promotion');
