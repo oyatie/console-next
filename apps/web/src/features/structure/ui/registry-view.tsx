@@ -90,7 +90,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "
         : n.kind === "dept" ? <HeadCell n={n} readOnly={s.readOnly} />
         : none,
     },
-    { id: "people", card: "fact", cardHeader: t("structure.list.people"), width: 142, header: <HeadcountBasis>{t("structure.list.people")}</HeadcountBasis>, cell: (n) => <span className="num">{unitCounts(n)}</span> },
+    { id: "people", card: "fact", width: 142, header: t("structure.list.people"), cell: (n) => <span className="num">{unitCounts(n)}</span> },
     { id: "site", card: "omit", width: 120, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? none : none },
     { id: "chips", card: "status", width: "2fr", minWidth: 112, header: t("structure.list.chips"), cell: (n) => n.chips.length ? <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> : null },
     ...(!s.readOnly ? [{ id: "order", focusMode: "child" as const, card: "action" as const, width: 64, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
@@ -132,6 +132,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "
           ))}
         </div>
         <RegistryFilters s={s} rows={rows} filters={filters} onFilters={setFilters} vacancyCount={vacantHeads(s).count} />
+        <HeadcountBasis />
       </div>
       {edit && editTarget && (
         <Card look="outline" density="dense">
