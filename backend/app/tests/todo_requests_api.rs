@@ -23,6 +23,8 @@ mod reach;
 mod refusals;
 #[path = "todo_requests_api/support_session.rs"]
 mod support_session;
+#[path = "todo_requests_api/widening.rs"]
+mod widening;
 
 use std::collections::BTreeSet;
 

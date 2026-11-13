@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Whom a holder may ask is the scope node of its to-do request grant, decided
 //! by Cedar over each account's placement. The picker lists exactly the
-//! accounts an ask accepts, and the line widens nothing else the holder reads.
+//! accounts an ask accepts.
 
 use std::collections::BTreeSet;
 
 use http::StatusCode;
-use serde_json::{Value, json};
+use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::support::{Ctx, add_user, ctx};
+use crate::support::{Ctx, add_user};
 use crate::world::{World, world_with_lines};
 use crate::{REQUESTS, ask_id, code, picker, written};
 
-async fn asking_world(pool: PgPool) -> World {
+pub async fn asking_world(pool: PgPool) -> World {
     world_with_lines(
         pool,
         json!([{ "domain": "todo_request", "levels": ["edit"] }]),
@@ -23,7 +23,7 @@ async fn asking_world(pool: PgPool) -> World {
 }
 
 /// A new account, linked to `employee` when one is given.
-async fn account(w: &World, employee: Option<&str>) -> Uuid {
+pub async fn account(w: &World, employee: Option<&str>) -> Uuid {
     let user = *add_user(&w.pool, w.org, &[]).await.as_uuid();
     if let Some(employee) = employee {
         sqlx::query("UPDATE users SET employee_id = $1::uuid WHERE id = $2")
@@ -37,7 +37,7 @@ async fn account(w: &World, employee: Option<&str>) -> Uuid {
 }
 
 /// Asks `to`; the status and the refusal code.
-async fn ask(who: &Ctx, to: Uuid) -> (StatusCode, String) {
+pub async fn ask(who: &Ctx, to: Uuid) -> (StatusCode, String) {
     let (status, out) = who.call("POST", REQUESTS, Some(ask_id(to))).await;
     (status, code(&out).to_owned())
 }
@@ -147,34 +147,6 @@ async fn the_picker_lists_exactly_whom_an_ask_accepts(pool: PgPool) {
                 StatusCode::UNPROCESSABLE_ENTITY,
                 "todo_assignee_inactive".to_owned()
             )
-        );
-    }
-}
-
-/// An account holding only a tenant-wide request grant reads no person data:
-/// it is refused the people directory and the employee list as an account
-/// holding nothing is.
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn a_request_grant_alone_widens_no_other_read(pool: PgPool) {
-    let mut w = asking_world(pool).await;
-    let asker = w.holder("TENANT", None).await;
-    let nobody = ctx(
-        &w.pool,
-        w.org,
-        add_user(&w.pool, w.org, &[]).await,
-        &[],
-        None,
-    )
-    .await;
-    assert!(picker(&asker).await.contains(nobody.user.as_uuid()));
-    for uri in ["/api/v1/directory/people", "/api/v1/employees"] {
-        let (status, out): (StatusCode, Value) = asker.call("GET", uri, None).await;
-        let (baseline, refused) = nobody.call("GET", uri, None).await;
-        assert_eq!(status, StatusCode::FORBIDDEN, "{uri}: {out}");
-        assert_eq!(
-            (status, code(&out)),
-            (baseline, code(&refused)),
-            "{uri}: {out}"
         );
     }
 }

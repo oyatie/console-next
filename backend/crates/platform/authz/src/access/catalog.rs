@@ -155,6 +155,14 @@ impl Domain {
         !self.offered().is_empty()
     }
 
+    /// Whether a line in this domain reaches records at its grant's node. A
+    /// to-do request line only lets the holder ask colleagues there, so it
+    /// widens no read: no branch, legal entity, workplace or setup checklist.
+    #[must_use]
+    pub const fn reads(self) -> bool {
+        !matches!(self, Self::TodoRequest)
+    }
+
     /// Live record clearance groups, independent of legacy operation keys.
     #[must_use]
     pub const fn record_levels(self) -> &'static [Level] {

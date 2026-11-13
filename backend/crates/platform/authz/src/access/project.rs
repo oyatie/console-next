@@ -105,7 +105,8 @@ const fn moves_data_scope(domain: Domain) -> bool {
 ///
 /// The principal's branch scope widens by the data-domain grants only; a
 /// subject holding nothing but tenant-level grants widens by those, so it
-/// keeps a scope to act in.
+/// keeps a scope to act in. A domain that reads nothing ([`Domain::reads`])
+/// widens by none.
 // one scalar branch scope per principal; a TENANT grant in an
 // org-wide-gated data domain next to a narrower one still cannot satisfy both
 // doors. AX-5 (Cedar at each door) removes the scalar.
@@ -142,7 +143,7 @@ pub fn project_with_access(access: &AccessSnapshot) -> Projection {
             }
             match slice.allows(feature.as_str(), &grant.scope) {
                 Ok(true) => {
-                    any = true;
+                    any |= domain.reads();
                     if let Some(node) = grant.scope.node() {
                         out.scoped.push(ScopeGrant {
                             feature,

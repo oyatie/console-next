@@ -131,6 +131,44 @@ fn a_tenant_todo_request_grant_keeps_the_hr_data_scope() {
     }));
 }
 
+/// Held alone, a to-do request grant still adds no branch: asking reads
+/// nothing, so it must not become the tenant-level fallback scope.
+#[test]
+fn a_todo_request_grant_alone_projects_no_branches() {
+    let t = tree();
+    let ask = |scope| {
+        grant(
+            scope,
+            vec![line(Domain::TodoRequest, &[Level::Edit])],
+            BranchScope::All,
+        )
+    };
+    let p = project(&subject(&t, false, vec![ask(t.tenant()), ask(t.wp_a1())]));
+    assert!(p.errors.is_empty(), "{:?}", p.errors);
+    assert_eq!(p.branches, BranchScope::Branches(BTreeSet::new()));
+    assert_eq!(p.scoped.len(), 2, "{:?}", p.scoped);
+}
+
+/// Only grants that read reach records at their node: a to-do request grant
+/// adds no legal entity or workplace beside a narrower data grant.
+#[test]
+fn reading_nodes_skip_grants_that_only_ask() {
+    let t = tree();
+    let org = grant(
+        t.wp_a1(),
+        vec![line(Domain::Org, &[Level::View])],
+        BranchScope::All,
+    );
+    let ask = grant(
+        t.tenant(),
+        vec![line(Domain::TodoRequest, &[Level::Edit])],
+        BranchScope::All,
+    );
+    let s = subject(&t, false, vec![org, ask]);
+    let nodes: Vec<_> = s.reading_nodes().collect();
+    assert_eq!(nodes, [(NodeKind::Workplace, t.wp_a1)]);
+}
+
 /// A holder of any grant is a working member (the `Login` door opens over its
 /// scope); a subject with no grant gets nothing, not even membership.
 #[test]

@@ -1,7 +1,7 @@
 //! The caller's reach over legal entities and workplaces (decisions #15;
 //! worst-case-08): the ops account and a whole-tenant reach see everything;
 //! anyone else reaches only the legal entities and workplaces their grants
-//! that count now name, plus the workplaces their legacy branches back. Reads,
+//! that count now and read name, plus the workplaces their legacy branches back. Reads,
 //! counts and Cedar scope facts all take it, so an out-of-scope workplace is
 //! neither listed nor counted.
 
@@ -68,12 +68,7 @@ pub(crate) async fn reach(
         .map_err(|Load(e)| KernelError::internal(format!("access grants unavailable: {e}")))?;
         &loaded
     };
-    let nodes = subject
-        .grants
-        .iter()
-        .filter_map(|g| g.scope.node())
-        .map(|n| (n.kind, n.id));
-    let Some(mut ids) = granted_scope(nodes) else {
+    let Some(mut ids) = granted_scope(subject.reading_nodes()) else {
         return Ok(EntityScope::Tenant);
     };
     ids.extend(
