@@ -26,6 +26,7 @@ properties:
     - retention
     - tenant
     - support_access
+    - todo_request
 
   levels:
     type: array
