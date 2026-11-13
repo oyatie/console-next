@@ -4,7 +4,7 @@ import { createRootRoute, createRoute, lazyRouteComponent } from "@tanstack/reac
 import { chunk } from "../lib/chunk-guard";
 import { screen } from "../lib/fonts";
 import { streamReady } from "../lib/live/session-stream";
-import { RouteFrame } from "../lib/react/route-ready";
+import { RootShell } from "./root-shell";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
 import type { AccessRequirement } from "../reference/authz/domain/access";
 import type { ModuleKey } from "../reference/onboarding/api";
@@ -32,7 +32,7 @@ const guards = () => chunk(import("../lib/react/session")).then(module => (loade
 // Deferring an already-loaded guard loses consecutive keyboard navigations.
 const ensureSession: typeof import("../lib/react/session").ensureSession = context => loadedGuards
   ? loadedGuards.ensureSession(context) : guards().then(module => module.ensureSession(context));
-export const root = createRootRoute({ component: RouteFrame });
+export const root = createRootRoute({ shellComponent: RootShell });
 export const login = createRoute({
   getParentRoute: () => root,
   path: "/login",
@@ -42,7 +42,7 @@ export const login = createRoute({
   component: lazyRouteComponent(() => chunk(import("../auth/Login")), "Login"),
 });
 const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: async () => (await guards()).ensureEnrolling(), component: lazyRouteComponent(() => chunk(import("../auth/SetupPasskey")), "SetupPasskey") });
-export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await ensureSession(context); await streamReady(); }, component: lazyRouteComponent(screen(() => import("../shell/shell")), "Shell") });
+export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await ensureSession(context); await streamReady(); } });
 
 const tenants = createRoute({
   getParentRoute: () => app,

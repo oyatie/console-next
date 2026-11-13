@@ -1,0 +1,107 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+name: promote
+on:
+  workflow_run:
+    workflows: [platform]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      platform_run_id:
+        description: Successful dev-push platform run to promote (ancestry still enforced)
+        required: true
+        type: string
+permissions: {}
+jobs:
+  proof:
+    if: >-
+      github.ref == 'refs/heads/dev' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'dev' && github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {contents: read, actions: read}
+    outputs:
+      sha: ${{ steps.proof.outputs.sha }}
+      matrix: ${{ steps.proof.outputs.matrix }}
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false, fetch-depth: 0, ref: dev}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - id: proof
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          PLATFORM_RUN_ID: ${{ github.event.workflow_run.id || inputs.platform_run_id }}
+        with:
+          script: |
+            const {writeFileSync} = await import('node:fs');
+            const {collectPlatformProof, discoverEnvironments} = await import(`${process.env.GITHUB_WORKSPACE}/deploy/ci/promote.mjs`);
+            const proof = await collectPlatformProof(github, process.env.GITHUB_REPOSITORY, Number(process.env.PLATFORM_RUN_ID));
+            writeFileSync('promotion-proof.json', JSON.stringify(proof));
+            core.setOutput('sha', proof.sha);
+            core.setOutput('matrix', {include:discoverEnvironments()});
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with: {name: promotion-proof, path: promotion-proof.json, if-no-files-found: error}
+
+  gates:
+    needs: proof
+    permissions: {contents: read, actions: read, packages: read, checks: read}
+    uses: ./.github/workflows/gates.yml
+    with:
+      sha: ${{ needs.proof.outputs.sha }}
+
+  publish:
+    needs: [proof, gates]
+    if: needs.gates.outputs.result == 'pass'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.proof.outputs.matrix) }}
+    concurrency:
+      group: promote-${{ matrix.channel }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false, fetch-depth: 0, ref: dev}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version-file: .node-version}
+      - name: Locked promotion tools and registry login
+        env: {REGISTRY_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 deploy/ci/tools.py flux cosign buildx kustomize kubeconform conftest
+          npm ci --ignore-scripts --no-audit --no-fund
+          printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          mkdir -p .tmp/promotion
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {name: promotion-proof, path: .tmp/promotion}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {name: 'console-gates-${{ needs.proof.outputs.sha }}', path: .tmp/promotion}
+      - name: Publish, sign and attest the environment digest before its channel
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          PROMOTION_ENVIRONMENT: ${{ matrix.environment }}
+        with:
+          script: |
+            const {readFileSync} = await import('node:fs');
+            const {collectPlatformProof, publishEnvironment} = await import(`${process.env.GITHUB_WORKSPACE}/deploy/ci/promote.mjs`);
+            const directory = `${process.env.GITHUB_WORKSPACE}/.tmp/promotion`;
+            const saved = JSON.parse(readFileSync(`${directory}/promotion-proof.json`));
+            const proof = await collectPlatformProof(github, process.env.GITHUB_REPOSITORY, saved.run.id);
+            if (proof.sha !== saved.sha || proof.run.run_attempt !== saved.run.run_attempt) throw new Error('PROMOTE_NOT_GREEN: platform attempt changed');
+            const artifact = publishEnvironment({proof, environment:process.env.PROMOTION_ENVIRONMENT, directory,
+              predicate:JSON.parse(readFileSync(`${directory}/console-gates.json`)),
+              runUrl:`${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`});
+            await core.summary.addRaw(`${process.env.PROMOTION_ENVIRONMENT}: ${artifact}\nVerified promotion signature, gates attestation and identity negative controls.\n`).write();
