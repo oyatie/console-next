@@ -5,18 +5,31 @@
       "get",
       "post"
     ],
+    "/api/v1/me/todos/requests": [
+      "get",
+      "post"
+    ],
+    "/api/v1/me/todos/requests/{todoId}": [
+      "delete"
+    ],
     "/api/v1/me/todos/{todoId}": [
       "delete"
     ],
     "/api/v1/me/todos/{todoId}/done": [
       "post"
+    ],
+    "/api/v1/me/todos/{todoId}/return": [
+      "post"
     ]
   },
   "schemas": [
     "CreateTodoRequest",
+    "ReturnTodoRequest",
     "SetTodoDoneRequest",
+    "TodoAskRequest",
     "TodoPage",
     "TodoRef",
+    "TodoRequestLink",
     "TodoSummary"
   ],
   "external_schemas": [

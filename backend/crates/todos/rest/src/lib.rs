@@ -7,6 +7,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
+mod requests;
 
 pub use openapi::OPENAPI_FRAGMENT;
 
@@ -29,6 +30,9 @@ use serde::{Deserialize, Serialize};
 pub const ME_TODOS_PATH: &str = "/api/v1/me/todos";
 pub const ME_TODO_PATH_TEMPLATE: &str = "/api/v1/me/todos/{todoId}";
 pub const ME_TODO_DONE_PATH_TEMPLATE: &str = "/api/v1/me/todos/{todoId}/done";
+pub const ME_TODO_RETURN_PATH_TEMPLATE: &str = "/api/v1/me/todos/{todoId}/return";
+pub const ME_TODO_REQUESTS_PATH: &str = "/api/v1/me/todos/requests";
+pub const ME_TODO_REQUEST_PATH_TEMPLATE: &str = "/api/v1/me/todos/requests/{todoId}";
 
 /// Every route this face serves, as the single table [`router`] is built from.
 ///
@@ -44,6 +48,12 @@ fn routes() -> Vec<(&'static str, MethodRouter<TodoRestState>)> {
         (ME_TODOS_PATH, get(list_todos).post(create_todo)),
         (ME_TODO_DONE_PATH_TEMPLATE, post(set_done)),
         (ME_TODO_PATH_TEMPLATE, delete(delete_todo)),
+        (ME_TODO_RETURN_PATH_TEMPLATE, post(requests::return_todo)),
+        (
+            ME_TODO_REQUESTS_PATH,
+            get(requests::list_requests).post(requests::create_request),
+        ),
+        (ME_TODO_REQUEST_PATH_TEMPLATE, delete(requests::withdraw)),
     ]
 }
 
@@ -215,21 +225,20 @@ impl RestError {
         Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", message)
     }
 
+    /// The kernel's stable code reaches the client; the kind only picks the
+    /// status and the fallback code.
     fn from_kernel(err: KernelError) -> Self {
-        match err.kind {
-            ErrorKind::Validation => {
-                Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation", err.message)
-            }
-            ErrorKind::NotFound => Self::new(StatusCode::NOT_FOUND, "not_found", err.message),
-            ErrorKind::Forbidden => Self::new(StatusCode::FORBIDDEN, "forbidden", err.message),
+        let (status, code) = match err.kind {
+            ErrorKind::Validation => (StatusCode::UNPROCESSABLE_ENTITY, "validation"),
+            ErrorKind::NotFound => (StatusCode::NOT_FOUND, "not_found"),
+            ErrorKind::Forbidden => (StatusCode::FORBIDDEN, "forbidden"),
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                Self::new(StatusCode::CONFLICT, "conflict", err.message)
+                (StatusCode::CONFLICT, "conflict")
             }
-            ErrorKind::Unavailable => Self::unavailable(err.message),
-            ErrorKind::Internal => {
-                Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", err.message)
-            }
-        }
+            ErrorKind::Unavailable => (StatusCode::SERVICE_UNAVAILABLE, "unavailable"),
+            ErrorKind::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal"),
+        };
+        Self::new(status, err.code.unwrap_or(code), err.message)
     }
 
     fn from_store(err: PgTodoError) -> Self {

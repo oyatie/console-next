@@ -6,10 +6,13 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use console_kernel_core::{
-    AuditAction, AuditEvent, KernelError, Timestamp, TodoId, TraceContext, UserId,
+    AuditAction, AuditEvent, BranchScope, KernelError, Timestamp, TodoId, TraceContext, UserId,
 };
-use console_todos_domain::TodoRef;
+use console_todos_domain::{RequestLink, RequestState, TodoRef};
 use serde::{Deserialize, Serialize};
+use time::Date;
+
+time::serde::format_description!(iso_date, Date, "[year]-[month]-[day]");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateTodoCommand {
@@ -64,6 +67,66 @@ pub struct TodoSummary {
     pub updated_at: Timestamp,
     #[serde(with = "time::serde::rfc3339::option")]
     pub done_at: Option<Timestamp>,
+    /// The account that asked for this todo. Absent on the owner's own todo,
+    /// as are the three request fields below, so a private todo reads as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assigned_by_user_id: Option<UserId>,
+    #[serde(
+        default,
+        with = "iso_date::option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub due_on: Option<Date>,
+    #[serde(
+        default,
+        with = "time::serde::rfc3339::option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub returned_at: Option<Timestamp>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_note: Option<String>,
+}
+
+/// Ask a colleague for a follow-up: a todo owned by `assignee`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreateTodoRequestCommand {
+    /// Bound from the authenticated principal, never from request input.
+    pub requester: UserId,
+    pub assignee: UserId,
+    pub text: String,
+    pub due_on: Option<Date>,
+    pub links: Vec<RequestLink>,
+    /// The requester's people-directory scope; the assignee must sit inside it.
+    pub assignee_scope: BranchScope,
+    pub trace: TraceContext,
+    pub occurred_at: Timestamp,
+}
+
+/// What the caller asked of others, in one state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListTodoRequestsQuery {
+    pub requester: UserId,
+    pub state: RequestState,
+    pub limit: i64,
+}
+
+/// The requester takes back an open request; the row is deleted.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WithdrawTodoRequestCommand {
+    pub requester: UserId,
+    pub todo_id: TodoId,
+    pub trace: TraceContext,
+    pub occurred_at: Timestamp,
+}
+
+/// The owner sends an open request back with a line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReturnTodoCommand {
+    pub owner: UserId,
+    pub todo_id: TodoId,
+    pub note: String,
+    pub trace: TraceContext,
+    pub occurred_at: Timestamp,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - me
+operationId: createMyTodoRequest
+summary: Ask a colleague for a follow-up
+description: >-
+  Creates a todo owned by the assignee and asked by the caller. Who may ask is
+  Cedar's todo_assign: the caller holds tenant-wide people-directory manage
+  authority and is not in a support session (403 todo_assign_forbidden). The
+  assignee is an active account of the caller's tenant inside the caller's
+  people-directory scope. Refusals, in order: 403 todo_assign_forbidden; 422
+  validation (text, links); 422 todo_assign_self; 422
+  todo_assignee_out_of_scope (unknown and other-tenant accounts alike); 422
+  todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name
+  records by kind and id; a sent label is ignored and never stored. Audited as
+  todo.request with the assignee and the due date only.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/TodoAskRequest'
+responses:
+  '201':
+    description: The request, as the assignee's todo.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TodoSummary'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: JWT verification is not configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

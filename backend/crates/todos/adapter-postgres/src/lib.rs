@@ -17,6 +17,17 @@ use console_todos_application::{
 use console_todos_domain::{TodoRef, TodoText, validated_refs};
 use sqlx::{PgPool, Row};
 
+/// Every column a [`TodoSummary`] reads.
+macro_rules! columns {
+    () => {
+        "id, owner_user_id, body, scopes, links, done, created_at, updated_at, done_at, \
+         assigned_by_user_id, due_on, returned_at, return_note"
+    };
+}
+
+mod requests;
+use requests::{lock_owned, not_found};
+
 #[derive(Debug, thiserror::Error)]
 pub enum PgTodoError {
     #[error(transparent)]
@@ -103,14 +114,11 @@ impl PgTodoStore {
         let text = text.into_string();
         with_audit::<_, TodoSummary, PgTodoError>(&self.pool, event, move |tx| {
             Box::pin(async move {
-                let row = sqlx::query(
-                    r#"
-                    INSERT INTO todos (id, org_id, owner_user_id, body, scopes, links)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                    RETURNING id, owner_user_id, body, scopes, links, done,
-                              created_at, updated_at, done_at
-                    "#,
-                )
+                let row = sqlx::query(concat!(
+                    "INSERT INTO todos (id, org_id, owner_user_id, body, scopes, links) \
+                     VALUES ($1, $2, $3, $4, $5, $6) RETURNING ",
+                    columns!()
+                ))
                 .bind(todo_id.as_uuid())
                 .bind(org_uuid)
                 .bind(owner_uuid)
@@ -125,7 +133,8 @@ impl PgTodoStore {
         .await
     }
 
-    /// List the caller's todos, open-first then newest-first.
+    /// List the caller's own todos, open-first then newest-first. Requests are
+    /// left out: they arrive in the work inbox, and a returned one is not done.
     pub async fn list(&self, query: ListTodosQuery) -> Result<TodoPage, PgTodoError> {
         let limit = query.limit.clamp(1, 200);
         let owner_uuid = *query.owner.as_uuid();
@@ -133,16 +142,14 @@ impl PgTodoStore {
 
         let rows = with_org_conn::<_, _, PgTodoError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                Ok(sqlx::query(
-                    r#"
-                    SELECT id, owner_user_id, body, scopes, links, done,
-                           created_at, updated_at, done_at
-                    FROM todos
-                    WHERE owner_user_id = $1 AND (done = false OR $2)
-                    ORDER BY done ASC, created_at DESC, id DESC
-                    LIMIT $3
-                    "#,
-                )
+                Ok(sqlx::query(concat!(
+                    "SELECT ",
+                    columns!(),
+                    " FROM todos \
+                     WHERE owner_user_id = $1 AND assigned_by_user_id IS NULL \
+                       AND (done = false OR $2) \
+                     ORDER BY done ASC, created_at DESC, id DESC LIMIT $3"
+                ))
                 .bind(owner_uuid)
                 .bind(query.include_done)
                 .bind(limit)
@@ -177,20 +184,14 @@ impl PgTodoStore {
 
         let rows = with_org_conn::<_, _, PgTodoError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                Ok(sqlx::query(
-                    r#"
-                    SELECT id, owner_user_id, body, scopes, links, done,
-                           created_at, updated_at, done_at,
-                           COUNT(*) OVER() AS snapshot_total
-                    FROM todos
-                    WHERE owner_user_id = $1
-                      AND (done = false OR $2)
-                      AND created_at <= $3
-                      AND updated_at <= $3
-                    ORDER BY done ASC, created_at DESC, id DESC
-                    LIMIT $4
-                    "#,
-                )
+                Ok(sqlx::query(concat!(
+                    "SELECT ",
+                    columns!(),
+                    ", COUNT(*) OVER() AS snapshot_total FROM todos \
+                     WHERE owner_user_id = $1 AND assigned_by_user_id IS NULL \
+                       AND (done = false OR $2) AND created_at <= $3 AND updated_at <= $3 \
+                     ORDER BY done ASC, created_at DESC, id DESC LIMIT $4"
+                ))
                 .bind(owner_uuid)
                 .bind(include_done)
                 .bind(as_of)
@@ -223,7 +224,8 @@ impl PgTodoStore {
     /// Set one of the caller's todos done/undone (audited as `todo.done` /
     /// `todo.undone`). Returns NotFound when the id is unknown *or* owned by
     /// another user — indistinguishable to the caller, which is the cross-user
-    /// isolation guarantee.
+    /// isolation guarantee. A request only moves forward: undoing a done one,
+    /// or finishing a returned one, is `todo_closed`.
     pub async fn set_done(&self, command: SetTodoDoneCommand) -> Result<TodoSummary, PgTodoError> {
         let org = current_org().map_err(KernelError::from)?;
         let owner_uuid = *command.owner.as_uuid();
@@ -241,34 +243,32 @@ impl PgTodoStore {
 
         with_audit::<_, TodoSummary, PgTodoError>(&self.pool, event, move |tx| {
             Box::pin(async move {
-                let row = sqlx::query(
-                    r#"
-                    UPDATE todos
-                    SET done = $3,
-                        done_at = CASE WHEN $3 THEN COALESCE(done_at, $4) ELSE NULL END,
-                        updated_at = $4
-                    WHERE id = $1 AND owner_user_id = $2
-                    RETURNING id, owner_user_id, body, scopes, links, done,
-                              created_at, updated_at, done_at
-                    "#,
-                )
+                match lock_owned(tx, todo_uuid, owner_uuid).await? {
+                    None => return Err(not_found()),
+                    Some((true, state)) => state.ensure_done_allowed(done)?,
+                    Some((false, _)) => {}
+                }
+                let row = sqlx::query(concat!(
+                    "UPDATE todos SET done = $3, \
+                     done_at = CASE WHEN $3 THEN COALESCE(done_at, $4) ELSE NULL END, \
+                     updated_at = $4 WHERE id = $1 AND owner_user_id = $2 RETURNING ",
+                    columns!()
+                ))
                 .bind(todo_uuid)
                 .bind(owner_uuid)
                 .bind(done)
                 .bind(occurred_at)
-                .fetch_optional(tx.as_mut())
+                .fetch_one(tx.as_mut())
                 .await?;
-                match row {
-                    Some(row) => summary_from_row(&row),
-                    None => Err(KernelError::not_found("todo not found").into()),
-                }
+                summary_from_row(&row)
             })
         })
         .await
     }
 
     /// Delete one of the caller's todos (audited as `todo.delete`). NotFound
-    /// for an unknown or cross-user id, same as [`Self::set_done`].
+    /// for an unknown or cross-user id, same as [`Self::set_done`]. A request is
+    /// `todo_is_request`: only its requester takes it back, by withdrawing.
     pub async fn delete(&self, command: DeleteTodoCommand) -> Result<(), PgTodoError> {
         let org = current_org().map_err(KernelError::from)?;
         let owner_uuid = *command.owner.as_uuid();
@@ -284,14 +284,21 @@ impl PgTodoStore {
 
         with_audit::<_, (), PgTodoError>(&self.pool, event, move |tx| {
             Box::pin(async move {
-                let result = sqlx::query("DELETE FROM todos WHERE id = $1 AND owner_user_id = $2")
+                match lock_owned(tx, todo_uuid, owner_uuid).await? {
+                    None => return Err(not_found()),
+                    Some((true, _)) => {
+                        return Err(KernelError::conflict(
+                            "a request is not deleted by its owner; finish it or send it back",
+                        )
+                        .with_code("todo_is_request")
+                        .into());
+                    }
+                    Some((false, _)) => {}
+                }
+                sqlx::query("DELETE FROM todos WHERE id = $1")
                     .bind(todo_uuid)
-                    .bind(owner_uuid)
                     .execute(tx.as_mut())
                     .await?;
-                if result.rows_affected() == 0 {
-                    return Err(KernelError::not_found("todo not found").into());
-                }
                 Ok(())
             })
         })
@@ -320,5 +327,11 @@ fn summary_from_row(row: &sqlx::postgres::PgRow) -> Result<TodoSummary, PgTodoEr
         created_at: row.try_get("created_at")?,
         updated_at: row.try_get("updated_at")?,
         done_at: row.try_get("done_at")?,
+        assigned_by_user_id: row
+            .try_get::<Option<uuid::Uuid>, _>("assigned_by_user_id")?
+            .map(UserId::from_uuid),
+        due_on: row.try_get("due_on")?,
+        returned_at: row.try_get("returned_at")?,
+        return_note: row.try_get("return_note")?,
     })
 }
