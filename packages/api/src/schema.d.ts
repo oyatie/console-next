@@ -9433,7 +9433,7 @@ export interface paths {
         post?: never;
         /**
          * Withdraw an open request the caller made
-         * @description Deletes the request. The saved outcome of the call that made it is kept for the command-outcome retention period, as for any deleted todo, and a retry of that call does not show it again. 404 when the id is not a request the caller made; 409 todo_closed once it is done or returned. Afterwards the assignee's done or return on it is a 404. Audited as todo.withdraw.
+         * @description Deletes the request. Saved outcomes of earlier calls that returned it, the ask among them, are kept for the command-outcome retention period, as for any deleted todo, and a retry of such a call does not show it again. 404 when the id is not a request the caller made; 409 todo_closed once it is done or returned. Afterwards the assignee's done or return on it is a 404. Audited as todo.withdraw.
          */
         delete: operations["withdrawMyTodoRequest"];
         options?: never;
