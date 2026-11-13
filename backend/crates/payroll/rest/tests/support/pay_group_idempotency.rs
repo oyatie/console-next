@@ -66,19 +66,23 @@ async fn pay_group_retry_replays_concurrent_creates_once(pool: PgPool) {
         .unwrap();
     let first = keyed(service.clone(), &token, input.clone(), &key);
     let retry = async {
-        loop {
-            let blocked: bool = sqlx::query_scalar(
-                "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND relation='pay_groups'::regclass AND mode='RowExclusiveLock' AND NOT granted AND $1=ANY(pg_blocking_pids(pid)))",
-            )
-            .bind(blocker)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-            if blocked {
-                break;
+        tokio::time::timeout(std::time::Duration::from_secs(30), async {
+            loop {
+                let blocked: bool = sqlx::query_scalar(
+                    "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND relation='pay_groups'::regclass AND mode='RowExclusiveLock' AND NOT granted AND $1=ANY(pg_blocking_pids(pid)))",
+                )
+                .bind(blocker)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+                if blocked {
+                    break;
+                }
+                tokio::task::yield_now().await;
             }
-            tokio::task::yield_now().await;
-        }
+        })
+        .await
+        .expect("first pay-group create did not reach the held INSERT lock within 30 seconds");
         let state: (String, bool) = sqlx::query_as(
             "SELECT state,execution_token IS NOT NULL FROM command_outcomes WHERE org_id=$1 AND idempotency_key=$2",
         )
