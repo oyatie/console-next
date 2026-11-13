@@ -89,6 +89,23 @@ mod tests {
     }
 
     #[test]
+    fn a_todo_request_line_offers_only_asking() {
+        let c = super::catalog();
+        let row = c["domains"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["domain"] == "todo_request")
+            .unwrap();
+        assert_eq!(row["grantable"], true);
+        assert_eq!(row["levels"], serde_json::json!(["edit"]));
+        assert_eq!(
+            row["operations"],
+            serde_json::json!([{"operation":"todo_assign","level":"edit"}])
+        );
+    }
+
+    #[test]
     fn the_catalog_lists_every_domain_and_marks_every_scope_kind_enforceable() {
         let c = super::catalog();
         assert_eq!(

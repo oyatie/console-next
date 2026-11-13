@@ -304,6 +304,8 @@ pub enum Feature {
     JobTitleManage,
     /// Define the fields a tenant adds to its personnel card (Cedar-only).
     RosterFieldManage,
+    /// Ask a colleague for a to-do over the grant's scope (Cedar-only).
+    TodoAssign,
     /// Read records retained after tenant offboarding (BW-36; deferred, OD-7: inert).
     RetainedRecordsRead,
     /// Start tenant offboarding (BW-36; deferred, OD-7: inert).
@@ -319,7 +321,7 @@ pub enum Feature {
 }
 
 impl Feature {
-    pub const ALL: [Self; 113] = [
+    pub const ALL: [Self; 114] = [
         Self::Login,
         Self::WorkOrderCreate,
         Self::WorkOrderEditIntake,
@@ -429,6 +431,7 @@ impl Feature {
         Self::ChangeRequestDecide,
         Self::JobTitleManage,
         Self::RosterFieldManage,
+        Self::TodoAssign,
         Self::RetainedRecordsRead,
         Self::TenantOffboard,
         Self::LegalEntityManage,
