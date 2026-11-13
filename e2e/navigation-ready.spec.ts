@@ -31,6 +31,7 @@ test.beforeAll(async () => {
         window.addEventListener("network-online", event => onlineManager.setOnline(event.detail));
         const shell = createRoute({ getParentRoute: () => root, id: "shell", component: () => <main><Outlet /></main> });
         const start = createRoute({ getParentRoute: () => shell, path: "/", component: () => <h1>Start</h1> });
+        const sections = ["/people", "/org"].map(path => createRoute({ getParentRoute: () => shell, path, component: () => <h1>{path}</h1> }));
         const destination = createRoute({
           getParentRoute: () => shell, path: "/destination",
           validateSearch: s => ({ revision: String(s.revision ?? "") }),
@@ -43,7 +44,7 @@ test.beforeAll(async () => {
         const standalone = createRoute({ getParentRoute: () => root, path: "/document", component: () => <Suspense fallback={null}><main><Suspended /></main></Suspense> });
         createRoot(document.getElementById("root")).render(
           <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-            <RouterProvider router={createRouter({ routeTree: root.addChildren([shell.addChildren([start, destination, redirect, suspended]), standalone]) })} />
+            <RouterProvider router={createRouter({ routeTree: root.addChildren([shell.addChildren([start, destination, redirect, suspended, ...sections]), standalone]) })} />
           </QueryClientProvider>);
       ` : id === "/__navigation-screen.tsx" ? `
         import { useQuery } from "@tanstack/react-query";
@@ -207,4 +208,65 @@ test("measure ready-route navigation without fixed waits", async ({ page }, test
   const elapsed = performance.now() - start;
   console.log(`navigation-wall ${testInfo.project.name}: ${iterations} navigations in ${elapsed.toFixed(1)} ms`);
   await expect(page.getByRole("heading", { name: "Start" })).toBeVisible();
+});
+
+
+test("routes reach ready without the optional browser visibility API", async ({ page }) => {
+  await page.addInitScript(() => { Reflect.deleteProperty(Element.prototype, "checkVisibility"); });
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  for (const path of ["/people", "/", "/org"]) {
+    await page.goto(new URL(path, server.resolvedUrls!.local[0]).href);
+    await expect(page.locator("main h1")).toBeVisible();
+    await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", path);
+  }
+  expect(errors).toEqual([]);
+});
+
+test("a permanently busy shell region cannot hold up the route content", async ({ page }) => {
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const rail = document.createElement("aside");
+      rail.setAttribute("aria-busy", "true");
+      rail.textContent = "Loading navigation";
+      document.body.append(rail);
+    });
+  });
+  await page.goto(server.resolvedUrls!.local[0]!);
+  await expect(page.locator("aside[aria-busy=true]")).toBeVisible();
+  await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", "/");
+});
+
+for (const nativeVisibility of [true, false]) test(`DOM-only content changes revoke and restore readiness (native visibility=${nativeVisibility})`, async ({ page }) => {
+  if (!nativeVisibility) await page.addInitScript(() => { Reflect.deleteProperty(Element.prototype, "checkVisibility"); });
+  await page.goto(server.resolvedUrls!.local[0]!);
+  const marker = page.locator("[data-route-ready]");
+  const main = page.getByRole("main");
+  await expect(marker).toHaveAttribute("data-route-ready", "/");
+  // No router or query update follows these mutations: the observer must notice them itself.
+  await main.evaluate(element => element.setAttribute("aria-busy", "true"));
+  await expect(marker).toHaveCount(0);
+  await main.evaluate(element => element.removeAttribute("aria-busy"));
+  await expect(marker).toHaveAttribute("data-route-ready", "/");
+  await main.evaluate(element => {
+    const pending = document.createElement("div");
+    pending.setAttribute("aria-busy", "true");
+    pending.textContent = "Loading content";
+    element.append(pending);
+  });
+  await expect(marker).toHaveCount(0);
+  // Fixed-position content has no offsetParent, but still holds up readiness.
+  await main.locator("[aria-busy]").evaluate(element => { element.style.position = "fixed"; });
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(marker).toHaveCount(0);
+  await main.locator("[aria-busy]").evaluate(element => { element.style.visibility = "hidden"; });
+  await expect(marker).toHaveAttribute("data-route-ready", "/");
+  await main.locator("[aria-busy]").evaluate(element => { element.style.visibility = "visible"; });
+  await expect(marker).toHaveCount(0);
+  await main.locator("[aria-busy]").evaluate(element => element.remove());
+  await expect(marker).toHaveAttribute("data-route-ready", "/");
+  await main.evaluate(element => element.setAttribute("hidden", ""));
+  await expect(marker).toHaveCount(0);
+  await page.locator("main").evaluate(element => element.removeAttribute("hidden"));
+  await expect(marker).toHaveAttribute("data-route-ready", "/");
 });
