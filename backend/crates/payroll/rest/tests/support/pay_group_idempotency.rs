@@ -4,6 +4,9 @@ use super::*;
 #[path = "pay_group_completed_retry.rs"]
 mod pay_group_completed_retry;
 
+#[path = "pay_group_concurrent_retry.rs"]
+mod pay_group_concurrent_retry;
+
 async fn fixture(pool: &PgPool) -> (axum::Router, String, Value, OrgId, UserId, Uuid) {
     let org = OrgId::new();
     let actor = seed_org_and_super_admin(pool, *org.as_uuid(), "pay-group-retry").await;
@@ -48,73 +51,6 @@ async fn counts(pool: &PgPool, org: OrgId) -> (i64, i64, i64) {
     .fetch_one(pool)
     .await
     .unwrap()
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn pay_group_retry_replays_concurrent_creates_once(pool: PgPool) {
-    const LOCK_WAIT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
-    const CREATE_AND_RETRY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
-    let (service, token, input, org, _, _) = fixture(&pool).await;
-    let key = Uuid::new_v4().to_string();
-    // Hold the INSERT until the retry has observed the admitted, unfinished command.
-    let mut gate = pool.begin().await.unwrap();
-    sqlx::query("LOCK TABLE pay_groups IN SHARE MODE")
-        .execute(&mut *gate)
-        .await
-        .unwrap();
-    let blocker: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
-        .fetch_one(&mut *gate)
-        .await
-        .unwrap();
-    let first = keyed(service.clone(), &token, input.clone(), &key);
-    let retry = async {
-        tokio::time::timeout(LOCK_WAIT_TIMEOUT, async {
-            loop {
-                let blocked: bool = sqlx::query_scalar(
-                    "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND relation='pay_groups'::regclass AND mode='RowExclusiveLock' AND NOT granted AND $1=ANY(pg_blocking_pids(pid)))",
-                )
-                .bind(blocker)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
-                if blocked {
-                    break;
-                }
-                tokio::task::yield_now().await;
-            }
-        })
-        .await
-        .unwrap_or_else(|_| {
-            panic!("first pay-group create did not reach the held INSERT lock within {LOCK_WAIT_TIMEOUT:?}")
-        });
-        let state: (String, bool) = sqlx::query_as(
-            "SELECT state,execution_token IS NOT NULL FROM command_outcomes WHERE org_id=$1 AND idempotency_key=$2",
-        )
-        .bind(org.as_uuid())
-        .bind(&key)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-        assert_eq!(state, ("PROCESSING".into(), true));
-        let retry = keyed(service.clone(), &token, input.clone(), &key).await;
-        assert_eq!(retry.status, StatusCode::CONFLICT, "{}", retry.json);
-        assert_eq!(retry.json["error"]["code"], "command_processing");
-        assert_eq!(counts(&pool, org).await, (0, 1, 0));
-        gate.rollback().await.unwrap();
-    };
-    let (created, ()) = tokio::time::timeout(CREATE_AND_RETRY_TIMEOUT, async {
-        tokio::join!(first, retry)
-    })
-    .await
-    .unwrap_or_else(|_| {
-        panic!("concurrent create and retry did not settle within {CREATE_AND_RETRY_TIMEOUT:?}")
-    });
-    assert_eq!(created.status, StatusCode::CREATED, "{}", created.json);
-    let replay = keyed(service, &token, input, &key).await;
-    assert_eq!(replay.status, StatusCode::CREATED, "{}", replay.json);
-    assert_eq!(replay.json["id"], created.json["id"]);
-    assert_eq!(replay.json, created.json);
-    assert_eq!(counts(&pool, org).await, (1, 1, 1));
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
