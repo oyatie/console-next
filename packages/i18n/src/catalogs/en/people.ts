@@ -1,4 +1,6 @@
 export const enPeople = {
+  "people.account.confirmName": "Confirm full name: {name}",
+  "people.account.confirmNameExample": "Kim Hana",
   "people.account.ownLink": "Link my account",
   "people.account.ownLinked": "Your account has been linked",
   "people.account.selfAttested": "Self-attested · awaiting review",

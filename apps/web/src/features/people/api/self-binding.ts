@@ -1,16 +1,24 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { api, assertBoundPasskeyHash, assertPasskey, unwrap } from "@console/api";
-import { read } from "../../../lib/query";
+import { api, ApiError, assertBoundPasskeyHash, assertPasskey, unwrap } from "@console/api";
+import { get, read } from "../../../lib/query";
 
-const prepareSelfBinding = (employeeId: string) =>
-  unwrap(api.POST("/api/v1/users/me/employee-link/prepare", { body: { employee_id: employeeId } }));
+const prepareSelfBinding = (employeeId: string, confirmedName?: string) =>
+  unwrap(api.POST("/api/v1/users/me/employee-link/prepare", { body: { employee_id: employeeId, confirmed_name: confirmedName } }));
 export const selfBindingOffer = (employeeId: string) =>
-  read("/api/v1/users/me/employee-link/prepare", () => prepareSelfBinding(employeeId), employeeId);
+  read("/api/v1/users/me/employee-link/prepare", async () => {
+    try { await prepareSelfBinding(employeeId); }
+    catch (error) {
+      if (!(error instanceof ApiError) || error.code !== "account_link.refuse.not_own_record") throw error;
+    }
+    return true;
+  }, employeeId);
 
-export async function bindOwnAccount(employeeId: string) {
-  const binding = await prepareSelfBinding(employeeId);
+export const selfBindingReceipt = () => get("/api/v1/users/me/employee-link");
+
+export async function bindOwnAccount(employeeId: string, confirmedName: string) {
+  const binding = await prepareSelfBinding(employeeId, confirmedName);
   const step_up = await assertBoundPasskeyHash("EXCEPTION_DECIDE", binding.object_id, binding.payload_hash ?? "");
-  return unwrap(api.POST("/api/v1/users/me/employee-link", { body: { employee_id: employeeId, step_up } }));
+  return unwrap(api.POST("/api/v1/users/me/employee-link", { body: { employee_id: employeeId, confirmed_name: confirmedName, step_up } }));
 }
 
 export async function withdrawOwnBinding(attestationId: string) {

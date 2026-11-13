@@ -88,6 +88,10 @@ export type EmployeeViewFilters = { status?: string; review?: string; unit?: str
 export type EmployeeView = { id: string; name: string; filters: EmployeeViewFilters };
 
 type Requested = {
+  /** Current unreviewed self-attestation, or null after review/withdrawal. Cedar owns the read and can_withdraw. */
+  "/api/v1/users/me/employee-link": Omit<paths["/api/v1/users/me/employee-link"], "get"> & { get: Op<{
+    attestation: { attestation_id: string; employee_id: string; can_withdraw: boolean } | null;
+  }> };
   /** Cursor projection; absence of next_cursor identifies the older offset-only response. */
   "/api/v1/directory/people": Path<{ get: Op<S["DirectoryPage"] & { next_cursor?: string | null }, never,
     NonNullable<paths["/api/v1/directory/people"]["get"]["parameters"]["query"]> & { cursor?: string }> }>;

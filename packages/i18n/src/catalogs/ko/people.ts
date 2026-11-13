@@ -108,6 +108,8 @@ export const koPeople: Record<keyof typeof enPeople, string> = {
   "people.lifecycle.ack.change.retirement_settlement_ack": "퇴직금 정산 영향을 확인했습니다.",
   "people.lifecycle.ack.change.privacy_notice_ack": "이 인사 조치에 따른 개인정보 처리 사실을 직원에게 알렸습니다.",
   "people.account.title": "로그인 계정",
+  "people.account.confirmName": "성명 확인: {name}",
+  "people.account.confirmNameExample": "김하나",
   "people.account.ownLink": "내 계정 연결",
   "people.account.ownLinked": "내 계정을 연결했습니다",
   "people.account.selfAttested": "본인 확인 연결 · 검토 대기",

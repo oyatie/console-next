@@ -25,6 +25,8 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await page.route("**/api/v1/client-errors", route => route.fulfill({ status: 204 }));
   await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: user });
   await mockRoute(page, "post", "/api/v1/users/me/employee-link/prepare", { status: 403, json: failure("account_link.refuse.solo_ineligible") });
+  await page.route("**/api/v1/users/me/employee-link", route => route.request().method() === "GET"
+    ? route.fulfill({ json: { attestation: null } }) : route.fallback());
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
   await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } });
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: checklist });

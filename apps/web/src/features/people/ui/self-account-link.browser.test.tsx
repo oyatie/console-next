@@ -51,14 +51,21 @@ test("the own-account gallery action supports keyboard confirmation and stays pe
   await page.addInitScript(() => Object.defineProperty(navigator.credentials, "get", {
     value: async () => ({ toJSON: () => ({ id: "test-passkey", type: "public-key" }) }),
   }));
-  let release!: () => void, writes = 0;
+  let release!: () => void, writes = 0, linked = false;
   const held = new Promise<void>(done => { release = done; });
   await page.route("**/api/v1/users/me/employee-link", async route => {
-    writes++; await held;
+    if (route.request().method() === "GET") return route.fulfill({ json: { attestation: linked ? { attestation_id: "00000000-0000-4000-8000-000000000003", employee_id: "00000000-0000-4000-8000-000000000001", can_withdraw: true } : null } });
+    browserExpect(route.request().postDataJSON().confirmed_name).toBe("김하나");
+    writes++; await held; linked = true;
     await route.fulfill({ status: 201, json: { attestation_id: "00000000-0000-4000-8000-000000000003" } });
   });
   await page.goto(`${server.resolvedUrls!.local[0]}self-account-test`);
-  const button = page.getByRole("button", { name: "내 계정 연결", exact: true });
+  const button = page.getByRole("button", { name: "패스키로 확인하고 내 계정 연결", exact: true });
+  await browserExpect(button).toBeDisabled();
+  const name = page.getByRole("textbox");
+  await name.fill("다른 이름");
+  await browserExpect(button).toBeDisabled();
+  await name.fill("김하나");
   await button.focus(); await button.press("Enter");
   await browserExpect(button).toBeDisabled();
   await browserExpect.poll(() => writes).toBe(1);
@@ -69,7 +76,7 @@ test("the own-account gallery action supports keyboard confirmation and stays pe
   let releaseWithdrawal!: () => void;
   const withdrawing = new Promise<void>(done => { releaseWithdrawal = done; });
   await page.route("**/api/v1/users/me/employee-link/withdraw", async route => {
-    await withdrawing;
+    await withdrawing; linked = false;
     await route.fulfill({ json: {} });
   });
   await withdraw.click();
