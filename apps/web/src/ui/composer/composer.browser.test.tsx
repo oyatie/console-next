@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { loadCatalog } from "@console/i18n";
+import { commitLabel } from "./actions";
 import { browserTestOptimizeDeps } from "../../lib/browser-test";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
@@ -10,6 +12,7 @@ let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await createServer({
     configFile: false, cacheDir: ".cache/composer-test", logLevel: "error",
     optimizeDeps: browserTestOptimizeDeps,
@@ -39,7 +42,7 @@ beforeAll(async () => {
             h(Composer, { layout: state === 'drawer' || state === 'command-drawer-403' ? 'drawer' : state?.startsWith('page') || state === 'command-page-403' ? 'page' : 'inline', headingLevel: 3, commitId: 'commit',
               title: 'Review', action: { kind: long ? 'EMPLOYMENT_TYPE_CHANGE' : 'appointment', mode: long ? 'apply' : 'schedule', count: 3 },
               onClose: () => {}, onSubmit: state === 'refusal' ? undefined : () => { setSubmits(x => x + 1); if (state?.startsWith('command')) setError(new ApiError(Number(state.split('-')[2]), 'permission_denied', 'Server refusal')); },
-              error, notice: h(CommandError, { error }), secondary: state?.startsWith('command') || state === 'locked' ? h('button', { id: 'alternate', onClick: () => setRemedies(x => x + 1) }, 'Alternate') : undefined, onSaveDraft: state?.startsWith('command') ? () => setRemedies(x => x + 1) : undefined,
+              error, notice: h(CommandError, { error, read: state === 'command-read-403' }), secondary: state?.startsWith('command') || state === 'locked' ? h('button', { id: 'alternate', onClick: () => setRemedies(x => x + 1) }, 'Alternate') : undefined, onSaveDraft: state?.startsWith('command') ? () => setRemedies(x => x + 1) : undefined,
               blocked: (error && state === 'command-blocked-403') || state === 'blocked' || state?.startsWith('locate') || (state === 'page-blocked' && !long) ? { reason: 'Resolve first', remedy: h('button', { id: 'remedy', onClick: () => setRemedies(x => x + 1) }, 'Register entity'), press: state?.startsWith('locate') ? () => setRemedies(x => x + 1) : undefined } : undefined,
               pending: state === 'locate-pending', loading: state === 'locate-loading',
               routing: state === 'routed' ? { routed: true, steps: [{ key: 'server-step', who: 'Resolved role', state: 'waiting' }] } : state === 'immediate' ? { routed: false, why: 'Resolved policy reason' } : undefined,
@@ -162,6 +165,7 @@ test.each(["inline", "page", "drawer"])("an authoritative command refusal locks 
   await page.locator("#commit").click();
   await expect.poll(() => page.locator("#commit").isDisabled()).toBe(true);
   expect(await page.getByRole("alert").count()).toBe(1);
+  await expect.poll(() => page.getByRole("alert").evaluate(el => el === document.activeElement)).toBe(true);
   expect(await field.inputValue()).toBe("Reviewed");
   expect(await field.evaluate(el => Boolean(el.closest("[inert]")))).toBe(true);
   expect(await field.evaluate(el => getComputedStyle(el.closest("[inert]")!).opacity)).toBe("0.5");
@@ -203,4 +207,12 @@ test("an explicit body lock keeps existing secondary action layout and recovery 
   expect(await action.evaluate(el => el.parentElement === document.querySelector("#commit")?.parentElement)).toBe(true);
   await action.click();
   expect(await page.locator("#remedies").textContent()).toBe("1");
+});
+
+
+test.each(["command-read-403", "command-inline-409", "command-inline-422"])("%s does not move focus to a command refusal", async (state) => {
+  await open(state);
+  await page.getByRole("button", { name: commitLabel({ kind: "appointment", mode: "schedule", count: 3 }), exact: true }).click();
+  await page.getByRole("alert").waitFor();
+  expect(await page.getByRole("alert").evaluate(el => el === document.activeElement)).toBe(false);
 });

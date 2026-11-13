@@ -216,6 +216,7 @@ export const koEntity: Record<keyof typeof enEntity, string> = {
   "entity.refusal.before_state_in_force": "지금 등록증 내용이 시작된 날보다 앞선 날짜입니다. 그 전부터 틀린 값이면 발급 사유로 「정정 · 처음부터 잘못 입력함」을 선택하십시오",
   "entity.refusal.registration_change_scheduled": "이 등록증에 예약된 변경보다 앞선 날짜라 그날부터 이 기록이 덮입니다. 예약된 변경이 적용된 뒤 기록하십시오",
   "entity.refusal.entity_change_scheduled": "법인에 예약된 변경이 있어 대표자·법인명·본점은 함께 기록할 수 없습니다. 예약된 변경이 적용된 뒤 기록하십시오",
+  "entity.refused.forbidden": "이 법인을 변경할 권한이 필요합니다. 권한 관리 담당자에게 권한을 요청하십시오.",
   "entity.refused.legal_entity_not_open": "종료된 법인이라 더는 수정할 수 없습니다.",
   "entity.refused.legal_entity_voided": "삭제된 법인입니다. 목록을 다시 열어 확인하십시오.",
   "entity.refused.legal_entity_not_found": "이 법인을 찾지 못했습니다. 목록을 다시 열어 확인하십시오.",

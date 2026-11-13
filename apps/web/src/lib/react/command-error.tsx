@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@console/api";
 import { isMessageId, t } from "@console/i18n";
@@ -65,6 +65,11 @@ export function CommandError({
   formId?: string;
   formFields?: string[];
 }) {
+  const refusal = useRef<HTMLDivElement>(null);
+  const refused = !read && error instanceof ApiError && error.status === 403;
+  useEffect(() => {
+    if (refused) refusal.current?.focus();
+  }, [error, refused]);
   if (!error) return null;
   const api = error instanceof ApiError ? error : undefined;
   // The transport and useCommand attach intent keys to commands; a read's operation ID is only a support reference.
@@ -114,7 +119,7 @@ export function CommandError({
   }
 
   return (
-    <Banner tone={checking ? "info" : "danger"} live={live ?? (checking ? "polite" : "assertive")} title={checking ? t("requestOutcome.checking") : undefined}
+    <Banner ref={refusal} tabIndex={refused ? -1 : undefined} tone={checking ? "info" : "danger"} live={live ?? (checking ? "polite" : "assertive")} title={checking ? t("requestOutcome.checking") : undefined}
       actions={finish && <Button variant="primary" onClick={finish}>{t("requestOutcome.check")}</Button>}>
       {readFailure ? readFailureText(error, own) : api?.status === 0 ? t("common.networkError") : failureText(error, own)}
       {checking && <p>{t("requestOutcome.remedy")}</p>}

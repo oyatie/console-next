@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { CircleAlert, CircleCheck, History, Info, TriangleAlert } from "lucide-react";
 import s from "./banner.module.css";
 import { shown } from "../shown";
@@ -15,7 +15,7 @@ const ICON = { info: Info, warn: TriangleAlert, danger: CircleAlert, ok: CircleC
  * words carry it too. `live` announces a banner that appears after an action (polite = status, assertive = alert);
  * a banner that is there on load stays silent. A server refusal with its unblockers is BlockedPanel, not this.
  */
-export function Banner({ tone = "info", title, children, actions, placement = "inline", live, id }: {
+export function Banner({ tone = "info", title, children, actions, placement = "inline", live, id, ref, tabIndex }: {
   tone?: BannerTone;
   title?: ReactNode;
   children?: ReactNode;
@@ -23,11 +23,13 @@ export function Banner({ tone = "info", title, children, actions, placement = "i
   placement?: "inline" | "page";
   live?: "polite" | "assertive";
   id?: string;
+  ref?: Ref<HTMLDivElement>;
+  tabIndex?: number;
 }) {
   const Icon = ICON[tone];
   const role = live === "assertive" ? "alert" : live === "polite" ? "status" : undefined;
   return (
-    <div id={id} className={s.banner} data-tone={tone} data-placement={placement} role={role}>
+    <div ref={ref} tabIndex={tabIndex} id={id} className={s.banner} data-tone={tone} data-placement={placement} role={role}>
       <Icon className={s.icon} size={16} aria-hidden />
       <div className={s.body}>
         {shown(title) && <strong className={s.title}>{title}</strong>}
