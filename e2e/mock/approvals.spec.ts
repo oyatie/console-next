@@ -46,9 +46,10 @@ for (const { code, message } of [
   await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
   await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
   const panel = column(page);
-  const verification = panel.locator("dl > div").filter({ has: page.getByRole("term").filter({ hasText: /^결재 전 확인$/ }) });
-  await expect(verification).toHaveCount(1);
-  await expect(verification.getByRole("definition")).toHaveText(t(message));
+  const facts = panel.getByRole("region", { name: t("approvals.preview.facts"), exact: true });
+  await expect(facts.getByText(t("approvals.field.verification"), { exact: true })).toHaveCount(1);
+  await expect(facts.getByText(t(message), { exact: true })).toBeVisible();
+  await expect(panel.getByRole("region", { name: t("approvals.preview.route"), exact: true })).not.toContainText("내 차례");
   await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
   await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);

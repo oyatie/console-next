@@ -78,7 +78,14 @@ test.each(ENGINES.map((_, engine) => ({ engine })))("read-only document explains
     ["en", "The requester or decider identity could not be verified.", "Document body"],
   ] as const) {
     await page.goto(`${server.resolvedUrls!.local[0]}approvals-view-test?route=${encodeURIComponent("/approvals/approval-1")}&refusal=${refusal}&locale=${locale}`);
-    await expect(page.getByText(message, { exact: false })).toBeVisible();
+    const facts = page.getByRole("region", { name: locale === "ko" ? "문서 정보" : "Document details", exact: true });
+    const refusalText = facts.getByText(message, { exact: false });
+    await expect(refusalText).toBeVisible();
+    expect(await refusalText.evaluate(el => el.closest("[data-tone]")?.getAttribute("data-tone"))).toBe("warn");
+    await expect(facts.getByRole("definition").filter({ hasText: message })).toHaveCount(0);
+    const chain = page.getByRole("region", { name: locale === "ko" ? "결재선" : "Approval route", exact: true });
+    await expect(chain).not.toContainText("내 차례");
+    await expect(chain).toContainText("11. 3. 10:00");
     await expect(page.getByRole("button")).toHaveCount(0);
     await expect(page.getByRole("region", { name: body, exact: true })).toContainText("영업1팀과 영업2팀을 영업팀으로 통합");
   }
