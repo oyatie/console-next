@@ -30,6 +30,10 @@ fn typed_catalogue_rejects_unknown_types_formats_and_code_owners() {
     let source = include_str!("../../data/employee.json");
     for (before, after) in [
         ("\"value_type\": \"text\"", "\"value_type\": \"unknown\""),
+        (
+            "\"classification\": \"canonical\"",
+            "\"classification\": \"restriced\"",
+        ),
         ("\"format\": \"text\"", "\"format\": \"unknown\""),
         ("\"source\": \"tenant\"", "\"source\": \"unknown\""),
     ] {
@@ -76,6 +80,24 @@ fn place_model_has_distinct_workplace_and_worksite_targets() {
         assert_eq!(
             employee_import_target_for_header(alias),
             Some("worksite_name")
+        );
+    }
+}
+
+#[test]
+fn typed_catalogue_rejects_unknown_keys_at_every_metadata_boundary() {
+    let source = include_str!("../../data/employee.json");
+    for pointer in ["", "/fields/0/label_ids", "/fields/2/code_catalogue"] {
+        let mut data: serde_json::Value = serde_json::from_str(source).unwrap();
+        data.pointer_mut(pointer)
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .insert("codes".into(), serde_json::json!(["UNDECLARED"]));
+        let changed = data.to_string();
+        assert!(
+            EmployeeImportCatalogue::parse(&changed).is_err(),
+            "{pointer}"
         );
     }
 }

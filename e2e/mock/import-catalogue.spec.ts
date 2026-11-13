@@ -7,6 +7,7 @@ import { mockRoute } from "./route";
 
 for (const width of [390, 1440]) for (const theme of ["light", "dark"]) {
   test(`served import targets populate column choices at ${width}px ${theme} @ui-state`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme as "light" | "dark" });
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockPeopleImport(page, "empty");
     await mockRoute(page, "post", "/api/v1/employees/import/preview", { status: 200, json: {
@@ -20,7 +21,6 @@ for (const width of [390, 1440]) for (const theme of ["light", "dark"]) {
     } });
     try {
       await page.goto("/people/import");
-      await page.locator("html").evaluate((element, value) => { element.dataset.theme = value; }, theme);
       const chooser = page.waitForEvent("filechooser");
       await page.getByRole("button", { name: "파일 선택", exact: true }).click();
       await (await chooser).setFiles({ name: "synthetic-roster.csv", mimeType: "text/csv", buffer: Buffer.from("name,registry\r\nSynthetic person,Synthetic registry\r\n") });
@@ -35,6 +35,7 @@ for (const width of [390, 1440]) for (const theme of ["light", "dark"]) {
       await choices.nth(0).selectOption("name");
       await choices.nth(1).selectOption("company_brn");
       await expect(sheet.getByRole("button", { name: "Synthetic sheet 시트를 이 연결로 다시 읽기", exact: true })).toBeEnabled();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await fits(page, `import targets/${width}/${theme}`);
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }

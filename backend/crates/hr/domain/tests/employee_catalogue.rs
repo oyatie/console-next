@@ -28,14 +28,11 @@ fn historical_fields() -> Vec<Value> {
             .unwrap()
     };
     let base_ref = std::env::var("QUALITY_BASE").unwrap_or_else(|_| {
-        if git(&["rev-parse", "--verify", "refs/remotes/public/dev"])
-            .status
-            .success()
-        {
-            "public/dev".into()
-        } else {
-            "dev".into()
-        }
+        ["refs/remotes/public/dev", "refs/remotes/origin/dev", "dev"]
+            .into_iter()
+            .find(|reference| git(&["rev-parse", "--verify", reference]).status.success())
+            .unwrap()
+            .into()
     });
     let base = git(&["merge-base", "HEAD", &base_ref]);
     assert!(
@@ -83,7 +80,7 @@ fn declared_catalogue_matches_every_importer_field() {
         assert_eq!(declared["target"], used.target);
         assert_eq!(declared["aliases"], json!(used.aliases));
         assert_eq!(declared["required"], used.required);
-        assert_eq!(declared["classification"], used.classification);
+        assert_eq!(declared["classification"], json!(used.classification));
     }
 }
 
@@ -146,8 +143,7 @@ fn coded_fields_reference_the_owning_catalogue_without_inline_codes() {
         assert!(field.get("codes").is_none());
         if field["value_type"] == "code" {
             let owner = &field["code_catalogue"];
-            assert!(["refdata", "tenant"].contains(&owner["source"].as_str().unwrap()));
-            assert!(!owner["resource"].as_str().unwrap().is_empty());
+            assert!(code_owner_exists(owner), "unresolved owner: {owner}");
         } else {
             assert!(field["code_catalogue"].is_null());
         }
@@ -177,4 +173,89 @@ fn drift_gate_rejects_removed_key_and_accepts_its_synonym() {
         .unwrap()
         .push(removed["target"].clone());
     assert!(removed_keys(&fields).is_empty());
+}
+
+#[test]
+fn business_registration_example_is_unallocated_and_checksum_invalid() {
+    let data = catalogue();
+    let example = data["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|field| field["target"] == "company_brn")
+        .unwrap()["example"]
+        .as_str()
+        .unwrap();
+    assert!(example.starts_with("000-"));
+    let digits: Vec<u32> = example.chars().filter_map(|c| c.to_digit(10)).collect();
+    assert_eq!(digits.len(), 10);
+    let sum: u32 = digits[..9]
+        .iter()
+        .zip([1, 3, 7, 1, 3, 7, 1, 3, 5])
+        .map(|(digit, weight)| digit * weight)
+        .sum::<u32>()
+        + digits[8] * 5 / 10;
+    assert_ne!((10 - sum % 10) % 10, digits[9]);
+}
+
+fn code_owner_exists(owner: &Value) -> bool {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let resource = owner["resource"].as_str().unwrap();
+    match owner["source"].as_str().unwrap() {
+        "domain" => {
+            let Some((module, symbol)) = resource.rsplit_once("::") else {
+                return false;
+            };
+            let Ok(source) = fs::read_to_string(
+                root.join("src")
+                    .join(format!("{}.rs", module.replace("::", "/"))),
+            ) else {
+                return false;
+            };
+            [
+                format!("pub fn {symbol}("),
+                format!("pub const {symbol}:"),
+                format!("{symbol}, \""),
+            ]
+            .iter()
+            .any(|declaration| source.contains(declaration))
+        }
+        "tenant" => fs::read_dir(root.join("../../platform/db/migrations"))
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "sql"))
+            .any(|entry| {
+                fs::read_to_string(entry.path())
+                    .unwrap()
+                    .contains(&format!("CREATE TABLE {resource} ("))
+            }),
+        "refdata" => fs::read_dir(root.join("../../refdata/lists/data"))
+            .unwrap()
+            .filter_map(Result::ok)
+            .any(|entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .unwrap()
+                    .starts_with(&format!("{resource}-"))
+            }),
+        _ => false,
+    }
+}
+
+#[test]
+fn code_owner_drift_gate_rejects_missing_resources() {
+    for owner in catalogue()["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|field| field["code_catalogue"].as_object())
+    {
+        let mut owner = Value::Object(owner.clone());
+        owner["resource"] = json!("missing_catalogue");
+        assert!(!code_owner_exists(&owner));
+    }
+    assert!(!code_owner_exists(
+        &json!({"source": "domain", "resource": "profile::enums::MissingType"})
+    ));
 }

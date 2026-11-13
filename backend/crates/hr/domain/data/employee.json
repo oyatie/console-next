@@ -285,8 +285,8 @@
       "format": "catalogue_label",
       "example": "MALE",
       "code_catalogue": {
-        "source": "refdata",
-        "resource": "sex"
+        "source": "domain",
+        "resource": "import::sex::sex_of_text"
       }
     },
     {
@@ -520,8 +520,8 @@
       "format": "catalogue_label",
       "example": "REGULAR",
       "code_catalogue": {
-        "source": "refdata",
-        "resource": "employment_type"
+        "source": "domain",
+        "resource": "profile::enums::EmploymentType"
       }
     },
     {
@@ -542,7 +542,7 @@
       },
       "value_type": "text",
       "format": "business_registration_number",
-      "example": "123-45-67891",
+      "example": "000-00-00001",
       "code_catalogue": null
     },
     {
@@ -641,8 +641,8 @@
       "format": "catalogue_label",
       "example": "ACTIVE",
       "code_catalogue": {
-        "source": "refdata",
-        "resource": "employment_status"
+        "source": "domain",
+        "resource": "import::normalize::STATUS_CODES"
       }
     },
     {
@@ -682,8 +682,8 @@
       "format": "catalogue_label",
       "example": "OTHER",
       "code_catalogue": {
-        "source": "refdata",
-        "resource": "leave_type"
+        "source": "domain",
+        "resource": "lifecycle::leave_facts::LEAVE_TYPES"
       }
     },
     {

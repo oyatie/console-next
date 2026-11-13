@@ -12,13 +12,32 @@ pub struct EmployeeImportFieldDefinition<'a> {
     pub target: &'a str,
     #[serde(borrow)]
     pub aliases: Vec<&'a str>,
-    pub classification: &'a str,
+    pub classification: Classification,
     pub required: bool,
     pub label_ids: LabelIds,
     pub value_type: ValueType,
     pub format: ValueFormat,
     pub code_catalogue: Option<CodeCatalogue>,
     pub example: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Classification {
+    Canonical,
+    Restricted,
+    Location,
+}
+
+impl Classification {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Canonical => "canonical",
+            Self::Restricted => "restricted",
+            Self::Location => "location",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -53,6 +72,9 @@ pub enum ValueFormat {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "source", rename_all = "snake_case", deny_unknown_fields)]
 pub enum CodeCatalogue {
+    Domain {
+        resource: String,
+    },
     Refdata {
         resource: String,
     },
