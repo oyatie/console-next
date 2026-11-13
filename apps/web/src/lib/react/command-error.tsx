@@ -17,6 +17,9 @@ type FieldRefusal = {
   code: string;
 };
 
+// A sheet can unmount while its owner keeps the error for the same submitted intent.
+const focusedErrors = new WeakMap<ApiError, string>();
+
 function CommandReference({ requestKey, api }: { requestKey?: string; api?: ApiError }) {
   return (
     <>
@@ -45,6 +48,7 @@ export function CommandError({
   live,
   recover = true,
   read = false,
+  focusOnRefusal = false,
   onFocusField,
   formId,
   formFields,
@@ -54,6 +58,8 @@ export function CommandError({
   recover?: boolean;
   /** Reads can be retried directly; they never have an uncertain write outcome. */
   read?: boolean;
+  /** Opt in only for errors from the user's submit, never automatic previews. */
+  focusOnRefusal?: boolean;
   children?: ReactNode;
   own?: (code: string) => string | undefined;
   /** The caller's record-history route; never shown for redacted metadata. */
@@ -68,13 +74,14 @@ export function CommandError({
   const refusal = useRef<HTMLDivElement>(null);
   const focusedKey = useRef<string | undefined>(undefined);
   const api = error instanceof ApiError ? error : undefined;
-  const refused = !read && api?.status === 403 && Boolean(api.requestKey);
+  const refused = focusOnRefusal && !read && api?.status === 403 && Boolean(api.requestKey);
   const focusKey = refused ? JSON.stringify([api?.requestKey, api?.code]) : undefined;
   useEffect(() => {
-    if (!focusKey || focusedKey.current === focusKey) return;
+    if (!api || !focusKey || focusedKey.current === focusKey || focusedErrors.get(api) === focusKey) return;
     focusedKey.current = focusKey;
+    focusedErrors.set(api, focusKey);
     refusal.current?.focus();
-  }, [focusKey]);
+  }, [api, focusKey]);
   if (!error) return null;
   // The transport and useCommand attach intent keys to commands; a read's operation ID is only a support reference.
   const uncertain = outcomeUnknown(error);

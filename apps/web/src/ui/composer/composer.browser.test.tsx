@@ -22,7 +22,7 @@ beforeAll(async () => {
       name: "composer-test",
       resolveId: (id) => id === "/composer-test.js" ? "\0composer-test" : undefined,
       load: (id) => id === "\0composer-test" ? `
-        import { createElement as h, useState } from 'react';
+        import { createElement as h, useMemo, useState } from 'react';
         import { createRoot } from 'react-dom/client';
         import { createRootRoute, createRouter, RouterProvider, createMemoryHistory } from '@tanstack/react-router';
         import { loadCatalog } from '@console/i18n';
@@ -33,11 +33,13 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function FocusProbe() {
-          const [requestKey, setRequestKey] = useState();
+          const automatic = new URLSearchParams(location.search).get('automatic') === 'true';
+          const [requestKey, setRequestKey] = useState(automatic ? 'automatic-request' : undefined);
           const [code, setCode] = useState('forbidden');
           const [renders, setRenders] = useState(0);
           const [visible, setVisible] = useState(true);
-          const error = new ApiError(403, code, 'Server refusal', [], 'stored-operation', true, [], { requestKey });
+          const [mounted, setMounted] = useState(true);
+          const error = useMemo(() => new ApiError(403, code, 'Server refusal', [], 'stored-operation', true, [], { requestKey }), [requestKey, code, renders]);
           return h('main', null,
             h('h1', null, 'Record'),
             h('button', { id: 'repeat', autoFocus: true, onClick: () => setRenders(x => x + 1) }, 'Render again'),
@@ -45,7 +47,8 @@ beforeAll(async () => {
             h('button', { id: 'next-request', onClick: () => setRequestKey('second-request') }, 'Next request'),
             h('button', { id: 'next-code', onClick: () => setCode('missing_grant') }, 'Next code'),
             h('button', { id: 'visibility', onClick: () => setVisible(x => !x) }, 'Toggle error'),
-            h(CommandError, { error: visible ? error : undefined }), h('output', { id: 'renders' }, renders));
+            h('button', { id: 'mount', onClick: () => setMounted(x => !x) }, 'Toggle mount'),
+            mounted && h(CommandError, { error: visible ? error : undefined, focusOnRefusal: !automatic }), h('output', { id: 'renders' }, renders));
         }
         function Demo() {
           const [long, setLong] = useState(false);
@@ -59,7 +62,7 @@ beforeAll(async () => {
             h(Composer, { layout: state === 'drawer' || state === 'command-drawer-403' ? 'drawer' : state?.startsWith('page') || state === 'command-page-403' ? 'page' : 'inline', headingLevel: 3, commitId: 'commit',
               title: 'Review', action: { kind: long ? 'EMPLOYMENT_TYPE_CHANGE' : 'appointment', mode: long ? 'apply' : 'schedule', count: 3 },
               onClose: () => {}, onSubmit: state === 'refusal' ? undefined : () => { setSubmits(x => x + 1); if (state?.startsWith('command')) setError(new ApiError(Number(state.split('-')[2]), 'permission_denied', 'Server refusal', [], undefined, true, [], { requestKey: 'command-request' })); },
-              error, notice: h(CommandError, { error, read: state === 'command-read-403' }), secondary: state?.startsWith('command') || state === 'locked' ? h('button', { id: 'alternate', onClick: () => setRemedies(x => x + 1) }, 'Alternate') : undefined, onSaveDraft: state?.startsWith('command') ? () => setRemedies(x => x + 1) : undefined,
+              error, notice: h(CommandError, { error, focusOnRefusal: true, read: state === 'command-read-403' }), secondary: state?.startsWith('command') || state === 'locked' ? h('button', { id: 'alternate', onClick: () => setRemedies(x => x + 1) }, 'Alternate') : undefined, onSaveDraft: state?.startsWith('command') ? () => setRemedies(x => x + 1) : undefined,
               blocked: (error && state === 'command-blocked-403') || state === 'blocked' || state?.startsWith('locate') || (state === 'page-blocked' && !long) ? { reason: 'Resolve first', remedy: h('button', { id: 'remedy', onClick: () => setRemedies(x => x + 1) }, 'Register entity'), press: state?.startsWith('locate') ? () => setRemedies(x => x + 1) : undefined } : undefined,
               pending: state === 'locate-pending', loading: state === 'locate-loading',
               routing: state === 'routed' ? { routed: true, steps: [{ key: 'server-step', who: 'Resolved role', state: 'waiting' }] } : state === 'immediate' ? { routed: false, why: 'Resolved policy reason' } : undefined,
@@ -96,7 +99,7 @@ afterAll(async () => { await browser?.close(); await server?.close(); });
 
 const open = async (state: string) => {
   await page.goto(`${server.resolvedUrls!.local[0]}composer-test?state=${state}`);
-  await page.getByRole("heading", { name: state === "focus" ? "Record" : "Review" }).waitFor();
+  await page.getByRole("heading", { name: state.startsWith("focus") ? "Record" : "Review" }).waitFor();
 };
 
 test("immediate routing explains the policy with a keyboard disclosure", async () => {
@@ -273,4 +276,22 @@ test("showing the same command refusal again does not take focus again", async (
   await page.locator("#visibility").click();
   await page.getByRole("alert").waitFor();
   expect(await page.locator("#visibility").evaluate(el => el === document.activeElement)).toBe(true);
+});
+
+
+test("an automatic POST refusal with a request key leaves focus on the input owner", async () => {
+  await open("focus&automatic=true");
+  await page.getByRole("alert").waitFor();
+  expect(await page.locator("#repeat").evaluate(el => el === document.activeElement)).toBe(true);
+});
+
+test("remounting a kept command refusal does not take focus again", async () => {
+  await open("focus");
+  await page.locator("#send").click();
+  await expect.poll(() => page.getByRole("alert").evaluate(el => el === document.activeElement)).toBe(true);
+  await page.locator("#mount").click();
+  await page.waitForFunction(() => !document.querySelector('[role="alert"]'));
+  await page.locator("#mount").click();
+  await page.getByRole("alert").waitFor();
+  expect(await page.locator("#mount").evaluate(el => el === document.activeElement)).toBe(true);
 });

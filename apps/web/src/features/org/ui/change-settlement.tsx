@@ -86,7 +86,7 @@ function OpenItem({ d, it, refetch, onNote }: { d: Detail; it: Item; refetch: Re
     return <Composer layout="inline" headingLevel={3} title={it.label} action={{ kind: "orgSettlement", mode: "complete" }} pending={complete.isPending}
       blocked={left > 0 ? { reason: t("orgChange.settle.transfer.left", { name, count: left }), remedy: <Link to="/org" search={{ sel: unitId, act: "reassign" }}>{t("orgChange.settle.moveMembers", { count: left })}</Link> } : undefined}
       consequence={unit && left === 0 ? t("orgChange.settle.transfer.zero", { name }) : undefined}
-      error={complete.error} notice={<CommandError error={complete.error} />}
+      error={complete.error} notice={<CommandError focusOnRefusal error={complete.error} />}
       onSubmit={() => { if (left === 0 && unit) complete.mutate(undefined); }}
     ><Link to="/org" search={{ sel: unitId }}>{t("orgChange.openUnit")}</Link></Composer>;
   }
@@ -94,7 +94,7 @@ function OpenItem({ d, it, refetch, onNote }: { d: Detail; it: Item; refetch: Re
   const missing = tried && !memo.trim();
   return (
     <Composer layout="inline" headingLevel={3} title={it.label} action={{ kind: "orgSettlement", mode: "complete" }} pending={complete.isPending}
-      error={complete.error} notice={<CommandError error={complete.error} />}
+      error={complete.error} notice={<CommandError focusOnRefusal error={complete.error} />}
       onSubmit={() => { setTried(true); if (memo.trim()) complete.mutate(undefined); else memoRef.current?.querySelector("textarea")?.focus(); }}
     ><div ref={memoRef} className={css.fix}>
       <Field label={t("orgChange.settle.memo", { label: it.label })} required example={t("orgChange.settle.memo.example")} error={missing ? t("orgChange.settle.memo.required") : undefined}>
