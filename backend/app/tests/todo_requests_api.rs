@@ -17,6 +17,8 @@ mod world;
 mod grants;
 #[path = "todo_requests_api/life.rs"]
 mod life;
+#[path = "todo_requests_api/picker_page.rs"]
+mod picker_page;
 #[path = "todo_requests_api/reach.rs"]
 mod reach;
 #[path = "todo_requests_api/refusals.rs"]
