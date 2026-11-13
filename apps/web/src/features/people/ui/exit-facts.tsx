@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { reasonLabel } from "../../../lib/reason-codes";
-import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { EnumValue } from "../../../ui/enum-value";
 import { SETTLEMENT_CERTIFICATION_STATE } from "../../../lib/labels";
 import { DerivedValue } from "../../../ui/field/derived-value";
@@ -97,18 +96,16 @@ export function CasePanel({ c, trailUnavailable }: { c: Case; trailUnavailable?:
 }
 
 const won = (n?: number) => (n == null ? t("format.notComputable") : t("format.krw", { amount: n }));
-const show = (v: unknown) => (v !== null && typeof v === "object" ? JSON.stringify(v) : String(v));
 
 /**
  * The server's figures for the stored settlement package, each marked computed with its basis, and the
- * statutory basis it reported as plain key/value rows (keys as sent: no invented labels).
+ * dated statutory citations. Source metadata is not a calculation result.
  */
 export function SettlementFigures({ pkg }: { pkg: Package }) {
   const ineligible = ineligibleSeverance(pkg);
   const outcome = settlementOutcome(pkg);
   const figuresKnown = outcome === undefined || outcome === "ELIGIBLE";
   const basis = t("exit.settlement.computed", { at: fmtDateTime(pkg.generated_at) });
-  const rows = Object.entries(pkg.statutory_basis ?? {}).filter(([key]) => key !== "severance_eligibility" && key !== "calculation_references");
   type Rule = { code: string; effective_from: string; citation: { instrument_ko: string; article_ko: string } };
   const references = pkg.statutory_basis?.calculation_references as { rules?: Rule[] } | undefined;
   const rules = (Array.isArray(references?.rules) ? references.rules : []).filter(rule => typeof rule?.code === "string" && typeof rule.effective_from === "string" && isDate(rule.effective_from) && typeof rule.citation?.instrument_ko === "string" && typeof rule.citation.article_ko === "string");
@@ -122,13 +119,10 @@ export function SettlementFigures({ pkg }: { pkg: Package }) {
       {!ineligible && <DerivedValue label={t("exit.settlement.averageDaily")} value={won(!figuresKnown || pkg.average_daily_wage_milliwon == null ? undefined : Math.round(pkg.average_daily_wage_milliwon / 1000))} basis={basis} />}
       {!ineligible && <DerivedValue label={t("exit.settlement.ordinaryDaily")} value={won(figuresKnown ? pkg.ordinary_daily_wage_won : undefined)} basis={basis} />}
       <DerivedValue label={t("exit.settlement.severance")} value={ineligible ? severanceLabel(ineligible) : won(figuresKnown ? pkg.severance_pay_won : undefined)} basis={ineligible && pkg.certification_status !== "CERTIFIED" ? <>{basis} · {t("exit.settlement.reviewPending")}</> : basis} />
-      {(rows.length > 0 || rules.length > 0) && (
+      {rules.length > 0 && (
         <details className={s.basis}>
           <summary>{t("exit.settlement.basis")}</summary>
-          {rules.map(rule => <DerivedValue key={rule.code} label={t("exit.settlement.basis")} value={`${rule.citation.instrument_ko} · ${rule.citation.article_ko} · ${t("exit.settlement.ruleEffective", { date: fmtDate(rule.effective_from) })}`} />)}
-          <dl className="kv">
-            {rows.map(([k, v]) => <Fragment key={k}><dt className="code">{k}</dt><dd className="num">{typeof v === "number" ? fmtNumber(v) : show(v)}</dd></Fragment>)}
-          </dl>
+          {rules.map(rule => <DerivedValue key={rule.code} label={`${rule.citation.instrument_ko} · ${rule.citation.article_ko}`} value={t("exit.settlement.ruleEffective", { date: fmtDate(rule.effective_from) })} />)}
         </details>
       )}
     </section>
