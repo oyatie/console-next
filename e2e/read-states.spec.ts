@@ -6,6 +6,7 @@ import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expectAccessible, expectAxe } from "./a11y";
 import { apiOf, bearerOf } from "./helpers/api";
 import { redirectTargets, routeList } from "./helpers/route-list";
+import { readQuery } from "./helpers/read-query";
 import { readRequirement } from "../apps/web/src/routes/route-reads";
 import { todayKst } from "../apps/web/src/lib/pure/today";
 import { go, routeReady, vendorPage } from "./flows";
@@ -64,8 +65,8 @@ test.describe("route requirements with a real grantless account", () => {
     test(`${path}: the server refuses the protected read`, async () => {
       for (const read of reads) {
       const endpoint = read.replace(/\$[^/]+/g, record).replace("/api/v1", "");
-      const query = read.endsWith("/attendance/month") ? `?month=${todayKst().slice(0, 7)}` : read.endsWith("/attendance/days") ? `?date=${todayKst()}` : "";
-      const response = await apiOf(reader, token)(`${endpoint}${query}`);
+      const query = new URLSearchParams(readQuery(read, record));
+      const response = await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
       expect(response.status(), read).toBe(403);
       expect((await response.json()).error.code).toBeTruthy();
       }
