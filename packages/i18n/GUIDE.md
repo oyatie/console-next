@@ -24,7 +24,8 @@ Enums: `enum.<type>.<VALUE>` — e.g. `enum.orgChangeStatus.IN_APPROVAL`.
 - **Consequence before commitment.** Dialogs say what will happen, to what, and whether it can be
   undone: "{name|을를} {date}자로 {unit|으로로} 전보합니다. 되돌릴 수 없고 감사 기록에 남습니다."
 - **Empty state = what is missing + why it matters + the next action (as a button).**
-- **Errors come from the server** (localized via Accept-Language); the UI only adds where to act.
+- **Error text is catalog copy keyed by the server's code** (`common.failed.code.<code>`, or the screen's
+  own refusal ids). The server's localized message is only the fallback for a code with no catalog copy.
 - **One verb per action, everywhere:** the verb table and glossary of `docs/design/copy-conventions.md`
   (수정 · 변경 · 정정 · 추가 · 등록 · 신설 · 삭제 · 제외 · 이동 · 발령 · 선택 · 입력 …). Buttons are object +
   bare action noun (「대표전화 수정」), never 「~하기」 or a native paraphrase (「고치기」, 「옮기기」, 「고르기」).

@@ -19,6 +19,7 @@ import { Page } from "../../../ui/page/page";
 import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
 import { approvalDocumentQuery, decideApproval, type ApprovalDecision, type ApprovalDocument } from "../api";
+import { decisionRefusalText } from "../present";
 import { SourceViewerLink } from "./source-viewer-link";
 
 const route = getRouteApi("/app/approvals/$approvalId");
@@ -64,6 +65,8 @@ export function ApprovalDocumentView({ document: d }: { document: ApprovalDocume
     </Card>
     <Card title={t("approvals.preview.facts")}>
       <KeyValue readOnly items={[
+        ...(d.decision_refusal ? [{ key: "decision-refusal", label: t("approvals.field.verification"),
+          value: decisionRefusalText(d.decision_refusal) }] : []),
         ...(d.document_no && d.my_actions.kind === "none" ? [{ key: "number", label: t("approvals.field.documentNo"), value: d.document_no }] : []),
         { key: "requester", label: t("approvals.field.requester"), value: [d.requester?.name, d.requester?.role].filter(Boolean).join(" · ") || "—" },
         { key: "requested", label: t("approvals.field.requestedAt"), value: fmtDateTime(d.requested_at) },

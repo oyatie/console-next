@@ -2,6 +2,7 @@
 import type { enPayroll } from "../en/payroll";
 export const koPayroll: Record<keyof typeof enPayroll, string> = {
   "payroll.refuse.employee_exited_read_only": "퇴직한 직원의 계약 임금은 등록할 수 없습니다. 인사카드에서 정정을 요청하십시오.",
+  "payroll.refuse.contract_wage_exists": "같은 적용 시작일의 계약 임금이 이미 있어 등록하지 않았습니다. 등록된 계약 임금은 변경할 수 없습니다. 새 계약 조건은 근로계약서의 실제 적용 시작일로 등록하십시오.",
   "payroll.refuse.identity_unbound": "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오.",
   "payroll.accessInactive": "급여가 활성화되지 않아 급여·민감 급여 그룹 권한은 급여 화면에서 사용할 수 없습니다.",
   "payroll.title": "급여",

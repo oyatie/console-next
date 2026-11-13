@@ -38,7 +38,7 @@ pub(crate) struct OrgModel {
     pub entities: HashMap<Uuid, String>,
     pub workplaces: HashMap<Uuid, Workplace>,
     pub units: HashMap<Uuid, Unit>,
-    /// Shift id -> (workplace, name).
+    /// Crew id -> (workplace, name).
     pub crews: HashMap<Uuid, (Uuid, String)>,
     /// Order among its siblings: every legal entity and workplace (dense, as the chart
     /// reads them), a department when it has an `org_unit_positions` row.

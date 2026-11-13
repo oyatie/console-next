@@ -82,8 +82,9 @@ export function DraftEditor({ d, scheduled, refetch, onSaved, onNote, onClose }:
   const changedAt = fmtDateTime(d.updatedAt);
   return (
     <Composer title={t(scheduled ? "orgChange.scheduled.edit" : "orgChange.edit")} dirty={Object.keys(body).length > 0} onClose={onClose}
-      pending={save.isPending} locked={refusalOf(save.error) === "denied"} action={{ kind: "orgChange", mode: "change" }} onSubmit={press}
+      error={save.error} pending={save.isPending} action={{ kind: "orgChange", mode: "change" }} onSubmit={press}
       blocked={conflicts.length ? { reason: t("uiConflict.left", { count: conflicts.length }) } : undefined}
+      notice={<CommandError error={refusalOf(save.error) === "date" ? undefined : save.error} />}
       consequence={scheduled ? t("orgChange.scheduled.edit.consequence") : undefined}
     ><div className={css.form}>
       {conflicts.length > 0 && (
@@ -131,7 +132,6 @@ export function DraftEditor({ d, scheduled, refetch, onSaved, onNote, onClose }:
       </Field>
       {taken.includes("reason") && <p className={css.changed}>{t("live.notice.updated_by.hidden", { time: changedAt })}</p>}
       {error.form && <p className="alert" role="alert">{error.form}</p>}
-      <CommandError error={refusalOf(save.error) === "date" ? undefined : save.error} />
     </div></Composer>
   );
 }

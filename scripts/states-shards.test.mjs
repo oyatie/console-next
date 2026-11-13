@@ -509,6 +509,7 @@ test("CI gives state and web checks their full run budget after measured setup",
   assert.deepEqual(check.run.trim().split("\n"), [
     "npm run check",
     "node --test scripts/ci-backend.test.mjs",
+    "node --test scripts/cache-retention.test.mjs",
     "node --test scripts/ghcr-retention.test.mjs",
     "node --test scripts/negative-index.test.mjs",
     "python3 scripts/d7_evidence_test.py",

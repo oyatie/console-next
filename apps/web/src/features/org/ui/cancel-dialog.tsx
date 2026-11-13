@@ -8,7 +8,7 @@ import { ORG_READS } from "../../../reference/org/api";
 import { Composer } from "../../../ui/composer/composer";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
-import { changeCommands, movedElsewhere, probed, refusalOf } from "../api";
+import { changeCommands, movedElsewhere, probed } from "../api";
 import { elsewhereNote, type Note } from "./use-note";
 
 type Detail = components["schemas"]["OrgChangeDetail"];
@@ -37,10 +37,10 @@ export function CancelDialog({ d, title, scheduled, open, onClose, refetch, onNo
   });
   return (
     <Composer open={open} title={t(scheduled ? "orgChange.scheduled.cancel" : "orgChange.cancel")}
-      onClose={onClose} pending={cancel.isPending} locked={refusalOf(cancel.error) === "denied"} tone="danger"
+      onClose={onClose} pending={cancel.isPending} tone="danger"
       action={{ kind: "orgChange", mode: d.status === "IN_APPROVAL" ? "withdraw" : "cancel" }}
       consequence={t(scheduled ? "orgChange.scheduled.cancel.consequence" : "orgChange.cancel.consequence", { title })}
-      notice={<CommandError error={cancel.error} />}
+      error={cancel.error} notice={<CommandError error={cancel.error} />}
       blocked={!reason.trim() ? { reason: t("orgChange.cancel.needReason") } : undefined}
       onSubmit={() => { if (reason.trim()) cancel.mutate(undefined); }}
     >

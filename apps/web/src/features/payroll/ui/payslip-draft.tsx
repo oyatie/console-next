@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
+import { jsonEqual } from "../../../lib/pure/three-way";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { ExternalLink } from "../../../ui/external-link";
 import { KeyValue } from "../../../ui/key-value/key-value";
-import { LongTable } from "../../../ui/long-table/long-table";
+import { Table } from "../../../ui/table";
 import { blockerText, contractCited, deductionCited, deductionSourcesCited, insuranceCited, draftBlockers, instrumentCited, type Instrument, type PayslipDraft } from "../present";
 const won = (amount: number) => t("payroll.employee.won", { amount: fmtNumber(amount) });
 function Source({ instrument, provenance }: { instrument: Instrument; provenance?: string }) {
@@ -62,11 +63,14 @@ export function PayslipDraftView({ data }: { data: PayslipDraft }) {
       <Source instrument={minimum.instrument} />
     </Card>}
     <Card title={t("payroll.employee.deductions")}>
-      <LongTable editable label={t("payroll.employee.deductions")} rows={data.deductions ?? []} rowId={row => row.code} empty={<EmptyState title={t("payroll.employee.noDeductions")} reason={t("payroll.employee.noDeductionsReason")} />} hasMore={false} onLoadMore={() => {}} columns={[
-        { id: "name", header: t("payroll.reference.item"), rowHeader: true, card: "title", cell: row => row.label_ko },
-        { id: "amount", header: t("payroll.employee.employeeAmount"), card: "fact", cell: row => row.employer_only ? t("payroll.employee.employerOnly") : deductionCited(row) ? won(row.employee_won!) : t("payroll.reference.held") },
-        { id: "source", header: t("payroll.reference.citation"), width: "2fr", card: "action", cell: row => <div className="form">{deductionSourcesCited(row) ? <><Source instrument={row.instrument} provenance={row.provenance_ko} />{row.share_instrument && <Source instrument={row.share_instrument} provenance={row.provenance_ko} />}</> : <span>{t("payroll.reference.held")}</span>}{row.blocked_by && <p>{t("payroll.employee.blocker", { code: row.blocked_by })}</p>}</div> },
-      ]} />
+      {data.deductions?.length ? <Table label={t("payroll.employee.deductions")} rows={data.deductions} rowId={row => row.code} columns={[
+        { header: t("payroll.reference.item"), card: "title", cell: row => row.label_ko },
+        { header: t("payroll.employee.employeeAmount"), card: "fact", cell: row => row.employer_only ? t("payroll.employee.employerOnly") : deductionCited(row) ? won(row.employee_won!) : t("payroll.reference.held") },
+        { header: t("payroll.reference.citation"), card: "action", cell: row => <div className="form">{deductionSourcesCited(row) ? <>
+          <Source instrument={row.instrument} provenance={row.provenance_ko} />
+          {row.share_instrument && !jsonEqual(row.instrument, row.share_instrument) && <Source instrument={row.share_instrument} />}
+        </> : <span>{t("payroll.reference.held")}</span>}{row.blocked_by && <p>{t("payroll.employee.blocker", { code: row.blocked_by })}</p>}</div> },
+      ]} /> : <EmptyState title={t("payroll.employee.noDeductions")} reason={t("payroll.employee.noDeductionsReason")} />}
       {data.total_employee_insurance_won !== undefined && <KeyValue readOnly items={[
         { key: "insurance", label: t("payroll.employee.insuranceTotal"), value: amount(data.total_employee_insurance_won, insuranceCited(data)) },
         { key: "remainder", label: t("payroll.employee.afterInsurance"), value: amount(data.remainder_after_insurance_won, insuranceCited(data) && earningsCited) },

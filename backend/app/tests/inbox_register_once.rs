@@ -7,7 +7,9 @@ mod http;
 mod inbox_pool;
 #[path = "support/reference_logs.rs"]
 mod reference_logs;
+mod settings_support;
 use ::http::StatusCode;
+use console_compliance_adapter_postgres::{PgComplianceStore, rights};
 use serde_json::Value;
 use sqlx::PgPool;
 use tracing::instrument::WithSubscriber;
@@ -250,24 +252,60 @@ async fn a_due_read_from_the_statutory_register_says_so_and_no_other_due_does(po
     fixtures::seed_exit_case_with_settlement(&pool, org, employee, user).await;
     sqlx::query("INSERT INTO employee_lifecycle_events (org_id,employee_id,event_type,to_status,effective_date,comment,created_by,state) VALUES ($1,$2,'ONBOARD','ACTIVE',CURRENT_DATE::text,'register read',$3,'APPLIED')")
         .bind(org).bind(employee).bind(user.as_uuid()).execute(&pool).await.unwrap();
+    // A case still awaiting confirmation is due on the exit date itself, which no register row sets.
+    sqlx::query("UPDATE employees SET employee_number = id::text WHERE id = $1")
+        .bind(employee)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let leaver = fixtures::seed_employee(&pool, org).await;
+    let reported = fixtures::seed_exit_case_with_settlement(&pool, org, leaver, user).await;
+    sqlx::query("UPDATE employee_exit_cases SET status = 'REPORTED' WHERE id = $1")
+        .bind(reported)
+        .execute(&pool)
+        .await
+        .unwrap();
+    // A privacy rights request reaches a handler who may edit HR records, not its own subject.
+    let hr = http::add_user(&pool, org, &["MEMBER"]).await;
+    let grant = settings_support::seed_role_and_grant(&pool, org, user, hr, "TENANT", None).await;
+    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) SELECT org_id,role_id,2,name_ko,status,change_mode,created_by FROM access_role_versions WHERE org_id=$1 AND version=1 AND role_id=(SELECT role_id FROM access_grants WHERE id=$2)")
+        .bind(org).bind(grant).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) SELECT org_id,role_id,2,'hr_basic',ARRAY['edit'] FROM access_grants WHERE org_id=$1 AND id=$2")
+        .bind(org).bind(grant).execute(&pool).await.unwrap();
+    sqlx::query("UPDATE access_roles SET version=2 WHERE org_id=$1 AND id=(SELECT role_id FROM access_grants WHERE id=$2)")
+        .bind(org).bind(grant).execute(&pool).await.unwrap();
+    let runtime = fixtures::runtime_pool(&pool).await;
+    let register = PgComplianceStore::new(runtime.clone())
+        .statutory_register()
+        .await
+        .unwrap();
+    let tenant = console_kernel_core::OrgId::from_uuid(org);
+    let filing = serde_json::from_str(r#"{"controller":"TENANT","kinds":["ACCESS"]}"#).unwrap();
+    let mut tx = rights::begin(&runtime, tenant).await.unwrap();
+    rights::file(&mut tx, tenant, user, Some(employee), &filing, &register)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
     let (page, _) = read(&ctx).await;
-    let items = page["items"].as_array().unwrap();
-    let statutory =
-        |i: &&serde_json::Value| i["kind"] == "insurance_filing" || i["kind"] == "hr_exit_settle";
-    let (register, others): (Vec<_>, Vec<_>) = items.iter().partition(statutory);
-    assert!(
-        register.iter().any(|i| i["kind"] == "insurance_filing"),
-        "{page}"
-    );
-    assert!(
-        register.iter().any(|i| i["kind"] == "hr_exit_settle"),
-        "{page}"
-    );
-    for item in register.iter().filter(|i| i.get("due").is_some()) {
-        assert_eq!(item["due_basis"], "statutory", "{item}");
+    let (intake, _) = read(&http::ctx(&pool, org, hr, &["MEMBER"], None).await).await;
+    let items: Vec<&Value> = [&page, &intake]
+        .into_iter()
+        .flat_map(|p| p["items"].as_array().unwrap())
+        .collect();
+    let marked = ["insurance_filing", "hr_exit_settle", "privacy_request"];
+    let dated: Vec<_> = items.iter().filter(|i| i.get("due").is_some()).collect();
+    for kind in marked.into_iter().chain(["hr_exit_confirm"]) {
+        assert!(
+            dated.iter().any(|i| i["kind"] == kind),
+            "no dated {kind}: {page} {intake}"
+        );
     }
-    assert!(!others.is_empty(), "{page}");
-    for item in others {
-        assert!(item.get("due_basis").is_none(), "{item}");
+    for item in &items {
+        let statutory = marked.iter().any(|k| item["kind"] == *k) && item.get("due").is_some();
+        assert_eq!(
+            item.get("due_basis").and_then(Value::as_str),
+            statutory.then_some("statutory"),
+            "{item}"
+        );
     }
 }
