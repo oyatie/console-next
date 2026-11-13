@@ -2,8 +2,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { notifyManager, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useRouterState } from "@tanstack/react-router";
-import { readyHref } from "./route-href";
-import { elementVisible } from "../element-visible";
+import { chunk } from "../chunk-guard";
 import { Announcer } from "../../ui/announcer";
 import { bindAnnouncer, useRoutePresentation } from "./announce";
 
@@ -23,32 +22,17 @@ export function RouteFrame() {
   );
   const bind = (signal: HTMLSpanElement | null) => {
     if (!signal) return;
-    let frame = 0;
-    const renderedHref = () => {
-      // Idle router state can precede a lazy screen's first render (and its first query).
-      const main = document.querySelector("main");
-      if (status !== "idle" || isLoading || reading || !main || !elementVisible(main)) return;
-      const pending = [main, ...main.querySelectorAll('[aria-busy=true]')].some(element =>
-        element.matches('[aria-busy=true]') && !element.closest('[hidden],[inert],[aria-hidden=true]') && elementVisible(element));
-      return !pending
-        ? readyHref(location.href, window.location.href) : undefined;
-    };
-    const update = () => {
-      if (signal.dataset.routeReady !== renderedHref()) signal.removeAttribute("data-route-ready");
-      cancelAnimationFrame(frame);
-      // Let a newly mounted screen subscribe to its reads before publishing its first ready marker.
-      frame = requestAnimationFrame(() => {
-        frame = requestAnimationFrame(() => {
-          const href = renderedHref();
-          if (href && signal.dataset.routeReady !== href) signal.dataset.routeReady = href;
-        });
-      });
-    };
-    const observer = new MutationObserver(update);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true,
-      attributeFilter: ["aria-busy", "aria-hidden", "hidden", "inert", "style", "class"] });
-    update();
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+    if (status !== "idle" || isLoading || reading) {
+      delete signal.dataset.routeReady;
+      return;
+    }
+    let bound = true;
+    let dispose: (() => void) | undefined;
+    // The route guards already load this chunk; DOM observation stays out of the entry bundle.
+    void chunk(import("./session")).then(module => {
+      if (bound) dispose = module.observeRouteReady(signal, location.href);
+    });
+    return () => { bound = false; dispose?.(); };
   };
   return <>
     <Outlet />

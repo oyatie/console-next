@@ -31,6 +31,8 @@ beforeAll(async () => {
         const state = { location: { pathname: "/", href: location.pathname + location.search, state: { __TSR_key: "entry" } } };
         const router = { state, subscribe: () => () => {} };
         export const useRouter = () => router;
+        export const notFound = () => {};
+        export const redirect = () => {};
         export const useLocation = ({ select }) => select(state.location);
         export function useRouterState() {
           const [held, release] = useState(true);
@@ -39,7 +41,9 @@ beforeAll(async () => {
           return { ...state, status: held && guard === "status" ? "pending" : "idle", isLoading: held && guard === "isLoading" };
         }
         export function Outlet() {
-          const q = useQuery({ ...read("/read", () => fetch("/read").then(r => r.text())), enabled: guard === "reading" || guard === "paused" });
+          const [started, start] = useState(false);
+          window.startRead = () => start(true);
+          const q = useQuery({ ...read("/read", () => fetch("/read").then(r => r.text())), enabled: started || guard === "reading" || guard === "paused" });
           return <main><h1>Content</h1><p>{q.data}</p></main>;
         }
       ` : id === "/__ready.tsx" ? `
@@ -88,4 +92,36 @@ for (const engine of [chromium, firefox]) test.each(["status", "isLoading", "rea
     await dom(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", `/?guard=${guard}`);
     if (guard === "reading" || guard === "paused") await dom(page.getByText("Read settled")).toBeVisible();
   } finally { read.resolve(); await page.unrouteAll({ behavior: "wait" }); }
+});
+
+for (const engine of [chromium, firefox]) test(`${engine.name()}: an obsolete deferred observer cannot publish during a new read`, async () => {
+  const page = pages.get(engine.name())!;
+  const module = Promise.withResolvers<void>();
+  const read = Promise.withResolvers<void>();
+  const requested = Promise.withResolvers<void>();
+  await page.route("**/apps/web/src/lib/react/session.ts*", async route => { requested.resolve(); await module.promise; await route.continue(); });
+  await page.route("**/read", async route => { await read.promise; await route.fulfill({ body: "Read settled" }); });
+  try {
+    await page.goto(`${server.resolvedUrls!.local[0]}?guard=late-reading`, { waitUntil: "domcontentloaded" });
+    await dom(page.getByRole("heading", { name: "Content" })).toBeVisible();
+    await requested.promise;
+    const fetching = page.waitForRequest("**/read");
+    await page.evaluate(() => (window as unknown as { startRead: () => void }).startRead());
+    await fetching;
+    const loaded = page.waitForResponse("**/apps/web/src/lib/react/session.ts*");
+    module.resolve();
+    await loaded;
+    await page.evaluate("import('/apps/web/src/lib/react/session.ts').then(() => {})");
+    expect(await page.evaluate(async () => {
+      const markers: number[] = [];
+      for (let frame = 0; frame < 6; frame++) {
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+        markers.push(document.querySelectorAll("[data-route-ready]").length);
+      }
+      return markers;
+    })).toEqual([0, 0, 0, 0, 0, 0]);
+    read.resolve();
+    await dom(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", "/?guard=late-reading");
+    await dom(page.getByText("Read settled")).toBeVisible();
+  } finally { module.resolve(); read.resolve(); await page.unrouteAll({ behavior: "wait" }); }
 });
