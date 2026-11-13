@@ -28,7 +28,7 @@ async function settlement(page: import("@playwright/test").Page, eligibility: un
     hr_confirmed_by_name: "김담당", hr_confirmed_at: AT, hq_confirmed_by_name: "김담당", hq_confirmed_at: AT,
     approval_submitted_by_name: null, closed_by_name: null, exit_lifecycle_event_id: null, exit_event_state: "APPLIED",
     next_actions: [{ key: "prepare_settlement" }],
-    settlement_package: { id: id(7300), status: "READY_FOR_APPROVAL", service_days: 1,
+    settlement_package: { id: id(7300), status: sources.length ? "NEEDS_SOURCE" : "READY_FOR_APPROVAL", service_days: 1,
       missing_source_fields: sources, severance_pay_won: 0, insurance_loss_payload: {}, approval_payload: {}, certification_status: certification, generated_at: AT,
       statutory_basis: { severance_eligibility: eligibility,
         retirement_pay: { authority: "검증 기관", title: "검증 자료", retrieved_on: "2026-07-01", formula: "average_daily_wage * 30 * service_days / 365" },
