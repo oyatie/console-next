@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Who may ask: the founder and tenant-wide HR editors. A narrower grant, a
-//! legacy built-in role and another tenant reach nothing on any request route.
+//! Who may ask: the founder and holders of a to-do request grant. Another
+//! grant, a legacy built-in role and another tenant reach nothing on any
+//! request route.
 
 use http::StatusCode;
 use serde_json::json;
@@ -8,7 +9,7 @@ use sqlx::PgPool;
 
 use crate::support::{add_user, ctx, tenant};
 use crate::world::world;
-use crate::{REQUESTS, ask_body, code, office};
+use crate::{ASSIGNEES, REQUESTS, ask_body, code, office, written};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_lower_grant_and_another_tenant_reach_nothing_on_any_request_route(pool: PgPool) {
@@ -64,35 +65,18 @@ async fn a_lower_grant_and_another_tenant_reach_nothing_on_any_request_route(poo
     assert_eq!(foreign, 0);
 }
 
+/// Editing every personnel card over the whole tenant is not asking anyone.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn a_tenant_wide_hr_editor_asks_and_a_legal_entity_hr_editor_cannot(pool: PgPool) {
+async fn hr_editing_does_not_carry_asking(pool: PgPool) {
     let mut w = world(pool).await;
-    let tenant_wide = w.holder("TENANT", None).await;
-    let le_a = w.le_a.clone();
-    let entity_only = w.holder("LEGAL_ENTITY", Some(&le_a)).await;
+    let editor = w.holder("TENANT", None).await;
+    let forbidden = (StatusCode::FORBIDDEN, "todo_assign_forbidden");
 
-    let (status, out) = tenant_wide
-        .call("POST", REQUESTS, Some(ask_body(&entity_only)))
-        .await;
-    assert_eq!(status, StatusCode::CREATED, "{out}");
-
-    let (status, out) = entity_only
-        .call("POST", REQUESTS, Some(ask_body(&tenant_wide)))
-        .await;
-    assert_eq!(
-        (status, code(&out)),
-        (StatusCode::FORBIDDEN, "todo_assign_forbidden"),
-        "{out}"
-    );
-    let asked: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM todos WHERE org_id = $1 AND assigned_by_user_id = $2",
-    )
-    .bind(w.org)
-    .bind(entity_only.user.as_uuid())
-    .fetch_one(&w.pool)
-    .await
-    .unwrap();
-    assert_eq!(asked, 0);
+    let (status, out) = editor.call("POST", REQUESTS, Some(ask_body(&w.ops))).await;
+    assert_eq!((status, code(&out)), forbidden, "{out}");
+    let (status, out) = editor.call("GET", ASSIGNEES, None).await;
+    assert_eq!((status, code(&out)), forbidden, "{out}");
+    assert_eq!(written(&w.pool, w.org).await, (0, 0));
 }
 
 /// Each party reaches a live request only in its own role: the requester
