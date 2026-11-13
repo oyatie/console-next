@@ -13,7 +13,7 @@ use console_platform_authz::cedar_pbac::actions::own_record::{OwnRecordFacts, de
 use console_platform_db::insert_audit_event;
 use http::StatusCode;
 use serde_json::json;
-use sqlx::{Postgres, Row, Transaction};
+use sqlx::{Postgres, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -48,11 +48,39 @@ pub async fn own_record_guard(
     employee: Uuid,
     feature: Feature,
 ) -> Result<(), HrError> {
-    match own_record_decision(tx, org, actor, employee, feature).await? {
-        OwnRecord::NotOwn => Ok(()),
-        OwnRecord::Refused => Err(own_record_forbidden()),
-        OwnRecord::SoleHolderOps => break_glass(tx, org, actor, employee, feature).await,
+    own_record_guard_many(tx, org, actor, &[employee], feature).await
+}
+
+/// The same Cedar guard for a batch, loading self-record facts once.
+/// Each own record retains its live holder check and review audit.
+/// # Errors
+/// The same refusals and query errors as [`own_record_guard`].
+pub(crate) async fn own_record_guard_many(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: UserId,
+    employees: &[Uuid],
+    feature: Feature,
+) -> Result<(), HrError> {
+    for (employee, actor_is_ops, subject_is_self) in
+        own_record_facts(tx, org, actor, employees).await?
+    {
+        match decide_own_record(
+            tx,
+            org,
+            actor,
+            employee,
+            feature,
+            (actor_is_ops, subject_is_self),
+        )
+        .await?
+        {
+            OwnRecord::NotOwn => {}
+            OwnRecord::Refused => return Err(own_record_forbidden()),
+            OwnRecord::SoleHolderOps => break_glass(tx, org, actor, employee, feature).await?,
+        }
     }
+    Ok(())
 }
 
 /// Cedar's answer for `actor` on `employee`, without writing anything (the
@@ -73,27 +101,58 @@ pub async fn own_record_decision(
     employee: Uuid,
     feature: Feature,
 ) -> Result<OwnRecord, HrError> {
-    let org_uuid = *org.as_uuid();
+    let (_, actor_is_ops, subject_is_self) = own_record_facts(tx, org, actor, &[employee])
+        .await?
+        .into_iter()
+        .next()
+        .ok_or_else(|| HrError::internal("own-record facts are missing"))?;
+    decide_own_record(
+        tx,
+        org,
+        actor,
+        employee,
+        feature,
+        (actor_is_ops, subject_is_self),
+    )
+    .await
+}
+
+async fn own_record_facts(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: UserId,
+    employees: &[Uuid],
+) -> Result<Vec<(Uuid, bool, bool)>, HrError> {
+    if employees.is_empty() {
+        return Ok(Vec::new());
+    }
     // Self: the linked employee, or another record of the same person
     // (a binding minted for an employee carries `person_id = employee_id`).
-    let row = sqlx::query(
-        "SELECT COALESCE(u.is_tenant_ops AND u.is_active, false) AS ops, \
-           COALESCE(u.employee_id = $3 OR EXISTS ( \
+    Ok(sqlx::query_as(
+        "SELECT subject.employee_id, COALESCE(u.is_tenant_ops AND u.is_active, false) AS ops, \
+           COALESCE(u.employee_id = subject.employee_id OR EXISTS ( \
              SELECT 1 FROM employee_person_bindings s \
               LEFT JOIN employee_person_bindings m ON m.org_id = s.org_id AND m.employee_id = u.employee_id \
-              WHERE s.org_id = $1 AND s.employee_id = $3 \
+              WHERE s.org_id = $1 AND s.employee_id = subject.employee_id \
                 AND (s.person_id = m.person_id OR s.person_id = u.employee_id)), false) AS is_self \
-         FROM users u WHERE u.org_id = $1 AND u.id = $2",
+         FROM unnest($3::uuid[]) WITH ORDINALITY subject(employee_id, n) \
+         LEFT JOIN users u ON u.org_id = $1 AND u.id = $2 ORDER BY subject.n",
     )
-    .bind(org_uuid)
+    .bind(org.as_uuid())
     .bind(actor.as_uuid())
-    .bind(employee)
-    .fetch_optional(tx.as_mut())
-    .await?;
-    let (actor_is_ops, subject_is_self) = match row {
-        Some(row) => (row.try_get("ops")?, row.try_get("is_self")?),
-        None => (false, false),
-    };
+    .bind(employees)
+    .fetch_all(tx.as_mut())
+    .await?)
+}
+
+async fn decide_own_record(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: UserId,
+    employee: Uuid,
+    feature: Feature,
+    (actor_is_ops, subject_is_self): (bool, bool),
+) -> Result<OwnRecord, HrError> {
     if !subject_is_self {
         return Ok(OwnRecord::NotOwn);
     }
@@ -108,7 +167,7 @@ pub async fn own_record_decision(
         other_eligible_holders,
     };
     Ok(
-        if decide(&actor.to_string(), &org_uuid.to_string(), facts) == Ok(true) {
+        if decide(&actor.to_string(), &org.to_string(), facts) == Ok(true) {
             OwnRecord::SoleHolderOps
         } else {
             OwnRecord::Refused

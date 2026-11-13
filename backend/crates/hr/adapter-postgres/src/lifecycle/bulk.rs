@@ -86,6 +86,10 @@ impl HrService {
                 if !refusals.is_empty() {
                     return Err(HrError::bulk_refused(refusals, employee_ids.len()));
                 }
+                crate::own_record::own_record_guard_many(
+                    tx, org, actor, &employee_ids,
+                    console_platform_authz::Feature::EmployeeDirectoryManage,
+                ).await?;
                 let register =
                     console_platform_db::statutory_read::load_statutory_register(tx.as_mut())
                         .await

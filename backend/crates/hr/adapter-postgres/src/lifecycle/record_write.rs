@@ -24,6 +24,7 @@ pub(super) async fn record_in_tx(
     batch_id: Option<Uuid>,
     hooks: &LifecycleTrailHooks<'_>,
 ) -> Result<(Uuid, AuditEvent), HrError> {
+    own_record_guard(tx, org, actor, employee_id, EmployeeDirectoryManage).await?;
     let (id, audit) = prepare_record_in_tx(tx, org, actor, employee_id, prepared, batch_id).await?;
     insert_lifecycle_rows(
         tx,
@@ -41,7 +42,7 @@ pub(super) async fn record_in_tx(
     Ok((id, audit))
 }
 
-/// Runs the same self-record check and audit construction before either writer inserts.
+/// Constructs the audit after the caller's individual or batch self-record guard.
 pub(super) async fn prepare_record_in_tx(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: OrgId,
@@ -50,8 +51,6 @@ pub(super) async fn prepare_record_in_tx(
     prepared: &PreparedLifecycleEvent,
     batch_id: Option<Uuid>,
 ) -> Result<(Uuid, AuditEvent), HrError> {
-    // Every write path meets the self-record rule here.
-    own_record_guard(tx, org, actor, employee_id, EmployeeDirectoryManage).await?;
     let org_uuid = *org.as_uuid();
     let PreparedLifecycleEvent {
         transition,
