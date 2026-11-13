@@ -9412,9 +9412,29 @@ export interface paths {
         put?: never;
         /**
          * Ask a colleague for a follow-up
-         * @description Creates a todo owned by the assignee and asked by the caller. Who may ask is Cedar's todo_assign: the caller holds tenant-wide people-directory manage authority and is not in a support session (403 todo_assign_forbidden). The assignee is an active account of the caller's tenant inside the caller's people-directory scope. Refusals, in order: 403 todo_assign_forbidden; 422 validation (text, links); 422 todo_assign_self; 422 todo_assignee_out_of_scope (unknown and other-tenant accounts alike); 422 todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name records by kind and id; a sent label is ignored and never stored. Audited as todo.request with the assignee and the due date only.
+         * @description Creates a todo owned by the assignee and asked by the caller. Who may ask is any holder of a to-do request grant (a role line todo_request edit), over the people placed under that grant's scope node, and the tenant's ops account; never a support session (403 todo_assign_forbidden). Cedar decides, inside the write, that the assignee is an active account of the caller's tenant placed under a node the caller's grants permit; an account with no linked employee or no current placement sits at the tenant node. Refusals, in order: 403 todo_assign_forbidden; 422 validation (text, links); 422 todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and out-of-scope accounts alike, and a grant revoked mid-request); 422 todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name records by kind and id; a sent label is ignored and never stored. Audited as todo.request with the assignee and the due date only.
          */
         post: operations["createMyTodoRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/todos/requests/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the colleagues the caller may ask for a follow-up
+         * @description The active accounts of the caller's tenant, other than the caller, that an ask from the caller accepts: those placed under a node where the caller's to-do request grants permit asking (every account for the tenant's ops account). Names only, ordered by display name then id. Who may read it is who may ask; anyone else, and every support session, gets 403 todo_assign_forbidden.
+         */
+        get: operations["listMyTodoAssignees"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -15268,7 +15288,7 @@ export interface components {
         };
         AccessRoleLineInput: {
             /** @enum {string} */
-            domain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access";
+            domain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access" | "todo_request";
             levels: components["schemas"]["AccessLevel"][];
         };
         /** @enum {string} */
@@ -29738,6 +29758,14 @@ export interface components {
             due_on?: string;
             /** @description Records the request is about; at most 20. */
             links?: components["schemas"]["TodoRequestLink"][];
+        };
+        /** @description An account the caller may ask, by name only. */
+        TodoAssignee: {
+            account_id: components["schemas"]["Uuid"];
+            display_name: string;
+        };
+        TodoAssigneePage: {
+            items: components["schemas"]["TodoAssignee"][];
         };
         TodoPage: {
             items: components["schemas"]["TodoSummary"][];
@@ -50908,6 +50936,42 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             422: components["responses"]["ValidationError"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    listMyTodoAssignees: {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive match anywhere in the display name, after trimming. */
+                search?: string;
+                /** @description Page size (clamped server-side to 1..=50; default 20). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The accounts the caller may ask. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodoAssigneePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             /** @description JWT verification is not configured. */
             503: {
                 headers: {
