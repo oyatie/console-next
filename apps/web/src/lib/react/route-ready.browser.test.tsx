@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { resolve as resolvePath } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { chromium, firefox, expect as dom, type Browser, type Page } from "@playwright/test";
+import { expect as dom, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
+import { browserEngine } from "../browser-test";
 
 let server: ViteDevServer;
-const browsers: Browser[] = [];
-const pages = new Map<string, Page>();
+const engine = browserEngine();
+let browser: Browser;
+let page: Page;
 beforeAll(async () => {
   server = await createServer({
     configFile: false, appType: "custom", cacheDir: ".cache/vite-route-ready-test",
@@ -57,16 +59,12 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  for (const engine of [chromium, firefox]) {
-    const browser = await engine.launch();
-    browsers.push(browser);
-    pages.set(engine.name(), await browser.newPage());
-  }
+  browser = await engine.launch();
+  page = await browser.newPage();
 }, 60_000);
-afterAll(async () => { for (const browser of browsers) await browser.close(); await server?.close(); });
+afterAll(async () => { await browser?.close(); await server?.close(); });
 
-for (const engine of [chromium, firefox]) test.each(["status", "isLoading", "reading", "paused"])(`${engine.name()}: %s holds readiness beyond publication, then releases`, async guard => {
-  const page = pages.get(engine.name())!;
+test.each(["status", "isLoading", "reading", "paused"])(`${engine.name()}: %s holds readiness beyond publication, then releases`, async guard => {
   const read = Promise.withResolvers<void>();
   await page.route("**/read", async route => { await read.promise; await route.fulfill({ body: "Read settled" }); });
   const requested = guard === "reading" ? page.waitForRequest("**/read") : undefined;
@@ -94,8 +92,7 @@ for (const engine of [chromium, firefox]) test.each(["status", "isLoading", "rea
   } finally { read.resolve(); await page.unrouteAll({ behavior: "wait" }); }
 });
 
-for (const engine of [chromium, firefox]) test(`${engine.name()}: an obsolete deferred observer cannot publish during a new read`, async () => {
-  const page = pages.get(engine.name())!;
+test(`${engine.name()}: an obsolete deferred observer cannot publish during a new read`, async () => {
   const module = Promise.withResolvers<void>();
   const read = Promise.withResolvers<void>();
   const requested = Promise.withResolvers<void>();
