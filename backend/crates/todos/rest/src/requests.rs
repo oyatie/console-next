@@ -154,3 +154,6 @@ pub(crate) async fn return_todo(
         .map_err(RestError::from_store)?;
     Ok(StatusCode::NO_CONTENT.into_response())
 }
+
+#[cfg(test)]
+mod tests;
