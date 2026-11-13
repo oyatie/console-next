@@ -4,6 +4,38 @@ import { firefox, expect as element } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { chromium } from "../lib/browser-test";
 import { navFixture } from "./nav.browser-fixture";
+import { checklist, user } from "../../../../e2e/mock/fixtures";
+
+for (const engine of [chromium, ...(process.env.E2E_XBROWSER === "1" ? [firefox] : [])]) test.each([503, 403])(`one shell retry respects the checklist's %i answer in ${engine.name()}`, async status => {
+  await loadCatalog("ko");
+  const { server, browser, page, errors } = await navFixture(engine);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.emulateMedia({ colorScheme: "dark" });
+  let failing = true;
+  let reads = 0;
+  await page.route("**/api/v1/users/me", route => route.fulfill({ json: { ...user, tenant: { ...user.tenant, phase: "SETUP", go_live_at: null } } }));
+  await page.route("**/api/v1/onboarding/checklist", route => {
+    reads++;
+    return failing ? route.fulfill({ status, json: { error: { code: status === 403 ? "forbidden" : "unavailable" } } })
+      : route.fulfill({ json: { ...checklist, phase: "SETUP", go_live_at: null } });
+  });
+  for (const path of ["onboarding/modules", "support-sessions/active"]) await page.route(`**/api/v1/${path}`, route => failing
+    ? route.fulfill({ status: 503, json: { error: { code: "unavailable" } } }) : route.fallback());
+  try {
+    await page.goto(server.resolvedUrls!.local[0]!);
+    const failure = page.getByRole("main").getByRole("alert");
+    await element(failure).toHaveCount(1);
+    const before = reads;
+    expect(before).toBeGreaterThan(0);
+    failing = false;
+    await failure.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await element(page.getByRole("navigation", { name: t("shell.nav") }).getByRole("alert")).toHaveCount(0);
+    await element(failure).toHaveCount(0);
+    await expect.poll(() => reads).toBe(before + (status === 503 ? 1 : 0));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    expect(errors).toEqual([]);
+  } finally { await browser.close(); await server.close(); }
+}, 60_000);
 
 for (const engine of [chromium, ...(process.env.E2E_XBROWSER === "1" ? [firefox] : [])]) test(`a cold modules fault reuses only this principal's remembered readiness in ${engine.name()}`, async () => {
   await loadCatalog("ko");

@@ -76,6 +76,7 @@ export function Shell() {
   const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data | null }>();
   const modulesFault = modules.isError && !isAnswer(modules.error);
   const supportFault = support.isError && !isAnswer(support.error);
+  const checklistFault = checklist.isError && !isAnswer(checklist.error);
   const hasSupportNotice = Boolean(support.data && (support.data.sessions?.length || (support.data.can_approve && support.data.pending_count)));
   const [pageFailures, setPageFailures] = useState(0);
   const registerFailure = useMemo(() => () => {
@@ -87,7 +88,8 @@ export function Shell() {
   const retryShell = useMemo(() => () => {
     if (modulesFault) void refetchModules({ cancelRefetch: false });
     if (supportFault) void refetchSupport({ cancelRefetch: false });
-  }, [modulesFault, refetchModules, supportFault, refetchSupport]);
+    if (checklistFault) void refetchChecklist({ cancelRefetch: false });
+  }, [modulesFault, refetchModules, supportFault, refetchSupport, checklistFault, refetchChecklist]);
   const recovery = useMemo(() => ({ register: registerFailure, retry: retryShell }), [registerFailure, retryShell]);
   const bannerRecovery = useMemo(() => ({ register: () => () => {}, retry: retryShell }), [retryShell]);
   const answered = ready && access.isSuccess && [support, me].every(q => !(q.isError && !isAnswer(q.error)));
