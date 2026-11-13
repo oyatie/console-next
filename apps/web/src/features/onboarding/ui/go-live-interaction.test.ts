@@ -215,7 +215,7 @@ describe.each([3, 2000])("department readiness with %i people", (count) => {
   });
 });
 
-describe("resolved blocker collapse and receipt layout", () => {
+describe("resolved blocker and receipt layout", () => {
   let ctx: BrowserContext;
   let page: Page;
   beforeAll(async () => {
@@ -272,7 +272,8 @@ describe("resolved blocker collapse and receipt layout", () => {
     const resolved = page.getByText("해결함", { exact: true });
     await browserExpect(resolved).toBeVisible();
     const resolvedRowHeight = await resolved.evaluate((el) => el.closest("[data-blocker-row]")?.getBoundingClientRect().height ?? 999);
-    assert.ok(resolvedRowHeight < 80, `expected compact resolved row (<80px), got ${resolvedRowHeight}px`);
+    assert.ok(resolvedRowHeight < 80, `resolved row height ${resolvedRowHeight}px`);
+    await browserExpect(governed).toBeVisible();
     const afterGoverned = (await governed.boundingBox())!.y;
     assert.ok(Math.abs(afterGoverned - beforeGoverned) < 2, `governed heading shifted by ${Math.abs(afterGoverned - beforeGoverned)}px`);
   });

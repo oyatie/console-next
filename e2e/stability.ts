@@ -11,7 +11,7 @@ import { expect, type Page } from "@playwright/test";
  *    the input's own result (Event Timing): a read after a click (a page, a panel's detail) is a load too. Against
  *    the local backend it lands in ~50 ms, inside the window: without this rule the unit card's since line
  *    (4262ca4, 53-71 ms after the click) went unseen.
- * 3. Not a command's result: from the press that sent a write until a second after its answer, the page shows
+ * 3. Not a command's result: from the press that sent a write until a second after its last refresh, the page shows
  *    what it made or why it refused, what the user is waiting on, not a screen they take as ready and aim at.
  * 4. A shift that moves a control 8 px or more off where it was (growing over its old place keeps the press), or
  *    a block carrying one that moved whole, fails at any score. A block that also resized (grew upward over the
@@ -62,17 +62,29 @@ export function recordShifts() {
   // When responses landed (not when they were asked: hovering prefetches before a click), and when the last
   // command (a write) was sent and answered.
   let landed: number[] = [];
-  let lastCommand = -Infinity;
+  // The input a command answered (NaN: none). Compared by identity: the click's fetch can share its timestamp.
+  let commandInput = NaN;
   let commandLanded = -Infinity;
+  let writeLanded = -Infinity;
+  let commandPending = 0;
   const fetch0 = window.fetch;
   window.fetch = (...args) => {
     const method = args[1]?.method ?? (args[0] instanceof Request ? args[0].method : "GET");
     // Background POSTs (session restore, consent status) are reads, not a result the user asked to move.
-    const command = !/^(GET|HEAD)$/i.test(method) && performance.now() - lastInput < 500;
-    if (command) lastCommand = performance.now();
+    const now = performance.now();
+    const read = /^(GET|HEAD)$/i.test(method);
+    const command = !read && (now - lastInput < 500 || now - writeLanded < 500);
+    // A chained write or refresh dispatched with the command's answer is still work it awaits.
+    const continuation = read && commandInput === lastInput && now - writeLanded < 500;
+    if (command) commandInput = lastInput;
+    if (command || continuation) commandPending++;
     return fetch0(...args).finally(() => {
       landed = [...landed.slice(-20), performance.now()];
-      if (command) commandLanded = performance.now();
+      if (command) writeLanded = performance.now();
+      if (command || continuation) {
+        commandPending--;
+        commandLanded = performance.now();
+      }
     });
   };
   // Scrollers by when they last scrolled: what moves inside one that is scrolling is the scroll (a virtual list
@@ -95,8 +107,8 @@ export function recordShifts() {
   new PerformanceObserver((list) => {
     for (const e of list.getEntries() as Shift[]) {
       // A command's own result (the record it made, its refusal) is what the user pressed for and is waiting on:
-      // from the press that sent it until a second after its answer (a slow machine renders it past 500 ms).
-      if (lastCommand > lastInput && (commandLanded < lastCommand || e.startTime - commandLanded < 1000)) continue;
+      // from the press that sent it until a second after its last refresh (a slow machine renders it past 500 ms).
+      if (commandInput === lastInput && (commandPending > 0 || e.startTime - commandLanded < 1000)) continue;
       const attended = e.hadRecentInput || e.startTime - lastInput < 500;
       if (attended && !landed.some((t) => t > lastInput && t <= e.startTime)) continue;
       // An element that was not in view before (a recycled virtual row, a block scrolled in) appeared; it did not move.
