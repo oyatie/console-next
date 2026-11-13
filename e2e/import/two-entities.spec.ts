@@ -2,7 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "../a11y";
-import { firstSignIn, go, kstDate, option, routeReady, unique } from "../flows";
+import { firstSignIn, go, kstDate, option, unique } from "../flows";
 import { registerEntity, registerWorkplace, SECOND, SETUP_DEPARTMENT, setupCompany } from "../setup-flows";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
 import { openTenant } from "../helpers/tenant";
@@ -302,9 +302,6 @@ test("a second person rolls an applied import back within its configured window"
   const self = await api(`/change-requests/${outcome.request_id}/decide`, "POST", { decision: "APPLY", reason_code: "REVIEWED" });
   expect([self.status(), await codeOf(self)]).toEqual([403, "authz_sod_requester"]);
   expect(await headcount(api)).toBe(before + 1);
-  // Refresh the saved navigation after go-live, then audit the decision in its own document.
-  await signedInReviewer.goto(`/people/requests?sel=${outcome.request_id}`);
-  await routeReady(signedInReviewer);
   const reviewer = await signedInReviewer.context().newPage();
   await signedInReviewer.close();
   await go(reviewer, `/people/requests?sel=${outcome.request_id}`);

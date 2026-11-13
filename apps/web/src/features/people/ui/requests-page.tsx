@@ -4,6 +4,7 @@ import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
+import { authzApplies, authzQuery } from "../../../reference/authz/api";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
@@ -31,13 +32,14 @@ export function RequestsPage() {
   const { lane = "all", status = "OPEN", sel, page = 0 } = route.useSearch();
   const navigate = route.useNavigate();
   const can = useCan();
+  const authz = useQuery({ ...authzQuery, enabled: authzApplies() });
   const hr = can("employee_directory_manage", "all");
   const set = (patch: { lane?: Lane; status?: RequestStatus | "ALL"; sel?: string; page?: number }) =>
     void navigate({ search: (x) => ({ ...x, page: undefined, ...patch }), replace: true });
   const active = hr ? lane : "all";
   const filtered = active !== "all" || status !== "ALL";
   const filters = [t(hr ? `requests.lane.${active}` : "requests.mine"), status !== "ALL" && t(`requests.status.${status}`)].filter(Boolean).join(" · ");
-  const list = useQuery(requestsQuery({ lane: active, mine: !hr, status: status === "ALL" ? undefined : status, offset: page * REQUEST_PAGE }));
+  const list = useQuery({ ...requestsQuery({ lane: active, mine: !hr, status: status === "ALL" ? undefined : status, offset: page * REQUEST_PAGE }), enabled: !authz.isLoading });
   const counts = useQueries({ queries: LANES.map((l) => ({ ...openCountQuery(l), enabled: hr })) });
   const subjects = useQueries({ queries: [...new Set((list.data?.items ?? []).filter((r) => r.subject_type === "EMPLOYEE").map((r) => r.subject_id))].map((id) => employeeQuery(id)) });
   const names = new Map(subjects.flatMap((q) => (q.data ? [[q.data.employee.id, q.data.employee] as const] : [])));
@@ -70,32 +72,34 @@ export function RequestsPage() {
           <div className="toolbar">
             <h2 id="rq-list" className="toolbar__title">{t("requests.list")}</h2>
           </div>
-          <div className={`tabs ${s.lanes}`} role="group" aria-label={t("requests.lanes")} aria-hidden={!hr} inert={!hr}>
-            {LANES.map((l, i) => (
-              <ToggleButton key={l} pressed={active === l} onClick={() => set({ lane: l })}>
-                {t(`requests.lane.${l}`)} <Count n={counts[i]!.data?.total} />
-              </ToggleButton>
-            ))}
-          </div>
-          <div className="tabs" role="group" aria-label={t("requests.statuses")}>
-            {STATUSES.map((x) => (
-              <ToggleButton key={x ?? "ALL"} pressed={(status === "ALL" ? undefined : status) === x} onClick={() => set({ status: x ?? "ALL" })}>
-                {t(`requests.status.${x ?? "ALL"}`)}
-              </ToggleButton>
-            ))}
-          </div>
-          <QueryState q={list} empty={(d) => (d.items.length ? null : <EmptyState
-            title={t("requests.none.title")}
-            reason={filtered ? t("requests.none.filtered", { filters }) : t(hr ? "requests.none.hr" : "requests.none.mine")}
-            actions={filtered && <Button onClick={() => set({ lane: "all", status: "ALL", sel: undefined })}>{t("requests.filters.reset")}</Button>}
-          />)}>
-            {(d) => (
-              <>
-                <Table label={t("requests.list")} rows={d.items} rowId={(r) => r.id} columns={columns} selected={sel} onSelect={(id) => set({ sel: id })} />
-                <Pager offset={d.offset} limit={REQUEST_PAGE} total={d.total} onPage={(o) => set({ page: Math.floor(o / REQUEST_PAGE), sel: sel })} />
-              </>
-            )}
-          </QueryState>
+          {authz.isLoading ? <QueryState q={authz}>{() => null}</QueryState> : <>
+            {hr && <div className="tabs" role="group" aria-label={t("requests.lanes")}>
+              {LANES.map((l, i) => (
+                <ToggleButton key={l} pressed={active === l} onClick={() => set({ lane: l })}>
+                  {t(`requests.lane.${l}`)} <Count n={counts[i]!.data?.total} />
+                </ToggleButton>
+              ))}
+            </div>}
+            <div className="tabs" role="group" aria-label={t("requests.statuses")}>
+              {STATUSES.map((x) => (
+                <ToggleButton key={x ?? "ALL"} pressed={(status === "ALL" ? undefined : status) === x} onClick={() => set({ status: x ?? "ALL" })}>
+                  {t(`requests.status.${x ?? "ALL"}`)}
+                </ToggleButton>
+              ))}
+            </div>
+            <QueryState q={list} empty={(d) => (d.items.length ? null : <EmptyState
+              title={t("requests.none.title")}
+              reason={filtered ? t("requests.none.filtered", { filters }) : t(hr ? "requests.none.hr" : "requests.none.mine")}
+              actions={filtered && <Button onClick={() => set({ lane: "all", status: "ALL", sel: undefined })}>{t("requests.filters.reset")}</Button>}
+            />)}>
+              {(d) => (
+                <>
+                  <Table label={t("requests.list")} rows={d.items} rowId={(r) => r.id} columns={columns} selected={sel} onSelect={(id) => set({ sel: id })} />
+                  <Pager offset={d.offset} limit={REQUEST_PAGE} total={d.total} onPage={(o) => set({ page: Math.floor(o / REQUEST_PAGE), sel: sel })} />
+                </>
+              )}
+            </QueryState>
+          </>}
         </section>
         {selected && <RequestPanel r={selected} subject={names.get(selected.subject_id)} hr={hr} onClose={() => set({ sel: undefined })} onDecided={(out) => (setDecided(out), set({ sel: undefined }))} />}
       </div>
