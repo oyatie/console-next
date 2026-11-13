@@ -1,12 +1,15 @@
 //! Personal-todos REST API.
 //!
-//! Every route is person-scoped: the owner is taken from the authenticated
-//! principal (`/api/v1/me/...`), never from the request body or path, so one
-//! user can neither list nor mutate another user's todos. Mirrors the
-//! notification-center REST template.
+//! Every route is person-scoped: the caller is the authenticated principal
+//! (`/api/v1/me/...`), never taken from the request body or path. A route
+//! reaches only the caller's own todos, or the requests the caller made; the
+//! one input naming someone else is a request's assignee, which Cedar checks
+//! against the caller's to-do request grants. Mirrors the notification-center
+//! REST template.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
+mod requests;
 
 pub use openapi::OPENAPI_FRAGMENT;
 
@@ -29,6 +32,10 @@ use serde::{Deserialize, Serialize};
 pub const ME_TODOS_PATH: &str = "/api/v1/me/todos";
 pub const ME_TODO_PATH_TEMPLATE: &str = "/api/v1/me/todos/{todoId}";
 pub const ME_TODO_DONE_PATH_TEMPLATE: &str = "/api/v1/me/todos/{todoId}/done";
+pub const ME_TODO_RETURN_PATH_TEMPLATE: &str = "/api/v1/me/todos/{todoId}/return";
+pub const ME_TODO_REQUESTS_PATH: &str = "/api/v1/me/todos/requests";
+pub const ME_TODO_REQUEST_PATH_TEMPLATE: &str = "/api/v1/me/todos/requests/{todoId}";
+pub const ME_TODO_REQUEST_ASSIGNEES_PATH: &str = "/api/v1/me/todos/requests/assignees";
 
 /// Every route this face serves, as the single table [`router`] is built from.
 ///
@@ -44,6 +51,16 @@ fn routes() -> Vec<(&'static str, MethodRouter<TodoRestState>)> {
         (ME_TODOS_PATH, get(list_todos).post(create_todo)),
         (ME_TODO_DONE_PATH_TEMPLATE, post(set_done)),
         (ME_TODO_PATH_TEMPLATE, delete(delete_todo)),
+        (ME_TODO_RETURN_PATH_TEMPLATE, post(requests::return_todo)),
+        (
+            ME_TODO_REQUESTS_PATH,
+            get(requests::list_requests).post(requests::create_request),
+        ),
+        (ME_TODO_REQUEST_PATH_TEMPLATE, delete(requests::withdraw)),
+        (
+            ME_TODO_REQUEST_ASSIGNEES_PATH,
+            get(requests::list_assignees),
+        ),
     ]
 }
 
@@ -215,21 +232,20 @@ impl RestError {
         Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", message)
     }
 
+    /// The kernel's stable code reaches the client; the kind only picks the
+    /// status and the fallback code.
     fn from_kernel(err: KernelError) -> Self {
-        match err.kind {
-            ErrorKind::Validation => {
-                Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation", err.message)
-            }
-            ErrorKind::NotFound => Self::new(StatusCode::NOT_FOUND, "not_found", err.message),
-            ErrorKind::Forbidden => Self::new(StatusCode::FORBIDDEN, "forbidden", err.message),
+        let (status, code) = match err.kind {
+            ErrorKind::Validation => (StatusCode::UNPROCESSABLE_ENTITY, "validation"),
+            ErrorKind::NotFound => (StatusCode::NOT_FOUND, "not_found"),
+            ErrorKind::Forbidden => (StatusCode::FORBIDDEN, "forbidden"),
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                Self::new(StatusCode::CONFLICT, "conflict", err.message)
+                (StatusCode::CONFLICT, "conflict")
             }
-            ErrorKind::Unavailable => Self::unavailable(err.message),
-            ErrorKind::Internal => {
-                Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", err.message)
-            }
-        }
+            ErrorKind::Unavailable => (StatusCode::SERVICE_UNAVAILABLE, "unavailable"),
+            ErrorKind::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal"),
+        };
+        Self::new(status, err.code.unwrap_or(code), err.message)
     }
 
     fn from_store(err: PgTodoError) -> Self {

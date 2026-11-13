@@ -40,6 +40,8 @@ export const koAccessCodes: Record<keyof typeof enAccessCodes, string> = {
   "accessCodes.domain.support_access.help": "공급사의 조회 지원 승인과 종료",
   "accessCodes.domain.tenant": "고객 계정 운영",
   "accessCodes.domain.tenant.help": "운영 시작",
+  "accessCodes.domain.todo_request": "할 일 요청",
+  "accessCodes.domain.todo_request.help": "범위 안 동료에게 기한 있는 할 일 요청",
   "accessCodes.operation.support_access::approve": "승인",
   "accessCodes.level.view": "조회",
   "accessCodes.level.edit": "등록·수정",
