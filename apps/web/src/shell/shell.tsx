@@ -28,6 +28,7 @@ import { streamReady } from "../lib/live/session-stream";
 import { RouteGuard } from "../reference/authz/ui/access-gate";
 import { PageMain } from "../ui/page/page-main";
 import { meQuery } from "../features/account/api";
+import { useMainScrollRestoration } from "./scroll-restoration";
 import { checklistQuery, modulesQuery } from "../features/onboarding/api";
 import { fixFor } from "../features/onboarding/domain/rail";
 import type { NavHub } from "./nav";
@@ -52,6 +53,7 @@ export function Shell({ children = <Outlet />, pending = false }: { children?: R
   const platform = !!claims?.platform;
   const identity = useQuery({ ...meQuery, enabled: !platform && active && !pending });
   const router = useRouter();
+  useMainScrollRestoration(router);
   const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
   // Keep the rail snapshot separate, but share the identity request with the shell and page.
