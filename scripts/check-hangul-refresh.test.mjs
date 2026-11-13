@@ -6,6 +6,30 @@ import { fixture, ko } from "./test-fixtures/hangul.mjs";
 const official = { name: "official-labels", path: "backend/refdata/labels.tsv", pattern: '"[^"\\r\\n]*"', reason: "Official Korean labels.", source: "https://www.law.go.kr/" };
 const baselineFile = "scripts/copy-hangul-baseline.json";
 
+for (const [covered, name] of [[true, "synthetic-a-copy"], [true, "synthetic-z-copy"], [false, "synthetic-a-copy"]]) {
+  test(`different-pattern copy cannot claim two-string source lines: covered=${covered}, ${name}`, t => {
+    const entry = { ...official, name: "synthetic-names", path: "backend/tests/names_tests.rs", source: undefined };
+    const copy = "backend/tests/names_copy_tests.rs";
+    const count = covered ? 8 : 7;
+    const lines = [
+      ...Array.from({ length: count }, (_, i) => `assert_eq!(normalize_${i}("${ko}"), "${ko}");`),
+      ...Array.from({ length: 60 }, (_, i) => `assert_eq!(normalize_${i}("English input"), "English output");`),
+    ];
+    const f = fixture(t, { [entry.path]: lines.join("\n") + "\n", [baselineFile]: JSON.stringify({ allow: covered ? [entry] : [] }) });
+    f.write(copy, [
+      ...lines.map(line => line.replaceAll(ko, "xx")),
+      ...Array.from({ length: count }, (_, i) => `assert_eq!(error_${i}, E("${ko}"));`),
+    ].join("\n"));
+    const pattern = '(?<=E\\()"[^"\\r\\n]*"|(?<=\\p{Script=Hangul}[^\\r\\n]*)"[^"\\r\\n]*\\p{Script=Hangul}[^"\\r\\n]*"';
+    f.allow([...(covered ? [entry] : []), { ...entry, name, path: copy, pattern }].sort((a, b) => a.name.localeCompare(b.name)));
+    f.git("add", ".");
+    assert.match(f.git("diff", "--name-status", "-C", "--find-copies-harder", "HEAD"), /C\d+\s+backend\/tests\/names_tests.rs\s+backend\/tests\/names_copy_tests.rs/);
+    const result = f.run();
+    assert.equal(result.status, 1, result.stdout);
+    assert.match(result.stderr, /new test exceptions cannot self-approve/);
+  });
+}
+
 for (const name of ["synthetic-a-copy", "synthetic-z-copy"]) {
   test(`Git-detected synthetic copy cannot inherit headroom: ${name}`, t => {
     const entry = { ...official, name: "synthetic-names", path: "backend/tests/names_tests.rs", source: undefined };

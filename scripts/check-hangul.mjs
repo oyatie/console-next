@@ -167,11 +167,14 @@ export function checkRepositoryHangul(base) {
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n<pre>${report.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</pre>\n`);
   }
   const moved = execFileSync("git", ["diff", "--name-status", "-z", "-M", "-C", "--find-copies-harder", "--diff-filter=RC", base], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }).split("\0").filter(Boolean);
-  const origins = new Map();
-  for (let i = 0; i < moved.length; i += 3) origins.set(moved[i + 2], moved[i + 1]);
+  const origins = new Map(), copies = new Set();
+  for (let i = 0; i < moved.length; i += 3) {
+    origins.set(moved[i + 2], moved[i + 1]);
+    if (moved[i].startsWith("C")) copies.add(moved[i + 2]);
+  }
   const now = repositoryHangul(undefined, allow);
   // Apply the same exceptions on both trees so existing labels can be reclassified without blessing growth.
-  const mapped = allow.map(entry => ({ ...entry, path: origins.get(entry.path) ?? entry.path }));
+  const mapped = allow.flatMap(entry => copies.has(entry.path) && !canRefresh(entry) ? [] : [{ ...entry, path: origins.get(entry.path) ?? entry.path }]);
   const before = repositoryHangul(base, mapped);
   const baseline = before.counts;
   for (const entry of mapped) {
