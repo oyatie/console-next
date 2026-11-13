@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
+import gatesPolicy from '../gates.json' with {type:'json'};
 
 export function readEnvironment(environment, root = '.') {
   assert.match(environment ?? '', /^[a-z0-9][a-z0-9-]*$/, 'PLAT_OVERLAY: select a committed environment');
@@ -78,4 +79,124 @@ export function assertPromotion({sha, repository, run, jobs, gatesResult, curren
     /^(?!0{40}$)[a-f0-9]{40}$/.test(currentRevision) &&
     spawnSync('git', ['merge-base', '--is-ancestor', currentRevision, sha], {cwd:root}).status === 0,
   'PROMOTE_NOT_DESCENDANT: channel history must be known and an ancestor of the candidate');
+}
+
+export function validatePredicate(predicate, sha, runUrl) {
+  assert.ok(predicate?.inputs?.backend === sha && predicate.inputs.web === sha &&
+    predicate.runner?.kind === 'gha' && typeof runUrl === 'string' &&
+    /^https:\/\/github\.com\/[^/]+\/[^/]+\/actions\/runs\/[1-9][0-9]*\/attempts\/[1-9][0-9]*$/.test(runUrl) &&
+    predicate.runner.url === runUrl &&
+    ['normal', 'long'].includes(predicate.bake) && predicate.approver === null &&
+    Array.isArray(predicate.gates) && predicate.gates.length === Object.keys(gatesPolicy.checks).length &&
+    new Set(predicate.gates.map(gate => gate?.name)).size === predicate.gates.length &&
+    predicate.gates.every(gate => Object.hasOwn(gatesPolicy.checks, gate?.name) && gate.result === 'pass'),
+  'PROMOTE_GATES: require the complete passing predicate for this SHA and promotion run');
+}
+
+export async function collectPlatformProof(github, repository, runId, root = '.') {
+  assert.ok(Number.isSafeInteger(runId) && runId > 0, 'PROMOTE_NOT_GREEN: select a platform run');
+  const [owner, repo] = repository.split('/');
+  const {data:run} = await github.rest.actions.getWorkflowRun({owner, repo, run_id:runId});
+  assert.ok(run.id === runId && Number.isSafeInteger(run.run_attempt) && run.run_attempt > 0,
+    'PROMOTE_NOT_GREEN: require the selected run and a known attempt');
+  const jobs = await github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs',
+    {owner, repo, run_id:runId, attempt_number:run.run_attempt, per_page:100});
+  const proof = {sha:run.head_sha, repository, run, jobs, gatesResult:'pass', currentRevision:null};
+  assertPromotion(proof, root);
+  return proof;
+}
+
+const executeTool = (bin, args, options = {}) => execFileSync(bin, args, {
+  encoding:'utf8', maxBuffer:64 * 1024 * 1024, ...options,
+});
+
+// Resolve mutable tags once, then verify and pull only that digest.
+export function publishEnvironment({proof, environment, predicate, runUrl, directory, root = '.'}, execute = executeTool) {
+  validatePredicate(predicate, proof.sha, runUrl);
+  assertPromotion(proof, root);
+  const {channel} = readEnvironment(environment, root);
+  assert.ok(channel, 'PROMOTE_ENVIRONMENT: select a configured channel');
+  const deploy = `ghcr.io/${proof.repository.toLowerCase()}/console-deploy`;
+  const issuer = '--certificate-oidc-issuer=https://token.actions.githubusercontent.com';
+  const identity = workflow => `--certificate-identity=https://github.com/${proof.repository}/.github/workflows/${workflow}.yml@refs/heads/dev`;
+  const type = 'https://cosskorea.com/attestations/console-gates/v1';
+  const signatureRefusal = /no (matching )?signatures?|none of the expected identities matched|certificate.*(identity|subject)/i;
+  const resolve = (tag, optional = false) => {
+    let result;
+    try { result = execute('buildx', ['imagetools', 'inspect', `${deploy}:${tag}`, '--format', '{{json .Manifest}}']); }
+    catch (error) {
+      const absent = /MANIFEST_UNKNOWN|manifest unknown/i.test(String(error.stderr)) ||
+        String(error.stderr).trim() === `ERROR: ${deploy}:${tag}: not found`;
+      if (optional && absent) return null;
+      throw error;
+    }
+    const {digest} = JSON.parse(result);
+    assert.match(digest ?? '', /^sha256:[a-f0-9]{64}$/, 'PROMOTE_ARTIFACT: require an OCI digest');
+    return `${deploy}@${digest}`;
+  };
+  const pull = (ref, name, workflow) => {
+    execute('cosign', ['verify', issuer, identity(workflow), ref]);
+    const output = join(directory, name);
+    mkdirSync(output, {recursive:true});
+    execute('flux', ['pull', 'artifact', `oci://${ref}`, `--output=${output}`]);
+    return {output, revision:JSON.parse(readFileSync(join(output, 'revision.json'), 'utf8'))};
+  };
+  const current = resolve(channel, true);
+  let currentRevision = null;
+  if (current) {
+    const {revision} = pull(current, 'current', 'promote');
+    assert.equal(revision.environment, environment, 'PROMOTE_ENVIRONMENT: channel environment mismatch');
+    currentRevision = revision.revision;
+  }
+  assertPromotion({...proof, currentRevision}, root);
+  const immutableTag = `${channel}-${proof.sha}`;
+  let artifact = resolve(immutableTag, true);
+  if (artifact) {
+    const {revision} = pull(artifact, 'immutable', 'promote');
+    assert.equal(revision.revision, proof.sha, 'PROMOTE_ARTIFACT: immutable revision mismatch');
+    assert.equal(revision.environment, environment, 'PROMOTE_ENVIRONMENT: immutable environment mismatch');
+    assert.ok(revision.image?.startsWith(`ghcr.io/${proof.repository.toLowerCase()}/console@sha256:`),
+      'PROMOTE_ARTIFACT: unexpected immutable image repository');
+    assert.match(revision.image, /@sha256:[a-f0-9]{64}$/, 'PROMOTE_ARTIFACT: invalid immutable image digest');
+  } else {
+    const shadow = resolve('shadow');
+    const {output, revision} = pull(shadow, 'shadow', 'platform');
+    assert.equal(revision.revision, proof.sha, 'PROMOTE_NOT_GREEN: shadow must match the platform SHA');
+    const imageRepository = `ghcr.io/${proof.repository.toLowerCase()}/console`;
+    assert.ok(revision.image?.startsWith(`${imageRepository}@sha256:`), 'PROMOTE_ARTIFACT: unexpected image repository');
+    assert.match(revision.image, /@sha256:[a-f0-9]{64}$/, 'PROMOTE_ARTIFACT: require the built image digest');
+    const bundle = join(directory, 'bundle');
+    execute(process.execPath, ['deploy/ci/render.mjs', environment, revision.image, bundle],
+      {cwd:root, env:{...process.env, GITHUB_SHA:proof.sha}});
+    if (readEnvironment(environment, root).target === 'kubernetes') execute('bash', ['deploy/ci/validate.sh', bundle], {cwd:root});
+    cpSync(join(output, 'image-sbom.json'), join(bundle, 'image-sbom.json'));
+    const {digest} = JSON.parse(execute('flux', ['push', 'artifact', `oci://${deploy}:${immutableTag}`,
+      `--path=${bundle}`, `--source=https://github.com/${proof.repository}`, `--revision=${proof.sha}`, '--output=json']));
+    assert.match(digest ?? '', /^sha256:[a-f0-9]{64}$/, 'PROMOTE_ARTIFACT: require the published digest');
+    artifact = `${deploy}@${digest}`;
+    assert.throws(() => execute('cosign', ['verify', issuer, identity('promote'), artifact]), signatureRefusal,
+      'PROMOTE_ARTIFACT: unsigned negative control unexpectedly verified');
+    execute('cosign', ['sign', '--yes', artifact]);
+    execute('cosign', ['attest', '--yes', '--type', type, '--predicate', join(directory, 'console-gates.json'), artifact]);
+  }
+  execute('cosign', ['verify', issuer, identity('promote'), artifact]);
+  assert.throws(() => execute('cosign', ['verify', issuer, identity('platform'), artifact]), signatureRefusal,
+    'PROMOTE_ARTIFACT: build identity must not verify a promotion');
+  let statements;
+  try {
+    const envelopes = execute('cosign', ['verify-attestation', '--type', type, issuer, identity('promote'), artifact]);
+    statements = envelopes.trim().split('\n').flatMap(line => JSON.parse(line))
+      .map(envelope => JSON.parse(Buffer.from(envelope.payload, 'base64').toString()));
+  } catch (cause) { throw new Error('PROMOTE_GATES: missing or unverifiable gates attestation', {cause}); }
+  assert.ok(statements.length > 0, 'PROMOTE_GATES: missing gates attestation');
+  for (const statement of statements) {
+    assert.ok(statement.predicateType === type && statement.subject?.some(subject =>
+      subject.digest?.sha256 === artifact.split(':').at(-1)), 'PROMOTE_GATES: attestation subject mismatch');
+    // An immutable artifact may have been attested by an earlier successful promotion attempt.
+    validatePredicate(statement.predicate, proof.sha, statement.predicate?.runner?.url);
+    assert.ok(statement.predicate.runner.url.startsWith(`https://github.com/${proof.repository}/actions/runs/`),
+      'PROMOTE_GATES: attestation must belong to this repository');
+  }
+  execute('flux', ['tag', 'artifact', `oci://${artifact}`, `--tag=${channel}`]);
+  return artifact;
 }

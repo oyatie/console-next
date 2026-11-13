@@ -25,7 +25,7 @@ const sha = git('rev-parse', 'HEAD');
 const image = `example.invalid/console@sha256:${'a'.repeat(64)}`;
 const repository = 'example/console';
 const exitNames = ['ubuntu-24.04', 'ubuntu-24.04-arm'].flatMap(runner =>
-  [1].map(repetition => `exit-test (${runner}, ${repetition})`));
+  [1, 2].map(repetition => `exit-test (${runner}, ${repetition})`));
 
 function proof() {
   return {sha, repository, currentRevision:previous, gatesResult:'pass',
@@ -283,4 +283,226 @@ test('PROMOTE_NOT_DESCENDANT: caller must use fetch-depth: 0 for channel ancestr
       assert.doesNotThrow(() => assertPromotion({...proof(), currentRevision}, dir));
     }
   } finally { rmSync(dir, {recursive:true, force:true}); }
+});
+
+const runUrl = 'https://github.com/example/console/actions/runs/200/attempts/1';
+const predicate = () => ({inputs:{backend:sha, web:sha},
+  gates:['code-gates', 'api-compat', 'sbom', 'scan', 'smoke'].map(name => ({name, result:'pass'})),
+  runner:{kind:'gha', url:runUrl}, approver:null, bake:'normal'});
+
+for (const reason of ['missing', 'failed', 'missing gate', 'duplicate gate', 'wrong SHA', 'wrong run', 'wrong runner', 'invalid bake', 'missing run']) {
+  test(`PROMOTE_GATES: publisher refuses ${reason} predicate`, async () => {
+    const {validatePredicate} = await api();
+    const value = predicate();
+    if (reason === 'failed') value.gates[0].result = 'fail';
+    if (reason === 'missing gate') value.gates.pop();
+    if (reason === 'duplicate gate') value.gates[0] = value.gates[1];
+    if (reason === 'wrong SHA') value.inputs.web = previous;
+    if (reason === 'wrong run') value.runner.url += '0';
+    if (reason === 'wrong runner') value.runner.kind = 'local';
+    if (reason === 'invalid bake') value.bake = 'none';
+    if (reason === 'missing run') delete value.runner.url;
+    assert.throws(() => validatePredicate(reason === 'missing' ? undefined : value, sha, runUrl), /PROMOTE_GATES/);
+  });
+}
+
+test('platform collector paginates only the selected run attempt and refuses a red run', async () => {
+  const {collectPlatformProof} = await api();
+  const input = proof();
+  input.run.run_attempt = 3;
+  const github = {rest:{actions:{getWorkflowRun:async params => {
+    assert.deepEqual(params, {owner:'example', repo:'console', run_id:42});
+    return {data:input.run};
+  }}}, paginate:async (route, params) => {
+    assert.match(route, /attempts\/\{attempt_number\}\/jobs$/);
+    assert.equal(params.attempt_number, 3);
+    assert.equal(params.per_page, 100);
+    return input.jobs;
+  }};
+  const result = await collectPlatformProof(github, repository, 42, historyRoot);
+  assert.equal(result.sha, sha);
+  assert.deepEqual(result.jobs, input.jobs);
+  input.run.run_attempt = 0;
+  await assert.rejects(() => collectPlatformProof(github, repository, 42, historyRoot), /PROMOTE_NOT_GREEN/);
+  input.run.run_attempt = 3;
+  input.run.id = 99;
+  input.jobs.forEach(job => { job.run_id = 99; });
+  await assert.rejects(() => collectPlatformProof(github, repository, 42, historyRoot), /PROMOTE_NOT_GREEN/);
+  input.run.id = 42;
+  input.jobs.forEach(job => { job.run_id = 42; });
+  input.jobs[0].conclusion = 'failure';
+  await assert.rejects(() => collectPlatformProof(github, repository, 42, historyRoot), /PROMOTE_NOT_GREEN/);
+});
+
+async function publishingFixture(options = {}) {
+  const {publishEnvironment} = await api();
+  assert.equal(typeof publishEnvironment, 'function', 'publisher must be available');
+  const directory = mkdtempSync(join(tmpdir(), 'promotion-publish-'));
+  const calls = [];
+  const deploy = `ghcr.io/${repository}/console-deploy`;
+  const digests = {shadow:`sha256:${'b'.repeat(64)}`, current:`sha256:${'c'.repeat(64)}`, artifact:`sha256:${'d'.repeat(64)}`};
+  const image = `ghcr.io/${repository}/console@sha256:${'a'.repeat(64)}`;
+  const envConfig = join(historyRoot, 'deploy/clusters/production');
+  mkdirSync(envConfig, {recursive:true});
+  writeFileSync(join(envConfig, 'platform.json'), JSON.stringify({target:'host', channel:'production'}));
+  const execute = (bin, args, toolOptions) => {
+    calls.push([bin, ...args]);
+    if (bin === 'buildx') {
+      const tag = args[2].split(':').at(-1);
+      const kind = tag === 'shadow' ? 'shadow' : tag === 'production' ? 'current' : 'artifact';
+      if ((options.registryError || options.unrelated404) && kind === 'current') throw Object.assign(new Error('registry unavailable'), {stderr:options.unrelated404 ? '404 route not found' : 'UNAUTHORIZED'});
+      if (kind === 'current' && !options.current || kind === 'artifact' && !options.existing) {
+        throw Object.assign(new Error('absent'), {stderr:options.buildxAbsent ? `ERROR: ${deploy}:${tag}: not found\n` : 'MANIFEST_UNKNOWN'});
+      }
+      return JSON.stringify({digest:options.badDigest ? 'sha256:invalid' : digests[kind]});
+    }
+    if (bin === 'cosign') {
+      const ref = args.at(-1);
+      if (options.unsignedCurrent && ref.endsWith(digests.current)) throw new Error('no signatures found');
+      if (options.unsigned && ref.endsWith(digests.shadow)) throw new Error('no signatures found');
+      if (options.wrongIdentity && ref.endsWith(digests.shadow)) throw new Error('certificate identity mismatch');
+      if (options.signFailure && args[0] === 'sign') throw new Error('OIDC unavailable');
+      if (options.attestFailure && args[0] === 'attest') throw new Error('attestation upload failed');
+      if (args[0] === 'verify' && ref.endsWith(digests.artifact) &&
+        (args.some(a => a.includes('platform.yml')) || !calls.some(call => call[1] === 'sign') && !options.existing)) {
+        throw new Error('no matching signature');
+      }
+      if (args[0] === 'verify-attestation') {
+        if (options.missingAttestation) throw new Error('no attestations found');
+        if (options.emptyAttestation) return '[]';
+        if (options.malformedAttestation) return '{}';
+        const value = predicate();
+        if (options.failedAttestation) value.gates[0].result = 'fail';
+        if (options.wrongAttestationRepo) value.runner.url = value.runner.url.replace('/example/console/', '/other/console/');
+        return JSON.stringify({payload:Buffer.from(JSON.stringify({
+          predicateType:options.wrongType ? 'other' : 'https://cosskorea.com/attestations/console-gates/v1',
+          subject:[{digest:{sha256:options.wrongSubject ? 'e'.repeat(64) : ref.split(':').at(-1)}}], predicate:value,
+        })).toString('base64')});
+      }
+      return '[]';
+    }
+    if (bin === 'flux' && args[0] === 'pull') {
+      const output = args.find(arg => arg.startsWith('--output=')).slice(9);
+      const current = args[2].endsWith(digests.current);
+      writeFileSync(join(output, 'revision.json'), JSON.stringify({
+        revision:current ? options.current : options.immutableSha && args[2].endsWith(digests.artifact) ? previous : options.shadowSha ?? sha,
+        image:options.invalidImage ? image.replace('/console@', '/other@') : image,
+        environment:options.invalidEnvironment ? 'other' : current || args[2].endsWith(digests.artifact) ? 'production' : 'exit-test',
+      }));
+      writeFileSync(join(output, 'image-sbom.json'), JSON.stringify({spdxVersion:'SPDX-2.3'}));
+    }
+    if (bin === process.execPath) {
+      assert.equal(toolOptions.env.GITHUB_SHA, sha);
+      assert.equal(toolOptions.cwd, historyRoot);
+      const output = args[3];
+      mkdirSync(output, {recursive:true});
+      writeFileSync(join(output, 'revision.json'), JSON.stringify({revision:sha, image, environment:'production'}));
+    }
+    if (bin === 'flux' && args[0] === 'push') return JSON.stringify({digest:digests.artifact});
+    return '';
+  };
+  const input = {proof:{...proof(), currentRevision:null}, environment:'production',
+    predicate:options.missingPredicate ? undefined : predicate(), runUrl, root:historyRoot, directory};
+  if (options.failedGate) input.predicate.gates[0].result = 'fail';
+  const publish = () => publishEnvironment(input, execute);
+  return {publish, calls, directory, deploy, digests};
+}
+
+for (const reason of ['unsigned', 'wrongIdentity', 'failedGate', 'missingPredicate', 'registryError', 'unrelated404', 'signFailure', 'attestFailure', 'failedAttestation', 'missingAttestation', 'emptyAttestation', 'malformedAttestation', 'wrongType', 'wrongSubject', 'wrongAttestationRepo', 'badDigest', 'invalidImage', 'shadowSha', 'current']) {
+  test(`publisher refuses ${reason} without moving a channel`, async () => {
+    const value = reason === 'current' ? 'f'.repeat(40) : reason === 'shadowSha' ? previous : true;
+    const fixture = await publishingFixture({[reason]:value});
+    try {
+      const refusal = {
+        unsigned:'no signatures found', wrongIdentity:'certificate identity mismatch',
+        failedGate:'PROMOTE_GATES', missingPredicate:'PROMOTE_GATES', registryError:'registry unavailable', unrelated404:'registry unavailable',
+        signFailure:'OIDC unavailable', attestFailure:'attestation upload failed',
+        failedAttestation:'PROMOTE_GATES', missingAttestation:'PROMOTE_GATES', emptyAttestation:'PROMOTE_GATES',
+        malformedAttestation:'PROMOTE_GATES', wrongType:'PROMOTE_GATES', wrongSubject:'PROMOTE_GATES',
+        wrongAttestationRepo:'PROMOTE_GATES', badDigest:'PROMOTE_ARTIFACT', invalidImage:'PROMOTE_ARTIFACT',
+        shadowSha:'PROMOTE_NOT_GREEN', current:'PROMOTE_NOT_DESCENDANT',
+      };
+      assert.throws(fixture.publish, new RegExp(refusal[reason]));
+      assert.equal(fixture.calls.some(call => call[0] === 'flux' && call[1] === 'tag'), false);
+      if (['unsigned', 'wrongIdentity', 'failedGate', 'missingPredicate', 'registryError', 'unrelated404', 'badDigest', 'invalidImage', 'shadowSha', 'current'].includes(reason)) {
+        assert.equal(fixture.calls.some(call => call[0] === 'flux' && call[1] === 'push'), false);
+      }
+    } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+  });
+}
+
+
+test('publisher bootstraps on the locked Buildx missing-tag response', async () => {
+  const fixture = await publishingFixture({buildxAbsent:true});
+  try {
+    assert.equal(fixture.publish(), `${fixture.deploy}@${fixture.digests.artifact}`);
+    assert.equal(fixture.calls.at(-1)[1], 'tag');
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+for (const reason of ['immutableSha', 'invalidEnvironment', 'invalidImage', 'failedAttestation', 'missingAttestation']) {
+  test(`publisher refuses existing immutable ${reason}`, async () => {
+    const fixture = await publishingFixture({existing:true, [reason]:true});
+    try {
+      assert.throws(fixture.publish, reason.includes('Attestation') ? /PROMOTE_GATES/ : /PROMOTE_ARTIFACT|PROMOTE_ENVIRONMENT/);
+      assert.equal(fixture.calls.some(call => call[0] === 'flux' && ['push', 'tag'].includes(call[1])), false);
+    } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+  });
+}
+
+for (const [existing, current] of [[false, null], [false, previous], [true, previous]]) test(`publisher ${existing ? 'reuses' : 'creates'} immutable artifact for ${current ? 'existing' : 'first'} channel`, async () => {
+  const fixture = await publishingFixture({existing, current});
+  try {
+    const ref = fixture.publish();
+    assert.equal(ref, `${fixture.deploy}@${fixture.digests.artifact}`);
+    const calls = fixture.calls;
+    const push = calls.find(call => call[0] === 'flux' && call[1] === 'push');
+    assert.equal(Boolean(push), !existing);
+    if (push) {
+      assert.equal(push[3], `oci://${fixture.deploy}:production-${sha}`);
+      const output = push.find(arg => arg.startsWith('--path=')).slice(7);
+      assert.deepEqual(readdirSync(output).sort(), ['image-sbom.json', 'revision.json']);
+      assert.deepEqual(JSON.parse(readFileSync(join(output, 'revision.json'))), {
+        revision:sha, image:`ghcr.io/${repository}/console@sha256:${'a'.repeat(64)}`, environment:'production',
+      });
+      const signing = calls.findIndex(call => call[1] === 'sign');
+      assert.ok(calls.findIndex(call => call[1] === 'attest') > signing);
+      assert.ok(calls.slice(0, signing).some(call => call[1] === 'verify' && call.at(-1) === ref));
+    }
+    assert.ok(calls.some(call => call[1] === 'verify' && call.at(-1) === ref && call.some(arg => arg.includes('platform.yml'))));
+    assert.ok(calls.some(call => call[1] === 'verify-attestation' && call.includes(ref)));
+    assert.deepEqual(calls.at(-1), ['flux', 'tag', 'artifact', `oci://${ref}`, '--tag=production']);
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+for (const reason of ['invalidEnvironment', 'unsignedCurrent']) test(`publisher refuses current channel ${reason}`, async () => {
+  const fixture = await publishingFixture({current:previous, [reason]:true});
+  try {
+    assert.throws(fixture.publish, reason === 'invalidEnvironment' ? /PROMOTE_ENVIRONMENT/ : /no signatures found/);
+    assert.equal(fixture.calls.some(call => call[0] === 'flux' && ['push', 'tag'].includes(call[1])), false);
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+test('promotion workflow binds reusable gates, proof, permissions and channel serialization', async () => {
+  const {load} = await import('js-yaml');
+  const workflow = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+  assert.deepEqual(workflow.on.workflow_run, {workflows:['platform'], types:['completed']});
+  assert.equal(workflow.jobs.gates.uses, './.github/workflows/gates.yml');
+  assert.equal(workflow.jobs.gates.with.sha, '${{ needs.proof.outputs.sha }}');
+  assert.deepEqual(workflow.jobs.publish.needs, ['proof', 'gates']);
+  assert.match(workflow.jobs.publish.if, /needs.gates.outputs.result == 'pass'/);
+  assert.match(workflow.jobs.publish.concurrency.group, /matrix.channel/);
+  assert.equal(workflow.jobs.publish.concurrency['cancel-in-progress'], false);
+  const permissions = workflow.jobs.publish.permissions;
+  assert.equal(permissions['id-token'], 'write');
+  assert.equal(permissions.packages, 'write');
+  assert.equal(permissions.actions, 'read');
+  assert.equal(permissions.attestations, 'write');
+  assert.match(workflow.jobs.proof.if, /workflow_run.head_repository.full_name == github.repository/);
+  assert.match(workflow.jobs.proof.if, /workflow_run.event == 'push'/);
+  assert.match(workflow.jobs.proof.if, /workflow_run.head_branch == 'dev'/);
+  const source = readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8');
+  assert.doesNotMatch(source, /secrets\.|kubeconfig|aws-actions|azure\/|google-github-actions/i);
+  assert.match(source, /fetch-depth: 0/);
+  assert.match(source, /publishEnvironment/);
 });
