@@ -18,8 +18,9 @@ impl QueryCount {
 }
 
 impl Subscriber for QueryCount {
-    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        metadata.target() == "sqlx::query"
+    fn enabled(&self, _: &Metadata<'_>) -> bool {
+        // Logging preflight can use different metadata; filter the emitted event instead.
+        true
     }
     fn new_span(&self, _: &Attributes<'_>) -> Id {
         Id::from_u64(1)
@@ -33,4 +34,16 @@ impl Subscriber for QueryCount {
     }
     fn enter(&self, _: &Id) {}
     fn exit(&self, _: &Id) {}
+}
+
+#[test]
+fn statement_counter_allows_preflight_but_counts_only_query_events() {
+    let queries = QueryCount::default();
+    tracing::subscriber::with_default(queries.clone(), || {
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            tracing::debug!(target: "sqlx::query", "synthetic query");
+        }
+        tracing::debug!(target: "other", "not a query");
+    });
+    assert_eq!(queries.get(), 1);
 }

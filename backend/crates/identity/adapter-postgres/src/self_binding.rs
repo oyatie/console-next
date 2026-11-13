@@ -71,7 +71,7 @@ impl PgOrgStore {
                 VALUES($1,$2,$3,$4,$5,$6,$7,$8)")
                 .bind(assertion).bind(org.as_uuid()).bind(actor.as_uuid()).bind(employee).bind(now)
                 .bind(&eligibility).bind(days).bind(now + Duration::days(i64::from(days))).execute(tx.as_mut()).await?;
-            sqlx::query("UPDATE users SET employee_id=$3 WHERE org_id=$1 AND id=$2")
+            sqlx::query("UPDATE users SET employee_id=$3,person_id=console_bind_employee_person($1,$3,$2) WHERE org_id=$1 AND id=$2")
                 .bind(org.as_uuid()).bind(actor.as_uuid()).bind(employee).execute(tx.as_mut()).await?;
             bump_subject_version_tx(tx, *org.as_uuid(), *actor.as_uuid(), now).await?;
             let event = user_audit_event("account_link.self_attested", Some(actor), actor, trace, now)?.with_org(org)

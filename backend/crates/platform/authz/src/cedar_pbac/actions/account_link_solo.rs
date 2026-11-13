@@ -9,11 +9,11 @@ entity Resource = { "org": String };
 action account_link_solo appliesTo {
   principal: [Subject], resource: [Resource],
   context: { "subject_is_self": Bool, "operator": Bool, "unbound": Bool,
-             "holds_permission": Bool, "other_holder": Bool }
+             "holds_permission": Bool, "other_holder": Bool, "revoked": Bool }
 };"#;
 const POLICIES: &str = r#"permit(principal, action == Action::"account_link_solo", resource)
 when { principal.org == resource.org && context.subject_is_self && context.operator &&
-       context.unbound && context.holds_permission && !context.other_holder };"#;
+       context.unbound && context.holds_permission && !context.other_holder && !context.revoked };"#;
 
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 pub struct Facts {
@@ -22,6 +22,7 @@ pub struct Facts {
     pub unbound: bool,
     pub holds_permission: bool,
     pub other_holder: bool,
+    pub revoked: bool,
 }
 
 /// Missing facts, compilation failures and evaluation errors fail closed.
@@ -42,6 +43,7 @@ pub fn decide(actor: &str, org: &str, resource_org: &str, f: Facts) -> Result<bo
                 ("unbound", Fact::Bool(f.unbound)),
                 ("holds_permission", Fact::Bool(f.holds_permission)),
                 ("other_holder", Fact::Bool(f.other_holder)),
+                ("revoked", Fact::Bool(f.revoked)),
             ],
         )
 }
@@ -59,6 +61,7 @@ mod tests {
             ("unbound", Fact::Bool(true)),
             ("holds_permission", Fact::Bool(true)),
             ("other_holder", Fact::Bool(false)),
+            ("revoked", Fact::Bool(false)),
         ];
         for index in 0..facts.len() {
             let mut missing = facts.to_vec();

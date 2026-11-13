@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[path = "account_self_binding/canonical_person.rs"]
+mod canonical_person;
+#[path = "account_self_binding/review.rs"]
+mod review;
+#[path = "account_self_binding/review_support.rs"]
+mod review_support;
 mod second_person_support;
 
 use console_identity_adapter_postgres::{PgOrgError, PgOrgStore, self_binding::SelfBindingCommand};
@@ -124,7 +130,7 @@ async fn solo_binding_commits_identity_attestation_and_audit_once(pool: PgPool) 
         .bind(receipt).fetch_one(&pool).await.unwrap();
     assert_eq!(
         facts,
-        json!({"subject_is_self":true,"operator":true,"unbound":true,"holds_permission":true,"other_holder":false})
+        json!({"subject_is_self":true,"operator":true,"unbound":true,"holds_permission":true,"other_holder":false,"revoked":false})
     );
     assert!(due);
     assert_eq!(days, 15);
