@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 .page { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
-.fullPage { min-block-size: calc(100dvh - var(--topbar-h)); }
+.fullPage { min-block-size: calc(100dvh - var(--frame-top) - var(--frame-bottom)); }
 .fullPage > .foot { margin-block-start: auto; }
 .head { display: flex; flex-direction: column; gap: var(--space-2); }
 .section { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--border); }

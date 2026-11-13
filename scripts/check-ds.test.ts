@@ -157,6 +157,23 @@ test("brokenRef checks UI, shell, tokens and inline styles, with same-module def
   expect(checkBrokenRefs(root).filter((p: string) => p.startsWith(cssFile))).toEqual([]);
 });
 
+test("only the shell reads its own sizes; everything else clears the frame through its insets", () => {
+  const tokens = ":root { --rail-w: 1px; --topbar-h: 1px; --frame-top: var(--topbar-h); --space-4: 1px; }";
+  const root = fixture({
+    [tokenFile]: tokens,
+    "apps/web/src/ui/toast/toast.module.css": ".t { left: calc(var(--rail-w) + var(--space-4)); }",
+    "apps/web/src/features/x/ui/x.tsx": 'const style = { top: "var(--topbar-h)" };',
+    "apps/web/src/ui/ok.module.css": ".o { top: var(--frame-top); }",
+    "apps/web/src/shell/top.module.css": ".a { max-width: var(--rail-w); }",
+    "apps/web/src/app.css": ".shell { grid-template-columns: var(--rail-w) 1fr; }",
+  }, {});
+  const problems: string[] = [];
+  measure(root, problems);
+  expect(problems.filter((p) => p.includes("shell's size")).map((p) => p.split(":")[0]).sort())
+    .toEqual(["apps/web/src/features/x/ui/x.tsx", "apps/web/src/ui/toast/toast.module.css"]);
+  expect(gate(root).status).toBe(1);
+});
+
 test("dark-only and conditional definitions cannot satisfy light or unconditional refs", () => {
   for (const definition of [
     '@media (prefers-color-scheme: dark) { :root { --x: #000; } }',
