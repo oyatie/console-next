@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../locale-fixture";
 import { jobTitleSchemas } from "@console/api";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
@@ -10,8 +11,6 @@ import { failure, id } from "../mock/fixtures";
 
 const { minimum, maximum } = jobTitleSchemas.update.properties.grade_rank;
 const labelMax = jobTitleSchemas.update.properties.label.maxLength;
-
-test.beforeEach(async () => { await loadCatalog("ko"); i18n.set("ko"); });
 
 for (const width of [1440, 390]) {
   test(`job title inline edit opens and stays open at ${width}px`, async ({ page }) => {
