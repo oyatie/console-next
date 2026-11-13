@@ -15,4 +15,4 @@
 
 .termsText { white-space: pre-wrap; overflow-wrap: anywhere; }
 /* Keep long terms readable without moving the page actions out of view. */
-.termsRead { max-height: min(45dvh, calc(var(--row-h) * 7)); overflow: auto; }
+.termsRead { height: min(45dvh, calc(var(--row-h) * 7)); overflow: auto; }

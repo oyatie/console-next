@@ -10,6 +10,7 @@ import { ConflictPanel, type ConflictChoice } from "../../../ui/conflict/field-c
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { DockSheet } from "../../../ui/dock-sheet/dock-sheet";
 import { ItemList } from "../../../ui/item-list/item-list";
+import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { conflictsOf, previewEntries, refusedOf, saveEntries, type CellInput, type Conflict, type SaveReceipt } from "../api";
 import { confirmationKey } from "../domain/confirmation";
 import { parseDraft } from "../domain/grammar";
@@ -59,6 +60,8 @@ function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCe
   }).filter((c) => choices[`${c.employee_id}|${c.work_date}`] !== "theirs");
   const preview = usePreview(cells.length ? cells : null, previewEntries);
   const p = preview.data ?? preview.stale;
+  // The initial preview can insert a confirmation above the evidence choices.
+  const loading = preview.pending && !p;
   const byKey = new Map(cells.map((cell) => [`${cell.employee_id}|${cell.work_date}`, cell]));
   const longSpans = (p?.cells ?? []).flatMap((c) => {
     const cell = byKey.get(`${c.employee_id}|${c.work_date}`);
@@ -107,7 +110,7 @@ function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCe
       pending={run.isPending}
       notice={<CommandError error={preview.error ?? (conflictsOf(run.error).length ? null : run.error)} own={refusalText} />}
       consequence={t("attendanceRecords.save.consequence", { month: monthText(month) })}
-      actions={
+      actions={!loading && (
         <>
           <Button onClick={onClose} disabled={run.isPending}>{t("attendance.close")}</Button>
           {why ? (
@@ -116,8 +119,9 @@ function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCe
             <Button variant="primary" disabled={run.isPending} onClick={() => run.mutate()}>{run.isPending ? t("attendanceRecords.save.saving") : label}</Button>
           )}
         </>
-      }
+      )}
     >
+      {loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("attendanceRecords.save.previewing")} /> : <>
       {conflicts.length > 0 && (
         <ConflictPanel
           kind="field_conflict"
@@ -152,7 +156,6 @@ function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCe
           ]}
         />
       )}
-      {preview.pending && !p && <p className="muted" role="status">{t("attendanceRecords.save.previewing")}</p>}
       {(left > 0 || serverRefused.length > 0) && (
         <ItemList
           label={t("attendanceRecords.save.left", { count: left + serverRefused.length })}
@@ -168,6 +171,7 @@ function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCe
           ]}
         />
       )}
+      </>}
     </DockSheet>
   );
 }

@@ -58,7 +58,8 @@ export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed =
   const addTo = selected && selected.kind !== "tenant" ? selected : s?.root.children[0]?.children[0];
   const [exporting, setExporting] = useState(false);
   const checklist = useQuery(checklistRef);
-  const phase = (s?.phase ?? checklist.data?.phase) === "OPERATING" ? "operating" : "setup";
+  const me = useQuery(get("/api/v1/users/me"));
+  const phase = (s?.phase ?? checklist.data?.phase ?? me.data?.tenant?.phase) === "OPERATING" ? "operating" : "setup";
   const authz = useQuery({ ...authzQuery, enabled: authzApplies() });
   // Until the grants land every verb is drawn (as before), so a holder's head never moves when they arrive; a reader's
   // verbs then leave (people-self-37).

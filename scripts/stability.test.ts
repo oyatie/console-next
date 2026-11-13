@@ -39,3 +39,41 @@ test("a user command still exempts its own result", async () => {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect(await page.evaluate(() => window.__shifts)).toEqual([]);
 });
+
+test.each(["GET", "POST"])("a command waits for its slow %s refresh before the rendering window", async method => {
+  await page.goto("https://stability.test/");
+  await page.route("**/api/v1/refresh", async route => {
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    await route.fulfill({ json: {} });
+  });
+  await page.evaluate(method => {
+    document.getElementById("command")!.onclick = async () => {
+      await fetch("/api/v1/record", { method: "POST" });
+      const refresh = fetch("/api/v1/refresh", { method });
+      setTimeout(() => { document.getElementById("content")!.style.marginTop = "100px"; }, 1100);
+      await refresh;
+      await new Promise(resolve => setTimeout(resolve, 600));
+      document.getElementById("content")!.style.marginTop = "200px";
+    };
+  }, method);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForFunction(() => document.getElementById("content")!.style.marginTop === "200px");
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => window.__shifts)).toEqual([]);
+  await page.unroute("**/api/v1/refresh");
+});
+
+test("a read started after the command continuation window still counts", async () => {
+  await page.goto("https://stability.test/");
+  await page.evaluate(() => {
+    document.getElementById("command")!.onclick = async () => {
+      await fetch("/api/v1/record", { method: "POST" });
+      await new Promise(resolve => setTimeout(resolve, 1100));
+      await fetch("/api/v1/background");
+      document.getElementById("content")!.style.marginTop = "200px";
+    };
+  });
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForFunction(() => document.getElementById("content")!.style.marginTop === "200px");
+  await expect.poll(() => page.evaluate(() => window.__shifts?.reduce((total, shift) => total + shift.value, 0) ?? 0)).toBeGreaterThan(SHIFT_BUDGET);
+});
