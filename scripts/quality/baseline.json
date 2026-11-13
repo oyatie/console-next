@@ -38,7 +38,6 @@
   "unused-export:apps/web/src/features/account/api.ts:MyAccess": 1,
   "unused-export:apps/web/src/features/account/api.ts:myAccessQuery": 1,
   "unused-export:apps/web/src/features/account/api.ts:MyReach": 1,
-  "unused-export:apps/web/src/features/attendance/api.ts:failedWith": 1,
   "unused-export:apps/web/src/features/attendance/api.ts:HolidayPreview": 1,
   "unused-export:apps/web/src/features/attendance/api.ts:HolidayYear": 1,
   "unused-export:apps/web/src/features/attendance/api.ts:LayerSummary": 1,
