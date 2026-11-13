@@ -1,8 +1,20 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { resolve } from "node:path";
 import { createServer, type ViteDevServer } from "vite";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { go } from "./flows";
+
+// Observe longer than the two-frame publish while the loader/read is still held.
+async function expectUnready(page: Page) {
+  expect(await page.evaluate(async () => {
+    const markers: number[] = [];
+    for (let frame = 0; frame < 6; frame++) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      markers.push(document.querySelectorAll("[data-route-ready]").length);
+    }
+    return markers;
+  })).toEqual([0, 0, 0, 0, 0, 0]);
+}
 
 let server: ViteDevServer;
 test.beforeAll(async () => {
@@ -117,10 +129,12 @@ test("go waits for the destination render, loader and initial read before absenc
   // Planted false green: URL is already correct and the previous main is still visible.
   await expect(page).toHaveURL(/destination\?revision=first$/);
   await expect(page.getByRole("button", { name: "Late action" })).toHaveCount(0);
+  await expectUnready(page);
   expect(returned, "go must still be waiting for the route loader").toBe(false);
   loader.resolve();
   await expect(page.getByRole("heading", { name: "Destination" })).toBeVisible();
   await expect(page.locator("[data-route-ready]")).toHaveCount(0);
+  await expectUnready(page);
   expect(returned, "a heading alone must not skip the destination read").toBe(false);
   read.resolve();
   await navigating;
@@ -153,6 +167,7 @@ test("a paused destination read is not ready until it resumes and renders", asyn
   const navigating = go(page, "/destination?revision=paused").then(() => { returned = true; });
   await expect(page.getByRole("main").getByRole("status")).toHaveText("Loading");
   await expect(page.locator("[data-route-ready]")).toHaveCount(0);
+  await expectUnready(page);
   expect(returned, "a paused read still owes the destination its answer").toBe(false);
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("network-online", { detail: true })));
   await navigating;
@@ -268,5 +283,28 @@ for (const nativeVisibility of [true, false]) test(`DOM-only content changes rev
   await main.evaluate(element => element.setAttribute("hidden", ""));
   await expect(marker).toHaveCount(0);
   await page.locator("main").evaluate(element => element.removeAttribute("hidden"));
+  await expect(marker).toHaveAttribute("data-route-ready", "/");
+});
+
+for (const attribute of ["aria-hidden", "inert", "class"]) test(`DOM-only ${attribute} changes revoke and restore readiness`, async ({ page }) => {
+  await page.goto(server.resolvedUrls!.local[0]!);
+  const marker = page.locator("[data-route-ready]");
+  await expect(marker).toHaveAttribute("data-route-ready", "/");
+  await page.getByRole("main").evaluate((main, attribute) => {
+    const style = document.createElement("style");
+    style.textContent = ".concealed { visibility: hidden; }";
+    const busy = document.createElement("div");
+    busy.textContent = "Loading content";
+    busy.setAttribute("aria-busy", "true");
+    busy.setAttribute(attribute, attribute === "class" ? "concealed" : attribute === "aria-hidden" ? "true" : "");
+    main.append(style, busy);
+  }, attribute);
+  // Settle childList publication first so only the attribute mutation can trigger the observer.
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))));
+  await expect(marker).toHaveAttribute("data-route-ready", "/");
+  const busy = page.locator("main [aria-busy]");
+  await busy.evaluate((element, attribute) => element.removeAttribute(attribute), attribute);
+  await expectUnready(page);
+  await busy.evaluate((element, attribute) => element.setAttribute(attribute, attribute === "class" ? "concealed" : attribute === "aria-hidden" ? "true" : ""), attribute);
   await expect(marker).toHaveAttribute("data-route-ready", "/");
 });
