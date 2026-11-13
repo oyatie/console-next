@@ -44,7 +44,7 @@ jobs:
         env:
           QUALITY_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
-          node --test scripts/check-hangul.test.mjs
+          node --test scripts/check-hangul.test.mjs scripts/check-hangul-refresh.test.mjs
           node scripts/check-hangul.mjs --report
       - run: node --test scripts/ci-affected.test.mjs
         if: github.event_name != 'push'

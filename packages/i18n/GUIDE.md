@@ -11,7 +11,7 @@ A new string: add the id with its English text to `en/<ns>.ts`, then its Korean 
 Components never contain literal text; `npm run lint` fails on Hangul outside the catalogs.
 
 The same lint step and the dependency-free `node scripts/check-hangul.mjs` gate ratchet
-Hangul across repository text files. Counts include decoded Unicode escapes, numeric HTML
+Hangul across repository text files. Counts include decoded Unicode and CSS escapes, numeric HTML
 entities, and static `String.fromCharCode` / `String.fromCodePoint` calls, including Jamo,
 per category: Rust source, Rust test files, E2E, web test files, scripts, migrations,
 docs, and other text. Inline Rust test modules remain in the source-file category.
@@ -42,7 +42,7 @@ a whole-line match remains debt. Matched fragments count as `allowed.<name>`; co
 be widened, and unused entries must be removed. New test exceptions can only reclassify
 existing fragments measured at the merge base; they cannot approve new test text. Synthetic
 exception counts cannot grow, including in new, renamed or copied files.
-Sourced `official-*` entries for reference data under refdata or migrations may grow to
+Sourced `official-*` entries for `.sql`, `.tsv`, `.csv` or `.json` reference data under refdata or migrations may grow to
 cover additions and refreshes. This allowance excludes test files. Every added Hangul line
 must be covered; comments and unmatched fragments remain subject to the category ceiling.
 A path-only update of an official reference entry is allowed for a Git-detected rename or copy.

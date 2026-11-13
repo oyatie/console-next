@@ -29,15 +29,21 @@ const hangulCategory = file => {
   return "other";
 };
 
-const isReferenceData = entry => /(?:^|\/)(?:migrations|refdata)\//.test(entry.path) && !isDebtTest(entry.path);
+const isReferenceData = entry => /(?:^|\/)(?:migrations|refdata)\/(?:.*\/)?[^/]+\.(?:sql|tsv|csv|json)$/.test(entry.path) && !isDebtTest(entry.path);
 const canRefresh = entry => isReferenceData(entry) && entry.name.startsWith("official-") && officialSource(entry.source);
 
 const NUMBER = /[+-]?(?:0[xX][\da-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|(?:[\d_]+(?:\.[\d_]*)?|\.[\d_]+)(?:[eE][+-]?[\d_]+)?)/g;
 const CONSTRUCTOR = new RegExp(String.raw`String\s*\.\s*from(CharCode|CodePoint)\(\s*(?:\.\.\.\[\s*)?((?:${NUMBER.source}\s*,\s*)*${NUMBER.source})\s*,?\s*(?:\]\s*)?\)`, "g");
 
 // Decode static spellings without evaluating source code; count each original line once.
-function decodeEscapes(text) {
+function decodeEscapes(text, file) {
   const character = value => Number.isInteger(value) && value >= 0 && value <= 0x10ffff ? String.fromCodePoint(value) : "";
+  if (/\.(?:css|scss)$/.test(file)) {
+    text = text.replace(/\\([\da-fA-F]{1,6})([ \t\r\n\f]?)/g, (match, hex, space) => {
+      const decoded = character(Number.parseInt(hex, 16));
+      return HANGUL.test(decoded) ? decoded + space : match;
+    });
+  }
   return text.replace(/\\u(?:\{([\da-fA-F_]{1,8})\}|([\da-fA-F]{4}))|&#(?:x([\da-fA-F]+)|(\d+));/g,
     (match, braced, fixed, hex, decimal) => {
       const decoded = character(Number.parseInt((braced ?? fixed ?? hex ?? decimal).replaceAll("_", ""), decimal ? 10 : 16));
@@ -56,7 +62,7 @@ export function hangulDebt(sources, allow) {
   const rules = allow.map(entry => {
     if (/^(?:e2e|apps\/web)\//.test(entry.path)) throw new Error(`${entry.name}: UI tests cannot declare a Hangul exception; use catalog lookups`);
     if (!entry.name?.trim() || names.has(entry.name) || !entry.reason?.trim()
-      || !(isDebtTest(entry.path) || /(?:^|\/)(?:migrations|refdata)\//.test(entry.path))) throw new Error("Hangul exception needs a unique name, eligible path and reason");
+      || !(isDebtTest(entry.path) || isReferenceData(entry))) throw new Error("Hangul exception needs a unique name, eligible path and reason");
     names.add(entry.name);
     if (entry.name !== [...names].sort().at(-1)) throw new Error("Hangul exceptions must be sorted by name");
     if (/(?:^|\/)(?:migrations|refdata)\//.test(entry.path) || entry.name.startsWith("official-")) {
@@ -73,11 +79,11 @@ export function hangulDebt(sources, allow) {
   for (const { file, text } of sources) {
     if ((file.startsWith(`${CATALOGS}/`) && /\.(?:ts|json)$/.test(file) && !isDebtTest(file)) || file === "packages/api/src/schema.d.ts") continue;
     const category = hangulCategory(file);
-    const product = /^(?:apps\/web\/src|packages\/api\/src)\//.test(file) && /\.(?:tsx?|css)$/.test(file) && !/\.test\.tsx?$/.test(file);
+    const product = /^(?:apps\/web\/src|packages\/api\/src)\//.test(file) && /\.(?:tsx?|s?css)$/.test(file) && !/\.test\.tsx?$/.test(file);
     const entries = rules.filter(rule => rule.path === file);
     let blockDepth = 0;
     const rawLines = text.split("\n");
-    decodeEscapes(text).split("\n").forEach((line, i) => {
+    decodeEscapes(text, file).split("\n").forEach((line, i) => {
       const raw = rawLines[i];
       const blockComment = blockDepth > 0 || line.includes("/*");
       for (const marker of line.matchAll(/\/\*|\*\//g)) blockDepth = Math.max(0, blockDepth + (marker[0] === "/*" ? 1 : -1));
@@ -170,7 +176,7 @@ export function checkRepositoryHangul(base) {
   const baseline = before.counts;
   for (const entry of mapped) {
     const first = mapped.find(first => first.path === entry.path && first.pattern === entry.pattern);
-    baseline[`allowed.${entry.name}`] = baseline[`allowed.${first.name}`] ?? 0;
+    baseline[`allowed.${entry.name}`] = first === entry || canRefresh(entry) ? baseline[`allowed.${first.name}`] ?? 0 : 0;
   }
   // A path-only change is permitted for a Git-detected move of sourced reference data.
   const approved = previous.map(old => {
