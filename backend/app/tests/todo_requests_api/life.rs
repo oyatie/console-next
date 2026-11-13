@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use crate::support::{Ctx, audits, ctx, tenant};
-use crate::{Office, REQUESTS, code, office, raw_get};
+use crate::{Office, REQUESTS, ask_body, code, office, raw_get};
 
 /// `call` is refused with `want`, and nothing more is written or audited.
 async fn refused(
@@ -36,6 +36,7 @@ fn note() -> Option<Value> {
 async fn after_a_withdrawal_the_assignees_done_or_return_is_not_found(pool: PgPool) {
     let o = office(pool).await;
     let id = o.ask(&o.colleague).await;
+    let asked_with = o.admin.key.get();
     let (status, _) = o
         .admin
         .call("DELETE", &format!("{REQUESTS}/{id}"), None)
@@ -47,6 +48,12 @@ async fn after_a_withdrawal_the_assignees_done_or_return_is_not_found(pool: PgPo
         "the row is gone; request and withdraw are audited"
     );
     assert_eq!(audits(&o.pool, o.org, "todo.withdraw").await, 1);
+    // The ask's saved outcome outlives the row, but a retry never shows its text again.
+    let body = Some(ask_body(&o.colleague));
+    let (status, again) = o.admin.send("POST", REQUESTS, body, Some(asked_with)).await;
+    assert_eq!(status, StatusCode::CONFLICT, "{again}");
+    assert!(!again.to_string().contains("근태 마감"), "{again}");
+    assert_eq!(o.written().await, (0, 2), "the retry writes nothing");
 
     let not_found = (StatusCode::NOT_FOUND, "not_found");
     let done = Some(json!({ "done": true }));

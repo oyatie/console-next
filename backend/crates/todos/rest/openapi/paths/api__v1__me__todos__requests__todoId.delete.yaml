@@ -4,9 +4,12 @@ tags:
 operationId: withdrawMyTodoRequest
 summary: Withdraw an open request the caller made
 description: >-
-  Deletes the request and its text. 404 when the id is not a request the
-  caller made; 409 todo_closed once it is done or returned. Afterwards the
-  assignee's done or return on it is a 404. Audited as todo.withdraw.
+  Deletes the request. The saved outcome of the call that made it is kept
+  for the command-outcome retention period, as for any deleted todo, and a
+  retry of that call does not show it again. 404 when the id is not a
+  request the caller made; 409 todo_closed once it is done or returned.
+  Afterwards the assignee's done or return on it is a 404. Audited as
+  todo.withdraw.
 security:
 - bearerAuth: []
 parameters:

@@ -170,8 +170,9 @@ impl PgTodoStore {
         Ok(TodoPage { items })
     }
 
-    /// The requester takes back an open request: the row and its text are
-    /// deleted (audited as `todo.withdraw`, which the request row already names).
+    /// The requester takes back an open request: the row is deleted (audited as
+    /// `todo.withdraw`, which the request row already names). The saved command
+    /// outcome of the ask keeps its copy under that store's retention.
     pub async fn withdraw_request(
         &self,
         command: WithdrawTodoRequestCommand,
