@@ -13,6 +13,7 @@ pub mod create_facts;
 pub mod create_guard;
 pub mod create_onboard;
 pub mod create_placement;
+pub mod create_prepare;
 pub mod create_rehire;
 pub mod create_rehire_input;
 mod create_types;
