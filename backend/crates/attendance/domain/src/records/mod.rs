@@ -1,4 +1,4 @@
-//! 근태 기록 (ATT S2): the entry grammar, the recognition rule and the marks
+//! Attendance records (ATT S2): the entry grammar, the recognition rule and the marks
 //! of a person-day. Pure: callers pass the plan, the entry and `today`.
 
 mod grammar;
@@ -60,18 +60,20 @@ impl EntryKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CellRefusal {
     Parse(ParseRefusal),
-    /// `=` on a day with no shift to copy (휴일 · 휴무일 · 일정 없음).
+    /// `=` on a day with no shift to copy (holiday · rest day · no schedule).
     NoShiftToCopy,
-    /// 기록 for a day that has not come yet (외근 · 출장 plans excepted).
+    /// A record for a day that has not come yet (field work · business trip plans excepted).
     FutureDate,
-    /// `휴` on a planned workday, or a shift code other than the planned
-    /// slot: only the 근무 일정 changes the plan (input patterns I6).
+    /// The Korean day-off mark ("hyu") on a planned workday, or a shift code other
+    /// than the planned slot: only the work schedule changes the plan (input patterns I6).
     ScheduleChangeNeeded,
-    /// `휴` (or the day's own off slot) on a day the plan already has off.
+    /// The Korean day-off mark ("hyu"), or the day's own off slot, on a day the plan
+    /// already has off.
     AlreadyDayOff,
-    /// `-18`: read, but the store has no 퇴근-only kind yet.
+    /// `-18`: read, but the store has no clock-out-only kind yet.
     ClockOutOnlyNotStored,
-    /// `연차` · `반` …: read, but 휴가 is not an attendance 기록 and the leave
+    /// The Korean annual-leave ("yeoncha") · half-day ("ban") marks …: read, but leave
+    /// is not an attendance record and the leave
     /// domain is not in this build.
     LeaveNotStored,
 }
@@ -93,11 +95,11 @@ impl CellRefusal {
 
 /// The entry a typed value stores: its kind and segments (minutes). The plan
 /// decides what the grammar cannot: `22-07` on a shift that crosses midnight,
-/// a shift code against the planned slot, `휴` against a planned workday.
+/// a shift code against the planned slot, the day-off mark ("hyu") against a planned workday.
 ///
 /// # Errors
-/// The grammar's refusal, `=` with nothing to copy, a future 기록, a value
-/// that needs a 근무 일정 change, or a reading the store cannot hold yet.
+/// The grammar's refusal, `=` with nothing to copy, a future record, a value
+/// that needs a work-schedule change, or a reading the store cannot hold yet.
 pub fn resolve_value(
     raw: &str,
     plan: &DayPlan,
@@ -180,8 +182,9 @@ pub fn resolve_value(
     }
 }
 
-/// Recognition of a stored entry on its planned day. 외근 · 출장 count as the
-/// 소정 (근로기준법 §58①); 결근 and nothing recognise nothing. Holiday
+/// Recognition of a stored entry on its planned day. Field work · business trip count
+/// as the contractual hours (Labor Standards Act §58①); absence and nothing recognise
+/// nothing. Holiday
 /// work retains the shift breaks, but has no regular scheduled minutes.
 #[must_use]
 pub fn evaluate(

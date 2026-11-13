@@ -112,7 +112,8 @@ pub(crate) struct DirectoryPerson {
     pub(crate) person_id: Option<uuid::Uuid>,
     pub(crate) principal_kind: String,
     pub(crate) display_name: String,
-    /// The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33).
+    /// The current sign-in ID: the sign-in ID part, `@`, then the company domain
+    /// (decisions #33).
     pub(crate) sign_in_id: Option<String>,
     pub(crate) employee_id: Option<uuid::Uuid>,
     pub(crate) employee_name: Option<String>,

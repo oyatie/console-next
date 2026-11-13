@@ -231,3 +231,26 @@ test("merged-tree metric pins are fully admitted", () => {
   const baseline = JSON.parse(readFileSync(path.join(root, "scripts/ds-baseline.json"), "utf8"));
   expect(compare(measure(root), baseline)).toEqual([]);
 });
+
+const experienceFile = "packages/tokens/experiences/calm.css";
+const calm = (light: string, dark = "") => `:root[data-experience="calm"] { ${light} }\n:root[data-experience="calm"][data-theme="dark"] { ${dark} }`;
+
+test("literal token values in an experience file are not design-system debt", () => {
+  const css = readFileSync(new URL("../packages/tokens/tokens.css", import.meta.url), "utf8");
+  const r = gate(fixture({ [tokenFile]: css, [experienceFile]: calm("--border: #d0d7e0; --row-h: 36px;", "--border: #2b3542;") }, {}));
+  expect(r.stderr).toBe("");
+  expect(r.status).toBe(0);
+});
+
+test("check-ds runs the contrast pairs, the block rule and the dark rule on every experience file", () => {
+  const css = readFileSync(new URL("../packages/tokens/tokens.css", import.meta.url), "utf8");
+  const contrast = gate(fixture({ [tokenFile]: css, [experienceFile]: calm("", "--control-border: var(--surface);") }));
+  expect(contrast.status).toBe(1);
+  expect(contrast.stderr).toContain("experience calm, dark: --control-border/--surface 1.0000:1 < 3:1");
+  const shape = gate(fixture({ [tokenFile]: css, [experienceFile]: ":root { --row-h: 36px; }" }));
+  expect(shape.status).toBe(1);
+  expect(shape.stderr).toContain(`${experienceFile}: :root is not one of the experience's blocks`);
+  const lightOnly = gate(fixture({ [tokenFile]: css, [experienceFile]: calm("--border: #d0d7e0;") }));
+  expect(lightOnly.status).toBe(1);
+  expect(lightOnly.stderr).toContain(`${experienceFile}: --border is a colour set for light only`);
+});

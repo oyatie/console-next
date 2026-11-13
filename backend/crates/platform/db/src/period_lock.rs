@@ -1,4 +1,4 @@
-//! Period locks (freeze windows) — the enforcement half of month-close/마감.
+//! Period locks (freeze windows) — the enforcement half of month-close.
 //!
 //! An effective `period_locks` row (`period_lock_effective()`, migration 0248:
 //! never unlocked, or its unlock window has expired) freezes writes whose

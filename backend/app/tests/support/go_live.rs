@@ -1,4 +1,4 @@
-//! Moves a test tenant past 운영 시작 (E-S3b: transfers and leave wait for
+//! Moves a test tenant past go-live (E-S3b: transfers and leave wait for
 //! it; the organizations trigger opens every tenant in SETUP).
 #![allow(dead_code)]
 
@@ -12,7 +12,7 @@ pub async fn go_live(pool: &PgPool, org: Uuid) {
         .execute(&mut *tx)
         .await
         .unwrap();
-    // rls-arming: ok test fixture moves the tenant past 운영 시작 as owner
+    // rls-arming: ok test fixture moves the tenant past go-live as owner
     sqlx::query("UPDATE tenant_phase SET phase = 'OPERATING'")
         .execute(&mut *tx)
         .await
@@ -20,7 +20,7 @@ pub async fn go_live(pool: &PgPool, org: Uuid) {
     tx.commit().await.unwrap();
 }
 
-/// Inserts the tenant `org` and moves it past 운영 시작.
+/// Inserts the tenant `org` and moves it past go-live.
 pub async fn live_org(pool: &PgPool, org: Uuid, slug: String, name: &str) {
     sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)")
         .bind(org)

@@ -1,9 +1,9 @@
-//! Recorded setup choices: 이용약관 acceptance and setup-rail step skips.
+//! Recorded setup choices: terms-of-service acceptance and setup-rail step skips.
 
 use super::*;
 
 impl PgOnboardingStore {
-    /// 「부서 없이 진행」 (`org`) or 「직원은 나중에」 (`employees`), stored.
+    /// "Proceed without departments" (`org`) or "Employees later" (`employees`), stored.
     ///
     /// # Errors
     /// `step_not_skippable`, `phase_not_setup`, or database faults.

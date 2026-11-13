@@ -17,7 +17,7 @@ pub(super) const CAPS: WorkbookCaps = WorkbookCaps {
 };
 
 /// A ZIP of `(name, method, data, declared size)` entries.
-fn zip(entries: &[(&str, u16, Vec<u8>, u32)]) -> Vec<u8> {
+pub(super) fn zip(entries: &[(&str, u16, Vec<u8>, u32)]) -> Vec<u8> {
     let (mut out, mut central) = (Vec::new(), Vec::new());
     for (name, method, data, declared) in entries {
         let offset = out.len() as u32;

@@ -156,12 +156,13 @@ reason_domains! {
         "WITHHOLDING_CORRECTION", "EXIT_PROCESSING_COMPLETION", "DISPUTE_OR_INSPECTION",
         "DATA_SUBJECT_ACCESS",
     ];
-    // --- restricted 인사카드 sections: 징계, 장애, 보훈 (EMP-RECORD MR-33/35) ---
+    // --- restricted HR record card sections: discipline, disability, veteran status
+    // (EMP-RECORD MR-33/35) ---
     RestrictedRecordPurpose => "restricted_record_purpose" [
         "STATUTORY_REPORTING", "WORK_ACCOMMODATION", "DISCIPLINARY_PROCEDURE",
         "RECORD_CORRECTION", "DISPUTE_OR_INSPECTION", "DATA_SUBJECT_ACCESS",
     ];
-    // --- IMPORT-2 (decisions #25): 주민등록번호 열람, 사번 변경 ---
+    // --- IMPORT-2 (decisions #25): resident registration number reveal, employee number change ---
     RrnReveal => "rrn_reveal" [
         "PAYROLL_WITHHOLDING", "SOCIAL_INSURANCE_FILING", "IDENTITY_VERIFICATION",
         "DATA_SUBJECT_ACCESS",
@@ -169,7 +170,7 @@ reason_domains! {
     EmployeeNumberChange => "employee_number_change" [
         "NUMBERING_SCHEME_CHANGE", "ENTITY_TRANSFER", "INPUT_ERROR", "LEGACY_MIGRATION",
     ];
-    // --- AUTH-ID (decisions #33): 아이디 변경 ---
+    // --- AUTH-ID (decisions #33): sign-in ID change ---
     SignInIdChange => "sign_in_id_change" [
         "NAME_CHANGE", "INPUT_ERROR", "HOLDER_REQUEST", "SECURITY_INCIDENT",
     ];

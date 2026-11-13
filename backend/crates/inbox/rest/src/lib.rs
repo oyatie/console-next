@@ -1,4 +1,4 @@
-//! Statutory-notice vault REST API (개인 수신함).
+//! Statutory-notice vault REST API (personal inbox).
 //!
 //! Every route is person-scoped: the recipient is taken from the authenticated
 //! principal (`/api/v1/me/...`), never from the request body or path, so one

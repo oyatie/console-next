@@ -2086,11 +2086,12 @@ enum AssignmentRequirement {
 
 /// Normalize a typed management number for equipment resolution.
 ///
-/// Receptionists file work orders with values like `3호기`, `#3`, `#3호기` or a
-/// bare `3`; equipment is stored with the bare number. This MUST strip both the
-/// leading `#` AND the trailing `호기` so the create write-lookup matches the
+/// Receptionists file work orders with values like "3hogi" (3 with the Korean
+/// unit-number suffix "hogi"), `#3`, "#3hogi" or a bare `3`; equipment is stored
+/// with the bare number. This MUST strip both the leading `#` AND the trailing
+/// "hogi" suffix so the create write-lookup matches the
 /// same forms the REST equipment-lookup/autocomplete handlers accept — otherwise
-/// a perfectly valid `3호기` fails the create with a confusing error.
+/// a perfectly valid "3hogi" fails the create with a confusing error.
 fn normalize_management_no(value: &str) -> Result<String, KernelError> {
     let normalized = value
         .trim()
@@ -2144,7 +2145,7 @@ async fn lookup_equipment_for_management_no(
     }
 
     // 2. Leading-zero-insensitive fallback so a stored `010` resolves the
-    //    normalized `10` / `10호기` / `#10` the receptionist typed, mirroring the
+    //    normalized `10` / "10hogi" / `#10` the receptionist typed, mirroring the
     //    REST lookup_equipment handler. But this must NOT guess: if several
     //    rows share a normalized management_no (e.g. `10` vs `0010`), binding the
     //    work order to whichever was updated last risks the wrong

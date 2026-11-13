@@ -20,7 +20,7 @@
 //!
 //! # Framing
 //!
-//! Findings are "검토 필요" (review needed), NOT "사기" (fraud). The UI
+//! Findings are "review needed", NOT "fraud". The UI
 //! presents them as items requiring human review, not accusations.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 

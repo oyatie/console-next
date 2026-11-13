@@ -487,7 +487,7 @@ impl PgOrgUnitPort {
             return Ok(vec!["parent_id must refer to an active OrgUnit".to_owned()]);
         }
         let parent_kind = attr_string(&parent_attrs, crate::catalog::ORG_UNIT_KIND);
-        // One 부서 kind (decisions #18): a department nests in a site or a department.
+        // One department kind (decisions #18): a department nests in a site or a department.
         if kind == "department" && !matches!(parent_kind.as_deref(), Some("site" | "department")) {
             return Ok(vec![
                 "department parent must be a site or a department".to_owned(),

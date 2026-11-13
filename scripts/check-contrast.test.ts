@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,13 +11,19 @@ const tokens = fileURLToPath(new URL("../packages/tokens/tokens.css", import.met
 const roots: string[] = [];
 afterAll(() => roots.forEach((root) => rmSync(root, { recursive: true, force: true })));
 const api = async () => import(/* @vite-ignore */ script);
-const run = (css: string) => {
+/** The gate over a base token file and, beside it, `experiences/<id>.css` for each given experience. */
+const run = (css: string, experiences: Record<string, string> = {}) => {
   const root = mkdtempSync(path.join(tmpdir(), "check-contrast-"));
   roots.push(root);
   const file = path.join(root, "tokens.css");
   writeFileSync(file, css);
+  for (const [id, source] of Object.entries(experiences)) {
+    mkdirSync(path.join(root, "experiences"), { recursive: true });
+    writeFileSync(path.join(root, "experiences", `${id}.css`), source);
+  }
   return spawnSync("node", [script, "--tokens", file], { encoding: "utf8" });
 };
+const blocks = (id: string, light: string, dark = "") => `:root[data-experience="${id}"] { ${light} }\n:root[data-experience="${id}"][data-theme="dark"] { ${dark} }`;
 
 test("all declared text and meaningful non-text pairs pass in light and dark", async () => {
   const { checkContrast } = await api();
@@ -82,4 +88,160 @@ test("the pair matrix retains muted surfaces, refused/selected outlines and ever
     }
     for (const [fg, bg] of expected) expect(problems.some((problem: string) => problem.startsWith(`${theme}: ${fg}/${bg} 1.0000:1`)), `${theme} ${fg}/${bg}`).toBe(true);
   }
+});
+
+test("an experience's light block applies in both themes and its dark block over that, by specificity", async () => {
+  const { experienceThemes, themeTokens } = await api();
+  const { experienceBlocks } = await import(/* @vite-ignore */ fileURLToPath(new URL("./check-ds-refs.mjs", import.meta.url)));
+  const base = themeTokens(':root { --a: #000; --b: #000; --c: #000; } :root[data-theme="dark"] { --a: #fff; --b: #fff; --c: #fff; }');
+  // The dark block is written first: its extra attribute outranks the light block wherever it sits.
+  const own = experienceBlocks(':root[data-experience="calm"][data-theme="dark"] { --c: #333; } :root[data-experience="calm"] { --b: #222; --c: #222; }', "calm");
+  expect(experienceThemes(base, own)).toEqual({
+    light: { "--a": "#000", "--b": "#222", "--c": "#222" },
+    // --b: the experience's light block only ties the base's dark block. It is read as the later rule, and refused.
+    dark: { "--a": "#fff", "--b": "#222", "--c": "#333" },
+  });
+  expect(own.problems).toEqual([expect.stringContaining("--b is a colour set for light only")]);
+});
+
+test("the pair list runs per experience and per theme, and a failure names the experience", () => {
+  const css = readFileSync(tokens, "utf8");
+  const checks = (r: { stdout: string }) => Number(r.stdout.match(/contrast: (\d+) checks/)![1]);
+  const base = run(css);
+  const clean = run(css, { calm: blocks("calm", "--chart-grid: var(--border);"), warm: blocks("warm", "") });
+  expect(clean.stderr).toBe("");
+  expect(clean.status).toBe(0);
+  expect(checks(clean)).toBe(3 * checks(base));
+
+  const dark = run(css, { calm: blocks("calm", "", "--ink: var(--surface);"), warm: blocks("warm", "") });
+  expect(dark.status).toBe(1);
+  expect(dark.stderr).toContain("experience calm, dark: --ink/--surface 1.0000:1 < 4.5:1");
+  expect(dark.stderr).not.toMatch(/experience calm, light:|warm|^(?:light|dark):/m);
+
+  // A light-block value with no dark counterpart is what dark resolves too, not the base's dark value.
+  const both = run(css, { calm: blocks("calm", "--ink: var(--canvas);") });
+  expect(both.stderr).toContain("experience calm, light: --ink/--surface");
+  expect(both.stderr).toContain("experience calm, dark: --ink/--surface");
+});
+
+test("with no experience file the gate reports the base file alone", () => {
+  const css = readFileSync(tokens, "utf8");
+  const bare = run(css);
+  expect(bare.stdout).toMatch(/^contrast: \d+ checks, 0 problem\(s\)\n$/);
+  const root = roots.at(-1)!, experiences = path.join(root, "experiences");
+  const again = () => {
+    const r = spawnSync("node", [script, "--tokens", path.join(root, "tokens.css")], { encoding: "utf8" });
+    return [r.status, r.stdout, r.stderr];
+  };
+  // A file that has the folder's name is no folder of experiences.
+  writeFileSync(experiences, ":root { --ink: var(--surface); }");
+  expect(again()).toEqual([bare.status, bare.stdout, bare.stderr]);
+  // In the folder, only a regular .css file is an experience: not another file, and not a folder named like one.
+  rmSync(experiences);
+  mkdirSync(path.join(experiences, "shelf.css"), { recursive: true });
+  writeFileSync(path.join(experiences, "notes.txt"), ":root { --ink: var(--surface); }");
+  expect(again()).toEqual([bare.status, bare.stdout, bare.stderr]);
+});
+
+test("a syntax error in an experience file is reported with the file's name", () => {
+  const r = run(readFileSync(tokens, "utf8"), { calm: ':root[data-experience="calm"] {\n  --row-h: 36px;\n}}' });
+  expect(r.status).toBe(1);
+  expect(r.stderr).toMatch(/^contrast: .*experiences\/calm\.css:3:2: Unexpected }\n$/);
+});
+
+test.each([
+  [":root { --row-h: 36px; }", ":root"],
+  [':root[data-theme="dark"] { --row-h: 36px; }', ':root[data-theme="dark"]'],
+  [':root[data-experience="warm"] { --row-h: 36px; }', ':root[data-experience="warm"]'],
+  [':root[data-experience="calm"], .card { --row-h: 36px; }', ':root[data-experience="calm"], .card'],
+  [':root[data-experience="calm"] .card { --row-h: 36px; }', ':root[data-experience="calm"] .card'],
+  // A space makes the theme attribute a descendant's, not the root's.
+  [':root[data-experience="calm"] [data-theme="dark"] { --row-h: 36px; }', ':root[data-experience="calm"] [data-theme="dark"]'],
+  [':root[data-experience="calm"] { .card { --row-h: 36px; } }', ".card"],
+  ["@font-face { font-family: Calm; }", "@font-face"],
+  ['@media (min-width: 640px) { :root[data-experience="calm"] { --row-h: 36px; } }', "@media (min-width: 640px)"],
+  // A statement with no declarations of its own: what it brings in is read by no gate.
+  ['@import "../palette.css";\n:root[data-experience="calm"] { --row-h: 36px; }', '@import "../palette.css"'],
+  ['@layer calm, base;\n:root[data-experience="calm"] { --row-h: 36px; }', "@layer calm, base"],
+])("an experience file holds only its own light and dark blocks: %s", (css, where) => {
+  const r = run(readFileSync(tokens, "utf8"), { calm: css });
+  expect(r.status, r.stderr).toBe(1);
+  expect(r.stderr).toContain(`experiences/calm.css: ${where} `);
+  expect(r.stderr).toContain(':root[data-experience="calm"] or :root[data-experience="calm"][data-theme="dark"]');
+});
+
+test("an experience block declares tokens only, and none of them !important", () => {
+  const css = readFileSync(tokens, "utf8");
+  // The dark value is the one the dark rule asks for, yet !important in the light block would beat it in dark.
+  for (const [light, dark] of [["--ink: #141a21 !important;", "--ink: #e8edf4;"], ["--ink: #141a21;", "--ink: #e8edf4 ! IMPORTANT;"]]) {
+    const r = run(css, { calm: blocks("calm", light, dark) });
+    expect(r.status, r.stderr).toBe(1);
+    expect(r.stderr).toContain("experiences/calm.css: --ink is marked !important, which the order of the light and dark blocks does not account for; drop !important\n");
+    // The marked value still counts as set: the one fix asked for is to drop the mark.
+    expect(r.stderr).not.toContain("light only");
+  }
+  // A property on the root ties the base's dark rule as a token does, and no dark rule covers it.
+  const property = run(css, { calm: blocks("calm", "--border: #d0d7e0; color-scheme: light;", "--border: #2b3542;") });
+  expect(property.status, property.stderr).toBe(1);
+  expect(property.stderr).toContain("experiences/calm.css: color-scheme is not a token; an experience file sets custom properties only, so remove it\n");
+});
+
+test("every colour an experience sets for light is also set for dark", () => {
+  const css = readFileSync(tokens, "utf8");
+  for (const [light, token] of [
+    ["--border: #d0d7e0;", "--border"],
+    ["--shadow: 0 1px 2px rgba(20, 26, 33, 0.08);", "--shadow"],
+    ["--border-soft: gainsboro;", "--border-soft"],
+    ["--scrim: oklch(20% 0.02 250 / 0.3);", "--scrim"],
+    // A name the base does not have is held to the same rule.
+    ["--calm-band: #102030;", "--calm-band"],
+    // No colour is written, but the base sets these for dark: its rule ties the light block, so stylesheet order would decide.
+    ["--border: var(--border-soft);", "--border"],
+    ["--shadow: none;", "--shadow"],
+    ["--scrim: transparent;", "--scrim"],
+    // The base holds one value for this in both of its blocks; it is the declaration in the dark block that ties.
+    ["--on-signal: var(--ink);", "--on-signal"],
+  ]) {
+    const r = run(css, { calm: blocks("calm", light) });
+    expect(r.status, light).toBe(1);
+    expect(r.stderr).toContain(`experiences/calm.css: ${token} is a colour set for light only, so dark would show its light value; set it in :root[data-experience="calm"][data-theme="dark"] too`);
+  }
+  expect(run(css, { calm: blocks("calm", "--border: #d0d7e0;", "--border: #2b3542;") }).status).toBe(0);
+  expect(run(css, { calm: blocks("calm", "--border: var(--border-soft);", "--border: var(--border-soft);") }).status).toBe(0);
+  // Sizes, fonts and tokens the base leaves to its light block: the experience's light block outranks that block outright.
+  const exempt = run(css, { calm: blocks("calm", '--row-h: 36px; --radius: 0; --font-mono: "SF Mono", Menlo, monospace; --chart-grid: var(--border); --selected-bar: inset 4px 0 0 var(--primary); --calm-clear: transparent;') });
+  expect(exempt.stderr).toBe("");
+  expect(exempt.status).toBe(0);
+});
+
+test("every colour the base file sets for light is also set in its dark block", () => {
+  const css = readFileSync(tokens, "utf8");
+  for (const [added, token] of [
+    [":root { --band: #102030; }", "--band"],
+    [":root { --band-shadow: 0 1px 2px rgba(20, 26, 33, 0.08); }", "--band-shadow"],
+    [':root[data-theme="light"] { --band: gainsboro; }', "--band"],
+  ]) {
+    const r = run(`${css}\n${added}`);
+    expect(r.status, added).toBe(1);
+    expect(r.stdout).toMatch(/ checks, 1 problem\(s\)\n$/);
+    expect(r.stderr).toMatch(/^\S*\/tokens\.css: /);
+    expect(r.stderr).toContain(`tokens.css: ${token} is a colour set for light only, so dark would show its light value; declare it under :root[data-theme="dark"] too\n`);
+  }
+  // A dark value satisfies it, and a size or a value that only names other tokens never needed one.
+  const ok = run(`${css}\n:root { --band: #102030; --band-w: 4px; --band-line: var(--border); }\n:root[data-theme="dark"] { --band: #d0d7e0; }`);
+  expect(ok.stderr).toBe("");
+  expect(ok.status).toBe(0);
+});
+
+test("the colour test recognises the light value of every token the base's dark block sets", async () => {
+  // The other direction, which the gate cannot see: a colour form the test missed would escape the rule above.
+  const { literalColour, parseCss } = await import(/* @vite-ignore */ fileURLToPath(new URL("./check-ds-refs.mjs", import.meta.url)));
+  const { themeTokens } = await api();
+  const css = readFileSync(tokens, "utf8"), light = themeTokens(css).light;
+  const dark: string[] = [];
+  parseCss(css).walkDecls(/^--/, (decl: { prop: string; parent: { selector: string } }) => {
+    if (decl.parent.selector !== ":root") dark.push(decl.prop);
+  });
+  expect(dark.length).toBeGreaterThan(50);
+  expect(dark.filter((name) => !literalColour(light[name]))).toEqual([]);
 });

@@ -564,7 +564,7 @@ struct TriggerWorkflowRunRequest {
     trigger_type: String,
     #[serde(default)]
     idempotency_key: Option<String>,
-    /// §16 org-scope automation gate (85 판정): the caller's `gov_approvals`
+    /// §16 org-scope automation gate (ruling 85): the caller's `gov_approvals`
     /// request ref for org-scope automations (§3.9.0-① personal-scope ignores
     /// this and runs direct).
     #[serde(default)]
@@ -616,7 +616,7 @@ struct UpdateWorkflowDefinitionRequest {
 struct WorkflowStepUpRequest {
     #[serde(default)]
     step_up: Option<WorkflowStepUpAssertionRequest>,
-    /// §16 org-scope automation gate (85 판정): required on `publish` for a
+    /// §16 org-scope automation gate (ruling 85): required on `publish` for a
     /// never-activated org-scope definition; ignored by every other handler
     /// that shares this request shape.
     #[serde(default)]
@@ -925,7 +925,7 @@ async fn finalize_task(
 ///
 /// AUTHORITY IS ORG-WIDE BY DESIGN (security M4, DESIGN §2): the guard is
 /// [`Feature::ApprovalFinalize`] with no branch/object narrowing, so an
-/// 감사·컴플라이언스·CEO principal holding that feature may compensate ANY finalized
+/// audit/compliance/CEO principal holding that feature may compensate ANY finalized
 /// run across the tenant. This is the charter's reversal authority — a documented
 /// decision, not a missing scope check. Narrowing it would break the
 /// audit/compliance reversal path.
@@ -1756,8 +1756,8 @@ async fn start_workflow_run(
     // per-start authority (security M2). A top-level `start_policy` (additive,
     // wf.exec.v1-compatible) constrains WHO may initiate this definition; when
     // absent it falls back to the entry node's policy. Approval templates
-    // deliberately carry NEITHER (their entry gate is self-service) so 전자결재
-    // 기안/상신 stays all-employee per DESIGN §4.8; operational pipelines (e.g. the
+    // deliberately carry NEITHER (their entry gate is self-service) so electronic-approval
+    // draft/submit stays all-employee per DESIGN §4.8; operational pipelines (e.g. the
     // completion→approval→payroll template) set `start_policy` so a start is a
     // policy-gated 403 + shadow for non-privileged personas.
     let branch = WORKFLOW_SPINE_HAS_NO_BRANCH;
@@ -2738,7 +2738,7 @@ struct DefinitionsByObjectKindResponse {
     bindings: Vec<TriggerBindingResponse>,
 }
 
-/// The explore screen's "작용 자동화" panel source: every automation rule that
+/// The explore screen's "Acting automations" panel source: every automation rule that
 /// touches a given object kind — the definitions whose nodes act on it (by
 /// primary object_type or declared object_kinds chain) plus the trigger
 /// bindings scoped to it.
@@ -2823,7 +2823,7 @@ struct SubmittableDefinitionListResponse {
     items: Vec<SubmittableDefinitionResponse>,
 }
 
-/// A workflow definition the caller may START from the 기안 template gallery.
+/// A workflow definition the caller may START from the draft template gallery.
 /// Carries only the metadata definitions actually hold — no invented
 /// icon/desc/tone (those are frontend presentation keyed off `workflow_key` /
 /// `object_type`). `active_version` is the version a `POST /workflow-runs` start
@@ -2866,7 +2866,7 @@ impl From<SubmittableCandidate> for SubmittableDefinitionResponse {
     }
 }
 
-/// `GET /api/v1/workflow-studio/submittable-definitions` — the all-employee 기안
+/// `GET /api/v1/workflow-studio/submittable-definitions` — the all-employee draft
 /// template gallery source. Unlike every other workflow-studio catalog endpoint
 /// (which is `authorize_workflow_manage` admin-only), this is member-gated
 /// (Feature::Login), because starting an approval is self-service per DESIGN §4.8.
@@ -2977,7 +2977,7 @@ fn caller_can_start(
         .map(ToOwned::to_owned)
         .or(entry_policy);
     let Some(policy) = start_policy else {
-        return true; // self-service: all-employee 기안/상신 (DESIGN §4.8)
+        return true; // self-service: all-employee draft/submit (DESIGN §4.8)
     };
     let Some(feature_key) = guard_policy(&policy) else {
         return false;
@@ -3007,7 +3007,7 @@ fn caller_can_start(
 
 /// All-employee gate for the submittable-templates catalog (Feature::Login),
 /// mirroring `objects::authorize_object_member` — every authenticated tenant
-/// member may browse the 기안 gallery (the per-row start-authority filter is what
+/// member may browse the draft gallery (the per-row start-authority filter is what
 /// scopes what they actually see).
 fn authorize_workflow_member(principal: &Principal) -> Result<(), WorkflowStudioError> {
     let allowed_by_role = principal
@@ -3180,7 +3180,7 @@ async fn update_definition(
             // pendingRev decoupling: editing a LIVE definition (one that has an
             // active_version) must NOT take it out of service — the active
             // version keeps serving while the new DRAFT version is staged as the
-            // proposed revision ("개정 대기 v+1 · 현행 유지"). A never-published
+            // proposed revision ("Revision pending v+1 · current kept"). A never-published
             // definition (active_version IS NULL) stays DRAFT as before.
             let definition_status = keep_live_status(&current);
             let updated = insert_version_and_update_definition(
@@ -3436,7 +3436,7 @@ async fn trigger_definition_run(
                 return Ok(existing);
             }
 
-            // §16 org-scope automation gate (85 판정): re-checked in this tx
+            // §16 org-scope automation gate (ruling 85): re-checked in this tx
             // (TOCTOU-safe), only for a genuinely new run (an idempotent replay
             // above already passed the gate when the run was first created).
             // Personal-scope (§3.9.0-①) skips the gate.
@@ -3624,7 +3624,7 @@ async fn publish_definition(
 
                 if current.active_version.is_none() {
                     // Direct activate: never-published definition. §16 org-scope
-                    // gate (85 판정): an org-owned automation's FIRST activation
+                    // gate (ruling 85): an org-owned automation's FIRST activation
                     // requires a distinct four-eyes approval — re-checked here,
                     // inside this writeback tx, so the gate is TOCTOU-safe.
                     // Personal-scope (§3.9.0-①) skips the gate and stays direct.
@@ -5114,7 +5114,8 @@ fn build_approval_execution_definition(template_key: &str) -> Result<Value, Work
         }));
     }
 
-    // No `start_policy`: 전자결재 기안/상신 is deliberately all-employee self-service
+    // No `start_policy`: electronic-approval draft/submit is deliberately
+    // all-employee self-service
     // (DESIGN §4.8) — any employee may draft/submit an approval document. Only
     // operational pipelines (e.g. the completion→approval→payroll template) carry
     // a `start_policy` to constrain who may initiate them (security M2).
@@ -7588,7 +7589,7 @@ fn authorize_workflow_manage(principal: &Principal) -> Result<(), WorkflowStudio
         .map_err(WorkflowStudioError::from)
 }
 
-/// §16 org-scope automation gate (85 판정): `metadata.owner_scope.type` on the
+/// §16 org-scope automation gate (ruling 85): `metadata.owner_scope.type` on the
 /// definition JSON distinguishes an org-owned automation (publish/run require
 /// four-eyes) from a personal-scope one (§3.9.0-① stays direct). Missing or
 /// unrecognized scope defaults to org — fail-closed toward the stricter gate.
@@ -8000,7 +8001,7 @@ mod tests {
             "schema_version": WORKFLOW_EXEC_SCHEMA_VERSION,
             "workflow_key": "work_order.maintenance_completion",
             "object_type": "work_order",
-            // Operational pipeline, NOT self-service 기안: only completion_review
+            // Operational pipeline, NOT a self-service draft: only completion_review
             // authority may initiate the completion→approval→payroll run (security
             // M2). Contrast the approval templates, which carry no `start_policy`.
             "start_policy": "completion_review",

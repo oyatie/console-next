@@ -169,7 +169,7 @@ impl PgRegistryStore {
         .await
     }
 
-    /// Create one customer (고객) directly on the requested branch, audited.
+    /// Create one customer directly on the requested branch, audited.
     ///
     /// Unlike the importer's `upsert_customer` (idempotent ON CONFLICT DO UPDATE so
     /// a re-import never duplicates), an explicit admin create is a distinct intent:
@@ -238,7 +238,7 @@ impl PgRegistryStore {
         .await
     }
 
-    /// Create one site (현장) under an existing customer, directly, audited.
+    /// Create one site under an existing customer, directly, audited.
     ///
     /// The customer must belong to the caller's org: the in-transaction lookup runs
     /// under the armed `app.current_org`, so RLS already hides another tenant's
@@ -559,7 +559,7 @@ impl PgRegistryStore {
         .await
     }
 
-    /// Soft-delete one equipment row by marking it 폐기 (Disposed). Never hard
+    /// Soft-delete one equipment row by marking it Disposed. Never hard
     /// deletes, so audit history and work-order/substitution FKs stay intact.
     // console-gate: state-changing-handler
     pub async fn soft_delete_equipment(
@@ -671,7 +671,8 @@ impl PgRegistryStore {
         let org = current_org().map_err(KernelError::from)?;
 
         // Normalize the free-text search term the same way find_model_by_management_no
-        // does so floor-typed "10호기" / "#010호기" match stored "010".
+        // does so floor-typed "10" / "#010" followed by the Korean unit-number
+        // suffix ("hogi") match stored "010".
         let q_normalized = query.q.as_deref().map(|raw| {
             raw.trim()
                 .trim_start_matches('#')
@@ -1701,7 +1702,7 @@ fn push_equipment_list_filters(
 
     // Free-text search: management_no (leading-zero-insensitive), equipment_no,
     // model, maker, customer name, site name, VIN. The normalized q has already
-    // had the 호기 suffix stripped so ltrim('0') comparison works the same way
+    // had the unit-number suffix ("hogi") stripped so ltrim('0') comparison works the same way
     // find_model_by_management_no does.
     if let Some(q) = q_normalized
         && !q.is_empty()

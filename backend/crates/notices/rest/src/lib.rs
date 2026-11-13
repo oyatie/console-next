@@ -1,9 +1,9 @@
-//! Notice-board (게시판 NT- 공지) REST API.
+//! Notice-board (bulletin board, NT- notices) REST API.
 //!
 //! A published notice's title/body/audience is readable by any authenticated
 //! org member; drafts, draft edits, publish, progress, and the receipts drill
 //! are gated behind [`Feature::NoticeManage`] (the HQ/announcement tier).
-//! 수령확인 (receipt acknowledgment) is recipient-scoped from the
+//! Receipt acknowledgment is recipient-scoped from the
 //! authenticated principal, exactly like the notifications mark-read idiom —
 //! never from request input. Draft existence never leaks to non-managers
 //! (404/list omission); manager-only aggregates answer 403 (the feature's

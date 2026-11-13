@@ -113,7 +113,7 @@ pub(super) fn apply_deadline(
 
 /// Read the current review without exposing its frozen internal chunks.
 /// # Errors
-/// Cedar refusal, database failure, or failed 접속기록 storage.
+/// Cedar refusal, database failure, or failed access log storage.
 pub async fn get(s: &AccessService, p: Principal, period: String) -> AccessResult<Value> {
     with_audits::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
         Box::pin(async move {

@@ -32,9 +32,9 @@ async fn exit_case_state_machine_enforces_transitions_and_reverses_exits(pool: P
     let reason = json!({"reason": "현장 확인 결과 출근 중"});
     let settlement = json!({
         "average_wage_period_start": "2026-04-01",
-        "average_wage_period_end": "2026-06-29",
-        "average_wage_calendar_days": 90,
-        "average_wage_total_won": 9_000_000,
+        "average_wage_period_end": "2026-06-30",
+        "average_wage_calendar_days": 91,
+        "average_wage_total_won": 9_200_000,
         "monthly_ordinary_wage_won": 3_000_000,
     });
 
@@ -302,7 +302,7 @@ async fn exit_case_state_machine_enforces_transitions_and_reverses_exits(pool: P
         .execute(&pool)
         .await
         .unwrap();
-    let case = ctx.report_exit(ready).await;
+    let case = ctx.report_exit_on(ready, "2026-06-30").await;
     let (status, body) = ctx
         .exit_action(&case, "confirm", &ctx.token, hr_confirm())
         .await;
@@ -347,7 +347,7 @@ async fn exit_case_state_machine_enforces_transitions_and_reverses_exits(pool: P
         .execute(&pool)
         .await
         .unwrap();
-    let case = ctx.report_exit(leaver).await;
+    let case = ctx.report_exit_on(leaver, "2026-06-30").await;
     let (status, body) = ctx
         .exit_action(
             &case,
@@ -405,4 +405,53 @@ async fn exit_case_state_machine_enforces_transitions_and_reverses_exits(pool: P
         )
         .await;
     conflict((status, body));
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn unavailable_severance_rule_refuses_with_localized_copy_and_support_reference(
+    pool: PgPool,
+) {
+    let (ctx, org, _) = setup(&pool).await;
+    let employee = seed_employee(&pool, org, "법정 기준 확인").await;
+    let case = ctx.report_exit_on(employee, "2026-06-30").await;
+    sqlx::query("DELETE FROM statutory_rules WHERE code='SEVERANCE_MIN_SERVICE_YEARS'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    for (lang, message) in [
+        (
+            "en",
+            "No usable severance service rule covers the exit date. Request a statutory register review.",
+        ),
+        (
+            "ko",
+            "퇴직일에 적용할 퇴직금 근속 기준을 확인할 수 없습니다. 법정 기준 대장 검토를 요청하십시오.",
+        ),
+    ] {
+        let (status, body) = ctx
+            .send(
+                "POST",
+                &format!("/api/v1/hr/exit-cases/{case}/confirm"),
+                &ctx.token,
+                None,
+                Some(lang),
+                Some(json!({"signoffs":all_acks()})),
+            )
+            .await;
+        assert_eq!(status, StatusCode::CONFLICT, "{body}");
+        assert_eq!(
+            body["error"]["code"],
+            "severance_statutory_basis_unavailable"
+        );
+        assert_eq!(body["error"]["message"], message);
+        assert!(!body["error"]["support_ref"].as_str().unwrap().is_empty());
+        assert_eq!(body["error"]["errors"][0]["field"], "effective_exit_date");
+    }
+    let status: String =
+        sqlx::query_scalar("SELECT status FROM employee_exit_cases WHERE id=$1::text::uuid")
+            .bind(&case)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(status, "REPORTED");
 }

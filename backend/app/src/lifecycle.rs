@@ -2,7 +2,7 @@
 //! lifecycle engine.
 //!
 //! Period locks are the enforcement substrate for UI-M7 month-close and UI-M8
-//! 마감: locking `(domain, period)` makes every date-stamping payroll/financial
+//! close: locking `(domain, period)` makes every date-stamping payroll/financial
 //! write inside the window fail closed (the guard lives in
 //! `console_platform_db::period_lock` and is called from the domain write paths).
 //! Lock/unlock/list are authority-gated (`Feature::PeriodLockManage`,

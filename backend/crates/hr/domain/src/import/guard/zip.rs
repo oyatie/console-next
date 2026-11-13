@@ -3,7 +3,10 @@
 //! declared one) and the caps of [`WorkbookCaps`]. Stdlib only; refuses
 //! ZIP64, encryption and any method but stored/deflate.
 
-use super::inflate::{InflateError, inflated_len};
+use std::borrow::Cow;
+use std::collections::{HashMap, HashSet};
+
+use super::inflate::{InflateError, inflated_bytes, inflated_len};
 use super::{WorkbookCaps, codes};
 
 const EOCD_SIG: u32 = 0x0605_4b50;
@@ -35,7 +38,8 @@ fn eocd(bytes: &[u8]) -> Option<usize> {
         .find(|&at| u32_at(bytes, at) == Some(EOCD_SIG))
 }
 
-struct Entry {
+struct Entry<'a> {
+    name: &'a [u8],
     method: u16,
     flags: u16,
     compressed: u64,
@@ -43,7 +47,7 @@ struct Entry {
     local: usize,
 }
 
-fn entries(bytes: &[u8], caps: &WorkbookCaps) -> Result<Vec<Entry>, &'static str> {
+fn entries<'a>(bytes: &'a [u8], caps: &WorkbookCaps) -> Result<Vec<Entry<'a>>, &'static str> {
     let end = eocd(bytes).ok_or(codes::CORRUPT)?;
     let total = u16_at(bytes, end + 10).ok_or(codes::CORRUPT)?;
     let mut at = u32_at(bytes, end + 16).ok_or(codes::CORRUPT)? as usize;
@@ -64,7 +68,9 @@ fn entries(bytes: &[u8], caps: &WorkbookCaps) -> Result<Vec<Entry>, &'static str
         if [compressed, declared, local].contains(&u32::MAX) {
             return Err(codes::EXPANDS_TOO_FAR);
         }
+        let name_end = at + 46 + usize::from(field(28)?);
         out.push(Entry {
+            name: bytes.get(at + 46..name_end).ok_or(codes::CORRUPT)?,
             flags: field(8)?,
             method: field(10)?,
             compressed: u64::from(compressed),
@@ -76,7 +82,7 @@ fn entries(bytes: &[u8], caps: &WorkbookCaps) -> Result<Vec<Entry>, &'static str
     Ok(out)
 }
 
-fn data<'a>(bytes: &'a [u8], entry: &Entry) -> Result<&'a [u8], &'static str> {
+fn data<'a>(bytes: &'a [u8], entry: &Entry<'_>) -> Result<&'a [u8], &'static str> {
     let at = entry.local;
     if u32_at(bytes, at) != Some(LFH_SIG) {
         return Err(codes::CORRUPT);
@@ -126,4 +132,87 @@ pub fn scan_zip(bytes: &[u8], caps: &WorkbookCaps) -> Result<ZipStats, &'static 
         stats.expanded_bytes += size;
     }
     Ok(stats)
+}
+
+/// Validate worksheet dimension declarations after the container has passed its caps.
+///
+/// # Errors
+/// [`codes::CORRUPT`] for invalid dimensions, or a container refusal from [`scan_zip`].
+pub fn check_dimensions(bytes: &[u8], caps: &WorkbookCaps) -> Result<(), &'static str> {
+    scan_zip(bytes, caps)?;
+    let list = entries(bytes, caps)?;
+    // Match calamine's case-insensitive ZIP cache, including backslash entry names.
+    let parts: HashMap<_, _> = list
+        .iter()
+        .map(|entry| {
+            let name: Vec<_> = entry
+                .name
+                .iter()
+                .map(|b| {
+                    if *b == b'\\' {
+                        b'/'
+                    } else {
+                        b.to_ascii_lowercase()
+                    }
+                })
+                .collect();
+            (name, entry)
+        })
+        .collect();
+    let part = |name: &str| -> Result<Cow<'_, [u8]>, &'static str> {
+        let entry = parts
+            .get(&name.as_bytes().to_ascii_lowercase())
+            .ok_or(codes::CORRUPT)?;
+        let raw = data(bytes, entry)?;
+        if entry.method == 8 {
+            inflated_bytes(raw, entry.declared)
+                .map(Cow::Owned)
+                .map_err(|_| codes::CORRUPT)
+        } else {
+            Ok(Cow::Borrowed(raw))
+        }
+    };
+    let mut relationships = HashMap::new();
+    super::dimension::tags(&part("xl/_rels/workbook.xml.rels")?, |name, attributes| {
+        if name == b"Relationship" {
+            let values = super::dimension::attributes(attributes).ok_or(codes::CORRUPT)?;
+            let value = |key: &[u8]| values.get(key).copied();
+            if let (Some(id), Some(target)) = (value(b"Id"), value(b"Target")) {
+                let target = std::str::from_utf8(target).map_err(|_| codes::CORRUPT)?;
+                // Same target resolution as calamine's read_workbook.
+                let path = if let Some(path) = target.strip_prefix("/xl/") {
+                    format!("xl/{path}")
+                } else if target.starts_with("xl/") {
+                    target.to_owned()
+                } else {
+                    format!("xl/{target}")
+                };
+                if relationships.insert(id.to_vec(), path).is_some() {
+                    return Err(codes::CORRUPT);
+                }
+            }
+        }
+        Ok(true)
+    })?;
+    let mut sheets = 0;
+    let mut screened = HashSet::new();
+    super::dimension::tags(&part("xl/workbook.xml")?, |name, attributes| {
+        if name == b"sheet" {
+            // Sheet declarations consume the same configured budget as ZIP entries.
+            sheets += 1;
+            if sheets > caps.max_entries {
+                return Err(codes::TOO_MANY_ENTRIES);
+            }
+            for (key, id) in super::dimension::attributes(attributes).ok_or(codes::CORRUPT)? {
+                if key.splitn(2, |b| *b == b':').last() == Some(b"id".as_slice()) {
+                    let path = relationships.get(id).ok_or(codes::CORRUPT)?;
+                    if screened.insert(path.to_ascii_lowercase()) {
+                        super::dimension::check(&part(path)?)?;
+                    }
+                }
+            }
+        }
+        Ok(true)
+    })?;
+    Ok(())
 }

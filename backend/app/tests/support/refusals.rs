@@ -1,4 +1,4 @@
-//! Refusal assertions shared by the 법인 · 사업장 · setup 부서 negative suites
+//! Refusal assertions shared by the legal entity · workplace · setup department negative suites
 //! (entity_refusals_api, entity_refusals_structure_api).
 
 use http::StatusCode;

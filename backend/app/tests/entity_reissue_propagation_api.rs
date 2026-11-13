@@ -1,5 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! 등록증 재발급·정정 propagation through the real router: one evidenced change, a change dated before the state in force, the holder 사업장.
+//! Business registration certificate reissue/correction propagation through the real
+//! router: one evidenced change, a change dated before the state in force, the holder
+//! workplace.
 
 use http::StatusCode;
 use serde_json::{Value, json};
@@ -47,7 +49,7 @@ async fn entity(c: &Ctx, id: &str) -> Value {
 }
 
 /// The reissue body as the sheet sends it: the registration's full state with
-/// the new 소재지, and (optionally) the 법인's with a new 대표자.
+/// the new registered location, and (optionally) the legal entity's with a new representative.
 fn body(e: &Value, doc: Uuid, reason: &str, from: &str, road: &str, reps: Option<&str>) -> Value {
     let r = &e["registrations"][0];
     let cur = &r["current"];
@@ -98,8 +100,8 @@ async fn setup(pool: &PgPool) -> (Ctx, String, String, String) {
     (c, entity_id, reg, wp)
 }
 
-/// Fails on dev (no reissue route). A new certificate moving 소재지 and
-/// changing 대표자 is one evidenced, replay-safe change; the certificate in
+/// Fails on dev (no reissue route). A new certificate moving the registered location and
+/// changing the representative is one evidenced, replay-safe change; the certificate in
 /// force cannot be named again; the next one supersedes it.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn reissue_is_one_evidenced_change_and_supersedes_the_previous(pool: PgPool) {
@@ -195,7 +197,7 @@ async fn reissue_is_one_evidenced_change_and_supersedes_the_previous(pool: PgPoo
     assert!(of(b)["superseded_at"].is_null(), "{docs:?}");
     assert_eq!(of(b)["registration_id"], json!(reg));
 
-    // The 법인 guard: a MEMBER may not.
+    // The legal entity guard: a MEMBER may not.
     let member = add_user(&pool, c.org, &["MEMBER"]).await;
     let m = ctx(&pool, c.org, member, &["MEMBER"], None).await;
     let x = upload(&c, "x").await;
@@ -210,7 +212,7 @@ async fn reissue_is_one_evidenced_change_and_supersedes_the_previous(pool: PgPoo
     assert_eq!(status, StatusCode::FORBIDDEN, "{v}");
 }
 
-/// Adversarial: a 정정 신고 dated before the certificate state in force. The
+/// Adversarial: a correction filing dated before the certificate state in force. The
 /// sheet refuses that date (beforeInForce); so does the server, on
 /// effective_from, writing nothing — never a change no surface shows while its
 /// certificate becomes the one in force.
@@ -270,8 +272,9 @@ async fn a_change_dated_before_the_state_in_force_is_never_silently_lost(pool: P
     );
 }
 
-/// Probe (every surface derives, §13.18): the 사업장 that holds the
-/// certificate with 「등록증과 같음」 shows the certificate's 소재지 after it moved.
+/// Probe (every surface derives, §13.18): the workplace that holds the
+/// certificate with "Same as registration certificate" shows the certificate's registered
+/// location after it moved.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 #[ignore = "owner=entity; reason=등록증과 같음 stores an address copy until address-link propagation lands; expires=2026-11-23"]
 async fn the_holder_workplace_shows_the_moved_address(pool: PgPool) {

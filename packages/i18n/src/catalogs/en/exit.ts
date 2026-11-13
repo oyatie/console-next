@@ -1,4 +1,9 @@
 export const enExit = {
+  "exit.settlement.notEligible.serviceYears": "Severance not applicable (service below {threshold} years)",
+  "exit.settlement.notEligible.weeklyHours": "Severance not applicable (below {threshold} hours per week)",
+  "exit.settlement.notEligible.consequence": "Prepare insurance-loss and approval documents using the basis for {name}’s severance exemption. Submission closes the exit procedure and prevents further changes.",
+  "exit.settlement.reviewPending": "Pending labor counsel review",
+  "exit.settlement.ruleEffective": "Statutory rule effective from {date}",
   "exit.board.board": "Tasks by leg",
   "exit.board.ribbon": "Case timeline",
   "exit.board.leg.approval": "Approval",
@@ -194,6 +199,7 @@ export const enExit = {
   "exit.noticePay.ground": "Proviso ground",
   "exit.noticePay.evidence": "Proviso evidence reference",
   "exit.error.dismissal_notice_short": "Notice falls short of the register requirement. Choose pay in lieu or an evidenced register proviso.",
+  "exit.error.severance_statutory_basis_unavailable": "No usable severance service rule covers the exit date. Request a statutory register review.",
   "exit.error.employee_exited_read_only": "A former employee’s record is read only. Request a governed correction.",
   "exit.error.fixed_term_basis_unconfirmed": "Contract history is missing. Record it or choose an evidenced exception.",
   "exit.error.rehire_exit_case_open": "The previous exit decision is pending. Complete HQ confirmation and acknowledge remaining steps.",

@@ -1121,7 +1121,7 @@ pub struct WorkDiaryDraft {
 
 /// One stage of the work-order funnel with its current open count.
 ///
-/// `접수`/RECEIVED → `배정`/ASSIGNED → `진행`/IN_PROGRESS → `완료`/COMPLETED.
+/// RECEIVED → ASSIGNED → IN_PROGRESS → COMPLETED.
 /// Counts are point-in-time (current `work_orders.status`), org-scoped by RLS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpsFunnel {
@@ -1138,15 +1138,15 @@ pub struct OpsFunnel {
 /// Distribution of equipment by lifecycle status (Korean enum values).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpsEquipmentStatus {
-    /// 임대 — rented out.
+    /// Rented out.
     pub rented: u32,
-    /// 예비 — spare / reserve.
+    /// Spare / reserve.
     pub spare: u32,
-    /// 폐기 — scrapped.
+    /// Scrapped.
     pub scrapped: u32,
-    /// 대체 — replacement unit.
+    /// Replacement unit.
     pub replacement: u32,
-    /// 매각 — sold.
+    /// Sold.
     pub sold: u32,
 }
 
@@ -1178,7 +1178,7 @@ pub struct OpsSummary {
     /// Top-N mechanics by current active-assignment count.
     pub mechanic_load: Vec<OpsMechanicLoad>,
     pub equipment_status: OpsEquipmentStatus,
-    /// Equipment substitutions (대차) currently active (not yet returned).
+    /// Equipment substitutions currently active (not yet returned).
     pub active_substitutions: u32,
     /// Work-order approval steps awaiting a decision (PENDING).
     pub pending_approvals: u32,

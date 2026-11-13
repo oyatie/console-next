@@ -1,5 +1,5 @@
-//! 근무 유형: one week (or one rotation cycle) of 소정 days, validated against
-//! 근로기준법 §50 (8h/40h), §54 (휴게) and §55 (주휴). Minutes are integers
+//! Work pattern: one week (or one rotation cycle) of contractual days, validated against
+//! Labor Standards Act §50 (8h/40h), §54 (breaks) and §55 (weekly holiday). Minutes are integers
 //! from 00:00 of the work date; an end past 1440 is the next day.
 
 use serde::{Deserialize, Serialize};
@@ -54,7 +54,7 @@ impl Shift {
         overlap(self.start, self.end) - breaks
     }
 
-    /// The same shift moved so it starts at `start` (시차출퇴근).
+    /// The same shift moved so it starts at `start` (staggered start times).
     #[must_use]
     pub fn moved_to(&self, start: u16) -> Self {
         let delta = i32::from(start) - i32::from(self.start);
@@ -84,7 +84,8 @@ impl Shift {
             }
             at = b.end;
         }
-        // §50②: 1일 소정근로는 8시간을 넘지 못합니다 (탄력적 근로시간제 제외).
+        // §50②: contractual work in 1 day may not exceed 8 hours (flexible working-hours
+        // system excepted).
         if self.minutes() > DAILY_LIMIT {
             return Err(ScheduleRefusal::DailyHoursOver8);
         }
@@ -121,10 +122,10 @@ pub struct Slot {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum HolidayRule {
-    /// A 공휴일 or 약정휴일 on a work day is a day off.
+    /// A public holiday or contractual holiday on a work day is a day off.
     #[default]
     Off,
-    /// The shift runs (교대); work counts as 휴일근로 only through a 승인.
+    /// The shift runs (rotating shifts); work counts as holiday work only through an approval.
     Work,
 }
 
@@ -229,7 +230,7 @@ impl PatternSpec {
             .iter()
             .filter(|d| matches!(d, DaySpec::WeeklyHoliday))
             .count();
-        // §55①: 1주에 평균 1회 이상의 유급휴일.
+        // §55①: on average at least 1 paid holiday per 1 week.
         if u32::try_from(holidays).unwrap_or(0) * 7 < len {
             return Err(ScheduleRefusal::WeeklyHolidayMissing);
         }

@@ -55,7 +55,7 @@ export function DeptDetails({ node, onDone, appoint = false }: { node: Node; onD
     onSuccess: onDone,
   });
   return (
-    <Composer kicker={appoint ? opened.name : undefined} title={t(appoint ? "structure.head.appoint" : "orgUnit.details.title")} layout={appoint ? "drawer" : "inline"} headingLevel={appoint ? 2 : 3} action={appoint ? { kind: "orgHead", mode: "assign" } : { kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} consequence={appoint && head && t("structure.head.effective", { date: fmtDate(todayKst()) })} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
+    <Composer kicker={appoint ? opened.name : undefined} title={t(appoint ? "structure.head.appoint" : "orgUnit.details.title")} layout={appoint ? "drawer" : "inline"} headingLevel={appoint ? 2 : 3} action={appoint ? { kind: "orgHead", mode: "assign" } : { kind: "orgDetails", mode: "change", count: 1 }} error={save.error} notice={<CommandError error={save.error} own={ownRefusal} />} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} consequence={appoint && head && t("structure.head.effective", { date: fmtDate(todayKst()) })} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
       <div ref={box} className={css.stack}>
         <ServerPicker
           label={t("orgUnit.fact.head")}
@@ -73,7 +73,6 @@ export function DeptDetails({ node, onDone, appoint = false }: { node: Node; onD
         {!appoint && <Field label={t("orgUnit.fact.code")} required={null} hint={t("orgUnit.code.hint")} error={bad ? t("orgUnit.code.invalid") : undefined}>
           {(p) => <TextInput {...p} maxLength={30} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Escape" && onDone()} />}
         </Field>}
-        <CommandError error={save.error} own={ownRefusal} />
       </div>
     </Composer>
   );

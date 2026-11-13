@@ -3,7 +3,7 @@ import sourceLabels from "../approval-sources.json" with { type: "json" };
 
 export const enApprovals = {
   "approvals.field.verification": "Before deciding",
-  "approvals.blocked": "Verification is required before deciding.",
+  "approvals.viewer.blockedHint": "This document cannot be decided now. Check its approval status in the source record.",
   "approvals.title": "Approval inbox",
   "approvals.tabs": "Approval inbox queues",
   "approvals.box.pending": "Pending",

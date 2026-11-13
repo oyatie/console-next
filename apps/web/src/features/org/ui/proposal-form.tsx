@@ -153,6 +153,7 @@ export function ProposalForm({ intent, v, set, onClose, spec }: { intent: Intent
       blocked={sp.block}
       onSaveDraft={() => go("draft")}
       secondary={sp.append && <Button aria-describedby={appendId} disabled={propose.isPending} onClick={() => go("append")}>{t("orgPropose.append", { code: sp.append.into.code })}</Button>}
+      error={propose.error}
       notice={<>
         {sp.append && <p id={appendId} className={s.note}>{t("orgPropose.append.note", { code: sp.append.into.code, date: fmtDate(sp.append.into.effectiveDate) })}</p>}
         <CommandError error={propose.error} />

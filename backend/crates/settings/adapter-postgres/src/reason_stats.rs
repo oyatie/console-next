@@ -1,5 +1,5 @@
 //! Reason-code usage (BW-07 stats): per stored code column, the rows that
-//! carry a code, the rows that carry `OTHER` (기타), and the count per code.
+//! carry a code, the rows that carry `OTHER`, and the count per code.
 
 use crate::{PgSettingsError, PgSettingsStore};
 use console_kernel_core::OrgId;
@@ -9,7 +9,7 @@ use serde::Serialize;
 use sqlx::Row;
 
 /// Usage of one stored code column: which domains write it, how many rows
-/// carry a code, how many carry `OTHER` (기타), and the count per code.
+/// carry a code, how many carry `OTHER`, and the count per code.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SourceStats {
     pub source: &'static str,

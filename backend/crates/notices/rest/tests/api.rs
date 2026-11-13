@@ -3,7 +3,7 @@
 //!
 //! Proves over the real router: draft creation/publish/progress require the
 //! publish tier (a plain ADMIN gets 403, not a silent 200); a published
-//! notice is readable by anyone; 수령확인 is recipient-scoped from the JWT.
+//! notice is readable by anyone; receipt acknowledgment is recipient-scoped from the JWT.
 
 use axum::body::{Body, to_bytes};
 use console_kernel_core::{AuditAction, AuditEvent, BranchId, OrgId, TraceContext, UserId};
@@ -404,7 +404,7 @@ async fn notice_board_rest_scoped_audience_draft_edit_and_receipts(pool: PgPool)
         assert_eq!(out_view.status, StatusCode::OK);
         assert!(out_view.json["my_receipt"].is_null());
 
-        // 수령확인 is audience-bound: outsider 404 (never 403), member 204,
+        // Receipt acknowledgment is audience-bound: outsider 404 (never 403), member 204,
         // idempotent on repeat.
         let out_ack = post_json_empty(
             service.clone(),

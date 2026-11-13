@@ -10,7 +10,7 @@ pub enum EmploymentError {
     Blocked(Vec<String>),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
-    /// §3.9.1 변경 동결 창: the period-lock gate refused a live employment
+    /// §3.9.1 change-freeze window: the period-lock gate refused a live employment
     /// mutation, or the gate itself could not run (unparseable effective date,
     /// lock-lookup failure). The carried `KernelError` preserves its kind so
     /// `into_kernel_error` maps a closed window to Conflict (409) and a gate

@@ -5,7 +5,7 @@
 //! - `POST  /api/v1/reason-codes`: add a tenant code (inline, no deploy).
 //! - `PATCH /api/v1/reason-codes/{domain}/{code}`: switch a tenant code
 //!   on/off or reorder it.
-//! - `GET   /api/v1/reason-codes/stats`: per-column usage and the 기타 rate.
+//! - `GET   /api/v1/reason-codes/stats`: per-column usage and the "Other" rate.
 
 use crate::SettingsRestState;
 use crate::error::ApiError;

@@ -39,10 +39,11 @@ export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
   const turn = (seed ?? (inbox.isSuccess ? inbox.data.pages[0] : undefined))?.counts?.turn;
   const count = turn?.total;
   const exact = turn?.total_is_exact;
-  const label = count == null ? t(inbox.isPending ? "shell.needsMe.loading" : "shell.needsMe.unknown") : t(count > 0 ? exact ? "shell.needsMe.count" : "shell.needsMe.countMore" : "shell.needsMe", { count });
+  const label = count == null ? t(inbox.isPending ? "shell.needsMe.loading" : "shell.needsMe.unknown") : t(count > 0 ? exact ? "shell.needsMe.count" : "shell.needsMe.countMore" : "home.inbox.title", { count });
   return (
     <DialogTrigger isOpen={open} onOpenChange={setOpen}>
-      <Button id={id} className={s.needsMe} aria-label={label}><Inbox size={16} aria-hidden /><span className={s.name}>{t("home.inbox.title")}</span>{!!count && <span className={s.badge} data-count>{exact ? count : `${count}+`}</span>}</Button>
+      <Button id={id} className={s.needsMe} aria-label={label} aria-describedby={count ? `${id}-description` : undefined}><Inbox size={16} aria-hidden /><span className={s.name}>{t("home.inbox.title")}</span>{" "}{!!count && <span className={s.badge} data-count>{exact ? count : `${count}+`}</span>}</Button>
+      {!!count && <span id={`${id}-description`} className="sr-only">{t(exact ? "shell.needsMe.countDescription" : "shell.needsMe.countMoreDescription", { count })}</span>}
       <Popover className={s.taskPop} placement="bottom end">
         <Dialog className={s.taskPanel} aria-label={t("shell.needsMe")}>
           {({ close }) => <Suspense fallback={<ReadSkeleton layout="list" />}><NeedsMePanel seed={seed} inbox={separate ? tasks : inbox} onNavigate={close} /></Suspense>}

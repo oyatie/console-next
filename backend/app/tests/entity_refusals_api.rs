@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Negative suite for 법인 · 사업자등록 · 사업장 · setup 부서 over HTTP (TS-3 and
+//! Negative suite for legal entity · business registration · workplace · setup
+//! department over HTTP (TS-3 and
 //! the refusal audit, tools/ci/check-refusal-tests.mjs). Every case asserts
 //! the status, stable code, unchanged business records, and durable negative
 //! command evidence. A retry resolves to its original refused receipt.
@@ -38,7 +39,7 @@ async fn registration_of(pool: &PgPool, entity: &str) -> String {
     id.to_string()
 }
 
-/// TS-3: a 법인 write without `legal_entity_manage` is 403 and writes nothing;
+/// TS-3: a write to a legal entity without `legal_entity_manage` is 403 and writes nothing;
 /// without a token it is 401.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn entity_writes_without_legal_entity_manage_are_forbidden_and_write_nothing(pool: PgPool) {
@@ -101,7 +102,7 @@ async fn a_workplace_cannot_use_another_entitys_registration(pool: PgPool) {
     let ctx = ctx(&pool, org, user, ADMIN, None).await;
     let (entity, ..) = structure(&ctx).await;
     let reg = registration_of(&pool, &entity).await;
-    // A second 사업자등록 needs the 법인's declared VAT unit mode first.
+    // A second business registration needs the legal entity's declared VAT unit mode first.
     let uri = format!("/api/v1/legal-entities/{entity}");
     let (_, read) = ctx.call("GET", &uri, None).await;
     let mut declare = entity_body();
@@ -122,7 +123,7 @@ async fn a_workplace_cannot_use_another_entitys_registration(pool: PgPool) {
     assert_eq!(status, StatusCode::CREATED, "{second_reg}");
     let second_reg = second_reg["record"]["id"].as_str().unwrap();
     let uri = format!("/api/v1/legal-entities/{entity}/workplaces");
-    // A same-named 사업장 is allowed (its backing branch takes a "(2)" suffix), so
+    // A same-named workplace is allowed (its backing branch takes a "(2)" suffix), so
     // `workplace_name_taken` is not reachable here; the registration is.
     let (status, twin) = ctx
         .call("POST", &uri, Some(workplace(second_reg, "본사")))

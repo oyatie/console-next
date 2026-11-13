@@ -1,14 +1,15 @@
-//! EMP-RECORD (MR-31, MR-33, MR-35) keys: one switch per 인사카드 section.
-//! Append-only; see `keys/mod.rs`. On by default (decisions #21: the 인사카드
-//! is complete), except 장애 and 보훈, which start off (PIPA §23①, below);
+//! EMP-RECORD (MR-31, MR-33, MR-35) keys: one switch per HR record card section.
+//! Append-only; see `keys/mod.rs`. On by default (decisions #21: the HR record card
+//! is complete), except disability and veterans' status, which start off (PIPA §23①, below);
 //! a tenant that has no purpose for a section turns it off, and from then on
-//! nobody can record it (개인정보 보호법 §16① minimum collection). Turning a
+//! nobody can record it (Personal Information Protection Act §16① minimum collection). Turning a
 //! section back on collects more, so it is the loosening direction.
 
 use console_kernel_core::OfficialSource;
 use time::macros::date;
 
-/// 개인정보 보호법 §16① (최소한의 개인정보 수집), MST 283839, in force
+/// Personal Information Protection Act §16① (minimum collection of personal information),
+/// MST 283839, in force
 /// 2026-09-11; read on law.go.kr DRF 2026-10-06 (mvp-absolute-requirements).
 pub const PIPA_16_1: OfficialSource = OfficialSource {
     authority: "National Assembly of Korea",
@@ -17,9 +18,10 @@ pub const PIPA_16_1: OfficialSource = OfficialSource {
     retrieved_on: date!(2026 - 10 - 06),
 };
 
-/// 개인정보 보호법 §23① (민감정보의 처리 제한), 공포 제21445호, in force
-/// 2026-09-11; read on law.go.kr DRF 2026-10-06. 장애 is 건강 information, so
-/// the 장애·보훈 sections start off: a tenant switches one on only once it has
+/// Personal Information Protection Act §23① (restriction on processing sensitive information),
+/// promulgation No. 21445, in force 2026-09-11; read on law.go.kr DRF 2026-10-06. Disability
+/// is health information, so the disability · veterans sections start off: a tenant switches
+/// one on only once it has
 /// a §23①1 separate consent or a §23①2 statutory basis for it (MR-35).
 pub const PIPA_23_1: OfficialSource = OfficialSource {
     authority: "National Assembly of Korea",

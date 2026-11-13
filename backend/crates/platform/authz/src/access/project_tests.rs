@@ -75,8 +75,8 @@ fn a_grant_whose_chain_is_broken_projects_nothing() {
     assert!(!p.errors.is_empty());
 }
 
-/// regression: governance-02 — a 회사 전체 권한 관리 grant does not widen the
-/// data scope of a narrower 인사 grant; alone, it keeps its own scope.
+/// regression: governance-02 — a company-wide access management grant does not widen the
+/// data scope of a narrower HR grant; alone, it keeps its own scope.
 #[test]
 fn a_tenant_level_grant_does_not_widen_the_data_scope() {
     let t = tree();

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! §16 ingest-commit gate (85 판정, BE-ingest-checklist-gates) —
-//! `POST /api/v1/hr/attendance-import/{run_id}/apply` ("적재"/commit) over the
+//! §16 ingest-commit gate (ruling 85, BE-ingest-checklist-gates) —
+//! `POST /api/v1/hr/attendance-import/{run_id}/apply` ("load"/commit) over the
 //! REAL router on a genuine non-owner `console_rt` pool (RLS enforced), JWT-authed.
 //!
 //! Proves:

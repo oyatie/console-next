@@ -22,6 +22,8 @@ beforeAll(async () => {
         import { createElement as h, useState } from 'react';
         import { createRoot } from 'react-dom/client';
         import { loadCatalog } from '@console/i18n';
+        import { ApiError } from '@console/api';
+        import { CommandError } from '/apps/web/src/lib/react/command-error.tsx';
         import { Composer } from '/apps/web/src/ui/composer/composer.tsx';
         import { TextArea } from '/apps/web/src/ui/field/text-area.tsx';
         import '/apps/web/src/app.css';
@@ -30,13 +32,15 @@ beforeAll(async () => {
           const [long, setLong] = useState(false);
           const [submits, setSubmits] = useState(0);
           const [remedies, setRemedies] = useState(0);
+          const [error, setError] = useState();
           const state = new URLSearchParams(location.search).get('state');
           return h('main', null, h('h1', null, 'Record'),
             h('button', { id: 'toggle', onClick: () => setLong(x => !x) }, 'Change action'),
-            h(Composer, { layout: state === 'drawer' ? 'drawer' : state?.startsWith('page') ? 'page' : 'inline', headingLevel: 3, commitId: 'commit',
+            h(Composer, { layout: state === 'drawer' || state === 'command-drawer-403' ? 'drawer' : state?.startsWith('page') || state === 'command-page-403' ? 'page' : 'inline', headingLevel: 3, commitId: 'commit',
               title: 'Review', action: { kind: long ? 'EMPLOYMENT_TYPE_CHANGE' : 'appointment', mode: long ? 'apply' : 'schedule', count: 3 },
-              onClose: () => {}, onSubmit: state === 'refusal' ? undefined : () => setSubmits(x => x + 1),
-              blocked: state === 'blocked' || state?.startsWith('locate') || (state === 'page-blocked' && !long) ? { reason: 'Resolve first', remedy: h('button', { id: 'remedy', onClick: () => setRemedies(x => x + 1) }, 'Register entity'), press: state?.startsWith('locate') ? () => setRemedies(x => x + 1) : undefined } : undefined,
+              onClose: () => {}, onSubmit: state === 'refusal' ? undefined : () => { setSubmits(x => x + 1); if (state?.startsWith('command')) setError(new ApiError(Number(state.split('-')[2]), 'permission_denied', 'Server refusal')); },
+              error, notice: h(CommandError, { error }), secondary: state?.startsWith('command') || state === 'locked' ? h('button', { id: 'alternate', onClick: () => setRemedies(x => x + 1) }, 'Alternate') : undefined, onSaveDraft: state?.startsWith('command') ? () => setRemedies(x => x + 1) : undefined,
+              blocked: (error && state === 'command-blocked-403') || state === 'blocked' || state?.startsWith('locate') || (state === 'page-blocked' && !long) ? { reason: 'Resolve first', remedy: h('button', { id: 'remedy', onClick: () => setRemedies(x => x + 1) }, 'Register entity'), press: state?.startsWith('locate') ? () => setRemedies(x => x + 1) : undefined } : undefined,
               pending: state === 'locate-pending', loading: state === 'locate-loading',
               routing: state === 'routed' ? { routed: true, steps: [{ key: 'server-step', who: 'Resolved role', state: 'waiting' }] } : state === 'immediate' ? { routed: false, why: 'Resolved policy reason' } : undefined,
               locked: state === 'locked' || state === 'locate-locked', recovery: state === 'recovery' ? h('span', null, 'Checking') : undefined,
@@ -117,6 +121,7 @@ test("a refusal's recovery form submits independently without a composer commit"
 
 test.each(["locate", "locate-pending", "locate-loading", "locate-locked"])("%s only runs the opted-in blocked press when editable", async (state) => {
   await open(state);
+  expect(await page.locator("#remedy").count()).toBe(1);
   await page.locator("#commit").click({ force: true });
   expect(await page.locator("#remedies").textContent()).toBe(state === "locate" ? "1" : "0");
   await page.getByLabel("Reason").press("Control+Enter");
@@ -147,4 +152,55 @@ test("composition-ending keyCode 229 in a textarea cannot commit", async () => {
   await field.dispatchEvent("compositionend");
   await field.press("Control+Enter");
   expect(await page.locator("#submits").textContent()).toBe("1");
+});
+
+
+test.each(["inline", "page", "drawer"])("an authoritative command refusal locks %s without a caller lock", async (layout) => {
+  await open(`command-${layout}-403`);
+  const field = page.getByLabel("Reason");
+  await field.fill("Reviewed");
+  await page.locator("#commit").click();
+  await expect.poll(() => page.locator("#commit").isDisabled()).toBe(true);
+  expect(await page.getByRole("alert").count()).toBe(1);
+  expect(await field.inputValue()).toBe("Reviewed");
+  expect(await field.evaluate(el => Boolean(el.closest("[inert]")))).toBe(true);
+  expect(await field.evaluate(el => getComputedStyle(el.closest("[inert]")!).opacity)).toBe("0.5");
+  expect(await page.getByRole("button", { name: "임시 저장", exact: true }).isDisabled()).toBe(true);
+  await page.locator("form").evaluate(form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await page.locator("#commit").dispatchEvent("keydown", { key: "Enter", ctrlKey: true });
+  expect(await page.locator("#submits").textContent()).toBe("1");
+  expect(await page.locator("#remedies").textContent()).toBe("0");
+  expect(await page.locator("#alternate").evaluate(el => Boolean(el.closest("[inert]")))).toBe(true);
+  expect(await page.getByRole("button", { name: "Alternate", includeHidden: true }).evaluate(el => getComputedStyle(el.closest("[inert]")!).opacity)).toBe("0.5");
+  expect(await page.getByRole("button", { name: "닫기", exact: true }).isEnabled()).toBe(true);
+});
+
+test.each([409, 422])("a %i correction remains editable", async (status) => {
+  await open(`command-inline-${status}`);
+  await page.locator("#commit").click();
+  await page.getByRole("alert").waitFor();
+  expect(await page.locator("#commit").isEnabled()).toBe(true);
+  expect(await page.getByLabel("Reason").evaluate(el => Boolean(el.closest("[inert]")))).toBe(false);
+  await page.getByLabel("Reason").fill("Corrected");
+  await page.getByLabel("Reason").press("Control+Enter");
+  await expect.poll(() => page.locator("#submits").textContent()).toBe("2");
+});
+
+
+test("a permission refusal keeps a newly blocked form natively disabled", async () => {
+  await open("command-blocked-403");
+  await page.locator("#commit").click();
+  await expect.poll(() => page.locator("#commit").evaluate(button => (button as HTMLButtonElement).disabled)).toBe(true);
+  await page.locator("form").evaluate(form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(await page.locator("#submits").textContent()).toBe("1");
+});
+
+
+test("an explicit body lock keeps existing secondary action layout and recovery usable", async () => {
+  await open("locked");
+  const action = page.locator("#alternate");
+  expect(await action.evaluate(el => Boolean(el.closest("[inert]")))).toBe(false);
+  expect(await action.evaluate(el => el.parentElement === document.querySelector("#commit")?.parentElement)).toBe(true);
+  await action.click();
+  expect(await page.locator("#remedies").textContent()).toBe("1");
 });

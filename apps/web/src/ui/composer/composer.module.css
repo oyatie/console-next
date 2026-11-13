@@ -13,3 +13,4 @@
 .pageActions > span:first-child { flex-direction: column-reverse; }
 .commit { width: 100%; }
 .inlineFoot { display: flex; flex-direction: column; gap: var(--space-3); }
+.page > [inert], .actions > [inert], .pageActions > [inert] { opacity: 0.5; }

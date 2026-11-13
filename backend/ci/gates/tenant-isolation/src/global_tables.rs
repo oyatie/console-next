@@ -61,8 +61,9 @@ pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
             "link_types",
             "canonical edge-type vocabulary, seeded platform-wide, no tenant data",
         ),
-        // The statutory rate citation register (국민연금/건강보험/장기요양/
-        // 고용/산재 요율, 기준소득월액 밴드, 최저임금, 간이세액표 versions). These
+        // The statutory rate citation register (National Pension / National Health Insurance /
+        // long-term care / Employment / Industrial Accident insurance rates, standard monthly
+        // income bands, minimum wage, simplified withholding tax table versions). These
         // are the law: identical for every tenant, carrying no tenant data, and
         // NOT operator-writable — console_rt holds SELECT only, so a tenant
         // cannot write a rate row it could then read back. Rates change by
@@ -71,7 +72,7 @@ pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
             "payroll_statutory_rates",
             "statutory rate citations, identical for every tenant, SELECT-only to console_rt",
         ),
-        // BW-30 statutory register: legal numbers, clocks and 4대보험 상실
+        // BW-30 statutory register: legal numbers, clocks and four-social-insurance loss
         // codes. Same reasoning as payroll_statutory_rates (migration-only,
         // SELECT-only to console_rt, never tenant-overridable).
         ("statutory_rules", "BW-30 law reference rows, global"),
@@ -79,7 +80,8 @@ pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
             "statutory_filing_drafts",
             "unverified jurisdiction-register filing rules, migration-only and SELECT-only to console_rt; separate from N-1 core readers",
         ),
-        // ATT S1: 공휴일 per 관공서 규정 §2/§3 and 노동절, bundled reference data
+        // ATT S1: public holidays per the Regulations on Holidays of Government Offices §2/§3
+        // and Labor Day, bundled reference data
         // (migration-only, SELECT-only to console_rt), identical for every tenant.
         (
             "attendance_public_holidays",

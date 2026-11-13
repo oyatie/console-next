@@ -400,7 +400,7 @@ async fn export_kpi_builds_audited_workbook_under_rls(pool: PgPool) {
         assert_eq!(cell(sheet, 2, 1), "대상");
         assert_eq!(cell(sheet, 1, 2), "전사");
         assert_eq!(cell(sheet, 2, 2), "전체");
-        // Column 4 is "완료 건수"; the golden company rollup completes 3 work orders.
+        // Column 4 is the completed count; the golden company rollup completes 3 work orders.
         assert_eq!(cell(sheet, 4, 2), "3");
 
         // Audited exactly like the sibling exports (read back on the owner pool).

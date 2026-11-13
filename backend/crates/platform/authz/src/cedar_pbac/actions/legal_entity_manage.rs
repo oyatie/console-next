@@ -1,9 +1,10 @@
-//! `legal_entity_manage` (decisions #14.2): register and revise 법인 ·
-//! 사업자등록 · 사업장, and void them during setup. Its own permission, apart
-//! from the org-change grants, so 부서 restructuring and 사업자등록증-level data
+//! `legal_entity_manage` (decisions #14.2): register and revise legal entity ·
+//! business registration · workplace, and void them during setup. Its own permission,
+//! apart from the org-change grants, so department restructuring and data at the level
+//! of the business registration certificate
 //! can be granted independently. Holders: SUPER_ADMIN and EXECUTIVE (the
 //! holders of `org_change_apply`, which these writes used before), within
-//! their scope grants (decisions #15: the same rule for any 법인, the holder's
+//! their scope grants (decisions #15: the same rule for any legal entity, the holder's
 //! employer or not). Backstop: the tenant-phase admission and the entity
 //! tables' triggers. Enforced and fail-closed from the start.
 
@@ -80,12 +81,12 @@ mod tests {
     fn a_grant_reaches_its_own_entity_or_workplace_only() {
         let (a, b, a_site) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
         let on_b = [b];
-        // A grant on 법인 B works for anyone holding it (decisions #15.1, #15.3).
+        // A grant on legal entity B works for anyone holding it (decisions #15.1, #15.3).
         assert!(decide(vec![Role::Executive], Some(&on_b), &[b]));
-        // Nothing crosses without a grant (#15.4), and a new 법인 needs the tenant.
+        // Nothing crosses without a grant (#15.4), and a new legal entity needs the tenant.
         assert!(!decide(vec![Role::Executive], Some(&on_b), &[a, a_site]));
         assert!(!decide(vec![Role::Executive], Some(&on_b), &[]));
-        // A 사업장 grant reaches that 사업장's records.
+        // A workplace grant reaches that workplace's records.
         assert!(decide(
             vec![Role::SuperAdmin],
             Some(&[a_site]),

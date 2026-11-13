@@ -104,7 +104,7 @@ fn a_substitute_holiday_on_a_work_day_is_off_unless_the_pattern_works_holidays()
         (on.kind, on.shift.is_some(), on.holiday_work),
         (DayKind::SubstituteHoliday, true, true)
     );
-    // 10/4 is a Sunday: the pattern's 주휴일.
+    // 10/4 is a Sunday: the pattern's weekly holiday.
     let sunday = plan_day(
         &office_week(),
         HolidayRule::Off,

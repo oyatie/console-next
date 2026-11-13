@@ -18,8 +18,9 @@ use crate::PgOnboardingError;
 /// and read the store when it does (INTEG request).
 const SECURITY_CONTACT_STORE_AVAILABLE: bool = false;
 
-/// The live 법인, 등록, 사업장 and today's placements and 4대보험 status, as
-/// the 법인·사업장 panels read them (latest revision as of today).
+/// The live legal entities, registrations, workplaces and today's placements and
+/// four-social-insurance status, as the legal entity and workplace panels read them
+/// (latest revision as of today).
 macro_rules! base {
     () => {
         "WITH today AS (SELECT (now() AT TIME ZONE 'Asia/Seoul')::date AS d), \
@@ -42,8 +43,9 @@ macro_rules! base {
 }
 
 /// One row per record a counted preview line is about (company-49/-53): a
-/// 사업장 is listed once per line however many of its 4대보험 are short. Each
-/// line lists its records in the stored order (법인, then its 사업장), as the
+/// workplace is listed once per line however many of its four social insurances are
+/// short. Each line lists its records in the stored order (legal entity, then its
+/// workplaces), as the
 /// breakdown and the chart do.
 const RECORDS: &str = concat!(
     base!(),
@@ -159,8 +161,25 @@ pub(crate) async fn permission_facts(
 
 pub(crate) async fn setup_facts(
     tx: &mut Transaction<'_, Postgres>,
+    actor: (OrgId, Uuid),
+    phase_is_setup: bool,
+) -> Result<(SetupFacts, Records, PreviewDetails), PgOnboardingError> {
+    load(tx, actor, phase_is_setup, true).await
+}
+
+pub(crate) async fn checklist_facts(
+    tx: &mut Transaction<'_, Postgres>,
+    actor: (OrgId, Uuid),
+    phase_is_setup: bool,
+) -> Result<SetupFacts, PgOnboardingError> {
+    Ok(load(tx, actor, phase_is_setup, false).await?.0)
+}
+
+async fn load(
+    tx: &mut Transaction<'_, Postgres>,
     (org, actor): (OrgId, Uuid),
     phase_is_setup: bool,
+    detailed: bool,
 ) -> Result<(SetupFacts, Records, PreviewDetails), PgOnboardingError> {
     let permissions = permission_facts(tx, org, phase_is_setup).await?;
     let org_change_routed = permissions.org_change_routed;
@@ -169,11 +188,24 @@ pub(crate) async fn setup_facts(
         .fetch_one(tx.as_mut())
         .await?;
     let mut listed = records(tx).await?;
-    listed.extend(crate::people_facts::records(tx).await?);
+    let people = if detailed {
+        listed.extend(crate::people_facts::records(tx).await?);
+        [
+            "unplaced_people",
+            "unresolved_departments",
+            "people_without_department",
+            "entity_unknown_people",
+        ]
+        .map(|code| count(&listed, code))
+    } else {
+        crate::people_facts::counts(tx).await?
+    };
     let (access, mut details) = crate::access_facts::load(tx, org).await?;
     let (terms_accepted, terms_version) = crate::terms::acceptance(tx).await?;
     details.terms_version = terms_version;
-    details.breakdown = crate::people_facts::breakdown(tx).await?;
+    if detailed {
+        details.breakdown = crate::people_facts::breakdown(tx).await?;
+    }
     // decisions #26: nothing reads the deciders under approval.policy = none.
     let (approvers, others) = if org_change_routed {
         org_change_deciders(tx, org, actor).await?
@@ -206,10 +238,10 @@ pub(crate) async fn setup_facts(
         employees: r.try_get("employees")?,
         employees_starting_later: r.try_get("starting_later")?,
         employees_step_deferred: r.try_get("employees_deferred")?,
-        unplaced_people: count(&listed, "unplaced_people"),
-        unresolved_departments: count(&listed, "unresolved_departments"),
-        people_without_department: count(&listed, "people_without_department"),
-        entity_unknown_people: count(&listed, "entity_unknown_people"),
+        unplaced_people: people[0],
+        unresolved_departments: people[1],
+        people_without_department: people[2],
+        entity_unknown_people: people[3],
         tenant_roles: r.try_get("tenant_roles")?,
         roles_step_skipped: r.try_get("roles_skipped")?,
         unmapped_assignments: r.try_get("unmapped")?,

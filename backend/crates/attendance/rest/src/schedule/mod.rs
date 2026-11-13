@@ -1,4 +1,4 @@
-//! 근무 일정 routes (ATT S1). Reads need the directory read key, writes the
+//! Work-schedule routes (ATT S1). Reads need the directory read key, writes the
 //! attendance edit key (`attendance::edit`), each on the branches it touches;
 //! the adapter re-checks every target against the caller's scope.
 

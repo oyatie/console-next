@@ -38,6 +38,7 @@ pub(crate) async fn page(
                 Err(e) => return Err(e),
             }
             items.push(ActionInboxSourceItem {
+                due_basis: None,
                 context: Some(serde_json::json!({"unlock": {
                     "domain": domain, "periodStart": start.to_string(), "periodEnd": end.to_string(),
                     "requester": requester, "reason_code": request.reason_code, "reason_entry": reason_entry

@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! RUNTIME RLS gate for the support display-name JOINs (담당자/작성자 이름).
+//! RUNTIME RLS gate for the support display-name JOINs (assignee/author names).
 //!
 //! `list_tickets` / `get_ticket` resolve `assignee_name` and `author_name` via a
 //! same-org correlated subquery on `users` (semantically a LEFT JOIN on a unique

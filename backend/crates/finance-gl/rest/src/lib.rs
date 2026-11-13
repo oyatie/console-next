@@ -1,6 +1,6 @@
-//! Finance GL (전표) REST API.
+//! Finance GL (voucher) REST API.
 //!
-//! Authorization: voucher management is the 경리/accounting-close tier. This slice
+//! Authorization: voucher management is the bookkeeping/accounting-close tier. This slice
 //! reuses the existing `PeriodLockManage` capability (ADMIN + EXECUTIVE +
 //! SUPER_ADMIN — the same accounting-close authority) rather than minting a
 //! dedicated `VoucherManage` feature, to keep the lane hermetic and avoid

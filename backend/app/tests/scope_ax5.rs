@@ -1,11 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! AX-5 (UX-R3 SCOPE; governance-01, people-self-01, worst-case-08 — the same
 //! root three rounds running): a grant's scope is what its holder sees and
-//! does. An account with no legacy role, granted 인사 실무 over 법인 A, reads
-//! and works every person in A — including one with no 법인/사업장 assignment
-//! whose 부서 sits under A's 사업장 — and nobody in B. Outside the scope, or
+//! does. An account with no legacy role, granted the HR operations role over
+//! legal entity A, reads and works every person in A — including one with no
+//! legal-entity/workplace assignment whose department sits under A's workplace —
+//! and nobody in B. Outside the scope, or
 //! no such person, is one 403 `out_of_scope` with nothing written. A door
-//! that acts on the whole tenant answers 403 `scope_tenant_wide_only`. A 부서
+//! that acts on the whole tenant answers 403 `scope_tenant_wide_only`. A department
 //! grant reaches its subtree only (governance-22, people-self-23). Ops is
 //! unaffected.
 //!
@@ -154,7 +155,7 @@ async fn regression_a_legal_entity_grant_reaches_its_people_and_only_them(pool: 
     let le_a = w.le_a.clone();
     let hr = w.holder("LEGAL_ENTITY", Some(&le_a)).await;
 
-    // The roster is A's people (a2 has no assignment: its 부서 is under A).
+    // The roster is A's people (a2 has no assignment: its department is under A).
     let (total, ids) = roster(&hr).await;
     assert_eq!(
         (total, ids),
@@ -201,7 +202,7 @@ async fn regression_a_legal_entity_grant_reaches_its_people_and_only_them(pool: 
     .await;
     assert_eq!(count(&w.pool, "employees", w.org).await, before);
 
-    // 발령: inside A yes; a B person or a B target, no.
+    // Appointments: inside A yes; a B person or a B target, no.
     let a1 = format!("/api/v1/employees/{}/lifecycle-events", w.a1);
     let b1 = format!("/api/v1/employees/{}/lifecycle-events", w.b1);
     refused(

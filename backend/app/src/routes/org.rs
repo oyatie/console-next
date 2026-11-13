@@ -1,5 +1,5 @@
 //! Organization and governance: settings, period locks, org-change and the
-//! 법인 · 사업장 faces (the MVP), then compliance, integrity, evidence objects
+//! legal entity · workplace faces (the MVP), then compliance, integrity, evidence objects
 //! and the ontology / governance / Policy-Studio engine (one mount each).
 
 use std::sync::Arc;
@@ -58,13 +58,13 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             lifecycle::LifecycleState::new(pool.clone(), state.jwt_verifier.clone())
                 .with_passkey_step_up(state.policy_step_up.clone()),
         ))
-        // Org-change lifecycle engine (조직 개편 결재): draft → preflight
+        // Org-change lifecycle engine (reorganization approval): draft → preflight
         // → ordered SoD approval → effective-dated apply (§15/§16).
         .merge(console_orgchange_rest::router(OrgChangeRestState::new(
             org_changes,
             state.jwt_verifier.clone(),
         )))
-        // 법인 · 사업장 + setup phase (운영 시작); composed in entity_wiring.rs.
+        // Legal entity · workplace + setup phase (go-live); composed in entity_wiring.rs.
         .merge(crate::entity_wiring::router(
             pool.clone(),
             state.jwt_verifier.clone(),

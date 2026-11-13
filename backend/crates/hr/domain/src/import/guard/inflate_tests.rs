@@ -110,6 +110,14 @@ fn stored_blocks_count_their_bytes() {
     assert_eq!(inflated_len(&stored(&[b""]), 10), Ok(0));
     assert_eq!(inflated_len(&stored(&[b"abc", b"de"]), 10), Ok(5));
     assert_eq!(
+        inflated_bytes(&stored(&[b"abc", b"de"]), 5),
+        Ok(b"abcde".to_vec())
+    );
+    assert_eq!(
+        inflated_bytes(&stored(&[b"abc", b"de"]), 4),
+        Err(InflateError::Limit)
+    );
+    assert_eq!(
         inflated_len(&stored(&[b"abcdef"]), 5),
         Err(InflateError::Limit)
     );
@@ -157,7 +165,26 @@ fn property_random_matches_count_exactly() {
         let split = ops.len() / 2;
         fixed_block(&mut w, false, &ops[..split]);
         fixed_block(&mut w, true, &ops[split..]);
-        assert_eq!(inflated_len(&w.finish(), u64::MAX), Ok(produced));
+        let mut expected = Vec::new();
+        for op in ops {
+            match op {
+                Ok(byte) => expected.push(byte),
+                Err((len, distance)) => {
+                    for _ in 0..len {
+                        expected.push(expected[expected.len() - usize::from(distance)]);
+                    }
+                }
+            }
+        }
+        let stream = w.finish();
+        assert_eq!(inflated_len(&stream, u64::MAX), Ok(produced));
+        assert_eq!(inflated_bytes(&stream, produced), Ok(expected));
+        if produced > 0 {
+            assert_eq!(
+                inflated_bytes(&stream, produced - 1),
+                Err(InflateError::Limit)
+            );
+        }
     }
 }
 
@@ -166,6 +193,10 @@ fn property_random_bytes_never_panic_and_respect_the_limit() {
     let mut rng = Rng(0xD1B5_4A32_D192_ED03);
     for _ in 0..5_000 {
         let bytes: Vec<u8> = (0..rng.below(64)).map(|_| rng.next() as u8).collect();
+        assert_eq!(
+            inflated_bytes(&bytes, 4_096).map(|bytes| bytes.len() as u64),
+            inflated_len(&bytes, 4_096)
+        );
         if let Ok(n) = inflated_len(&bytes, 4_096) {
             assert!(n <= 4_096);
         }

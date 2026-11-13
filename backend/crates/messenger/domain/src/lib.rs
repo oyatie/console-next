@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// followed by the confirmed candidate's code, which for a person is the raw
 /// user UUID (`web/src/lib/objectCandidates.ts` returns `code = member.id`, and
 /// `confirmToken` inserts `@<code>`). Only `@` is a mention — `#object-link`
-/// and `!code-link` carry no notification (DESIGN §4.7-7: `#` = 알림 없음).
+/// and `!code-link` carry no notification (DESIGN §4.7-7: `#` = no notification).
 ///
 /// This is intentionally the *parse* step only: it does not verify the user
 /// exists or is reachable. The caller filters the result down to real,
@@ -54,7 +54,7 @@ fn is_mention_boundary(c: char) -> bool {
 /// dropped) and resolves the target under policy at read time.
 ///
 /// Unlike `@`-mentions, `#`-refs carry no notification (DESIGN §4.7-7: `#` =
-/// 알림 없음) — this is purely the persisted-reference parse.
+/// no notification) — this is purely the persisted-reference parse.
 ///
 /// Capped at [`MAX_OBJECT_CODE_REFS`] distinct codes: with `MessageBody`
 /// already bounded to [`MAX_MESSAGE_BODY_CHARS`], a body still fits many more

@@ -69,7 +69,7 @@ export function DeptDissolveSheet({ place: initialPlace, places: initialPlaces, 
       title={title}
       onClose={onClose}
       pending={submit.isPending}
-      notice={<CommandError error={submit.error} />}
+      error={submit.error} notice={<CommandError error={submit.error} />}
       consequence={
         open.length ? (
           <span id={reasonId} className={css.footReason}><Lock size={14} aria-hidden />{t("orgUnit.gov.missing", { list: open.join(", ") })}</span>

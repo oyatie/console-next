@@ -127,8 +127,9 @@ fn gate_rejects_a_token_outside_the_closed_vocabulary() -> Result<(), Box<dyn st
     Ok(())
 }
 
-/// 개인정보 보호법 시행령 제19조 is a closed set of four, and 고시 제2026-9호
-/// 제7조제3항제2호 makes 주민등록번호 unconditional while the other three may be
+/// Personal Information Protection Act Enforcement Decree Article 19 is a closed set of
+/// four, and public notice No. 2026-9 Article 7(3)2 makes resident registration numbers
+/// unconditional while the other three may be
 /// scoped. A bare `unique-id` erases that, so the gate refuses it.
 #[test]
 fn gate_rejects_unique_id_without_its_subtoken() -> Result<(), Box<dyn std::error::Error>> {
@@ -521,7 +522,7 @@ fn gate_rejects_a_table_created_inside_a_dollar_quoted_body()
 /// not a `Tok::Body`, so the body scan never touched it and the gate passed. Add
 /// a `COMMENT ON COLUMN` on some other unclassified column of the same table in
 /// the same migration and the catalog assertion's per-table COUNT did not move
-/// either — both halves of the control green over a live 진단서 번호 column.
+/// either — both halves of the control green over a live medical certificate number column.
 /// That second half is gone: the catalog baseline is a SET of column names now,
 /// so the compensating comment no longer pays for the added column. This test
 /// stays because the gate is defence in depth, not because the class depends on

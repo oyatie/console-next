@@ -49,7 +49,7 @@ export function DeptMergeSheet({ place: initialPlace, places: initialPlaces, set
       subtitle={t("orgUnit.merge.subtitle", { name: a.name })}
       onClose={onClose}
       pending={pending}
-      notice={<CommandError error={run.error ?? submit.error} />}
+      error={run.error ?? submit.error} notice={<CommandError error={run.error ?? submit.error} />}
       consequence={
         <>
           {plan && target && <span>{t("orgUnit.merge.consequence", { a: a.name, b: [target.workplace!.name, target.node.name].join(" › "), n: plan.totals.children, m: plan.totals.members })}</span>}

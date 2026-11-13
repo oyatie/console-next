@@ -150,7 +150,7 @@ pub(super) async fn employee_import_apply_job(
     Ok(Json(state.hr.apply_job(principal.org_id, run_id).await?))
 }
 
-/// `GET /api/v1/employees/import/unplaced` (W03 / E8): the 미배치 queue,
+/// `GET /api/v1/employees/import/unplaced` (W03 / E8): the unplaced queue,
 /// counted and keyset-paged; `run_id` narrows it to one import's people.
 pub(super) async fn list_import_unplaced(
     State(state): State<HrState>,

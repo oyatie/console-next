@@ -47,7 +47,7 @@ pub(crate) struct RegisterFinishResponse {
     pub(crate) passkey_id: Uuid,
     pub(crate) user_id: Uuid,
     pub(crate) credential_id: String,
-    /// `<아이디>@<회사 도메인>`: the client's sign-in right after enrollment.
+    /// The sign-in ID, `@` and the company domain: the client's sign-in right after enrollment.
     pub(crate) sign_in_id: Option<String>,
 }
 
