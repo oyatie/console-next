@@ -9,17 +9,11 @@ use sqlx::PgPool;
 use tracing::instrument::WithSubscriber;
 use uuid::Uuid;
 
-fn observe() -> trail_queries::Queries {
-    static DISPATCH: std::sync::OnceLock<tracing::Dispatch> = std::sync::OnceLock::new();
-    DISPATCH.get_or_init(|| tracing::Dispatch::new(trail_queries::Queries::default()));
-    trail_queries::Queries::default()
-}
-
 fn reference_reads(queries: &trail_queries::Queries) -> usize {
     queries
         .statements()
         .iter()
-        .filter(|sql| sql.contains("WITH registration_refs"))
+        .filter(|sql| sql.contains("WITH registration_refs") || sql.contains("AS assignable"))
         .count()
 }
 
@@ -39,7 +33,7 @@ async fn registration_prepares_references_together_and_skips_them_on_replay(pool
         body.position = position.to_string();
         body
     };
-    let queries = observe();
+    let queries = trail_queries::Queries::default();
     let first = f
         .create(body())
         .with_subscriber(queries.clone())
@@ -47,10 +41,10 @@ async fn registration_prepares_references_together_and_skips_them_on_replay(pool
         .unwrap();
     assert_eq!(
         reference_reads(&queries),
-        1,
-        "one reference read for branch, unit and position"
+        2,
+        "one shared unit read and one branch/position read"
     );
-    let queries = observe();
+    let queries = trail_queries::Queries::default();
     let replay = f
         .create(body())
         .with_subscriber(queries.clone())
@@ -89,7 +83,7 @@ async fn registration_preparation_preserves_reference_refusals_and_rolls_back_ke
                 422
             }
         };
-        let queries = observe();
+        let queries = trail_queries::Queries::default();
         let error = f
             .create(body)
             .with_subscriber(queries.clone())
@@ -98,8 +92,8 @@ async fn registration_preparation_preserves_reference_refusals_and_rolls_back_ke
         assert_eq!(error.status.as_u16(), expected, "{field}: {error:?}");
         assert_eq!(
             reference_reads(&queries),
-            1,
-            "{field}: one preparation reference read"
+            2,
+            "{field}: two set-based preparation reference reads"
         );
     }
     sqlx::query("UPDATE branches SET deactivated_at=now() WHERE id=$1")
@@ -131,4 +125,27 @@ async fn registration_preparation_preserves_reference_refusals_and_rolls_back_ke
         reservations, 0,
         "a refused registration leaves no reserved key"
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn registration_rejects_a_latest_non_assignable_unit_kind(pool: PgPool) {
+    let f = fixture::fixture(pool.clone()).await;
+    // An assignable older revision must not hide the latest kind.
+    sqlx::query("INSERT INTO org_unit_revisions (org_id,org_unit_id,version,command_id,actor_id,payload_digest,attributes,receipt) \
+        VALUES ($1,$2,2,gen_random_uuid(),$3,decode(repeat('00',32),'hex'), \
+        '{\"name\":\"division\",\"kind\":\"division\"}'::jsonb,'{}'::jsonb)")
+        .bind(f.principal.org_id.as_uuid()).bind(f.unit).bind(f.principal.user_id.as_uuid())
+        .execute(&pool).await.unwrap();
+    let error = f
+        .create(f.body("division-unit", "REGULAR"))
+        .await
+        .unwrap_err();
+    assert_eq!(error.status.as_u16(), 422);
+    let reservations: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM employee_create_idempotency WHERE org_id=$1")
+            .bind(f.principal.org_id.as_uuid())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(reservations, 0, "the refusal must roll back its key");
 }

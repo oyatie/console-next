@@ -6,7 +6,7 @@ async fn overlapping_reservations_recheck_the_committed_hash_after_waiting(pool:
     let f = fixture::fixture(pool.clone()).await;
     let org = *f.principal.org_id.as_uuid();
     let mut first = transaction(&f).await;
-    let first_queries = observe();
+    let first_queries = trail_queries::Queries::default();
     reserve_create_keys(&mut first, org, &[("b", HASH_A), ("a", HASH_A)])
         .with_subscriber(first_queries.clone())
         .await
@@ -17,7 +17,7 @@ async fn overlapping_reservations_recheck_the_committed_hash_after_waiting(pool:
         .fetch_one(second.as_mut())
         .await
         .unwrap();
-    let queries = observe();
+    let queries = trail_queries::Queries::default();
     let waiting = async {
         let result = reserve_create_keys(&mut second, org, &[("a", HASH_B), ("b", HASH_A)])
             .with_subscriber(queries.clone())

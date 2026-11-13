@@ -49,10 +49,7 @@ async fn regression_a_staffed_workplace_closes_today_by_one_plan(owner: PgPool) 
         .unwrap();
     let statements = queries.statements();
     assert_eq!(
-        statements
-            .iter()
-            .filter(|sql| sql.contains("SELECT filing_rule,trigger_event_kinds"))
-            .count(),
+        queries.statutory_register_reads().len(),
         1,
         "one statutory register read for the entire close"
     );

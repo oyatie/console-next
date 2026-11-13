@@ -26,12 +26,6 @@ async fn transaction(f: &fixture::Fixture) -> Transaction<'static, Postgres> {
     tx
 }
 
-fn observe() -> trail_queries::Queries {
-    static DISPATCH: std::sync::OnceLock<tracing::Dispatch> = std::sync::OnceLock::new();
-    DISPATCH.get_or_init(|| tracing::Dispatch::new(trail_queries::Queries::default()));
-    trail_queries::Queries::default()
-}
-
 const HASH_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const HASH_B: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
@@ -75,7 +69,7 @@ async fn preparation_has_constant_round_trips_for_three_thousand_registrations(p
         let hashes = hashes(&requests);
         let commands = inputs(&requests, &hashes);
         let mut tx = transaction(&f).await;
-        let queries = observe();
+        let queries = trail_queries::Queries::default();
         let started = std::time::Instant::now();
         let prepared = prepare_registrations(&mut tx, *f.principal.org_id.as_uuid(), &commands)
             .with_subscriber(queries.clone())
@@ -89,8 +83,8 @@ async fn preparation_has_constant_round_trips_for_three_thousand_registrations(p
         assert_eq!(prepared.len(), people);
         assert_eq!(
             queries.statements().len(),
-            3,
-            "two reservation statements and one reference read"
+            4,
+            "two reservation statements and two set-based reference reads"
         );
         for (input, row) in commands.iter().zip(&prepared) {
             assert_eq!(row.employee_id, input.employee_id);
@@ -130,7 +124,7 @@ async fn preparation_deduplicates_keys_and_allocates_numbers_in_input_order(pool
         employee_id: Uuid::new_v4(),
     });
     let mut tx = transaction(&f).await;
-    let queries = observe();
+    let queries = trail_queries::Queries::default();
     let result = prepare_registrations(&mut tx, *f.principal.org_id.as_uuid(), &commands)
         .with_subscriber(queries.clone())
         .await
@@ -208,7 +202,7 @@ async fn preparation_preserves_replays_conflicts_and_tenant_boundaries(pool: PgP
         vec![("fresh", HASH_A), ("replay", HASH_B)],
     ] {
         let mut tx = transaction(&f).await;
-        let queries = observe();
+        let queries = trail_queries::Queries::default();
         let error = reserve_create_keys(&mut tx, *f.principal.org_id.as_uuid(), &keys)
             .with_subscriber(queries.clone())
             .await

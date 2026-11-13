@@ -3,11 +3,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use console_kernel_core::KernelError;
-use console_ontology_canonical_adapter_postgres::employment::EmploymentError;
+use console_ontology_canonical_adapter_postgres::employment::{
+    EmploymentError, assignable_org_units,
+};
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
-use super::create::{employee_create_db_error, next_employee_number};
+use super::create::{
+    employee_create_db_error, format_employee_number, next_employee_sequence, sequence_of,
+};
 use super::create_checks::employee_number_taken;
 use super::create_guard::registration_key_reused;
 use super::types::NormalizedCreateEmployeeRequest;
@@ -113,24 +117,22 @@ pub async fn prepare_registrations(
         .iter()
         .filter_map(|i| Uuid::parse_str(&i.request.position).ok())
         .collect();
-    let mut refs = BTreeMap::new();
-    if !branches.is_empty() || !units.is_empty() || !positions.is_empty() {
-        let rows: Vec<(String, Uuid, Option<String>, bool)> = sqlx::query_as(
+    let units = assignable_org_units(tx, org, &units).await?;
+    let mut refs = BTreeSet::new();
+    if !branches.is_empty() || !positions.is_empty() {
+        let rows: Vec<(String, Uuid)> = sqlx::query_as(
             "WITH registration_refs AS ( \
-             SELECT 'branch'::text AS kind,id,NULL::text AS name,true AS assignable FROM branches \
+             SELECT 'branch'::text AS kind,id FROM branches \
              WHERE org_id=$1 AND id=ANY($2) AND deactivated_at IS NULL \
-             UNION ALL SELECT 'unit',u.id,r.attributes->>'name',COALESCE( \
-               r.attributes->>'kind' IN ('site','department','team') \
-               AND COALESCE(r.attributes->>'status','active') <> 'dissolved',false) \
-             FROM org_units u LEFT JOIN LATERAL (SELECT attributes FROM org_unit_revisions \
-               WHERE org_id=u.org_id AND org_unit_id=u.id ORDER BY version DESC LIMIT 1) r ON true \
-             WHERE u.org_id=$1 AND u.id=ANY($3) \
-             UNION ALL SELECT 'position',id,NULL::text,true FROM job_positions WHERE org_id=$1 AND id=ANY($4) \
-             ) SELECT kind,id,name,assignable FROM registration_refs",
-        ).bind(org).bind(&branches).bind(&units).bind(&positions).fetch_all(tx.as_mut()).await?;
-        for (kind, id, name, assignable) in rows {
-            refs.insert((kind, id), (name, assignable));
-        }
+             UNION ALL SELECT 'position',id FROM job_positions WHERE org_id=$1 AND id=ANY($3) \
+             ) SELECT kind,id FROM registration_refs",
+        )
+        .bind(org)
+        .bind(&branches)
+        .bind(&positions)
+        .fetch_all(tx.as_mut())
+        .await?;
+        refs.extend(rows);
     }
     let mut prepared: BTreeMap<&str, PreparedRegistration> = BTreeMap::new();
     let mut numbers = BTreeSet::new();
@@ -155,7 +157,7 @@ pub async fn prepare_registrations(
         };
         if !row.replayed {
             if let Some(branch) = request.home_branch_id
-                && !refs.contains_key(&("branch".into(), branch))
+                && !refs.contains(&("branch".into(), branch))
             {
                 return Err(KernelError::not_found(
                     "active home branch was not found in this organization",
@@ -163,51 +165,40 @@ pub async fn prepare_registrations(
                 .into());
             }
             if let Some(unit) = request.org_unit_id {
-                match refs.get(&("unit".into(), unit)) {
+                match units.get(&unit) {
                     None => {
                         return Err(KernelError::not_found(
                             "org unit was not found in this organization",
                         )
                         .into());
                     }
-                    Some((_, false)) => {
+                    Some(None) => {
                         return Err(HrError::validation(
                             "org_unit_id must be an ACTIVE site, department, or team",
                         ));
                     }
-                    Some((name, true)) => {
-                        row.org_unit = name.clone().ok_or(sqlx::Error::RowNotFound)?
-                    }
+                    Some(Some(name)) => row.org_unit = name.clone(),
                 }
             } else if let Ok(unit) = Uuid::parse_str(&request.org_unit)
-                && !refs.contains_key(&("unit".into(), unit))
+                && !units.contains_key(&unit)
             {
                 return Err(EmploymentError::UnknownOrgUnit(unit).into());
             }
             if let Ok(position) = Uuid::parse_str(&request.position)
-                && !refs.contains_key(&("position".into(), position))
+                && !refs.contains(&("position".into(), position))
             {
                 return Err(EmploymentError::UnknownJobPosition(position).into());
             }
             if row.employee_number.is_empty() {
                 let candidate = match next {
                     Some(value) => value,
-                    None => next_employee_number(tx, org).await?[2..]
-                        .parse::<i64>()
-                        .map_err(|_| HrError::validation("employee number sequence is invalid"))?,
+                    None => next_employee_sequence(tx, org).await?,
                 }
                 .max(manual_max + 1);
-                row.employee_number = format!("E-{candidate:06}");
+                row.employee_number = format_employee_number(candidate);
                 next = Some(candidate + 1);
-            } else if let Some(digits) = row.employee_number.strip_prefix("E-")
-                && (6..=18).contains(&digits.len())
-                && digits.bytes().all(|b| b.is_ascii_digit())
-            {
-                manual_max = manual_max.max(
-                    digits
-                        .parse::<i64>()
-                        .map_err(|_| HrError::validation("employee number is invalid"))?,
-                );
+            } else if let Some(sequence) = sequence_of(&row.employee_number) {
+                manual_max = manual_max.max(sequence);
             }
             if !numbers.insert(row.employee_number.clone()) {
                 return Err(employee_number_taken(None));
