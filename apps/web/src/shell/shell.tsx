@@ -2,7 +2,7 @@ import { personName } from "../reference/person/present";
 import { activeSupportQuery } from "../reference/support-access/api";
 import { ActiveSupportBanner, SupportAccessIndicator } from "../features/support-access/ui/support-access-status";
 import { DomainNotice } from "../auth/domain-notice";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link, Outlet, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, Menu, Moon, Search, Sun, UserRound } from "lucide-react";
@@ -28,6 +28,7 @@ import { streamReady } from "../lib/live/session-stream";
 import { RouteGuard } from "../reference/authz/ui/access-gate";
 import { PageMain } from "../ui/page/page-main";
 import { meQuery } from "../features/account/api";
+import { useMainScrollRestoration } from "./scroll-restoration";
 import { checklistQuery, modulesQuery } from "../features/onboarding/api";
 import { fixFor } from "../features/onboarding/domain/rail";
 import type { NavHub } from "./nav";
@@ -36,7 +37,7 @@ import type { NavHub } from "./nav";
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
 const NeedsMeMenu = lazy(() => chunk(import("./top-bar/needs-me")).then(m => ({ default: m.NeedsMeMenu })));
 
-export function Shell() {
+export function Shell({ children = <Outlet />, pending = false }: { children?: ReactNode; pending?: boolean }) {
   const nav = useNavigate();
   const { pathname } = useLocation();
   const [theme, toggle] = useTheme();
@@ -50,12 +51,13 @@ export function Shell() {
   const [savedRail, setSavedRail] = useState(() => ({ key: railKey, answer: rememberedRail(railKey) }));
   if (savedRail.key !== railKey) setSavedRail({ key: railKey, answer: rememberedRail(railKey) });
   const platform = !!claims?.platform;
-  const identity = useQuery({ ...meQuery, enabled: !platform && active });
+  const identity = useQuery({ ...meQuery, enabled: !platform && active && !pending });
   const router = useRouter();
+  useMainScrollRestoration(router);
   const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
   // Keep the rail snapshot separate, but share the identity request with the shell and page.
-  const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active });
+  const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
   const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP", retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
@@ -208,7 +210,7 @@ export function Shell() {
           {!platform && <DomainNotice />}{!platform && !((access.isError || pageFailures > 0) && supportFault && !hasSupportNotice) && <ActiveSupportBanner />}
         </ReadFailureContext.Provider>
         <ReadFailureContext.Provider value={recovery}>
-          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand key={principal}><Suspense fallback={<ReadSkeleton layout="list" />}><Outlet /></Suspense></PhaseBand>}</RouteGuard>
+          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
         </ReadFailureContext.Provider>
         </SessionRecovery>
       </PageMain>
