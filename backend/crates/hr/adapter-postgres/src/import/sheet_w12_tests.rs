@@ -39,7 +39,8 @@ fn parse(
         org: Uuid::nil(),
         vault: None,
     };
-    parse_workbook(&ctx, sheets, memory, mapping).map_err(|e| e.message)
+    let mapping = super::tests::confirmation::confirmed_mapping(sheets, memory, mapping);
+    parse_workbook(&ctx, sheets, memory, &mapping).map_err(|e| e.message)
 }
 
 /// regression (W12): the footer "Total | 300 people" was a candidate person.

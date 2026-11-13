@@ -4,7 +4,7 @@ import { atPhoneWidth, expectAccessible } from "./a11y";
 import { go } from "./flows";
 import { clearShifts, forgetResize } from "./stability";
 import { apiOf, bearerOf } from "./helpers/api";
-import { chooseWorkbook } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "./helpers/import";
 import { workbook } from "./helpers/import-layouts";
 import { settled } from "./helpers/import-queue";
 import { registerBranch, REGISTRATION_FIXTURES, tenantInSetup } from "./setup-flows";
@@ -31,7 +31,7 @@ async function accessibleAtBothWidths(page: Page, surface: string) {
   await atPhoneWidth(page, () => expectAccessible(page, `${surface}: phone`));
 }
 
-test("placement comes from statutory workplace values; a physical-site reading is asked once and remembered", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
+test("placement follows confirmed workplace or physical-site bindings, with remembered suggestions", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
   const { admin } = await tenantInSetup(browser, "place", "배치상사", false, "본사", "none");
   await registerBranch(admin, "배치상사", "판교지점", REGISTRATION_FIXTURES.branch_primary.brn);
@@ -40,7 +40,8 @@ test("placement comes from statutory workplace values; a physical-site reading i
   await forgetResize(admin);
   const rows = Array.from({ length: 11 }, (_, n) => [`PL-${n}`, `배치직원${n}`, "2024-03-04", "정규직", n % 2 ? "판교지점" : "본사"]);
   const first = await preview(admin, "사업장명부.xlsx", rows);
-  expect(first.sheets_needing_mapping).toBe(0);
+  expect(first.sheets_needing_mapping).toBe(1);
+  await confirmImportColumns(admin);
   await expect(admin.getByRole("button", { name: "근무지(고객 현장)로 읽기" })).toHaveCount(0);
   await accessibleAtBothWidths(admin, "workplace import preview");
   await apply(admin);
@@ -77,9 +78,9 @@ test("placement comes from statutory workplace values; a physical-site reading i
   const sites = [["SITE-1", "현장직원", "2024-03-04", "정규직", "고객가 현장"]];
   const ambiguous = await preview(admin, "고객현장.xlsx", sites);
   expect(ambiguous.sheets_needing_mapping).toBe(1);
-  await expect(admin.getByRole("button", { name: "법인 사업장으로 읽기" })).toBeVisible();
+  await admin.getByRole("combobox", { name: "명부 시트 E열(사업장)의 직원 항목", exact: true }).selectOption("worksite_name");
   const reread = admin.waitForResponse((r) => r.request().method() === "POST" && r.url().endsWith("/import/preview"));
-  await admin.getByRole("button", { name: "근무지(고객 현장)로 읽기" }).click();
+  await admin.getByRole("button", { name: "명부 시트를 이 연결로 다시 읽기", exact: true }).click();
   expect((await (await reread).json() as { sheets_needing_mapping: number }).sheets_needing_mapping).toBe(0);
   await apply(admin);
   const sitePeople = await (await api("/employees?search=" + encodeURIComponent("현장직원"))).json() as { items: { id: string; workplace_id: string | null; worksite_name: string | null }[] };
@@ -101,7 +102,9 @@ test("placement comes from statutory workplace values; a physical-site reading i
   await expect(admin.getByRole("listitem").filter({ hasNot: admin.getByRole("list") }).filter({ hasText: "현장직원" }).getByRole("link", { name: "배치", exact: true })).toHaveAttribute("href", `/people/${sitePeople.items[0]!.id}?act=TRANSFER`);
   await accessibleAtBothWidths(admin, "placement follow-up on Home");
   const remembered = await preview(admin, "같은현장다시.xlsx", sites);
-  expect(remembered.sheets_needing_mapping).toBe(0);
+  expect(remembered.sheets_needing_mapping).toBe(1);
+  await expect(admin.getByRole("combobox", { name: "명부 시트 E열(사업장)의 직원 항목", exact: true })).toHaveValue("worksite_name");
+  await confirmImportColumns(admin);
   await expect(admin.getByRole("button", { name: "근무지(고객 현장)로 읽기" })).toHaveCount(0);
   // Setup must restore the original placement history, rather than starting it on the repair date.
   const employeeId = sitePeople.items[0]!.id;

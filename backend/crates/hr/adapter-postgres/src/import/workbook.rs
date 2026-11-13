@@ -103,37 +103,52 @@ pub fn parse_workbook(
             })?
         };
         let mut rows = 0;
+        let mut unconfirmed = false;
         match &detection {
             SheetDetection::Mapped {
                 header_row,
                 columns: plans,
             } => {
-                let source = if plans.iter().any(|c| c.source == MappingSource::Operator) {
-                    "operator"
-                } else if plans.iter().any(|c| c.source == MappingSource::Remembered) {
-                    "remembered"
+                // Require a person's mapping before staging any cells or calling the vault.
+                unconfirmed = plans
+                    .iter()
+                    .any(|c| c.target.is_some() && c.source != MappingSource::Operator);
+                if unconfirmed {
+                    parsed.notes.push(Note {
+                        reason: "sheet_needs_mapping",
+                        blocking: true,
+                        sheet: sheet.name.clone(),
+                        row: None,
+                        cell: None,
+                    });
                 } else {
-                    "catalog"
-                };
-                let out = sheet_rows(ctx, sheet, *header_row, plans, source);
-                rows = out.rows.len();
-                for column in out.columns {
-                    columns
-                        .entry(column.normalized_header.clone())
-                        .or_insert(column);
+                    let source = if plans.iter().any(|c| c.source == MappingSource::Operator) {
+                        "operator"
+                    } else if plans.iter().any(|c| c.source == MappingSource::Remembered) {
+                        "remembered"
+                    } else {
+                        "catalog"
+                    };
+                    let out = sheet_rows(ctx, sheet, *header_row, plans, source);
+                    rows = out.rows.len();
+                    for column in out.columns {
+                        columns
+                            .entry(column.normalized_header.clone())
+                            .or_insert(column);
+                    }
+                    parsed.rows.extend(out.rows);
+                    parsed.identities.extend(out.identities);
+                    parsed.phones.extend(out.phones);
+                    parsed.notes.extend(out.notes);
+                    parsed.remembered.extend(
+                        plans
+                            .iter()
+                            .filter(|c| {
+                                c.source == MappingSource::Operator && !c.label.trim().is_empty()
+                            })
+                            .map(|c| (memory_key(&c.label), c.target.map(ToOwned::to_owned))),
+                    );
                 }
-                parsed.rows.extend(out.rows);
-                parsed.identities.extend(out.identities);
-                parsed.phones.extend(out.phones);
-                parsed.notes.extend(out.notes);
-                parsed.remembered.extend(
-                    plans
-                        .iter()
-                        .filter(|c| {
-                            c.source == MappingSource::Operator && !c.label.trim().is_empty()
-                        })
-                        .map(|c| (memory_key(&c.label), c.target.map(ToOwned::to_owned))),
-                );
             }
             SheetDetection::NeedsMapping { .. } => parsed.notes.push(Note {
                 reason: "sheet_needs_mapping",
@@ -146,6 +161,10 @@ pub fn parse_workbook(
         }
         let mut stored = sheet_report(sheet, &detection, rows, false);
         let mut shown = sheet_report(sheet, &detection, rows, true);
+        if unconfirmed {
+            stored["status"] = "needs_mapping".into();
+            shown["status"] = "needs_mapping".into();
+        }
         if remembered_skip {
             stored["source"] = "remembered".into();
             shown["source"] = "remembered".into();
@@ -285,3 +304,7 @@ pub fn sheet_report(
 #[cfg(test)]
 #[path = "workbook_place_tests.rs"]
 mod place_tests;
+
+#[cfg(test)]
+#[path = "workbook_confirmation_tests.rs"]
+mod confirmation_tests;

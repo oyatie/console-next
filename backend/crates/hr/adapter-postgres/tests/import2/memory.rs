@@ -47,12 +47,16 @@ async fn mapped_labels_and_values_are_remembered_per_tenant(pool: PgPool) {
     i.apply(run, &plan.dry_run_digest).await.unwrap();
 
     let again = i
+        .preview_unconfirmed("b.xlsx", &file(), &Default::default())
+        .await
+        .unwrap();
+    assert_eq!(again.sheets[0]["status"], "needs_mapping");
+    assert_eq!(again.sheets[0]["columns"][0]["source"], "remembered");
+    let confirmed = i
         .preview("b.xlsx", &file(), &Default::default())
         .await
         .unwrap();
-    assert_eq!(again.sheets[0]["status"], "mapped");
-    assert_eq!(again.sheets[0]["columns"][0]["source"], "remembered");
-    let plan = i.dry_run(again.run_id, decisions()).await;
+    let plan = i.dry_run(confirmed.run_id, decisions()).await;
     assert!(
         plan.remembered
             .iter()

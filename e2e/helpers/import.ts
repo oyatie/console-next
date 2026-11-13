@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { expect, type Page } from "@playwright/test";
+import type { components } from "@console/api";
 
 // Roster import helpers: real-shaped workbooks and the upload a user makes through the file picker.
 
@@ -73,8 +74,10 @@ export const protectedWorkbook = () => Buffer.concat([Buffer.from([0xd0, 0xcf, 0
 
 /** Chooses a workbook through the drop zone's file picker, as a user does. */
 export async function chooseWorkbook(page: Page, name: string, buffer: Buffer) {
+  const restart = page.getByRole("button", { name: "다른 파일 선택", exact: true });
+  if (await restart.isVisible()) await restart.click();
   const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "파일 선택" }).click();
+  await page.getByRole("button", { name: "파일 선택", exact: true }).click();
   await (await chooser).setFiles({ name, mimeType: XLSX_MIME, buffer });
   await expect(page.getByText(`선택한 파일: ${name}`)).toBeVisible();
 }
@@ -85,4 +88,28 @@ export async function chooseWorkbook(page: Page, name: string, buffer: Buffer) {
  */
 export async function payPeriod(page: Page) {
   await expect(page.getByLabel("시작일")).toHaveCount(0);
+}
+
+/** Confirms the offered bindings through the column screen; unknown layouts still need manual mapping. */
+export async function confirmImportColumns(page: Page) {
+  let preview: components["schemas"]["EmployeeImportPreviewResponse"] | undefined;
+  await expect(page.getByRole("button", { name: "모의 반영 실행", exact: true })).toBeVisible();
+  const names = await page.getByRole("region", { name: / 시트$/ }).evaluateAll(regions => regions.map(region => region.getAttribute("aria-label")!));
+  for (const name of names) {
+    const sheet = page.getByRole("region", { name, exact: true });
+    const map = sheet.getByRole("button", { name: / 시트 열 연결$/ });
+    if (await map.count() === 0) continue;
+    if (await map.getAttribute("aria-expanded") === "false") await map.click();
+    const save = sheet.getByRole("button", { name: / 시트를 이 연결로 다시 읽기$/ });
+    if (await save.getAttribute("aria-disabled") === "true") continue;
+    const response = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/employees/import/preview"));
+    await save.click();
+    const read = await response;
+    expect(read.ok()).toBe(true);
+    preview = await read.json();
+    await expect(sheet.getByRole("button", { name: / 시트 다시 연결$/ })).toBeVisible();
+  }
+  const remaining = page.getByRole("button", { name: / 시트 열 연결$/ }).first();
+  if (await remaining.count() && await remaining.getAttribute("aria-expanded") === "false") await remaining.click();
+  return preview;
 }

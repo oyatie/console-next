@@ -4,7 +4,7 @@ import { go, unique } from "../flows";
 import { openTenant } from "../helpers/tenant";
 import { setupCompany } from "../setup-flows";
 import { apiOf, bearerOf, headcount } from "../helpers/api";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { workbook } from "../helpers/import-layouts";
 import { settled } from "../helpers/import-queue";
 import { psql } from "../idle-fixture";
@@ -26,9 +26,10 @@ test("an interrupted import leaves no people and retry replays the complete repo
     ["AT-001", "가검증", "2020-03-02", "정규직"],
     ["AT-002", "나검증", "2021-04-01", "정규직"],
   ] }]));
-  const previewed = admin.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/import/preview"));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
-  const { run_id: run } = await (await previewed).json() as { run_id: string };
+  const confirmed = await confirmImportColumns(admin);
+  expect(confirmed).toBeDefined();
+  const run = confirmed!.run_id;
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(admin);
   // Fault injection only: the tenant, structure and workbook all use the product.
@@ -85,9 +86,10 @@ test("import progress reaches the screen before any employee is committed", { ta
     ["사번", "성명", "입사일", "고용형태"],
     ...Array.from({ length: 300 }, (_, n) => [`PR-${n}`, `검증직원${n}`, "2020-03-02", "정규직"]),
   ] }]));
-  const previewed = admin.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/import/preview"));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
-  const { run_id: run } = await (await previewed).json() as { run_id: string };
+  const confirmed = await confirmImportColumns(admin);
+  expect(confirmed).toBeDefined();
+  const run = confirmed!.run_id;
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(admin);
   // Hold each chunk until the browser has observed the preceding committed counter.

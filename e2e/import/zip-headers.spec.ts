@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { go } from "../flows";
 import { tenantBeforeSetup } from "../setup-flows";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { workbook } from "../helpers/import-layouts";
 
 test("inconsistent ZIP headers refuse an employee workbook and allow a valid replacement", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
@@ -29,6 +29,7 @@ test("inconsistent ZIP headers refuse an employee workbook and allow a valid rep
   const previewed = admin.waitForResponse((response) => response.url().endsWith("/employees/import/preview") && response.request().method() === "POST");
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
   expect((await previewed).status()).toBe(200);
+  await confirmImportColumns(admin);
   await expect(admin.locator('[aria-current="step"]')).toHaveText("열 확인");
   await expect(admin.getByRole("table", { name: "열", exact: true })).toContainText("성명");
 });
@@ -62,6 +63,7 @@ test("reversed worksheet dimensions show the corrupt-file refusal and allow a va
   const previewed = admin.waitForResponse((response) => response.url().endsWith("/employees/import/preview") && response.request().method() === "POST");
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
   expect((await previewed).status()).toBe(200);
+  await confirmImportColumns(admin);
   await expect(admin.locator('[aria-current="step"]')).toHaveText("열 확인");
   await expect(admin.getByRole("table", { name: "열", exact: true })).toContainText("성명");
 });
@@ -75,6 +77,7 @@ for (const part of ["svg", "pivot", "custom"]) {
     const previewed = admin.waitForResponse((response) => response.url().endsWith("/employees/import/preview") && response.request().method() === "POST");
     await admin.getByRole("button", { name: "명부 미리보기" }).click();
     expect((await previewed).status()).toBe(200);
+  await confirmImportColumns(admin);
     await expect(admin.locator('[aria-current="step"]')).toHaveText("열 확인");
     await expect(admin.getByRole("table", { name: "열", exact: true })).toContainText("성명");
   });

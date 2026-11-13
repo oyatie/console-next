@@ -1,6 +1,6 @@
 //! IMPORT-2 (decisions #25): which row of a sheet is its header and which
 //! column is which target, for any layout. In order: the operator's mapping
-//! for the sheet, then exact column keys, the tenant's remembered header labels, then the
+//! for the sheet, then remembered exclusions, exact column keys, remembered mappings, then the
 //! catalog aliases. A sheet with content but no row naming a name column is
 //! not guessed at: it comes back `NeedsMapping` with its likeliest header
 //! rows, and its cells are not kept.
@@ -117,13 +117,16 @@ pub fn memory_key(label: &str) -> String {
     import_header_match_key(label)
 }
 
-/// A header label's target: exact key, remembered mapping, then synonyms.
+/// A header label's suggestion: remembered exclusion, exact key, memory, synonyms.
 fn target_of(
     label: &str,
     memory: &BTreeMap<String, Option<String>>,
 ) -> (Option<&'static str>, MappingSource) {
     if label.is_empty() {
         return (None, MappingSource::Catalog);
+    }
+    if memory.get(&memory_key(label)) == Some(&None) {
+        return (None, MappingSource::Remembered);
     }
     if let Some(target) = known_target(label) {
         return (Some(target), MappingSource::Catalog);

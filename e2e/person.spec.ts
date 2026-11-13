@@ -5,7 +5,7 @@ import { go, koDate, kstDate, registerEmployee } from "./flows";
 import { hrAct, openHistory } from "./record";
 import { registerBranch, staffedTenant } from "./setup-flows";
 import { koDay } from "./dates";
-import { chooseWorkbook } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "./helpers/import";
 import { workbook } from "./helpers/import-layouts";
 import { reasonChip } from "./helpers/lifecycle";
 import { reasonBox, said, sheet, todayPreset, fillDate } from "./sheet";
@@ -120,6 +120,7 @@ test("employee page: effective-date history, change a reservation, statutory pla
     ["PG-0002", "정미배치", "", "사원", "2025-03-03", "정규직"],
   ] }]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await admin.getByRole("button", { name: /^명부 반영: 신규 1명/ }).click();
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();

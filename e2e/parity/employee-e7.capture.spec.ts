@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { go } from "../flows";
 import { parity, shot, VIEW } from "./shot";
 import { tenantInSetup } from "../setup-flows";
-import { chooseWorkbook, payPeriod } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "../helpers/import";
 import { crew, empty, notes, plain, rrn, titled, workbook, type Row } from "../helpers/import-layouts";
 import { gridRow, openItem, openRow, panel, queue, rowsGrid, settled } from "../helpers/import-queue";
 import { addDepartments } from "../structure-flows";
@@ -37,6 +37,7 @@ async function upload(admin: Page, name: string, buffer: Buffer, open = true) {
   await chooseWorkbook(admin, name, buffer);
   await payPeriod(admin);
   await button(admin, "명부 미리보기").click();
+  await confirmImportColumns(admin);
   await expect(step(admin)).toHaveText("열 확인", { timeout: 30_000 });
 }
 
@@ -69,6 +70,7 @@ test("parity capture: import (E7)", { tag: "@parity" }, async ({ browser }) => {
   await payPeriod(admin);
   await shot(admin, "E7-upload");
   await button(admin, "명부 미리보기").click();
+  await confirmImportColumns(admin);
   await expect(step(admin)).toHaveText("열 확인", { timeout: 30_000 });
   const sheets = admin.getByRole("region", { name: /^시트 4개/ });
   await expect(sheets.getByRole("region", { name: "본사 시트" })).toContainText("머리글 3행");

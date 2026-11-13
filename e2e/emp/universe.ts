@@ -108,7 +108,7 @@ async function importRows(admin: Page, rows: readonly Row[]) {
   const chart = await call<{ items: { id: string; name: string }[] }>("get", "/api/v1/org-units");
   const units = new Map(chart.items.map((u) => [u.name, u.id]));
   const file = { name: "인사명부.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: await workbook(rows) };
-  const { run_id } = await call<{ run_id: string }>("post", "/api/v1/employees/import/preview", { multipart: { file, pay_period_start: "2026-10-01", pay_period_end: "2026-10-31" } });
+  const { run_id } = await call<{ run_id: string }>("post", "/api/v1/employees/import/preview", { multipart: { file, mapping: JSON.stringify({"sheets": {"새온정밀": {"header_row": 1, "columns": {"A": "employee_number", "B": "name", "C": "birth_date", "D": "org_unit", "E": "position", "F": "employment_type", "G": "hire_date", "H": "exit_date", "I": "employment_status", "J": "leave_type", "K": "leave_start_date", "L": "leave_return_date", "M": "rrn"}}}}), pay_period_start: "2026-10-01", pay_period_end: "2026-10-31" } });
   const names = [...new Set(rows.map((r) => r.unit || r.site))];
   const decisions = {
     unit_map: Object.fromEntries(names.map((n) => [n, units.get(n) ?? null])),
