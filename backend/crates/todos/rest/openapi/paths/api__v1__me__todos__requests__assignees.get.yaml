@@ -9,8 +9,9 @@ description: >-
   ask from the caller accepts: those placed under a node where the caller's
   to-do request grants permit asking (every account for the tenant's ops
   account). Names only, ordered by display name then id. Who may read it is
-  who may ask; anyone else, and every support session, gets 403
-  todo_assign_forbidden.
+  who may ask; anyone else gets 403 todo_assign_forbidden. A support session
+  is refused first by the platform support guard (403
+  support.refuse.out_of_scope).
 security:
 - bearerAuth: []
 parameters:
