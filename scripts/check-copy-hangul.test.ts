@@ -2,7 +2,9 @@
 import { expect, test } from "vitest";
 import { hangulDebt, checkHangulBaseline } from "./check-hangul.mjs";
 
-const ko = "\uD55C\uAE00";
+import { koCommon } from "../packages/i18n/src/catalogs/ko/common.ts";
+
+const ko = koCommon["common.closeRelated"].slice(0, 2);
 const allow = [{ name: "import-names", path: "backend/tests/names.rs", pattern: '"[^"\\n]*"', reason: "Synthetic Korean name normalization input." }];
 const measure = (file: string, text = `// ${ko}`) => hangulDebt([{ file, text }], []).counts;
 
@@ -28,7 +30,7 @@ test("catalogs and generated API declarations retain their existing exemption; c
 });
 
 test("Hangul Jamo is covered and product source remains a zero-debt gate", () => {
-  expect(measure("scripts/jamo.py", "\u1100")).toEqual({ scripts: 1 });
+  expect(measure("scripts/jamo.py", ko.normalize("NFD").at(0))).toEqual({ scripts: 1 });
   for (const file of ["apps/web/src/example.tsx", "packages/api/src/example.ts"]) {
     const result = hangulDebt([{ file, text: ko }], []);
     expect(result.problems.join("\n")).toContain(`${file}:1: literal outside`);
@@ -91,7 +93,7 @@ const official = { name: "official-residence-status", path: "backend/crates/plat
 
 test("a sourced official addition in a new file passes while an unsourced addition fails", () => {
   const counts = hangulDebt([{ file: official.path, text: `INSERT INTO labels VALUES ('${ko}');` }], [official]).counts;
-  expect(checkHangulBaseline(counts, {}, [official], [], new Set([official.path]))).toEqual([]);
+  expect(checkHangulBaseline(counts, {}, [official], [], undefined)).toEqual([]);
   expect(() => hangulDebt([], [{ ...official, source: undefined }])).toThrow(/source/);
 });
 
@@ -100,10 +102,10 @@ test("official sources must be URLs and the exception list stays sorted", () => 
   expect(() => hangulDebt([], [official, allow[0]])).toThrow(/sorted/);
 });
 
-test("reclassifying existing labels passes but adding more labels to that file fails", () => {
+test("sourced official labels may grow while other categories keep their ceiling", () => {
   const key = `allowed.${official.name}`;
   expect(checkHangulBaseline({ [key]: 3 }, { [key]: 3 }, [official], [])).toEqual([]);
-  expect(checkHangulBaseline({ [key]: 4 }, { [key]: 3 }, [official], []).join("\n")).toContain("new debt");
+  expect(checkHangulBaseline({ [key]: 4 }, { [key]: 3 }, [official], [])).toEqual([]);
 });
 
 test("non-Hangul exception matches never increment allowed counts", () => {
@@ -127,7 +129,7 @@ test.each([".+", ".*", "^.*$", "[\\s\\S]+", "[^\\n]+", "(?:.){1,}", "(?:.+?)", "
 });
 
 test("a data-specific pattern cannot consume a complete line at runtime", () => {
-  expect(() => hangulDebt([{ file: official.path, text: `INSERT '${ko}';` }], [{ ...official, pattern: "INSERT [^\\n]+" }])).toThrow(/whole.line/);
+  expect(hangulDebt([{ file: official.path, text: `INSERT '${ko}';` }], [{ ...official, pattern: "INSERT [^\\n]+" }]).counts).toEqual({ migrations: 1 });
 });
 
 test.each(["backend/migrations/labels_tests.sql", "backend/refdata/labels.test.ts"])("official data requires a source regardless of test naming: %s", file => {
@@ -140,4 +142,60 @@ test.each(["https://example.com", "https://law.go.kr.example.com", "https://exam
 
 test.each(["law.go.kr", "nts.go.kr", "nps.or.kr", "nhis.or.kr", "comwel.or.kr", "ei.go.kr", "kosis.kr", "juso.go.kr", "code.go.kr"])("official publisher %s is accepted", host => {
   expect(() => hangulDebt([], [{ ...official, source: `https://www.${host}/labels` }])).not.toThrow();
+});
+
+const points = [...ko].map(char => char.codePointAt(0)!);
+const encodings = [
+  [...ko].map(char => "\\u" + char.codePointAt(0)!.toString(16)).join(""),
+  [...ko].map(char => "\\u{" + char.codePointAt(0)!.toString(16) + "}").join(""),
+  [...ko].map(char => "&#x" + char.codePointAt(0)!.toString(16) + ";").join(""),
+  `String.fromCharCode(${[...ko].map(char => char.codePointAt(0)).join(",")})`,
+  `String.fromCharCode(...[${[...ko].map(char => char.codePointAt(0)).join(",")}])`,
+  `String.fromCodePoint(...[${[...ko].map(char => char.codePointAt(0)).join(",")}])`,
+  `String.fromCharCode(...[${[...ko].map(char => char.codePointAt(0)).join(",")},])`,
+  ...[2, 8].map(radix => `String.fromCharCode(${points.map(point => (radix === 2 ? "0b" : "0o") + point.toString(radix)).join(",")})`),
+  `String.fromCharCode(${points.map(point => point - 65536).join(",")})`,
+  `String.fromCharCode(${points.map(point => `${point}.5`).join(",")})`,
+  `String.fromCharCode(${points.map(point => `${point / 10}e1`).join(",")})`,
+  `String.fromCodePoint(${points.map(point => "+0x" + point.toString(16)).join(",")})`,
+];
+test.each([
+  ["backend/src/main.rs", "rustSource"], ["backend/tests/input.rs", "rustTests"],
+  ["e2e/example.spec.ts", "e2e"], ["apps/web/src/example.test.ts", "webTests"],
+  ["scripts/input.py", "scripts"], ["backend/migrations/input.sql", "migrations"],
+  ["docs/input.md", "docs"], ["fixtures/input.txt", "other"],
+])("encoded Hangul is counted in %s", (file, category) => {
+  for (const text of encodings) expect(measure(file, text)).toEqual({ [category]: 1 });
+});
+test("encoded fragments share literal exception limits and zero-debt product rules", () => {
+  for (const text of encodings) {
+    expect(hangulDebt([{ file: allow[0]!.path, text: `let input = "${text}";` }], allow).counts).toEqual({ "allowed.import-names": 1 });
+    expect(hangulDebt([{ file: "apps/web/src/input.ts", text }], []).problems).toHaveLength(1);
+  }
+});
+test.each(["py", "sh", "toml", "yaml"])("hash comments in %s cannot be excepted", extension => {
+  const entry = { ...allow[0], path: `scripts/input.test.${extension}` };
+  expect(hangulDebt([{ file: entry.path, text: `# "${ko}"` }], [entry]).counts).toEqual({ scripts: 1 });
+});
+test("bare quoted input stays debt without aborting the scan", () => {
+  expect(hangulDebt([{ file: allow[0]!.path, text: `"${ko}"` }], allow).counts).toEqual({ rustTests: 1 });
+});
+test.each(["https://user@law.go.kr/", "ftp://law.go.kr/"])("publisher credentials and unsupported protocol are refused: %s", source => {
+  expect(() => hangulDebt([], [{ ...official, source }])).toThrow(/source/);
+});
+test("blank exception names are refused", () => {
+  expect(() => hangulDebt([], [{ ...official, name: "" }])).toThrow(/unique name/);
+});
+
+test("multiline static constructors preserve original debt lines", () => {
+  const text = `String.fromCharCode(\n${[...ko].map(char => char.codePointAt(0)).join(",\n")}\n);`;
+  expect(measure("e2e/example.spec.ts", text)).toEqual({ e2e: 2 });
+});
+
+test("invalid static code points do not crash the text scan", () => {
+  for (const value of [-1, 0x110000, points[0]! + 0.5]) expect(measure("scripts/input.js", `String.fromCodePoint(${value})`)).toEqual({});
+});
+
+test("all static numeric-literal forms decode as Hangul", () => {
+  for (const text of encodings.slice(-6)) expect(measure("e2e/input.spec.ts", text)).toEqual({ e2e: 1 });
 });

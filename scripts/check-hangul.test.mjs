@@ -7,7 +7,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-const ko = "\uD55C\uAE00";
+import { koCommon } from "../packages/i18n/src/catalogs/ko/common.ts";
+
+const ko = koCommon["common.closeRelated"].slice(0, 2);
 function fixture(t, files = {}) {
   const root = mkdtempSync(path.join(tmpdir(), "hangul-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -138,7 +140,7 @@ test("renaming a UI spec cannot launder existing selector debt", t => {
   assert.equal(f.run().status, 1);
 });
 
-test("a renamed file retains its allowed-fragment ceiling", t => {
+test("a renamed official file can refresh its sourced labels", t => {
   const original = "backend/migrations/original.sql", moved = "backend/migrations/moved.sql";
   const text = Array.from({ length: 20 }, (_, i) => `INSERT INTO labels VALUES (${i}, '${ko}');`).join("\n");
   const f = fixture(t, { [original]: text });
@@ -148,18 +150,16 @@ test("a renamed file retains its allowed-fragment ceiling", t => {
   assert.equal(f.run().status, 0, f.run().stderr);
   f.write(moved, `${text}\nINSERT INTO labels VALUES (20, '${ko}');`);
   const result = f.run();
-  assert.equal(result.status, 1, result.stdout);
-  assert.match(result.stderr, /allowed.official-labels: now 21, baseline 20; new debt/);
+  assert.equal(result.status, 0, result.stderr);
 });
 
-test("reclassification measures existing labels with the current rules and never permits growth", t => {
+test("reclassification permits sourced official label refreshes", t => {
   const f = fixture(t, { [official.path]: `INSERT INTO labels VALUES ('${ko}');` });
   f.allow([official]);
   assert.equal(f.run().status, 0, f.run().stderr);
   f.write(official.path, `INSERT INTO labels VALUES ('${ko}');\nINSERT INTO labels VALUES ('${ko}');`);
   const result = f.run();
-  assert.equal(result.status, 1, result.stdout);
-  assert.match(result.stderr, /allowed.official-labels: now 2, baseline 1; new debt/);
+  assert.equal(result.status, 0, result.stderr);
 });
 
 test("binary filtering rejects invalid UTF-8 and NUL blobs at base and tip", t => {
@@ -174,8 +174,8 @@ test("binary filtering rejects invalid UTF-8 and NUL blobs at base and tip", t =
   f.write("fixtures/new-nul.dat", Buffer.from(`\0${ko}`));
   const result = f.run("--report");
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Hangul lines: \{"other":1\}/);
-  assert.match(result.stdout, /Merge-base Hangul lines: \{"other":1\}/);
+  assert.match(result.stdout, /Hangul lines: \{"other":1,"scripts":1\}/);
+  assert.match(result.stdout, /Merge-base Hangul lines: \{"other":1,"scripts":1\}/);
 });
 
 test("every new or changed exception is visible in logs and the step summary even on refusal", t => {
@@ -203,4 +203,110 @@ test("every new or changed exception is visible in logs and the step summary eve
     assert.ok(refused.stdout.includes(JSON.stringify(entry)));
     assert.ok(readFileSync(summary, "utf8").includes(JSON.stringify(entry)));
   }
+});
+
+// Build encoded probes so the test source does not add the debt it is testing.
+const points = [...ko].map(char => char.codePointAt(0));
+const escaped = [
+  points.map(point => "\\u" + point.toString(16)).join(""),
+  points.map(point => "\\u{" + point.toString(16) + "}").join(""),
+  points.map(point => "&#x" + point.toString(16) + ";").join(""),
+  points.map(point => "&#" + point + ";").join(""),
+  `String.fromCharCode(${points.join(", ")})`,
+  `String.fromCharCode(${points.map(point => "0x" + point.toString(16)).join(", ")})`,
+  `String.fromCodePoint(${points.join(", ")})`,
+  `String.fromCharCode(...[${points.join(", ")}])`,
+  `String.fromCodePoint(...[${points.join(", ")}])`,
+  `String.fromCharCode(...[${points.join(", ")},])`,
+  ...[2, 8].map(radix => `String.fromCharCode(${points.map(point => (radix === 2 ? "0b" : "0o") + point.toString(radix)).join(",")})`),
+  `String.fromCharCode(${points.map(point => point - 65536).join(",")})`,
+  `String.fromCharCode(${points.map(point => `${point}.5`).join(",")})`,
+  `String.fromCharCode(${points.map(point => `${point / 10}e1`).join(",")})`,
+  `String.fromCodePoint(${points.map(point => "+0x" + point.toString(16)).join(",")})`,
+];
+
+test("encoded selectors are debt without an exception", t => {
+  const f = fixture(t);
+  for (const text of escaped) {
+    f.write("e2e/encoded.spec.ts", `getByRole('button', { name: '${text}' });`);
+    const result = f.run();
+    assert.equal(result.status, 1, text);
+    assert.match(result.stderr, /e2e: now 1, baseline 0/);
+  }
+});
+
+test("new synthetic and official test exceptions have no self-declared headroom", t => {
+  const f = fixture(t);
+  const file = "backend/tests/assertions.rs";
+  f.write(file, `assert_eq!(error, "${ko}");\n`.repeat(30));
+  for (const name of ["synthetic-assertions", "official-assertions"]) {
+    f.allow([{ ...official, name, path: file, pattern: '\"[^\"\\r\\n]*\"' }]);
+    const result = f.run();
+    assert.equal(result.status, 1, result.stdout);
+    assert.match(result.stderr, /new test exceptions cannot self-approve/);
+  }
+});
+
+test("existing synthetic exceptions keep their ceiling in new test files", t => {
+  const file = "backend/tests/names.rs", copy = "backend/tests/copy.rs";
+  const entry = { name: "synthetic-names", path: file, pattern: '\"[^\"\\r\\n]*\"', reason: "Korean name input." };
+  const f = fixture(t, { [file]: `const NAME: &str = "${ko}";\n`, "rustfmt.toml": 'edition = "2024"\n', "scripts/copy-hangul-baseline.json": JSON.stringify({ allow: [entry] }) });
+  f.write(copy, `let name = "${ko}";\n`.repeat(30));
+  f.allow([entry, { ...entry, name: "synthetic-other", path: copy }]);
+  assert.equal(f.run().status, 1);
+  f.write(file, `let name = "${ko}";\n`.repeat(2));
+  f.allow([entry]);
+  assert.match(f.run().stderr, /allowed.synthetic-names: now 2, baseline 1/);
+});
+
+test("official reference refreshes allow additions, renames and copies without blessing comments", t => {
+  for (const operation of ["append", "rename", "copy"]) {
+    const file = "backend/refdata/labels.tsv", next = "backend/refdata/next.tsv";
+    const entry = { ...official, path: file, pattern: "(?<=\\t)[^\\t\\r\\n]+" };
+    const text = Array.from({ length: 20 }, (_, i) => `${i}\t${ko}`).join("\n");
+    const f = fixture(t, { [file]: text, "scripts/copy-hangul-baseline.json": JSON.stringify({ allow: [entry] }) });
+    const target = operation === "append" ? file : next;
+    if (operation === "rename") f.git("mv", file, target);
+    f.write(target, `${text}\n20\t${ko}`);
+    if (operation === "rename") f.allow([{ ...entry, path: target }]);
+    if (operation === "copy") f.allow([{ ...entry, name: "official-copy", path: target }, entry]);
+    f.git("add", ".");
+    const result = f.run();
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Hangul exception count changes:/);
+    if (operation === "copy") {
+      assert.match(result.stdout, /allowed.official-copy: 20 -> 21/);
+      assert.doesNotMatch(result.stdout, /allowed.official-labels: 0 -> 20/);
+    }
+    f.write(target, `${text}\n20\t${ko}\n# ${ko}`);
+    assert.match(f.run().stderr, /other: now 1, baseline 0/);
+  }
+});
+
+test("hash comments and bare matches remain debt", t => {
+  const f = fixture(t);
+  const file = "scripts/input_test.py";
+  f.write(file, `# "${ko}"`);
+  f.allow([{ name: "synthetic-input", path: file, pattern: '\"[^\"\\r\\n]*\"', reason: "Korean input." }]);
+  assert.match(f.run().stderr, /scripts: now 2, baseline 1/);
+});
+
+test("pre-existing escaped product text is baselined but new escaped product text is refused", t => {
+  const file = "apps/web/src/input.ts";
+  const f = fixture(t, { [file]: `const input = "${escaped[0]}";` });
+  assert.equal(f.run().status, 0, f.run().stderr);
+  f.write(file, `// English comment\nconst input = "${escaped[0]}";`);
+  assert.equal(f.run().status, 0, f.run().stderr);
+  f.write(file, `// English comment\nconst input = "${escaped[0]}";\nconst added = "${escaped[1]}";`);
+  assert.match(f.run().stderr, /input.ts:3: literal outside/);
+  f.write(file, `const input = "${ko}";`);
+  assert.match(f.run().stderr, /input.ts:1: literal outside/);
+});
+
+test("multiline static selector constructors are counted on their original lines", t => {
+  const f = fixture(t);
+  f.write("e2e/encoded.spec.ts", `getByRole('button', { name: String.fromCharCode(\n${points.join(",\n")}\n) });`);
+  const result = f.run();
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /e2e: now 2, baseline 0/);
 });

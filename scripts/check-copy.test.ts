@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, expect, test } from "vitest";
 import { EN_TERM_RULES, TERM_RULES, catalogIds, checkRuntimeOutput, checkTerms, checkUnused, copyEntries, checkComposer } from "./check-copy.mjs";
 import * as copyGate from "./check-copy.mjs";
+import { koCommon } from "../packages/i18n/src/catalogs/ko/common.ts";
 
 test.each([
   "lifecycle.refuse.close_blocked", "account_link.refuse.identity_unbound",
@@ -381,7 +382,7 @@ test.each([
 ])("CLI and report mode refuse an untracked Korean comment in %s", (file, category) => {
   const { cli, dir } = runtimeCli();
   mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
-  writeFileSync(path.join(dir, file), "// \uD55C\uAE00\n");
+  writeFileSync(path.join(dir, file), `// ${koCommon["common.closeRelated"].slice(0, 2)}\n`);
   const result = cli();
   expect(result.status).toBe(1);
   expect(result.stderr).toContain(`${category}: now 1, baseline 0; new debt`);
@@ -391,7 +392,7 @@ test.each([
 });
 
 test("first Hangul adoption reads UTF-8 fixtures marked binary and refuses fresh debt", () => {
-  const { cli, dir, git } = runtimeCli({ ".gitattributes": "*.fixture binary\n", "names.fixture": "\uD55C\uAE00" });
+  const { cli, dir, git } = runtimeCli({ ".gitattributes": "*.fixture binary\n", "names.fixture": koCommon["common.closeRelated"].slice(0, 2) });
   const file = path.join(dir, "scripts/copy-hangul-baseline.json");
   git("rm", "scripts/copy-hangul-baseline.json");
   git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: first Hangul adoption");
@@ -400,7 +401,7 @@ test("first Hangul adoption reads UTF-8 fixtures marked binary and refuses fresh
   expect(seeded.status, seeded.stderr).toBe(0);
   expect(cli().status).toBe(0);
   mkdirSync(path.join(dir, "e2e"));
-  writeFileSync(path.join(dir, "e2e/planted.spec.ts"), "// \uD55C\uAE00");
+  writeFileSync(path.join(dir, "e2e/planted.spec.ts"), `// ${koCommon["common.closeRelated"].slice(0, 2)}`);
   expect(cli("--report").stderr).toContain("e2e: now 1, baseline 0; new debt");
 });
 

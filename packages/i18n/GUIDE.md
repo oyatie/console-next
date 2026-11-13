@@ -11,12 +11,14 @@ A new string: add the id with its English text to `en/<ns>.ts`, then its Korean 
 Components never contain literal text; `npm run lint` fails on Hangul outside the catalogs.
 
 The same lint step and the dependency-free `node scripts/check-hangul.mjs` gate ratchet
-Hangul across repository text files. Counts are lines containing Hangul (including Jamo),
+Hangul across repository text files. Counts include decoded Unicode escapes, numeric HTML
+entities, and static `String.fromCharCode` / `String.fromCodePoint` calls, including Jamo,
 per category: Rust source, Rust test files, E2E, web test files, scripts, migrations,
 docs, and other text. Inline Rust test modules remain in the source-file category.
 Tracked and non-ignored new UTF-8 files are checked; binary files, locale catalog source,
 and the generated API declaration `packages/api/src/schema.d.ts` are excluded.
 Web product source keeps its zero-debt rule; only `.test.ts` and `.test.tsx` files are exempt.
+Pre-existing escaped product text is baselined; new escaped product text is refused.
 
 Each category must stay at or below its count in `git merge-base HEAD origin/dev`.
 `QUALITY_BASE` overrides the target; local checkouts prefer `public/dev` when available.
@@ -34,13 +36,18 @@ use code.go.kr; the country migration cites [Unicode CLDR](https://github.com/un
 so only that GitHub repository is accepted. Add a cited publisher reason here before extending the list.
 Test-like filenames under migrations or refdata still require an official source.
 Synthetic Korean-input test fixtures may be named separately outside `e2e/` and `apps/web/`;
-UI tests use catalog lookups and cannot declare exceptions. Whole-line regexes and matches
-are refused. Matched fragments count as `allowed.<name>`; comments and unmatched
-fragments remain debt. Existing definitions cannot be widened or edited, and unused entries
-must be removed. A new exception may cover a new file, or reclassify existing labels without
-increasing their count. Git renames and copies retain their original path's ceiling.
-Every added or changed definition is printed in the gate output and CI step summary,
-including definitions the gate refuses. Existing exception counts still cannot grow. Ordinary translated UI
+UI tests use catalog lookups and cannot declare exceptions. Whole-line regexes are refused;
+a whole-line match remains debt. Matched fragments count as `allowed.<name>`; comments
+(including `#` comments) and unmatched fragments remain debt. Existing definitions cannot
+be widened, and unused entries must be removed. New test exceptions can only reclassify
+existing fragments measured at the merge base; they cannot approve new test text. Synthetic
+exception counts cannot grow, including in new, renamed or copied files.
+Sourced `official-*` entries for reference data under refdata or migrations may grow to
+cover additions and refreshes. This allowance excludes test files. Every added Hangul line
+must be covered; comments and unmatched fragments remain subject to the category ceiling.
+A path-only update of an official reference entry is allowed for a Git-detected rename or copy.
+Every added or changed definition and each exception count delta is printed in the gate
+output and CI step summary, including changes the gate refuses. Ordinary translated UI
 assertions, comments, and test names remain debt.
 
 ## Ids

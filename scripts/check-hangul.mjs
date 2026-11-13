@@ -29,6 +29,27 @@ const hangulCategory = file => {
   return "other";
 };
 
+const isReferenceData = entry => /(?:^|\/)(?:migrations|refdata)\//.test(entry.path) && !isDebtTest(entry.path);
+const canRefresh = entry => isReferenceData(entry) && entry.name.startsWith("official-") && officialSource(entry.source);
+
+const NUMBER = /[+-]?(?:0[xX][\da-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|(?:[\d_]+(?:\.[\d_]*)?|\.[\d_]+)(?:[eE][+-]?[\d_]+)?)/g;
+const CONSTRUCTOR = new RegExp(String.raw`String\s*\.\s*from(CharCode|CodePoint)\(\s*(?:\.\.\.\[\s*)?((?:${NUMBER.source}\s*,\s*)*${NUMBER.source})\s*,?\s*(?:\]\s*)?\)`, "g");
+
+// Decode static spellings without evaluating source code; count each original line once.
+function decodeEscapes(text) {
+  const character = value => Number.isInteger(value) && value >= 0 && value <= 0x10ffff ? String.fromCodePoint(value) : "";
+  return text.replace(/\\u(?:\{([\da-fA-F_]{1,8})\}|([\da-fA-F]{4}))|&#(?:x([\da-fA-F]+)|(\d+));/g,
+    (match, braced, fixed, hex, decimal) => {
+      const decoded = character(Number.parseInt((braced ?? fixed ?? hex ?? decimal).replaceAll("_", ""), decimal ? 10 : 16));
+      return HANGUL.test(decoded) ? decoded : match;
+    })
+    .replace(CONSTRUCTOR, (call, method, args) => call.replace(args, args.replace(NUMBER, number => {
+      const value = (number.startsWith("-") ? -1 : 1) * Number(number.replace(/^[+-]/, "").replaceAll("_", ""));
+      const decoded = method === "CharCode" ? String.fromCharCode(value) : character(value);
+      return HANGUL.test(decoded) ? decoded : number;
+    })));
+}
+
 // Count lines, including comments. An exception removes only its matched fragment, not the rest of a line.
 export function hangulDebt(sources, allow) {
   const names = new Set();
@@ -47,7 +68,7 @@ export function hangulDebt(sources, allow) {
     }
     return { ...entry, re };
   });
-  const counts = {}, problems = [];
+  const counts = {}, problems = [], encodedProblems = [];
   const add = category => { counts[category] = (counts[category] ?? 0) + 1; };
   for (const { file, text } of sources) {
     if ((file.startsWith(`${CATALOGS}/`) && /\.(?:ts|json)$/.test(file) && !isDebtTest(file)) || file === "packages/api/src/schema.d.ts") continue;
@@ -55,21 +76,27 @@ export function hangulDebt(sources, allow) {
     const product = /^(?:apps\/web\/src|packages\/api\/src)\//.test(file) && /\.(?:tsx?|css)$/.test(file) && !/\.test\.tsx?$/.test(file);
     const entries = rules.filter(rule => rule.path === file);
     let blockDepth = 0;
-    text.split("\n").forEach((line, i) => {
+    const rawLines = text.split("\n");
+    decodeEscapes(text).split("\n").forEach((line, i) => {
+      const raw = rawLines[i];
       const blockComment = blockDepth > 0 || line.includes("/*");
       for (const marker of line.matchAll(/\/\*|\*\//g)) blockDepth = Math.max(0, blockDepth + (marker[0] === "/*" ? 1 : -1));
       if (!HANGUL.test(line)) return;
       // Exceptions never weaken the existing zero-debt product-source rule.
-      if (product) problems.push(`${file}:${i + 1}: literal outside the i18n catalogs: ${line.trim().slice(0, 100)}`);
+      if (product) {
+        const problem = `${file}:${i + 1}: literal outside the i18n catalogs: ${line.trim().slice(0, 100)}`;
+        problems.push(problem);
+        if (!HANGUL.test(raw)) encodedProblems.push(problem);
+      }
       // Conservative boundaries keep quoted comments out of input/label exceptions, including nested blocks.
-      const commentAt = blockComment ? 0 : line.search(/\/\/|--/);
+      const commentAt = blockComment ? 0 : line.search(/\/\/|--|#/);
       let code = commentAt < 0 ? line : line.slice(0, commentAt);
       const comment = commentAt < 0 ? "" : line.slice(commentAt);
       for (const entry of entries) {
         let used = false;
         code = code.replace(entry.re, match => {
           if (!HANGUL.test(match)) return match;
-          if (match.trim() === code.trim()) throw new Error(`${entry.name}: whole-line Hangul exception match at ${file}:${i + 1}`);
+          if (match.trim() === code.trim()) return match;
           used = true;
           return "";
         });
@@ -78,7 +105,7 @@ export function hangulDebt(sources, allow) {
       if (HANGUL.test(code + comment)) add(category);
     });
   }
-  return { counts, problems };
+  return { counts, problems, encodedProblems };
 }
 
 export function repositoryHangul(base, allow) {
@@ -106,7 +133,7 @@ export function repositoryHangul(base, allow) {
     .flatMap(file => source(file, readFileSync(file))), allow);
 }
 
-export function checkHangulBaseline(counts, baseline, allow = [], previous = allow, newFiles = new Set()) {
+export function checkHangulBaseline(counts, baseline, allow = [], previous = allow) {
   const problems = [];
   for (const [category, count] of Object.entries(baseline)) {
     if (!Number.isSafeInteger(count) || count < 0) problems.push(`${category}: invalid baseline count`);
@@ -114,11 +141,11 @@ export function checkHangulBaseline(counts, baseline, allow = [], previous = all
   for (const entry of allow) {
     const old = previous.find(old => old.name === entry.name || old.path === entry.path);
     if (old && JSON.stringify(old) !== JSON.stringify(entry)) problems.push(`${entry.name}: existing exception cannot change`);
+    if (!isReferenceData(entry) && !previous.some(old => old.name === entry.name) && !baseline[`allowed.${entry.name}`]) problems.push(`${entry.name}: new test exceptions cannot self-approve; use catalog lookups or English`);
     if (!counts[`allowed.${entry.name}`]) problems.push(`${entry.name}: remove stale Hangul exception`);
   }
   for (const [category, count] of Object.entries(counts)) {
-    const added = allow.find(entry => category === `allowed.${entry.name}` && !previous.some(old => old.name === entry.name));
-    if (added && newFiles.has(added.path)) continue;
+    if (allow.some(entry => category === `allowed.${entry.name}` && canRefresh(entry))) continue;
     if (count > (baseline[category] ?? 0)) problems.push(`${category}: now ${count}, baseline ${baseline[category] ?? 0}; new debt`);
   }
   return problems;
@@ -138,10 +165,29 @@ export function checkRepositoryHangul(base) {
   for (let i = 0; i < moved.length; i += 3) origins.set(moved[i + 2], moved[i + 1]);
   const now = repositoryHangul(undefined, allow);
   // Apply the same exceptions on both trees so existing labels can be reclassified without blessing growth.
-  const baseline = repositoryHangul(base, allow.map(entry => ({ ...entry, path: origins.get(entry.path) ?? entry.path }))).counts;
-  const files = new Set(execFileSync("git", ["ls-tree", "-r", "--name-only", "-z", base], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }).split("\0"));
-  const added = new Set(allow.filter(entry => !files.has(entry.path) && !origins.has(entry.path)).map(entry => entry.path));
-  return { ...now, baseline, problems: [...now.problems, ...checkHangulBaseline(now.counts, baseline, allow, previous, added)] };
+  const mapped = allow.map(entry => ({ ...entry, path: origins.get(entry.path) ?? entry.path }));
+  const before = repositoryHangul(base, mapped);
+  const baseline = before.counts;
+  for (const entry of mapped) {
+    const first = mapped.find(first => first.path === entry.path && first.pattern === entry.pattern);
+    baseline[`allowed.${entry.name}`] = baseline[`allowed.${first.name}`] ?? 0;
+  }
+  // A path-only change is permitted for a Git-detected move of sourced reference data.
+  const approved = previous.map(old => {
+    const entry = allow.find(entry => entry.name === old.name);
+    return entry && canRefresh(entry) && origins.get(entry.path) === old.path ? { ...old, path: entry.path } : old;
+  });
+  const deltas = allow.map(entry => {
+    const key = `allowed.${entry.name}`, before = baseline[key] ?? 0, after = now.counts[key] ?? 0;
+    return before === after ? [] : [`${key}: ${before} -> ${after} (${after - before >= 0 ? "+" : ""}${after - before})`];
+  }).flat();
+  if (deltas.length) {
+    const report = `Hangul exception count changes:\n${deltas.join("\n")}\n`;
+    console.log(report.trimEnd());
+    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${report}\n`);
+  }
+  const existingEncoded = new Set(before.encodedProblems.map(problem => problem.replace(/:\d+:/, ":")));
+  return { ...now, baseline, problems: [...now.problems.filter(problem => !now.encodedProblems.includes(problem) || !existingEncoded.has(problem.replace(/:\d+:/, ":"))), ...checkHangulBaseline(now.counts, baseline, allow, approved)] };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
