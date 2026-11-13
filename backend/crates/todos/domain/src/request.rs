@@ -62,12 +62,21 @@ impl RequestState {
         }
     }
 
-    /// Return and withdraw act on an open request only.
+    /// Return acts on an open request only.
     pub fn ensure_open(self) -> Result<(), KernelError> {
         if self == Self::Open {
             Ok(())
         } else {
             Err(closed())
+        }
+    }
+
+    /// The requester withdraws an open request or clears one sent back; a done one stays as a record.
+    pub fn ensure_withdrawable(self) -> Result<(), KernelError> {
+        if self == Self::Done {
+            Err(closed())
+        } else {
+            Ok(())
         }
     }
 
@@ -186,6 +195,17 @@ mod tests {
             let err = state.ensure_done_allowed(done).unwrap_err();
             assert_eq!(err.code, Some("todo_closed"), "{state:?} done={done}");
         }
+    }
+
+    #[test]
+    fn the_requester_withdraws_an_open_request_or_clears_a_returned_one() {
+        assert!(RequestState::Open.ensure_withdrawable().is_ok());
+        assert!(RequestState::Returned.ensure_withdrawable().is_ok());
+        let err = RequestState::Done.ensure_withdrawable().unwrap_err();
+        assert_eq!(
+            (err.kind, err.code),
+            (ErrorKind::Conflict, Some("todo_closed"))
+        );
     }
 
     #[test]

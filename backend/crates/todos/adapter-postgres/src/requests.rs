@@ -166,10 +166,11 @@ impl PgTodoStore {
         Ok(TodoPage { items })
     }
 
-    /// The requester takes back an open request: the row is deleted (audited as
-    /// `todo.withdraw`, which the request row already names). Saved command
-    /// outcomes of earlier calls that returned it, the ask among them, keep
-    /// their copy under that store's retention.
+    /// The requester takes back an open request, or clears one sent back: the
+    /// row is deleted with its text and note (audited as `todo.withdraw`, which
+    /// the request row already names). A done request is `todo_closed`. Saved
+    /// command outcomes of earlier calls that returned it, the ask among them,
+    /// keep their copy under that store's retention.
     pub async fn withdraw_request(
         &self,
         command: WithdrawTodoRequestCommand,
@@ -196,7 +197,7 @@ impl PgTodoStore {
                 .fetch_optional(tx.as_mut())
                 .await?;
                 let (done, returned) = row.ok_or_else(not_found)?;
-                RequestState::of(done, returned).ensure_open()?;
+                RequestState::of(done, returned).ensure_withdrawable()?;
                 sqlx::query("DELETE FROM todos WHERE id = $1")
                     .bind(todo)
                     .execute(tx.as_mut())
