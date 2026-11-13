@@ -9380,7 +9380,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the authenticated user's todos, open first then newest first */
+        /**
+         * List the authenticated user's todos, open first then newest first
+         * @description The caller's own todos only. Requests a colleague made of the caller are not listed here.
+         */
         get: operations["listMyTodos"];
         put?: never;
         /**
@@ -9389,6 +9392,70 @@ export interface paths {
          */
         post: operations["createMyTodo"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/todos/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List what the caller asked of others, newest first
+         * @description Only requests the caller made; a caller who asked nothing gets an empty list. A withdrawn request is deleted and appears in no state.
+         */
+        get: operations["listMyTodoRequests"];
+        put?: never;
+        /**
+         * Ask a colleague for a follow-up
+         * @description Creates a todo owned by the assignee and asked by the caller. Who may ask is any holder of a to-do request grant (a role line todo_request edit), over the people placed under that grant's scope node, and the tenant's ops account. A support session is refused first by the platform support guard (403 support.refuse.read_only). Cedar decides, inside the write, that the assignee is an active account of the caller's tenant placed under a node the caller's grants permit; an account with no linked employee or no current placement sits at the tenant node. Refusals, in order: 403 todo_assign_forbidden (neither a to-do request grant nor the ops account); 422 validation (text, links); 422 todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and out-of-scope accounts alike, and a grant revoked mid-request); 422 todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name records by kind and id; a sent label is ignored and never stored. Audited as todo.request with the assignee and the due date only.
+         */
+        post: operations["createMyTodoRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/todos/requests/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the colleagues the caller may ask for a follow-up
+         * @description The active accounts of the caller's tenant, other than the caller, that an ask from the caller accepts: those placed under a node where the caller's to-do request grants permit asking (every account for the tenant's ops account). Names only, ordered by display name then id. Who may read it is who may ask; anyone else gets 403 todo_assign_forbidden. A support session is refused first by the platform support guard (403 support.refuse.out_of_scope).
+         */
+        get: operations["listMyTodoAssignees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/todos/requests/{todoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Withdraw an open request the caller made
+         * @description Deletes the request. Saved outcomes of earlier calls that returned it, the ask among them, are kept for the command-outcome retention period, as for any deleted todo, and a retry of such a call does not show it again. 404 when the id is not a request the caller made; 409 todo_closed once it is done or returned. Afterwards the assignee's done or return on it is a 404. Audited as todo.withdraw.
+         */
+        delete: operations["withdrawMyTodoRequest"];
         options?: never;
         head?: never;
         patch?: never;
@@ -9406,7 +9473,7 @@ export interface paths {
         post?: never;
         /**
          * Delete one of the authenticated user's todos
-         * @description A cross-user id is a 404, never another user's row. Audited as todo.delete.
+         * @description A cross-user id is a 404, never another user's row. A request is 409 todo_is_request: only its requester takes it back. Audited as todo.delete.
          */
         delete: operations["deleteMyTodo"];
         options?: never;
@@ -9425,9 +9492,29 @@ export interface paths {
         put?: never;
         /**
          * Mark one of the authenticated user's todos done or undone
-         * @description Explicit target state so the same endpoint supports done AND undo. A cross-user id is a 404, never another user's row. Audited as todo.done / todo.undone.
+         * @description Explicit target state so the same endpoint supports done AND undo. A cross-user id is a 404, never another user's row. A request only moves forward: undoing a done request, or finishing a returned one, is 409 todo_closed. Audited as todo.done / todo.undone.
          */
         post: operations["setMyTodoDone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/todos/{todoId}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a request back to whoever asked
+         * @description Only the request's owner, while it is open. 404 for a private todo or one that is not the caller's; 409 todo_closed once done or returned; 422 validation for a note outside 1..=200 characters. Audited as todo.return, without the note.
+         */
+        post: operations["returnMyTodo"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15201,7 +15288,7 @@ export interface components {
         };
         AccessRoleLineInput: {
             /** @enum {string} */
-            domain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access";
+            domain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access" | "todo_request";
             levels: components["schemas"]["AccessLevel"][];
         };
         /** @enum {string} */
@@ -28340,6 +28427,10 @@ export interface components {
         ReturnSubstituteRequest: {
             return_note?: string | null;
         };
+        ReturnTodoRequest: {
+            /** @description Why it goes back; 1..=200 characters after trimming. */
+            note: string;
+        };
         ReverseVoucherRequest: {
             memo?: string;
         };
@@ -29656,6 +29747,26 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        TodoAskRequest: {
+            assignee_account_id: components["schemas"]["Uuid"];
+            /** @description 1..=500 characters after trimming. */
+            text: string;
+            /**
+             * Format: date
+             * @description Today or later in KST.
+             */
+            due_on?: string;
+            /** @description Records the request is about; at most 20. */
+            links?: components["schemas"]["TodoRequestLink"][];
+        };
+        /** @description An account the caller may ask, by name only. */
+        TodoAssignee: {
+            account_id: components["schemas"]["Uuid"];
+            display_name: string;
+        };
+        TodoAssigneePage: {
+            items: components["schemas"]["TodoAssignee"][];
+        };
         TodoPage: {
             items: components["schemas"]["TodoSummary"][];
         };
@@ -29664,6 +29775,12 @@ export interface components {
             kind: string;
             id: string;
             label?: string;
+        };
+        /** @description A record a request is about, named by kind and id only; the reader's own rights decide what it shows. kind is one of the record kinds the work inbox opens from an id. */
+        TodoRequestLink: {
+            /** @enum {string} */
+            kind: "change_request" | "employee" | "exit_case" | "identifier_correction" | "org_change" | "period_lock" | "privacy_request" | "statutory" | "support_session";
+            id: components["schemas"]["Uuid"];
         };
         TodoSummary: {
             id: components["schemas"]["Uuid"];
@@ -29679,6 +29796,17 @@ export interface components {
              * @description When the todo was first marked done; null while open.
              */
             done_at: string | null;
+            /** @description The account that asked for this todo. Absent on the owner's own todo, as are due_on, returned_at and return_note. */
+            assigned_by_user_id?: components["schemas"]["Uuid"];
+            /**
+             * Format: date
+             * @description The day the requester asked for.
+             */
+            due_on?: string;
+            /** @description When the owner sent the request back. */
+            returned_at?: components["schemas"]["Timestamp"];
+            /** @description The line the owner wrote when sending it back. */
+            return_note?: string;
         };
         TokenPairResponse: {
             /** @description Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required. */
@@ -50749,6 +50877,146 @@ export interface operations {
             };
         };
     };
+    listMyTodoRequests: {
+        parameters: {
+            query?: {
+                /** @description open (default), done or returned; anything else is 422 validation. */
+                state?: "open" | "done" | "returned";
+                /** @description Page size (clamped server-side to 1..=200; default 100). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's requests in that state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodoPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    createMyTodoRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TodoAskRequest"];
+            };
+        };
+        responses: {
+            /** @description The request, as the assignee's todo. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodoSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    listMyTodoAssignees: {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive match anywhere in the display name, after trimming. */
+                search?: string;
+                /** @description Page size (clamped server-side to 1..=50; default 20). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The accounts the caller may ask. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodoAssigneePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    withdrawMyTodoRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                todoId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request was withdrawn. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     deleteMyTodo: {
         parameters: {
             query?: never;
@@ -50769,6 +51037,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             /** @description JWT verification is not configured. */
             503: {
                 headers: {
@@ -50806,6 +51075,44 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    returnMyTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                todoId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnTodoRequest"];
+            };
+        };
+        responses: {
+            /** @description The request was sent back. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
             /** @description JWT verification is not configured. */
             503: {
                 headers: {
