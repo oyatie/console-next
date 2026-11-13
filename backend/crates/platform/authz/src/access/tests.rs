@@ -207,6 +207,7 @@ fn no_grant_is_default_deny_and_ops_is_break_glass() {
     let ops = AccessSlice::compile(&subject(&t, true, vec![])).expect("compiles");
     for action in [
         Feature::EmployeeDirectoryRead.as_str().to_owned(),
+        Feature::TodoAssign.as_str().to_owned(),
         action_group(Domain::Access, Level::Edit),
         action_group(Domain::Tenant, Level::Approve),
     ] {

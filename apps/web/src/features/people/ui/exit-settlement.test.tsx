@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 import { i18n, loadCatalog } from "@console/i18n";
@@ -7,6 +8,8 @@ import { fmtDate } from "@console/i18n/format";
 import { SettlementFigures } from "./exit-facts";
 import { SettlementForm } from "./exit-settlement";
 
+// oxlint-disable-next-line react/forbid-elements -- Native links expose the router mock’s destination.
+vi.mock("@tanstack/react-router", () => ({ Link: ({ to, params, search, children }: { to: string; params?: { id: string }; search?: { act?: string }; children: ReactNode }) => <a href={`${to.replace("$id", params?.id ?? "")}${search?.act ? `?act=${search.act}` : ""}`}>{children}</a> }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({ isPending: false, error: null }) }));
 vi.mock("./use-exit-command", () => ({
   EXIT_INVALIDATES: [], focusFirstInvalid: vi.fn(),
@@ -101,4 +104,67 @@ test("legacy figures and eligible wage inputs retain their existing behavior", (
   expect(renderToStaticMarkup(<SettlementFigures pkg={p} />)).toContain("3,000,000");
   p.statutory_basis = { severance_eligibility: { outcome: "ELIGIBLE" } };
   expect(form(p)).toContain('type="text"');
+});
+
+
+test("missing employment and rule sources name the repair routes even after wages are saved", () => {
+  const p = pkg();
+  p.status = "NEEDS_SOURCE"; p.statutory_basis = {};
+  p.missing_source_fields = ["hire_date", "statutory_rules"];
+  Object.assign(p, { average_wage_period_start: "2026-07-21", average_wage_period_end: "2026-10-20", average_wage_calendar_days: 92, average_wage_total_won: 9_000_000, monthly_ordinary_wage_won: 3_000_000 });
+  const html = form(p);
+  expect(html).toContain("입사일 확인·정정");
+  expect(html).toContain('/people/person?act=fix:hire_date');
+  expect(html).toContain("법정 기준 누락 · 관리자에게 퇴직일 기준 법정 기준 대장 검토를 요청하십시오");
+  expect(html).not.toContain('/payroll/reference');
+  expect(html).toContain('aria-disabled="true"');
+});
+
+test("each missing wage source is named with the instruction to enter it and recalculate", () => {
+  const p = pkg(); p.statutory_basis = {};
+  p.missing_source_fields = ["average_wage_period_start", "average_wage_period_end", "average_wage_calendar_days", "average_wage_total_won", "monthly_ordinary_wage_won"];
+  const html = form(p);
+  expect(html).toContain("계산에 필요한 자료");
+  for (const label of ["평균임금 산정 시작일", "평균임금 산정 종료일", "산정 기간 총일수", "기간 임금 총액", "월 통상임금"]) {
+    expect(html).toContain(`<li>${label}`);
+  }
+  expect(html).toContain("입력 후 다시 계산");
+});
+
+test("backend source metadata is omitted and exemption daily wages stay hidden", () => {
+  const p = pkg();
+  p.severance_pay_won = 0; p.average_daily_wage_milliwon = 100_000_000; p.ordinary_daily_wage_won = 110_000;
+  p.statutory_basis = { ...p.statutory_basis, retirement_pay: { authority: "source-authority", formula: "average_daily_wage * 30 * service_days / 365" }, insurance_loss: { title: "source-title" } };
+  const html = renderToStaticMarkup(<SettlementFigures pkg={p} />);
+  expect(html).not.toContain("retirement_pay");
+  expect(html).not.toContain("insurance_loss");
+  expect(html).not.toContain("average_daily_wage *");
+  expect(html).not.toContain("평균임금 (1일)");
+  expect(html).not.toContain("통상임금 (1일)");
+  expect(html).not.toContain("0원");
+});
+
+test("malformed exemption cannot display a stale zero or daily wage amounts", () => {
+  const p = pkg("UNKNOWN"); p.severance_pay_won = 0;
+  p.average_daily_wage_milliwon = 100_000_000; p.ordinary_daily_wage_won = 110_000;
+  p.statutory_basis = { ...p.statutory_basis, retirement_pay: { formula: "inapplicable-formula" } };
+  const html = renderToStaticMarkup(<SettlementFigures pkg={p} />);
+  expect(html).not.toContain("0원");
+  expect(html).not.toContain("100,000"); expect(html).not.toContain("110,000");
+  expect(html).not.toContain("inapplicable-formula");
+  expect(form(p)).toContain('aria-disabled="true"');
+});
+
+test("each citation group has its own accessible name and eligible daily wages remain visible", () => {
+  const p = pkg();
+  p.statutory_basis = { severance_eligibility: { outcome: "ELIGIBLE" }, calculation_references: { rules: [
+    { code: "first-rule", effective_from: "2026-07-01", citation: { instrument_ko: "첫 법령", article_ko: "제1조" } },
+    { code: "second-rule", effective_from: "2026-07-01", citation: { instrument_ko: "둘째 법령", article_ko: "제2조" } },
+  ] } };
+  p.average_daily_wage_milliwon = 100_000_000; p.ordinary_daily_wage_won = 110_000;
+  const html = renderToStaticMarkup(<SettlementFigures pkg={p} />);
+  expect(html).toContain('>첫 법령 · 제1조</span>');
+  expect(html).toContain('>둘째 법령 · 제2조</span>');
+  expect(html).toContain("평균임금 (1일)"); expect(html).toContain("100,000원");
+  expect(html).toContain("통상임금 (1일)"); expect(html).toContain("110,000원");
 });

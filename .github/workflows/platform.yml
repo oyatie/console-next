@@ -16,7 +16,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 120
     permissions:
       contents: read
     steps:
@@ -40,6 +40,47 @@ jobs:
           trap 'kind delete cluster --name platform-admission' EXIT
           kind create cluster --name platform-admission --image "$(jq -r .images.kind deploy/versions.json)" --wait 120s
           node deploy/ci/admission.mjs
+
+      - name: PR image cache credentials
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: &image-cache-credentials |
+            if (!process.env.ACTIONS_RUNTIME_TOKEN) throw new Error('GHA cache runtime token is missing');
+            core.setSecret(process.env.ACTIONS_RUNTIME_TOKEN);
+            for (const name of ['ACTIONS_RUNTIME_TOKEN', 'ACTIONS_CACHE_URL', 'ACTIONS_RESULTS_URL']) {
+              if (process.env[name]) core.exportVariable(name, process.env[name]);
+            }
+      - name: Build PR image without publishing
+        if: github.event_name == 'pull_request'
+        env:
+          ARCH: amd64
+          CACHE_WRITE: 'false'
+        run: &native-image-build |
+          case "${ARCH}/$(docker info --format '{{.Architecture}}')" in
+            amd64/x86_64|arm64/aarch64) ;;
+            *) echo 'PLAT_NATIVE_ARCH: Docker must run the matrix architecture natively' >&2; exit 1;;
+          esac
+          buildx create --name platform --driver docker-container --driver-opt "image=$(jq -r .images.buildkit deploy/versions.json)" --use
+          cache_export=()
+          if [[ "${CACHE_WRITE}" == true ]]; then
+            cache_export=(--cache-to "type=gha,version=2,scope=console-platform-${ARCH},mode=min")
+          fi
+          buildx build --builder platform --platform "linux/${ARCH}" \
+            --build-arg "NODE_IMAGE=$(jq -r .images.node deploy/versions.json)" \
+            --build-arg "RUST_IMAGE=$(jq -r .images.rust deploy/versions.json)" \
+            --build-arg "RUNTIME_IMAGE=$(jq -r .images.runtime deploy/versions.json)" \
+            --build-arg "SOURCE_REVISION=${GITHUB_SHA}" \
+            --cache-from "type=gha,version=2,scope=console-platform-${ARCH}" \
+            "${cache_export[@]}" --progress=plain \
+            --tag "console-platform:${ARCH}" --file deploy/images/console.Dockerfile \
+            --output "type=docker,dest=${RUNNER_TEMP}/console-${ARCH}.tar" .
+      - name: Test PR image
+        if: github.event_name == 'pull_request'
+        env: {ARCH: amd64}
+        run: &native-image-smoke |
+          docker load --input "${RUNNER_TEMP}/console-${ARCH}.tar"
+          bash deploy/ci/image-smoke.sh "console-platform:${ARCH}"
 
   prune-image-cache:
     if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.ref == 'refs/heads/dev'
@@ -102,39 +143,15 @@ jobs:
       - name: Export GHA cache credentials
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
-          script: |
-            if (!process.env.ACTIONS_RUNTIME_TOKEN) throw new Error('GHA cache runtime token is missing');
-            core.setSecret(process.env.ACTIONS_RUNTIME_TOKEN);
-            for (const name of ['ACTIONS_RUNTIME_TOKEN', 'ACTIONS_CACHE_URL', 'ACTIONS_RESULTS_URL']) {
-              if (process.env[name]) core.exportVariable(name, process.env[name]);
-            }
+          script: *image-cache-credentials
       - name: Native image and GHA cache
         env:
           ARCH: ${{ matrix.arch }}
           CACHE_WRITE: ${{ github.event_name == 'push' && github.ref_name == github.event.repository.default_branch }}
-        run: |
-          case "${ARCH}/$(docker info --format '{{.Architecture}}')" in
-            amd64/x86_64|arm64/aarch64) ;;
-            *) echo 'PLAT_NATIVE_ARCH: Docker must run the matrix architecture natively' >&2; exit 1;;
-          esac
-          buildx create --name platform --driver docker-container --driver-opt "image=$(jq -r .images.buildkit deploy/versions.json)" --use
-          cache_export=()
-          if [[ "${CACHE_WRITE}" == true ]]; then
-            cache_export=(--cache-to "type=gha,version=2,scope=console-platform-${ARCH},mode=min")
-          fi
-          buildx build --builder platform --platform "linux/${ARCH}" \
-            --build-arg "NODE_IMAGE=$(jq -r .images.node deploy/versions.json)" \
-            --build-arg "RUST_IMAGE=$(jq -r .images.rust deploy/versions.json)" \
-            --build-arg "RUNTIME_IMAGE=$(jq -r .images.runtime deploy/versions.json)" \
-            --cache-from "type=gha,version=2,scope=console-platform-${ARCH}" \
-            "${cache_export[@]}" --progress=plain \
-            --tag "console-platform:${ARCH}" --file deploy/images/console.Dockerfile \
-            --output "type=docker,dest=${RUNNER_TEMP}/console-${ARCH}.tar" .
+        run: *native-image-build
       - name: Test native image
         env: {ARCH: '${{ matrix.arch }}'}
-        run: |
-          docker load --input "${RUNNER_TEMP}/console-${ARCH}.tar"
-          bash deploy/ci/image-smoke.sh "console-platform:${ARCH}"
+        run: *native-image-smoke
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: console-${{ matrix.arch }}
@@ -298,7 +315,7 @@ jobs:
       fail-fast: false
       matrix:
         runner: [ubuntu-24.04, ubuntu-24.04-arm]
-        repetition: ${{ fromJSON(github.event_name == 'schedule' && '[1, 2]' || '[1]') }}
+        repetition: [1, 2]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     permissions:
