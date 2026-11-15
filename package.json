@@ -32,16 +32,16 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "~4.14.0",
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.65.0",
     "@stryker-mutator/core": "^10.0.0",
     "@types/node": "^26.6.6",
     "exceljs": "^4.4.0",
     "openapi-typescript": "^7.13.0",
-    "oxlint": "^1.90.0",
+    "oxlint": "^1.92.0",
     "stylelint": "^17.15.0",
     "stylelint-declaration-strict-value": "^1.12.1",
     "typescript": "~5.9",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "overrides": {
     "@stryker-mutator/core": {
