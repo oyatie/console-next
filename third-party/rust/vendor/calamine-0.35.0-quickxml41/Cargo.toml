@@ -102,7 +102,7 @@ path = "benches/basic.rs"
 harness = false
 
 [dependencies.atoi_simd]
-version = "0.17"
+version = "0.18"
 
 [dependencies.byteorder]
 version = "1.5"
