@@ -19,6 +19,7 @@ export const settled = (page: Page) => expect(page.locator('[aria-busy="true"]')
  * so the grid is brought into view first.
  */
 export async function gridRow(grid: Locator, text: string | RegExp) {
+  await expect(grid.first()).toBeVisible();
   // Several grids: a 값 연결 table that holds the text (all its rows are drawn), else the queue (virtualised: its row
   // is only drawn once the grid is in view).
   const page = grid.page();
