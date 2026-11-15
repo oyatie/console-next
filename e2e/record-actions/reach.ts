@@ -31,7 +31,7 @@ export const REACH: readonly ReachEntry[] = [
   { record: "Entity.workplace", op: "end", page: "chart", via: [node("{workplace}"), b("사업장 삭제|사업장 폐쇄", { any: true })] },
   // 부서
   { record: "Org.org_unit", op: "create", page: "chart", via: [node("{workplace}"), b("부서 추가", { exact: true })] },
-  { record: "Org.org_unit", op: "update", page: "chart", via: [node("{dept}"), b("이름 변경", { exact: true })] },
+  { record: "Org.org_unit", op: "update", page: "chart", via: [node("{dept}"), b("부서 이름 수정", { exact: true })] },
   { record: "Org.org_unit", op: "end", page: "chart", via: [node("{dept}"), b("부서 삭제|부서 폐지", { any: true })] },
   // 직원 (인사카드)
   { record: "HR.employee", op: "create", page: "people", via: [{ role: "link", name: "직원 등록", exact: true }] },

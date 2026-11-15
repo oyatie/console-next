@@ -9,6 +9,7 @@ import { orgChange } from "../mock/org-changes";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { box, findBox, revealUnit } from "../structure-flows";
+import { go } from "../flows";
 import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -32,11 +33,106 @@ async function operating(page: Page, allowed = true) {
   return { fixture, workplace: tree.entities[0]!.children[0]!, dept: tree.entities[0]!.children[0]!.children[0]! };
 }
 
+for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
+  test(`org: department name edits on its fact row at ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const { fixture, dept } = await operating(page);
+    try {
+      await go(page, `/org?sel=${dept.id}`);
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      const panel = page.getByRole("complementary", { name: dept.name, exact: true });
+      const basic = panel.locator("#dept-basic");
+      const rename = basic.getByRole("button", { name: t("uiRecordActions.of", { field: t("orgUnit.fact.name"), verb: t("uiRecordActions.edit") }), exact: true });
+      await expect(rename).toHaveText(t("uiRecordActions.edit"));
+      await expect(rename).toHaveCount(1);
+      await expect(panel.locator("#dept-actions #act-dept-rename")).toHaveCount(0);
+      expect(await basic.getByRole("button", { name: t("structure.head.appoint"), exact: true }).evaluate(button => {
+        const text = document.createRange();
+        text.selectNodeContents(button);
+        return text.getClientRects().length;
+      })).toBe(1);
+      await rename.scrollIntoViewIfNeeded();
+      const label = basic.getByRole("term").filter({ hasText: t("orgUnit.fact.name") });
+      const [value, action] = [await label.boundingBox(), await rename.boundingBox()];
+      expect(action!.y).toBeLessThan(value!.y + value!.height);
+      expect(action!.y + action!.height).toBeGreaterThan(value!.y);
+      await page.screenshot({ path: test.info().outputPath("department-name.png") });
+      await rename.click();
+      const name = basic.getByRole("textbox", { name: new RegExp(`^${t("orgUnit.rename.label", { name: dept.name })}`) });
+      await expect(name).toBeFocused();
+      await expect(name).toHaveValue(dept.name);
+      await expect(rename).toHaveCount(0);
+      await fits(page, `department name editor/${width}/${theme}`);
+      await expectAxe(page, `department name editor/${width}/${theme}`);
+      await page.screenshot({ path: test.info().outputPath("department-name-editor.png") });
+      const date = basic.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${t("asof.today")}`, exact: true });
+      await date.click();
+      const datePopup = page.getByRole("dialog", { name: t("orgUnit.gov.date"), exact: true });
+      await datePopup.getByRole("textbox").press("Escape");
+      await expect(datePopup).toHaveCount(0);
+      await expect(name).toBeVisible();
+      await expect(date).toBeFocused();
+      await name.fill("플랫폼팀");
+      await basic.getByRole("button", { name: t("orgStructure.cancel"), exact: true }).click();
+      await expect(rename).toBeFocused();
+      const row = label.locator("..");
+      await expect(row.getByRole("definition").first()).toHaveText(dept.name);
+      await expect(row.getByRole("definition").last()).toContainText(t("uiRecordActions.edit"));
+      for (const target of [name, basic.getByRole("button", { name: t("orgStructure.cancel"), exact: true }), basic.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${t("asof.today")}`, exact: true })]) {
+        await rename.click();
+        await name.fill("플랫폼팀");
+        await target.press("Escape");
+        await expect(panel).toBeVisible();
+        await expect(rename).toBeFocused();
+        await expect(name).toHaveCount(0);
+        await expect(row.getByRole("definition").first()).toHaveText(dept.name);
+      }
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
+for (const width of [1440, 390]) for (const phase of ["SETUP", "OPERATING"] as const) {
+  test(`org: cancelling department add restores its panel opener in ${phase} at ${width}px @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const { fixture, workplace, dept } = await operating(page);
+    if (phase === "SETUP") {
+      const tree = structure(1);
+      tree.phase = phase;
+      await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+      await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/org", phase), is_ops: true } });
+    }
+    try {
+      for (const parent of [workplace, dept]) {
+        await go(page, `/org?sel=${parent.id}`);
+        await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+        const panel = page.getByRole("complementary", { name: parent.name, exact: true });
+        const add = panel.locator("#act-dept-add");
+        await expect(add).toHaveAccessibleName(t(parent === workplace ? "orgUnit.add.action" : "orgUnit.add.child"));
+        const name = panel.getByRole("textbox", { name: new RegExp(`^${t("orgUnit.add.label", { parent: parent.name })}`) });
+        for (const cancel of ["click", "escape"] as const) {
+          await add.click();
+          await expect(name).toBeFocused();
+          await expect(add).toHaveCount(0);
+          await name.fill("새부서");
+          await fits(page, `department add/${phase}/${width}/${parent.kind}`);
+          if (cancel === "click") await panel.getByRole("button", { name: t("orgStructure.cancel"), exact: true }).click();
+          else await name.press("Escape");
+          await expect(panel).toBeVisible();
+          await expect(name).toHaveCount(0);
+          await expect(add).toBeFocused();
+        }
+      }
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
 async function edit(page: Page, view: string, workplace: string, dept: string, rename = false) {
   await page.goto(`/org?view=${view === "panel" ? "chart" : view}`);
   if (view === "chart" || view === "panel") {
     await revealUnit(page, rename || view === "panel" ? dept : workplace);
-    if (view === "panel") await page.getByRole("complementary", { name: dept, exact: true }).getByRole("button", { name: t(rename ? "orgUnit.rename.action" : "orgUnit.add.child"), exact: true }).click();
+    if (view === "panel") await page.getByRole("complementary", { name: dept, exact: true }).getByRole("button", { name: rename ? t("uiRecordActions.of", { field: t("orgUnit.fact.name"), verb: t("uiRecordActions.edit") }) : t("orgUnit.add.child"), exact: true }).click();
     else if (rename) await page.keyboard.press("F2");
     else await page.getByRole("toolbar", { name: t("structure.tools.label", { name: workplace }), exact: true }).getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
   } else if (view === "outline") {
@@ -108,7 +204,7 @@ for (const view of ["chart", "outline", "list", "panel"]) {
         await revealUnit(page, dept.name);
         if (view === "chart") await page.keyboard.press("F2");
         const panel = page.getByRole("complementary", { name: dept.name, exact: true });
-        await expect(panel.getByRole("button", { name: t("orgUnit.rename.action"), exact: true })).toHaveCount(0);
+        await expect(panel.getByRole("button", { name: t("uiRecordActions.of", { field: t("orgUnit.fact.name"), verb: t("uiRecordActions.edit") }), exact: true })).toHaveCount(0);
         await expect(panel.getByRole("button", { name: t("orgUnit.add.child"), exact: true })).toHaveCount(0);
       } else {
         const surface = page.getByRole(view === "list" ? "grid" : "tree", { name: t(view === "list" ? "structure.list.label" : "structure.outline.label"), exact: true });
@@ -352,9 +448,9 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
       proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: dept.id, name: "플랫폼팀" }],
     });
 
-    // Side panel 이름 변경 also edits in place with 적용일 defaulted to 오늘 and changeable.
+    // Side panel 수정 also edits in place with 적용일 defaulted to 오늘 and changeable.
     const panel = page.getByRole("complementary", { name: "플랫폼팀", exact: true });
-    await panel.getByRole("button", { name: t("orgUnit.rename.action"), exact: true }).click();
+    await panel.getByRole("button", { name: t("uiRecordActions.of", { field: t("orgUnit.fact.name"), verb: t("uiRecordActions.edit") }), exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await panel.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${t("asof.today")}`, exact: true }).click();
     const panelDate = page.getByRole("dialog", { name: t("orgUnit.gov.date"), exact: true }).getByRole("textbox", { name: new RegExp(`^${t("orgUnit.gov.date")}`) });
