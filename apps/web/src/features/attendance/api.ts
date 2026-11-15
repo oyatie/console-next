@@ -1,6 +1,7 @@
 import { ApiError, api, unwrap } from "@console/api";
 import type { components, operations } from "@console/api/schema";
-import { cursorPages, get } from "../../lib/query";
+import { get } from "../../lib/query";
+export { monthGridPages } from "./api/month";
 import { addDays, isDate, nextMonday } from "../../ui/date/days";
 export { session } from "@console/api";
 
@@ -100,8 +101,6 @@ export const dayBoardQuery = (date: DayBoardQuery["date"], workplace_id?: DayBoa
     }
   } };
 };
-/** The month grid, 100 people a page by keyset (useInfiniteQuery). */
-export const monthGridPages = (month: string, workplace_id?: string, unit_id?: string) => cursorPages("/api/v1/attendance/month", { month, workplace_id, unit_id, limit: 100 });
 export const personMonthQuery = (employee_id: string, month: string) => get("/api/v1/attendance/people/{employee_id}/month", { params: { path: { employee_id }, query: { month } } });
 
 // The preview writes nothing; it answers what the save would do, and the save re-checks every cell.
