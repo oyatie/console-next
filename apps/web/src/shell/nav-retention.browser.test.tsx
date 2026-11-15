@@ -6,7 +6,7 @@ import { browserEngine } from "../lib/browser-test";
 import { navFixture } from "./nav.browser-fixture";
 import { checklist, user } from "../../../../e2e/mock/fixtures";
 
-for (const engine of [chromium, ...(process.env.E2E_XBROWSER === "1" ? [firefox] : [])]) test.each([503, 403])(`one shell retry respects the checklist's %i answer in ${engine.name()}`, async status => {
+for (const engine of [browserEngine()]) test.each([503, 403])(`one shell retry respects the checklist's %i answer in ${engine.name()}`, async status => {
   await loadCatalog("ko");
   const { server, browser, page, errors } = await navFixture(engine);
   await page.setViewportSize({ width: 390, height: 900 });
