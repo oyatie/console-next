@@ -38,7 +38,7 @@ async fn warm(ctx: &Ctx) {
     captured(&Logs::default(), ctx, "GET", INBOX, None).await;
 }
 
-/// Reads of `todos` the inbox made inside each to-do source's span.
+/// The statements the inbox ran inside each to-do source's span, and how many of them read `todos`.
 fn reads_by_source(logs: &Logs) -> [(usize, usize); 2] {
     let raw = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
     let events: Vec<Value> = raw
@@ -46,24 +46,26 @@ fn reads_by_source(logs: &Logs) -> [(usize, usize); 2] {
         .map(|line| serde_json::from_str(line).unwrap())
         .collect();
     ["TodoAssigned", "TodoRequested"].map(|source| {
-        let inside: Vec<&Value> = events
+        let statements: Vec<&Value> = events
             .iter()
             .filter(|event| {
-                event["spans"]
-                    .as_array()
-                    .is_some_and(|spans| spans.iter().any(|span| span["source"] == source))
+                // A connection the pool opens runs `SET ROLE` in whichever read lands on it.
+                event["target"] == "sqlx::query"
+                    && event["fields"]["summary"] != "SET ROLE console_rt"
+                    && event["spans"]
+                        .as_array()
+                        .is_some_and(|spans| spans.iter().any(|span| span["source"] == source))
             })
             .collect();
-        let reads = inside
+        let reads = statements
             .iter()
             .filter(|event| {
-                event["target"] == "sqlx::query"
-                    && event["fields"]["db.statement"]
-                        .as_str()
-                        .is_some_and(|sql| sql.contains("FROM todos"))
+                event["fields"]["db.statement"]
+                    .as_str()
+                    .is_some_and(|sql| sql.contains("FROM todos"))
             })
             .count();
-        (inside.len(), reads)
+        (statements.len(), reads)
     })
 }
 
@@ -72,20 +74,29 @@ async fn one_statement_reads_each_side_whatever_the_count(pool: PgPool) {
     let o = office(pool).await;
     warm(&o.colleague).await;
     let mut asked = 0;
+    // What each reader's sources ran for two requests, which twenty must not exceed.
+    let mut few = Vec::new();
     for size in [2, 20] {
         while asked < size {
             ask(&o, &o.colleague, None, json!([])).await;
             asked += 1;
         }
-        for reader in [&o.colleague, &o.admin] {
+        for (n, reader) in [&o.colleague, &o.admin].into_iter().enumerate() {
             let logs = Logs::default();
             let page = captured(&logs, reader, "GET", &format!("{INBOX}?limit=200"), None).await;
             assert_eq!(super::inbox::requests(&page).len(), size, "{page}");
-            for (source, (events, reads)) in
-                ["assigned", "requested"].iter().zip(reads_by_source(&logs))
-            {
-                assert!(events > 0, "the {source} span was captured");
-                assert_eq!(reads, 1, "{size} requests, {source}: one statement");
+            let counted = reads_by_source(&logs);
+            for (source, (statements, reads)) in ["assigned", "requested"].iter().zip(counted) {
+                assert!(statements > 0, "the {source} span was captured");
+                assert_eq!(reads, 1, "{size} requests, {source}: one read of todos");
+            }
+            if size == 2 {
+                few.push(counted);
+            } else {
+                assert_eq!(
+                    counted, few[n],
+                    "{size} requests: as many statements as for two"
+                );
             }
         }
     }
