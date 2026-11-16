@@ -63,9 +63,11 @@ jobs:
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U console_buck_admin -d console_ci_contract"
-          --health-interval 1s
-          --health-timeout 5s
-          --health-retries 60
+          --health-interval 30s
+          --health-timeout 2s
+          --health-retries 1
+          --health-start-period 60s
+          --health-start-interval 1s
     env:
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_TEST_DEBUG: '0'

@@ -6,9 +6,47 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import yaml from "js-yaml";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = process.env.CONSOLE_TEST_ROOT ?? fileURLToPath(new URL("..", import.meta.url));
 const source = readFileSync(path.join(root, "scripts/backend-dev.mjs"), "utf8");
 const files = [...source.matchAll(/"-f", "([^"]+)"/g)].map((m) => m[1]);
+
+test("test services probe quickly only during startup and detect failure within a minute", () => {
+  const compose = yaml.load(readFileSync(path.join(root, "deploy/dev/compose.e2e.yml"), "utf8"));
+  for (const [name, service] of Object.entries(compose.services)) {
+    assert.equal(service.healthcheck.interval, "30s", name);
+    assert.equal(service.healthcheck.timeout, "2s", name);
+    assert.equal(service.healthcheck.retries, 1, name);
+    assert.equal(service.healthcheck.start_period, "60s", name);
+    const startup = yaml.load(readFileSync(path.join(root, "deploy/dev/compose.startup.yml"), "utf8"));
+    assert.equal(startup.services[name].healthcheck.start_interval, "1s", name);
+    assert.equal(service.healthcheck.start_interval, undefined, "base file remains compatible with older Compose");
+  }
+});
+
+test("CI service healthchecks use startup probes and bounded steady-state detection", () => {
+  let services = 0;
+  for (const file of ["e2e-live", "route-load", "db-tests"]) {
+    const { jobs } = yaml.load(readFileSync(path.join(root, `.github/workflows/${file}.yml`), "utf8"));
+    for (const job of Object.values(jobs)) for (const service of Object.values(job.services ?? {})) {
+      if (!service.options?.includes("--health-cmd")) continue;
+      services++;
+      for (const [flag, value] of Object.entries({ interval: "30s", timeout: "2s", retries: "1", "start-period": "60s", "start-interval": "1s" }))
+        assert.match(service.options, new RegExp(`--health-${flag} ${value}(?:\\s|$)`), file);
+    }
+  }
+  assert.equal(services, 4);
+  assert.match(source, /compose\(\["up", "-d", "--wait"/);
+});
+
+test("startup interval negotiation keeps a safe fallback for older Docker and Compose", async () => {
+  const { startupHealthcheckFiles } = await import(path.join(root, "scripts/compose-health.mjs"));
+  for (const [engine, compose] of [["25.0.0", "2.20.2"], ["25.0.0", "v2.20.2-desktop.1"], ["25.0.0", "2.21.0"], ["28.0.4", "2.38.2"], ["29.5.2", "5.6.1"]])
+    assert.deepEqual(startupHealthcheckFiles(engine, compose), ["-f", "deploy/dev/compose.startup.yml"]);
+  for (const [engine, compose] of [["24.0.9", "2.38.2"], ["25.0.0", "2.20.1"], ["25.0.0", "2.19.9"], ["", "2.38.2"], ["25.0.0", ""]])
+    assert.deepEqual(startupHealthcheckFiles(engine, compose), []);
+  assert.match(source, /startupHealthcheckFiles/);
+  assert.match(source, /\.\.\.startupFiles/);
+});
 
 test("the backend's compose files live in the public tree and contain only E2E services", () => {
   assert.ok(files.length, "backend-dev must declare its compose input");
