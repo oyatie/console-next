@@ -16,7 +16,7 @@ import { entitiesAt } from "../reference/entity/api";
 
 const Chart = lazy(() => chunk(import("./org-screen")).then(m => ({ default: m.OrgScreen })));
 const EntityContent = lazy(() => chunk(import("../features/entity/ui/entity-routes")).then(m => ({ default: m.EntitiesScreen })));
-const Changes = lazy(() => chunk(import("../features/org/OrgChange")).then(m => ({ default: m.OrgChanges })));
+const Changes = lazy(() => chunk(import("../features/org/ui/org-changes")).then(m => ({ default: m.OrgChanges })));
 const History = lazy(() => chunk(import("../features/org-bulk/ui/history-page")).then(m => ({ default: m.HistoryPage })));
 const route = getRouteApi("/app/org");
 
