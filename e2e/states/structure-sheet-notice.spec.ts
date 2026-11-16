@@ -17,7 +17,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[2], "populated");
     await orgPanelReads(page);
-    await orgWorkReads(page, "setup");
+    const { tree } = await orgWorkReads(page, "setup");
     await mockRoute(page, "get", "/api/v1/ref/lists/{key}/codes", request => ({ status: 200, json: {
       list: { key: new URL(request.url()).pathname.split("/").at(-2)!, status: "NOT_LOADED" as const }, items: [],
     } }));
@@ -31,7 +31,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
     await page.route(`**/api/v1/${path}`, route => failed
       ? route.fulfill({ status: 503, json: failure("service_unavailable") }) : route.fallback());
     const selected = act === "wp-create" ? id(3) : id(4);
-    const title = act === "wp-create" ? t("workplace.add") : t(act === "wp-close" ? "workplace.close.title" : "workplace.kind.title", { name: "본사" });
+    const title = act === "wp-create" ? t("workplace.add") : t(act === "wp-close" ? "workplace.close.title" : "workplace.kind.title", { name: tree.entities[0]!.children[0]!.name });
     const chart = page.getByRole("region", { name: t("structure.chart.label"), exact: true, includeHidden: true });
     const chartSize = () => chart.evaluate(element => {
       const { width, height } = element.getBoundingClientRect();
@@ -55,7 +55,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       const field = act === "wp-create" ? sheet.getByLabel(t("workplace.field.name"))
         : act === "wp-close" ? sheet.getByRole("textbox", { name: new RegExp(t("workplace.close.date")) }) : sheet.getByRole("button", { name: t("workplace.kinds.title"), exact: true });
       await expect(field).toBeVisible();
-      if (act === "wp-create") await field.fill("새 사업장");
+      if (act === "wp-create") await field.fill("New workplace");
       await field.focus();
       const fieldBox = await field.boundingBox();
       const mountedField = await field.elementHandle();
@@ -81,7 +81,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       await expect(page.getByRole("dialog")).toHaveCount(1);
       expect(await chart.boundingBox()).toEqual(readyBox);
       expect(await mountedField!.evaluate(element => element.isConnected)).toBe(true);
-      if (act === "wp-create") await expect(field).toHaveValue("새 사업장");
+      if (act === "wp-create") await expect(field).toHaveValue("New workplace");
       await page.screenshot({ path: info.outputPath("stale.png") });
       await fitsSheet();
       await expectAxe(page, "stale sheet");
@@ -90,7 +90,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       await expect(stale).toHaveCount(0);
       expect(await field.boundingBox()).toEqual(fieldBox);
       expect(await mountedField!.evaluate(element => element.isConnected)).toBe(true);
-      if (act === "wp-create") await expect(field).toHaveValue("새 사업장");
+      if (act === "wp-create") await expect(field).toHaveValue("New workplace");
       expect(await chart.boundingBox()).toEqual(readyBox);
       expect(fixture.unexpected).toEqual([]);
     } finally { await context.setOffline(false); await page.close(); fixture.release(); }
