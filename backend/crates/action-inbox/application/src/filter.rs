@@ -36,7 +36,12 @@ impl InboxFilter {
     pub(crate) fn includes_source(self, source: crate::ActionInboxSource) -> bool {
         use crate::ActionInboxSource as S;
         match self {
-            InboxFilter::Waiting => matches!(source, S::OrgChange | S::EntityCorrections),
+            // The requester's side of a request only ever waits.
+            InboxFilter::Turn => source != S::TodoRequested,
+            InboxFilter::Waiting => matches!(
+                source,
+                S::OrgChange | S::EntityCorrections | S::TodoRequested
+            ),
             InboxFilter::Scheduled => source == S::OrgChange,
             InboxFilter::Failures => source == S::HrLifecycle,
             InboxFilter::Notices => source == S::GrantNotice,
@@ -64,9 +69,18 @@ impl InboxFilter {
                     | S::Payroll
                     | S::Governance
                     | S::RegistrationChecks
+                    | S::TodoRequested
             ),
             _ => true,
         }
+    }
+
+    /// A first-page count is exact when no source this view reads left rows unread.
+    pub(crate) fn is_exact(self, incomplete: &[crate::ActionInboxSource], first: bool) -> bool {
+        first
+            && !incomplete
+                .iter()
+                .any(|source| self.includes_source(*source))
     }
 
     fn includes(self, item: &ActionInboxItem) -> bool {
@@ -218,29 +232,50 @@ impl ActionInboxSourcePort for ViewPort<'_> {
     }
 }
 
+/// The lane counts every page carries, each with the view it counts.
+pub(crate) const LANES: [(&str, InboxFilter); 6] = [
+    ("turn", InboxFilter::Turn),
+    ("waiting", InboxFilter::Waiting),
+    ("scheduled", InboxFilter::Scheduled),
+    ("deadlines", InboxFilter::Deadlines),
+    ("failures", InboxFilter::Failures),
+    ("notices", InboxFilter::Notices),
+];
+
+/// One source's long list leaves every count whose view cannot reach it exact.
+pub(crate) fn mark_exact(
+    page: &mut ActionInboxPage,
+    incomplete: &[crate::ActionInboxSource],
+    first: bool,
+) {
+    for count in &mut page.attention_filters {
+        if count.key != crate::Attention::All {
+            count.total_is_exact = count.key.filter().is_exact(incomplete, first);
+        }
+    }
+    for (key, view) in LANES {
+        if let Some(count) = page.counts.get_mut(key) {
+            count.total_is_exact = view.is_exact(incomplete, first);
+        }
+    }
+}
+
 pub(crate) fn counts(
     items: &[ActionInboxItem],
     exact: bool,
 ) -> std::collections::BTreeMap<&'static str, crate::InboxCount> {
-    [
-        ("turn", InboxFilter::Turn),
-        ("waiting", InboxFilter::Waiting),
-        ("scheduled", InboxFilter::Scheduled),
-        ("deadlines", InboxFilter::Deadlines),
-        ("failures", InboxFilter::Failures),
-        ("notices", InboxFilter::Notices),
-    ]
-    .into_iter()
-    .map(|(key, filter)| {
-        (
-            key,
-            crate::InboxCount {
-                total: items.iter().filter(|item| filter.includes(item)).count(),
-                total_is_exact: exact,
-            },
-        )
-    })
-    .collect()
+    LANES
+        .into_iter()
+        .map(|(key, filter)| {
+            (
+                key,
+                crate::InboxCount {
+                    total: items.iter().filter(|item| filter.includes(item)).count(),
+                    total_is_exact: exact,
+                },
+            )
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -292,11 +327,18 @@ mod tests {
             S::EntityCorrections,
             S::PrivacyRequests,
             S::AccountBindingReview,
+            S::TodoAssigned,
         ];
+        // The requester's side is never the caller's turn, so the turn view does not read it.
+        let turn: Vec<_> = S::ALL
+            .into_iter()
+            .filter(|source| *source != S::TodoRequested)
+            .collect();
         for (filter, expected) in [
+            (InboxFilter::Turn, &turn[..]),
             (
                 InboxFilter::Waiting,
-                &[S::OrgChange, S::EntityCorrections][..],
+                &[S::OrgChange, S::EntityCorrections, S::TodoRequested][..],
             ),
             (InboxFilter::Scheduled, &[S::OrgChange][..]),
             (InboxFilter::Failures, &[S::HrLifecycle][..]),

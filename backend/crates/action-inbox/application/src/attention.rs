@@ -14,13 +14,6 @@ pub enum Attention {
 }
 
 impl Attention {
-    pub(crate) fn is_exact(self, incomplete: &[crate::ActionInboxSource], first: bool) -> bool {
-        first
-            && !incomplete
-                .iter()
-                .any(|source| self.filter().includes_source(*source))
-    }
-
     pub fn filter(self) -> InboxFilter {
         match self {
             Self::All => InboxFilter::All,

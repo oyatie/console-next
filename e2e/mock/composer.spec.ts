@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 
@@ -11,7 +12,7 @@ for (const width of [1440, 390]) {
   ]) {
     test(`${title} routing at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto("/_gallery?entry=composer");
+      await mockNavigate(page, "/_gallery?entry=composer");
       await page.getByRole("button", { name: commit, exact: true }).click();
       const composer = drawer ? page.getByRole("dialog") : page.locator("[data-composer-root]");
       await expect(composer.getByRole("heading", { name: title, exact: true })).toBeVisible();

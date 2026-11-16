@@ -141,6 +141,10 @@ impl ActionInboxSourcePort for Raw<'_> {
                     )
                     .await
                 }
+                #[cfg(feature = "todos")]
+                ActionInboxSource::TodoAssigned | ActionInboxSource::TodoRequested => {
+                    sources::todos::page(&sources.pool, &sources.principal, source, query).await
+                }
                 #[allow(unreachable_patterns)]
                 _ => Ok(empty_source_page()),
             }

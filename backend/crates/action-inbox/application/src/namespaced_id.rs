@@ -51,6 +51,8 @@ pub(super) fn source_of(value: &str) -> Option<S> {
         "hr_unplaced" => S::HrUnplaced,
         "hr_contract" => S::HrContract,
         "period_unlock" => S::PeriodUnlock,
+        "todo_assigned" => S::TodoAssigned,
+        "todo_requested" => S::TodoRequested,
         "grant_notice" | "account_security" => S::GrantNotice,
         "setup_entity" | "setup_workplace" | "setup_org" | "setup_approval" | "setup_people"
         | "setup_passkey" | "setup_employees" | "setup_roles" | "setup_golive" => S::Setup,
@@ -77,6 +79,27 @@ mod tests {
             "insurance_filing_ACQUIRE_NPS_extra:00000000-0000-0000-0000-000000000001",
         ] {
             assert!(!valid_namespaced_id(value));
+        }
+    }
+
+    #[test]
+    fn each_side_of_a_to_do_request_names_its_own_source() {
+        use super::{S, source_of};
+        let id = "00000000-0000-0000-0000-000000000001";
+        assert_eq!(
+            source_of(&format!("todo_assigned:{id}")),
+            Some(S::TodoAssigned)
+        );
+        assert_eq!(
+            source_of(&format!("todo_requested:{id}")),
+            Some(S::TodoRequested)
+        );
+        for value in [
+            format!("todo:{id}"),
+            "todo_assigned:not-a-uuid".to_owned(),
+            "todo_requested:".to_owned(),
+        ] {
+            assert!(!valid_namespaced_id(&value), "{value}");
         }
     }
 }

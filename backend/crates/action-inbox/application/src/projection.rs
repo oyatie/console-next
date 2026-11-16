@@ -8,7 +8,7 @@ pub(super) fn project_item(
     due_soon_days: i64,
 ) -> ActionInboxItem {
     let lane = match item.kind.as_str() {
-        "org_change_waiting" | "identifier_correction_waiting" => "waiting",
+        "org_change_waiting" | "identifier_correction_waiting" | "todo_requested" => "waiting",
         "org_change_scheduled" => "scheduled",
         _ => "turn",
     };

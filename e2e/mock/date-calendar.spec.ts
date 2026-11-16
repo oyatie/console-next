@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { mockScreen } from "./screen";
 import { screens } from "../states/registry";
+import { mockNavigate } from "./navigation";
 
 // The dev server serves the source module; the prebuilt suite serves the hashed chunk.
 const calendarChunk = (url: URL) => /\/ui\/date\/date-calendar\.tsx$|\/assets\/date-calendar-[^/]+\.js$/.test(url.pathname);
@@ -21,7 +22,7 @@ for (const intent of ["hover", "focus"] as const) {
       await route.continue();
     });
     try {
-      await page.goto("/_gallery");
+      await mockNavigate(page, "/_gallery");
       const demo = page.locator("section").filter({ has: page.getByRole("heading", { name: "날짜 필드", exact: true }) });
       const input = demo.getByRole("textbox").first();
       const trigger = demo.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).first();
@@ -73,7 +74,7 @@ for (const intent of ["hover", "focus"] as const) {
       contentType: "text/javascript", body: 'globalThis.calendarAttempted = true; throw new Error("calendar load failed");',
     }));
     try {
-      await page.goto("/_gallery");
+      await mockNavigate(page, "/_gallery");
       const demo = page.locator("section").filter({ has: page.getByRole("heading", { name: "날짜 필드", exact: true }) });
       const input = demo.getByRole("textbox").first();
       const trigger = demo.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).first();
@@ -105,7 +106,7 @@ test("a missing calendar chunk shows a local error without reloading the draft",
   let attempts = 0;
   await page.route(calendarChunk, route => { attempts++; return route.abort(); });
   try {
-    await page.goto("/_gallery");
+    await mockNavigate(page, "/_gallery");
     const demo = page.locator("section").filter({ has: page.getByRole("heading", { name: "날짜 필드", exact: true }) });
     const input = demo.getByRole("textbox").first();
     const trigger = demo.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).first();

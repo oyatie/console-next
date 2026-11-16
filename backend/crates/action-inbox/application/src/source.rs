@@ -30,10 +30,14 @@ pub enum ActionInboxSource {
     SupportAccess,
     PrivacyRequests,
     AccountBindingReview,
+    /// A to-do request the caller was asked to do, while it is open.
+    TodoAssigned,
+    /// A to-do request the caller made, while it is open or sent back.
+    TodoRequested,
 }
 
 impl ActionInboxSource {
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 25] = [
         Self::Workflow,
         Self::Dispatch,
         Self::Support,
@@ -57,5 +61,7 @@ impl ActionInboxSource {
         Self::SupportAccess,
         Self::PrivacyRequests,
         Self::AccountBindingReview,
+        Self::TodoAssigned,
+        Self::TodoRequested,
     ];
 }

@@ -6,6 +6,7 @@ import { expectAxe, fits } from "../a11y";
 import { AT, checklist, failure, id, inbox, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
+import { mockNavigate } from "../mock/navigation";
 import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -32,7 +33,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`se
 });
 
 test("the gallery reserves the uncertain band for the keyed command", async ({ page }) => {
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const errors = page.locator(".gallery__section").filter({ has: page.getByRole("heading", { name: tg("section.errors"), exact: true }) });
   const band = errors.getByRole("status").filter({ hasText: t("requestOutcome.checking") });
   await expect(band).toHaveCount(1);
@@ -100,7 +101,7 @@ test("a command lost after send stays uncertain through a failed lookup, then se
     return route.fulfill(readAvailable ? { json: { ...user, display_name: displayName } } : { status: 503, json: failure("walk_outage") });
   });
   try {
-    await page.goto("/_gallery");
+    await mockNavigate(page, "/_gallery");
     const command = page.locator("section").filter({ has: page.getByRole("heading", { name: t("account.name.edit"), exact: true }) });
     const submit = command.getByRole("button", { name: t("account.name.edit"), exact: true });
     await submit.click();

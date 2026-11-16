@@ -64,6 +64,31 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
+test(`${engine.name()}: busy gallery previews do not hold readiness but real content still does`, async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}?guard=preview`);
+  const marker = page.locator("[data-route-ready]");
+  await dom(marker).toHaveAttribute("data-route-ready", "/?guard=preview");
+  await page.evaluate(() => {
+    const preview = document.createElement("section");
+    preview.dataset.routePreview = "";
+    preview.innerHTML = '<div aria-busy="true">Loading example</div>';
+    const content = document.createElement("div");
+    content.id = "primary-read";
+    content.setAttribute("aria-busy", "true");
+    content.textContent = "Real loading content";
+    document.querySelector("main")!.append(preview, content);
+  });
+  await dom(marker).toHaveCount(0);
+  await page.locator("#primary-read").evaluate(element => element.remove());
+  await dom(marker).toHaveAttribute("data-route-ready", "/?guard=preview");
+  await dom(page.getByText("Loading example")).toBeVisible();
+  const preview = page.locator("section");
+  await preview.evaluate(element => element.removeAttribute("data-route-preview"));
+  await dom(marker).toHaveCount(0);
+  await preview.evaluate(element => element.setAttribute("data-route-preview", ""));
+  await dom(marker).toHaveAttribute("data-route-ready", "/?guard=preview");
+});
+
 test.each(["status", "isLoading", "reading", "paused"])(`${engine.name()}: %s holds readiness beyond publication, then releases`, async guard => {
   const read = Promise.withResolvers<void>();
   await page.route("**/read", async route => { await read.promise; await route.fulfill({ body: "Read settled" }); });

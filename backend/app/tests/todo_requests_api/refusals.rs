@@ -9,7 +9,7 @@ use time::{Duration, OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
 use crate::support::{add_user, tenant};
-use crate::{Office, REQUESTS, ask_body, code, office};
+use crate::{Office, REQUESTS, ask_body, ask_id, code, office};
 
 fn yesterday_kst() -> String {
     (OffsetDateTime::now_utc().to_offset(UtcOffset::from_hms(9, 0, 0).unwrap()) - Duration::days(1))
@@ -138,4 +138,68 @@ async fn refusals_answer_in_order_gate_body_self_assignee_then_due_date(pool: Pg
         "todo_assignee_out_of_scope",
     )
     .await;
+}
+
+/// The most requests an account holds open as assignee, or open or sent back as requester.
+const MOST: i64 = 100;
+
+/// Adds `n` synthetic requests from `from` to `to`, sent back when `returned`.
+async fn seed(o: &Office, from: Uuid, to: Uuid, n: i64, returned: bool) {
+    sqlx::query(
+        "INSERT INTO todos (org_id, owner_user_id, assigned_by_user_id, body, returned_at, return_note) \
+         SELECT $1, $2, $3, 'Synthetic ask', CASE WHEN $5 THEN now() END, CASE WHEN $5 THEN 'Synthetic note' END \
+         FROM generate_series(1, $4)",
+    )
+    .bind(o.org)
+    .bind(to)
+    .bind(from)
+    .bind(n)
+    .bind(returned)
+    .execute(&o.pool)
+    .await
+    .unwrap();
+}
+
+/// A full side refuses the next ask with its own code and writes nothing; a request that leaves
+/// that side frees its place.
+async fn full(o: &Office, to: Uuid, want: &str) {
+    let before = o.written().await;
+    let (status, out) = o.admin.call("POST", REQUESTS, Some(ask_id(to))).await;
+    assert_eq!((status, code(&out)), (StatusCode::CONFLICT, want), "{out}");
+    assert_eq!(
+        o.written().await,
+        before,
+        "{want}: nothing written or audited"
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn asking_stops_where_either_side_holds_the_most_requests(pool: PgPool) {
+    let o = office(pool).await;
+    let (admin, colleague) = (*o.admin.user.as_uuid(), *o.colleague.user.as_uuid());
+    let other = *add_user(&o.pool, o.org, &[]).await.as_uuid();
+    // Sent back, a request is the requester's to clear and no longer the assignee's.
+    seed(&o, other, colleague, MOST - 1, false).await;
+    seed(&o, other, colleague, 5, true).await;
+    o.ask(&o.colleague).await;
+    full(&o, colleague, "todo_assignee_full").await;
+    sqlx::query(
+        "UPDATE todos SET done = true WHERE id = \
+         (SELECT id FROM todos WHERE owner_user_id = $1 AND assigned_by_user_id = $2 \
+          AND returned_at IS NULL LIMIT 1)",
+    )
+    .bind(colleague)
+    .bind(other)
+    .execute(&o.pool)
+    .await
+    .unwrap();
+    o.ask(&o.colleague).await;
+
+    // Open or sent back, a request stays the requester's until it is done or cleared.
+    let third = *add_user(&o.pool, o.org, &[]).await.as_uuid();
+    seed(&o, admin, other, MOST - 3, true).await;
+    let (status, out) = o.admin.call("POST", REQUESTS, Some(ask_id(third))).await;
+    assert_eq!(status, StatusCode::CREATED, "{out}");
+    full(&o, third, "todo_requester_full").await;
+    full(&o, colleague, "todo_assignee_full").await;
 }

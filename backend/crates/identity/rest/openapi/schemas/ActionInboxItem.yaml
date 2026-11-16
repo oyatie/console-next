@@ -75,6 +75,8 @@ properties:
     - support_access
     - registration_check
     - privacy_request
+    - todo_assigned
+    - todo_requested
   urg:
     type: string
     enum:
@@ -246,9 +248,20 @@ properties:
           $ref: '#/components/schemas/AccessEffectiveEntry'
       is_ops:
         type: boolean
+      todo:
+        type: object
+        description: Present on a to-do request the caller made; the note is present only when it was sent back.
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [open, returned]
+          return_note:
+            type: string
+            description: The line the assignee wrote when sending the request back.
   version:
     type: string
-    description: Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes.
+    description: Opaque version for org-change approval and HR request rows, and for to-do requests the caller made; changes when a step is decided, the request closes or it is sent back.
   policy:
     type: object
     description: Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy.
