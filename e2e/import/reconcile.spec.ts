@@ -19,10 +19,10 @@ test("migration check: funnels, rows marked, an honest sign-off; stale, unacknow
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "인사기록.xlsx", await workbook([plain("본사", rows)]));
   await payPeriod(admin);
-  const previewed = admin.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname.endsWith("/import/preview"));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
-  await confirmImportColumns(admin);
-  const runId = ((await (await previewed).json()) as { run_id: string }).run_id;
+  const confirmed = await confirmImportColumns(admin);
+  expect(confirmed).toBeDefined();
+  const runId = confirmed!.run_id;
   // Not applied yet: there is nothing to check.
   const early = await api(`/employees/import/${runId}/reconcile`);
   expect([early.status(), await codeOf(early)]).toEqual([409, "import_not_applied"]);

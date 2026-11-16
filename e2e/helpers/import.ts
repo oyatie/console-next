@@ -76,9 +76,11 @@ export const protectedWorkbook = () => Buffer.concat([Buffer.from([0xd0, 0xcf, 0
 /** Chooses a workbook through the drop zone's file picker, as a user does. */
 export async function chooseWorkbook(page: Page, name: string, buffer: Buffer) {
   const restart = page.getByRole("button", { name: "다른 파일 선택", exact: true });
+  const pick = page.getByRole("button", { name: "파일 선택", exact: true });
+  await pick.or(restart).waitFor();
   if (await restart.isVisible()) await restart.click();
   const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "파일 선택", exact: true }).click();
+  await pick.click();
   await (await chooser).setFiles({ name, mimeType: XLSX_MIME, buffer });
   await expect(page.getByText(`선택한 파일: ${name}`)).toBeVisible();
 }
@@ -95,7 +97,7 @@ export async function payPeriod(page: Page) {
 export async function confirmImportColumns(page: Page) {
   await loadCatalog("ko");
   let preview: components["schemas"]["EmployeeImportPreviewResponse"] | undefined;
-  await expect(page.getByRole("button", { name: t("import.dryRun"), exact: true })).toBeVisible();
+  await page.locator("#import-sheets").waitFor();
   const suffix = t("importSheet.sheet", { name: "" });
   const names = await page.getByRole("region").evaluateAll((regions, suffix) => regions.map(region => region.getAttribute("aria-label") ?? "").filter(name => name.endsWith(suffix)), suffix);
   for (const name of names) {
