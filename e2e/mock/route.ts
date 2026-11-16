@@ -7,7 +7,8 @@ type Methods<P extends keyof paths> = { [M in Method]: paths[P][M] extends { res
 type Responses<P extends keyof paths, M extends Methods<P>> = paths[P][M] extends { responses: infer R } ? R : never;
 type Json<R> = R extends { content: { "application/json": infer J } } ? J : never;
 type Reply<P extends keyof paths, M extends Methods<P> = Methods<P>> = {
-  [S in keyof Responses<P, M> & number]: { status: S; json: Json<Responses<P, M>[S]> }
+  // A response with no content (204) replies with its status alone.
+  [S in keyof Responses<P, M> & number]: [Json<Responses<P, M>[S]>] extends [never] ? { status: S } : { status: S; json: Json<Responses<P, M>[S]> }
 }[keyof Responses<P, M> & number] |
   // Middleware can refuse or shed any operation, using the generated common error envelope.
   { status: 403 | 503; json: components["schemas"]["ErrorBody"] };

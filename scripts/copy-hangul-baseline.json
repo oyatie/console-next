@@ -1,0 +1,36 @@
+{
+  "allow": [
+    {
+      "name": "official-admin-region-labels",
+      "path": "backend/crates/refdata/lists/data/admin_region-2026-10-01.tsv",
+      "pattern": "(?<=\\t)[^\\t\\r\\n]+",
+      "reason": "Official Korean administrative-region names and parent labels; this dated reference list is Korean-language data.",
+      "source": "https://www.code.go.kr/stdcode/regCodeL.do"
+    },
+    {
+      "name": "official-country-labels",
+      "path": "backend/crates/platform/db/migrations/20261112120000000_country_nationality.sql",
+      "pattern": "(?<=\\('[A-Z]{2}', )'[^'\\r\\n]*'",
+      "reason": "CLDR Korean country labels and search aliases in the locale-tagged country reference catalog.",
+      "source": "https://github.com/unicode-org/cldr-json/tree/48.0.0/cldr-json/cldr-localenames-full/main"
+    },
+    {
+      "name": "synthetic-import-header-input",
+      "path": "backend/crates/hr/domain/src/import/detect_tests.rs",
+      "pattern": "\"[^\"\\r\\n]*\"",
+      "reason": "Synthetic Korean spreadsheet cells exercise Korean header detection; comments remain debt."
+    },
+    {
+      "name": "synthetic-import-name-input",
+      "path": "backend/crates/hr/domain/src/import/names_tests.rs",
+      "pattern": "\"[^\"\\r\\n]*\"",
+      "reason": "Synthetic Korean department and workplace names exercise Korean suffix normalization and name matching; comments remain debt."
+    },
+    {
+      "name": "synthetic-particle-input",
+      "path": "packages/i18n/src/josa.test.ts",
+      "pattern": "\"[^\"\\r\\n]*\"",
+      "reason": "Synthetic Korean names, particle pairs, and expected inflections test Korean phonology; comments remain debt."
+    }
+  ]
+}

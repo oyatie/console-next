@@ -4,6 +4,8 @@ use crate::error::RestError;
 use crate::metrics::policy_branch_scope_label;
 use crate::metrics::record_policy_studio_operation;
 use crate::policy::convert::build_policy_role_status_preview;
+use crate::policy::delegation::ensure_policy_role_not_held_by_actor;
+use crate::policy::delegation::ensure_policy_roles_inside_actor_permission_ceiling_for_operation;
 use crate::policy::delegation::ensure_policy_roles_inside_delegated_authority_for_operation;
 use crate::policy::dto::PolicyRoleResponse;
 use crate::policy::dto::PolicyRoleStatusPreviewRequest;
@@ -95,6 +97,14 @@ pub(crate) async fn update_policy_role_status(
         std::slice::from_ref(&role),
     )?;
     validate_policy_role_status_transition(&role.status, &status)?;
+    if status == "ACTIVE" {
+        ensure_policy_roles_inside_actor_permission_ceiling_for_operation(
+            "update_role_status",
+            &principal,
+            std::slice::from_ref(&role),
+        )?;
+    }
+    ensure_policy_role_not_held_by_actor("update_role_status", &state, &principal, id).await?;
     verify_policy_step_up(&state, &principal, body.step_up).await?;
 
     let trace = TraceContext::generate();

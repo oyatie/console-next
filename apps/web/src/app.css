@@ -113,6 +113,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .page__title { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); }
 /* Phone widths: the rail becomes a disclosure opened from the top bar's menu button. */
 @media (--phone) {
+  :root { --frame-start: 0px; }
   .shell { grid-template: "top" var(--topbar-h) "main" 1fr / 1fr; }
   .rail { display: none; }
   .top { gap: var(--space-2); padding: 0 var(--space-2); }
@@ -198,7 +199,8 @@ aside.panel { position: sticky; top: 0; }
 .chip--neutral { background: var(--muted); border-color: var(--border); color: var(--steel); }
 .state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-5); }
 .state__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
-.state__actions { display: flex; gap: var(--space-2); }
+.state__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.state__actions > * { flex: none; max-width: 100%; }
 
 /* ── auth ──────────────────────────────────────────── */
 .auth { min-height: 100%; display: grid; place-items: center; padding: var(--space-4); }

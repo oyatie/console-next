@@ -4,7 +4,6 @@ use console_hr_domain::profile::enums::EmploymentType;
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use console_kernel_core::{KernelError, OrgId, UserId};
 use console_leave_adapter_postgres::PgLeaveStore;
-use console_ontology_canonical_adapter_postgres::employee_void::include_voided;
 use console_ontology_canonical_adapter_postgres::employment;
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::{with_audits, with_org_conn};
@@ -76,37 +75,9 @@ pub fn employee_create_db_error(error: sqlx::Error) -> HrError {
     HrError::from(error)
 }
 
-/// The next server-assigned employee number: `E-` and a zero-padded per-tenant
-/// sequence (`E-000001`, `E-000002`, …), one past the highest number of that
-/// shape in the tenant (a manual number of the same shape moves the sequence
-/// past it, so the two never collide). A per-tenant advisory lock held to
-/// commit serializes concurrent assignments.
-pub async fn next_employee_number(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
-    org_uuid: Uuid,
-) -> Result<String, HrError> {
-    sqlx::query("SELECT pg_advisory_xact_lock(hashtext('employee_number_seq:' || $1::text))")
-        .bind(org_uuid)
-        .execute(tx.as_mut())
-        .await?;
-    // A voided registration keeps its employee number (MR-26), so it counts
-    // here too, and so does every number an employee number change ever moved
-    // away from or to (records-02: a retired E-000001 alias was issued again
-    // and refused 409).
-    include_voided(tx, true).await?;
-    let last: Option<i64> = sqlx::query_scalar(
-        "SELECT max(substr(n, 3)::BIGINT) FROM ( \
-           SELECT employee_number AS n FROM employees WHERE org_id = $1 \
-           UNION ALL SELECT from_number FROM employee_number_changes WHERE org_id = $1 \
-           UNION ALL SELECT to_number FROM employee_number_changes WHERE org_id = $1) used \
-         WHERE n ~ '^E-[0-9]{6,18}$'",
-    )
-    .bind(org_uuid)
-    .fetch_one(tx.as_mut())
-    .await?;
-    include_voided(tx, false).await?;
-    Ok(format!("E-{:06}", last.unwrap_or(0) + 1))
-}
+pub use super::employee_number::{
+    format_employee_number, next_employee_number, next_employee_sequence, sequence_of,
+};
 
 /// Other non-exited employees bound to `org_unit_id` with exactly this name.
 pub async fn same_name_in_unit_warning(

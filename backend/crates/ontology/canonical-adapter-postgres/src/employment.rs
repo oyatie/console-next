@@ -91,7 +91,7 @@ pub use derived::{appoint_legacy_head_in_tx, reassign_org_unit_via_transfers_in_
 pub use error::EmploymentError;
 pub use legacy_head::{
     EmploymentChange, NewEmployeeRecord, apply_employment_change, assignable_org_unit_name,
-    insert_employee_record, set_employee_org_unit,
+    assignable_org_units, insert_employee_record, insert_employee_records, set_employee_org_unit,
 };
 pub use lookups::{ensure_job_position_exists, ensure_org_unit_exists};
 pub use model::{EmploymentAttributes, EmploymentCommand, EmploymentQuery};

@@ -183,7 +183,7 @@ export function UnplacedPage() {
 
       <CommandError error={placer.error} />
       {held && <UnplacedRefused held={held} place={pathOf(held.target.unitId)} pending={placer.isPending} onRest={() => placer.mutate({ people: held.rest, target: held.target, setup: held.setup, effectiveDate: held.effectiveDate })} onCancel={() => setHeld(null)} />}
-      {receipt && <div className={s.dock}><Receipt state="applied" message={receipt} onDismiss={() => setReceipt(null)} /></div>}
+      {receipt && <Receipt placement="docked" state="applied" message={receipt} onDismiss={() => setReceipt(null)} />}
     </>}</QueryState>
     </div>
   );

@@ -209,6 +209,8 @@ export const enImport = {
   "import.error.import_apply_busy": "Many imports are being applied. Nothing was written · you can apply again in 15 seconds.",
   "import.error.import_row_limit": "Over the current employees one apply takes. Former employees do not count · split the current rows · follows the “import rows per apply” setting.",
   "import.error.apply_interrupted": "The apply stopped before writing. Nothing was written; apply again.",
+  "import.error.import_apply_forbidden": "Your access no longer allows this import to be applied. Ask an administrator to check your access.",
+  "import.error.import_apply_timed_out": "The import exceeded the server time limit. Nothing was applied. Review the dry run, then apply again.",
   "import.apply.emptyType": "{count, number} without an employment type",
   "import.apply.unplaced": "{count, number} unplaced",
   "import.apply.phoneUnstored": "{count, number} rows whose phone is not stored",

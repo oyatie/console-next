@@ -32,6 +32,7 @@ beforeAll(async () => {
         import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
         import { loadCatalog } from '@console/i18n';
         import { HeldNotice } from '/apps/web/src/ui/live/held-notice.tsx';
+        import { StatusDock } from '/apps/web/src/ui/status-dock/status-dock.tsx';
         import { holdLive, openLive } from '/apps/web/src/lib/live/live.ts';
         import { read } from '/apps/web/src/lib/query.ts';
         import liveStyles from '/apps/web/src/ui/live/live.module.css';
@@ -64,7 +65,7 @@ beforeAll(async () => {
           return React.createElement(React.Fragment, null,
             React.createElement('button', { id: 'destination' }, 'Destination'),
             React.createElement('aside', null, params.has('notice')
-              ? React.createElement('div', { className: 'notice ' + liveStyles.notice }, React.createElement('button', null, 'Changed record'))
+              ? React.createElement(StatusDock, null, React.createElement('div', { className: 'notice ' + liveStyles.notice }, React.createElement('button', null, 'Changed record')))
               : React.createElement(HeldNotice)),
             ...Array.from({ length: lists }, (_, index) => React.createElement('section', { key: index, 'aria-label': 'List ' + index, tabIndex: -1 },
               React.createElement(HeldNotice, { placement: 'list' }),
@@ -98,14 +99,14 @@ test("the list has an empty mounted status region before changes arrive", async 
   await change();
   await element(status).toHaveText("새 항목 1건 · 새로 고침");
   await element(status).toHaveAttribute("data-same-node", "yes");
-  await element(page.locator("aside").getByRole("status")).toHaveCount(0);
+  await element(page.locator("[data-status-dock]").getByRole("status")).toHaveCount(0);
 });
 
 test("mounting a list hides an existing floater without another change frame", async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}held-notice-test?lists=0`);
   await element(page.locator("html")).toHaveAttribute("data-reads", "1");
   await change();
-  const floating = page.locator("aside").getByRole("button");
+  const floating = page.locator("[data-status-dock]").getByRole("button");
   await element(floating).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new Event("add-list")));
   await element(page.locator("section").getByRole("button", { name: "새 항목 1건 · 새로 고침", exact: true })).toBeVisible();
@@ -117,13 +118,13 @@ test("only the last list unmount restores the held shell floater", async () => {
   await element(page.locator("section")).toHaveCount(2);
   await change();
   await element(chip()).toHaveCount(2);
-  await element(page.locator("aside").getByRole("button")).toHaveCount(0);
+  await element(page.locator("[data-status-dock]").getByRole("button")).toHaveCount(0);
   await page.evaluate(() => window.dispatchEvent(new Event("remove-list")));
   await element(page.locator("section")).toHaveCount(1);
-  await element(page.locator("aside").getByRole("button")).toHaveCount(0);
+  await element(page.locator("[data-status-dock]").getByRole("button")).toHaveCount(0);
   await page.evaluate(() => window.dispatchEvent(new Event("remove-list")));
   await element(page.locator("section")).toHaveCount(0);
-  await element(page.locator("aside").getByRole("button", { name: "새 항목 1건 · 새로 고침" })).toBeVisible();
+  await element(page.locator("[data-status-dock]").getByRole("button", { name: "새 항목 1건 · 새로 고침" })).toBeVisible();
 });
 
 test.each([1, 2])("hiding every mounted list restores the floater with %i lists", async lists => {
@@ -131,7 +132,7 @@ test.each([1, 2])("hiding every mounted list restores the floater with %i lists"
   await element(page.locator("section")).toHaveCount(lists);
   await change();
   await element(chip()).toHaveCount(lists);
-  const floating = page.locator("aside").getByRole("button");
+  const floating = page.locator("[data-status-dock]").getByRole("button");
   await page.locator("section").first().evaluate(el => { el.style.display = "none"; });
   if (lists > 1) {
     await element(floating).toHaveCount(0);
@@ -154,7 +155,7 @@ for (const width of [1440, 390]) for (const placement of ["notice", "held"]) {
     await page.goto(`${server.resolvedUrls!.local[0]}held-notice-test?lists=0&${placement}`);
     await element(page.locator("html")).toHaveAttribute("data-reads", "1");
     if (placement === "held") await change();
-    const button = page.locator("aside").getByRole("button");
+    const button = page.locator("[data-status-dock]").getByRole("button");
     await element(button).toBeVisible();
     for (const layer of ["--z-sheet", "--z-panel"]) {
       const onTop = await button.evaluate((el, layer) => {
@@ -214,7 +215,7 @@ test.each(["plain", "plain&tab"])("refresh focuses a %s row and preserves its ta
   await page.goto(`${server.resolvedUrls!.local[0]}held-notice-test?lists=1&${row}`);
   await element(page.locator('[data-id="row-1"]')).toBeVisible();
   await change();
-  await element(page.locator("aside").getByRole("button")).toHaveCount(0);
+  await element(page.locator("[data-status-dock]").getByRole("button")).toHaveCount(0);
   await chip().click();
   const target = page.locator('[data-id="row-2"]');
   await element(target).toBeFocused();
@@ -225,7 +226,7 @@ test("a refresh finishing after its list unmounts does not take focus from the n
   await page.goto(`${server.resolvedUrls!.local[0]}held-notice-test?lists=1&delay`);
   await element(page.locator('[data-id="row-1"]')).toBeVisible();
   await change();
-  await element(page.locator("aside").getByRole("button")).toHaveCount(0);
+  await element(page.locator("[data-status-dock]").getByRole("button")).toHaveCount(0);
   await chip().click();
   await element(page.locator("html")).toHaveAttribute("data-reads", "2");
   await page.evaluate(() => window.dispatchEvent(new Event("remove-list")));

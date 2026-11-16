@@ -1,13 +1,21 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Observe SQLx statements in the product future, without a Postgres extension.
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use tracing::{
     Event, Metadata, Subscriber,
     field::{Field, Visit},
     span::{Attributes, Id, Record},
 };
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct Queries(pub Arc<Mutex<Vec<String>>>);
+impl Default for Queries {
+    fn default() -> Self {
+        // Retain SQLx callsite interest between observers scoped to individual futures.
+        static DISPATCH: OnceLock<tracing::Dispatch> = OnceLock::new();
+        DISPATCH.get_or_init(|| tracing::Dispatch::new(Self(Arc::default())));
+        Self(Arc::default())
+    }
+}
 struct Fields(String);
 impl Visit for Fields {
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
@@ -17,6 +25,13 @@ impl Visit for Fields {
 impl Queries {
     pub fn statements(&self) -> Vec<String> {
         self.0.lock().unwrap().clone()
+    }
+    #[allow(dead_code)]
+    pub fn statutory_register_reads(&self) -> Vec<String> {
+        self.statements()
+            .into_iter()
+            .filter(|sql| sql.contains("FROM lifecycle_statutory_rules r"))
+            .collect()
     }
     pub fn scans(&self) -> usize {
         self.statements()

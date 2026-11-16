@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "apps/web/src/features/home/ui/snooze.tsx#SnoozeMenu": 25,
+    "apps/web/src/features/home/ui/snooze.tsx#SnoozedList": 19
+  },
+  "newScreens": {
+    "apps/web/src/features/home/ui/snooze.tsx#SnoozeMenu": {
+      "FACT": 11,
+      "REFUSAL": 14,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/home/ui/snooze.tsx#SnoozedList": {
+      "FACT": 9,
+      "REFUSAL": 9,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

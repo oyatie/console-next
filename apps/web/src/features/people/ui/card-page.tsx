@@ -20,7 +20,6 @@ import { authzApplies, authzQuery, granted } from "../../../reference/authz/api"
 import { verbStates } from "../domain/lifecycle";
 import type { Done } from "./person-act";
 import { ProfileHost } from "./profile-host";
-import { CancelHost } from "./cancel-sheet";
 import { CardBar, CardBody } from "./card-body";
 import { CardHead, type CardTab } from "./card-head";
 import { chunk } from "../../../lib/chunk-guard";
@@ -149,7 +148,6 @@ function Card({ d }: { d: Detail }) {
       <ProfileHost d={d} act={act} onClose={close} />
       <FixHost c={c} act={act} onClose={close} onAct={open} />
       {act?.startsWith("case:") && <CaseSheet id={act.slice(5)} onClose={close} />}
-      <CancelHost e={d.employee} act={act} onClose={close} onAct={open} />
       {tab === "card" ? (
         <CardBody c={c} quick={quick} act={act} onAct={open} onTab={onTab} onJump={jumpTo} />
       ) : (

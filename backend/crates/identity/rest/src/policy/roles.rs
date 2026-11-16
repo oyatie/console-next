@@ -4,6 +4,8 @@ use crate::error::RestError;
 use crate::metrics::policy_branch_scope_label;
 use crate::metrics::record_policy_studio_operation;
 use crate::policy::delegation::ensure_policy_conditions_inside_delegated_authority_for_operation;
+use crate::policy::delegation::ensure_policy_role_not_held_by_actor;
+use crate::policy::delegation::ensure_policy_roles_inside_actor_permission_ceiling_for_operation;
 use crate::policy::delegation::ensure_policy_roles_inside_delegated_authority_for_operation;
 use crate::policy::dto::CreatePolicyRoleRequest;
 use crate::policy::dto::PolicyRoleResponse;
@@ -47,19 +49,37 @@ pub(crate) async fn create_policy_role(
         &principal,
         &conditions,
     )?;
+    let now = OffsetDateTime::now_utc();
+    let requested = PolicyRoleSummary {
+        id: Uuid::nil(),
+        role_key,
+        display_name,
+        description,
+        status: "DRAFT".to_owned(),
+        is_system: false,
+        permissions,
+        conditions,
+        created_at: now,
+        updated_at: now,
+    };
+    ensure_policy_roles_inside_actor_permission_ceiling_for_operation(
+        "create_role",
+        &principal,
+        std::slice::from_ref(&requested),
+    )?;
 
     let trace = TraceContext::generate();
     let role = state
         .store
         .create_policy_role(CreatePolicyRoleCommand {
             actor: principal.user_id,
-            role_key,
-            display_name,
-            description,
-            permissions,
-            conditions,
+            role_key: requested.role_key,
+            display_name: requested.display_name,
+            description: requested.description,
+            permissions: requested.permissions,
+            conditions: requested.conditions,
             trace: trace.clone(),
-            occurred_at: OffsetDateTime::now_utc(),
+            occurred_at: now,
         })
         .await
         .map_err(RestError::from_store)?;
@@ -125,11 +145,18 @@ pub(crate) async fn update_policy_role(
         created_at: role.created_at,
         updated_at: role.updated_at,
     };
+    let before_and_after = [role.clone(), requested_role];
     ensure_policy_roles_inside_delegated_authority_for_operation(
         "update_role",
         &principal,
-        &[role.clone(), requested_role],
+        &before_and_after,
     )?;
+    ensure_policy_roles_inside_actor_permission_ceiling_for_operation(
+        "update_role",
+        &principal,
+        &before_and_after[1..],
+    )?;
+    ensure_policy_role_not_held_by_actor("update_role", &state, &principal, id).await?;
     verify_policy_step_up(&state, &principal, body.step_up).await?;
 
     let trace = TraceContext::generate();

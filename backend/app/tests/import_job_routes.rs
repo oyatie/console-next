@@ -5,19 +5,10 @@
 //! `Retry-After`; refusals reach the wire with status and code. The service
 //! suites (console-hr-adapter-postgres `import2::mig_*`) prove the rest.
 
-use std::collections::{BTreeMap, BTreeSet};
 use std::time::{Duration, Instant};
 
 use axum::body::{Body, to_bytes};
-use console_hr_adapter_postgres::HrService;
 use console_hr_adapter_postgres::import::apply_job::DriverSlot;
-use console_hr_adapter_postgres::import::sheet::SheetContext;
-use console_hr_adapter_postgres::import::types::{ImportDryRunRequest, XlsxUpload};
-use console_hr_adapter_postgres::import::workbook::parse_workbook;
-use console_hr_domain::import::detect::WorkbookMappingRequest;
-use console_hr_domain::import::grid::{Cell, GridRow, GridSheet};
-use console_kernel_core::{BranchScope, OrgId, UserId};
-use console_platform_authz::{Principal, Role};
 use http::{Request, StatusCode, header};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -32,15 +23,9 @@ use harness::{Caller, keys, router, token, user};
 #[path = "import_job_routes/inline_outlives.rs"]
 mod inline_outlives;
 
-type Out<T> = Result<T, String>;
-
-fn e<E: std::fmt::Display>(error: E) -> String {
-    error.to_string()
-}
-
-fn code(body: &Value) -> &str {
-    body["error"]["code"].as_str().unwrap_or_default()
-}
+#[path = "import_job_routes/fixture.rs"]
+mod fixture;
+use fixture::{Out, code, e, planned};
 
 async fn completed_job(ops: &Caller, apply: &str) -> Value {
     let deadline = Instant::now() + Duration::from_secs(60);
@@ -60,69 +45,6 @@ async fn completed_job(ops: &Caller, apply: &str) -> Value {
         assert!(Instant::now() < deadline, "job did not finish: {job}");
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
-}
-
-/// A run previewed and dry-run through the service (the multipart upload is
-/// the IMPORT-2 suites' subject): `(run, digest)`.
-async fn planned(pool: &PgPool, org: Uuid, ops: UserId) -> Out<(Uuid, String)> {
-    let rt = HrService::new(pool.clone());
-    let principal = Principal::new(
-        ops,
-        OrgId::from_uuid(org),
-        BTreeSet::from([Role::SuperAdmin]),
-        BranchScope::All,
-    );
-    let text = |t: &str| Cell::Text(t.into());
-    let sheet = GridSheet {
-        name: "명부".into(),
-        rows: vec![
-            GridRow {
-                index: 0,
-                cells: vec![
-                    (0, text("성명")),
-                    (1, text("입사일")),
-                    (2, text("고용형태")),
-                ],
-            },
-            GridRow {
-                index: 1,
-                cells: vec![
-                    (0, text("김일")),
-                    (1, text("2024-03-04")),
-                    (2, text("정규직")),
-                ],
-            },
-        ],
-    };
-    let ctx = SheetContext {
-        filename: "a.xlsx",
-        org,
-        vault: None,
-    };
-    let parsed = parse_workbook(
-        &ctx,
-        &[sheet],
-        &BTreeMap::new(),
-        &WorkbookMappingRequest::default(),
-    )
-    .map_err(|x| x.message)?;
-    let upload = XlsxUpload {
-        filename: "a.xlsx".into(),
-        bytes: Vec::new(),
-        mapping: None,
-        pay_period_start: None,
-        pay_period_end: None,
-    };
-    let run = rt
-        .preview_import(principal.clone(), upload, "c".repeat(64), parsed)
-        .await
-        .map_err(|x| x.message)?
-        .run_id;
-    let plan = rt
-        .dry_run_import(principal, run, ImportDryRunRequest::default())
-        .await
-        .map_err(|x| x.message)?;
-    Ok((run, plan.dry_run_digest))
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

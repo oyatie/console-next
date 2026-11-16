@@ -4,7 +4,8 @@
 use super::change_window::assert_employment_change_window_open;
 use super::error::EmploymentError;
 use console_kernel_core::KernelError;
-use sqlx::{Postgres, Transaction};
+use sqlx::{Postgres, Row, Transaction};
+use std::collections::HashMap;
 use time::Date;
 use uuid::Uuid;
 
@@ -54,6 +55,20 @@ pub async fn insert_employee_record(
     org_id: Uuid,
     record: NewEmployeeRecord<'_>,
 ) -> Result<(), sqlx::Error> {
+    insert_employee_records(tx, org_id, &[record]).await
+}
+
+/// Inserts registration heads in one statement; callers own authorization and rollback.
+/// Home-branch authority remains with the post-commit routing command.
+/// Number order keeps the uniqueness trigger's locks consistent across overlapping batches.
+pub async fn insert_employee_records(
+    tx: &mut Transaction<'_, Postgres>,
+    org_id: Uuid,
+    records: &[NewEmployeeRecord<'_>],
+) -> Result<(), sqlx::Error> {
+    if records.is_empty() {
+        return Ok(());
+    }
     sqlx::query(
         r#"INSERT INTO employees (
             id, org_id, company, name, employee_number, org_unit, position,
@@ -61,21 +76,28 @@ pub async fn insert_employee_record(
             source_row, source_key, raw_row, source_metadata,
             identity_resolution_strategy, identity_resolution_confidence,
             identity_review_required, identity_name_only_merge, hire_on
-        ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, 'console', 'people', 1,
-            $9, '{}'::jsonb, '{}'::jsonb, 'employee_number', 'high', FALSE, FALSE, $10::DATE
-        )"#,
+        ) SELECT id, $1, company, name, employee_number, org_unit, position,
+            site, 'console', 'people', 1, 'console:' || employee_number,
+            '{}'::jsonb, '{}'::jsonb, 'employee_number', 'high', FALSE, FALSE, hire_date::DATE
+          FROM unnest($2::uuid[], $3::text[], $4::text[], $5::text[], $6::text[],
+                      $7::text[], $8::text[], $9::text[])
+          AS input(id,company,name,employee_number,org_unit,position,site,hire_date)
+          ORDER BY employee_number,id"#,
     )
-    .bind(record.employee_id)
     .bind(org_id)
-    .bind(record.company)
-    .bind(record.name)
-    .bind(record.employee_number)
-    .bind(record.org_unit)
-    .bind(record.position)
-    .bind(record.worksite_name)
-    .bind(format!("console:{}", record.employee_number))
-    .bind(record.hire_date)
+    .bind(records.iter().map(|r| r.employee_id).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.company).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.name).collect::<Vec<_>>())
+    .bind(
+        records
+            .iter()
+            .map(|r| r.employee_number)
+            .collect::<Vec<_>>(),
+    )
+    .bind(records.iter().map(|r| r.org_unit).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.position).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.worksite_name).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.hire_date).collect::<Vec<_>>())
     .execute(tx.as_mut())
     .await
     .map(|_| ())
@@ -178,19 +200,48 @@ pub async fn assignable_org_unit_name(
     org_id: Uuid,
     org_unit_id: Uuid,
 ) -> Result<Option<String>, sqlx::Error> {
-    sqlx::query_scalar(
-        "SELECT latest.attributes->>'name' FROM org_units u \
-         JOIN LATERAL ( \
+    Ok(assignable_org_units(tx, org_id, &[org_unit_id])
+        .await?
+        .remove(&org_unit_id)
+        .flatten())
+}
+
+/// Visible units mapped to their assignable name, or `None` for non-assignable
+/// units. Missing or foreign units are absent. Uses each unit's latest revision.
+///
+/// # Errors
+/// The driver error verbatim, including an assignable unit with no name.
+pub async fn assignable_org_units(
+    tx: &mut Transaction<'_, Postgres>,
+    org_id: Uuid,
+    org_unit_ids: &[Uuid],
+) -> Result<HashMap<Uuid, Option<String>>, sqlx::Error> {
+    if org_unit_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let rows = sqlx::query(
+        "SELECT u.id, latest.attributes->>'name' AS name, COALESCE( \
+           latest.attributes->>'kind' IN ('site', 'department', 'team') \
+           AND COALESCE(latest.attributes->>'status', 'active') <> 'dissolved', false) AS assignable \
+         FROM org_units u LEFT JOIN LATERAL ( \
              SELECT attributes FROM org_unit_revisions r \
              WHERE r.org_id = u.org_id AND r.org_unit_id = u.id \
              ORDER BY r.version DESC LIMIT 1 \
          ) latest ON true \
-         WHERE u.org_id = $1 AND u.id = $2 \
-           AND latest.attributes->>'kind' IN ('site', 'department', 'team') \
-           AND COALESCE(latest.attributes->>'status', 'active') <> 'dissolved'",
+         WHERE u.org_id = $1 AND u.id = ANY($2)",
     )
     .bind(org_id)
-    .bind(org_unit_id)
-    .fetch_optional(tx.as_mut())
-    .await
+    .bind(org_unit_ids)
+    .fetch_all(tx.as_mut())
+    .await?;
+    rows.into_iter()
+        .map(|row| {
+            let name = if row.try_get::<bool, _>("assignable")? {
+                Some(row.try_get("name")?)
+            } else {
+                None
+            };
+            Ok((row.try_get("id")?, name))
+        })
+        .collect()
 }
