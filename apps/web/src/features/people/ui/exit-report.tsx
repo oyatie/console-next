@@ -12,7 +12,7 @@ import { Button } from "../../../ui/button/button";
 import { DateField } from "../../../ui/date/date-field";
 import { retirementDate } from "../domain/employment";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
-import { FieldSet, Field } from "../../../ui/field/field";
+import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { Banner } from "../../../ui/banner/banner";
 import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
@@ -86,7 +86,7 @@ export function ReportForm({ employee, contractEnd = false, onClose, onDone }: {
       action={{ kind: "exitReport", mode: "apply", count: 1 }}
     >
       <OpsExitNote employeeId={employee.id} search={employee.employee_number || employee.name} />
-      <FieldSet required={null} className={s.group} disabled={run.locked}>
+      <fieldset className={s.group} disabled={run.locked}>
         <DateField
           label={t("exit.field.date")}
           required
@@ -128,7 +128,7 @@ export function ReportForm({ employee, contractEnd = false, onClose, onDone }: {
         </Field>}
         {exitClass?.involuntary && <Chip tone="warn">{t("exit.class.involuntary")}</Chip>}
         {date && <QueryState q={guards}>{(facts) => <ExitPreflight facts={facts} involuntary={Boolean(exitClass?.involuntary)} />}</QueryState>}
-      </FieldSet>
+      </fieldset>
     </StepFrame>
   );
 }

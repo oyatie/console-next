@@ -6,7 +6,7 @@ import { Chip } from "../../../ui/chip";
 import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
 import { ProtectedPeriods } from "./exit-protection";
 import { t } from "@console/i18n";
-import { FieldSet, Field, TextInput } from "../../../ui/field/field";
+import { Field, TextInput } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { DateField } from "../../../ui/date/date-field";
 import { todayKst } from "../../../lib/pure/today";
@@ -52,7 +52,8 @@ export function ExitGuardFields({ c, reason, onReason, involuntary, noticeRequir
     {!c.exit_reason_code && <ReasonCodeField domain="exit_reason" groupExit look="chips" required label={t("exit.field.reason")} value={reason} onChange={onReason} error={tried && !reason ? t("exit.error.exit_reason_required") : undefined} />}
     {involuntary && <Chip tone="warn">{t("exit.class.involuntary")}</Chip>}
     {involuntary && <ProtectedPeriods periods={protectedLines(c)} />}
-    {noticeRequired && <FieldSet required={null} label={t("exit.notice.title")} className={s.group} ref={noticeBox}>
+    {noticeRequired && <fieldset className={s.group} ref={noticeBox}>
+    <legend className={s.groupTitle}>{t("exit.notice.title")}</legend>
     <Field label={t("exit.notice.reason_text")} required error={error("reason_text")}>
       {(p) => <TextArea {...p} maxLength={1000} value={value.reason_text} onChange={(e) => onChange({ ...value, reason_text: e.target.value })} />}
     </Field>
@@ -75,6 +76,6 @@ export function ExitGuardFields({ c, reason, onReason, involuntary, noticeRequir
         </Field>
       </>}
     </>}
-  </FieldSet>}
+  </fieldset>}
   </>;
 }

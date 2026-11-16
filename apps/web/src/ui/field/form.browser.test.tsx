@@ -37,6 +37,8 @@ beforeAll(async () => {
           const [bubbles, setBubbles] = useState(0), [inline, setInline] = useState('');
           const [serverError, setServerError] = useState(null);
           return h('main', null, h('h1', null, 'Synthetic form'),
+            h('div', { id: 'native-fieldset-container', style: { width: '200px' } },
+              h('fieldset', { id: 'native-fieldset' }, 'UnbreakableValue'.repeat(30))),
             h(FieldSet, { id: 'locked-fields', required: null, disabled: true, ref: node => { if (node) node.dataset.measured = String(node.getBoundingClientRect().width); } },
               h(TextInput, { 'aria-label': 'Locked note' })),
             h(Form, { id: 'sample-form', onSubmit: () => setCount(n => n + 1), onKeyDown: e => { if (e.key === 'Enter') setBubbles(n => n + 1); } },
@@ -248,6 +250,13 @@ test("an input without an id gets a stable summary link that focuses it", async 
   await dom(input).toBeFocused();
 });
 
+
+test("a native fieldset stays within a narrow container despite an unbreakable value", async () => {
+  await open();
+  const container = await page.locator("#native-fieldset-container").boundingBox();
+  const fields = await page.locator("#native-fieldset").boundingBox();
+  expect(fields!.width).toBeLessThanOrEqual(container!.width);
+});
 
 test("a field set forwards its measurement ref and disables its controls", async () => {
   await open();
