@@ -12,7 +12,7 @@ import { moveDetail } from "./lifecycle-sheets";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-test("personnel record preload metadata stays behind the lazy people route", async ({ request }) => {
+test("personnel record preload metadata stays behind its lazy record entry", async ({ request }) => {
   const html = await (await request.get("/")).text();
   const initial = [
     html.match(/<script type="module"[^>]*src="([^"]+)"/)![1]!,
@@ -31,6 +31,10 @@ for (const action of ["multi", "exit.report"]) for (const width of [1440, 390]) 
   await mockRoute(page, "get", "/api/v1/directory/people", { status: 200, json: { items: [], total: 0, offset: 0, limit: 20 } });
   const held = Promise.withResolvers<void>();
   let requested = 0;
+  const rosterChunks: string[] = [];
+  page.on("request", request => {
+    if (/\/assets\/people-route-[^/]+\.js$/.test(request.url())) rosterChunks.push(request.url());
+  });
   await page.route(/\/assets\/person-act-[^/]+\.js$/, async route => {
     requested++;
     await held.promise;
@@ -41,6 +45,7 @@ for (const action of ["multi", "exit.report"]) for (const width of [1440, 390]) 
     await routeReady(page);
     await expect(page.getByRole("heading", { level: 1, name: moveDetail.employee.name, exact: true })).toBeVisible();
     expect(requested).toBe(0);
+    expect(rosterChunks).toEqual([]);
     for (const theme of ["light", "dark"]) {
       await page.locator("html").evaluate((element, value) => { element.dataset.theme = value; }, theme);
       await fits(page, `personnel/${width}/${theme}`);

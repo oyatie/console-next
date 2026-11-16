@@ -1,14 +1,8 @@
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
-import { createLazyRoute, lazyRouteComponent, Outlet, useChildMatches } from "@tanstack/react-router";
-import { screen } from "../../../lib/fonts";
+import { Outlet, useChildMatches } from "@tanstack/react-router";
 import { People } from "../People";
 import { RegisterToast } from "./register-toast";
 import s from "./register.module.css";
-
-// oxlint-disable-next-line react/only-export-components -- Keep record preload metadata in the lazy route chunk.
-export const employee = createLazyRoute("/app/people/$id")({
-  component: lazyRouteComponent(screen(() => import("./card-page")), "EmployeeCard"),
-});
 
 /**
  * The /people route: the People page (roster or accounts), the action a child route opens over it (the registration
