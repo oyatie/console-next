@@ -99,7 +99,7 @@ test("go-live updates the rail with its answer despite a 1.5 s profile read, the
     release();
     await element.poll(() => page.evaluate(() => window.__navFacts.phase)).toBe("OPERATING");
     await element(rail.getByRole("link")).toHaveText(entries);
-    expect(moduleReads).toBe(2);
+    expect(moduleReads).toBe(3);
     expect(errors).toEqual([]);
   } finally {
     accessHeld.resolve();

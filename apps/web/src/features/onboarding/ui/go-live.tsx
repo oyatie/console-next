@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 // eslint-disable-next-line no-restricted-imports -- Go-live synchronizes the server-confirmed phase before navigation.
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ApiError } from "../api";
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
@@ -38,14 +38,15 @@ export function GoLive() {
   const receipt = useQuery({ ...goLiveReceiptQuery, enabled: q.data?.phase === "OPERATING" });
   const qc = useQueryClient();
   const nav = useNavigate();
+  const router = useRouter();
+  const location = useRef(router.state.location);
   const [acknowledgedDigest, setAcknowledgedDigest] = useState<string | null>(null);
   const ack = acknowledgedDigest === q.data?.digest;
   const refreshFailed = q.data?.phase === "SETUP" && queryView(q) === "stale";
   const run = useCommand({
-    run: (_: undefined, key: string) => goLive(q.data!.digest, ack, q.data!.line_digests, key),
-    invalidates: SETUP_READS,
-    announce: (r) => t("setup.golive.done", { at: fmtDateTime(r.go_live_at) }),
-    onSuccess: async (result) => {
+    run: async (_: undefined, key: string) => {
+      location.current = router.state.location;
+      const result = await goLive(q.data!.digest, ack, q.data!.line_digests, key);
       // The command's answer updates the rail before a slower profile refetch can move its entries.
       qc.setQueriesData(meQuery, (meData: Awaited<ReturnType<typeof meQuery.queryFn>> | undefined) => meData?.tenant ? {
         ...meData, tenant: { ...meData.tenant, phase: result.phase, go_live_at: result.go_live_at },
@@ -60,10 +61,14 @@ export function GoLive() {
             qc.refetchQueries(modulesQuery, { cancelRefetch: false }),
           ]),
           new Promise<void>(resolve => { timeout = setTimeout(resolve, MAX_RETRY_AFTER_MS); }),
-        ]);
-      } catch { return void nav({ to: "/" }); }
-      finally { clearTimeout(timeout); }
-      void nav({ to: "/" });
+        ]).catch(() => undefined);
+      } finally { clearTimeout(timeout); }
+      return result;
+    },
+    invalidates: SETUP_READS,
+    announce: (r) => t("setup.golive.done", { at: fmtDateTime(r.go_live_at) }),
+    onSuccess: () => {
+      if (router.state.location === location.current) void nav({ to: "/" });
     },
   });
   const changed = run.error instanceof ApiError && run.error.code === "preview_stale"

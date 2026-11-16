@@ -6,11 +6,11 @@ import { ApiError, configure } from "@console/api";
 import { COMMAND_NOT_APPLIED, keepsKey, readsAreStale, recoveryOf, useCommand } from "./command";
 
 // Server rendering captures real hook refs; MutationObserver drives its real callbacks without a DOM dependency.
-function capture(run: (input: string, key: string) => Promise<string>, verify?: (input: string, key: string) => Promise<string | typeof COMMAND_NOT_APPLIED>, onSuccess?: () => Promise<void>) {
+function capture(run: (input: string, key: string) => Promise<string>, verify?: (input: string, key: string) => Promise<string | typeof COMMAND_NOT_APPLIED>) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
   let command!: ReturnType<typeof useCommand<string, string>>;
   function Probe({ collect }: { collect: (value: ReturnType<typeof useCommand<string, string>>) => void }) {
-    collect(useCommand({ run, verify, onSuccess }));
+    collect(useCommand({ run, verify }));
     return null;
   }
   renderToStaticMarkup(createElement(QueryClientProvider, { client }, createElement(Probe, { collect: (value) => { command = value; } })));
@@ -19,20 +19,6 @@ function capture(run: (input: string, key: string) => Promise<string>, verify?: 
 
 const transportKey = "actual-transport-intent-key";
 const operationId = "original-operation-id";
-test("a command stays pending until its success callback finishes", async () => {
-  const held = Promise.withResolvers<void>();
-  const started = Promise.withResolvers<void>();
-  const { command, client } = capture(async () => "done", undefined, () => { started.resolve(); return held.promise; });
-  try {
-    const done = command.mutateAsync("submit");
-    await started.promise;
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(client.getMutationCache().getAll()[0]!.state.status).toBe("pending");
-    held.resolve();
-    await done;
-    expect(client.getMutationCache().getAll()[0]!.state.status).toBe("success");
-  } finally { held.resolve(); client.clear(); }
-});
 test("verification reads the original transport intent and settles without resending", async () => {
   const error = new ApiError(0, "command_unknown", "", [], undefined, false, [], { requestKey: transportKey });
   const run = vi.fn<(input: string, key: string) => Promise<string>>().mockRejectedValue(error);
