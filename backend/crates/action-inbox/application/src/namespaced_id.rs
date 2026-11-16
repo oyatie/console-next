@@ -1,60 +1,60 @@
+use crate::ActionInboxSource as S;
+
 pub(super) fn valid_namespaced_id(value: &str) -> bool {
-    let Some((kind, id)) = value.split_once(':') else {
-        return false;
-    };
-    let filing = kind
+    source_of(value).is_some()
+        && value
+            .split_once(':')
+            .is_some_and(|(_, id)| uuid::Uuid::parse_str(id).is_ok())
+}
+
+/// The source that issues ids in this id's namespace (the text before `:`).
+/// One list serves cursors and attribution, so a new namespace names its source.
+pub(super) fn source_of(value: &str) -> Option<S> {
+    let (kind, _) = value.split_once(':')?;
+    if let Some((filing, insurer)) = kind
         .strip_prefix("insurance_filing_")
         .and_then(|k| k.rsplit_once('_'))
-        .is_some_and(|(kind, insurer)| {
-            matches!(
-                kind,
-                "ACQUIRE"
-                    | "LOSE"
-                    | "LEAVE"
-                    | "RESUME"
-                    | "AGE60"
-                    | "WORK_CONFIRMATION"
-                    | "SEPARATION_CERTIFICATE"
-                    | "ACQUIRE_REQUESTED"
-                    | "MONTHLY_REMUNERATION"
-            ) && matches!(insurer, "NPS" | "NHIS" | "EI" | "IACI")
-        });
-    (filing
-        || matches!(
-            kind,
-            "approval"
-                | "dispatch"
-                | "support"
-                | "support_access"
-                | "privacy_request"
-                | "work"
-                | "payroll"
-                | "governance"
-                | "identifier_correction"
-                | "registration_check"
-                | "org_change"
-                | "hr_exit"
-                | "hr_lifecycle"
-                | "hr_request"
-                | "hr_register"
-                | "hr_identity"
-                | "hr_branch"
-                | "hr_unplaced"
-                | "hr_contract"
-                | "period_unlock"
-                | "grant_notice"
-                | "account_security"
-                | "setup_entity"
-                | "setup_workplace"
-                | "setup_org"
-                | "setup_approval"
-                | "setup_people"
-                | "setup_passkey"
-                | "setup_employees"
-                | "setup_roles"
-                | "setup_golive"
-        ))
-        && uuid::Uuid::parse_str(id).is_ok()
+    {
+        return (matches!(
+            filing,
+            "ACQUIRE"
+                | "LOSE"
+                | "LEAVE"
+                | "RESUME"
+                | "AGE60"
+                | "WORK_CONFIRMATION"
+                | "SEPARATION_CERTIFICATE"
+                | "ACQUIRE_REQUESTED"
+                | "MONTHLY_REMUNERATION"
+        ) && matches!(insurer, "NPS" | "NHIS" | "EI" | "IACI"))
+        .then_some(S::HrInsurance);
+    }
+    Some(match kind {
+        "approval" => S::Workflow,
+        "dispatch" => S::Dispatch,
+        "support" => S::Support,
+        "support_access" => S::SupportAccess,
+        "privacy_request" => S::PrivacyRequests,
+        "work" => S::WorkOrder,
+        "payroll" => S::Payroll,
+        "governance" => S::Governance,
+        "identifier_correction" => S::EntityCorrections,
+        "registration_check" => S::RegistrationChecks,
+        "org_change" => S::OrgChange,
+        "hr_exit" => S::HrExit,
+        "hr_lifecycle" => S::HrLifecycle,
+        "hr_request" => S::HrRequests,
+        "hr_register" => S::HrRegister,
+        "hr_identity" => S::HrIdentity,
+        "hr_branch" => S::HrBranch,
+        "hr_unplaced" => S::HrUnplaced,
+        "hr_contract" => S::HrContract,
+        "period_unlock" => S::PeriodUnlock,
+        "grant_notice" | "account_security" => S::GrantNotice,
+        "setup_entity" | "setup_workplace" | "setup_org" | "setup_approval" | "setup_people"
+        | "setup_passkey" | "setup_employees" | "setup_roles" | "setup_golive" => S::Setup,
+        _ => return None,
+    })
 }
 
 #[cfg(test)]

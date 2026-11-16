@@ -6438,6 +6438,23 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/action-inbox/items/{id}/snooze",
+        operations: &[
+            Operation {
+                method: "delete",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__me__action-inbox__items__id__snooze.delete.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__me__action-inbox__items__id__snooze.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/me/action-inbox/reference",
         operations: &[Operation {
             method: "get",
