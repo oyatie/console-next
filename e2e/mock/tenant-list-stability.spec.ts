@@ -225,6 +225,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(panel.locator('section[aria-labelledby="tenant-status"] button')).toHaveCount(removable ? 2 : 1);
       const remove = panel.getByRole("button", { name: t("tenants.remove", { org: org.name }), exact: true });
       await expect(remove).toBeVisible();
+      const deletion = panel.getByRole("region", { name: t("tenants.section.remove"), exact: true });
+      const erase = deletion.getByRole("button", { name: t("tenants.remove.force", { org: org.name }), exact: true });
+      await expect(erase).toBeVisible();
+      await expect(erase).toHaveAccessibleDescription(t("common.loading"));
+      await expect(panel.locator("section").last()).toHaveAttribute("aria-labelledby", "tenant-remove");
       if (removable) await expect(remove).toBeEnabled();
       else {
         await expect(remove).toHaveAttribute("aria-disabled", "true");
@@ -232,11 +237,19 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await expect(panel.getByRole("button", { name: t("tenants.status.archive", { org: org.name }), exact: true })).toHaveCount(1);
       }
       await page.evaluate(() => document.fonts.ready);
-      const positions = () => panel.getByRole("button").evaluateAll(elements => elements.map(el => ({
-        name: el.getAttribute("aria-label") ?? el.textContent,
-        failure: el.closest('[role="alert"]') !== null,
-        rect: el.getBoundingClientRect().toJSON(),
-      })));
+      // Retry clicks can scroll the shell; scroll-container coordinates distinguish that from layout movement.
+      const positions = () => panel.getByRole("button").evaluateAll(elements => elements.map(el => {
+        const rect = el.getBoundingClientRect();
+        const main = el.closest("main")!;
+        rect.x += scrollX + main.scrollLeft;
+        rect.y += scrollY + main.scrollTop;
+        return {
+          name: el.getAttribute("aria-label") ?? el.textContent,
+          section: el.closest("section[aria-labelledby]")?.getAttribute("aria-labelledby"),
+          failure: el.closest('[role="alert"]') !== null,
+          rect: rect.toJSON(),
+        };
+      }));
       let before = await positions();
       for (const read of [first, first === "recovery" ? "erase" : "recovery"] as const) {
         const received = page.waitForResponse(response => new URL(response.url()).pathname.endsWith(read === "erase" ? "/erase" : "/ops-recovery"));
@@ -245,32 +258,44 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         // Wait for React to commit the response before measuring any mounted button again.
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         const after = await positions();
-        for (const button of before) expect.soft(after.find(next => next.name === button.name)).toEqual(button);
+        for (const button of before) expect.soft(after.find(next => next.name === button.name && next.section === button.section)).toEqual(button);
         before = after;
       }
       if (recoveryStatus === 503 || eraseStatus === 503) {
-        await expect(panel.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toHaveCount(1);
-        await expect(panel.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(1);
-        await expect(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveCount(0);
-        const persistent = before.filter(button => !button.failure);
+        const failures = Number(recoveryStatus === 503) + Number(eraseStatus === 503);
+        await expect(panel.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toHaveCount(failures);
+        await expect(panel.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(failures);
+        await expect(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveCount(recoveryStatus === 503 ? 0 : 1);
+        await expect(erase).toBeVisible();
+        if (eraseStatus === 503) {
+          await expect(erase).toHaveAttribute("aria-disabled", "true");
+          await expect(erase).toHaveAccessibleDescription(t("common.loadFailed.title"));
+        }
         held.recovery = Promise.withResolvers<void>();
         held.erase = Promise.withResolvers<void>();
         statuses.recovery = statuses.erase = 200;
-        await panel.getByRole("button", { name: t("common.retry"), exact: true }).click();
         for (const read of [first, first === "recovery" ? "erase" : "recovery"] as const) {
+          if (read === "recovery" ? recoveryStatus !== 503 : eraseStatus !== 503) continue;
           const received = page.waitForResponse(response => new URL(response.url()).pathname.endsWith(read === "erase" ? "/erase" : "/ops-recovery"));
+          const resource = read === "erase" ? deletion : panel.getByRole("region", { name: `${t("tenants.section.code")} · ${t("opsRecovery.title")}`, exact: true });
+          await resource.getByRole("button", { name: t("common.retry"), exact: true }).click();
+          // The retry can scroll into view; measure the held response after that deliberate movement.
+          await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          const persistent = (await positions()).filter(button => !button.failure);
           held[read].resolve();
           await (await received).finished();
           await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
           const after = await positions();
-          for (const button of persistent) expect.soft(after.find(next => next.name === button.name)).toEqual(button);
+          for (const button of persistent) expect.soft(after.find(next => next.name === button.name && next.section === button.section)).toEqual(button);
         }
       }
       await expect(panel.getByRole("heading", { name: t("opsRecovery.title"), exact: true })).toBeVisible();
       await expect(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toBeEnabled();
       await expect(panel.getByRole("button", { name: t("tenants.remove.force", { org: org.name }), exact: true })).toHaveCount(1);
       const sections = await panel.locator("section[aria-labelledby]").evaluateAll(elements => elements.map(el => el.getAttribute("aria-labelledby")));
-      expect(sections).toEqual(["tenant-status", "tenant-remove", "tenant-code", "tenant-ops-recovery"]);
+      expect(sections).toEqual(["tenant-status", "tenant-code", "tenant-ops-recovery", "tenant-remove"]);
+      await expect(erase).toHaveCount(1);
+      await expect(erase).toHaveAccessibleDescription(t("tenants.erase.tenant_active"));
       await fits(page, `tenant-panel/${width}/${theme}`);
       await expectAxe(page, `tenant-panel/${width}/${theme}`);
       await page.screenshot({ path: test.info().outputPath("tenant-panel.png"), fullPage: true });
