@@ -1,5 +1,6 @@
 import { IntlMessageFormat } from "intl-messageformat";
-import { bootEn, bootKo, type BootMessageId } from "./catalogs/boot";
+import type { BootMessageId } from "./catalogs/boot";
+import { bootBootstrapEn, bootBootstrapKo } from "./catalogs/boot-bootstrap";
 import type { ScreenMessageId } from "./catalogs/en";
 import { applyJosa, resolveJosa } from "./josa";
 
@@ -30,13 +31,12 @@ export const i18n = {
   },
 };
 
-// Sign-in and shell copy ships in the entry; each locale's screen catalog is its own chunk, loaded
-// once before the first screen renders, so the initial load carries no screen copy at all.
-const boot: Record<Locale, Catalog> = { ko: bootKo, en: bootEn };
+// Only loading and recovery copy ships in the entry; routes await their locale before painting.
+const boot: Record<Locale, Catalog> = { ko: bootBootstrapKo, en: bootBootstrapEn };
 const screens: Partial<Record<Locale, Catalog>> = {};
 const loaders: Record<Locale, () => Promise<Catalog>> = {
-  ko: () => import("./catalogs/ko").then((m) => m.ko),
-  en: () => import("./catalogs/en").then((m) => m.en),
+  ko: () => Promise.all([import("./catalogs/boot-ko"), import("./catalogs/ko")]).then(([boot, screen]) => ({ ...boot.bootKo, ...screen.ko })),
+  en: () => Promise.all([import("./catalogs/boot-en"), import("./catalogs/en")]).then(([boot, screen]) => ({ ...boot.bootEn, ...screen.en })),
 };
 const loading = new Map<Locale, Promise<void>>();
 /** Loads a locale's screen catalog (once); the router awaits it before any screen renders. */

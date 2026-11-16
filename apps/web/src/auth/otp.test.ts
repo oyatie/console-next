@@ -1,7 +1,8 @@
-import { afterEach, expect, test } from "vitest";
-import { i18n, t } from "@console/i18n";
+import { afterEach, beforeAll, expect, test } from "vitest";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { normalizeOtp, OTP_LENGTH } from "./Login";
 
+beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
 afterEach(() => i18n.set("ko"));
 
 test("new codes fold case and grouping while legacy codes keep exact bytes", () => {

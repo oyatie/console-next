@@ -7,7 +7,7 @@ import { I18nProvider } from "react-aria-components";
 import { ApiError, configure, session } from "@console/api";
 import { webPlatform } from "@console/api/web";
 import { i18n, loadCatalog, t } from "@console/i18n";
-import { chunk, crashed, loaded, started } from "./lib/chunk-guard";
+import { crashed, loaded, started } from "./lib/chunk-guard";
 import { CrashScreen } from "./lib/react/crash-screen";
 import { STALE_TIME_MS } from "./lib/freshness";
 import { queryDefaults } from "./lib/react/query-defaults";
@@ -20,7 +20,7 @@ import { pauseAutofill } from "./auth/sign-in-id";
 import { login } from "./routes/app";
 import { routeTree } from "./routes/tree";
 import "./app.css";
-import { prepareFonts } from "./lib/fonts";
+import { prepareFonts, screen } from "./lib/fonts";
 
 // Every static import is in: from here a failed chunk is a lazy one (public/chunk-guard.js).
 started();
@@ -29,7 +29,7 @@ configure(webPlatform);
 initLocale();
 
 // Session warning UI loads beside the router without adding to the entry bundle.
-const IdleGuard = lazy(() => chunk(import("./auth/IdleGuard")).then((m) => ({ default: m.IdleGuard })));
+const IdleGuard = lazy(() => screen(() => import("./auth/IdleGuard"))().then((m) => ({ default: m.IdleGuard })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
