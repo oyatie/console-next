@@ -43,7 +43,7 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
-test.each([1440, 390].flatMap(width => [0, 9].map(initial => ({ width, initial }))))("cached tenant counts from $initial update without moving controls or losing search focus at $width px", async ({ width, initial }) => {
+test.each([1440, 390].flatMap(width => [0, 9].map(initial => ({ width, initial }))))("cached tenant counts from $initial keep populated controls stable and empty actions useful at $width px", async ({ width, initial }) => {
   await page.setViewportSize({ width, height: 900 });
   let count = initial;
   await page.route("**/api/platform/orgs", route => route.fulfill({ json: Array.from({ length: count }, (_, index) => ({
@@ -58,21 +58,30 @@ test.each([1440, 390].flatMap(width => [0, 9].map(initial => ({ width, initial }
     await element(rows).toHaveCount(count);
     await page.evaluate(() => document.fonts.ready);
     const search = page.getByRole("search").getByRole("textbox");
-    await element(search).toBeVisible();
-    await search.focus();
+    if (initial === 0) {
+      await element(search).toHaveCount(0);
+      await element(page.getByRole("group", { name: t("tenants.views"), exact: true })).toHaveCount(0);
+      await element(page.locator("#tenants-list").getByRole("button", { name: t("tenants.create"), exact: true })).toBeEnabled();
+    } else {
+      await element(search).toBeVisible();
+      await search.focus();
+    }
     const controls = page.locator('.page__head button, .page__head input');
     const before = await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
     count = 48;
     await page.evaluate(() => (window as unknown as { refetchTenants: () => Promise<void> }).refetchTenants());
     await element(rows).toHaveCount(count);
-    expect(await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(before);
-    await element(search).toBeFocused();
+    if (initial !== 0) {
+      expect(await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(before);
+      await element(search).toBeFocused();
+    }
     await element(page.getByRole("group").getByRole("button").first()).toContainText(String(count));
     count = 0;
     await page.evaluate(() => (window as unknown as { refetchTenants: () => Promise<void> }).refetchTenants());
     await element(rows).toHaveCount(0);
-    expect(await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(before);
-    await element(search).toBeFocused();
+    await element(search).toHaveCount(0);
+    await element(page.getByRole("group", { name: t("tenants.views"), exact: true })).toHaveCount(0);
+    await element(page.locator("#tenants-list").getByRole("button", { name: t("tenants.create"), exact: true })).toBeEnabled();
     await element(page.getByRole("button", { name: t("tenants.create"), exact: true })).toHaveCount(1);
   } finally { await page.unroute("**/api/platform/orgs"); await page.unroute("**/api/platform/ops"); }
 }, 60_000);

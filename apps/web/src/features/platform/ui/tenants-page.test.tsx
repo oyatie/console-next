@@ -63,3 +63,15 @@ test.each(["ko", "en"] as const)("%s search has a visible label and no-match res
   expect(html).toContain("“missing-customer”");
   expect(html).toContain(`>${t("tenants.search.reset")}</button>`);
 });
+
+for (const count of [0, 1]) test.each(["ko", "en"] as const)(`%s empty customer list with ${count} platform rows offers only its empty-card create action`, locale => {
+  const saved = state.tenants;
+  state.tenants = count ? saved.filter(org => (org as Org).slug === "platform") : [];
+  try {
+    const html = render(locale, {});
+    expect(html).not.toContain('role="search"');
+    expect(html).not.toContain(`aria-label="${t("tenants.views")}"`);
+    expect(html.match(/<button\b/g)).toHaveLength(1);
+    expect(html).toMatch(new RegExp(`class="state__actions"[\\s\\S]*${t("tenants.create")}`));
+  } finally { state.tenants = saved; }
+});

@@ -10,6 +10,7 @@ import { QueryState } from "../../../lib/react/query-state";
 import { TENANT_STATUS, TENANT_LIFECYCLE, labeled } from "../../../lib/labels";
 import { Chip } from "../../../ui/chip";
 import { Button, Form, ToggleButton } from "../../../ui/button/button";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Receipt } from "../../../ui/receipt/receipt";
@@ -80,13 +81,18 @@ export function TenantsPage() {
     if (onboarded) void set({ sel: onboarded.id });
     record(onboarded ? { message: t("tenants.onboard.done", { org }), meta: t("tenants.onboard.meta", { slug: onboarded.slug }) } : { message: t("tenants.reissue.done", { org }), meta: t("common.expiresAt", { at: fmtDateTime(expiresAt) }) });
   };
-  const empty = list.isSuccess && all.length === 0;
+  const empty = list.data !== undefined && all.length === 0;
+  const create = !list.data && list.isError ? (
+    <DisabledReason reason={t("tenants.create.unavailable")} control={p => <Button variant="primary" {...p}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>} />
+  ) : (
+    <Button variant="primary" disabled={!list.data} onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>
+  );
 
   return (
     <div className="page">
       <h1 id="tenants-title" className="page__title" tabIndex={-1}>{t("tenants.title")}</h1>
       <PageReadGate q={list}>
-      <div className="page__head">
+      {!empty && <div className="page__head">
         <div role="group" aria-label={t("tenants.views")} className="tabs">
           {VIEWS.map((v) => (
             <ToggleButton key={v} pressed={view === v} count={list.data ? fmtNumber(all.filter((o) => inView(o, v)).length) : ""} onClick={() => set({ view: v === "active" ? undefined : v })}>
@@ -103,8 +109,8 @@ export function TenantsPage() {
             onChange={(e) => setQ(e.target.value)}
           />}</Field>
         </Form>
-        <Button variant="primary" disabled={!list.data} onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>
-      </div>
+        {create}
+      </div>}
       <QueryState q={list} layout="list">{() => <>
       <SupportLookup />
       <KeyNotices notices={[...(ops.data?.notices ?? []), ...(ops.data?.registration_check_notices ?? [])]} />
@@ -116,7 +122,7 @@ export function TenantsPage() {
       <div className="split" data-open={Boolean(selected)}>
         <section id="tenants-list" className="card" aria-label={t("tenants.table")}>
           {empty ? (
-                <EmptyState title={t("tenants.empty.title")} reason={t("tenants.empty.reason")} />
+                <EmptyState title={t("tenants.empty.title")} reason={t("tenants.empty.reason")} actions={create} />
               ) : found.length === 0 ? (
                 <EmptyState title={t("tenants.search.none", { q: q.trim() })} reason={t("tenants.search.noneReason")} actions={<Button onClick={() => setQ("")}>{t("tenants.search.reset")}</Button>} />
               ) : rows.length === 0 ? (

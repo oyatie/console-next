@@ -7,6 +7,7 @@ export const enTenants = {
   "tenants.supportLookup.route": "Route template",
   "tenants.title": "Customer accounts",
   "tenants.create": "Open customer account",
+  "tenants.create.unavailable": "Customer accounts could not be loaded, so a new account cannot be opened. Retry loading the list first.",
   "tenants.empty.title": "No customer accounts opened",
   "tenants.empty.reason": "Opening a customer account issues its first administrator account and a one-time sign-in code.",
   "tenants.table": "Customer accounts",
