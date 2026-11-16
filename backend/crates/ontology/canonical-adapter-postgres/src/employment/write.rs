@@ -64,8 +64,8 @@ pub async fn write_in_tx(
     let attributes = command.query.attributes();
 
     let (employment_id, version, backdated) = match &command.query {
-        EmploymentQuery::Appoint { .. } => {
-            return insert_appointments(tx, std::slice::from_ref(command))
+        EmploymentQuery::Appoint { employee_id, .. } => {
+            return insert_appointments(tx, &[(*employee_id, command)])
                 .await?
                 .pop()
                 .ok_or_else(|| sqlx::Error::RowNotFound.into());

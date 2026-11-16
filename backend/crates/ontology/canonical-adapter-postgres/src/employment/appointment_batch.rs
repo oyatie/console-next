@@ -24,8 +24,9 @@ pub async fn appoint_legacy_heads_in_tx(
     ).bind(org.as_uuid()).bind(employees).fetch_all(tx.as_mut()).await?;
     let mut commands = Vec::with_capacity(rows.len());
     for row in rows {
-        if let Some(command) = legacy_head_command(org, actor, row.try_get("id")?, &row)? {
-            commands.push(command);
+        let employee_id = row.try_get("id")?;
+        if let Some(command) = legacy_head_command(org, actor, employee_id, &row)? {
+            commands.push((employee_id, command));
         }
     }
     if commands.is_empty() {
@@ -34,19 +35,23 @@ pub async fn appoint_legacy_heads_in_tx(
     let replay: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM ont_action_command_receipts WHERE org_id=$1 AND command_id=ANY($2))",
     ).bind(org.as_uuid())
-        .bind(commands.iter().map(|c|*c.command_id.as_uuid()).collect::<Vec<_>>())
+        .bind(commands.iter().map(|(_, c)|*c.command_id.as_uuid()).collect::<Vec<_>>())
         .fetch_one(tx.as_mut()).await?;
     // Exceptional stored receipts retain the single writer's digest and receipt validation.
     if replay {
         let mut receipts = Vec::with_capacity(commands.len());
-        for command in &commands {
+        for (_, command) in &commands {
             receipts.push(write_in_tx(tx, command).await?);
         }
         return Ok(receipts);
     }
     let mut checks = WriteChecks::default();
-    for command in &commands {
+    for (_, command) in &commands {
         checks.check(tx, command).await?;
     }
-    insert_appointments(tx, &commands).await
+    let appointments: Vec<_> = commands
+        .iter()
+        .map(|(id, command)| (*id, command))
+        .collect();
+    insert_appointments(tx, &appointments).await
 }
