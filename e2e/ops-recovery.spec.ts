@@ -96,9 +96,8 @@ test("governed ops recovery: two operators, tenant veto, hold and once-only reen
   await second.context().close();
 });
 
-// regression (train fix r1): the panel drew its ops-recovery read late above 상태 and 삭제, so every tenant opened moved
-// their buttons under a press already aimed at them (recovery.spec's tenant-panel check, red under load).
-test("regression: a tenant's late ops-recovery read does not move the panel's 상태 and 삭제 controls", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
+// A delayed recovery read must not move independent lifecycle controls under the pointer.
+test("regression: a tenant's late ops-recovery read keeps available panel buttons still", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
   const vendor = await vendorPage(browser);
   const slug = unique("ops-panel");
   await go(vendor, "/platform");
@@ -109,21 +108,36 @@ test("regression: a tenant's late ops-recovery read does not move the panel's �
   await takeCode(vendor);
   // A fresh load with no tenant chosen (onboarding opened this one's panel), so its recovery read is not cached.
   await vendor.goto("/platform");
-  await expect(vendor.getByRole("row").filter({ hasText: slug })).toBeVisible();
+  const row = vendor.getByRole("row").filter({ has: vendor.getByRole("gridcell", { name: slug, exact: true }) });
+  await expect(row).toBeVisible();
   // The vendor page is shared by the worker's tests: tall enough that the sections stay in view (a block pushed off
   // screen reads as resized and only scores), a late read on purpose, and no shifts carried in from earlier tests.
   const size = vendor.viewportSize()!;
   const read = /\/api\/platform\/orgs\/[^/]+\/ops-recovery$/;
   await vendor.setViewportSize({ width: 1280, height: 1600 });
-  await vendor.route(read, async (route) => { await new Promise((r) => setTimeout(r, 1_000)); await route.continue(); });
+  const held = Promise.withResolvers<void>();
+  await vendor.route(read, async (route) => { await held.promise; await route.continue(); });
   try {
     await forgetResize(vendor);
     await vendor.evaluate(recordShifts);
     await vendor.evaluate(clearShifts);
-    await vendor.getByRole("row").filter({ hasText: slug }).click();
+    await row.click();
+    const panel = vendor.getByRole("complementary").filter({ has: vendor.locator("#tenant-status") });
+    const controls = panel.getByRole("button");
+    await expect(panel.locator("#tenant-status")).toBeVisible();
+    await vendor.evaluate(() => document.fonts.ready);
+    const positions = () => controls.evaluateAll(buttons => buttons.map(button => ({
+      name: button.getAttribute("aria-label") ?? button.textContent, rect: button.getBoundingClientRect().toJSON(),
+    })));
+    const before = await positions();
+    held.resolve();
     await expect(vendor.getByRole("region", { name: "운영 계정(ops) 복구", exact: true })).toBeVisible();
+    const after = await positions();
+    for (const button of before) expect(after.find(next => next.name === button.name)).toEqual(button);
+    await expect(panel.locator("section").last()).toHaveAttribute("aria-labelledby", "tenant-remove");
     await expectAccessible(vendor, "tenant panel after a late ops-recovery read");
   } finally {
+    held.resolve();
     await vendor.unroute(read);
     await vendor.setViewportSize(size);
     await forgetResize(vendor);
