@@ -68,7 +68,7 @@ export const bootKo: Record<BootMessageId, string> = {
   "shell.needsMe.unknown": "업무함 · 확인 불가",
   "shell.needsMe.loading": "업무함 · 불러오는 중…",
   "shell.needsMe.denied": "업무함에 접근 권한이 없습니다",
-  "common.read.failedReason": "잠시 뒤 다시 시도하십시오.",
+  "common.read.failedReason": "요청을 완료하지 못했습니다.",
   "common.read.sessionRestoreReason": "로그인 상태를 확인하지 못했습니다. 다시 불러오십시오.",
   "common.denied.why": "이유 보기",
   "common.read.notFound.title": "기록을 찾을 수 없습니다",

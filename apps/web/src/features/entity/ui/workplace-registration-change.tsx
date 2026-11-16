@@ -32,7 +32,7 @@ export function WorkplaceRegistrationChangeHost({
   onClose: () => void;
 }) {
   return (
-    <FreshEntity id={entityId}>
+    <FreshEntity id={entityId} title={t("workplace.list.title")} onClose={onClose}>
       {(e) => {
         const w = e.workplaces.find((x) => x.id === workplaceId);
         return w ? <WorkplaceRegistrationChangeSheet e={e} w={w} onClose={onClose} /> : null;

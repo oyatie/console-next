@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 
 mod request;
 pub use request::{
-    REQUEST_LINK_KINDS, RequestLink, RequestState, ensure_due, ensure_not_self, request_links,
-    return_note,
+    REQUEST_LINK_KINDS, RequestLink, RequestState, ensure_due, ensure_not_self, ensure_room,
+    request_links, return_note,
 };
 
 const BODY_MAX: usize = 500;

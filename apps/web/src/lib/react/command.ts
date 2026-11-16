@@ -6,9 +6,9 @@ import { announce } from "./announce";
 
 /**
  * 5xx refusals a handler answers before it writes anything (their routes' tests assert nothing written): a shed import
- * apply and an expired import run. Their outcome is known, so they never hold the intent for a check.
+ * apply, an expired import run, and an atomic import timeout. Their outcome is known, so they never hold the intent for a check.
  */
-export const REFUSED_BEFORE_WRITE: ReadonlySet<string> = new Set(["import_apply_busy", "import_run_expired"]);
+export const REFUSED_BEFORE_WRITE: ReadonlySet<string> = new Set(["import_apply_busy", "import_run_expired", "import_apply_timed_out"]);
 
 /** Uncertain commands retain their identity until their original outcome has been checked. */
 export const outcomeUnknown = (error: unknown) => error instanceof TypeError || (error instanceof ApiError && (

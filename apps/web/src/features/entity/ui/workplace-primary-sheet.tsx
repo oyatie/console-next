@@ -23,7 +23,7 @@ const OFFICE_ONLY = "office-only";
  * (I-1). head office stays apart, with its own "set head office" (I-2). Nothing is preselected.
  */
 export function WorkplacePrimarySheet({ entityId, setup, onClose }: { entityId: string; setup: boolean; onClose: () => void }) {
-  return <FreshEntity id={entityId}>{(e) => <Body e={e} setup={setup} onClose={onClose} />}</FreshEntity>;
+  return <FreshEntity id={entityId} title={t("workplace.primary.title")} onClose={onClose}>{(e) => <Body e={e} setup={setup} onClose={onClose} />}</FreshEntity>;
 }
 
 function Body({ e: initialEntity, setup, onClose }: { e: LegalEntity; setup: boolean; onClose: () => void }) {

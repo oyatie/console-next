@@ -151,15 +151,6 @@ async fn the_assignee_cannot_delete_or_reopen_a_request(pool: PgPool) {
         .await;
     }
     refused(&o, c, "DELETE", &todo(&back, ""), None, is_request).await;
-    refused(
-        &o,
-        &o.admin,
-        "DELETE",
-        &format!("{REQUESTS}/{back}"),
-        None,
-        closed,
-    )
-    .await;
 
     let state = |s: &str| format!("{REQUESTS}?state={s}");
     let (_, open) = o.admin.call("GET", &state("open"), None).await;
@@ -172,6 +163,22 @@ async fn the_assignee_cannot_delete_or_reopen_a_request(pool: PgPool) {
         returned["items"][0]["return_note"],
         json!("할 수 없음: 권한 밖입니다")
     );
+
+    // The requester clears a returned request by withdrawing it: the row, its text and note are gone.
+    let before = o.written().await;
+    let (status, out) = o
+        .admin
+        .call("DELETE", &format!("{REQUESTS}/{back}"), None)
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT, "{out}");
+    assert_eq!(
+        o.written().await,
+        (before.0 - 1, before.1 + 1),
+        "the row is deleted and the withdrawal audited"
+    );
+    assert_eq!(audits(&o.pool, o.org, "todo.withdraw").await, 1);
+    let (_, returned) = o.admin.call("GET", &state("returned"), None).await;
+    assert_eq!(returned["items"], json!([]), "{returned}");
     let (status, bad) = o.admin.call("GET", &state("withdrawn"), None).await;
     assert_eq!(
         (status, code(&bad)),

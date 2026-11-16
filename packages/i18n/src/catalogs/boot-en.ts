@@ -67,7 +67,7 @@ export const bootEn = {
   "shell.needsMe.unknown": "Inbox · count unavailable",
   "shell.needsMe.loading": "Inbox · loading…",
   "shell.needsMe.denied": "You don’t have access to the inbox",
-  "common.read.failedReason": "Try again shortly.",
+  "common.read.failedReason": "The request could not be completed.",
   "common.read.sessionRestoreReason": "Could not restore your session. Reload to try again.",
   "common.denied.why": "View reason",
   "common.read.notFound.title": "Record not found",

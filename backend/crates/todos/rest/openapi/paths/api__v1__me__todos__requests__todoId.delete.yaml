@@ -2,15 +2,14 @@
 tags:
   - me
 operationId: withdrawMyTodoRequest
-summary: Withdraw an open request the caller made
+summary: Withdraw a request the caller made, or clear one sent back
 description: >-
-  Deletes the request. Saved outcomes of earlier calls that returned it, the
-  ask among them, are kept for the command-outcome retention period, as for
-  any deleted todo, and a retry of such a call does not show it again. 404
-  when the id is not a
-  request the caller made; 409 todo_closed once it is done or returned.
-  Afterwards the assignee's done or return on it is a 404. Audited as
-  todo.withdraw.
+  Deletes the request, open or sent back, with its text and return note.
+  Saved outcomes of earlier calls that returned it, the ask among them, are
+  kept for the command-outcome retention period, as for any deleted todo, and
+  a retry of such a call does not show it again. 404 when the id is not a
+  request the caller made; 409 todo_closed once it is done. Afterwards the
+  assignee's done or return on it is a 404. Audited as todo.withdraw.
 security:
 - bearerAuth: []
 parameters:
@@ -21,7 +20,7 @@ parameters:
     $ref: '#/components/schemas/Uuid'
 responses:
   '204':
-    description: The request was withdrawn.
+    description: The request was withdrawn or cleared.
   '401':
     $ref: '#/components/responses/Unauthorized'
   '404':

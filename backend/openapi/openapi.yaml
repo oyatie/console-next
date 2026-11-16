@@ -8522,7 +8522,12 @@ paths:
         - employees
       operationId: applyEmployeeImport
       summary: Apply a dry-run employee import run, bound to its dry run
-      description: 'BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against
+      description: 'Cedar action import_apply decides admission and is rechecked inside the write transaction.
+        403 import_apply_forbidden means the database refused the admitted command.
+        503 import_apply_timed_out means a statement or transaction exceeded the server time limit;
+        nothing was written, and the stored job retains the same refusal code.
+
+        BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against
         the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows
         (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry
         run''s is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing
@@ -8578,7 +8583,12 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: 'forbidden — Cedar did not admit tenant-wide directory management.
+            import_apply_forbidden — the database refused the import command; no rows were written.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -8586,9 +8596,12 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
-          description: import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds.
+          description: 'import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds.
+            import_apply_timed_out — the statement or transaction exceeded the server time limit; nothing was written.
+            Review the dry run before applying again.'
           headers:
             Retry-After:
+              description: Present for import_apply_busy.
               schema:
                 type: integer
           content:
@@ -19498,7 +19511,7 @@ paths:
         through the caller's own sources, the same read as the list, so another person's item, an
         unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item
         was not found while a source was unavailable. Rows are the audit events on the item's own
-        record (the request, change, lock, grant or case its first link names; for an org change,
+        record (the request, change, lock, grant, case or to-do request its first link names; for an org change,
         also its approval steps), newest first, at most 50: what happened (a verb from a closed set,
         other for anything else), who did it (absent for system events) and when. Events on the
         person or account behind an item are not served, and audit snapshots never are.
@@ -19529,7 +19542,7 @@ paths:
                       properties:
                         verb:
                           type: string
-                          x-extensible-enum: [create, submit, approve, reject, decide, apply, withdraw, cancel, update, confirm, other]
+                          x-extensible-enum: [create, submit, approve, reject, decide, apply, withdraw, cancel, update, confirm, return, other]
                         actor_name:
                           type: string
                           description: The acting account's display name; absent for system events.
@@ -20434,8 +20447,12 @@ paths:
         account); 422 validation (text, links); 422
         todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and
         out-of-scope accounts alike, and a grant revoked mid-request); 422
-        todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name
-        records by kind and id; a sent label is ignored and never stored. Audited as
+        todo_assignee_inactive; 422 todo_due_past (before today in KST); 409
+        todo_assignee_full (the assignee already holds 100 open requests); 409
+        todo_requester_full (100 of the caller's requests are open or sent back, until
+        one is done, withdrawn or cleared). Each side's requests are items in that
+        account's work inbox, so neither side may hold more. Links name records by
+        kind and id; a sent label is ignored and never stored. Audited as
         todo.request with the assignee and the due date only.
       security:
       - bearerAuth: []
@@ -20456,6 +20473,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
@@ -20519,15 +20538,14 @@ paths:
       tags:
         - me
       operationId: withdrawMyTodoRequest
-      summary: Withdraw an open request the caller made
+      summary: Withdraw a request the caller made, or clear one sent back
       description: >-
-        Deletes the request. Saved outcomes of earlier calls that returned it, the
-        ask among them, are kept for the command-outcome retention period, as for
-        any deleted todo, and a retry of such a call does not show it again. 404
-        when the id is not a
-        request the caller made; 409 todo_closed once it is done or returned.
-        Afterwards the assignee's done or return on it is a 404. Audited as
-        todo.withdraw.
+        Deletes the request, open or sent back, with its text and return note.
+        Saved outcomes of earlier calls that returned it, the ask among them, are
+        kept for the command-outcome retention period, as for any deleted todo, and
+        a retry of such a call does not show it again. 404 when the id is not a
+        request the caller made; 409 todo_closed once it is done. Afterwards the
+        assignee's done or return on it is a 404. Audited as todo.withdraw.
       security:
       - bearerAuth: []
       parameters:
@@ -20538,7 +20556,7 @@ paths:
           $ref: '#/components/schemas/Uuid'
       responses:
         '204':
-          description: The request was withdrawn.
+          description: The request was withdrawn or cleared.
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -34823,6 +34841,8 @@ components:
           - support_access
           - registration_check
           - privacy_request
+          - todo_assigned
+          - todo_requested
         urg:
           type: string
           enum:
@@ -34994,9 +35014,20 @@ components:
                 $ref: '#/components/schemas/AccessEffectiveEntry'
             is_ops:
               type: boolean
+            todo:
+              type: object
+              description: Present on a to-do request the caller made; the note is present only when it was sent back.
+              required: [state]
+              properties:
+                state:
+                  type: string
+                  enum: [open, returned]
+                return_note:
+                  type: string
+                  description: The line the assignee wrote when sending the request back.
         version:
           type: string
-          description: Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes.
+          description: Opaque version for org-change approval and HR request rows, and for to-do requests the caller made; changes when a step is decided, the request closes or it is sent back.
         policy:
           type: object
           description: Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy.
@@ -35115,7 +35146,7 @@ components:
                 type: string
         counts:
           type: object
-          description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted.
+          description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. Only sources that can fill a lane affect that lane's exactness, and an unavailable source makes every count inexact. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted.
           additionalProperties:
             type: object
             required: [total, total_is_exact]

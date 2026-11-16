@@ -15,6 +15,9 @@ export default function DisabledReasons() {
         reason={tg("disabledReason.removeWhy")}
         remedy={<Button variant="ghost">{tg("disabledReason.removeFix")}</Button>}
       />
+      <DisabledReason control={p => <Button {...p}>{tg("disabledReason.effectuate")}</Button>} reason={tg("disabledReason.effectuateWhy")}>
+        {({ control, reason }) => <><div className="toolbar">{control}</div><div className="state__actions">{reason}</div></>}
+      </DisabledReason>
       <ul className="list-plain">
         <li><DisabledReason layout="disclosure" control={(p) => <Button {...p}>{tg("disabledReason.rowMove")}</Button>} reason={tg("disabledReason.rowMoveWhy")} /></li>
         <li>

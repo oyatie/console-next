@@ -1,34 +1,38 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
+import { loadCatalog, t } from "@console/i18n";
+import { routeReady } from "../flows";
+import { clearShifts, expectStable, recordShifts } from "../stability";
+import { exitReasons } from "../mock/reasons";
 import { expectAxe, fits } from "../a11y";
-import { AT, authz, id } from "../mock/fixtures";
+import { AT, authz, id, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
 
-const reasons: components["schemas"]["ReasonCatalogEntry"][] = [
-  "PERSONAL", "FAMILY", "ILLNESS", "STUDY", "WORKING_CONDITIONS", "WAGE_ARREARS", "RELOCATION", "CLOSURE", "INSOLVENCY", "ADVISED_RESIGNATION_BUSINESS", "REDUNDANCY_DISMISSAL", "DISCIPLINARY_DISMISSAL", "ADVISED_RESIGNATION_FAULT", "RETIREMENT_AGE", "CONTRACT_END", "PROJECT_END", "COVERAGE_EXCLUDED", "DUAL_EMPLOYMENT", "DEATH", "OTHER",
-].map(code => ({ code, system: true, active: true, requires_note: false, involuntary: ["ADVISED_RESIGNATION_BUSINESS", "REDUNDANCY_DISMISSAL", "DISCIPLINARY_DISMISSAL", "ADVISED_RESIGNATION_FAULT"].includes(code), notice_required: code.endsWith("DISMISSAL"), label_ko: null, label_en: null }));
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const step of ["report", "confirm"] as const) for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`exit ${step} reasons keep their first painted layout at ${width}px ${theme} @ui-state`, async ({ page }) => {
+  test(`exit ${step} reasons keep their layout after input at ${width}px ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
-    await page.addInitScript(theme => {
-      localStorage.setItem("console.theme", theme);
+    await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
+    await page.addInitScript(recordShifts);
+    // Frame geometry catches transient wraps even without LayoutShift entries (Firefox).
+    await page.addInitScript(() => {
       const frames: string[] = [];
-      Object.assign(window, { reasonFrames: frames });
+      Object.assign(window, { exitReasonFrames: frames });
       const sample = () => {
-        const chips = [...document.querySelectorAll('[role="radiogroup"] label')].filter(el => el.querySelector('input[type="radio"]'));
-        if (chips.length) frames.push(JSON.stringify(chips.map(el => {
-          const { x, y, width, height } = el.getBoundingClientRect();
-          const parent = el.closest('[role="radiogroup"]')!.getBoundingClientRect();
-          return { text: el.textContent, x: x - parent.x, y: y - parent.y, width, height };
+        const chips = [...document.querySelectorAll('[role="dialog"] [role="radiogroup"] label')];
+        if (chips.length) frames.push(JSON.stringify(chips.map(chip => {
+          const { x, y, width, height } = chip.getBoundingClientRect();
+          const group = chip.closest('[role="radiogroup"]')!.getBoundingClientRect();
+          return { x: x - group.x, y: y - group.y, width, height };
         })));
         requestAnimationFrame(sample);
       };
       requestAnimationFrame(sample);
-    }, theme);
+    });
     const screen = lifecycleSheetScreens[0];
     const fixture = await mockScreen(page, screen, "populated");
     await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [
@@ -36,9 +40,9 @@ for (const step of ["report", "confirm"] as const) for (const width of [1440, 39
       ...["employee_directory_manage", "exit_case_report", "exit_case_hr_confirm"].map(feature => ({ feature, permission: "allow" as const, branch_scope: { kind: "all" as const }, org_wide: true, scoped: false })),
     ] } });
     const c: components["schemas"]["EmployeeExitCase"] = {
-      id: id(7000), employee_id: id(4000), employee_name: "배치직원", employee_number: "EXIT-001", company: "화면 검증 회사",
-      status: "REPORTED", effective_exit_date: "2026-10-26", site_manager_note: "개인 사정",
-      involuntary: false, notice_required: false, dismissal_notice: null, protected_periods: [], reported_by: id(1), reported_by_name: "김보고", reported_at: AT,
+      id: id(7000), employee_id: id(4000), employee_name: user.display_name, employee_number: "EXIT-001", company: user.tenant!.name,
+      status: "REPORTED", effective_exit_date: "2026-10-26", site_manager_note: "Synthetic report",
+      involuntary: false, notice_required: false, dismissal_notice: null, protected_periods: [], reported_by: id(1), reported_by_name: user.display_name, reported_at: AT,
       hr_confirmed_by_name: null, hq_confirmed_by_name: null, approval_submitted_by_name: null, closed_by_name: null,
       exit_lifecycle_event_id: null, exit_event_state: null, next_actions: [{ key: "confirm_exit" }],
     };
@@ -51,31 +55,45 @@ for (const step of ["report", "confirm"] as const) for (const width of [1440, 39
     await mockRoute(page, "get", "/api/v1/reason-codes", async request => {
       await held;
       const domain = new URL(request.url()).searchParams.get("domain")!;
-      return { status: 200, json: { domain, items: domain === "exit_reason" ? reasons : [] } };
+      return { status: 200, json: { domain, items: domain === "exit_reason" ? exitReasons : [] } };
     });
     try {
       await page.goto(`/people/${id(4000)}?act=${step === "report" ? "exit.report" : `exit.confirm_exit:${c.id}`}`);
       const sheet = page.getByRole("dialog");
-      await expect(sheet).toBeVisible();
-      await page.evaluate(async () => {
-        delete document.documentElement.dataset.fontFallback;
-        await document.fonts.load('600 13px "Pretendard Variable Catalog"');
+      await sheet.evaluate(async () => {
+        const preload = document.querySelector<HTMLLinkElement>('link[rel="preload"][as="font"][data-ui-font]');
+        if (preload) await document.fonts.load(`1em ${JSON.stringify(preload.dataset.uiFont)}`);
       });
       release();
-      const personal = sheet.getByRole("radio", { name: "개인 사정", exact: true });
+      await routeReady(page);
+      await expect(sheet).toBeVisible();
+      const personal = sheet.getByRole("radio", { name: t("reason.exit_reason.PERSONAL"), exact: true });
       await expect(personal).toBeVisible();
-      await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 500)));
-      const frames = await page.evaluate(() => (window as unknown as { reasonFrames: string[] }).reasonFrames);
-      expect(frames.length).toBeGreaterThan(1);
-      expect([...new Set(frames)]).toHaveLength(1);
+      // Audit input after the deliberately held catalogue has populated the form.
+      await page.evaluate(clearShifts);
+      await expectStable(page, `exit ${step} reasons loaded`);
+      const expectChipFrames = async () => {
+        const frames = await page.evaluate(async () => {
+          // Observe the input window in both engines, including deferred feedback.
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return (window as unknown as { exitReasonFrames: string[] }).exitReasonFrames;
+        });
+        expect(frames.length).toBeGreaterThan(1);
+        expect([...new Set(frames)], "chip geometry must match on every painted frame").toHaveLength(1);
+      };
+      await expectChipFrames();
       if (step === "report") {
-        await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill("2026-10-26");
-        await sheet.getByLabel("퇴직 경위").fill("합성 보고");
+        await sheet.getByRole("textbox", { name: new RegExp(`^${t("exit.field.date")}`) }).fill("2026-10-26");
+        await routeReady(page);
+        await expectStable(page, "exit report reasons after date feedback");
+        await expectChipFrames();
+        await sheet.getByLabel(t("exit.field.circumstances")).fill("Synthetic report");
       }
-      await sheet.getByRole("radiogroup").getByText("개인 사정", { exact: true }).click();
+      await sheet.getByRole("radiogroup").getByText(t("reason.exit_reason.PERSONAL"), { exact: true }).click();
       await expect(personal).toBeChecked();
-      await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 500)));
-      expect([...new Set(await page.evaluate(() => (window as unknown as { reasonFrames: string[] }).reasonFrames))]).toHaveLength(1);
+      await routeReady(page);
+      await expectStable(page, `exit ${step} reasons after input`);
+      await expectChipFrames();
       await fits(page, `exit-${step}/${width}/${theme}`);
       await expectAxe(page, `exit-${step}/${width}/${theme}`);
       await page.screenshot({ path: test.info().outputPath("exit-reasons.png"), fullPage: true });

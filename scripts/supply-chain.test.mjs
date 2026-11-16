@@ -257,8 +257,10 @@ test("Dependabot defers incompatible Cargo updates, leaving desktop patches elig
     { "dependency-name": "windows-registry", versions: [">=0.7"] },
     ...["apalis", "apalis-postgres", "apalis-sql"].map((name) => ({ "dependency-name": name })),
     ...["webauthn-rs", "webauthn-rs-proto", "webauthn-authenticator-rs"].map((name) => ({ "dependency-name": name, versions: ["0.6.*"] })),
+    { "dependency-name": "atoi_simd", versions: [">=0.18"] },
   ]);
   assert.match(source, /#.*docs\/quality\/dependencies\/dependabot-cargo-315\.md/);
+  assert.match(source, /#.*vendored calamine fork/);
 });
 
 test("Dependabot keeps runtime constraints and defers incompatible npm updates", () => {
