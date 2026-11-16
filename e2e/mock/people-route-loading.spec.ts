@@ -12,6 +12,18 @@ import { moveDetail } from "./lifecycle-sheets";
 
 test.beforeAll(() => loadCatalog("ko"));
 
+test("personnel record preload metadata stays behind the lazy people route", async ({ request }) => {
+  const html = await (await request.get("/")).text();
+  const initial = [
+    html.match(/<script type="module"[^>]*src="([^"]+)"/)![1]!,
+    ...[...html.matchAll(/rel="modulepreload"[^>]*href="([^"]+\.js)"/g)].map(match => match[1]!),
+  ];
+  for (const file of initial) {
+    const source = await (await request.get(file)).text();
+    expect(source.match(/assets\/card-page-[^" ]+/g) ?? []).toEqual([]);
+  }
+});
+
 for (const action of ["multi", "exit.report"]) for (const width of [1440, 390]) test(`personnel ${action} waits for the action chunk at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
