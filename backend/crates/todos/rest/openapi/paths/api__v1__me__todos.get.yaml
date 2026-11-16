@@ -2,6 +2,9 @@ tags:
   - me
 operationId: listMyTodos
 summary: List the authenticated user's todos, open first then newest first
+description: >-
+  The caller's own todos only. Requests a colleague made of the caller are
+  not listed here.
 security:
 - bearerAuth: []
 parameters:

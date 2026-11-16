@@ -117,13 +117,7 @@ async fn reach(
     )
     .await
     .map_err(|e| DbError::Sqlx(sqlx::Error::Protocol(e.to_string())))?;
-    let Some(mut ids) = granted_scope(
-        subject
-            .grants
-            .iter()
-            .filter_map(|grant| grant.scope.node())
-            .map(|node| (node.kind, node.id)),
-    ) else {
+    let Some(mut ids) = granted_scope(subject.reading_nodes()) else {
         return Ok(None);
     };
     let branches: Vec<Uuid> = match &p.branch_scope {

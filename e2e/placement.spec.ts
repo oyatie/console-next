@@ -121,10 +121,11 @@ test("placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a �
     const s = sheet(admin, "이전근 전보");
     await s.getByRole("combobox", { name: "어디로" }).fill("생산");
     await admin.getByRole("option", { name: /생산팀/ }).first().click();
+    await expect(s).toHaveAccessibleName("전근");
     await todayPreset(s).click();
     await reasonChip(s, "업무 필요").click();
     await reasonBox(s).fill("생산 지원");
-    await s.getByRole("button", { name: "전보 1명 적용", exact: true }).click();
+    await s.getByRole("button", { name: "전근 1명 적용", exact: true }).click();
     await openHistory(admin);
     await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /이전근을 영업팀에서 생산팀으로 전보했습니다/ })).toBeVisible();
     await openCard(admin);

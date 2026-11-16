@@ -427,6 +427,10 @@ name = "submittable_definitions_api"
 required-features = ["workspace"]
 
 [[test]]
+name = "todo_requests_api"
+required-features = ["todos"]
+
+[[test]]
 name = "workbench_api"
 required-features = ["full"]
 

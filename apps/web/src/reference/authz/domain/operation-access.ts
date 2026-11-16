@@ -32,6 +32,8 @@ export const operationAccess = {
   "GET /api/v1/legal-entities": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
   "POST /api/v1/legal-entities": {"domain":"org","level":"edit","tenant":true,"scopes":["TENANT"]},
   "GET /api/v1/legal-entities/{entityId}": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
+  "POST /api/v1/me/todos/requests": {"domain":"todo_request","level":"edit"},
+  "GET /api/v1/me/todos/requests/assignees": {"domain":"todo_request","level":"edit"},
   "GET /api/v1/onboarding/go-live/preview": {"domain":"tenant","level":"approve","tenant":true,"scopes":[]},
   "GET /api/v1/org-changes": {"domain":"org","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},
   "POST /api/v1/org-changes": {"domain":"org","level":"edit","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]},

@@ -36,3 +36,16 @@ properties:
     - 'null'
     format: date-time
     description: When the todo was first marked done; null while open.
+  assigned_by_user_id:
+    $ref: '#/components/schemas/Uuid'
+    description: The account that asked for this todo. Absent on the owner's own todo, as are due_on, returned_at and return_note.
+  due_on:
+    type: string
+    format: date
+    description: The day the requester asked for.
+  returned_at:
+    $ref: '#/components/schemas/Timestamp'
+    description: When the owner sent the request back.
+  return_note:
+    type: string
+    description: The line the owner wrote when sending it back.

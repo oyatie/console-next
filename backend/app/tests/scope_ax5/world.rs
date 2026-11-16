@@ -9,8 +9,8 @@
 #![allow(dead_code)]
 
 use console_kernel_core::FixedClock;
-use console_kernel_core::OrgId;
 use console_kernel_core::kr::synthetic;
+use console_kernel_core::{OrgId, UserId};
 use console_platform_test_support::soft_passkey::SoftKey;
 use http::StatusCode;
 use serde_json::{Value, json};
@@ -87,8 +87,22 @@ impl World {
     /// A new account with no legacy role, holding the HR operations role over one node.
     pub async fn holder(&mut self, kind: &str, node: Option<&str>) -> Ctx {
         let user = add_user(&self.pool, self.org, &[]).await;
+        let role = self.role.clone();
+        self.grant(user, &role, kind, node).await;
+        ctx(&self.pool, self.org, user, &[], None).await
+    }
+
+    /// A new role carrying `lines`, made by the ops account.
+    pub async fn role(&self, name: &str, lines: Value) -> Value {
+        let body = json!({ "name_ko": name, "lines": lines });
+        self.ok("POST", "/api/v1/access/roles", body).await
+    }
+
+    /// Grants `role` to `user` over one node, counting from now (a grant the
+    /// activation delay holds back is activated at once).
+    pub async fn grant(&mut self, user: UserId, role: &Value, kind: &str, node: Option<&str>) {
         let op = json!({
-            "op": "grant", "account_id": user.as_uuid(), "role_id": self.role["id"],
+            "op": "grant", "account_id": user.as_uuid(), "role_id": role["id"],
             "scope": { "kind": kind, "node_id": node, "include_descendants": true },
             "effective_in_setup": true,
         });
@@ -104,16 +118,19 @@ impl World {
             .execute(tx.as_mut())
             .await
             .unwrap();
-        let (grant, activates_at): (Uuid, time::OffsetDateTime) = sqlx::query_as(
+        let pending: Option<(Uuid, time::OffsetDateTime)> = sqlx::query_as(
             "SELECT p.grant_id, p.activates_at FROM user_role_grants_pending p
              JOIN access_grants g ON g.org_id=p.org_id AND g.id=p.grant_id
              WHERE p.org_id=$1 AND g.account_id=$2 AND g.status='PENDING'",
         )
         .bind(self.org)
         .bind(user.as_uuid())
-        .fetch_one(tx.as_mut())
+        .fetch_optional(tx.as_mut())
         .await
         .unwrap();
+        let Some((grant, activates_at)) = pending else {
+            return;
+        };
         console_platform_access::pending::activate_in_tx(
             &mut tx,
             OrgId::from_uuid(self.org),
@@ -123,7 +140,6 @@ impl World {
         .await
         .unwrap();
         tx.commit().await.unwrap();
-        ctx(&self.pool, self.org, user, &[], None).await
     }
 }
 

@@ -1159,7 +1159,21 @@
       "reason": "route_parser_unresolved"
     },
     {
+      "operation": "POST /api/v1/me/todos/requests",
+      "rust_file": null,
+      "handler": null,
+      "body_type": null,
+      "reason": "route_parser_unresolved"
+    },
+    {
       "operation": "POST /api/v1/me/todos/{todoId}/done",
+      "rust_file": null,
+      "handler": null,
+      "body_type": null,
+      "reason": "route_parser_unresolved"
+    },
+    {
+      "operation": "POST /api/v1/me/todos/{todoId}/return",
       "rust_file": null,
       "handler": null,
       "body_type": null,

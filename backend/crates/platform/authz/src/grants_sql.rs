@@ -282,6 +282,7 @@ pub fn custom_role_runtime_feature_allowed(feature: Feature) -> bool {
             | Feature::ChangeRequestDecide
             | Feature::JobTitleManage
             | Feature::RosterFieldManage
+            | Feature::TodoAssign
             | Feature::RetainedRecordsRead
             | Feature::TenantOffboard
             | Feature::LegalEntityManage

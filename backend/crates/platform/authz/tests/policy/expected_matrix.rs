@@ -3,7 +3,7 @@
 
 use console_platform_authz::{Feature, PermissionLevel};
 
-pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 113] {
+pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 114] {
     use Feature::{
         AiAssist, ApprovalFinalize, ApprovalRouteManage, AssigneeManage, AuditLogRead,
         AuditStreamAccessLogRead, AuditStreamRead, BenefitCatalogManage, BenefitCatalogRead,
@@ -28,8 +28,8 @@ pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 113] {
         PurchaseFinalApprove, PurchaseRequestApprove, PurchaseRequestCreate, PurchaseRequestRead,
         ReasonCodeManage, RecruitingManage, RecruitingRead, RegionManage, RentalQuoteManage,
         RetainedRecordsRead, RoleManage, RosterFieldManage, SalesManage, SettingsManage,
-        SubordinateUserCreate, TargetManage, TenantOffboard, UserManage, WorkOrderCreate,
-        WorkOrderEditIntake, WorkOrderReadAll, WorkOrderStart, WorkReportSubmit,
+        SubordinateUserCreate, TargetManage, TenantOffboard, TodoAssign, UserManage,
+        WorkOrderCreate, WorkOrderEditIntake, WorkOrderReadAll, WorkOrderStart, WorkReportSubmit,
     };
     use PermissionLevel::{Allow as A, Deny as D, Limited as L, RequestOnly as R};
 
@@ -180,6 +180,7 @@ pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 113] {
         (ChangeRequestDecide, [D, D, D, D, D, D]),
         (JobTitleManage, [D, D, D, D, D, D]),
         (RosterFieldManage, [D, D, D, D, D, D]),
+        (TodoAssign, [D, D, D, D, D, D]),
         (RetainedRecordsRead, [D, D, D, D, D, D]),
         (TenantOffboard, [D, D, D, D, D, D]),
         // decisions #14.2: Cedar-only (`legal_entity_manage` action schema).

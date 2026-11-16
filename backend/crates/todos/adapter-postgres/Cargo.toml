@@ -11,6 +11,7 @@ publish.workspace = true
 console-kernel-core = { workspace = true }
 console-todos-application = { workspace = true }
 console-todos-domain = { workspace = true }
+console-platform-authz = { workspace = true }
 console-platform-db = { workspace = true }
 console-platform-request-context = { workspace = true }
 serde_json = { workspace = true }
