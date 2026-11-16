@@ -241,6 +241,24 @@ pub(crate) const LANES: [(&str, InboxFilter); 6] = [
     ("notices", InboxFilter::Notices),
 ];
 
+/// One source's long list leaves every count whose view cannot reach it exact.
+pub(crate) fn mark_exact(
+    page: &mut ActionInboxPage,
+    incomplete: &[crate::ActionInboxSource],
+    first: bool,
+) {
+    for count in &mut page.attention_filters {
+        if count.key != crate::Attention::All {
+            count.total_is_exact = count.key.filter().is_exact(incomplete, first);
+        }
+    }
+    for (key, view) in LANES {
+        if let Some(count) = page.counts.get_mut(key) {
+            count.total_is_exact = view.is_exact(incomplete, first);
+        }
+    }
+}
+
 pub(crate) fn counts(
     items: &[ActionInboxItem],
     exact: bool,

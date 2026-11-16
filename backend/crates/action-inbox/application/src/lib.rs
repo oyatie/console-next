@@ -229,16 +229,7 @@ pub async fn list_action_inbox(
         limit,
         port.deadline_due_soon_days()?,
     );
-    for count in &mut page.attention_filters {
-        if count.key != Attention::All {
-            count.total_is_exact = count.key.is_exact(&incomplete, cursor.is_none());
-        }
-    }
-    for (key, lane) in filter::LANES {
-        if let Some(count) = page.counts.get_mut(key) {
-            count.total_is_exact = lane.is_exact(&incomplete, cursor.is_none());
-        }
-    }
+    filter::mark_exact(&mut page, &incomplete, cursor.is_none());
     if !unavailable.is_empty() {
         page.total_is_exact = false;
         for count in &mut page.attention_filters {
