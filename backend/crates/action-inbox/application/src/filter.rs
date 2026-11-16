@@ -74,6 +74,14 @@ impl InboxFilter {
         }
     }
 
+    /// A first-page count is exact when no source this view reads left rows unread.
+    pub(crate) fn is_exact(self, incomplete: &[crate::ActionInboxSource], first: bool) -> bool {
+        first
+            && !incomplete
+                .iter()
+                .any(|source| self.includes_source(*source))
+    }
+
     fn includes(self, item: &ActionInboxItem) -> bool {
         match self {
             Self::All => true,
@@ -223,29 +231,32 @@ impl ActionInboxSourcePort for ViewPort<'_> {
     }
 }
 
+/// The lane counts every page carries, each with the view it counts.
+pub(crate) const LANES: [(&str, InboxFilter); 6] = [
+    ("turn", InboxFilter::Turn),
+    ("waiting", InboxFilter::Waiting),
+    ("scheduled", InboxFilter::Scheduled),
+    ("deadlines", InboxFilter::Deadlines),
+    ("failures", InboxFilter::Failures),
+    ("notices", InboxFilter::Notices),
+];
+
 pub(crate) fn counts(
     items: &[ActionInboxItem],
     exact: bool,
 ) -> std::collections::BTreeMap<&'static str, crate::InboxCount> {
-    [
-        ("turn", InboxFilter::Turn),
-        ("waiting", InboxFilter::Waiting),
-        ("scheduled", InboxFilter::Scheduled),
-        ("deadlines", InboxFilter::Deadlines),
-        ("failures", InboxFilter::Failures),
-        ("notices", InboxFilter::Notices),
-    ]
-    .into_iter()
-    .map(|(key, filter)| {
-        (
-            key,
-            crate::InboxCount {
-                total: items.iter().filter(|item| filter.includes(item)).count(),
-                total_is_exact: exact,
-            },
-        )
-    })
-    .collect()
+    LANES
+        .into_iter()
+        .map(|(key, filter)| {
+            (
+                key,
+                crate::InboxCount {
+                    total: items.iter().filter(|item| filter.includes(item)).count(),
+                    total_is_exact: exact,
+                },
+            )
+        })
+        .collect()
 }
 
 #[cfg(test)]
