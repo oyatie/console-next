@@ -144,9 +144,9 @@ export function Login() {
       <div className="card auth__card">
         <PageHead title={t("auth.login.title")} />
         {/* `enrolled`: the passkey is registered; only the automatic sign-in after enrollment failed. */}
-        {error && (
-          <Banner tone="danger" live="assertive">
-            {error}
+        {(error || busy) && (
+          <Banner key={error ? "error" : "pending"} tone={error ? "danger" : "info"} live={error ? "assertive" : "polite"}>
+            {busy ? t("auth.login.pending") : error}
             {recovery === "code" && <div>{t("auth.login.codeRejected")}</div>}
           </Banner>
         )}
@@ -154,7 +154,7 @@ export function Login() {
         {!error && recovery === "passkey" && <Banner live="polite">{t("auth.login.noPasskey")}</Banner>}
         {/* A next step, not an error: the passkey is registered and only the automatic sign-in after enrollment
             failed, or the server ended the last session for inactivity. */}
-        {!error && (enrolled || idle || cancelled) && <Banner live="polite">{cancelled ? bootstrapCodeExpiresAt() ? t("auth.login.cancelled", { at: fmtDateTime(bootstrapCodeExpiresAt()) }) : t("auth.login.cancelledUnknown") : t(enrolled ? "auth.login.enrolled" : "auth.login.idle")}</Banner>}
+        {!error && !busy && (enrolled || idle || cancelled) && <Banner live="polite">{cancelled ? bootstrapCodeExpiresAt() ? t("auth.login.cancelled", { at: fmtDateTime(bootstrapCodeExpiresAt()) }) : t("auth.login.cancelledUnknown") : t(enrolled ? "auth.login.enrolled" : "auth.login.idle")}</Banner>}
         <Form className="form" onSubmit={submitId}>
           <Field label={t("auth.login.id")} required={null} hint={t("auth.login.idHint")} error={idError ?? undefined}>
             {/* `username webauthn`: the browser offers the passkey from this field's autofill. */}
