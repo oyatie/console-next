@@ -3,7 +3,7 @@ import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { focusSoon } from "../../../lib/react/announce";
 import { Button } from "../../../ui/button/button";
-import { reviewSelfAttestedBinding } from "../api/self-binding";
+import { reviewSelfAttestedBinding } from "../api";
 import { PasskeyError } from "../../../lib/react/passkey-error";
 
 export function SelfBindingReview({ id }: { id: string }) {
