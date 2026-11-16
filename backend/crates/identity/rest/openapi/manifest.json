@@ -252,6 +252,10 @@
     "/api/v1/me/action-inbox/done": [
       "get"
     ],
+    "/api/v1/me/action-inbox/items/{id}/snooze": [
+      "delete",
+      "post"
+    ],
     "/api/v1/me/action-inbox/reference": [
       "get"
     ],
