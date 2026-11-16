@@ -8,7 +8,7 @@ import { accountSecurityScreens, type AccountSecurityState } from "./account-sec
 
 test.beforeAll(() => loadCatalog("ko"));
 for (const screen of accountSecurityScreens) for (const state of Object.keys(screen.states) as AccountSecurityState[]) for (const width of [1440, 390]) {
-  test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }, info) => {
+  test(`${screen.key}: ${state} at ${width}px${state === "pending" ? "" : " @ui-state"}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
@@ -77,7 +77,7 @@ for (const screen of accountSecurityScreens) for (const state of Object.keys(scr
           return { support_ref: refs.length === 1 ? refs[0]!.getAttribute("data-support-reference") : null,
             reference_count: refs.length, raw_server_text: el.textContent?.includes(raw) ?? false, floorplan: null };
         }, failure("terms_not_published").error.message);
-        await info.attach("screen-state", { contentType: "application/json", body: Buffer.from(JSON.stringify({
+        await info.attach(state === "pending" ? "command-state" : "screen-state", { contentType: "application/json", body: Buffer.from(JSON.stringify({
           ...observation, route: screen.path, state, width, status: observed ? "pass" : "unknown",
         })) });
       } finally { await page.close(); f.release(); }
