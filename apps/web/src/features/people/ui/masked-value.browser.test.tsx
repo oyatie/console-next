@@ -303,7 +303,7 @@ test("identifiers records through the shared sheet and refreshes its masked stat
   await sheet.getByRole("button", { name: "기록", exact: true }).click();
   await page.getByText("••••••-•••••••", { exact: true }).waitFor();
   expect(await page.getByRole("button", { name: "기록", exact: true }).count()).toBe(0);
-  expect(await page.getByRole("dialog").count()).toBe(0);
+  await expect.poll(() => page.getByRole("dialog").count()).toBe(0);
 });
 
 test.each([1440, 390])("%spx identifiers keeps the empty state and first-entry action on one field row", async width => {
