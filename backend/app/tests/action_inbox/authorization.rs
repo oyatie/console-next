@@ -25,7 +25,7 @@ async fn sources(pool: &PgPool, org: OrgId, actor: UserId) -> PgActionInboxSourc
         .with_scope_grants(projection.scoped)
         .with_effective_feature_grants(projection.grants)
         .with_tenant_ops(subject.is_ops);
-    let (deadline_due_soon_days, policies) =
+    let (deadline_due_soon_days, policies, _) =
         policy::load(tx.as_mut(), org, OffsetDateTime::now_utc())
             .await
             .unwrap();
@@ -42,6 +42,8 @@ async fn sources(pool: &PgPool, org: OrgId, actor: UserId) -> PgActionInboxSourc
         policies,
         read_permits: Arc::new(tokio::sync::Semaphore::new(1)),
         support_reference: String::new(),
+        snoozes: Default::default(),
+        log_access: true,
     }
 }
 

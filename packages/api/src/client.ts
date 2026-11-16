@@ -3,6 +3,8 @@ import createClient from "openapi-fetch";
 import type { AllPaths as paths } from "./pending/entity";
 import { ApiError, interactionHeaders, languageHeader, noteServerDate, reauthenticated, refresh, session } from "./session";
 import { setPlatform, type Platform } from "./platform";
+import { DEFAULT_REQUEST_TIMEOUT_MS, LONG_REQUEST_TIMEOUT_MS, requestDeadline } from "./request-deadline";
+export { DEFAULT_REQUEST_TIMEOUT_MS, LONG_REQUEST_TIMEOUT_MS, requestDeadline } from "./request-deadline";
 
 const withBearer = (req: Request) => {
   const r = new Request(req);
@@ -15,6 +17,10 @@ const withBearer = (req: Request) => {
 // Unauthenticated sign-in calls (and refresh itself): a 401 there is the answer, not an expired token.
 const NO_REFRESH = ["/api/v1/auth/token/refresh", "/api/v1/auth/otp/redeem", "/api/v1/auth/passkey/login/"];
 
+const longRequest = (method: string, path: string) =>
+  (method === "POST" && ["/api/v1/entity-documents", "/api/v1/employees/import/preview"].includes(path)) ||
+  (method === "GET" && (["/api/v1/employees/export.csv", "/api/v1/statutory/worker-register/export"].includes(path) || /^\/api\/v1\/entity-documents\/[^/]+\/content$/.test(path)));
+
 /**
  * fetch that attaches the bearer token and the last interaction and, on 401, refreshes once and retries.
  * A refresh that fails for a network error, 429 or 5xx rejects like a network error (the session stays).
@@ -23,12 +29,16 @@ export async function authFetch(input: Request): Promise<Response> {
   const principal = session.principal;
   const path = new URL(input.url).pathname;
   const writable = Boolean(session.token || input.headers.get("authorization")) && path.startsWith("/api/v1/") && !["GET", "HEAD", "OPTIONS"].includes(input.method);
-  const request = new Request(input);
+  let request = new Request(input);
   const key = writable ? (request.headers.get("idempotency-key") ?? crypto.randomUUID()) : undefined;
   if (key) request.headers.set("idempotency-key", key);
   const retry = request.clone();
+  const send = (attempt: Request) => {
+    request = new Request(attempt, { signal: requestDeadline(longRequest(input.method, path) ? LONG_REQUEST_TIMEOUT_MS : DEFAULT_REQUEST_TIMEOUT_MS, input.signal) });
+    return fetch(withBearer(request));
+  };
   try {
-    let res = await fetch(withBearer(request));
+    let res = await send(request);
     noteServerDate(res);
     const stepUp = res.status === 401 && ApiError.fromBody(res, await res.clone().json().catch(() => null)).code.includes("step_up");
     if (res.status === 401 && !stepUp && !NO_REFRESH.some((p) => path.startsWith(p))) {
@@ -42,7 +52,7 @@ export async function authFetch(input: Request): Promise<Response> {
       // A 401 refused the write before application. Keep its frozen body/key while recovery owns the screen.
       const resumed = !renewed && writable && principal && session.lost && await reauthenticated(principal, input.signal);
       if ((renewed || resumed) && session.principal === principal) {
-        res = await fetch(withBearer(retry));
+        res = await send(retry);
         noteServerDate(res);
       }
     }
@@ -52,6 +62,7 @@ export async function authFetch(input: Request): Promise<Response> {
     if (key && res.status !== 204 && res.headers.get("content-type")?.includes("application/json")) await res.clone().json();
     return res;
   } catch (error) {
+    if (input.signal.aborted && (error === input.signal.reason || request.signal.reason === input.signal.reason)) throw error;
     if (!key) throw error;
     if (error instanceof ApiError) throw new ApiError(error.status, error.code, error.message, error.reasons, error.operationId, error.fromServer, error.refusals, { ...error, requestKey: key });
     throw new ApiError(0, "command_unknown", "", [], undefined, false, [], { requestKey: key });

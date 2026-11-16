@@ -384,6 +384,7 @@ mod tests {
             done: false,
             lane,
             days_remaining: None,
+            snooze: crate::SnoozeFacts::default(),
             created_at: OffsetDateTime::UNIX_EPOCH,
         }
     }

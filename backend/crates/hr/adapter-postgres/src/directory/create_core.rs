@@ -3,9 +3,7 @@
 
 use console_kernel_core::{OrgId, UserId};
 use console_ontology_canonical_adapter_postgres::employment;
-use console_ontology_canonical_adapter_postgres::person::{
-    PersonCommand, write_in_tx as write_person_in_tx,
-};
+use console_ontology_canonical_adapter_postgres::person::{PersonCommand, create_many_in_tx};
 use sqlx::Postgres;
 use uuid::Uuid;
 
@@ -37,10 +35,10 @@ pub async fn create_employee_core(
     request_hash: &str,
     employee_id: Uuid,
 ) -> Result<(EmployeeDetailResponse, bool), HrError> {
-    revalidate_directory_manager(tx, org_uuid, actor).await?;
-    let prepared = prepare_registrations(
+    create_employees_core(
         tx,
         org_uuid,
+        actor,
         &[RegistrationInput {
             request,
             request_hash,
@@ -49,114 +47,145 @@ pub async fn create_employee_core(
     )
     .await?
     .pop()
-    .ok_or(sqlx::Error::RowNotFound)?;
-    if prepared.replayed {
-        return Ok((
-            load_employee_detail(tx, org_uuid, prepared.employee_id).await?,
-            true,
+    .ok_or_else(|| sqlx::Error::RowNotFound.into())
+}
+
+/// Multi-registration core, in input order, sharing the single registration's write owners.
+/// Callers must normalize requests, authorize, admit duplicates, place, audit and roll back
+/// on error, exactly as for `create_employee_core`; this is not an authorization boundary.
+pub async fn create_employees_core(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org_uuid: Uuid,
+    actor: UserId,
+    inputs: &[RegistrationInput<'_>],
+) -> Result<Vec<(EmployeeDetailResponse, bool)>, HrError> {
+    revalidate_directory_manager(tx, org_uuid, actor).await?;
+    let prepared = prepare_registrations(tx, org_uuid, inputs).await?;
+    let fresh: Vec<_> = inputs
+        .iter()
+        .zip(&prepared)
+        .filter(|(_, row)| !row.replayed)
+        .collect();
+    let records: Vec<_> = fresh
+        .iter()
+        .map(|(input, row)| employment::NewEmployeeRecord {
+            employee_id: row.employee_id,
+            company: &input.request.company,
+            name: &input.request.name,
+            employee_number: &row.employee_number,
+            org_unit: &row.org_unit,
+            position: &input.request.position,
+            worksite_name: &input.request.site,
+            hire_date: input.request.hire_date.as_deref(),
+        })
+        .collect();
+    employment::insert_employee_records(tx, org_uuid, &records)
+        .await
+        .map_err(employee_create_db_error)?;
+    let today = today_kst();
+    for (input, row) in &fresh {
+        let request = input.request;
+        let employee_id = row.employee_id;
+        let pre_hire = is_pre_hire(request.hire_date.as_deref(), today)?;
+        if pre_hire {
+            mark_pre_hire(tx, org_uuid, employee_id).await?;
+        }
+        if let Some(org_unit_id) = request.org_unit_id {
+            employment::set_employee_org_unit(tx, org_uuid, employee_id, Some(org_unit_id), None)
+                .await?;
+        }
+        // Scheduled ONBOARD owns the future hire's canonical employment.
+        if !pre_hire {
+            employment::appoint_legacy_head_in_tx(
+                tx,
+                OrgId::from_uuid(org_uuid),
+                actor,
+                employee_id,
+            )
+            .await?;
+        }
+    }
+    let persons: Vec<_> = fresh
+        .iter()
+        .map(|(input, row)| {
+            PersonCommand::create_bound(
+                OrgId::from_uuid(org_uuid),
+                actor,
+                row.employee_id,
+                &input.request.name,
+            )
+        })
+        .collect();
+    create_many_in_tx(tx, &persons).await?;
+    if !fresh.is_empty() {
+        sqlx::query(
+            r#"INSERT INTO employee_employment_profiles (
+                employee_id, org_id, employment_type, phone_e164, base_pay,
+                idempotency_key, request_hash, created_by, contract_start_date, contract_end_date
+            ) SELECT id,$1,kind,phone,pay::numeric,key,hash,$2,start_date::DATE,end_date::DATE
+              FROM unnest($3::uuid[],$4::text[],$5::text[],$6::text[],$7::text[],$8::text[],$9::text[],$10::text[])
+              AS input(id,kind,phone,pay,key,hash,start_date,end_date)"#,
+        )
+        .bind(org_uuid).bind(actor.as_uuid())
+        .bind(fresh.iter().map(|(_, r)| r.employee_id).collect::<Vec<_>>())
+        .bind(fresh.iter().map(|(i, _)| i.request.employment_type.as_deref()).collect::<Vec<_>>())
+        .bind(fresh.iter().map(|(i, _)| i.request.phone_e164.as_deref()).collect::<Vec<_>>())
+        .bind(fresh.iter().map(|(i, _)| i.request.base_pay.as_deref()).collect::<Vec<_>>())
+        .bind(fresh.iter().map(|(i, _)| i.request.idempotency_key.as_str()).collect::<Vec<_>>())
+        .bind(fresh.iter().map(|(i, _)| i.request_hash).collect::<Vec<_>>())
+        .bind(fresh.iter().map(|(i, _)| i.request.contract_start_date.as_deref()).collect::<Vec<_>>())
+        .bind(fresh.iter().map(|(i, _)| i.request.contract_end_date.as_deref()).collect::<Vec<_>>())
+        .execute(tx.as_mut()).await.map_err(employee_create_db_error)?;
+    }
+    for (input, row) in &fresh {
+        let request = input.request;
+        record_registration_facts(
+            tx,
+            org_uuid,
+            row.employee_id,
+            *actor.as_uuid(),
+            &request.facts,
+        )
+        .await?;
+        record_registration_onboard(
+            tx,
+            org_uuid,
+            *actor.as_uuid(),
+            row.employee_id,
+            &RegistrationOnboard {
+                company: &request.company,
+                org_unit: &row.org_unit,
+                org_unit_id: request.org_unit_id,
+                position: &request.position,
+                hire_date: request.hire_date.as_deref(),
+            },
+            today,
+        )
+        .await?;
+    }
+    if !fresh.is_empty() {
+        sqlx::query(
+            "UPDATE employee_create_idempotency SET employee_id = input.id \
+             FROM unnest($2::text[],$3::uuid[]) AS input(key,id) \
+             WHERE org_id=$1 AND idempotency_key=input.key",
+        )
+        .bind(org_uuid)
+        .bind(
+            fresh
+                .iter()
+                .map(|(i, _)| i.request.idempotency_key.as_str())
+                .collect::<Vec<_>>(),
+        )
+        .bind(fresh.iter().map(|(_, r)| r.employee_id).collect::<Vec<_>>())
+        .execute(tx.as_mut())
+        .await?;
+    }
+    let mut results = Vec::with_capacity(prepared.len());
+    for row in prepared {
+        results.push((
+            load_employee_detail(tx, org_uuid, row.employee_id).await?,
+            row.replayed,
         ));
     }
-    let org_unit_text = prepared.org_unit;
-    let employee_number = prepared.employee_number;
-
-    // The statement itself lives in `console-ontology-canonical-adapter-postgres`,
-    // which the canonical contract names as `ObjectKey::Employment`'s owner — the
-    // one crate permitted to hold DML against `employees`. It takes THIS
-    // transaction, so the employee row, its employment profile, its lifecycle
-    // event and the idempotency reservation still commit or roll back together.
-    //
-    // home_branch_id is intentionally NOT inserted: since 0166 the branch
-    // routing authority is command-only (the console_rt guard rejects it), so the
-    // caller establishes it post-commit via [`assign_home_branch_if_unset`].
-    employment::insert_employee_record(
-        tx,
-        org_uuid,
-        employment::NewEmployeeRecord {
-            employee_id,
-            company: &request.company,
-            name: &request.name,
-            employee_number: &employee_number,
-            org_unit: &org_unit_text,
-            position: &request.position,
-            worksite_name: &request.site,
-            hire_date: request.hire_date.as_deref(),
-        },
-    )
-    .await
-    .map_err(employee_create_db_error)?;
-    let today = today_kst();
-    let pre_hire = is_pre_hire(request.hire_date.as_deref(), today)?;
-    if pre_hire {
-        mark_pre_hire(tx, org_uuid, employee_id).await?;
-    }
-    if let Some(org_unit_id) = request.org_unit_id {
-        employment::set_employee_org_unit(tx, org_uuid, employee_id, Some(org_unit_id), None)
-            .await?;
-    }
-    // The canonical employment (head + revision + source binding) opens in
-    // the same transaction, through the Employment owner: without it an
-    // org-change REASSIGN_ORG_UNIT refuses this employee as unbound. A
-    // PRE_HIRE person is not employed yet: the scheduled ONBOARD opens it on
-    // the hire date (HrService::apply_due).
-    if !pre_hire {
-        employment::appoint_legacy_head_in_tx(tx, OrgId::from_uuid(org_uuid), actor, employee_id)
-            .await?;
-    }
-    // Directory create mints the Person in the same transaction (person_id =
-    // employee_id).
-    write_person_in_tx(
-        tx,
-        &PersonCommand::create_bound(
-            OrgId::from_uuid(org_uuid),
-            actor,
-            employee_id,
-            &request.name,
-        ),
-    )
-    .await?;
-    sqlx::query(
-        r#"INSERT INTO employee_employment_profiles (
-            employee_id, org_id, employment_type, phone_e164, base_pay,
-            idempotency_key, request_hash, created_by,
-            contract_start_date, contract_end_date
-        ) VALUES ($1, $2, $3, $4, $5::numeric, $6, $7, $8, $9::DATE, $10::DATE)"#,
-    )
-    .bind(employee_id)
-    .bind(org_uuid)
-    .bind(&request.employment_type)
-    .bind(&request.phone_e164)
-    .bind(&request.base_pay)
-    .bind(&request.idempotency_key)
-    .bind(request_hash)
-    .bind(*actor.as_uuid())
-    .bind(request.contract_start_date.as_deref())
-    .bind(request.contract_end_date.as_deref())
-    .execute(tx.as_mut())
-    .await
-    .map_err(employee_create_db_error)?;
-    record_registration_facts(tx, org_uuid, employee_id, *actor.as_uuid(), &request.facts).await?;
-    record_registration_onboard(
-        tx,
-        org_uuid,
-        *actor.as_uuid(),
-        employee_id,
-        &RegistrationOnboard {
-            company: &request.company,
-            org_unit: &org_unit_text,
-            org_unit_id: request.org_unit_id,
-            position: &request.position,
-            hire_date: request.hire_date.as_deref(),
-        },
-        today,
-    )
-    .await?;
-    sqlx::query(
-        "UPDATE employee_create_idempotency SET employee_id = $3 WHERE org_id = $1 AND idempotency_key = $2",
-    )
-    .bind(org_uuid).bind(&request.idempotency_key).bind(employee_id)
-    .execute(tx.as_mut()).await?;
-    Ok((
-        load_employee_detail(tx, org_uuid, employee_id).await?,
-        false,
-    ))
+    Ok(results)
 }

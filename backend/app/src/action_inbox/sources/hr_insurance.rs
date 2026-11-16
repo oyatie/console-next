@@ -13,6 +13,7 @@ pub(crate) async fn page(
     principal: &Principal,
     query: ActionInboxSourceQuery,
     register: &super::super::request_register::Register,
+    log_access: bool,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     let register = async {
         super::super::request_register::get(pool, register, principal.org_id, query.as_of)
@@ -37,6 +38,7 @@ pub(crate) async fn page(
                 .after
                 .clone()
                 .map(|position| (position.due, position.created_at, position.id)),
+            log_access,
         )
         .await
     {
