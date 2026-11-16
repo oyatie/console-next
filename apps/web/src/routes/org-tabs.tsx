@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi, useRouter } from "@tanstack/react-router";
+import { createLazyRoute, getRouteApi, lazyRouteComponent, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { chunk } from "../lib/chunk-guard";
+import { screen } from "../lib/fonts";
 import { useTabSearch } from "../lib/react/use-tab-search";
 import { Page } from "../ui/page/page";
 import { PageTabs } from "../ui/tabs/page-tabs";
@@ -19,6 +20,10 @@ const EntityContent = lazy(() => chunk(import("../features/entity/ui/entity-rout
 const Changes = lazy(() => chunk(import("../features/org/ui/org-changes")).then(m => ({ default: m.OrgChanges })));
 const History = lazy(() => chunk(import("../features/org-bulk/ui/history-page")).then(m => ({ default: m.HistoryPage })));
 const route = getRouteApi("/app/org");
+
+export const orgChange = createLazyRoute("/app/org/changes/$id")({
+  component: lazyRouteComponent(screen(() => import("../features/org/OrgChange")), "OrgChange"),
+});
 
 /** Start the shared read behind the access gate while the list code loads. */
 function Entities() {

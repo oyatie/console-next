@@ -9,6 +9,26 @@ import { mockRoute } from "./route";
 
 test.beforeAll(() => loadCatalog("ko"));
 
+test("organization record preload metadata stays behind the lazy organization route", async ({ request, page }) => {
+  const html = await (await request.get("/")).text();
+  const entry = html.match(/<script type="module"[^>]*src="([^"]+)"/)![1]!;
+  const source = await (await request.get(entry)).text();
+  expect(source.match(/assets\/OrgChange-[^" ]+/g) ?? []).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 900 });
+  const fixture = await mockScreen(page, orgChangeScreens[1], "draft");
+  try {
+    await page.goto(orgChangeScreens[1].path);
+    await routeReady(page);
+    await expect(page.locator("#change-title")).toBeVisible();
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((element, value) => { element.dataset.theme = value; }, theme);
+      await fits(page, `record/390/${theme}`);
+      await page.screenshot({ path: test.info().outputPath(`${theme}.png`), fullPage: true });
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
 for (const path of ["/org/changes", "/org/history"]) for (const width of [1440, 390]) {
   test(`organization list avoids record forms on ${path} at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
