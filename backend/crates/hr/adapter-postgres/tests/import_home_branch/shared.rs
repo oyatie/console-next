@@ -4,6 +4,8 @@ use uuid::Uuid;
 
 use crate::harness::{Importer, decisions, table};
 
+pub(super) const HQ_ROW: [&str; 7] = ["E-101", "김일", "2024-03-04", "정규직", "본사", "", "사원"];
+
 /// A legal entity "Hanbit" with one open workplace "Head office" backed by `default_branch`.
 pub(super) async fn setup_headquarters(i: &Importer, default_branch: Uuid) -> (Uuid, Uuid) {
     let (o, entity, workplace) = (i.org(), Uuid::new_v4(), Uuid::new_v4());

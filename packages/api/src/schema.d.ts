@@ -20118,11 +20118,12 @@ export interface components {
             total: number;
             done: number;
             report?: components["schemas"]["EmployeeImportReport"];
-            /** @description failed: the refusal (code, message, refusals) — e.g. rows_changed_since_preview, apply_interrupted. */
+            /** @description failed: the typed refusal code, fixed redacted message and support reference. Legacy jobs may have no support reference. */
             error?: {
                 code: string;
                 message: string;
-                refusals?: unknown;
+                /** @description Correlates the failure with its server log; absent on legacy jobs. */
+                support_ref?: string;
             };
         };
         EmployeeImportApplyRequest: {

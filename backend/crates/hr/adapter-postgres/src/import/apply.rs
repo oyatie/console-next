@@ -30,6 +30,12 @@ pub async fn with_apply_support_reference<F: Future>(reference: String, work: F)
     SUPPORT_REFERENCE.scope(reference, work).await
 }
 
+pub(super) fn apply_support_reference() -> String {
+    SUPPORT_REFERENCE
+        .try_with(Clone::clone)
+        .unwrap_or_else(|_| TraceContext::generate().trace_id().to_owned())
+}
+
 /// Name → ids of every ACTIVE Site/Department/Team in the armed tenant.
 pub async fn active_org_units_by_name(
     tx: &mut sqlx::Transaction<'_, Postgres>,
@@ -96,9 +102,7 @@ pub(crate) fn apply_failure(error: PgLeaveError) -> HrError {
         && let Some(db) = sqlx.as_database_error()
         && let Some(sqlstate @ ("42501" | "25P04" | "57014")) = db.code().as_deref()
     {
-        let support_reference = SUPPORT_REFERENCE
-            .try_with(Clone::clone)
-            .unwrap_or_else(|_| TraceContext::generate().trace_id().to_owned());
+        let support_reference = apply_support_reference();
         tracing::warn!(sqlstate, %support_reference, "import command refused by the database");
         return if sqlstate == "42501" {
             HrError::from_kernel(
