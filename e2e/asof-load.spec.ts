@@ -45,7 +45,7 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   await expect(box(admin, "대량팀")).toHaveAttribute("aria-label", /2,?000명/);
   const due = kstDate(3);
   const team = await openUnit(admin, "대량팀");
-  await team.getByRole("button", { name: "이름 변경" }).click();
+  await team.getByRole("button", { name: "부서 이름 수정", exact: true }).click();
   await team.getByRole("textbox", { name: /^대량팀의 새 이름/ }).fill("대량미래팀");
   await inlineUnitDetails(admin, team, due);
   const submitted = admin.waitForResponse((r) => r.request().method() === "POST"
