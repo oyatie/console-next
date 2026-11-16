@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -9,6 +11,42 @@ import yaml from "js-yaml";
 const root = process.env.CONSOLE_TEST_ROOT ?? fileURLToPath(new URL("..", import.meta.url));
 const source = readFileSync(path.join(root, "scripts/backend-dev.mjs"), "utf8");
 const files = [...source.matchAll(/"-f", "([^"]+)"/g)].map((m) => m[1]);
+
+for (const [engine, compose, fast] of [["29.5.2", "5.6.1", true], ["28.0.4", "2.38.2", true], ["24.0.9", "2.38.2", false], ["25.0.0", "2.20.1", false]])
+  test(`launcher reports Engine ${engine} / Compose ${compose} and selects the supported health schedule`, t => {
+    const dir = mkdtempSync(path.join(tmpdir(), "compose-health-"));
+    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    mkdirSync(path.join(dir, "bin"));
+    writeFileSync(path.join(dir, "bin/lsof"), "#!/bin/sh\nexit 1\n", { mode: 0o700 });
+    writeFileSync(path.join(dir, "bin/docker"), `#!${process.execPath}
+const fs = require("node:fs");
+const args = process.argv.slice(2);
+fs.appendFileSync(process.env.DOCKER_LOG, JSON.stringify({ args, context: process.env.DOCKER_CONTEXT }) + "\\n");
+if (args[0] === "version") console.log(process.env.TEST_ENGINE);
+else if (args[0] === "compose" && args[1] === "version") console.log(process.env.TEST_COMPOSE);
+`, { mode: 0o700 });
+    writeFileSync(path.join(dir, "console-app"), "#!/bin/sh\nexit 17\n", { mode: 0o700 });
+    const result = spawnSync(process.execPath, [path.join(root, "scripts/backend-dev.mjs")], {
+      encoding: "utf8", timeout: 30_000,
+      env: {
+        ...process.env, PATH: `${path.join(dir, "bin")}:${process.env.PATH}`, DOCKER_CONTEXT: "fixture-context",
+        DOCKER_LOG: path.join(dir, "docker.log"), TEST_ENGINE: engine, TEST_COMPOSE: compose,
+        CONSOLE_REPO: dir, CONSOLE_APP_BIN: path.join(dir, "console-app"), CONSOLE_DEV_PROJECT: "fixture-health",
+        CONSOLE_DEV_BACKEND_PORT: "0", E2E_CACHE_DIR: path.join(dir, "cache"),
+      },
+    });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /migrations failed \(exit 17\)/, "the launcher waited for Compose before migrating");
+    const calls = readFileSync(path.join(dir, "docker.log"), "utf8").trim().split("\n").map(JSON.parse);
+    assert.deepEqual(calls.find(call => call.args[0] === "version").args, ["version", "--format", "{{.Server.Version}}"]);
+    assert.deepEqual(calls.find(call => call.args[0] === "compose" && call.args[1] === "version").args, ["compose", "version", "--short"]);
+    assert.ok(calls.every(call => call.context === "fixture-context"));
+    const up = calls.find(call => call.args.includes("up")).args;
+    assert.ok(up.includes("--wait"));
+    assert.equal(up.includes("deploy/dev/compose.startup.yml"), fast);
+    assert.equal(result.stderr.includes("using 30s fallback"), !fast);
+    assert.ok(result.stdout.includes(`Docker Engine ${engine}; Compose ${compose}`), result.stdout);
+  });
 
 test("test services probe quickly only during startup and detect failure within a minute", () => {
   const compose = yaml.load(readFileSync(path.join(root, "deploy/dev/compose.e2e.yml"), "utf8"));
@@ -30,6 +68,8 @@ test("CI service healthchecks use startup probes and bounded steady-state detect
     for (const job of Object.values(jobs)) for (const service of Object.values(job.services ?? {})) {
       if (!service.options?.includes("--health-cmd")) continue;
       services++;
+      const capabilities = job.steps.find(step => step.name === "Docker healthcheck capabilities");
+      assert.match(capabilities?.run ?? "", /docker version\s+docker compose version/, file);
       for (const [flag, value] of Object.entries({ interval: "30s", timeout: "2s", retries: "1", "start-period": "60s", "start-interval": "1s" }))
         assert.match(service.options, new RegExp(`--health-${flag} ${value}(?:\\s|$)`), file);
     }
