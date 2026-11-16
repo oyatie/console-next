@@ -7,8 +7,8 @@ use axum::routing::get;
 use axum::{Extension, Json, Router};
 use console_action_inbox_application::{
     ActionInboxSource, ActionInboxSourceFuture, ActionInboxSourcePage, ActionInboxSourcePort,
-    ActionInboxSourceQuery, Attention, InboxFilter, ListActionInboxQuery,
-    list_filtered_action_inbox as run_action_inbox,
+    ActionInboxSourceQuery, Attention, InboxFilter, ListActionInboxQuery, SnoozeMode, SnoozedPort,
+    Snoozes, list_filtered_action_inbox as run_action_inbox,
 };
 use console_kernel_core::KernelError;
 use console_platform_auth::JwtVerifier;
@@ -27,9 +27,11 @@ mod decisions;
 mod done;
 pub(crate) mod error;
 mod policy;
+mod raw;
 mod reference;
 mod request_register;
 mod response;
+mod snooze;
 pub(crate) mod tabs;
 use error::InboxError;
 
@@ -87,12 +89,40 @@ struct ActionInboxQuery {
     #[serde(default)]
     filter: InboxFilter,
     attention: Option<Attention>,
+    snoozed: Option<Snoozed>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum Snoozed {
+    Only,
 }
 
 async fn list_action_inbox(
     State(state): State<ActionInboxState>,
     Extension(principal): Extension<Principal>,
     Query(query): Query<ActionInboxQuery>,
+) -> Result<Json<serde_json::Value>, InboxError> {
+    let mode = match query.snoozed {
+        None => SnoozeMode::Exclude,
+        Some(Snoozed::Only) if query.attention.is_none() && query.filter == InboxFilter::All => {
+            SnoozeMode::Only
+        }
+        Some(Snoozed::Only) => {
+            return Err(KernelError::validation("the snoozed view takes no other filter").into());
+        }
+    };
+    read(state, principal, query, mode, true).await
+}
+
+/// The list read. Only this module chooses the mode: no query string reaches `Include`.
+/// `log_access` is false for a command that resolves an item without showing the list.
+async fn read(
+    state: ActionInboxState,
+    principal: Principal,
+    query: ActionInboxQuery,
+    mode: SnoozeMode,
+    log_access: bool,
 ) -> Result<Json<serde_json::Value>, InboxError> {
     if query.attention.is_some() && !matches!(query.filter, InboxFilter::All | InboxFilter::Turn) {
         return Err(
@@ -110,26 +140,31 @@ async fn list_action_inbox(
         .fetch_one(&state.pool)
         .await
         .map_err(|error| source_failure("clock", error))?;
-    let org = principal.org_id;
-    let (created_at, deadline_due_soon_days, policies) = console_platform_db::with_org_conn::<
-        _,
-        _,
-        console_settings_adapter_postgres::PgSettingsError,
-    >(&state.pool, org, move |tx| {
-        Box::pin(async move {
-            let (window, policies) = policy::load(tx.as_mut(), org, now).await?;
-            let created = sqlx::query_scalar::<_, OffsetDateTime>(
-                "SELECT created_at FROM organizations WHERE id = $1",
-            )
-            .bind(org.as_uuid())
-            .fetch_one(tx.as_mut())
-            .await
-            .map_err(console_platform_db::DbError::from)?;
-            Ok((created, window, policies))
+    let (org, account) = (principal.org_id, principal.user_id);
+    let (created_at, deadline_due_soon_days, policies, snooze_days, snoozed) =
+        console_platform_db::with_org_conn::<
+            _,
+            _,
+            console_settings_adapter_postgres::PgSettingsError,
+        >(&state.pool, org, move |tx| {
+            Box::pin(async move {
+                let (window, policies, snooze_days) = policy::load(tx.as_mut(), org, now).await?;
+                // The account's snoozes are read once here, before any source runs.
+                let snoozed = snooze::load(tx.as_mut(), org, account)
+                    .await
+                    .map_err(console_platform_db::DbError::from)?;
+                let created = sqlx::query_scalar::<_, OffsetDateTime>(
+                    "SELECT created_at FROM organizations WHERE id = $1",
+                )
+                .bind(org.as_uuid())
+                .fetch_one(tx.as_mut())
+                .await
+                .map_err(console_platform_db::DbError::from)?;
+                Ok((created, window, policies, snooze_days, snoozed))
+            })
         })
-    })
-    .await
-    .map_err(|e| source_failure("tenant", format!("{e:?}")))?;
+        .await
+        .map_err(|e| source_failure("tenant", format!("{e:?}")))?;
     let sources = PgActionInboxSources {
         authorization: Authorization::default(),
         pool: state.pool,
@@ -145,6 +180,8 @@ async fn list_action_inbox(
         setup_created_at: created_at,
         deadline_due_soon_days,
         policies,
+        snoozes: Snoozes::new(snoozed, mode, now),
+        log_access,
     };
     let mut page = run_action_inbox(
         &sources,
@@ -166,7 +203,16 @@ async fn list_action_inbox(
         all.total = turn.total;
         all.total_is_exact = turn.total_is_exact;
     }
-    response::project(&sources, page, filter, query.cursor.is_none(), now).await
+    sources.snoozes.annotate(&mut page);
+    response::project(
+        &sources,
+        page,
+        filter,
+        query.cursor.is_none(),
+        now,
+        snooze_days,
+    )
+    .await
 }
 
 /// Temporary composition-root adapter. This intentionally proves the inward
@@ -185,6 +231,9 @@ struct PgActionInboxSources {
     policies: policy::Policies,
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
     support_reference: String,
+    snoozes: Snoozes,
+    /// Whether the rows read are shown to the caller, and so written to the personnel access log.
+    log_access: bool,
 }
 
 impl ActionInboxSourcePort for PgActionInboxSources {
@@ -210,79 +259,15 @@ impl ActionInboxSourcePort for PgActionInboxSources {
             let _permit = permit.map_err(|_| KernelError::internal("inbox reader closed"))?;
             let started = std::time::Instant::now();
             let result = async {
-            let mut page = match source {
-                #[cfg(feature = "workspace")]
-                ActionInboxSource::Workflow => self.workflow_page(query).await,
-                #[cfg(feature = "dispatch")]
-                ActionInboxSource::Dispatch => self.dispatch_page(query).await,
-                #[cfg(feature = "support")]
-                ActionInboxSource::Support => self.support_page(query).await,
-                #[cfg(feature = "workorder")]
-                ActionInboxSource::WorkOrder => self.work_order_page(query).await,
-                #[cfg(feature = "payroll")]
-                ActionInboxSource::Payroll => self.payroll_page(query).await,
-                #[cfg(feature = "governance")]
-                ActionInboxSource::Governance => self.governance_page(query).await,
-                ActionInboxSource::HrIdentity
-                | ActionInboxSource::HrUnplaced
-                | ActionInboxSource::HrContract => {
-                    sources::hr_followups::page(&self.pool, &self.principal, source, query).await
-                }
-                ActionInboxSource::PeriodUnlock => {
-                    crate::lifecycle::inbox::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::Setup => {
-                    let setup = self
-                        .setup
-                        .get_or_try_init(|| sources::setup::load(&self.pool, &self.principal, &self.authorization))
-                        .await;
-                    setup.map(|setup| sources::setup::page(
-                        setup.as_ref(),
-                        *self.principal.org_id.as_uuid(),
-                        self.setup_created_at,
-                        query,
-                    ))
-                }
-                ActionInboxSource::GrantNotice => {
-                    sources::grants::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::SupportAccess => {
-                    sources::support_access::page(&self.pool, &self.principal, query, &self.support_can_approve, &self.authorization).await
-                }
-                ActionInboxSource::PrivacyRequests => {
-                    sources::privacy_requests::page(&self.pool, &self.principal, query, &self.privacy_can_handle, &self.authorization).await
-                }
-                ActionInboxSource::EntityCorrections => {
-                    sources::entity_corrections::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::RegistrationChecks => {
-                    sources::registration_checks::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::OrgChange => {
-                    sources::org_change::page(&self.pool, &self.principal, query, self.policies.get(&console_settings_domain::SettingKey::ApprovalPolicyOrgStructure).copied().flatten(), &self.authorization).await
-                }
-                ActionInboxSource::HrExit => {
-                    sources::hr_exit::page(&self.pool, &self.principal, query, &self.statutory_register, &self.authorization).await
-                }
-                ActionInboxSource::HrLifecycle => {
-                    sources::hr_lifecycle::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::HrRegister => {
-                    sources::hr_register::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::HrRequests => {
-                    sources::hr_requests::page(&self.pool, &self.principal, query, &self.policies).await
-                }
-                ActionInboxSource::HrInsurance => {
-                    sources::hr_insurance::page(&self.pool, &self.principal, query, &self.statutory_register).await
-                }
-                #[allow(unreachable_patterns)]
-                _ => Ok(empty_source_page()),
-            }.map_err(|error| {
+            // Snoozed rows leave the page before the access log is written, so only revealed rows are logged;
+            // a command that only resolves an item reveals none. The insurance source logs inside its own read,
+            // before snoozed rows leave, so its entry can name a postponed row.
+            let mut page = SnoozedPort { port: &raw::Raw(self), snoozes: &self.snoozes }
+                .list_source_page(source, query).await.map_err(|error| {
                 tracing::error!(source = ?source, support_reference = %self.support_reference, error = %error, "inbox source unavailable");
                 error
             })?;
-            if matches!(
+            if self.log_access && matches!(
                 source,
                 ActionInboxSource::HrIdentity
                     | ActionInboxSource::HrUnplaced

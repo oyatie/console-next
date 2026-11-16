@@ -1,7 +1,8 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Copy gate: user-facing text lives only in packages/i18n catalogs, every catalog id has a reader, and the Korean
 // copy uses the words of docs/design/copy-conventions.md (3, below).
-//   1. Fails on any Hangul literal in app/package source (tests and catalogs excepted).
+//   1. No Hangul in web product source; repository-wide Hangul debt and named exceptions only shrink.
 //   2. Fails on a catalog id (ko/<ns>.ts, boot.ts and its boot-<part>.ts fragments) that no source uses.
 //      An id counts as used when it appears as a quoted literal, or matches a template literal that starts with a namespace
 //      (`exit.action.${k}` uses every `exit.action.*` id). Both over-approximate (comments count,
@@ -15,12 +16,14 @@ import { IntlMessageFormat } from "intl-messageformat";
 import { applyJosa, resolveJosa } from "../packages/i18n/src/josa.ts";
 import ts from "typescript";
 import { atBase, baselineGrowth, digest, qualityRef, ratchet } from "./quality/ratchet.mjs";
+import { HANGUL, checkRepositoryHangul } from "./check-hangul.mjs";
 
-const HANGUL = /[ㄱ-ㆎ가-힣]/;
 const CATALOGS = "packages/i18n/src/catalogs";
 const BASELINE = "scripts/copy-unused-baseline.json";
 const MATURITY_BASELINE = "scripts/copy-maturity-baseline.json";
 const escape = (s) => s.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
+
+const isTest = file => /\.test\.tsx?$/.test(file);
 
 function refusalCodes(sources) {
   return [...new Set(sources.flatMap(({ text }) => [...text
@@ -303,11 +306,19 @@ const walk = (dir, out = []) => {
   }
   return out;
 };
-const isTest = (p) => /\.test\.tsx?$/.test(p);
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.chdir(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
   const problems = [];
+  const gitBase = qualityBase();
+  const hangul = checkRepositoryHangul(gitBase);
+  problems.push(...hangul.problems);
+  if (process.argv.includes("--report")) {
+    console.log(`Hangul lines: ${JSON.stringify(hangul.counts)}`);
+    console.log(`Merge-base Hangul lines: ${JSON.stringify(hangul.baseline)}`);
+    if (problems.length) { console.error(problems.join("\n")); process.exit(1); }
+    process.exit(0);
+  }
   const composerFindings = [];
   const catalogs = Object.fromEntries(["ko", "en"].map(locale => [locale, walk(CATALOGS)
     .filter(file => file.endsWith(".ts") && (file.includes(`/${locale}/`) || file.endsWith(`/${locale}.ts`)))
@@ -320,9 +331,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (!/\.(tsx?|css)$/.test(p) || isTest(p) || p === "packages/api/src/schema.d.ts") continue;
     const source = readFileSync(p, "utf8");
     composerFindings.push(...checkComposer(p, source));
-    source.split("\n").forEach((line, i) => {
-      if (HANGUL.test(line)) problems.push(`${p}:${i + 1}: literal outside the i18n catalogs: ${line.trim().slice(0, 100)}`);
-    });
   }
   // boot.ts and the fragments it spreads (boot-<part>.ts) all ship in the entry.
   const boot = readdirSync(CATALOGS).filter((f) => /^boot(-[\w-]+)?\.ts$/.test(f)).map((f) => `${CATALOGS}/${f}`);
@@ -337,7 +345,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const entries = copyFiles.flatMap((f) => copyEntries(f, readFileSync(f, "utf8")));
   composerFindings.push(...copyFiles.flatMap((f) => checkComposer(f, readFileSync(f, "utf8"))));
   const composerAllow = JSON.parse(readFileSync(COMPOSER_ALLOW, "utf8")).allow;
-  const gitBase = qualityBase();
   const previousComposer = atBase(process.cwd(), gitBase, COMPOSER_ALLOW);
   // First adoption seeds only findings already present at the merge base.
   const composerCeiling = previousComposer ? JSON.parse(previousComposer).allow : [...new Set(composerAllow.map((entry) => entry.split(":")[0]))].flatMap((file) => {
