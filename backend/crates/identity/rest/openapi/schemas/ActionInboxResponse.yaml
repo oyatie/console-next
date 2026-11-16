@@ -65,7 +65,7 @@ properties:
           type: string
   counts:
     type: object
-    description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds.
+    description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted.
     additionalProperties:
       type: object
       required: [total, total_is_exact]
@@ -79,6 +79,19 @@ properties:
     description: Up to three scheduled changes from the admitted source pages, in deadline order.
     items:
       $ref: '#/components/schemas/ActionInboxItem'
+  snooze_presets:
+    type: array
+    description: The snooze presets with their days resolved by the server in Korea's calendar. short and long are day counts from the tenant's settings; next_week is the coming Monday. A preset later than an item's snooze.latest is not available for that item.
+    items:
+      type: object
+      required: [key, date]
+      properties:
+        key:
+          type: string
+          enum: [short, next_week, long]
+        date:
+          type: string
+          format: date
   has_work:
     type: boolean
     description: Whether this account holds any capability the console offers.

@@ -64,7 +64,7 @@ const RECORD_SOURCE: Record<string, MessageId> = {
 
 /** One deadline presentation for Home and the inbox route; membership and cursor order stay server-owned. */
 // shortcut: server-paged rows; use LongTable when adding cross-page selection.
-export function GroupedQueue({ items, action, selected, onSelect, onOpen }: { items: InboxItem[]; action?: RowAction; selected?: string; onSelect?: (id: string) => void; onOpen?: () => void }) {
+export function GroupedQueue({ items, action, extra, selected, onSelect, onOpen }: { items: InboxItem[]; action?: RowAction; extra?: RowAction; selected?: string; onSelect?: (id: string) => void; onOpen?: () => void }) {
   const surface = useRef<HTMLDivElement>(null);
   const compact = useCardLayout(surface, surface);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -84,7 +84,11 @@ export function GroupedQueue({ items, action, selected, onSelect, onOpen }: { it
   const toggle = (id: string) => setExpanded(old => { const next = new Set(old); if (!next.delete(id)) next.add(id); return next; });
   const pick = onSelect && ((id: string) => { if (id === selected) onOpen?.(); else onSelect(id); });
   const rowId = (item: InboxItem) => isFold(item) ? `fold:${item.id}` : item.id;
-  const controls = new Map(normalized.map(item => [item.id, recordAction(item, action)]));
+  // A row's own command, then the controls every row may offer beside it (postponing it).
+  const controls = new Map(normalized.map(item => {
+    const own = recordAction(item, action), more = extra?.(item);
+    return [item.id, own || more ? <>{own}{more}</> : null];
+  }));
   const allColumns: QueueColumn[] = [
     { id: "task", header: t("home.inbox.column.task"), cell: item => {
       return <div role="presentation" onClick={e => { if (e.target instanceof Element && e.target.closest("a, button")) e.stopPropagation(); }} id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>

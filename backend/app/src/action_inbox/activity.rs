@@ -8,7 +8,8 @@
 //! never on the person behind it.
 use axum::Extension;
 use axum::Json;
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
+use console_action_inbox_application::SnoozeMode;
 use console_kernel_core::KernelError;
 use console_platform_authz::Principal;
 use serde::Serialize;
@@ -77,47 +78,46 @@ fn verb(action: &str) -> &'static str {
     "other"
 }
 
-enum Resolved {
-    Found { link_kind: String, record: String },
+pub(super) enum Resolved {
+    Found(serde_json::Value),
     Missing,
     Unavailable,
 }
 
-/// The item's first link when the item is in my inbox now. Pages through the same read as the list, stopping at
-/// the item or after a bounded scan; a miss while a source was unavailable is not a 404.
-async fn resolve(
+/// The item as the list serves it when it is in my inbox now, snoozed or not. Pages through the same read as the
+/// list, stopping at the item or after a bounded scan; a miss while a source was unavailable is not a 404.
+/// `log_access` writes the rows read to the personnel access log, as the list does.
+pub(super) async fn resolve(
     state: &ActionInboxState,
     principal: &Principal,
     id: &str,
+    log_access: bool,
 ) -> Result<Resolved, InboxError> {
     let mut cursor = None;
     let mut unavailable = false;
     for _ in 0..MAX_PAGES {
-        let Json(page) = super::list_action_inbox(
-            State(state.clone()),
-            Extension(principal.clone()),
-            Query(super::ActionInboxQuery {
+        let Json(mut page) = super::read(
+            state.clone(),
+            principal.clone(),
+            super::ActionInboxQuery {
                 limit: Some(200),
                 cursor,
                 ..Default::default()
-            }),
+            },
+            SnoozeMode::Include,
+            log_access,
         )
         .await?;
         unavailable |= page["unavailable"]
             .as_array()
             .is_some_and(|sources| !sources.is_empty());
         if let Some(item) = page["items"]
-            .as_array()
+            .as_array_mut()
             .into_iter()
             .flatten()
             .find(|item| item["id"] == id)
         {
-            let link = &item["links"][0];
-            let field = |name: &str| link[name].as_str().unwrap_or_default().to_owned();
-            return Ok(Resolved::Found {
-                link_kind: field("kind"),
-                record: field("id"),
-            });
+            return Ok(Resolved::Found(item.take()));
         }
         match page["next_cursor"].as_str() {
             Some(next) => cursor = Some(next.to_owned()),
@@ -136,8 +136,16 @@ pub(super) async fn list(
     Extension(principal): Extension<Principal>,
     Path(id): Path<String>,
 ) -> Result<Json<ActivityPage>, InboxError> {
-    let (link_kind, record) = match resolve(&state, &principal, &id).await? {
-        Resolved::Found { link_kind, record } => (link_kind, record),
+    let (link_kind, record) = match resolve(&state, &principal, &id, true).await? {
+        Resolved::Found(item) => {
+            let field = |name: &str| {
+                item["links"][0][name]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned()
+            };
+            (field("kind"), field("id"))
+        }
         Resolved::Missing => {
             return Err(KernelError::not_found("no such inbox item")
                 .with_code("inbox_item_not_found")
