@@ -3,7 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
-import { failure } from "./fixtures";
+import { failure, inbox } from "./fixtures";
+import { fits, expectAxe } from "../a11y";
 import { screens } from "../states/registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -53,7 +54,7 @@ for (const [from, stored, system, theme] of starts) test(`sign-in is ${theme} fr
   release();
   await expect(page.getByRole("heading", { name: t("auth.login.title"), exact: true })).toBeVisible();
   await expect(html).toHaveAttribute("data-theme", theme);
-  // No experience is known, so a stored id is never applied.
+  // An unknown experience never applies.
   await expect(html).not.toHaveAttribute("data-experience");
   expect(await writes()).toEqual([theme]);
   expect(fixture.unexpected).toEqual([]);
@@ -78,3 +79,64 @@ for (const from of ["a stored theme", "the system"] as const) test(`the shell ke
   expect(await page.evaluate(() => localStorage.getItem("console.theme"))).toBe("light");
   expect(fixture.unexpected).toEqual([]);
 });
+
+// Pin the role values so the browser proves both boot registration and entry CSS delivery.
+const experiences = [
+  ["calm-ledger", "#faf9f6", "#14161a", "#1f2f5c", "#afc0f2"],
+  ["quick-keys", "#fff", "#0e1013", "#2f45e8", "#a1adff"],
+  ["warm-clear", "#f6f1e9", "#1d1914", "#17694f", "#82d6b4"],
+  ["control-room", "#e9edf1", "#101820", "#0b6672", "#6fd3df"],
+] as const;
+
+for (const [experience, light, dark, primaryLight, primaryDark] of experiences) for (const theme of ["light", "dark"] as const) {
+  test(`${experience} ${theme} tokens arrive before the bundle`, async ({ page }) => {
+    const fixture = await signIn(page, { "console.experience": experience, "console.theme": theme });
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    await page.route(ENTRY, async route => { await held; await route.continue(); });
+    const entry = page.waitForRequest(ENTRY);
+    await page.goto("/login", { waitUntil: "commit" });
+    await entry;
+    try {
+      await expect(page.locator("html")).toHaveAttribute("data-experience", experience);
+      await expect(page.locator("#root")).toBeEmpty();
+      await expect.poll(() => page.locator("html").evaluate(el => getComputedStyle(el).getPropertyValue("--canvas").trim())).toBe(theme === "light" ? light : dark);
+    } finally {
+      release();
+    }
+    await expect(page.getByRole("heading", { name: t("auth.login.title"), exact: true })).toBeVisible();
+    expect(fixture.unexpected).toEqual([]);
+  });
+
+  for (const screen of screens.slice(0, 2)) for (const width of [1440, 390]) {
+    test(`${experience} ${theme} ${screen.key} at ${width}px`, async ({ page }, info) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript(values => {
+        localStorage.setItem("console.experience", values.experience);
+        localStorage.setItem("console.theme", values.theme);
+      }, { experience, theme });
+      const fixture = await mockScreen(page, screen, "populated");
+      await page.goto(screen.path);
+      const main = page.getByRole("main");
+      await expect(main.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+      await expect(main.locator('[aria-busy="true"]')).toHaveCount(0);
+      await expect(main.getByText(screen.key === "people" ? "UI-0001" : inbox(1).items[0]!.title, { exact: screen.key === "people" }).first()).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute("data-experience", experience);
+      const tokens = await page.locator("html").evaluate(el => {
+        const css = getComputedStyle(el);
+        return ["--canvas", "--primary", "--text-xs", "--text-sm", "--text-body", "--target", "--row-h-compact", "--control-h-sm"].map(name => css.getPropertyValue(name).trim());
+      });
+      expect(tokens.slice(0, 2)).toEqual(theme === "light" ? [light, primaryLight] : [dark, primaryDark]);
+      for (const value of tokens.slice(2, 5)) expect(parseFloat(value)).toBeGreaterThanOrEqual(14);
+      for (const value of tokens.slice(5)) expect(parseFloat(value)).toBeGreaterThanOrEqual(32);
+      const locale = await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).boundingBox();
+      const banner = await page.getByRole("banner").boundingBox();
+      expect(locale!.y).toBeGreaterThanOrEqual(banner!.y);
+      expect(locale!.y + locale!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
+      await fits(page, `${experience}/${theme}/${screen.key}/${width}`);
+      await expectAxe(page, `${experience}/${theme}/${screen.key}/${width}`);
+      await info.attach(`${experience}-${theme}-${screen.key}-${width}`, { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+      expect(fixture.unexpected).toEqual([]);
+    });
+  }
+}

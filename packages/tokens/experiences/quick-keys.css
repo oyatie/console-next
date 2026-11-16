@@ -1,0 +1,49 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Status roles retain the shared grammar; chart categories retain the shared palette. */
+:root[data-experience="quick-keys"] {
+  --canvas: #ffffff;
+  --surface: #ffffff;
+  --muted: #f4f5f7;
+  --border: #e3e5e9;
+  --border-soft: #e3e5e9;
+  --ink: #0e1013;
+  --steel: #3f4650;
+  --faint: #626975;
+  --control-border: #808792;
+  --primary: #2f45e8;
+  --primary-hover: #2f45e8;
+  --primary-soft: #eef0fe;
+  --primary-bd: var(--border);
+  --on-primary: #ffffff;
+  /* Shared chart marks adjusted for 3:1 on the warm and cool grounds. */
+  --chart-cat-1: #0c85d5; --chart-cat-4: #858326; --chart-cat-6: #5f6b79;
+  --shadow: none;
+  --shadow-pop: 0 12px 32px rgba(14, 16, 19, 0.24);
+  --scrim: rgba(14, 16, 19, 0.32);
+  --text-xs: 14px; --text-sm: 14px; --text-body: 14px; --text-lg: 15px; --text-xl: 20px; --text-2xl: 34px;
+  --fw-body: 420; --fw-medium: 540; --fw-strong: 660; --lh-base: 1.4;
+  --radius-sm: 3px; --radius: 4px; --radius-lg: 8px;
+  --row-h: 32px; --row-h-compact: 32px; --control-h-sm: 32px; --target: 32px; --target-touch: 48px; --panel-w: 560px;
+}
+
+:root[data-experience="quick-keys"][data-theme="dark"] {
+  --canvas: #0e1013; /* Derived, not drawn. */
+  --surface: #1c2026; /* Derived, not drawn. */
+  --muted: #272c35; /* Derived, not drawn. */
+  --border: #3c434f; /* Derived, not drawn. */
+  --border-soft: #2b3038; /* Derived, not drawn. */
+  --ink: #f3f4f6; /* Derived, not drawn. */
+  --steel: #c2c6ce; /* Derived, not drawn. */
+  --faint: #aab0ba; /* Derived, not drawn. */
+  --control-border: #808792; /* Derived, not drawn. */
+  --primary: #a1adff; /* Derived, not drawn. */
+  --primary-hover: #bbc3ff; /* Derived, not drawn. */
+  --primary-soft: #292e50; /* Derived, not drawn. */
+  --primary-bd: #616ba6; /* Derived, not drawn. */
+  --on-primary: #0e1013; /* Derived, not drawn. */
+  --chart-cat-1: #29c1f6; --chart-cat-4: #b1bb27; /* Derived, not drawn; shared chart palette. */
+  --chart-cat-6: #8b9aab; /* Derived, not drawn. */
+  --shadow: none; /* Derived, not drawn. */
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.55); /* Derived, not drawn. */
+  --scrim: rgba(0, 0, 0, 0.6); /* Derived, not drawn. */
+}

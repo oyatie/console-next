@@ -33,9 +33,6 @@ function boot(stored: Record<string, string> | "blocked" | "unreadable", source 
   runInNewContext(source, context);
   return { attributes, published: window.consolePrefs! };
 }
-// The same script once an experience id has been added to its list.
-const withCalm = SRC.replace('experience: { key: "console.experience", values: [] }', 'experience: { key: "console.experience", values: ["calm"] }');
-
 test("a stored theme is on <html> as soon as the script has run, whatever the system prefers", () => {
   expect(boot({ "console.theme": "dark" }, SRC, "light").attributes).toEqual({ "data-theme": "dark" });
   expect(boot({ "console.theme": "light" }, SRC, "dark").attributes).toEqual({ "data-theme": "light" });
@@ -68,17 +65,18 @@ test("a browser that cannot say what the system prefers sets a stored theme and 
   }
 });
 
-test("no experience is known yet, so a stored one is never applied", () => {
-  expect(boot({}).published.experience).toEqual({ key: "console.experience", values: [] });
-  for (const value of ["calm", "baseline", "light", "dark"]) {
+for (const experience of ["calm-ledger", "quick-keys", "warm-clear", "control-room"]) {
+  test(`${experience} applies the stored choice before the bundle in either theme`, () => {
+    for (const theme of THEMES) {
+      expect(boot({ "console.experience": experience, "console.theme": theme }).attributes).toEqual({ "data-theme": theme, "data-experience": experience });
+    }
+  });
+}
+
+test("an unknown experience never applies", () => {
+  for (const value of ["calm", "baseline", "light", "dark", "Calm-ledger", "quick-keys "]) {
     expect(boot({ "console.experience": value, "console.theme": "dark" }).attributes, value).toEqual({ "data-theme": "dark" });
   }
-});
-
-test("adding an id to the one list is all it takes for that experience to be applied", () => {
-  expect(withCalm).not.toBe(SRC);
-  expect(boot({ "console.experience": "calm", "console.theme": "dark" }, withCalm).attributes).toEqual({ "data-theme": "dark", "data-experience": "calm" });
-  expect(boot({ "console.experience": "warm" }, withCalm).attributes).toEqual({});
 });
 
 test("the bundle uses the key and the themes the boot script applies", () => {
