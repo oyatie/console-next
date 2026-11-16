@@ -10,9 +10,10 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { applyJobQuery } from "../api";
 import type { ApplyJob, ImportReport } from "../domain/contract";
 import { keepJob, share } from "../domain/job";
+import { importError } from "../present";
 
 /** Why a job failed, in words (nothing was written by a failed job's refusal; the dry run is run again). */
-const failedWhy = (code?: string) => (code && isMessageId(`importJob.error.${code}`) ? t(`importJob.error.${code}` as "importJob.error.apply_interrupted") : t("importJob.error.other"));
+const failedWhy = (code?: string) => (code && isMessageId(`importJob.error.${code}`) ? t(`importJob.error.${code}` as "importJob.error.apply_interrupted") : (code && importError(code)) || t("importJob.error.other"));
 
 /**
  * The apply as a job (r3:hire-02, records-15, worst-case-15, EMP-E12-jobs): the server writes the approved dry run

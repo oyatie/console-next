@@ -130,6 +130,60 @@ async fn operating_directory_holder_applies_roster_and_leave_balances(pool: PgPo
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn directory_leaf_guard_keeps_identity_and_owner_only_execution(pool: PgPool) {
+    let i = importer(pool).await;
+    sqlx::query("UPDATE users SET roles=ARRAY['MEMBER'] WHERE org_id=$1 AND id=$2")
+        .bind(i.org())
+        .bind(i.f.principal.user_id.as_uuid())
+        .execute(&i.owner)
+        .await
+        .unwrap();
+    let mut tx = i.owner.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(i.org().to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("SELECT leave_api.assert_employee_directory_manager($1,$2)")
+        .bind(i.org())
+        .bind(i.f.principal.user_id.as_uuid())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    tx.rollback().await.unwrap();
+    for (org, active) in [(Uuid::new_v4(), true), (i.org(), false)] {
+        sqlx::query("UPDATE users SET is_active=$2 WHERE id=$1")
+            .bind(i.f.principal.user_id.as_uuid())
+            .bind(active)
+            .execute(&i.owner)
+            .await
+            .unwrap();
+        let mut tx = i.owner.begin().await.unwrap();
+        sqlx::query("SELECT set_config('app.current_org',$1,true)")
+            .bind(org.to_string())
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        let error = sqlx::query("SELECT leave_api.assert_employee_directory_manager($1,$2)")
+            .bind(org)
+            .bind(i.f.principal.user_id.as_uuid())
+            .execute(tx.as_mut())
+            .await
+            .unwrap_err();
+        assert_eq!(
+            error.as_database_error().unwrap().code().as_deref(),
+            Some("42501")
+        );
+        tx.rollback().await.unwrap();
+    }
+    let privileges: (bool, bool) = sqlx::query_as(
+        "SELECT has_function_privilege('console_rt','leave_api.assert_employee_directory_manager(uuid,uuid)','EXECUTE'), \
+         has_function_privilege('console_leave_cmd','leave_api.assert_employee_directory_manager(uuid,uuid)','EXECUTE')",
+    ).fetch_one(&i.owner).await.unwrap();
+    assert_eq!(privileges, (false, false));
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn revoked_directory_holder_gets_typed_forbidden_before_start(pool: PgPool) {
     let mut i = importer(pool).await;
     let grant = directory_holder(&mut i).await;
