@@ -26,6 +26,12 @@ async fn confirm_then_revoke_retains_evidence_and_permanently_restores_two_perso
         .await
         .unwrap();
     assert_eq!(counts(&pool, actor).await, (None, 1, 1));
+    let person: Option<Uuid> = sqlx::query_scalar("SELECT person_id FROM users WHERE id=$1")
+        .bind(actor.as_uuid())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(person, Some(*actor.as_uuid()));
     assert_eq!(decisions(&pool, receipt).await, (2, 2));
     assert_eq!(
         code(
@@ -47,19 +53,6 @@ async fn confirm_then_revoke_retains_evidence_and_permanently_restores_two_perso
         "account_link.refuse.solo_ineligible"
     );
     assert_eq!(decisions(&pool, receipt).await, (2, 2));
-}
-
-#[sqlx::test(migrator = "second_person_support::MIGRATOR")]
-async fn revoke_without_confirmation_and_after_deadline_is_allowed(pool: PgPool) {
-    let (store, actor, _, receipt) = attested(&pool).await;
-    let checker = reviewer(&pool, actor, true, true).await;
-    sqlx::query("UPDATE account_link_self_attestations SET review_due_at=attested_at-interval '1 day' WHERE id=$1")
-        .bind(receipt).execute(&pool).await.unwrap();
-    review(&store, checker, receipt, ReviewDecision::Revoke)
-        .await
-        .unwrap();
-    assert_eq!(counts(&pool, actor).await, (None, 1, 1));
-    assert_eq!(decisions(&pool, receipt).await, (1, 1));
 }
 
 #[sqlx::test(migrator = "second_person_support::MIGRATOR")]

@@ -104,6 +104,12 @@ async fn http_reviewer_confirms_then_revokes_once_with_audited_identity(pool: Pg
             (expected, count, count)
         );
     }
+    let person: Option<Uuid> = sqlx::query_scalar("SELECT person_id FROM users WHERE id=$1")
+        .bind(actor.as_uuid())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(person, Some(*actor.as_uuid()));
     let actors: Vec<Uuid> = sqlx::query_scalar("SELECT actor FROM audit_events WHERE after_snap->>'self_attestation_id'=$1::text AND action IN ('account_link.confirmed','account_link.revoked')")
         .bind(receipt).fetch_all(&pool).await.unwrap();
     assert_eq!(actors, vec![*checker.as_uuid(); 2]);

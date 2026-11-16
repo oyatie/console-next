@@ -82,13 +82,11 @@ impl PgOrgStore {
             sqlx::query("INSERT INTO account_link_self_reviews(org_id,attestation_id,decision,reviewer_id,reviewed_at) VALUES($1,$2,$3,$4,$5)")
                 .bind(org.as_uuid()).bind(receipt).bind(verdict).bind(actor.as_uuid()).bind(now).execute(tx.as_mut()).await?;
             if !matches!(decision, ReviewDecision::Confirm) {
-                if matches!(decision, ReviewDecision::Withdraw) {
-                    let previous: Uuid = sqlx::query_scalar("SELECT COALESCE(previous_person_id,account_id) FROM account_link_self_attestations WHERE org_id=$1 AND id=$2")
-                        .bind(org.as_uuid()).bind(receipt).fetch_one(tx.as_mut()).await?;
-                    // Older receipts lack provenance; restore a separate account identity, never the withdrawn employee's.
-                    sqlx::query("UPDATE users SET person_id=$3 WHERE org_id=$1 AND id=$2")
-                        .bind(org.as_uuid()).bind(account).bind(previous).execute(tx.as_mut()).await?;
-                }
+                let previous: Uuid = sqlx::query_scalar("SELECT COALESCE(previous_person_id,account_id) FROM account_link_self_attestations WHERE org_id=$1 AND id=$2")
+                    .bind(org.as_uuid()).bind(receipt).fetch_one(tx.as_mut()).await?;
+                // Older receipts lack provenance; restore a separate account identity, never the revoked employee's.
+                sqlx::query("UPDATE users SET person_id=$3 WHERE org_id=$1 AND id=$2")
+                    .bind(org.as_uuid()).bind(account).bind(previous).execute(tx.as_mut()).await?;
                 sqlx::query("UPDATE users SET employee_id=NULL WHERE org_id=$1 AND id=$2")
                     .bind(org.as_uuid()).bind(account).execute(tx.as_mut()).await?;
             }
