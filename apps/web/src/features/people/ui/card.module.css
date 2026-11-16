@@ -4,7 +4,8 @@
 .page { display: flex; flex-direction: column; min-height: 100%; }
 .head { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-5) 0; }
 .top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-height: var(--target); }
-.crumb { composes: t-sm muted from global; display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.crumb { composes: t-sm muted from global; display: inline-flex; flex: 1; min-width: 0; overflow: hidden; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.crumb > svg, .crumb > a { flex: none; }
 .pos { composes: t-xs muted from global; white-space: nowrap; }
 .posAt { composes: t-ink num from global; }
 .hdr { display: grid; grid-template-columns: calc(var(--space-6) * 2) minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; }

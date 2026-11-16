@@ -15,6 +15,7 @@ import { useKeys } from "../../../lib/react/use-keys";
 import { contractsQuery, employeeQuery, endOptionsQuery, eventsQuery, exitCasesQuery } from "../api";
 import { rrnStatusQuery } from "../api/record";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
+import { unitsQuery } from "../../../reference/org/api";
 import { authzApplies, authzQuery, granted } from "../../../reference/authz/api";
 import { verbStates } from "../domain/lifecycle";
 import type { Done } from "./person-act";
@@ -53,6 +54,7 @@ export function EmployeeCard() {
   const events = freshOnOpen(useQuery({ ...eventsQuery(id), refetchOnMount: "always" }));
   const placed = useFreshOnArrival(useQuery(placement), placement);
   const entities = useFreshOnArrival(useQuery(entitiesRef), entitiesRef);
+  const units = useQuery(unitsQuery);
   const can = granted(authz.data?.capabilities, authz.isError);
   const manage = can("employee_directory_manage", "all");
   const users = can("user_manage");
@@ -68,7 +70,7 @@ export function EmployeeCard() {
   const first = (q: { isPending: boolean; failureCount: number }) => q.isPending && q.failureCount === 0;
   const view = queryView(detail);
   if (view === "denied" || view === "not-found" || (detail.error && !detail.data)) return <div className={s.page}><QueryState q={detail} layout="record" back={{ to: "/people", label: t("peopleJump.keys.group.roster") }}>{() => null}</QueryState></div>;
-  const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || (manage && (first(contracts) || first(ends) || first(exits) || first(rrn))) || (users && !!detail.data && first(account));
+  const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || first(units) || (manage && (first(contracts) || first(ends) || first(exits) || first(rrn))) || (users && !!detail.data && first(account));
   if (detail.isPending || (opened !== id && loading)) return <CardSkeleton />;
   // Later reads keep the mounted card and anything typed into it, including a changed account-search key.
   if (detail.isSuccess && opened !== id) setOpened(id);

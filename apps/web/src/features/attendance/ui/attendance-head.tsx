@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { orgStructureRef } from "../../../reference/entity/api";
+import { get } from "../../../lib/query";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { PhaseLine } from "../../../ui/page-head/phase-line";
 import { tabClass } from "../../../ui/tabs/tab-class";
@@ -14,8 +14,8 @@ import type { Tab } from "./attendance-page";
  * fill in as the slices land.
  */
 export function AttendanceHead({ tab }: { tab: Tab }) {
-  const org = useQuery(orgStructureRef);
-  const phase = !org.error ? org.data?.phase : undefined;
+  const me = useQuery(get("/api/v1/users/me"));
+  const phase = me.data?.tenant?.phase;
   return (
     <PageHead
       title={t("attendance.title")}
