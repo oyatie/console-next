@@ -44,6 +44,9 @@
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
   --radius-sm: 4px; --radius: 6px; --radius-lg: 10px;
   --row-h: 40px; --rail-w: 220px; --topbar-h: 48px; --panel-w: 440px;
+  /* The frame's insets: what fixed overlays and full-height regions clear. Each shell sets them; only the shell reads
+     its own sizes (--rail-w, --topbar-h). */
+  --frame-top: var(--topbar-h); --frame-start: var(--rail-w); --frame-bottom: 0px;
   --qrow-h: 64px; --queue-w: 400px; --card-w: 640px; --sheet-w: 560px;
   --dialog-w-sm: 400px; --dialog-w-md: 480px;
   --sheet-w-lg: calc(var(--sheet-w) * 1.3);

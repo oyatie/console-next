@@ -10,12 +10,14 @@ export const inboxFilter = (value: unknown): InboxFilter => INBOX_FILTERS.find(f
 /** Inbox tabs by my relation (ideal §2a); scheduled and failures are chips inside to-do. */
 export const INBOX_TABS = ["turn", "waiting", "reference", "done"] as const;
 export const TODO_CHIPS = ["scheduled", "failures"] as const;
-const INBOX_VIEWS = [...INBOX_TABS, ...TODO_CHIPS] as const;
+/** What I postponed: a chip inside to-do, read on its own so the tab counts stay those of my open list. */
+export const SNOOZED = "snoozed";
+export const INBOX_VIEWS = [...INBOX_TABS, ...TODO_CHIPS, SNOOZED] as const;
 export type InboxView = typeof INBOX_VIEWS[number];
 // Older links (all, deadlines) land on to-do, whose buckets put overdue and due-soon first.
 export const inboxView = (value: unknown): InboxView => INBOX_VIEWS.find(view => view === value) ?? "turn";
-/** The queue read behind a view: reference and done keep my turn read for the badge and tab counts. */
-export const inboxReadFilter = (view: InboxView): InboxFilter => view === "reference" || view === "done" ? "turn" : view;
+/** The queue read behind a view: reference, done and snoozed keep my turn read for the badge and tab counts. */
+export const inboxReadFilter = (view: InboxView): InboxFilter => view === "reference" || view === "done" || view === SNOOZED ? "turn" : view;
 
 const ATTENTION_FILTERS = ["all", "approvals", "today", "overdue"] as const;
 export type AttentionFilter = typeof ATTENTION_FILTERS[number];
@@ -25,3 +27,4 @@ export type AttentionInboxResponse = Omit<components["schemas"]["ActionInboxResp
   attention_filters?: { key: AttentionFilter; total: number; total_is_exact: boolean }[];
 };
 export const isAttentionFilter = (value: unknown): value is AttentionFilter => ATTENTION_FILTERS.some(filter => filter === value);
+export type SnoozePreset = NonNullable<components["schemas"]["ActionInboxResponse"]["snooze_presets"]>[number];

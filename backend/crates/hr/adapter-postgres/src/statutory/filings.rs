@@ -142,17 +142,25 @@ impl HrService {
         register: StatutoryRegister,
         after: Option<(Option<time::OffsetDateTime>, time::OffsetDateTime, String)>,
     ) -> Result<(FilingPage, bool), HrError> {
-        self.insurance_inbox_page_with_register(principal, query, async { Ok(register) }, after)
-            .await
+        self.insurance_inbox_page_with_register(
+            principal,
+            query,
+            async { Ok(register) },
+            after,
+            true,
+        )
+        .await
     }
 
-    /// Refused readers do not load or decode the statutory register.
+    /// Refused readers do not load or decode the statutory register. `log_access` is false only for a read whose
+    /// rows nobody is shown, such as resolving one inbox item for a command.
     pub async fn insurance_inbox_page_with_register(
         &self,
         principal: Principal,
         query: FilingQuery,
         register: impl Future<Output = Result<StatutoryRegister, HrError>> + Send,
         after: Option<(Option<time::OffsetDateTime>, time::OffsetDateTime, String)>,
+        log_access: bool,
     ) -> Result<(FilingPage, bool), HrError> {
         hr_reach_in(&principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
         let register = register.await?;
@@ -160,6 +168,9 @@ impl HrService {
             Box::pin(async move {
                 let page =
                     super::filing_deadline::load(tx, &principal, &query, &register, after).await?;
+                if !log_access {
+                    return Ok((page, Vec::new()));
+                }
                 let ids = page
                     .0
                     .items
@@ -204,6 +215,7 @@ mod tests {
                 FilingQuery::default(),
                 async { panic!("a refused reader must not load statutory rules") },
                 None,
+                true,
             )
             .await;
         assert_eq!(result.unwrap_err().status.as_u16(), 403);

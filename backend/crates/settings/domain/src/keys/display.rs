@@ -9,4 +9,7 @@ macro_rules! display { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     DisplaySavedViewsMax => "display.saved_views_max" = D::int(Count, Some(1), Some(100), 20, Higher);
     // Zero disables the post-go-live receipt.
     OnboardingReceiptDays => "onboarding.receipt_days" = D::int(Days, Some(0), Some(365), 7, Neutral).governed(Governance::PlatformOnly);
+    // The two day counts behind the inbox snooze presets; next Monday is a rule, not a setting.
+    InboxSnoozeShortDays => "inbox.snooze.short_days" = D::int(Days, Some(1), Some(365), 1, Higher);
+    InboxSnoozeLongDays => "inbox.snooze.long_days" = D::int(Days, Some(2), Some(365), 7, Higher);
 ] $($rest)* } }; }
