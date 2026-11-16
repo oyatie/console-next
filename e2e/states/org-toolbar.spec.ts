@@ -107,11 +107,9 @@ for (const width of [1440, 390]) {
         await workplace.click();
         await expect(workplace).toHaveAttribute("aria-selected", "true");
         await expect(toolbar).toBeVisible();
-        const corner = await parent.evaluate(el => {
-          const r = el.getBoundingClientRect();
-          return { x: r.right - 8, y: r.bottom - 8 };
-        });
-        await page.mouse.click(corner.x, corner.y);
+        // Selecting the workplace opens a column; let locator actionability settle its canvas resize before clicking.
+        const corner = await parent.evaluate(el => ({ x: el.clientWidth - 8, y: el.clientHeight - 8 }));
+        await parent.click({ position: corner });
         await expect(parent).toHaveAttribute("aria-selected", "true");
         await expect(page.locator('[data-box][data-s~="edit"]')).toHaveCount(0);
         await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -133,11 +131,8 @@ for (const width of [1440, 390]) {
         })).toBe(true);
         await page.screenshot({ path: test.info().outputPath(`top-${theme}.png`) });
         await fits(page, `org toolbar edge/${width}/${theme}`);
-        const topCorner = await parent.evaluate(el => {
-          const r = el.getBoundingClientRect();
-          return { x: r.right - 2, y: r.bottom - 2 };
-        });
-        await page.mouse.click(topCorner.x, topCorner.y);
+        const topCorner = await parent.evaluate(el => ({ x: el.clientWidth - 2, y: el.clientHeight - 2 }));
+        await parent.click({ position: topCorner });
         await expect(parent).toHaveAttribute("aria-selected", "true");
         await expect(page.locator('[data-box][data-s~="edit"]')).toHaveCount(0);
         await expect(page.getByRole("dialog")).toHaveCount(0);
