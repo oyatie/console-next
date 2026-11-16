@@ -8,7 +8,7 @@ import { AT, id, failure } from "../mock/fixtures";
 import { moveDetail, unplacedTarget } from "../mock/lifecycle-sheets";
 import { mockRoute } from "../mock/route";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
-import { dateBox, todayPreset } from "../sheet";
+import { dateBox, sheet as lifecycleSheet, todayPreset } from "../sheet";
 import { certificateAccess } from "../mock/certificates";
 
 for (const width of [1440, 390]) {
@@ -127,6 +127,7 @@ for (const width of [1440, 390]) {
     await page.getByRole("option", { name: /재무팀/ }).click();
     const relocated = page.getByRole("dialog", { name: "전근", exact: true });
     await expect(relocated).toBeVisible();
+    await expect(lifecycleSheet(page, "배치직원 전보")).toHaveAccessibleName("전근");
     await expect(relocated.getByRole("button", { name: "전근 1명 예약", exact: true })).toBeVisible();
     await expect(changes.locator('[data-id="site"]')).toHaveText("사업장본사→ 부산사업장");
     await expect(relocated).toContainText("전근합니다");

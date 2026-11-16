@@ -31,10 +31,11 @@ test("solo: identically named workplaces keep their entity IDs; typed warnings s
   await expect(admin.getByRole("option", { name: /사람정밀.*본사/ })).toHaveCount(0);
   await move.getByRole("combobox", { name: "어디로" }).fill("분원");
   await admin.getByRole("option", { name: /분원/ }).click();
+  await expect(move).toHaveAccessibleName("전근");
   await fillDate(move, kstDate(-1));
   await move.getByRole("radiogroup", { name: /^사유 분류/ }).getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
   await reasonBox(move).fill("같은 법인 사업장 전근");
-  await move.getByRole("button", { name: "전보 1명 적용" }).click();
+  await move.getByRole("button", { name: "전근 1명 적용", exact: true }).click();
   await expect(move).toBeHidden();
   expect((await detail(b.id)).employee.legal_entity_id).toBe(second);
 
