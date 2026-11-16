@@ -16,7 +16,7 @@ export default defineConfig({
   webServer: [
     { ...backend, env: { ...backend.env, CONSOLE_WEB_ORIGIN: origin } },
     {
-      command: `node e2e/perf/proxy.ts http://localhost:${PORTS.backend} ${PORTS.web}`,
+      command: `node e2e/perf/proxy.ts http://127.0.0.1:${PORTS.backend} ${PORTS.web}`,
       wait: { stdout: /\[perf-proxy\] ready/ },
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
     },

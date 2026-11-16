@@ -85,7 +85,7 @@ jobs:
           CONSOLE_DEV_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
           PERF_EVIDENCE_DIR: ${{ runner.temp }}/route-load
         run: npx playwright test --config=playwright.perf.config.ts --project=parallel --retries=0
-      - name: Paired cold LCP comparison for the PR
+      - name: Paired cold LCP comparison for the job summary
         if: ${{ always() }}
         env:
           PERF_EVIDENCE_DIR: ${{ runner.temp }}/route-load

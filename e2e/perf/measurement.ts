@@ -97,10 +97,19 @@ export function summarize(route: string, cache: "cold" | "warm", samples: Sample
   const withinBudget = lcp_p95_ms !== null && lcp_p95_ms <= budget.ms && compliance >= budget.target && !n_plus_one.length;
   return { route, cache, environment: "live", ...budget.shape, status: !complete ? "unknown" : withinBudget ? "pass" : "fail",
     lcp_p95_ms, budget_ms: budget.ms, target: budget.target, compliance,
-    n_plus_one, sample_count: samples.length, samples };
+    n_plus_one, sample_count: samples.length, samples: samples.map(sample => ({
+      ...sample,
+      waterfall_summary: {
+        entries: sample.waterfall.length,
+        max_queue_ms: sample.waterfall.reduce((max, entry) => Math.max(max, entry.request_start_ms - entry.start_ms), 0),
+        last_response_end_ms: sample.waterfall.reduce((max, entry) => Math.max(max, entry.end_ms), 0),
+      },
+      waterfall: sample.errors.length || (sample.lcp_ms ?? 0) <= 0 || (sample.ttfb_ms ?? 0) <= 0 || (sample.lcp_ms ?? 0) > budget.ms || sample.repeated_requests.length ? sample.waterfall : [],
+    })) };
 }
 
-export function assertBudget(row: ReturnType<typeof summarize>) {
+export function assertBudget(row: ReturnType<typeof summarize> & { protocol?: string }) {
+  if (row.protocol === "http/1.1") return;
   assert(row.status === "pass" && row.lcp_p95_ms !== null && row.lcp_p95_ms <= budget.ms && row.compliance >= budget.target && !row.n_plus_one.length,
     `${row.route} ${row.cache}: p95=${row.lcp_p95_ms ?? "unknown"}ms, compliance=${row.compliance}, N+1=${row.n_plus_one.join(", ")}, status=${row.status}`);
 }

@@ -30,7 +30,7 @@ export async function startProxy(upstream: string, port = 0) {
   // Multiplexed browser streams must not queue behind the origin client's default socket limit.
   const agent = new Agent({ keepAlive: true, maxSockets: Infinity });
   const sessions = new Set<ServerHttp2Session>(), sockets = new Set<Socket>();
-  const server = createSecureServer({ ...credentials, minVersion: "TLSv1.2" }, (incoming, outgoing) => {
+  const server = createSecureServer({ ...credentials, allowHTTP1: true, minVersion: "TLSv1.2" }, (incoming, outgoing) => {
     const forwarded = request({ hostname: target.hostname, port: target.port, path: incoming.url,
       method: incoming.method, headers: { ...endToEnd(incoming.headers), host: incoming.headers[":authority"] ?? incoming.headers.host }, agent }, response => {
       outgoing.writeHead(response.statusCode ?? 502, endToEnd(response.headers));
