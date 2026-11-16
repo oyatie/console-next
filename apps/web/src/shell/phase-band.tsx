@@ -12,13 +12,19 @@ import { settingsQuery } from "../reference/settings/api";
 import { Button } from "../ui/button/button";
 import { PagePhase } from "../ui/page/page-scope";
 import { PhaseLine } from "../ui/page-head/phase-line";
-import { Skeleton } from "../ui/skeleton/skeleton";
+import { ReadSkeleton, Skeleton } from "../ui/skeleton/skeleton";
 import { currentStep } from "../ui/setup-rail/setup-rail";
 import s from "./phase-band.module.css";
+
+const PHASE_HOLD_MS = 2000;
+// Route read boundaries can remount this component; the principal keeps its original deadline and decision.
+let principalHold: { principal: string; until: number; settled: boolean } | undefined;
 
 /** One page-head notice while setup needs attention or the go-live receipt is current. */
 export function PhaseBand({ children }: { children: ReactNode }) {
   const principal = session.principal;
+  if (principal && principalHold?.principal !== principal) principalHold = { principal, until: Date.now() + PHASE_HOLD_MS, settled: false };
+  const hold = principal ? principalHold : undefined;
   const dismissKey = principal ? `console.phase.dismissed.${principal}` : null;
   const [dismissed, setDismissed] = useState(() => {
     try { return dismissKey ? localStorage.getItem(dismissKey) : null; } catch { return null; }
@@ -26,6 +32,20 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   const { phaseQ: q } = useSetupChecklist();
   const access = useQuery(myAccessQuery);
   const settings = useQuery(settingsQuery);
+  const [settled, setSettled] = useState(hold?.settled ?? false);
+  const [elapsed, setElapsed] = useState(false);
+  useEffect(() => {
+    if (hold?.settled) return;
+    const timer = window.setTimeout(() => setElapsed(true), Math.max(0, hold ? hold.until - Date.now() : PHASE_HOLD_MS));
+    return () => window.clearTimeout(timer);
+  }, [hold]);
+  const ready = (access.data !== undefined || access.failureCount > 0)
+    && (access.data?.phase === "SETUP" || q.data !== undefined || q.failureCount > 0);
+  const decided = settled || ready || elapsed;
+  if (decided) {
+    if (hold) hold.settled = true;
+    if (!settled) setSettled(true);
+  }
   const duration = receiptDuration(settings.data?.items);
   const [now, setNow] = useState(Date.now);
   const data = q.isError && isAnswer(q.error) ? undefined : q.data;
@@ -45,7 +65,10 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   const label = t("shell.phase.setup");
   const text = next ? `${label} · ${codeText(`setup.step.${next}`, "")}` : label;
   const slot = <PhaseSlot phase={band === "started" && dismissed === receipt ? undefined : band ?? undefined} text={text} dismiss={dismiss} />;
-  return <PagePhase value={slot}>{children}</PagePhase>;
+  return <PagePhase value={{ slot, settled: decided }}>
+    {!decided && <ReadSkeleton layout="list" />}
+    <div className={s.content} data-phase-pending={!decided || undefined} inert={!decided} aria-hidden={!decided || undefined}>{children}</div>
+  </PagePhase>;
 }
 
 /** Shared rendering for the live page head and its gallery states. */

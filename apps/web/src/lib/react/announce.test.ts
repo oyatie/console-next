@@ -7,10 +7,11 @@ vi.mock("react", async (original) => ({ ...await original<typeof import("react")
 // A page with a heading, an optional open dialog, and a frame clock; `focused` records who has focus.
 function page(tagName = "H2") {
   let queue: FrameRequestCallback[] = [];
-  const state = { focused: "", dialog: false, inMain: false, keyboard: false, sourceManaged: false, targetManaged: undefined as boolean | undefined, managedCalls: 0 };
+  const state = { held: false, focused: "", dialog: false, inMain: false, keyboard: false, sourceManaged: false, targetManaged: undefined as boolean | undefined, managedCalls: 0 };
   const input = new EventTarget();
   const heading = {
     id: "history", tagName, textContent: "People",
+    closest: () => state.held ? {} : null,
     focus: () => (state.focused = "heading"),
     toggleAttribute: (_: string, force: boolean) => { state.managedCalls++; state.targetManaged = force; },
   };
@@ -19,7 +20,7 @@ function page(tagName = "H2") {
     // Node's EventTarget requires the options object to remove capture listeners like a browser.
     removeEventListener: (type: string, listener: EventListener, capture = false) => input.removeEventListener(type, listener, { capture }),
     getElementById: (id: string) => (id === "history" ? heading : null),
-    querySelectorAll: () => (state.dialog ? [{ contains: () => false }] : []),
+    querySelectorAll: (selector: string) => selector.includes("h1") ? [heading] : (state.dialog ? [{ contains: () => false }] : []),
     querySelector: (selector: string) => selector.includes("h1") ? heading : null,
     activeElement: {
       closest: (selector: string) => selector === "main" && state.inMain ? {} : null,
@@ -228,3 +229,17 @@ for (const type of ["pointerdown", "keydown"]) {
     expect(state.focused).toBe("chosen-box");
   });
 }
+
+test("a held route heading waits for reveal before taking focus", () => {
+  const { state, frame } = page();
+  state.held = true;
+  const cleanup = present("/held-heading");
+  frame(); frame(); frame();
+  expect(state.focused).toBe("");
+  cleanup?.();
+  state.held = false;
+  const revealed = present("/held-heading");
+  frame(); frame(); frame();
+  expect(state.focused).toBe("heading");
+  revealed?.();
+});

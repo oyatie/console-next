@@ -1,29 +1,67 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { renderToStaticMarkup } from "react-dom/server";
+import { useContext } from "react";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { ApiError, session } from "@console/api";
 import type { Checklist } from "@console/api/pending";
 import { loadCatalog, t } from "@console/i18n";
 import { PageHead } from "../ui/page-head/page-head";
-import { PageHeadingLevel } from "../ui/page/page-scope";
+import { PageHeadingLevel, PagePhase } from "../ui/page/page-scope";
 import { checklist } from "../../../../e2e/mock/fixtures";
 import { PhaseBand } from "./phase-band";
 import { queryPath } from "../lib/query";
 
 const state = vi.hoisted(() => ({ data: undefined as Checklist | undefined, phase: "OPERATING" as string | undefined,
-  error: null as unknown, days: 2 as unknown }));
+  error: null as unknown, accessError: false, checklistPending: true, days: 2 as unknown }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: (q: Parameters<typeof queryPath>[0]) => ({
   data: queryPath(q) === "/api/v1/settings" ? { items: [{ key: "onboarding.receipt_days", value: state.days }] }
     : state.phase ? { phase: state.phase } : undefined,
+  failureCount: state.accessError ? 1 : 0,
 }) }));
 vi.mock("../features/onboarding/ui/use-setup", () => ({ useSetupChecklist: () => {
-  const q = { data: state.data, dataUpdatedAt: 0, isError: !!state.error, error: state.error };
+  const q = { data: state.data, dataUpdatedAt: 0, isPending: state.checklistPending, isError: !!state.error, failureCount: state.error ? 1 : 0, error: state.error };
   return { q, phaseQ: q };
 } }));
 beforeAll(() => loadCatalog("ko"));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); state.phase = "OPERATING"; state.data = undefined; state.error = null; state.days = 2; });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); state.phase = "OPERATING"; state.data = undefined; state.error = null; state.accessError = false; state.checklistPending = true; state.days = 2; });
 const tabs = "Tabs", content = "route content";
 const render = () => renderToStaticMarkup(<PhaseBand><PageHead title="Route" tabs={<nav>{tabs}</nav>} /><p>{content}</p></PhaseBand>);
+
+function PhaseRead() {
+  return <output>{String(useContext(PagePhase).settled)}</output>;
+}
+const settled = () => renderToStaticMarkup(<PhaseBand><PhaseRead /></PhaseBand>);
+
+test("access must answer or fail before the shared phase settles", () => {
+  state.phase = undefined;
+  state.data = checklist;
+  expect(settled()).toContain(">false<");
+  state.accessError = true;
+  state.data = undefined;
+  expect(settled()).toContain(">false<");
+  state.error = new ApiError(503, "read_failed", "unavailable");
+  expect(settled()).toContain(">true<");
+});
+
+test("a disabled checklist waits for the hold deadline rather than inventing an answer", () => {
+  state.checklistPending = false;
+  expect(settled()).toContain(">false<");
+});
+
+test("setup settles without waiting for the checklist", () => {
+  state.phase = "SETUP";
+  expect(settled()).toContain(">true<");
+});
+
+test.each([403, 503])("operating waits for the checklist, and a %s settles it", status => {
+  expect(settled()).toContain(">false<");
+  expect(render()).toContain('data-phase-pending="true"');
+  expect(render()).toContain('inert=""');
+  expect(render()).toContain("<header");
+  state.error = new ApiError(status, "read_failed", "unavailable");
+  expect(settled()).toContain(">true<");
+  expect(render()).toContain("<header");
+});
 
 test("a cold checklist outage adds no phase or alert card", () => {
   state.error = new ApiError(503, "service_unavailable", "busy");
