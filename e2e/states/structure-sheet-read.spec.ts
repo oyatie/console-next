@@ -54,12 +54,15 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       // The workplace panel preloads kinds; hold that first read to exercise its pending sheet.
       if (act === "wp-kind") await holdRead();
       await (act === "wp-kind" ? page.goto(`/org?sel=${selected}`) : go(page, `/org?sel=${selected}`));
+      // The held kinds read prevents routeReady; wait for the committed UI instead.
+      if (act === "wp-kind") await page.getByRole("tree", { includeHidden: true }).waitFor();
       await expect(page.getByRole("tree", { includeHidden: true })).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
       const before = await chartBox();
       if (act !== "wp-kind") await holdRead();
       opened = act === "wp-kind" ? page.goto(`/org?sel=${selected}&act=${act}`).then(() => undefined) : go(page, `/org?sel=${selected}&act=${act}`);
       const pendingSheet = page.getByRole("dialog", { name: title, exact: true });
+      if (act === "wp-kind") await pendingSheet.waitFor();
       await expect(pendingSheet.getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
       expect(await chartBox()).toEqual(before);
       await fits(page, "pending workplace sheet");
