@@ -77,6 +77,7 @@
 mod appointment;
 mod appointment_batch;
 mod change_window;
+mod checks;
 mod derived;
 mod error;
 mod legacy_head;

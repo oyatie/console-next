@@ -136,25 +136,9 @@ pub async fn appoint_legacy_head_in_tx(
     actor: UserId,
     employee_id: Uuid,
 ) -> Result<Option<CommandReceipt>, EmploymentError> {
-    let org_uuid = *org.as_uuid();
-    let row = sqlx::query(
-        "SELECT e.company, e.org_unit, e.org_unit_id, e.position, e.employment_status, \
-                e.hire_on, \
-                EXISTS (SELECT 1 FROM employment_source_bindings b \
-                        WHERE b.org_id = e.org_id AND b.employee_id = e.id) AS bound \
-         FROM employees e WHERE e.org_id = $1 AND e.id = $2",
-    )
-    .bind(org_uuid)
-    .bind(employee_id)
-    .fetch_optional(tx.as_mut())
-    .await?;
-    let Some(row) = row else {
-        return Ok(None);
-    };
-    let Some(command) = legacy_head_command(org, actor, employee_id, &row)? else {
-        return Ok(None);
-    };
-    write_in_tx(tx, &command).await.map(Some)
+    super::appointment_batch::appoint_legacy_heads_in_tx(tx, org, actor, &[employee_id])
+        .await
+        .map(|mut receipts| receipts.pop())
 }
 
 pub(super) fn legacy_head_command(

@@ -18,6 +18,8 @@ use uuid::Uuid;
 mod support;
 use support::*;
 
+#[path = "registration_write_batch/facts.rs"]
+mod facts;
 #[path = "registration_write_batch/freeze.rs"]
 mod freeze;
 #[path = "registration_write_batch/order.rs"]

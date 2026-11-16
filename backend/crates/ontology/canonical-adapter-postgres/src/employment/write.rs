@@ -1,17 +1,15 @@
 //! `write_in_tx`: one Employment command applied inside an armed transaction.
 
-use super::appointment::appoint_in_tx;
-use super::change_window::{assert_employment_change_window_open, business_date};
+use super::appointment::insert_appointments;
+use super::change_window::business_date;
+use super::checks::{WriteChecks, check_preflight};
 use super::error::EmploymentError;
 use super::legacy_head::{EmploymentChange, apply_employment_change, set_employee_org_unit};
-use super::lookups::{bound_employee, ensure_attribute_refs, org_unit_name};
+use super::lookups::{bound_employee, org_unit_name};
 use super::model::{EmploymentCommand, EmploymentQuery};
-use super::port::PgEmploymentPort;
 use super::receipt::{payload_digest, receipt, stored_target};
 use console_kernel_core::UserId;
-use console_ontology_canonical_domain::{
-    CanonicalPort, CanonicalQuery, CommandReceipt, ReceiptOwner,
-};
+use console_ontology_canonical_domain::{CanonicalQuery, CommandReceipt, ReceiptOwner};
 use sqlx::{Postgres, Row, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -25,10 +23,7 @@ pub async fn write_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     command: &EmploymentCommand,
 ) -> Result<CommandReceipt, EmploymentError> {
-    let preflight = <PgEmploymentPort as CanonicalPort>::preflight(&command.query);
-    if !preflight.is_ok() {
-        return Err(EmploymentError::Blocked(preflight.blockers().to_vec()));
-    }
+    check_preflight(command)?;
 
     let digest = payload_digest(command);
     let org = *command.org_id.as_uuid();
@@ -62,20 +57,18 @@ pub async fn write_in_tx(
         ));
     }
 
-    ensure_attribute_refs(tx, org, command.query.attributes()).await?;
+    WriteChecks::default().check(tx, command).await?;
 
     let target = command.query.target();
     let valid_from = command.query.valid_from();
     let attributes = command.query.attributes();
 
-    // §3.9.1: every dated mutation is checked, not just the legacy-head rewrite.
-    // This covers Appoint and backdated Promote/Transfer too, so a command dated
-    // inside a closed Payroll/Accounting window is refused before any insert.
-    assert_employment_change_window_open(tx, org, business_date(valid_from)).await?;
-
     let (employment_id, version, backdated) = match &command.query {
-        EmploymentQuery::Appoint { employee_id, .. } => {
-            return appoint_in_tx(tx, command, *employee_id, digest).await;
+        EmploymentQuery::Appoint { .. } => {
+            return insert_appointments(tx, std::slice::from_ref(command))
+                .await?
+                .pop()
+                .ok_or_else(|| sqlx::Error::RowNotFound.into());
         }
         EmploymentQuery::Promote { employment_id, .. }
         | EmploymentQuery::Transfer { employment_id, .. } => {
