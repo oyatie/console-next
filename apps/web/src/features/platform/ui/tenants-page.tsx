@@ -1,5 +1,5 @@
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
@@ -82,13 +82,11 @@ export function TenantsPage() {
     record(onboarded ? { message: t("tenants.onboard.done", { org }), meta: t("tenants.onboard.meta", { slug: onboarded.slug }) } : { message: t("tenants.reissue.done", { org }), meta: t("common.expiresAt", { at: fmtDateTime(expiresAt) }) });
   };
   const empty = list.data !== undefined && all.length === 0;
-  const create = !list.data && list.isError ? (
-    <DisabledReason reason={t("tenants.create.unavailable")} control={p => <Button variant="primary" {...p}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>} />
-  ) : (
+  const create = (
     <Button variant="primary" disabled={!list.data} onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>
   );
 
-  return (
+  const renderPage = (control: ReactNode, reason: ReactNode) => (
     <div className="page">
       <h1 id="tenants-title" className="page__title" tabIndex={-1}>{t("tenants.title")}</h1>
       <PageReadGate q={list}>
@@ -109,9 +107,9 @@ export function TenantsPage() {
             onChange={(e) => setQ(e.target.value)}
           />}</Field>
         </Form>
-        {create}
+        {!list.data && list.isError ? control : create}
       </div>}
-      <QueryState q={list} layout="list">{() => <>
+      <QueryState q={list} layout="list" failedActions={reason}>{() => <>
       <SupportLookup />
       <KeyNotices notices={[...(ops.data?.notices ?? []), ...(ops.data?.registration_check_notices ?? [])]} />
       {recorded && (
@@ -183,4 +181,7 @@ export function TenantsPage() {
       </PageReadGate>
     </div>
   );
+  return <DisabledReason reason={t("tenants.create.unavailable")} control={p => <Button variant="primary" {...p}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>}>
+    {({ control, reason }) => renderPage(control, reason)}
+  </DisabledReason>;
 }

@@ -80,19 +80,29 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     const [header, payload, signature] = auth.access_token.split(".");
     auth.access_token = `${header}.${Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(payload!, "base64url").toString()), platform: true })).toString("base64url")}.${signature}`;
     await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: auth });
+    const held = Promise.withResolvers<void>();
     let failed = true;
-    await mockRoute(page, "get", "/api/platform/orgs", () => failed
+    await mockRoute(page, "get", "/api/platform/orgs", async () => {
+      await held.promise;
+      return failed
       ? { status: 503, json: failure("upstream_failure"), headers: { "retry-after": String(Math.ceil(MAX_RETRY_AFTER_MS / 1000) + 1) } }
-      : { status: 200, json: [] });
+      : { status: 200, json: [] };
+    });
     await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
     try {
       await page.goto("/platform");
       const main = page.getByRole("main");
+      await expect(main.getByRole("search")).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      const positions = () => main.locator(".page__head button, .page__head input").evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
+      const before = await positions();
+      held.resolve();
       await expect(main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible();
+      expect(await positions()).toEqual(before);
       const create = main.getByRole("button", { name: t("tenants.create"), exact: true });
       await expect(create).toHaveAttribute("aria-disabled", "true");
       await expect(create).toHaveAccessibleDescription(t("tenants.create.unavailable"));
-      await expect(main.getByText(t("tenants.create.unavailable"), { exact: true })).toBeVisible();
+      await expect(main.getByRole("alert").locator(".state__actions").getByText(t("tenants.create.unavailable"), { exact: true })).toBeVisible();
       await create.focus();
       await create.press("Enter");
       await create.click({ force: true });
@@ -107,6 +117,6 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await main.locator("#tenants-list").getByRole("button", { name: t("tenants.create"), exact: true }).click();
       await expect(page.getByRole("dialog", { name: t("tenants.create"), exact: true })).toBeVisible();
       expect(fixture.unexpected).toEqual([]);
-    } finally { fixture.release(); await page.close(); }
+    } finally { held.resolve(); fixture.release(); await page.close(); }
   });
 }

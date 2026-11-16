@@ -6,7 +6,7 @@ import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { loadCatalog, t } from "@console/i18n";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
-import { AT, id } from "../../../../../../e2e/mock/fixtures";
+import { AT, failure, id } from "../../../../../../e2e/mock/fixtures";
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -46,7 +46,8 @@ afterAll(async () => { await browser?.close(); await server?.close(); });
 test.each([1440, 390].flatMap(width => [0, 9].map(initial => ({ width, initial }))))("cached tenant counts from $initial keep populated controls stable and empty actions useful at $width px", async ({ width, initial }) => {
   await page.setViewportSize({ width, height: 900 });
   let count = initial;
-  await page.route("**/api/platform/orgs", route => route.fulfill({ json: Array.from({ length: count }, (_, index) => ({
+  let failed = false;
+  await page.route("**/api/platform/orgs", route => failed ? route.fulfill({ status: 503, json: failure("service_unavailable") }) : route.fulfill({ json: Array.from({ length: count }, (_, index) => ({
     id: id(5000 + index), name: `검증 고객 ${index + 1}`, slug: `customer-${index + 1}`, group_id: null, group_slug: null, group_name: null,
     status: "ACTIVE", created_at: AT, updated_at: AT,
   })) }));
@@ -76,12 +77,32 @@ test.each([1440, 390].flatMap(width => [0, 9].map(initial => ({ width, initial }
       await element(search).toBeFocused();
     }
     await element(page.getByRole("group").getByRole("button").first()).toContainText(String(count));
+    const populated = await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
+    failed = true;
+    await page.evaluate(() => (window as unknown as { refetchTenants: () => Promise<void> }).refetchTenants());
+    await element(rows).toHaveCount(count);
+    expect(await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(populated);
+    const create = page.getByRole("button", { name: t("tenants.create"), exact: true });
+    await element(create).toBeEnabled();
+    await element(create).not.toHaveAttribute("aria-disabled", "true");
+    await element(page.getByText(t("tenants.create.unavailable"), { exact: true })).toHaveCount(0);
+    await create.click();
+    await element(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("dialog").getByRole("button", { name: t("common.cancel"), exact: true }).click();
+    failed = false;
     count = 0;
     await page.evaluate(() => (window as unknown as { refetchTenants: () => Promise<void> }).refetchTenants());
     await element(rows).toHaveCount(0);
     await element(search).toHaveCount(0);
     await element(page.getByRole("group", { name: t("tenants.views"), exact: true })).toHaveCount(0);
     await element(page.locator("#tenants-list").getByRole("button", { name: t("tenants.create"), exact: true })).toBeEnabled();
-    await element(page.getByRole("button", { name: t("tenants.create"), exact: true })).toHaveCount(1);
+    await element(create).toHaveCount(1);
+    failed = true;
+    await page.evaluate(() => (window as unknown as { refetchTenants: () => Promise<void> }).refetchTenants());
+    await element(search).toHaveCount(0);
+    await element(page.getByRole("group", { name: t("tenants.views"), exact: true })).toHaveCount(0);
+    await element(create).toBeEnabled();
+    await element(create).not.toHaveAttribute("aria-disabled", "true");
+    await element(page.getByText(t("tenants.create.unavailable"), { exact: true })).toHaveCount(0);
   } finally { await page.unroute("**/api/platform/orgs"); await page.unroute("**/api/platform/ops"); }
 }, 60_000);
