@@ -17,7 +17,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[2], "populated");
     await orgPanelReads(page);
-    await orgWorkReads(page, "setup");
+    const { tree } = await orgWorkReads(page, "setup");
     await mockRoute(page, "get", "/api/v1/ref/lists/{key}/codes", request => ({ status: 200, json: {
       list: { key: new URL(request.url()).pathname.split("/").at(-2)!, status: "NOT_LOADED" as const }, items: [],
     } }));
@@ -27,7 +27,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       holds_entity_role: false, people: [], units: [], exit_cases: [], job: null,
     } });
     const selected = act === "wp-create" ? id(3) : id(4);
-    const title = act === "wp-create" ? t("workplace.add") : t(act === "wp-close" ? "workplace.close.title" : "workplace.kind.title", { name: "본사" });
+    const title = act === "wp-create" ? t("workplace.add") : t(act === "wp-close" ? "workplace.close.title" : "workplace.kind.title", { name: tree.entities[0]!.children[0]!.name });
     const path = act === "wp-create" ? `legal-entities/${id(3)}` : act === "wp-close" ? `workplaces/${id(4)}/close-plan` : "workplace-kinds";
     const held = Promise.withResolvers<void>();
     let failed = true;
