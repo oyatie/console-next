@@ -83,8 +83,28 @@ fn changed_rows(stored: &Value, now: &[PlannedRow]) -> Value {
     json!(changed)
 }
 
-/// The leave command's refusal of a row that moved after the re-plan.
+/// Typed refusals from the atomic import command; database details stay private.
 pub(crate) fn apply_failure(error: PgLeaveError) -> HrError {
+    if let PgLeaveError::Db(DbError::Sqlx(sqlx)) = &error
+        && let Some(db) = sqlx.as_database_error()
+    {
+        match db.code().as_deref() {
+            Some("42501") => {
+                return HrError::from_kernel(
+                    KernelError::forbidden("the import command was not admitted")
+                        .with_code("import_apply_forbidden"),
+                );
+            }
+            Some("25P04") => {
+                return conflict(
+                    "import_apply_timed_out",
+                    "the import transaction exceeded the server time limit",
+                    json!([]),
+                );
+            }
+            _ => {}
+        }
+    }
     if let PgLeaveError::Db(DbError::Sqlx(sqlx)) = &error
         && let Some(db) = sqlx.as_database_error()
         && db.message() == "employee_import_batch.rows_changed"
