@@ -83,7 +83,7 @@
         "paths": [{ "name": "@tanstack/react-query", "importNames": ["useMutation", "useQueryClient"], "message": "Writes go through lib/command.ts (idempotent, no optimistic updates)" }] }] } },
     { "files": ["apps/web/src/auth/Login.tsx", "apps/web/src/features/home/Home.tsx", "apps/web/src/features/org/OrgChange.tsx", "apps/web/src/features/people/Employee.tsx"],
       "rules": { "react/only-export-components": "off" } },
-    { "files": ["apps/web/src/shell/shell.tsx"],
+    { "files": ["apps/web/src/shell/baseline/shell.tsx"],
       "rules": { "react/jsx-no-literals": ["error", { "noStrings": true, "ignoreProps": true, "allowedStrings": ["·", "—", "–", "/", ":", "|", "…", "(", ")", " ", "C"] }] } }
   ]
 }

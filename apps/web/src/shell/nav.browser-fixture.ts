@@ -28,7 +28,7 @@ export async function navFixture(engine = chromium) {
         import {createRootRoute,createRoute,createRouter,RouterProvider,Link} from '@tanstack/react-router';
         import {configure,refresh,session} from '@console/api'; import {webPlatform} from '@console/api/web';
         import {loadCatalog} from '@console/i18n';
-        import {Shell} from '/apps/web/src/shell/shell.tsx';
+        import Shell from '/apps/web/src/shell/baseline/shell.tsx';
         import {PageHead} from '/apps/web/src/ui/page-head/page-head.tsx';
         import {GoLive} from '/apps/web/src/features/onboarding/ui/go-live.tsx';
         import {meQuery} from '/apps/web/src/features/account/api.ts';

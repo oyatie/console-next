@@ -8,7 +8,8 @@ import { loadCatalog, t } from "@console/i18n";
 import { myAccessQuery } from "../reference/authz/api";
 import { activeSupportQuery } from "../reference/support-access/api";
 import { read } from "../lib/query";
-import { Shell } from "./shell";
+import Shell from "./baseline/shell";
+import type { ShellLayoutProps } from "./frame/shell-frame";
 import { meQuery } from "../features/account/api";
 import { checklistQuery, modulesQuery, SETUP_READS } from "../features/onboarding/api";
 import { modules } from "../../../../e2e/mock/fixtures";
@@ -175,5 +176,27 @@ test.each([new ApiError(503, "unavailable", "", []), new TypeError("Failed to fe
     expect(rail.match(/role="alert"/g)).toHaveLength(1);
     expect(rail).toContain(t("common.retry"));
     expect(rail).not.toContain('aria-busy="true"');
+  } finally { client.clear(); }
+});
+
+function AlternateLayout({ skipLink, children }: ShellLayoutProps) {
+  return <div>{skipLink}<header /><nav aria-label={t("shell.nav")} />{children}</div>;
+}
+
+test.each(["baseline", "alternate"])("the %s layout shares the frame landmarks and screen heading", async layout => {
+  const { ShellFrame } = await import("./frame/shell-frame");
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
+  try {
+    const screen = <h1>{t("app.name")}</h1>;
+    const html = renderToStaticMarkup(<QueryClientProvider client={client}>{layout === "baseline"
+      ? <Shell>{screen}</Shell> : <ShellFrame layout={AlternateLayout}>{screen}</ShellFrame>}</QueryClientProvider>);
+    expect(html.match(/<main\b/g)).toHaveLength(1);
+    expect(html.match(/id="main"/g)).toHaveLength(1);
+    expect(html.match(/href="#main"/g)).toHaveLength(1);
+    expect(html).toMatch(new RegExp(`<nav\\b[^>]*aria-label="${t("shell.nav")}"`));
+    expect(html.match(/<h1>/g)).toHaveLength(1);
+    expect(html).toContain(`<h1>${t("app.name")}</h1>`);
+    expect(html.match(/<main\b[\s\S]*?<\/main>/)![0]).toContain(`<h1>${t("app.name")}</h1>`);
   } finally { client.clear(); }
 });

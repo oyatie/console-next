@@ -1,46 +1,53 @@
-import { personName } from "../reference/person/present";
-import { activeSupportQuery } from "../reference/support-access/api";
-import { ActiveSupportBanner, SupportAccessIndicator } from "../features/support-access/ui/support-access-status";
-import { DomainNotice } from "../auth/domain-notice";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Link, Outlet, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { activeSupportQuery } from "../../reference/support-access/api";
+import { ActiveSupportBanner } from "../../features/support-access/ui/support-access-status";
+import { DomainNotice } from "../../auth/domain-notice";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
+import { Outlet, useLocation, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, Menu, Moon, Search, Sun, UserRound } from "lucide-react";
-import { logout, refresh, session } from "@console/api";
+import { refresh, session } from "@console/api";
 import { i18n, LOCALES, t, type Locale } from "@console/i18n";
-import { ChangeNotice } from "../ui/live/change-notice";
-import { HeldNotice } from "../ui/live/held-notice";
-import { LiveStatus } from "../ui/live/live-status";
-import { focusSoon } from "../lib/react/announce";
-import { navigationRead, read } from "../lib/query";
-import { isAnswer } from "../lib/react/query-defaults";
-import { QueryState } from "../lib/react/query-state";
-import { ReadFailureContext } from "../lib/react/read-failure-context";
-import { chunk } from "../lib/chunk-guard";
-import { myAccessQuery } from "../reference/authz/api";
-import { setLocale } from "./locale";
-import { useTheme } from "./theme";
-import { PLATFORM_NAV, TENANT_NAV, activeLink, rememberedRail, tenantNav } from "./nav";
-import { ReadSkeleton, Skeleton } from "../ui/skeleton/skeleton";
-import { PhaseBand } from "./phase-band";
-import { SessionRecovery } from "./session-recovery";
-import { streamReady } from "../lib/live/session-stream";
-import { RouteGuard } from "../reference/authz/ui/access-gate";
-import { PageMain } from "../ui/page/page-main";
-import { meQuery } from "../features/account/api";
-import { useMainScrollRestoration } from "./scroll-restoration";
-import { checklistQuery, modulesQuery } from "../features/onboarding/api";
-import { fixFor } from "../features/onboarding/domain/rail";
-import type { NavHub } from "./nav";
+import { focusSoon } from "../../lib/react/announce";
+import { setLocale } from "../locale";
+import { ChangeNotice } from "../../ui/live/change-notice";
+import { HeldNotice } from "../../ui/live/held-notice";
+import { navigationRead, read } from "../../lib/query";
+import { isAnswer } from "../../lib/react/query-defaults";
+import { QueryState } from "../../lib/react/query-state";
+import { ReadFailureContext } from "../../lib/react/read-failure-context";
+import { chunk } from "../../lib/chunk-guard";
+import { myAccessQuery } from "../../reference/authz/api";
+import { PLATFORM_NAV, rememberedRail, tenantNav } from "../nav";
+import { ReadSkeleton } from "../../ui/skeleton/skeleton";
+import { PhaseBand } from "../phase-band";
+import { SessionRecovery } from "../session-recovery";
+import { streamReady } from "../../lib/live/session-stream";
+import { RouteGuard } from "../../reference/authz/ui/access-gate";
+import { PageMain } from "../../ui/page/page-main";
+import { meQuery } from "../../features/account/api";
+import { useMainScrollRestoration } from "../scroll-restoration";
+import { checklistQuery, modulesQuery } from "../../features/onboarding/api";
+import { fixFor } from "../../features/onboarding/domain/rail";
+import type { NavHub } from "../nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
-const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
-const NeedsMeMenu = lazy(() => chunk(import("./top-bar/needs-me")).then(m => ({ default: m.NeedsMeMenu })));
+const JumpPalette = lazy(() => chunk(import("../../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
 
-export function Shell({ children = <Outlet />, pending = false }: { children?: ReactNode; pending?: boolean }) {
-  const nav = useNavigate();
+export interface ShellLayoutProps {
+  children: ReactNode;
+  skipLink: ReactNode;
+  platform: boolean;
+  restoring: boolean;
+  scope?: string;
+  menu: readonly NavHub[] | undefined;
+  navigationNotice: ReactNode;
+  onSearch: () => void;
+}
+
+export function ShellFrame({ layout: Layout, children = <Outlet />, pending = false }: {
+  layout: ComponentType<ShellLayoutProps>; children?: ReactNode; pending?: boolean;
+}) {
   const { pathname } = useLocation();
-  const [theme, toggle] = useTheme();
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
   const stream = useSyncExternalStore(streamReady.subscribe, streamReady.get);
   const active = Boolean(session.token) && stream;
@@ -111,26 +118,6 @@ export function Shell({ children = <Outlet />, pending = false }: { children?: R
   const displayed = answer ?? (savedRail.key === railKey ? savedRail.answer : undefined);
   const menu: readonly NavHub[] = platform ? PLATFORM_NAV : displayed ? tenantNav(displayed.access, router.routesByPath,
     displayed.supportApproval, displayed.context) : [];
-  // Phone widths hide the rail; the top bar's menu button discloses it.
-  const [open, setOpen] = useState(false);
-  const menuButton = useRef<HTMLButtonElement>(null);
-  const rail = useRef<HTMLElement>(null);
-  const close = () => {
-    setOpen(false);
-    menuButton.current?.focus();
-  };
-  // Open: focus moves into the menu, and Esc closes it back to the button.
-  useEffect(() => {
-    if (!open) return;
-    rail.current?.querySelector<HTMLElement>("a")?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setOpen(false);
-      menuButton.current?.focus();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
   // ⌘K / Ctrl+K opens the jump palette anywhere in the tenant app (a modifier chord, so not a single-key shortcut).
   const [jump, setJump] = useState(false);
   useEffect(() => {
@@ -144,65 +131,13 @@ export function Shell({ children = <Outlet />, pending = false }: { children?: R
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [platform]);
-  // Sub-views keep their module highlighted without changing the rail.
-  const current = activeLink(pathname, menu.flatMap(g => g.links));
   return (
-    <div className="shell" data-menu={open ? "open" : undefined} data-console-scope={platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined)}>
-      <a className="skip" href="#main">{t("shell.skip")}</a>
-      <nav id="rail" ref={rail} className="rail" aria-label={t("shell.nav")}>
-        <div className="rail__brand"><span className="rail__mark" aria-hidden>C</span>{t("app.name")}</div>
-        {!platform && !displayed && <div role="status" aria-busy="true" aria-label={t("common.loading")}>
-          {TENANT_NAV.map(g => <div key={g.hub}>
-            <div className="rail__hub">{t(g.hub)}</div>
-            <ul className="rail__list">{g.links.filter(l => l.to in router.routesByPath).map(l =>
-              <li key={l.to} className="rail__link"><Skeleton decorative bones={["line"]} /></li>)}</ul>
-          </div>)}
-        </div>}
-        {menu.map((g) => (
-          <div key={g.hub}>
-            <div className="rail__hub">{t(g.hub)}</div>
-            <ul className="rail__list">{g.links.map((l) => (
-              <li key={l.to}>
-                <Link to={l.to} className="rail__link" activeOptions={{ exact: l.to !== current }}
-                  aria-current={l.to === current ? "page" : undefined} data-status={l.to === current ? "active" : undefined} onClick={() => setOpen(false)}>
-                  <l.icon size={16} aria-hidden /> {t(l.label)}
-                </Link>
-              </li>
-            ))}</ul>
-          </div>
-        ))}
-        {!platform && answered && modulesFault && (pageFailures > 0
-          ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
-          : <QueryState q={modules} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState>)}
-      </nav>
-      <header className="top" data-task-menu={!platform || undefined} aria-busy={restoring || undefined}>
-        {!restoring && <>
-        <button ref={menuButton} className="btn btn--ghost top__menu" aria-expanded={open} aria-controls="rail" onClick={() => (open ? close() : setOpen(true))}>
-          <Menu size={16} aria-hidden /> {t("shell.menu")}
-        </button>
-        {!platform && (
-          <button type="button" className="btn top__jump" onClick={() => setJump(true)} aria-keyshortcuts="Meta+K Control+K">
-            <Search size={16} aria-hidden />
-            <span className="top__jumpText"><span className="top__jumpHint">{t("shell.jump")}</span><span className="top__jumpLabel">{t("shell.jumpLabel")}</span></span>
-            <kbd className="top__kbd" aria-hidden>{t("shell.jumpKey")}</kbd>
-          </button>
-        )}
-        <span className="top__spacer" />
-        {!platform && <Suspense fallback={null}><NeedsMeMenu id="top-needs-me" /></Suspense>}
-        <LiveStatus />
-        {!platform && <SupportAccessIndicator />}
-        <LocaleSelect id="top-locale" label />
-        <button className="btn btn--ghost" onClick={toggle} aria-label={theme === "dark" ? t("shell.theme.toLight") : t("shell.theme.toDark")}>
-          {theme === "dark" ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
-        </button>
-        <Link to="/account" className="btn btn--ghost top__name">
-          <UserRound size={16} aria-hidden /> <span>{personName(session.claims?.name, t(session.claims?.platform ? "account.name.unset.operator" : "account.name.unset"))}</span>
-        </Link>
-        <button className="btn btn--ghost top__logout" onClick={async () => (await logout(), nav({ to: "/login" }))}>
-          <LogOut size={16} aria-hidden /> {t("shell.logout")}
-        </button>
-        </>}
-      </header>
+    <Layout platform={platform} restoring={restoring} menu={platform || displayed ? menu : undefined}
+      scope={platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined)}
+      skipLink={<a className="skip" href="#main">{t("shell.skip")}</a>} onSearch={() => setJump(true)}
+      navigationNotice={!platform && answered && modulesFault && (pageFailures > 0
+        ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
+        : <QueryState q={modules} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState>)}>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1 requires keyboard access to this named scroll container. */}
       <PageMain className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>
         <SessionRecovery>
@@ -221,7 +156,7 @@ export function Shell({ children = <Outlet />, pending = false }: { children?: R
           <JumpPalette onClose={() => setJump(false)} />
         </Suspense>
       )}
-    </div>
+    </Layout>
   );
 }
 
