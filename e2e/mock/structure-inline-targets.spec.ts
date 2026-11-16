@@ -28,6 +28,7 @@ test("an opened chart menu takes the toolbar from the selection", async ({ page 
   try {
     await page.goto("/org");
     await box(page, parent.name).click();
+    await expect(box(page, entity.name)).toBeVisible();
     await box(page, entity.name).focus();
     await page.keyboard.press("Shift+F10");
     await expect(page.getByRole("menu")).toBeVisible();

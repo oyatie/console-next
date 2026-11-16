@@ -186,6 +186,7 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) {
     await page.goto(path);
     const listRows = page.locator("[data-flexible-columns] [data-id]");
     const first = listRows.first();
+    await expect(first).toBeVisible();
     await first.focus();
     for (const guard of [{ isComposing: true }, { altKey: true }, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) {
       await first.dispatchEvent("keydown", { key: "ㅓ", code: "KeyJ", ...guard });
