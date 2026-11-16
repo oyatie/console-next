@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "vitest";
+import { beforeAll, expect, test } from "vitest";
+import { loadCatalog, t } from "@console/i18n";
 import { expect as element } from "@playwright/test";
 import { screenAccess, user } from "../../../../e2e/mock/fixtures";
 import { clearShifts } from "../../../../e2e/stability";
 import { browserEngine } from "../lib/browser-test";
 import { navFixture, navModules } from "./nav.browser-fixture";
+
+beforeAll(() => loadCatalog("ko"));
 
 test("go-live updates the rail with its answer despite a 1.5 s profile read, then keeps it on return to /people", async () => {
   const { server, browser, page, errors } = await navFixture(browserEngine());
@@ -42,19 +45,19 @@ test("go-live updates the rail with its answer despite a 1.5 s profile read, the
   try {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(server.resolvedUrls!.local[0]!);
-    const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
-    await rail.getByRole("link", { name: "직원", exact: true }).click();
+    const rail = page.getByRole("navigation", { name: t("shell.nav") });
+    await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
+    await rail.getByRole("link", { name: t("shell.link.people"), exact: true }).click();
     await element.poll(() => page.evaluate(() => window.__navFacts.phase)).toBe("SETUP");
     await page.getByRole("link", { name: "Start operations" }).click();
-    await element(page.getByRole("button", { name: "운영 시작", exact: true })).toBeEnabled();
+    await element(page.getByRole("button", { name: t("setup.golive.start"), exact: true })).toBeEnabled();
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(clearShifts);
     const refetched = page.waitForResponse("**/api/v1/users/me");
     const modulesRequested = page.waitForRequest("**/api/v1/onboarding/modules");
-    await page.getByRole("button", { name: "운영 시작", exact: true }).click();
+    await page.getByRole("button", { name: t("setup.golive.start"), exact: true }).click();
     await modulesRequested;
-    await element(page.getByRole("button", { name: "운영 시작", exact: true })).toBeDisabled();
+    await element(page.getByRole("button", { name: t("setup.golive.start"), exact: true })).toBeDisabled();
     expect(new URL(page.url()).pathname).toBe("/setup/go-live");
     expect(moduleReads).toBe(2);
     const firstHomePaint = page.evaluate(() => new Promise<string[]>(resolve => {
@@ -67,22 +70,22 @@ test("go-live updates the rail with its answer despite a 1.5 s profile read, the
     await element.poll(() => accessReads).toBe(1);
     await page.setViewportSize({ width: 390, height: 900 });
     await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
-    await element(page.getByRole("button", { name: "운영 시작", exact: true })).toBeDisabled();
-    await element(page.getByRole("button", { name: "운영 시작", exact: true })).toHaveCount(1);
+    await element(page.getByRole("button", { name: t("setup.golive.start"), exact: true })).toBeDisabled();
+    await element(page.getByRole("button", { name: t("setup.golive.start"), exact: true })).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     expect(new URL(page.url()).pathname).toBe("/setup/go-live");
     await page.setViewportSize({ width: 1440, height: 900 });
     accessHeld.resolve();
     await element(page).toHaveURL(server.resolvedUrls!.local[0]!);
-    expect(await firstHomePaint).toEqual(expect.arrayContaining(["근태", "법정 신고·서류"]));
-    await element(rail.getByRole("link", { name: "근태", exact: true })).toBeVisible();
-    await element(rail.getByRole("link", { name: "법정 신고·서류", exact: true })).toBeVisible();
+    expect(await firstHomePaint).toEqual(expect.arrayContaining([t("shell.link.attendance"), t("shell.link.statutory")]));
+    await element(rail.getByRole("link", { name: t("shell.link.attendance"), exact: true })).toBeVisible();
+    await element(rail.getByRole("link", { name: t("shell.link.statutory"), exact: true })).toBeVisible();
     await refetched;
-    await element(rail.getByRole("link", { name: "근태", exact: true })).toBeVisible();
+    await element(rail.getByRole("link", { name: t("shell.link.attendance"), exact: true })).toBeVisible();
     await page.waitForTimeout(100);
     expect(await page.evaluate(() => window.__shifts ?? [])).toEqual([]);
     const orgRead = page.waitForResponse("**/api/v1/users/me");
-    await rail.getByRole("link", { name: "조직 구조", exact: true }).click();
+    await rail.getByRole("link", { name: t("shell.link.org"), exact: true }).click();
     await orgRead;
     await element.poll(() => page.evaluate(() => window.__navFacts.phase)).toBe("OPERATING");
     await page.evaluate(() => document.fonts.ready);

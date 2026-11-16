@@ -17,7 +17,7 @@ for (const leave of [false, true]) test(`go-live readiness ${leave ? "respects a
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await mockRoute(page, "get", "/api/v1/users/me", () => ({ status: 200, json: {
-    ...user, is_tenant_ops: true, tenant: { name: "화면 검증 회사", phase: applied ? "OPERATING" : "SETUP", go_live_at: applied ? "2026-10-26T09:00:00Z" : null },
+    ...user, is_tenant_ops: true, tenant: { name: "Screen Test Company", phase: applied ? "OPERATING" : "SETUP", go_live_at: applied ? "2026-10-26T09:00:00Z" : null },
   } }));
   await mockRoute(page, "get", "/api/v1/access/me", async () => {
     if (applied) { requested.resolve(); await held.promise; }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { t } from "@console/i18n";
 import { resolveFilingNotApplicable } from "./helpers/statutory";
 import { expectAccessible } from "./a11y";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
@@ -192,7 +193,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
       requestAnimationFrame(frame);
     }));
     await startOperations(admin, true, c);
-    expect(await firstHomePaint).toEqual(expect.arrayContaining(["근태", "법정 신고·서류"]));
+    expect(await firstHomePaint).toEqual(expect.arrayContaining([t("shell.link.attendance"), t("shell.link.statutory")]));
     expect(c.done("운영 시작")).toBeLessThanOrEqual(BUDGET.golive);
   });
 
