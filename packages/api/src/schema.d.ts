@@ -15549,7 +15549,7 @@ export interface components {
                 source: string;
                 support_reference: string;
             }[];
-            /** @description Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted. */
+            /** @description Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. Only sources that can fill a lane affect that lane's exactness, and an unavailable source makes every count inexact. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted. */
             counts: {
                 [key: string]: {
                     total: number;
