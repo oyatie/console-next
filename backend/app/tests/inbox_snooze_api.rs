@@ -79,9 +79,9 @@ async fn rows(pool: &PgPool, org: Uuid) -> i64 {
 
 /// A grant waiting for its holder's confirmation is an item in the holder's inbox alone.
 async fn notice(pool: &PgPool, org: Uuid, ops: Uuid, holder: Uuid) -> String {
-    let role: Uuid = sqlx::query_scalar("INSERT INTO access_roles (org_id,name_ko,status,version,created_by) VALUES ($1,'미루기 검증','ACTIVE',1,$2) RETURNING id")
+    let role: Uuid = sqlx::query_scalar("INSERT INTO access_roles (org_id,name_ko,status,version,created_by) VALUES ($1,'Snooze check','ACTIVE',1,$2) RETURNING id")
         .bind(org).bind(ops).fetch_one(pool).await.unwrap();
-    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) VALUES ($1,$2,1,'미루기 검증','ACTIVE','SETUP',$3)")
+    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) VALUES ($1,$2,1,'Snooze check','ACTIVE','SETUP',$3)")
         .bind(org).bind(role).bind(ops).execute(pool).await.unwrap();
     sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) VALUES ($1,$2,1,'hr_basic',ARRAY['view'])")
         .bind(org).bind(role).execute(pool).await.unwrap();
