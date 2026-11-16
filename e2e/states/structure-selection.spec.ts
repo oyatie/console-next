@@ -72,7 +72,7 @@ for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
       await expect(datePopup).toHaveCount(0);
       await expect(name).toBeVisible();
       await expect(date).toBeFocused();
-      await name.fill("플랫폼팀");
+      await name.fill("Platform team");
       await basic.getByRole("button", { name: t("orgStructure.cancel"), exact: true }).click();
       await expect(rename).toBeFocused();
       const row = label.locator("..");
@@ -80,7 +80,7 @@ for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
       await expect(row.getByRole("definition").last()).toContainText(t("uiRecordActions.edit"));
       for (const target of [name, basic.getByRole("button", { name: t("orgStructure.cancel"), exact: true }), basic.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${t("asof.today")}`, exact: true })]) {
         await rename.click();
-        await name.fill("플랫폼팀");
+        await name.fill("Platform team");
         await target.press("Escape");
         await expect(panel).toBeVisible();
         await expect(rename).toBeFocused();
@@ -114,7 +114,7 @@ for (const width of [1440, 390]) for (const phase of ["SETUP", "OPERATING"] as c
           await add.click();
           await expect(name).toBeFocused();
           await expect(add).toHaveCount(0);
-          await name.fill("새부서");
+          await name.fill("New department");
           await fits(page, `department add/${phase}/${width}/${parent.kind}`);
           if (cancel === "click") await panel.getByRole("button", { name: t("orgStructure.cancel"), exact: true }).click();
           else await name.press("Escape");
@@ -448,7 +448,7 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
       proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: dept.id, name: "플랫폼팀" }],
     });
 
-    // Side panel 수정 also edits in place with 적용일 defaulted to 오늘 and changeable.
+    // The side panel also edits in place with the effective date defaulted to today and changeable.
     const panel = page.getByRole("complementary", { name: "플랫폼팀", exact: true });
     await panel.getByRole("button", { name: t("uiRecordActions.of", { field: t("orgUnit.fact.name"), verb: t("uiRecordActions.edit") }), exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
