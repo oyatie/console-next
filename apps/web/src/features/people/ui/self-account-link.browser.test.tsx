@@ -59,23 +59,23 @@ test("the own-account gallery action supports keyboard confirmation and stays pe
   const held = new Promise<void>(done => { release = done; });
   await page.route("**/api/v1/users/me/employee-link", async route => {
     if (route.request().method() === "GET") return route.fulfill({ json: { attestation: linked ? { attestation_id: "00000000-0000-4000-8000-000000000003", employee_id: "00000000-0000-4000-8000-000000000001", can_withdraw: true } : null } });
-    browserExpect(route.request().postDataJSON().confirmed_name).toBe("김하나");
+    browserExpect(route.request().postDataJSON().confirmed_name).toBe(t("people.account.confirmNameExample"));
     writes++; await held; linked = true;
     await route.fulfill({ status: 201, json: { attestation_id: "00000000-0000-4000-8000-000000000003" } });
   });
   await page.goto(`${server.resolvedUrls!.local[0]}self-account-test`);
-  const button = page.getByRole("button", { name: "패스키로 확인하고 내 계정 연결", exact: true });
+  const button = page.getByRole("button", { name: t("uiOverrideSheet.stepUp", { action: t("people.account.ownLink") }), exact: true });
   await browserExpect(button).toBeDisabled();
   const name = page.getByRole("textbox");
-  await name.fill("다른 이름");
+  await name.fill("Other name");
   await browserExpect(button).toBeDisabled();
-  await name.fill("김하나");
+  await name.fill(t("people.account.confirmNameExample"));
   await button.focus(); await button.press("Enter");
   await browserExpect(button).toBeDisabled();
   await browserExpect.poll(() => writes).toBe(1);
   release();
   await browserExpect(button).toHaveCount(0);
-  const withdraw = page.getByRole("button", { name: "패스키로 확인하고 내 계정 연결 철회", exact: true });
+  const withdraw = page.getByRole("button", { name: t("uiOverrideSheet.stepUp", { action: t("people.account.withdrawOwn") }), exact: true });
   await browserExpect(withdraw).toBeVisible();
   let releaseWithdrawal!: () => void;
   const withdrawing = new Promise<void>(done => { releaseWithdrawal = done; });

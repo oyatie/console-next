@@ -113,7 +113,7 @@ for (const locale of ["ko", "en"] as const) {
 test("another eligible person prevents the own-account offer @ui-state", async ({ page }) => {
   const fixture = await setup(page, "ko", false);
   await openRecord(page);
-  await expect(page.getByRole("region", { name: "로그인 계정", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: t("people.account.title"), exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: t("uiOverrideSheet.stepUp", { action: t("people.account.ownLink") }), exact: true })).toHaveCount(0);
   await mockRoute(page, "post", prepare, { status: 200, json: binding });
   await openRecord(page, true);
