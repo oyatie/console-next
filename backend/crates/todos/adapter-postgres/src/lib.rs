@@ -27,7 +27,9 @@ macro_rules! columns {
 }
 
 mod assignees;
+mod inbox;
 mod requests;
+pub use inbox::{InboxRole, TodoInboxItem, TodoInboxPage};
 use requests::{lock_owned, not_found};
 
 #[derive(Debug, thiserror::Error)]

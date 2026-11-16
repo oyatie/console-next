@@ -93,7 +93,8 @@ pub async fn assign_home_branches(
             .bind(trace.trace_id())
             .bind(trace.span_id())
             .execute(tx.as_mut())
-            .await?;
+            .await
+            .map_err(|error| super::apply::apply_failure(error.into()))?;
     }
     Ok(())
 }

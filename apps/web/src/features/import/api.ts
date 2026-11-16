@@ -31,11 +31,6 @@ export const refusedKind = (e: unknown) =>
  */
 export const changedRows = (e: unknown) =>
   e instanceof ApiError && (e.code === "rows_changed_since_preview" || e.code === "dry_run_digest_mismatch") ? Math.max(1, e.refusals.length) : 0;
-/**
- * 408: the apply outlasted the server's request timeout (30 s by default; thousands of rows can). A part may be in (a
- * replayed apply completes what an interrupted one left), so the remedy is a dry run again and smaller files.
- */
-export const timedOut = (e: unknown) => e instanceof ApiError && e.status === 408;
 /** 409 on a dry run or apply of a run older than import.staged_identity.ttl_days: its sealed rows are gone; upload again. */
 export const runExpired = (e: unknown) => e instanceof ApiError && e.code === "import_run_expired";
 

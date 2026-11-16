@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test, type Page } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 
@@ -25,7 +26,7 @@ for (const theme of ["light", "dark"] as const) {
     test(`SidePanel contract at ${width}px in ${theme}`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: theme });
       await page.setViewportSize({ width, height: 900 });
-      await page.goto("/_gallery");
+      await mockNavigate(page, "/_gallery");
       await closeGalleryDock(page);
       const section = page.locator("[data-side-panel-gallery]");
       for (const state of ["loading", "empty", "failed", "refused", "populated", "long", "large"]) {
@@ -66,7 +67,7 @@ for (const theme of ["light", "dark"] as const) {
 }
 
 test("selection survives reload and Back/Forward, and close restores the selected row", async ({ page }) => {
-  await page.goto("/_gallery?keep=scope");
+  await mockNavigate(page, "/_gallery?keep=scope");
   await closeGalleryDock(page);
   const section = page.locator("[data-side-panel-gallery]");
   const trigger = section.locator('[data-panel-trigger="populated"]');
@@ -87,7 +88,7 @@ test("selection survives reload and Back/Forward, and close restores the selecte
 
 for (const keep of ["scope", "범위 이름"]) test(`closing a pushed selection lets the first Back leave the list (${keep}); switching records does not stack peeks`, async ({ page }) => {
   await page.goto("/login");
-  await page.goto(`/_gallery?${new URLSearchParams({ keep })}`);
+  await mockNavigate(page, `/_gallery?${new URLSearchParams({ keep })}`);
   await closeGalleryDock(page);
   const section = page.locator("[data-side-panel-gallery]");
   await section.locator('[data-panel-trigger="populated"]').click();
@@ -106,7 +107,7 @@ for (const keep of ["scope", "범위 이름"]) test(`closing a pushed selection 
 
 test("closing a direct link stays on the list and preserves the preceding page", async ({ page }) => {
   await page.goto("/login");
-  await page.goto("/_gallery?keep=scope&sel=populated");
+  await mockNavigate(page, "/_gallery?keep=scope&sel=populated");
   await closeGalleryDock(page);
   const section = page.locator("[data-side-panel-gallery]");
   await section.getByRole("button", { name: "상세 패널 닫기" }).click();

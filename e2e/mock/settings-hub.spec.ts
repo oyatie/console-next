@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api";
@@ -145,7 +146,7 @@ for (const width of [1440, 390]) for (const profile of ["branch", "none"] as con
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`settings hub gallery at ${width}px in ${theme}`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
-  await page.goto("/_gallery?entry=settings-hub");
+  await mockNavigate(page, "/_gallery?entry=settings-hub");
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
   const demo = page.locator("[data-settings-gallery]");
   await expect(demo.getByRole("heading", { name: t("shell.link.settings"), exact: true })).toBeVisible();

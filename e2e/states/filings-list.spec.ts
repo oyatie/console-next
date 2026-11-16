@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { expect } from "@playwright/test";
@@ -88,7 +89,7 @@ test("filing search keeps the server filter and clears it on reset @ui-state", a
     expect(queries.some(query => query.get("search") === "없는 직원")).toBe(true);
     await search.fill("");
     await expect(page.getByRole("table", { name: t("statutory.insurance"), exact: true })).toContainText(filingTask.name);
-    await page.goto("/_gallery");
+    await mockNavigate(page, "/_gallery");
     const gallery = page.locator("#gallery-filings");
     await gallery.scrollIntoViewIfNeeded();
     await expect(gallery.getByRole("table", { name: t("statutory.insurance"), exact: true })).toBeVisible();

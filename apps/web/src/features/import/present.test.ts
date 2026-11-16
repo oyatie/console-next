@@ -1,5 +1,5 @@
 import { beforeAll, expect, it } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { candidateBasisLabel, importError } from "./present";
 beforeAll(() => loadCatalog("ko"));
 it("renders a certificate refusal by code and leaves unknown errors to the shared handler", () => {
@@ -17,4 +17,9 @@ it.each(["en", "ko"] as const)("%s names both SQL apply refusals without databas
     expect(importError(code)).toBeTypeOf("string");
     expect(importError(code)).not.toContain(code);
   }
+});
+
+it.each(["en", "ko"] as const)("%s uses the shared timeout message", async locale => {
+  await loadCatalog(locale);
+  expect(importError("import_apply_timed_out")).toBe(t("import.timedOut", { rows: 1 }));
 });

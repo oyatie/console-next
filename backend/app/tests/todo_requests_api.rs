@@ -2,10 +2,14 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Asking a colleague for a follow-up, through the real router as `console_rt`:
 //! who may ask and whom, every refusal (status, code, nothing written, nothing
-//! audited), a request's forward-only life, and a private todo staying private.
+//! audited), a request's forward-only life, its item in each party's work
+//! inbox, and a private todo staying private.
 
 #[path = "support/go_live.rs"]
 mod go_live;
+#[allow(dead_code)]
+#[path = "support/reference_logs.rs"]
+mod reference_logs;
 #[path = "support/http.rs"]
 mod support;
 #[path = "access_log_reads/support.rs"]
@@ -15,6 +19,12 @@ mod world;
 
 #[path = "todo_requests_api/grants.rs"]
 mod grants;
+#[path = "todo_requests_api/inbox.rs"]
+mod inbox;
+#[path = "todo_requests_api/inbox_reads.rs"]
+mod inbox_reads;
+#[path = "todo_requests_api/inbox_snooze.rs"]
+mod inbox_snooze;
 #[path = "todo_requests_api/life.rs"]
 mod life;
 #[path = "todo_requests_api/picker_page.rs"]

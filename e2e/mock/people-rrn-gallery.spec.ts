@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { rrn } from "../helpers/import-layouts";
@@ -6,7 +7,7 @@ import { rrn } from "../helpers/import-layouts";
 for (const width of [1440, 390]) {
   test(`pending RRN sheet stays available in the gallery at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
-    await page.goto("/_gallery");
+    await mockNavigate(page, "/_gallery");
     if (width === 390) {
       await expect(page.getByRole("dialog")).toBeVisible();
       await page.keyboard.press("Escape");

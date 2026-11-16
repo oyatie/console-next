@@ -8,7 +8,7 @@ description: >-
   through the caller's own sources, the same read as the list, so another person's item, an
   unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item
   was not found while a source was unavailable. Rows are the audit events on the item's own
-  record (the request, change, lock, grant or case its first link names; for an org change,
+  record (the request, change, lock, grant, case or to-do request its first link names; for an org change,
   also its approval steps), newest first, at most 50: what happened (a verb from a closed set,
   other for anything else), who did it (absent for system events) and when. Events on the
   person or account behind an item are not served, and audit snapshots never are.
@@ -39,7 +39,7 @@ responses:
                 properties:
                   verb:
                     type: string
-                    x-extensible-enum: [create, submit, approve, reject, decide, apply, withdraw, cancel, update, confirm, other]
+                    x-extensible-enum: [create, submit, approve, reject, decide, apply, withdraw, cancel, update, confirm, return, other]
                   actor_name:
                     type: string
                     description: The acting account's display name; absent for system events.

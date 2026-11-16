@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -20,7 +21,7 @@ const receiptSettings = (days: number) => ({ can_change: false, items: [{
 for (const width of [1440, 390]) {
   test(`phase gallery: loading, setup and readable receipt at ${width} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/_gallery?entry=phase-band");
+    await mockNavigate(page, "/_gallery?entry=phase-band");
     const examples = page.locator("[data-phase-example]");
     await expect(examples).toHaveCount(3);
     for (const theme of ["light", "dark"]) {

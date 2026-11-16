@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { t } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { ApiError } from "@console/api";
 import { failureText, readFailureText, signInError } from "./refusal";
 
@@ -38,8 +38,17 @@ test.each([403, 404, 405])("HTTP %s does not promise that retrying will help", s
   }
 });
 
-test.each([408, 429, 500])("HTTP %s keeps its transient failure guidance", status => {
+test.each([408, 429, 500])("HTTP %s keeps command guidance and the read failure reason", status => {
   const error = new ApiError(status, `http_${status}`, "diagnostic", [], undefined, false);
   expect(failureText(error)).toContain("다시 시도");
-  expect(readFailureText(error)).toContain("다시 시도");
+  expect(readFailureText(error)).toBe(t("common.read.failedReason"));
+});
+
+for (const locale of ["ko", "en"] as const) test(`a generic read failure gives Retry-After guidance once in ${locale}`, async () => {
+  await loadCatalog(locale);
+  i18n.set(locale);
+  try {
+    const error = new ApiError(503, "upstream_failure", "diagnostic", [], undefined, false, [], { retryAfterMs: 1500 });
+    expect(readFailureText(error)).toBe(`${t("common.read.failedReason")} ${t("common.failed.retryAfter", { seconds: "2" })}`);
+  } finally { i18n.set("ko"); }
 });
