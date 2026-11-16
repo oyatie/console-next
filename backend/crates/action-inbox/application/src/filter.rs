@@ -36,6 +36,8 @@ impl InboxFilter {
     pub(crate) fn includes_source(self, source: crate::ActionInboxSource) -> bool {
         use crate::ActionInboxSource as S;
         match self {
+            // The requester's side of a request only ever waits.
+            InboxFilter::Turn => source != S::TodoRequested,
             InboxFilter::Waiting => matches!(
                 source,
                 S::OrgChange | S::EntityCorrections | S::TodoRequested
@@ -296,7 +298,13 @@ mod tests {
             S::PrivacyRequests,
             S::TodoAssigned,
         ];
+        // The requester's side is never the caller's turn, so the turn view does not read it.
+        let turn: Vec<_> = S::ALL
+            .into_iter()
+            .filter(|source| *source != S::TodoRequested)
+            .collect();
         for (filter, expected) in [
+            (InboxFilter::Turn, &turn[..]),
             (
                 InboxFilter::Waiting,
                 &[S::OrgChange, S::EntityCorrections, S::TodoRequested][..],
