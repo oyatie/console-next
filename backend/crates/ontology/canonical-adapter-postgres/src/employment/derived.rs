@@ -151,6 +151,18 @@ pub async fn appoint_legacy_head_in_tx(
     let Some(row) = row else {
         return Ok(None);
     };
+    let Some(command) = legacy_head_command(org, actor, employee_id, &row)? else {
+        return Ok(None);
+    };
+    write_in_tx(tx, &command).await.map(Some)
+}
+
+pub(super) fn legacy_head_command(
+    org: OrgId,
+    actor: UserId,
+    employee_id: Uuid,
+    row: &sqlx::postgres::PgRow,
+) -> Result<Option<EmploymentCommand>, EmploymentError> {
     let employment_status: String = row.get("employment_status");
     if row.get::<bool, _>("bound") || employment_status == "EXITED" {
         return Ok(None);
@@ -163,7 +175,7 @@ pub async fn appoint_legacy_head_in_tx(
     let valid_from = row.get::<Option<Date>, _>("hire_on").map_or(now, |date| {
         date.midnight().assume_offset(offset!(+9)).min(now)
     });
-    let command = EmploymentCommand {
+    Ok(Some(EmploymentCommand {
         org_id: org,
         command_id: CommandId::from_uuid(derived_command_id(b"hr.appoint", employee_id)),
         actor_id: actor,
@@ -183,6 +195,5 @@ pub async fn appoint_legacy_head_in_tx(
         },
         action_key: "internal.appoint_legacy_head".to_owned(),
         object_type_id: Uuid::nil(),
-    };
-    write_in_tx(tx, &command).await.map(Some)
+    }))
 }
