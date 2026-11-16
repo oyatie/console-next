@@ -8,7 +8,7 @@ use sqlx::{Postgres, Row};
 use uuid::Uuid;
 
 use crate::HrError;
-use crate::directory::create::employee_create_db_error;
+use crate::directory::create_prepare::reserve_create_keys;
 use console_platform_db::idempotency::IDEMPOTENCY_KEY_REUSED;
 
 /// Live actor revalidation (see the comment inside); the same predicate as the
@@ -179,27 +179,12 @@ pub async fn reserve_create_key(
     idempotency_key: &str,
     request_hash: &str,
 ) -> Result<Option<Uuid>, HrError> {
-    sqlx::query(
-        "INSERT INTO employee_create_idempotency (org_id, idempotency_key, request_hash) VALUES ($1, $2, $3) ON CONFLICT (org_id, idempotency_key) DO NOTHING",
+    Ok(
+        reserve_create_keys(tx, org_uuid, &[(idempotency_key, request_hash)])
+            .await?
+            .remove(idempotency_key)
+            .ok_or(sqlx::Error::RowNotFound)?,
     )
-    .bind(org_uuid)
-    .bind(idempotency_key)
-    .bind(request_hash)
-    .execute(tx.as_mut())
-    .await
-    .map_err(employee_create_db_error)?;
-    let reservation = sqlx::query(
-        "SELECT request_hash, employee_id FROM employee_create_idempotency WHERE org_id = $1 AND idempotency_key = $2 FOR UPDATE",
-    )
-    .bind(org_uuid)
-    .bind(idempotency_key)
-    .fetch_one(tx.as_mut())
-    .await?;
-    let stored_hash: String = reservation.try_get("request_hash")?;
-    if stored_hash != request_hash {
-        return Err(registration_key_reused());
-    }
-    Ok(reservation.try_get::<Option<Uuid>, _>("employee_id")?)
 }
 
 /// BW-19 3: 409 `idempotency_key_reused` — the key already names another

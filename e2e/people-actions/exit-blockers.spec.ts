@@ -51,7 +51,7 @@ test("exit report: a later reservation is named first and withdrawn in place; a 
   const cancel = sheet(admin, "전보 예약 취소");
   await cancel.getByRole("textbox", { name: /^취소 사유/ }).fill("퇴직이 먼저 정해짐");
   await c.click(cancel.getByRole("button", { name: "전보 1명 취소" }));
-  await c.click(history.getByRole("button", { name: "퇴직 보고 작성으로 돌아가기" }));
+  await c.click(admin.getByRole("button", { name: "퇴직 보고 작성으로 돌아가기" }));
   await fillDate(report, kstDate(10), "마지막 근무일");
   await expect(report.getByText("먼저 정리할 것")).toHaveCount(0);
   await report.getByRole("textbox", { name: /^퇴직 경위/ }).fill("개인 사정");

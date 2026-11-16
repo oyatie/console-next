@@ -1,4 +1,5 @@
 import { t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
 import { tg } from "@console/i18n/gallery";
 import { ChainStepper, type ChainStep } from "./chain-stepper";
 import { DeadlineChip } from "../deadline-chip/deadline-chip";
@@ -18,7 +19,7 @@ export default function ChainSteppers() {
     <section className="card gallery__section">
       <h2 className="toolbar__title">{t("uiChainStepper.name")}</h2>
       <ChainStepper steps={steps} />
-      <ChainStepper steps={[{ key: "1", who: who(5), state: "done" }, { key: "2", who: who(6), state: "failed", meta: t("enum.stepDecision.REJECTED") }]} />
+      <ChainStepper steps={[{ key: "1", who: who(5), state: "done" }, { key: "2", who: who(6), state: "failed", meta: <>{t("orgChange.chain.REJECTED", { at: fmtDateTime("2026-10-01T10:00:00+09:00") })} · {t("orgChange.decide.reject.example")}</> }]} />
       <ChainStepper variant="chips" steps={steps} />
       <ChainStepper variant="chips" steps={[...steps, { key: "5", who: who(5), state: "waiting" }, { key: "6", who: who(6), state: "waiting" }]} />
     </section>

@@ -40,7 +40,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await expect(transfer.getByRole("button", { name: "전보 1명 적용", exact: true })).toHaveClass(/btn--danger/);
   await c.click(transfer.getByRole("button", { name: "전보 1명 적용", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /오발령을 인사부에서 채용팀으로 전보했습니다/ })).toBeVisible();
-  await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("status").filter({ hasText: "오발령님을 채용팀으로 전보했습니다" })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: "오발령님을 채용팀으로 전보했습니다" })).toBeVisible();
   expect(c.done("J2 transfer (base 4 with 발령 → 전보, spec §5 + 1 date + 1 reason code)")).toBeLessThanOrEqual(6);
 
   // Promoting to the current position changes nothing: the server refuses it and says why.
@@ -150,8 +150,8 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   const withdraw = cancel.getByRole("button", { name: "전보 1명 취소" });
   await expect(withdraw).toHaveClass(/btn--danger/);
   await c.click(withdraw);
-  // The receipt heads the history; the withdrawn record is kept, shown on request, struck through.
-  await expect(history.getByRole("status").filter({ hasText: "오발령님의 전보 예약을 취소했습니다" })).toBeVisible();
+  // The receipt stays visible; the withdrawn record is kept, shown on request, struck through.
+  await expect(admin.getByRole("status").filter({ hasText: "오발령님의 전보 예약을 취소했습니다" })).toBeVisible();
   // The withdrawn record is hidden by default, so focus goes to the history heading.
   await expect(admin.getByRole("heading", { name: "인사 이력" })).toBeFocused();
   await history.getByRole("button", { name: "취소된 기록 포함 (1건)" }).click();

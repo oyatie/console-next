@@ -3,7 +3,7 @@ use crate::users::rows::fetch_user_tx;
 use crate::users::scope::user_in_scope;
 use crate::{PgOrgError, PgOrgStore};
 use console_identity_application::{UserListQuery, UserPage, UserSummary};
-use console_kernel_core::{BranchScope, KernelError, UserId};
+use console_kernel_core::{BranchId, BranchScope, KernelError, UserId};
 use console_platform_authz::access::{
     AccessSlice, Domain, Level, NodePath, action_group, load_access_subject,
 };
@@ -61,6 +61,29 @@ impl PgOrgStore {
             return Err(PgOrgError::Domain(KernelError::not_found("user not found")));
         }
         fetch_user(&self.pool, user_id).await
+    }
+
+    /// Employee `id`'s live home branch; `None` when it has none, or no such employee.
+    pub async fn employee_home_branch(
+        &self,
+        id: uuid::Uuid,
+    ) -> Result<Option<BranchId>, PgOrgError> {
+        let org = current_org().map_err(KernelError::from)?;
+        let branch: Option<uuid::Uuid> = with_org_conn::<_, _, PgOrgError>(&self.pool, org, move |tx| {
+            Box::pin(async move {
+                Ok(sqlx::query_scalar(
+                    "SELECT b.id FROM employees e JOIN branches b \
+                     ON b.org_id = e.org_id AND b.id = e.home_branch_id AND b.deactivated_at IS NULL \
+                     WHERE e.org_id = $1 AND e.id = $2",
+                )
+                .bind(org.as_uuid())
+                .bind(id)
+                .fetch_optional(tx.as_mut())
+                .await?)
+            })
+        })
+        .await?;
+        Ok(branch.map(BranchId::from_uuid))
     }
 
     /// List users visible within the caller's branch scope, as one page plus the

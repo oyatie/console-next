@@ -11705,7 +11705,7 @@ export interface paths {
         put?: never;
         /**
          * Create a tenant custom role definition
-         * @description Creates an audited, tenant-scoped custom role definition. Custom roles never replace built-in users.roles, but ACTIVE assignments can add runtime-effective ordinary feature grants on the next request. Elevated policy-management and scope-widening features are rejected.
+         * @description Creates an audited, tenant-scoped custom role definition. Custom roles never replace built-in users.roles, but ACTIVE assignments can add runtime-effective ordinary feature grants on the next request. Elevated policy-management and scope-widening features are rejected. Every permission the role carries must be one the caller holds, at that level, over the branches the role reaches; otherwise the request is refused with 403 forbidden and nothing is written.
          */
         post: operations["createPolicyRole"];
         delete?: never;
@@ -11729,7 +11729,7 @@ export interface paths {
         head?: never;
         /**
          * Update a tenant custom role definition
-         * @description Updates mutable custom-role metadata, permissions, and ABAC/PBAC conditions. The role key and lifecycle status are not changed by this route. This is a sensitive policy-definition action: callers must have RoleManage, pass delegated-scope guardrails, and supply a fresh passkey step-up assertion. ACTIVE assigned custom-role changes become runtime-effective ordinary feature grants on the next request; unsupported ABAC/PBAC conditions and elevated/scope-widening features remain inert.
+         * @description Updates mutable custom-role metadata, permissions, and ABAC/PBAC conditions. The role key and lifecycle status are not changed by this route. This is a sensitive policy-definition action: callers must have RoleManage, pass delegated-scope guardrails, and supply a fresh passkey step-up assertion. ACTIVE assigned custom-role changes become runtime-effective ordinary feature grants on the next request; unsupported ABAC/PBAC conditions and elevated/scope-widening features remain inert. The edited role's permissions must each be held by the caller, at that level, over the branches the role reaches, and a caller who holds the role cannot change it; otherwise the request is refused with 403 forbidden and nothing is written.
          */
         patch: operations["updatePolicyRole"];
         trace?: never;
@@ -11749,7 +11749,7 @@ export interface paths {
         head?: never;
         /**
          * Publish, roll back, or retire a tenant custom role
-         * @description Changes a custom role lifecycle state. This is a sensitive policy action: callers must have RoleManage and supply a fresh passkey step-up assertion proving the actor, not just the bearer token, performed the change.
+         * @description Changes a custom role lifecycle state. This is a sensitive policy action: callers must have RoleManage and supply a fresh passkey step-up assertion proving the actor, not just the bearer token, performed the change. Activating a role requires the caller to hold each of its permissions, at that level, over the branches the role reaches, and a caller who holds the role cannot change its state; otherwise the request is refused with 403 forbidden and nothing is written.
          */
         patch: operations["updatePolicyRoleStatus"];
         trace?: never;
@@ -19127,7 +19127,10 @@ export interface components {
         };
         CreateUserRequest: {
             display_name: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description The employee the new account is linked to. Unless the caller manages accounts across the whole tenant, it must be homed in a branch where the caller manages accounts; otherwise, or when it has no home branch or does not exist, the request is refused with 403 forbidden and nothing is written.
+             */
             employee_id?: string | null;
             phone?: string | null;
             team?: components["schemas"]["Team"];
@@ -30177,7 +30180,7 @@ export interface components {
             display_name?: string;
             /**
              * Format: uuid
-             * @description A changed link requests a pending identity-binding change; it requires step_up and an independent eligible approver. An unchanged value is a no-op.
+             * @description A changed link requests a pending identity-binding change; it requires step_up and an independent eligible approver. An unchanged value is a no-op. Unless the caller manages accounts across the whole tenant, a new employee must be homed in a branch where the caller manages accounts; otherwise, or when it has no home branch or does not exist, the request is refused with 403 forbidden and no request is opened.
              */
             employee_id?: string | null;
             phone?: string | null;
@@ -31215,6 +31218,8 @@ export interface components {
             /** @description Today is before the first record takes effect (e.g. before the opening date); this is that first record. */
             before_first_record: boolean;
             name: string;
+            /** @description The address follows the linked registration at the requested read point. Absent on older servers. */
+            same_address_as_registration?: boolean;
             address?: components["schemas"]["KrAddress"] | null;
             mail_address?: components["schemas"]["KrAddress"] | null;
             /** Format: date */

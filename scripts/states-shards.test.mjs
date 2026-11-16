@@ -286,7 +286,7 @@ test("CI uses committed settings and stretched budgets, takes compatible duratio
   const observed = { ...report({ "mock/a.spec.ts": 3, "states/new.spec.ts": 2 }), config: { workers: committed.workers } };
   try {
     for (const folder of ["bin", "scripts", "e2e/mock", ".cache/states-timings", ".cache/states-reports"]) mkdirSync(path.join(dir, folder), { recursive: true });
-    for (const file of ["states-shards.mjs", "e2e-timings.mjs"]) writeFileSync(path.join(dir, "scripts", file), readFileSync(new URL(file, import.meta.url)));
+    for (const file of ["scripts/states-shards.mjs", "scripts/e2e-timings.mjs", ".github/ci-proof.cjs"]) cpSync(new URL(`../${file}`, import.meta.url), path.join(dir, file));
     writeFileSync(path.join(dir, "bin/node"), `#!/bin/sh
 if [ "$1" = "scripts/d8-module-routes.mjs" ]; then
   mkdir -p "$(dirname "$2")"
@@ -337,7 +337,7 @@ test("a shard gets a Playwright timeout derived from its plan with RUN_HEADROOM 
     shards: [{ id: 1, files: ["e2e/mock/a.spec.ts"], seconds: estimatedSeconds }] };
   try {
     for (const folder of ["bin", "scripts", "e2e/mock", ".cache"]) mkdirSync(path.join(dir, folder), { recursive: true });
-    for (const file of ["states-shards.mjs", "e2e-timings.mjs"]) writeFileSync(path.join(dir, "scripts", file), readFileSync(new URL(file, import.meta.url)));
+    for (const file of ["scripts/states-shards.mjs", "scripts/e2e-timings.mjs", ".github/ci-proof.cjs"]) cpSync(new URL(`../${file}`, import.meta.url), path.join(dir, file));
     writeFileSync(path.join(dir, "bin/npm"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$TEST_ARGS"\nprintf "%s" "$TEST_REPORT" > "$PLAYWRIGHT_JSON_OUTPUT_FILE"\n', { mode: 0o755 });
     writeFileSync(path.join(dir, "e2e/mock/timings.json"), JSON.stringify({ ...settings, budgetSeconds: estimatedSeconds, timeoutSeconds }));
     writeFileSync(path.join(dir, ".cache/plan.json"), JSON.stringify(planned));
@@ -434,37 +434,43 @@ const zip = data => {
   return result.stdout;
 };
 const config = { apiUrl: "https://api.github.com", repository: "example/console", repositoryId: 1, token: "test-token" };
+// Producing runs are successful CI pushes on dev's history unless `runs` overrides a run's fields.
+const devRun = (url, runs = {}) => {
+  if (url.endsWith("/branches/dev")) return Response.json({ commit: { sha: "tip" } });
+  if (url.includes("/compare/")) return Response.json({ status: url.includes("/compare/unmerged...") ? "diverged" : "ahead" });
+  const id = url.match(/\/actions\/runs\/(\d+)$/)?.[1];
+  return id && Response.json({ id: Number(id), path: ".github/workflows/ci.yml", event: "push", status: "completed", conclusion: "success",
+    head_branch: "dev", head_sha: `sha${id}`, repository: { id: 1 }, head_repository: { id: 1 }, ...runs[id] });
+};
 
 test("CI restores the latest compatible unexpired dev artifact across pages", async () => {
   const { restoreDevTimings } = await load();
   const compatible = { workers: settings.workers, specs: { "mock/a.spec.ts": { seconds: 12, tests: 3 } } };
   const pages = [Array.from({ length: 100 }, (_, i) => artifact(i + 10, { expired: true })), [
-    artifact(8, { workflow_run: { head_branch: "feature", repository_id: 1, head_repository_id: 1 } }),
-    artifact(7, { workflow_run: { head_branch: "dev", repository_id: 1, head_repository_id: 9 } }),
-    artifact(6, { workflow_run: { head_branch: "dev" } }),
-    artifact(5, { workflow_run: { head_branch: "dev", repository_id: 9, head_repository_id: 1 } }),
+    artifact(8, { workflow_run: { id: 8, head_branch: "feature" } }), artifact(7), artifact(6), artifact(5),
     artifact(2), artifact(4), artifact(3),
   ]];
+  const runs = { 7: { head_repository: { id: 9 } }, 6: { event: "pull_request" }, 5: { head_sha: "unmerged" } };
   const requests = [];
   const request = async (url, options) => {
     requests.push(url);
     assert.equal(options.headers.Authorization, "Bearer test-token");
     const match = url.match(/artifacts\/(\d+)\/zip$/);
-    return new Response(match ? zip({ ...compatible, workers: Number(match[1]) === 4 ? 1 : settings.workers })
+    return devRun(url, runs) ?? new Response(match ? zip({ ...compatible, workers: Number(match[1]) === 4 ? 1 : settings.workers })
       : JSON.stringify({ artifacts: pages[Number(new URL(url).searchParams.get("page")) - 1] }));
   };
   const restored = await restoreDevTimings(settings, config, request);
   assert.equal(restored.runId, 3);
   assert.deepEqual(restored.timings, compatible);
-  assert.deepEqual(requests.slice(2).map(url => url.match(/artifacts\/(\d+)\/zip$/)[1]), ["4", "3"]);
+  assert.deepEqual(requests.filter(url => url.endsWith("/zip")).map(url => url.match(/artifacts\/(\d+)\/zip$/)[1]), ["4", "3"]);
   const empty = async () => new Response(JSON.stringify({ artifacts: [] }));
   assert.deepEqual((await restoreDevTimings(settings, config, empty)).timings, { workers: settings.workers, specs: {} });
   await assert.rejects(restoreDevTimings(settings, config, async () => new Response("denied", { status: 403 })), /STATES_TIMINGS_FETCH.*403/);
   await assert.rejects(restoreDevTimings(settings, config, async () => new Response("{}")), /STATES_TIMINGS_FETCH.*missing artifact list/);
-  const measurements = data => async url => new Response(url.endsWith("/zip") ? zip(data) : JSON.stringify({ artifacts: [artifact(1)] }));
+  const measurements = data => async url => devRun(url) ?? new Response(url.endsWith("/zip") ? zip(data) : JSON.stringify({ artifacts: [artifact(1)] }));
   for (const specs of [undefined, {}, { "../bad": { seconds: 1, tests: 1 } }])
     await assert.rejects(restoreDevTimings(settings, config, measurements({ ...compatible, specs })), /STATES_INVALID_TIMINGS/);
-  const brokenArchive = async url => new Response(url.endsWith("/zip") ? "broken zip" : JSON.stringify({ artifacts: [artifact(1)] }));
+  const brokenArchive = async url => devRun(url) ?? new Response(url.endsWith("/zip") ? "broken zip" : JSON.stringify({ artifacts: [artifact(1)] }));
   await assert.rejects(restoreDevTimings(settings, config, brokenArchive), /STATES_TIMINGS_FETCH.*archive/);
 });
 
@@ -576,9 +582,17 @@ test("browser install reports elapsed seconds on success and failure without hid
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("a dev push that failed after publishing still supplies its measurements", async () => {
+  const { restoreDevTimings } = await load();
+  const measured = { workers: settings.workers, specs: { "mock/a.spec.ts": { seconds: 12, tests: 3 } } };
+  const request = async url => devRun(url, { 2: { conclusion: "failure" }, 3: { conclusion: "failure", event: "pull_request" } })
+    ?? new Response(url.endsWith("/zip") ? zip(measured) : JSON.stringify({ artifacts: [artifact(3), artifact(2), artifact(1)] }));
+  assert.equal((await restoreDevTimings(settings, config, request)).runId, 2);
+});
+
 test("restoration scales the newest trusted artifact when workers change", async () => {
   const { restoreDevTimings, planStates } = await load();
-  const request = async url => new Response(url.endsWith("/zip")
+  const request = async url => devRun(url) ?? new Response(url.endsWith("/zip")
     ? zip({ workers: 4, specs: { "mock/a.spec.ts": { seconds: 12, tests: 3 } } })
     : JSON.stringify({ artifacts: [artifact(2), artifact(1)] }));
   const restored = await restoreDevTimings(settings, config, request);
@@ -586,7 +600,7 @@ test("restoration scales the newest trusted artifact when workers change", async
   assert.deepEqual(restored.timings, { workers: 2, specs: { "mock/a.spec.ts": { seconds: 24, tests: 3 } } });
   assert.equal(planStates(report({ "mock/a.spec.ts": 3 }), settings, restored.timings).shards[0].seconds, 64);
   for (const workers of [0, -1, 1.5, "4"]) {
-    await assert.rejects(restoreDevTimings(settings, config, async url => new Response(url.endsWith("/zip")
+    await assert.rejects(restoreDevTimings(settings, config, async url => devRun(url) ?? new Response(url.endsWith("/zip")
       ? zip({ workers, specs: { "mock/a.spec.ts": { seconds: 12, tests: 3 } } })
       : JSON.stringify({ artifacts: [artifact(1)] }))), /STATES_INVALID_TIMINGS/);
   }

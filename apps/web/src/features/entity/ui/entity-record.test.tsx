@@ -6,6 +6,8 @@ import { beforeAll, expect, test } from "vitest";
 import type { LegalEntity } from "@console/api/pending";
 import { loadCatalog, t } from "@console/i18n";
 import { checklistRef } from "../../../reference/entity/api";
+import { myAccessQuery } from "../../../reference/authz/api";
+import { settingsQuery } from "../../../reference/settings/api";
 import { entityHistoryQuery, entityQuery } from "../api";
 import { EntityRecord } from "./entity-record";
 import { RegistryCard } from "./record-registry-card";
@@ -21,8 +23,11 @@ test.each(["overview", "certificates", "workplaces", "officers", "documents", "h
     regular_workers: { value: null, status: "HOLD", live_headcount: 0, missing: [], basis: "LSA_DECREE_7_2" },
   } as unknown as LegalEntity;
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+  await client.fetchQuery({ ...settingsQuery, queryFn: async () => ({ items: [] }) });
+  await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ phase: "OPERATING" as const }) });
   await client.fetchQuery({ ...entityQuery(entity.id), queryFn: async () => entity });
   await client.fetchQuery({ ...entityHistoryQuery(entity.id), queryFn: async () => ({ items: [] }) });
+  await client.fetchQuery({ ...checklistRef, queryFn: async () => ({ phase: "OPERATING" as const }) });
   const root = createRootRoute();
   const app = createRoute({ getParentRoute: () => root, id: "app" });
   // Browser coverage exercises the production search validator and URL writes.
@@ -50,7 +55,7 @@ test.each(["overview", "certificates", "workplaces", "officers", "documents", "h
   client.clear();
 });
 
-test("a pending phase preserves the record and reserves its disabled actions until the phase arrives", async () => {
+test.each(["phase", "access", "settings"])("a pending %s keeps certificate controls loading until the receipt can be placed", async (pendingRead) => {
   const entity = {
     id: "entity", biz_kind: "CORPORATION", can_manage: true,
     current: { name: "주식회사 누리", representatives: [], directors: [] },
@@ -58,6 +63,9 @@ test("a pending phase preserves the record and reserves its disabled actions unt
     regular_workers: { value: null, status: "HOLD", live_headcount: 0, missing: [], basis: "LSA_DECREE_7_2" },
   } as unknown as LegalEntity;
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+  if (pendingRead !== "settings") await client.fetchQuery({ ...settingsQuery, queryFn: async () => ({ items: [] }) });
+  if (pendingRead !== "access") await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ phase: "OPERATING" as const }) });
+  if (pendingRead !== "phase") await client.fetchQuery({ ...checklistRef, queryFn: async () => ({ phase: "OPERATING" as const }) });
   await client.fetchQuery({ ...entityQuery(entity.id), queryFn: async () => entity });
   await client.fetchQuery({ ...entityHistoryQuery(entity.id), queryFn: async () => ({ items: [] }) });
   const root = createRootRoute();
@@ -67,18 +75,16 @@ test("a pending phase preserves the record and reserves its disabled actions unt
   await router.load();
   const markup = () => renderToStaticMarkup(<QueryClientProvider client={client}><RouterContextProvider router={router}><EntityRecord id={entity.id} /></RouterContextProvider></QueryClientProvider>);
   const pending = markup();
-  expect(pending).toContain(t("entityRecord.tabs"));
-  expect(pending).toContain(t("entityRecord.registry.title"));
-  expect(pending).not.toContain('data-read-layout="list"');
+  expect(pending).toContain('data-read-layout="record"');
+  expect(pending).not.toContain('role="tablist"');
   const actions = (html: string) => [
     html.match(/<a\b[^>]*>[\s\S]*?<\/a>/g)?.find(tag => tag.includes(t("entityRecord.action.addWorkplace"))),
     html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)?.find(tag => tag.includes(t("entityRecord.action.editByCert"))),
   ];
-  const [add, edit] = actions(pending);
-  expect(add).toContain('aria-disabled="true"');
-  expect(add).not.toContain('href=');
-  expect(edit).toContain('disabled=""');
+  expect(actions(pending)).toEqual([undefined, undefined]);
   await client.fetchQuery({ ...checklistRef, queryFn: async () => ({ phase: "OPERATING" as const }) });
+  await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ phase: "OPERATING" as const }) });
+  await client.fetchQuery({ ...settingsQuery, queryFn: async () => ({ items: [] }) });
   for (const action of actions(markup())) {
     expect(action).toBeDefined();
     expect(action).not.toContain('disabled=');

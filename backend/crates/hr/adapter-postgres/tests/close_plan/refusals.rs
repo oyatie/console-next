@@ -189,12 +189,5 @@ async fn a_bad_case_rule_retains_every_line_refusal_and_rolls_back(owner: PgPool
         .collect();
     assert_eq!(actual, expected);
     assert_eq!(nothing_written(&owner).await, (0, 0, 0, 0));
-    assert_eq!(
-        queries
-            .statements()
-            .iter()
-            .filter(|sql| sql.contains("SELECT filing_rule,trigger_event_kinds"))
-            .count(),
-        1
-    );
+    assert_eq!(queries.statutory_register_reads().len(), 1);
 }

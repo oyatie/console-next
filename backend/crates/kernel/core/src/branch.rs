@@ -57,6 +57,11 @@ impl BranchScope {
     }
 
     #[must_use]
+    pub fn is_all(&self) -> bool {
+        matches!(self, Self::All)
+    }
+
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         match self {
             Self::All => false,
