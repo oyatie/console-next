@@ -121,6 +121,9 @@ const SLICE_FILE = /^(?:(?:api|present)\.ts|api\/[a-z0-9-]+\.ts|[a-z0-9-]+\.test
 const count = (src, re) => src.match(re)?.length ?? 0;
 for (const f of files) {
   const src = readFileSync(f, "utf8");
+  if (/\bdata-route-preview\b|\broutePreview\b/.test(src) && !f.startsWith(`${APP}/gallery/`)
+    && f !== `${APP}/lib/react/route-href.ts` && !/\.test\.tsx?$/.test(f))
+    problems.push(`${f}: route previews belong only in gallery/`);
   for (const [, spec] of src.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*["']([^"']+)["']/g)) {
     if (!spec.startsWith(".")) continue;
     const to = resolve(f, spec);

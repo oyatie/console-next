@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test } from "@playwright/test";
 import { expectAxe } from "../a11y";
 
 for (const width of [1440, 390]) {
   test(`status vocabulary remains readable and accessible at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
-    await page.goto("/_gallery");
+    await mockNavigate(page, "/_gallery");
     // The gallery's sheet example opens on phones.
     if (width === 390) {
       await expect(page.getByRole("dialog")).toBeVisible();

@@ -33,6 +33,9 @@ mod request_register;
 mod response;
 mod snooze;
 pub(crate) mod tabs;
+#[cfg(all(test, feature = "test-postgres", feature = "todos"))]
+#[path = "../tests/action_inbox/todo_sources.rs"]
+mod todo_source_tests;
 use error::InboxError;
 
 #[cfg(any(
