@@ -5,7 +5,7 @@ import type { Workplace, WorkplaceKind } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { EntityError } from "./entity-error";
-import { QueryState } from "../../../lib/react/query-state";
+import { ReadInSheet } from "./fresh-entity";
 import { STRUCTURE_READS } from "../../../reference/org/api";
 import { Button } from "../../../ui/button/button";
 import { Sheet } from "../../../ui/sheet/sheet";
@@ -21,7 +21,7 @@ import css from "../../../reference/org/ui/structure.module.css";
  */
 export function WorkplaceKindSheet({ w, onClose, onManage }: { w: Workplace; onClose: () => void; onManage: () => void }) {
   const kinds = useQuery(kindsQuery);
-  return <QueryState q={kinds}>{(d) => <Body w={w} kinds={d.items} onClose={onClose} onManage={onManage} />}</QueryState>;
+  return <ReadInSheet q={kinds} title={t("workplace.kind.title", { name: workplaceName(w) })} onClose={onClose}>{(d) => <Body w={w} kinds={d.items} onClose={onClose} onManage={onManage} />}</ReadInSheet>;
 }
 
 function Body({ w: initialWorkplace, kinds, onClose, onManage }: { w: Workplace; kinds: readonly WorkplaceKind[]; onClose: () => void; onManage: () => void }) {

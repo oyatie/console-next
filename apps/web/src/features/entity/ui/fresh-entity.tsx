@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { LegalEntity } from "@console/api/pending";
 import { freshOnOpen } from "../../../lib/query";
 import { QueryState } from "../../../lib/react/query-state";
-import { queryView } from "../../../lib/react/query-view";
+import { queryView, type ReadState } from "../../../lib/react/query-view";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { entityQuery } from "../api";
 
@@ -14,6 +14,10 @@ import { entityQuery } from "../api";
  */
 export function FreshEntity({ id, title, onClose, children }: { id: string; title: string; onClose: () => void; children: (e: LegalEntity) => ReactNode }) {
   const q = freshOnOpen(useQuery({ ...entityQuery(id), refetchOnMount: "always" }));
+  return <ReadInSheet q={q} title={title} onClose={onClose}>{children}</ReadInSheet>;
+}
+
+export function ReadInSheet<T>({ q, title, onClose, children }: { q: ReadState<T>; title: string; onClose: () => void; children: (data: T) => ReactNode }) {
   const view = queryView(q);
   const read = <QueryState q={q} layout="form">{children}</QueryState>;
   // Sheet reads must not insert a page-sized placeholder beside the chart they cover.
