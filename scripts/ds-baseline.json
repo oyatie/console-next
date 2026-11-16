@@ -96,7 +96,7 @@
 "apps/web/src/features/org/ui/diff-pair.tsx": {"dsClass":1},
 "apps/web/src/features/org/ui/draft-editor.tsx": {"dsClass":1},
 "apps/web/src/features/org/ui/mini-tree.module.css": {"restyle":57},
-"apps/web/src/features/org/ui/org-change-record.tsx": {"dsClass":8},
+"apps/web/src/features/org/ui/org-change-record.tsx": {"dsClass":7},
 "apps/web/src/features/org/ui/org-change.module.css": {"restyle":20},
 "apps/web/src/features/org/ui/org-changes.tsx": {"dsClass":5},
 "apps/web/src/features/org/ui/propose.module.css": {"restyle":24},

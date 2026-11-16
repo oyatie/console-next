@@ -3,7 +3,7 @@
 //   1. Imports: features never import other features; lib/ui/reference never import upward;
 //      nothing imports routes/ (main.tsx excepted); packages never import apps.
 //   2. Data layer: query keys are derived in lib/query.ts only (`queryKey`); no cache writes
-//      (`setQueryData` / `setQueriesData`), except go-live's server-confirmed phase.
+//      (`setQueryData` / `setQueriesData`), except server-confirmed go-live phases and org decisions.
 //   3. Placement: inside a slice only {api,present}.ts, api/*.ts, *.test.ts, domain/*.ts and ui/{*.tsx,use-*.ts,*.spec.ts,*.playwright.ts}.
 //   4. Freshness loops (scripts/check-loops.mjs): no setInterval, refetchInterval or focus refetch.
 //   5. Ratchet: every `max-lines` pin in oxlint.json equals the file's current count, so a shrink
@@ -130,11 +130,12 @@ for (const f of files) {
     seen.imports.add(key);
     if (!BASELINE.imports.includes(key)) problems.push(`${key}: ${why}`);
   }
-  // Dev gallery fixtures may seed API-derived cache entries; production screens only invalidate.
+  // Confirmed decisions land with their receipt; later invalidation must not move history rows.
+  const decisionSeed = f === `${APP}/features/org/ui/change-decision.tsx` ? count(src, /qc\.setQueryData\(changeQuery\(d\.id\)\.queryKey, detail\)/g) : 0;
   const fixture = f.endsWith(".gallery.tsx");
-  const keys = fixture || f === `${APP}/lib/query.ts` ? 0 : count(src, /\bqueryKey\b/g);
+  const keys = fixture || f === `${APP}/lib/query.ts` ? 0 : count(src, /\bqueryKey\b/g) - decisionSeed;
   if (keys) seen.queryKey[f] = keys;
-  const writes = fixture ? 0 : count(src, /\.set(?:Query|Queries)Data\(/g) - (f === GO_LIVE ? 1 : 0);
+  const writes = fixture ? 0 : count(src, /\.set(?:Query|Queries)Data\(/g) - (f === GO_LIVE ? 1 : 0) - decisionSeed;
   if (writes) seen.cacheWrites[f] = writes;
   const loops = loopProblems(f, src);
   if (loops.length) seen.loops.add(f);

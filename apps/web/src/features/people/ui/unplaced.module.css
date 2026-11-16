@@ -41,7 +41,6 @@
 .suggestion small { font-size: var(--text-xs); color: var(--steel); }
 .row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .keys { margin: auto 0 0; font-size: var(--text-xs); color: var(--steel); }
-.dock { position: fixed; bottom: var(--space-5); left: calc(var(--space-6) * 8); z-index: 15; max-width: var(--card-w); }
 /* A long closed action (the remembered link) wraps inside the side pane instead of running past it (tripled: wins over
    the closed look's nowrap whatever the stylesheet order). */
 .wrapBtn.wrapBtn.wrapBtn { max-width: 100%; height: auto; min-height: var(--target); white-space: normal; text-align: left; }

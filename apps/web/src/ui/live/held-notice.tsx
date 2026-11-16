@@ -3,6 +3,7 @@ import { t } from "@console/i18n";
 import { liveHeld, showHeld } from "../../lib/live/live";
 import { ROW_SELECTOR } from "../long-table/row-keys";
 import { Button } from "../button/button";
+import { StatusDock } from "../status-dock/status-dock";
 import s from "./live.module.css";
 
 let visibleLists = 0;
@@ -48,9 +49,10 @@ export function HeldNotice({ placement = "float" }: { placement?: "float" | "lis
     }), 0);
   };
   if (placement === "float" && (visible || !count)) return null;
-  return (
+  const content = (
     <div ref={notice} className={placement === "list" ? s.list : `notice ${s.held}`} role="status">
       {!!count && <Button variant="ghost" className={placement === "list" ? s.listChip : undefined} onClick={() => void apply()}>{t("live.list.new_rows", { count })}</Button>}
     </div>
   );
+  return placement === "list" ? content : <StatusDock>{content}</StatusDock>;
 }

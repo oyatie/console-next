@@ -154,6 +154,14 @@ describe("the current state as the input a dated revision sends", () => {
     expect(workplaceInput(e, wp({ current: undefined }))).toBeNull();
   });
 
+  test("edits preserve the recorded address link independently of certificate custody", () => {
+    const e = entity();
+    const own = wp({ current: { ...wpState, same_address_as_registration: false } });
+    expect(workplaceInput(e, own)).toMatchObject({ same_address_as_registration: false, address: hq });
+    const linked = wp({ id: "w2", current: { ...wpState, same_address_as_registration: true } });
+    expect(workplaceInput(e, linked)).toMatchObject({ same_address_as_registration: true, address: null });
+  });
+
   test("an exempt or abstract answer survives every full-state revision", () => {
     const reason = { code: "REMOTE_TELEWORK", label: "주소 없는 원격 근무지 묶음", version: "2026-10-22" };
     const exempt = wp({

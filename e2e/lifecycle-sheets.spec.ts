@@ -73,7 +73,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   const cancel = sheet(admin, "전보 예약 취소");
   await cancel.getByRole("textbox", { name: /^취소 사유/ }).fill("휴직이 먼저 확정됨");
   await c.click(cancel.getByRole("button", { name: "전보 1명 취소" }));
-  await c.click(history.getByRole("button", { name: "휴직 처리 작성으로 돌아가기" }));
+  await c.click(admin.getByRole("button", { name: "휴직 처리 작성으로 돌아가기" }));
   await expect(leave).toContainText("작성하던 내용을 불러왔습니다");
   await expect(reasonBox(leave)).toHaveValue("개인 사정");
   await c.click(leave.getByRole("button", { name: "휴직 1명 적용", exact: true }));
@@ -129,7 +129,7 @@ test("lifecycle sheets: a lost response freezes the sheet until it is checked, a
   await expectAccessible(admin, "lifecycle: a lost response being checked");
   await admin.unroute(/\/lifecycle-events$/);
   await transfer.getByRole("button", { name: "기록됐는지 확인" }).click();
-  await expect(history.getByRole("status").filter({ hasText: "유실이님을 채용팀으로 전보했습니다" })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: "유실이님을 채용팀으로 전보했습니다" })).toBeVisible();
   await expect(history.getByRole("listitem").filter({ hasText: "응답 유실 확인" })).toHaveCount(1);
   expect(writes.count()).toBe(1);
 
@@ -165,6 +165,6 @@ test("lifecycle sheets: a lost response freezes the sheet until it is checked, a
   await loseNext(/\/cancel$/);
   await cancel.getByRole("button", { name: "전보 1명 취소" }).click();
   await cancel.getByRole("button", { name: "기록됐는지 확인" }).click();
-  await expect(history.getByRole("status").filter({ hasText: "유실이님의 전보 예약을 취소했습니다" })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: "유실이님의 전보 예약을 취소했습니다" })).toBeVisible();
   await expect(cancel).toBeHidden();
 });
