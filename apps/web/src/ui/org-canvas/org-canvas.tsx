@@ -58,6 +58,14 @@ export const OrgCanvas = forwardRef<CanvasHandle, {
     return { ...barInsets(v, top, bottom), corner: corner?.height ? { x: corner.left - v.left, y: corner.top - v.top, w: corner.width, h: corner.height } : undefined };
   };
   const { view, vp, fit, zoomBy, panBy, reveal, centre, relayout } = useView(viewport, p.size, p.resetKey, insets, p.keep);
+  useLayoutEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    // React's wheel listener is passive; cancel native ancestor scrolling after the canvas handles the gesture.
+    const preventScroll = (event: WheelEvent) => event.preventDefault();
+    el.addEventListener("wheel", preventScroll, { passive: false });
+    return () => el.removeEventListener("wheel", preventScroll);
+  }, []);
   const bars = useRef(relayout);
   useLayoutEffect(() => {
     bars.current = () => {

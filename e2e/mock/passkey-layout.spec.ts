@@ -8,6 +8,7 @@ import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
 import { AT, authz, token, user } from "./fixtures";
+import { assertionTimeout } from "./playwright.config";
 
 test("consent helper waits for fresh documents before accepting them", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
@@ -16,8 +17,8 @@ test("consent helper waits for fresh documents before accepting them", async ({ 
     ...token(), access_token: `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`, requires_passkey_setup: true, privacy_consent_accepted: false,
   } });
   await mockRoute(page, "get", "/api/v1/onboarding/terms", async () => {
-    // Exceed the ordinary assertion budget to reproduce a loaded server, within the unchanged test budget.
-    await new Promise(resolve => setTimeout(resolve, 6_000));
+    // Stay pending beyond the configured assertion deadline, with one timer tick of margin.
+    await new Promise(resolve => setTimeout(resolve, assertionTimeout + 1));
     const terms = { version: "consent-test", sha256: "a".repeat(64), body: "이용 약관" };
     return { status: 200, json: { ...terms, privacy: { ...terms, title: "개인정보 처리 안내", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false } } };
   });

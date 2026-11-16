@@ -120,6 +120,12 @@ for (const width of [1440, 390]) {
         await workplace.click();
         const edge = await page.getByRole("navigation", { name: t("structure.crumbs"), exact: true }).evaluate(el => el.closest('[class*="top"]')!.getBoundingClientRect().bottom + 8);
         const bounds = (await workplace.boundingBox())!;
+        // The canvas owns wheel gestures, including their native scroll default.
+        expect(await workplace.evaluate(el => {
+          const wheel = new WheelEvent("wheel", { bubbles: true, cancelable: true });
+          el.dispatchEvent(wheel);
+          return wheel.defaultPrevented;
+        })).toBe(true);
         await workplace.dispatchEvent("wheel", { deltaY: bounds.y - edge });
         await expect.poll(async () => Math.abs((await workplace.boundingBox())!.y - edge)).toBeLessThan(1);
         await expect(toolbar.getByRole("button").first()).toBeInViewport();

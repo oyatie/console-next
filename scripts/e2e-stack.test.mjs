@@ -85,7 +85,7 @@ test("WebKit PR coverage shares Home without adding a job or extending its timeo
   assert.equal(home["timeout-minutes"], 45);
   assert.match(home.if, /github.event_name != 'push'/);
   const install = home.steps.find(s => s.name === "WebKit for focused PR coverage");
-  assert.equal(install?.if, undefined);
+  assert.equal(install?.if, "${{ !cancelled() }}");
   assert.equal(install?.run, "npx playwright install --with-deps webkit");
   for (const name of ["Focused WebKit states", "Solo journey on WebKit"]) {
     const step = home.steps.find(s => s.name === name);

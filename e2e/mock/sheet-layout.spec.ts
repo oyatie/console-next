@@ -10,13 +10,14 @@ import { moveDetail } from "./lifecycle-sheets";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
+import { assertionTimeout } from "./playwright.config";
 
 test("grade helper waits for promotion reasons before returning the editor", async ({ page }) => {
   const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
   await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { items: [], can_manage: true } });
   await mockRoute(page, "get", "/api/v1/reason-codes", async request => {
     // This read starts when the change editor opens, after the personnel card is ready.
-    await new Promise(resolve => setTimeout(resolve, 6_000));
+    await new Promise(resolve => setTimeout(resolve, assertionTimeout + 1));
     return { status: 200, json: { domain: new URL(request.url()).searchParams.get("domain")!, items: [] } };
   });
   await page.goto(`/people/${id(4000)}`);

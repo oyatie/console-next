@@ -604,6 +604,7 @@ jobs:
           if-no-files-found: error
 
       - name: WebKit for focused PR coverage
+        if: ${{ !cancelled() }}
         run: npx playwright install --with-deps webkit
       - name: Focused WebKit states
         if: ${{ !cancelled() }}
