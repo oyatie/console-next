@@ -118,7 +118,9 @@ export type EventStream = {
   close(): void;
 };
 
-/** Opens the stream and keeps it open: full-jitter backoff, dead-connection abort, resume by `Last-Event-ID`. */
+/** Opens the stream and keeps it open: full-jitter backoff, dead-connection abort, resume by `Last-Event-ID`.
+ * Bypasses the request deadline in client.ts: the settings-owned heartbeat watchdog bounds stream silence.
+ */
 export function openEventStream(o: StreamOptions): EventStream {
   const cursor: Cursor = { lastEventId: o.lastEventId ?? "" };
   let snap: StreamSnapshot = { state: "connecting", since: Date.now(), partial: [] };

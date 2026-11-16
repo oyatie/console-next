@@ -15,7 +15,7 @@ test("a listed toggle is released; anything else is not; the list is read once, 
   const m = await load(async () => Response.json({ enabled: ["new-payslip", 7] }));
   expect(m.released("new-payslip")).toBe(true);
   expect(m.released("other")).toBe(false);
-  expect(m.calls).toEqual([["/api/v1/release-toggles", { credentials: "omit" }]]);
+  expect(m.calls).toEqual([["/api/v1/release-toggles", { credentials: "omit", signal: expect.any(AbortSignal) }]]);
   m.released("new-payslip");
   expect(m.calls).toHaveLength(1);
 });
