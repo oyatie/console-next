@@ -200,7 +200,7 @@ aside.panel { position: sticky; top: 0; }
 .state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-5); }
 .state__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
 .state__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.state__actions > * { flex: none; }
+.state__actions > * { flex: none; max-width: 100%; }
 
 /* ── auth ──────────────────────────────────────────── */
 .auth { min-height: 100%; display: grid; place-items: center; padding: var(--space-4); }

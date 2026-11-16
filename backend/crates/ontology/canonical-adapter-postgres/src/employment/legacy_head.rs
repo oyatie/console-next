@@ -55,6 +55,20 @@ pub async fn insert_employee_record(
     org_id: Uuid,
     record: NewEmployeeRecord<'_>,
 ) -> Result<(), sqlx::Error> {
+    insert_employee_records(tx, org_id, &[record]).await
+}
+
+/// Inserts registration heads in one statement; callers own authorization and rollback.
+/// Home-branch authority remains with the post-commit routing command.
+/// Number order keeps the uniqueness trigger's locks consistent across overlapping batches.
+pub async fn insert_employee_records(
+    tx: &mut Transaction<'_, Postgres>,
+    org_id: Uuid,
+    records: &[NewEmployeeRecord<'_>],
+) -> Result<(), sqlx::Error> {
+    if records.is_empty() {
+        return Ok(());
+    }
     sqlx::query(
         r#"INSERT INTO employees (
             id, org_id, company, name, employee_number, org_unit, position,
@@ -62,21 +76,28 @@ pub async fn insert_employee_record(
             source_row, source_key, raw_row, source_metadata,
             identity_resolution_strategy, identity_resolution_confidence,
             identity_review_required, identity_name_only_merge, hire_on
-        ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, 'console', 'people', 1,
-            $9, '{}'::jsonb, '{}'::jsonb, 'employee_number', 'high', FALSE, FALSE, $10::DATE
-        )"#,
+        ) SELECT id, $1, company, name, employee_number, org_unit, position,
+            site, 'console', 'people', 1, 'console:' || employee_number,
+            '{}'::jsonb, '{}'::jsonb, 'employee_number', 'high', FALSE, FALSE, hire_date::DATE
+          FROM unnest($2::uuid[], $3::text[], $4::text[], $5::text[], $6::text[],
+                      $7::text[], $8::text[], $9::text[])
+          AS input(id,company,name,employee_number,org_unit,position,site,hire_date)
+          ORDER BY employee_number,id"#,
     )
-    .bind(record.employee_id)
     .bind(org_id)
-    .bind(record.company)
-    .bind(record.name)
-    .bind(record.employee_number)
-    .bind(record.org_unit)
-    .bind(record.position)
-    .bind(record.worksite_name)
-    .bind(format!("console:{}", record.employee_number))
-    .bind(record.hire_date)
+    .bind(records.iter().map(|r| r.employee_id).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.company).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.name).collect::<Vec<_>>())
+    .bind(
+        records
+            .iter()
+            .map(|r| r.employee_number)
+            .collect::<Vec<_>>(),
+    )
+    .bind(records.iter().map(|r| r.org_unit).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.position).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.worksite_name).collect::<Vec<_>>())
+    .bind(records.iter().map(|r| r.hire_date).collect::<Vec<_>>())
     .execute(tx.as_mut())
     .await
     .map(|_| ())

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { loadCatalog, t } from "@console/i18n";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
@@ -307,7 +308,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await test.info().attach("peek", { body: await page.screenshot({ path: test.info().outputPath("peek.png"), fullPage: true }), contentType: "image/png" });
     await peek.getByRole("button", { name: width < 640 ? t("common.back") : t("roster.panel.close"), exact: true }).click();
     await expect(peek).toBeHidden();
-    await page.goto("/_gallery?entry=roster-saved-views");
+    await mockNavigate(page, "/_gallery?entry=roster-saved-views");
     await open();
     await expect(sheet.getByRole("button", { name: "휴직 확인", exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);

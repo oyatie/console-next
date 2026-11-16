@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -203,7 +204,7 @@ test("org: every bottom-bar button stays inside the canvas and clickable at 390p
 test("org: the gallery previews the empty state, count basis and keyboard help @ui-state", async ({ page }) => {
   const fixture = await mockScreen(page, screens[2], "populated");
   try {
-    await page.goto("/_gallery?entry=structure-copy");
+    await mockNavigate(page, "/_gallery?entry=structure-copy");
     await expect(page.getByRole("heading", { name: t("structure.first.title"), exact: true })).toBeVisible();
     await page.getByRole("button", { name: t("structure.headcount.explain"), exact: true }).click();
     await expect(page.getByText(t("structure.headcount.basis"), { exact: true })).toBeVisible();

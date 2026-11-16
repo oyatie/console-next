@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { authPost, configure, renewDelay, RENEW_LEAD_MS, session, type Platform, type TokenPair } from "./index";
+import { authPost, configure, DEFAULT_REQUEST_TIMEOUT_MS, renewDelay, RENEW_LEAD_MS, session, type Platform, type TokenPair } from "./index";
 import { noteServerDate } from "./session";
 
 // The access token is renewed before it expires (so the event stream, closed by the server at expiry, reopens with a
@@ -137,7 +137,7 @@ test.each(["sign-out", "switch"])("a late renewal failure after %s leaves no old
   expect(fetch).toHaveBeenCalledTimes(1);
 });
 
-test("refresh transport has a bounded timeout without timing out other auth commands", async () => {
+test("refresh and sign-in transport each have a bounded deadline", async () => {
   configure({ baseUrl: "https://console.example", passkeys, refresh: { kind: "cookie" } });
   const signal = new AbortController().signal;
   const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(signal);
@@ -145,9 +145,11 @@ test("refresh transport has a bounded timeout without timing out other auth comm
   vi.stubGlobal("fetch", fetch);
   try {
     await authPost("/api/v1/auth/token/refresh");
-    expect(timeout).toHaveBeenCalledWith(30_000);
-    expect(fetch.mock.calls[0]?.[1]).toMatchObject({ signal });
+    expect(timeout).toHaveBeenCalledWith(DEFAULT_REQUEST_TIMEOUT_MS);
+    expect(fetch.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
     await authPost("/api/v1/auth/passkey/login/start");
-    expect(fetch.mock.calls[1]?.[1]).toMatchObject({ signal: undefined });
+    expect(fetch.mock.calls[1]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(timeout).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls[1]?.[1]?.signal).not.toBe(fetch.mock.calls[0]?.[1]?.signal);
   } finally { timeout.mockRestore(); }
 });

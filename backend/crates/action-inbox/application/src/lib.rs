@@ -229,11 +229,7 @@ pub async fn list_action_inbox(
         limit,
         port.deadline_due_soon_days()?,
     );
-    for count in &mut page.attention_filters {
-        if count.key != Attention::All {
-            count.total_is_exact = count.key.is_exact(&incomplete, cursor.is_none());
-        }
-    }
+    filter::mark_exact(&mut page, &incomplete, cursor.is_none());
     if !unavailable.is_empty() {
         page.total_is_exact = false;
         for count in &mut page.attention_filters {
@@ -365,6 +361,22 @@ mod tests {
         }
     }
 
+    /// The assignee owes the request; the requester only follows it, open or sent back.
+    #[test]
+    fn a_to_do_request_is_the_assignees_turn_and_the_requesters_wait() {
+        let now = OffsetDateTime::UNIX_EPOCH;
+        for (kind, lane) in [("todo_assigned", "turn"), ("todo_requested", "waiting")] {
+            let mut source = item("todo_assigned", 1, now);
+            source.kind = kind.into();
+            source.due = Some(now);
+            let item = project_item(source, now, 7);
+            assert_eq!(item.lane, lane, "{kind}");
+            if lane == "waiting" {
+                assert_eq!(item.due_tone, "neutral", "a wait is never a deadline alarm");
+            }
+        }
+    }
+
     #[test]
     fn all_sources_are_payroll_and_governance_inclusive() {
         assert_eq!(
@@ -392,6 +404,8 @@ mod tests {
                 ActionInboxSource::GrantNotice,
                 ActionInboxSource::SupportAccess,
                 ActionInboxSource::PrivacyRequests,
+                ActionInboxSource::TodoAssigned,
+                ActionInboxSource::TodoRequested,
             ]
         );
         for source in ActionInboxSource::ALL {
@@ -1112,6 +1126,8 @@ mod tests {
             ActionInboxSource::SupportAccess => "support_access",
             ActionInboxSource::PrivacyRequests => "privacy_request",
             ActionInboxSource::HrInsurance => "insurance_filing_ACQUIRE_NPS",
+            ActionInboxSource::TodoAssigned => "todo_assigned",
+            ActionInboxSource::TodoRequested => "todo_requested",
         }
     }
 
