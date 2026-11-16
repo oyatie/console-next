@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { loadCatalog, t } from "@console/i18n";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
@@ -51,7 +52,7 @@ for (const state of Object.keys(exitCaseScreen.states) as ExitCaseState[]) for (
 test("exit board is discoverable in /_gallery @ui-state", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
   try {
-    await page.goto("/_gallery");
+    await mockNavigate(page, "/_gallery");
     await expect(page.locator("#gallery-exit-board").getByRole("region", { name: "단계별 업무", exact: true })).toBeVisible();
   } finally { await page.close(); fixture.release(); }
 });

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
@@ -193,7 +194,7 @@ for (const width of [1440, 390]) {
   test(`the gallery includes a person reference at ${width}px @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await fixture(page);
-    await page.goto("/_gallery?entry=links");
+    await mockNavigate(page, "/_gallery?entry=links");
     await expect(page.getByRole("link", { name: /1번 직원.*E-001.*한결물산.*인사부/ })).toHaveAttribute("href", "/people/gallery-person");
     await expectAxe(page, "person reference gallery");
     expect(await page.evaluate(() => document.scrollingElement!.scrollWidth - innerWidth)).toBe(0);

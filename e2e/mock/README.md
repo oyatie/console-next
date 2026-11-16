@@ -74,6 +74,8 @@ from `navigation.ts` for settled mocked navigation: it waits for `routeReady` at
 requested path or its registered redirect destination before content assertions.
 The same `page.route` mocks supply API states. Each test has a fresh browser context.
 Service workers are blocked.
+`check-e2e-policy` refuses direct gallery `goto` calls in mock, states and layout
+tests and helpers; use the shared navigation even for API-harness gallery opens.
 
 Tests that deliberately hold a chunk must start navigation without awaiting it,
 assert the shell loading state, then release the chunk and await navigation.

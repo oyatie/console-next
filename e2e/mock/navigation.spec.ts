@@ -48,9 +48,8 @@ for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
       await requested.promise;
       await expect(page.getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
       await expect(page.locator("[data-route-ready]")).toHaveCount(0);
-      // A short configured assertion must expire while navigation still waits for readiness.
-      const contentExpect = expect.configure({ timeout: 100 });
-      await expect(contentExpect(page.locator("[data-page-gallery]")).toBeVisible()).rejects.toThrow();
+      // The configured assertion deadline must expire while navigation still waits for readiness.
+      await expect(expect(page.locator("[data-page-gallery]")).toBeVisible()).rejects.toThrow();
       expect(arrived, "navigation must remain pending until the gallery commits").toBe(false);
       held.resolve();
       await navigation;
