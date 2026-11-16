@@ -60,7 +60,8 @@ test("attendance starts its phase read while its screen chunk is held", async ({
 });
 
 for (const search of [undefined, "", `&wp=${id(4)}&unit=${id(5)}`]) {
-  test(`the month read overlaps the attendance chunk and is shared on mount ${search ?? "default"}`, async ({ page }) => {
+  test(`the month read stays behind the attendance chunk and runs once on mount ${search ?? "default"}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
     const fixture = await mockScreen(page, attendanceBoardScreens[0], "empty");
     const held = Promise.withResolvers<void>();
     const requested = Promise.withResolvers<void>();
@@ -77,13 +78,14 @@ for (const search of [undefined, "", `&wp=${id(4)}&unit=${id(5)}`]) {
     try {
       await page.goto(search === undefined ? "/attendance" : `${attendanceBoardScreens[0].path}${search}`, { waitUntil: "commit" });
       await requested.promise;
-      await expect.poll(() => reads.length, { message: "the month read must not wait for the attendance chunk" }).toBe(1);
-      expect(reads[0]!.searchParams.get("month")).toBe(search === undefined ? todayKst().slice(0, 7) : "2026-10");
-      expect(reads[0]!.searchParams.get("workplace_id")).toBe(search ? id(4) : null);
-      expect(reads[0]!.searchParams.get("unit_id")).toBe(search ? id(5) : null);
+      await expect(page.getByRole("button", { name: t("shell.menu"), exact: true })).toBeVisible();
+      expect(reads, "the month read belongs to the lazy attendance screen").toHaveLength(0);
       held.resolve();
       await routeReady(page);
       expect(reads).toHaveLength(1);
+      expect(reads[0]!.searchParams.get("month")).toBe(search === undefined ? todayKst().slice(0, 7) : "2026-10");
+      expect(reads[0]!.searchParams.get("workplace_id")).toBe(search ? id(4) : null);
+      expect(reads[0]!.searchParams.get("unit_id")).toBe(search ? id(5) : null);
       expect(fixture.unexpected).toEqual([]);
     } finally {
       held.resolve();

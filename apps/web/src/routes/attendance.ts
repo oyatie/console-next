@@ -1,10 +1,7 @@
 import { readRequirement } from "./route-reads";
 import { createElement } from "react";
-import { usePrefetchInfiniteQuery } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import type { AttendanceSearch } from "../features/attendance/ui/attendance-page";
-import { monthGridPages } from "../features/attendance/api/month";
-import { todayKst } from "../lib/pure/today";
 import { app, screen, str } from "./app";
 
 const VIEWS = ["calendar", "types", "crews", "holidays", "public"] as const;
@@ -19,12 +16,6 @@ const Issues = lazyRouteComponent(screen(load), "IssuesPage");
 const Close = lazyRouteComponent(screen(load), "ClosePage");
 const Overtime = lazyRouteComponent(screen(load), "OvertimePage");
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-
-function MonthScreen({ search }: { search: AttendanceSearch }) {
-  // Share the monthly read with the screen while its chunk is still downloading.
-  usePrefetchInfiniteQuery(monthGridPages(search.month ?? todayKst().slice(0, 7), search.wp, search.unit));
-  return createElement(Month);
-}
 
 // attendance (decision #22): the tab (month grid by default, day board, work schedule), scope, month or day and an open person card live in
 // the URL so a link reopens the same view.
@@ -48,8 +39,7 @@ const attendance = createRoute({
   }),
   component: () => {
     const search = attendance.useSearch();
-    if (!search.person && (!search.tab || search.tab === "month")) return createElement(MonthScreen, { search });
-    return createElement(search.person ? Person : search.tab === "issues" ? Issues : search.tab === "close" ? Close : (search.tab === "overtime" || search.tab === "week") ? Overtime : search.tab === "schedule" ? Schedule : Day);
+    return createElement(search.person ? Person : search.tab === "issues" ? Issues : search.tab === "close" ? Close : (search.tab === "overtime" || search.tab === "week") ? Overtime : search.tab === "schedule" ? Schedule : search.tab === "day" ? Day : Month);
   },
 });
 

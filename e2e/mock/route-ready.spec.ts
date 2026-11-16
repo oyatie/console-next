@@ -36,7 +36,6 @@ for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
     try {
       await page.goto(screen.path);
       await requested;
-      await primary;
       await page.waitForFunction(() => {
         const reads = (window as unknown as { reads: { active: number; started: boolean } }).reads;
         return reads.started && reads.active === 0;
@@ -45,6 +44,7 @@ for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
       await expect(page.locator('main [data-read-layout="list"]:visible')).toBeVisible();
       await expect(page.locator("[data-route-ready]")).toHaveCount(0);
       chunk.resolve();
+      await primary;
       await expect(page.locator("[data-route-ready]")).toHaveCount(0);
       fixture.release();
       await routeReady(page);
