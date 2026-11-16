@@ -59,7 +59,7 @@ test("an aborted screen never replays after signing in", async () => {
   const refused = result.then((response) => ({ response }), (error: unknown) => ({ error }));
   await vi.waitFor(() => expect(session.lost).toBe(true));
   controller.abort();
-  expect(await refused).toMatchObject({ error: { status: 0 } });
+  expect(await refused).toMatchObject({ error: { name: "AbortError" } });
   session.set(pair());
   expect(writes).toHaveLength(1);
 });

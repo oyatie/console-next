@@ -46,7 +46,7 @@ test("dev advancing cannot turn inherited person readers into baseline growth", 
   try {
     symlinkSync(path.resolve("node_modules"), path.join(root, "node_modules"), "dir");
     for (const dir of ["scripts/quality", "backend/app/src", "backend/crates"]) mkdirSync(path.join(root, dir), { recursive: true });
-    for (const script of ["check-person-reads.mjs", "quality/ratchet.mjs"]) copyFileSync(`scripts/${script}`, path.join(root, "scripts", script));
+    for (const script of ["check-person-reads.mjs", "quality/base.mjs", "quality/ratchet.mjs"]) copyFileSync(`scripts/${script}`, path.join(root, "scripts", script));
     writeFileSync(path.join(root, "rustfmt.toml"), 'edition = "2024"\n');
     writeFileSync(path.join(root, file), `${source}\n`);
     writeFileSync(baseline, JSON.stringify(counts));
