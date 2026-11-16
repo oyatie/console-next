@@ -10,7 +10,6 @@ use sqlx::{PgPool, Row};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::authz::authorize_home_branch_transition;
 use crate::directory::create_placement::{branch_refused, workplace_branch};
 use crate::directory::read_detail::load_employee_detail;
 use crate::directory::types::{
@@ -147,7 +146,7 @@ impl HrService {
         .map_err(|_| HrError::validation("expected_updated_at must be an RFC 3339 timestamp"))?;
         let trace = TraceContext::generate();
 
-        let (branch_name, prior_branch_id, prior_updated_at) =
+        let (branch_name, prior_updated_at) =
             with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
                 Box::pin(async move {
                     let branch = sqlx::query(
@@ -177,7 +176,6 @@ impl HrService {
                     "employee was not found in this organization",
                 ))
             })?;
-                    let prior_branch_id: Option<Uuid> = employee.try_get("home_branch_id")?;
                     let prior_updated_at: OffsetDateTime = employee.try_get("updated_at")?;
                     // UX-R1 PLACEMENT (org-19): a placed person's branch is their workplace's;
                     // changing where they work is a dated reassignment, never this one click.
@@ -188,12 +186,11 @@ impl HrService {
                         return Err(branch_refused());
                     }
 
-                    Ok((branch_name, prior_branch_id, prior_updated_at))
+                    Ok((branch_name, prior_updated_at))
                 })
             })
             .await?;
 
-        authorize_home_branch_transition(&principal, prior_branch_id, target_branch_id)?;
         if prior_updated_at != expected_updated_at {
             return Err(HrError::from_kernel(KernelError::conflict(
                 "employee changed since it was read; reload before assigning a home branch",

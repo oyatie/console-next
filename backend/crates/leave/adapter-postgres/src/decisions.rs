@@ -60,6 +60,14 @@ impl PgLeaveStore {
             .into());
         }
 
+        self.require_management(
+            decider,
+            existing.subject_employee_id,
+            Some(existing.branch_id),
+            None,
+        )
+        .await?;
+
         console_platform_db::command_outcomes::execution::bind(&mut tx).await?;
         let row = sqlx::query(
             "SELECT * FROM leave_api.decide_request(\

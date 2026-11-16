@@ -179,7 +179,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/app/src/cedar_parity.rs | reference | 1 |
 | matrix | backend/app/src/entity_wiring/correction_register.rs | reference | 2 |
 | matrix | backend/app/src/entity_wiring/exceptions.rs | reference | 2 |
-| matrix | backend/app/src/hr.rs | reference | 2 |
 | matrix | backend/app/src/http/support_reference.rs | reference | 6 |
 | matrix | backend/app/src/lifecycle.rs | reference | 2 |
 | matrix | backend/app/src/lifecycle/period_locks.rs | reference | 2 |

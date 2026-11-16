@@ -65,15 +65,17 @@ use console_hr_domain::import::rrn::is_rrn_value;
 use console_hr_domain::import::rrn_value::RrnVault;
 use console_hr_rest::HrApiError;
 use console_kernel_core::{
-    AuditAction, AuditEvent, BranchId, BranchScope, KernelError, OrgId, TraceContext, UserId,
+    AuditAction, AuditEvent, BranchScope, KernelError, OrgId, TraceContext, UserId,
 };
 use console_leave_adapter_postgres::PgLeaveStore;
 // `ObjectKey::Employment`'s owner. Every `employees` statement this module used
 // to hold lives there now; console-app is no longer a second writer of it.
 #[cfg(test)]
+use console_kernel_core::BranchId;
+#[cfg(test)]
 use console_ontology_canonical_adapter_postgres::employment;
 use console_platform_auth::{JwtVerifier, PasskeyService};
-use console_platform_authz::{Action, Feature, Principal, authorize};
+use console_platform_authz::{Feature, Principal};
 use console_platform_db::idempotency::{IDEMPOTENCY_KEY_HEADER, validate_idempotency_key};
 use console_platform_db::{with_audit, with_audits, with_org_conn};
 use serde::{Deserialize, Serialize};
@@ -600,13 +602,6 @@ async fn set_employee_home_branch(
     Path(employee_id): Path<Uuid>,
     Json(body): Json<SetEmployeeHomeBranchRequest>,
 ) -> Result<Json<EmployeeHomeBranchResponse>, HrApiError> {
-    authorize(
-        &principal,
-        Action::new(Feature::EmployeeDirectoryManage),
-        BranchId::from_uuid(body.branch_id),
-    )
-    .map_err(HrError::from_kernel)?;
-
     let command_store = state.leave_command_store.clone().ok_or_else(|| {
         HrError::unavailable(
             "leave command database is not configured; home-branch assignment is unavailable",

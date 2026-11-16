@@ -371,9 +371,7 @@ async fn perform_decide(
     comment: Option<&str>,
 ) -> Result<LeaveRequestView, RestError> {
     let principal = principal_from_headers(state, headers).await?;
-    // Role gate: the branch HR/manager tier. Which requests they can touch is
-    // confined by branch_scope in the store; SoD is enforced there too.
-    require_manage(&principal)?;
+    // The command adapter admits the employee's scope through live Cedar facts.
     let decision = LeaveDecision::parse(decision).map_err(RestError::from_kernel)?;
     let comment = console_leave_domain::validate_decision_comment(decision, comment)
         .map_err(RestError::from_kernel)?;
@@ -509,7 +507,6 @@ async fn resolve_charge(
     Json(body): Json<ResolveChargeRequest>,
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_manage(&principal)?;
     let expected_version = validate_expected_request_version(body.expected_version)?;
     let date_charges = body
         .date_charges
@@ -781,10 +778,6 @@ fn require_read(principal: &Principal) -> Result<(), RestError> {
     require_feature(principal, Feature::EmployeeDirectoryRead)
 }
 
-fn require_manage(principal: &Principal) -> Result<(), RestError> {
-    require_feature(principal, Feature::EmployeeDirectoryManage)
-}
-
 /// `home_branch_id` is nullable and unread here, so this surface authorizes the whole directory.
 /// Keep the org-wide check for `All`; a capability-only check would widen access for group admins.
 fn require_feature(principal: &Principal, feature: Feature) -> Result<(), RestError> {
@@ -969,7 +962,9 @@ mod tests {
             "a MEMBER cannot read the leave queue"
         );
         assert_eq!(
-            require_manage(&p).unwrap_err().status,
+            require_feature(&p, Feature::EmployeeDirectoryManage)
+                .unwrap_err()
+                .status,
             StatusCode::FORBIDDEN,
             "a MEMBER cannot decide leave"
         );
@@ -1086,7 +1081,7 @@ mod tests {
         let branch = BranchId::new();
         let p = principal(Role::Admin, branch);
         assert!(require_read(&p).is_ok());
-        assert!(require_manage(&p).is_ok());
+        assert!(require_feature(&p, Feature::EmployeeDirectoryManage).is_ok());
         // In-scope branch push authorization passes...
         assert!(authorize(&p, Action::new(Feature::EmployeeDirectoryManage), branch,).is_ok());
         // ...but a branch OUTSIDE the actor's scope is rejected, so a pushed

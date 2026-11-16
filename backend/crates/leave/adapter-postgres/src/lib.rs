@@ -1,20 +1,9 @@
 //! Postgres leave-request adapter.
 //!
-//! Tenant scoping is armed by [`with_audit`]/[`with_org_conn`] from the
-//! request-context `app.current_org` GUC; RLS narrows every statement to the
-//! caller's org. On top of RLS, the approval queue and decide path are
-//! *branch*-scoped in code from the caller's resolved [`BranchScope`], so an
-//! approver only ever sees and decides requests in their own branches
-//! (deny-by-omission on an empty scope).
-//!
-//! Two invariants this adapter enforces that the schema cannot:
-//!   * **SoD** — the decider must not be the request's requester (mirrors the
-//!     workflow-engine initiator guard, #205). Backed by a DB CHECK too, so a
-//!     bug cannot stamp a self-decision.
-//!   * **approve writes the ledger** — an `approve` decision moves the subject
-//!     employee's leave balance with exact fixed-scale units
-//!     in the SAME audited transaction as the status change, so the two never
-//!     diverge.
+//! Tenant RLS confines reads; live Cedar facts admit managed writes at the employee's
+//! placement. Requester/approver independence and resolver/approver separation remain
+//! mandatory. Approval updates the exact leave ledger and request in one audited SQL
+//! transaction through the isolated command connection.
 //!
 //! The §61 statutory push delivers a receipt-gated notice into the target's
 //! personal inbox through the inbox crate's [`InboxDocSink`] (the concrete legal
@@ -26,6 +15,7 @@
 
 use std::sync::Arc;
 
+mod admission;
 mod command_tx;
 use command_tx::map_leave_command_sqlx;
 
@@ -256,21 +246,6 @@ impl PgLeaveStore {
     pub fn with_leave_command_pool(mut self, pool: PgPool) -> Self {
         self.leave_command_pool = Some(pool);
         self
-    }
-
-    /// Whether the isolated leave command capability is bound. Callers that
-    /// must fail closed BEFORE creating dependent rows (employee creation and
-    /// the recruiting hire handshake pre-check home-branch assignability) use
-    /// this instead of discovering `CommandUnavailable` after a partial write.
-    #[must_use]
-    pub fn has_leave_command_pool(&self) -> bool {
-        self.leave_command_pool.is_some()
-    }
-
-    fn command_pool(&self) -> Result<&PgPool, PgLeaveError> {
-        self.leave_command_pool
-            .as_ref()
-            .ok_or(PgLeaveError::CommandUnavailable)
     }
 
     /// Create one employee and its employment facts through the isolated
@@ -764,6 +739,13 @@ impl PgLeaveStore {
             .fetch_request_scoped(org, command.request_id, &command.branch_scope)
             .await?
             .ok_or_else(|| KernelError::not_found("leave request not found"))?;
+        self.require_management(
+            command.resolver,
+            existing.subject_employee_id,
+            Some(existing.branch_id),
+            None,
+        )
+        .await?;
         if existing.status != LeaveStatus::Pending {
             return Err(KernelError::conflict(
                 "only a pending leave request can receive a charge resolution",

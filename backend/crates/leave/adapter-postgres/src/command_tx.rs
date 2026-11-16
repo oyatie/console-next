@@ -4,11 +4,26 @@ use console_kernel_core::{KernelError, UserId};
 use console_platform_request_context::current_org;
 use sqlx::postgres::{PgArguments, PgRow};
 use sqlx::query::Query;
-use sqlx::{Postgres, Row};
+use sqlx::{PgPool, Postgres, Row};
 
 use crate::{EmployeeHomeBranchUpdate, PgLeaveError, PgLeaveStore};
 
 impl PgLeaveStore {
+    /// Whether the isolated leave command capability is bound. Callers that
+    /// must fail closed BEFORE creating dependent rows (employee creation and
+    /// the recruiting hire handshake pre-check home-branch assignability) use
+    /// this instead of discovering `CommandUnavailable` after a partial write.
+    #[must_use]
+    pub fn has_leave_command_pool(&self) -> bool {
+        self.leave_command_pool.is_some()
+    }
+
+    pub(super) fn command_pool(&self) -> Result<&PgPool, PgLeaveError> {
+        self.leave_command_pool
+            .as_ref()
+            .ok_or(PgLeaveError::CommandUnavailable)
+    }
+
     /// Mint a one-use capability without exposing protected writes to the runtime role.
     pub async fn employee_import_capability(
         &self,
@@ -53,6 +68,8 @@ impl PgLeaveStore {
         actor: UserId,
         trace: console_kernel_core::TraceContext,
     ) -> Result<EmployeeHomeBranchUpdate, PgLeaveError> {
+        self.require_management(actor, employee_id, None, Some(home_branch_id))
+            .await?;
         let org = current_org().map_err(KernelError::from)?;
         let row = self
             .command_row(
