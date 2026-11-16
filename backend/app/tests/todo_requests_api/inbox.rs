@@ -249,9 +249,29 @@ async fn done_return_and_withdraw_move_the_items(pool: PgPool) {
     assert!(listed(&taken).await.is_empty(), "a withdrawal leaves both");
 }
 
+/// The whole-inbox count a page reports, with its exactness.
+fn everything(page: &Value) -> (Value, Value) {
+    let all = page["attention_filters"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|count| count["key"] == "all")
+        .unwrap();
+    (all["total"].clone(), all["total_is_exact"].clone())
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn counts_are_exact_and_paging_walks_every_request(pool: PgPool) {
     let o = office(pool).await;
+    let sides = [(&o.colleague, "turn"), (&o.admin, "waiting")];
+    let mut before = Vec::new();
+    for (ctx, lane) in sides {
+        let page = inbox(ctx, "").await;
+        before.push((
+            page["counts"][lane]["total"].as_u64().unwrap(),
+            everything(&page).0.as_u64().unwrap(),
+        ));
+    }
     let later = today() + Duration::days(3);
     let mut made = Vec::new();
     for due in [None, Some(later), None, Some(today()), None] {
@@ -266,33 +286,25 @@ async fn counts_are_exact_and_paging_walks_every_request(pool: PgPool) {
     want.sort();
     let want: Vec<String> = want.into_iter().map(|(.., id)| id).collect();
 
-    for (ctx, lane) in [(&o.colleague, "turn"), (&o.admin, "waiting")] {
+    for ((ctx, lane), &(lane_before, all_before)) in sides.into_iter().zip(&before) {
         let page = inbox(ctx, "").await;
         assert_eq!(requests(&page).len(), 5, "{page}");
-        let rows = page["items"].as_array().unwrap();
-        let in_lane = rows.iter().filter(|item| item["lane"] == lane).count();
         assert_eq!(
             page["counts"][lane],
-            json!({ "total": in_lane, "total_is_exact": true }),
+            json!({ "total": lane_before + 5, "total_is_exact": true }),
             "{lane}"
         );
-        let all = page["attention_filters"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|count| count["key"] == "all")
-            .unwrap();
-        assert_eq!(
-            (&all["total"], &all["total_is_exact"]),
-            (&json!(rows.len()), &json!(true))
-        );
+        assert_eq!(everything(&page), (json!(all_before + 5), json!(true)));
     }
 
+    // Every page counts the whole inbox, not the rows it holds or those after its cursor.
+    let whole = everything(&inbox(&o.colleague, "?limit=2").await);
     let mut walked = Vec::new();
     let mut query = "?limit=2".to_owned();
     loop {
         let page = inbox(&o.colleague, &query).await;
         assert!(page["items"].as_array().unwrap().len() <= 2);
+        assert_eq!(everything(&page), whole, "{query}");
         walked.extend(ids(&page));
         match page["next_cursor"].as_str() {
             Some(next) => query = format!("?limit=2&cursor={next}"),
@@ -300,4 +312,5 @@ async fn counts_are_exact_and_paging_walks_every_request(pool: PgPool) {
         }
     }
     assert_eq!(walked, want, "every request once, in due order");
+    assert_eq!(whole, (json!(before[0].1 + 5), json!(true)));
 }
