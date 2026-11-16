@@ -57,12 +57,14 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       await expect(field).toBeVisible();
       if (act === "wp-create") await field.fill("새 사업장");
       await field.focus();
+      const fieldBox = await field.boundingBox();
       const mountedField = await field.elementHandle();
       const readyBox = await chart.boundingBox();
       await context.setOffline(true);
       const notices = sheet.getByRole("status").filter({ hasText: t("common.read.offline") });
       await expect(notices).toHaveCount(1);
       await expect(notices.first()).toBeVisible();
+      expect(await field.boundingBox()).toEqual(fieldBox);
       expect(await chartSize()).toEqual(offlineSize);
       await expect(page.getByRole("dialog")).toHaveCount(1);
       await expect(field).toBeFocused();
@@ -75,6 +77,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       const stale = sheet.getByRole("status").filter({ hasText: t("common.read.stale") });
       await expect(stale).toHaveCount(1, { timeout: 15_000 });
       await expect(stale).toBeVisible();
+      expect(await field.boundingBox()).toEqual(fieldBox);
       await expect(page.getByRole("dialog")).toHaveCount(1);
       expect(await chart.boundingBox()).toEqual(readyBox);
       expect(await mountedField!.evaluate(element => element.isConnected)).toBe(true);
@@ -85,6 +88,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       failed = false;
       await stale.getByRole("button", { name: t("common.retry"), exact: true }).click();
       await expect(stale).toHaveCount(0);
+      expect(await field.boundingBox()).toEqual(fieldBox);
       expect(await mountedField!.evaluate(element => element.isConnected)).toBe(true);
       if (act === "wp-create") await expect(field).toHaveValue("새 사업장");
       expect(await chart.boundingBox()).toEqual(readyBox);

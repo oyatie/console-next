@@ -62,6 +62,12 @@ const parentBefore = { id: 'site', kind: 'site', name: '본사', headcount: 0, c
             const [applied, setApplied] = useState(false);
             const [withRead, setWithRead] = useState(true);
             window.applyRefetch = () => flushSync(() => setApplied(true));
+            if (sheet === 'nested') {
+              const q = { isPending: false, data: 'record', error: null, refetch: () => {} };
+              return h(ReadInSheet, { q, title: 'Outer', onClose: () => {} }, () =>
+                h(Sheet, { open: true, title: 'Outer', onClose: () => {}, consequence: null, actions: null },
+                  h(Sheet, { open: true, title: 'Inner', onClose: () => {}, consequence: null, actions: null }, 'Nested form')));
+            }
             if (sheet === 'read') {
               window.dropRead = () => flushSync(() => setWithRead(false));
               const q = { isPending: false, data: 'record', error: applied ? new ApiError(503, 'service_unavailable', '') : null, refetch: () => flushSync(() => setApplied(false)) };
@@ -199,12 +205,15 @@ for (const width of [1440, 390]) for (const state of ["stale", "offline"] as con
   const sheet = page.getByRole("dialog", { name: "Record", exact: true });
   const field = sheet.getByRole("textbox", { name: "Draft", exact: true });
   await field.fill("unfinished draft");
+  await page.evaluate(() => document.fonts.ready);
+  const fieldBox = await field.boundingBox();
   const mountedField = await field.elementHandle();
   try {
     if (state === "offline") await page.context().setOffline(true);
     else await page.evaluate(() => (window as unknown as { applyRefetch: () => void }).applyRefetch());
     const notice = sheet.getByRole("status").filter({ hasText: t(state === "offline" ? "common.read.offline" : "common.read.stale") });
     await dom(notice).toHaveCount(1);
+    expect(await field.boundingBox()).toEqual(fieldBox);
     await dom(page.getByRole("dialog")).toHaveCount(1);
     await dom(field).toBeFocused();
     await dom(field).toHaveValue("unfinished draft");
@@ -212,10 +221,26 @@ for (const width of [1440, 390]) for (const state of ["stale", "offline"] as con
     if (state === "offline") await page.context().setOffline(false);
     else await notice.getByRole("button", { name: t("common.retry"), exact: true }).click();
     await dom(notice).toHaveCount(0);
+    expect(await field.boundingBox()).toEqual(fieldBox);
     await dom(field).toHaveValue("unfinished draft");
     expect(await mountedField!.evaluate(element => element.isConnected)).toBe(true);
     await page.evaluate(() => (window as unknown as { dropRead: () => void }).dropRead());
     await page.context().setOffline(true);
     await dom(sheet.getByRole("status")).toHaveCount(0);
+  } finally { await page.context().setOffline(false); }
+});
+
+test("nested sheets reset inherited read registration", async () => {
+  const page = harness.page!;
+  await page.goto(`${harness.baseUrl}relayout?sheet=nested`);
+  const outer = page.getByRole("dialog", { name: "Outer", exact: true, includeHidden: true });
+  const inner = page.getByRole("dialog", { name: "Inner", exact: true });
+  await dom(inner).toBeVisible();
+  try {
+    await page.context().setOffline(true);
+    const notices = page.getByRole("status", { includeHidden: true }).filter({ hasText: t("common.read.offline") });
+    await dom(outer.getByRole("status", { includeHidden: true })).toHaveCount(1);
+    await dom(notices).toHaveCount(1);
+    await dom(inner.getByRole("status")).toHaveCount(0);
   } finally { await page.context().setOffline(false); }
 });
