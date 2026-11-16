@@ -6,7 +6,7 @@ import { exitUndoVerb } from "../domain/exits";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { Field } from "../../../ui/field/field";
+import { FieldSet, Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { onRecordChange } from "../../../lib/live/live";
 import { caseQuery, closeExit } from "../api";
@@ -63,7 +63,7 @@ export function CloseForm({ c: opened, reject, onClose, onDone }: { c: Case; rej
       action={{ kind: "exit", mode, count: 1 }}
       tone="danger"
     >
-      {!unavailable && <fieldset className={s.group} disabled={run.locked}>
+      {!unavailable && <FieldSet required={null} className={s.group} disabled={run.locked}>
         <Field
           label={t("composer.reason", { verb: verbLabel(mode) })}
           required
@@ -72,7 +72,7 @@ export function CloseForm({ c: opened, reject, onClose, onDone }: { c: Case; rej
         >
           {(p) => <TextArea {...p} maxLength={REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </Field>
-      </fieldset>}
+      </FieldSet>}
     </StepFrame>
   );
 }

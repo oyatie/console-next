@@ -5,7 +5,7 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { Checks } from "../../../ui/choice/checks";
-import { Field } from "../../../ui/field/field";
+import { FieldSet, Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
@@ -112,14 +112,14 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
       tone={!hq && !scheduled ? "danger" : "primary"}
     >
       {!hq && <OpsExitNote employeeId={c.employee_id} search={c.employee_number || c.employee_name} />}
-      <fieldset className={s.group} disabled={locked}>
+      <FieldSet required={null} className={s.group} disabled={locked}>
         <CaseFacts c={c} full={!hq} />
         {!hq && <Blocking c={c} />}
         {!hq && <ExitGuardFields c={{ ...c, protected_periods: [...periods] }} reason={reason} onReason={(nextReason) => setDraft({ ...draft, reason: nextReason })} involuntary={involuntary} noticeRequired={noticeRequired} pay={pay} disposition={draft.disposition} onDisposition={(disposition) => setDraft({ ...draft, disposition })} value={notice} onChange={(nextNotice) => setDraft({ ...draft, notice: nextNotice })} tried={tried} />}
         <Field label={t("exit.field.confirmMemo")} required={false} hint={t("exit.field.count", { count: note.length, max: MEMO_MAX })}>
           {(p) => <TextArea {...p} maxLength={MEMO_MAX} value={note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />}
         </Field>
-      </fieldset>
+      </FieldSet>
     </StepFrame>
   );
 }

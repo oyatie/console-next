@@ -7,7 +7,7 @@ import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
 import { buttonClass } from "../../../ui/button/button-class";
 import { DateField } from "../../../ui/date/date-field";
-import { Field, TextInput } from "../../../ui/field/field";
+import { FieldSet, Field, TextInput } from "../../../ui/field/field";
 import { CommandError } from "../../../lib/react/command-error";
 import { useCommand } from "../../../lib/react/command";
 import { todayKst } from "../../../lib/pure/today";
@@ -147,8 +147,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
           </li>)}
         </ul>
       </section>}
-      {!ineligible && <fieldset className={s.group} disabled={locked}>
-        <legend className={s.groupTitle}>{t("exit.settlement.period")}</legend>
+      {!ineligible && <FieldSet required={null} label={t("exit.settlement.period")} className={s.group} disabled={locked}>
         <div className={s.pair}>
           {date("start", t("exit.settlement.periodStart"))}
           {date("end", t("exit.settlement.periodEnd"))}
@@ -160,7 +159,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
           {amount("total", t("exit.settlement.totalWage"))}
           {amount("ordinary", t("exit.settlement.ordinaryWage"))}
         </div>
-      </fieldset>}
+      </FieldSet>}
       {p && same && <SettlementFigures pkg={p} />}
       {c.notice_pay && <NoticePayFact pay={c.notice_pay} disposition={c.notice_disposition} />}
       <CommandError error={save.error} />

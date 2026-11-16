@@ -26,7 +26,7 @@ beforeAll(async () => {
         import { webPlatform } from '@console/api/web';
         import { CommandError } from '/apps/web/src/lib/react/command-error.tsx';
         import { Form, Button } from '/apps/web/src/ui/button/button.tsx';
-        import { Field, TextInput } from '/apps/web/src/ui/field/field.tsx';
+        import { Field, FieldSet, TextInput } from '/apps/web/src/ui/field/field.tsx';
         import '/apps/web/src/app.css';
         configure(webPlatform);
         const locale = new URLSearchParams(location.search).get('locale') ?? 'ko';
@@ -37,6 +37,8 @@ beforeAll(async () => {
           const [bubbles, setBubbles] = useState(0), [inline, setInline] = useState('');
           const [serverError, setServerError] = useState(null);
           return h('main', null, h('h1', null, 'Synthetic form'),
+            h(FieldSet, { id: 'locked-fields', required: null, disabled: true, ref: node => { if (node) node.dataset.measured = String(node.getBoundingClientRect().width); } },
+              h(TextInput, { 'aria-label': 'Locked note' })),
             h(Form, { id: 'sample-form', onSubmit: () => setCount(n => n + 1), onKeyDown: e => { if (e.key === 'Enter') setBubbles(n => n + 1); } },
               h(Field, { id: 'name', label: '이름', required: true }, p => h(TextInput, { ...p, name: 'name', value: name, onChange: e => setName(e.target.value), onKeyDown: e => { if (e.metaKey && e.key === 'Enter') { setKeys(n => n + 1); e.currentTarget.form.requestSubmit(); } } })),
               h(Field, { id: 'note', label: 'Note', required: true }, p => h(TextInput, { ...p, name: 'note', value: note, onChange: e => setNote(e.target.value) })),
@@ -244,4 +246,13 @@ test("an input without an id gets a stable summary link that focuses it", async 
   await dom(link).toHaveAttribute("href", `#${id}`);
   await link.click();
   await dom(input).toBeFocused();
+});
+
+
+test("a field set forwards its measurement ref and disables its controls", async () => {
+  await open();
+  const fields = page.locator("#locked-fields");
+  await dom(fields.getByRole("textbox", { name: "Locked note" })).toBeDisabled();
+  expect(Number(await fields.getAttribute("data-measured"))).toBeGreaterThan(0);
+  await dom(fields.locator("legend")).toHaveCount(0);
 });

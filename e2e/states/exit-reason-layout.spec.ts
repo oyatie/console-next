@@ -1,20 +1,38 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
+import { loadCatalog, t } from "@console/i18n";
 import { routeReady } from "../flows";
 import { clearShifts, expectStable, recordShifts } from "../stability";
 import { exitReasons } from "../mock/reasons";
 import { expectAxe, fits } from "../a11y";
-import { AT, authz, id } from "../mock/fixtures";
+import { AT, authz, id, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const step of ["report", "confirm"] as const) for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`exit ${step} reasons keep their layout after input at ${width}px ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
     await page.addInitScript(recordShifts);
+    // Frame geometry catches transient wraps even without LayoutShift entries (Firefox).
+    await page.addInitScript(() => {
+      const frames: string[] = [];
+      Object.assign(window, { exitReasonFrames: frames });
+      const sample = () => {
+        const chips = [...document.querySelectorAll('[role="dialog"] [role="radiogroup"] label')];
+        if (chips.length) frames.push(JSON.stringify(chips.map(chip => {
+          const { x, y, width, height } = chip.getBoundingClientRect();
+          const group = chip.closest('[role="radiogroup"]')!.getBoundingClientRect();
+          return { x: x - group.x, y: y - group.y, width, height };
+        })));
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
     const screen = lifecycleSheetScreens[0];
     const fixture = await mockScreen(page, screen, "populated");
     await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [
@@ -22,9 +40,9 @@ for (const step of ["report", "confirm"] as const) for (const width of [1440, 39
       ...["employee_directory_manage", "exit_case_report", "exit_case_hr_confirm"].map(feature => ({ feature, permission: "allow" as const, branch_scope: { kind: "all" as const }, org_wide: true, scoped: false })),
     ] } });
     const c: components["schemas"]["EmployeeExitCase"] = {
-      id: id(7000), employee_id: id(4000), employee_name: "배치직원", employee_number: "EXIT-001", company: "화면 검증 회사",
-      status: "REPORTED", effective_exit_date: "2026-10-26", site_manager_note: "개인 사정",
-      involuntary: false, notice_required: false, dismissal_notice: null, protected_periods: [], reported_by: id(1), reported_by_name: "김보고", reported_at: AT,
+      id: id(7000), employee_id: id(4000), employee_name: user.display_name, employee_number: "EXIT-001", company: user.tenant!.name,
+      status: "REPORTED", effective_exit_date: "2026-10-26", site_manager_note: "Synthetic report",
+      involuntary: false, notice_required: false, dismissal_notice: null, protected_periods: [], reported_by: id(1), reported_by_name: user.display_name, reported_at: AT,
       hr_confirmed_by_name: null, hq_confirmed_by_name: null, approval_submitted_by_name: null, closed_by_name: null,
       exit_lifecycle_event_id: null, exit_event_state: null, next_actions: [{ key: "confirm_exit" }],
     };
@@ -43,35 +61,39 @@ for (const step of ["report", "confirm"] as const) for (const width of [1440, 39
       await page.goto(`/people/${id(4000)}?act=${step === "report" ? "exit.report" : `exit.confirm_exit:${c.id}`}`);
       const sheet = page.getByRole("dialog");
       await sheet.evaluate(async () => {
-        delete document.documentElement.dataset.fontFallback;
-        await document.fonts.load('600 13px "Pretendard Variable Catalog"');
+        const preload = document.querySelector<HTMLLinkElement>('link[rel="preload"][as="font"][data-ui-font]');
+        if (preload) await document.fonts.load(`1em ${JSON.stringify(preload.dataset.uiFont)}`);
       });
       release();
       await routeReady(page);
       await expect(sheet).toBeVisible();
-      const personal = sheet.getByRole("radio", { name: "개인 사정", exact: true });
+      const personal = sheet.getByRole("radio", { name: t("reason.exit_reason.PERSONAL"), exact: true });
       await expect(personal).toBeVisible();
       // Audit input after the deliberately held catalogue has populated the form.
       await page.evaluate(clearShifts);
       await expectStable(page, `exit ${step} reasons loaded`);
-      const chipLayout = () => sheet.locator('[role="radiogroup"] label').evaluateAll(chips => chips.map(chip => {
-        const { x, y, width, height } = chip.getBoundingClientRect();
-        const group = chip.closest('[role="radiogroup"]')!.getBoundingClientRect();
-        return { text: chip.textContent, x: x - group.x, y: y - group.y, width, height };
-      }));
-      const before = await chipLayout();
+      const expectChipFrames = async () => {
+        const frames = await page.evaluate(async () => {
+          // Observe the input window in both engines, including deferred feedback.
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return (window as unknown as { exitReasonFrames: string[] }).exitReasonFrames;
+        });
+        expect(frames.length).toBeGreaterThan(1);
+        expect([...new Set(frames)], "chip geometry must match on every painted frame").toHaveLength(1);
+      };
+      await expectChipFrames();
       if (step === "report") {
-        await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill("2026-10-26");
+        await sheet.getByRole("textbox", { name: new RegExp(`^${t("exit.field.date")}`) }).fill("2026-10-26");
         await routeReady(page);
         await expectStable(page, "exit report reasons after date feedback");
-        expect(await chipLayout()).toEqual(before);
-        await sheet.getByLabel("퇴직 경위").fill("합성 보고");
+        await expectChipFrames();
+        await sheet.getByLabel(t("exit.field.circumstances")).fill("Synthetic report");
       }
-      await sheet.getByRole("radiogroup").getByText("개인 사정", { exact: true }).click();
+      await sheet.getByRole("radiogroup").getByText(t("reason.exit_reason.PERSONAL"), { exact: true }).click();
       await expect(personal).toBeChecked();
       await routeReady(page);
       await expectStable(page, `exit ${step} reasons after input`);
-      expect(await chipLayout()).toEqual(before);
+      await expectChipFrames();
       await fits(page, `exit-${step}/${width}/${theme}`);
       await expectAxe(page, `exit-${step}/${width}/${theme}`);
       await page.screenshot({ path: test.info().outputPath("exit-reasons.png"), fullPage: true });
