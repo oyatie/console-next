@@ -16,6 +16,10 @@ import { gzipSync } from "node:zlib";
 export const INITIAL_BUDGET_KB = 148.8;
 export const DEFAULT_BUDGET_FILE = "scripts/bundle-budget.json";
 
+// Saved views must keep the record and its command forms behind record navigation.
+const orgLists = new Set(["src/routes/org-tabs.tsx", "src/features/org/ui/org-changes.tsx", "src/features/org-bulk/ui/history-page.tsx"]);
+const orgRecord = "src/features/org/OrgChange.tsx";
+
 export const kb = (dist, f) => gzipSync(readFileSync(path.join(dist, f))).length / 1024;
 
 export function checkInitialBudget(dist, budgetKb = INITIAL_BUDGET_KB) {
@@ -70,6 +74,14 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
       for (const imported of chunk.imports ?? []) visit(imported);
     };
     visit(source);
+    if (orgLists.has(source)) {
+      if (!manifest[orgRecord]?.isDynamicEntry) failures.push({ route: source, error: `check-bundle: ${orgRecord} must have its own dynamic entry` });
+      for (const [key, chunk] of Object.entries(manifest)) {
+        if ((key === orgRecord || chunk.name === "effectuate-consequence") && (files.has(chunk.file) || initial.has(chunk.file))) failures.push({
+          route: source, error: `check-bundle: ${key} is statically loaded by ${source}; load it on record navigation`,
+        });
+      }
+    }
     for (const interaction of budgetConfig[pageType].deferred ?? []) {
       const file = manifest[interaction]?.file;
       if (file && (files.has(file) || initial.has(file))) failures.push({

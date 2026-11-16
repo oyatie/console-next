@@ -224,4 +224,32 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
     } finally { mock.cleanup(); }
   });
 
+  for (const route of ["src/routes/org-tabs.tsx", "src/features/org/ui/org-changes.tsx", "src/features/org-bulk/ui/history-page.tsx"]) {
+    it(`keeps record forms out of ${route}, including transitive re-exports`, () => {
+      const mock = createMockDist();
+      try {
+        for (const file of ["index-main.js", "vendor-boot.js", "list.js", "barrel.js", "record.js", "consequence.js"]) mock.writeChunk(file, file);
+        const record = "src/features/org/OrgChange.tsx";
+        const budgets = { list: { budget_kb: 300, routes: [route] }, record: { budget_kb: 171, routes: [record] } };
+        mock.dynamic(route, "list.js");
+        mock.dynamic(record, "record.js");
+        assert.strictEqual(checkRouteBudgets(mock.dist, budgets).ok, true);
+        for (const target of [record, "_consequence"]) {
+          mock.manifest._consequence = { file: "assets/consequence.js", name: "effectuate-consequence" };
+          mock.manifest._barrel = { file: "assets/barrel.js", imports: [target] };
+          mock.dynamic(route, "list.js", ["_barrel"]);
+          assert.match(checkRouteBudgets(mock.dist, budgets).error, /statically loaded/);
+        }
+        mock.dynamic(route, "list.js");
+        mock.dynamic(record, "list.js");
+        assert.match(checkRouteBudgets(mock.dist, budgets).error, /statically loaded/);
+        mock.dynamic(record, "vendor-boot.js");
+        assert.match(checkRouteBudgets(mock.dist, budgets).error, /statically loaded/);
+        delete mock.manifest[record];
+        mock.dynamic(route, "list.js");
+        assert.match(checkRouteBudgets(mock.dist, budgets).error, /OrgChange.*dynamic entry/);
+      } finally { mock.cleanup(); }
+    });
+  }
+
 });
