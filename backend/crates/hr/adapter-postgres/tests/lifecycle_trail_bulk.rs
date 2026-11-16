@@ -94,8 +94,12 @@ async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointm
         state, "done",
         "the product bulk budget refused the batch: {error:?}"
     );
+    assert_eq!(
+        queries.statutory_register_reads().len(),
+        1,
+        "one batched statutory register read"
+    );
     for query in [
-        "SELECT filing_rule,trigger_event_kinds",
         "INSERT INTO lifecycle_cases (org_id,id,kind,variant",
         "INSERT INTO lifecycle_case_items (org_id,case_id,item_key",
     ] {

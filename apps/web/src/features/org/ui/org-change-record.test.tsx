@@ -8,6 +8,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { ApiError } from "../../../reference/authz/api";
 import { changeQuery } from "../api";
 import { OrgChange } from "./org-change-record";
+import { unitsQuery } from "../../../reference/org/api";
 
 beforeAll(() => loadCatalog("ko"));
 const record: components["schemas"]["OrgChangeDetail"] = {
@@ -18,16 +19,36 @@ const record: components["schemas"]["OrgChangeDetail"] = {
   proposal: [], approvalSteps: [], settlementItems: [], events: [],
 };
 
-test.each([403, 404])("the org-change route preserves its loaded record after a %s refetch", async status => {
-  const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false, retryOnMount: false } } });
-  const query = changeQuery(record.id);
-  await client.fetchQuery({ ...query, queryFn: async () => record });
+async function renderRecord(client: QueryClient) {
   const root = createRootRoute();
   const app = createRoute({ getParentRoute: () => root, id: "app" });
   const detail = createRoute({ getParentRoute: () => app, path: "/org/changes/$id", component: OrgChange });
   const router = createRouter({ routeTree: root.addChildren([app.addChildren([detail])]), history: createMemoryHistory({ initialEntries: [`/org/changes/${record.id}`] }) });
   await router.load();
-  const markup = () => renderToStaticMarkup(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+  return () => renderToStaticMarkup(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+}
+
+test("the record waits for its initial unit preview before showing its controls", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+  await client.fetchQuery({ ...changeQuery(record.id), queryFn: async () => record });
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const units = client.fetchQuery({ ...unitsQuery, queryFn: async () => { await held; return { items: [] }; } });
+  try {
+    const markup = await renderRecord(client);
+    expect(markup()).toContain('data-read-layout="record"');
+    expect(markup()).not.toContain(record.reason);
+    release();
+    await units;
+    expect(markup()).toContain(record.reason);
+  } finally { release(); await units; client.clear(); }
+});
+
+test.each([403, 404])("the org-change route preserves its loaded record after a %s refetch", async status => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false, retryOnMount: false } } });
+  const query = changeQuery(record.id);
+  await client.fetchQuery({ ...query, queryFn: async () => record });
+  const markup = await renderRecord(client);
   expect(markup()).toContain(record.reason);
   await expect(client.fetchQuery({ ...query, queryFn: async () => { throw new ApiError(status, status === 404 ? "not_found" : "forbidden", "lost"); } })).rejects.toBeInstanceOf(ApiError);
   const html = markup();

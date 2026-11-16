@@ -488,26 +488,14 @@ process.exit(Number(process.env.DOCKER_STATUS ?? 0));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test("timing artifacts reject forks, expired artifacts and unrelated branches before preferring the current branch", () => {
+test("timing artifacts come only from this workflow's own dev push and nightly runs, whatever their outcome", () => {
   const workflow = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
-  const script = workflow.jobs["db-test-timing-source"].steps.find(step => step.id === "timings").run.split("node --input-type=module <<'JS'\n")[1].split("\nJS")[0];
-  const root = mkdtempSync(path.join(tmpdir(), "trusted-timings-"));
-  try {
-    const artifact = (id, branch = "dev", overrides = {}) => ({ expired: false, created_at: "2026-11-01", workflow_run: { id, head_branch: branch, head_repository_id: 42, repository_id: 42 }, ...overrides });
-    const invalid = [artifact(1, "unrelated"), artifact(2, "dev", { expired: true }),
-      artifact(3, "dev", { workflow_run: { id: 3, head_branch: "dev", head_repository_id: 7, repository_id: 42 } }),
-      artifact(4, "dev", { workflow_run: { id: 4, head_branch: "dev", head_repository_id: 42, repository_id: 7 } })];
-    for (const [artifacts, expected] of [[invalid, ""], [[...invalid, artifact(5)], "run-id=5\n"],
-      [[...invalid, artifact(6, "feature"), artifact(5, "dev", { created_at: "2026-11-02" }), artifact(7, "feature", { created_at: "2026-11-03" })], "run-id=7\n"]]) {
-      writeFileSync(path.join(root, "db-test-timings.json"), JSON.stringify({ artifacts }));
-      const output = path.join(root, "output"); writeFileSync(output, "");
-      const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8", env: {
-        ...process.env, RUNNER_TEMP: root, GITHUB_OUTPUT: output, GITHUB_REPOSITORY_ID: "42", GITHUB_REF_NAME: "feature",
-      } });
-      assert.equal(result.status, 0, result.stdout + result.stderr);
-      assert.equal(readFileSync(output, "utf8"), expected);
-    }
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  const job = workflow.jobs["db-test-timing-source"];
+  const step = job.steps.find(step => step.id === "timings");
+  assert.equal(step.run, "node .github/ci-proof.cjs --any-conclusion db-test-timings db-tests.yml push schedule");
+  assert.equal(step.env.GH_TOKEN, "${{ github.token }}");
+  assert.deepEqual(job.permissions, { actions: "read", contents: "read" });
+  assert.ok(job.steps.findIndex(s => s.uses?.startsWith("actions/checkout@")) < job.steps.indexOf(step));
 });
 
 test("cache budget measures an archive containing registry and all restored target files", () => {

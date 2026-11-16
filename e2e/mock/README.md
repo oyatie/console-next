@@ -33,10 +33,11 @@ If five shards cannot fit, planning fails with `STATES_TIMEOUT_LIMIT`. Missing
 measurements are named in the error; optimize or split oversized specs rather than
 adding a committed timing row.
 
-Successful dev pushes publish per-spec wall durations and the measurement's worker
-count as `states-timings`. Plans restore the latest unexpired same-repository dev
-artifact with matching workers. Artifact lookup examines at most five pages of 100
-entries. If no compatible artifact exists, the newest trusted artifact is scaled by
+Dev pushes publish per-spec wall durations and the measurement's worker count as
+`states-timings`. Plans restore the latest unexpired artifact with matching workers
+from this repository's CI pushes on dev's history, whether or not the run passed.
+Artifact lookup examines at most five pages of 100 entries. If no compatible
+artifact exists, the newest trusted artifact is scaled by
 `measured workers / configured workers`, with a warning. If none exists, the configured
 four worker-seconds per test bootstrap the suite, also with a warning. This floor
 allows the initial run to produce measurements; it is not a capacity proof.

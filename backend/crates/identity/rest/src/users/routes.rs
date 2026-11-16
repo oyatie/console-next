@@ -7,6 +7,7 @@ use crate::policy::delegation::require_assignment_preview_receipt;
 use crate::state::IdentityRestState;
 use crate::users::account_link::account_link_refusal;
 use crate::users::account_link::change_account_link;
+use crate::users::account_link::ensure_employee_in_account_scope;
 use crate::users::authz::account_scope;
 use crate::users::authz::authorize_user_write;
 use crate::users::authz::elevated_role_membership_changes;
@@ -52,6 +53,9 @@ pub(crate) async fn create_user(
     let roles = parse_roles(&body.roles)?;
     let elevated_role_changes = elevated_roles_in(&roles);
     authorize_user_write(&principal, &elevated_role_changes, &[], &body.branch_ids)?;
+    if let Some(employee) = body.employee_id {
+        ensure_employee_in_account_scope(&state, &principal, employee).await?;
+    }
     let idempotency_key = idempotency::validate_idempotency_key(
         headers
             .get(idempotency::IDEMPOTENCY_KEY_HEADER)

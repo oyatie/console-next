@@ -149,11 +149,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`st
       await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveCount(1);
       await fits(page, `org/${key}/${width}/${theme}`);
       if (key === "chart" && width === 390) {
-        const phase = page.locator("p[data-phase]");
         const screenshot = test.info().outputPath("org-chart-mobile.png");
         await page.screenshot({ fullPage: true, path: screenshot });
         await test.info().attach("org-chart-mobile", { path: screenshot, contentType: "image/png" });
-        expect(await phase.evaluate(el => el.scrollWidth - el.clientWidth), "the phase explanation fits").toBe(0);
+        await expect(page.locator("header [data-phase-band]")).toHaveCount(0);
         const canvas = await page.getByRole("region", { name: t("structure.chart.label"), exact: true }).boundingBox();
         expect(canvas!.x).toBeGreaterThanOrEqual(initial.head.x);
         expect(canvas!.x + canvas!.width).toBeLessThanOrEqual(width);

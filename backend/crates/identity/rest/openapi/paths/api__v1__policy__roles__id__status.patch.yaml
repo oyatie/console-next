@@ -3,7 +3,10 @@ tags:
 operationId: updatePolicyRoleStatus
 summary: Publish, roll back, or retire a tenant custom role
 description: 'Changes a custom role lifecycle state. This is a sensitive policy action: callers must have RoleManage
-  and supply a fresh passkey step-up assertion proving the actor, not just the bearer token, performed the change.'
+  and supply a fresh passkey step-up assertion proving the actor, not just the bearer token, performed the change.
+  Activating a role requires the caller to hold each of its permissions, at that level, over the branches the
+  role reaches, and a caller who holds the role cannot change its state; otherwise the request is refused with
+  403 forbidden and nothing is written.'
 security:
 - bearerAuth: []
 parameters:

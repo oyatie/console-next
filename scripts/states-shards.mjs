@@ -4,6 +4,7 @@ import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSyn
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { trustedArtifacts } from "../.github/ci-proof.cjs";
 import { listedTests, plan } from "./e2e-timings.mjs";
 
 const refuse = (reason, detail) => { throw new Error(`${reason}: ${detail}`); };
@@ -20,7 +21,7 @@ function validateTimings(timings) {
     refuse("STATES_INVALID_TIMINGS", file);
 }
 
-/** Only this repository's dev artifacts may supply timings; PRs cannot replace trusted measurements. */
+/** Only this repository's CI pushes on dev's history may supply timings, red runs included since the capacity check fails after publishing; PRs cannot replace trusted measurements. */
 export async function restoreDevTimings(settings, { apiUrl, repository, repositoryId, token }, request = fetch) {
   validateTimings(settings);
   const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" };
@@ -37,11 +38,9 @@ export async function restoreDevTimings(settings, { apiUrl, repository, reposito
     artifacts.push(...batch);
     if (batch.length < 100) break;
   }
-  const candidates = artifacts.filter(a => !a.expired && a.workflow_run?.head_branch === "dev" &&
-    a.workflow_run.repository_id === repositoryId && a.workflow_run.head_repository_id === repositoryId)
-    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id);
+  const api = async route => (await get(`${apiUrl}/repos/${repository}/${route}`)).json();
   let fallback;
-  for (const artifact of candidates) {
+  for await (const artifact of trustedArtifacts(artifacts, api, repositoryId, "ci.yml", ["push"], { anyConclusion: true })) {
     const response = await get(`${apiUrl}/repos/${repository}/actions/artifacts/${artifact.id}/zip`);
     const archive = mkdtempSync(path.join(tmpdir(), "states-timings-"));
     let measured;
