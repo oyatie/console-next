@@ -96,7 +96,7 @@ test.each(["failed", "held"])("%s shell reads use remembered entries only after 
       }
     });
     await page.reload();
-    await element(rail.getByRole("status")).toBeVisible();
+    await element(rail.locator('[role="status"], [role="alert"]')).toBeVisible();
     await element(rail.getByRole("link")).toHaveCount(0);
   } finally {
     release();

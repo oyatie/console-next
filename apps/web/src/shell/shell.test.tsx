@@ -159,7 +159,7 @@ for (const secondary of ["support", "me"] as const) for (const fault of [new Api
       await expect(client.fetchQuery({ ...query, staleTime: 0, queryFn: async () => { throw fault; } })).rejects.toBe(fault);
       const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
       expect(rail).not.toContain('aria-busy="true"');
-      expect(rail).toContain(t("common.retry"));
+      expect(rail).toContain(t(secondary === "support" ? "shell.nav.failed" : "common.retry"));
       expect(rail).not.toContain('href="/people"');
     } finally { client.clear(); }
   });

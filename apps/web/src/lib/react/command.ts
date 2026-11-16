@@ -59,6 +59,7 @@ export function useCommand<I, O>(opts: {
    * one frame (a chart that relayouts after its receipt moves what the user is about to press).
    */
   awaitFirstRead?: boolean;
+  /** A returned promise keeps the command pending until its destination is ready. */
   onSuccess?: (out: O, input: I) => void;
   /** The server-confirmed result, announced to assistive tech (polite live region). */
   announce?: (out: O, input: I) => string;
@@ -100,7 +101,7 @@ export function useCommand<I, O>(opts: {
       const reads = invalidatePaths(qc, opts.invalidates ?? []);
       if (opts.settle) await Promise.all(reads);
       else if (opts.awaitFirstRead) await reads[0]?.catch(() => undefined);
-      opts.onSuccess?.(out, input);
+      await opts.onSuccess?.(out, input);
       if (opts.announce) announce(opts.announce(out, input));
     },
     onError: (error) => {
