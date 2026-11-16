@@ -12923,8 +12923,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List every setting resolved now
-         * @description Every registered setting key with its definition, the value in force now for the tenant (or the given legal entity or workplace), where it came from, and rows scheduled to take effect later. The frontend reads these values; the server decides with them.
+         * List permitted settings resolved now
+         * @description Cedar settings::view permission at the requested tenant, legal entity or workplace exposes the registry, including definitions, effective values, sources and scheduled rows. Other active members receive only the client-required settings (idle timeout, approval policies, contract-warning and deadline-warning days, onboarding receipt duration and period-unlock duration) through settings_runtime_read. Monitoring, retention and sole-holder settings require settings::view.
          */
         get: operations["listSettings"];
         put?: never;
@@ -58566,7 +58566,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Every key, resolved. */
+            /** @description Permitted keys, resolved at the requested scope. */
             200: {
                 headers: {
                     [name: string]: unknown;
