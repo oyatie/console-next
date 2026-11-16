@@ -67,12 +67,6 @@ export function TenantPanel({ org, health, onIssued, onRecorded, onRemoved, onCl
 
       <Button onClick={() => setDomainOpen(true)}>{t("tenants.domain.change")}</Button>
       {domainOpen && <DomainDialog org={org} onClose={() => setDomainOpen(false)} onDone={(r) => { setDomainOpen(false); onRecorded(r); }} />}
-      {/* The server issues a code only for an active tenant. The status and removal sections are drawn once the recovery read has landed
-          (or failed): drawn under its skeleton, they moved down under the pointer when it arrived. */}
-      <QueryState q={recovery}>{data => <>
-        {org.status === "ACTIVE" && <Reissue org={org} enrolled={data.ops_enrolled} onEnrolled={() => { void recovery.refetch(); }} onIssued={onIssued} />}
-        <OpsRecovery org={org} data={data} onIssued={onIssued} />
-      </>}</QueryState>
 
       <section className={s.section} aria-labelledby="tenant-status">
         <h3 id="tenant-status" className={s.heading}>{t("tenants.col.status")}</h3>
@@ -91,6 +85,12 @@ export function TenantPanel({ org, health, onIssued, onRecorded, onRemoved, onCl
         )}
         <TenantErase org={org} />
       </section>
+
+      {/* Late recovery content must not move the independent lifecycle controls above it. */}
+      <QueryState q={recovery}>{data => <>
+        {org.status === "ACTIVE" && <Reissue org={org} enrolled={data.ops_enrolled} onEnrolled={() => { void recovery.refetch(); }} onIssued={onIssued} />}
+        <OpsRecovery org={org} data={data} onIssued={onIssued} />
+      </>}</QueryState>
 
       <StatusDialog
         org={org}

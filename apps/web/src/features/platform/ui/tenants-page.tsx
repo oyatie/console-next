@@ -6,6 +6,8 @@ import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { announce, focusSoon } from "../../../lib/react/announce";
+import { useOnline } from "../../../lib/react/use-online";
+import { queryView } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { TENANT_STATUS, TENANT_LIFECYCLE, labeled } from "../../../lib/labels";
 import { Chip } from "../../../ui/chip";
@@ -35,6 +37,9 @@ export function TenantsPage() {
   const set = (s: TenantsSearch) => navigate({ search: (p) => ({ ...p, ...s }), replace: true });
   const list = useQuery(tenantsQuery);
   const ops = useQuery(opsQuery);
+  const online = useOnline();
+  const viewState = queryView(online ? list : { ...list, fetchStatus: "paused" });
+  const unavailable = list.data === undefined && (viewState === "failed" || viewState === "offline");
   const health = new Map<string, Health>((ops.data?.tenants ?? []).map((h) => [h.id, h]));
   // Typed text stays local (no lag while composing Korean); the URL follows it once typing pauses, and
   // a navigation that changes the URL's search (a link, Back) replaces it.
@@ -107,7 +112,7 @@ export function TenantsPage() {
             onChange={(e) => setQ(e.target.value)}
           />}</Field>
         </Form>
-        {!list.data && list.isError ? control : create}
+        {unavailable ? control : create}
       </div>}
       <QueryState q={list} layout="list" failedActions={reason}>{() => <>
       <SupportLookup />

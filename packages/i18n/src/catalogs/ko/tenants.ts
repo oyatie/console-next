@@ -10,7 +10,7 @@ export const koTenants: Record<keyof typeof enTenants, string> = {
   // Platform: the list
   "tenants.title": "고객 계정",
   "tenants.create": "고객 계정 개설",
-  "tenants.create.unavailable": "고객 계정 목록을 불러오지 못해 새 계정을 개설할 수 없습니다. 목록을 다시 불러온 뒤 개설하십시오.",
+  "tenants.create.unavailable": "고객 계정 목록을 불러와야 새 계정을 개설할 수 있습니다.",
   "tenants.empty.title": "개설된 고객 계정이 없습니다",
   "tenants.empty.reason": "고객 계정을 개설하면 첫 관리자 계정과 일회용 로그인 코드가 발급됩니다.",
   "tenants.table": "고객 계정",

@@ -305,7 +305,7 @@ test("a failed person search reports the refusal without an empty-result claim @
   await expect(page.getByRole("option", { name: "일치하는 결과가 없습니다", exact: true })).toHaveCount(0);
   await expect(page.getByText("일치하는 직원이 없습니다. 직원 기록이 없으면 먼저 직원을 등록합니다.", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("status").filter({ hasText: "0건" })).toHaveCount(0);
-  await expect(page.getByRole("status").filter({ hasText: "잠시 뒤 다시 시도하십시오." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "요청을 완료하지 못했습니다." })).toBeVisible();
   f.recoverSearch();
   await page.getByRole("button", { name: "다시 불러오기", exact: true, includeHidden: true }).click();
   await expect(search).not.toHaveAttribute("aria-invalid", "true");
