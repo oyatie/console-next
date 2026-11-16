@@ -1,0 +1,155 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
+import { fits } from "../a11y";
+import { clearShifts, expectStable, recordShifts } from "../stability";
+import { commitLabel } from "../../apps/web/src/ui/composer/actions";
+import { AT, authz, id, user } from "./fixtures";
+import { orgChange } from "./org-changes";
+import { mockRoute } from "./route";
+import { mockScreen } from "./screen";
+import { orgChangeScreens } from "../states/registry";
+import type { components } from "@console/api/schema";
+
+test.beforeAll(() => loadCatalog("ko"));
+
+for (const width of [1280, 1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`org summary keeps its content and desktop position after rejection at ${width}px ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 1280 ? 720 : 900 });
+    await page.addInitScript(recordShifts);
+    await page.emulateMedia({ colorScheme: theme as "light" | "dark" });
+    const screen = orgChangeScreens[1];
+    const fixture = await mockScreen(page, screen, "approval");
+    await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities,
+      { feature: "org_change_approve", permission: "allow", branch_scope: { kind: "all" }, org_wide: true, scoped: false },
+    ] } });
+    let record: components["schemas"]["OrgChangeDetail"] = { ...orgChange("approval"), draftedBy: id(5), events: [
+      { at: AT, actor: id(5), actorName: "김기안", action: "create" },
+      { at: AT, actor: id(5), actorName: "김기안", action: "draft.update" },
+      { at: AT, actor: id(5), actorName: "김기안", action: "submit" },
+    ] };
+    let decided = false;
+    let releaseRead!: () => void;
+    const heldRead = new Promise<void>(resolve => { releaseRead = resolve; });
+    let readStarted!: () => void;
+    const reading = new Promise<void>(resolve => { readStarted = resolve; });
+    await mockRoute(page, "get", "/api/v1/org-changes/{id}", async () => {
+      if (decided) { readStarted(); await heldRead; }
+      return { status: 200, json: record };
+    });
+    await mockRoute(page, "post", "/api/v1/org-changes/{id}/approval-steps/{stepId}/decision", () => {
+      record = { ...record, status: "REJECTED", approvalSteps: record.approvalSteps.map(step => ({ ...step, decision: "REJECTED", decidedBy: user.id, decidedAt: AT, memo: "시행일 재검토" })),
+        events: [...record.events, { at: AT, actor: user.id, actorName: user.display_name, action: "step.decide", reason: "hr:REJECTED" }],
+      };
+      decided = true;
+      return { status: 200, json: record };
+    });
+    try {
+      await page.goto(screen.path);
+      const proposal = page.getByRole("region", { name: t("orgChange.proposal"), exact: true });
+      const reject = page.getByRole("button", { name: commitLabel({ kind: "orgChange", mode: "reject" }), exact: true });
+      await expect(reject).toBeEnabled();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      await expect(proposal).toContainText(record.reason);
+      const history = page.getByRole("complementary", { name: t("orgChange.history"), exact: true });
+      const rows = history.getByRole("listitem");
+      await expect(rows).toHaveCount(record.events.length);
+      await expect(rows.first()).toContainText(t("orgChange.event.submit", { actor: "김기안" }));
+      const rowPositions = () => rows.evaluateAll(elements => elements.map(el => ({ text: el.textContent, y: el.getBoundingClientRect().top })));
+      const position = () => page.evaluate(desktop => {
+        const main = document.getElementById("main")!;
+        const proposal = document.getElementById("proposal")!.parentElement!.getBoundingClientRect();
+        const history = document.getElementById("history")!.parentElement!.getBoundingClientRect();
+        return [proposal.height, ...(desktop ? [proposal.top + main.scrollTop, history.top + main.scrollTop] : [])];
+      }, width === 1440);
+      const before = await position();
+      await reject.click();
+      await page.getByLabel(t("orgChange.decide.reject.reason")).fill("시행일 재검토");
+      await page.evaluate(clearShifts);
+      const answer = page.waitForResponse(response => response.request().method() === "POST" && response.url().endsWith("/decision"));
+      await reject.click();
+      await (await answer).finished();
+      await reading;
+      // A loaded host can deliver the re-read after the command's layout-stability window.
+      await page.waitForTimeout(1800);
+      const existingRows = await rowPositions();
+      releaseRead();
+      await expect(page.getByRole("status").filter({ hasText: t("orgChange.decided.REJECTED", { role: "인사", code: record.code }) })).toBeVisible();
+      await expect(proposal).toContainText(record.reason);
+      expect(await position()).toEqual(before);
+      await expect(rows).toHaveCount(record.events.length);
+      await expect(rows.first()).toContainText(t("orgChange.event.rejected", { actor: user.display_name, role: "인사" }));
+      await expectStable(page, "org change page (rejected)");
+      expect((await rowPositions()).filter(row => existingRows.some(existing => existing.text === row.text)))
+        .toEqual(existingRows);
+      if (width === 390) {
+        const dock = page.locator("[data-status-dock]");
+        // Clearance must exist before scrolling, including receipts that wrap after they mount.
+        await expect.poll(() => rows.last().evaluate(row => {
+          const main = document.getElementById("main")!;
+          return row.getBoundingClientRect().bottom - (main.scrollHeight - main.clientHeight - main.scrollTop);
+        })).toBeLessThanOrEqual((await dock.boundingBox())!.y);
+        await page.locator("#main").evaluate(main => { main.scrollTop = main.scrollHeight; });
+        await expect.poll(async () => (await rows.last().boundingBox())!.y + (await rows.last().boundingBox())!.height)
+          .toBeLessThanOrEqual((await dock.boundingBox())!.y);
+      }
+      await fits(page, "org rejection");
+      await page.screenshot({ path: test.info().outputPath("rejected.png") });
+      expect(fixture.unexpected).toEqual([]);
+    } finally { releaseRead(); await page.close(); fixture.release(); }
+  });
+}
+
+for (const width of [1440, 390]) {
+  test(`org summary keeps its height after submission at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const screen = orgChangeScreens[1];
+    const fixture = await mockScreen(page, screen, "draft");
+    await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities,
+      { feature: "org_change_draft", permission: "allow", branch_scope: { kind: "all" }, org_wide: true, scoped: false },
+    ] } });
+    let record = { ...orgChange("draft"), headcount: 0 };
+    await mockRoute(page, "get", "/api/v1/org-changes/{id}", () => ({ status: 200, json: record }));
+    await mockRoute(page, "post", "/api/v1/org-changes/{id}/submit", () => {
+      record = { ...record, headcount: record.preflight!.headcount, status: "IN_APPROVAL", approvalSteps: orgChange("approval").approvalSteps };
+      return { status: 200, json: record };
+    });
+    try {
+      await page.goto(screen.path);
+      const proposal = page.getByRole("region", { name: t("orgChange.proposal"), exact: true });
+      const submit = page.getByRole("button", { name: commitLabel({ kind: "orgChange", mode: "apply" }), exact: true });
+      await expect(submit).toBeEnabled();
+      await expect(proposal).toContainText(t("orgChange.headcount.value", { count: record.preflight!.headcount }));
+      const before = (await proposal.boundingBox())!.height;
+      await submit.click();
+      await expect(page.locator("#change-receipt")).toBeFocused();
+      expect((await proposal.boundingBox())!.height).toBe(before);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
+// Older pages retain their first event when a new decision arrives; the first page shows the newest event.
+test("org history opens newest-first and keeps an older page anchored on refresh", async ({ page }) => {
+  const screen = orgChangeScreens[1];
+  const fixture = await mockScreen(page, screen, "large");
+  let record = orgChange("large");
+  record.events = record.events.map((event, i) => ({ ...event, actorName: `기록자 ${i}` }));
+  await mockRoute(page, "get", "/api/v1/org-changes/{id}", () => ({ status: 200, json: record }));
+  try {
+    await page.goto(screen.path);
+    const history = page.getByRole("complementary", { name: t("orgChange.history"), exact: true });
+    const rows = history.getByRole("listitem");
+    await expect(rows).toHaveCount(50);
+    await expect(rows.first()).toContainText("기록자 1999님");
+    await history.getByRole("button", { name: t("common.page.next"), exact: true }).click();
+    await expect(rows.first()).toContainText("기록자 1949님");
+    record = { ...record, events: [...record.events, { at: AT, actor: user.id, actorName: "새 기록자", action: "submit" }] };
+    await page.evaluate(() => { window.dispatchEvent(new Event("offline")); window.dispatchEvent(new Event("online")); });
+    await expect(history).toContainText("2,001");
+    await expect(rows.first()).toContainText("기록자 1949님");
+    await history.getByRole("button", { name: t("common.page.prev"), exact: true }).click();
+    await expect(rows.first()).toContainText("새 기록자님");
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

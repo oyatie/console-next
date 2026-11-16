@@ -14,6 +14,7 @@ import { personalFactsQuery } from "../api/record";
 import { fmtDay, whyText } from "../present";
 import type { LifecycleEvent } from "../api";
 import { CancelSheet } from "./lifecycle-cancel";
+import { CancelHost } from "./cancel-sheet";
 import { RescindSheet } from "./lifecycle-rescind";
 import { GroupTransferSheet } from "./group-transfer-sheet";
 import { LifecycleSheet } from "./lifecycle-sheet";
@@ -134,6 +135,8 @@ export function ActHost({ d, act, back, events, onClose, onOpen, onRecorded }: {
     if (!mine || r) setSnap(mine && r ? { act: mine, back, at: d.employee.updated_at, head: events.data?.head_version ?? 0, r } : null);
   }
   const e = d.employee;
+  // Registration cancellation shares the click-loaded action entry, keeping its sheet out of the initial card.
+  if (act === "cancel") return <CancelHost e={e} act={act} onClose={onClose} onAct={onOpen} />;
   if (mine === "menu") return <LifecycleMenu d={d} verbs={verbStates(d, events.data?.items ?? [])} setup={setup} onOpen={(next) => onOpen(next)} onClose={onClose} />;
   // A rehire (spec E3-rehire) opens from a retained exit; anyone else is told why.
   if (mine === "rehire")

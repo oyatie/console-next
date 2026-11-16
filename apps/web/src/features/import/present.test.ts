@@ -10,3 +10,11 @@ it("labels known matching evidence and preserves an unfamiliar basis", () => {
   expect(candidateBasisLabel("future_basis")).toBe("future_basis");
   expect(candidateBasisLabel("alias")).not.toBe("alias");
 });
+
+it.each(["en", "ko"] as const)("%s names both SQL apply refusals without database details", async locale => {
+  await loadCatalog(locale);
+  for (const code of ["import_apply_forbidden", "import_apply_timed_out"]) {
+    expect(importError(code)).toBeTypeOf("string");
+    expect(importError(code)).not.toContain(code);
+  }
+});

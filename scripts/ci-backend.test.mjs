@@ -398,6 +398,33 @@ test("push proof accepts only a successful trusted queue run with the same tree 
   await assert.rejects(source(expired, context), /CI_PROOF_TOOLS/);
 });
 
+test("dev artifacts come only from this repository's dev runs of the named workflow on dev's history, successful unless measurements are asked for", async () => {
+  const { trustedArtifacts } = await import("../.github/ci-proof.cjs");
+  const good = { path: ".github/workflows/ci.yml", event: "push", status: "completed", conclusion: "success", head_branch: "dev", repository: { id: 42 }, head_repository: { id: 42 } };
+  const runs = { 1: { event: "pull_request" }, 2: { conclusion: "failure" }, 3: { status: "in_progress" }, 4: { path: ".github/workflows/other.yml" },
+    5: { repository: { id: 7 } }, 6: { head_repository: { id: 7 } }, 7: { head_sha: "unmerged" }, 8: { event: "schedule" },
+    9: { event: "merge_group", head_branch: "gh-readonly-queue/dev/pr-1" }, 10: {}, 11: {} };
+  const api = async route => {
+    if (route === "branches/dev") return { commit: { sha: "tip" } };
+    const compared = route.match(/^compare\/(\w+)\.\.\.tip$/)?.[1];
+    if (compared) return { status: { unmerged: "diverged", sha11: "identical" }[compared] ?? "ahead" };
+    const id = route.match(/^actions\/runs\/(\d+)$/)[1];
+    return { ...good, id: Number(id), head_sha: `sha${id}`, ...runs[id] };
+  };
+  const artifact = (id, extra = {}) => ({ id, expired: false, created_at: new Date(id * 1000).toISOString(), workflow_run: { id, head_branch: "dev" }, ...extra });
+  const listed = [...Object.keys(runs).map(id => artifact(Number(id))), artifact(12, { expired: true }),
+    artifact(13, { workflow_run: { id: 13, head_branch: "feature" } })];
+  const found = async (workflow, events, options) => {
+    const ids = [];
+    for await (const { id } of trustedArtifacts(listed, api, 42, workflow, events, options)) ids.push(id);
+    return ids;
+  };
+  assert.deepEqual(await found("ci.yml", ["push"]), [11, 10]);
+  assert.deepEqual(await found("ci.yml", ["push"], { anyConclusion: true }), [11, 10, 2]);
+  assert.deepEqual(await found("ci.yml", ["push", "schedule"]), [11, 10, 8]);
+  assert.deepEqual(await found("db-tests.yml", ["push", "schedule"]), []);
+});
+
 
 test("duplicate browser, compiler and workflow checks retain a merge-gating copy", () => {
   const read = file => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
