@@ -12,7 +12,7 @@ import { todayKst } from "../../../lib/pure/today";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { confirmExit, eventsQuery, exitGuardsQuery } from "../api";
 import { blockingSchedules, EMPTY_NOTICE, noticeMissing, protectedLines, EXIT_ACKS, type NoticeDraft, type Effect } from "../domain/exits";
-import { OpsExitNote } from "./account-link-card";
+import { OpsExitNote } from "./ops-exit-note";
 import { CaseFacts } from "./exit-facts";
 import { CancelLink, StepFrame, type SheetSpec } from "./exit-foot";
 import { focusFirstInvalid, useExitCommand } from "./use-exit-command";

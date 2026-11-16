@@ -2,7 +2,7 @@
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { i18n, loadCatalog } from "@console/i18n";
-import { AccountLinkCard } from "./account-link-card";
+import { AccountLinkContent as AccountLinkCard } from "./account-link-content";
 
 const state = vi.hoisted(() => ({
   hasLinked: true,

@@ -257,3 +257,36 @@ test("receipt withdrawal follows the server offer and stays on its employee reco
   await expect(withdraw).toHaveCount(0);
   expect(fixture.unexpected).toEqual([]);
 });
+
+
+test("account-link controls load on the access tab and keep the offer in place @ui-state", async ({ page }) => {
+  const fixture = await setup(page, "ko");
+  await page.setViewportSize({ width: 390, height: 900 });
+  let loads = 0, release!: () => void;
+  const held = new Promise<void>(done => { release = done; });
+  await page.route("**/assets/person-act-*.js", async route => {
+    loads++;
+    await held;
+    await route.continue();
+  });
+  await page.goto(`/people/${moveDetail.employee.id}`);
+  await expect(page.getByRole("heading", { name: moveDetail.employee.name, exact: true })).toBeVisible();
+  expect(loads).toBe(0);
+  await page.goto(`/people/${moveDetail.employee.id}?tab=access`);
+  await expect.poll(() => loads).toBe(1);
+  const heading = page.getByRole("heading", { name: t("people.account.title"), exact: true });
+  await expect(heading).toBeVisible();
+  const before = await heading.boundingBox();
+  release();
+  const button = page.getByRole("button", { name: t("uiOverrideSheet.stepUp", { action: t("people.account.ownLink") }), exact: true });
+  await expect(button).toBeVisible();
+  expect(await heading.boundingBox()).toEqual(before);
+  const offered = await button.boundingBox();
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+  expect(await button.boundingBox()).toEqual(offered);
+  await expect(page.getByRole("region", { name: t("people.account.title"), exact: true }).getByRole("combobox")).toHaveCount(0);
+  expect(fixture.unexpected).toEqual([]);
+});

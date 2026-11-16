@@ -3,10 +3,13 @@ import { UnlockReview } from "../features/periods/ui/unlock-review";
 import type { RowAction } from "../features/home/ui/grouped-queue";
 import { InboxCommand } from "../features/org/ui/inbox-command";
 import { AddPasskey } from "../features/onboarding/ui/add-passkey";
-import { SelfBindingReview } from "../features/people/ui/self-binding-review";
+import { lazy, Suspense } from "react";
+import { chunk } from "../lib/chunk-guard";
+
+const SelfBindingReview = lazy(() => chunk(import("./inbox-screen")).then(m => ({ default: m.SelfBindingReview })));
 
 export const inboxAction: RowAction = item => {
-  if (item.kind === "account_binding_review" && item.context?.command_id) return <SelfBindingReview id={item.context.command_id} />;
+  if (item.kind === "account_binding_review" && item.context?.command_id) return <Suspense fallback={null}><SelfBindingReview id={item.context.command_id} /></Suspense>;
   const link = item.links[0];
   if (link?.kind === "account") return <AddPasskey count={1} focusAfter="inbox-title" />;
   if (link?.kind === "org_change" && item.context?.command) return <InboxCommand id={link.id} command={item.context.command} />;
