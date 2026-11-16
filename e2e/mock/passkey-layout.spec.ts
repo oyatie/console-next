@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { t } from "@console/i18n";
 import { bootKo } from "../../packages/i18n/src/catalogs/boot";
 import { expectAxe } from "../a11y";
 import { expectStable, recordShifts } from "../stability";
@@ -19,8 +20,8 @@ test("consent helper waits for fresh documents before accepting them", async ({ 
   const held = new Promise<void>(resolve => { release = resolve; });
   await mockRoute(page, "get", "/api/v1/onboarding/terms", async () => {
     await held;
-    const terms = { version: "consent-test", sha256: "a".repeat(64), body: "이용 약관" };
-    return { status: 200, json: { ...terms, privacy: { ...terms, title: "개인정보 처리 안내", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false } } };
+    const terms = { version: "consent-test", sha256: "a".repeat(64), body: "Terms of service" };
+    return { status: 200, json: { ...terms, privacy: { ...terms, title: "Privacy notice", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false } } };
   });
   await page.goto("/setup-passkey");
   let waiting = false;
@@ -32,9 +33,9 @@ test("consent helper waits for fresh documents before accepting them", async ({ 
     await expect.poll(() => waiting, "the helper waits for route readiness while documents are held").toBe(true);
   } finally { release(); }
   await accepting;
-  await expect(page.getByRole("checkbox", { name: /개인정보 수집·이용/ })).toBeChecked();
-  await expect(page.getByRole("checkbox", { name: /서비스 이용약관/ })).toBeChecked();
-  await expect(page.getByRole("button", { name: "동의하고 패스키 등록", exact: true })).toBeEnabled();
+  await expect(page.getByRole("checkbox", { name: t("auth.setup.consent.privacy"), exact: true })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: t("auth.setup.consent.terms"), exact: true })).toBeChecked();
+  await expect(page.getByRole("button", { name: t("auth.setup.register"), exact: true })).toBeEnabled();
   expect(fixture.unexpected).toEqual([]);
 });
 

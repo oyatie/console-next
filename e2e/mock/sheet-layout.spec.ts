@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
 import { openGradeFix } from "../helpers/grade-fix";
@@ -10,6 +11,8 @@ import { moveDetail } from "./lifecycle-sheets";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("grade helper waits for promotion reasons before returning the editor", async ({ page }) => {
   const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
@@ -31,8 +34,8 @@ test("grade helper waits for promotion reasons before returning the editor", asy
     await expect.poll(() => waiting, "the helper waits for route readiness while reasons are held").toBe(true);
   } finally { release(); }
   const editor = await opening;
-  await expect(editor).toContainText("등록된 새 직급 항목이 없습니다");
-  await expect(editor.getByRole("button", { name: "직급 추가", exact: true })).toBeVisible();
+  await expect(editor).toContainText(t("empFix.catalog.empty", { field: t("empFix.change.new", { field: t("empFix.field.grade") }) }));
+  await expect(editor.getByRole("button", { name: t("lifecycle.appoint.add", { what: t("enum.jobTitleKind.GRADE") }), exact: true })).toBeVisible();
   expect(fixture.unexpected).toEqual([]);
 });
 

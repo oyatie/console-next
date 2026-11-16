@@ -75,7 +75,7 @@ test("a search input and a reverted value leave a Sheet clean", async ({ page })
   await expect(sheet).toHaveCount(0);
 });
 
-test("uncommitted combobox filter text in 직원 등록 closes cleanly, while a committed pick asks", { tag: "@webkit-pr" }, async ({ page }) => {
+test("uncommitted combobox filter text in employee registration closes cleanly, while a committed pick asks", { tag: "@webkit-pr" }, async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
   await mockLifecycleSheets(page, lifecycleSheetScreens[0]);
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });

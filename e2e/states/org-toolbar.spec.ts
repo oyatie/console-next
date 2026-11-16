@@ -166,23 +166,23 @@ test("org: nested fields keep wheel scrolling without moving the chart at 390px 
       fields.dataset.wheelFields = "";
       fields.style.cssText = "position:absolute;left:8px;top:120px;width:200px;z-index:10;background:var(--surface)";
       const note = document.createElement("textarea");
-      note.setAttribute("aria-label", "사유 메모");
+      note.setAttribute("aria-label", "Reason note");
       note.rows = 2;
-      note.value = Array.from({ length: 40 }, (_, i) => `사유 ${i + 1}`).join("\n");
+      note.value = Array.from({ length: 40 }, (_, i) => `Reason ${i + 1}`).join("\n");
       note.style.cssText = "width:100%;resize:none";
       const input = document.createElement("input");
-      input.setAttribute("aria-label", "조직 이름");
+      input.setAttribute("aria-label", "Organization name");
       const scroll = document.createElement("div");
       scroll.dataset.wheelScroll = "";
       scroll.style.cssText = "width:200px;height:60px;overflow:auto";
       const content = document.createElement("div");
       content.style.cssText = "width:600px;height:300px";
-      content.textContent = "조직 변경 내역";
+      content.textContent = "Organization change history";
       scroll.append(content);
       fields.append(note, input, scroll);
       viewport.append(fields);
     });
-    const note = page.getByRole("textbox", { name: "사유 메모", exact: true });
+    const note = page.getByRole("textbox", { name: "Reason note", exact: true });
     const scroll = page.locator("[data-wheel-scroll]");
     const stage = workplace.locator("..");
     for (const theme of ["light", "dark"]) {
@@ -201,7 +201,7 @@ test("org: nested fields keep wheel scrolling without moving the chart at 390px 
         }
       }
       const transform = await stage.getAttribute("style");
-      const input = page.getByRole("textbox", { name: "조직 이름", exact: true });
+      const input = page.getByRole("textbox", { name: "Organization name", exact: true });
       await input.evaluate(el => el.addEventListener("wheel", () => { el.dataset.wheeled = "true"; }, { once: true }));
       await input.click();
       await page.mouse.wheel(0, 60);
