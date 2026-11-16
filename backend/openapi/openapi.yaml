@@ -20434,8 +20434,12 @@ paths:
         account); 422 validation (text, links); 422
         todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and
         out-of-scope accounts alike, and a grant revoked mid-request); 422
-        todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name
-        records by kind and id; a sent label is ignored and never stored. Audited as
+        todo_assignee_inactive; 422 todo_due_past (before today in KST); 409
+        todo_assignee_full (the assignee already holds 100 open requests); 409
+        todo_requester_full (100 of the caller's requests are open or sent back, until
+        one is done, withdrawn or cleared). Each side's requests are items in that
+        account's work inbox, so neither side may hold more. Links name records by
+        kind and id; a sent label is ignored and never stored. Audited as
         todo.request with the assignee and the due date only.
       security:
       - bearerAuth: []
@@ -20456,6 +20460,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
