@@ -2,5 +2,5 @@
 .band { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-block-size: var(--target); min-inline-size: 0; color: var(--steel); font-size: var(--text-xs); }
 .band > [data-phase], .band > button { flex: none; white-space: nowrap; }
 @media print { .band { display: none; } }
-.content { min-inline-size: 0; min-block-size: 100%; }
-.content[data-phase-pending] { position: absolute; inset-block-start: 0; inset-inline: 0; visibility: hidden; }
+.content { display: contents; }
+.content[data-phase-pending] { display: block; position: absolute; inset: 0; visibility: hidden; }
