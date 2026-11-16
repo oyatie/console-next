@@ -20,7 +20,7 @@ import { pauseAutofill } from "./auth/sign-in-id";
 import { login } from "./routes/app";
 import { routeTree } from "./routes/tree";
 import "./app.css";
-import { prepareFonts, screen } from "./lib/fonts";
+import { prepareFonts, bootScreen } from "./lib/fonts";
 
 // Every static import is in: from here a failed chunk is a lazy one (public/chunk-guard.js).
 started();
@@ -29,7 +29,7 @@ configure(webPlatform);
 initLocale();
 
 // Session warning UI loads beside the router without adding to the entry bundle.
-const IdleGuard = lazy(() => screen(() => import("./auth/IdleGuard"))().then((m) => ({ default: m.IdleGuard })));
+const IdleGuard = lazy(() => bootScreen(() => import("./auth/IdleGuard"))().then((m) => ({ default: m.IdleGuard })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,7 +42,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Screens are lazy route chunks; the entry keeps only the router, shell and sign-in.
+// Screens, sign-in and shell are lazy; only loading and recovery copy ships in the entry.
 const router = createRouter({
   routeTree: routeTree,
   defaultPreload: "intent",

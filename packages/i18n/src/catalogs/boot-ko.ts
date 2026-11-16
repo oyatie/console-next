@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+// English defines the ids; Korean covers every id. Use ICU and Korean particles (`{name|을를}`).
+// No ASCII apostrophe before `{` (ICU quotes it). Only boot-bootstrap.ts ships in the entry.
 import { bootConsentKo } from "./boot-consent";
 import { bootIdleKo } from "./boot-idle";
 import { bootBootstrapKo } from "./boot-bootstrap";

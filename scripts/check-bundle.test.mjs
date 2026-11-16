@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash, randomBytes } from "node:crypto";
 import { gzipSync } from "node:zlib";
-import { checkRouteBudgets, checkInitialBudget, INITIAL_BUDGET_KB, DEFAULT_BUDGET_FILE } from "./check-bundle.mjs";
+import { checkRouteBudgets, checkSignInBudget, checkInitialBudget, INITIAL_BUDGET_KB, DEFAULT_BUDGET_FILE } from "./check-bundle.mjs";
 
 describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
   const createMockDist = () => {
@@ -38,6 +38,43 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
 
     return { dir, dist, assets, dynamic, manifest, writeChunk, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
   };
+
+  it("sign-in counts only the locale catalogs its loaders await, including shared imports once", () => {
+    const mock = createMockDist();
+    try {
+      for (const file of ["index-main.js", "vendor-boot.js", "login.js", "idle.js", "session.js", "shared.js", "boot-ko.js", "boot-en.js"]) mock.writeChunk(file, file);
+      for (const locale of ["ko", "en"]) mock.writeChunk(`${locale}.js`, randomBytes(100_000).toString("hex"));
+      mock.dynamic("src/auth/Login.tsx", "login.js", ["_shared"]);
+      mock.dynamic("src/auth/IdleGuard.tsx", "idle.js", ["_shared"]);
+      mock.dynamic("src/lib/react/session.ts", "session.js");
+      mock.manifest._shared = { file: "assets/shared.js" };
+      for (const locale of ["ko", "en"]) {
+        mock.dynamic(`../../packages/i18n/src/catalogs/boot-${locale}.ts`, `boot-${locale}.js`, ["_shared"]);
+        mock.dynamic(`../../packages/i18n/src/catalogs/${locale}.ts`, `${locale}.js`);
+      }
+      const sources = {
+        "src/routes/app.ts": 'component: lazyRouteComponent(bootScreen(() => import("../auth/Login")), "Login")',
+        "src/main.tsx": 'const IdleGuard = lazy(() => bootScreen(() => import("./auth/IdleGuard"))())',
+      };
+      const budgets = { shell: { budget_kb: 10 } };
+      const result = checkSignInBudget(mock.dist, budgets, sources);
+      assert.strictEqual(result.ok, true);
+      assert.strictEqual(result.chunksCount, 5);
+      for (const file of Object.keys(sources)) {
+        const changed = { ...sources, [file]: sources[file].replace("bootScreen(", "screen(") };
+        const failure = checkSignInBudget(mock.dist, budgets, changed);
+        assert.strictEqual(failure.ok, false);
+        assert.match(failure.error, /sign-in critical path.*over the 10/);
+      }
+      assert.throws(() => checkSignInBudget(mock.dist, budgets, { ...sources, "src/routes/app.ts": "unrecognized loader" }), /missing catalog boundary/);
+      delete mock.manifest["../../packages/i18n/src/catalogs/ko.ts"];
+      writeFileSync(path.join(mock.dist, ".vite/manifest.json"), JSON.stringify(mock.manifest));
+      assert.throws(() => checkSignInBudget(mock.dist, budgets, { ...sources, "src/routes/app.ts": sources["src/routes/app.ts"].replace("bootScreen(", "screen(") }), /missing.*catalogs\/ko/);
+      for (const key of Object.keys(mock.manifest)) if (key.includes("/catalogs/boot-")) delete mock.manifest[key];
+      writeFileSync(path.join(mock.dist, ".vite/manifest.json"), JSON.stringify(mock.manifest));
+      assert.throws(() => checkSignInBudget(mock.dist, budgets, sources), /missing boot catalog entries/);
+    } finally { mock.cleanup(); }
+  });
 
   it("a planted route chunk set over its page-type budget fails with the route and size", () => {
     const mock = createMockDist();

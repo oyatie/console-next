@@ -3,7 +3,7 @@
 // Bundle budget: gzips every JS chunk of the built SPA, prints the sizes, and fails when the
 // initial load (the entry chunk index.html runs plus the chunks it statically imports, i.e. its
 // modulepreloads) exceeds the budget. Screens are lazy route chunks, so growth here means
-// something eager was added to the sign-in/shell path.
+// something eager was added to the entry. Sign-in also budgets its awaited catalog chunks.
 //
 // JRN-FIRSTPAINT (J-HP-4): Also sums each lazy route's chunk set (route chunk + its static imports)
 // and checks it against scripts/bundle-budget.json (per page type: shell, list, record, wizard).
@@ -117,6 +117,49 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
   };
 }
 
+/** Sign-in's additional blocking chunks share the existing shell budget, including awaited copy. */
+export function checkSignInBudget(dist, budgetsPathOrObj, sources = Object.fromEntries(
+  ["src/routes/app.ts", "src/main.tsx"].map(file => [file, readFileSync(path.join("apps/web", file), "utf8")]),
+)) {
+  const budgets = typeof budgetsPathOrObj === "string" ? JSON.parse(readFileSync(budgetsPathOrObj, "utf8")) : budgetsPathOrObj;
+  const manifest = JSON.parse(readFileSync(path.join(dist, ".vite/manifest.json"), "utf8"));
+  const { initial } = checkInitialBudget(dist);
+  const boundaries = new Map();
+  for (const [file, code] of Object.entries(sources)) {
+    // shortcut: direct entry imports only; extend this parser if an entry switches to a named loader.
+    for (const [, loader, imported] of code.matchAll(/\b(bootScreen|screen)\(\s*\(\)\s*=>\s*import\(["']([^"']+)["']\)\s*\)/g)) {
+      boundaries.set(path.posix.normalize(path.posix.join(path.posix.dirname(file), imported)) + ".tsx", loader);
+    }
+  }
+  let maxKb = 0;
+  let chunksCount = 0;
+  const catalogs = Object.keys(manifest).filter(key => manifest[key].isDynamicEntry && /\/catalogs\/boot-[^/]+\.ts$/.test(key));
+  if (!catalogs.length) throw new Error("check-bundle: missing boot catalog entries");
+  for (const catalog of catalogs) {
+    const files = new Set();
+    const visit = key => {
+      const entry = manifest[key];
+      if (!entry) throw new Error(`check-bundle: missing sign-in critical chunk ${key}`);
+      if (initial.has(entry.file) || files.has(entry.file)) return;
+      files.add(entry.file);
+      for (const imported of entry.imports ?? []) visit(imported);
+    };
+    visit("src/lib/react/session.ts");
+    for (const source of ["src/auth/Login.tsx", "src/auth/IdleGuard.tsx"]) {
+      const loader = boundaries.get(source);
+      if (!loader) throw new Error(`check-bundle: missing catalog boundary for ${source}`);
+      visit(source);
+      visit(catalog);
+      if (loader === "screen") visit(catalog.replace(/boot-([^/]+)\.ts$/, "$1.ts"));
+    }
+    const size = [...files].reduce((sum, file) => sum + kb(dist, file), 0);
+    if (size > maxKb) { maxKb = size; chunksCount = files.size; }
+  }
+  const budgetKb = budgets.shell.budget_kb;
+  return { ok: maxKb <= budgetKb, sizeKb: maxKb, chunksCount, budgetKb,
+    error: maxKb > budgetKb ? `check-bundle: sign-in critical path is ${maxKb.toFixed(1)} KB gz, over the ${budgetKb} KB shell budget` : undefined };
+}
+
 export function checkGalleryCopy(dist) {
   const strings = (file) => [...readFileSync(file, "utf8").matchAll(/^\s+"[^"]+": "(.+)",$/gm)].map((m) => m[1]);
   const catalogs = "packages/i18n/src/catalogs";
@@ -160,6 +203,10 @@ export function checkBundle(dist = "apps/web/dist", budgetFile = DEFAULT_BUDGET_
     }
     process.exit(1);
   }
+
+  const signIn = checkSignInBudget(dist, budgetFile);
+  console.log(`sign-in critical path ${signIn.sizeKb.toFixed(1)} KB gz beyond entry / shell budget ${signIn.budgetKb} KB`);
+  if (!signIn.ok) { console.error(signIn.error); process.exit(1); }
 
   // 3. Dev-only gallery copy check
   const gallery = checkGalleryCopy(dist);

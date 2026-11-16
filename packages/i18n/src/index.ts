@@ -34,16 +34,32 @@ export const i18n = {
 // Only loading and recovery copy ships in the entry; routes await their locale before painting.
 const boot: Record<Locale, Catalog> = { ko: bootBootstrapKo, en: bootBootstrapEn };
 const screens: Partial<Record<Locale, Catalog>> = {};
+const bootLoaders: Record<Locale, () => Promise<Catalog>> = {
+  ko: () => import("./catalogs/boot-ko").then(m => m.bootKo),
+  en: () => import("./catalogs/boot-en").then(m => m.bootEn),
+};
+const bootLoading = new Map<Locale, Promise<void>>();
+/** Loads only sign-in and session copy; the full screen catalog cannot delay sign-in. */
+export function loadBootCatalog(l: Locale = locale): Promise<void> {
+  let p = bootLoading.get(l);
+  if (!p) {
+    p = bootLoaders[l]().then(c => void (boot[l] = c));
+    p.catch(() => bootLoading.delete(l));
+    bootLoading.set(l, p);
+  }
+  return p;
+}
+
 const loaders: Record<Locale, () => Promise<Catalog>> = {
-  ko: () => Promise.all([import("./catalogs/boot-ko"), import("./catalogs/ko")]).then(([boot, screen]) => ({ ...boot.bootKo, ...screen.ko })),
-  en: () => Promise.all([import("./catalogs/boot-en"), import("./catalogs/en")]).then(([boot, screen]) => ({ ...boot.bootEn, ...screen.en })),
+  ko: () => import("./catalogs/ko").then(m => m.ko),
+  en: () => import("./catalogs/en").then(m => m.en),
 };
 const loading = new Map<Locale, Promise<void>>();
-/** Loads a locale's screen catalog (once); the router awaits it before any screen renders. */
+/** Loads boot and screen copy together before a full screen renders. */
 export function loadCatalog(l: Locale = locale): Promise<void> {
   let p = loading.get(l);
   if (!p) {
-    p = loaders[l]().then((c) => void (screens[l] = c));
+    p = Promise.all([loadBootCatalog(l), loaders[l]()]).then(([, c]) => void (screens[l] = c));
     // A failed fetch (e.g. offline) may be retried by the next screen.
     p.catch(() => loading.delete(l));
     loading.set(l, p);
