@@ -7,7 +7,15 @@ use crate::harness::importer;
 
 async fn refused_settle(pool: PgPool, state: &str, status: u16, code: &str) {
     let i = importer(pool).await;
-    setup_headquarters(&i, i.f.branch).await;
+    let (_, workplace) = setup_headquarters(&i, i.f.branch).await;
+    let workplace_name: String = sqlx::query_scalar(
+        "SELECT name FROM workplace_revisions WHERE org_id=$1 AND workplace_id=$2",
+    )
+    .bind(i.org())
+    .bind(workplace)
+    .fetch_one(&i.owner)
+    .await
+    .unwrap();
     let (run, digest) = stage_roster(
         &i,
         "Roster",
@@ -15,10 +23,10 @@ async fn refused_settle(pool: PgPool, state: &str, status: u16, code: &str) {
             "REF-1",
             "Example",
             "2024-03-04",
-            "정규직",
-            "본사",
+            "REGULAR",
+            &workplace_name,
             "",
-            "사원",
+            "Staff",
         ]],
     )
     .await;
