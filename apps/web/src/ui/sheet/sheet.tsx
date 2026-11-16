@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import { ModalOverlay, Button, Dialog, Heading, Modal } from "react-aria-components";
 import { X } from "lucide-react";
 import { t } from "@console/i18n";
@@ -6,6 +6,9 @@ import { Skeleton } from "../skeleton/skeleton";
 import { useLiveHold } from "../../lib/live/hold";
 import { useCurrentSheetDraft } from "./sheet-draft";
 import { useSheetDismiss } from "./sheet-dismiss";
+import { SheetReadContext } from "./read-context";
+import { QueryState } from "../../lib/react/query-state";
+import { readGroup } from "../../lib/react/query-view";
 import s from "./sheet.module.css";
 
 /**
@@ -48,9 +51,10 @@ export function Sheet(p: Props) {
 
 function OpenSheet(p: Props) {
   const draft = useCurrentSheetDraft();
+  const reads = useContext(SheetReadContext);
   const { ref, dirty, armed, requestClose, onInput, onBackdrop } = useSheetDismiss<HTMLDivElement>({ ...p, dirty: draft?.dirty ?? p.dirty });
   return (
-    <ModalOverlay className={s.overlay} isOpen onOpenChange={(open) => !open && requestClose()}
+    <SheetReadContext value={[]}><ModalOverlay className={s.overlay} isOpen onOpenChange={(open) => !open && requestClose()}
       isDismissable={false} isKeyboardDismissDisabled={Boolean(p.pending || (dirty && !armed))}
       onPointerDown={(event) => event.target === event.currentTarget && onBackdrop()}>
       <Modal ref={ref} className={s.sheet} data-size={p.size ?? "md"} data-sheet-layer>
@@ -63,7 +67,7 @@ function OpenSheet(p: Props) {
             </div>
             <Button className="btn btn--ghost" aria-label={t("uiSheet.close")} isDisabled={p.pending} onPress={requestClose}><X size={16} aria-hidden /></Button>
           </div>
-          <div className={s.body} inert={p.pending || p.locked || undefined} onInputCapture={onInput} onChangeCapture={onInput}>{p.loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("common.loading")} /> : p.children}</div>
+          <div className={s.body} inert={p.pending || p.locked || undefined} onInputCapture={onInput} onChangeCapture={onInput}>{reads.length > 0 && <QueryState q={readGroup(reads)}>{() => null}</QueryState>}{p.loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("common.loading")} /> : p.children}</div>
           <div className={s.foot}>
             {p.notice}
             {draft && (draft.problem || draft.restored) && <div role="status">{t(draft.problem ? "draft.unavailable" : "draft.restored")}{draft.restored && !draft.problem && <Button className="btn btn--ghost" onPress={draft.discard}>{t("draft.discard")}</Button>}</div>}
@@ -73,6 +77,6 @@ function OpenSheet(p: Props) {
           </div>
         </Dialog>
       </Modal>
-    </ModalOverlay>
+    </ModalOverlay></SheetReadContext>
   );
 }

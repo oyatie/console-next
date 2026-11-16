@@ -2,6 +2,7 @@
 import { realpathSync } from "node:fs";
 import path from "node:path";
 import { loadCatalog, t } from "@console/i18n";
+import { expect as dom } from "@playwright/test";
 import { createServer, type Plugin } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
@@ -15,6 +16,9 @@ import { loadCatalog } from '@console/i18n';
 import { NameBox } from '/apps/web/src/features/structure/ui/name-box.tsx';
 import { DeptDetails } from '/apps/web/src/features/org/ui/dept-details.tsx';
 import { WorkplaceMoveSheet } from '/apps/web/src/features/entity/ui/workplace-move-sheet.tsx';
+import { ReadInSheet } from '/apps/web/src/features/entity/ui/fresh-entity.tsx';
+import { Sheet } from '/apps/web/src/ui/sheet/sheet.tsx';
+import { ApiError } from '@console/api';
 import '/apps/web/src/app.css';
 await loadCatalog('ko');
 const sheet = new URLSearchParams(location.search).get('sheet');
@@ -56,7 +60,15 @@ const parentBefore = { id: 'site', kind: 'site', name: '본사', headcount: 0, c
           const entAfter = { id: 'ent-1', registrations: [], workplaces: [wpAfter] };
           function Demo() {
             const [applied, setApplied] = useState(false);
+            const [withRead, setWithRead] = useState(true);
             window.applyRefetch = () => flushSync(() => setApplied(true));
+            if (sheet === 'read') {
+              window.dropRead = () => flushSync(() => setWithRead(false));
+              const q = { isPending: false, data: 'record', error: applied ? new ApiError(503, 'service_unavailable', '') : null, refetch: () => flushSync(() => setApplied(false)) };
+              const form = h(Sheet, { open: true, title: 'Record', onClose: () => {}, consequence: null, actions: null }, h('input', { 'aria-label': 'Draft' }));
+              return withRead ? h(ReadInSheet, { q, title: 'Record', onClose: () => {} }, () =>
+                h(ReadInSheet, { q: { ...q, error: null }, title: 'Record', onClose: () => {} }, () => form)) : form;
+            }
             if (sheet === 'move') {
               return h(
                 QueryClientProvider,
@@ -178,4 +190,32 @@ test("workplace move sheet keeps its ready state when FreshEntity refetches befo
 
   expect(await save.getAttribute("aria-disabled")).toBeNull();
   expect(await page.getByText(t("entityOps.move.sameAddress")).count()).toBe(0);
+});
+
+for (const width of [1440, 390]) for (const state of ["stale", "offline"] as const) test(`${state} chained sheet reads retain the draft and focus at ${width}px`, async () => {
+  const page = harness.page!;
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto(`${harness.baseUrl}relayout?sheet=read`);
+  const sheet = page.getByRole("dialog", { name: "Record", exact: true });
+  const field = sheet.getByRole("textbox", { name: "Draft", exact: true });
+  await field.fill("unfinished draft");
+  const mountedField = await field.elementHandle();
+  try {
+    if (state === "offline") await page.context().setOffline(true);
+    else await page.evaluate(() => (window as unknown as { applyRefetch: () => void }).applyRefetch());
+    const notice = sheet.getByRole("status").filter({ hasText: t(state === "offline" ? "common.read.offline" : "common.read.stale") });
+    await dom(notice).toHaveCount(1);
+    await dom(page.getByRole("dialog")).toHaveCount(1);
+    await dom(field).toBeFocused();
+    await dom(field).toHaveValue("unfinished draft");
+    expect(await mountedField!.evaluate(element => element.isConnected)).toBe(true);
+    if (state === "offline") await page.context().setOffline(false);
+    else await notice.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await dom(notice).toHaveCount(0);
+    await dom(field).toHaveValue("unfinished draft");
+    expect(await mountedField!.evaluate(element => element.isConnected)).toBe(true);
+    await page.evaluate(() => (window as unknown as { dropRead: () => void }).dropRead());
+    await page.context().setOffline(true);
+    await dom(sheet.getByRole("status")).toHaveCount(0);
+  } finally { await page.context().setOffline(false); }
 });
