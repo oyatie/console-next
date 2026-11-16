@@ -30,7 +30,7 @@ import css from "./inbox-queue.module.css";
 // Keep the Home preview short enough for the first viewport; full paging belongs to /inbox.
 const HOME_PREVIEW_ROWS = 5;
 const SOURCE_TEXT: Record<string, MessageId> = {
-  privacy_requests: "home.inbox.privacyRequest",
+  privacy_requests: "home.inbox.privacyRequest", account_binding_review: "people.account.bindingReview",
   registration_checks: "nts.title",
   entity_corrections: "entityRecord.corrections.title",
   support_access: "home.part.support", workflow: "home.part.decide", dispatch: "home.inbox.source.dispatch", support: "home.inbox.source.support", work_order: "home.inbox.source.workOrder", payroll: "accessCodes.domain.pay", governance: "home.inbox.source.governance",

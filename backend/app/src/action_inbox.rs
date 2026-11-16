@@ -246,6 +246,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 ActionInboxSource::GrantNotice => {
                     sources::grants::page(&self.pool, &self.principal, query).await
                 }
+                ActionInboxSource::AccountBindingReview => sources::account_binding::page(&self.pool, &self.principal, query).await,
                 ActionInboxSource::SupportAccess => {
                     sources::support_access::page(&self.pool, &self.principal, query, &self.support_can_approve, &self.authorization).await
                 }
@@ -285,6 +286,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
             if matches!(
                 source,
                 ActionInboxSource::HrIdentity
+                    | ActionInboxSource::AccountBindingReview
                     | ActionInboxSource::HrUnplaced
                     | ActionInboxSource::HrContract
                     | ActionInboxSource::HrRegister

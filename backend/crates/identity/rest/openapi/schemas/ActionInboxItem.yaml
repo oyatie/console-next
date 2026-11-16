@@ -62,6 +62,7 @@ properties:
     - period_unlock
     - grant_notice
     - account_security
+    - account_binding_review
     - setup_entity
     - setup_workplace
     - setup_org

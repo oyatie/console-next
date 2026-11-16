@@ -5,4 +5,5 @@ pub(crate) mod dto;
 pub(crate) mod lifecycle;
 pub(crate) mod routes;
 pub(crate) mod self_binding;
+pub(crate) mod self_binding_review;
 pub(crate) mod sign_in_id;

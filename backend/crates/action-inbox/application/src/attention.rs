@@ -71,6 +71,7 @@ fn is_approval(kind: &str) -> bool {
             | "payroll"
             | "governance"
             | "period_unlock"
+            | "account_binding_review"
             | "support_access"
             | "identifier_correction_decide"
     )

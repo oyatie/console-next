@@ -29,10 +29,11 @@ pub enum ActionInboxSource {
     GrantNotice,
     SupportAccess,
     PrivacyRequests,
+    AccountBindingReview,
 }
 
 impl ActionInboxSource {
-    pub const ALL: [Self; 22] = [
+    pub const ALL: [Self; 23] = [
         Self::Workflow,
         Self::Dispatch,
         Self::Support,
@@ -55,5 +56,6 @@ impl ActionInboxSource {
         Self::GrantNotice,
         Self::SupportAccess,
         Self::PrivacyRequests,
+        Self::AccountBindingReview,
     ];
 }

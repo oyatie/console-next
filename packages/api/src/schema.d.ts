@@ -13591,6 +13591,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/employee-link-attestations/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or revoke a self-attested account binding
+         * @description Requires an independent account manager and a fresh one-use passkey assertion. The command reloads Cedar facts inside its locked transaction. Confirmation retains the binding; revocation removes the current binding and restores the two-person rule. Confirmation does not prevent later revocation. A stale or replacement binding is never changed. Each accepted decision and its audit commit together.
+         */
+        post: operations["reviewSelfAccountBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me": {
         parameters: {
             query?: never;
@@ -28678,7 +28698,7 @@ export interface components {
         SelfBindingError: {
             error: {
                 /** @enum {string} */
-                code: "step_up_required" | "step_up_failed" | "account_link.refuse.solo_ineligible" | "account_link.refuse.employee_taken" | "account_link.refuse.not_own_record" | "account_link.refuse.withdraw_ineligible" | "account_link.refuse.review_stale" | "passkey_step_up_required" | "not_found" | "unauthorized" | "unavailable" | "internal";
+                code: "step_up_required" | "step_up_failed" | "account_link.refuse.solo_ineligible" | "account_link.refuse.employee_taken" | "account_link.refuse.not_own_record" | "account_link.refuse.withdraw_ineligible" | "account_link.refuse.review_stale" | "account_link.refuse.review_ineligible" | "account_link.refuse.identity_unbound" | "passkey_step_up_required" | "not_found" | "unauthorized" | "unavailable" | "internal";
                 message: string;
             };
         };
@@ -28693,6 +28713,11 @@ export interface components {
             confirmed_name?: string;
             employee_id: components["schemas"]["Uuid"];
             step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        SelfBindingReviewRequest: {
+            /** @enum {string} */
+            decision: "CONFIRM" | "REVOKE";
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
         SelfBindingWithdrawRequest: {
             attestation_id: components["schemas"]["Uuid"];
@@ -60059,6 +60084,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
+            };
+        };
+    };
+    reviewSelfAccountBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfBindingReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Decision recorded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description account_link.refuse.review_ineligible or account_link.refuse.identity_unbound */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description account_link.refuse.review_stale */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            /** @description passkey_step_up_required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            /** @description Passkey service unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

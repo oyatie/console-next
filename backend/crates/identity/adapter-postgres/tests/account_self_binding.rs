@@ -2,6 +2,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #[path = "account_self_binding/canonical_person.rs"]
 mod canonical_person;
+#[path = "account_self_binding/inbox.rs"]
+mod inbox;
 #[path = "account_self_binding/review.rs"]
 mod review;
 #[path = "account_self_binding/review_support.rs"]

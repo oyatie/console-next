@@ -25,6 +25,7 @@ export type RowAction = (item: InboxItem) => ReactNode;
 type QueueColumn = Column<InboxItem> & { id: "task" | "subject" | "due" | "source" | "owner" | "actions" };
 // oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
 export const KIND_TEXT: Record<string, MessageId> = {
+  account_binding_review: "people.account.bindingReview",
   dispatch: "home.inbox.source.dispatch", support: "home.inbox.source.support", work: "home.inbox.source.workOrder", payroll: "accessCodes.domain.pay", governance: "home.inbox.source.governance",
   privacy_request: "home.inbox.privacyRequest",
   registration_check: "nts.title",
@@ -37,6 +38,7 @@ export const KIND_TEXT: Record<string, MessageId> = {
   contract_renewal: "people.lifecycle.action.CONTRACT_RENEWAL", insurance_filing: "home.part.insurance", period_unlock: "home.part.unlocks", grant_notice: "access.grant.title", account_security: "account.second.title",
 };
 const VERB_TEXT: Record<string, MessageId> = {
+  account_binding_review: "home.inbox.open",
   approval: "home.inbox.open", privacy_request: "home.inbox.open", org_change: "home.inbox.open", org_change_waiting: "home.inbox.open", org_change_scheduled: "home.inbox.open", hr_exit: "home.inbox.open", grant_notice: "home.inbox.open", account_security: "shell.account",
   dispatch: "home.inbox.open", support: "home.inbox.open", work: "home.inbox.open", payroll: "home.inbox.open", governance: "home.inbox.open",
   registration_check: "nts.inbox.review",

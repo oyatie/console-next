@@ -384,6 +384,9 @@
       "get",
       "post"
     ],
+    "/api/v1/users/employee-link-attestations/{id}/review": [
+      "post"
+    ],
     "/api/v1/users/me": [
       "get",
       "patch"
@@ -573,6 +576,7 @@
     "SelfBindingError",
     "SelfBindingPrepareRequest",
     "SelfBindingRequest",
+    "SelfBindingReviewRequest",
     "SelfBindingWithdrawRequest",
     "SetAccessRoleStatusRequest",
     "SignInIdHistory",

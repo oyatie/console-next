@@ -1,6 +1,10 @@
 // Korean copy for `people.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 import type { enPeople } from "../en/people";
 export const koPeople: Record<keyof typeof enPeople, string> = {
+  "people.account.bindingReview": "직접 연결한 계정 검토",
+  "people.account.confirmBinding": "계정 연결 확인",
+  "people.account.revokeBinding": "계정 연결 취소",
+  "people.account.reviewed": "계정 연결 검토를 기록했습니다",
   "people.label.unnamed": "이름 없음",
   "people.label.identityMissing": "식별 정보 없음",
   "people.label.accountCreated": "계정 생성 {at}",

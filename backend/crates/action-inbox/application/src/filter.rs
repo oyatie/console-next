@@ -49,6 +49,7 @@ impl InboxFilter {
                     | S::PeriodUnlock
                     | S::SupportAccess
                     | S::EntityCorrections
+                    | S::AccountBindingReview
             ),
             InboxFilter::Deadlines | InboxFilter::Today | InboxFilter::Overdue => !matches!(
                 source,
@@ -290,6 +291,7 @@ mod tests {
             S::SupportAccess,
             S::EntityCorrections,
             S::PrivacyRequests,
+            S::AccountBindingReview,
         ];
         for (filter, expected) in [
             (
@@ -311,6 +313,7 @@ mod tests {
                     S::PeriodUnlock,
                     S::SupportAccess,
                     S::EntityCorrections,
+                    S::AccountBindingReview,
                 ][..],
             ),
         ] {

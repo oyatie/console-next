@@ -219,6 +219,7 @@ test("every registered operational source kind has Korean and English task and v
     HrIdentity: ["identity_review"], HrUnplaced: ["unplaced"], HrContract: ["contract_renewal"], PeriodUnlock: ["period_unlock"],
     Setup: [], // Setup work is rendered by the checklist, never as selectable queue rows.
     GrantNotice: ["grant_notice", "account_security"], SupportAccess: ["support_access"], PrivacyRequests: ["privacy_request"],
+    AccountBindingReview: ["account_binding_review"],
   };
   const registry = readFileSync("backend/crates/action-inbox/application/src/source.rs", "utf8").split("pub const ALL")[1]!;
   const sources = [...registry.matchAll(/Self::(\w+)/g)].map(match => match[1]!);

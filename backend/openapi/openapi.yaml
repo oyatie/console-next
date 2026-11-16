@@ -30057,6 +30057,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/users/employee-link-attestations/{id}/review:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: reviewSelfAccountBinding
+      summary: Confirm or revoke a self-attested account binding
+      description: Requires an independent account manager and a fresh one-use passkey assertion. The command reloads Cedar facts inside its locked transaction. Confirmation retains the binding; revocation removes the current binding and restores the two-person rule. Confirmation does not prevent later revocation. A stale or replacement binding is never changed. Each accepted decision and its audit commit together.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingReviewRequest'
+      responses:
+        '200':
+          description: Decision recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: account_link.refuse.review_ineligible or account_link.refuse.identity_unbound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.review_stale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: passkey_step_up_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '503':
+          description: Passkey service unavailable.
   /api/v1/users/me:
     get:
       tags:
@@ -34884,6 +34939,7 @@ components:
           - period_unlock
           - grant_notice
           - account_security
+          - account_binding_review
           - setup_entity
           - setup_workplace
           - setup_org
@@ -60671,6 +60727,8 @@ components:
                 - account_link.refuse.not_own_record
                 - account_link.refuse.withdraw_ineligible
                 - account_link.refuse.review_stale
+                - account_link.refuse.review_ineligible
+                - account_link.refuse.identity_unbound
                 - passkey_step_up_required
                 - not_found
                 - unauthorized
@@ -60703,6 +60761,17 @@ components:
         step_up:
           $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
       description: Submit the exact envelope returned by preparation after asserting the challenge. Missing step_up is a typed 428 refusal.
+    SelfBindingReviewRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [CONFIRM, REVOKE]
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
     SelfBindingWithdrawRequest:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object

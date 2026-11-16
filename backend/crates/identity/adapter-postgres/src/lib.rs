@@ -16,6 +16,7 @@ mod org_structure;
 mod policy;
 pub mod second_person;
 pub mod self_binding;
+pub mod self_binding_inbox;
 mod self_binding_prepare;
 mod self_binding_receipt;
 pub mod self_binding_review;

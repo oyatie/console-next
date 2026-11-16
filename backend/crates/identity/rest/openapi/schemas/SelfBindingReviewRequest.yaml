@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [decision]
+properties:
+  decision:
+    type: string
+    enum: [CONFIRM, REVOKE]
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'

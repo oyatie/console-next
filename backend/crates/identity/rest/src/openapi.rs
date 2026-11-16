@@ -1122,6 +1122,15 @@ const PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/users/employee-link-attestations/{id}/review",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__users__employee-link-attestations__id__review.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/users/me",
         operations: &[
             Operation {
@@ -1826,6 +1835,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SelfBindingRequest",
         body: include_str!("../openapi/schemas/SelfBindingRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingReviewRequest",
+        body: include_str!("../openapi/schemas/SelfBindingReviewRequest.yaml"),
     },
     NamedYaml {
         name: "SelfBindingWithdrawRequest",

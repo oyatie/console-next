@@ -6845,6 +6845,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/users/employee-link-attestations/{id}/review",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__users__employee-link-attestations__id__review.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/users/me",
         operations: &[
             Operation {
@@ -7601,6 +7610,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SelfBindingRequest",
         body: include_str!("../../identity/rest/openapi/schemas/SelfBindingRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingReviewRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingReviewRequest.yaml"),
     },
     NamedYaml {
         name: "SelfBindingWithdrawRequest",

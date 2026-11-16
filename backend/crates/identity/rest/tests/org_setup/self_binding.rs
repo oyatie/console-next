@@ -6,6 +6,8 @@ use uuid::Uuid;
 mod holders;
 #[path = "self_binding_receipt.rs"]
 mod receipt;
+#[path = "self_binding_review.rs"]
+mod review;
 #[path = "self_binding_safeguards.rs"]
 mod safeguards;
 

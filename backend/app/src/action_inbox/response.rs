@@ -10,6 +10,10 @@ pub(super) async fn project(
     first: bool,
     now: OffsetDateTime,
 ) -> Result<Json<serde_json::Value>, InboxError> {
+    let binding_work = page
+        .items
+        .iter()
+        .any(|item| item.kind == "account_binding_review");
     let unavailable: Vec<_> = page.unavailable.iter().map(|source| serde_json::json!({ "source": source, "support_reference": sources.support_reference })).collect();
     let mut response = serde_json::to_value(page).map_err(|e| source_failure("projection", e))?;
     super::decisions::project(&mut response);
@@ -39,6 +43,7 @@ pub(super) async fn project(
         .any(can)
             || support_work
             || privacy_work
+            || binding_work
     );
     let correction_work = sources.principal.branch_scope == console_kernel_core::BranchScope::All
         && [F::LegalEntityManage, F::OrgChangeApply]
@@ -54,7 +59,8 @@ pub(super) async fn project(
         F::ExitSettlementManage,
     ]
     .into_iter()
-    .any(can);
+    .any(can)
+        || binding_work;
     response["available_filters"] = serde_json::json!(
         [
             (
