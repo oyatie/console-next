@@ -1,5 +1,6 @@
 import type { components } from "./schema";
 import { platform } from "./platform";
+import { requestDeadline } from "./request-deadline";
 
 export type TokenPair = components["schemas"]["TokenPairResponse"];
 type ErrorBody = components["schemas"]["ErrorBody"]["error"] & { operation_id?: string; original_operation_id?: string; refusals?: Refusal[]; details?: Record<string, unknown>; last_change?: LastChange | null };
@@ -313,7 +314,7 @@ export async function authPost<T>(path: string, body?: unknown, bearer = false):
       method: "POST",
       headers,
       credentials: p.refresh.kind === "cookie" ? "same-origin" : "omit",
-      signal: path === "/api/v1/auth/token/refresh" ? AbortSignal.timeout(30_000) : undefined,
+      signal: requestDeadline(),
       body: JSON.stringify(body ?? {}),
     });
   };
