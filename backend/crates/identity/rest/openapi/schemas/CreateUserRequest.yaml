@@ -9,6 +9,9 @@ properties:
     - string
     - 'null'
     format: uuid
+    description: The employee the new account is linked to. Unless the caller manages accounts across the whole
+      tenant, it must be homed in a branch where the caller manages accounts; otherwise, or when it has no home
+      branch or does not exist, the request is refused with 403 forbidden and nothing is written.
   phone:
     type:
     - string

@@ -186,3 +186,9 @@ async fn the_ops_account_is_protected_with_a_typed_refusal(pool: PgPool) {
     assert_eq!(status, StatusCode::CONFLICT, "{body:?}");
     assert_eq!(body["error"]["code"], "own_account_refused");
 }
+
+#[path = "policy_role_ceiling.rs"]
+mod policy_role_ceiling;
+
+#[path = "invite_employee_scope.rs"]
+mod invite_employee_scope;
