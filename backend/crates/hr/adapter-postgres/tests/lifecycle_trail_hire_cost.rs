@@ -73,14 +73,13 @@ async fn hire_trail_writes_are_batched(pool: PgPool) {
         })
         .cloned()
         .collect();
-    let filing_reads: Vec<_> = statements
-        .iter()
-        .filter(|sql| sql.contains("SELECT filing_rule,trigger_event_kinds"))
-        .collect();
+    // The shared register now returns numeric rules and scoped filing rules together.
+    let expected_rows = full.rules().len() - full.filing_rules().len() + expected.len();
+    let filing_reads = queries.statutory_register_reads();
     assert_eq!(filing_reads.len(), 1);
     assert!(
-        filing_reads[0].contains(&format!("rows_returned={} ", expected.len())),
-        "a hire loads the case's rule periods and first filing dates: {}",
+        filing_reads[0].contains(&format!("rows_returned={} ", expected_rows)),
+        "a hire loads numeric rules and the case's rule periods and first filing dates: {}",
         filing_reads[0]
     );
     let stored: Vec<(String, serde_json::Value)> = sqlx::query_as("SELECT i.due_rule_ref,i.due_basis->'dates' FROM lifecycle_case_items i JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id WHERE c.org_id=$1 AND c.kind='HIRE' AND i.kind='FIL'")

@@ -1,7 +1,7 @@
 //! The transactional employee-create core (moved from `app/src/hr.rs`,
 //! R2-people).
 
-use console_kernel_core::{KernelError, OrgId, UserId};
+use console_kernel_core::{OrgId, UserId};
 use console_ontology_canonical_adapter_postgres::employment;
 use console_ontology_canonical_adapter_postgres::person::{
     PersonCommand, write_in_tx as write_person_in_tx,
@@ -11,14 +11,13 @@ use uuid::Uuid;
 
 use crate::HrError;
 use crate::clock::today_kst;
-use crate::directory::create::{
-    employee_create_db_error, next_employee_number, require_assignable_org_unit,
-};
+use crate::directory::create::employee_create_db_error;
 use crate::directory::create_facts::record_registration_facts;
-use crate::directory::create_guard::{reserve_create_key, revalidate_directory_manager};
+use crate::directory::create_guard::revalidate_directory_manager;
 use crate::directory::create_onboard::{
     RegistrationOnboard, is_pre_hire, mark_pre_hire, record_registration_onboard,
 };
+use crate::directory::create_prepare::{RegistrationInput, prepare_registrations};
 use crate::directory::read_detail::load_employee_detail;
 use crate::directory::types::{EmployeeDetailResponse, NormalizedCreateEmployeeRequest};
 
@@ -39,45 +38,26 @@ pub async fn create_employee_core(
     employee_id: Uuid,
 ) -> Result<(EmployeeDetailResponse, bool), HrError> {
     revalidate_directory_manager(tx, org_uuid, actor).await?;
-    if let Some(existing_id) =
-        reserve_create_key(tx, org_uuid, &request.idempotency_key, request_hash).await?
-    {
-        return Ok((load_employee_detail(tx, org_uuid, existing_id).await?, true));
-    }
-    if let Some(home_branch_id) = request.home_branch_id {
-        let branch_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM branches WHERE org_id = $1 AND id = $2 AND deactivated_at IS NULL)",
+    let prepared = prepare_registrations(
+        tx,
+        org_uuid,
+        &[RegistrationInput {
+            request,
+            request_hash,
+            employee_id,
+        }],
     )
-    .bind(org_uuid)
-    .bind(home_branch_id)
-    .fetch_one(tx.as_mut())
-    .await?;
-        if !branch_exists {
-            return Err(HrError::from_kernel(KernelError::not_found(
-                "active home branch was not found in this organization",
-            )));
-        }
+    .await?
+    .pop()
+    .ok_or(sqlx::Error::RowNotFound)?;
+    if prepared.replayed {
+        return Ok((
+            load_employee_detail(tx, org_uuid, prepared.employee_id).await?,
+            true,
+        ));
     }
-    // A bound unit must be an ACTIVE Site/Department/Team of THIS tenant; its
-    // name becomes the legacy `org_unit` projection. RLS hides a foreign unit,
-    // so foreign and missing are the same 404 (deny by omission).
-    let org_unit_text = match request.org_unit_id {
-        Some(org_unit_id) => require_assignable_org_unit(tx, org_uuid, org_unit_id).await?,
-        None => {
-            if let Ok(org_unit_id) = Uuid::parse_str(&request.org_unit) {
-                employment::ensure_org_unit_exists(tx, org_uuid, org_unit_id).await?;
-            }
-            request.org_unit.clone()
-        }
-    };
-    if let Ok(job_position_id) = Uuid::parse_str(&request.position) {
-        employment::ensure_job_position_exists(tx, org_uuid, job_position_id).await?;
-    }
-    let employee_number = if request.employee_number.is_empty() {
-        next_employee_number(tx, org_uuid).await?
-    } else {
-        request.employee_number.clone()
-    };
+    let org_unit_text = prepared.org_unit;
+    let employee_number = prepared.employee_number;
 
     // The statement itself lives in `console-ontology-canonical-adapter-postgres`,
     // which the canonical contract names as `ObjectKey::Employment`'s owner — the

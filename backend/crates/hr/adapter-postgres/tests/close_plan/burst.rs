@@ -76,11 +76,13 @@ async fn two_thousand_people_close_by_one_plan_the_tick_applies(owner: PgPool) {
     let statements = queries.statements();
     eprintln!("close tick statements: {}", statements.len());
     assert_eq!(
+        queries.statutory_register_reads().len(),
+        1,
+        "captured statutory statements: {:?}",
         statements
             .iter()
-            .filter(|sql| sql.contains("SELECT filing_rule,trigger_event_kinds"))
-            .count(),
-        1
+            .filter(|sql| sql.contains("statutory"))
+            .collect::<Vec<_>>()
     );
     assert_eq!(
         statements

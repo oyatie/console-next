@@ -4,7 +4,8 @@
 use super::change_window::assert_employment_change_window_open;
 use super::error::EmploymentError;
 use console_kernel_core::KernelError;
-use sqlx::{Postgres, Transaction};
+use sqlx::{Postgres, Row, Transaction};
+use std::collections::HashMap;
 use time::Date;
 use uuid::Uuid;
 
@@ -178,19 +179,48 @@ pub async fn assignable_org_unit_name(
     org_id: Uuid,
     org_unit_id: Uuid,
 ) -> Result<Option<String>, sqlx::Error> {
-    sqlx::query_scalar(
-        "SELECT latest.attributes->>'name' FROM org_units u \
-         JOIN LATERAL ( \
+    Ok(assignable_org_units(tx, org_id, &[org_unit_id])
+        .await?
+        .remove(&org_unit_id)
+        .flatten())
+}
+
+/// Visible units mapped to their assignable name, or `None` for non-assignable
+/// units. Missing or foreign units are absent. Uses each unit's latest revision.
+///
+/// # Errors
+/// The driver error verbatim, including an assignable unit with no name.
+pub async fn assignable_org_units(
+    tx: &mut Transaction<'_, Postgres>,
+    org_id: Uuid,
+    org_unit_ids: &[Uuid],
+) -> Result<HashMap<Uuid, Option<String>>, sqlx::Error> {
+    if org_unit_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let rows = sqlx::query(
+        "SELECT u.id, latest.attributes->>'name' AS name, COALESCE( \
+           latest.attributes->>'kind' IN ('site', 'department', 'team') \
+           AND COALESCE(latest.attributes->>'status', 'active') <> 'dissolved', false) AS assignable \
+         FROM org_units u LEFT JOIN LATERAL ( \
              SELECT attributes FROM org_unit_revisions r \
              WHERE r.org_id = u.org_id AND r.org_unit_id = u.id \
              ORDER BY r.version DESC LIMIT 1 \
          ) latest ON true \
-         WHERE u.org_id = $1 AND u.id = $2 \
-           AND latest.attributes->>'kind' IN ('site', 'department', 'team') \
-           AND COALESCE(latest.attributes->>'status', 'active') <> 'dissolved'",
+         WHERE u.org_id = $1 AND u.id = ANY($2)",
     )
     .bind(org_id)
-    .bind(org_unit_id)
-    .fetch_optional(tx.as_mut())
-    .await
+    .bind(org_unit_ids)
+    .fetch_all(tx.as_mut())
+    .await?;
+    rows.into_iter()
+        .map(|row| {
+            let name = if row.try_get::<bool, _>("assignable")? {
+                Some(row.try_get("name")?)
+            } else {
+                None
+            };
+            Ok((row.try_get("id")?, name))
+        })
+        .collect()
 }
