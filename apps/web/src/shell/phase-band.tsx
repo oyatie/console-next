@@ -18,13 +18,16 @@ import s from "./phase-band.module.css";
 
 const PHASE_HOLD_MS = 2000;
 // Route read boundaries can remount this component; the principal keeps its original deadline and decision.
-let principalHold: { principal: string; until: number; settled: boolean } | undefined;
+const holds = new Map<string, { until: number; settled: boolean }>();
+const holdFor = (principal: string) => {
+  let hold = holds.get(principal);
+  if (!hold) holds.set(principal, hold = { until: Date.now() + PHASE_HOLD_MS, settled: false });
+  return hold;
+};
 
 /** One page-head notice while setup needs attention or the go-live receipt is current. */
 export function PhaseBand({ children }: { children: ReactNode }) {
   const principal = session.principal;
-  if (principal && principalHold?.principal !== principal) principalHold = { principal, until: Date.now() + PHASE_HOLD_MS, settled: false };
-  const hold = principal ? principalHold : undefined;
   const dismissKey = principal ? `console.phase.dismissed.${principal}` : null;
   const [dismissed, setDismissed] = useState(() => {
     try { return dismissKey ? localStorage.getItem(dismissKey) : null; } catch { return null; }
@@ -32,20 +35,20 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   const { phaseQ: q } = useSetupChecklist();
   const access = useQuery(myAccessQuery);
   const settings = useQuery(settingsQuery);
-  const [settled, setSettled] = useState(hold?.settled ?? false);
+  const [settled, setSettled] = useState(() => (principal ? holds.get(principal)?.settled : false) ?? false);
   const [elapsed, setElapsed] = useState(false);
   useEffect(() => {
-    if (hold?.settled) return;
-    const timer = window.setTimeout(() => setElapsed(true), Math.max(0, hold ? hold.until - Date.now() : PHASE_HOLD_MS));
+    if (settled) return;
+    const until = principal ? holdFor(principal).until : Date.now() + PHASE_HOLD_MS;
+    const timer = window.setTimeout(() => setElapsed(true), Math.max(0, until - Date.now()));
     return () => window.clearTimeout(timer);
-  }, [hold]);
+  }, [principal, settled]);
+  // A checklist this account cannot read stops being pending once authz answers.
   const ready = (access.data !== undefined || access.failureCount > 0)
-    && (access.data?.phase === "SETUP" || q.data !== undefined || q.failureCount > 0);
+    && (access.data?.phase === "SETUP" || !q.isPending || q.failureCount > 0);
   const decided = settled || ready || elapsed;
-  if (decided) {
-    if (hold) hold.settled = true;
-    if (!settled) setSettled(true);
-  }
+  if (decided && !settled) setSettled(true);
+  useEffect(() => { if (decided && principal) holdFor(principal).settled = true; }, [decided, principal]);
   const duration = receiptDuration(settings.data?.items);
   const [now, setNow] = useState(Date.now);
   const data = q.isError && isAnswer(q.error) ? undefined : q.data;

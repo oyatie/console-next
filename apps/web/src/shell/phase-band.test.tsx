@@ -19,7 +19,7 @@ vi.mock("@tanstack/react-query", () => ({ useQuery: (q: Parameters<typeof queryP
   failureCount: state.accessError ? 1 : 0,
 }) }));
 vi.mock("../features/onboarding/ui/use-setup", () => ({ useSetupChecklist: () => {
-  const q = { data: state.data, dataUpdatedAt: 0, isPending: state.checklistPending, isError: !!state.error, failureCount: state.error ? 1 : 0, error: state.error };
+  const q = { data: state.data, dataUpdatedAt: 0, isPending: state.checklistPending && state.data === undefined, isError: !!state.error, failureCount: state.error ? 1 : 0, error: state.error };
   return { q, phaseQ: q };
 } }));
 beforeAll(() => loadCatalog("ko"));
@@ -43,9 +43,9 @@ test("access must answer or fail before the shared phase settles", () => {
   expect(settled()).toContain(">true<");
 });
 
-test("a disabled checklist waits for the hold deadline rather than inventing an answer", () => {
+test("a disabled checklist settles without waiting for the hold deadline", () => {
   state.checklistPending = false;
-  expect(settled()).toContain(">false<");
+  expect(settled()).toContain(">true<");
 });
 
 test("setup settles without waiting for the checklist", () => {

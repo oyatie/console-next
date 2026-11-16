@@ -2,7 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
-import { checklist, failure, inbox, screenAccess } from "./fixtures";
+import { authz, checklist, failure, inbox, screenAccess } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { entityRecordPath, mockEntityRecord } from "../states/entity-record";
@@ -247,3 +247,65 @@ for (const read of ["/api/v1/access/me", "/api/v1/me/authz", "/api/v1/onboarding
     } finally { held.resolve(); await page.close(); fixture.release(); }
   });
 }
+
+for (const capabilities of ["none", "request_only", "read"] as const) {
+  test(`/account: ${capabilities} checklist access settles before the frozen deadline @ui-state`, async ({ page }, info) => {
+    const fixture = await mockScreen(page, accountScreens[0], "populated");
+    await accountReads(page, "save-unchanged");
+    await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz,
+      capabilities: capabilities === "none" ? [] : capabilities === "request_only"
+        ? authz.capabilities.map(capability => ({ ...capability, permission: "request_only" as const })) : authz.capabilities,
+    } });
+    let checklistReads = 0;
+    page.on("request", request => { if (new URL(request.url()).pathname === "/api/v1/onboarding/checklist") checklistReads++; });
+    await freezeClock(page);
+    try {
+      const started = Date.now();
+      await page.goto("/account");
+      const main = page.getByRole("main");
+      const frozen = await page.evaluate(() => Date.now());
+      await expect.poll(async () => {
+        await page.clock.fastForward(1); // Drain nested query notifications without reaching the hold deadline.
+        return main.getByRole("heading", { level: 1 }).isVisible();
+      }).toBe(true);
+      expect(await page.evaluate(() => Date.now()) - frozen).toBeLessThan(100);
+      await info.attach("heading-time", { body: JSON.stringify({ milliseconds: Date.now() - started }), contentType: "application/json" });
+      await expect(main.locator("[data-phase-pending]")).toHaveCount(0);
+      await expect(main.locator("[data-phase-band]")).toHaveCount(0);
+      if (capabilities === "read") expect(checklistReads).toBeGreaterThan(0);
+      else expect(checklistReads).toBe(0);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
+test("a held page keeps its head laid out at the revealed width @ui-state", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[1], "populated");
+  const held = Promise.withResolvers<void>();
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    await held.promise;
+    return { status: 200, json: checklist };
+  });
+  await freezeClock(page);
+  try {
+    await page.goto("/people");
+    const pending = page.locator("[data-phase-pending]");
+    const head = pending.locator("header").first();
+    await expect.poll(async () => {
+      await page.clock.fastForward(1);
+      return head.count();
+    }).toBe(1);
+    expect(await pending.evaluate(el => ({ visibility: getComputedStyle(el).visibility, position: getComputedStyle(el).position })))
+      .toEqual({ visibility: "hidden", position: "absolute" });
+    const width = await head.evaluate(el => el.getBoundingClientRect().width);
+    expect(width).toBeGreaterThan(0);
+    held.resolve();
+    const heading = page.getByRole("main").getByRole("heading", { level: 1 });
+    await expect.poll(async () => {
+      await page.clock.fastForward(1);
+      return heading.isVisible();
+    }).toBe(true);
+    expect(await heading.locator("xpath=ancestor::header").evaluate(el => el.getBoundingClientRect().width)).toBe(width);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); fixture.release(); }
+});
