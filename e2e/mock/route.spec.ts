@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { mockRoute } from "./route";
@@ -14,7 +15,7 @@ test("contract routes match methods and path parameters, preserve queries, and f
   await page.route(url => url.pathname.startsWith("/api/"), route => route.fulfill({ status: 418, json: { fallback: true } }));
   await mockRoute(page, "get", "/api/v1/employees", request => ({ status: 200, json: { items: [], total: Number(new URL(request.url()).searchParams.get("offset")), limit: 10, offset: 0, next_cursor: null } }));
   await mockRoute(page, "get", "/api/v1/employees/{id}", { status: 403, json: { error: { code: "forbidden", message: "권한이 없습니다." } } });
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const result = await page.evaluate(async () => {
     const get = await fetch("/api/v1/employees?offset=7");
     const post = await fetch("/api/v1/employees", { method: "POST" });
@@ -32,7 +33,7 @@ test("an async response factory holds a read until released", async ({ page }) =
     await held;
     return { status: 200, json: { items: [] } };
   });
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const requested = page.waitForRequest("**/api/v1/org-units");
   const result = page.evaluate(async () => (await fetch("/api/v1/org-units")).json());
   await requested;
@@ -42,7 +43,7 @@ test("an async response factory holds a read until released", async ({ page }) =
 
 test("roster facets succeed beside the parameterized employee read", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const result = await page.evaluate(async () => {
     const response = await fetch("/api/v1/employees/facets");
     return { status: response.status, body: await response.json() };
@@ -53,7 +54,7 @@ test("roster facets succeed beside the parameterized employee read", async ({ pa
 
 test("large roster follows opaque cursors through every employee to exhaustion", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "large");
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const pages = await page.evaluate(async () => {
     const pages: { ids: string[]; cursor: string | null }[] = [];
     let cursor: string | null = null;
@@ -93,7 +94,7 @@ void contractErrors;
 test("screen mocks preserve a Request's JSON body for commands", async ({ page }) => {
   await mockScreen(page, screens[2], "populated");
   await page.route("**/mock-command", route => route.fulfill({ json: route.request().postDataJSON() }));
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const body = await page.evaluate(async () => {
     const request = new Request(new URL("/mock-command", location.href), { method: "PUT", body: JSON.stringify({ expected_version: 7 }) });
     return (await fetch(request)).json();
@@ -103,7 +104,7 @@ test("screen mocks preserve a Request's JSON body for commands", async ({ page }
 
 test("effective screen grants follow every generated route requirement without ops bypass", async ({ page }) => {
   const fixture = await mockScreen(page, screens[0], "empty");
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   for (const path of Object.keys(routeReads) as (keyof typeof routeReads)[]) {
     await test.step(path, async () => {
       const access: AccessEffective = await page.evaluate(async path => (await fetch("/api/v1/access/me", {

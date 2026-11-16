@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 test("scrolling route tabs keep the current tab visible when a count finishes loading", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   const nav = page.locator('[data-tabs-demo="scroll"]').getByRole("navigation");
@@ -35,7 +36,7 @@ test("scrolling route tabs keep the current tab visible when a count finishes lo
 test("gallery view links preserve scroll at an existing hash and keep the table gallery available", async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.route("**/api/**", route => route.fulfill({ status: 403, json: { error: { code: "forbidden", message: "" } } }));
-  await page.goto("/_gallery?scope=workplace#main");
+  await mockNavigate(page, "/_gallery?scope=workplace#main");
   const table = page.locator('[data-column-contract="populated"]').getByRole("grid");
   await expect(table).toBeVisible({ timeout: 15_000 });
   const demo = page.locator('[data-tabs-demo="url"]');
@@ -54,8 +55,8 @@ test("gallery view links preserve scroll at an existing hash and keep the table 
 });
 
 test("module links replace history and preserve copyable URLs, filters and Back", async ({ page }) => {
-  await page.goto("/_gallery?scope=previous");
-  await page.goto("/_gallery?tab=list&scope=workplace#record");
+  await mockNavigate(page, "/_gallery?scope=previous");
+  await mockNavigate(page, "/_gallery?tab=list&scope=workplace#record");
   const demo = page.locator('[data-tabs-demo="url"]');
   const selected = demo.locator('[aria-current="page"]');
   await expect(selected).toHaveAccessibleName("목록 61");
@@ -95,7 +96,7 @@ for (const width of [1440, 390]) {
   for (const theme of ["light", "dark"]) {
     test(`tabs cover read states, long labels and large counts at ${width}px in ${theme}`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 1000 });
-      await page.goto("/_gallery?tab=unknown");
+      await mockNavigate(page, "/_gallery?tab=unknown");
       if (width === 390) {
         await expect(page.getByRole("dialog")).toBeVisible();
         await page.keyboard.press("Escape");
