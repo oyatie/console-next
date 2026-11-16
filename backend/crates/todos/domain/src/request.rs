@@ -101,6 +101,29 @@ pub fn ensure_not_self(requester: UserId, assignee: UserId) -> Result<(), Kernel
     Ok(())
 }
 
+/// The most requests an account holds open as assignee, or open or sent back as
+/// requester. Each one is an item in that account's work inbox, which the
+/// workbench reads whole within a fixed budget, so no colleague may fill it.
+pub const OUTSTANDING_REQUESTS_MAX: i64 = 100;
+
+/// Room for one more request: the assignee's open requests, then the requester's open or sent back.
+pub fn ensure_room(assignee_open: i64, requester_outstanding: i64) -> Result<(), KernelError> {
+    if assignee_open >= OUTSTANDING_REQUESTS_MAX {
+        return Err(KernelError::conflict(format!(
+            "the assignee already holds {OUTSTANDING_REQUESTS_MAX} open requests"
+        ))
+        .with_code("todo_assignee_full")
+        .with_field("assignee_account_id"));
+    }
+    if requester_outstanding >= OUTSTANDING_REQUESTS_MAX {
+        return Err(KernelError::conflict(format!(
+            "{OUTSTANDING_REQUESTS_MAX} of your requests are open or sent back; clear some first"
+        ))
+        .with_code("todo_requester_full"));
+    }
+    Ok(())
+}
+
 /// A due date may be today or later in the house calendar (KST).
 pub fn ensure_due(due_on: Option<Date>, today: Date) -> Result<(), KernelError> {
     if due_on.is_some_and(|due| due < today) {
@@ -194,6 +217,20 @@ mod tests {
         ] {
             let err = state.ensure_done_allowed(done).unwrap_err();
             assert_eq!(err.code, Some("todo_closed"), "{state:?} done={done}");
+        }
+    }
+
+    #[test]
+    fn a_full_side_refuses_the_next_request_assignee_first() {
+        let most = OUTSTANDING_REQUESTS_MAX;
+        assert!(ensure_room(most - 1, most - 1).is_ok());
+        for (open, outstanding, code) in [
+            (most, 0, "todo_assignee_full"),
+            (most, most, "todo_assignee_full"),
+            (0, most, "todo_requester_full"),
+        ] {
+            let err = ensure_room(open, outstanding).unwrap_err();
+            assert_eq!((err.kind, err.code), (ErrorKind::Conflict, Some(code)));
         }
     }
 

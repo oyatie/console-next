@@ -12,7 +12,7 @@ use console_todos_application::{
     WithdrawTodoRequestCommand, todo_audit_event,
 };
 use console_todos_domain::{
-    RequestState, TodoText, ensure_due, ensure_not_self, request_links, return_note,
+    RequestState, TodoText, ensure_due, ensure_not_self, ensure_room, request_links, return_note,
 };
 use serde_json::json;
 use sqlx::{Postgres, QueryBuilder, Transaction};
@@ -55,7 +55,8 @@ impl PgTodoStore {
     /// placed under a node where Cedar permits the requester's `todo_assign`,
     /// decided in this transaction. The assignee's row is held `FOR SHARE`, so
     /// its deactivation cannot slip between check and insert; the requester's
-    /// grants are decided as of the moment they are loaded here.
+    /// grants are decided as of the moment they are loaded here. Neither side
+    /// may hold more than the most outstanding requests the domain allows.
     pub async fn create_request(
         &self,
         command: CreateTodoRequestCommand,
@@ -111,6 +112,21 @@ impl PgTodoStore {
                     Some(true) => {}
                 }
                 ensure_due(due_on, today)?;
+                // The same predicates as each side's inbox source. shortcut: asks that run at once
+                // each count before the others commit and may pass the cap by that many; lock the
+                // assignee's row for update if it must hold exactly.
+                let (open, outstanding): (i64, i64) = sqlx::query_as(
+                    "SELECT count(*) FILTER (WHERE owner_user_id = $2 AND returned_at IS NULL), \
+                     count(*) FILTER (WHERE assigned_by_user_id = $3) FROM todos \
+                     WHERE org_id = $1 AND assigned_by_user_id IS NOT NULL AND NOT done \
+                     AND (owner_user_id = $2 OR assigned_by_user_id = $3)",
+                )
+                .bind(org_uuid)
+                .bind(assignee)
+                .bind(requester)
+                .fetch_one(tx.as_mut())
+                .await?;
+                ensure_room(open, outstanding)?;
                 let row = sqlx::query(concat!(
                     "INSERT INTO todos (id, org_id, owner_user_id, assigned_by_user_id, body, \
                      links, due_on) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ",
