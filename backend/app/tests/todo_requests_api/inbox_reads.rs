@@ -105,7 +105,7 @@ async fn one_statement_reads_each_side_whatever_the_count(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn the_text_and_note_reach_no_log_line_audit_row_or_access_log(pool: PgPool) {
     let o = office(pool).await;
-    named(&o.pool, &o.colleague, "담당자 나").await;
+    named(&o.pool, &o.colleague, "Synthetic assignee").await;
     warm(&o.colleague).await;
     let logs = Logs::default();
     let employee = Uuid::new_v4();
@@ -197,8 +197,8 @@ async fn the_text_and_note_reach_no_log_line_audit_row_or_access_log(pool: PgPoo
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn the_requesters_activity_shows_the_return_then_the_ask(pool: PgPool) {
     let o = office(pool).await;
-    let asker = named(&o.pool, &o.admin, "요청자 가").await;
-    let owner = named(&o.pool, &o.colleague, "담당자 나").await;
+    let asker = named(&o.pool, &o.admin, "Synthetic asker").await;
+    let owner = named(&o.pool, &o.colleague, "Synthetic assignee").await;
     let id = ask(&o, &o.colleague, None, json!([])).await;
     let (status, out) = o
         .colleague

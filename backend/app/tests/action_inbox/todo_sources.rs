@@ -46,7 +46,7 @@ async fn a_support_session_reads_no_to_do_request(pool: PgPool) {
             serde_json::from_value(serde_json::json!({
                 "active": true, "org_id": org.as_uuid(), "operator_approved": true,
                 "tenant_approved": true, "session_id": Uuid::new_v4(),
-                "operator_label": "지원 담당자", "scope": ["org"], "reveal_classes": []
+                "operator_label": "Support operator", "scope": ["org"], "reveal_classes": []
             }))
             .unwrap(),
         );

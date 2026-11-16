@@ -15,8 +15,8 @@ use crate::{Office, REQUESTS, office};
 
 pub const INBOX: &str = "/api/v1/me/action-inbox";
 /// A synthetic request text; the marker is what the log and audit checks look for.
-pub const TEXT: &str = "Synthetic ask QX41: 3월 근태 마감 확인";
-pub const NOTE: &str = "Synthetic note ZR77: 권한 밖입니다";
+pub const TEXT: &str = "Synthetic ask QX41: confirm the March attendance close";
+pub const NOTE: &str = "Synthetic note ZR77: outside my permissions";
 
 /// Gives `ctx`'s account a display name of its own and returns the name the inbox reads.
 pub async fn named(pool: &PgPool, ctx: &Ctx, name: &str) -> String {
@@ -87,8 +87,8 @@ pub fn item(page: &Value, id: &str) -> Option<Value> {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn each_party_sees_only_their_own_side_of_a_request(pool: PgPool) {
     let o = office(pool).await;
-    let asker = named(&o.pool, &o.admin, "요청자 가").await;
-    let owner = named(&o.pool, &o.colleague, "담당자 나").await;
+    let asker = named(&o.pool, &o.admin, "Synthetic asker").await;
+    let owner = named(&o.pool, &o.colleague, "Synthetic assignee").await;
     let employee = Uuid::new_v4();
     let id = ask(
         &o,
@@ -102,7 +102,7 @@ async fn each_party_sees_only_their_own_side_of_a_request(pool: PgPool) {
         .call(
             "POST",
             "/api/v1/me/todos",
-            Some(json!({ "text": "개인 메모" })),
+            Some(json!({ "text": "Synthetic private memo" })),
         )
         .await;
     assert_eq!(status, StatusCode::CREATED, "{own}");
