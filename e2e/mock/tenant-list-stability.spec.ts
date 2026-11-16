@@ -30,7 +30,7 @@ for (const count of [0, 48]) for (const width of [1440, 390]) for (const theme o
     const fixture = await mockPlatform(page);
     const held = Promise.withResolvers<void>();
     const orgs: Org[] = Array.from({ length: count }, (_, index) => ({
-      id: id(5000 + index), name: `검증 고객 ${index + 1}`, slug: `customer-${index + 1}`,
+      id: id(5000 + index), name: `Synthetic customer ${index + 1}`, slug: `customer-${index + 1}`,
       group_id: null, group_slug: null, group_name: null, status: "ACTIVE", created_at: AT, updated_at: AT,
     }));
     await mockRoute(page, "get", "/api/platform/orgs", async () => {
@@ -168,7 +168,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
     const fixture = await mockPlatform(page);
-    const org: Org = { id: id(5000), name: "검증 고객", slug: "customer", group_id: null, group_slug: null, group_name: null,
+    const org: Org = { id: id(5000), name: "Synthetic customer", slug: "customer", group_id: null, group_slug: null, group_name: null,
       status: "ACTIVE", created_at: AT, updated_at: AT };
     await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: [org] });
     await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
@@ -202,7 +202,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 1600 });
     await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
     const fixture = await mockPlatform(page);
-    const org: Org = { id: id(5000), name: "검증 고객", slug: "customer", group_id: null, group_slug: null, group_name: null,
+    const org: Org = { id: id(5000), name: "Synthetic customer", slug: "customer", group_id: null, group_slug: null, group_name: null,
       status: "ACTIVE", removable: true, created_at: AT, updated_at: AT };
     const held = { recovery: Promise.withResolvers<void>(), erase: Promise.withResolvers<void>() };
     await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: [org] });

@@ -48,7 +48,7 @@ test.each([1440, 390].flatMap(width => [0, 9].map(initial => ({ width, initial }
   let count = initial;
   let failed = false;
   await page.route("**/api/platform/orgs", route => failed ? route.fulfill({ status: 503, json: failure("service_unavailable") }) : route.fulfill({ json: Array.from({ length: count }, (_, index) => ({
-    id: id(5000 + index), name: `검증 고객 ${index + 1}`, slug: `customer-${index + 1}`, group_id: null, group_slug: null, group_name: null,
+    id: id(5000 + index), name: `Synthetic customer ${index + 1}`, slug: `customer-${index + 1}`, group_id: null, group_slug: null, group_name: null,
     status: "ACTIVE", created_at: AT, updated_at: AT,
   })) }));
   await page.route("**/api/platform/ops", route => route.fulfill({ json: { tenants: [], notices: [] } }));

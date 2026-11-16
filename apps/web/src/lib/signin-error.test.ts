@@ -49,8 +49,6 @@ for (const locale of ["ko", "en"] as const) test(`a generic read failure gives R
   i18n.set(locale);
   try {
     const error = new ApiError(503, "upstream_failure", "diagnostic", [], undefined, false, [], { retryAfterMs: 1500 });
-    expect(readFailureText(error)).toBe(locale === "ko"
-      ? "요청을 완료하지 못했습니다. 2초 뒤에 다시 시도하십시오."
-      : "The request could not be completed. Try again in 2 s.");
+    expect(readFailureText(error)).toBe(`${t("common.read.failedReason")} ${t("common.failed.retryAfter", { seconds: "2" })}`);
   } finally { i18n.set("ko"); }
 });
