@@ -61,15 +61,19 @@ export function readCell(f: GridField, raw: string, words: Readonly<Record<strin
     return { bad: "choice", suggest: near?.[1] };
   }
   if (f.kind === "address") {
-    const a = manualAddress(v);
+    // A recorded address shows as the server's mask, and a mask edited around is not an address.
+    const a = !v.includes("•") && manualAddress(v);
     return a ? { send: a } : { bad: "address" };
   }
   return { send: v };
 }
 
-/** How a cell's current value reads in the grid. */
+/** How a cell's current value reads in the grid (a recorded address is the server's mask; a checked one, its JSON). */
 export const shownValue = (f: GridField, v: unknown, words: Readonly<Record<string, string>>) =>
-  v == null || v === "" ? "" : f.kind === "address" ? String((v as { road_addr_part1?: string }).road_addr_part1 ?? "") : f.kind === "sex" || f.kind === "type" ? (words[String(v)] ?? String(v)) : String(v);
+  v == null || v === "" ? "" : f.kind === "address" && typeof v === "object" ? String((v as { road_addr_part1?: string }).road_addr_part1 ?? "") : f.kind === "sex" || f.kind === "type" ? (words[String(v)] ?? String(v)) : String(v);
+
+/** A recorded value the server shows only as its mask cannot be compared with a pasted one, so a pasted block keeps it. */
+export const keepsOnPaste = (current: string) => current.includes("•");
 
 /** How a value the server's check returns (text; an address as its JSON) reads in the grid. */
 export function shownText(f: GridField, raw: string | null | undefined, words: Readonly<Record<string, string>>) {

@@ -157,7 +157,7 @@ export const subjectText = (r: ChangeRequest, e?: Employee) =>
 /** A corrected value as people read it. */
 export const valueText = (f: Field, v: unknown) =>
   v == null || v === "" ? "—"
-  : f === "phone" ? phoneDisplay(String(v))
+  : f === "phone" ? (String(v).includes("•") ? String(v) : phoneDisplay(String(v)))
   : f === "hire_date" ? fmtDate(String(v))
   : f === "employment_type" ? label(EMPLOYMENT_TYPE, String(v))
   : f === "base_pay" ? fmtKrw(String(v))
@@ -261,8 +261,8 @@ export { catalogRefusal as lifecycleTrailError } from "../../lib/refusal";
 export const trailItemLabel = (id: string | null, fallback: string) => { const known = ["lifecycle.trail.record", "lifecycle.trail.documents", "lifecycle.trail.filing", "lifecycle.trail.accessReview", "lifecycle.trail.documents.hire", "lifecycle.trail.documents.appoint", "lifecycle.trail.documents.leave_start", "lifecycle.trail.documents.leave_return", "lifecycle.trail.documents.contract", "lifecycle.trail.documents.group_transfer_hire"] as const; const key = known.find((candidate) => candidate === id); return key ? t(key) : (id?.startsWith("lifecycle.trail.documents.") || id?.startsWith("enum.checklistItem.")) && isMessageId(id) ? t(id) : fallback; };
 export const trailText = (id: string) => isMessageId(id) ? t(id) : id;
 export const ownerLabel = (line: string) => { const [domain, level] = line.split("."); return `${domainText(domain ?? "")} ${level === "edit" || level === "approve" ? levelText(level) : level ?? ""}`; };
-export const pasteSkippedText = (result: { readOnly: number; outside: number } | null) =>
-  result && (result.readOnly > 0 || result.outside > 0) ? t("bulkGrid.paste.skipped", result) : null;
+export const pasteSkippedText = (result: { readOnly: number; outside: number; kept?: number } | null) =>
+  result && (result.readOnly > 0 || result.outside > 0 || (result.kept ?? 0) > 0) ? t("bulkGrid.paste.skipped", { kept: 0, ...result }) : null;
 export { trailGroup } from "./domain/trail-group";
 export function severanceLabel(eligibility: IneligibleSeverance): string {
   const { num, den } = eligibility.threshold;

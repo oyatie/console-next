@@ -10,6 +10,7 @@ export const koFacts: Record<keyof typeof enFacts, string> = {
   "facts.title": "고용 기록",
   "facts.noProfile": "고용 정보가 없어 고용 형태·기본급·수습을 기록할 수 없습니다.",
   "facts.birthDate": "생년월일",
+  "facts.birthDate.recordedMeanwhile": "그사이 생년월일이 기록되었습니다(입력한 날짜 {date}). 기록된 생년월일은 인사카드에서 정정으로 변경합니다.",
   "facts.workEmail": "업무 이메일",
   "facts.workEmail.invalid": "이메일 주소 형식이 아닙니다",
   "facts.idType": "신분증 종류",

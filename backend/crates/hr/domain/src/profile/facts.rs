@@ -26,7 +26,9 @@ pub fn normalize_email(raw: &str, field: &str) -> Result<String, KernelError> {
     let value = raw.trim();
     let invalid =
         || KernelError::validation(format!("{field} must be a mailbox like name@example.com"));
-    if value.len() > WORK_EMAIL_MAX || value.chars().any(char::is_whitespace) {
+    // A personal email reads as its reveal mask, and a mask typed around is never a mailbox.
+    if value.len() > WORK_EMAIL_MAX || value.chars().any(char::is_whitespace) || value.contains('•')
+    {
         return Err(invalid());
     }
     let (local, domain) = value.split_once('@').ok_or_else(invalid)?;

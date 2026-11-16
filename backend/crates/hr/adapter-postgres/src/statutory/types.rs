@@ -75,6 +75,8 @@ pub struct FilingTask {
     pub birth_date_known: bool,
     #[serde(skip)]
     pub(crate) birth_date_for_assessment: Option<String>,
+    #[serde(skip)]
+    pub(crate) income_for_assessment: Option<i64>,
     pub not_applicable_reason: Option<Reason>,
     pub total_remuneration_won: Option<i64>,
     pub is_request: bool,
