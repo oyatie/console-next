@@ -11,7 +11,7 @@ import type { Org } from "../api";
 vi.mock("../../../ui/dialog", () => ({ Dialog: ({ open, children }: { open: boolean; children: ReactNode }) => open ? <div role="dialog">{children}</div> : null }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ isSuccess: true, isPending: false, isFetching: false, data: { ops_enrolled: true, available: false, alias_days: 30 }, refetch: vi.fn() }) }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false }), outcomeUnknown: () => false }));
-vi.mock("./tenant-erase", () => ({ TenantErase: () => null }));
+vi.mock("./tenant-erase", () => ({ EraseControls: () => null }));
 vi.mock("./ops-recovery", () => ({ OpsRecovery: () => null }));
 vi.mock("../../../lib/react/query-state", () => ({ QueryState: ({ children }: { children: (data: unknown) => ReactNode }) => children({ ops_enrolled: true }) }));
 const org = { id: "tenant", name: "Example", slug: "example", status: "ACTIVE", pending_domain: null, group_name: "Group", created_at: "2026-10-25T00:00:00Z", updated_at: "2026-10-25T00:00:00Z", removable: false, removal_refusal: "tenant_has_data", lifecycle: "CODE_ISSUED", code_issued_count: 1, passkey_registered_count: 0 } as unknown as Org;

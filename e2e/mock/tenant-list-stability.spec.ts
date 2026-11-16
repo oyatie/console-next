@@ -164,38 +164,94 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     } finally { held.resolve(); fixture.release(); await page.close(); }
   });
 
-  for (const failed of [false, true]) test(`tenant panel keeps lifecycle controls still after a ${failed ? "failed" : "successful"} recovery read at ${width}px ${theme}`, async ({ page }) => {
+  test(`cached tenant rows keep creation available offline at ${width}px ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
+    const fixture = await mockPlatform(page);
+    const org: Org = { id: id(5000), name: "검증 고객", slug: "customer", group_id: null, group_slug: null, group_name: null,
+      status: "ACTIVE", created_at: AT, updated_at: AT };
+    await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: [org] });
+    await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
+    try {
+      await page.goto("/platform");
+      const main = page.getByRole("main");
+      const row = main.getByRole("row").filter({ has: page.getByRole("gridcell", { name: org.name, exact: true }) });
+      await expect(row).toBeVisible();
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
+        dispatchEvent(new Event("offline"));
+      });
+      await expect(main.getByText(t("common.read.offline"), { exact: true })).toBeVisible();
+      await expect(row).toBeVisible();
+      const create = main.getByRole("button", { name: t("tenants.create"), exact: true });
+      await expect(create).toHaveCount(1);
+      await expect(create).toBeEnabled();
+      await expect(create).not.toHaveAttribute("aria-disabled", "true");
+      await expect(create).toHaveAccessibleDescription("");
+      await fits(page, `tenant-cached-offline/${width}/${theme}`);
+      await expectAxe(page, `tenant-cached-offline/${width}/${theme}`);
+      await page.screenshot({ path: test.info().outputPath("tenant-cached-offline.png"), fullPage: true });
+      await create.click();
+      await expect(page.getByRole("dialog", { name: t("tenants.create"), exact: true })).toBeVisible();
+      expect(fixture.unexpected).toEqual([]);
+    } finally { fixture.release(); await page.close(); }
+  });
+
+  for (const first of ["recovery", "erase"] as const) for (const recoveryStatus of [200, 503]) for (const eraseStatus of [200, 503]) {
+  test(`tenant panel buttons stay still when ${first} settles first with recovery ${recoveryStatus} and erase ${eraseStatus} at ${width}px ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1600 });
     await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
     const fixture = await mockPlatform(page);
     const org: Org = { id: id(5000), name: "검증 고객", slug: "customer", group_id: null, group_slug: null, group_name: null,
       status: "ACTIVE", removable: true, created_at: AT, updated_at: AT };
-    const held = Promise.withResolvers<void>();
+    const held = { recovery: Promise.withResolvers<void>(), erase: Promise.withResolvers<void>() };
     await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: [org] });
     await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
-    await mockRoute(page, "get", "/api/platform/orgs/{id}/erase", { status: 200, json: { request: null, archived: false, legal_hold: false, second_operator_available: true, cooling_hours: 24 } });
+    const failed = { status: 503 as const, json: failure("upstream_failure"), headers: { "retry-after": String(Math.ceil(MAX_RETRY_AFTER_MS / 1000) + 1) } };
+    await mockRoute(page, "get", "/api/platform/orgs/{id}/erase", async () => {
+      await held.erase.promise;
+      return eraseStatus === 503 ? failed : { status: 200, json: { request: null, archived: false, legal_hold: false, second_operator_available: true, cooling_hours: 24 } };
+    });
     await mockRoute(page, "get", "/api/platform/orgs/{id}/ops-recovery", async () => {
-      await held.promise;
-      return failed ? { status: 503, json: failure("upstream_failure"), headers: { "retry-after": String(Math.ceil(MAX_RETRY_AFTER_MS / 1000) + 1) } }
+      await held.recovery.promise;
+      return recoveryStatus === 503 ? failed
         : { status: 200, json: { request: null, state: null, recovery_available: false, ops_has_passkey: false, ops_enrolled: false, second_operator_available: true, active_accounts: 0, hold_hours: 24, code_ttl_minutes: 10 } };
     });
     try {
       await page.goto("/platform");
       await page.getByRole("row").filter({ has: page.getByRole("gridcell", { name: org.name, exact: true }) }).click();
       const panel = page.getByRole("complementary", { name: org.name, exact: true });
-      const controls = panel.locator('section[aria-labelledby="tenant-status"] button, section[aria-labelledby="tenant-remove"] > button');
-      await expect(controls).toHaveCount(3);
-      await expect(panel.getByRole("button", { name: t("tenants.remove", { org: org.name }), exact: true })).toBeVisible();
+      await expect(panel.locator('section[aria-labelledby="tenant-status"] button')).toHaveCount(2);
       await page.evaluate(() => document.fonts.ready);
-      const positions = () => controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
-      const before = await positions();
-      held.resolve();
-      await expect(panel.getByRole("heading", { name: t(failed ? "common.loadFailed.title" : "opsRecovery.title"), exact: true })).toBeVisible();
-      expect(await positions()).toEqual(before);
+      const positions = () => panel.getByRole("button").evaluateAll(elements => elements.map(el => ({
+        name: el.getAttribute("aria-label") ?? el.textContent,
+        rect: el.getBoundingClientRect().toJSON(),
+      })));
+      let before = await positions();
+      for (const read of [first, first === "recovery" ? "erase" : "recovery"] as const) {
+        const received = page.waitForResponse(response => new URL(response.url()).pathname.endsWith(read === "erase" ? "/erase" : "/ops-recovery"));
+        held[read].resolve();
+        await (await received).finished();
+        // Wait for React to commit the response before measuring any mounted button again.
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        const after = await positions();
+        for (const button of before) expect.soft(after.find(next => next.name === button.name)).toEqual(button);
+        before = after;
+      }
+      if (recoveryStatus === 503 || eraseStatus === 503) {
+        await expect(panel.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toHaveCount(1);
+        await expect(panel.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(1);
+        await expect(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveCount(0);
+      } else {
+        await expect(panel.getByRole("heading", { name: t("opsRecovery.title"), exact: true })).toBeVisible();
+        const sections = await panel.locator("section").evaluateAll(elements => elements.map(el => el.getAttribute("aria-labelledby")));
+        expect(sections).toEqual(["tenant-status", "tenant-code", "tenant-ops-recovery", "tenant-remove"]);
+      }
       await fits(page, `tenant-panel/${width}/${theme}`);
       await expectAxe(page, `tenant-panel/${width}/${theme}`);
       await page.screenshot({ path: test.info().outputPath("tenant-panel.png"), fullPage: true });
       expect(fixture.unexpected).toEqual([]);
-    } finally { held.resolve(); fixture.release(); await page.close(); }
+    } finally { held.recovery.resolve(); held.erase.resolve(); fixture.release(); await page.close(); }
   });
+  }
 }

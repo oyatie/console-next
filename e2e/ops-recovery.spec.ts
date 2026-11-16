@@ -97,7 +97,7 @@ test("governed ops recovery: two operators, tenant veto, hold and once-only reen
 });
 
 // A delayed recovery read must not move independent lifecycle controls under the pointer.
-test("regression: a tenant's late ops-recovery read does not move the panel's 상태 and 삭제 controls", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
+test("regression: a tenant's late ops-recovery read keeps available panel buttons still", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
   const vendor = await vendorPage(browser);
   const slug = unique("ops-panel");
   await go(vendor, "/platform");
@@ -122,15 +122,19 @@ test("regression: a tenant's late ops-recovery read does not move the panel's �
     await vendor.evaluate(recordShifts);
     await vendor.evaluate(clearShifts);
     await row.click();
-    const controls = vendor.locator('aside section[aria-labelledby="tenant-status"], aside section[aria-labelledby="tenant-remove"]');
-    await expect(controls).toHaveCount(2);
-    await expect(controls.first()).toBeVisible();
+    const panel = vendor.getByRole("complementary").filter({ has: vendor.locator("#tenant-status") });
+    const controls = panel.getByRole("button");
+    await expect(panel.locator("#tenant-status")).toBeVisible();
     await vendor.evaluate(() => document.fonts.ready);
-    const positions = () => controls.evaluateAll(sections => sections.map(section => section.querySelector("button")!.getBoundingClientRect().toJSON()));
+    const positions = () => controls.evaluateAll(buttons => buttons.map(button => ({
+      name: button.getAttribute("aria-label") ?? button.textContent, rect: button.getBoundingClientRect().toJSON(),
+    })));
     const before = await positions();
     held.resolve();
     await expect(vendor.getByRole("region", { name: "운영 계정(ops) 복구", exact: true })).toBeVisible();
-    expect(await positions()).toEqual(before);
+    const after = await positions();
+    for (const button of before) expect(after.find(next => next.name === button.name)).toEqual(button);
+    await expect(panel.locator("section").last()).toHaveAttribute("aria-labelledby", "tenant-remove");
     await expectAccessible(vendor, "tenant panel after a late ops-recovery read");
   } finally {
     held.resolve();
