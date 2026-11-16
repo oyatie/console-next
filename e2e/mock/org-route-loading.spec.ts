@@ -112,18 +112,25 @@ for (const state of ["chart", "refused"] as const) {
 test("bulk entry leaves its disabled entity read idle while the content chunk loads", async ({ page }) => {
   const fixture = await mockScreen(page, screens[2], "empty");
   const held = Promise.withResolvers<void>();
+  const requested = Promise.withResolvers<void>();
   let reads = 0;
   await mockRoute(page, "get", "/api/v1/legal-entities", () => {
     reads++;
     return { status: 200, json: { items: [] } };
   });
   await page.route(/\/assets\/entity-routes-[^/]+\.js$/, async route => {
+    requested.resolve();
     await held.promise;
     await route.continue();
   });
   try {
     await page.goto("/org?tab=entities&bulk=paste", { waitUntil: "commit" });
+    await requested.promise;
     await expect(page.getByRole("heading", { level: 1, name: t("structure.title"), exact: true })).toBeVisible();
+    await expect(page.locator('main [data-read-layout="list"][aria-busy="true"]')).toBeVisible();
+    await expect(page.locator("[data-route-ready]")).toHaveCount(0);
+    expect(reads).toBe(0);
+    held.resolve();
     await routeReady(page);
     expect(reads).toBe(0);
     expect(fixture.unexpected).toEqual([]);

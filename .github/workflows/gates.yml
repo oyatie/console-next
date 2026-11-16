@@ -23,10 +23,21 @@ jobs:
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
         with: {egress-policy: audit}
+      - name: Refuse candidates outside dev before checkout
+        id: ancestry
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env: {CANDIDATE_SHA: '${{ inputs.sha }}'}
+        with:
+          script: |
+            const sha = process.env.CANDIDATE_SHA;
+            if (!/^(?!0{40}$)[a-f0-9]{40}$/.test(sha)) throw new Error('GATES_NOT_ON_DEV: require a full candidate SHA');
+            const {data} = await github.rest.repos.compareCommits({...context.repo, base:sha, head:'dev'});
+            if (!['ahead', 'identical'].includes(data.status) || data.merge_base_commit?.sha !== sha)
+              throw new Error('GATES_NOT_ON_DEV: candidate must be an ancestor of dev');
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: {persist-credentials: false, fetch-depth: 0, ref: '${{ inputs.sha }}'}
+        with: {persist-credentials: false, fetch-depth: 0, ref: dev}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with: {node-version-file: .node-version, cache: npm}
+        with: {node-version-file: .node-version}
       - name: Released change-set baseline
         env: {REGISTRY_TOKEN: '${{ github.token }}'}
         run: |

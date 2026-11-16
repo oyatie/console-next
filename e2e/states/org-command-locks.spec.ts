@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
-import { loadCatalog, t } from "@console/i18n";
+import { expect, type Page } from "@playwright/test";
+import { test } from "../locale-fixture";
+import { t } from "@console/i18n";
 import { commitLabel } from "../../apps/web/src/ui/composer/actions";
 import { expectAxe, fits } from "../a11y";
 import { authz, failure, id } from "../mock/fixtures";
@@ -10,8 +11,6 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { entityRecordPath, mockEntityRecord } from "./entity-record";
 import { orgChangeScreens, screens } from "./registry";
-
-test.beforeAll(() => loadCatalog("ko"));
 
 async function inspect(page: Page, label: string) {
   for (const theme of ["light", "dark"]) {
@@ -42,6 +41,8 @@ for (const width of [1440, 390]) {
       const confirm = dialog.getByRole("button", { name: commitLabel({ kind: "entityCorrection", mode: "record" }), exact: true });
       await confirm.click();
       await expect(dialog.getByRole("alert")).toHaveCount(1);
+      await expect(dialog.getByRole("alert")).toBeFocused();
+      await expect(dialog.getByRole("alert")).toContainText(t("entity.refused.forbidden"));
       await inspect(page, `entity revision/${width}`);
       await expect(confirm).toBeDisabled();
       await expect(input).toHaveValue("검증 상호");
@@ -71,6 +72,7 @@ for (const width of [1440, 390]) {
       const confirm = panel.getByRole("button", { name: commitLabel({ kind: "orgChange", mode: "schedule" }), exact: true });
       await confirm.click();
       await expect(panel.getByRole("alert")).toContainText(t("org_change.refuse.missing_grant"));
+      await expect(panel.getByRole("alert")).toBeFocused();
       await inspect(page, `submit refusal/${width}`);
       await expect(confirm).toBeDisabled();
       for (const key of ["orgChange.edit", "orgChange.cancel"] as const) {
@@ -83,6 +85,45 @@ for (const width of [1440, 390]) {
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });
+
+  for (const transfer of [false, true]) {
+    test(`org: settlement denial locks ${transfer ? "transfer" : "memo"} completion at ${width}px @ui-state`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const fixture = await mockScreen(page, orgChangeScreens[1], "settling");
+      await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities,
+        { feature: "org_change_apply", permission: "allow", branch_scope: { kind: "all" }, org_wide: true, scoped: false },
+      ] } });
+      const record = orgChange("settling");
+      const item = { ...record.settlementItems[0]!, label: transfer ? "직원 이동" : record.settlementItems[0]!.label, itemKey: transfer ? "TRANSFER_EMPLOYEES" as const : "POSITIONS" as const };
+      await mockRoute(page, "get", "/api/v1/org-changes/{id}", { status: 200, json: { ...record, kind: "DISSOLVE", proposal: [{ op: "DISSOLVE_ORG_UNIT", orgUnitId: record.target.ref }], settlementItems: [item] } });
+      await mockRoute(page, "get", "/api/v1/org-units", { status: 200, json: { items: [{ id: record.target.ref, name: record.target.label!, kind: "DEPARTMENT", parentId: null, status: "DISSOLVED", effectiveFrom: record.effectiveDate, updatedAt: record.updatedAt, headcount: 0 }] } });
+      let writes = 0;
+      await mockRoute(page, "post", "/api/v1/org-changes/{id}/settlement-items/{itemId}/complete", request => {
+        writes++;
+        expect(request.postDataJSON()).toEqual(transfer ? {} : { memo: "처리 내용 확인" });
+        return { status: 403, json: failure("org_change.refuse.missing_grant") };
+      });
+      try {
+        await page.goto(orgChangeScreens[1].path);
+        const panel = page.getByRole("region", { name: t("orgChange.settle.title", { n: 0, total: 1 }), exact: true });
+        const memo = panel.getByRole("textbox", { name: t("orgChange.settle.memo", { label: item.label }), exact: false, includeHidden: true });
+        if (!transfer) await memo.fill("처리 내용 확인");
+        const confirm = panel.getByRole("button", { name: commitLabel({ kind: "orgSettlement", mode: "complete" }), exact: true });
+        await confirm.click();
+        await expect(panel.getByRole("alert")).toContainText(t("org_change.refuse.missing_grant"));
+        await expect(panel.getByRole("alert")).toBeFocused();
+        await expect(confirm).toBeDisabled();
+        if (!transfer) {
+          await expect(memo).toHaveValue("처리 내용 확인");
+          expect(await memo.evaluate(el => Boolean(el.closest("[inert]")))).toBe(true);
+        }
+        await panel.getByRole("alert").press("Control+Enter");
+        expect(writes).toBe(1);
+        await inspect(page, `settlement refusal/${transfer}/${width}`);
+        expect(fixture.unexpected).toEqual([]);
+      } finally { await page.close(); fixture.release(); }
+    });
+  }
 
   for (const phase of ["populated", "operating"] as const) {
     test(`org: bulk move denial locks ${phase} inputs and draft at ${width}px @ui-state`, async ({ page }) => {
@@ -105,6 +146,7 @@ for (const width of [1440, 390]) {
         const confirm = main.getByRole("button", { name: commitLabel({ kind: "orgMove", mode: "apply", count: 1 }), exact: true });
         await confirm.click();
         await expect(main.getByRole("alert")).toContainText(t("org_change.refuse.missing_grant"));
+        await expect(main.getByRole("alert")).toBeFocused();
         await inspect(page, `move refusal/${phase}/${width}`);
         await expect(confirm).toBeDisabled();
         expect(await tree.evaluate(el => Boolean(el.closest("[inert]")))).toBe(true);

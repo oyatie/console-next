@@ -2,21 +2,14 @@
 import { useCallback, useSyncExternalStore, type ReactNode } from "react";
 import { notifyManager, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useRouterState } from "@tanstack/react-router";
+import { chunk } from "../chunk-guard";
 import { Announcer } from "../../ui/announcer";
 import { bindAnnouncer, useRoutePresentation } from "./announce";
 
-function readyHref(committedHref: string, browserHref: string) {
-  const browser = new URL(browserHref);
-  const committed = new URL(committedHref, browserHref);
-  const href = browser.pathname + browser.search + browser.hash;
-  browser.search = browser.searchParams.toString();
-  committed.search = committed.searchParams.toString();
-  return committed.href === browser.href ? href : undefined;
-}
-
 /**
- * Shared per-route ready marker: the router committed this history entry and the screen's active reads settled.
+ * Shared per-route ready marker: content rendered for this history entry and the screen's active reads settled.
  * The history key distinguishes revisiting the same URL; inactive prefetches do not hold up the screen.
+ * Visible aria-busy regions in main hold readiness until content or a settled failure state replaces them.
  */
 export function RouteFrame({ children = <Outlet /> }: { children?: ReactNode }) {
   const { location, status, isLoading } = useRouterState();
@@ -27,10 +20,23 @@ export function RouteFrame({ children = <Outlet /> }: { children?: ReactNode }) 
     // A paused read still owes an answer; useIsFetching counts only requests currently on the wire.
     () => cache.findAll({ type: "active", predicate: q => q.state.fetchStatus !== "idle" }).length,
   );
-  const href = typeof window === "undefined" ? location.href : readyHref(location.href, window.location.href);
+  const bind = (signal: HTMLSpanElement | null) => {
+    if (!signal) return;
+    if (status !== "idle" || isLoading || reading) {
+      delete signal.dataset.routeReady;
+      return;
+    }
+    let bound = true;
+    let dispose: (() => void) | undefined;
+    // The route guards already load this chunk; DOM observation stays out of the entry bundle.
+    void chunk(import("./session")).then(module => {
+      if (bound) dispose = module.observeRouteReady(signal, location.href);
+    });
+    return () => { bound = false; dispose?.(); };
+  };
   return <>
     {children}
     <Announcer bind={bindAnnouncer} />
-    <span hidden data-route-ready={status === "idle" && !isLoading && !reading ? href : undefined} data-route-key={location.state.__TSR_key} />
+    <span hidden ref={bind} data-route-key={location.state.__TSR_key} />
   </>;
 }
