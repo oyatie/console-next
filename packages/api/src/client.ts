@@ -15,6 +15,15 @@ const withBearer = (req: Request) => {
 // Unauthenticated sign-in calls (and refresh itself): a 401 there is the answer, not an expired token.
 const NO_REFRESH = ["/api/v1/auth/token/refresh", "/api/v1/auth/otp/redeem", "/api/v1/auth/passkey/login/"];
 
+/** Match renewal's 30 s budget: a silent connection must reach the screen's network-error/retry state. */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+/** Upload/processing and file generation/download need more time, but must still settle on a dead link. */
+export const LONG_REQUEST_TIMEOUT_MS = 5 * 60_000;
+
+const longRequest = (method: string, path: string) =>
+  (method === "POST" && ["/api/v1/entity-documents", "/api/v1/employees/import/preview"].includes(path)) ||
+  (method === "GET" && (["/api/v1/employees/export.csv", "/api/v1/statutory/worker-register/export"].includes(path) || /^\/api\/v1\/entity-documents\/[^/]+\/content$/.test(path)));
+
 /**
  * fetch that attaches the bearer token and the last interaction and, on 401, refreshes once and retries.
  * A refresh that fails for a network error, 429 or 5xx rejects like a network error (the session stays).
@@ -23,7 +32,11 @@ export async function authFetch(input: Request): Promise<Response> {
   const principal = session.principal;
   const path = new URL(input.url).pathname;
   const writable = Boolean(session.token || input.headers.get("authorization")) && path.startsWith("/api/v1/") && !["GET", "HEAD", "OPTIONS"].includes(input.method);
-  const request = new Request(input);
+  const deadline = AbortSignal.timeout(longRequest(input.method, path) ? LONG_REQUEST_TIMEOUT_MS : DEFAULT_REQUEST_TIMEOUT_MS);
+  const networkDeadline = new AbortController();
+  // Fetch and its response body both reject with this reason; caller cancellation keeps its own reason.
+  deadline.addEventListener("abort", () => networkDeadline.abort(new TypeError("Failed to fetch", { cause: deadline.reason })), { once: true });
+  const request = new Request(input, { signal: AbortSignal.any([input.signal, networkDeadline.signal]) });
   const key = writable ? (request.headers.get("idempotency-key") ?? crypto.randomUUID()) : undefined;
   if (key) request.headers.set("idempotency-key", key);
   const retry = request.clone();
@@ -52,6 +65,7 @@ export async function authFetch(input: Request): Promise<Response> {
     if (key && res.status !== 204 && res.headers.get("content-type")?.includes("application/json")) await res.clone().json();
     return res;
   } catch (error) {
+    if (input.signal.aborted && request.signal.reason === input.signal.reason) throw error;
     if (!key) throw error;
     if (error instanceof ApiError) throw new ApiError(error.status, error.code, error.message, error.reasons, error.operationId, error.fromServer, error.refusals, { ...error, requestKey: key });
     throw new ApiError(0, "command_unknown", "", [], undefined, false, [], { requestKey: key });
