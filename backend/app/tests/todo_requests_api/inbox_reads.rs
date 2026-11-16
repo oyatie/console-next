@@ -31,6 +31,13 @@ async fn captured(logs: &Logs, ctx: &Ctx, method: &str, uri: &str, body: Option<
     out
 }
 
+/// Meets the inbox's trace sites once under a throwaway capture. Tracing caches a site's interest
+/// when first met, asking only the meeting thread's subscriber while one capture is live, so a site
+/// first met on another test's thread stays unheard until the next capture starts: this one.
+async fn warm(ctx: &Ctx) {
+    captured(&Logs::default(), ctx, "GET", INBOX, None).await;
+}
+
 /// Reads of `todos` the inbox made inside each to-do source's span.
 fn reads_by_source(logs: &Logs) -> [(usize, usize); 2] {
     let raw = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
@@ -63,9 +70,7 @@ fn reads_by_source(logs: &Logs) -> [(usize, usize); 2] {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn one_statement_reads_each_side_whatever_the_count(pool: PgPool) {
     let o = office(pool).await;
-    // Registers the inbox's trace sites before any capture, so a site first met on another test's
-    // thread while a capture starts cannot keep a cached "not interested".
-    inbox(&o.colleague, "").await;
+    warm(&o.colleague).await;
     let mut asked = 0;
     for size in [2, 20] {
         while asked < size {
@@ -90,6 +95,7 @@ async fn one_statement_reads_each_side_whatever_the_count(pool: PgPool) {
 async fn the_text_and_note_reach_no_log_line_audit_row_or_access_log(pool: PgPool) {
     let o = office(pool).await;
     named(&o.pool, &o.colleague, "담당자 나").await;
+    warm(&o.colleague).await;
     let logs = Logs::default();
     let employee = Uuid::new_v4();
     let body = json!({
