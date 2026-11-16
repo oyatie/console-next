@@ -10,7 +10,7 @@ import { unitsQuery } from "../reference/org/api";
 const session = vi.hoisted(() => ({ token: null as string | null, lost: false }));
 vi.mock("@console/api", async original => ({ ...await original<typeof import("@console/api")>(), session }));
 
-for (const state of ["restoring", "expired", "active"] as const) test(`employee loader warms the page cache only for the ${state} session`, async () => {
+for (const state of ["restoring", "expired", "active"] as const) for (const preload of [false, true]) test(`employee loader warms the page cache only for the ${state} session (preload=${preload})`, async () => {
   session.token = state === "restoring" ? null : "token";
   session.lost = state === "expired";
   const client = new QueryClient();
@@ -18,8 +18,8 @@ for (const state of ["restoring", "expired", "active"] as const) test(`employee 
   const loader = (peopleRoutes as AnyRoute[]).find(route => "path" in route.options && route.options.path === "/people/$id")!.options.loader;
   expect(loader).toBeTypeOf("function");
   if (typeof loader !== "function") throw new Error("employee route needs a loader");
-  await loader({ params: { id: "person" }, context: { queryClient: client } } as never);
-  if (state === "active") {
+  await loader({ params: { id: "person" }, context: { queryClient: client }, preload } as never);
+  if (state === "active" && !preload) {
     const reads = [employeeQuery("person"), assignmentsRef("person"), entitiesRef, unitsQuery];
     expect(ensure).toHaveBeenCalledTimes(reads.length);
     for (const [index, query] of reads.entries()) expect(ensure).toHaveBeenNthCalledWith(index + 1, { ...query, queryFn: expect.any(Function) });

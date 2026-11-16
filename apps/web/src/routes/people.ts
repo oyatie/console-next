@@ -42,7 +42,8 @@ const employee = createRoute({
   getParentRoute: () => app,
   path: "/people/$id", staticData: { access: "signed-in", floorplan: "P-02" },
   remountDeps: ({ params }) => params.id,
-  loader: ({ params: { id }, context }) => {
+  loader: ({ params: { id }, context, preload }) => {
+    if (preload) return;
     const { queryClient } = context as { queryClient: QueryClient };
     // The page owns read failures; warming its cache must not replace its refusal or retry UI.
     void Promise.allSettled(cardReads(id).map(query => queryClient.ensureQueryData<unknown>(query)));

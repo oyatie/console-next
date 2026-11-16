@@ -10,6 +10,7 @@ import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { mockLifecycleSheets, moveDetail } from "../mock/lifecycle-sheets";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
+import { routeReady } from "../flows";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -52,6 +53,28 @@ async function fixture(page: Page, initial: User = linked) {
   });
   return { ...shell, writes, setAccount: (next: User) => { account = next; }, failSearch: () => { searchFailed = true; }, recoverSearch: () => { searchFailed = false; } };
 }
+
+for (const intent of ["hover", "focus"] as const) test(`a person link ${intent} preloads code without reading the record @ui-state`, async ({ page }) => {
+  const f = await fixture(page);
+  const reads: string[] = [];
+  page.on("request", request => {
+    const path = new URL(request.url()).pathname;
+    if (path === `/api/v1/employees/${employee.id}` || path === "/api/v1/employment-assignments") reads.push(path);
+  });
+  try {
+    await page.goto(`/people?view=accounts&sel=${linked.id}`);
+    await routeReady(page);
+    const person = page.getByRole("region", { name: "직원 연결", exact: true }).getByRole("link", { name: /김직원.*EMP-12/ });
+    const chunk = page.waitForResponse(/\/assets\/card-page-[^/]+\.js$/);
+    if (intent === "hover") await person.hover();
+    else await person.focus();
+    await (await chunk).finished();
+    await routeReady(page);
+    expect(reads).toEqual([]);
+    expect(f.unexpected).toEqual([]);
+    await expect(page).toHaveURL(/view=accounts/);
+  } finally { await page.close(); f.release(); }
+});
 
 for (const width of [1440, 390]) {
   test(`direct relink keeps the current employee until independent confirmation at ${width}px @ui-state`, async ({ page }) => {
