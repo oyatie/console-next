@@ -13,17 +13,47 @@ pub async fn transaction(f: &fixture::Fixture) -> Transaction<'static, Postgres>
     tx
 }
 
-pub fn requests(f: &fixture::Fixture) -> Vec<NormalizedCreateEmployeeRequest> {
+pub async fn requests(f: &fixture::Fixture, pool: &PgPool) -> Vec<NormalizedCreateEmployeeRequest> {
+    let mut units = Vec::new();
+    for n in 0..3 {
+        let unit = Uuid::new_v4();
+        let name = format!("Synthetic unit {n}");
+        sqlx::query("INSERT INTO org_units (org_id,id) VALUES ($1,$2)")
+            .bind(f.principal.org_id.as_uuid())
+            .bind(unit)
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query(
+            "INSERT INTO org_unit_revisions \
+             (org_id,org_unit_id,version,command_id,actor_id,payload_digest,attributes,receipt) \
+             VALUES ($1,$2,1,gen_random_uuid(),$3,decode(repeat('00',32),'hex'),$4,'{}'::jsonb)",
+        )
+        .bind(f.principal.org_id.as_uuid())
+        .bind(unit)
+        .bind(f.principal.user_id.as_uuid())
+        .bind(serde_json::json!({"name": name, "kind": "department"}))
+        .execute(pool)
+        .await
+        .unwrap();
+        units.push((unit, name));
+    }
     (0..3)
         .map(|n| {
             let mut body = f.body(
                 &format!("registration-{n}"),
                 if n == 1 { "CONTRACT" } else { "REGULAR" },
             );
-            body.name = format!("합성 직원 {n}");
+            body.name = format!("Synthetic employee {n}");
             body.employee_number = format!("BATCH-{n}");
+            body.company = format!("Synthetic company {n}");
+            body.org_unit_id = Some(units[n].0);
+            body.org_unit = units[n].1.clone();
+            body.position = format!("Synthetic position {n}");
+            body.site = format!("Synthetic site {n}");
+            body.phone = format!("010-0000-{n:04}");
             body.home_branch_id = None;
-            body.base_pay = "3000000".into();
+            body.base_pay = (3_000_000 + n * 100_000).to_string();
             body.hire_date =
                 Some((today_kst() + Duration::days(if n == 2 { 1 } else { -1 })).to_string());
             if n == 1 {

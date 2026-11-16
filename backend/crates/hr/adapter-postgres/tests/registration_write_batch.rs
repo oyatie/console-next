@@ -24,7 +24,7 @@ mod order;
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn registration_batches_heads_persons_profiles_and_replays_in_input_order(pool: PgPool) {
     let f = fixture::fixture(pool.clone()).await;
-    let requests = requests(&f);
+    let requests = requests(&f, &pool).await;
     let hashes = self::hashes(&requests);
     let mut inputs = inputs(&requests, &hashes);
     inputs.push(RegistrationInput {
@@ -64,6 +64,8 @@ async fn registration_batches_heads_persons_profiles_and_replays_in_input_order(
     assert_eq!(counts, (3, 3, 3, 3, 3, 2, 2, 1));
     let profiles: Vec<(Uuid, serde_json::Value)> = sqlx::query_as(
         "SELECT e.id, jsonb_build_object('name',e.name,'hire',e.hire_on::text, \
+         'company',e.company,'number',e.employee_number,'unit',e.org_unit,'unit_id',e.org_unit_id, \
+         'position',e.position,'site',e.worksite_name,'hash',p.request_hash, \
          'key',p.idempotency_key,'kind',p.employment_type,'phone',p.phone_e164,'pay',p.base_pay::text, \
          'start',p.contract_start_date::text,'end',p.contract_end_date::text) \
          FROM employees e JOIN employee_employment_profiles p ON p.employee_id=e.id \
@@ -84,6 +86,9 @@ async fn registration_batches_heads_persons_profiles_and_replays_in_input_order(
             *profile,
             serde_json::json!({
                 "name": request.name, "hire": request.hire_date, "key": request.idempotency_key,
+                "company": request.company, "number": request.employee_number,
+                "unit": request.org_unit, "unit_id": request.org_unit_id,
+                "position": request.position, "site": request.site, "hash": input.request_hash,
                 "kind": request.employment_type, "phone": request.phone_e164, "pay": request.base_pay,
                 "start": request.contract_start_date, "end": request.contract_end_date,
             })
@@ -132,7 +137,7 @@ async fn registration_batches_heads_persons_profiles_and_replays_in_input_order(
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn registration_batch_conflicts_roll_back_all_writes_and_keys(pool: PgPool) {
     let f = fixture::fixture(pool.clone()).await;
-    let requests = requests(&f);
+    let requests = requests(&f, &pool).await;
     let hashes = self::hashes(&requests);
     let commands = inputs(&requests, &hashes);
     let before = counts(&pool, &f).await;
@@ -181,7 +186,7 @@ async fn registration_batch_conflicts_roll_back_all_writes_and_keys(pool: PgPool
 async fn registration_batch_revalidates_actor_and_tenant_before_writes(pool: PgPool) {
     let f = fixture::fixture(pool.clone()).await;
     let foreign = fixture::fixture(pool.clone()).await;
-    let mut requests = requests(&f);
+    let mut requests = requests(&f, &pool).await;
     requests[1].org_unit_id = Some(foreign.unit);
     let hashes = self::hashes(&requests);
     let commands = inputs(&requests, &hashes);
@@ -217,7 +222,7 @@ async fn registration_batch_revalidates_actor_and_tenant_before_writes(pool: PgP
         .execute(&pool)
         .await
         .unwrap();
-    let requests = self::requests(&f);
+    let requests = self::requests(&f, &pool).await;
     let hashes = self::hashes(&requests);
     let commands = inputs(&requests, &hashes);
     let queries = observe();
@@ -237,8 +242,8 @@ async fn registration_batch_revalidates_actor_and_tenant_before_writes(pool: PgP
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn registration_batch_mixes_stored_replays_with_new_keys(pool: PgPool) {
-    let f = fixture::fixture(pool).await;
-    let mut requests = requests(&f);
+    let f = fixture::fixture(pool.clone()).await;
+    let mut requests = requests(&f, &pool).await;
     let hashes = self::hashes(&requests);
     let commands = inputs(&requests, &hashes);
     let mut tx = transaction(&f).await;

@@ -28,7 +28,7 @@ async fn registration_heads_follow_number_lock_order_and_results_follow_input_or
     .execute(&pool)
     .await
     .unwrap();
-    let mut requests = requests(&f);
+    let mut requests = requests(&f, &pool).await;
     requests.reverse();
     let hashes = hashes(&requests);
     let commands = inputs(&requests, &hashes);
