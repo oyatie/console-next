@@ -214,6 +214,7 @@ export const enEntity = {
   "entity.refusal.before_state_in_force": "the date is before the certificate on record began. If the value was wrong before that, select 「Correction · entered wrong from the start」 as the reason",
   "entity.refusal.registration_change_scheduled": "a change to this certificate is scheduled after this date and would undo it from that day. Record it once the scheduled change applies",
   "entity.refusal.entity_change_scheduled": "a change to the legal entity is scheduled, so its representative, name and head office cannot be recorded with it. Record them once the scheduled change applies",
+  "entity.refused.forbidden": "You need permission to change this entity. Ask an access administrator to grant it.",
   "entity.refused.legal_entity_not_open": "This legal entity is closed and can no longer be edited.",
   "entity.refused.legal_entity_voided": "This legal entity was removed. Reopen the list to check.",
   "entity.refused.legal_entity_not_found": "This legal entity was not found. Reopen the list to check.",
