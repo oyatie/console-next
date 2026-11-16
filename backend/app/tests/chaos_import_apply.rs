@@ -104,10 +104,31 @@ async fn setup(pool: &PgPool) -> (Uuid, Ctx, String, Value) {
     (org, ctx, apply, body)
 }
 
+/// A request timeout does not stop the detached driver; observe its terminal result.
+async fn finished_job(ctx: &Ctx, apply: &str, expected: &str) -> Value {
+    tokio::time::timeout(std::time::Duration::from_secs(60), async {
+        loop {
+            let (status, job) = ctx.call("GET", apply, None).await;
+            assert_eq!(status, StatusCode::OK, "{job}");
+            if matches!(job["state"].as_str(), Some("done" | "failed")) {
+                assert_eq!(job["state"], expected, "{job}");
+                return job;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("the detached driver did not finish")
+}
+
 /// Re-applies until done; the run ends APPLIED with ROWS people, once.
 async fn finishes_once(pool: &PgPool, org: Uuid, ctx: &Ctx, apply: &str, body: &Value) {
-    let (status, report) = ctx.call("POST", apply, Some(body.clone())).await;
-    assert_eq!(status, StatusCode::OK, "{report}");
+    let (status, mut report) = ctx.call("POST", apply, Some(body.clone())).await;
+    if status == StatusCode::SERVICE_UNAVAILABLE && report["error"]["code"] == "unavailable" {
+        report = finished_job(ctx, apply, "done").await["report"].clone();
+    } else {
+        assert_eq!(status, StatusCode::OK, "{report}");
+    }
     let rows_before: Vec<(Uuid, Value)> =
         sqlx::query_as("SELECT id, to_jsonb(e) FROM employees e WHERE org_id=$1 ORDER BY id")
             .bind(org)
@@ -146,6 +167,7 @@ async fn apply_killed_inside_the_batch_writes_nothing_and_reapplies_once(pool: P
     arm_kill(&pool, "employees", "AFTER INSERT", "true").await;
     let (status, died) = ctx.call("POST", &apply, Some(body.clone())).await;
     assert!(status.is_server_error(), "{status} {died}");
+    finished_job(&ctx, &apply, "failed").await;
     assert_eq!(count(&pool, "employees", org).await, 0, "no half write");
     assert_eq!(run_status(&pool, org).await, "DRY_RUN");
     disarm(&pool).await;
@@ -164,6 +186,7 @@ async fn apply_killed_in_the_settle_is_finished_by_the_reapply(pool: PgPool) {
     .await;
     let (status, died) = ctx.call("POST", &apply, Some(body.clone())).await;
     assert!(status.is_server_error(), "{status} {died}");
+    finished_job(&ctx, &apply, "failed").await;
     assert_eq!(audits(&pool, org, "employee.import.settle").await, 0);
     assert_eq!(
         count(&pool, "employees", org).await,
@@ -198,6 +221,7 @@ async fn apply_terminated_from_outside_mid_batch_writes_nothing_and_reapplies_on
         tokio::join!(ctx.call("POST", &apply, Some(body.clone())), killer);
     assert!(killed, "the batch never showed up in pg_stat_activity");
     assert!(status.is_server_error(), "{status} {died}");
+    finished_job(&ctx, &apply, "failed").await;
     assert_eq!(count(&pool, "employees", org).await, 0, "no half write");
     assert_eq!(run_status(&pool, org).await, "DRY_RUN");
     disarm(&pool).await;

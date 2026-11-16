@@ -36,6 +36,7 @@ export const decisionLabel = (d: string) => known(`import.decision.${d}`, d);
 
 /** The words of an import error code this screen knows better than the generic copy (CommandError `own`). */
 export const importError = (code: string) => {
+  if (code === "import_apply_timed_out") return t("import.timedOut");
   const id = `import.error.${code}`;
   const refusal = `import.refusal.${code}`;
   return isMessageId(id) ? t(id) : isMessageId(refusal) ? t(refusal) : undefined;

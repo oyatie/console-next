@@ -48,7 +48,7 @@ test.each(["import_apply_forbidden", "import_apply_timed_out"] as const)("a fail
     dry_run_digest: "synthetic-digest", requested_by: "synthetic-viewer", error: { code, message: "private database detail" },
   }) });
   const out = renderToStaticMarkup(<QueryClientProvider client={client}><JobStep runId="synthetic-run" onDone={() => {}} onFailed={() => {}} /></QueryClientProvider>);
-  expect(out).toContain(t(`import.error.${code}`));
+  expect(out).toContain(code === "import_apply_timed_out" ? t("import.timedOut", { rows: 1 }) : t("import.error.import_apply_forbidden"));
   expect(out).not.toContain("private database detail");
   expect(out).toContain(t("importJob.back"));
 });

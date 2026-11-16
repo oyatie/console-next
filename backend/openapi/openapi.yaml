@@ -8522,7 +8522,12 @@ paths:
         - employees
       operationId: applyEmployeeImport
       summary: Apply a dry-run employee import run, bound to its dry run
-      description: 'BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against
+      description: 'Cedar action import_apply decides admission and is rechecked inside the write transaction.
+        403 import_apply_forbidden means the database refused the admitted command.
+        503 import_apply_timed_out means a statement or transaction exceeded the server time limit;
+        nothing was written, and the stored job retains the same refusal code.
+
+        BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against
         the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows
         (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry
         run''s is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing
@@ -8578,7 +8583,12 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: 'forbidden — Cedar did not admit tenant-wide directory management.
+            import_apply_forbidden — the database refused the import command; no rows were written.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -8586,9 +8596,12 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
-          description: import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds.
+          description: 'import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds.
+            import_apply_timed_out — the statement or transaction exceeded the server time limit; nothing was written.
+            Review the dry run before applying again.'
           headers:
             Retry-After:
+              description: Present for import_apply_busy.
               schema:
                 type: integer
           content:
