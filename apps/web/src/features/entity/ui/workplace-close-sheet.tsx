@@ -8,11 +8,10 @@ import { freshOnOpen } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { DateField } from "../../../ui/date/date-field";
 import { Sheet } from "../../../ui/sheet/sheet";
-import { FreshEntity } from "./fresh-entity";
+import { FreshEntity, ReadInSheet } from "./fresh-entity";
 import { workplaceName } from "../domain/view";
 import type { Place, StructureAct } from "../../../reference/org/domain/structure";
 import { cancelClose, CLOSE_READS, closePlanQuery, planClose, refusalsOf, type CloseJob, type ClosePlanView } from "../../../reference/close/api";
@@ -32,7 +31,7 @@ import css from "../../../reference/org/ui/structure.module.css";
  */
 export function WorkplaceCloseSheet({ place, onClose, onAct }: { place: Place; onClose: () => void; onAct: (act: StructureAct) => void }) {
   const q = freshOnOpen(useQuery({ ...closePlanQuery(place.node.id), refetchOnMount: "always" }));
-  return <QueryState q={q} layout="form">{(view) => <FreshEntity id={place.entity.id}>{(e) => <Body e={e} view={view} place={place} onClose={onClose} onAct={onAct} />}</FreshEntity>}</QueryState>;
+  return <ReadInSheet q={q} title={t("workplace.close.title", { name: place.node.name })} onClose={onClose}>{(view) => <FreshEntity id={place.entity.id} title={t("workplace.close.title", { name: place.node.name })} onClose={onClose}>{(e) => <Body e={e} view={view} place={place} onClose={onClose} onAct={onAct} />}</FreshEntity>}</ReadInSheet>;
 }
 
 const blockerText = (m: Missing) =>
