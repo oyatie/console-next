@@ -9044,7 +9044,7 @@ export interface paths {
         };
         /**
          * Activity on one of my inbox items
-         * @description The record column's activity list for an item in the caller's inbox. The item is resolved through the caller's own sources, the same read as the list, so another person's item, an unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item was not found while a source was unavailable. Rows are the audit events on the item's own record (the request, change, lock, grant or case its first link names; for an org change, also its approval steps), newest first, at most 50: what happened (a verb from a closed set, other for anything else), who did it (absent for system events) and when. Events on the person or account behind an item are not served, and audit snapshots never are.
+         * @description The record column's activity list for an item in the caller's inbox. The item is resolved through the caller's own sources, the same read as the list, so another person's item, an unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item was not found while a source was unavailable. Rows are the audit events on the item's own record (the request, change, lock, grant, case or to-do request its first link names; for an org change, also its approval steps), newest first, at most 50: what happened (a verb from a closed set, other for anything else), who did it (absent for system events) and when. Events on the person or account behind an item are not served, and audit snapshots never are.
          */
         get: operations["listMyActionInboxItemActivity"];
         put?: never;
@@ -15494,8 +15494,15 @@ export interface components {
                 command_id?: string | null;
                 grants?: components["schemas"]["AccessEffectiveEntry"][];
                 is_ops?: boolean;
+                /** @description Present on a to-do request the caller made; the note is present only when it was sent back. */
+                todo?: {
+                    /** @enum {string} */
+                    state: "open" | "returned";
+                    /** @description The line the assignee wrote when sending the request back. */
+                    return_note?: string;
+                };
             };
-            /** @description Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes. */
+            /** @description Opaque version for org-change approval and HR request rows, and for to-do requests the caller made; changes when a step is decided, the request closes or it is sent back. */
             version?: string;
             /** @description Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy. */
             policy?: {
