@@ -53,7 +53,7 @@ for (const action of ["multi", "exit.report"]) for (const width of [1440, 390]) 
         employee_id: moveDetail.employee.id, updated_at: moveDetail.employee.updated_at, applied: ["name"], review_required: false,
       } });
       const sheet = page.getByRole("dialog");
-      await sheet.getByRole("textbox", { name: t("empFix.field.name"), exact: true }).fill("정정직원");
+      await sheet.getByRole("textbox", { name: t("empFix.field.name"), exact: true }).fill("Corrected employee");
       await sheet.getByText(t("empFix.reason.INPUT_ERROR"), { exact: true }).click();
       await sheet.getByRole("button", { name: commitLabel({ kind: "profile", mode: "correct", count: 1 }), exact: true }).click();
       await expect(sheet).toHaveCount(0);
