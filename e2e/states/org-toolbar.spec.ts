@@ -120,13 +120,8 @@ for (const width of [1440, 390]) {
         await workplace.click();
         const edge = await page.getByRole("navigation", { name: t("structure.crumbs"), exact: true }).evaluate(el => el.closest('[class*="top"]')!.getBoundingClientRect().bottom + 8);
         const bounds = (await workplace.boundingBox())!;
-        // The canvas owns wheel gestures, including their native scroll default.
-        expect(await workplace.evaluate(el => {
-          const wheel = new WheelEvent("wheel", { bubbles: true, cancelable: true });
-          el.dispatchEvent(wheel);
-          return wheel.defaultPrevented;
-        })).toBe(true);
-        await workplace.dispatchEvent("wheel", { deltaY: bounds.y - edge });
+        await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+        await page.mouse.wheel(0, bounds.y - edge);
         await expect.poll(async () => Math.abs((await workplace.boundingBox())!.y - edge)).toBeLessThan(1);
         await expect(toolbar.getByRole("button").first()).toBeInViewport();
         await expect.poll(() => toolbar.evaluate(el => {
@@ -157,3 +152,69 @@ for (const width of [1440, 390]) {
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+test("org: nested fields keep wheel scrolling without moving the chart at 390px @ui-state", { tag: "@webkit-pr" }, async ({ page }) => {
+  const { fixture } = await openChart(page, 390);
+  try {
+    await page.goto("/org");
+    const workplace = page.locator(`[data-box][data-id="${id(303)}"]`);
+    await expect(workplace).toBeAttached();
+    // Exercise native scrolling inside the shared viewport, including a descendant of a scrollable element.
+    await workplace.evaluate(el => {
+      const viewport = el.parentElement!.parentElement!;
+      const fields = document.createElement("div");
+      fields.dataset.wheelFields = "";
+      fields.style.cssText = "position:absolute;left:8px;top:120px;width:200px;z-index:10;background:var(--surface)";
+      const note = document.createElement("textarea");
+      note.setAttribute("aria-label", "사유 메모");
+      note.rows = 2;
+      note.value = Array.from({ length: 40 }, (_, i) => `사유 ${i + 1}`).join("\n");
+      note.style.cssText = "width:100%;resize:none";
+      const input = document.createElement("input");
+      input.setAttribute("aria-label", "조직 이름");
+      const scroll = document.createElement("div");
+      scroll.dataset.wheelScroll = "";
+      scroll.style.cssText = "width:200px;height:60px;overflow:auto";
+      const content = document.createElement("div");
+      content.style.cssText = "width:600px;height:300px";
+      content.textContent = "조직 변경 내역";
+      scroll.append(content);
+      fields.append(note, input, scroll);
+      viewport.append(fields);
+    });
+    const note = page.getByRole("textbox", { name: "사유 메모", exact: true });
+    const scroll = page.locator("[data-wheel-scroll]");
+    const stage = workplace.locator("..");
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      for (const field of [note, scroll]) {
+        for (const axis of field === note ? ["y"] : ["x", "y"]) {
+          await field.evaluate(el => { el.scrollTop = el.scrollLeft = 0; });
+          const transform = await stage.getAttribute("style");
+          for (const direction of [1, -1]) {
+            // A click ends Firefox's previous native scroll transaction before changing targets.
+            await field.click();
+            await page.mouse.wheel(axis === "x" ? direction * 60 : 0, axis === "y" ? direction * 60 : 0);
+            await expect.poll(() => field.evaluate((el, axis) => (axis === "x" ? el.scrollLeft : el.scrollTop) > 0, axis)).toBe(direction === 1);
+            await expect(stage).toHaveAttribute("style", transform!);
+          }
+        }
+      }
+      const transform = await stage.getAttribute("style");
+      const input = page.getByRole("textbox", { name: "조직 이름", exact: true });
+      await input.evaluate(el => el.addEventListener("wheel", () => { el.dataset.wheeled = "true"; }, { once: true }));
+      await input.click();
+      await page.mouse.wheel(0, 60);
+      await expect(input).toHaveAttribute("data-wheeled", "true");
+      await expect(stage).toHaveAttribute("style", transform!);
+      await input.evaluate(el => { delete el.dataset.wheeled; });
+      // A subsequent wheel arriving at the nested scroll boundary belongs to the canvas again.
+      await scroll.click();
+      await page.mouse.wheel(0, -60);
+      await expect(stage).not.toHaveAttribute("style", transform!);
+      await fits(page, `org nested wheel/390/${theme}`);
+      await page.screenshot({ path: test.info().outputPath(`wheel-fields-${theme}.png`) });
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

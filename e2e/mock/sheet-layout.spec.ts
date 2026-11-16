@@ -10,19 +10,27 @@ import { moveDetail } from "./lifecycle-sheets";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
-import { assertionTimeout } from "./playwright.config";
 
 test("grade helper waits for promotion reasons before returning the editor", async ({ page }) => {
   const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
   await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { items: [], can_manage: true } });
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
   await mockRoute(page, "get", "/api/v1/reason-codes", async request => {
-    // This read starts when the change editor opens, after the personnel card is ready.
-    await new Promise(resolve => setTimeout(resolve, assertionTimeout + 1));
+    await held;
     return { status: 200, json: { domain: new URL(request.url()).searchParams.get("domain")!, items: [] } };
   });
   await page.goto(`/people/${id(4000)}`);
   await routeReady(page);
-  const editor = await openGradeFix(page, false);
+  let waiting = false;
+  page.waitForFunction = new Proxy(page.waitForFunction, {
+    apply(wait, context, args) { waiting = true; return Reflect.apply(wait, context, args); },
+  });
+  const opening = openGradeFix(page, false);
+  try {
+    await expect.poll(() => waiting, "the helper waits for route readiness while reasons are held").toBe(true);
+  } finally { release(); }
+  const editor = await opening;
   await expect(editor).toContainText("등록된 새 직급 항목이 없습니다");
   await expect(editor.getByRole("button", { name: "직급 추가", exact: true })).toBeVisible();
   expect(fixture.unexpected).toEqual([]);

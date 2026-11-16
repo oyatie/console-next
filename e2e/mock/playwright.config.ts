@@ -6,7 +6,7 @@ import { OUTPUT_DIR, PORTS } from "../slot";
 import timings from "./timings.json" with { type: "json" };
 
 const dist = `../../.cache/states-${PORTS.web}`;
-export const assertionTimeout = 5_000;
+const assertionTimeout = 5_000;
 
 // Prebuild lazy chunks once so state assertions never wait on Vite's dev transforms.
 export default defineConfig({

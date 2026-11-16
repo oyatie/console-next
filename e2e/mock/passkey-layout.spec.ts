@@ -8,7 +8,6 @@ import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
 import { AT, authz, token, user } from "./fixtures";
-import { assertionTimeout } from "./playwright.config";
 
 test("consent helper waits for fresh documents before accepting them", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
@@ -16,14 +15,23 @@ test("consent helper waits for fresh documents before accepting them", async ({ 
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: {
     ...token(), access_token: `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`, requires_passkey_setup: true, privacy_consent_accepted: false,
   } });
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
   await mockRoute(page, "get", "/api/v1/onboarding/terms", async () => {
-    // Stay pending beyond the configured assertion deadline, with one timer tick of margin.
-    await new Promise(resolve => setTimeout(resolve, assertionTimeout + 1));
+    await held;
     const terms = { version: "consent-test", sha256: "a".repeat(64), body: "이용 약관" };
     return { status: 200, json: { ...terms, privacy: { ...terms, title: "개인정보 처리 안내", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false } } };
   });
   await page.goto("/setup-passkey");
-  await acceptConsent(page);
+  let waiting = false;
+  page.waitForFunction = new Proxy(page.waitForFunction, {
+    apply(wait, context, args) { waiting = true; return Reflect.apply(wait, context, args); },
+  });
+  const accepting = acceptConsent(page);
+  try {
+    await expect.poll(() => waiting, "the helper waits for route readiness while documents are held").toBe(true);
+  } finally { release(); }
+  await accepting;
   await expect(page.getByRole("checkbox", { name: /개인정보 수집·이용/ })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: /서비스 이용약관/ })).toBeChecked();
   await expect(page.getByRole("button", { name: "동의하고 패스키 등록", exact: true })).toBeEnabled();
