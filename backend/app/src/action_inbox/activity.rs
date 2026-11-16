@@ -30,6 +30,7 @@ fn record_types(link_kind: &str) -> &'static [&'static str] {
         "period_lock" => &["period_lock"],
         "access" => &["access_grants"],
         "exit_case" => &["employee_exit_case"],
+        "todo" => &["todo"],
         _ => &[],
     }
 }
@@ -70,6 +71,7 @@ fn verb(action: &str) -> &'static str {
                 "cancel" => "cancel",
                 "update" => "update",
                 "confirm" | "notice" => "confirm",
+                "return" => "return",
                 _ => continue,
             };
             return known;
@@ -220,6 +222,14 @@ mod tests {
         ] {
             assert_eq!(verb(action), want, "{action}");
         }
+    }
+
+    #[test]
+    fn a_to_do_request_serves_its_own_events_and_names_a_return() {
+        assert_eq!(record_types("todo"), ["todo"]);
+        assert_eq!(verb("todo.request"), "submit");
+        assert_eq!(verb("todo.return"), "return");
+        assert_eq!(verb("todo.withdraw"), "withdraw");
     }
 
     #[test]

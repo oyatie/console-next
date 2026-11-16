@@ -9,7 +9,7 @@ use console_platform_test_support::{
 use std::sync::Arc;
 use uuid::Uuid;
 
-async fn sources(pool: &PgPool, org: OrgId, actor: UserId) -> PgActionInboxSources {
+pub(super) async fn sources(pool: &PgPool, org: OrgId, actor: UserId) -> PgActionInboxSources {
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org',$1,true)")
         .bind(org.to_string())
