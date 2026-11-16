@@ -9,6 +9,26 @@ import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
 import { AT, authz, token, user } from "./fixtures";
 
+test("consent helper waits for fresh documents before accepting them", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[1], "populated");
+  const claims = { sub: user.id, org: authz.org_id, enrollment: true, exp: Math.floor(Date.now() / 1000) + 3600 };
+  await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: {
+    ...token(), access_token: `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`, requires_passkey_setup: true, privacy_consent_accepted: false,
+  } });
+  await mockRoute(page, "get", "/api/v1/onboarding/terms", async () => {
+    // Exceed the ordinary assertion budget to reproduce a loaded server, within the unchanged test budget.
+    await new Promise(resolve => setTimeout(resolve, 6_000));
+    const terms = { version: "consent-test", sha256: "a".repeat(64), body: "이용 약관" };
+    return { status: 200, json: { ...terms, privacy: { ...terms, title: "개인정보 처리 안내", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false } } };
+  });
+  await page.goto("/setup-passkey");
+  await acceptConsent(page);
+  await expect(page.getByRole("checkbox", { name: /개인정보 수집·이용/ })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /서비스 이용약관/ })).toBeChecked();
+  await expect(page.getByRole("button", { name: "동의하고 패스키 등록", exact: true })).toBeEnabled();
+  expect(fixture.unexpected).toEqual([]);
+});
+
 for (const width of [1280, 390]) for (const theme of ["light", "dark"]) {
   test(`consent controls first appear in their settled layout at ${width}px in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 720 });

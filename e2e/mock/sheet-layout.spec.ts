@@ -11,6 +11,22 @@ import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
 
+test("grade helper waits for promotion reasons before returning the editor", async ({ page }) => {
+  const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+  await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { items: [], can_manage: true } });
+  await mockRoute(page, "get", "/api/v1/reason-codes", async request => {
+    // This read starts when the change editor opens, after the personnel card is ready.
+    await new Promise(resolve => setTimeout(resolve, 6_000));
+    return { status: 200, json: { domain: new URL(request.url()).searchParams.get("domain")!, items: [] } };
+  });
+  await page.goto(`/people/${id(4000)}`);
+  await routeReady(page);
+  const editor = await openGradeFix(page, false);
+  await expect(editor).toContainText("등록된 새 직급 항목이 없습니다");
+  await expect(editor.getByRole("button", { name: "직급 추가", exact: true })).toBeVisible();
+  expect(fixture.unexpected).toEqual([]);
+});
+
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`a modal Sheet preserves the personnel card grid at ${width}px in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });

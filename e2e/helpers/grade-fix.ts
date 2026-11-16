@@ -3,7 +3,7 @@ import { jobTitleSchemas } from "@console/api";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { apiOf, bearerOf } from "./api";
 import { expectAccessible } from "../a11y";
-import { go, option } from "../flows";
+import { go, option, routeReady } from "../flows";
 import { hrAct } from "../record";
 import { reasonBox, sheet, signOff, statement, todayPreset } from "../sheet";
 import { reasonChip } from "./lifecycle";
@@ -22,7 +22,10 @@ export async function openGradeFix(page: Page, correct: boolean) {
   const choose = sheet(page, "직급 수정");
   await option(page, "무엇을 기록합니까", correct ? "처음부터 잘못 적었습니다 · 정정" : "직급이 바뀝니다 · 변경 (발령)").click();
   await choose.getByRole("button", { name: "다음", exact: true }).click();
-  return sheet(page, correct ? "직급 정정" : "직급 수정 · 변경");
+  const editor = sheet(page, correct ? "직급 정정" : "직급 수정 · 변경");
+  await editor.waitFor();
+  await routeReady(page);
+  return editor;
 }
 
 /** The form refuses invalid input; the authenticated API independently enforces the same contract. */

@@ -48,6 +48,7 @@ export const tenantOnboardSubmit = (page: Page) => page.getByRole("dialog", { na
 
 /** Accepts required privacy notice and terms checkboxes unconditionally on /setup-passkey. */
 export async function acceptConsent(page: Page) {
+  await routeReady(page, "/setup-passkey");
   const privacyCheck = page.getByRole("checkbox", { name: /개인정보 수집·이용/ });
   const termsCheck = page.getByRole("checkbox", { name: /서비스 이용약관/ });
   await expect(privacyCheck).toBeVisible();
