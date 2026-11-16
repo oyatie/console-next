@@ -197,34 +197,44 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     } finally { fixture.release(); await page.close(); }
   });
 
-  for (const first of ["recovery", "erase"] as const) for (const recoveryStatus of [200, 503]) for (const eraseStatus of [200, 503]) {
-  test(`tenant panel buttons stay still when ${first} settles first with recovery ${recoveryStatus} and erase ${eraseStatus} at ${width}px ${theme}`, async ({ page }) => {
+  for (const removable of [true, false]) for (const first of ["recovery", "erase"] as const) for (const recoveryStatus of [200, 503]) for (const eraseStatus of [200, 503]) {
+  test(`tenant panel buttons stay still with removable ${removable} when ${first} settles first with recovery ${recoveryStatus} and erase ${eraseStatus} at ${width}px ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1600 });
     await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
     const fixture = await mockPlatform(page);
     const org: Org = { id: id(5000), name: "Synthetic customer", slug: "customer", group_id: null, group_slug: null, group_name: null,
-      status: "ACTIVE", removable: true, created_at: AT, updated_at: AT };
+      status: "ACTIVE", removable, removal_refusal: removable ? null : "tenant_has_data", created_at: AT, updated_at: AT };
     const held = { recovery: Promise.withResolvers<void>(), erase: Promise.withResolvers<void>() };
+    const statuses = { recovery: recoveryStatus, erase: eraseStatus };
     await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: [org] });
     await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
     const failed = { status: 503 as const, json: failure("upstream_failure"), headers: { "retry-after": String(Math.ceil(MAX_RETRY_AFTER_MS / 1000) + 1) } };
     await mockRoute(page, "get", "/api/platform/orgs/{id}/erase", async () => {
       await held.erase.promise;
-      return eraseStatus === 503 ? failed : { status: 200, json: { request: null, archived: false, legal_hold: false, second_operator_available: true, cooling_hours: 24 } };
+      return statuses.erase === 503 ? failed : { status: 200, json: { request: null, archived: false, legal_hold: false, second_operator_available: true, cooling_hours: 24 } };
     });
     await mockRoute(page, "get", "/api/platform/orgs/{id}/ops-recovery", async () => {
       await held.recovery.promise;
-      return recoveryStatus === 503 ? failed
+      return statuses.recovery === 503 ? failed
         : { status: 200, json: { request: null, state: null, recovery_available: false, ops_has_passkey: false, ops_enrolled: false, second_operator_available: true, active_accounts: 0, hold_hours: 24, code_ttl_minutes: 10 } };
     });
     try {
       await page.goto("/platform");
       await page.getByRole("row").filter({ has: page.getByRole("gridcell", { name: org.name, exact: true }) }).click();
       const panel = page.getByRole("complementary", { name: org.name, exact: true });
-      await expect(panel.locator('section[aria-labelledby="tenant-status"] button')).toHaveCount(2);
+      await expect(panel.locator('section[aria-labelledby="tenant-status"] button')).toHaveCount(removable ? 2 : 1);
+      const remove = panel.getByRole("button", { name: t("tenants.remove", { org: org.name }), exact: true });
+      await expect(remove).toBeVisible();
+      if (removable) await expect(remove).toBeEnabled();
+      else {
+        await expect(remove).toHaveAttribute("aria-disabled", "true");
+        await expect(remove).toHaveAccessibleDescription(t("tenants.remove.hasData", { org: org.name }));
+        await expect(panel.getByRole("button", { name: t("tenants.status.archive", { org: org.name }), exact: true })).toHaveCount(1);
+      }
       await page.evaluate(() => document.fonts.ready);
       const positions = () => panel.getByRole("button").evaluateAll(elements => elements.map(el => ({
         name: el.getAttribute("aria-label") ?? el.textContent,
+        failure: el.closest('[role="alert"]') !== null,
         rect: el.getBoundingClientRect().toJSON(),
       })));
       let before = await positions();
@@ -242,11 +252,25 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await expect(panel.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toHaveCount(1);
         await expect(panel.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(1);
         await expect(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveCount(0);
-      } else {
-        await expect(panel.getByRole("heading", { name: t("opsRecovery.title"), exact: true })).toBeVisible();
-        const sections = await panel.locator("section").evaluateAll(elements => elements.map(el => el.getAttribute("aria-labelledby")));
-        expect(sections).toEqual(["tenant-status", "tenant-code", "tenant-ops-recovery", "tenant-remove"]);
+        const persistent = before.filter(button => !button.failure);
+        held.recovery = Promise.withResolvers<void>();
+        held.erase = Promise.withResolvers<void>();
+        statuses.recovery = statuses.erase = 200;
+        await panel.getByRole("button", { name: t("common.retry"), exact: true }).click();
+        for (const read of [first, first === "recovery" ? "erase" : "recovery"] as const) {
+          const received = page.waitForResponse(response => new URL(response.url()).pathname.endsWith(read === "erase" ? "/erase" : "/ops-recovery"));
+          held[read].resolve();
+          await (await received).finished();
+          await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          const after = await positions();
+          for (const button of persistent) expect.soft(after.find(next => next.name === button.name)).toEqual(button);
+        }
       }
+      await expect(panel.getByRole("heading", { name: t("opsRecovery.title"), exact: true })).toBeVisible();
+      await expect(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toBeEnabled();
+      await expect(panel.getByRole("button", { name: t("tenants.remove.force", { org: org.name }), exact: true })).toHaveCount(1);
+      const sections = await panel.locator("section[aria-labelledby]").evaluateAll(elements => elements.map(el => el.getAttribute("aria-labelledby")));
+      expect(sections).toEqual(["tenant-status", "tenant-remove", "tenant-code", "tenant-ops-recovery"]);
       await fits(page, `tenant-panel/${width}/${theme}`);
       await expectAxe(page, `tenant-panel/${width}/${theme}`);
       await page.screenshot({ path: test.info().outputPath("tenant-panel.png"), fullPage: true });

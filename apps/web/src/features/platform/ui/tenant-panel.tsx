@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useQuery } from "@tanstack/react-query";
 import { eraseQuery, recoveryQuery } from "../api";
 import { QueryState } from "../../../lib/react/query-state";
@@ -77,20 +78,23 @@ export function TenantPanel({ org, health, onIssued, onRecorded, onRemoved, onCl
         </div>
       </section>
 
-      {/* Both reads settle last so neither can move an already available control. */}
+      <section className={s.section} aria-labelledby="tenant-remove">
+        <h3 id="tenant-remove" className={s.heading}>{t("tenants.section.remove")}</h3>
+        <p className={s.note}>{t("tenants.remove.consequence")}</p>
+        {org.removable === true ? <Button onClick={() => setRemoving("guarded")}>{t("tenants.remove", { org: org.name })}</Button> : (
+          <DisabledReason control={p => <Button {...p}>{t("tenants.remove", { org: org.name })}</Button>}
+            reason={t(org.removal_refusal === "blocked_legal_hold" ? "tenants.remove.legalHold" : org.removal_refusal === "tenant_has_data" ? "tenants.remove.hasData" : "tenants.remove.checking", { org: org.name })}
+            remedy={org.status !== "ARCHIVED" && <Button variant="ghost" onClick={archive}>{t("tenants.status.archive", { org: org.name })}</Button>} />
+        )}
+      </section>
+
+      {/* Read-independent controls stay above the final read boundary, including during retries. */}
       <QueryState q={readGroup([recovery, erase])}>{() => <>
         {org.status === "ACTIVE" && <Reissue org={org} enrolled={recovery.data!.ops_enrolled} onEnrolled={() => { void recovery.refetch(); }} onIssued={onIssued} />}
         <OpsRecovery org={org} data={recovery.data!} onIssued={onIssued} />
-        <section className={s.section} aria-labelledby="tenant-remove">
-          <h3 id="tenant-remove" className={s.heading}>{t("tenants.section.remove")}</h3>
-          <p className={s.note}>{t("tenants.remove.consequence")}</p>
-          {org.removable === true ? <Button onClick={() => setRemoving("guarded")}>{t("tenants.remove", { org: org.name })}</Button> : (
-            <DisabledReason control={p => <Button {...p}>{t("tenants.remove", { org: org.name })}</Button>}
-              reason={t(org.removal_refusal === "blocked_legal_hold" ? "tenants.remove.legalHold" : org.removal_refusal === "tenant_has_data" ? "tenants.remove.hasData" : "tenants.remove.checking", { org: org.name })}
-              remedy={org.status !== "ARCHIVED" && <Button variant="ghost" onClick={archive}>{t("tenants.status.archive", { org: org.name })}</Button>} />
-          )}
+        <div className={s.section} role="group" aria-label={t("tenants.erase.open")}>
           <EraseControls org={org} data={erase.data!} />
-        </section>
+        </div>
       </>}</QueryState>
 
       <StatusDialog
