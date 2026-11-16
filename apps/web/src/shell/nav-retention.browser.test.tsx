@@ -58,7 +58,7 @@ for (const engine of [browserEngine()]) test(`a cold modules fault reuses only t
   } finally { await browser.close(); await server.close(); }
 }, 60_000);
 
-test.each(["failed", "held"])("%s shell reads retain the answered rail across reloads for only this principal", async state => {
+test.each(["failed", "held"])("%s shell reads use remembered entries only after a fault for this principal", async state => {
   await loadCatalog("ko");
   const { server, browser, page } = await navFixture();
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -80,6 +80,11 @@ test.each(["failed", "held"])("%s shell reads retain the answered rail across re
     const requested = page.waitForRequest("**/api/v1/access/me");
     await page.reload();
     await requested;
+    if (state === "held") {
+      await element(rail.getByRole("status")).toBeVisible();
+      await element(rail.getByRole("link")).toHaveCount(0);
+      release();
+    }
     await element(rail.getByRole("link")).toHaveText(entries);
     expect(await rail.getByRole("link").evaluateAll(links => links.map(link => {
       const { y, height } = link.getBoundingClientRect(); return { y, height };

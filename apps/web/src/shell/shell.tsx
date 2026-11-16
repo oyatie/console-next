@@ -108,7 +108,9 @@ export function Shell({ children = <Outlet />, pending = false }: { children?: R
     if (!railKey || !answer) return;
     try { localStorage.setItem(railKey, JSON.stringify(answer)); } catch { return; /* Storage is optional. */ }
   }, [railKey, answer]);
-  const displayed = answer ?? (savedRail.key === railKey ? savedRail.answer : undefined);
+  // A stored phase can predate go-live; show current entries first, using storage only after a read fault.
+  const railFault = [access, support, me].some(q => q.isError && !isAnswer(q.error));
+  const displayed = answer ?? (railFault && savedRail.key === railKey ? savedRail.answer : undefined);
   const menu: readonly NavHub[] = platform ? PLATFORM_NAV : displayed ? tenantNav(displayed.access, router.routesByPath,
     displayed.supportApproval, displayed.context) : [];
   // Phone widths hide the rail; the top bar's menu button discloses it.
