@@ -30,6 +30,26 @@ function fixture() {
   return { write, git, run };
 }
 
+test("only gallery code may opt previews out of route readiness", () => {
+  const { write, git, run } = fixture();
+  write("apps/web/src/gallery/gallery.tsx", '<main data-route-preview />');
+  write("apps/web/src/lib/react/route-href.ts", 'element.closest("[data-route-preview]");');
+  write("apps/web/src/lib/react/route-ready.browser.test.tsx", 'element.dataset.routePreview = "";');
+  git("add", ".");
+  expect(run().status).toBe(0);
+  for (const [file, source] of [
+    ["features/probe/ui/screen.tsx", '<main data-route-preview />'],
+    ["ui/preview.tsx", 'element.setAttribute("data-route-preview", "");'],
+    ["lib/preview.ts", 'element.dataset.routePreview = "";'],
+  ]) {
+    write(`apps/web/src/${file}`, source);
+  }
+  const result = run();
+  expect(result.status).toBe(1);
+  for (const file of ["features/probe/ui/screen.tsx", "ui/preview.tsx", "lib/preview.ts"])
+    expect(result.stderr).toContain(`apps/web/src/${file}: route previews belong only in gallery/`);
+});
+
 test("component journeys and gallery cache fixtures preserve production source rules", () => {
   const { write, git, run } = fixture();
   const slice = "apps/web/src/features/probe/ui/";
