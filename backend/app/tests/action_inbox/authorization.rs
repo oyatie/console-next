@@ -47,6 +47,54 @@ async fn sources(pool: &PgPool, org: OrgId, actor: UserId) -> PgActionInboxSourc
     }
 }
 
+/// A support session reads no to-do request, even under the account id of one who asked or was asked.
+#[cfg(feature = "todos")]
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_support_session_reads_no_to_do_request(pool: PgPool) {
+    let org = OrgId::new();
+    let asker = seed_org_and_super_admin(&pool, *org.as_uuid(), "requests").await;
+    let asked = seed_active_user(&pool, *org.as_uuid(), "MEMBER", "asked").await;
+    sqlx::query("INSERT INTO todos (org_id, owner_user_id, assigned_by_user_id, body) VALUES ($1, $2, $3, 'Synthetic ask')")
+        .bind(org.as_uuid()).bind(asked.as_uuid()).bind(asker.as_uuid()).execute(&pool).await.unwrap();
+    let runtime = runtime_role_pool(&pool).await;
+    let now = sqlx::query_scalar("SELECT clock_timestamp()")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let query = ActionInboxSourceQuery {
+        filter: InboxFilter::All,
+        require_exact_total: true,
+        now,
+        as_of: now,
+        after: None,
+        limit: 20,
+    };
+    for (account, source) in [
+        (asked, ActionInboxSource::TodoAssigned),
+        (asker, ActionInboxSource::TodoRequested),
+    ] {
+        let mut reader = sources(&runtime, org, account).await;
+        let own = reader
+            .list_source_page(source, query.clone())
+            .await
+            .unwrap();
+        assert_eq!((own.items.len(), own.total), (1, 1), "{source:?}");
+        reader.principal.support = Some(
+            serde_json::from_value(serde_json::json!({
+                "active": true, "org_id": org.as_uuid(), "operator_approved": true,
+                "tenant_approved": true, "session_id": Uuid::new_v4(),
+                "operator_label": "지원 담당자", "scope": ["org"], "reveal_classes": []
+            }))
+            .unwrap(),
+        );
+        let page = reader
+            .list_source_page(source, query.clone())
+            .await
+            .unwrap();
+        assert_eq!((page.items.len(), page.total), (0, 0), "{source:?}");
+    }
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn every_source_preserves_independent_authorization_and_next_request_revocation(
     pool: PgPool,

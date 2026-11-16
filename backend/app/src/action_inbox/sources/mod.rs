@@ -12,3 +12,5 @@ pub(super) mod privacy_requests;
 pub(super) mod registration_checks;
 pub(super) mod setup;
 pub(super) mod support_access;
+#[cfg(feature = "todos")]
+pub(super) mod todos;
