@@ -56,7 +56,7 @@ export const IMPORT_RUN_STATUS = toned<S["EmployeeImportRun"]["status"] | "PREVI
   PREVIEW: "neutral", PREVIEWED: "neutral", DRY_RUN: "neutral", APPLIED: "ok", FAILED: "danger", ROLLBACK_REQUESTED: "warn", ROLLBACK_RUNNING: "warn", ROLLED_BACK: "neutral",
 }, v => v === "FAILED" ? "importJob.failed" : `import.status.${v === "PREVIEWED" ? "PREVIEW" : v}`);
 export const IMPORT_SHEET_STATUS = toned<S["EmployeeImportSheetReport"]["status"]>("importSheetStatus", {
-  mapped: "ok", needs_mapping: "danger", empty: "neutral", skipped: "neutral",
+  mapped: "ok", needs_mapping: "danger", needs_confirmation: "info", empty: "neutral", skipped: "neutral",
 }, v => `importSheet.status.${v}`);
 export const SUPPORT_SESSION_STATE = { ...toned("supportSessionState", {
   REQUESTED: "neutral", OPERATOR_APPROVED: "neutral", ACTIVE: "warn", ENDED: "neutral", EXPIRED: "neutral", DENIED: "neutral", REVOKED: "neutral",

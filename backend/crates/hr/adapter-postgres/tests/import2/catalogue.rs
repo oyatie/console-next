@@ -89,7 +89,7 @@ async fn unconfirmed_columns_store_no_cells_or_restricted_values_at_preview(pool
             assert_eq!(preview.input_rows, 0);
             assert!(preview.sample_rows.is_empty());
             assert_eq!(preview.sheets_needing_mapping, 1);
-            assert_eq!(preview.sheets[0]["status"], "needs_mapping");
+            assert_eq!(preview.sheets[0]["status"], "needs_confirmation");
             assert_eq!(
                 i.count("SELECT count(*) FROM data_import_rows WHERE org_id=$1")
                     .await,

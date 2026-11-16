@@ -253,3 +253,55 @@ async fn place_model_worksite_values_never_recall_workplace_binding_memory(pool:
         1
     );
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn confirmed_mixed_workplaces_resolve_sites_per_value_without_losing_known_placement(
+    pool: PgPool,
+) {
+    let i = importer(pool).await;
+    shared::setup_headquarters(&i, i.f.branch).await;
+    let file = staff(&["본사", "고객고유현장"], "사업장");
+    let unconfirmed = i
+        .preview_unconfirmed("mixed.xlsx", &file, &Default::default())
+        .await
+        .unwrap();
+    assert_eq!(unconfirmed.sheets[0]["status"], "needs_confirmation");
+    assert_eq!(unconfirmed.sheets[0]["rows"], 2);
+    assert!(unconfirmed.columns.is_empty());
+    let bound = i
+        .preview("mixed.xlsx", &file, &reading("workplace"))
+        .await
+        .unwrap();
+    let unresolved = i.dry_run(bound.run_id, decisions()).await;
+    let item = unresolved
+        .review
+        .items
+        .iter()
+        .find(|item| item.reason == "workplace_unmapped")
+        .unwrap();
+    assert_eq!(item.value.as_deref(), Some("고객고유현장"));
+    assert_eq!(item.resolution.as_ref().unwrap().decision, "workplace_map");
+    let mut answer = decisions();
+    answer.workplace_map.insert("고객고유현장".into(), None);
+    let resolved = i.dry_run(bound.run_id, answer).await;
+    assert!(
+        !resolved
+            .review
+            .items
+            .iter()
+            .any(|item| item.reason == "workplace_unmapped")
+    );
+    i.apply(bound.run_id, &resolved.dry_run_digest)
+        .await
+        .unwrap();
+    assert_eq!(
+        i.count("SELECT count(*) FROM employment_assignments WHERE org_id=$1")
+            .await,
+        1
+    );
+    assert_eq!(
+        i.count("SELECT count(*) FROM employees WHERE org_id=$1")
+            .await,
+        2
+    );
+}

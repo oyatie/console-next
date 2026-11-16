@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { atPhoneWidth, expectAccessible } from "./a11y";
 import { go } from "./flows";
 import { clearShifts, forgetResize } from "./stability";
@@ -8,6 +9,8 @@ import { confirmImportColumns, chooseWorkbook } from "./helpers/import";
 import { workbook } from "./helpers/import-layouts";
 import { settled } from "./helpers/import-queue";
 import { registerBranch, REGISTRATION_FIXTURES, tenantInSetup } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const HEAD = ["사번", "성명", "입사일", "고용형태", "사업장"];
 async function preview(page: Page, name: string, rows: string[][]) {
@@ -91,9 +94,11 @@ test("placement follows confirmed workplace or physical-site bindings, with reme
   await expect(admin.getByRole("group", { name: "소속", exact: true })).not.toContainText("고객가 현장");
   await accessibleAtBothWidths(admin, "unplaced personnel card");
   await go(admin, "/people");
-  // The roster offers the unplaced queue as one link (its count lives on the queue page).
-  await expect(admin.getByRole("main").getByRole("link", { name: "미배치", exact: true })).toHaveAttribute("href", "/people/unplaced");
-  await go(admin, "/people/unplaced");
+  await admin.getByRole("button", { name: t("roster.view.unplaced"), exact: true }).click();
+  await expect(admin.getByRole("row").filter({ hasText: "현장직원" })).toBeVisible();
+  const placeQueue = admin.getByRole("main").getByRole("link", { name: t("roster.unplaced.place"), exact: true });
+  await expect(placeQueue).toHaveAttribute("href", "/people/unplaced");
+  await placeQueue.click();
   await expect(admin.getByRole("row").filter({ hasText: "현장직원" })).toBeVisible();
   await expect(admin.getByRole("row").filter({ hasText: "배치직원" })).toHaveCount(0);
   await admin.evaluate(clearShifts);

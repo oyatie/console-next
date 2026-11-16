@@ -1,3 +1,4 @@
+import { loadCatalog, t } from "@console/i18n";
 import ExcelJS from "exceljs";
 import { expect, type Page } from "@playwright/test";
 import type { components } from "@console/api";
@@ -92,24 +93,32 @@ export async function payPeriod(page: Page) {
 
 /** Confirms the offered bindings through the column screen; unknown layouts still need manual mapping. */
 export async function confirmImportColumns(page: Page) {
+  await loadCatalog("ko");
   let preview: components["schemas"]["EmployeeImportPreviewResponse"] | undefined;
-  await expect(page.getByRole("button", { name: "모의 반영 실행", exact: true })).toBeVisible();
-  const names = await page.getByRole("region", { name: / 시트$/ }).evaluateAll(regions => regions.map(region => region.getAttribute("aria-label")!));
+  await expect(page.getByRole("button", { name: t("import.dryRun"), exact: true })).toBeVisible();
+  const suffix = t("importSheet.sheet", { name: "" });
+  const names = await page.getByRole("region").evaluateAll((regions, suffix) => regions.map(region => region.getAttribute("aria-label") ?? "").filter(name => name.endsWith(suffix)), suffix);
   for (const name of names) {
     const sheet = page.getByRole("region", { name, exact: true });
-    const map = sheet.getByRole("button", { name: / 시트 열 연결$/ });
+    const sheetName = name.slice(0, -suffix.length);
+    const map = sheet.getByRole("button", { name: t("importSheet.map", { name: sheetName }), exact: true });
     if (await map.count() === 0) continue;
     if (await map.getAttribute("aria-expanded") === "false") await map.click();
-    const save = sheet.getByRole("button", { name: / 시트를 이 연결로 다시 읽기$/ });
+    const save = sheet.getByRole("button", { name: t("importSheet.map.save", { name: sheetName }), exact: true });
     if (await save.getAttribute("aria-disabled") === "true") continue;
     const response = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/employees/import/preview"));
     await save.click();
     const read = await response;
     expect(read.ok()).toBe(true);
     preview = await read.json();
-    await expect(sheet.getByRole("button", { name: / 시트 다시 연결$/ })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: t("importSheet.remap", { name: sheetName }), exact: true })).toBeVisible();
   }
-  const remaining = page.getByRole("button", { name: / 시트 열 연결$/ }).first();
-  if (await remaining.count() && await remaining.getAttribute("aria-expanded") === "false") await remaining.click();
+  for (const name of names) {
+    const remaining = page.getByRole("region", { name, exact: true }).getByRole("button", { name: t("importSheet.map", { name: name.slice(0, -suffix.length) }), exact: true });
+    if (await remaining.count()) {
+      if (await remaining.getAttribute("aria-expanded") === "false") await remaining.click();
+      break;
+    }
+  }
   return preview;
 }

@@ -50,7 +50,7 @@ async fn mapped_labels_and_values_are_remembered_per_tenant(pool: PgPool) {
         .preview_unconfirmed("b.xlsx", &file(), &Default::default())
         .await
         .unwrap();
-    assert_eq!(again.sheets[0]["status"], "needs_mapping");
+    assert_eq!(again.sheets[0]["status"], "needs_confirmation");
     assert_eq!(again.sheets[0]["columns"][0]["source"], "remembered");
     let confirmed = i
         .preview("b.xlsx", &file(), &Default::default())

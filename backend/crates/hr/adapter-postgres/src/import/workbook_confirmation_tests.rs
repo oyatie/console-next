@@ -4,6 +4,7 @@
 use super::*;
 use console_hr_domain::import::grid::{Cell, GridRow};
 use console_hr_domain::import::rrn_value::{Rrn, RrnVault, SealedRrn, VaultError};
+use uuid::Uuid;
 
 struct UnusedVault;
 impl RrnVault for UnusedVault {
@@ -79,7 +80,9 @@ fn unconfirmed_suggestions_never_read_cells_or_call_the_vault() {
             assert!(parsed.identities.is_empty());
             assert!(parsed.phones.is_empty());
             assert!(parsed.remembered.is_empty());
-            assert_eq!(parsed.shown[0]["status"], "needs_mapping");
+            assert_eq!(parsed.shown[0]["status"], "needs_confirmation");
+            assert_eq!(parsed.shown[0]["rows"], 1);
+            assert_eq!(parsed.sheets[0]["rows"], 1);
             assert_eq!(
                 parsed.shown[0]["columns"].as_array().unwrap().len(),
                 sheet.rows[0].cells.len()
@@ -88,4 +91,44 @@ fn unconfirmed_suggestions_never_read_cells_or_call_the_vault() {
             assert_eq!(parsed.notes[0].reason, "sheet_needs_mapping");
         }
     }
+}
+
+#[test]
+fn confirmation_counts_only_nonblank_data_rows_without_staging_them() {
+    let sheet = GridSheet {
+        name: "Synthetic".into(),
+        rows: vec![
+            GridRow {
+                index: 0,
+                cells: vec![(0, Cell::Text("name".into()))],
+            },
+            GridRow {
+                index: 1,
+                cells: vec![(0, Cell::Text("Synthetic person".into()))],
+            },
+            GridRow {
+                index: 3,
+                cells: vec![(0, Cell::Text(" ".into()))],
+            },
+            GridRow {
+                index: 8,
+                cells: vec![(0, Cell::Text("Another person".into()))],
+            },
+        ],
+    };
+    let ctx = SheetContext {
+        filename: "synthetic.xlsx",
+        org: Uuid::nil(),
+        vault: Some(&UnusedVault),
+    };
+    let parsed = parse_workbook(
+        &ctx,
+        &[sheet],
+        &BTreeMap::new(),
+        &WorkbookMappingRequest::default(),
+    )
+    .unwrap();
+    assert_eq!(parsed.shown[0]["rows"], 2);
+    assert_eq!(parsed.sheets[0]["status"], "needs_confirmation");
+    assert!(parsed.rows.is_empty());
 }

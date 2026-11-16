@@ -43031,9 +43031,6 @@ components:
           type: [string, 'null']
           deprecated: true
           description: Legacy column notes. New placement questions do not use this field.
-        place_reading_required:
-          type: boolean
-          description: The column needs an operator choice between a statutory workplace and a physical work site.
     EmployeeImportCompanyConfirmation:
       type: object
       required: [value, source_column, cell, registration_number, candidates, confirmed_employer]
@@ -44151,7 +44148,8 @@ components:
           type: string
         status:
           type: string
-          enum: [mapped, needs_mapping, empty, skipped]
+          enum: [mapped, needs_mapping, needs_confirmation, empty, skipped]
+          description: needs_confirmation means a detected header awaits an operator binding; no values have been staged.
         rows:
           type: integer
           minimum: 0

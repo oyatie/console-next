@@ -4,6 +4,7 @@
 use console_hr_domain::import::classification::employee_import_target_for_header;
 use console_hr_domain::import::fields::EMPLOYEE_IMPORT_FIELD_DEFINITIONS;
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::{collections::BTreeSet, fs, path::Path, process::Command};
 
 fn catalogue() -> Value {
@@ -99,10 +100,40 @@ fn existing_headers_and_storage_classifications_are_preserved() {
         for key in ["classification", "required"] {
             assert_eq!(field[key], old[key], "{}: {key}", old["target"]);
         }
-        for alias in old["aliases"].as_array().unwrap() {
-            assert!(field["aliases"].as_array().unwrap().contains(alias));
+        let current = field["aliases"].as_array().unwrap();
+        let aliases: Vec<&str> = if let Some(digests) = old["alias_digests"].as_array() {
+            digests
+                .iter()
+                .map(|digest| {
+                    let alias = current.iter().filter_map(Value::as_str).find(|alias| {
+                        Sha256::digest(alias.as_bytes())
+                            .iter()
+                            .map(|byte| format!("{byte:02x}"))
+                            .collect::<String>()
+                            == digest.as_str().unwrap()
+                    });
+                    assert!(
+                        alias.is_some(),
+                        "{}: missing historical header digest {digest}",
+                        old["target"]
+                    );
+                    alias.unwrap()
+                })
+                .collect()
+        } else {
+            old["aliases"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|alias| {
+                    assert!(current.contains(alias));
+                    alias.as_str().unwrap()
+                })
+                .collect()
+        };
+        for alias in aliases {
             assert_eq!(
-                employee_import_target_for_header(alias.as_str().unwrap()),
+                employee_import_target_for_header(alias),
                 field["target"].as_str()
             );
         }

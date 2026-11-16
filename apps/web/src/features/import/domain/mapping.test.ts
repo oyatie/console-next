@@ -50,7 +50,7 @@ describe("sheet mapping", () => {
     expect(sheetMapping({ ...d, skip: true })).toEqual({ skip: true });
     expect(mappingJson({})).toBeUndefined();
     expect(JSON.parse(mappingJson({ 명부: { skip: true } })!)).toEqual({ sheets: { 명부: { skip: true } } });
-    expect(sheetsToMap([unread, read]).map((s) => s.name)).toEqual(["명부"]);
+    expect(sheetsToMap([unread, read, { ...read, name: "확인", status: "needs_confirmation" } as ImportSheet]).map((s) => s.name)).toEqual(["명부", "확인"]);
   });
 });
 
