@@ -1,0 +1,3 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Native fieldsets must shrink with their container when feedback changes their contents. */
+fieldset { min-width: 0; }

@@ -20,6 +20,7 @@ import { pauseAutofill } from "./auth/sign-in-id";
 import { login } from "./routes/app";
 import { routeTree } from "./routes/tree";
 import "./app.css";
+import "./base.css";
 import { prepareFonts } from "./lib/fonts";
 
 // Every static import is in: from here a failed chunk is a lazy one (public/chunk-guard.js).
