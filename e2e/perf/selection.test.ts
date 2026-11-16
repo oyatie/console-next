@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { spawnSync } from "node:child_process";
 import { expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import config from "../../playwright.config";
 
 test("perf is opt-in without hiding the performance CI probe", () => {
   for (const [spec, enabled, browser, project, count] of [
@@ -18,3 +20,14 @@ test("perf is opt-in without hiding the performance CI probe", () => {
     expect(result.stdout, spec).toContain(`Total: ${count} test`);
   }
 }, 60_000);
+
+test("the paired perf profile alone trusts the ephemeral TLS certificate", async () => {
+  const perf = (await import("../../playwright.perf.config")).default;
+  expect(config.use?.ignoreHTTPSErrors).toBeUndefined();
+  expect(perf.projects).toHaveLength(1);
+  expect(perf.projects?.[0]?.use?.ignoreHTTPSErrors).toBe(true);
+  expect(perf.projects?.[0]?.use?.baseURL).toMatch(/^https:\/\/localhost:/);
+  expect(perf.webServer).toHaveLength(2);
+  const workflow = readFileSync(new URL("../../.github/workflows/route-load.yml", import.meta.url), "utf8");
+  expect(workflow).toContain("--config=playwright.perf.config.ts");
+});

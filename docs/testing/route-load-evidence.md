@@ -5,6 +5,18 @@ The `route-load` workflow runs the existing `e2e/perf/route-load.spec.ts` nightl
 
 The job uploads `route-load-evidence/route-load.json` even when measurements fail. It keeps the checked-out `commit`, original UTC `run_at`, `source_command`, raw samples and cold/warm rows. Complete rows fail when p95, the SLO compliance target or the existing duplicate-read guard fails. Incomplete measurements retain `unknown` and null LCP; neither missing nor unknown data supplies green. A held-read control must exceed the objective and be rejected before real routes are measured. Setup failures may leave no rows; an empty artifact supplies no route coverage.
 
+Production uses Cloudflare TLS termination and a cloudflared origin tunnel; HTTP/3 is enabled in `console-infra/modules/console-edge/main.tf:144` (tunnel configuration: `modules/console-edge/ops.tf` and `preview.tf`). The perf profile uses Node's HTTP/2 TLS server to reproduce multiplexed browser delivery, with an OpenSSL-generated throwaway localhost certificate. It deletes the certificate files immediately after reading them and limits certificate trust to the perf project. It does not reproduce edge caching or HTTP/3 transport.
+
+Each route is measured against the direct HTTP/1.1 origin and the HTTP/2 proxy in the same run, using the same saved synthetic tenant, fresh browser contexts and unchanged budget, sample count and deadline. Rows carry `protocol`; each sample retains its negotiated protocol and navigation/resource waterfall (start, request start, response start, end and transferred bytes). A protocol mismatch invalidates the sample. The workflow summary contains both cold p95 values per route for inclusion in the PR.
+
+Run the same profile locally with the existing backend launcher and an evidence directory outside the checkout:
+
+```sh
+E2E_SERVED=1 E2E_PERF=1 PERF_EVIDENCE_DIR="$ARTIFACT_DIR" \
+  npx playwright test --config=playwright.perf.config.ts --project=parallel --retries=0
+node e2e/perf/report.ts "$ARTIFACT_DIR/route-load.json"
+```
+
 Download from a trusted dev run of **route-load**, then ingest with the existing reader. `REPO` is the GitHub repository, `RUN_ID` is its run ID, `ARTIFACT_DIR` is an empty directory outside the checkout, and `READER_DIR` contains `evidence.py`. Verify the artifact commit equals the run's `headSha` before ingesting; ingest independently checks dev ancestry, UTC timestamps and the envelope. Never change an old artifact's commit or time to refresh it.
 
 ```sh

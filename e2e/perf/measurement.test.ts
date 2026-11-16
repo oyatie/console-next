@@ -4,7 +4,7 @@ import { budget, readBudget, readHarness, readYaml } from "./budget";
 import { registration } from "./fixture";
 import { assertBudget, percentile, requestKey, summarize, type Sample } from "./measurement";
 
-const sample: Sample = { lcp_ms: 100, ttfb_ms: 20, longest_task_ms: null, ready_ms: 110, final_path: "/sample", requests: {}, repeated_requests: [], errors: [] };
+const sample: Sample = { lcp_ms: 100, ttfb_ms: 20, longest_task_ms: null, ready_ms: 110, final_path: "/sample", protocol: "h2", waterfall: [], requests: {}, repeated_requests: [], errors: [] };
 const samples = () => Array.from({ length: budget.samples }, () => ({ ...sample }));
 
 test("the checked-in SLO owns the objective, compliance and fixture shape", () => {

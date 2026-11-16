@@ -10,11 +10,12 @@ export const requestKey = (method: string, url: string, body: string | null) => 
   const at = new URL(url);
   return `${method} ${at.pathname}${at.search}${body ? ` body=${JSON.stringify(body)}` : ""}`;
 };
-export type Sample = { lcp_ms: number | null; ttfb_ms: number | null; longest_task_ms: number | null; ready_ms: number | null; final_path: string | null; requests: Record<string, number>; repeated_requests: string[]; errors: string[] };
+export type Sample = { lcp_ms: number | null; ttfb_ms: number | null; longest_task_ms: number | null; ready_ms: number | null; final_path: string | null; protocol: string | null; waterfall: { path: string; protocol: string; start_ms: number; request_start_ms: number; response_start_ms: number; end_ms: number; transfer_bytes: number }[]; requests: Record<string, number>; repeated_requests: string[]; errors: string[] };
 export const percentile = (values: number[], p: number) => [...values].sort((a, b) => a - b)[Math.ceil(values.length * p) - 1] ?? null;
 
 /** Installed before navigation; never substitute readiness, FCP or a shell timestamp for LCP. */
 export function observePaint() {
+  performance.addEventListener("resourcetimingbufferfull", () => performance.setResourceTimingBufferSize(performance.getEntriesByType("resource").length * 2));
   const data = { lcp_ms: null as number | null, longest_task_ms: PerformanceObserver.supportedEntryTypes.includes("longtask") ? 0 : null as number | null };
   (window as unknown as { __routeLoad: typeof data }).__routeLoad = data;
   for (const type of ["largest-contentful-paint", "longtask"]) {
@@ -28,7 +29,7 @@ export function observePaint() {
   }
 }
 
-export async function measure(page: Page, url: string): Promise<Sample> {
+export async function measure(page: Page, url: string, expectedProtocol?: string): Promise<Sample> {
   const requests: Record<string, number> = {}, errors: string[] = [];
   const observed = new Map<Request, string>(), active = new Map<Request, string>(), inflight = new Map<string, number>(), repeated = new Set<string>();
   const api = (r: Request) => new URL(r.url()).pathname.startsWith("/api/");
@@ -67,14 +68,21 @@ export async function measure(page: Page, url: string): Promise<Sample> {
     const timing = await page.evaluate(() => {
       const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
       const data = (window as unknown as { __routeLoad: { lcp_ms: number | null; longest_task_ms: number | null } }).__routeLoad;
-      return { ...data, ttfb_ms: navigation?.responseStart ?? null, ready_ms: performance.now(), final_path: location.pathname };
+      const waterfall = [...performance.getEntriesByType("navigation"), ...performance.getEntriesByType("resource")]
+        .map(entry => {
+          const timing = entry as PerformanceResourceTiming;
+          return { path: new URL(timing.name).pathname, protocol: timing.nextHopProtocol, start_ms: timing.startTime,
+            request_start_ms: timing.requestStart, response_start_ms: timing.responseStart, end_ms: timing.responseEnd, transfer_bytes: timing.transferSize };
+        });
+      return { ...data, ttfb_ms: navigation?.responseStart ?? null, ready_ms: performance.now(), final_path: location.pathname, protocol: navigation?.nextHopProtocol ?? null, waterfall };
     });
     if (timing.final_path !== new URL(url, page.url()).pathname && !appPaths.some(path => path.test(timing.final_path))) {
       throw new Error(`unregistered destination ${timing.final_path}`);
     }
+    if (expectedProtocol && timing.protocol !== expectedProtocol) errors.push(`expected ${expectedProtocol}, received ${timing.protocol}`);
     return { ...timing, requests, repeated_requests: [...repeated], errors };
   } catch (error) {
-    return { lcp_ms: null, ttfb_ms: null, longest_task_ms: null, ready_ms: null, final_path: null, requests, repeated_requests: [...repeated], errors: [...errors, String(error).split("\n")[0]!] };
+    return { lcp_ms: null, ttfb_ms: null, longest_task_ms: null, ready_ms: null, final_path: null, protocol: null, waterfall: [], requests, repeated_requests: [...repeated], errors: [...errors, String(error).split("\n")[0]!] };
   } finally {
     page.off("request", requested).off("requestfinished", finished).off("requestfailed", failed).off("response", response);
   }
