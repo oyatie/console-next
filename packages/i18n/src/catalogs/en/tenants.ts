@@ -38,6 +38,8 @@ export const enTenants = {
   "tenants.panel.users": "{active} active / {total} total",
   "tenants.section.code": "First admin code",
   "tenants.section.remove": "Removal",
+  "tenants.recoveryFailed": "Could not load operator account recovery",
+  "tenants.eraseFailed": "Could not load data deletion",
   "tenants.form.name": "Customer name",
   "tenants.form.nameRequired": "Enter the customer name",
   "tenants.form.slug": "Company domain",

@@ -80,8 +80,8 @@ export function TenantPanel({ org, health, onIssued, onRecorded, onRemoved, onCl
       </section>
 
       {/* Reserve the account-read area so deletion stays last without moving during a read or retry. */}
-      <div className={s.readSlot} role="region" aria-label={`${t("tenants.section.code")} · ${t("opsRecovery.title")}`}>
-        <QueryState q={recovery}>{data => <>
+      <div className={s.readSlot} data-status={org.status} role="region" aria-label={`${t("tenants.section.code")} · ${t("opsRecovery.title")}`}>
+        <QueryState q={recovery} compact failedTitle={t("tenants.recoveryFailed")}>{data => <>
           {org.status === "ACTIVE" && <Reissue org={org} enrolled={data.ops_enrolled} onEnrolled={() => { void recovery.refetch(); }} onIssued={onIssued} />}
           <OpsRecovery org={org} data={data} onIssued={onIssued} />
         </>}</QueryState>
@@ -99,7 +99,7 @@ export function TenantPanel({ org, health, onIssued, onRecorded, onRemoved, onCl
           ? <EraseControls org={org} data={erase.data} />
           : <DisabledReason control={p => <Button {...p}>{t("tenants.remove.force", { org: org.name })}</Button>}
             reason={t(erase.error ? "common.loadFailed.title" : "common.loading")} />}
-        <QueryState q={erase} loading={null}>{() => null}</QueryState>
+        <QueryState q={erase} loading={null} failedTitle={t("tenants.eraseFailed")}>{() => null}</QueryState>
       </section>
 
       <StatusDialog

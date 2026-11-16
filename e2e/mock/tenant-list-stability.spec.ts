@@ -2,7 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
-import type { Org } from "../../apps/web/src/features/platform/api";
+import type { Org, OpsRecoveryRead } from "../../apps/web/src/features/platform/api";
 import { MAX_RETRY_AFTER_MS } from "../../apps/web/src/lib/react/query-defaults";
 import { VIEWS } from "../../apps/web/src/features/platform/domain/tenants";
 import { expectAxe, fits } from "../a11y";
@@ -229,6 +229,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const erase = deletion.getByRole("button", { name: t("tenants.remove.force", { org: org.name }), exact: true });
       await expect(erase).toBeVisible();
       await expect(erase).toHaveAccessibleDescription(t("common.loading"));
+      await expect(deletion.locator("[data-bone], [role=progressbar]")).toHaveCount(0);
       await expect(panel.locator("section").last()).toHaveAttribute("aria-labelledby", "tenant-remove");
       if (removable) await expect(remove).toBeEnabled();
       else {
@@ -263,7 +264,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       }
       if (recoveryStatus === 503 || eraseStatus === 503) {
         const failures = Number(recoveryStatus === 503) + Number(eraseStatus === 503);
-        await expect(panel.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toHaveCount(failures);
+        await expect(panel.getByRole("heading", { name: t("tenants.recoveryFailed"), exact: true })).toHaveCount(Number(recoveryStatus === 503));
+        await expect(deletion.getByRole("heading", { name: t("tenants.eraseFailed"), exact: true })).toHaveCount(Number(eraseStatus === 503));
         await expect(panel.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(failures);
         await expect(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveCount(recoveryStatus === 503 ? 0 : 1);
         await expect(erase).toBeVisible();
@@ -303,4 +305,85 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     } finally { held.recovery.resolve(); held.erase.resolve(); fixture.release(); await page.close(); }
   });
   }
+}
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (const status of ["ACTIVE", "SUSPENDED", "ARCHIVED"] as const) {
+  test(`tenant read reservation follows ${status} content at ${width}px ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1600 });
+    await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
+    const fixture = await mockPlatform(page);
+    const org: Org = { id: id(5000), name: "Synthetic customer", slug: "customer", group_id: null, group_slug: null, group_name: null,
+      status, removable: true, created_at: AT, updated_at: AT };
+    const recovery: OpsRecoveryRead = { request: null, state: null, recovery_available: false, ops_has_passkey: false,
+      ops_enrolled: false, second_operator_available: true, active_accounts: 0, hold_hours: 24, code_ttl_minutes: 10 };
+    let held = Promise.withResolvers<void>();
+    let failed = true;
+    await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: [org] });
+    await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
+    await mockRoute(page, "get", "/api/platform/orgs/{id}/erase", { status: 200, json: {
+      request: null, archived: status === "ARCHIVED", legal_hold: false, second_operator_available: true, cooling_hours: 24,
+    } });
+    await mockRoute(page, "get", "/api/platform/orgs/{id}/ops-recovery", async () => {
+      await held.promise;
+      return failed ? { status: 503, json: failure("upstream_failure"), headers: { "retry-after": String(Math.ceil(MAX_RETRY_AFTER_MS / 1000) + 1) } }
+        : { status: 200, json: recovery };
+    });
+    try {
+      const open = async () => {
+        await page.goto("/platform");
+        if (status !== "ACTIVE") await page.getByRole("group", { name: t("tenants.views"), exact: true }).getByRole("button", { name: t("tenants.view.all"), exact: false }).click();
+        await page.getByRole("row").filter({ has: page.getByRole("gridcell", { name: org.name, exact: true }) }).click();
+        await page.evaluate(() => document.fonts.ready);
+      };
+      await open();
+      const panel = page.getByRole("complementary", { name: org.name, exact: true });
+      const slot = panel.getByRole("region", { name: `${t("tenants.section.code")} · ${t("opsRecovery.title")}`, exact: true });
+      const deletion = panel.getByRole("region", { name: t("tenants.section.remove"), exact: true });
+      const position = () => deletion.evaluate(el => el.getBoundingClientRect().top + el.closest("main")!.scrollTop + scrollY);
+      const before = await position();
+      held.resolve();
+      await expect(slot.getByRole("alert")).toBeVisible();
+      expect(await position()).toBe(before);
+      failed = false;
+      held = Promise.withResolvers<void>();
+      await slot.getByRole("button", { name: t("common.retry"), exact: true }).click();
+      expect(await position()).toBe(before);
+      held.resolve();
+      await expect(slot.locator("#tenant-ops-recovery")).toBeVisible();
+      expect(await position()).toBe(before);
+      const measure = () => slot.evaluate(el => {
+        const rect = el.getBoundingClientRect();
+        const last = el.querySelector("section:last-child")!;
+        const contentBottom = last.getBoundingClientRect().bottom;
+        return { height: rect.height, deadSpace: rect.bottom - contentBottom, overflow: getComputedStyle(el).overflowY,
+          scrollHeight: el.scrollHeight, clientHeight: el.clientHeight };
+      });
+      const settled = await measure();
+      expect(settled.deadSpace).toBeLessThan(80);
+      expect(settled.overflow).toBe("visible");
+      expect(settled.scrollHeight).toBeLessThanOrEqual(settled.clientHeight + 1);
+      await expect(panel.locator("section").last()).toHaveAttribute("aria-labelledby", "tenant-remove");
+      await expect(deletion.getByRole("button", { name: t("tenants.remove", { org: org.name }), exact: true })).toBeVisible();
+      await fits(page, `tenant-reservation/${status}/${width}/${theme}`);
+      await page.screenshot({ path: test.info().outputPath("settled.png"), fullPage: true });
+      recovery.state = "CANCELLED";
+      recovery.request = { id: id(6000), target_user_id: id(6001), requested_by: id(6002), requested_by_name: "Synthetic operator",
+        opened_at: AT, approved_by: null, hold_until: null, cancelled_by: id(6002), cancelled_by_name: "Synthetic operator",
+        cancelled_at: AT, cancel_reason: "Synthetic cancellation evidence with enough words to exercise wrapped recovery history. ".repeat(18), issued_at: null };
+      await open();
+      await expect(slot.locator("#tenant-ops-recovery")).toBeVisible();
+      const long = await measure();
+      expect(long.height).toBeGreaterThan(settled.height);
+      expect(long.deadSpace).toBeLessThan(1);
+      expect(long.overflow).toBe("visible");
+      expect(long.scrollHeight).toBeLessThanOrEqual(long.clientHeight + 1);
+      await expect(panel.locator("section").last()).toHaveAttribute("aria-labelledby", "tenant-remove");
+      await deletion.getByRole("button", { name: t("tenants.remove", { org: org.name }), exact: true }).scrollIntoViewIfNeeded();
+      await expect(deletion.getByRole("button", { name: t("tenants.remove", { org: org.name }), exact: true })).toBeInViewport();
+      await fits(page, `tenant-long-recovery/${status}/${width}/${theme}`);
+      await page.screenshot({ path: test.info().outputPath("long-recovery.png"), fullPage: true });
+      await test.info().attach("panel-geometry", { contentType: "application/json", body: JSON.stringify({ width, theme, status, deletionTop: before, settled, long }) });
+      expect(fixture.unexpected).toEqual([]);
+    } finally { held.resolve(); fixture.release(); await page.close(); }
+  });
 }
