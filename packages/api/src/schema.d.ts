@@ -9436,7 +9436,7 @@ export interface paths {
         put?: never;
         /**
          * Ask a colleague for a follow-up
-         * @description Creates a todo owned by the assignee and asked by the caller. Who may ask is any holder of a to-do request grant (a role line todo_request edit), over the people placed under that grant's scope node, and the tenant's ops account. A support session is refused first by the platform support guard (403 support.refuse.read_only). Cedar decides, inside the write, that the assignee is an active account of the caller's tenant placed under a node the caller's grants permit; an account with no linked employee or no current placement sits at the tenant node. Refusals, in order: 403 todo_assign_forbidden (neither a to-do request grant nor the ops account); 422 validation (text, links); 422 todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and out-of-scope accounts alike, and a grant revoked mid-request); 422 todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name records by kind and id; a sent label is ignored and never stored. Audited as todo.request with the assignee and the due date only.
+         * @description Creates a todo owned by the assignee and asked by the caller. Who may ask is any holder of a to-do request grant (a role line todo_request edit), over the people placed under that grant's scope node, and the tenant's ops account. A support session is refused first by the platform support guard (403 support.refuse.read_only). Cedar decides, inside the write, that the assignee is an active account of the caller's tenant placed under a node the caller's grants permit; an account with no linked employee or no current placement sits at the tenant node. Refusals, in order: 403 todo_assign_forbidden (neither a to-do request grant nor the ops account); 422 validation (text, links); 422 todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and out-of-scope accounts alike, and a grant revoked mid-request); 422 todo_assignee_inactive; 422 todo_due_past (before today in KST); 409 todo_assignee_full (the assignee already holds 100 open requests); 409 todo_requester_full (100 of the caller's requests are open or sent back, until one is done, withdrawn or cleared). Each side's requests are items in that account's work inbox, so neither side may hold more. Links name records by kind and id; a sent label is ignored and never stored. Audited as todo.request with the assignee and the due date only.
          */
         post: operations["createMyTodoRequest"];
         delete?: never;
@@ -51092,6 +51092,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
             /** @description JWT verification is not configured. */
             503: {
