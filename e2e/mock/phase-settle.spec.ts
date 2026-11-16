@@ -2,7 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
-import { authz, checklist, failure, inbox, screenAccess } from "./fixtures";
+import { authz, checklist, failure, id, inbox, screenAccess } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { entityRecordPath, mockEntityRecord } from "../states/entity-record";
@@ -12,6 +12,7 @@ import { accountReads } from "./account";
 import { attendanceBoardScreens } from "../states/attendance";
 import { screens } from "../states/registry";
 import { expectStable, recordShifts } from "../stability";
+import { orgPanelReads } from "./org-work";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -24,8 +25,51 @@ async function freezeClock(page: Page) {
 async function advanceUntil(page: Page, request: Promise<unknown>) {
   let answered = false;
   void request.then(() => { answered = true; }, () => undefined);
-  await expect.poll(async () => { await page.clock.runFor(50); return answered; }).toBe(true);
+  const start = await page.evaluate(() => Date.now());
+  while (!answered) {
+    await page.clock.runFor(50);
+    // Page task yields can exhaust fake time before throttled I/O and rendering catch up.
+    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(await page.evaluate(() => Date.now()) - start).toBeLessThan(1_500);
+  }
 }
+
+for (const width of [1440, 390]) test(`a deep-linked workplace Sheet keeps focus and Escape after the phase hold at ${width}px @ui-state`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  const panel = await orgPanelReads(page);
+  await mockRoute(page, "get", "/api/v1/ref/lists/{key}/codes", { status: 200, json: {
+    list: { key: "brn_classification", status: "NOT_LOADED" }, items: [],
+  } });
+  const held = Promise.withResolvers<void>();
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    await held.promise;
+    return { status: 200, json: checklist };
+  });
+  await freezeClock(page);
+  try {
+    await page.goto(`/org?sel=${id(3)}&act=wp-create`);
+    await advanceUntil(page, page.locator("[data-sheet-layer]").waitFor({ state: "attached" }));
+    const pending = page.locator("[data-phase-pending]");
+    await expect(pending).toHaveAttribute("inert", "");
+    await expect(pending).toBeHidden();
+    held.resolve();
+    await page.clock.resume();
+    await expect(pending).toHaveCount(0);
+    const dialog = page.getByRole("dialog", { name: t("workplace.add"), exact: true });
+    await expect(dialog).toBeVisible();
+    await expect.poll(() => dialog.evaluate(el => el.contains(document.activeElement))).toBe(true);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+      await fits(page, `workplace Sheet/${width}/${theme}`);
+      await page.screenshot({ path: info.outputPath(`${theme}.png`), fullPage: true });
+    }
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(page).not.toHaveURL(/act=wp-create/);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); panel.release(); fixture.release(); }
+});
 
 for (const path of ["/people", entityRecordPath]) for (const width of [1440, 390]) {
   for (const outcome of ["receipt", "expired", "checklist-503"] as const) {
