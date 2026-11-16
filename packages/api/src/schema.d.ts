@@ -4228,7 +4228,8 @@ export interface paths {
         put?: never;
         /**
          * Apply a dry-run employee import run, bound to its dry run
-         * @description BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry run's is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing people only get the fields import may write (job duties, title, work location, an empty date of birth): never name, status, exit date, department or legal entity. New people are created ACTIVE, PRE_HIRE (future hire date, ONBOARD scheduled) or EXITED (former employees, marked migrated). A replay of the APPLIED run with the same digest returns the stored report. Preserved rows remain raw-ledger evidence only.
+         * @description Cedar action import_apply decides admission and is rechecked inside the write transaction. 403 import_apply_forbidden means the database refused the admitted command. 503 import_apply_timed_out means a statement or transaction exceeded the server time limit; nothing was written, and the stored job retains the same refusal code.
+         *     BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry run's is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing people only get the fields import may write (job duties, title, work location, an empty date of birth): never name, status, exit date, department or legal entity. New people are created ACTIVE, PRE_HIRE (future hire date, ONBOARD scheduled) or EXITED (former employees, marked migrated). A replay of the APPLIED run with the same digest returns the stored report. Preserved rows remain raw-ledger evidence only.
          *     BE-MIG W11 (decisions #27, #28) — with Prefer respond-async every refusal above is still immediate, plus 422 import_row_limit (current-people rows over import.apply.max_rows, former employees apart, refusals [{max, rows}]) and 409 apply_in_progress (a job of this run with another digest is running); then a run that finishes within 2 s answers its 200 report (or its refusal), a longer one 202 with the job (the same digest again gets the same job; an applied and settled run gets its 200 report; RFC 7240). The job settles in chunks of 100 rows, each one transaction with a data_import.apply.progress audit on the run (the import_run realtime event); read it with GET. A job whose driver died is resumed by the schedule loop, or fails apply_interrupted when it stopped before writing (send it again). 503 import_apply_busy with Retry-After when the server already runs its apply drivers. Without the header the same job runs inline and the report is returned (200); 409 apply_in_progress while another driver runs it. Either way the driver outlives the request: a dropped connection or a request timeout never stops an apply half way (read the run with GET).
          */
         post: operations["applyEmployeeImport"];
@@ -39366,13 +39367,22 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            /** @description forbidden — Cedar did not admit tenant-wide directory management. import_apply_forbidden — the database refused the import command; no rows were written. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
-            /** @description import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds. */
+            /** @description import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds. import_apply_timed_out — the statement or transaction exceeded the server time limit; nothing was written. Review the dry run before applying again. */
             503: {
                 headers: {
+                    /** @description Present for import_apply_busy. */
                     "Retry-After"?: number;
                     [name: string]: unknown;
                 };
