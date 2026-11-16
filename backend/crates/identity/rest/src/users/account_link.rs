@@ -4,6 +4,7 @@
 
 use crate::error::RestError;
 use crate::state::IdentityRestState;
+use crate::users::authz::account_scope;
 use crate::users::dto::UpdateUserRequest;
 use axum::Json;
 use axum::http::StatusCode;
@@ -30,8 +31,11 @@ pub(super) async fn change_account_link(
             "직원 연결 변경은 다른 계정 정보와 나누어 요청하십시오",
         ));
     }
-    if body.employee_id.is_none() {
+    let Some(requested) = body.employee_id else {
         return Err(RestError::validation("employee_id is required"));
+    };
+    if let Some(employee) = requested {
+        ensure_employee_in_account_scope(state, principal, employee).await?;
     }
     let step_up = crate::policy::step_up::verify_step_up(
         state,
@@ -81,6 +85,28 @@ pub(super) async fn change_account_link(
     } else {
         Ok(Json(result.user).into_response())
     }
+}
+
+/// An account is linked only to an employee homed inside the editor's own account scope.
+pub(super) async fn ensure_employee_in_account_scope(
+    state: &IdentityRestState,
+    principal: &console_platform_authz::Principal,
+    employee: uuid::Uuid,
+) -> Result<(), RestError> {
+    let scope = account_scope(principal);
+    if scope.is_all()
+        || state
+            .store
+            .employee_home_branch(employee)
+            .await
+            .map_err(RestError::from_store)?
+            .is_some_and(|branch| scope.allows(branch))
+    {
+        return Ok(());
+    }
+    Err(RestError::forbidden(
+        "the employee is outside the accounts you manage",
+    ))
 }
 
 pub(super) async fn account_link_refusal(

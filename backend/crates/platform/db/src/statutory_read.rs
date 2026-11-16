@@ -15,6 +15,14 @@ pub async fn load_statutory_register(
     load_register(conn, None, &[]).await
 }
 
+/// Retain numeric rules and first filing dates while excluding unrelated archived versions.
+pub async fn load_statutory_register_for_dates(
+    conn: &mut PgConnection,
+    dates: &[Date],
+) -> Result<StatutoryRegister, KernelError> {
+    load_register(conn, None, dates).await
+}
+
 /// Load case dates and their loss-date offsets, preserving first filing dates and numeric rules.
 pub async fn load_statutory_register_for_codes(
     conn: &mut PgConnection,
@@ -29,39 +37,31 @@ async fn load_register(
     filing_codes: Option<&[String]>,
     dates: &[Date],
 ) -> Result<StatutoryRegister, KernelError> {
-    macro_rules! register_sql {
-        ($columns:literal, $tail:literal) => {
-            concat!(
-                "WITH available AS MATERIALIZED (SELECT r.*, \
-                   min(effective_from) FILTER (WHERE filing_rule IS NOT NULL) OVER (PARTITION BY code) AS first_from, \
-                   min(LEAST(COALESCE((filing_rule->>'loss_offset_days')::int,0),0)) OVER () AS min_offset, \
-                   max(GREATEST(COALESCE((filing_rule->>'loss_offset_days')::int,0),0)) OVER () AS max_offset \
-                 FROM lifecycle_statutory_rules r \
-                 WHERE $1::text[] IS NULL OR filing_rule IS NULL OR code=ANY($1)) SELECT ",
-                $columns,
-                " FROM available WHERE ($2::date IS NULL OR filing_rule IS NULL OR effective_from=first_from \
-                   OR (effective_from<=$3::date+max_offset AND (effective_to_exclusive IS NULL OR effective_to_exclusive>$2::date+min_offset)))",
-                $tail,
-                " ORDER BY code,effective_from"
-            )
-        };
-    }
     let from = dates.iter().min().copied();
     let through = dates.iter().max().copied();
-    let rules = sqlx::query(register_sql!(
-        "code, effective_from, effective_to_exclusive, unit, value_num, value_den, \
-         instrument_ko, article_ko, source_url, release_disposition, review_receipt_ref",
-        ""
-    ))
+    let rows = sqlx::query(
+        "WITH available AS MATERIALIZED (SELECT r.*, \
+           min(effective_from) FILTER (WHERE filing_rule IS NOT NULL) OVER (PARTITION BY code) AS first_from, \
+           min(LEAST(COALESCE((filing_rule->>'loss_offset_days')::int,0),0)) OVER () AS min_offset, \
+           max(GREATEST(COALESCE((filing_rule->>'loss_offset_days')::int,0),0)) OVER () AS max_offset \
+         FROM lifecycle_statutory_rules r \
+         WHERE $1::text[] IS NULL OR filing_rule IS NULL OR code=ANY($1)) \
+         SELECT code, effective_from, effective_to_exclusive, unit, value_num, value_den, \
+           instrument_ko, article_ko, source_url, release_disposition, review_receipt_ref, filing_rule, trigger_event_kinds \
+         FROM available WHERE ($2::date IS NULL OR filing_rule IS NULL OR effective_from=first_from \
+           OR (effective_from<=$3::date+max_offset AND (effective_to_exclusive IS NULL OR effective_to_exclusive>$2::date+min_offset))) \
+         ORDER BY code,effective_from",
+    )
     .bind(filing_codes)
     .bind(from)
     .bind(through)
     .fetch_all(&mut *conn)
     .await
-    .map_err(db_error)?
-    .iter()
-    .map(rule_from_row)
-    .collect::<Result<Vec<_>, _>>()?;
+    .map_err(db_error)?;
+    let rules = rows
+        .iter()
+        .map(rule_from_row)
+        .collect::<Result<Vec<_>, _>>()?;
     let loss_codes = sqlx::query(
         "SELECT insurer, code, label_ko, reason_group, requires_detail, effective_from, \
                 effective_to_exclusive, instrument_ko, article_ko, source_url, \
@@ -74,27 +74,19 @@ async fn load_register(
     .iter()
     .map(loss_code_from_row)
     .collect::<Result<Vec<_>, _>>()?;
-    let filing_rows = sqlx::query(register_sql!(
-        "filing_rule,trigger_event_kinds",
-        " AND filing_rule IS NOT NULL"
-    ))
-    .bind(filing_codes)
-    .bind(from)
-    .bind(through)
-    .fetch_all(&mut *conn)
-    .await
-    .map_err(db_error)?;
-    let filing_rules = filing_rows
-        .into_iter()
-        .map(|row| {
-            let value: serde_json::Value = row.try_get("filing_rule").map_err(db_error)?;
-            let mut rule: console_compliance_domain::statutory::filing::FilingRule =
-                serde_json::from_value(value)
-                    .map_err(|e| KernelError::validation(e.to_string()))?;
-            rule.trigger_event_kinds = row.try_get("trigger_event_kinds").map_err(db_error)?;
-            Ok::<_, KernelError>(rule)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let mut filing_rules = Vec::new();
+    for row in &rows {
+        let Some(value) = row
+            .try_get::<Option<serde_json::Value>, _>("filing_rule")
+            .map_err(db_error)?
+        else {
+            continue;
+        };
+        let mut rule: console_compliance_domain::statutory::filing::FilingRule =
+            serde_json::from_value(value).map_err(|e| KernelError::validation(e.to_string()))?;
+        rule.trigger_event_kinds = row.try_get("trigger_event_kinds").map_err(db_error)?;
+        filing_rules.push(rule);
+    }
     StatutoryRegister::new(rules, loss_codes)?.with_filing_rules(filing_rules)
 }
 

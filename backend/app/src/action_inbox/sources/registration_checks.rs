@@ -19,6 +19,7 @@ pub(crate) async fn page(
         .into_iter()
         .filter(|row| row.created_at <= query.as_of)
         .map(|row| ActionInboxSourceItem {
+            due_basis: None,
             id: format!("registration_check:{}", row.id),
             kind: "registration_check".into(),
             ref_code: String::new(),

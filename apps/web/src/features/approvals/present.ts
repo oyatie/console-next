@@ -4,4 +4,4 @@ import { codeText } from "../../lib/labels";
 import { catalogRefusal } from "../../lib/refusal";
 
 export const decisionRefusalText = (code: string) =>
-  catalogRefusal(code) ?? codeText(`requestOutcome.code.${code}`, t("approvals.viewer.blockedHint"));
+  code === "approval_decision_unavailable" ? t("approvals.viewer.unavailable") : catalogRefusal(code) ?? codeText(`requestOutcome.code.${code}`, t("approvals.viewer.blockedHint"));

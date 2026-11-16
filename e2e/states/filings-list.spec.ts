@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../locale-fixture";
 import { expectAxe, fits } from "../a11y";
 import { filingRow } from "../helpers/statutory";
 import { mockRoute } from "../mock/route";
@@ -9,8 +10,6 @@ import { filingTask, mockFilings } from "../mock/filings";
 import { id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
-
-test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`filing facts and actions reflow at ${width}px in ${theme} @ui-state`, async ({ page }, info) => {
@@ -121,7 +120,7 @@ test("translated filing labels fit their phone card cell at 390px @ui-state", as
     await expectAxe(page, "translated filing labels");
     await page.screenshot({ path: info.outputPath("filings-translated.png"), fullPage: true });
     expect(fixture.unexpected).toEqual([]);
-  } finally { i18n.set("ko"); await page.close(); fixture.release(); }
+  } finally { await page.close(); fixture.release(); }
 });
 
 for (const width of [768, 600]) test(`filing words and actions stay whole at ${width}px @ui-state`, async ({ page }, info) => {
@@ -253,7 +252,6 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 }
 
-
 for (const sameEmployee of [false, true]) test(`filing actions remain reachable after searching ${sameEmployee ? "one employee’s filings" : "the filing list"} @ui-state`, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   const fixture = await mockScreen(page, screens[2], "populated");
@@ -290,7 +288,6 @@ for (const sameEmployee of [false, true]) test(`filing actions remain reachable 
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
-
 
 for (const width of [1280, 1440]) test(`closing filing basis restores the next row at ${width}px @ui-state`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });

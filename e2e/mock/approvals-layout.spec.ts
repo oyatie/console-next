@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { expect } from "@playwright/test";
+import { test } from "../locale-fixture";
+import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { mockScreen } from "./screen";
 import { screens } from "../states/registry";
-
-test.afterEach(() => i18n.set("ko"));
 
 const values = [
   { name: "real", title: "영업 조직 개편안", secondary: "AP-2026-001" },
@@ -16,7 +15,7 @@ const values = [
 ];
 
 for (const preview of [false, true])
-  for (const locale of ["ko", "en"] as const) for (const value of values) {
+  for (const locale of LOCALES) for (const value of values) {
     test(`approval column invariants: preview=${preview} ${locale} ${value.name}`, async ({ page }) => {
       await loadCatalog(locale);
       i18n.set(locale);

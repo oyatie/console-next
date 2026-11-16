@@ -65,6 +65,23 @@ fn normalize_adds_view_and_refuses_what_the_domain_does_not_offer() {
     );
 }
 
+/// Asking a colleague is one level: it implies no view of anyone's records.
+#[test]
+fn a_todo_request_line_is_edit_only_and_carries_the_ask_key() {
+    assert_eq!(
+        normalize_levels(Domain::TodoRequest, &[Level::Edit]),
+        Ok(vec![Level::Edit])
+    );
+    assert_eq!(
+        normalize_levels(Domain::TodoRequest, &[Level::View]),
+        Err(CatalogError::LevelNotOffered)
+    );
+    assert_eq!(
+        tag(Feature::TodoAssign),
+        Some((Domain::TodoRequest, Level::Edit))
+    );
+}
+
 #[test]
 fn wire_names_round_trip() {
     for d in Domain::ALL {

@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { UserRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { EMPLOYEE_STATUS, EMPLOYMENT_TYPE, label, labeled } from "../../../lib/labels";
-import { editable } from "../../../ui/long-table/row-keys";
+import { useKeys } from "../../../lib/react/use-keys";
 import { KeyMap } from "../../../ui/palette/key-map";
 import { Palette, type PaletteSection } from "../../../ui/palette/palette";
 import { Kbd } from "../../../ui/record/record-section";
@@ -22,23 +22,16 @@ export function PeopleJump() {
   const navigate = useNavigate();
   const [open, setOpen] = useState<"jump" | "keys" | null>(null);
   const [q, setQ] = useState("");
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        // On the people screens ⌘K is this people search (E1-jump: employee-number aliases, the person's own acts); the shell's jump
-        // palette, listening on the way back up, does not open a second dialog over it.
-        e.preventDefault();
-        e.stopPropagation();
-        setQ("");
-        setOpen("jump");
-      } else if (e.key === "?" && !editable(e.target) && !document.querySelector("[role=dialog]")) {
-        e.preventDefault();
-        setOpen("keys");
-      }
-    };
-    document.addEventListener("keydown", key, true);
-    return () => document.removeEventListener("keydown", key, true);
-  }, []);
+  useKeys({
+    "people.find": e => {
+      // On the people screens ⌘K is this people search (E1-jump: employee-number aliases, the person's own acts); the shell's jump
+      // palette, listening on the way back up, does not open a second dialog over it.
+      e.stopPropagation();
+      setQ("");
+      setOpen("jump");
+    },
+    "people.keys": () => setOpen("keys"),
+  }, { capture: true });
   const found = useQuery({ ...samePersonQuery(q), enabled: open === "jump" && q.trim().length > 0 });
   const rows = found.data?.items ?? [];
   const exact = rows.filter((e) => e.employee_number === q.trim());

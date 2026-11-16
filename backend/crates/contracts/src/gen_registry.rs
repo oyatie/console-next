@@ -14563,6 +14563,41 @@ const TODOS_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/me/todos/requests",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../todos/rest/openapi/paths/api__v1__me__todos__requests.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../todos/rest/openapi/paths/api__v1__me__todos__requests.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/me/todos/requests/assignees",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../todos/rest/openapi/paths/api__v1__me__todos__requests__assignees.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/todos/requests/{todoId}",
+        operations: &[Operation {
+            method: "delete",
+            body: include_str!(
+                "../../todos/rest/openapi/paths/api__v1__me__todos__requests__todoId.delete.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/todos/{todoId}",
         operations: &[Operation {
             method: "delete",
@@ -14580,6 +14615,15 @@ const TODOS_FRAGMENT_PATHS: &[PathItem] = &[
             ),
         }],
     },
+    PathItem {
+        path: "/api/v1/me/todos/{todoId}/return",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../todos/rest/openapi/paths/api__v1__me__todos__todoId__return.post.yaml"
+            ),
+        }],
+    },
 ];
 
 const TODOS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
@@ -14588,8 +14632,24 @@ const TODOS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../todos/rest/openapi/schemas/CreateTodoRequest.yaml"),
     },
     NamedYaml {
+        name: "ReturnTodoRequest",
+        body: include_str!("../../todos/rest/openapi/schemas/ReturnTodoRequest.yaml"),
+    },
+    NamedYaml {
         name: "SetTodoDoneRequest",
         body: include_str!("../../todos/rest/openapi/schemas/SetTodoDoneRequest.yaml"),
+    },
+    NamedYaml {
+        name: "TodoAskRequest",
+        body: include_str!("../../todos/rest/openapi/schemas/TodoAskRequest.yaml"),
+    },
+    NamedYaml {
+        name: "TodoAssignee",
+        body: include_str!("../../todos/rest/openapi/schemas/TodoAssignee.yaml"),
+    },
+    NamedYaml {
+        name: "TodoAssigneePage",
+        body: include_str!("../../todos/rest/openapi/schemas/TodoAssigneePage.yaml"),
     },
     NamedYaml {
         name: "TodoPage",
@@ -14598,6 +14658,10 @@ const TODOS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "TodoRef",
         body: include_str!("../../todos/rest/openapi/schemas/TodoRef.yaml"),
+    },
+    NamedYaml {
+        name: "TodoRequestLink",
+        body: include_str!("../../todos/rest/openapi/schemas/TodoRequestLink.yaml"),
     },
     NamedYaml {
         name: "TodoSummary",

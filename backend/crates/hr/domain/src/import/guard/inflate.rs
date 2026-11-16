@@ -129,11 +129,15 @@ fn codes(
     dist: &Huffman,
     out: &mut u64,
     limit: u64,
+    decoded: &mut Option<Vec<u8>>,
 ) -> Result<(), InflateError> {
     loop {
         let sym = usize::from(lit.decode(bits)?);
         if sym < 256 {
             add(out, 1, limit)?;
+            if let Some(bytes) = decoded {
+                bytes.push(sym as u8);
+            }
         } else if sym == 256 {
             return Ok(());
         } else {
@@ -152,6 +156,12 @@ fn codes(
                 return Err(InflateError::Invalid);
             }
             add(out, len, limit)?;
+            if let Some(bytes) = decoded {
+                let distance = usize::try_from(distance).map_err(|_| InflateError::Invalid)?;
+                for _ in 0..len {
+                    bytes.push(bytes[bytes.len() - distance]);
+                }
+            }
         }
     }
 }
@@ -216,6 +226,20 @@ fn dynamic(bits: &mut Bits<'_>) -> Result<(Huffman, Huffman), InflateError> {
 /// [`InflateError::Limit`] as soon as the count passes `limit`;
 /// [`InflateError::Invalid`] for anything that is not a complete stream.
 pub fn inflated_len(data: &[u8], limit: u64) -> Result<u64, InflateError> {
+    inflate(data, limit, &mut None)
+}
+
+/// Decode a raw DEFLATE stream under the same output cap as the counting walk.
+///
+/// # Errors
+/// [`InflateError::Limit`] above `limit`, [`InflateError::Invalid`] for a bad stream.
+pub(super) fn inflated_bytes(data: &[u8], limit: u64) -> Result<Vec<u8>, InflateError> {
+    let mut decoded = Some(Vec::new());
+    inflate(data, limit, &mut decoded)?;
+    decoded.ok_or(InflateError::Invalid)
+}
+
+fn inflate(data: &[u8], limit: u64, decoded: &mut Option<Vec<u8>>) -> Result<u64, InflateError> {
     let mut bits = Bits {
         data,
         pos: 0,
@@ -242,14 +266,17 @@ pub fn inflated_len(data: &[u8], limit: u64) -> Result<u64, InflateError> {
                     return Err(InflateError::Invalid);
                 }
                 add(&mut out, u64::from(len), limit)?;
+                if let Some(bytes) = decoded {
+                    bytes.extend_from_slice(&data[bits.pos - usize::from(len)..bits.pos]);
+                }
             }
             1 => {
                 let (lit, dist) = fixed()?;
-                codes(&mut bits, &lit, &dist, &mut out, limit)?;
+                codes(&mut bits, &lit, &dist, &mut out, limit, decoded)?;
             }
             2 => {
                 let (lit, dist) = dynamic(&mut bits)?;
-                codes(&mut bits, &lit, &dist, &mut out, limit)?;
+                codes(&mut bits, &lit, &dist, &mut out, limit, decoded)?;
             }
             _ => return Err(InflateError::Invalid),
         }

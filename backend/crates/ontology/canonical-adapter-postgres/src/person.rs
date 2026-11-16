@@ -70,6 +70,9 @@ use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+mod create_batch;
+pub use create_batch::create_many_in_tx;
+
 /// The typed read this port answers: the write a caller intends, and nothing
 /// about how it is performed. Each variant is bound to exactly one of the two
 /// dispatch targets the contract assigns to `Person`.
@@ -301,6 +304,12 @@ pub async fn write_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     command: &PersonCommand,
 ) -> Result<CommandReceipt, PersonError> {
+    if matches!(command.query, PersonQuery::Create { .. }) {
+        return create_many_in_tx(tx, std::slice::from_ref(command))
+            .await?
+            .pop()
+            .ok_or_else(|| PersonError::Database(sqlx::Error::RowNotFound));
+    }
     let preflight = <PgPersonPort as CanonicalPort>::preflight(&command.query);
     if !preflight.is_ok() {
         return Err(PersonError::Blocked(preflight.blockers().to_vec()));
@@ -339,46 +348,16 @@ pub async fn write_in_tx(
     }
 
     let target = command.query.target();
-    let (person_id, version) = match &command.query {
-        PersonQuery::Create { employee_id, .. } => {
-            // Trusted uniquely-resolved: person_id = employee_id (P5).
-            // Unbound / review-required: omit employee_id → random id, no binding.
-            let person_id: Uuid = match employee_id {
-                Some(trusted) => {
-                    sqlx::query_scalar(
-                        "INSERT INTO persons (org_id, id) VALUES ($1, $2) RETURNING id",
-                    )
-                    .bind(org)
-                    .bind(trusted)
-                    .fetch_one(tx.as_mut())
-                    .await?
-                }
-                None => {
-                    sqlx::query_scalar("INSERT INTO persons (org_id) VALUES ($1) RETURNING id")
-                        .bind(org)
-                        .fetch_one(tx.as_mut())
-                        .await?
-                }
-            };
-            (person_id, 1_i64)
-        }
-        PersonQuery::Revise { person_id, .. } => {
-            // MAX + 1 under the row's own transaction. A
-            // concurrent revise of the same person loses to
-            // UNIQUE (org_id, person_id, version) with 23505 rather than
-            // silently overwriting; add SELECT ... FOR UPDATE on `persons`
-            // if that contention is ever measured.
-            let next: i64 = sqlx::query_scalar(
-                "SELECT COALESCE(MAX(version), 0) + 1 FROM person_revisions \
-                     WHERE org_id = $1 AND person_id = $2",
-            )
-            .bind(org)
-            .bind(person_id)
-            .fetch_one(tx.as_mut())
-            .await?;
-            (*person_id, next)
-        }
-    };
+    let person_id = command.query.subject_id().ok_or(sqlx::Error::RowNotFound)?;
+    // Concurrent revisions still contend on the existing version uniqueness constraint.
+    let version: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(MAX(version), 0) + 1 FROM person_revisions \
+         WHERE org_id = $1 AND person_id = $2",
+    )
+    .bind(org)
+    .bind(person_id)
+    .fetch_one(tx.as_mut())
+    .await?;
 
     let result = serde_json::json!({
         "person_id": person_id.to_string(),

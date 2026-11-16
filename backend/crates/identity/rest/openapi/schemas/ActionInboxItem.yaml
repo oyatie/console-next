@@ -93,6 +93,11 @@ properties:
     type: string
   due:
     $ref: '#/components/schemas/Timestamp'
+  due_basis:
+    type: string
+    enum:
+    - statutory
+    description: Present when the due date is a legal deadline read from the statutory register, such as a final-pay settlement, a social insurance filing or the answer to a privacy rights request. Absent for every other due date.
   dueTone:
     type: string
     enum:

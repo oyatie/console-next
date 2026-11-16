@@ -11,13 +11,11 @@ import type { PayrollState, OrgChangeState, Screen, State } from "../states/regi
 import { mockLifecycleSheets } from "./lifecycle-sheets";
 import { numberingReads } from "./numbering";
 import { mockDirectorySettings } from "./directory";
+import { throttleCPU } from "../helpers/cpu-throttle";
 
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
 export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState | PayrollState, modulesState: keyof typeof modules | "refused" = "ready") {
-  if (process.env.E2E_CPU_THROTTLE) {
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.E2E_CPU_THROTTLE) });
-  }
+  await throttleCPU(page);
   const unexpected: string[] = [];
   await page.route(url => url.pathname.startsWith("/api/"), async route => {
     unexpected.push(`${route.request().method()} ${new URL(route.request().url()).pathname}`);

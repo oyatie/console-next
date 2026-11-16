@@ -1,5 +1,6 @@
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
+import { e2eBrowser } from "./e2e/browser";
 import { LIFECYCLE_TODAY_FILE } from "./e2e/clock";
 import { AGENT, CACHE_DIR, COMPOSE_PROJECT, OUTPUT_DIR, PORTS } from "./e2e/slot";
 
@@ -11,8 +12,8 @@ import { AGENT, CACHE_DIR, COMPOSE_PROJECT, OUTPUT_DIR, PORTS } from "./e2e/slot
 const served = process.env.E2E_SERVED === "1";
 // E2E_REUSE=1 reuses a dev/visual stack; served release proofs always start with an empty database.
 const reuse = process.env.E2E_REUSE === "1" && !served;
-// E2E_XBROWSER=1 runs Firefox instead of Chromium (the INTEG gate's second leg; see projects).
-const xbrowser = process.env.E2E_XBROWSER === "1";
+const browserName = e2eBrowser();
+const xbrowser = browserName !== "chromium";
 const perfTag = /(?:^|\s)@perf(?=\s|$)/;
 const ordinaryOnly = process.env.E2E_PERF === "1" ? /@clock/ : [/@clock/, perfTag];
 const origin = served ? `http://localhost:${PORTS.backend}` : `http://localhost:${PORTS.web}`;
@@ -64,10 +65,10 @@ export default defineConfig({
     ["./e2e/timings-reporter.mjs"],
     ...(process.env.PLAYWRIGHT_BLOB_OUTPUT_FILE ? [["blob"] as const] : []),
   ],
-  // E2E_XBROWSER=1 is the Firefox leg alone: every spec creates its tenants under fixed identifiers, so two
-  // engines cannot share one database. The clock specs and the gallery baselines stay Chromium-only.
+  // One engine per run: fixed tenant identifiers cannot share one database across engines.
+  // The clock specs and the gallery baselines stay Chromium-only.
   projects: xbrowser
-    ? [{ name: "firefox", use: { browserName: "firefox" }, grepInvert: ordinaryOnly }]
+    ? [{ name: browserName, grepInvert: ordinaryOnly }]
     : [
         { name: "parallel", grepInvert: ordinaryOnly },
         // Date-moving tests (e2e/clock.ts) share the backend's one apply date: alone, one at a time, after the rest.
@@ -79,6 +80,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   failOnFlakyTests: !!process.env.CI,
   use: {
+    browserName,
     baseURL: origin,
     locale: "ko-KR",
     timezoneId: "Asia/Seoul",

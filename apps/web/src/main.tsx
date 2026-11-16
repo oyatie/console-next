@@ -1,4 +1,4 @@
-import { lazy, StrictMode, Suspense } from "react";
+import { lazy, StrictMode, Suspense, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, Link, RouterProvider, useRouterState } from "@tanstack/react-router";
@@ -13,6 +13,7 @@ import { STALE_TIME_MS } from "./lib/freshness";
 import { queryDefaults } from "./lib/react/query-defaults";
 import { sessionStream } from "./lib/live/session-stream";
 import { EmptyState } from "./ui/empty-state";
+import { ReadSkeleton } from "./ui/skeleton/skeleton";
 import { initLocale } from "./shell/locale";
 import { IDLE_EXPIRED, watchSession } from "./auth/idle";
 import { pauseAutofill } from "./auth/sign-in-id";
@@ -46,6 +47,14 @@ const router = createRouter({
   routeTree: routeTree,
   defaultPreload: "intent",
   scrollRestoration: true,
+  // Paint resolved parents while a screen chunk loads, retaining the shell and its session observers.
+  defaultPendingComponent: function PendingScreen(): ReactNode {
+    // A pending parent must retain the leaf's record or form loading shape.
+    const Pending = useRouterState({ select: state => state.matches.map(match => router.routesById[match.routeId]?.options.pendingComponent).findLast(Boolean) }) ?? ReadSkeleton;
+    return <Pending />;
+  },
+  defaultPendingMs: 0,
+  defaultPendingMinMs: 0,
   defaultNotFoundComponent: () => (
     <main className="page">
       <EmptyState
@@ -60,56 +69,6 @@ const router = createRouter({
   defaultErrorComponent: ({ error }) => <CrashScreen error={error} />,
 });
 
-const mainPositions = new Map<string, number>();
-let stopMainRestore: () => void = () => undefined;
-function restoreMain(key: string, top: number) {
-  stopMainRestore();
-  let main: HTMLElement | null = null;
-  const resize = new ResizeObserver(() => apply());
-  const mutation = new MutationObserver(() => { observe(); apply(); });
-  const events = ["keydown", "pointerdown", "touchstart", "wheel"] as const;
-  const timer = window.setTimeout(stop, 3000);
-  function stop() {
-    window.clearTimeout(timer);
-    resize.disconnect();
-    mutation.disconnect();
-    if (main) for (const event of events) main.removeEventListener(event, stop);
-  }
-  function observe() {
-    resize.disconnect();
-    if (main) for (const child of main.children) resize.observe(child);
-  }
-  function bind() {
-    const marker = document.querySelector<HTMLElement>("[data-route-key]");
-    if (marker?.dataset.routeKey !== key || !marker.dataset.routeReady) return;
-    const next = document.getElementById("main");
-    if (!next || next === main) return;
-    main = next;
-    mutation.disconnect();
-    mutation.observe(main, { attributes: true, childList: true });
-    for (const event of events) main.addEventListener(event, stop);
-    observe();
-  }
-  function apply() {
-    bind();
-    if (!main) return;
-    main.scrollTop = top;
-    if (main.scrollTop === top) stop();
-  }
-  stopMainRestore = stop;
-  mutation.observe(document.body, { attributes: true, attributeFilter: ["data-route-key", "data-route-ready"], childList: true, subtree: true });
-  apply();
-}
-router.subscribe("onBeforeLoad", ({ fromLocation }) => {
-  const key = fromLocation?.state["__TSR_key"];
-  const main = document.getElementById("main");
-  if (key && main) mainPositions.set(key, main.scrollTop);
-});
-router.subscribe("onRendered", ({ fromLocation, toLocation }) => {
-  if (!fromLocation || fromLocation.pathname === toLocation.pathname) return;
-  const key = toLocation.state["__TSR_key"];
-  if (key) restoreMain(key, mainPositions.get(key) ?? 0);
-});
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;

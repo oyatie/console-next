@@ -3,8 +3,8 @@ tags:
 operationId: deleteMyTodo
 summary: Delete one of the authenticated user's todos
 description: >-
-  A cross-user id is a 404, never another user's row. Audited as
-  todo.delete.
+  A cross-user id is a 404, never another user's row. A request is 409
+  todo_is_request: only its requester takes it back. Audited as todo.delete.
 security:
 - bearerAuth: []
 parameters:
@@ -20,6 +20,8 @@ responses:
     $ref: '#/components/responses/Unauthorized'
   '404':
     $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
   '503':
     description: JWT verification is not configured.
     content:

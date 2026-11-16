@@ -1,6 +1,6 @@
 //! IMPORT-2 item 0: the one way an uploaded `.xlsx` becomes sheets. The
 //! container is walked and its real inflated size counted first
-//! (`guard::zip::scan_zip`), then each sheet streams through calamine's cell
+//! (`guard::zip::check_dimensions`), then each sheet streams through calamine's cell
 //! reader under the box and cell caps; `worksheet_range` (which allocates the
 //! declared box) is never called. Runs on a blocking thread.
 
@@ -8,8 +8,8 @@ use std::io::Cursor;
 
 use calamine::{DataRef, DataType, Reader, Xlsx};
 use console_hr_domain::import::grid::{Cell, GridRow, GridSheet};
-use console_hr_domain::import::guard::zip::scan_zip;
-use console_hr_domain::import::guard::{CellBudget, WorkbookCaps};
+use console_hr_domain::import::guard::zip::check_dimensions;
+use console_hr_domain::import::guard::{CellBudget, WorkbookCaps, codes};
 use console_hr_domain::import::workbook::check_workbook_signature;
 use http::StatusCode;
 
@@ -99,7 +99,8 @@ fn read_sheet(
 ///
 /// # Errors
 /// 422 `workbook_protected` / `workbook_not_xlsx` for a non-ZIP, one of the
-/// `guard::codes` refusals past a cap, 422 `workbook` for a damaged file.
+/// `guard::codes` refusals past a cap, 422 `workbook_corrupt` for invalid
+/// dimensions, 422 `workbook` for other unreadable content.
 pub fn read_workbook(bytes: &[u8], caps: &WorkbookCaps) -> Result<Vec<GridSheet>, HrError> {
     check_workbook_signature(bytes).map_err(|code| {
         let message = if code == "workbook_protected" {
@@ -109,8 +110,14 @@ pub fn read_workbook(bytes: &[u8], caps: &WorkbookCaps) -> Result<Vec<GridSheet>
         };
         refused(code, message)
     })?;
-    scan_zip(bytes, caps)
-        .map_err(|code| refused(code, "the workbook is larger than the import accepts"))?;
+    check_dimensions(bytes, caps).map_err(|code| {
+        let message = if code == codes::CORRUPT {
+            "the workbook is damaged"
+        } else {
+            "the workbook is larger than the import accepts"
+        };
+        refused(code, message)
+    })?;
     let mut book = Xlsx::new(Cursor::new(bytes))
         .map_err(|_| refused("workbook", "the workbook could not be read"))?;
     let mut budget = CellBudget::new(*caps);

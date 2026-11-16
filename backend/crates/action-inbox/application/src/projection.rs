@@ -31,6 +31,7 @@ pub(super) fn project_item(
         }),
         id: item.id,
         kind: item.kind,
+        due_basis: item.due_basis,
         urg,
         ref_code: item.ref_code,
         title: item.title,

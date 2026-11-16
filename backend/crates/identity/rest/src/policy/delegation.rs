@@ -1,5 +1,6 @@
 use crate::error::RestError;
 use crate::metrics::record_policy_studio_rejection;
+use crate::state::IdentityRestState;
 use console_identity_application::PolicyRoleCondition;
 use console_identity_application::PolicyRoleSummary;
 use console_kernel_core::BranchId;
@@ -36,6 +37,28 @@ pub(crate) fn ensure_policy_roles_inside_actor_permission_ceiling_for_operation(
     roles: &[PolicyRoleSummary],
 ) -> Result<(), RestError> {
     if let Err(error) = ensure_policy_roles_inside_actor_permission_ceiling(principal, roles) {
+        record_policy_studio_rejection(operation, principal, &error);
+        return Err(error);
+    }
+    Ok(())
+}
+
+/// Holders of a role do not set its terms; someone else who manages roles edits it.
+pub(crate) async fn ensure_policy_role_not_held_by_actor(
+    operation: &'static str,
+    state: &IdentityRestState,
+    principal: &Principal,
+    role_id: Uuid,
+) -> Result<(), RestError> {
+    let held = state
+        .store
+        .list_policy_role_assignments(principal.user_id)
+        .await
+        .map_err(RestError::from_store)?;
+    if held.iter().any(|assignment| assignment.role_id == role_id) {
+        let error = RestError::forbidden(
+            "you hold this role, so someone else who manages roles must change it",
+        );
         record_policy_studio_rejection(operation, principal, &error);
         return Err(error);
     }

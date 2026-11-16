@@ -8,6 +8,7 @@ import { reasonCodesQuery, reasonOptions, type ReasonDomain } from "../../../lib
 import { readsAreStale, useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { ApprovalCard } from "../../../ui/approval-card/approval-card";
+import { Banner } from "../../../ui/banner/banner";
 import { Card } from "../../../ui/card/card";
 import { ChainStepper } from "../../../ui/chain-stepper/chain-stepper";
 import { Chip } from "../../../ui/chip";
@@ -60,13 +61,12 @@ export function ApprovalViewerPage() {
 
 export function ApprovalDocumentView({ document: d }: { document: ApprovalDocument }) {
   return <div className="form">
-    <Card title={t("approvals.preview.route")}>
-      <ChainStepper label={t("approvals.preview.route")} steps={d.route.map(step => ({ key: step.id, who: [step.label, step.assignee].filter(Boolean).join(" · "), state: step.state, meta: step.meta }))} />
-    </Card>
+    {d.route.length > 0 && <Card title={t("approvals.preview.route")}>
+      <ChainStepper label={t("approvals.preview.route")} steps={d.route.map(step => ({ key: step.id, who: [step.label, step.assignee].filter(Boolean).join(" · "), state: step.state, meta: d.decision_refusal && step.state === "current" ? undefined : step.meta }))} />
+    </Card>}
     <Card title={t("approvals.preview.facts")}>
+      {d.decision_refusal && <Banner tone="warn" title={t("approvals.field.verification")}>{decisionRefusalText(d.decision_refusal)}</Banner>}
       <KeyValue readOnly items={[
-        ...(d.decision_refusal ? [{ key: "decision-refusal", label: t("approvals.field.verification"),
-          value: decisionRefusalText(d.decision_refusal) }] : []),
         ...(d.document_no && d.my_actions.kind === "none" ? [{ key: "number", label: t("approvals.field.documentNo"), value: d.document_no }] : []),
         { key: "requester", label: t("approvals.field.requester"), value: [d.requester?.name, d.requester?.role].filter(Boolean).join(" · ") || "—" },
         { key: "requested", label: t("approvals.field.requestedAt"), value: fmtDateTime(d.requested_at) },
@@ -104,7 +104,8 @@ function ApprovalDecisionPanel({ document: d }: { document: ApprovalDocument }) 
   };
   // Only the action the server offers is drawn; nothing is inferred from the document's status.
   const reject = actions.kind === "approve" ? actions.reject : undefined;
-  if (!reject) return receipt ? <Card><p role="status">{receipt}</p></Card> : null;
+  const receiptMessage = receipt && <p role="status">{receipt}</p>;
+  if (!reject) return receipt ? <Card>{receiptMessage}</Card> : null;
   const stale = readsAreStale(command.error) && command.variables?.seen_fingerprint === d.fingerprint;
   return <ApprovalCard
     eyebrow={[d.source.label, d.document_no].filter(Boolean).join(" · ")}
@@ -123,9 +124,9 @@ function ApprovalDecisionPanel({ document: d }: { document: ApprovalDocument }) 
     pending={command.isPending ? command.variables?.decision === "REJECT" ? "reject" : command.variables?.decision === "RETURN" ? "return" : "approve" : undefined}
     approveBlocked={stale ? t("approvals.viewer.changed") : undefined}
     meta={t("approvals.viewer.revision", { revision: d.revision })}
-    receipt={receipt && <p role="status">{receipt}</p>}
+    receipt={receiptMessage}
   >
-    <CommandError error={command.error} own={code => code === "approval_document_changed" ? t("approvals.viewer.changed") : code === "approval_decision_unavailable" ? t("approvals.viewer.unavailable") : undefined} />
+    <CommandError error={command.error} own={code => code === "approval_document_changed" ? t("approvals.viewer.changed") : code === "approval_decision_unavailable" ? decisionRefusalText(code) : undefined} />
     <Field label={t("approvals.viewer.opinion")} required={false} hint={t("approvals.viewer.opinionHint")}>
       {props => <TextArea {...props} maxLength={d.opinion_max} value={opinion} onChange={event => setOpinion(event.target.value)} />}
     </Field>

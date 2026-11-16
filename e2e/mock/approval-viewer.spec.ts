@@ -30,7 +30,7 @@ const document: ApprovalDocument = {
 const reasonCodes: Record<string, string[]> = { approval_return: ["NEEDS_SUPPLEMENT", "OTHER"], org_change_reject: ["POLICY_VIOLATION", "OTHER"] };
 const receipts = { APPROVE: "승인했습니다. 결재가 완료되었습니다.", REJECT: "반려했습니다. 결재가 끝났습니다.", RETURN: "결재를 기록했습니다." } as const;
 
-async function mockViewer(page: Page, options: { actions?: boolean; return?: boolean; stale?: boolean; holdSuccessRead?: boolean } = {}) {
+async function mockViewer(page: Page, options: { actions?: boolean; route?: boolean; return?: boolean; stale?: boolean; holdSuccessRead?: boolean } = {}) {
   const decisions: { body: unknown; key: string | null }[] = [];
   let current = structuredClone(document);
   let reads = 0;
@@ -38,6 +38,7 @@ async function mockViewer(page: Page, options: { actions?: boolean; return?: boo
   const readGate = new Promise<void>(resolveRead => { resumeRead = resolveRead; });
   let decided = false;
   if (options.actions === false) current.my_actions = { kind: "none" };
+  if (options.route === false) current.route = [];
   if (options.return === false && current.my_actions.kind === "approve") delete current.my_actions.return;
   await page.route(url => url.pathname === "/api/v1/approvals/approval-1", async route => {
     reads++;
@@ -121,12 +122,22 @@ test("approval viewer never infers decision controls from document status", asyn
   expect(mock.unexpected).toEqual([]);
 });
 
+test("approval document without a route omits the route card", async ({ page }) => {
+  const mock = await mockScreen(page, screens[0], "empty");
+  await mockViewer(page, { actions: false, route: false });
+  await page.goto("/approvals/approval-1");
+  await expect(page.getByRole("region", { name: t("approvals.preview.facts"), exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: t("approvals.preview.route"), exact: true })).toHaveCount(0);
+  expect(mock.unexpected).toEqual([]);
+});
+
 test("approval document remains visible in the component gallery", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/_gallery?entry=approvals-page");
   const section = page.locator(".gallery__section", { has: page.getByRole("heading", { name: "결재함", exact: true }) });
   await expect(section.getByRole("region", { name: "문서 정보", exact: true })).toContainText("시행일");
   await expect(section.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
+  await expect(section.getByText(t("org_change.refuse.identity_unbound"), { exact: true })).toBeVisible();
   await expectAxe(page, "approval document gallery", { include: ".gallery__section" });
   expect(await page.evaluate(() => window.document.scrollingElement!.scrollWidth - innerWidth)).toBe(0);
   expect(await page.locator("main").evaluate(main => main.scrollWidth - main.clientWidth)).toBe(0);

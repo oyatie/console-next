@@ -59,7 +59,7 @@ pub(crate) async fn read_checklist(
     subject: &AccessSubject,
     slice: &AccessSlice,
 ) -> Result<Checklist, PgOnboardingError> {
-    let (facts, _, _) = facts::setup_facts(
+    let facts = facts::checklist_facts(
         tx,
         (actor.org, *actor.user.as_uuid()),
         phase == TenantPhase::Setup,

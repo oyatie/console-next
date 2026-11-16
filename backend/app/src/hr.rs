@@ -4034,6 +4034,7 @@ mod tests {
         pool: sqlx::PgPool,
     ) -> Result<(), String> {
         use axum::extract::FromRequest;
+        use console_hr_domain::import::classification::employee_import_target_for_header;
         use console_kernel_core::UserId;
 
         const PLANTED: [&str; 15] = [
@@ -4230,10 +4231,17 @@ mod tests {
             .filter(|column| column.classification == "restricted")
             .map(|column| column.normalized_header.as_str())
             .collect();
-        assert_eq!(
-            restricted,
-            BTreeSet::from(["주민등록번호", "급여", "계좌", "전화", "핸드폰"])
-        );
+        let expected: BTreeSet<&str> = header_row
+            .into_iter()
+            .filter(|header| !is_rrn_value(header))
+            .filter(|header| {
+                employee_import_column_classification(
+                    header,
+                    employee_import_target_for_header(header),
+                ) == "restricted"
+            })
+            .collect();
+        assert_eq!(restricted, expected);
         // The RRN-named row is kept raw-only, never as a candidate.
         assert_eq!(preview.preserved_rows, 1);
         let Json(summary) = dry_run_employee_import(

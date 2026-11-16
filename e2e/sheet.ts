@@ -4,9 +4,9 @@ import { koDay } from "./dates";
 
 /**
  * A lifecycle sheet's title is the act ("전보") with the person in the line above it (spec E5); a test may still name
- * it "<person> <act>" as the sheets used to read.
+ * it "<person> <act>" as the sheets used to read. A transfer becomes 전근 when the destination changes 사업장.
  */
-const ACTS: Record<string, string> = { "전보": "전보", "승진 처리": "승진 · 강등", "휴직 처리": "휴직", "복직 처리": "복직", "계약 갱신": "계약 갱신 · 변경" };
+const ACTS: Record<string, string | RegExp> = { "전보": /^(전보|전근)$/, "승진 처리": "승진 · 강등", "휴직 처리": "휴직", "복직 처리": "복직", "계약 갱신": "계약 갱신 · 변경" };
 /** The open side sheet (one at a time), by its title. */
 export function sheet(page: Page, name?: string | RegExp) {
   if (typeof name === "string")

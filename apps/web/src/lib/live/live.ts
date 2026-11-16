@@ -141,6 +141,8 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
     // Imports keep running and recovery has other actors: a recent write cannot suppress their next step.
     if (d.type !== "import_run" && d.type !== "ops_recovery" && d.type !== "identifier_correction" && ownWrite(qc)) {
       const changed = matchChange(d.type, str(d.id));
+      // An approver can decide before the drafter's submit leaves its echo window.
+      if (d.type === "org_change") queue((path, params) => path !== "/api/v1/me/action-inbox" && changed(path, params));
       void invalidateWhere(qc, (path, params) => path === "/api/v1/me/action-inbox" && changed(path, params), true);
       return;
     }

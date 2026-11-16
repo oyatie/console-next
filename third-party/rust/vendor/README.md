@@ -27,6 +27,15 @@ instead of reserving memory from it. Allocation follows the strings actually
 read. The workspace workbook-reader tests cover ordinary and oversized hints
 through the HR import reader; preserve this behavior when updating the vendor.
 
+## Worksheet coordinate arithmetic
+
+The calamine patch uses checked subtraction for dimension bounds and checked
+base-26/base-10 accumulation for column and row coordinates. Reversed dimensions
+and overflowing dimensions, cell references or row references return `XlsxError`
+instead of panicking in debug builds or wrapping in release builds. The workspace
+workbook-reader tests exercise the library directly without the import preflight;
+preserve these checks when updating or removing the vendor patch.
+
 ## zip dual-header security fix
 
 Both spreadsheet patches require `zip >=9.0.5` (within major 9) for

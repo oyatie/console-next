@@ -46,13 +46,15 @@ pub(crate) async fn views_at(
     point: ReadPoint,
     personal: bool,
 ) -> Result<HashMap<Uuid, Vec<WorkplaceView>>, PgEntityError> {
+    // SameAsRegistration reuses the certificate address ID; Own inserts a distinct immutable row.
     let rows = sqlx::query(
         "SELECT entity_workplace_opens_on(w.id, $4) AS placement_opens_on, w.id, w.legal_entity_id, w.registration_id, w.sub_serial, w.default_branch_id, w.kind_code, w.code, w.needs_confirmation, \
                 w.closed_on, w.not_registered_reason_code, w.not_registered_reason_label, w.not_registered_reason_version, \
                 COALESCE(w.is_abstract, false) AS is_abstract, \
                 COALESCE(w.registration_id, (SELECT reg.id FROM business_registrations reg WHERE reg.legal_entity_id = w.legal_entity_id AND reg.voided_at IS NULL AND reg.closed_on IS NULL ORDER BY reg.holder_workplace_id = e.primary_workplace_id DESC NULLS LAST, reg.created_at LIMIT 1)) AS filing_registration_id, \
                 e.biz_kind, e.primary_workplace_id, e.head_office_workplace_id, e.head_office_has_no_workplace, \
-                r.version, r.effective_from, r.name, r.address_id, r.mail_address_id, r.opened_on, r.representative_name, \
+                r.version, r.effective_from, r.name, COALESCE(cert.business_address_id, r.address_id) AS address_id, \
+                cert.business_address_id IS NOT NULL AS same_address_as_registration, r.mail_address_id, r.opened_on, r.representative_name, \
                 r.main_product, r.phone, r.fax, r.mobile, r.email, r.is_construction_site, r.status, r.status_since, r.status_until, \
                 r.withholding_mode, r.bulk_filed_on, r.independent_lsa_unit, r.independent_lsa_evidence, r.change_mode, r.effective_from > $2 AS before_first, \
                 r.not_registered_reason_code AS rev_reason_code, r.not_registered_reason_label AS rev_reason_label, r.not_registered_reason_version AS rev_reason_version, \
@@ -65,6 +67,13 @@ pub(crate) async fn views_at(
                             FROM workplace_revisions x WHERE x.workplace_id = w.id \
                             AND ($4::timestamptz IS NULL OR x.created_at <= $4) \
                             ORDER BY x.effective_from > $2, abs(x.effective_from - $2), x.version DESC LIMIT 1) r ON true \
+         LEFT JOIN LATERAL (SELECT x.business_address_id FROM business_registration_revisions x \
+                            WHERE x.registration_id = w.registration_id \
+                            AND EXISTS (SELECT 1 FROM business_registration_revisions linked \
+                                        WHERE linked.registration_id = w.registration_id AND linked.business_address_id = r.address_id \
+                                        AND ($4::timestamptz IS NULL OR linked.created_at <= $4)) \
+                            AND ($4::timestamptz IS NULL OR x.created_at <= $4) \
+                            ORDER BY x.effective_from > $2, abs(x.effective_from - $2), x.version DESC LIMIT 1) cert ON true \
          WHERE w.legal_entity_id = ANY($1) AND (w.voided_at IS NULL OR w.voided_at > $4) \
            AND ($4::timestamptz IS NULL OR w.created_at <= $4) \
            AND ($3::uuid[] IS NULL OR w.id = ANY($3) OR w.legal_entity_id = ANY($3)) ORDER BY w.sort_order NULLS LAST, w.created_at, w.id",
@@ -153,6 +162,7 @@ pub(crate) async fn views_at(
                     before_first_record: r.try_get("before_first")?,
                     name: r.try_get("name")?,
                     address: address.and_then(|a| addresses.get(&a).cloned()),
+                    same_address_as_registration: r.try_get("same_address_as_registration")?,
                     mail_address: mail.and_then(|a| addresses.get(&a).cloned()),
                     opened_on: r.try_get("opened_on")?,
                     representative_name: r.try_get("representative_name")?,

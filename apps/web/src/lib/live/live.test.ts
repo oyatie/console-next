@@ -300,3 +300,25 @@ test("a second person's correction decision survives this tab's recent-write win
   expect(isInvalidated(qc, mine)).toBe(true);
   expect(isInvalidated(qc, detail)).toBe(true);
 });
+
+test("an org decision refreshes the request and list during the drafter's recent-write window without an echo notice", async () => {
+  let status = "IN_APPROVAL";
+  const query = get("/api/v1/org-changes", { params: { query: { limit: 1 } } });
+  const detail = get("/api/v1/org-changes/{id}", { params: { path: { id: "c1" } } });
+  const read = async () => ({ status }) as never;
+  const list = new QueryObserver(qc, { ...query, queryFn: read });
+  const record = new QueryObserver(qc, { ...detail, queryFn: read });
+  const notice = vi.fn();
+  const off = [list.subscribe(() => {}), record.subscribe(() => {}), onRecordChange(notice)];
+  try {
+    await vi.advanceTimersByTimeAsync(0);
+    expect(list.getCurrentResult().data).toEqual({ status: "IN_APPROVAL" });
+    await qc.getMutationCache().build(qc, { mutationFn: async () => 1 }).execute(undefined);
+    status = "REJECTED";
+    frame("change", { type: "org_change", id: "c1" });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(list.getCurrentResult().data).toEqual({ status: "REJECTED" });
+    expect(record.getCurrentResult().data).toEqual({ status: "REJECTED" });
+    expect(notice).not.toHaveBeenCalled();
+  } finally { off.forEach(unsubscribe => unsubscribe()); }
+});

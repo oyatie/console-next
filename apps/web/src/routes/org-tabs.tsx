@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { chunk } from "../lib/chunk-guard";
@@ -11,12 +12,20 @@ import { ReadSkeleton } from "../ui/skeleton/skeleton";
 import { AccessGate } from "../reference/authz/ui/access-gate";
 import { readRequirement } from "./route-reads";
 import { ORG_TABS, orgTab } from "./org-tab-search";
+import { entitiesAt } from "../reference/entity/api";
 
 const Chart = lazy(() => chunk(import("./org-screen")).then(m => ({ default: m.OrgScreen })));
-const Entities = lazy(() => chunk(import("../features/entity/ui/entity-routes")).then(m => ({ default: m.EntitiesScreen })));
+const EntityContent = lazy(() => chunk(import("../features/entity/ui/entity-routes")).then(m => ({ default: m.EntitiesScreen })));
 const Changes = lazy(() => chunk(import("../features/org/OrgChange")).then(m => ({ default: m.OrgChanges })));
 const History = lazy(() => chunk(import("../features/org-bulk/ui/history-page")).then(m => ({ default: m.HistoryPage })));
 const route = getRouteApi("/app/org");
+
+/** Start the shared read behind the access gate while the list code loads. */
+function Entities() {
+  const { as_of, known_at, bulk } = route.useSearch();
+  useQuery({ ...entitiesAt({ as_of, known_at }), enabled: !bulk });
+  return <Suspense fallback={<ReadSkeleton layout="list" />}><EntityContent /></Suspense>;
+}
 
 /** One stable page head; each slice keeps its own toolbar and read states. */
 export function OrgTabs() {

@@ -3,17 +3,28 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
+import { queryPath } from "../../../lib/query";
 import { RequestsPage } from "./requests-page";
 
-const { state, navigate, buttons } = vi.hoisted(() => ({
-  state: { hr: true, search: { lane: "all", status: "OPEN", sel: "selected", page: 3 } },
+const { state, navigate, buttons, reads } = vi.hoisted(() => ({
+  state: { loading: false, pending: false, hr: true, search: { lane: "all", status: "OPEN", sel: "selected", page: 3 } },
   navigate: vi.fn(),
+  reads: [] as { path: string; enabled?: boolean }[],
   buttons: new Map<ReactNode, (() => void) | undefined>(),
 }));
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => navigate }) }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { items: [] } }), useQueries: ({ queries }: { queries: unknown[] }) => queries.map(() => ({})) }));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: (query: Parameters<typeof queryPath>[0] & { enabled?: boolean }) => {
+    const path = queryPath(query);
+    reads.push({ path, enabled: query.enabled });
+    return path === "/api/v1/me/authz"
+      ? { isLoading: state.loading, isPending: state.pending }
+      : { data: { items: [] } };
+  },
+  useQueries: ({ queries }: { queries: unknown[] }) => queries.map(() => ({})),
+}));
 vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => state.hr }));
-vi.mock("../../../lib/react/query-state", () => ({ QueryState: ({ empty }: { empty: (data: { items: [] }) => ReactNode }) => empty({ items: [] }) }));
+vi.mock("../../../lib/react/query-state", () => ({ QueryState: ({ q, empty }: { q: { isLoading?: boolean }; empty?: (data: { items: [] }) => ReactNode }) => q.isLoading ? <span>{t("common.loading")}</span> : empty?.({ items: [] }) }));
 vi.mock("../../../ui/button/button", () => ({
   Button: ({ children, onClick }: { children: ReactNode; onClick?: () => void }) => {
     buttons.set(children, onClick);
@@ -28,7 +39,10 @@ vi.mock("@console/i18n", async importOriginal => {
 });
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
+  state.loading = false;
+  state.pending = false;
   state.hr = true;
+  reads.length = 0;
   state.search = { lane: "all", status: "OPEN", sel: "selected", page: 3 };
   buttons.clear();
   navigate.mockClear();
@@ -68,4 +82,22 @@ test.each([true, false])("unfiltered empty preserves the original guidance (HR %
   const html = renderToStaticMarkup(<RequestsPage />);
   expect(html).toContain(t(hr ? "requests.none.hr" : "requests.none.mine"));
   expect(html).not.toContain(t("requests.filters.reset"));
+});
+
+test("access loading holds both filter groups and the list read", () => {
+  state.loading = true;
+  state.pending = true;
+  const html = renderToStaticMarkup(<RequestsPage />);
+  expect(html).toContain(t("common.loading"));
+  expect(html).not.toContain(t("requests.lane.role"));
+  expect(html).not.toContain(t("requests.status.OPEN"));
+  expect(reads.find(read => read.path === "/api/v1/change-requests")?.enabled).toBe(false);
+});
+
+test.each([false, true])("settled or disabled access keeps the filters and list available (pending %s)", pending => {
+  state.pending = pending;
+  const html = renderToStaticMarkup(<RequestsPage />);
+  expect(html).toContain(t("requests.status.OPEN"));
+  expect(html).toContain(t("requests.lane.role"));
+  expect(reads.find(read => read.path === "/api/v1/change-requests")?.enabled).toBe(true);
 });

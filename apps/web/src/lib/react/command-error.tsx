@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@console/api";
 import { isMessageId, t } from "@console/i18n";
@@ -16,6 +16,9 @@ type FieldRefusal = {
   field: string;
   code: string;
 };
+
+// A sheet can unmount while its owner keeps the error for the same submitted intent.
+const focusedErrors = new WeakMap<ApiError, string>();
 
 function CommandReference({ requestKey, api }: { requestKey?: string; api?: ApiError }) {
   return (
@@ -45,6 +48,7 @@ export function CommandError({
   live,
   recover = true,
   read = false,
+  focusOnRefusal = false,
   onFocusField,
   formId,
   formFields,
@@ -54,6 +58,8 @@ export function CommandError({
   recover?: boolean;
   /** Reads can be retried directly; they never have an uncertain write outcome. */
   read?: boolean;
+  /** Opt in only for errors from the user's submit, never automatic previews. */
+  focusOnRefusal?: boolean;
   children?: ReactNode;
   own?: (code: string) => string | undefined;
   /** The caller's record-history route; never shown for redacted metadata. */
@@ -65,8 +71,18 @@ export function CommandError({
   formId?: string;
   formFields?: string[];
 }) {
-  if (!error) return null;
+  const refusal = useRef<HTMLDivElement>(null);
+  const focusedKey = useRef<string | undefined>(undefined);
   const api = error instanceof ApiError ? error : undefined;
+  const refused = focusOnRefusal && !read && api?.status === 403 && Boolean(api.requestKey);
+  const focusKey = refused ? JSON.stringify([api?.requestKey, api?.code]) : undefined;
+  useEffect(() => {
+    if (!api || !focusKey || focusedKey.current === focusKey || focusedErrors.get(api) === focusKey) return;
+    focusedKey.current = focusKey;
+    focusedErrors.set(api, focusKey);
+    refusal.current?.focus();
+  }, [api, focusKey]);
+  if (!error) return null;
   // The transport and useCommand attach intent keys to commands; a read's operation ID is only a support reference.
   const uncertain = outcomeUnknown(error);
   const readFailure = read || (uncertain && !api?.requestKey);
@@ -114,7 +130,7 @@ export function CommandError({
   }
 
   return (
-    <Banner tone={checking ? "info" : "danger"} live={live ?? (checking ? "polite" : "assertive")} title={checking ? t("requestOutcome.checking") : undefined}
+    <Banner ref={refusal} tabIndex={refused ? -1 : undefined} tone={checking ? "info" : "danger"} live={live ?? (checking ? "polite" : "assertive")} title={checking ? t("requestOutcome.checking") : undefined}
       actions={finish && <Button variant="primary" onClick={finish}>{t("requestOutcome.check")}</Button>}>
       {readFailure ? readFailureText(error, own) : api?.status === 0 ? t("common.networkError") : failureText(error, own)}
       {checking && <p>{t("requestOutcome.remedy")}</p>}

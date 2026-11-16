@@ -1,7 +1,8 @@
 // How people's lifecycle events and exit steps read: codes to message ids and words.
 import type { components } from "@console/api/schema";
 import { isMessageId, t, type MessageId } from "@console/i18n";
-import { fmtDate, fmtDateTime, fmtKrw } from "@console/i18n/format";
+import { fmtDate, fmtDateTime, fmtKrw, fmtNumber } from "@console/i18n/format";
+import type { IneligibleSeverance } from "./domain/severance";
 import { CHANGE_REQUEST_STATUS, EMPLOYMENT_TYPE, LEAVE_TYPE, LIFECYCLE_EVENT, LIFECYCLE_STATE, actor, codeText, label, labeled, type Labeled } from "../../lib/labels";
 import { phoneDisplay } from "../../lib/pure/formats";
 import type { ChangeRequest, LifecycleEvent } from "./api";
@@ -263,3 +264,8 @@ export const ownerLabel = (line: string) => { const [domain, level] = line.split
 export const pasteSkippedText = (result: { readOnly: number; outside: number } | null) =>
   result && (result.readOnly > 0 || result.outside > 0) ? t("bulkGrid.paste.skipped", result) : null;
 export { trailGroup } from "./domain/trail-group";
+export function severanceLabel(eligibility: IneligibleSeverance): string {
+  const { num, den } = eligibility.threshold;
+  const threshold = num % den === 0 ? fmtNumber(num / den) : `${fmtNumber(num)}/${fmtNumber(den)}`;
+  return t(eligibility.reason === "UNDER_SERVICE_YEARS" ? "exit.settlement.notEligible.serviceYears" : "exit.settlement.notEligible.weeklyHours", { threshold });
+}

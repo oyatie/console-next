@@ -64,7 +64,7 @@ test.each([
   ["leave v2 leave_type", schemas.LeaveRequestV2View!.properties!.leave_type!, 2],
   ["change request kind", schemas.ChangeRequest!.properties!.kind!, 9],
   ["change request subject_type", schemas.ChangeRequest!.properties!.subject_type!, 5],
-  ["access domain", schemas.AccessDomain!, 19],
+  ["access domain", schemas.AccessDomain!, 20],
   ["action inbox source", schemas.ActionInboxItem!.properties!.kind!, 46],
 ] as const)("%s permits future response values and retains every documented value", (_, schema, count) => {
   expect(schema.type).toBe("string");

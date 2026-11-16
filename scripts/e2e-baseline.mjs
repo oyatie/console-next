@@ -72,7 +72,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       rmSync(reportFile, { force: true });
       const started = performance.now();
       const result = spawnSync(process.execPath, [path.join(root, "node_modules/@playwright/test/cli.js"), "test"], {
-        cwd: root, stdio: "inherit", env: { ...process.env, CI: "1", E2E_WORKERS: "2", E2E_REUSE: "0", E2E_XBROWSER: browser === "firefox" ? "1" : "0",
+        cwd: root, stdio: "inherit", env: { ...process.env, CI: "1", E2E_WORKERS: "2", E2E_REUSE: "0", E2E_BROWSER: browser,
           E2E_REPORTER: "dot,json", PLAYWRIGHT_JSON_OUTPUT_FILE: reportFile, E2E_TIMINGS_FILE: path.join(output, "timings.json") },
       });
       red ||= result.status !== 0;

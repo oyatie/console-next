@@ -3,6 +3,8 @@ import { notFound, redirect } from "@tanstack/react-router";
 import { logout, refresh, session } from "@console/api";
 import { draftKey } from "./draft-owner";
 
+export { observeRouteReady } from "./route-href";
+
 /** A session whose token and passkey state disagree cannot recover in place: sign out and sign in again. */
 async function signInAgain(): Promise<never> {
   await logout();

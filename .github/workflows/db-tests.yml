@@ -38,22 +38,8 @@ jobs:
         id: timings
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          curl --fail --silent --show-error --get \
-            -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' \
-            --data-urlencode 'name=db-test-timings' --data-urlencode 'per_page=100' \
-            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/artifacts" > "${RUNNER_TEMP}/db-test-timings.json"
-          node --input-type=module <<'JS'
-          import { appendFileSync, readFileSync } from 'node:fs';
-          const { artifacts } = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/db-test-timings.json`, 'utf8'));
-          const own = Number(process.env.GITHUB_REPOSITORY_ID), branch = process.env.GITHUB_REF_NAME;
-          const trusted = artifacts.filter(a => !a.expired &&
-            a.workflow_run?.head_repository_id === own && a.workflow_run.repository_id === own &&
-            (a.workflow_run.head_branch === branch || a.workflow_run.head_branch === 'dev'));
-          trusted.sort((a, b) => Number(b.workflow_run.head_branch === branch) - Number(a.workflow_run.head_branch === branch)
-            || b.created_at.localeCompare(a.created_at));
-          if (trusted[0]) appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${trusted[0].workflow_run.id}\n`);
-          JS
+        # The reconciliation job publishes timings from red runs too, and the planner validates them.
+        run: node .github/ci-proof.cjs --any-conclusion db-test-timings db-tests.yml push schedule
 
   db-tests:
     needs: db-test-timing-source

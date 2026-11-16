@@ -61,9 +61,18 @@ pub struct ActionInboxLink {
     pub label: Option<String>,
 }
 
+/// Where an item's due date comes from, when that limits what may be done with it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DueBasis {
+    /// The due date is a legal deadline read from the statutory register.
+    Statutory,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActionInboxSourceItem {
     pub context: Option<serde_json::Value>,
+    pub due_basis: Option<DueBasis>,
     pub id: String,
     pub kind: String,
     pub ref_code: String,
@@ -127,6 +136,8 @@ pub struct ActionInboxItem {
         skip_serializing_if = "Option::is_none"
     )]
     pub due: Option<OffsetDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub due_basis: Option<DueBasis>,
     #[serde(rename = "dueTone")]
     pub due_tone: &'static str,
     #[serde(
@@ -577,6 +588,7 @@ mod tests {
             .map(|id| item("work", id, now - Duration::DAY))
             .collect::<Vec<_>>();
         items.push(ActionInboxSourceItem {
+            due_basis: None,
             due: Some(now),
             ..item("work", 2_001, now)
         });
@@ -608,6 +620,7 @@ mod tests {
         let case = |id| {
             project_item(
                 ActionInboxSourceItem {
+                    due_basis: None,
                     links: vec![ActionInboxLink {
                         kind: "employee".into(),
                         id: "person".into(),
@@ -628,6 +641,7 @@ mod tests {
         let filing = |group: Option<&str>| {
             project_item(
                 ActionInboxSourceItem {
+                    due_basis: None,
                     context: Some(
                         serde_json::json!({"insurance":{"kind":"ACQUIRE", "employee_id":"person", "case_id":"case", "group_id":group}}),
                     ),
@@ -658,6 +672,7 @@ mod tests {
         let page = merge_pages(
             vec![source_page(
                 vec![ActionInboxSourceItem {
+                    due_basis: None,
                     due: Some(now + Duration::HOUR),
                     ..item("work", 9, now)
                 }],
@@ -749,6 +764,7 @@ mod tests {
         let as_of = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
         let first = item("work", 1, as_of - Duration::seconds(2));
         let repeated = ActionInboxSourceItem {
+            due_basis: None,
             created_at: as_of - Duration::SECOND,
             ..first.clone()
         };
@@ -1098,6 +1114,7 @@ mod tests {
 
     fn item(kind: &'static str, id: u128, created_at: OffsetDateTime) -> ActionInboxSourceItem {
         ActionInboxSourceItem {
+            due_basis: None,
             context: None,
             id: format!("{kind}:{}", Uuid::from_u128(id)),
             kind: kind.to_owned(),

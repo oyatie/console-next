@@ -12,6 +12,7 @@ import { rosterXlsx } from "./workbook";
 import { gradeJourney } from "./helpers/grade-fix";
 import { chooseWorkbook, payPeriod } from "./helpers/import";
 import { expectComposer } from "./helpers/composer";
+import { throttleCPU } from "./helpers/cpu-throttle";
 
 // The first-run solo gate (owner rule): one administrator, an empty tenant, no helper account. From the
 // first sign-in to operating, every prerequisite is created through the product, in place, with no second
@@ -50,6 +51,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
 
   const admin = await test.step("J1 First sign-in and company domain", async () => {
     const admin = await firstSignIn(browser, replacement);
+    await throttleCPU(admin);
     await routeReady(admin);
     await expect(admin.locator('a[href="/setup/company-names"]')).toHaveCount(0);
     await go(admin, "/setup/company-names", true);
@@ -203,6 +205,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     await addInput.press("Enter");
     const created = await (await applied).json() as { created_unit_ids: string[] };
     expect(created.created_unit_ids).toHaveLength(1);
+    await routeReady(admin);
     // org-19: stay on the chart, select the department the server created, and link its record in the receipt.
     await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(created.created_unit_ids[0]);
     await addInput.press("Escape");

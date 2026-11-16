@@ -129,14 +129,11 @@ async fn in_window_hydration_never_exceeds_the_keyset_page(pool: PgPool) {
             .fetch_one(&mut *conn).await.unwrap();
         q = q.bind(bounds);
     }
+    let ids: Vec<_> = page.items.iter().map(|item| item.inbox_id()).collect();
     let plan: Value = q
         .bind(vec!["DISPATCHED_IN", "OUTSOURCED_ON_SITE", "FREELANCE"])
-        .bind(
-            page.items
-                .iter()
-                .map(|item| item.inbox_id())
-                .collect::<Vec<_>>(),
-        )
+        .bind(&ids)
+        .bind(&ids)
         .bind(None::<time::OffsetDateTime>)
         .fetch_one(&mut *conn)
         .await

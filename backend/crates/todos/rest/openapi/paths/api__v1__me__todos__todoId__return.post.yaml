@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - me
+operationId: returnMyTodo
+summary: Send a request back to whoever asked
+description: >-
+  Only the request's owner, while it is open. 404 for a private todo or one
+  that is not the caller's; 409 todo_closed once done or returned; 422
+  validation for a note outside 1..=200 characters. Audited as todo.return,
+  without the note.
+security:
+- bearerAuth: []
+parameters:
+- name: todoId
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ReturnTodoRequest'
+responses:
+  '204':
+    description: The request was sent back.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: JWT verification is not configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

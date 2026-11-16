@@ -39,12 +39,12 @@ test("live E2E builds one candidate and runs at most four Chromium shards before
   }
 });
 
-test("both live browser projects exclude backend-free suites while retaining live journeys", t => {
+test("all three live browser projects exclude backend-free suites while retaining live journeys", t => {
   const directory = mkdtempSync(path.join(tmpdir(), "live-selection-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  for (const [project, xbrowser] of [["parallel", "0"], ["firefox", "1"]]) {
+  for (const [project, browser] of [["parallel", "chromium"], ["firefox", "firefox"], ["webkit", "webkit"]]) {
     const output = path.join(directory, `${project}.json`);
-    const env = { ...process.env, E2E_XBROWSER: xbrowser, PLAYWRIGHT_JSON_OUTPUT_FILE: output };
+    const env = { ...process.env, E2E_BROWSER: browser, PLAYWRIGHT_JSON_OUTPUT_FILE: output };
     delete env.NODE_TEST_CONTEXT;
     const selection = "first-run-solo|error-beacon|coldstart/|mock/|states/|live-renew.server-expiry|layout/layout.spec|perf/.*.test|visual.spec";
     const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", selection, "--list", `--project=${project}`, "--reporter=json"], {
@@ -62,7 +62,7 @@ test("both live browser projects exclude backend-free suites while retaining liv
     visit(report.suites);
     for (const file of files) {
       assert.doesNotMatch(file, /(?:^|\/)(?:coldstart|mock|states)\/|live-renew\.server-expiry\.spec\.ts$|(?:^|\/)layout\/layout\.spec\.ts$|(?:^|\/)perf\/.*\.test\.ts$/, `${project}: ${file}`);
-      if (project === "firefox") assert.doesNotMatch(file, /visual\.spec\.ts/, file);
+      if (browser !== "chromium") assert.doesNotMatch(file, /visual\.spec\.ts/, file);
     }
     for (const spec of ["first-run-solo.spec.ts", "error-beacon.spec.ts"])
       assert.ok(files.some(file => file.endsWith(spec)), `${project} must retain ${spec}`);
@@ -75,7 +75,7 @@ test("Firefox live discovery preserves Chromium's live scope except visual basel
     const output = path.join(dir, `${browser}.json`);
     const result = spawnSync(process.execPath, [path.join(root, "node_modules/@playwright/test/cli.js"),
       "test", "--list", `--config=${config}`, `--project=${browser === "firefox" ? "firefox" : "parallel"}`, "--reporter=json"],
-    { cwd: root, encoding: "utf8", env: { ...process.env, E2E_XBROWSER: browser === "firefox" ? "1" : "0", PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
+    { cwd: root, encoding: "utf8", env: { ...process.env, E2E_BROWSER: browser, PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     const report = JSON.parse(readFileSync(output, "utf8"));
     assert.deepEqual(report.errors, []);

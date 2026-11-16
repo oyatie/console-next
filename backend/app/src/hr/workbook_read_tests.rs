@@ -226,10 +226,90 @@ fn the_reference_workbooks_are_not_rosters_and_ask_for_a_mapping() {
 /// panic wherever overflow checks are on (dev and test builds). An upload is
 /// refused or read, never a panic.
 #[test]
-#[ignore = "owner=import; reason=FZ-5 calamine get_dimension underflows on a reversed dimension; expires=2026-11-20"]
 fn regression_fz5_a_reversed_dimension_is_read_or_refused_without_panicking() {
     let book = include_bytes!("../../../fuzz/regressions/fz5-reversed-dimension.xlsx");
     let caps = default_caps().unwrap();
     let read = std::panic::catch_unwind(|| read_workbook(book, &caps).map(|s| s.len()).ok());
     assert!(read.is_ok(), "a reversed <dimension> panicked the reader");
+}
+
+#[test]
+fn a_reversed_dimension_returns_the_catalogued_corrupt_refusal() {
+    let book = include_bytes!("../../../fuzz/regressions/fz5-reversed-dimension.xlsx");
+    let error = read_workbook(book, &default_caps().unwrap()).unwrap_err();
+    assert_eq!(error.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(error.code, "workbook_corrupt");
+}
+
+#[test]
+fn markup_bypasses_return_the_catalogued_refusal_without_panicking() {
+    for book in [
+        include_bytes!("fixtures/dimension-namespace.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-doctype-lower.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-doctype-mixed.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-slash.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-comment-overlap.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-duplicate-rels.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-encoding.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-encoding-late.xlsx").as_slice(),
+    ] {
+        let error = read_workbook(book, &default_caps().unwrap()).unwrap_err();
+        assert_eq!(error.status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(error.code, console_hr_domain::import::guard::codes::CORRUPT);
+    }
+}
+
+#[test]
+fn svg_doctype_does_not_refuse_a_valid_workbook() {
+    assert_valid_dimension_corpus(include_bytes!("fixtures/dimension-svg.xlsx"));
+}
+
+#[test]
+fn olap_pivot_dimension_does_not_refuse_a_valid_workbook() {
+    assert_valid_dimension_corpus(include_bytes!("fixtures/dimension-pivot.xlsx"));
+}
+
+#[test]
+fn custom_xml_dimension_does_not_refuse_a_valid_workbook() {
+    assert_valid_dimension_corpus(include_bytes!("fixtures/dimension-custom.xlsx"));
+}
+
+fn assert_valid_dimension_corpus(book: &[u8]) {
+    let sheets = read_workbook(book, &default_caps().unwrap()).unwrap();
+    assert_eq!(sheets.len(), 1);
+    assert_eq!(sheets[0].name, "Sheet1");
+    assert_eq!(sheets[0].rows.len(), 2);
+    assert_eq!(sheets[0].rows[0].text(0), "성명");
+    assert_eq!(sheets[0].rows[1].text(0), "가");
+}
+
+#[test]
+fn the_library_refuses_invalid_coordinates_even_without_preflight() {
+    for bytes in [
+        include_bytes!("../../../fuzz/regressions/fz5-reversed-dimension.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-reversed-row.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-reversed-column.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-column-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-row-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/cell-column-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/cell-column-add-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/cell-lowercase-column-add-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/cell-lowercase-column-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/row-overflow.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-encoding.xlsx").as_slice(),
+        include_bytes!("fixtures/dimension-encoding-late.xlsx").as_slice(),
+    ] {
+        let mut book = Xlsx::new(Cursor::new(bytes)).unwrap();
+        let name = book.sheet_names()[0].clone();
+        let result = book.worksheet_cells_reader(&name).and_then(|mut reader| {
+            while reader.next_cell()?.is_some() {}
+            Ok(())
+        });
+        assert!(result.is_err(), "the reader accepted invalid coordinates");
+    }
+}
+
+#[test]
+fn explicit_utf8_relationships_preserve_the_selected_sheet() {
+    assert_valid_dimension_corpus(include_bytes!("fixtures/dimension-encoding-utf8.xlsx"));
 }

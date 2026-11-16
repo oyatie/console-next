@@ -107,6 +107,7 @@ pub(super) async fn items(
             continue;
         }
         items.push(ActionInboxSourceItem {
+            due_basis: None,
             id: format!("period_unlock:{id}"), kind: "period_unlock".into(), ref_code: String::new(), title: name.clone(), site: None, who: None,
             due: Some(due), submitted: Some(created_at), created_at,
             links: vec![ActionInboxLink { kind: "period_lock".into(), id: lock.to_string(), label: None }],

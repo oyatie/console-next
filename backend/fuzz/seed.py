@@ -58,8 +58,7 @@ def xlsx(sheets, dates=False, stored=False, dim=None):
     z.close()
     return buf.getvalue()
 
-# FZ-5: a <dimension> whose end is before its start underflows in calamine's get_dimension. Kept in
-# regressions/ (the pinned test reads it), not in the seeds: while FZ-5 is open every run would stop on it.
+# A reversed dimension is kept as both a regression fixture and an active fuzz seed.
 REVERSED = None  # set below, once xlsx() exists
 
 ROSTER = [
@@ -80,6 +79,7 @@ put("xlsx-read", [
     xlsx([("a", []), ("b", [["이름", "입사일자"], ["가", 45000]])], dates=True),
     b"PK\x03\x04",
     b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 64,   # OLE (protected / legacy .xls)
+    REVERSED,
 ])
 
 CELLS = ["2024-01-02", "2024.1.2", "2024/01/02", "20240102", "45292", "2024-02-30", "+000-+1-+1",

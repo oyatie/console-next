@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { reasonLabel } from "../../../lib/reason-codes";
-import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { EnumValue } from "../../../ui/enum-value";
 import { SETTLEMENT_CERTIFICATION_STATE } from "../../../lib/labels";
 import { DerivedValue } from "../../../ui/field/derived-value";
 import { actor } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
-import { daysBetween } from "../../../ui/date/days";
+import { daysBetween, isDate } from "../../../ui/date/days";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { employeeQuery, eventsQuery } from "../api";
 import { byEffective, tenure } from "../domain/lifecycle";
-import { describeEvent } from "../present";
+import { describeEvent, severanceLabel } from "../present";
+import { ineligibleSeverance, settlementOutcome } from "../domain/severance";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { ExitDeadlines } from "./exit-deadlines";
 import { NoticePayFact } from "./exit-notice-pay";
@@ -96,15 +96,19 @@ export function CasePanel({ c, trailUnavailable }: { c: Case; trailUnavailable?:
 }
 
 const won = (n?: number) => (n == null ? t("format.notComputable") : t("format.krw", { amount: n }));
-const show = (v: unknown) => (v !== null && typeof v === "object" ? JSON.stringify(v) : String(v));
 
 /**
  * The server's figures for the stored settlement package, each marked computed with its basis, and the
- * statutory basis it reported as plain key/value rows (keys as sent: no invented labels).
+ * dated statutory citations. Source metadata is not a calculation result.
  */
 export function SettlementFigures({ pkg }: { pkg: Package }) {
+  const ineligible = ineligibleSeverance(pkg);
+  const outcome = settlementOutcome(pkg);
+  const figuresKnown = outcome === undefined || outcome === "ELIGIBLE";
   const basis = t("exit.settlement.computed", { at: fmtDateTime(pkg.generated_at) });
-  const rows = Object.entries(pkg.statutory_basis ?? {});
+  type Rule = { code: string; effective_from: string; citation: { instrument_ko: string; article_ko: string } };
+  const references = pkg.statutory_basis?.calculation_references as { rules?: Rule[] } | undefined;
+  const rules = (Array.isArray(references?.rules) ? references.rules : []).filter(rule => typeof rule?.code === "string" && typeof rule.effective_from === "string" && isDate(rule.effective_from) && typeof rule.citation?.instrument_ko === "string" && typeof rule.citation.article_ko === "string");
   return (
     <section className={s.figures} aria-label={t("exit.settlement.figures")}>
       <div className="row">
@@ -112,15 +116,13 @@ export function SettlementFigures({ pkg }: { pkg: Package }) {
         {pkg.certification_status === "UNCERTIFIED_DRAFT" && <EnumValue e={SETTLEMENT_CERTIFICATION_STATE} value={pkg.certification_status} />}
       </div>
       <DerivedValue label={t("exit.settlement.serviceDays")} value={pkg.service_days == null ? t("format.notComputable") : t("exit.settlement.days", { days: pkg.service_days })} basis={basis} />
-      <DerivedValue label={t("exit.settlement.averageDaily")} value={won(pkg.average_daily_wage_milliwon == null ? undefined : Math.round(pkg.average_daily_wage_milliwon / 1000))} basis={basis} />
-      <DerivedValue label={t("exit.settlement.ordinaryDaily")} value={won(pkg.ordinary_daily_wage_won)} basis={basis} />
-      <DerivedValue label={t("exit.settlement.severance")} value={won(pkg.severance_pay_won)} basis={basis} />
-      {rows.length > 0 && (
+      {!ineligible && <DerivedValue label={t("exit.settlement.averageDaily")} value={won(!figuresKnown || pkg.average_daily_wage_milliwon == null ? undefined : Math.round(pkg.average_daily_wage_milliwon / 1000))} basis={basis} />}
+      {!ineligible && <DerivedValue label={t("exit.settlement.ordinaryDaily")} value={won(figuresKnown ? pkg.ordinary_daily_wage_won : undefined)} basis={basis} />}
+      <DerivedValue label={t("exit.settlement.severance")} value={ineligible ? severanceLabel(ineligible) : won(figuresKnown ? pkg.severance_pay_won : undefined)} basis={ineligible && pkg.certification_status !== "CERTIFIED" ? <>{basis} · {t("exit.settlement.reviewPending")}</> : basis} />
+      {rules.length > 0 && (
         <details className={s.basis}>
           <summary>{t("exit.settlement.basis")}</summary>
-          <dl className="kv">
-            {rows.map(([k, v]) => <Fragment key={k}><dt className="code">{k}</dt><dd className="num">{typeof v === "number" ? fmtNumber(v) : show(v)}</dd></Fragment>)}
-          </dl>
+          {rules.map(rule => <DerivedValue key={rule.code} label={`${rule.citation.instrument_ko} · ${rule.citation.article_ko}`} value={t("exit.settlement.ruleEffective", { date: fmtDate(rule.effective_from) })} />)}
         </details>
       )}
     </section>

@@ -3,7 +3,7 @@ properties:
   display_name:
     type: string
   employee_id:
-    description: A changed link requests a pending identity-binding change; it requires step_up and an independent eligible approver. An unchanged value is a no-op.
+    description: A changed link requests a pending identity-binding change; it requires step_up and an independent eligible approver. An unchanged value is a no-op. Unless the caller manages accounts across the whole tenant, a new employee must be homed in a branch where the caller manages accounts; otherwise, or when it has no home branch or does not exist, the request is refused with 403 forbidden and no request is opened.
     type:
     - string
     - 'null'

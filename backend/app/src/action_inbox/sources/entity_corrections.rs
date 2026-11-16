@@ -78,6 +78,7 @@ pub(crate) async fn page(
                     continue;
                 };
                 items.push(ActionInboxSourceItem {
+                    due_basis: None,
                     context: Some(serde_json::json!({"correction": {"status": case.status}})),
                     id: format!("identifier_correction:{}", case.id),
                     kind: kind.into(),

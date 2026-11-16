@@ -40,7 +40,9 @@ pub(super) fn roster(people: usize, position: &str) -> GridSheet {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn two_thousand_people_rollback_atomically_with_bounded_dependency_reads(pool: PgPool) {
+async fn two_thousand_people_rollback_atomically_with_bounded_dependency_reads_budget(
+    pool: PgPool,
+) {
     let i = importer(pool).await;
     sqlx::query(
         "INSERT INTO tenant_setting_overrides (org_id, key, value, set_by, reason_code) \

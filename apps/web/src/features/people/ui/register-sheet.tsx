@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useKeys } from "../../../lib/react/use-keys";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ClipboardPaste, ListPlus, Users } from "lucide-react";
@@ -120,15 +121,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
     queued.current = null;
     latest.current(next);
   });
-  useEffect(() => {
-    const keys = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" || !e.shiftKey || !(e.metaKey || e.ctrlKey) || e.isComposing || !body.current?.closest('[role="dialog"]')?.contains(document.activeElement)) return;
-      e.preventDefault();
-      latest.current(!e.shiftKey);
-    };
-    window.addEventListener("keydown", keys);
-    return () => window.removeEventListener("keydown", keys);
-  }, []);
+  useKeys({ "registerSheet.save": () => latest.current(false) }, { region: () => body.current?.closest('[role="dialog"]') });
   const scope = entities.length === 1 ? entityName(entities[0]) : t("register.scopeAll");
   const status = d.hire > today ? t("register.foot.statusFuture") : t("register.foot.statusNow");
 

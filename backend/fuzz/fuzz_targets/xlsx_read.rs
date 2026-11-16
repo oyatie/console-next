@@ -12,7 +12,7 @@ use std::io::Cursor;
 use calamine::{DataRef, DataType, Reader, Xlsx};
 use console_hr_domain::import::detect::detect;
 use console_hr_domain::import::grid::{Cell, GridRow, GridSheet};
-use console_hr_domain::import::guard::zip::scan_zip;
+use console_hr_domain::import::guard::zip::check_dimensions;
 use console_hr_domain::import::guard::{CellBudget, WorkbookCaps};
 use console_hr_domain::import::workbook::check_workbook_signature;
 use libfuzzer_sys::fuzz_target;
@@ -90,7 +90,7 @@ fn read_sheet(
 
 fn read(bytes: &[u8]) -> Result<Vec<GridSheet>, &'static str> {
     check_workbook_signature(bytes)?;
-    scan_zip(bytes, &CAPS)?;
+    check_dimensions(bytes, &CAPS)?;
     let mut book = Xlsx::new(Cursor::new(bytes)).map_err(|_| "workbook")?;
     let mut budget = CellBudget::new(CAPS);
     let names = book.sheet_names().clone();

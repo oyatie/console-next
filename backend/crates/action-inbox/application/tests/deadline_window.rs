@@ -26,6 +26,7 @@ impl ActionInboxSourcePort for Source {
         Box::pin(async move {
             let items = if source == ActionInboxSource::OrgChange {
                 vec![ActionInboxSourceItem {
+                    due_basis: None,
                     context: None,
                     id: "org_change:00000000-0000-0000-0000-000000000001".into(),
                     kind: "org_change_draft".into(),
@@ -88,6 +89,7 @@ fn scheduled_system_acts_stay_neutral_even_when_their_date_has_passed() {
         let page = merge_pages(
             vec![ActionInboxSourcePage {
                 items: vec![ActionInboxSourceItem {
+                    due_basis: None,
                     context: None,
                     id: "scheduled:1".into(),
                     kind: "org_change_scheduled".into(),

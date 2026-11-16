@@ -221,6 +221,8 @@ export const koImport: Record<keyof typeof enImport, string> = {
   "import.error.import_apply_busy": "지금 반영하는 가져오기가 많습니다. 아무것도 쓰지 않았습니다 · 15초 뒤에 다시 반영할 수 있습니다.",
   "import.error.import_row_limit": "한 번에 반영할 수 있는 재직자 수를 넘었습니다. 퇴직자는 세지 않습니다 · 재직자 행을 나누어 올리십시오 · 설정의 「가져오기 한 번 최대 행」을 따릅니다.",
   "import.error.apply_interrupted": "반영이 쓰기 전에 끊겼습니다. 아무것도 쓰지 않았으니 다시 반영하십시오.",
+  "import.error.import_apply_forbidden": "현재 권한으로는 이 가져오기를 반영할 수 없습니다. 관리자에게 권한 확인을 요청하십시오.",
+  "import.error.import_apply_timed_out": "가져오기가 서버 처리 시간 제한을 넘었습니다. 반영된 내용은 없습니다. 모의 반영 결과를 확인한 뒤 다시 반영하십시오.",
   "import.apply.emptyType": "고용형태 없이 {count, number}명",
   "import.apply.unplaced": "미배치 {count, number}명",
   "import.apply.phoneUnstored": "휴대전화를 저장하지 않는 행 {count, number}",

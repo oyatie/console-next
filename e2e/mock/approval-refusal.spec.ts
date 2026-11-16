@@ -11,6 +11,7 @@ const refusals = [
   { code: "org_change.refuse.identity_unbound", message: "org_change.refuse.identity_unbound" },
   { code: "org_change.refuse.missing_grant", message: "org_change.refuse.missing_grant" },
   { code: "org_change_sod_violation", message: "requestOutcome.code.org_change_sod_violation" },
+  { code: "approval_decision_unavailable", message: "approvals.viewer.unavailable" },
 ] as const;
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
@@ -31,13 +32,15 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await page.goto("/approvals/approval-1");
       await expect(page.getByRole("heading", { level: 1, name: "조직 개편안", exact: true })).toBeVisible();
       if (entry.message) {
-        const verification = page.locator("dl > div").filter({ has: page.getByRole("term").filter({ hasText: /^결재 전 확인$/ }) });
-        await expect(verification).toHaveCount(1);
-        await expect(verification.getByRole("definition")).toHaveText(t(entry.message));
+        const facts = page.getByRole("region", { name: t("approvals.preview.facts"), exact: true });
+        await expect(facts.getByText(t("approvals.field.verification"), { exact: true })).toHaveCount(1);
+        await expect(facts.getByText(t(entry.message), { exact: true })).toBeVisible();
+        await expect(facts.getByRole("term").filter({ hasText: t("approvals.field.verification") })).toHaveCount(0);
       } else {
-        await expect(page.getByRole("term").filter({ hasText: /^결재 전 확인$/ })).toHaveCount(0);
+        await expect(page.getByText(t("approvals.field.verification"), { exact: true })).toHaveCount(0);
         await expect(page.getByText(t("approvals.viewer.blockedHint"), { exact: true })).toHaveCount(0);
       }
+      await expect(page.getByRole("region", { name: t("approvals.preview.route"), exact: true })).toHaveCount(0);
       await expect(page.getByRole("region", { name: "문서 내용", exact: true })).toContainText("영업팀 통합");
       await expect(page.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveCount(1);
       await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
@@ -49,8 +52,6 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await expectAxe(page, "read-only approval refusal");
       }
     }
-    await page.goto("/_gallery?entry=approvals-page");
-    await expect(page.getByText(t("org_change.refuse.identity_unbound"), { exact: true })).toBeVisible();
     expect(mock.unexpected).toEqual([]);
   });
 }

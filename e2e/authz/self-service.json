@@ -29,5 +29,7 @@
   "POST /api/v1/me/notifications/{id}/unread": "The caller marks their own notification as unread.",
   "POST /api/v1/me/todos": "The caller creates a todo owned by the authenticated account.",
   "DELETE /api/v1/me/todos/{todoId}": "The caller removes their own todo.",
-  "POST /api/v1/me/todos/{todoId}/done": "The caller marks their own todo done or undone."
+  "POST /api/v1/me/todos/{todoId}/done": "The caller marks their own todo done or undone.",
+  "POST /api/v1/me/todos/{todoId}/return": "The caller sends back a request someone made of them.",
+  "DELETE /api/v1/me/todos/requests/{todoId}": "The caller withdraws an open request they made."
 }

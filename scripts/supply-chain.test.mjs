@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 import yaml from "js-yaml";
 import { REQUIRED_SECURITY_JOBS } from "./check-workflow-hardening.mjs";
 
@@ -82,24 +84,80 @@ test("pinned tools use trusted dev artifacts as a cache and never introduce a ne
   assert.match(JSON.stringify(job), /--locked --version/);
 });
 
-test("tool cache ignores expired artifacts and fork artifacts named dev", () => {
+test("tool cache takes the newest artifact of a successful CI push on dev's history and nothing else", async () => {
+  const step = security().steps.find((s) => s.id === "cache");
+  const runs = { 1: { event: "pull_request" }, 2: { conclusion: "failure" }, 3: { head_sha: "unmerged" }, 4: {}, 5: {} };
+  let listed;
+  const answer = (route) => {
+    if (route === "actions/artifacts?name=pinned-tools&per_page=100") return { artifacts: listed };
+    if (route === "branches/dev") return { commit: { sha: "tip" } };
+    if (route.startsWith("compare/")) return { status: route.startsWith("compare/unmerged...") ? "diverged" : "ahead" };
+    const id = route.match(/^actions\/runs\/(\d+)$/)?.[1];
+    return id && { id: Number(id), path: ".github/workflows/ci.yml", event: "push", status: "completed", conclusion: "success",
+      head_branch: "dev", head_sha: `sha${id}`, repository: { id: 1 }, head_repository: { id: 1 }, ...runs[id] };
+  };
+  const server = createServer((request, response) => {
+    const body = request.headers.authorization === "Bearer test-token" && answer(request.url.replace("/repos/example/console/", ""));
+    response.writeHead(body ? 200 : 404, { "content-type": "application/json" }).end(JSON.stringify(body || {}));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const root = mkdtempSync(path.join(tmpdir(), "tool-cache-"));
   try {
-    mkdirSync(path.join(root, "bin"));
-    writeFileSync(path.join(root, "bin/curl"), '#!/bin/sh\nprintf "%s" "$ARTIFACTS"\n', { mode: 0o755 });
-    const step = security().steps.find((s) => s.id === "cache");
-    const artifact = (id, extra = {}) => ({ expired: false, workflow_run: { id, head_branch: "dev", repository_id: 1, head_repository_id: 1 }, ...extra });
-    for (const artifacts of [[], [artifact(1, { expired: true })], [artifact(2, { workflow_run: { id: 2, head_branch: "dev", repository_id: 1, head_repository_id: 9 } })], [artifact(3)]]) {
+    const artifact = (id, extra = {}) => ({ id, expired: false, created_at: new Date(id * 1000).toISOString(), workflow_run: { id, head_branch: "dev" }, ...extra });
+    // A lookup the API refuses builds the tools rather than failing the gate.
+    for (const [artifacts, expected, token = "test-token"] of [[[], ""], [[artifact(1), artifact(2), artifact(3), artifact(4, { expired: true })], ""],
+      [[artifact(1), artifact(3), artifact(4), artifact(5, { expired: true })], "run-id=4\n"], [[artifact(4)], "", "other-token"]]) {
+      listed = artifacts;
       const output = path.join(root, "outputs");
       writeFileSync(output, "");
-      const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", step.run], { encoding: "utf8", env: {
-        ...process.env, PATH: `${root}/bin:${process.env.PATH}`, RUNNER_TEMP: root,
-        GITHUB_OUTPUT: output, GITHUB_ENV: path.join(root, "env"), CACHE_KEY: "pinned-tools", ARTIFACTS: JSON.stringify({ artifacts }),
+      const { stdout } = await promisify(execFile)("bash", ["-e", "-o", "pipefail", "-c", step.run], { cwd: new URL("..", import.meta.url), env: {
+        ...process.env, RUNNER_TEMP: root, GITHUB_OUTPUT: output, GITHUB_ENV: path.join(root, "env"), CACHE_KEY: "pinned-tools",
+        GITHUB_API_URL: `http://127.0.0.1:${server.address().port}`, GITHUB_REPOSITORY: "example/console", GITHUB_REPOSITORY_ID: "1", GH_TOKEN: token,
       } });
-      assert.equal(result.status, 0, result.stderr);
-      assert.equal(readFileSync(output, "utf8").includes("run-id=3"), artifacts[0]?.workflow_run.id === 3);
-      assert.equal(readFileSync(output, "utf8").includes("run-id="), artifacts[0]?.workflow_run.id === 3);
+      assert.equal(readFileSync(output, "utf8"), `key=pinned-tools\n${expected}`);
+      assert.equal(stdout.includes("::warning::"), token !== "test-token");
     }
+    // Only an explicit timing lookup takes a red run's artifact; every other run check still applies.
+    listed = [artifact(1), artifact(2), artifact(3)];
+    const output = path.join(root, "outputs");
+    writeFileSync(output, "");
+    await promisify(execFile)("node", [".github/ci-proof.cjs", "--any-conclusion", "pinned-tools", "ci.yml", "push"], { cwd: new URL("..", import.meta.url), env: {
+      ...process.env, GITHUB_OUTPUT: output, GITHUB_API_URL: `http://127.0.0.1:${server.address().port}`, GITHUB_REPOSITORY: "example/console", GITHUB_REPOSITORY_ID: "1", GH_TOKEN: "test-token",
+    } });
+    assert.equal(readFileSync(output, "utf8"), "run-id=2\n");
+  } finally {
+    server.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("cached Rust tools run only when they match the digests recorded at build", () => {
+  const job = security();
+  const install = job.steps.find((s) => s.name === "Install pinned tools on cache miss");
+  const verify = job.steps.find((s) => s.name === "Verify recorded tool digests");
+  assert.ok(verify && !verify.if && !verify["continue-on-error"], "every run verifies before the gates execute the tools");
+  assert.ok(job.steps.indexOf(verify) < job.steps.findIndex((s) => s.run === "node --test scripts/supply-chain-fixtures.test.mjs"), "the fixture proof runs the tools too");
+  for (const upload of [job, workflow.jobs["dev-artifacts"]].map((j) => j.steps.find((s) => s.uses?.startsWith("actions/upload-artifact@") && s.with.path.includes("cargo-"))))
+    assert.ok(path.matchesGlob("cargo-security.sha256", path.basename(upload.with.path)), `${upload.with.path} must carry the digest record`);
+  const root = mkdtempSync(path.join(tmpdir(), "tool-digests-"));
+  try {
+    mkdirSync(path.join(root, "fake"));
+    writeFileSync(path.join(root, "fake/cargo"), '#!/bin/sh\nfor root; do :; done\nmkdir -p "$root/bin"\nprintf "%s" "$2" > "$root/bin/$2"\n', { mode: 0o755 });
+    const bin = path.join(root, "tools/bin");
+    const run = (step) => spawnSync("bash", ["-e", "-o", "pipefail", "-c", step.run], { encoding: "utf8", env: {
+      ...process.env, PATH: `${root}/fake:${process.env.PATH}`, TOOL_ROOT: path.join(root, "tools"), CARGO_DENY_VERSION: "1", CARGO_AUDIT_VERSION: "1",
+    } });
+    assert.equal(run(install).status, 0);
+    assert.equal(run(verify).status, 0, run(verify).stderr);
+    writeFileSync(path.join(bin, "cargo-audit"), "changed");
+    assert.notEqual(run(verify).status, 0);
+    writeFileSync(path.join(bin, "cargo-audit"), "cargo-audit");
+    assert.equal(run(verify).status, 0);
+    const digests = path.join(bin, "cargo-security.sha256");
+    writeFileSync(digests, readFileSync(digests, "utf8").split("\n")[0] + "\n");
+    assert.notEqual(run(verify).status, 0, "a digest file must name both tools");
+    rmSync(digests);
+    assert.notEqual(run(verify).status, 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

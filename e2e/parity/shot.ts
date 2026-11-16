@@ -18,7 +18,8 @@ export async function shot(page: Page, name: string, o: { dark?: boolean; full?:
   await page.evaluate(() => document.fonts.ready);
   // Let toasts, tints and focus rings settle as a person would see them.
   await page.waitForTimeout(300);
-  const engine = test.info().project.use.browserName === "firefox" ? "--firefox" : "";
+  const browserName = page.context().browser()!.browserType().name();
+  const engine = browserName === "chromium" ? "" : `--${browserName}`;
   await page.screenshot({ path: path.join(OUT, `${name}${o.dark ? "--dark" : ""}${engine}${o.full ? "--full" : ""}.png`), fullPage: o.full });
   if (o.dark) await html.evaluate((el, t) => (t === null ? delete el.dataset.theme : (el.dataset.theme = t)), before);
 }

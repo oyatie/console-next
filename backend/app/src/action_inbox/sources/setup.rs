@@ -62,6 +62,7 @@ pub(crate) fn page(
         .filter_map(|step| {
             let key = step["key"].as_str()?;
             Some(ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: format!("setup_{key}:{org}"),
                 kind: format!("setup_{key}"),

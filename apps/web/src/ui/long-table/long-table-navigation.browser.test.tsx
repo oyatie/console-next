@@ -180,3 +180,15 @@ test.each(navigationMatrix)("grid navigation $key from $origin at $width px matc
     }
   }
 });
+
+
+test("card row entry focuses its control without the optional browser visibility API", async () => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?targets-wrapped-arrows`);
+  await dom(page.getByRole("grid")).toHaveAttribute("data-layout", "cards");
+  await page.evaluate(() => { Reflect.deleteProperty(Element.prototype, "checkVisibility"); });
+  const button = page.getByRole("button", { name: "가상가", exact: true });
+  const cell = button.locator('xpath=ancestor::*[@role="rowheader"][1]');
+  await cell.focus();
+  await dom(button).toBeFocused();
+});

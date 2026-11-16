@@ -68,6 +68,7 @@ impl ActionInboxSourcePort for Source {
 }
 fn row(n: usize, kind: &str, hours: Option<i64>, now: OffsetDateTime) -> ActionInboxSourceItem {
     ActionInboxSourceItem {
+        due_basis: None,
         context: None,
         id: format!("org_change:{}", uuid::Uuid::from_u128(n as u128 + 1)),
         kind: kind.into(),

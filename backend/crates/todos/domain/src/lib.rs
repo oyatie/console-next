@@ -10,6 +10,12 @@
 use console_kernel_core::KernelError;
 use serde::{Deserialize, Serialize};
 
+mod request;
+pub use request::{
+    REQUEST_LINK_KINDS, RequestLink, RequestState, ensure_due, ensure_not_self, request_links,
+    return_note,
+};
+
 const BODY_MAX: usize = 500;
 const REF_KIND_MAX: usize = 64;
 const REF_ID_MAX: usize = 128;

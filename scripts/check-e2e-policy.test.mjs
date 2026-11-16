@@ -15,9 +15,31 @@ const fixture = (files) => {
   return root;
 };
 
-test("the repository has forbidOnly in every config and dated ownership for every fixme", () => {
+test("the repository enforces focus, fixme ownership and catalog isolation", () => {
   const root = process.env.CONSOLE_TEST_ROOT ?? path.resolve(import.meta.dirname, "..");
   assert.deepEqual(checkE2ePolicy(root, "2026-11-03"), []);
+});
+
+test("locale setters require the locale fixture's test import", () => {
+  const root = fixture({
+    "e2e/states/missing.spec.ts": "import { test } from '@playwright/test';\ni18n.set('en');",
+    "e2e/states/comment.spec.ts": "// import { test } from '../locale-fixture';\ni18n.set('en');",
+    "e2e/states/other.spec.ts": "import { expect } from '../locale-fixture';\ni18n.set('en');",
+    "e2e/states/type.spec.ts": "import type { test } from '../locale-fixture';\ni18n.set('en');",
+    "e2e/states/wrong.spec.ts": "import { test } from './locale-fixture';\ni18n.set('en');",
+  });
+  assert.deepEqual(checkE2ePolicy(root), ["comment", "missing", "other", "type", "wrong"].map(name =>
+    `e2e/states/${name}.spec.ts:2: i18n.set requires test from e2e/locale-fixture.ts`));
+});
+
+test("fixture imports work at different depths and comments do not count as locale setters", () => {
+  const root = fixture({
+    "e2e/root.spec.ts": "import { test } from './locale-fixture';\ni18n.set('en');",
+    "e2e/states/guarded.spec.ts": "import {\n test as catalogTest\n} from '../locale-fixture';\ni18n.set('en');",
+    "e2e/states/comment.spec.ts": "// i18n.set('en');",
+    "e2e/helper.ts": "i18n.set('en');",
+  });
+  assert.deepEqual(checkE2ePolicy(root), []);
 });
 
 test("missing and expired fixme metadata fail with the source location", () => {
