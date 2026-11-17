@@ -1,25 +1,19 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { rosterWindowQuery } from "../api/roster";
-import { getRouteApi, Link, useElementScrollRestoration, useLocation, useRouter } from "@tanstack/react-router";
+import { Link, useElementScrollRestoration, useLocation, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
 import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { editable, rowById } from "../../../ui/long-table/row-keys";
-import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
+import { rowById } from "../../../ui/long-table/row-keys";
+import { NO_SELECTION } from "../../../ui/long-table/selection";
 import { focusSoon } from "../../../lib/react/announce";
-import { columnSelection } from "../../../lib/react/use-column-selection";
-import { usePrefetch } from "../../../lib/react/prefetch";
-import { todayKst } from "../../../lib/pure/today";
-import { useReasonCodesReady } from "../../../lib/reason-codes";
-import { unitsQuery } from "../../../reference/org/api";
 import { unitPath } from "../../../reference/org/present";
 import { employeeQuery } from "../api";
-import { activeView, exactNumber, joinReview, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
-import { parseOrder, type RosterOrder } from "../domain/roster-order";
+import { joinReview, parseReview, parseStatus } from "../domain/roster";
+import { parseOrder } from "../domain/roster-order";
 import { BulkRescind } from "./bulk-rescind";
 import { BulkSheet } from "./bulk-sheet";
 import { RosterBulk } from "./roster-bulk";
@@ -27,7 +21,7 @@ import { RosterTable } from "./roster-table";
 import { RosterFilters } from "./roster-filters";
 import { RosterPanel } from "./roster-panel";
 import { RosterUnitPanel } from "./roster-unit-panel";
-import { BULK_MAX, useRoster } from "./use-roster";
+import { BULK_MAX } from "./use-roster";
 import { PeopleJump } from "./people-jump";
 import { RegisterExport } from "./register-export";
 import { RosterFirstRun } from "./roster-first-run";
@@ -35,30 +29,15 @@ import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { RosterEmpty } from "./roster-empty";
 import { RosterColumns } from "./roster-columns";
-import { useRosterColumns } from "./use-roster-columns";
 import { Band } from "../../../ui/band/band";
 import { Banner } from "../../../ui/banner/banner";
 import s from "./roster.module.css";
-import { useCan } from "../../../reference/authz/ui/use-can";
+import { useRosterScreen } from "./use-roster-screen";
 import { RosterExport } from "./roster-export";
 import { RosterFoot } from "./roster-foot";
 import { RosterHead } from "./roster-head";
-import { ExitTabs, VoidedList, type ExitView } from "./exit-tabs";
+import { ExitTabs, VoidedList } from "./exit-tabs";
 import { RosterSavedViews } from "./roster-saved-views";
-
-const route = getRouteApi("/app/people");
-/** Focus that rests on a row this long counts as a stop (J/K held down does not read every person it passes). */
-const FOCUS_SETTLE_MS = 150;
-
-/**
- * Where the roster was, kept in memory (never the URL or storage: the search may be a person's name) so Back from
- * a record restores the search, the scroll position and the row the user came from. Keyed by the URL filters.
- * the scroll is restored while the loaded pages are still cached (gcTime, 5 min); past that only page 1
- * comes back and the position is clamped to it.
- */
-let memory: { key: string; q: string; top: number; row: string | null } | null = null;
-const listened = new WeakSet<HTMLElement>();
-const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memory>>) => void (memory = { ...(memory?.key === key ? memory : { key, q, top: 0, row: null }), ...patch });
 
 function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTMLElement | null> }) {
   const router = useRouter();
@@ -81,128 +60,14 @@ function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTML
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
 export function RosterPage({ manage, scoped = false, switcher, notice }: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode }) {
-  const contractWindow = useQuery(rosterWindowQuery);
-  const soonDays = contractWindow.isError ? undefined : contractWindow.data;
-  const search = route.useSearch();
-  const navigate = route.useNavigate();
-  const today = todayKst();
-  const status = parseStatus(search.status);
-  const review = parseReview(search.review);
-  const { unit } = search;
-  const { sel: open, sel2: openUnit, select, selectRelated, full, expand, restore } = columnSelection(search, navigate);
-  const unitTrigger = useRef<HTMLButtonElement | null>(null);
-  const unitItems = useQuery({ ...unitsQuery, enabled: Boolean(openUnit) }).data?.items ?? [];
-  const selectedUnit = openUnit ? unitItems.find((u) => u.id === openUnit) : undefined;
-  const sort = parseOrder(search.sort);
-  const key = JSON.stringify([status, review, unit ?? null, sort]);
-  const [back] = useState(() => (memory?.key === key ? memory : null));
-  const [q, setQ] = useState(back?.q ?? "");
-  const [jump, setJump] = useState<string | null>(null);
-  const [exitView, setExitView] = useState<ExitView>("kept");
-  // The search sits in the filter band (E1), mounted before the table hands it there.
-  const [findSlot, setFindSlot] = useState<HTMLElement | null>(null);
-  const [sel, setSel] = useState<Selection>(NO_SELECTION);
-  // The last bulk appointment's record, until the filters change.
-  const [recorded, setRecorded] = useState<string>();
-  // The last bulk appointment, rescindable as one (BW-11).
-  const [batch, setBatch] = useState<{ id: string; count: number } | null>(null);
-  const [rescinding, setRescinding] = useState(false);
-  // The rescission sheet's reasons, read before its button shows, so nothing lands under the pointer when it opens.
-  const rescindReady = useReasonCodesReady(batch ? "lifecycle_cancel" : null);
-  const r = useRoster({ status, review, unit, q, sort }, soonDays, !contractWindow.isPending);
-  const view = useRosterColumns();
-  const can = useCan();
-  const prefetch = usePrefetch();
-  // The memory always describes the current filters (a new filter starts at the top).
-  useEffect(() => remember(key, q, { q }), [key, q]);
-
-  const setFilter = (f: { status?: StatusView; review?: Review[]; unit?: string | null; sort?: RosterOrder }) => {
-    // A select-all selection is a saved query: a new filter would silently mean other people.
-    if (sel.kind === "all") setSel(NO_SELECTION);
-    setRecorded(undefined);
-    void navigate({
-      search: (prev) => ({
-        ...prev,
-        sel: undefined,
-        sel2: undefined,
-        ...(f.status && { status: f.status === "current" ? undefined : f.status }),
-        ...(f.review && { review: joinReview(f.review) }),
-        ...(f.unit !== undefined && { unit: f.unit ?? undefined }),
-        ...(f.sort && { sort: f.sort === "name" ? undefined : f.sort }),
-      }),
-      replace: true,
-    });
-  };
-  const find = (text: string) => {
-    const v = text.trim();
-    if (sel.kind === "all" && v !== q) setSel(NO_SELECTION);
-    setQ(v);
-    setJump(v || null);
-    remember(key, q, { q: v, top: 0 });
-    void navigate({ search: (prev) => ({ ...prev, sel: undefined, sel2: undefined }), replace: true });
-  };
-  const reset = () => {
-    setSel(NO_SELECTION);
-    find("");
-    setFilter({ status: "current", review: [], unit: null });
-    focusSoon("people-title");
-  };
-  const closePaste = () => void navigate({ search: (prev) => ({ ...prev, bulk: undefined }), replace: true });
-  const bulkDone = (message: string, recordedBatch?: { id: string; count: number }) => {
-    setSel(NO_SELECTION);
-    setRecorded(message);
-    setBatch(recordedBatch ?? null);
-    if (search.bulk) closePaste();
-    // The selection bar (and the control that had focus) goes with the selection: focus the page heading.
-    focusSoon("people-title");
-  };
-  const openRecord = (id: string) => {
-    remember(key, q, { row: id });
-    void navigate({ to: "/people/$id", params: { id } });
-  };
-
-  // Enter on a search that is exactly one person's employee number opens that person.
-  const hit = jump && jump === q && !r.loading ? exactNumber(r.rows, jump) : null;
-  const hitId = hit?.id;
-  useEffect(() => {
-    if (hitId) void navigate({ to: "/people/$id", params: { id: hitId } });
-  }, [hitId, navigate]);
-
-  // Back from a record: the same scroll position, focus on the row the user left from.
-  const scroller = useRef<HTMLElement | null>(null);
-  const restored = useRef(false);
-  const rowCount = r.rows.length;
-  useEffect(() => {
-    const el = scroller.current;
-    if (restored.current || !back || !rowCount || !el) return;
-    restored.current = true;
-    el.scrollTop = back.top;
-    if (back.row) requestAnimationFrame(() => {
-      // A delayed arrival read must not take focus from a search the user already started.
-      if (!editable(document.activeElement)) rowById(el, back.row!)?.focus();
-    });
-  }, [back, rowCount]);
-  const scrollRef = (el: HTMLElement | null) => {
-    if (el && !listened.has(el)) {
-      listened.add(el);
-      el.addEventListener("scroll", () => memory && (memory.top = el.scrollTop), { passive: true });
-    }
-    scroller.current = el;
-  };
-
-  const settle = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const onRowFocus = (id: string) => {
-    clearTimeout(settle.current);
-    settle.current = setTimeout(() => {
-      prefetch(employeeQuery(id));
-      remember(key, q, { row: id });
-    }, FOCUS_SETTLE_MS);
-  };
-
-  const filtered = Boolean(q || unit || status !== "current" || review.length);
-  const customFilters = Boolean(q || unit || !activeView(status, review));
-  // People who share a name keep it as written (E1-dup): said once, and told apart by number, placement and dates.
-  const sameName = q && r.rows.length > 1 && r.rows.every((e) => e.name === r.rows[0]!.name) ? r.rows.length : 0;
+  const {
+    contractWindow, soonDays, search, navigate, today, status, review, unit,
+    open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
+    sort, q, exitView, setExitView, findSlot, setFindSlot, sel, setSel,
+    recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady,
+    r, view, can, prefetch, setFilter, find, reset, closePaste, bulkDone, openRecord,
+    scroller, rowCount, scrollRef, onRowFocus, filtered, customFilters, sameName, onRowAction,
+  } = useRosterScreen();
   const empty = filtered ? (
     <RosterEmpty q={q} narrowed={Boolean(unit || status !== "current" || review.length)} exited={status === "EXITED"} manage={manage} onReset={customFilters ? undefined : reset} onExited={() => setFilter({ status: "EXITED", review: [], unit: null })} />
   ) : (
@@ -286,7 +151,7 @@ export function RosterPage({ manage, scoped = false, switcher, notice }: { manag
               onLoadMore={() => void (r.list.hasNextPage && !r.list.isFetchingNextPage && r.list.fetchNextPage())}
               loading={r.loading}
               empty={r.list.error && !r.list.data ? null : empty}
-              onRowAction={(id) => (id === open ? openRecord(id) : (remember(key, q, { row: id }), select(id)))}
+              onRowAction={onRowAction}
               onRowHover={(id) => prefetch(employeeQuery(id))}
               onRowFocus={onRowFocus}
               rowKeys={{ onOpen: openRecord }}
