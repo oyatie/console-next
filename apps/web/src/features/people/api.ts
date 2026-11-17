@@ -131,6 +131,12 @@ export const cancelScheduledEvent = ({ x, reason }: { x: LifecycleEvent; reason:
 export const linkAccount = async (userId: string, employeeId: string | null, requestId?: string) =>
   unwrap(api.PATCH("/api/v1/users/{id}", { params: { path: { id: userId } }, body: { employee_id: employeeId, step_up: await assertPasskey(), account_link_request_id: requestId } }));
 
+export async function reviewSelfAttestedBinding(id: string, decision: components["schemas"]["SelfBindingReviewRequest"]["decision"]) {
+  return unwrap(api.POST("/api/v1/users/employee-link-attestations/{id}/review", {
+    params: { path: { id } }, body: { decision, step_up: await assertPasskey() },
+  }));
+}
+
 /** Someone changed the record since it was read (a 409 on an optimistic-concurrency write). */
 export const isStale = (e: unknown) => e instanceof ApiError && e.status === 409;
 

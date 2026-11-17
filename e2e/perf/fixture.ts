@@ -186,7 +186,7 @@ export async function recordRoutes(admin: Page, urls: Record<string, string>, de
   await go(admin, `/org?sel=${departmentId}`);
   const selected = panel(admin, depts.at(-1)!);
   await expect(selected).toBeVisible();
-  await selected.getByRole("button", { name: "이름 변경" }).click();
+  await selected.getByRole("button", { name: "부서 이름 수정", exact: true }).click();
   const renameInput = selected.getByRole("textbox", { name: new RegExp(`^${depts.at(-1)!}의 새 이름`) });
   await renameInput.fill("가상미래부서");
   await inlineUnitDetails(admin, selected, kstDate(14));

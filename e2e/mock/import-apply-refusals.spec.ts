@@ -10,7 +10,7 @@ test.beforeAll(() => loadCatalog("ko"));
 
 for (const [status, code, message] of [
   [403, "import_apply_forbidden", "import.error.import_apply_forbidden"],
-  [409, "import_apply_timed_out", "import.error.import_apply_timed_out"],
+  [503, "import_apply_timed_out", "import.timedOut"],
 ] as const) for (const job of [false, true]) for (const width of [1440, 390]) test(`${code} keeps the dry run and recovery: job=${job} at ${width}px @ui-state`, async ({ page }, info) => {
   const fixture = await mockPeopleImport(page, "empty");
   let writes = 0;
@@ -48,7 +48,8 @@ for (const [status, code, message] of [
     await page.getByRole("button", { name: t("import.dryRun"), exact: true }).click();
     const apply = page.getByRole("button", { name: t("import.apply", { insert: 1, update: 0 }), exact: true });
     await apply.click();
-    await expect(page.getByRole("alert")).toContainText(t(message));
+    await expect(page.getByRole("alert")).toContainText(t(message, { rows: 1 }));
+    expect((await page.getByRole("alert").innerText()).split(t(message, { rows: 1 })).length - 1).toBe(1);
     await expect(page.getByRole("alert")).not.toContainText("private database detail");
     for (const theme of ["light", "dark"]) {
       await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);

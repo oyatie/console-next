@@ -82,5 +82,6 @@ export async function emit(github, core, sha, base, runUrl) {
   const record = buildPredicate({sha, runUrl, changedPaths, longBakePaths:gatesPolicy.longBakePaths,
     gateChecks:await collectChecks(github, sha)});
   writeFileSync('console-gates.json', JSON.stringify(record.predicate, null, 2) + '\n');
-  core.setOutput('result', record.result);
+  // github-script overwrites the `result` output with the script's return value.
+  core.setOutput('verdict', record.result);
 }

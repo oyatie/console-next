@@ -8522,7 +8522,12 @@ paths:
         - employees
       operationId: applyEmployeeImport
       summary: Apply a dry-run employee import run, bound to its dry run
-      description: 'BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against
+      description: 'Cedar action import_apply decides admission and is rechecked inside the write transaction.
+        403 import_apply_forbidden means the database refused the admitted command.
+        503 import_apply_timed_out means a statement or transaction exceeded the server time limit;
+        nothing was written, and the stored job retains the same refusal code.
+
+        BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against
         the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows
         (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry
         run''s is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing
@@ -8578,7 +8583,12 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: 'forbidden — Cedar did not admit tenant-wide directory management.
+            import_apply_forbidden — the database refused the import command; no rows were written.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -8586,9 +8596,12 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
-          description: import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds.
+          description: 'import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds.
+            import_apply_timed_out — the statement or transaction exceeded the server time limit; nothing was written.
+            Review the dry run before applying again.'
           headers:
             Retry-After:
+              description: Present for import_apply_busy.
               schema:
                 type: integer
           content:
@@ -30168,6 +30181,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/users/employee-link-attestations/{id}/review:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: reviewSelfAccountBinding
+      summary: Confirm or revoke a self-attested account binding
+      description: Requires an independent account manager and a fresh one-use passkey assertion. The command reloads Cedar facts inside its locked transaction. Confirmation retains the binding; revocation removes the current binding and restores the two-person rule. Confirmation does not prevent later revocation. A stale or replacement binding is never changed. Each accepted decision and its audit commit together.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingReviewRequest'
+      responses:
+        '200':
+          description: Decision recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: account_link.refuse.review_ineligible or account_link.refuse.identity_unbound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.review_stale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: passkey_step_up_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '503':
+          description: Passkey service unavailable.
   /api/v1/users/me:
     get:
       tags:
@@ -30223,6 +30291,185 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/users/me/employee-link:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: getSelfAccountBinding
+      summary: Read the current account's self-attested employee binding
+      description: Cedar authorizes the live account. Only a receipt matching its current employee link is returned. Revoked or withdrawn bindings return null; confirmed bindings remain visible with can_withdraw false. No employee link or management grant is required to recover the receipt.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current self-attestation and Cedar withdrawal permission.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [attestation]
+                properties:
+                  attestation:
+                    type: object
+                    nullable: true
+                    additionalProperties: false
+                    required: [attestation_id, employee_id, can_withdraw]
+                    properties:
+                      attestation_id:
+                        type: string
+                        format: uuid
+                      employee_id:
+                        type: string
+                        format: uuid
+                      can_withdraw:
+                        type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: selfBindAccount
+      summary: Link the sole operator's own account to an employee
+      description: Consumes a one-use command-bound passkey assertion. Cedar rechecks eligibility under the tenant write lock. The self-attestation, identity binding, configured review deadline and audit commit together. An existing second eligible account prevents this exception.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingRequest'
+      responses:
+        '201':
+          description: Self-attested binding recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attestation_id]
+                properties:
+                  attestation_id:
+                    $ref: '#/components/schemas/Uuid'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: step_up_failed (invalid, replayed or bound to another command), account_link.refuse.solo_ineligible, or account_link.refuse.not_own_record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.employee_taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: step_up_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '503':
+          description: Passkey service unavailable.
+  /api/v1/users/me/employee-link/prepare:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: prepareSelfAccountBinding
+      summary: Prepare a sole operator's own employee link
+      description: Cedar checks current server facts and returns the binding for the authenticated account and selected employee. Start the existing passkey step-up ceremony with this binding when the user confirms. Submission rechecks eligibility in the locked transaction. No identity number is collected.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingPrepareRequest'
+      responses:
+        '200':
+          description: Start a passkey step-up ceremony with this exact binding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobilePasskeyStepUpBinding'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: account_link.refuse.solo_ineligible or account_link.refuse.not_own_record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.employee_taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          description: Passkey service unavailable.
+  /api/v1/users/me/employee-link/withdraw:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: withdrawSelfAccountBinding
+      summary: Withdraw an unreviewed self-attested account binding
+      description: Cedar admits only the original self-attester while the original binding is current and unreviewed. A fresh passkey is required. The binding removal, retained review receipt and audit commit together. Independent revocation continues to prevent another solo binding.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingWithdrawRequest'
+      responses:
+        '200':
+          description: Self-attestation withdrawn.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: account_link.refuse.withdraw_ineligible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.review_stale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: passkey_step_up_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '503':
+          description: Passkey service unavailable.
   /api/v1/users/{id}:
     get:
       tags:
@@ -34816,6 +35063,7 @@ components:
           - period_unlock
           - grant_notice
           - account_security
+          - account_binding_review
           - setup_entity
           - setup_workplace
           - setup_org
@@ -60634,6 +60882,80 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ObjectHead'
+    SelfBindingError:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - step_up_required
+                - step_up_failed
+                - account_link.refuse.solo_ineligible
+                - account_link.refuse.employee_taken
+                - account_link.refuse.not_own_record
+                - account_link.refuse.withdraw_ineligible
+                - account_link.refuse.review_stale
+                - account_link.refuse.review_ineligible
+                - account_link.refuse.identity_unbound
+                - passkey_step_up_required
+                - not_found
+                - unauthorized
+                - unavailable
+                - internal
+            message:
+              type: string
+    SelfBindingPrepareRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [employee_id]
+      properties:
+        confirmed_name:
+          type: string
+          description: Exact full employee name, deliberately confirmed only when no existing record matches the account.
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+    SelfBindingRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [employee_id]
+      properties:
+        confirmed_name:
+          type: string
+          description: Exact full employee name, deliberately confirmed only when no existing record matches the account. Included in the passkey command binding.
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+      description: Submit the exact envelope returned by preparation after asserting the challenge. Missing step_up is a typed 428 refusal.
+    SelfBindingReviewRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [CONFIRM, REVOKE]
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    SelfBindingWithdrawRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [attestation_id]
+      properties:
+        attestation_id:
+          $ref: '#/components/schemas/Uuid'
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
     SelfLeaveBalance:
       type: object
       required:

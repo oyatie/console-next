@@ -5,7 +5,12 @@
 use http::StatusCode;
 use serde_json::json;
 use sqlx::PgPool;
+use tracing::instrument::WithSubscriber;
 use uuid::Uuid;
+
+#[allow(dead_code)]
+#[path = "support/reference_logs.rs"]
+mod reference_logs;
 
 #[path = "import_job_routes/fixture.rs"]
 mod fixture;
@@ -45,15 +50,41 @@ async fn refused_apply(
         service: router(&pool, &keys).await,
         token: Some(token(&pool, &keys, org, actor, "SUPER_ADMIN").await),
     };
+    let logs = reference_logs::Logs::default();
+    let writer = logs.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::WARN)
+        .json()
+        .with_writer(move || writer.clone())
+        .finish();
     let (actual, body) = caller
         .call(
             "POST",
             &format!("/api/v1/employees/import/{run}/apply"),
             Some(json!({"dry_run_digest": digest})),
         )
+        .with_subscriber(subscriber)
         .await;
     assert_eq!((actual, code(&body)), (status, expected), "{body}");
     assert!(!body.to_string().contains("private database detail"));
+    let raw = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
+    let events: Vec<serde_json::Value> = raw
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .filter(|event: &serde_json::Value| {
+            event["fields"]["message"] == "import command refused by the database"
+        })
+        .collect();
+    assert_eq!(events.len(), 1, "{raw}");
+    let event = &events[0];
+    assert_eq!(event["level"], "WARN");
+    assert_eq!(event["fields"]["sqlstate"], sqlstate);
+    assert!(!event.to_string().contains("private database detail"));
+    assert!(body["error"]["support_ref"].is_string(), "{body}");
+    assert_eq!(
+        event["fields"]["support_reference"], body["error"]["support_ref"],
+        "{event}"
+    );
     let (job_status, job) = caller
         .call(
             "GET",
@@ -85,11 +116,22 @@ async fn import_sql_permission_refusal_is_typed_403(pool: PgPool) -> Out<()> {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn import_sql_transaction_timeout_is_typed_409(pool: PgPool) -> Out<()> {
+async fn import_sql_transaction_timeout_is_typed_503(pool: PgPool) -> Out<()> {
     refused_apply(
         pool,
         "25P04",
-        StatusCode::CONFLICT,
+        StatusCode::SERVICE_UNAVAILABLE,
+        "import_apply_timed_out",
+    )
+    .await
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn import_sql_statement_timeout_is_typed_503(pool: PgPool) -> Out<()> {
+    refused_apply(
+        pool,
+        "57014",
+        StatusCode::SERVICE_UNAVAILABLE,
         "import_apply_timed_out",
     )
     .await

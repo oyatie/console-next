@@ -22,7 +22,7 @@ test("scheduled system actions keep a neutral deadline under the registered wind
   expect(window!.value).toBeGreaterThanOrEqual(3);
 
   const unit = await openUnit(admin, SETUP_DEPARTMENT);
-  await unit.getByRole("button", { name: "이름 변경" }).click();
+  await unit.getByRole("button", { name: "부서 이름 수정", exact: true }).click();
   const renameInput = unit.getByRole("textbox", { name: new RegExp(`^${SETUP_DEPARTMENT}의 새 이름`) });
   await renameInput.fill("기한확인팀");
   await inlineUnitDetails(admin, unit, kstDate(3));

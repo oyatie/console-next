@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { t } from "@console/i18n";
 import type { WorkplaceSheetProps } from "../../../reference/org/ui/use-structure-slots";
 import { kindsQuery, workplaceEndQuery } from "../api";
 import { FreshEntity } from "./fresh-entity";
@@ -23,7 +24,7 @@ export function WorkplaceSheet({ act, at, setup, onClose, onSelect, onAct }: Wor
       return at.kind === "workplace" ? <EndHost id={at.node.id}>{(erase) => (erase ? <WorkplaceDeleteSheet place={at} onClose={onClose} onDone={() => onSelect(undefined)} /> : <WorkplaceCloseSheet place={at} onClose={onClose} onAct={onAct} />)}</EndHost> : null;
     case "wp-kind":
       return at.kind === "workplace" ? (
-        <FreshEntity id={at.entity.id}>{(e) => {
+        <FreshEntity id={at.entity.id} title={t("workplace.kind.title", { name: at.node.name })} onClose={onClose}>{(e) => {
           const w = e.workplaces.find((x) => x.id === at.node.id);
           return w ? <WorkplaceKindSheet w={w} onClose={onClose} onManage={() => onAct("wp-kinds")} /> : null;
         }}</FreshEntity>
@@ -48,5 +49,5 @@ function CreateHost({ entityId, setup, onClose, onSaved }: { entityId: string; s
   // The kind list is read beside the entity, before the sheet draws: arriving later, it pushed the form down under typing.
   // Gated on the first answer only (isFetched): an unserved list (404) re-reads as pending and must not unmount the sheet.
   const kinds = useQuery({ ...kindsQuery, retry: false, refetchInterval: false });
-  return <FreshEntity id={entityId}>{(e) => kinds.isFetched && <WorkplaceCreateSheet e={e} kinds={kinds.data?.items} setup={setup} onClose={onClose} onSaved={onSaved} />}</FreshEntity>;
+  return <FreshEntity id={entityId} title={t("workplace.add")} onClose={onClose}>{(e) => kinds.isFetched && <WorkplaceCreateSheet e={e} kinds={kinds.data?.items} setup={setup} onClose={onClose} onSaved={onSaved} />}</FreshEntity>;
 }
