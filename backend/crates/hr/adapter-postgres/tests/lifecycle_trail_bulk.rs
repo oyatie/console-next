@@ -11,20 +11,21 @@ mod lifecycle_grant;
 #[path = "support/trail_queries.rs"]
 mod trail_queries;
 
-use std::sync::Arc;
+#[path = "support/registration_hires.rs"]
+mod registration_hires;
+
 use std::time::Instant;
 
 use console_hr_adapter_postgres::clock::today_kst;
-use console_inbox_adapter_postgres::PgInboxStore;
-use console_leave_adapter_postgres::PgLeaveStore;
 use serde_json::json;
 use sqlx::PgPool;
-use time::Duration;
 use tracing::instrument::WithSubscriber;
 use uuid::Uuid;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointment(pool: PgPool) {
+async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointment_within_budget(
+    pool: PgPool,
+) {
     let f = fixture::fixture(pool.clone()).await;
     lifecycle_grant::grant(
         &pool,
@@ -33,24 +34,9 @@ async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointm
     )
     .await;
     let people = 2_000;
-    let mut employees = Vec::with_capacity(people);
     let hiring = Instant::now();
-    for n in 0..people {
-        let mut body = f.body(&format!("lifecycle-scale-{n}"), "REGULAR");
-        body.name = format!("합성 직원 {n}");
-        body.employee_number = format!("TRAIL-{n}");
-        body.hire_date = Some((today_kst() - Duration::days(1)).to_string());
-        body.home_branch_id = None;
-        let store = PgLeaveStore::new(f.rt.clone(), Arc::new(PgInboxStore::new(f.rt.clone())));
-        let (_, employee) =
-            f.hr.create_employee(f.principal.clone(), store, body)
-                .await
-                .unwrap();
-        employees.push(employee.employee_id());
-        if (n + 1) % 500 == 0 {
-            eprintln!("product hires: {}, {:?}", n + 1, hiring.elapsed());
-        }
-    }
+    let employees = registration_hires::hires(&f, people).await;
+    eprintln!("product hires: {people}, {:?}", hiring.elapsed());
     let started = Instant::now();
     let (job, _) =
         f.hr.accept_bulk_lifecycle_job(
@@ -109,6 +95,22 @@ async fn two_thousand_product_hires_open_two_thousand_cases_in_one_bulk_appointm
             "one batched query for {query}"
         );
     }
+    assert_eq!(
+        statements
+            .iter()
+            .filter(|s| s.contains("UPDATE employees"))
+            .count(),
+        1,
+        "one canonical head update for the whole APPOINT batch"
+    );
+    assert_eq!(
+        statements
+            .iter()
+            .filter(|s| s.contains("FROM period_locks"))
+            .count(),
+        2,
+        "one freeze check per domain for the shared effective date"
+    );
     let result = result.unwrap();
     println!(
         "bulk appointment of {people} product-created employees: {:?}",
