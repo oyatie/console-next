@@ -45,7 +45,8 @@ for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) test(`bu
     expect(new URL(asset.url, page.url()).origin).toBe(new URL(page.url()).origin);
     const response = await request.get(asset.url);
     expect(response.ok()).toBe(true);
-    expect(asset.integrity, asset.url).toBe(`sha384-${createHash("sha384").update(await response.body()).digest("base64")}`);
+    expect(asset.integrity, asset.url).toBe(asset.url.startsWith("/assets/")
+      ? `sha384-${createHash("sha384").update(await response.body()).digest("base64")}` : null);
   }
   await fits(page, `integrity ${width}px ${theme}`);
   const touchAction = await page.evaluate(() => {
@@ -63,7 +64,6 @@ for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) test(`bu
 });
 
 for (const [kind, selector] of [
-  ["public script", 'script[src="/prefs.js"]'],
   ["entry module", 'script[type="module"]'],
   ["stylesheet", 'link[rel="stylesheet"]'],
 ] as const) test(`the browser refuses a tampered ${kind}`, async ({ page, request }) => {
@@ -87,5 +87,53 @@ for (const [kind, selector] of [
     script: (window as unknown as { tamperedResource?: boolean }).tamperedResource ?? false,
     style: getComputedStyle(document.documentElement).getPropertyValue("--tampered-resource").trim(),
   }))).toEqual({ script: false, style: "" });
+  expect(fixture.unexpected).toEqual([]);
+  fixture.release();
+});
+
+for (const persistent of [false, true]) test(`mixed-release public scripts recover when the entry is ${persistent ? "still missing" : "missing once"}`, async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
+  const html = await (await request.get("/")).text();
+  const scripts = await page.evaluate(markup => Array.from(
+    new DOMParser().parseFromString(markup, "text/html").querySelectorAll('script[src]:not([type="module"])'),
+    element => element.getAttribute("src")!), html);
+  expect(scripts).toHaveLength(3);
+  const fixture = await mockScreen(page, screens[0], "populated");
+  const reports: { kind: string }[] = [];
+  const documents: string[] = [];
+  page.on("request", req => {
+    if (req.isNavigationRequest() && req.frame() === page.mainFrame()) documents.push(req.url());
+    if (new URL(req.url()).pathname === "/api/v1/client-errors") reports.push(req.postDataJSON());
+  });
+  await page.route(url => scripts.includes(url.pathname), async route => {
+    const response = await route.fetch();
+    // Model the next release without changing these scripts' recovery behavior.
+    await route.fulfill({ response, body: `${await response.text()}\n// next release\n` });
+  });
+  let entries = 0;
+  await page.route(/\/assets\/index-[\w-]+\.js$/, route => {
+    entries++;
+    return documents.length === 1 || persistent
+      ? route.fulfill({ status: 404, contentType: "text/javascript", body: "" }) : route.continue();
+  });
+  await page.goto("/", { waitUntil: "commit" });
+  if (persistent) {
+    await expect(page.getByRole("heading", { name: "화면을 표시하지 못했습니다" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "페이지 새로 고침", exact: true })).toBeVisible();
+  } else await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", "/");
+  expect(documents).toHaveLength(2);
+  expect(new URL(documents[1]!).searchParams.has("_r")).toBe(true);
+  // Firefox can fetch the entry speculatively and again when the parser reaches it.
+  expect(entries).toBeGreaterThanOrEqual(2);
+  expect(reports.some(report => report.kind === "resource")).toBe(true);
+  expect(await page.evaluate(() => {
+    const recovery = window as unknown as { consoleChunkGuard?: object; consoleErrorBeacon?: object };
+    return { guard: typeof recovery.consoleChunkGuard, beacon: typeof recovery.consoleErrorBeacon };
+  })).toEqual({ guard: "object", beacon: "object" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(await page.evaluate(() => document.scrollingElement!.scrollWidth - innerWidth)).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath("recovery.png"), fullPage: true });
+  expect(fixture.unexpected).toEqual([]);
   fixture.release();
 });

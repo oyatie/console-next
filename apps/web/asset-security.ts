@@ -4,13 +4,14 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Plugin } from "vite";
 
-/** Hash files after Vite's preload rewriting, including copied public scripts. */
+/** Pin bootstrap assets after Vite's preload rewriting; lazy imports are not covered. */
 export function assetSecurity(): Plugin {
   let base: string;
+  let assetsDir: string;
   return {
     name: "console-asset-security",
     apply: "build",
-    configResolved(config) { base = config.base; },
+    configResolved(config) { base = config.base; assetsDir = config.build.assetsDir; },
     writeBundle: {
       order: "post",
       handler(output, bundle) {
@@ -21,7 +22,8 @@ export function assetSecurity(): Plugin {
           const html = source.replace(/<(script|link)\b[^>]*>/g, (tag: string, kind: string) => {
             if (kind === "link" && !/\brel="(?:stylesheet|modulepreload)"/.test(tag)) return tag;
             const url = tag.match(/\b(?:src|href)="([^"]+)"/)?.[1];
-            if (!url) return tag;
+            // Stable public URLs can serve another release's recovery scripts during a rolling deploy.
+            if (!url || !url.startsWith(`${base}${assetsDir}/`)) return tag;
             const bytes = readFileSync(resolve(output.dir!, url.slice(base.length)));
             const integrity = `sha384-${createHash("sha384").update(bytes).digest("base64")}`;
             return tag.replace(/\s*\/?>$/, ending => ` integrity="${integrity}"${ending}`);
