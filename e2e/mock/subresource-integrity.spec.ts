@@ -124,6 +124,8 @@ for (const persistent of [false, true]) test(`mixed-release public scripts recov
   if (persistent) {
     await expect(page.getByRole("heading", { name: t("common.crashed.title") })).toBeVisible();
     await expect(page.getByRole("button", { name: t("common.crashed.action"), exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: t("common.crashed.title") })).toBeInViewport();
+    await expect(page.getByRole("button", { name: t("common.crashed.action"), exact: true })).toBeInViewport();
   } else await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", "/");
   expect(documents).toHaveLength(2);
   expect(new URL(documents[1]!).searchParams.has("_r")).toBe(true);
