@@ -1,0 +1,246 @@
+{
+ "tenant": "Saeon Group (synthetic)",
+ "today": "2026-11-10",
+ "boards": [
+  {
+   "style": "control-room",
+   "status": "target",
+   "screen": "approval",
+   "title": "Approval document and decision",
+   "module": "approvals",
+   "width": 1440,
+   "size": [
+    1440,
+    900
+   ],
+   "theme": "light",
+   "file": "boards/d/1440/approval.png",
+   "tokens": "tokens/control-room.board.css"
+  },
+  {
+   "style": "control-room",
+   "status": "target",
+   "screen": "attendance",
+   "title": "Attendance month",
+   "module": "attendance",
+   "width": 1440,
+   "size": [
+    1440,
+    900
+   ],
+   "theme": "light",
+   "file": "boards/d/1440/attendance.png",
+   "tokens": "tokens/control-room.board.css"
+  },
+  {
+   "style": "control-room",
+   "status": "target",
+   "screen": "home",
+   "title": "Home: work list",
+   "module": "core",
+   "width": 1440,
+   "size": [
+    1440,
+    900
+   ],
+   "theme": "light",
+   "file": "boards/d/1440/home.png",
+   "tokens": "tokens/control-room.board.css"
+  },
+  {
+   "style": "control-room",
+   "status": "target",
+   "screen": "payroll",
+   "title": "Payroll run",
+   "module": "payroll",
+   "width": 1440,
+   "size": [
+    1440,
+    900
+   ],
+   "theme": "light",
+   "file": "boards/d/1440/payroll.png",
+   "tokens": "tokens/control-room.board.css"
+  },
+  {
+   "style": "control-room",
+   "status": "target",
+   "screen": "people",
+   "title": "People list with the employee record panel",
+   "module": "people",
+   "width": 1440,
+   "size": [
+    1440,
+    900
+   ],
+   "theme": "light",
+   "file": "boards/d/1440/people.png",
+   "tokens": "tokens/control-room.board.css"
+  },
+  {
+   "style": "control-room",
+   "status": "target",
+   "screen": "leave",
+   "title": "Leave request (employee, phone)",
+   "module": "self-service",
+   "width": 390,
+   "size": [
+    390,
+    844
+   ],
+   "theme": "light",
+   "file": "boards/d/390/leave.png",
+   "tokens": "tokens/control-room.board.css"
+  },
+  {
+   "style": "control-room",
+   "status": "target",
+   "screen": "payslip",
+   "title": "Payslip (employee, phone)",
+   "module": "self-service",
+   "width": 390,
+   "size": [
+    390,
+    950
+   ],
+   "theme": "light",
+   "file": "boards/d/390/payslip.png",
+   "tokens": "tokens/control-room.board.css"
+  },
+  {
+   "style": "control-room",
+   "status": "target",
+   "screen": "profile",
+   "title": "My profile (employee, phone)",
+   "module": "self-service",
+   "width": 390,
+   "size": [
+    390,
+    844
+   ],
+   "theme": "light",
+   "file": "boards/d/390/profile.png",
+   "tokens": "tokens/control-room.board.css"
+  },
+  {
+   "style": "warm-clear",
+   "status": "later",
+   "screen": "approval",
+   "title": "Approval document and decision",
+   "module": "approvals",
+   "width": 1440,
+   "size": [
+    1440,
+    1508
+   ],
+   "theme": "light",
+   "file": "boards/c/1440/approval.png",
+   "tokens": "tokens/warm-clear.board.css"
+  },
+  {
+   "style": "warm-clear",
+   "status": "later",
+   "screen": "attendance",
+   "title": "Attendance month",
+   "module": "attendance",
+   "width": 1440,
+   "size": [
+    1440,
+    1405
+   ],
+   "theme": "light",
+   "file": "boards/c/1440/attendance.png",
+   "tokens": "tokens/warm-clear.board.css"
+  },
+  {
+   "style": "warm-clear",
+   "status": "later",
+   "screen": "home",
+   "title": "Home: work list",
+   "module": "core",
+   "width": 1440,
+   "size": [
+    1440,
+    1772
+   ],
+   "theme": "light",
+   "file": "boards/c/1440/home.png",
+   "tokens": "tokens/warm-clear.board.css"
+  },
+  {
+   "style": "warm-clear",
+   "status": "later",
+   "screen": "payroll",
+   "title": "Payroll run",
+   "module": "payroll",
+   "width": 1440,
+   "size": [
+    1440,
+    2096
+   ],
+   "theme": "light",
+   "file": "boards/c/1440/payroll.png",
+   "tokens": "tokens/warm-clear.board.css"
+  },
+  {
+   "style": "warm-clear",
+   "status": "later",
+   "screen": "people",
+   "title": "People list with the employee record panel",
+   "module": "people",
+   "width": 1440,
+   "size": [
+    1440,
+    2064
+   ],
+   "theme": "light",
+   "file": "boards/c/1440/people.png",
+   "tokens": "tokens/warm-clear.board.css"
+  },
+  {
+   "style": "warm-clear",
+   "status": "later",
+   "screen": "leave",
+   "title": "Leave request (employee, phone)",
+   "module": "self-service",
+   "width": 390,
+   "size": [
+    390,
+    844
+   ],
+   "theme": "light",
+   "file": "boards/c/390/leave.png",
+   "tokens": "tokens/warm-clear.board.css"
+  },
+  {
+   "style": "warm-clear",
+   "status": "later",
+   "screen": "payslip",
+   "title": "Payslip (employee, phone)",
+   "module": "self-service",
+   "width": 390,
+   "size": [
+    390,
+    1270
+   ],
+   "theme": "light",
+   "file": "boards/c/390/payslip.png",
+   "tokens": "tokens/warm-clear.board.css"
+  },
+  {
+   "style": "warm-clear",
+   "status": "later",
+   "screen": "profile",
+   "title": "My profile (employee, phone)",
+   "module": "self-service",
+   "width": 390,
+   "size": [
+    390,
+    844
+   ],
+   "theme": "light",
+   "file": "boards/c/390/profile.png",
+   "tokens": "tokens/warm-clear.board.css"
+  }
+ ]
+}
