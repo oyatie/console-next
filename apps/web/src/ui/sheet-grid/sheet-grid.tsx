@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { TextInput } from "../field/field";
 import { narrow } from "./choices";
 import { readClipboard, writeClipboard } from "./clipboard";
+import { pasteBlock, type SheetGridPasteResult } from "./paste";
 import { at as rangeAt, indexOf, inRect, moveRange, rectIn, type Range } from "./range";
 import { gridViewport, useGridWindow } from "./use-grid-window";
 import s from "./sheet-grid.module.css";
@@ -18,7 +19,8 @@ type SheetGridCell = {
   value: string;
   previous?: ReactNode;
   changed?: boolean;
-  invalid?: boolean; readOnly?: boolean;
+  // keepOnPaste: a pasted block of more than one cell leaves the cell as it is; typing still changes it.
+  invalid?: boolean; readOnly?: boolean; keepOnPaste?: boolean;
   error?: ReactNode;
   suggestion?: { value: string; content: ReactNode };
 };
@@ -35,7 +37,6 @@ type SheetGridTailColumn<R> = {
   header: ReactNode;
   cell: (row: R) => { tone: "changed" | "error" | "same"; content: ReactNode };
 };
-type SheetGridPasteResult = { applied: number; readOnly: number; outside: number };
 
 const id = (r: number, c: number) => `grid-${r}-${c}`;
 const same = (a: At | null, r: number, c: number) => a?.r === r && a.c === c;
@@ -200,15 +201,7 @@ export function SheetGrid<R>({
     const block = readClipboard(e.clipboardData, parsePaste);
     if (!block.length) return;
     e.preventDefault();
-    const result: SheetGridPasteResult = { applied: 0, readOnly: 0, outside: 0 };
-    block.forEach((line, dr) => line.forEach((v, dc) => {
-      const row = rows[r + dr];
-      if (v.trim() === "") return;
-      const column = columns[c + dc];
-      if (!row || !column) result.outside++;
-      else if (column.cell(row, r + dr).readOnly) result.readOnly++;
-      else { onCell(row, c + dc, v); result.applied++; }
-    }));
+    const result = pasteBlock(block, r, c, rows, (row, rr, cc) => columns[cc]?.cell(row, rr), onCell);
     onPasteResult?.(result);
   };
   const copy = (e: ClipboardEvent) => {

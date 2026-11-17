@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[path = "statutory/scoped_income.rs"]
+mod scoped_income;
 mod support;
 #[path = "statutory/world.rs"]
 mod world;

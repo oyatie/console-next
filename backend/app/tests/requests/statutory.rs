@@ -176,6 +176,16 @@ async fn filing_receipt_masks_sensitive_facts_and_rechecks_scoped_employer_reads
         assert!(task["applicability_facts"]["birth_date"].is_null());
         assert!(task["applicability_facts"]["monthly_income_won"].is_null());
     }
+    // A tenant-wide reader keeps the income it may record, and the birth date stays closed to it too.
+    let wide = read(f.rt.clone(), f.submitter.clone(), id.to_string())
+        .await
+        .unwrap()
+        .0;
+    for task in wide["result"]["items"].as_array().unwrap() {
+        assert_eq!(task["can_record_sensitive_facts"], true);
+        assert!(task["applicability_facts"]["birth_date"].is_null());
+        assert_eq!(task["applicability_facts"]["monthly_income_won"], 1234567);
+    }
     let mut tx = f.owner.begin().await.unwrap();
     sqlx::query("SET LOCAL session_replication_role=replica")
         .execute(tx.as_mut())

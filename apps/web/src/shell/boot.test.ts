@@ -1,16 +1,20 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import { bootKo } from "../../../../packages/i18n/src/catalogs/boot";
+import { bootBootstrapKo } from "../../../../packages/i18n/src/catalogs/boot-bootstrap";
 
-// The sign-in screen and the shell render before any screen catalog loads: every id they use must
-// be boot copy (packages/i18n/src/catalogs/boot.ts), or it would show as a raw id.
-const ENTRY = ["main.tsx", "routes/app.ts", "shell/frame/shell-frame.tsx", "shell/baseline/shell.tsx", "shell/frame/controls.tsx", "shell/frame/locale-select.tsx", "shell/nav.ts", "shell/locale.ts", "auth/Login.tsx", "ui/empty-state.tsx", "lib/refusal.ts", "lib/react/command-error.tsx", "lib/react/query-state.tsx", "lib/react/denied.tsx", "lib/react/announce.ts", "reference/authz/api.ts"];
+// Entry loading/recovery uses bootstrap copy; sign-in and shell copy may await the boot catalog.
+const BOOTSTRAP = ["main.tsx", "shell/locale.ts", "lib/react/crash-screen.tsx", "lib/react/support-reference.tsx", "ui/skeleton/skeleton.tsx"];
+const BOOT = ["routes/app.ts", "shell/frame/shell-frame.tsx", "shell/baseline/shell.tsx", "shell/frame/controls.tsx", "shell/frame/locale-select.tsx", "shell/nav.ts", "auth/Login.tsx", "auth/SetupPasskey.tsx", "auth/IdleGuard.tsx", "ui/empty-state.tsx", "lib/refusal.ts", "lib/react/command-error.tsx", "lib/react/query-state.tsx", "lib/react/denied.tsx", "lib/react/announce.ts", "reference/authz/api.ts"];
 
-test("the entry's copy is all boot copy", () => {
-  const ids = ENTRY.flatMap((f) =>
-    [...readFileSync(new URL(`../${f}`, import.meta.url), "utf8").matchAll(/(?:\bt\(|hub: |label: )\s*["'`]([^"'`$]+)/g)].map((m) => `${f}: ${m[1]}`),
-  );
-  expect(ids.length).toBeGreaterThan(40);
-  // A template id (`shell.locale.${l}`) is checked by its static prefix.
-  expect(ids.filter((x) => !Object.keys(bootKo).some((k) => k.startsWith(x.split(": ")[1]!)))).toEqual([]);
-});
+for (const [name, files, catalog] of [["bootstrap", BOOTSTRAP, bootBootstrapKo], ["boot", BOOT, bootKo]] as const) {
+  test(`${name} surfaces have translated copy before their catalog boundary`, () => {
+    const ids = files.flatMap(f =>
+      [...readFileSync(new URL(`../${f}`, import.meta.url), "utf8").matchAll(/(?:\bt\(|hub: |label: )\s*["'`]([^"'`$]+)/g)].map(m => `${f}: ${m[1]}`),
+    );
+    expect(ids.length).toBeGreaterThan(10);
+    // A template id (`shell.locale.${l}`) is checked by its static prefix.
+    expect(ids.filter(x => !Object.keys(catalog).some(k => k.startsWith(x.split(": ")[1]!)))).toEqual([]);
+  });
+}

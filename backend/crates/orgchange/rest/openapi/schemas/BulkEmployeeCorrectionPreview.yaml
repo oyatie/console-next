@@ -31,7 +31,8 @@ properties:
           enum: [CHANGE, PENDING, UNCHANGED, REFUSED]
         fields:
           type: array
-          description: Only the fields whose value differs from the record.
+          description: The fields to write. Each value that differs from the record, and each sent for a recorded birth
+            date, address, phone or personal email, which a preview never reports as unchanged.
           items:
             type: object
             required: [field, path]
@@ -40,6 +41,8 @@ properties:
                 type: string
               before:
                 type: [string, 'null']
+                description: The recorded value. A birth date, address, phone or personal email is its mask; only the
+                  governed reveal returns those.
               after:
                 type: [string, 'null']
               path:
