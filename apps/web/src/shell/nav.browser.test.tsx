@@ -199,8 +199,7 @@ test("a changed idle checklist cannot change the rail until navigation", async (
   }
 });
 
-test("a pending SETUP checklist keeps the last answered rail", async () => {
-  const previousLinks = await page.getByRole("navigation", { name: "주 메뉴" }).getByRole("link").allTextContents();
+test("a pending SETUP checklist waits before showing current entries", async () => {
   let release!: () => void;
   const pending = new Promise<void>(done => { release = done; });
   await page.route("**/api/v1/users/me", route => route.fulfill({ json: { ...user, tenant: { ...user.tenant, phase: "SETUP", go_live_at: null } } }));
@@ -217,7 +216,8 @@ test("a pending SETUP checklist keeps the last answered rail", async () => {
     await decisions;
     await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    await element(rail.getByRole("link")).toHaveText(previousLinks);
+    await element(rail.getByRole("status")).toBeVisible();
+    await element(rail.getByRole("link")).toHaveCount(0);
     release();
     await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "직원", "권한"]);
   } finally {
