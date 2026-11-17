@@ -6,8 +6,9 @@ properties:
     enum: [REGULAR, CONTRACT, PART_TIME, INTERN]
   phone_e164:
     type: [string, 'null']
-    description: Omitted for callers without employee_directory_manage (read-only directory access); null when
-      not recorded (a profile an import created, MR-7).
+    description: The reveal mask (the prefix and last four digits) for employee_directory_manage; only POST
+      /api/v1/employees/{id}/reveal returns the number. Omitted for callers without employee_directory_manage
+      (read-only directory access); null when not recorded (a profile an import created).
   base_pay:
     description: Omitted for callers without employee_directory_manage (read-only directory access); null when
       not recorded (a profile an import created, MR-7).

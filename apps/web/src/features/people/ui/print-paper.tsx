@@ -4,7 +4,7 @@ import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { EMPLOYMENT_TYPE, LEAVE_TYPE, LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { PaperGrid, PaperTable } from "../../../ui/paper/paper-table";
-import { initial, maskedAddress, maskedBirth, maskedPhone } from "../domain/card";
+import { initial } from "../domain/card";
 import { retirementDate } from "../domain/employment";
 import { commentText, tx, eventWhat } from "../present";
 import type { Card } from "./use-card";
@@ -29,7 +29,8 @@ export function PrintPaper({ c, parts, at }: { c: Card; parts: readonly string[]
   const events = (c.events.data?.items ?? []).filter((x) => x.state !== "CANCELLED").sort((a, b) => b.effective_date.localeCompare(a.effective_date));
   const records = (c.records.data?.items ?? []).filter((x) => !x.voided && HISTORY.includes(x.section));
   const phone = (d.employment ?? d.pending_employment)?.phone_e164;
-  const reveal = (key: string, v: string) => (key === "birth" ? maskedBirth() : key === "address" && r?.address ? maskedAddress(r.address) : v);
+  const birth = c.facts.data?.birth_date ?? "";
+  const reveal = (key: string, v: string) => (key === "birth" ? birth : key === "address" && r?.address ? r.address : v);
   return (
     <Paper size="a4" label={t("empDoc.print.preview")} watermark={t("empDoc.print.wm", { at: fmtDateTime(at) })}>
       <PaperHead title={t("empDoc.print.paperTitle")}><span className="grow" /><span>{t("empDoc.print.asOf", { entity: c.place.entity, date: fmtDate(todayKst()) })}</span></PaperHead>
@@ -39,9 +40,9 @@ export function PrintPaper({ c, parts, at }: { c: Card; parts: readonly string[]
             [t("empCard.f.name"), [e.name, [p?.name_hanja, p?.name_en].filter(Boolean).join(" · ")].filter(Boolean).join(" (") + (p?.name_hanja || p?.name_en ? ")" : "")],
             [t("empCard.empno.field"), e.employee_number ?? ""],
             [t("empCard.reg.item.sex"), r?.sex ? t(`empCard.sex.${r.sex}`) : ""],
-            [t("empCard.f.birth"), c.facts.data?.birth_date ? maskedBirth() : ""],
-            [t("empCard.f.address"), r?.address ? maskedAddress(r.address) : ""],
-            [t("empCard.f.phone"), phone ? maskedPhone(phone) : ""],
+            [t("empCard.f.birth"), birth],
+            [t("empCard.f.address"), r?.address ?? ""],
+            [t("empCard.f.phone"), phone ?? ""],
             [t("empDoc.print.place"), [c.place.workplace, ...c.place.path].filter(Boolean).join(" › ")],
             [t("empDoc.print.gradeTitle"), [c.title(k.grade_id) ?? e.position, c.title(k.position_kind_id)].filter(Boolean).join(" · ")],
             [t("empCard.f.hire"), fmtDate(e.hire_date)],

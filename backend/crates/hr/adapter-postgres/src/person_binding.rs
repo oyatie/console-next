@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Durable system backfill evidence; the inbox adapter consumes this read side.
 
+use console_hr_domain::profile::mask::{birth, birth_disambiguation};
+use console_hr_domain::text::parse_yyyy_mm_dd;
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
 use serde::{Deserialize, Serialize};
@@ -72,13 +74,38 @@ impl HrService {
                     JOIN visible_employees e ON e.id=(c.value->>'employee_id')::uuid),'[]'::jsonb)) AS evidence,created_at \
                     FROM reviews ORDER BY created_at,subject_kind,subject_id LIMIT ");
                 rows.push_bind(limit).push(" OFFSET ").push_bind(offset);
-                let items: Vec<PersonBindingReview> = rows.build_query_as().fetch_all(tx.as_mut()).await?;
+                let mut items: Vec<PersonBindingReview> = rows.build_query_as().fetch_all(tx.as_mut()).await?;
+                items.iter_mut().for_each(|item| namesake_dates(&mut item.evidence));
                 let subjects = items.iter().map(|item|item.subject_id).collect::<Vec<_>>();
                 let me = actor_employee_id(tx,&principal).await?;
                 let event = access_event(&principal,DirectoryAccess::PersonBindingReview,&subjects,me,serde_json::json!({"row_count":items.len()}))?;
                 Ok((PersonBindingReviews { items, total, limit, offset },vec![event]))
             })
         }).await
+    }
+}
+
+/// A namesake review tells people apart by birth year and month; the full date opens only through the reveal.
+fn namesake_dates(evidence: &mut serde_json::Value) {
+    let shown = |date: &mut serde_json::Value| {
+        if let Some(text) = date.as_str() {
+            *date = parse_yyyy_mm_dd(text)
+                .map_or_else(|_| birth().to_owned(), birth_disambiguation)
+                .into();
+        }
+    };
+    if let Some(date) = evidence.get_mut("birth_date") {
+        shown(date);
+    }
+    let candidates = evidence
+        .get_mut("candidates")
+        .and_then(|c| c.as_array_mut());
+    for date in candidates
+        .into_iter()
+        .flatten()
+        .filter_map(|c| c.get_mut("birth_date"))
+    {
+        shown(date);
     }
 }
 

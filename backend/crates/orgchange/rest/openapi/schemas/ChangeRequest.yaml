@@ -15,6 +15,9 @@ properties:
   payload:
     type: object
     additionalProperties: true
+    description: >-
+      The request's details. In `changes`, a birth date, address, phone or personal email is the
+      reveal mask, never the value; only POST /api/v1/employees/{id}/reveal returns a recorded one.
   reason_code:
     type: string
   note:
