@@ -23,7 +23,8 @@
   --text-xs: 14px; --text-sm: 14px; --text-body: 14px; --text-lg: 15px; --text-xl: 20px; --text-2xl: 34px;
   --fw-body: 420; --fw-medium: 540; --fw-strong: 660; --lh-base: 1.4;
   --radius-sm: 3px; --radius: 4px; --radius-lg: 8px;
-  --row-h: 32px; --row-h-compact: 32px; --control-h-sm: 32px; --target: 32px; --target-touch: 48px; --panel-w: 560px;
+  /* Buttons subtract --space-1 from the row height; retain their 32px floor. */
+  --row-h: 36px; --row-h-compact: 32px; --control-h-sm: 32px; --target: 32px; --target-touch: 48px; --panel-w: 560px;
 }
 
 :root[data-experience="quick-keys"][data-theme="dark"] {

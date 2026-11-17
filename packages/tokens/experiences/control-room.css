@@ -30,7 +30,8 @@
   --text-xs: 14px; --text-sm: 14px; --text-body: 14px; --text-lg: 15px; --text-xl: 20px; --text-2xl: 30px;
   --fw-body: 400; --fw-medium: 500; --fw-strong: 700; --lh-base: 1.5;
   --radius-sm: 2px; --radius: 2px; --radius-lg: 3px;
-  --row-h: 32px; --row-h-compact: 32px; --control-h-sm: 32px; --target: 32px; --target-touch: 44px;
+  /* Buttons subtract --space-1 from the row height; retain their 32px floor. */
+  --row-h: 36px; --row-h-compact: 32px; --control-h-sm: 32px; --target: 32px; --target-touch: 44px;
 }
 
 :root[data-experience="control-room"][data-theme="dark"] {

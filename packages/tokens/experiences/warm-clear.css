@@ -29,8 +29,9 @@
   --scrim: rgba(33, 28, 22, 0.32);
   --text-xs: 14px; --text-sm: 15px; --text-body: 17px; --text-lg: 20px; --text-xl: 24px; --text-2xl: 32px;
   --fw-body: 450; --fw-medium: 550; --fw-strong: 700; --lh-base: 1.5;
-  --space-5: 20px; --space-6: 24px; --radius-sm: 8px; --radius: 14px; --radius-lg: 20px;
-  --row-h: 56px; --row-h-compact: 44px; --control-h-sm: 36px; --target: 44px; --target-touch: 48px; --topbar-h: 72px;
+  --radius-sm: 8px; --radius: 14px; --radius-lg: 20px;
+  /* Compact rows keep the shared virtual grid's 32px geometry. */
+  --row-h: 56px; --row-h-compact: 32px; --control-h-sm: 36px; --target: 44px; --target-touch: 48px; --topbar-h: 72px;
 }
 
 :root[data-experience="warm-clear"][data-theme="dark"] {

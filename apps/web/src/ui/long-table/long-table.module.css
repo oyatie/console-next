@@ -1,9 +1,9 @@
 .region { display: flex; flex-direction: column; min-width: 0; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
 .caption { flex: 1; font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
-.find { position: relative; display: flex; align-items: center; min-width: calc(var(--panel-w) / 1.6); }
+.find { position: relative; display: flex; align-items: center; min-width: min(100%, calc(var(--panel-w) / 1.6)); }
 .sort { display: flex; align-items: center; gap: var(--space-2); }
-.find :global(.field__input) { flex: 1; padding-right: var(--space-6); }
+.find :global(.field__input) { flex: 1; min-width: 0; padding-right: var(--space-6); }
 .find input::-webkit-search-cancel-button { display: none; }
 .kbd { position: absolute; right: var(--space-2); padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--steel); }
 .selection { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: var(--primary-soft); color: var(--primary); font-size: var(--text-sm); font-weight: var(--fw-medium); }

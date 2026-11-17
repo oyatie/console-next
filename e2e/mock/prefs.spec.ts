@@ -6,11 +6,35 @@ import { mockScreen } from "./screen";
 import { failure, inbox } from "./fixtures";
 import { fits, expectAxe } from "../a11y";
 import { screens } from "../states/registry";
+import { OPTIONAL_COLUMNS } from "../../apps/web/src/features/people/domain/columns";
 
 test.beforeAll(() => loadCatalog("ko"));
 
 // The built entry chunk: nothing of the app has run until this script does.
 const ENTRY = /\/assets\/index-[^/]+\.js$/;
+
+async function expectRenderedFloors(page: Page) {
+  const sizes = await page.evaluate(() => {
+    const root = document.documentElement;
+    const experience = root.dataset.experience!;
+    const controls = [...document.querySelectorAll<HTMLElement>('header button, header .btn, header input, header select, main button, main .btn, main input:not([type="hidden"]), main select, main [role="tab"], [role="dialog"] button, [role="dialog"] .check input')].filter(el => el.checkVisibility());
+    const heights = () => controls.map(el => el.getBoundingClientRect().height);
+    const actual = heights();
+    delete root.dataset.experience;
+    const baseline = heights();
+    root.dataset.experience = experience;
+    return {
+      // Existing status chips and inline editors are below 32px on baseline; an experience must never shrink them.
+      controls: controls.map((el, i) => ({ name: el.getAttribute("aria-label") || el.textContent?.trim() || el.outerHTML, height: actual[i]!, floor: Math.min(32, baseline[i]!) })),
+      // <small> already renders below the floor on baseline; leave its repair to the shared typography.
+      text: [...document.querySelectorAll<HTMLElement>('header *, main *, [role="dialog"] *')].filter(el => el.checkVisibility() && !el.closest("small") && [...el.childNodes].some(node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())).map(el => ({ text: el.textContent?.trim(), size: parseFloat(getComputedStyle(el).fontSize) })),
+    };
+  });
+  expect(sizes.controls.length).toBeGreaterThan(0);
+  expect.soft(sizes.controls.filter(control => control.height + 0.01 < control.floor), "rendered control heights").toEqual([]);
+  // Icon-only phone controls hide their accessible text at 0px.
+  expect.soft(sizes.text.filter(text => text.size > 0 && text.size < 14), "rendered text sizes").toEqual([]);
+}
 
 /** Records every write of data-theme on <html> from the first script of the page on, same value or not. */
 async function themeWrites(page: Page) {
@@ -124,18 +148,27 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
       await expect(page.locator("html")).toHaveAttribute("data-experience", experience);
       const tokens = await page.locator("html").evaluate(el => {
         const css = getComputedStyle(el);
-        return ["--canvas", "--primary", "--text-xs", "--text-sm", "--text-body", "--target", "--row-h-compact", "--control-h-sm"].map(name => css.getPropertyValue(name).trim());
+        return ["--canvas", "--primary"].map(name => css.getPropertyValue(name).trim());
       });
-      expect(tokens.slice(0, 2)).toEqual(theme === "light" ? [light, primaryLight] : [dark, primaryDark]);
-      for (const value of tokens.slice(2, 5)) expect(parseFloat(value)).toBeGreaterThanOrEqual(14);
-      for (const value of tokens.slice(5)) expect(parseFloat(value)).toBeGreaterThanOrEqual(32);
+      expect(tokens).toEqual(theme === "light" ? [light, primaryLight] : [dark, primaryDark]);
+      await expectRenderedFloors(page);
       const locale = await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).boundingBox();
       const banner = await page.getByRole("banner").boundingBox();
       expect(locale!.y).toBeGreaterThanOrEqual(banner!.y);
       expect(locale!.y + locale!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
+      if (screen.key === "people") {
+        const find = await main.getByRole("searchbox", { name: t("roster.find"), exact: true }).boundingBox();
+        expect(find!.x).toBeGreaterThanOrEqual(0);
+        expect(find!.x + find!.width).toBeLessThanOrEqual(width);
+      }
       await fits(page, `${experience}/${theme}/${screen.key}/${width}`);
       await expectAxe(page, `${experience}/${theme}/${screen.key}/${width}`);
       await info.attach(`${experience}-${theme}-${screen.key}-${width}`, { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+      if (screen.key === "people") {
+        await page.getByRole("button", { name: t("roster.columns.open", { count: OPTIONAL_COLUMNS.length + 2 }), exact: true }).click();
+        await expect(page.getByRole("dialog", { name: t("roster.columns.title"), exact: true }).locator(".check input").first()).toBeVisible();
+        await expectRenderedFloors(page);
+      }
       expect(fixture.unexpected).toEqual([]);
     });
   }
