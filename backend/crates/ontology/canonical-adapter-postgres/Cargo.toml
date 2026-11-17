@@ -21,6 +21,7 @@ console-kernel-core = { workspace = true }
 console-platform-authz = { workspace = true }
 console-platform-db = { workspace = true }
 console-platform-request-context = { workspace = true }
+hex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }

@@ -2874,6 +2874,7 @@ dependencies = [
  "console-platform-authz",
  "console-platform-db",
  "console-platform-request-context",
+ "hex",
  "serde",
  "serde_json",
  "sha2 0.11.1",
