@@ -14,25 +14,25 @@
     "note": "docs/quality/dependencies/npm-group-2026-11.md"
   },
   "package.json:devDependencies:oxlint": {
-    "requirement": "^1.90.0",
-    "version": "1.90.0",
-    "registry": "https://registry.npmjs.org/oxlint/1.90.0",
-    "checked": "2026-11-02",
-    "note": "docs/quality/dependencies/npm-group-2026-11.md"
+    "requirement": "^1.93.0",
+    "version": "1.93.0",
+    "registry": "https://registry.npmjs.org/oxlint/1.93.0",
+    "checked": "2026-11-17",
+    "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
   },
   "apps/web/package.json:dependencies:@tanstack/react-query": {
-    "requirement": "^5.105.0",
-    "version": "5.105.0",
-    "registry": "https://registry.npmjs.org/%40tanstack%2Freact-query/5.105.0",
-    "checked": "2026-11-02",
-    "note": "docs/quality/dependencies/npm-group-2026-11.md"
+    "requirement": "^5.105.1",
+    "version": "5.105.1",
+    "registry": "https://registry.npmjs.org/%40tanstack%2Freact-query/5.105.1",
+    "checked": "2026-11-17",
+    "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
   },
   "apps/web/package.json:dependencies:lucide-react": {
-    "requirement": "^1.66.0",
-    "version": "1.66.0",
-    "registry": "https://registry.npmjs.org/lucide-react/1.66.0",
-    "checked": "2026-11-08",
-    "note": "docs/quality/dependencies/lucide-react.md"
+    "requirement": "^1.70.0",
+    "version": "1.70.0",
+    "registry": "https://registry.npmjs.org/lucide-react/1.70.0",
+    "checked": "2026-11-17",
+    "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
   },
   "apps/web/package.json:dependencies:@internationalized/date": {
     "requirement": "^3.12.4",
@@ -42,11 +42,11 @@
     "note": "docs/quality/dependencies/internationalized-date.md"
   },
   "package.json:devDependencies:vitest": {
-    "requirement": "^5.0.5",
-    "version": "5.0.5",
-    "registry": "https://registry.npmjs.org/vitest/5.0.5",
-    "checked": "2026-10-26",
-    "note": "docs/quality/dependencies/vitest.md"
+    "requirement": "^5.1.0",
+    "version": "5.1.0",
+    "registry": "https://registry.npmjs.org/vitest/5.1.0",
+    "checked": "2026-11-17",
+    "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
   },
   "apps/web/package.json:dependencies:zod": {
     "requirement": "^4.6.7",
@@ -93,10 +93,31 @@
     "removalCondition": "Reopen alert #14 and resolve the vulnerable GTK chain before planning, building or shipping a Linux desktop shell. The orchestrator dismisses the alert only after review."
   },
   "apps/web/package.json:devDependencies:vite": {
-    "requirement": "^8.3.5",
-    "version": "8.3.5",
-    "registry": "https://registry.npmjs.org/vite/8.3.5",
-    "checked": "2026-10-26",
-    "note": "docs/quality/dependencies/vite.md"
+    "requirement": "^8.3.7",
+    "version": "8.3.7",
+    "registry": "https://registry.npmjs.org/vite/8.3.7",
+    "checked": "2026-11-17",
+    "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
+  },
+  "package.json:devDependencies:@playwright/test": {
+    "requirement": "^1.65.0",
+    "version": "1.65.0",
+    "registry": "https://registry.npmjs.org/%40playwright%2Ftest/1.65.0",
+    "checked": "2026-11-17",
+    "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
+  },
+  "packages/i18n/package.json:dependencies:intl-messageformat": {
+    "requirement": "^12.1.5",
+    "version": "12.1.5",
+    "registry": "https://registry.npmjs.org/intl-messageformat/12.1.5",
+    "checked": "2026-11-17",
+    "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
+  },
+  "apps/web/package.json:devDependencies:@vitejs/plugin-react": {
+    "requirement": "^6.3.0",
+    "version": "6.3.0",
+    "registry": "https://registry.npmjs.org/%40vitejs%2Fplugin-react/6.3.0",
+    "checked": "2026-11-17",
+    "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
   }
 }
