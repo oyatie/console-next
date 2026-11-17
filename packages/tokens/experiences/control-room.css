@@ -13,7 +13,7 @@
   --primary: #0b6672;
   --primary-hover: #085660;
   --primary-soft: #dff0f2;
-  --primary-bd: var(--border);
+  --primary-bd: #83b0b8; /* Derived, not drawn. */
   --on-primary: #ffffff;
   --danger-tx: #b3261e;
   --danger-bg: #fbe9e7;

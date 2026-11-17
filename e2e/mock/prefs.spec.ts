@@ -7,6 +7,8 @@ import { failure, inbox } from "./fixtures";
 import { fits, expectAxe } from "../a11y";
 import { screens } from "../states/registry";
 import { OPTIONAL_COLUMNS } from "../../apps/web/src/features/people/domain/columns";
+import { attendanceBoardScreens } from "../states/attendance";
+import { payrollScreens } from "../states/payroll";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -113,6 +115,92 @@ const experiences = [
 ] as const;
 
 for (const [experience, light, dark, primaryLight, primaryDark] of experiences) for (const theme of ["light", "dark"] as const) {
+  if (experience === "calm-ledger" || experience === "quick-keys") {
+  test(`${experience} ${theme} attendance calendar preserves the baseline column`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript(values => {
+      localStorage.setItem("console.experience", values.experience);
+      localStorage.setItem("console.theme", values.theme);
+    }, { experience, theme });
+    const screen = attendanceBoardScreens.find(screen => screen.key === "attendance-calendar")!;
+    const fixture = await mockScreen(page, screen, "populated");
+    await page.goto(screen.path);
+    const calendar = page.getByRole("grid");
+    await expect(calendar.locator("[data-date]")).toHaveCount(35, { timeout: 20_000 });
+    await page.evaluate(() => document.fonts.ready);
+    const geometry = await calendar.evaluate(el => {
+      const root = document.documentElement;
+      const experience = root.dataset.experience!;
+      const width = el.getBoundingClientRect().width;
+      const wrapped = [...el.querySelectorAll("[data-date] > span:first-child")].filter(day => {
+        const range = document.createRange();
+        range.selectNodeContents(day);
+        return range.getClientRects().length > 1;
+      }).map(day => day.textContent);
+      delete root.dataset.experience;
+      const baseline = el.getBoundingClientRect().width;
+      root.dataset.experience = experience;
+      return { width, baseline, wrapped };
+    });
+    expect.soft(geometry.width).toBeGreaterThanOrEqual(geometry.baseline);
+    expect(geometry.wrapped).toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
+  test(`${experience} ${theme} Select stays inside the phone viewport`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(values => {
+      localStorage.setItem("console.experience", values.experience);
+      localStorage.setItem("console.theme", values.theme);
+    }, { experience, theme });
+    const screen = payrollScreens.find(screen => screen.key === "payroll-reference")!;
+    const fixture = await mockScreen(page, screen, "populated");
+    await page.goto(screen.path);
+    await page.getByRole("main").getByRole("button", { name: `${t("payroll.reference.pick")} ${t("payroll.entity")}`, exact: true }).click();
+    const list = page.getByRole("listbox");
+    await expect(list).toBeVisible();
+    const box = (await list.boundingBox())!;
+    expect.soft(box.x).toBeGreaterThanOrEqual(0);
+    expect.soft(box.x + box.width).toBeLessThanOrEqual(390);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
+  test(`${experience} ${theme} People keymap fits its phone dialog`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(values => {
+      localStorage.setItem("console.experience", values.experience);
+      localStorage.setItem("console.theme", values.theme);
+    }, { experience, theme });
+    const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "populated");
+    await page.goto("/people");
+    await expect(page.getByRole("main").getByRole("searchbox")).toBeVisible({ timeout: 20_000 });
+    await page.keyboard.press("?");
+    const dialog = page.getByRole("dialog", { name: t("peopleJump.keys"), exact: true });
+    await expect(dialog).toBeVisible();
+    expect(await dialog.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+    expect(await dialog.locator("section").first().locator("..").evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+    expect(fixture.unexpected).toEqual([]);
+  });
+  }
+
+  for (const width of [390, 360]) test(`${experience} ${theme} phone toolbar fits a four-digit task count at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(values => {
+      localStorage.setItem("console.experience", values.experience);
+      localStorage.setItem("console.theme", values.theme);
+    }, { experience, theme });
+    const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "populated");
+    const queue = { ...inbox(1), counts: { turn: { total: 9999, total_is_exact: true } } };
+    await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: queue });
+    await page.goto("/people");
+    await expect(page.locator("header [data-count]")).toHaveText("9999", { timeout: 20_000 });
+    const controls = await page.getByRole("banner").locator("button, a, select").evaluateAll(els => els.filter(el => el.checkVisibility()).map(el => ({ name: el.getAttribute("aria-label") || el.textContent, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
+    expect(controls.filter(control => control.left < 0 || control.right > width)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
   test(`${experience} ${theme} tokens arrive before the bundle`, async ({ page }) => {
     const fixture = await signIn(page, { "console.experience": experience, "console.theme": theme });
     let release!: () => void;
