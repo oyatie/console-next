@@ -15,7 +15,8 @@ on:
     - cron: '47 17 * * *'
 permissions: {}
 concurrency:
-  group: db-tests-${{ github.event_name == 'pull_request' && github.ref || 'trunk' }}
+  # A newer run replaces a pending one in its group, so the nightly has its own group and pushes cannot cancel it.
+  group: db-tests-${{ github.event_name == 'pull_request' && github.ref || github.event_name == 'schedule' && 'nightly' || 'trunk' }}
   cancel-in-progress: false
 
 jobs:
