@@ -371,7 +371,7 @@ function runtimeCli(extra: Record<string, string> = {}) {
   git("add", ".");
   writeFileSync(path.join(dir, "scripts/copy-hangul-baseline.json"), JSON.stringify({ allow: [] }));
   git("add", ".");
-  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "runtime fixture");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "runtime fixture");
   const cli = (...args: string[]) => spawnSync(process.execPath, [path.join(dir, "scripts/check-copy.mjs"), ...args], { cwd: dir, encoding: "utf8", env: { ...process.env, QUALITY_BASE: "dev" } });
   return { cli, dir, josaFile, josaSource, git };
 }
@@ -395,7 +395,7 @@ test("first Hangul adoption reads UTF-8 fixtures marked binary and refuses fresh
   const { cli, dir, git } = runtimeCli({ ".gitattributes": "*.fixture binary\n", "names.fixture": koCommon["common.closeRelated"].slice(0, 2) });
   const file = path.join(dir, "scripts/copy-hangul-baseline.json");
   git("rm", "scripts/copy-hangul-baseline.json");
-  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: first Hangul adoption");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "test: first Hangul adoption");
   writeFileSync(file, JSON.stringify({ allow: [] }));
   const seeded = cli("--report");
   expect(seeded.status, seeded.stderr).toBe(0);
@@ -539,11 +539,11 @@ function debtFixture(englishRule = false) {
   writeFileSync(path.join(fixture.dir, "apps/web/src/debt.ts"), `t(${JSON.stringify(id)})`);
   const { git } = fixture;
   git("add", ".");
-  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test fixture");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "test fixture");
   return { ...fixture, set, git, baseline: path.join(fixture.dir, "scripts/copy-maturity-baseline.json") };
 }
 
-test("CLI resolves seeded and stored composer debt against dev when public/dev is absent", () => {
+test("CLI resolves seeded and stored composer debt against local dev when upstream and origin/dev are absent", () => {
   const { dir, cli, git } = debtFixture(true);
   const file = "apps/web/src/features/entity/ui/x-sheet.tsx";
   const source = "useCommand({}); <Sheet />";
@@ -551,18 +551,19 @@ test("CLI resolves seeded and stored composer debt against dev when public/dev i
   writeFileSync(path.join(dir, file), source);
   rmSync(path.join(dir, "scripts/composer-allow.json"));
   git("add", ".");
-  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "existing governed sheet");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "existing governed sheet");
   const allow = checkComposer(file, source).map((p: string) => p.replace(/:\d+: composer\.verb:/, ": composer.verb:"));
   writeFileSync(path.join(dir, "scripts/composer-allow.json"), JSON.stringify({ allow }));
   expect(cli("--write-baseline").status).toBe(0);
   const env = { ...process.env };
   delete env.QUALITY_BASE;
   const unconfigured = () => spawnSync(process.execPath, [path.join(dir, "scripts/check-copy.mjs")], { cwd: dir, encoding: "utf8", env });
-  expect(spawnSync("git", ["rev-parse", "--verify", "--quiet", "public/dev"], { cwd: dir }).status).not.toBe(0);
+  expect(spawnSync("git", ["rev-parse", "--abbrev-ref", "dev@{upstream}"], { cwd: dir, env }).status).not.toBe(0);
+  expect(spawnSync("git", ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/dev"], { cwd: dir, env }).status).not.toBe(0);
   const seeded = unconfigured();
   expect(seeded.status, seeded.stderr).toBe(0);
   git("add", ".");
-  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "stored composer debt");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "stored composer debt");
   const stored = unconfigured();
   expect(stored.status, stored.stderr).toBe(0);
 });
@@ -573,7 +574,7 @@ test("CLI generates exact debt and requires stale entries to shrink", () => {
   expect(seeded.status, seeded.stderr).toBe(0);
   expect(Object.keys(JSON.parse(readFileSync(baseline, "utf8")))).toHaveLength(1);
   git("add", ".");
-  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "generated baseline");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "generated baseline");
   expect(cli().status).toBe(0);
   set("");
   expect(cli().stderr).toContain("remove/lower stale baseline");
@@ -586,7 +587,7 @@ test("dev advancing cannot turn inherited copy debt into baseline growth", () =>
   const { cli, set, git, dir } = debtFixture(true);
   const commit = (message: string) => {
     git("add", ".");
-    git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", message);
+    git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", message);
   };
   expect(cli("--write-baseline").status).toBe(0);
   commit("stored copy debt");
@@ -608,7 +609,7 @@ test("CLI refuses new debt, changed debt and handwritten baseline growth", async
   const { cli, set, baseline, git } = debtFixture();
   expect(cli("--write-baseline").status).toBe(0);
   git("add", ".");
-  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "generated baseline");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "generated baseline");
   const original = readFileSync(baseline, "utf8");
   set("다른 변경 사항도 이력에 남습니다.");
   expect(cli().status).toBe(1);
@@ -637,7 +638,7 @@ test("new violations cannot hide behind allow-list growth", () => {
 test("a renamed key keeps its exception; a new entry or a changed reason is still growth", () => {
   const { cli, dir, git } = debtFixture();
   const allowFile = path.join(dir, "scripts/copy-terms-allow.json");
-  const commit = (m: string) => { git("add", "."); git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", m); };
+  const commit = (m: string) => { git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", m); };
   writeFileSync(allowFile, JSON.stringify({ allow: [{ id: "org.footnote", rule: "prose.각주", reason: "kept use" }] }));
   commit("allow the footnote");
   writeFileSync(path.join(dir, "packages/i18n/src/catalogs/ko/debt.ts"), 'export const ko = {\n "people.footnote": "변경 사항은 이력에 남습니다.",\n};');

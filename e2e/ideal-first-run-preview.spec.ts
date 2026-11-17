@@ -3,7 +3,7 @@ import { expectAccessible } from "./a11y";
 import { apiAs, soloTenant } from "./chaos";
 import { go, kstDate } from "./flows";
 import { SETUP_DEPARTMENT, setupCompany, setupRail, startOperations } from "./setup-flows";
-import { chooseWorkbook } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "./helpers/import";
 import { plain, workbook } from "./helpers/import-layouts";
 import { keyboardActivate, probeActions } from "./helpers/first-run";
 import { addDepartments } from "./structure-flows";
@@ -17,6 +17,7 @@ test("BL-014: setup people have departments, stale preview re-arms, and post-liv
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "미배치.xlsx", await workbook([plain("미리보기정밀", Array.from({ length: 18 }, (_, i) => ({ name: `미배치${i + 1}`, number: `UP-${i + 1}`, unit: SETUP_DEPARTMENT, hired: kstDate(-30) })))]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await admin.getByRole("button", { name: "명부 반영: 신규 18명 · 갱신 0명" }).click();
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();
@@ -72,6 +73,7 @@ test("BL-014: setup people have departments, stale preview re-arms, and post-liv
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "운영추가.xlsx", await workbook([plain("미리보기정밀", [{ name: "운영미배치", number: "UP-LATE", hired: kstDate() }])]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await expect(admin.getByText(/미배치 1명/).first()).toBeVisible();
   await admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }).click();

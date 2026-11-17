@@ -5,6 +5,22 @@ The `route-load` workflow runs the existing `e2e/perf/route-load.spec.ts` nightl
 
 The job uploads `route-load-evidence/route-load.json` even when measurements fail. It keeps the checked-out `commit`, original UTC `run_at`, `source_command`, raw samples and cold/warm rows. Complete rows fail when p95, the SLO compliance target or the existing duplicate-read guard fails. Incomplete measurements retain `unknown` and null LCP; neither missing nor unknown data supplies green. A held-read control must exceed the objective and be rejected before real routes are measured. Setup failures may leave no rows; an empty artifact supplies no route coverage.
 
+Production terminates TLS at the Cloudflare edge, which serves HTTP/2 and has HTTP/3 enabled, and reaches the origin through a cloudflared tunnel. The edge configuration is kept outside this repository. The perf profile uses Node's HTTP/2 TLS server to reproduce multiplexed browser delivery, with an OpenSSL-generated throwaway localhost certificate. It deletes the certificate files immediately after reading them and limits certificate trust to the perf project. It does not reproduce edge caching or HTTP/3 transport.
+
+Each route is measured through the same HTTPS proxy origin in the same run, using the same saved synthetic tenant, fresh browser contexts and unchanged budget, sample count and deadline. The HTTP/1.1 browser disables HTTP/2 negotiation (Chromium `--disable-http2`; Firefox `network.http.http2.enabled=false`). Both legs retain the same cookies, refresh origin and TLS settings. Only production HTTP/2 rows gate the budget and appear in `rows`; HTTP/1.1 rows remain in `comparison` for reporting. The evidence reader consumes only `rows` and rejects explicitly non-h2 production rows.
+
+Rows carry `protocol`; cold samples must negotiate that protocol. Warm navigations may come from the browser cache without a negotiated protocol. Each sample retains its resource count, maximum request queue and last response end. Full navigation/resource waterfalls (start, request start, response start, end and transferred bytes) are retained only for failed samples. The workflow summary contains both cold p95 values per route and their p95 sample's waterfall summaries for inclusion in the PR.
+
+Local correctness is checked by `authenticated-transports.spec.ts`: both legs must refresh real authentication and produce complete cold/warm rows. Its small fixture proves transport correctness, not the synthetic-tenant budget. Use the hosted `route-load` run on the PR branch for paired p95 evidence; local timings under contention are not performance proof.
+
+Run the same profile locally with the existing backend launcher and an evidence directory outside the checkout:
+
+```sh
+E2E_SERVED=1 E2E_PERF=1 PERF_EVIDENCE_DIR="$ARTIFACT_DIR" \
+  npx playwright test --config=playwright.perf.config.ts --project=parallel --retries=0
+node e2e/perf/report.ts "$ARTIFACT_DIR/route-load.json"
+```
+
 Download from a trusted dev run of **route-load**, then ingest with the existing reader. `REPO` is the GitHub repository, `RUN_ID` is its run ID, `ARTIFACT_DIR` is an empty directory outside the checkout, and `READER_DIR` contains `evidence.py`. Verify the artifact commit equals the run's `headSha` before ingesting; ingest independently checks dev ancestry, UTC timestamps and the envelope. Never change an old artifact's commit or time to refresh it.
 
 ```sh

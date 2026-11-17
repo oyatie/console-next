@@ -16,11 +16,14 @@ export function baselineGrowth(current, previous) {
 }
 
 export function qualityRef(root) {
-  if (process.env.QUALITY_BASE !== undefined) return process.env.QUALITY_BASE;
+  if (process.env.QUALITY_BASE) return process.env.QUALITY_BASE;
   const upstream = spawnSync("git", ["rev-parse", "--abbrev-ref", "dev@{upstream}"], { cwd: root, encoding: "utf8" });
   if (upstream.status === 0) return upstream.stdout.trim();
+  const remote = spawnSync("git", ["config", "--get", "remote.origin.url"], { cwd: root });
   const origin = spawnSync("git", ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/dev"], { cwd: root });
-  return origin.status === 0 ? "origin/dev" : "dev";
+  const base = remote.status === 0 && origin.status === 0 ? "origin/dev" : "dev";
+  console.error(`quality base: ${base} (dev has no upstream; set one with git branch --set-upstream-to=<remote>/dev dev, or QUALITY_BASE=<ref>)`);
+  return base;
 }
 
 // Git distinguishes a missing path from an invalid base; unknown evidence must not become green.

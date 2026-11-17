@@ -76,8 +76,18 @@ export function hangulDebt(sources, allow) {
   });
   const counts = {}, problems = [], encodedProblems = [], lines = {};
   const add = category => { counts[category] = (counts[category] ?? 0) + 1; };
-  for (const { file, text } of sources) {
+  for (const { file, text: sourceText } of sources) {
+    let text = sourceText;
     if ((file.startsWith(`${CATALOGS}/`) && /\.(?:ts|json)$/.test(file) && !isDebtTest(file)) || file === "packages/api/src/schema.d.ts") continue;
+    // Declared header synonyms are multilingual input data; all other catalogue text remains checked.
+    if (file === "backend/crates/hr/domain/data/employee.json") {
+      const catalogue = JSON.parse(text);
+      for (const field of catalogue.fields) {
+        if (!Array.isArray(field.aliases) || field.aliases.some(alias => typeof alias !== "string")) throw new Error("import aliases must be strings");
+        field.aliases = [];
+      }
+      text = JSON.stringify(catalogue, null, 2);
+    }
     const category = hangulCategory(file);
     const product = /^(?:apps\/web\/src|packages\/api\/src)\//.test(file) && /\.(?:tsx?|s?css)$/.test(file) && !/\.test\.tsx?$/.test(file);
     const entries = rules.filter(rule => rule.path === file);

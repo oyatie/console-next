@@ -7,6 +7,9 @@ properties:
   status:
     type: string
     enum: [mapped, needs_mapping, empty, skipped]
+  needs_confirmation:
+    type: boolean
+    description: When true, a detected header awaits operator confirmation; status is needs_mapping and no values have been staged.
   rows:
     type: integer
     minimum: 0

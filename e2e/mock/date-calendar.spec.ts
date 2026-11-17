@@ -11,7 +11,7 @@ const calendarChunk = (url: URL) => /\/ui\/date\/date-calendar\.tsx$|\/assets\/d
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const intent of ["hover", "focus"] as const) {
-  test(`date calendar loads on ${intent}; typing works while its chunk is held`, async ({ page }) => {
+  test(`date calendar loads on ${intent}; typing works while its chunk is held`, { tag: "@webkit-pr" }, async ({ page }) => {
     const fixture = await mockScreen(page, screens[1], "empty");
     let requests = 0;
     let release!: () => void;
@@ -22,7 +22,7 @@ for (const intent of ["hover", "focus"] as const) {
       await route.continue();
     });
     try {
-      await mockNavigate(page, "/_gallery");
+      await mockNavigate(page, "/_gallery?entry=date");
       const demo = page.locator("section").filter({ has: page.getByRole("heading", { name: "날짜 필드", exact: true }) });
       const input = demo.getByRole("textbox").first();
       const trigger = demo.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).first();
@@ -74,7 +74,7 @@ for (const intent of ["hover", "focus"] as const) {
       contentType: "text/javascript", body: 'globalThis.calendarAttempted = true; throw new Error("calendar load failed");',
     }));
     try {
-      await mockNavigate(page, "/_gallery");
+      await mockNavigate(page, "/_gallery?entry=date");
       const demo = page.locator("section").filter({ has: page.getByRole("heading", { name: "날짜 필드", exact: true }) });
       const input = demo.getByRole("textbox").first();
       const trigger = demo.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).first();
@@ -106,7 +106,7 @@ test("a missing calendar chunk shows a local error without reloading the draft",
   let attempts = 0;
   await page.route(calendarChunk, route => { attempts++; return route.abort(); });
   try {
-    await mockNavigate(page, "/_gallery");
+    await mockNavigate(page, "/_gallery?entry=date");
     const demo = page.locator("section").filter({ has: page.getByRole("heading", { name: "날짜 필드", exact: true }) });
     const input = demo.getByRole("textbox").first();
     const trigger = demo.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).first();

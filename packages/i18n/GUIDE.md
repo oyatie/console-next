@@ -17,11 +17,14 @@ per category: Rust source, Rust test files, E2E, web test files, scripts, migrat
 docs, and other text. Inline Rust test modules remain in the source-file category.
 Tracked and non-ignored new UTF-8 files are checked; binary files, locale catalog source,
 and the generated API declaration `packages/api/src/schema.d.ts` are excluded.
+The typed employee import dictionary also owns multilingual header synonyms in its `fields[].aliases`;
+other text in that dictionary remains checked. Historical alias compatibility is retained as digest fixtures.
 Web product source keeps its zero-debt rule; only `.test.ts` and `.test.tsx` files are exempt.
 Pre-existing escaped product text is baselined; new escaped product text is refused.
 
-Each category must stay at or below its count in `git merge-base HEAD origin/dev`.
-`QUALITY_BASE` overrides the target; local checkouts prefer `public/dev` when available.
+Each category must stay at or below its count at the merge base with the quality base.
+A nonempty `QUALITY_BASE` overrides the target; otherwise use `dev`'s configured upstream, then
+`origin/dev` if `origin` is configured, then local `dev` (see [engineering.md](../../docs/engineering.md)).
 Reductions automatically lower the ceiling on merge; no stored counts need updating.
 Run `node scripts/check-hangul.mjs --report` (or `node scripts/check-copy.mjs --report`)
 to print candidate and merge-base counts.

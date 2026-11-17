@@ -19,6 +19,10 @@ import { RescindSheet } from "./lifecycle-rescind";
 import { GroupTransferSheet } from "./group-transfer-sheet";
 import { LifecycleSheet } from "./lifecycle-sheet";
 import { RehireSheet } from "./register-rehire";
+import { ProfileHost } from "./profile-host";
+import { FixHost } from "./fix-host";
+import { CaseSheet } from "./lifecycle-trail";
+import type { Card } from "./use-card";
 import s from "./person.module.css";
 
 // Account binding shares the record's on-demand action entry.
@@ -221,3 +225,17 @@ export function ActHost({ d, act, back, events, onClose, onOpen, onRecorded }: {
     />
   );
 }
+
+/** Record forms share the interaction chunk; their hosts retain receipts after the sheet closes. */
+export function CardActions({ c, act, back, onClose, onOpen, onRecorded }: { c: Card; act?: string; back?: string; onClose: () => void; onOpen: (act: string, back?: string) => void; onRecorded: (done: Done) => void }) {
+  return <>
+    {act && <ActHost d={c.d} act={act} back={back} events={c.events} onClose={onClose} onOpen={onOpen} onRecorded={onRecorded} />}
+    <ProfileHost d={c.d} act={act} onClose={onClose} />
+    <FixHost c={c} act={act} onClose={onClose} onAct={onOpen} />
+    {act?.startsWith("case:") && <CaseSheet id={act.slice(5)} onClose={onClose} />}
+  </>;
+}
+
+export { StepForm } from "./exit-axis";
+export { CloseForm } from "./exit-close";
+export { ReportForm } from "./exit-report";

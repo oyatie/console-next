@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, koDate, kstDate } from "./flows";
-import { chooseWorkbook, payPeriod } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "./helpers/import";
 import { many, plain, workbook } from "./helpers/import-layouts";
 import { addDepts, openUnit, sheet } from "./helpers/structure";
 import { openTenant } from "./helpers/tenant";
@@ -25,6 +25,7 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
     await chooseWorkbook(admin, `시점명부_${batch + 1}.xlsx`, await workbook([plain("시점대량", rows.slice(batch * 200, (batch + 1) * 200))]));
     await payPeriod(admin);
     await admin.getByRole("button", { name: "명부 미리보기" }).click();
+    await confirmImportColumns(admin);
     await admin.getByRole("button", { name: "모의 반영 실행" }).click();
     const applied = admin.waitForResponse((r) => r.request().method() === "POST"
       && /\/api\/v1\/employees\/import\/[^/]+\/apply$/.test(new URL(r.url()).pathname));

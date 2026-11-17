@@ -92,7 +92,6 @@ fn column(plan: &ColumnPlan, key: &str) -> EmployeeImportColumn {
         preview_allowed: classification == "canonical" || classification == "retained",
         classification: classification.to_owned(),
         notice: None,
-        place_reading_required: None,
     }
 }
 

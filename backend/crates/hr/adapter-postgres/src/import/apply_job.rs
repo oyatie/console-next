@@ -17,6 +17,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::HrError;
+use crate::import::apply::apply_support_reference;
 use crate::import::caps::settings_in_tx;
 use crate::import::types::EmployeeImportReport;
 
@@ -82,9 +83,40 @@ pub struct ApplyJob {
     pub done: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub report: Option<EmployeeImportReport>,
-    /// `{code, message, refusals?}` of a job that failed.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Only the code, fixed message and support reference of a failed job.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_error"
+    )]
     pub error: Option<Value>,
+}
+
+fn safe_error(error: &Value) -> Value {
+    let code = error["code"].as_str().unwrap_or("internal");
+    let message = match code {
+        "internal" => "internal server error",
+        "unavailable" | "service_unavailable" => "service temporarily unavailable",
+        "import_apply_timed_out" => {
+            "the import exceeded the server time limit; nothing was written"
+        }
+        "import_apply_forbidden" => "the import command was not admitted",
+        _ => "the import could not be applied; run the dry run again",
+    };
+    let mut safe = json!({ "code": code, "message": message });
+    if let Some(reference) = error["support_ref"].as_str() {
+        safe["support_ref"] = reference.into();
+    }
+    safe
+}
+
+// Previously stored jobs may contain driver messages and arbitrary refusal values.
+fn deserialize_error<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Value>, D::Error> {
+    Ok(Option::<Value>::deserialize(deserializer)?
+        .as_ref()
+        .map(safe_error))
 }
 
 impl ApplyJob {
@@ -110,11 +142,10 @@ impl ApplyJob {
     #[must_use]
     pub fn failed(mut self, error: &HrError) -> Self {
         self.state = "failed".into();
-        self.error = Some(json!({
+        self.error = Some(safe_error(&json!({
             "code": error.code,
-            "message": error.message,
-            "refusals": error.refusals,
-        }));
+            "support_ref": apply_support_reference(),
+        })));
         self
     }
 }
@@ -225,6 +256,10 @@ pub async fn require_row_limit(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "apply_job_tests.rs"]
+mod error_tests;
 
 #[cfg(test)]
 mod tests {
