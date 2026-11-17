@@ -9,7 +9,7 @@
 # backend also runs non-database Rust tests, including full-feature OpenAPI drift, with nextest
 # and reconciles JUnit with a fresh test inventory.
 # Database tests remain INTEG's; solo journeys gate merge groups, mocked states run for affected web changes.
-name: ci
+name: Candidate checks
 on:
   push:
     branches: [dev]
@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   affected:
+    name: Select affected checks
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -92,11 +93,13 @@ jobs:
           JS
 
   workflows:
+    name: Commit and workflow checks
     if: github.event_name != 'push'
     permissions: {contents: read}
     uses: ./.github/workflows/workflows-check.yml
 
   web:
+    name: Web unit tests and build
     needs: [affected]
     if: &web-affected ${{ github.event_name != 'push' && needs.affected.outputs.web == 'true' }}
     runs-on: ubuntu-24.04
@@ -174,6 +177,7 @@ jobs:
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
   states-plan:
+    name: Plan UI state tests
     needs: [affected]
     if: *web-affected
     runs-on: ubuntu-24.04
@@ -213,6 +217,7 @@ jobs:
           if-no-files-found: error
 
   states:
+    name: UI state tests · shard ${{ matrix.shard }}
     needs: states-plan
     runs-on: ubuntu-24.04
     # Plan-derived run budget plus setupAllowanceSeconds; setup cannot consume the run allowance.
@@ -256,6 +261,7 @@ jobs:
           if-no-files-found: error
 
   states-timings:
+    name: Reconcile UI state test results
     if: github.event_name == 'push' && needs.affected.outputs.web == 'true'
     needs: [affected]
     runs-on: ubuntu-24.04
@@ -308,6 +314,7 @@ jobs:
         run: node --test scripts/states-shards.test.mjs
 
   backend:
+    name: Rust formatting and lint
     needs: [affected]
     if: &backend-affected ${{ !cancelled() && github.event_name != 'push' && needs.affected.outputs.backend == 'true' }}
     runs-on: ubuntu-24.04-arm
@@ -391,6 +398,7 @@ jobs:
           if-no-files-found: error
 
   backend-gates:
+    name: Backend release code gates
     needs: [affected]
     if: ${{ !cancelled() && (github.event_name == 'push' || needs.affected.outputs.backend == 'true') }}
     runs-on: ubuntu-24.04-arm
@@ -427,6 +435,7 @@ jobs:
       - *cache-upload
 
   backend-release:
+    name: Build backend for browser tests
     needs: [affected]
     if: ${{ !cancelled() && github.event_name != 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true') }}
     runs-on: ubuntu-24.04-arm
@@ -452,6 +461,7 @@ jobs:
       - *cache-upload
 
   backend-tests:
+    name: Backend unit tests · shard ${{ matrix.shard }}
     needs: [affected]
     if: *backend-affected
     runs-on: ubuntu-24.04-arm
@@ -498,6 +508,7 @@ jobs:
 
   # Import only the successful queue proof; all cache writes stay on dev.
   backend-cache:
+    name: Maintain Rust build cache
     if: github.event_name == 'push' && needs.affected.outputs.backend == 'true'
     needs: [affected]
     runs-on: ubuntu-24.04-arm
@@ -566,6 +577,7 @@ jobs:
           echo '**Warning:** Rust cache cleanup failed or was skipped. Delivery continues; cache usage may remain above the configured limit.' >> "$GITHUB_STEP_SUMMARY"
 
   home:
+    name: Core browser journeys
     needs: [affected, backend-release]
     if: ${{ !cancelled() && github.event_name != 'push' && needs.affected.result == 'success' && (needs.affected.outputs.web == 'true' || needs.affected.outputs.backend == 'true') && needs['backend-release'].result == 'success' }}
     runs-on: ubuntu-24.04-arm
@@ -664,6 +676,7 @@ jobs:
           if-no-files-found: error
 
   release-evidence:
+    name: Collect release test evidence
     if: github.event_name == 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true')
     needs: [affected]
     runs-on: ubuntu-24.04
@@ -752,6 +765,7 @@ jobs:
           if-no-files-found: error
 
   supply-chain:
+    name: Dependency security and licenses
     if: github.event_name != 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -813,6 +827,7 @@ jobs:
           if-no-files-found: error
 
   dev-artifacts:
+    name: Cache proven build artifacts
     if: github.event_name == 'push'
     needs: [affected]
     runs-on: ubuntu-24.04
@@ -850,6 +865,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
 
   ci-ok:
+    name: ci-ok
     permissions: {contents: read}
     if: ${{ always() }}
     needs: [affected, workflows, web, states-plan, states, states-timings, backend, backend-gates, backend-tests, backend-release, home, supply-chain, dev-artifacts, backend-cache, release-evidence]

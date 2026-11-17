@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 # Disable repository default setup when this advanced workflow merges (see docs/security/code-scanning-triage.md).
-name: CodeQL
+name: Code scanning
 on:
   push:
     branches: [dev]
@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   analyze:
+    name: Code analysis · ${{ matrix.language }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:

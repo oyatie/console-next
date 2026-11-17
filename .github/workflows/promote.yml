@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-name: promote
+name: Environment promotion
 on:
   workflow_run:
-    workflows: [platform]
+    workflows: [Platform validation and images]
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -13,6 +13,7 @@ on:
 permissions: {}
 jobs:
   proof:
+    name: Verify platform promotion proof
     if: >-
       github.ref == 'refs/heads/dev' &&
       (github.event_name == 'workflow_dispatch' ||
@@ -48,6 +49,7 @@ jobs:
         with: {name: promotion-proof, path: promotion-proof.json, if-no-files-found: error}
 
   gates:
+    name: Release gate evidence
     needs: proof
     permissions: {contents: read, actions: read, packages: read, checks: read}
     uses: ./.github/workflows/gates.yml
@@ -55,6 +57,7 @@ jobs:
       sha: ${{ needs.proof.outputs.sha }}
 
   refused:
+    name: Report release gate refusal
     needs: [proof, gates]
     if: always() && needs.proof.result == 'success' && (needs.gates.result != 'success' || needs.gates.outputs.result != 'pass')
     runs-on: ubuntu-24.04
@@ -70,6 +73,7 @@ jobs:
           exit 1
 
   publish:
+    name: Promote environment · ${{ matrix.environment }}
     needs: [proof, gates]
     if: needs.gates.outputs.result == 'pass'
     strategy:

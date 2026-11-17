@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 # Long PostgreSQL tests run on dev, nightly and gate-changing pull requests.
 # merge_group stays disabled until test execution fits within the 60-minute queue timeout.
-name: db-tests
+name: Database tests
 on:
   pull_request:
     paths:
@@ -20,6 +20,7 @@ concurrency:
 
 jobs:
   db-test-timing-source:
+    name: Restore database test timings
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -42,6 +43,7 @@ jobs:
         run: node .github/ci-proof.cjs --any-conclusion db-test-timings db-tests.yml push schedule
 
   db-tests:
+    name: Database tests · shard ${{ matrix.shard }}
     needs: db-test-timing-source
     strategy:
       fail-fast: false
@@ -196,6 +198,7 @@ jobs:
           if-no-files-found: error
 
   db-test-timings:
+    name: Reconcile database test results
     if: ${{ always() && needs.db-tests.result != 'cancelled' }}
     needs: db-tests
     runs-on: ubuntu-24.04
@@ -227,6 +230,7 @@ jobs:
           if-no-files-found: error
 
   alert-nightly:
+    name: Report nightly database failures
     if: ${{ always() && github.event_name == 'schedule' && (needs.db-test-timing-source.result != 'success' || needs.db-tests.result != 'success' || needs.db-test-timings.result != 'success') }}
     needs: [db-test-timing-source, db-tests, db-test-timings]
     runs-on: ubuntu-24.04

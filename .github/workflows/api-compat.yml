@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-name: api-compat
+name: API compatibility
 on:
   pull_request:
   merge_group:
@@ -8,6 +8,7 @@ on:
 permissions: {}
 jobs:
   api-compat:
+    name: Released API compatibility
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

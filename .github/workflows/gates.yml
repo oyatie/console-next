@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-name: gates
+name: Release gate evidence
 on:
   workflow_call:
     inputs:
@@ -11,6 +11,7 @@ on:
 permissions: {}
 jobs:
   predicate:
+    name: Verify release gate evidence
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
