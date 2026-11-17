@@ -579,6 +579,97 @@ test("history restoration stops at the configured window and CI supplies it to t
   assert.equal(steps[check].env.STATES_TIMINGS_HISTORY_FILE, ".cache/states-history.json");
 });
 
+for (const history of [false, true]) for (const site of ["list", "metadata", "download"]) {
+  const failures = {
+    "HTTP 503": () => new Response("unavailable", { status: 503 }),
+    "HTTP 429": () => new Response("rate limited", { status: 429 }),
+    "network error": () => { throw new TypeError("fetch failed"); },
+    "body interrupted": () => new Response(new ReadableStream({ start(controller) { controller.error(new TypeError("connection reset")); } })),
+  };
+  for (const [outage, fail] of Object.entries(failures)) test(`${history ? "history" : "restore"} warns and falls back on ${site} ${outage}`, async t => {
+    const { restoreDevTimings, checkHeadroom, planStates, filesForShard } = await load();
+    const dir = mkdtempSync(path.join(tmpdir(), "states-outage-"));
+    const summary = path.join(dir, "summary.md");
+    const previous = process.env.GITHUB_STEP_SUMMARY;
+    process.env.GITHUB_STEP_SUMMARY = summary;
+    t.after(() => {
+      if (previous === undefined) delete process.env.GITHUB_STEP_SUMMARY;
+      else process.env.GITHUB_STEP_SUMMARY = previous;
+      rmSync(dir, { recursive: true, force: true });
+    });
+    const warnings = [];
+    t.mock.method(console, "warn", message => warnings.push(message));
+    let failed = false, attempts = 0;
+    const request = async url => {
+      assert.equal(failed, false, "an outage must stop fetching without retries");
+      const matches = site === "list" ? url.includes("/actions/artifacts?")
+        : site === "metadata" ? url.includes("/actions/runs/") : url.endsWith("/zip");
+      if (matches) { failed = true; attempts++; return fail(); }
+      return devRun(url) ?? Response.json({ artifacts: [artifact(1)] });
+    };
+    const restored = await restoreDevTimings(capacitySettings, { ...config, history }, request);
+    assert.equal(attempts, 1);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /^::warning::/);
+    const reason = outage === "body interrupted" ? "connection reset" : outage === "network error" ? "fetch failed" : outage;
+    assert.ok(warnings[0].includes(reason), warnings[0]);
+    assert.ok(readFileSync(summary, "utf8").includes(reason));
+    if (history) {
+      assert.deepEqual(restored, { runs: [] });
+      assert.equal(checkHeadroom(capacitySuite, capacitySettings, restored.runs, summary), undefined);
+      assert.match(warnings[0], /Insufficient history/);
+      assert.match(readFileSync(summary, "utf8"), /Insufficient history.*headroom not judged/);
+    } else {
+      assert.deepEqual(restored, { timings: { workers: capacitySettings.workers, specs: {} } });
+      assert.match(warnings[0], /bootstrap floor/);
+      const plan = planStates(capacitySuite, capacitySettings, restored.timings);
+      assert.deepEqual(plan.shards.flatMap(shard => filesForShard(plan, shard.id)).sort(), ["e2e/mock/a.spec.ts", "e2e/states/b.spec.ts"]);
+    }
+  });
+}
+
+test("an outage after partial history or pagination discards incomplete measurements", async () => {
+  const { restoreDevTimings } = await load();
+  for (const history of [false, true]) {
+    let pages = 0, downloads = 0;
+    const request = async url => {
+      if (url.includes("/actions/artifacts?")) {
+        if (!history && ++pages === 2) return new Response("unavailable", { status: 503 });
+        return Response.json({ artifacts: Array.from({ length: history ? 3 : 100 }, (_, i) => artifact(i + 1)) });
+      }
+      if (url.endsWith("/zip")) return ++downloads === 2 ? new Response("unavailable", { status: 503 }) : new Response(zip(capacityRun(3).timings));
+      return devRun(url);
+    };
+    const restored = await restoreDevTimings(capacitySettings, { ...config, history }, request);
+    assert.deepEqual(restored, history ? { runs: [] } : { timings: { workers: capacitySettings.workers, specs: {} } });
+  }
+});
+
+test("restore and history still refuse non-rate-limit 4xx responses at every fetch boundary", async () => {
+  const { restoreDevTimings } = await load();
+  for (const history of [false, true]) for (const site of ["list", "metadata", "download"]) for (const status of [400, 401, 403, 404, 410, 422]) {
+    const request = async url => {
+      if (site === "list" && url.includes("/actions/artifacts?") || site === "metadata" && url.includes("/actions/runs/") || site === "download" && url.endsWith("/zip"))
+        return new Response("refused", { status });
+      return devRun(url) ?? Response.json({ artifacts: [artifact(1)] });
+    };
+    await assert.rejects(restoreDevTimings(capacitySettings, { ...config, history }, request), new RegExp(`STATES_TIMINGS_FETCH.*HTTP ${status}`));
+  }
+});
+
+test("restore and history still refuse corrupt archives and invalid timings", async () => {
+  const { restoreDevTimings } = await load();
+  for (const history of [false, true]) for (const [archive, refusal] of [
+    ["broken zip", /STATES_TIMINGS_FETCH.*archive/],
+    [zip({ workers: 0, specs: capacityRun(1).timings.specs }), /STATES_INVALID_TIMINGS/],
+    [zip({ workers: settings.workers, specs: {} }), /STATES_INVALID_TIMINGS/],
+    [zip({ workers: settings.workers, specs: { "mock/a.spec.ts": { seconds: -1, tests: 1 } } }), /STATES_INVALID_TIMINGS/],
+  ]) {
+    const request = async url => devRun(url) ?? new Response(url.endsWith("/zip") ? archive : JSON.stringify({ artifacts: [artifact(1)] }));
+    await assert.rejects(restoreDevTimings(capacitySettings, { ...config, history }, request), refusal);
+  }
+});
+
 test("CI restores the latest compatible unexpired dev artifact across pages", async () => {
   const { restoreDevTimings } = await load();
   const compatible = { workers: settings.workers, specs: { "mock/a.spec.ts": { seconds: 12, tests: 3 } } };
