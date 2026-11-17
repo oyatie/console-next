@@ -58,6 +58,7 @@ export function PayslipDraftView({ data }: { data: PayslipDraft }) {
     {minimum && <Card title={t("payroll.employee.minimumWage")} meta={<Chip tone={!minimumCited || minimum.passes === null ? "warn" : minimum.passes ? "ok" : "danger"}>{!minimumCited ? t("payroll.reference.held") : minimum.passes === null ? t("payroll.employee.minimumIncomparable") : minimum.passes ? t("payroll.employee.minimumPass") : t("payroll.employee.minimumBelow")}</Chip>}>
       <KeyValue readOnly items={[
         { key: "floor", label: t("payroll.employee.hourlyFloor"), value: amount(minimum.hourly_floor_won, minimumCited) },
+        { key: "monthlyFloor", label: t("payroll.employee.monthlyFloor"), value: amount(minimum.monthly_209h_floor_won, minimumCited) },
         { key: "hourly", label: t("payroll.employee.effectiveHourly"), value: minimum.effective_hourly_won === null ? t("payroll.employee.unavailable") : amount(minimum.effective_hourly_won, minimumCited) },
       ]} />
       <Source instrument={minimum.instrument} />

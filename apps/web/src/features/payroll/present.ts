@@ -44,7 +44,7 @@ export function insuranceCited(data: PayslipDraft) {
 }
 type MinimumWageBlocker = "MINIMUM_WAGE_BELOW_FLOOR" | "MINIMUM_WAGE_NOT_COMPARABLE";
 export function draftBlockers(data: PayslipDraft): string[] {
-  // shortcut: the API still sends minimum-wage prose; remove the mapping when it emits codes.
+  // Preserve minimum-wage findings from older servers that still send prose.
   const codes = data.blockers.map(code => { const key = code.split(":")[0]!; return Object.hasOwn(legacyPayrollBlockers, key) ? legacyPayrollBlockers[key as keyof typeof legacyPayrollBlockers] : code; });
   const check = data.minimum_wage_check;
   const minimum: MinimumWageBlocker | null = check?.passes === false ? "MINIMUM_WAGE_BELOW_FLOOR" : check?.passes === null ? "MINIMUM_WAGE_NOT_COMPARABLE" : null;
