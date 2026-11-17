@@ -90,6 +90,18 @@ because released clients do not send the field. A response enum that may gain va
 - A table that holds tenant data has row-level security, forced. The gates under `backend/ci/gates` check
   this, tenant isolation, personal-data classification and migration safety; run them after writing one.
 
+## Adding a settings key
+
+Declare the key in `console-settings-domain`, then add only its row to `setting_definitions`
+in a new forward-only migration. In `backend/`, generate the INSERT with
+`cargo run -q -p console-settings-domain --example setting_definitions -- <key> [<key> ...]`.
+Never regenerate or replace `setting_definition()`; its signature is the shared lookup contract.
+For an existing key, update only that key’s row. Run the `console-platform-db`
+`setting_definitions` DB tests and the settings adapter suites: the guard compares the migrated
+database with the live Rust registry, including bounds, defaults, code order and governance.
+Read-only infrastructure keys need no new SQL row; existing SQL rows remain for older binaries.
+Use the [settings brief template](templates/settings-brief.md) when planning the change.
+
 ## Adding or changing a screen
 
 A screen is proved in five steps, each cheaper than the next.
