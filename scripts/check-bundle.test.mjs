@@ -160,6 +160,14 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
     } finally { mock.cleanup(); }
   });
 
+  it("normalisation preserves the clean dev build's raw-budget headroom", () => {
+    const rawKb = 148.6640625;
+    const normalisedKb = 145.0751953125;
+    const equivalentBudgetKb = 148.8 - (rawKb - normalisedKb);
+    assert.strictEqual(INITIAL_BUDGET_KB, Math.floor(equivalentBudgetKb * 1000) / 1000);
+    assert.ok(INITIAL_BUDGET_KB >= normalisedKb);
+  });
+
   it("initial gzip size ignores hash-only changes in entry and preloaded assets", () => {
     const mock = createMockDist();
     try {
@@ -172,6 +180,19 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
       assert.strictEqual(sizes[0], sizes[1]);
       mock.writeChunk("vendor-boot.js", "export const more = 'actual code growth';");
       assert.notStrictEqual(checkInitialBudget(mock.dist).sizeKb, sizes[0]);
+    } finally { mock.cleanup(); }
+  });
+
+  it("normalised fixture size equals raw gzip size minus only the hash overhead", () => {
+    const mock = createMockDist();
+    try {
+      mock.writeChunk("index-main.js", 'import "./vendor-Abcd12_-.js"; const deps = ["assets/list-Efgh5678.js", "assets/list-Efgh5678.css"];');
+      mock.writeChunk("vendor-boot.js", 'export const deps = ["assets/record-Ijkl9012.js"];');
+      const rawBytes = ["index-main.js", "vendor-boot.js"].reduce((sum, file) =>
+        sum + gzipSync(readFileSync(path.join(mock.assets, file))).length, 0);
+      assert.strictEqual(rawBytes, 170);
+      // These fixed hashes contribute 15 gzip bytes over the same fixture with HASHHASH.
+      assert.strictEqual(checkInitialBudget(mock.dist).sizeKb, (rawBytes - 15) / 1024);
     } finally { mock.cleanup(); }
   });
 

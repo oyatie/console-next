@@ -12,8 +12,9 @@ import path from "node:path";
 import { leakedCopy } from "./bundle-copy.mjs";
 import { gzipSync } from "node:zlib";
 
-// Measured 146.8 KB gz locally, with 2 KB headroom for CI and ordinary feature growth.
-export const INITIAL_BUDGET_KB = 148.8;
+// Clean dev dadcc1f7c9: raw 148.6640625 KB gz, hash-normalised 145.0751953125 KB gz.
+// Preserve strictness: 148.8 - (148.6640625 - 145.0751953125) = 145.2111328125; floor to 0.001 KB.
+export const INITIAL_BUDGET_KB = 145.211;
 export const DEFAULT_BUDGET_FILE = "scripts/bundle-budget.json";
 
 // Saved views must keep the record and its command forms behind record navigation.
