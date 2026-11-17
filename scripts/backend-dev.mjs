@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Local backend with the public E2E stack and a Cargo-built `console-app`.
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { supportLogs } from "./e2e-support-logs.mjs";
+import { startupHealthcheckFiles } from "./compose-health.mjs";
 import { CACHE_DIR, COMPOSE_PROJECT, PORTS } from "../e2e/slot.ts";
 import { DEV_SECRETS_FILE, ensureDevSecrets } from "./dev-secrets.ts";
 import { backendReady, installBackendCleanup, reapOrphanListener, startBackend, stopBackend } from "./backend-process.mjs";
@@ -62,10 +64,18 @@ const composeEnv = {
   CONSOLE_S3_SECRET_ACCESS_KEY: secrets.s3SecretAccessKey,
   CONSOLE_S3_PORT: String(PORT.s3),
 };
+const version = async (args) => (await promisify(execFile)("docker", args, { env: composeEnv, encoding: "utf8" })).stdout.trim();
+const [engineVersion, composeVersion] = await Promise.all([
+  version(["version", "--format", "{{.Server.Version}}"]),
+  version(["compose", "version", "--short"]),
+]);
+console.log(`[boot] Docker Engine ${engineVersion}; Compose ${composeVersion}`);
+const startupFiles = startupHealthcheckFiles(engineVersion, composeVersion);
+if (!startupFiles.length) console.warn("Docker Engine 25+ and Compose 2.20.2+ enable fast startup healthchecks; using 30s fallback.");
 const compose = (args, opts = {}) =>
   spawnSync(
     "docker",
-    ["compose", "-p", PROJECT, "-f", "deploy/dev/compose.e2e.yml", ...args],
+    ["compose", "-p", PROJECT, "-f", "deploy/dev/compose.e2e.yml", ...startupFiles, ...args],
     { cwd: ROOT, env: composeEnv, stdio: "inherit", ...opts },
   );
 const docker = (args, opts = {}) => spawnSync("docker", args, { cwd: ROOT, stdio: "inherit", ...opts });
