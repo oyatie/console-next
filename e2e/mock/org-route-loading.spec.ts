@@ -7,6 +7,7 @@ import { screens } from "../states/registry";
 import { screenAccess } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
+import { holdChunks } from "./chunk-probe";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -15,16 +16,10 @@ for (const path of ["/org/entities", "/setup/company-names"]) {
     await page.setViewportSize({ width: 390, height: 900 });
     const fixture = await mockScreen(page, screens[2], "empty");
     await mockRoute(page, "get", "/api/v1/entity-identifier-corrections", { status: 200, json: { items: [], next_offset: null } });
-    const held = Promise.withResolvers<void>();
-    const requested = Promise.withResolvers<void>();
-    await page.route(/\/assets\/entity-routes-[^/]+\.js$/, async route => {
-      requested.resolve();
-      await held.promise;
-      await route.continue();
-    });
+    const chunks = await holdChunks(page, ["src/features/entity/ui/entity-routes.tsx"]);
     try {
       await page.goto(path, { waitUntil: "commit" });
-      await requested.promise;
+      await chunks.requested;
       await expect(page.getByRole("navigation").first()).toBeVisible();
       await expect(page.getByRole("heading", { level: 1, name: t("structure.title"), exact: true })).toBeVisible();
       const loading = page.locator('main [data-read-layout="list"][aria-busy="true"]');
@@ -35,12 +30,12 @@ for (const path of ["/org/entities", "/setup/company-names"]) {
         await fits(page, `${path}/loading/${theme}`);
         await page.screenshot({ path: test.info().outputPath(`loading-${theme}.png`), fullPage: true });
       }
-      held.resolve();
+      chunks.release();
       await expect(page.getByRole("main").getByText(t("entity.empty.title"), { exact: true })).toBeVisible();
       await routeReady(page);
       expect(fixture.unexpected).toEqual([]);
     } finally {
-      held.resolve();
+      chunks.release();
       await page.close();
       fixture.release();
     }
@@ -51,31 +46,25 @@ for (const query of ["", "&as_of=2026-10-01&known_at=2026-10-02T00%3A00%3A00Z"])
   test(`the entity read overlaps its list chunk and is shared on mount ${query}`, async ({ page }) => {
     const fixture = await mockScreen(page, screens[2], "empty");
     await mockRoute(page, "get", "/api/v1/entity-identifier-corrections", { status: 200, json: { items: [], next_offset: null } });
-    const held = Promise.withResolvers<void>();
-    const requested = Promise.withResolvers<void>();
+    const chunks = await holdChunks(page, ["src/features/entity/ui/entity-routes.tsx"]);
     const reads: URL[] = [];
     await mockRoute(page, "get", "/api/v1/legal-entities", request => {
       reads.push(new URL(request.url()));
       return { status: 200, json: { items: [] } };
     });
-    await page.route(/\/assets\/entity-routes-[^/]+\.js$/, async route => {
-      requested.resolve();
-      await held.promise;
-      await route.continue();
-    });
     try {
       await page.goto(`/org?tab=entities${query}`, { waitUntil: "commit" });
-      await requested.promise;
+      await chunks.requested;
       await expect.poll(() => reads.length, { message: "the list read must start before its chunk finishes" }).toBe(1);
       expect(reads[0]!.searchParams.get("as_of")).toBe(query ? "2026-10-01" : null);
       expect(reads[0]!.searchParams.get("known_at")).toBe(query ? "2026-10-02T00:00:00Z" : null);
-      held.resolve();
+      chunks.release();
       await expect(page.getByRole("main").getByText(t("entity.empty.title"), { exact: true })).toBeVisible();
       await routeReady(page);
       expect(reads).toHaveLength(1);
       expect(fixture.unexpected).toEqual([]);
     } finally {
-      held.resolve();
+      chunks.release();
       await page.close();
       fixture.release();
     }
@@ -111,31 +100,25 @@ for (const state of ["chart", "refused"] as const) {
 
 test("bulk entry leaves its disabled entity read idle while the content chunk loads", async ({ page }) => {
   const fixture = await mockScreen(page, screens[2], "empty");
-  const held = Promise.withResolvers<void>();
-  const requested = Promise.withResolvers<void>();
+  const chunks = await holdChunks(page, ["src/features/entity/ui/entity-routes.tsx"]);
   let reads = 0;
   await mockRoute(page, "get", "/api/v1/legal-entities", () => {
     reads++;
     return { status: 200, json: { items: [] } };
   });
-  await page.route(/\/assets\/entity-routes-[^/]+\.js$/, async route => {
-    requested.resolve();
-    await held.promise;
-    await route.continue();
-  });
   try {
     await page.goto("/org?tab=entities&bulk=paste", { waitUntil: "commit" });
-    await requested.promise;
+    await chunks.requested;
     await expect(page.getByRole("heading", { level: 1, name: t("structure.title"), exact: true })).toBeVisible();
     await expect(page.locator('main [data-read-layout="list"][aria-busy="true"]')).toBeVisible();
     await expect(page.locator("[data-route-ready]")).toHaveCount(0);
     expect(reads).toBe(0);
-    held.resolve();
+    chunks.release();
     await routeReady(page);
     expect(reads).toBe(0);
     expect(fixture.unexpected).toEqual([]);
   } finally {
-    held.resolve();
+    chunks.release();
     await page.close();
     fixture.release();
   }

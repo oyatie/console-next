@@ -5,13 +5,15 @@ import { mockRoute } from "./route";
 import { screenAccess, user } from "./fixtures";
 import { screens } from "../states/registry";
 import { expectAxe } from "../a11y";
+import { routeReady } from "../flows";
 
-test("route navigation focuses h1 and announces the page title with the current tenant", async ({ page, browserName }) => {
+test("route navigation focuses h1 and announces the page title with the current tenant", { tag: "@webkit-pr" }, async ({ page, browserName }) => {
   await mockScreen(page, screens[1], "populated");
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: {
     ...screenAccess("/people"), entries: [...screenAccess("/people").entries, ...screenAccess("/org").entries],
   } });
   await page.goto("/people");
+  await routeReady(page);
   const heading = page.getByRole("main").getByRole("heading", { level: 1 });
   await expect(heading).toBeFocused();
   await expect(heading).toHaveCSS("outline-style", "none");
@@ -21,6 +23,7 @@ test("route navigation focuses h1 and announces the page title with the current 
   await expectAxe(page, "managed page heading focus");
   const orgLink = page.locator('.rail a[href="/org"]');
   await orgLink.click();
+  await routeReady(page);
   await expect(page).toHaveURL(/\/org$/);
   await expect(heading).toBeFocused();
   await expect(heading).toHaveCSS("outline-style", "none");
@@ -28,6 +31,7 @@ test("route navigation focuses h1 and announces the page title with the current 
   await expect(page).toHaveTitle(orgTitle);
   await expect(page.locator('[role="status"].sr-only')).toHaveText(orgTitle);
   await page.goBack();
+  await routeReady(page);
   await expect(page).toHaveTitle(peopleTitle);
   await expect(heading).toBeFocused();
   // Programmatic navigation starts from the already managed heading, which must not acquire a keyboard ring.
