@@ -21,10 +21,11 @@ beforeAll(() => loadCatalog("ko"));
 function card(readable: boolean, editable = false, recorded = false, status = "ACTIVE") {
   rrnRead.recorded = recorded;
   const c = { e: { id: "person", name: "한기록", employee_number: "1001", status },
-    d: { employment: { phone_e164: "+821012345821" } }, readable, editable,
-    personal: { data: { personal_email: "personal@example.com" } },
-    register: { data: { address: { si_nm: "경기도", sgg_nm: "평택시" } } },
-    facts: { data: { birth_date: "1965-01-01" } },
+    // The reads carry only the server's masks; the clear value opens through the reveal alone.
+    d: { employment: { phone_e164: "010-••••-5821" } }, readable, editable,
+    personal: { data: { personal_email: "••••" } },
+    register: { data: { address: "••••" } },
+    facts: { data: { birth_date: "••••-••-••" } },
   } as unknown as Card;
   const quick = { conflictFor: () => undefined } as unknown as Quick;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -37,9 +38,11 @@ test("all four personal fields offer a separate governed reveal even on a read-o
   for (const id of ["birth", "address", "phone", "personalEmail"] as const) {
     expect(html).toContain(t("empCard.reveal.open", { field: t(`empCard.f.${id}`) }));
   }
-  expect(html).not.toContain("1965");
-  expect(html).not.toContain("personal@example.com");
-  expect(html).not.toContain("12345821");
+});
+
+test("each personal field shows the server's mask as served", () => {
+  const html = card(true, true);
+  for (const mask of ["010-••••-5821", "••••-••-••"]) expect(html).toContain(mask);
 });
 
 test("the RRN row keeps its empty state separate from the shared first-entry mark", () => {

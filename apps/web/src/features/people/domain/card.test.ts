@@ -1,15 +1,11 @@
 import { expect, test } from "vitest";
-import { listPosition, maskedAddress, maskedBirth, maskedEmail, maskedPhone, registerGaps, registerItems, serviceSpan } from "./card";
+import { listPosition, maskedBirth, maskedPhone, registerGaps, registerItems, serviceSpan } from "./card";
 
 test("default masks show only what identifies the field, never the value", () => {
-  expect(maskedPhone("+821012345821")).toBe("010-••••-5821");
-  expect(maskedAddress({ si_nm: "경기도", sgg_nm: "평택시" } as never)).toBe("경기도 평택시 ••••");
   expect(maskedBirth()).toBe("••••-••-••");
   expect(maskedPhone("+821012345821")).toBe("010-••••-5821");
   expect(maskedPhone("010-1234-5821")).toBe("010-••••-5821");
   expect(maskedPhone("123")).toBe("••••");
-  expect(maskedEmail("hajun.yoon@saeon.example.com")).toBe("h••••@••••.com");
-  expect(maskedAddress({ source: "MANUAL", road_addr_part1: "경기도 평택시 포승읍 새온로 118", si_nm: "경기도", sgg_nm: "평택시" } as never)).toBe("경기도 평택시 ••••");
 });
 
 test("register items: 경력 없음 counts as recorded, 해고·퇴직 is n/a while employed, 기타 is never a gap", () => {

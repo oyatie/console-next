@@ -108,3 +108,43 @@ async fn every_automatic_exclusion_records_its_cited_ground_without_a_false_fili
     let count:i64=sqlx::query_scalar("SELECT count(*) FROM insurance_filing_records WHERE org_id=$1 AND action='ASSESS' AND completed_on IS NULL").bind(w.tenant.org).fetch_one(&pool).await.unwrap();
     assert_eq!(count, 8);
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_birth_date_recorded_on_a_filing_outlives_a_later_record_that_carries_none(pool: PgPool) {
+    let w = world(&pool).await;
+    let p = principal(w.tenant.org, w.user);
+    let rules = register_rules(&pool).await;
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL session_replication_role=replica")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE employees SET birth_date=NULL WHERE id=$1")
+        .bind(w.employee)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let mut version = 0;
+    // The second record carries the facts as read back, which never hold the birth date.
+    for (key, birth) in [("captured", json!("1990-01-01")), ("restated", Value::Null)] {
+        let b: RecordFiling = serde_json::from_value(json!({"expected_version":version,"action":"ASSESS",
+            "applicability_facts":{"birth_date":birth,"monthly_hours":160,"weekly_hours":40,"continuous_months":1,"daily":false,"foreign":false,"director_without_worker_status":false}}))
+        .unwrap();
+        let t = w
+            .tenant
+            .hr
+            .record_insurance_filing(
+                p.clone(),
+                (w.event, "ACQUIRE".into(), "NPS".into()),
+                key.into(),
+                b,
+                rules.clone(),
+            )
+            .await
+            .unwrap();
+        assert!(t.birth_date_known, "{key}");
+        assert!(t.applicability_facts.birth_date.is_none(), "{key}");
+        version = t.version;
+    }
+}

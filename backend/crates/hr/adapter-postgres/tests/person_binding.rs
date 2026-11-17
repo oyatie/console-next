@@ -44,7 +44,7 @@ async fn person_fact_edits_reach_employee_and_invited_account(pool: PgPool) {
     assert_eq!(detail.employee.name, "김새이름");
     assert_eq!(
         detail.employment.unwrap().phone_e164.as_deref(),
-        Some("+821099991234")
+        Some("010-••••-1234")
     );
     let current: (Uuid, String, String) = sqlx::query_as(
         "SELECT person_id,display_name,phone FROM person_accounts_current WHERE id=$1",

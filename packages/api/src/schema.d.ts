@@ -4432,7 +4432,7 @@ export interface paths {
         put?: never;
         /**
          * Worker register items import profile and bulk update
-         * @description MR-23. Org-wide employee_directory_manage. The browser parses the sheet (no file and no resident registration number reaches the server) and sends one row per employee, by `employee_id` or a `employee_number` that names exactly one record, carrying `sex`, `address`, `careers` and `register_note` and the personal details profile's `name_hanja`, `name_en`, `nationality`, `personal_email` and `emergency_contacts` (MR-34), plus a first `exit_reason` or `group_service_start_date` (changing a recorded one is per person, PATCH /employees/{id}; a `photo` is uploaded per person). `dry_run` returns what each row would change and why a row cannot be taken. The apply is all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and writes one correction ledger row per changed item; an unchanged value writes nothing. At most 500 rows.
+         * @description MR-23. Org-wide employee_directory_manage. The browser parses the sheet (no file and no resident registration number reaches the server) and sends one row per employee, by `employee_id` or a `employee_number` that names exactly one record, carrying `sex`, `address`, `careers` and `register_note` and the personal details profile's `name_hanja`, `name_en`, `nationality`, `personal_email` and `emergency_contacts` (MR-34), plus a first `exit_reason` or `group_service_start_date` (changing a recorded one is per person, PATCH /employees/{id}; a `photo` is uploaded per person). `dry_run` returns what each row would change and why a row cannot be taken. The apply is all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and writes one correction ledger row per changed item; an unchanged value writes nothing, except a recorded `address` or `personal_email`, which is written and listed as changed whether or not it equals the record, so neither the plan nor the apply confirms a recorded value. At most 500 rows.
          */
         post: operations["bulkCorrectRegisterFacts"];
         delete?: never;
@@ -4629,7 +4629,7 @@ export interface paths {
         head?: never;
         /**
          * Edit the facts with JSON Patch (concurrent-editing ME-6)
-         * @description A JSON Patch where every write is preceded by a `test` of its base value. It records facts that hold no value yet; each write goes through the MR-8 correction path and is ledgered (reason FIRST_RECORD). Writable paths are /birth_date, /work_email, /id_type, /employment/base_pay_won with /employment/pay_unit (together; the pay counts as recorded once its unit is), and /employment/probation_end_date. A value already recorded is changed only by a correction (PATCH /api/v1/employees/{id}), 409 correction_required. 422 precondition_missing for a write without its test; 409 field_conflict (error.refusals lists pointer, current, at) when a tested value changed, unless the record already holds the written value. Audited as employee.facts.update with field names only. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+         * @description A JSON Patch where every write is preceded by a `test` of its base value. It records facts that hold no value yet; each write goes through the MR-8 correction path and is ledgered (reason FIRST_RECORD). Writable paths are /birth_date, /work_email, /id_type, /employment/base_pay_won with /employment/pay_unit (together; the pay counts as recorded once its unit is), and /employment/probation_end_date. A value already recorded is changed only by a correction (PATCH /api/v1/employees/{id}), 409 correction_required. 422 precondition_missing for a write without its test; 409 field_conflict (error.refusals lists pointer, current, at) when a tested value changed, unless the record already holds the written value. Tests are checked against the record as read, so /birth_date is tested against its mask; any write to a recorded /birth_date is 409 correction_required whatever its value. Audited as employee.facts.update with field names only. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
          */
         patch: operations["patchEmploymentFacts"];
         trace?: never;
@@ -17409,9 +17409,10 @@ export interface components {
                 updated_at?: string | null;
                 /** @enum {string} */
                 outcome: "CHANGE" | "PENDING" | "UNCHANGED" | "REFUSED";
-                /** @description Only the fields whose value differs from the record. */
+                /** @description The fields to write. Each value that differs from the record, and each sent for a recorded birth date, address, phone or personal email, which a preview never reports as unchanged. */
                 fields: {
                     field: string;
+                    /** @description The recorded value. A birth date, address, phone or personal email is its mask; only the governed reveal returns those. */
                     before?: string | null;
                     after?: string | null;
                     /** @enum {string} */
@@ -17759,6 +17760,7 @@ export interface components {
             kind: string;
             subject_type: string;
             subject_id: components["schemas"]["Uuid"];
+            /** @description The request's details. In `changes`, a birth date, address, phone or personal email is the reveal mask, never the value; only POST /api/v1/employees/{id}/reveal returns a recorded one. */
             payload: {
                 [key: string]: unknown;
             };
@@ -19929,7 +19931,7 @@ export interface components {
         EmployeeEmploymentDetail: {
             /** @enum {string} */
             employment_type: "REGULAR" | "CONTRACT" | "PART_TIME" | "INTERN";
-            /** @description Omitted for callers without employee_directory_manage (read-only directory access); null when not recorded (a profile an import created, MR-7). */
+            /** @description The reveal mask (the prefix and last four digits) for employee_directory_manage; only POST /api/v1/employees/{id}/reveal returns the number. Omitted for callers without employee_directory_manage (read-only directory access); null when not recorded (a profile an import created). */
             phone_e164?: string | null;
             /** @description Omitted for callers without employee_directory_manage (read-only directory access); null when not recorded (a profile an import created, MR-7). */
             base_pay?: string | null;
@@ -21008,6 +21010,7 @@ export interface components {
             name_hanja: string | null;
             name_en: string | null;
             nationality: string | null;
+            /** @description The reveal mask when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the email. */
             personal_email: string | null;
             emergency_contacts: components["schemas"]["EmergencyContact"][] | null;
             photo: null | {
@@ -21042,7 +21045,8 @@ export interface components {
             updated_at: string;
             /** @enum {string|null} */
             sex: "MALE" | "FEMALE" | null;
-            address: components["schemas"]["KrAddress"] | null;
+            /** @description The reveal mask when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the address. */
+            address: string | null;
             /** @description null = not entered; [] = no prior experience. */
             careers: components["schemas"]["EmployeeCareer"][] | null;
             exit_reason_code: string | null;
@@ -23054,7 +23058,10 @@ export interface components {
             holiday_roll_unverified: boolean;
         } | null;
         InsuranceFilingFacts: {
-            /** Format: date */
+            /**
+             * Format: date
+             * @description Sent only to record a birth date when none is known. Never returned; birth_date_known says whether one is recorded.
+             */
             birth_date?: string | null;
             monthly_hours?: number | null;
             weekly_hours?: number | null;
@@ -23113,6 +23120,7 @@ export interface components {
             /** Format: int64 */
             version: number;
             can_record_sensitive_facts: boolean;
+            /** @description Whether a birth date is recorded. The date itself opens only through the governed reveal. */
             birth_date_known: boolean;
             /** Format: date */
             opens_on: string | null;
@@ -26640,14 +26648,14 @@ export interface components {
                 reason: string;
                 evidence: {
                     employee_number?: string | null;
-                    /** Format: date */
+                    /** @description The birth year and month with the day masked (1990-04-••), never the date. */
                     birth_date?: string | null;
                     candidates: {
                         /** Format: uuid */
                         employee_id: string;
                         name: string;
                         employee_number: string | null;
-                        /** Format: date */
+                        /** @description The birth year and month with the day masked (1990-04-••), never the date. */
                         birth_date?: string | null;
                         /** Format: uuid */
                         person_id?: string | null;
@@ -40394,7 +40402,7 @@ export interface operations {
                     "application/json": {
                         employee_id: components["schemas"]["Uuid"];
                         hire_date: string | null;
-                        /** Format: date */
+                        /** @description The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date. */
                         birth_date: string | null;
                         work_email: string | null;
                         /** @enum {string|null} */
@@ -40472,7 +40480,7 @@ export interface operations {
                     "application/json": {
                         employee_id: components["schemas"]["Uuid"];
                         hire_date: string | null;
-                        /** Format: date */
+                        /** @description The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date. */
                         birth_date: string | null;
                         work_email: string | null;
                         /** @enum {string|null} */
@@ -41203,7 +41211,7 @@ export interface operations {
                     "application/json": {
                         employee_id: components["schemas"]["Uuid"];
                         hire_date: string | null;
-                        /** Format: date */
+                        /** @description The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date. */
                         birth_date: string | null;
                         work_email: string | null;
                         /** @enum {string|null} */

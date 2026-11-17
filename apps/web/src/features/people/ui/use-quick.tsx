@@ -39,8 +39,10 @@ export function useQuick(c: Card) {
     setPending({ field, changes, undo });
     run.mutate({ field, changes, undo, at });
   };
+  // An edit of a masked field carries no old value: nothing to write back.
+  const undoable = last !== null && Object.keys(last.edit.undo).length > 0;
   const undo = () => {
-    if (!last) return;
+    if (!last || !undoable) return;
     const { field, changes, undo: back } = last.edit;
     setLast(null);
     save(field, back, changes);
@@ -64,7 +66,7 @@ export function useQuick(c: Card) {
   ) : stale ? null : run.isError ? (
     <Toast state="error" actions={<Button variant="ghost" onClick={() => run.reset()}>{t("empCard.quick.dismiss")}</Button>}>{t("empCard.quick.failed", { field: pending?.field ?? "" })} · {failureText(run.error)}</Toast>
   ) : last ? (
-    <Toast state="done" actions={<Button variant="ghost" onClick={undo}>{t("empCard.quick.undo")}</Button>}>{t("empCard.quick.done", { field: last.edit.field })}</Toast>
+    <Toast state="done" actions={undoable && <Button variant="ghost" onClick={undo}>{t("empCard.quick.undo")}</Button>}>{t("empCard.quick.done", { field: last.edit.field })}</Toast>
   ) : null;
   return { save, pending: run.isPending ? pending : null, toast, dismiss, conflictFor };
 }
