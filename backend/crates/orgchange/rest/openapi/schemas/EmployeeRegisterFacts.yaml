@@ -10,9 +10,9 @@ properties:
     type: [string, 'null']
     enum: [MALE, FEMALE, null]
   address:
-    oneOf:
-    - $ref: '#/components/schemas/KrAddress'
-    - type: 'null'
+    type: [string, 'null']
+    description: The reveal mask when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the
+      address.
   careers:
     description: null = not entered; [] = no prior experience.
     type: [array, 'null']
