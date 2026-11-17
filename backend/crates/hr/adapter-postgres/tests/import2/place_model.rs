@@ -92,25 +92,20 @@ async fn place_model_defaults_by_exact_and_normalized_workplace_values(pool: PgP
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn place_model_asks_once_for_mixed_values_and_remembers_the_site_reading_per_tenant(
+async fn place_model_confirms_mixed_values_and_reconfirms_remembered_readings_per_tenant(
     pool: PgPool,
 ) {
     let i = importer(pool.clone()).await;
     shared::setup_headquarters(&i, i.f.branch).await;
     let file = staff(&["본사", "고객고유현장"], "사업장");
     let preview = i
-        .preview("sites.xlsx", &file, &Default::default())
+        .preview_unconfirmed("sites.xlsx", &file, &Default::default())
         .await
         .unwrap();
     assert_eq!(preview.sheets_needing_mapping, 1);
-    let column = preview
-        .columns
-        .iter()
-        .find(|column| column.source_header == "사업장")
-        .unwrap();
-    assert_eq!(column.notice, None);
-    assert_eq!(column.place_reading_required, Some(true));
-    assert!(column.target.is_none());
+    assert!(preview.columns.is_empty());
+    assert_eq!(preview.sheets[0]["columns"][4]["target"], "workplace");
+    assert!(preview.sample_rows.is_empty());
     let blocked = i.dry_run(preview.run_id, decisions()).await;
     assert_eq!(blocked.review.blocking, 1);
     assert!(blocked.rows.iter().all(|row| {
@@ -149,14 +144,18 @@ async fn place_model_asks_once_for_mixed_values_and_remembers_the_site_reading_p
     assert_eq!(i.count("SELECT count(*) FROM employees WHERE org_id=$1 AND worksite_name IN ('본사','고객고유현장')").await, 2);
 
     let repeated = i
+        .preview_unconfirmed("sites-again.xlsx", &file, &Default::default())
+        .await
+        .unwrap();
+    assert_eq!(repeated.sheets_needing_mapping, 1);
+    assert_eq!(repeated.sheets[0]["columns"][4]["target"], "worksite_name");
+    assert_eq!(repeated.sheets[0]["columns"][4]["source"], "remembered");
+    let confirmed = i
         .preview("sites-again.xlsx", &file, &Default::default())
         .await
         .unwrap();
-    assert_eq!(repeated.sheets_needing_mapping, 0);
-    assert_eq!(repeated.sheets[0]["columns"][4]["target"], "worksite_name");
-    assert_eq!(repeated.sheets[0]["columns"][4]["source"], "remembered");
     assert_eq!(
-        i.dry_run(repeated.run_id, decisions())
+        i.dry_run(confirmed.run_id, decisions())
             .await
             .review
             .blocking,
@@ -166,7 +165,7 @@ async fn place_model_asks_once_for_mixed_values_and_remembers_the_site_reading_p
     let other = importer(pool).await;
     shared::setup_headquarters(&other, other.f.branch).await;
     let independent = other
-        .preview("sites.xlsx", &file, &Default::default())
+        .preview_unconfirmed("sites.xlsx", &file, &Default::default())
         .await
         .unwrap();
     assert_eq!(independent.sheets_needing_mapping, 1);
@@ -252,5 +251,58 @@ async fn place_model_worksite_values_never_recall_workplace_binding_memory(pool:
         i.count("SELECT count(*) FROM employees WHERE org_id=$1 AND worksite_name='본사'")
             .await,
         1
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn confirmed_mixed_workplaces_resolve_sites_per_value_without_losing_known_placement(
+    pool: PgPool,
+) {
+    let i = importer(pool).await;
+    shared::setup_headquarters(&i, i.f.branch).await;
+    let file = staff(&["본사", "고객고유현장"], "사업장");
+    let unconfirmed = i
+        .preview_unconfirmed("mixed.xlsx", &file, &Default::default())
+        .await
+        .unwrap();
+    assert_eq!(unconfirmed.sheets[0]["status"], "needs_mapping");
+    assert_eq!(unconfirmed.sheets[0]["needs_confirmation"], true);
+    assert_eq!(unconfirmed.sheets[0]["rows"], 2);
+    assert!(unconfirmed.columns.is_empty());
+    let bound = i
+        .preview("mixed.xlsx", &file, &reading("workplace"))
+        .await
+        .unwrap();
+    let unresolved = i.dry_run(bound.run_id, decisions()).await;
+    let item = unresolved
+        .review
+        .items
+        .iter()
+        .find(|item| item.reason == "workplace_unmapped")
+        .unwrap();
+    assert_eq!(item.value.as_deref(), Some("고객고유현장"));
+    assert_eq!(item.resolution.as_ref().unwrap().decision, "workplace_map");
+    let mut answer = decisions();
+    answer.workplace_map.insert("고객고유현장".into(), None);
+    let resolved = i.dry_run(bound.run_id, answer).await;
+    assert!(
+        !resolved
+            .review
+            .items
+            .iter()
+            .any(|item| item.reason == "workplace_unmapped")
+    );
+    i.apply(bound.run_id, &resolved.dry_run_digest)
+        .await
+        .unwrap();
+    assert_eq!(
+        i.count("SELECT count(*) FROM employment_assignments WHERE org_id=$1")
+            .await,
+        1
+    );
+    assert_eq!(
+        i.count("SELECT count(*) FROM employees WHERE org_id=$1")
+            .await,
+        2
     );
 }

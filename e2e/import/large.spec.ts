@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
-import { chooseWorkbook, payPeriod } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "../helpers/import";
 import { many, plain, workbook } from "../helpers/import-layouts";
 import { gridRow, queue, rowsGrid } from "../helpers/import-queue";
 
@@ -17,6 +17,7 @@ test("large files: 3,000 rows refused with the limit named; 2,000 rows virtualis
   await chooseWorkbook(admin, "전사명부_3000.xlsx", await workbook([plain("전사", many("BG", 3000, ["인사팀", "영업팀", "품질팀"]))]));
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await expect(admin.getByRole("alert")).toContainText("재직자는 3,000명이라 한 번에 반영할 수 있는 2,000명을 넘습니다", { timeout: 60_000 });
   await expect(rowsGrid(admin)).toHaveCount(0);
@@ -26,6 +27,7 @@ test("large files: 3,000 rows refused with the limit named; 2,000 rows virtualis
   await chooseWorkbook(admin, "전사명부_2000.xlsx", await workbook([plain("전사", many("BG", 2000, ["인사팀", "영업팀", "품질팀"]))]));
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
 
   await expect(rowsGrid(admin)).toBeVisible({ timeout: 60_000 });

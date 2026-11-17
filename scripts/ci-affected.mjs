@@ -8,7 +8,8 @@ export function classifyPaths(paths) {
   const affected = { backend: false, web: false };
   for (const file of paths) {
     // The web contract gate reads both committed backend OpenAPI documents.
-    if (file.startsWith("backend/openapi/")) affected.backend = affected.web = true;
+    if (/^packages\/i18n\/src\/catalogs\/[^/]+\/import\.ts$/.test(file)) affected.backend = affected.web = true;
+    else if (file.startsWith("backend/openapi/")) affected.backend = affected.web = true;
     else if (/^(?:backend\/|Cargo\.[^/]+$|rust-toolchain(?:\.toml)?$|migrations\/|openapi(?:\/|\.))/.test(file)) affected.backend = true;
     else if (/^(?:apps\/|packages\/|e2e\/|package[^/]*\.json$)/.test(file)) affected.web = true;
     else affected.backend = affected.web = true;

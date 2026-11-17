@@ -20229,8 +20229,6 @@ export interface components {
              * @description Legacy column notes. New placement questions do not use this field.
              */
             notice?: string | null;
-            /** @description The column needs an operator choice between a statutory workplace and a physical work site. */
-            place_reading_required?: boolean;
         };
         EmployeeImportCompanyConfirmation: {
             value: string;
@@ -20733,6 +20731,8 @@ export interface components {
             name: string;
             /** @enum {string} */
             status: "mapped" | "needs_mapping" | "empty" | "skipped";
+            /** @description When true, a detected header awaits operator confirmation; status is needs_mapping and no values have been staged. */
+            needs_confirmation?: boolean;
             rows: number;
             /**
              * @description W12 (r3:hire-18): remembered — skipped because an earlier import skipped a sheet of this name; send `skip: false` for it to read it this time.

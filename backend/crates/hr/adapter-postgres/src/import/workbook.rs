@@ -9,12 +9,10 @@ use console_hr_domain::import::detect::{
     MappingSource, SheetDetection, WorkbookMappingRequest, detect, memory_key,
 };
 use console_hr_domain::import::grid::{GridSheet, column_letter};
-use console_hr_domain::import::names::bound_name;
 use console_hr_domain::import::review::Note;
 use console_hr_domain::import::roster_cells::sheet_memory_key;
 
 use serde_json::{Value, json};
-use uuid::Uuid;
 
 use crate::HrError;
 use crate::import::header::reject_rrn_label;
@@ -103,37 +101,57 @@ pub fn parse_workbook(
             })?
         };
         let mut rows = 0;
+        let mut unconfirmed = false;
         match &detection {
             SheetDetection::Mapped {
                 header_row,
                 columns: plans,
             } => {
-                let source = if plans.iter().any(|c| c.source == MappingSource::Operator) {
-                    "operator"
-                } else if plans.iter().any(|c| c.source == MappingSource::Remembered) {
-                    "remembered"
-                } else {
-                    "catalog"
-                };
-                let out = sheet_rows(ctx, sheet, *header_row, plans, source);
-                rows = out.rows.len();
-                for column in out.columns {
-                    columns
-                        .entry(column.normalized_header.clone())
-                        .or_insert(column);
-                }
-                parsed.rows.extend(out.rows);
-                parsed.identities.extend(out.identities);
-                parsed.phones.extend(out.phones);
-                parsed.notes.extend(out.notes);
-                parsed.remembered.extend(
-                    plans
+                // Require a person's mapping before staging any cells or calling the vault.
+                unconfirmed = plans
+                    .iter()
+                    .any(|c| c.target.is_some() && c.source != MappingSource::Operator);
+                if unconfirmed {
+                    rows = sheet
+                        .rows
                         .iter()
-                        .filter(|c| {
-                            c.source == MappingSource::Operator && !c.label.trim().is_empty()
-                        })
-                        .map(|c| (memory_key(&c.label), c.target.map(ToOwned::to_owned))),
-                );
+                        .filter(|row| row.index > *header_row && !row.is_blank())
+                        .count();
+                    parsed.notes.push(Note {
+                        reason: "sheet_needs_mapping",
+                        blocking: true,
+                        sheet: sheet.name.clone(),
+                        row: None,
+                        cell: None,
+                    });
+                } else {
+                    let source = if plans.iter().any(|c| c.source == MappingSource::Operator) {
+                        "operator"
+                    } else if plans.iter().any(|c| c.source == MappingSource::Remembered) {
+                        "remembered"
+                    } else {
+                        "catalog"
+                    };
+                    let out = sheet_rows(ctx, sheet, *header_row, plans, source);
+                    rows = out.rows.len();
+                    for column in out.columns {
+                        columns
+                            .entry(column.normalized_header.clone())
+                            .or_insert(column);
+                    }
+                    parsed.rows.extend(out.rows);
+                    parsed.identities.extend(out.identities);
+                    parsed.phones.extend(out.phones);
+                    parsed.notes.extend(out.notes);
+                    parsed.remembered.extend(
+                        plans
+                            .iter()
+                            .filter(|c| {
+                                c.source == MappingSource::Operator && !c.label.trim().is_empty()
+                            })
+                            .map(|c| (memory_key(&c.label), c.target.map(ToOwned::to_owned))),
+                    );
+                }
             }
             SheetDetection::NeedsMapping { .. } => parsed.notes.push(Note {
                 reason: "sheet_needs_mapping",
@@ -146,6 +164,12 @@ pub fn parse_workbook(
         }
         let mut stored = sheet_report(sheet, &detection, rows, false);
         let mut shown = sheet_report(sheet, &detection, rows, true);
+        if unconfirmed {
+            stored["status"] = "needs_mapping".into();
+            stored["needs_confirmation"] = true.into();
+            shown["status"] = "needs_mapping".into();
+            shown["needs_confirmation"] = true.into();
+        }
         if remembered_skip {
             stored["source"] = "remembered".into();
             shown["source"] = "remembered".into();
@@ -158,87 +182,6 @@ pub fn parse_workbook(
         .remembered
         .retain(|(key, _)| (1..=100).contains(&key.chars().count()));
     Ok(parsed)
-}
-
-/// Catalog workplace headers bind by this tenant's values; any other reading
-/// needs the operator's column mapping, which the existing memory remembers.
-pub fn refine_place_columns(
-    parsed: &mut ParsedEmployeeImportWorkbook,
-    workplaces: &BTreeMap<String, Vec<Uuid>>,
-) {
-    let unresolved: BTreeMap<String, Vec<String>> = parsed
-        .sheets
-        .iter()
-        .filter_map(|sheet| {
-            let name = sheet["name"].as_str()?;
-            let labels: Vec<String> = sheet["columns"]
-                .as_array()?
-                .iter()
-                .filter(|c| c["target"] == "workplace" && c["source"] == "catalog")
-                .filter_map(|c| c["label"].as_str().map(str::to_owned))
-                .collect();
-            if labels.is_empty() {
-                return None;
-            }
-            let unbound = parsed
-                .rows
-                .iter()
-                .filter(|row| row.source_sheet == name)
-                .filter_map(|row| row.canonical.as_ref()?.workplace.as_deref())
-                .filter(|value| !value.trim().is_empty())
-                .any(|value| bound_name(value, workplaces).is_none());
-            unbound.then(|| (name.to_owned(), labels))
-        })
-        .collect();
-    for sheet in parsed.sheets.iter_mut().chain(&mut parsed.shown) {
-        let Some(labels) = sheet["name"].as_str().and_then(|name| unresolved.get(name)) else {
-            continue;
-        };
-        if let Some(columns) = sheet["columns"].as_array_mut() {
-            for column in columns.iter_mut().filter(|column| {
-                column["target"] == "workplace"
-                    && column["source"] == "catalog"
-                    && column["label"]
-                        .as_str()
-                        .is_some_and(|label| labels.iter().any(|l| l == label))
-            }) {
-                column["target"] = Value::Null;
-            }
-        }
-        sheet["status"] = json!("needs_mapping");
-    }
-    for row in &mut parsed.rows {
-        if unresolved.contains_key(&row.source_sheet)
-            && let Some(canonical) = &mut row.canonical
-        {
-            canonical.workplace = None;
-        }
-    }
-    for column in &mut parsed.columns {
-        if unresolved
-            .values()
-            .flatten()
-            .any(|label| label.trim() == column.source_header)
-        {
-            column.target = None;
-            column.place_reading_required = Some(true);
-        }
-    }
-    for sheet in unresolved.keys() {
-        if !parsed
-            .notes
-            .iter()
-            .any(|note| note.sheet == *sheet && note.reason == "sheet_needs_mapping")
-        {
-            parsed.notes.push(Note {
-                reason: "sheet_needs_mapping",
-                blocking: true,
-                sheet: sheet.clone(),
-                row: None,
-                cell: None,
-            });
-        }
-    }
 }
 
 /// The report of one sheet. `with_candidates`: the response only — the
@@ -281,6 +224,10 @@ pub fn sheet_report(
     }
     report
 }
+
+#[cfg(test)]
+#[path = "workbook_confirmation_tests.rs"]
+mod confirmation_tests;
 
 #[cfg(test)]
 #[path = "workbook_place_tests.rs"]

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go, kstDate } from "../flows";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "../setup-flows";
-import { chooseWorkbook, payPeriod } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "../helpers/import";
 import { plain, rrn, workbook } from "../helpers/import-layouts";
 
 // A person's identifiers after an import (IMPORT-2, decisions #25), from an empty database through the UI: the
@@ -20,6 +20,7 @@ test("identifiers: masked 주민등록번호 revealed with a reason, 사번 변�
   ])]));
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await admin.getByRole("button", { name: "명부 반영: 신규 2명 · 갱신 0명" }).click();
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 60_000 });
@@ -76,6 +77,7 @@ test("identifiers: masked 주민등록번호 revealed with a reason, 사번 변�
   ])]));
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await expect(admin.getByText(/미배치 1명/).first()).toBeVisible();
   await admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }).click();
