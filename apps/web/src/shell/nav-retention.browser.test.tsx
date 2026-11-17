@@ -91,7 +91,8 @@ test.each(["failed", "held"])("%s shell reads retain the answered rail across re
       }
     });
     await page.reload();
-    await element(rail.getByRole("status")).toBeVisible();
+    await element(rail.getByRole(state === "failed" ? "alert" : "status")).toBeVisible();
+    if (state === "failed") await element(rail.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
     await element(rail.getByRole("link")).toHaveCount(0);
   } finally {
     release();

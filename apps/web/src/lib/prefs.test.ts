@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { expect, test } from "vitest";
 import { EXPERIENCE_KEY, THEME_KEY, THEMES } from "./prefs";
+import { experiences } from "../experience/table";
 
 const SRC = readFileSync(new URL("../../public/prefs.js", import.meta.url), "utf8");
 type Published = Record<"theme" | "experience", { key: string; values: string[] }>;
@@ -93,6 +94,7 @@ test("the known experiences are exactly the ones with a token file", () => {
   expect(existsSync(new URL("../tokens.css", dir)), "the folder is looked for beside the base token file").toBe(true);
   const files = existsSync(dir) ? readdirSync(dir).filter((name) => name.endsWith(".css")).map((name) => name.slice(0, -".css".length)) : [];
   expect(boot({}).published.experience.values.filter(id => id !== "baseline").sort()).toEqual(files.sort());
+  expect(experiences.map(experience => experience.id).filter(id => !boot({}).published.experience.values.includes(id))).toEqual([]);
 });
 
 test("the boot script blocks the parser ahead of the entry, so it has run before anything can paint", () => {
