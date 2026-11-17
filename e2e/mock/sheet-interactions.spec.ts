@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
@@ -16,7 +17,7 @@ import { screens } from "../states/registry";
 test.beforeAll(() => loadCatalog("ko"));
 
 async function openFormSheet(page: Page) {
-  await page.goto("/_gallery?entry=sheet");
+  await mockNavigate(page, "/_gallery?entry=sheet");
   return showFormSheet(page);
 }
 
@@ -99,7 +100,7 @@ test("uncommitted combobox filter text in employee registration closes cleanly, 
 
 test("Escape outside a dock leaves it open and reaches the page", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const dock = page.getByRole("complementary", { name: tg("dockSheet.title"), exact: true });
   await expect(dock).toBeVisible();
   await page.getByRole("button", { name: tg("dockSheet.open"), exact: true }).focus();
@@ -112,7 +113,7 @@ test("Escape outside a dock leaves it open and reaches the page", async ({ page 
 });
 
 test("Back asks before leaving a dirty Sheet", async ({ page }) => {
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   await page.locator('[data-panel-trigger="populated"]').evaluate((button: HTMLElement) => button.click());
   await expect(page).toHaveURL(/sel=populated/);
   const href = page.url();
@@ -134,7 +135,7 @@ test("Back asks before leaving a dirty Sheet", async ({ page }) => {
 
 test("Escape dismissal cannot reach a dirty lower Sheet", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const lower = page.getByRole("dialog", { name: tg("dockSheet.title"), exact: true });
   await expect(lower).toBeVisible();
   const lowerDraft = await lower.getByText(tg("dockSheet.body"), { exact: true }).evaluateHandle(element => {
@@ -159,7 +160,7 @@ test("Escape dismissal cannot reach a dirty lower Sheet", async ({ page }) => {
 
 test("Back closes a clean top Sheet and keeps a dirty lower draft", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/_gallery#prior");
+  await mockNavigate(page, "/_gallery#prior");
   await go(page, "/_gallery");
   const href = page.url();
   await page.locator('[data-panel-trigger="populated"]').evaluate((button: HTMLElement) => button.click());
@@ -342,7 +343,7 @@ test("a real Sheet draft survives confirmed close and reopen", async ({ page }) 
 
 test("Escape inside a clean wide DockSheet closes it", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/_gallery?entry=dock-sheet");
+  await mockNavigate(page, "/_gallery?entry=dock-sheet");
   const dock = page.getByRole("complementary", { name: tg("dockSheet.title"), exact: true });
   await dock.getByRole("heading").focus();
   await page.keyboard.press("Escape");

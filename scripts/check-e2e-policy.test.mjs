@@ -15,7 +15,7 @@ const fixture = (files) => {
   return root;
 };
 
-test("the repository enforces focus, fixme ownership and catalog isolation", () => {
+test("the repository enforces focus, fixme ownership, catalog isolation and gallery readiness", () => {
   const root = process.env.CONSOLE_TEST_ROOT ?? path.resolve(import.meta.dirname, "..");
   assert.deepEqual(checkE2ePolicy(root, "2026-11-03"), []);
 });
@@ -38,6 +38,35 @@ test("fixture imports work at different depths and comments do not count as loca
     "e2e/states/guarded.spec.ts": "import {\n test as catalogTest\n} from '../locale-fixture';\ni18n.set('en');",
     "e2e/states/comment.spec.ts": "// i18n.set('en');",
     "e2e/helper.ts": "i18n.set('en');",
+  });
+  assert.deepEqual(checkE2ePolicy(root), []);
+});
+
+test("mocked gallery navigation must use the shared readiness wait", () => {
+  const files = {
+    "e2e/mock/raw.spec.ts": 'await page.goto("/_gallery");',
+    "e2e/states/raw.spec.ts": "await page.goto(\n '/_gallery?entry=date'\n);",
+    "e2e/layout/raw.spec.ts": 'await otherPage.goto(`/_gallery#main`);',
+    "e2e/mock/nested/open.ts": 'await page.goto(`/_gallery?${query}`);',
+    "e2e/mock/absolute.spec.ts": 'await page.goto("https://console.example/_gallery?entry=date");',
+    "e2e/states/isolated.spec.ts": 'import { test } from "../locale-fixture"; await page.goto("/_gallery");',
+  };
+  assert.deepEqual(checkE2ePolicy(fixture(files)), Object.keys(files).sort().map(file =>
+    `${file}:1: gallery navigation requires mockNavigate`));
+});
+
+test("shared navigation, route interception and non-gallery destinations remain allowed", () => {
+  const root = fixture({
+    "e2e/mock/ready.spec.ts": [
+      'await mockNavigate(page, "/_gallery");',
+      'await page.goto("/login");',
+      'await page.goto("/_gallery-other");',
+      'await page.route("**/_gallery", route => route.fulfill({ body: "" }));',
+      '// await page.goto("/_gallery");',
+      'const example = \'page.goto("/_gallery")\';',
+    ].join("\n"),
+    "e2e/mock/navigation.ts": 'await page.goto(path);',
+    "e2e/visual.spec.ts": 'await page.goto("/_gallery");',
   });
   assert.deepEqual(checkE2ePolicy(root), []);
 });

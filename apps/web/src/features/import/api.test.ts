@@ -54,3 +54,7 @@ test.each([
       .rejects.toMatchObject({ status, code, refusals: blockers });
   } finally { post.mockRestore(); }
 });
+
+test("a database timeout is a confirmed atomic refusal, not an uncertain transport result", () => {
+  expect(lostAnswer(new ApiError(503, "import_apply_timed_out", ""))).toBe(false);
+});

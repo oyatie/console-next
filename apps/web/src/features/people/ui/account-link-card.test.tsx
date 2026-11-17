@@ -2,7 +2,7 @@
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { i18n, loadCatalog } from "@console/i18n";
-import { AccountLinkCard } from "./account-link-card";
+import { AccountLinkContent as AccountLinkCard } from "./account-link-content";
 
 const state = vi.hoisted(() => ({
   hasLinked: true,
@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
 vi.mock("@console/api", async (original) => (await import("./account-link-test-api")).accountLinkApi(await original<object>(), state));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({}) }));
 vi.mock("@tanstack/react-router", () => ({ Link: () => null, useNavigate: () => vi.fn() }));
+vi.mock("./self-account-link", () => ({ SelfAccountLink: () => null }));
 vi.mock("./use-linked-account", () => ({
   directorySearch: () => ({}), useLinkedAccount: () => ({ mine: { isSuccess: true }, linked: state.hasLinked ? state.linked : undefined }),
 }));

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -206,7 +207,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     await page.route(url => url.pathname.startsWith("/api/"), route => route.fulfill({ status: 503, json: { error: { code: "service_unavailable", message: "unavailable" } } }));
-    await page.goto("/_gallery");
+    await mockNavigate(page, "/_gallery");
     const dock = page.getByRole("complementary", { name: "26칸 저장", exact: true }).or(page.getByRole("dialog", { name: "26칸 저장", exact: true }));
     await dock.getByRole("button", { name: "돌아가기", exact: true }).click();
     await expect(dock).toHaveCount(0);

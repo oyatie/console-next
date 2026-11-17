@@ -95,6 +95,11 @@ export async function routeReady(page: Page, path?: string) {
   }, { path });
 }
 
+/** Expected committed destination, including registered route redirects. */
+export function routeTarget(page: Page, path: string) {
+  return redirectTargets[new URL(path, page.url()).pathname] ?? path;
+}
+
 /**
  * In-app navigation, as the app's own links do it (no reload). A reload re-runs the session refresh,
  * which the server rate-limits per session (60 a minute).
@@ -111,8 +116,7 @@ export async function go(page: Page, path: string, mayRedirect = false) {
     }, to.href);
   }
   // `mayRedirect`: accept the rendered redirect destination, including a return to the starting pathname.
-  const target = redirectTargets[new URL(path, page.url()).pathname] ?? path;
-  await routeReady(page, mayRedirect ? undefined : target);
+  await routeReady(page, mayRedirect ? undefined : routeTarget(page, path));
 }
 
 /**

@@ -229,11 +229,7 @@ pub async fn list_action_inbox(
         limit,
         port.deadline_due_soon_days()?,
     );
-    for count in &mut page.attention_filters {
-        if count.key != Attention::All {
-            count.total_is_exact = count.key.is_exact(&incomplete, cursor.is_none());
-        }
-    }
+    filter::mark_exact(&mut page, &incomplete, cursor.is_none());
     if !unavailable.is_empty() {
         page.total_is_exact = false;
         for count in &mut page.attention_filters {
@@ -365,6 +361,22 @@ mod tests {
         }
     }
 
+    /// The assignee owes the request; the requester only follows it, open or sent back.
+    #[test]
+    fn a_to_do_request_is_the_assignees_turn_and_the_requesters_wait() {
+        let now = OffsetDateTime::UNIX_EPOCH;
+        for (kind, lane) in [("todo_assigned", "turn"), ("todo_requested", "waiting")] {
+            let mut source = item("todo_assigned", 1, now);
+            source.kind = kind.into();
+            source.due = Some(now);
+            let item = project_item(source, now, 7);
+            assert_eq!(item.lane, lane, "{kind}");
+            if lane == "waiting" {
+                assert_eq!(item.due_tone, "neutral", "a wait is never a deadline alarm");
+            }
+        }
+    }
+
     #[test]
     fn all_sources_are_payroll_and_governance_inclusive() {
         assert_eq!(
@@ -392,6 +404,9 @@ mod tests {
                 ActionInboxSource::GrantNotice,
                 ActionInboxSource::SupportAccess,
                 ActionInboxSource::PrivacyRequests,
+                ActionInboxSource::AccountBindingReview,
+                ActionInboxSource::TodoAssigned,
+                ActionInboxSource::TodoRequested,
             ]
         );
         for source in ActionInboxSource::ALL {
@@ -1087,6 +1102,30 @@ mod tests {
         }
     }
 
+    #[test]
+    fn binding_review_contributes_to_approval_attention_without_counting_reference_notices() {
+        let now = OffsetDateTime::UNIX_EPOCH;
+        let items = ["account_binding_review", "grant_notice"]
+            .map(|kind| super::projection::project_item(item(kind, 1, now), now, 1));
+        let counts = super::attention::counts(&items, true);
+        assert_eq!(
+            counts
+                .iter()
+                .find(|count| count.key == super::Attention::Approvals)
+                .unwrap()
+                .total,
+            1
+        );
+        assert_eq!(
+            counts
+                .iter()
+                .find(|count| count.key == super::Attention::All)
+                .unwrap()
+                .total,
+            2
+        );
+    }
+
     fn namespaced_kind(source: ActionInboxSource) -> &'static str {
         match source {
             ActionInboxSource::Workflow => "approval",
@@ -1111,7 +1150,10 @@ mod tests {
             ActionInboxSource::GrantNotice => "grant_notice",
             ActionInboxSource::SupportAccess => "support_access",
             ActionInboxSource::PrivacyRequests => "privacy_request",
+            ActionInboxSource::AccountBindingReview => "account_binding_review",
             ActionInboxSource::HrInsurance => "insurance_filing_ACQUIRE_NPS",
+            ActionInboxSource::TodoAssigned => "todo_assigned",
+            ActionInboxSource::TodoRequested => "todo_requested",
         }
     }
 

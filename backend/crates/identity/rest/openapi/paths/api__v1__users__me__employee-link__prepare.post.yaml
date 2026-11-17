@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [users]
+operationId: prepareSelfAccountBinding
+summary: Prepare a sole operator's own employee link
+description: Cedar checks current server facts and returns the binding for the authenticated account and selected employee. Start the existing passkey step-up ceremony with this binding when the user confirms. Submission rechecks eligibility in the locked transaction. No identity number is collected.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SelfBindingPrepareRequest'
+responses:
+  '200':
+    description: Start a passkey step-up ceremony with this exact binding.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/MobilePasskeyStepUpBinding'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: account_link.refuse.solo_ineligible or account_link.refuse.not_own_record
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: account_link.refuse.employee_taken
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: Passkey service unavailable.

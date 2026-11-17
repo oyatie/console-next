@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -134,7 +135,7 @@ for (const { state, registry } of homeSetupCases) for (const width of [1440, 390
 for (const width of [1440, 390]) test(`setup rail gallery at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, homeSetupScreen, "empty");
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   if (width === 390) {
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.keyboard.press("Escape");

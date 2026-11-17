@@ -21,6 +21,9 @@ import { LifecycleSheet } from "./lifecycle-sheet";
 import { RehireSheet } from "./register-rehire";
 import s from "./person.module.css";
 
+// Account binding shares the record's on-demand action entry.
+export { AccountLinkContent } from "./account-link-content";
+
 type Detail = components["schemas"]["EmployeeDetail"];
 type Allowed = Detail["allowed_events"][number];
 type Events = UseQueryResult<{ items: LifecycleEvent[]; head_version: number }>;

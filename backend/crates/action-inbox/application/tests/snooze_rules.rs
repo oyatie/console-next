@@ -109,6 +109,45 @@ fn an_item_says_whether_and_until_when_it_may_be_postponed() {
     );
 }
 
+/// A to-do request's date is the requester's wish, not a legal deadline: either side may postpone it to any day.
+#[test]
+fn a_to_do_request_may_be_postponed_to_any_later_day_on_either_side() {
+    let rows = [
+        ActionInboxSourceItem {
+            due: Some(datetime!(2026-11-13 23:59:59.999999 +9)),
+            ..item("todo_assigned", 1)
+        },
+        ActionInboxSourceItem {
+            due: Some(datetime!(2026-11-13 23:59:59.999999 +9)),
+            context: Some(json!({"todo": {"state": "open"}, "decision": {"version": "open"}})),
+            ..item("todo_requested", 2)
+        },
+    ];
+    let page = merge_pages(
+        vec![ActionInboxSourcePage {
+            total: rows.len(),
+            items: rows.to_vec(),
+            total_is_exact: true,
+            has_more: false,
+        }],
+        NOW,
+        NOW,
+        None,
+        10,
+        7,
+    );
+    assert_eq!(page.items.len(), 2);
+    for row in &page.items {
+        assert_eq!(
+            serde_json::to_value(&row.snooze).unwrap(),
+            json!({"allowed": true}),
+            "{}",
+            row.kind
+        );
+        assert_eq!(row.snooze.check(date!(2027 - 01 - 01), TODAY), Ok(()));
+    }
+}
+
 #[test]
 fn presets_resolve_to_dates_and_next_week_is_the_coming_monday() {
     let dates = |today, short, long| serde_json::to_value(presets(today, short, long)).unwrap();

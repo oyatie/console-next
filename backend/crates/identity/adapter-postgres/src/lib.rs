@@ -9,11 +9,17 @@
 //! caller cannot strip or mint out-of-scope memberships (console-o498).
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod account_link_solo;
 mod employee_views;
 mod error;
 mod org_structure;
 mod policy;
 pub mod second_person;
+pub mod self_binding;
+pub mod self_binding_inbox;
+mod self_binding_prepare;
+mod self_binding_receipt;
+pub mod self_binding_review;
 mod users;
 
 pub use error::PgOrgError;

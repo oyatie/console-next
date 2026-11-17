@@ -19,7 +19,7 @@ beforeAll(async () => {
       name: "flexible-columns-test",
       resolveId: id => id === "/flexible-columns-test.js" ? "\0flexible-columns-test" : undefined,
       load: id => id === "\0flexible-columns-test" ? `
-        import React, { useRef, useState } from 'react';
+        import React, { useLayoutEffect, useRef, useState } from 'react';
         import { createRoot } from 'react-dom/client';
         import { loadCatalog, t } from '@console/i18n';
         import { Button } from '/apps/web/src/ui/button/button.tsx';
@@ -34,9 +34,9 @@ beforeAll(async () => {
           const [opened, setOpened] = useState(null);
           const [dialog, setDialog] = useState(false);
           const findRef = useRef(null);
-          const rowA = useRef(null);
-          const rowB = useRef(null);
+          const rowA = useRef(null), rowB = useRef(null);
           const unitBtn = useRef(null);
+          useLayoutEffect(() => { if (sel === 'b' && new URLSearchParams(location.search).has('enterOnCommit')) rowB.current.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); }, [sel]);
           const selectRow = id => { setSel(id); setSel2(prev => (id === sel ? prev : null)); };
           return React.createElement('main', { className: 'main', 'data-opened': opened ?? '', 'data-selected': sel ?? '' },
             React.createElement(FlexibleColumns, {
@@ -225,8 +225,8 @@ test("Escape closes only the rightmost column, respects nested overlays/inputs, 
   await element(rowA).toBeFocused();
 });
 
-test("J/K and arrow keys move through list rows while record follows, and Enter opens then expands", async () => {
-  await openFixture(1440);
+test.each([false, true])("J/K and arrow keys move through list rows while record follows, and Enter opens then expands (Enter during commit: %s)", async enterOnCommit => {
+  await openFixture(1440, enterOnCommit ? "?enterOnCommit" : "");
   const rowA = page.getByRole("button", { name: "직원 A", exact: true });
   const rowB = page.getByRole("button", { name: "직원 B", exact: true });
   const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
@@ -238,6 +238,8 @@ test("J/K and arrow keys move through list rows while record follows, and Enter 
   await page.keyboard.press("j");
   await element(rowB).toBeFocused();
   await element(record.getByRole("heading", { level: 2, name: "상세 B", exact: true })).toBeVisible();
+  // Enter during the commit must see the same selection as the rendered record.
+  if (enterOnCommit) await element(page.locator("main")).toHaveAttribute("data-opened", "b");
 
   await page.keyboard.press("k");
   await element(rowA).toBeFocused();
@@ -250,7 +252,6 @@ test("J/K and arrow keys move through list rows while record follows, and Enter 
   await page.keyboard.press("Enter");
   await element(page.locator("main")).toHaveAttribute("data-opened", "b");
 });
-
 
 for (const width of [1440, 1024]) for (const depth of [1, 2]) {
   test(`rightmost full pane at ${width}px depth ${depth}: toggle, keys, restore then close`, async () => {

@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type ReactNode, type Ref } from "react";
+import { useId, type ComponentProps, type InputHTMLAttributes, type ReactNode, type Ref } from "react";
 import { t } from "@console/i18n";
 import s from "./field.module.css";
 
@@ -10,10 +10,10 @@ export const Marker = ({ required }: { required: boolean }) => (
   <span data-marker className={s.marker}>{t(required ? "uiField.required" : "uiField.optional")}</span>
 );
 
-/** Related fields share one accessible legend and requiredness marker. */
-export function FieldSet({ label, required, children }: { label: ReactNode; required: boolean; children: ReactNode }) {
-  return <fieldset className={s.field}>
-    <legend className={s.label}>{label}<Marker required={required} /></legend>
+/** Related fields share native disabling and an optional legend; null omits the group marker. */
+export function FieldSet({ label, required, children, className, ...props }: ComponentProps<"fieldset"> & { label?: ReactNode; required: boolean | null }) {
+  return <fieldset {...props} className={className ? `${s.field} ${className}` : s.field}>
+    {label != null && <legend className={s.label}>{label}{required !== null && <Marker required={required} />}</legend>}
     {children}
   </fieldset>;
 }

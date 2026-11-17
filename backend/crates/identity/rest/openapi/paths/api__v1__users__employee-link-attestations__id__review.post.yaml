@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [users]
+operationId: reviewSelfAccountBinding
+summary: Confirm or revoke a self-attested account binding
+description: Requires an independent account manager and a fresh one-use passkey assertion. The command reloads Cedar facts inside its locked transaction. Confirmation retains the binding; revocation removes the current binding and restores the two-person rule. Confirmation does not prevent later revocation. A stale or replacement binding is never changed. Each accepted decision and its audit commit together.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SelfBindingReviewRequest'
+responses:
+  '200':
+    description: Decision recorded.
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: account_link.refuse.review_ineligible or account_link.refuse.identity_unbound
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: account_link.refuse.review_stale
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    description: passkey_step_up_required
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '503':
+    description: Passkey service unavailable.

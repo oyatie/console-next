@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expect } from "@playwright/test";
 import { test } from "../locale-fixture";
@@ -74,7 +75,7 @@ for (const locale of LOCALES) {
     }, locale);
     const fixture = await mockScreen(page, screens[2], "populated");
     try {
-      await page.goto("/_gallery?entry=payroll");
+      await mockNavigate(page, "/_gallery?entry=payroll");
       const gallery = page.locator(".gallery__section").filter({ has: page.getByRole("heading", { name: t("payroll.reference.title"), exact: true }) });
       await gallery.scrollIntoViewIfNeeded();
       await expect(gallery.locator('a[href^="https:"]')).toHaveCount(0);

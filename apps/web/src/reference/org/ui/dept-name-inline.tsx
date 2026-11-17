@@ -49,14 +49,23 @@ export function DeptNameInline({ parent, unit, setup = true, onDone }: { parent:
   const submit = (send = true) => fold(name) && !taken && !same && state.attempt() && save.mutate({ name: fold(name), submit: send });
   const label = baseUnit ? t("orgUnit.rename.label", { name: baseUnit.name }) : t("orgUnit.add.label", { parent: baseParent.name });
   return (
-    <span ref={box} className={css.stack}>
+    <span ref={box} className={css.stack} data-escape-scope onKeyDownCapture={(e) => {
+      // Portalled popovers own their Escape before the inline editor does.
+      if (e.key !== "Escape" || !e.currentTarget.contains(e.target as globalThis.Node)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onDone();
+    }}>
       <Form className={css.stack} onSubmit={() => submit()}>
         <Field
           label={label}
           required
           error={taken ? t("orgUnit.add.taken", { parent: parent.name }) : save.error ? <CommandError error={save.error} /> : undefined}
         >
-          {(p) => <TextInput {...p} maxLength={120} value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => (e.key === "Escape" ? onDone() : e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229 && submit())} />}
+          {(p) => <TextInput
+            {...p} maxLength={120} value={name} onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229 && submit()}
+          />}
         </Field>
         <InlineUnitFields setup={setup} state={state} pending={save.isPending} onDraft={() => submit(false)} />
         <span className="row">

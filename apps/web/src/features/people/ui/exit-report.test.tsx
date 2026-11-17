@@ -35,7 +35,7 @@ vi.mock("../../../lib/reason-codes", async (original) => ({
 }));
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useNavigate: () => vi.fn() }) }));
 vi.mock("./use-exit-command", () => ({ useExitCommand: () => ({ pending: false, locked: false, submit: scenario.submit }) }));
-vi.mock("./account-link-card", () => ({ OpsExitNote: () => null }));
+vi.mock("./ops-exit-note", () => ({ OpsExitNote: () => null }));
 vi.mock("./exit-foot", () => ({ StepFrame: ({ sheet, note, aside, sections, children }: { sheet: { kicker?: ReactNode; subtitle?: ReactNode }; note?: ReactNode; aside?: ReactNode; sections?: Record<string, ReactNode>; children?: ReactNode }) => <>{sheet.kicker}{sheet.subtitle}{note}{aside}{Object.values(sections ?? {})}{scenario.fields && children}</> }));
 
 const employee = { id: "person", name: "김초안", employee_number: "REC-1", org_unit: "본점", position: "팀장" } as ComponentProps<typeof ReportForm>["employee"];

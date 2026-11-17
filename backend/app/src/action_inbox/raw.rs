@@ -61,6 +61,9 @@ impl ActionInboxSourcePort for Raw<'_> {
                 ActionInboxSource::GrantNotice => {
                     sources::grants::page(&sources.pool, &sources.principal, query).await
                 }
+                ActionInboxSource::AccountBindingReview => {
+                    sources::account_binding::page(&sources.pool, &sources.principal, query).await
+                }
                 ActionInboxSource::SupportAccess => {
                     sources::support_access::page(
                         &sources.pool,
@@ -137,6 +140,10 @@ impl ActionInboxSourcePort for Raw<'_> {
                         sources.log_access,
                     )
                     .await
+                }
+                #[cfg(feature = "todos")]
+                ActionInboxSource::TodoAssigned | ActionInboxSource::TodoRequested => {
+                    sources::todos::page(&sources.pool, &sources.principal, source, query).await
                 }
                 #[allow(unreachable_patterns)]
                 _ => Ok(empty_source_page()),
