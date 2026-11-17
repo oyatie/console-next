@@ -96,6 +96,7 @@ export const bootEn = {
   "common.oneTimeCode": "One-time code",
   "common.expiresAt": "Expires {at}",
   "auth.login.title": "Sign in",
+  "auth.login.pending": "Checking sign-in…",
   "auth.login.passkey": "Sign in with a passkey",
   "auth.login.id": "Sign-in ID",
   "auth.login.idHint": "id@domain · e.g. hong@acme",

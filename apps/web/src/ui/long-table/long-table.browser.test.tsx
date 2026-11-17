@@ -161,7 +161,7 @@ test.each([1440, 390])("row ids can match column ids while callbacks and selecti
   for (const [i, id] of ["name", "__select", "__card", "row:name"].entries()) {
     const row = rows.nth(i);
     await row.hover();
-    expect(await page.locator("body").getAttribute("data-hover")).toBe(id);
+    await dom(page.locator("body")).toHaveAttribute("data-hover", id);
     await row.focus();
     expect(await page.locator("body").getAttribute("data-focus")).toBe(id);
     await row.press("o");
