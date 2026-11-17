@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { ApiError } from "@console/api";
 import { getRouteApi } from "@tanstack/react-router";
-import ListRecordExample from "../ui/patterns/list-record.gallery";
+import ListRecordExample from "../ui/patterns/list-record.fixture";
 
 const route = getRouteApi("/app/_review/patterns/list-record");
 export function ListRecordReview() {

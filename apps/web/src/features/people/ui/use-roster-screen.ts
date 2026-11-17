@@ -10,7 +10,6 @@ import { columnSelection } from "../../../lib/react/use-column-selection";
 import { usePrefetch } from "../../../lib/react/prefetch";
 import { todayKst } from "../../../lib/pure/today";
 import { useReasonCodesReady } from "../../../lib/reason-codes";
-import { useCan } from "../../../reference/authz/ui/use-can";
 import { unitsQuery } from "../../../reference/org/api";
 import { employeeQuery } from "../api";
 import { activeView, exactNumber, joinReview, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
@@ -65,7 +64,6 @@ export function useRosterScreen() {
   const rescindReady = useReasonCodesReady(batch ? "lifecycle_cancel" : null);
   const r = useRoster({ status, review, unit, q, sort }, soonDays, !contractWindow.isPending);
   const view = useRosterColumns();
-  const can = useCan();
   const prefetch = usePrefetch();
   // The memory always describes the current filters (a new filter starts at the top).
   useEffect(() => remember(key, q, { q }), [key, q]);
@@ -162,7 +160,7 @@ export function useRosterScreen() {
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
     sort, q, exitView, setExitView, findSlot, setFindSlot, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady,
-    r, view, can, prefetch, setFilter, find, reset, closePaste, bulkDone, openRecord,
+    r, view, prefetch, setFilter, find, reset, closePaste, bulkDone, openRecord,
     scroller, rowCount, scrollRef, onRowFocus, filtered, customFilters, sameName,
     onRowAction: (id: string) => (id === open ? openRecord(id) : (remember(key, q, { row: id }), select(id))),
   };

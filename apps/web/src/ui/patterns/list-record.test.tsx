@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ApiError } from "@console/api";
 import { loadCatalog } from "@console/i18n";
 import { beforeAll, expect, test } from "vitest";
+import type { ReadState } from "../../lib/react/query-view";
 import { ListRecord } from "./list-record";
 import { listRecordOptionalRegions } from "./list-record-contract";
 import { PageMain } from "../page/page-main";
@@ -23,8 +24,8 @@ async function markup(children: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
   return renderToStaticMarkup(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
-const screen = (q = read) => <ListRecord q={q}
-  head={{ title: mark("head"), titleId: "roster-title", asOf: mark("asOf"), primary: { id: "register", label: "Register", onAction() {} }, commands: { label: "Commands", items: [{ id: "import", label: "Import", onAction() {} }] } }}
+const screen = (q: ReadState = read) => <ListRecord q={q}
+  head={{ title: mark("head"), titleId: "roster-title", asOf: mark("asOf"), actions: <a href="/people/new">Register link</a>, primary: { id: "register", label: "Register", onAction() {} }, commands: { label: "Commands", items: [{ id: "import", label: "Import", onAction() {} }] } }}
   tabs={<nav aria-label="Routes"><a href="/people" aria-current="page">{mark("tabs")}</a></nav>}
   views={<button aria-pressed="true">{mark("views")}</button>}
   find={mark("find")} filters={mark("filters")} tools={mark("tools")} notes={mark("notes")}
@@ -35,10 +36,12 @@ const screen = (q = read) => <ListRecord q={q}
 />;
 
 test.each([false, true])("baseline places every supplied region once with one main and h1 (shell: %s)", async shell => {
+  expect(listRecordOptionalRegions).toEqual(["facts"]);
   const html = await markup(shell ? <PageMain>{screen()}</PageMain> : screen());
-  for (const name of ["head", "asOf", "list", ...listRecordOptionalRegions]) {
+  for (const name of ["head", "asOf", "list", "tabs", "views", "find", "filters", "tools", "notes", "record", "related", "foot", "overlays"]) {
     expect(html.split(`data-contract-region="${name}"`), name).toHaveLength(2);
   }
+  expect(html).not.toContain('data-contract-region="facts"');
   expect(html.match(/<main\b/g)).toHaveLength(1);
   expect(html.match(/<h1\b/g)).toHaveLength(1);
   expect(html).toContain('id="roster-title"');
@@ -46,8 +49,11 @@ test.each([false, true])("baseline places every supplied region once with one ma
   expect(html.match(/<aside\b/g)).toHaveLength(2);
   expect(html).toMatch(/<aside[^>]*aria-label="Person record"/);
   expect(html).toMatch(/<aside[^>]*aria-label="Related unit"/);
+  expect(html).not.toContain('role="tablist"');
+  expect(html).toMatch(/data-edge="bottom"[^>]*><header/);
   expect(html).toContain('aria-pressed="true"');
   expect(html).toContain('href="/people" aria-current="page"');
+  expect(html).toContain('<a href="/people/new">Register link</a>');
   for (const label of ["Register", "Import"]) expect(html).toContain(`>${label}</button>`);
 });
 
@@ -55,6 +61,7 @@ test("optional regions may be absent without replacing the list", async () => {
   const html = await markup(<ListRecord q={read} head={{ title: "Roster" }} list={mark("list")} />);
   expect(html).toContain('data-contract-region="list"');
   expect(html).not.toContain("<aside");
+  expect(html).not.toContain('data-tabs="true"');
   expect(html.match(/<h1\b/g)).toHaveLength(1);
 });
 
@@ -62,7 +69,17 @@ test("a refusal removes every data region and command, including retained data",
   const html = await markup(screen({ ...read, error: new ApiError(403, "access_denied", "", [], "refused-read") }));
   expect(html).toContain('data-contract-region="head"');
   expect(html).toContain("refused-read");
-  for (const name of ["asOf", "list", ...listRecordOptionalRegions]) expect(html).not.toContain(`data-contract-region="${name}"`);
-  for (const label of ["Register", "Import"]) expect(html).not.toContain(label);
+  expect(html).toContain('data-contract-region="tabs"');
+  for (const name of ["asOf", "list", "views", "find", "filters", "tools", "notes", "record", "related", "foot", "facts", "overlays"]) expect(html).not.toContain(`data-contract-region="${name}"`);
+  for (const label of ["Register", "Import", "Register link"]) expect(html).not.toContain(label);
   expect(html.match(/<h1\b/g)).toHaveLength(1);
+});
+
+test.each(["loading", "failed"])("%s keeps commands and their overlays mounted", async state => {
+  const html = await markup(screen({ ...read, isPending: state === "loading", data: undefined, error: state === "failed" ? new ApiError(503, "service_unavailable", "", [], "pattern-failure") : null }));
+  expect(html).toContain('data-contract-region="tabs"');
+  expect(html).toContain('data-contract-region="overlays"');
+  expect(html).toContain('>Register</button>');
+  expect(html).not.toContain('data-contract-region="list"');
+  if (state === "failed") expect(html).toContain("pattern-failure");
 });

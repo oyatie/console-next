@@ -5,8 +5,8 @@ import type { FlexibleColumns } from "../flexible-columns/flexible-columns";
 import type { MenuAction } from "../menu/action-menu";
 import type { PageHeadProps } from "../page-head/page-head";
 
-/** Packs may omit these regions; baseline places every supplied region, in this reading order. */
-export const listRecordOptionalRegions = ["tabs", "views", "find", "filters", "tools", "notes", "record", "related", "foot", "facts", "overlays"] as const;
+/** Only redundant facts may be omitted without a pack-specific owner ruling. */
+export const listRecordOptionalRegions = ["facts"] as const;
 
 /**
  * Content keeps its roles across arrangements: list is a grid; status views are pressed buttons;
@@ -16,8 +16,8 @@ export const listRecordOptionalRegions = ["tabs", "views", "find", "filters", "t
  */
 export type ListRecordProps = Pick<ComponentProps<typeof FlexibleColumns>, "list" | "record" | "related" | "full" | "onFull" | "onSelect" | "onOpen" | "onFind"> & {
   q: ReadState;
-  head: Pick<PageHeadProps, "title" | "titleId" | "asOf"> & {
+  head: Pick<PageHeadProps, "title" | "titleId" | "asOf" | "actions"> & {
     primary?: MenuAction;
     commands?: { label: string; items: readonly MenuAction[] };
   };
-} & Partial<Record<Exclude<typeof listRecordOptionalRegions[number], "record" | "related">, ReactNode>>;
+} & Partial<Record<"tabs" | "views" | "find" | "filters" | "tools" | "notes" | "foot" | "facts" | "overlays", ReactNode>>;

@@ -12,7 +12,7 @@ import { ListRecord } from "./list-record";
 const rows = Array.from({ length: 3 }, (_, i) => ({ id: `DEMO-${i + 1}`, n: i + 1 }));
 const ready = { isPending: false, error: null, data: rows, refetch() {} };
 
-/** Synthetic content shared by the component gallery and the in-shell pattern review. */
+/** Synthetic content for the in-shell pattern review. */
 export default function ListRecordExample({ q = ready }: { q?: ReadState }) {
   const [record, setRecord] = useState<string>();
   const [related, setRelated] = useState(false);

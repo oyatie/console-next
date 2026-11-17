@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
@@ -10,7 +11,7 @@ test.beforeAll(() => loadCatalog("ko"));
 for (const width of [1440, 390]) {
   test(`list-record baseline: populated at ${width}px @ui-state`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
-    const fixture = await mockScreen(page, screens[1], "populated");
+    const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "populated");
     await page.goto("/_review/patterns/list-record");
     const main = page.getByRole("main");
     await expect(main.getByRole("heading", { level: 1 })).toHaveText(t("roster.head.title"));
@@ -44,9 +45,9 @@ for (const width of [1440, 390]) {
     for (const theme of ["light", "dark"]) {
       await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
       await fits(page, `list-record/${width}/${theme}`);
+      await expectAxe(page, `list-record populated/${width}/${theme}`);
       await page.screenshot({ path: info.outputPath(`list-record-${width}-${theme}.png`), fullPage: true });
     }
-    await expectAxe(page, `list-record populated/${width}`);
     expect(fixture.unexpected).toEqual([]);
     fixture.release();
   });
@@ -54,11 +55,12 @@ for (const width of [1440, 390]) {
 
 test("list-record baseline: refused at 390px @ui-state", async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 900 });
-  const fixture = await mockScreen(page, screens[1], "populated");
+  const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "populated");
   await page.goto("/_review/patterns/list-record?state=refused");
   const main = page.getByRole("main");
   await expect(main.getByRole("region", { name: t("common.denied.title.plain") })).toBeVisible();
   await expect(main.getByRole("heading", { level: 1 })).toHaveCount(1);
+  await expect(main.getByRole("link", { name: t("roster.page.roster"), exact: true })).toHaveAttribute("aria-current", "page");
   await expect(main.getByRole("grid")).toHaveCount(0);
   await expect(main.getByRole("complementary")).toHaveCount(0);
   await expect(main.getByRole("button", { name: t("people.register"), exact: true })).toHaveCount(0);
@@ -66,9 +68,21 @@ test("list-record baseline: refused at 390px @ui-state", async ({ page }, info) 
   for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
     await fits(page, `list-record/refused/${theme}`);
+    await expectAxe(page, `list-record refused/390/${theme}`);
     await page.screenshot({ path: info.outputPath(`list-record-refused-${theme}.png`), fullPage: true });
   }
-  await expectAxe(page, "list-record refused/390");
   expect(fixture.unexpected).toEqual([]);
   fixture.release();
+});
+
+test("the first-run roster ignores selected-pane URLs at 390px @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "empty");
+  try {
+    await page.goto(`/people?sel=${id(10)}&sel2=${id(20)}`);
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { name: t("roster.first.title"), exact: true })).toBeVisible();
+    await expect(main.getByRole("complementary")).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { fixture.release(); }
 });
