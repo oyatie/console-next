@@ -11,7 +11,5 @@ console-inspection-domain = { path = "../domain" }
 console-kernel-core.workspace = true
 serde.workspace = true
 time.workspace = true
-uuid.workspace = true
-
 [lints]
 workspace = true

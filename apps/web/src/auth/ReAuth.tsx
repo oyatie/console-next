@@ -51,31 +51,33 @@ export default function ReAuth({ onCodeSignIn }: { onCodeSignIn: () => void }) {
   };
   return (
     <Dialog open title={t("idle.reauth.title")} onClose={() => undefined} dismissable={false}>
-      <span tabIndex={noSafeAction ? -1 : undefined} ref={reasonRef}>{t(!draftText && !recovery.passkey ? `${recovery.message}.bare` : recovery.message)}</span>
-      {recovery.passkey && <span className="muted">{t("idle.reauth.other")}</span>}
-      <PasskeyError error={error} />
-      <span role="status">{draftText && copyStatus ? t(`idle.reauth.${copyStatus}`) : null}</span>
-      {manualCopy !== null && <TextArea aria-label={t("idle.reauth.copy")} readOnly value={manualCopy} onFocus={(e) => e.target.select()} />}
-      <ActionBar
-        actions={
-          <>
-            {/* Focus the first safe action, or the reason when only sign-out remains. */}
-            {recovery.passkey && <Button ref={actionRef} variant="primary" disabled={busy} onClick={() => void signIn()}>
-              <KeyRound size={16} aria-hidden /> {t("idle.reauth.signIn")}
-            </Button>}
-            {draftText && <Button ref={!recovery.passkey ? actionRef : undefined} onClick={() => void copy()}>
-              <Copy size={16} aria-hidden /> {t("idle.reauth.copy")}
-            </Button>}
-            {recovery.code && <Button ref={!draftText ? actionRef : undefined} variant="primary" onClick={() => {
-              rememberInterrupted();
-              onCodeSignIn();
-            }}>{t("auth.login.submitCode")}</Button>}
-            <Button variant="ghost" disabled={busy} onClick={() => void logout()}>
-              <LogOut size={16} aria-hidden /> {t("idle.reauth.signOut")}
-            </Button>
-          </>
-        }
-      />
+      <div className="dialog__body" aria-busy={busy || undefined}>
+        <span tabIndex={noSafeAction ? -1 : undefined} ref={reasonRef}>{t(!draftText && !recovery.passkey ? `${recovery.message}.bare` : recovery.message)}</span>
+        {recovery.passkey && <span className="muted">{t("idle.reauth.other")}</span>}
+        <PasskeyError error={error} />
+        <span role="status">{draftText && copyStatus ? t(`idle.reauth.${copyStatus}`) : null}</span>
+        {manualCopy !== null && <TextArea aria-label={t("idle.reauth.copy")} readOnly value={manualCopy} onFocus={(e) => e.target.select()} />}
+        <ActionBar
+          actions={
+            <>
+              {/* Focus the first safe action, or the reason when only sign-out remains. */}
+              {recovery.passkey && <Button ref={actionRef} variant="primary" disabled={busy} onClick={() => void signIn()}>
+                <KeyRound size={16} aria-hidden /> {t("idle.reauth.signIn")}
+              </Button>}
+              {draftText && <Button ref={!recovery.passkey ? actionRef : undefined} disabled={busy} onClick={() => void copy()}>
+                <Copy size={16} aria-hidden /> {t("idle.reauth.copy")}
+              </Button>}
+              {recovery.code && <Button ref={!draftText ? actionRef : undefined} variant="primary" disabled={busy} onClick={() => {
+                rememberInterrupted();
+                onCodeSignIn();
+              }}>{t("auth.login.submitCode")}</Button>}
+              <Button variant="ghost" disabled={busy} onClick={() => void logout()}>
+                <LogOut size={16} aria-hidden /> {t("idle.reauth.signOut")}
+              </Button>
+            </>
+          }
+        />
+      </div>
     </Dialog>
   );
 }

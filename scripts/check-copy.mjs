@@ -332,7 +332,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const source = readFileSync(p, "utf8");
     composerFindings.push(...checkComposer(p, source));
   }
-  // boot.ts and the fragments it spreads (boot-<part>.ts) all ship in the entry.
+  // Boot catalogs cover sign-in and shell; only the bootstrap subset ships in the entry.
   const boot = readdirSync(CATALOGS).filter((f) => /^boot(-[\w-]+)?\.ts$/.test(f)).map((f) => `${CATALOGS}/${f}`);
   const ids = [...walk(`${CATALOGS}/ko`), ...boot].flatMap((f) => catalogIds(readFileSync(f, "utf8")));
   const sources = ["apps/web/src", "packages/api/src", "packages/i18n/src"]

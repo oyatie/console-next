@@ -1,7 +1,9 @@
-import { expect, test } from "vitest";
+import { beforeAll, expect, test } from "vitest";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { ApiError } from "@console/api";
 import { failureText, readFailureText, signInError } from "./refusal";
+
+beforeAll(() => loadCatalog("ko"));
 
 test("a browser too old for passkeys gets the update message, never the network message", () => {
   expect(signInError(new Error("passkey_unavailable"))).toBe(t("auth.passkey.unavailable"));
