@@ -57,7 +57,7 @@ export async function accountSecurityPasskey(page: Page, mode: "login" | "autofi
       document.documentElement.dataset.passkeySheet = method;
       return new Promise(resolve => {
         window.addEventListener("test-passkey-select", () => resolve(new Credential()), { once: true });
-        signal?.addEventListener("abort", () => resolve(null), { once: true });
+        signal?.addEventListener("abort", () => { delete document.documentElement.dataset.passkeySheet; resolve(null); }, { once: true });
       });
     } });
   }, mode === "autofill");

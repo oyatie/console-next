@@ -171,7 +171,7 @@ export function Login() {
             {(p) => (
               <TextInput
                 {...p}
-                disabled={busy}
+                readOnly={busy}
                 autoComplete="username webauthn"
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -206,7 +206,7 @@ export function Login() {
             {(p) => (
               <TextInput
                 {...p}
-                disabled={busy}
+                readOnly={busy}
                 className="code"
                 ref={codeInput}
                 autoComplete="one-time-code"
