@@ -10,7 +10,10 @@ use console_platform_db::{command_context, with_audits, with_org_conn};
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::import::apply::{Checked, apply_failure, check_and_build, conflict};
+use crate::import::apply::{
+    Checked, apply_failure, apply_support_reference, check_and_build, conflict,
+    with_apply_support_reference,
+};
 use crate::import::apply_job::{
     ApplyJob, DriverSlot, STALE_AFTER_SECS, progress_audit, read_job, write_job,
 };
@@ -165,6 +168,12 @@ impl HrService {
     }
 
     async fn fail(&self, org: OrgId, job: ApplyJob, error: HrError) -> HrError {
+        let support_ref = apply_support_reference();
+        if error.status.is_server_error() && error.status != http::StatusCode::SERVICE_UNAVAILABLE {
+            tracing::error!(%support_ref, code = error.code, detail = %error.message, "import apply job failed");
+        } else {
+            tracing::warn!(%support_ref, code = error.code, detail = %error.message, "import apply job failed");
+        }
         if let Err(stored) = self.save_job(org, &job.failed(&error)).await {
             tracing::warn!(error = %stored.message, "import apply job failure could not be stored");
         }
@@ -191,10 +200,13 @@ impl HrService {
         context.source = AuditSource::Import;
         context.scope_ids = vec![*org.as_uuid()];
         // Inline work keeps its lease; detached job transactions have no lease.
-        command_context::scope_execution(
-            context,
-            command_context::execution(),
-            self.drive_job(command_store, org, job),
+        with_apply_support_reference(
+            apply_support_reference(),
+            command_context::scope_execution(
+                context,
+                command_context::execution(),
+                self.drive_job(command_store, org, job),
+            ),
         )
         .await
     }

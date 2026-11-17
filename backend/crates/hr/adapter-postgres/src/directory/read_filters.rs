@@ -84,6 +84,9 @@ pub struct EmployeeListFilters {
     /// people homed in its branches), in every read built on these filters.
     pub reach: HrReach,
     visibility: Option<EmployeeVisibility>,
+    /// A second reach every row is also within: the edit reach, for a read
+    /// that carries columns only an editor sees.
+    edit: Option<(HrReach, Option<EmployeeVisibility>)>,
 }
 
 impl EmployeeListFilters {
@@ -150,6 +153,7 @@ impl EmployeeListFilters {
             lifecycle_apply_failed: query.lifecycle_apply_failed,
             reach: HrReach::from(scope),
             visibility: None,
+            edit: None,
         })
     }
 
@@ -160,6 +164,13 @@ impl EmployeeListFilters {
         self
     }
 
+    /// Rows also within `reach` of `employee_directory_manage`.
+    #[must_use]
+    pub fn within_edit(mut self, reach: HrReach) -> Self {
+        self.edit = Some((reach, None));
+        self
+    }
+
     /// Scoped readers use the same Cedar node as Home and exit commands.
     pub(crate) async fn load_visibility(
         &mut self,
@@ -167,25 +178,26 @@ impl EmployeeListFilters {
         principal: &Principal,
         feature: Feature,
     ) -> Result<(), HrError> {
-        if principal.is_tenant_ops || principal.scopes_for(feature).next().is_some() {
-            let facts = load_facts(tx, principal.org_id, *principal.user_id.as_uuid())
-                .await
-                .map_err(HrError::from_kernel)?;
-            self.visibility = Some(
-                facts
-                    .visible_employees(feature.as_str())
-                    .map_err(|e| HrError::internal(e.to_string()))?,
-            );
+        self.visibility = visibility(tx, principal, feature).await?;
+        if let Some((_, edit)) = &mut self.edit {
+            *edit = visibility(tx, principal, Feature::EmployeeDirectoryManage).await?;
         }
         Ok(())
     }
 
     /// Whether the reach reads the `ea` assignment.
     pub fn reach_reads_assignment(&self) -> bool {
-        self.visibility
-            .as_ref()
-            .is_some_and(EmployeeVisibility::reads_assignment)
-            || matches!(&self.reach, HrReach::Within { scope, .. } if !scope.is_empty())
+        let reads = |reach: &HrReach, visibility: &Option<EmployeeVisibility>| {
+            visibility
+                .as_ref()
+                .is_some_and(EmployeeVisibility::reads_assignment)
+                || matches!(reach, HrReach::Within { scope, .. } if !scope.is_empty())
+        };
+        reads(&self.reach, &self.visibility)
+            || self
+                .edit
+                .as_ref()
+                .is_some_and(|(reach, visibility)| reads(reach, visibility))
     }
 
     /// Appends ` AND …` clauses; the builder's query must alias `employees e`,
@@ -204,10 +216,10 @@ impl EmployeeListFilters {
     /// them).
     pub(crate) fn push_base(&self, builder: &mut QueryBuilder<Postgres>) {
         builder.push(" AND ");
-        if let Some(visibility) = &self.visibility {
-            visibility.push(builder);
-        } else {
-            push_reach(builder, &self.reach);
+        push_within(builder, &self.reach, &self.visibility);
+        if let Some((reach, visibility)) = &self.edit {
+            builder.push(" AND ");
+            push_within(builder, reach, visibility);
         }
         if let Some(company) = self.company.as_deref() {
             builder.push(" AND e.company = ");
@@ -299,6 +311,35 @@ impl EmployeeListFilters {
             }
         }
         builder.push(if terms == 0 { "TRUE" } else { ")" });
+    }
+}
+
+/// The Cedar-decided visibility of `feature`, for a reader holding it by grant.
+async fn visibility(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    principal: &Principal,
+    feature: Feature,
+) -> Result<Option<EmployeeVisibility>, HrError> {
+    if !principal.is_tenant_ops && principal.scopes_for(feature).next().is_none() {
+        return Ok(None);
+    }
+    let facts = load_facts(tx, principal.org_id, *principal.user_id.as_uuid())
+        .await
+        .map_err(HrError::from_kernel)?;
+    facts
+        .visible_employees(feature.as_str())
+        .map(Some)
+        .map_err(|e| HrError::internal(e.to_string()))
+}
+
+fn push_within(
+    builder: &mut QueryBuilder<Postgres>,
+    reach: &HrReach,
+    visibility: &Option<EmployeeVisibility>,
+) {
+    match visibility {
+        Some(visibility) => visibility.push(builder),
+        None => push_reach(builder, reach),
     }
 }
 

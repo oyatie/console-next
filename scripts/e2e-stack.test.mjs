@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import yaml from "js-yaml";
@@ -11,6 +12,163 @@ import yaml from "js-yaml";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const source = readFileSync(path.join(root, "scripts/backend-dev.mjs"), "utf8");
 const files = [...source.matchAll(/"-f", "([^"]+)"/g)].map((m) => m[1]);
+
+function stackFixture(t) {
+  const dir = mkdtempSync(path.join(tmpdir(), "compose-lifecycle-"));
+  const state = path.join(dir, "state.json");
+  const project = "fixture-stack";
+  const other = "fixture-stack-neighbor";
+  const network = `${project}_default`;
+  writeFileSync(state, JSON.stringify({ networks: [`${other}_default`], calls: [], volume: "saved data" }));
+  mkdirSync(path.join(dir, "bin"));
+  writeFileSync(path.join(dir, "bin/lsof"), "#!/bin/sh\nexit 1\n", { mode: 0o700 });
+  writeFileSync(path.join(dir, "bin/docker"), `#!${process.execPath}
+const fs = require("node:fs");
+const args = process.argv.slice(2);
+const state = JSON.parse(fs.readFileSync(process.env.STACK_STATE, "utf8"));
+state.calls.push({ args, context: process.env.DOCKER_CONTEXT });
+let status = 0;
+if (args[0] !== "compose" || args[args.indexOf("-p") + 1] !== process.env.CONSOLE_DEV_PROJECT) status = 99;
+else if (args.includes("down")) {
+  if (process.env.STACK_MODE === "down-failure" || process.env.STACK_MODE === "teardown-failure" && state.calls.filter(call => call.args.includes("down")).length > 1) status = 19;
+  else {
+    state.networks = state.networks.filter(name => name !== process.env.STACK_NETWORK);
+    if (args.includes("-v")) state.volume = null;
+  }
+} else if (args.includes("up")) {
+  state.staleAtStart = state.networks.includes(process.env.STACK_NETWORK);
+  state.networks.push(process.env.STACK_NETWORK);
+  if (process.env.STACK_MODE === "up-failure") status = 23;
+} else if (args.includes("exec") && process.env.STACK_MODE === "bucket-failure") status = 24;
+fs.writeFileSync(process.env.STACK_STATE, JSON.stringify(state));
+process.exit(status);
+`, { mode: 0o700 });
+  writeFileSync(path.join(dir, "console-app"), `#!${process.execPath}
+if (process.env.CONSOLE_APP_ROLE === "migrate") process.exit(process.env.STACK_MODE === "migration-failure" ? 25 : 0);
+require("node:fs").writeFileSync(process.env.STACK_READY, "ready");
+if (process.env.STACK_MODE === "hold") setInterval(() => {}, 1000);
+`, { mode: 0o700 });
+  const children = [];
+  t.after(async () => {
+    for (const child of children) if (child.exitCode === null && child.signalCode === null) {
+      child.kill("SIGTERM");
+      await child.closed;
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+  const snapshot = () => JSON.parse(readFileSync(state, "utf8"));
+  const start = (mode = "exit", args = [], env = {}) => {
+    rmSync(path.join(dir, "ready"), { force: true });
+    const child = spawn(process.execPath, [path.join(root, "scripts/backend-dev.mjs"), ...args], {
+      env: {
+        ...process.env, PATH: `${path.join(dir, "bin")}:${process.env.PATH}`, DOCKER_CONTEXT: "fixture-context",
+        CONSOLE_REPO: dir, CONSOLE_APP_BIN: path.join(dir, "console-app"), CONSOLE_DEV_PROJECT: project,
+        E2E_CACHE_DIR: path.join(dir, "cache"), CONSOLE_EMAIL_STUB_MODE: "dev",
+        STACK_STATE: state, STACK_NETWORK: network, STACK_READY: path.join(dir, "ready"), STACK_MODE: mode,
+        ...env,
+      },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    child.output = "";
+    for (const stream of [child.stdout, child.stderr]) stream.on("data", data => { child.output += data; });
+    child.closed = new Promise((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", (code, signal) => resolve({ code, signal }));
+    });
+    children.push(child);
+    return child;
+  };
+  const ready = async child => {
+    const until = Date.now() + 10_000;
+    while (!existsSync(path.join(dir, "ready"))) {
+      assert.equal(child.exitCode, null, child.output);
+      assert.ok(Date.now() < until, child.output);
+      await delay(20);
+    }
+  };
+  return {
+    start, ready, snapshot, network, other,
+    apiPid: () => JSON.parse(readFileSync(path.join(dir, "cache/backend.json"), "utf8")).apiPid,
+    seedLeftover() {
+      writeFileSync(state, JSON.stringify({ ...snapshot(), networks: [network, `${other}_default`] }));
+    },
+  };
+}
+
+for (const mode of ["exit", "up-failure", "bucket-failure", "migration-failure"])
+  test(`Compose removes only its project's network after ${mode}`, { timeout: 15_000 }, async t => {
+    const fixture = stackFixture(t);
+    const child = fixture.start(mode);
+    const result = await child.closed;
+    assert.equal(result.code, mode === "exit" ? 0 : 1, child.output);
+    const state = fixture.snapshot();
+    assert.deepEqual(state.networks, [`${fixture.other}_default`]);
+    assert.equal(state.volume, "saved data", "ordinary teardown preserves reuse data");
+    assert.ok(state.calls.every(call => call.context === "fixture-context"));
+  });
+
+for (const signal of ["SIGINT", "SIGTERM"])
+  test(`Compose removes its network on ${signal}`, { timeout: 15_000 }, async t => {
+    const fixture = stackFixture(t);
+    const child = fixture.start("hold");
+    await fixture.ready(child);
+    child.kill(signal);
+    assert.equal((await child.closed).code, signal === "SIGINT" ? 130 : 143, child.output);
+    assert.deepEqual(fixture.snapshot().networks, [`${fixture.other}_default`]);
+  });
+
+test("a slot clears its killed run's network before starting again without resetting its data", { timeout: 20_000 }, async t => {
+  const fixture = stackFixture(t);
+  const killed = fixture.start("hold");
+  await fixture.ready(killed);
+  const exited = new Promise(resolve => killed.once("exit", resolve));
+  const apiPid = fixture.apiPid();
+  killed.kill("SIGKILL");
+  await exited;
+  process.kill(-apiPid, "SIGKILL");
+  assert.equal((await killed.closed).signal, "SIGKILL");
+  assert.ok(fixture.snapshot().networks.includes(fixture.network));
+  const next = fixture.start();
+  assert.equal((await next.closed).code, 0, next.output);
+  const state = fixture.snapshot();
+  assert.equal(state.staleAtStart, false, "remove the interrupted project's network before compose up");
+  assert.deepEqual(state.networks, [`${fixture.other}_default`]);
+  assert.equal(state.volume, "saved data");
+});
+
+test("a failed project cleanup refuses to create another stack", { timeout: 15_000 }, async t => {
+  const fixture = stackFixture(t);
+  fixture.seedLeftover();
+  const child = fixture.start("down-failure");
+  assert.equal((await child.closed).code, 1, child.output);
+  const state = fixture.snapshot();
+  assert.ok(state.networks.includes(fixture.network));
+  assert.ok(!state.calls.some(call => call.args.includes("up")));
+});
+
+test("a failed teardown reports failure instead of a successful run", { timeout: 15_000 }, async t => {
+  const fixture = stackFixture(t);
+  const child = fixture.start("teardown-failure");
+  assert.equal((await child.closed).code, 1, child.output);
+  assert.match(child.output, /compose teardown failed/);
+});
+
+test("Playwright's closed input tears down the stack", { timeout: 15_000 }, async t => {
+  const fixture = stackFixture(t);
+  const child = fixture.start("hold", [], { CONSOLE_EMAIL_STUB_MODE: "e2e", CONSOLE_SUPPORT_LOG_QUERY_URL: "http://127.0.0.1", CONSOLE_DEV_BACKEND_PORT: "0" });
+  await fixture.ready(child);
+  child.stdin.end();
+  assert.equal((await child.closed).code, 1, child.output);
+  assert.deepEqual(fixture.snapshot().networks, [`${fixture.other}_default`]);
+});
+
+test("an explicit reset still deletes the project's volumes", { timeout: 15_000 }, async t => {
+  const fixture = stackFixture(t);
+  const child = fixture.start("exit", ["--reset"]);
+  assert.equal((await child.closed).code, 0, child.output);
+  assert.equal(fixture.snapshot().volume, null);
+  assert.deepEqual(fixture.snapshot().networks, [`${fixture.other}_default`]);
+});
 
 test("the backend's compose files live in the public tree and contain only E2E services", () => {
   assert.ok(files.length, "backend-dev must declare its compose input");
@@ -35,7 +193,10 @@ test("the backend's compose files live in the public tree and contain only E2E s
 
 test("the launcher and Playwright resolve the backend from the public checkout", () => {
   assert.doesNotMatch(source, /backend-mvp|ops\/compose/);
-  assert.doesNotMatch(readFileSync(path.join(root, "playwright.config.ts"), "utf8"), /backend-mvp/);
+  const config = readFileSync(path.join(root, "playwright.config.ts"), "utf8");
+  assert.doesNotMatch(config, /backend-mvp/);
+  assert.match(config, /gracefulShutdown: \{ signal: "SIGTERM", timeout: stackTimeout \}/);
+  assert.match(config, /timeout: stackTimeout,\s+reuseExistingServer: reuse/);
 });
 
 test("Home CI runs the served scale probe with the selected release artifact", () => {

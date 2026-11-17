@@ -3183,7 +3183,7 @@ export interface paths {
         };
         /**
          * List change requests
-         * @description BW-17. HR (org-wide employee_directory_manage) sees the organization's requests; any other caller sees only the requests it filed ("waiting") or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only.
+         * @description BW-17. HR (org-wide employee_directory_manage) sees the organization's requests; any other caller sees only the requests it filed ("waiting") or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only. A correction carries the values it asks for, so an HR page with PROFILE_CORRECTION rows leaves one employee.list_read access log row naming the employees they are about, never the values.
          */
         get: operations["listChangeRequests"];
         put?: never;
@@ -3959,7 +3959,7 @@ export interface paths {
         };
         /**
          * The live entries of one personnel card section across the tenant (sheet export)
-         * @description One row per live entry with the bound employee of the lowest employee number, its entry id and version, in entry id order. The rows go back into the import sheet with entry_id and expected_version to correct or void entries in bulk. Takes org-wide employee_directory_manage. A restricted section (discipline, disability, veteran) is refused with 409 record_restricted_export_unavailable until the per-export approval tier exists.
+         * @description One row per live entry with the bound employee of the lowest employee number, its entry id and version, in entry id order. The rows go back into the import sheet with entry_id and expected_version to correct or void entries in bulk. Takes org-wide employee_directory_manage and, as a download, org-wide excel_download. A restricted section (discipline, disability, veteran) is refused with 409 record_restricted_export_unavailable until the per-export approval tier exists. Each page is a download, so export_purpose is required and the page is logged (excel_export_logs and an employee.export access log event naming its employees and the row count); a refusal is logged as employee.export_refused, naming the section.
          */
         get: operations["listEmployeeRecordSheet"];
         put?: never;
@@ -4082,7 +4082,7 @@ export interface paths {
         put?: never;
         /**
          * Preview a bulk correction of scalar employee fields (MR-27)
-         * @description Grid or "all n people matching the filter". Send either selection + changes (one set of values for every employee the server selection matches; status absent selects everyone but EXITED) or rows (each employee with its own values and optional expected_updated_at pin). Nothing is written and no row is locked. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk field goes to a second person), UNCHANGED (every value already recorded) or REFUSED with the failed precondition (stale_record, exit_date_needs_exit, employee_number_in_use, employee_merged, employee_correction_sole_holder_refused, a field's validation, ...), and the exact counts. preview_digest binds the commit; preview_id is the job id and the sole holder's step-up object. Needs employee_directory_manage org-wide.
+         * @description Grid or "all n people matching the filter". Send either selection + changes (one set of values for every employee the server selection matches; status absent selects everyone but EXITED) or rows (each employee with its own values and optional expected_updated_at pin). No employee field is written and no row is locked; the rows show each person's stored values, so one employee.list_read access log row names the people whose record was read and the fields, never the values. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk field goes to a second person), UNCHANGED (every value already recorded) or REFUSED with the failed precondition (stale_record, exit_date_needs_exit, employee_number_in_use, employee_merged, employee_correction_sole_holder_refused, a field's validation, ...), and the exact counts. preview_digest binds the commit; preview_id is the job id and the sole holder's step-up object. Needs employee_directory_manage org-wide.
          */
         post: operations["previewBulkEmployeeCorrection"];
         delete?: never;
@@ -4558,7 +4558,7 @@ export interface paths {
         };
         /**
          * Contract history of an employee (EMP-MODEL G1)
-         * @description Every recorded contract row, newest start first, including rows a later correction superseded (superseded_by set; they leave the live history). in_force marks the live row covering today (KST). Wages are compensation, so this takes org-wide employee_directory_manage.
+         * @description Every recorded contract row, newest start first, including rows a later correction superseded (superseded_by set; they leave the live history). in_force marks the live row covering today (KST). Wages are compensation, so this takes org-wide employee_directory_manage; each read leaves an access log row.
          */
         get: operations["listEmployeeContracts"];
         put?: never;
@@ -4619,7 +4619,7 @@ export interface paths {
         };
         /**
          * Person and employment facts (EMP-MODEL E3, E4, E5, E12, E13)
-         * @description Birth date, work email (an HR fact that only prefills an invitation), identification type (never the number, decision 6), and, when the employee has an employment profile, the employment type with its derived worker classification, base pay in whole won with its unit, and the probation period with its server clock (probation_state, probation_days_left; DUE_SOON needs the reminder-window setting and is not served yet). Personal data, so org-wide employee_directory_manage.
+         * @description Birth date, work email (an HR fact that only prefills an invitation), identification type (never the number, decision 6), and, when the employee has an employment profile, the employment type with its derived worker classification, base pay in whole won with its unit, and the probation period with its server clock (probation_state, probation_days_left; DUE_SOON needs the reminder-window setting and is not served yet). Personal data, so org-wide employee_directory_manage; each read leaves an access log row.
          */
         get: operations["getEmploymentFacts"];
         put?: never;
@@ -4643,7 +4643,7 @@ export interface paths {
         };
         /**
          * Whether a registration is cancelled or the person exits, and why not the other
-         * @description CRUD. cancel_route DELETE (setup) or VOID (after go-live, with the employee_void_* refusals); exit is refused employee_already_exited, exit_case_open (open_exit_case_id) or exit_already_scheduled. On the caller's own record (people-self-33) both are refused own_record_forbidden, unless the caller is the ops account and no other account holds the act.
+         * @description CRUD. cancel_route DELETE (setup) or VOID (after go-live, with the employee_void_* refusals); exit is refused employee_already_exited, exit_case_open (open_exit_case_id) or exit_already_scheduled. On the caller's own record (people-self-33) both are refused own_record_forbidden, unless the caller is the ops account and no other account holds the act. A branch reader gets 404 for a person outside its branches; each read leaves an access log row.
          */
         get: operations["employeeEndOptions"];
         put?: never;
@@ -4680,7 +4680,7 @@ export interface paths {
         };
         /**
          * Cumulative fixed-term service (BW-12, Fixed-Term Workers Act §4①)
-         * @description Service as of today (KST) from the live contract history (employee_contracts), else the profile's contract window, else the hire date (basis HIRE_DATE_FALLBACK, which needs a review). Parental leave is not counted (Equal Employment Opportunity Act §19⑤). applies is false for an employee who is neither CONTRACT nor has a fixed-term contract row; the other fields are then null. Takes org-wide employee_directory_read.
+         * @description Service as of today (KST) from the live contract history (employee_contracts), else the profile's contract window, else the hire date (basis HIRE_DATE_FALLBACK, which needs a review). Parental leave is not counted (Equal Employment Opportunity Act §19⑤). applies is false for an employee who is neither CONTRACT nor has a fixed-term contract row; the other fields are then null. Takes org-wide employee_directory_read; each read leaves an access log row.
          */
         get: operations["getEmployeeFixedTerm"];
         put?: never;
@@ -4943,7 +4943,7 @@ export interface paths {
         };
         /**
          * Personnel card sections of an employee (MR-31/33/35)
-         * @description Education, qualification and license, military service, training completed, language skills, award and family entries of the natural person this employee is bound to (two employee records of one person show the same entries), with each section's tenant switch (hr.record.<section>.enabled). Voided entries only with include_voided. Takes org-wide employee_directory_manage. Without section, the restricted sections (discipline, disability, veterans' status) are left out, knowing such a record exists is itself sensitive. section=discipline|disability|veteran needs a purpose (422 record_purpose_required, reason_code_invalid, reason_note_required), passes the employee_restricted_record Cedar action (403 record_restricted_forbidden; 403 record_restricted_self on one's own record), and writes one employee.record.restricted_read audit row naming the entries and the purpose, never the values. Responses carry Cache-Control no-store.
+         * @description Education, qualification and license, military service, training completed, language skills, award and family entries of the natural person this employee is bound to (two employee records of one person show the same entries), with each section's tenant switch (hr.record.<section>.enabled). Voided entries only with include_voided. Takes org-wide employee_directory_manage, and each read leaves an access log row. Without section, the restricted sections (discipline, disability, veterans' status) are left out, knowing such a record exists is itself sensitive. section=discipline|disability|veteran needs a purpose (422 record_purpose_required, reason_code_invalid, reason_note_required), passes the employee_restricted_record Cedar action (403 record_restricted_forbidden; 403 record_restricted_self on one's own record), and writes one employee.record.restricted_read access log row naming the entries and the purpose, never the values. Responses carry Cache-Control no-store.
          */
         get: operations["listEmployeeRecords"];
         put?: never;
@@ -5003,7 +5003,7 @@ export interface paths {
         };
         /**
          * Every revision of one personnel card entry, oldest first
-         * @description A restricted section (discipline, disability, veteran) needs a purpose and is audited, as for the list. Cache-Control no-store.
+         * @description Each read leaves an access log row. A restricted section (discipline, disability, veteran) needs a purpose and is recorded, as for the list. Cache-Control no-store.
          */
         get: operations["getEmployeeRecordHistory"];
         put?: never;
@@ -13175,6 +13175,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Every register row in reach as a download. export_purpose is required; the download is logged (excel_export_logs and an employee.export access log row naming the log row) and a refusal as employee.export_refused. */
         get: operations["exportWorkerRegister"];
         put?: never;
         post?: never;
@@ -20202,11 +20203,12 @@ export interface components {
             total: number;
             done: number;
             report?: components["schemas"]["EmployeeImportReport"];
-            /** @description failed: the refusal (code, message, refusals) — e.g. rows_changed_since_preview, apply_interrupted. */
+            /** @description failed: the typed refusal code, fixed redacted message and support reference. Legacy jobs may have no support reference. */
             error?: {
                 code: string;
                 message: string;
-                refusals?: unknown;
+                /** @description Correlates the failure with its server log; absent on legacy jobs. */
+                support_ref?: string;
             };
         };
         EmployeeImportApplyRequest: {
@@ -38868,6 +38870,8 @@ export interface operations {
             query?: {
                 after?: components["schemas"]["Uuid"];
                 limit?: number;
+                /** @description The download purpose (public notice 2023-6 §8②). Missing or unknown is 422 export_purpose_required. */
+                export_purpose?: "AUDIT_RESPONSE" | "INTERNAL_REVIEW" | "DISPUTE_RESPONSE" | "DATA_SUBJECT_REQUEST" | "OTHER";
             };
             header?: never;
             path: {
@@ -38889,6 +38893,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     applyEmployeeRecordImport: {

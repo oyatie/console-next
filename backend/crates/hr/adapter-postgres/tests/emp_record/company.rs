@@ -109,7 +109,7 @@ async fn company_sections_record_correct_and_import(pool: PgPool) {
         .unwrap();
     assert!(applied.applied);
     let export =
-        f.hr.record_section_sheet(p(), Section::Language, None, None)
+        f.hr.record_section_sheet(p(), Section::Language, None, None, Some("INTERNAL_REVIEW"))
             .await
             .unwrap();
     assert_eq!(export.items.len(), 2);

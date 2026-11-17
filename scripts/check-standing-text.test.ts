@@ -66,6 +66,14 @@ test("screen totals follow shared hint components, handle cycles and exclude the
   expect(screenCounts(sources)).toEqual({ "apps/web/src/features/people/ui/page.tsx#default": 2 });
 });
 
+test("lazy route metadata in a feature keeps its screen counted", async () => {
+  const { screenCounts } = await import("./check-standing-text.mjs");
+  expect(screenCounts({
+    "apps/web/src/features/people/ui/routes.tsx": 'createLazyRoute("/app/people/$id")({ component: lazyRouteComponent(() => import("./page"), "Page") });',
+    "apps/web/src/features/people/ui/page.tsx": "export function Page() { return <p>Fact</p>; }",
+  })).toEqual({ "apps/web/src/features/people/ui/page.tsx#Page": 1 });
+});
+
 test("screen resolution ignores inherited source files", async () => {
   const { screenCounts } = await import("./check-standing-text.mjs");
   const phantom = "apps/web/src/features/people/ui/page.tsx";
