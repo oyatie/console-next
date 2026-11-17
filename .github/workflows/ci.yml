@@ -255,6 +255,48 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+  # Probe only: the same plan and commit under the previous agent release, for a paired timing comparison.
+  states-v3:
+    needs: states-plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ matrix.jobTimeoutMinutes }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs['states-plan'].outputs.matrix) }}
+    steps:
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - *playwright-version
+      - *playwright-cache
+      - *playwright-install
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: states-plan
+          path: .cache/states-plan
+      - run: node scripts/states-shards.mjs run .cache/states-plan/plan.json "${{ matrix.shard }}"
+        timeout-minutes: ${{ matrix.runTimeoutMinutes }}
+        env:
+          E2E_MODULES_FILE: .cache/states-plan/modules.json
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/states-report-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: states-report-v3-${{ matrix.shard }}
+          path: .cache/states-report-${{ matrix.shard }}.json
+          include-hidden-files: true
+          if-no-files-found: error
+
   states-timings:
     if: github.event_name == 'push' && needs.affected.outputs.web == 'true'
     needs: [affected]
@@ -573,7 +615,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
@@ -634,10 +676,10 @@ jobs:
           if-no-files-found: error
 
       - name: Firefox for D7 solo journey
-        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        if: ${{ !cancelled() }}
         run: npx playwright install --with-deps firefox
       - name: Solo journey on Chromium and Firefox
-        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        if: ${{ !cancelled() }}
         env:
           E2E_SERVED: "1"
           E2E_PREBUILT: "1"
@@ -650,8 +692,18 @@ jobs:
               npx playwright test e2e/first-run-solo.spec.ts --grep @first-run || failed=1
           done
           exit "$failed"
+      - name: Probe memory and kernel kills after the journey
+        if: ${{ always() }}
+        run: |
+          free -m
+          sudo dmesg -T | grep -iE 'oom|killed process|out of memory|firefox|segfault' | tail -40 || true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        if: ${{ failure() }}
+        with:
+          name: d7-traces
+          path: test-results
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
         with:
           name: d7-playwright
           path: .cache/d7/*.json
