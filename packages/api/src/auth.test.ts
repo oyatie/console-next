@@ -143,3 +143,31 @@ test.each(["cancelled", "refused"])("%s sign-in after enrollment retains the dra
   expect(session.principal).toBe(owner);
   expect(session.lost).toBe(false);
 });
+
+
+test.each(["selected", "cancelled"])("%s passkey calls back only after selection and before server verification", async outcome => {
+  let select!: (credential: Record<string, unknown> | null) => void;
+  const picked = new Promise<Record<string, unknown> | null>(resolve => { select = resolve; });
+  const get = vi.fn(() => picked);
+  configure({ baseUrl: "https://console.example", passkeys: { get, create: async () => null }, refresh: { kind: "cookie" } });
+  const onAsserted = vi.fn();
+  vi.stubGlobal("fetch", async (input: Request | string, init?: RequestInit) => {
+    const path = new URL(new Request(input, init).url).pathname;
+    if (path.endsWith("/start")) return new Response(JSON.stringify({ ceremony_id: "ceremony", challenge: { publicKey: {} } }));
+    expect(onAsserted).toHaveBeenCalledOnce();
+    return new Response(JSON.stringify({ access_token: "passkey-token", token_type: "Bearer" }));
+  });
+  const signingIn = loginWithPasskey({ onAsserted });
+  await vi.waitFor(() => expect(get).toHaveBeenCalledOnce());
+  expect(onAsserted).not.toHaveBeenCalled();
+  expect(get).toHaveBeenCalledWith({}, {});
+  if (outcome === "cancelled") {
+    select(null);
+    await expect(signingIn).rejects.toThrow("passkey_cancelled");
+    expect(onAsserted).not.toHaveBeenCalled();
+  } else {
+    select({ id: "credential" });
+    await signingIn;
+    expect(onAsserted).toHaveBeenCalledOnce();
+  }
+});
