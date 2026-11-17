@@ -1,7 +1,11 @@
 type: object
 additionalProperties: false
 properties:
-  birth_date: { type: string, format: date, nullable: true }
+  birth_date:
+    type: string
+    format: date
+    nullable: true
+    description: Sent only to record a birth date when none is known. Never returned; birth_date_known says whether one is recorded.
   monthly_hours: { type: integer, minimum: 0, nullable: true }
   weekly_hours: { type: integer, minimum: 0, nullable: true }
   continuous_months: { type: integer, minimum: 0, nullable: true }

@@ -2,6 +2,7 @@
 //! Pure inverse import plan and rollback admission.
 
 use serde::Serialize;
+use serde::ser::{SerializeStruct, Serializer};
 use sha2::{Digest, Sha256};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -84,11 +85,27 @@ impl Dependencies {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InverseField {
     pub field: String,
     pub current: Option<String>,
     pub before: Option<String>,
+}
+
+/// A value the reveal governs is served, and digested, as its mask; the rollback restores the value itself.
+impl Serialize for InverseField {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let reveal = crate::profile::mask::RevealField::from_column(&self.field);
+        let shown = |value: &Option<String>| match (value, reveal) {
+            (Some(value), Some(reveal)) => Some(reveal.masked(value)),
+            (value, _) => value.clone(),
+        };
+        let mut out = serializer.serialize_struct("InverseField", 3)?;
+        out.serialize_field("field", &self.field)?;
+        out.serialize_field("current", &shown(&self.current))?;
+        out.serialize_field("before", &shown(&self.before))?;
+        out.end()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]

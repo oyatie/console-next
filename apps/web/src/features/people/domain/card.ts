@@ -12,6 +12,9 @@ const dots = (n: number) => DOT.repeat(n);
 /** birth date as shown by default: nothing of it (the reveal opens it with a reason). */
 export const maskedBirth = () => `${dots(4)}-${dots(2)}-${dots(2)}`;
 
+/** Whether a value is shown as a mask (ours or the server's), so it is not the value itself. */
+export const isMasked = (v: string) => v.includes(DOT);
+
 /** Default phone display keeps the local prefix and last four digits. */
 export function maskedPhone(e164: string): string {
   const d = e164.replace(/\D/g, "").replace(/^82/, "0");
@@ -19,17 +22,7 @@ export function maskedPhone(e164: string): string {
   return `${d.slice(0, 3)}-${dots(4)}-${d.slice(-4)}`;
 }
 
-/** An e-mail as shown by default: its first letter and the top-level domain ("h••••@••••.com"). */
-export function maskedEmail(email: string): string {
-  const [user = "", host = ""] = email.split("@");
-  const tld = host.includes(".") ? host.slice(host.lastIndexOf(".")) : "";
-  return `${user.slice(0, 1)}${dots(4)}@${dots(4)}${tld}`;
-}
-
-/** Default address display keeps province and district only. */
-export const maskedAddress = (a: Address) => [a.si_nm, a.sgg_nm, dots(4)].filter(Boolean).join(" ");
-
-/** The whole address as printed. */
+/** The whole address as printed (a revealed address; reads carry only the server's mask). */
 export const fullAddress = (a: Address) => a.as_printed ?? [a.road_addr_part1, a.road_addr_part2, a.detail].filter(Boolean).join(" ");
 
 /** Register items 1–9 (Decree §20): which hold a value. `null` = not entered; the screen words each. */
@@ -39,7 +32,7 @@ export function registerItems(f: {
   name: string;
   sex: string | null | undefined;
   birth: string | null | undefined;
-  address: Address | null | undefined;
+  address: string | null | undefined;
   careers: Career[] | null | undefined;
   job: string | null | undefined;
   hireDate: string | null | undefined;

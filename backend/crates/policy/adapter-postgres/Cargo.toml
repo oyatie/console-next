@@ -16,10 +16,10 @@ console-policy-domain = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }
 thiserror = { workspace = true }
-time = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
+time = { workspace = true }
 console-platform-test-support = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 

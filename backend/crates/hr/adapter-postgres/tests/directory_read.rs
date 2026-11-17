@@ -252,6 +252,6 @@ async fn reader_sees_the_work_email_and_never_the_personal_phone(pool: PgPool) {
             .unwrap();
     assert_eq!(
         manager.employment.unwrap().phone_e164.as_deref(),
-        Some("+821012345678")
+        Some("010-••••-5678")
     );
 }

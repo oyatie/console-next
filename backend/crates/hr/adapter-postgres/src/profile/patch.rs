@@ -95,6 +95,23 @@ fn no_profile() -> HrError {
     ))
 }
 
+fn correction_required(recorded: &[&str]) -> HrError {
+    HrError {
+        errors: None,
+        status: StatusCode::CONFLICT,
+        code: CORRECTION_REQUIRED,
+        message: format!(
+            "{} already recorded; change it with a correction (PATCH /employees/{{id}})",
+            recorded.join(", ")
+        ),
+        refusals: None,
+    }
+}
+
+fn writes_birth_date(op: &PatchOp) -> bool {
+    matches!(op, PatchOp::Add { path, .. } | PatchOp::Replace { path, .. } | PatchOp::Remove { path } if path == "/birth_date")
+}
+
 fn touches_employment(op: &PatchOp) -> bool {
     let path = match op {
         PatchOp::Test { path, .. }
@@ -160,52 +177,68 @@ impl HrService {
         let actor = principal.user_id;
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                authorize_hr_person(tx, &principal, Feature::EmployeeDirectoryManage, employee_id).await?;
+                authorize_hr_person(
+                    tx,
+                    &principal,
+                    Feature::EmployeeDirectoryManage,
+                    employee_id,
+                )
+                .await?;
                 crate::employee_state::require_editable(tx.as_mut(), org_uuid, employee_id).await?;
                 let current = load_facts(tx, org_uuid, employee_id, true).await?;
-                crate::own_record::own_record_guard(tx, org, actor, employee_id, Feature::EmployeeDirectoryManage).await?;
+                crate::own_record::own_record_guard(
+                    tx,
+                    org,
+                    actor,
+                    employee_id,
+                    Feature::EmployeeDirectoryManage,
+                )
+                .await?;
                 if current.employment.is_none() && ops.iter().any(touches_employment) {
                     return Err(no_profile());
                 }
-                let current_doc = serde_json::to_value(&current).map_err(|e| HrError::internal(e.to_string()))?;
+                let mut doc =
+                    serde_json::to_value(&current).map_err(|e| HrError::internal(e.to_string()))?;
+                // Tests and their refusals see the record as served, so neither confirms the birth date.
+                let served = serde_json::to_value(current.clone().masked())
+                    .map_err(|e| HrError::internal(e.to_string()))?;
                 // The route is manager-only and the record is the manager's
                 // own read: every path passes the read check (ME-11).
-                check_patch(&ops, &current_doc, &provenance(&current)?, |_| true)
+                check_patch(&ops, &served, &provenance(&current)?, |_| true)
                     .map_err(|refusal| refusal_error(&refusal))?;
-                let mut doc = current_doc;
+                // Once recorded, every write to the birth date answers alike, so its value cannot be guessed.
+                if current.birth_date.is_some() && ops.iter().any(writes_birth_date) {
+                    return Err(correction_required(&["birth_date"]));
+                }
                 apply(&mut doc, &ops)?;
-                let next: EmploymentFacts = serde_json::from_value(doc)
-                    .map_err(|e| HrError::validation(e.to_string()))?;
+                let next: EmploymentFacts =
+                    serde_json::from_value(doc).map_err(|e| HrError::validation(e.to_string()))?;
                 if let Some(after) = &next.employment
                     && after.base_pay_won.is_some() != after.pay_unit.is_some()
                 {
-                    return Err(HrError::validation("base_pay_won and pay_unit are recorded together"));
+                    return Err(HrError::validation(
+                        "base_pay_won and pay_unit are recorded together",
+                    ));
                 }
                 let changes = changed(&current, &next);
                 let mut fields: Vec<FieldValue> = Vec::with_capacity(changes.len());
                 for (field, value, _) in &changes {
                     fields.push(((*field).to_owned(), normalize_value(field, value)?));
                 }
-                let recorded: Vec<&str> =
-                    changes.iter().filter(|(_, _, recorded)| *recorded).map(|(field, _, _)| *field).collect();
+                let recorded: Vec<&str> = changes
+                    .iter()
+                    .filter(|(_, _, recorded)| *recorded)
+                    .map(|(field, _, _)| *field)
+                    .collect();
                 if !recorded.is_empty() {
-                    return Err(HrError {
-                        errors: None,
-                        status: StatusCode::CONFLICT,
-                        code: CORRECTION_REQUIRED,
-                        message: format!(
-                            "{} already recorded; change it with a correction (PATCH /employees/{{id}})",
-                            recorded.join(", ")
-                        ),
-                        refusals: None,
-                    });
+                    return Err(correction_required(&recorded));
                 }
                 if fields.is_empty() {
-                    return Ok((current, Vec::new()));
+                    return Ok((current.masked(), Vec::new()));
                 }
                 let head = lock_employee(tx, org_uuid, employee_id).await?;
                 let meta = LedgerMeta {
-                        import_run_id: None,
+                    import_run_id: None,
                     reason_code: FIRST_RECORD,
                     note: None,
                     corrected_by: *actor.as_uuid(),
@@ -227,7 +260,7 @@ impl HrService {
                 )
                 .with_org(org)
                 .with_snapshots(None, Some(json!({ "changed": changed })));
-                Ok((after, vec![audit]))
+                Ok((after.masked(), vec![audit]))
             })
         })
         .await
