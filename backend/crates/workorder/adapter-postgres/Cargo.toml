@@ -13,7 +13,6 @@ console-platform-db = { workspace = true }
 console-platform-request-context = { workspace = true }
 console-workorder-application = { workspace = true }
 console-workorder-domain = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }
 thiserror = { workspace = true }
