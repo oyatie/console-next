@@ -64,3 +64,10 @@ test("release gate policies select declared display names and steps", () => {
     if (step) expect(matches[0].steps.filter(entry => entry.name === step), step).toHaveLength(1);
   }
 });
+
+test("measured evidence looks up producer display names", () => {
+  const source = readFileSync("scripts/pull-measured-evidence.sh", "utf8");
+  for (const id of ["states-timings", "release-evidence"]) {
+    expect(source).toContain(`'${id}': '${workflows["ci.yml"].jobs[id].name}'`);
+  }
+});

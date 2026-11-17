@@ -10,13 +10,17 @@ import tempfile
 import unittest
 
 
+PRODUCERS = {"states-timings": "Reconcile UI state test results",
+             "release-evidence": "Collect release test evidence"}
+
+
 class PullMeasuredEvidenceTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.run = {"databaseId": 123, "headSha": "a" * 40, "headBranch": "dev", "event": "push"}
-        self.jobs = {"states-timings": "success", "release-evidence": "success"}
+        self.jobs = {name: "success" for name in PRODUCERS.values()}
         self.data = {"commit": self.run["headSha"], "run_at": datetime.now(timezone.utc).isoformat(),
                      "source_command": "proof", "rows": [{"status": "fail"}, {"status": "unknown"}]}
         (self.root / "evidence.py").write_text('''import json, os, sys
@@ -101,9 +105,9 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
         for job, artifact in (("release-evidence", "states-evidence"), ("states-timings", "e2e-evidence")):
             for conclusion in ("failure", "cancelled", "timed_out", "action_required", "neutral", None, "missing"):
                 with self.subTest(job=job, conclusion=conclusion):
-                    self.jobs = {"states-timings": "success", "release-evidence": "success"}
-                    if conclusion == "missing": del self.jobs[job]
-                    else: self.jobs[job] = conclusion
+                    self.jobs = {name: "success" for name in PRODUCERS.values()}
+                    if conclusion == "missing": del self.jobs[PRODUCERS[job]]
+                    else: self.jobs[PRODUCERS[job]] = conclusion
                     self.env['ARTIFACTS'] = json.dumps([artifact])
                     result = self.invoke()
                     self.assertNotEqual(result.returncode, 0)
@@ -115,7 +119,8 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
                               ("e2e-evidence", "release-evidence"), ("nextest-evidence", "release-evidence"),
                               ("d7-evidence", "release-evidence")):
             with self.subTest(artifact=artifact):
-                self.jobs = {"states-timings": "success", "release-evidence": "success", job: "failure"}
+                self.jobs = {name: "success" for name in PRODUCERS.values()}
+                self.jobs[PRODUCERS[job]] = "failure"
                 self.env['ARTIFACTS'] = json.dumps([artifact])
                 result = self.invoke()
                 self.assertNotEqual(result.returncode, 0)
@@ -123,7 +128,7 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
                 self.assertFalse((self.root / "ingested").exists())
 
     def test_skipped_release_allows_states_only(self):
-        self.jobs['release-evidence'] = "skipped"
+        self.jobs[PRODUCERS['release-evidence']] = "skipped"
         self.env['ARTIFACTS'] = json.dumps(["states-evidence"])
         result = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -141,7 +146,7 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
         self.assertIn("Unavailable measured source in latest dev run: nextest", result.stdout)
 
     def test_states_fallback_checks_release_job_instead_of_states_job(self):
-        self.jobs['states-timings'] = "failure"
+        self.jobs[PRODUCERS['states-timings']] = "failure"
         self.env['ARTIFACTS'] = json.dumps(["d8-evidence", "d7-evidence"])
         result = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
