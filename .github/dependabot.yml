@@ -37,6 +37,10 @@ updates:
       # Revisit after receipt rendering and configured expiry pass in Chromium and Firefox.
       - dependency-name: "@tanstack/react-query"
         versions: [">=5.105.2"]
+      # 2026-11-17: 1.65.x ships Firefox build 1572, whose page crashes once axe and a label lookup both read aria-labelledby
+      # (https://github.com/microsoft/playwright/issues/43967). Revisit when a release ships Firefox build 1575 or later.
+      - dependency-name: "@playwright/test"
+        versions: ["1.65.x"]
     groups:
       npm:
         patterns: ["*"]
