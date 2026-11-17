@@ -1,3 +1,6 @@
+/** A row must hold focus or hover this long before it triggers a detail read. */
+export const FOCUS_SETTLE_MS = 150;
+
 export const ROW_SELECTOR = "[data-row-id], [data-id]";
 
 // Single-key shortcuts of a long table, live only while focus is inside its region (KWCAG 2.2 6.1.4 / WCAG

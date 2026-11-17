@@ -14,6 +14,50 @@ use sqlx::Postgres;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+/// APPOINT hooks wrap one canonical head write for all applied records.
+pub(super) async fn apply_appointments_in_tx(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org: Uuid,
+    records: &[(Uuid, Uuid, &PreparedLifecycleEvent)],
+    hooks: &LifecycleTrailHooks<'_>,
+) -> Result<(), HrError> {
+    use console_hr_application::lifecycle::hooks::LifecycleApplyHooks;
+    let mut heads = Vec::new();
+    let mut events = Vec::new();
+    for (id, employee, prepared) in records {
+        if prepared.scheduled {
+            continue;
+        }
+        let event = super::hooks::apply_event(
+            org,
+            *id,
+            *employee,
+            &prepared.transition.event_type,
+            &prepared.transition.effective_date,
+        )?;
+        hooks
+            .before_apply(tx, &event)
+            .await
+            .map_err(super::title_reason::coded)?;
+        heads.push((
+            *employee,
+            super::record::appointment_head(&prepared.transition, &prepared.target)?,
+        ));
+        events.push(event);
+    }
+    console_ontology_canonical_adapter_postgres::employment::apply_appointment_heads_in_tx(
+        tx, org, &heads,
+    )
+    .await?;
+    for event in events {
+        hooks
+            .after_apply(tx, &event)
+            .await
+            .map_err(super::title_reason::coded)?;
+    }
+    Ok(())
+}
+
 /// A bulk action shares its loaded register through the caller's hooks.
 pub(super) async fn record_in_tx(
     tx: &mut sqlx::Transaction<'_, Postgres>,
