@@ -65,7 +65,7 @@ test("a browser that cannot say what the system prefers sets a stored theme and 
   }
 });
 
-for (const experience of ["calm-ledger", "quick-keys", "warm-clear", "control-room"]) {
+for (const experience of ["warm-clear", "control-room"]) {
   test(`${experience} applies the stored choice before the bundle in either theme`, () => {
     for (const theme of THEMES) {
       expect(boot({ "console.experience": experience, "console.theme": theme }).attributes).toEqual({ "data-theme": theme, "data-experience": experience });
@@ -74,13 +74,17 @@ for (const experience of ["calm-ledger", "quick-keys", "warm-clear", "control-ro
 }
 
 test("an unknown experience never applies", () => {
-  for (const value of ["calm", "baseline", "light", "dark", "Calm-ledger", "quick-keys "]) {
+  for (const value of ["calm", "baseline", "light", "dark", "Warm-clear", "control-room "]) {
     expect(boot({ "console.experience": value, "console.theme": "dark" }).attributes, value).toEqual({ "data-theme": "dark" });
   }
 });
 
 test("the bundle uses the key and the themes the boot script applies", () => {
   expect(boot({}).published.theme).toEqual({ key: THEME_KEY, values: [...THEMES] });
+});
+
+test("only the supported experiences are registered", () => {
+  expect(boot({}).published.experience).toEqual({ key: "console.experience", values: ["warm-clear", "control-room"] });
 });
 
 test("the known experiences are exactly the ones with a token file", () => {
