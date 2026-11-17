@@ -7,6 +7,7 @@ import path from "node:path";
 import test from "node:test";
 import yaml from "js-yaml";
 import { RUN_HEADROOM } from "./states-shards.mjs";
+import { listedTests } from "./e2e-timings.mjs";
 
 const historyFile = process.env.STATES_TIMINGS_HISTORY_FILE ?? ".cache/states-history.json";
 const settings = { setupAllowanceSeconds: 120, budgetSeconds: 300, startupSeconds: 40, workers: 2, defaultTestSeconds: 10, specs: {} };
@@ -177,15 +178,18 @@ test("artifact measurements cover a spec that grew on dev without editing settin
 
 test("the real suite allows 30 added tests and ten percent timing drift within the runner cap", async t => {
   if (process.env.STATES_CHECK_CAPACITY !== "1") return t.skip("capacity is checked on dev pushes with fresh measurements");
-  if (!existsSync(historyFile) && !process.env.CI) return t.skip("restore dev timing history or set STATES_TIMINGS_HISTORY_FILE before checking capacity locally");
   const { checkHeadroom, planStates, filesForShard } = await load();
   const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", "--config=e2e/mock/playwright.config.ts", "--list", "--reporter=json"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr);
   const discovered = JSON.parse(result.stdout);
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
-  const checked = checkHeadroom(discovered, timings, JSON.parse(readFileSync(historyFile, "utf8")).runs);
-  if (!checked) return t.skip("insufficient dev timing history; headroom not judged");
-  const artifact = checked.timings;
+  const runs = existsSync(historyFile) ? JSON.parse(readFileSync(historyFile, "utf8")).runs : [];
+  const checked = checkHeadroom(discovered, timings, runs);
+  if (!checked) console.warn("::warning::Insufficient dev timing history; headroom not judged; checking growth against available measurements");
+  const currentFile = process.env.STATES_TIMINGS_FILE ?? ".cache/states-timings/timings.json";
+  const current = existsSync(currentFile) ? JSON.parse(readFileSync(currentFile, "utf8")) : undefined;
+  const artifact = checked?.timings ?? [current, ...runs.map(run => run.timings)].find(measured => measured?.workers === timings.workers && Object.keys(measured.specs ?? {}).length);
+  if (!artifact) return t.skip("no compatible measurements available for the growth guard");
   const timeoutSeconds = Math.floor(timings.runLimitSeconds / RUN_HEADROOM);
   assert.equal(timings.timeoutSeconds, 1080, "suite growth must fit without extending the planning limit");
   for (const drift of [1, 1.1]) {
@@ -500,15 +504,11 @@ test("the fifteen percent threshold remains inclusive and twenty percent needs n
   });
 });
 
-test("too few distinct compatible runs or matching spec counts leave capacity unjudged", async () => {
+test("fewer than three distinct compatible runs leave capacity unjudged", async () => {
   const { checkHeadroom } = await load();
-  const partial = capacityHistory(480);
-  partial[0].timings.specs["mock/a.spec.ts"].tests = 2;
-  const missing = capacityHistory(480);
-  delete missing[0].timings.specs["states/b.spec.ts"];
-  const workers = capacityHistory(480);
+  const workers = capacityHistory(420).slice(0, 3);
   workers[0].timings.workers = 1;
-  for (const runs of [[], partial, missing, workers, capacityHistory(480).slice(1), Array(5).fill(capacityRun(1, 480))]) {
+  for (const runs of [[], workers, capacityHistory(420).slice(0, 2), Array(5).fill(capacityRun(1, 420))]) {
     withSummary(summary => {
       assert.equal(checkHeadroom(capacitySuite, capacitySettings, runs, summary), undefined);
       assert.match(readFileSync(summary, "utf8"), /Insufficient history/);
@@ -516,6 +516,131 @@ test("too few distinct compatible runs or matching spec counts leave capacity un
       assert.doesNotMatch(readFileSync(summary, "utf8"), /Typical headroom/);
     });
   }
+});
+
+test("changing test counts still judges normalized medians and catches sustained slowdown", async () => {
+  const { checkHeadroom } = await load();
+  const counts = { "mock/a.spec.ts": 12, "states/b.spec.ts": 10 };
+  const runs = capacityHistory().map((run, i) => ({ ...run, timings: { ...run.timings,
+    specs: Object.fromEntries(Object.keys(counts).map(file => {
+      const tests = file === "mock/a.spec.ts" ? 12 - i : 10;
+      return [file, { tests, seconds: tests * 35 }];
+    })),
+  } }));
+  withSummary(summary => {
+    const checked = checkHeadroom(report(counts), capacitySettings, runs, summary);
+    assert.equal(checked.timings.specs["mock/a.spec.ts"].seconds, 420);
+    assert.match(readFileSync(summary, "utf8"), /Typical headroom/);
+    const slow = runs.map(run => ({ ...run, timings: { ...run.timings,
+      specs: Object.fromEntries(Object.entries(run.timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * 1.15 }])),
+    } }));
+    assert.throws(() => checkHeadroom(report(counts), capacitySettings, slow, summary), /STATES_HEADROOM_EXHAUSTED/);
+  });
+});
+
+test("three samples suffice while newer specs use the planner P95 estimate", async () => {
+  const { checkHeadroom, planStates } = await load();
+  const runs = capacityHistory(420).slice(0, 3);
+  delete runs[0].timings.specs["states/b.spec.ts"];
+  const checked = checkHeadroom(capacitySuite, capacitySettings, runs, null);
+  assert.ok(checked);
+  assert.equal(checked.timings.specs["states/b.spec.ts"], undefined);
+  assert.deepEqual(checked.plan, planStates(capacitySuite, capacitySettings, checked.timings));
+  assert.deepEqual(checked.plan.shards.flatMap(shard => shard.files).sort(), ["e2e/mock/a.spec.ts", "e2e/states/b.spec.ts"]);
+});
+
+test("the dev growth guard runs with fresh or recent measurements when history is insufficient", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "states-growth-"));
+  try {
+    for (const folder of ["scripts", ".github/workflows", "e2e/mock", "node_modules/@playwright/test"])
+      mkdirSync(path.join(dir, folder), { recursive: true });
+    for (const file of ["scripts/states-shards.mjs", "scripts/states-shards.test.mjs", "scripts/e2e-timings.mjs", ".github/ci-proof.cjs", ".github/workflows/ci.yml", "e2e/mock/timings.json"])
+      cpSync(file, path.join(dir, file));
+    symlinkSync(path.resolve("node_modules/js-yaml"), path.join(dir, "node_modules/js-yaml"), "dir");
+    writeFileSync(path.join(dir, "node_modules/@playwright/test/cli.js"), `console.log(${JSON.stringify(JSON.stringify(report({ "mock/a.spec.ts": 100, "states/b.spec.ts": 100 })))});`);
+    const history = path.join(dir, "history.json"), current = path.join(dir, "current.json");
+    const measured = seconds => ({ workers: settings.workers, specs: Object.fromEntries(["mock/a.spec.ts", "states/b.spec.ts"].map(file => [file, { tests: 100, seconds }])) });
+    for (const source of ["current", "history"]) for (const seconds of [800, 830]) {
+      writeFileSync(history, JSON.stringify({ runs: source === "history" ? [{ runId: 1, timings: measured(seconds) }] : [] }));
+      if (source === "current") writeFileSync(current, JSON.stringify(measured(seconds)));
+      else rmSync(current, { force: true });
+      const result = spawnSync(process.execPath, ["--test", "--test-name-pattern=the real suite allows", "scripts/states-shards.test.mjs"], {
+        cwd: dir, encoding: "utf8", env: { ...process.env, NODE_TEST_CONTEXT: undefined, CI: "true", STATES_CHECK_CAPACITY: "1", STATES_TIMINGS_FILE: current,
+          STATES_TIMINGS_HISTORY_FILE: history, GITHUB_STEP_SUMMARY: path.join(dir, "summary.md") },
+      });
+      assert.match(result.stdout, /Insufficient history/, result.stderr);
+      assert.doesNotMatch(result.stdout, /# SKIP/);
+      assert.equal(result.status, seconds === 800 ? 0 : 1, result.stdout + result.stderr);
+      if (seconds === 830) assert.match(result.stdout, /STATES_SPEC_OVER_BUDGET/);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("API outages use cached dev timings to plan the real suite instead of the bootstrap floor", async t => {
+  const { restoreDevTimings, planStates, filesForShard } = await load();
+  t.mock.method(console, "warn", () => {});
+  const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", "--config=e2e/mock/playwright.config.ts", "--list", "--reporter=json"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+  assert.equal(result.status, 0, result.stderr);
+  const discovered = JSON.parse(result.stdout);
+  const timings = JSON.parse(readFileSync("e2e/mock/timings.json", "utf8"));
+  const counts = {};
+  for (const { file } of listedTests(discovered)) counts[file] = (counts[file] ?? 0) + 1;
+  const cachedTimings = { workers: timings.workers, specs: Object.fromEntries(Object.entries(counts).map(([file, tests]) => [file, { tests, seconds: tests }])) };
+  const restored = await restoreDevTimings(timings, { ...config, cachedTimings, summary: null }, async () => new Response("unavailable", { status: 503 }));
+  assert.deepEqual(restored.timings, cachedTimings);
+  const planned = planStates(discovered, timings, restored.timings);
+  assert.deepEqual(planned.shards.flatMap(shard => filesForShard(planned, shard.id)).sort(), discovered.suites.map(suite => `e2e/${suite.file}`).sort());
+  const dir = mkdtempSync(path.join(tmpdir(), "states-cached-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const cached = path.join(dir, "timings.json"), stub = path.join(dir, "outage.mjs");
+  writeFileSync(cached, JSON.stringify(cachedTimings));
+  writeFileSync(stub, 'globalThis.fetch = async () => new Response("unavailable", { status: 503 });');
+  const cli = spawnSync(process.execPath, ["--import", stub, "scripts/states-shards.mjs", "restore", "e2e/mock/timings.json", cached], {
+    encoding: "utf8", env: { ...process.env, GITHUB_API_URL: config.apiUrl, GITHUB_REPOSITORY: config.repository,
+      GITHUB_REPOSITORY_ID: String(config.repositoryId), GH_TOKEN: config.token, GITHUB_STEP_SUMMARY: path.join(dir, "summary.md") },
+  });
+  assert.equal(cli.status, 0, cli.stderr);
+  assert.match(cli.stderr, /using cached dev timings/);
+  assert.deepEqual(JSON.parse(readFileSync(cached, "utf8")), cachedTimings);
+});
+
+test("cached fallback validates durations and ignores incompatible workers", async t => {
+  const { restoreDevTimings } = await load();
+  t.mock.method(console, "warn", () => {});
+  const request = async () => new Response("unavailable", { status: 503 });
+  const cachedTimings = capacityRun(1).timings;
+  cachedTimings.specs["mock/a.spec.ts"].seconds = -1;
+  await assert.rejects(restoreDevTimings(capacitySettings, { ...config, cachedTimings, summary: null }, request), /STATES_INVALID_TIMINGS/);
+  const fallback = await restoreDevTimings(capacitySettings, { ...config, cachedTimings: { ...capacityRun(1).timings, workers: 1 }, summary: null }, request);
+  assert.deepEqual(fallback.timings, { workers: capacitySettings.workers, specs: {} });
+});
+
+test("cached timings cannot bypass API refusals or replace fresh trusted measurements", async () => {
+  const { restoreDevTimings } = await load();
+  const cachedTimings = capacityRun(1).timings;
+  await assert.rejects(restoreDevTimings(capacitySettings, { ...config, cachedTimings }, async () => new Response("denied", { status: 403 })), /STATES_TIMINGS_FETCH.*403/);
+  const measured = capacityRun(2, 450).timings;
+  const request = async url => devRun(url) ?? new Response(url.endsWith("/zip") ? zip(measured) : JSON.stringify({ artifacts: [artifact(2)] }));
+  assert.deepEqual((await restoreDevTimings(capacitySettings, { ...config, cachedTimings }, request)).timings, measured);
+});
+
+test("CI saves dev measurements before capacity checks and restores the cache before the API", () => {
+  const steps = workflow.jobs["states-plan"].steps;
+  const restore = steps.findIndex(step => step.uses?.startsWith("actions/cache/restore") && step.with?.key?.startsWith("states-timings-"));
+  assert.ok(restore >= 0);
+  assert.ok(restore < steps.findIndex(step => step.run?.includes("states-shards.mjs restore")));
+  assert.equal(steps[restore].with.path, ".cache/states-timings/timings.json");
+  assert.equal(steps[restore]["continue-on-error"], true);
+  assert.equal(steps[restore].with["restore-keys"], "states-timings-");
+  const refresh = workflow.jobs["states-timings"].steps;
+  const save = refresh.findIndex(step => step.uses?.startsWith("actions/cache/save") && step.with?.key?.startsWith("states-timings-"));
+  assert.ok(save > refresh.findIndex(step => step.run?.includes("states-shards.mjs refresh")));
+  assert.ok(save < refresh.findIndex(step => step.env?.STATES_CHECK_CAPACITY === "1"));
+  assert.equal(refresh[save].with.path, steps[restore].with.path);
+  assert.equal(refresh[save]["continue-on-error"], true);
+  assert.equal(refresh[save].with.key, "states-timings-${{ github.run_id }}");
+  assert.match(workflow.jobs["states-timings"].if, /github.event_name == 'push'/);
+  assert.deepEqual(workflow.on.push.branches, ["dev"]);
 });
 
 test("medians are per spec and only the recent configured window is measured", async () => {
@@ -628,8 +753,9 @@ for (const history of [false, true]) for (const site of ["list", "metadata", "do
   });
 }
 
-test("an outage after partial history or pagination discards incomplete measurements", async () => {
+test("an outage after partial history or pagination discards incomplete measurements", async t => {
   const { restoreDevTimings } = await load();
+  t.mock.method(console, "warn", () => {});
   for (const history of [false, true]) {
     let pages = 0, downloads = 0;
     const request = async url => {
@@ -640,7 +766,7 @@ test("an outage after partial history or pagination discards incomplete measurem
       if (url.endsWith("/zip")) return ++downloads === 2 ? new Response("unavailable", { status: 503 }) : new Response(zip(capacityRun(3).timings));
       return devRun(url);
     };
-    const restored = await restoreDevTimings(capacitySettings, { ...config, history }, request);
+    const restored = await restoreDevTimings(capacitySettings, { ...config, history, summary: null }, request);
     assert.deepEqual(restored, history ? { runs: [] } : { timings: { workers: capacitySettings.workers, specs: {} } });
   }
 });

@@ -39,8 +39,10 @@ from this repository's CI pushes on dev's history, whether or not the run passed
 Artifact lookup examines at most five pages of 100 entries. If no compatible
 artifact exists, the newest trusted artifact is scaled by
 `measured workers / configured workers`, with a warning. If none exists, the configured
-four worker-seconds per test bootstrap the suite, also with a warning. This floor
-allows the initial run to produce measurements; it is not a capacity proof.
+four worker-seconds per test bootstrap the suite, also with a warning. When the
+artifact API is unavailable, plans use the last complete dev timing cache with matching
+workers. Dev pushes save it before capacity checks; PRs only restore it. A cache miss
+uses the bootstrap floor, which may exceed capacity as the suite grows.
 Partial, failed, duplicate or worker-mismatched reports cannot refresh measurements.
 CI never overwrites the committed settings.
 
@@ -49,12 +51,17 @@ per test (`seconds × workers / tests`), with `defaultTestSeconds` as a floor.
 The planner converts these estimates for the shared packer. The dev-push timings job
 publishes complete measurements before restoring the most recent `headroomRuns`
 distinct, completed dev runs with matching workers (currently five). Capacity uses
-the median seconds per spec across that window, keeping the unchanged **15% headroom**
-bar and growth of 30 tests plus 10% drift. Each current spec needs matching test counts
-in every sampled run; otherwise the check explicitly skips judgment for insufficient
-history. Scaled and bootstrap timings never count as capacity samples.
+the median seconds per test for each spec across that window, scaled to its current
+test count, keeping the unchanged **15% headroom** bar. At least three distinct compatible
+runs are required for judgment. Specs with fewer than three samples use the planner's
+P95 estimate and are named in the summary. Keep at least `headroomRuns` compatible
+artifact copies when pruning history. Scaled, cached and bootstrap timings never count
+as capacity samples. The separate growth guard adds 30 tests and 10% drift using the
+median timings, or this push's measurements (then the newest compatible run) when
+history is insufficient. It skips only when no compatible measurements exist.
 The job summary records typical headroom, or the insufficient-history reason.
-Below 20%, another shard or faster slow specs is due. PRs still enforce packing limits,
+Below 20%, another shard or faster slow specs is due; faster specs fit the current
+20-runner allowance. PRs still enforce packing limits,
 exact selections and passing state assertions.
 
 Run planner regressions locally with `node --test scripts/states-shards.test.mjs`.
@@ -66,8 +73,8 @@ node scripts/states-shards.mjs history e2e/mock/timings.json .cache/states-histo
 STATES_CHECK_CAPACITY=1 node --test scripts/states-shards.test.mjs
 ```
 
-The capacity test skips with a reason outside the dev job; a requested local capacity
-check also skips when its artifact file is absent. CI treats a missing artifact as an error.
+The capacity test skips with a reason outside the dev job; a requested local growth
+check also skips when neither history nor current measurements are available.
 Local measurements must never overwrite CI's trusted artifact.
 
 Use the existing `E2E_SLOT` / `CONSOLE_WEB_PORT` environment variables to isolate

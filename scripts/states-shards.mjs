@@ -11,6 +11,7 @@ const refuse = (reason, detail) => { throw new Error(`${reason}: ${detail}`); };
 const positive = n => Number.isFinite(n) && n > 0;
 // Run-to-run runner speed varies by about a third, so a shard gets this much time over its measured plan.
 export const RUN_HEADROOM = 1.6;
+const MIN_HEADROOM_RUNS = 3;
 const specPath = file => /^(?:(?:mock|states)\/[^/]+\.spec\.ts|layout\/layout\.spec\.ts)$/.test(file);
 
 function validateTimings(timings) {
@@ -22,10 +23,17 @@ function validateTimings(timings) {
 }
 
 /** Only this repository's CI pushes on dev's history may supply timings, red runs included since the capacity check fails after publishing; PRs cannot replace trusted measurements. */
-export async function restoreDevTimings(settings, { apiUrl, repository, repositoryId, token, history = false }, request = fetch) {
+export async function restoreDevTimings(settings, { apiUrl, repository, repositoryId, token, history = false, cachedTimings, summary = process.env.GITHUB_STEP_SUMMARY }, request = fetch) {
   validateTimings(settings);
   if (history) validateHeadroomRuns(settings);
   class Unavailable extends Error {}
+  const fallbackTimings = () => {
+    if (cachedTimings?.workers === settings.workers && Object.keys(cachedTimings.specs ?? {}).length) {
+      validateTimings({ ...settings, specs: cachedTimings.specs });
+      return { timings: { workers: settings.workers, specs: cachedTimings.specs } };
+    }
+    return { timings: { workers: settings.workers, specs: {} } };
+  };
   const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" };
   const get = async url => {
     const networkError = error => { throw new Unavailable(`${url}: network error: ${error.message}`); };
@@ -80,23 +88,25 @@ export async function restoreDevTimings(settings, { apiUrl, repository, reposito
       return { runId: fallback.runId, timings: { workers: settings.workers, specs: Object.fromEntries(
         Object.entries(fallback.timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * fallback.timings.workers / settings.workers }])) } };
     }
-    console.warn("::warning::No unexpired dev timings; bootstrapping with the configured per-test floor");
-    return { timings: { workers: settings.workers, specs: {} } };
+    const restored = fallbackTimings();
+    console.warn(`::warning::No unexpired dev timings; using ${Object.keys(restored.timings.specs).length ? "cached dev timings" : "the configured per-test bootstrap floor"}`);
+    return restored;
   } catch (error) {
     if (!(error instanceof Unavailable)) throw error;
-    const message = `Dev timings unavailable: ${error.message}; ${history ? "Insufficient history; headroom not judged" : "using the configured bootstrap floor"}.`;
+    const restored = history ? { runs: [] } : fallbackTimings();
+    const message = `Dev timings unavailable: ${error.message}; ${history ? "Insufficient history; headroom not judged" : Object.keys(restored.timings.specs).length ? "using cached dev timings" : "using the configured bootstrap floor"}.`;
     console.warn(`::warning::${message}`);
-    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${message}\n`);
-    return history ? { runs: [] } : { timings: { workers: settings.workers, specs: {} } };
+    if (summary) appendFileSync(summary, `\n${message}\n`);
+    return restored;
   }
 }
 
 function validateHeadroomRuns(settings) {
-  if (!Number.isInteger(settings.headroomRuns) || settings.headroomRuns < 3)
+  if (!Number.isInteger(settings.headroomRuns) || settings.headroomRuns < MIN_HEADROOM_RUNS)
     refuse("STATES_INVALID_TIMINGS", "headroomRuns must be an integer of at least three");
 }
 
-/** Capacity uses a recent median for each current spec; changed test counts need fresh samples. */
+/** Per-test medians allow suite growth; sparsely measured specs use the planner's P95 estimate. */
 export function checkHeadroom(report, settings, runs, summary = process.env.GITHUB_STEP_SUMMARY) {
   validateTimings(settings);
   validateHeadroomRuns(settings);
@@ -107,20 +117,20 @@ export function checkHeadroom(report, settings, runs, summary = process.env.GITH
   const counts = new Map();
   for (const { file } of listedTests(report)) counts.set(file, (counts.get(file) ?? 0) + 1);
   const specs = {};
-  let missing = 0;
+  const estimated = [];
   for (const [file, tests] of counts) {
-    const seconds = recent.map(run => run.timings.specs?.[file]).filter(entry => entry?.tests === tests)
-      .map(entry => entry.seconds).sort((a, b) => a - b);
-    if (seconds.length < settings.headroomRuns) { missing++; continue; }
+    const seconds = recent.map(run => run.timings.specs?.[file]).filter(Boolean)
+      .map(entry => entry.seconds / entry.tests).sort((a, b) => a - b);
+    if (seconds.length < MIN_HEADROOM_RUNS) { estimated.push(file); continue; }
     const middle = Math.floor(seconds.length / 2);
-    specs[file] = { tests, seconds: (seconds[middle] + seconds[Math.ceil(seconds.length / 2) - 1]) / 2 };
+    specs[file] = { tests, seconds: tests * (seconds[middle] + seconds[Math.ceil(seconds.length / 2) - 1]) / 2 };
   }
   const publish = message => {
     console.log(message);
     if (summary) appendFileSync(summary, `\n### State shard headroom\n\n${message}\n`);
   };
-  if (recent.length < settings.headroomRuns || missing) {
-    publish(`Insufficient history: ${recent.length}/${settings.headroomRuns} compatible dev runs; ${missing} specs lack ${settings.headroomRuns} matching samples; headroom not judged.`);
+  if (recent.length < MIN_HEADROOM_RUNS) {
+    publish(`Insufficient history: ${recent.length}/${MIN_HEADROOM_RUNS} compatible dev runs required; headroom not judged.`);
     return;
   }
   const timings = { workers: settings.workers, specs };
@@ -128,7 +138,7 @@ export function checkHeadroom(report, settings, runs, summary = process.env.GITH
   const timeoutSeconds = Math.floor(settings.runLimitSeconds / RUN_HEADROOM);
   const maximum = Math.max(...plan.shards.map(shard => shard.seconds));
   const headroom = 100 * (1 - maximum / timeoutSeconds);
-  publish(`Typical headroom: **${headroom.toFixed(1)}%** (per-spec median over ${recent.length} dev runs); maximum ${maximum.toFixed(1)}s / ${timeoutSeconds}s; required headroom: 15%.${maximum > timeoutSeconds * 0.8 ? " Capacity follow-up: another shard or faster slow specs is due." : ""}`);
+  publish(`Typical headroom: **${headroom.toFixed(1)}%** (per-test median over ${recent.length} dev runs, scaled to current counts); maximum ${maximum.toFixed(1)}s / ${timeoutSeconds}s; required headroom: 15%.${maximum > timeoutSeconds * 0.8 ? " Capacity follow-up: another shard or faster slow specs is due." : ""}${estimated.length ? `\n\nP95 estimates (fewer than ${MIN_HEADROOM_RUNS} samples): ${estimated.join(", ")}.` : ""}`);
   if (maximum > timeoutSeconds * 0.85) refuse("STATES_HEADROOM_EXHAUSTED", "the measured suite needs at least fifteen percent headroom");
   return { timings, plan, headroom };
 }
@@ -241,10 +251,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         apiUrl: process.env.GITHUB_API_URL, repository: process.env.GITHUB_REPOSITORY,
         repositoryId: Number(process.env.GITHUB_REPOSITORY_ID), token: process.env.GH_TOKEN,
         history: command === "history",
+        cachedTimings: command === "restore" && existsSync(second) ? readJson(second) : undefined,
       });
       writeJson(second, command === "history" ? restored : restored.timings);
       console.log(command === "history" ? `Restored ${restored.runs.length} compatible dev timing runs`
-        : `Restored state timings from ${restored.runId ? `dev run ${restored.runId}` : "the bootstrap floor"}`);
+        : `Restored state timings from ${restored.runId ? `dev run ${restored.runId}` : "fallback estimates"}`);
     } else if (command === "plan") {
       const timings = readJson(second);
       const plan = planStates(readJson(first), timings, rest[0] && existsSync(rest[0]) ? readJson(rest[0]) : undefined);
