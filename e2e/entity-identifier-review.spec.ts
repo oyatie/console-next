@@ -72,7 +72,9 @@ test("identifier correction: a second person approves, requester applies, and a 
   await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
   const manager = await firstSignIn(browser, await takeCode(admin));
   await startOperations(admin);
+  await go(reviewer, "/inbox?tab=reference");
   await grantAccess(admin, "김검토", "full");
+  await expect(inbox(reviewer).getByRole("button", { name: t("home.grantNotices.confirm", { role: "전체 업무" }), exact: true })).toBeVisible();
   await grantAccess(admin, "이범위", "full", /본사/);
   const managerBearer = bearerOf(manager);
   await manager.reload();
@@ -90,9 +92,9 @@ test("identifier correction: a second person approves, requester applies, and a 
   // Reopen the pre-grant stream under its new access scope before confirming in 참조.
   await reviewer.reload();
   await passkeyLogin(reviewer);
-  const notice = await openGrantNotice(reviewer, "전체 업무");
-  await expect(notice).toContainText("전체 업무 · 전체 ·", { timeout: 20_000 });
-  await confirmGrantNotice(reviewer, "전체 업무");
+  const notice = await openGrantNotice(reviewer, "full");
+  await expect(notice).toContainText("전체 업무 · 전체 ·");
+  await confirmGrantNotice(reviewer, "full", notice);
   await go(reviewer, "/");
   letGrantsAge(unique(slug), "김검토");
   let reviewerLoads = 0;
@@ -112,7 +114,7 @@ test("identifier correction: a second person approves, requester applies, and a 
 
   await go(admin, "/");
   await inbox(admin).getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
-  await inbox(admin).getByRole("link", { name: /^기다리는 중/ }).click();
+  await inbox(admin).getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.waiting")}`) }).click();
   const waiting = inbox(admin).getByRole("row").filter({ has: admin.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
   await expect(waiting).toContainText("처리 상태: 승인 대기", { timeout: 20_000 });
   await expect(waiting.getByRole("link", { name: "정정 요청 · 사후 검토 확인", exact: true })).toBeVisible();

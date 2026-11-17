@@ -10,7 +10,7 @@ import { tenantInSetup } from "./setup-flows";
 test("employee account binding requires passkey and waits for a second person, including after reload", { tag: "@hr" }, async ({ browser }) => {
   const slug = "linkguard";
   const { admin, exec } = await tenantInSetup(browser, slug, "연결검증", false, "본점", "full");
-  await confirmGrantNotice(exec, "전체 업무");
+  await confirmGrantNotice(exec, "full");
   letGrantsAge(unique(slug), "이임원");
   await inviteAccount(admin, "연결대상", "none");
   const read = apiAs(admin);

@@ -32,7 +32,7 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   await go(admin, "/", true);
   await passkeyLogin(admin);
   await admin.reload();
-  await confirmGrantNotice(admin, "전체 업무");
+  await confirmGrantNotice(admin, "full");
   letGrantsAge(unique(slug), "김마감");
   const api = apiOf(admin, bearer);
   const people = (await (await api("/employees?limit=10")).json()) as { items: { id: string; name: string }[] };

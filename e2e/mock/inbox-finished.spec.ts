@@ -44,6 +44,11 @@ const notice = (id: string, text: string, link: components["schemas"]["Notificat
   created_at: "2026-11-11T05:00:00Z", read_at: null, resolved_at: null, muted: false,
 });
 
+const GRANT = { ...inbox(1).items[0]!, id: "grant_notice:g1", kind: "grant_notice", title: "전체 업무", links: [{ kind: "access", id: "g1" }], context: { grants: [{
+  grant_id: "g1", role_id: "role", role_name_ko: "전체 업무", domain: "hr_basic", level: "view",
+  scope: { kind: "TENANT", node_id: null, include_descendants: true }, valid_from: "2026-01-01T00:00:00Z", valid_to: null, enforcement: "ENFORCED", caveats: [] as string[],
+} as const] } };
+
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`참조 lists my notices and 확인 marks one read at ${width}px ${theme}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
@@ -51,13 +56,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     const mock = await mockScreen(page, screens[0], "populated");
     const writes: string[] = [];
     // The notices view answers the grant I have not confirmed; every other view is my ordinary queue.
-    const grant = { ...inbox(1).items[0]!, id: "grant_notice:g1", kind: "grant_notice", title: "급여 담당", links: [{ kind: "access", id: "g1" }], context: { grants: [{
-      grant_id: "g1", role_id: "role", role_name_ko: "급여 담당", domain: "hr_basic", level: "view",
-      scope: { kind: "TENANT", node_id: null, include_descendants: true }, valid_from: "2026-01-01T00:00:00Z", valid_to: null, enforcement: "ENFORCED", caveats: [] as string[],
-    } as const] } };
     let confirmed = false;
     await mockRoute(page, "get", "/api/v1/me/action-inbox", request => ({ status: 200, json: new URL(request.url()).searchParams.get("filter") === "notices"
-      ? { ...inbox(0), items: confirmed ? [] : [grant] } : { ...inbox(3), counts: { ...inbox(3).counts, notices: { total: confirmed ? 0 : 1, total_is_exact: true } } } }));
+      ? { ...inbox(0), items: confirmed ? [] : [GRANT] } : { ...inbox(3), counts: { ...inbox(3).counts, notices: { total: confirmed ? 0 : 1, total_is_exact: true } } } }));
     await mockRoute(page, "post", "/api/v1/access/grants/{grantId}/notice", request => {
       writes.push(new URL(request.url()).pathname);
       confirmed = true;
@@ -77,13 +78,14 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       return { status: 200, json: notice(unreadId, "조직 변경 안내", { type: "object", kind: "org_change", id: "c1" }) };
     });
     await page.goto("/");
-    await openGrantNotice(page, grant.title);
+    const grantNotice = await openGrantNotice(page, "full");
     const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("listitem");
     await expect(list).toHaveCount(5);
     const tab = page.getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.reference")}`) });
     await expect(tab).toHaveText(`${t("home.inbox.tab.reference")} 1`);
-    await expect(list.nth(0).getByRole("button", { name: t("home.grantNotices.confirm", { role: "급여 담당" }), exact: true })).toBeVisible();
-    await confirmGrantNotice(page, grant.title);
+    await expect(list.nth(0).getByRole("button", { name: t("home.grantNotices.confirm", { role: "전체 업무" }), exact: true })).toBeVisible();
+    await confirmGrantNotice(page, "full", grantNotice);
+    await expect(page.getByRole("status").filter({ hasText: t("home.grantNotices.done", { role: GRANT.title }) })).toBeVisible();
     await expect(list).toHaveCount(4);
     await expect(tab).toHaveText(`${t("home.inbox.tab.reference")} 0`);
     await expect(list.nth(0).getByRole("link", { name: "조직 변경 안내", exact: true })).toHaveAttribute("href", "/org/changes/c1");
@@ -98,6 +100,33 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(list.nth(0)).not.toContainText(t("home.inbox.reference.unread"));
     await expect(list.getByRole("button")).toHaveCount(0);
     expect(writes).toEqual(["/api/v1/access/grants/g1/notice", `/api/v1/me/action-inbox/reference/${unreadId}/read`]);
+    expect(mock.unexpected).toEqual([]);
+  });
+}
+
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+  test(`참조 keeps a refused grant notice actionable at ${width}px ${theme}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const mock = await mockScreen(page, screens[0], "populated");
+    await mockRoute(page, "get", "/api/v1/me/action-inbox", request => ({ status: 200, json: new URL(request.url()).searchParams.get("filter") === "notices"
+      ? { ...inbox(0), items: [GRANT] } : inbox(0) }));
+    await mockRoute(page, "get", "/api/v1/me/action-inbox/reference", { status: 200, json: { items: [], next_cursor: null } });
+    let writes = 0;
+    await mockRoute(page, "post", "/api/v1/access/grants/{grantId}/notice", () => {
+      writes++;
+      return { status: 403, json: { error: { code: "grant_notice_not_holder", message: "forbidden" } } };
+    });
+    const notice = await openGrantNotice(page, "full");
+    const confirm = notice.getByRole("button", { name: t("home.grantNotices.confirm", { role: GRANT.title }), exact: true });
+    await confirm.click();
+    await expect(notice.getByRole("alert")).toContainText("권한을 받은 본인만 부여 확인을 기록할 수 있습니다");
+    await expect(notice).toHaveCount(1);
+    await expect(confirm).toBeEnabled();
+    expect(writes).toBe(1);
+    await fits(page, `refused grant ${width}px ${theme}`);
+    await expectAxe(page, `refused grant ${width}px ${theme}`);
+    await page.screenshot({ path: info.outputPath(`refused-grant-${width}-${theme}.png`), fullPage: true });
     expect(mock.unexpected).toEqual([]);
   });
 }

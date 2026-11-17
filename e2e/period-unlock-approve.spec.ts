@@ -37,11 +37,8 @@ async function requestUnlock(admin: Page) {
   return row;
 }
 
-// BW-15 second person (P0: an unlock waiting for another close authority had no screen to approve it, so it sat until it
-// expired). The close authority is made on the 권한 screen and confirms the grant's notice on Home (decisions D0.2,
-// 155: before both, the two-person rule never applied in a UI-built tenant). The requester waits and sees the outcome
-// live; the second person finds it on Home and on the lock page, refuses it with a reason, then approves a new request
-// with their own passkey. Refusals change nothing.
+// The close authority confirms the grant's notice in 업무함 › 참조. The requester sees each outcome live;
+// the second person finds it on Home and the lock page, refuses it with a reason, then approves a new request.
 test("period unlock: a second close authority refuses, then approves; the requester sees each outcome", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(8 * 60_000); // two tenants, verified close authorities and two passkey decisions, all through the UI
   const slug = "unlockco";
@@ -63,13 +60,16 @@ test("period unlock: a second close authority refuses, then approves; the reques
     await go(page, "/", true);
     await passkeyLogin(page);
     await page.reload();
-    const notices = await openGrantNotice(page, "기간 마감");
-    await expect(notices).toContainText("기간 마감 · 전체 ·", { timeout: 20_000 });
+    const notices = await openGrantNotice(page, "close");
+    await expect(notices).toContainText("기간 마감 · 전체 ·");
     await expectAccessible(page, "grant notice");
-    await confirmGrantNotice(page, "기간 마감");
+    await confirmGrantNotice(page, "close", notices);
     letGrantsAge(unique(slug), name);
   }
+  const homeRead = exec.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === "/api/v1/me/action-inbox" && new URL(r.url()).searchParams.get("attention") === "all" && r.ok());
   await go(exec, "/");
+  await homeRead;
+  await exec.evaluate(() => void window.__shifts?.splice(0));
   // A frame within OWN_ECHO_MS of this tab's own write is that write's echo (lib/live): the requester acts after it.
   await exec.waitForTimeout(OWN_ECHO_MS);
   const paintedRows = exec.getByRole("region", { name: "업무함", exact: true }).locator("tbody tr");
@@ -199,7 +199,7 @@ test("a sole close authority delivers separate inbox reviews before and after go
   await grantAccess(operator, "단독마감", "full");
   await go(human, "/", true);
   await passkeyLogin(human);
-  await confirmGrantNotice(human, "전체 업무");
+  await confirmGrantNotice(human, "full");
   letGrantsAge(unique(slug), "단독마감");
   await lockPayroll(human);
   const row = human.getByRole("row", { name: /월 급여 마감/ });
