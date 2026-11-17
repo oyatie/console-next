@@ -15,14 +15,15 @@ beforeAll(async () => {
   forbidden = new ApiError(403, "forbidden", "Forbidden");
 });
 beforeEach(() => { state.q = { data: { items: [], total: 0 }, error: null, isPending: false, refetch: vi.fn() }; });
-const candidate = (id: string) => ({ employee_id: id, name: `Person ${id}`, employee_number: `E-${id}`, birth_date: "1990-03-04" });
+const candidate = (id: string) => ({ employee_id: id, name: `Person ${id}`, employee_number: `E-${id}`, birth_date: "1990-03-••" });
 const review = (kind: string) => ({ subject_kind: kind, evidence: { candidates: [candidate("self"),candidate("other")] } });
 test.each(["EMPLOYEE", "ACCOUNT"])("%s evidence names and links only the other record, without duplicate candidates", (kind) => {
   state.q.data = { items: [review(kind),review(kind)], total: 2 };
   const html = renderToStaticMarkup(<BindingEvidence subjectId="subject" employeeId="self" />);
   expect(html).toContain('data-record="other"');
   expect(html).toContain("Person other"); expect(html).toContain("E-other");
-  expect(html).toContain('dateTime="1990-03-04"');
+  // A namesake review tells people apart by birth year and month; the server sends no more.
+  expect(html).toContain("1990-03-••"); expect(html).not.toContain("dateTime");
   expect(html).not.toContain('data-record="self"');
   expect(html.match(/data-record=/g)).toHaveLength(1);
 });

@@ -6,6 +6,7 @@ use console_hr_domain::lifecycle::signoffs::required_lifecycle_signoffs;
 use console_hr_domain::lifecycle::transition::{
     RECORDABLE_LIFECYCLE_EVENT_TYPES, default_lifecycle_status,
 };
+use console_hr_domain::profile::mask::RevealField;
 use console_hr_domain::text::normalize_enum_text;
 use console_kernel_core::KernelError;
 use console_platform_authz::{Feature, Principal};
@@ -114,8 +115,11 @@ pub async fn load_employee_detail(
     let employment = match row.try_get::<Option<Uuid>, _>("profile_employee_id")? {
         Some(_) => Some(EmployeeEmploymentDetail {
             employment_type: row.try_get("employment_type")?,
-            // Optional since MR-7: an imported profile records neither.
-            phone_e164: row.try_get("phone_e164")?,
+            // Optional: an imported profile records neither. Served as its
+            // mask; only the governed reveal returns the number.
+            phone_e164: row
+                .try_get::<Option<String>, _>("phone_e164")?
+                .map(|phone| RevealField::Phone.masked(&phone)),
             base_pay: row.try_get("base_pay")?,
             currency: row.try_get("currency")?,
             contract_start_date: row.try_get("contract_start_date")?,

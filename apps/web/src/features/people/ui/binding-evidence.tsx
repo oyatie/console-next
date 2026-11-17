@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
+import { Masked } from "../../../ui/record/masked";
 import { personBindingReviewsQuery } from "../api";
 
 /** A legacy flag or open binding evidence leads to the same identity review. */
@@ -25,7 +25,7 @@ export function BindingEvidence({ subjectId, employeeId }: { subjectId: string; 
     return candidates.length > 0 && <section aria-label={t("identity.binding.title")}>
       <ul className="list-plain">{candidates.map((candidate) => <li key={candidate.employee_id} className="row">
         <PersonLabel person={candidate} peers={candidates} />
-        {candidate.birth_date && <time dateTime={candidate.birth_date}>{fmtDate(candidate.birth_date)}</time>}
+        {candidate.birth_date && <Masked>{candidate.birth_date}</Masked>}
       </li>)}</ul>
     </section>;
   }}</QueryState>;

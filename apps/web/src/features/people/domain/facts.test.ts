@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
-import { contractIssues, factValues, factsPatch, weeklyMinutes, type FactValues, type Facts } from "./facts";
+import { edit, isConflict, load, type Fields } from "../../../lib/pure/three-way";
+import { contractIssues, factValues, factsPatch, rebaseFacts, weeklyMinutes, type FactKey, type FactValues, type Facts } from "./facts";
 
 const base: FactValues = { birth_date: null, work_email: "a@x.kr", id_type: null, base_pay_won: null, pay_unit: null, probation_end_date: "2026-12-31" };
 
@@ -51,4 +52,20 @@ test("weekly hours become minutes", () => {
   expect(weeklyMinutes("37.5")).toBe(2250);
   expect(weeklyMinutes("0")).toBeNull();
   expect(weeklyMinutes("")).toBeNull();
+});
+
+test("a birth date recorded meanwhile is taken as recorded, and the one entered is handed back to name it", () => {
+  const read: Facts = { employee_id: "e", hire_date: null, birth_date: null, work_email: null, id_type: null, employment: null, updated_at: "2026-10-01T00:00:00Z" };
+  const entered = { ...Object.fromEntries(Object.entries(factValues(read)).map(([k, v]) => [k, load(v)])), birth_date: edit(load(null), "1990-04-17") } as Fields<FactKey>;
+  const { fields, typed } = rebaseFacts(entered, { ...read, birth_date: "••••-••-••", updated_at: "2026-10-02T00:00:00Z" });
+  expect(typed).toBe("1990-04-17");
+  expect(isConflict(fields.birth_date)).toBe(false);
+  // Nothing is sent for it: a recorded birth date changes by correction, never by this form.
+  const side = (s: "base" | "yours") => Object.fromEntries(Object.entries(fields).map(([k, x]) => [k, x[s]])) as FactValues;
+  expect(factsPatch(side("base"), side("yours"))).toEqual([]);
+  // Any other field still asks which value to keep.
+  const email = { ...entered, birth_date: load(null), work_email: edit(load(null), "a@x.kr") } as Fields<FactKey>;
+  const other = rebaseFacts(email, { ...read, work_email: "b@x.kr", updated_at: "2026-10-02T00:00:00Z" });
+  expect(other.typed).toBeNull();
+  expect(isConflict(other.fields.work_email)).toBe(true);
 });
