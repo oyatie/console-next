@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - me
+operationId: listMyTodoRequests
+summary: List what the caller asked of others, newest first
+description: >-
+  Only requests the caller made; a caller who asked nothing gets an empty
+  list. A withdrawn request is deleted and appears in no state.
+security:
+- bearerAuth: []
+parameters:
+- name: state
+  in: query
+  required: false
+  description: open (default), done or returned; anything else is 422 validation.
+  schema:
+    type: string
+    enum:
+    - open
+    - done
+    - returned
+- name: limit
+  in: query
+  required: false
+  description: Page size (clamped server-side to 1..=200; default 100).
+  schema:
+    type: integer
+    format: int64
+responses:
+  '200':
+    description: The caller's requests in that state.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TodoPage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: JWT verification is not configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

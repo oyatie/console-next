@@ -21,6 +21,11 @@ use rank::{compare_items, item_after_cursor};
 pub use rank::{compare_key, page_source_items};
 mod source;
 pub use source::ActionInboxSource;
+mod snooze;
+pub use snooze::{
+    DueBasis, Snooze, SnoozeBlock, SnoozeFacts, SnoozeMode, SnoozePreset, SnoozeRefusal,
+    SnoozedPort, Snoozes, kst_date, presets,
+};
 
 use std::future::Future;
 use std::pin::Pin;
@@ -64,6 +69,7 @@ pub struct ActionInboxLink {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActionInboxSourceItem {
     pub context: Option<serde_json::Value>,
+    pub due_basis: Option<DueBasis>,
     pub id: String,
     pub kind: String,
     pub ref_code: String,
@@ -127,6 +133,8 @@ pub struct ActionInboxItem {
         skip_serializing_if = "Option::is_none"
     )]
     pub due: Option<OffsetDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub due_basis: Option<DueBasis>,
     #[serde(rename = "dueTone")]
     pub due_tone: &'static str,
     #[serde(
@@ -138,6 +146,7 @@ pub struct ActionInboxItem {
     pub done: bool,
     pub lane: &'static str,
     pub days_remaining: Option<i64>,
+    pub snooze: SnoozeFacts,
     #[serde(skip)]
     pub created_at: OffsetDateTime,
 }
@@ -220,11 +229,7 @@ pub async fn list_action_inbox(
         limit,
         port.deadline_due_soon_days()?,
     );
-    for count in &mut page.attention_filters {
-        if count.key != Attention::All {
-            count.total_is_exact = count.key.is_exact(&incomplete, cursor.is_none());
-        }
-    }
+    filter::mark_exact(&mut page, &incomplete, cursor.is_none());
     if !unavailable.is_empty() {
         page.total_is_exact = false;
         for count in &mut page.attention_filters {
@@ -356,6 +361,22 @@ mod tests {
         }
     }
 
+    /// The assignee owes the request; the requester only follows it, open or sent back.
+    #[test]
+    fn a_to_do_request_is_the_assignees_turn_and_the_requesters_wait() {
+        let now = OffsetDateTime::UNIX_EPOCH;
+        for (kind, lane) in [("todo_assigned", "turn"), ("todo_requested", "waiting")] {
+            let mut source = item("todo_assigned", 1, now);
+            source.kind = kind.into();
+            source.due = Some(now);
+            let item = project_item(source, now, 7);
+            assert_eq!(item.lane, lane, "{kind}");
+            if lane == "waiting" {
+                assert_eq!(item.due_tone, "neutral", "a wait is never a deadline alarm");
+            }
+        }
+    }
+
     #[test]
     fn all_sources_are_payroll_and_governance_inclusive() {
         assert_eq!(
@@ -383,6 +404,9 @@ mod tests {
                 ActionInboxSource::GrantNotice,
                 ActionInboxSource::SupportAccess,
                 ActionInboxSource::PrivacyRequests,
+                ActionInboxSource::AccountBindingReview,
+                ActionInboxSource::TodoAssigned,
+                ActionInboxSource::TodoRequested,
             ]
         );
         for source in ActionInboxSource::ALL {
@@ -401,6 +425,11 @@ mod tests {
                 )
                 .is_ok(),
                 "{source:?} cursor must round-trip"
+            );
+            assert_eq!(
+                namespaced_id::source_of(encoded.rsplit('~').next().unwrap()),
+                Some(source),
+                "an id names the source that issued it"
             );
         }
     }
@@ -577,6 +606,7 @@ mod tests {
             .map(|id| item("work", id, now - Duration::DAY))
             .collect::<Vec<_>>();
         items.push(ActionInboxSourceItem {
+            due_basis: None,
             due: Some(now),
             ..item("work", 2_001, now)
         });
@@ -608,6 +638,7 @@ mod tests {
         let case = |id| {
             project_item(
                 ActionInboxSourceItem {
+                    due_basis: None,
                     links: vec![ActionInboxLink {
                         kind: "employee".into(),
                         id: "person".into(),
@@ -628,6 +659,7 @@ mod tests {
         let filing = |group: Option<&str>| {
             project_item(
                 ActionInboxSourceItem {
+                    due_basis: None,
                     context: Some(
                         serde_json::json!({"insurance":{"kind":"ACQUIRE", "employee_id":"person", "case_id":"case", "group_id":group}}),
                     ),
@@ -658,6 +690,7 @@ mod tests {
         let page = merge_pages(
             vec![source_page(
                 vec![ActionInboxSourceItem {
+                    due_basis: None,
                     due: Some(now + Duration::HOUR),
                     ..item("work", 9, now)
                 }],
@@ -749,6 +782,7 @@ mod tests {
         let as_of = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
         let first = item("work", 1, as_of - Duration::seconds(2));
         let repeated = ActionInboxSourceItem {
+            due_basis: None,
             created_at: as_of - Duration::SECOND,
             ..first.clone()
         };
@@ -1068,6 +1102,30 @@ mod tests {
         }
     }
 
+    #[test]
+    fn binding_review_contributes_to_approval_attention_without_counting_reference_notices() {
+        let now = OffsetDateTime::UNIX_EPOCH;
+        let items = ["account_binding_review", "grant_notice"]
+            .map(|kind| super::projection::project_item(item(kind, 1, now), now, 1));
+        let counts = super::attention::counts(&items, true);
+        assert_eq!(
+            counts
+                .iter()
+                .find(|count| count.key == super::Attention::Approvals)
+                .unwrap()
+                .total,
+            1
+        );
+        assert_eq!(
+            counts
+                .iter()
+                .find(|count| count.key == super::Attention::All)
+                .unwrap()
+                .total,
+            2
+        );
+    }
+
     fn namespaced_kind(source: ActionInboxSource) -> &'static str {
         match source {
             ActionInboxSource::Workflow => "approval",
@@ -1092,12 +1150,16 @@ mod tests {
             ActionInboxSource::GrantNotice => "grant_notice",
             ActionInboxSource::SupportAccess => "support_access",
             ActionInboxSource::PrivacyRequests => "privacy_request",
+            ActionInboxSource::AccountBindingReview => "account_binding_review",
             ActionInboxSource::HrInsurance => "insurance_filing_ACQUIRE_NPS",
+            ActionInboxSource::TodoAssigned => "todo_assigned",
+            ActionInboxSource::TodoRequested => "todo_requested",
         }
     }
 
     fn item(kind: &'static str, id: u128, created_at: OffsetDateTime) -> ActionInboxSourceItem {
         ActionInboxSourceItem {
+            due_basis: None,
             context: None,
             id: format!("{kind}:{}", Uuid::from_u128(id)),
             kind: kind.to_owned(),

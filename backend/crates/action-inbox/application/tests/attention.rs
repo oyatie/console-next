@@ -10,6 +10,7 @@ fn row(
     due: Option<OffsetDateTime>,
 ) -> ActionInboxSourceItem {
     ActionInboxSourceItem {
+        due_basis: None,
         context: Some(json!({"reason":"기록된 요청 사유"})),
         id: format!("org_change:{}", uuid::Uuid::new_v4()),
         kind: kind.into(),

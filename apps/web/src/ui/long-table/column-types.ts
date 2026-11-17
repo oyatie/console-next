@@ -24,3 +24,9 @@ export function columnWidths(columns: readonly { type?: ColumnType; width?: unkn
     return width;
   });
 }
+
+/** Action tables keep their identity and controls together; data-entry grids retain column navigation. */
+export function minimumColumnWidth(columns: readonly { width?: unknown; minWidth?: unknown; card?: string; type?: ColumnType }[]): number {
+  if (!columns.some(column => column.card === "action" || column.type === "action")) return 0;
+  return columns.reduce((width, column) => width + Math.max(typeof column.width === "number" ? column.width : 0, typeof column.minWidth === "number" ? column.minWidth : 0), 0);
+}

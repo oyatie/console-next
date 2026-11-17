@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, test } from "vitest";
 
-test.each(["quality/ratchet.mjs", "check-person-reads.mjs", "check-copy.mjs"])("%s selects a related public/dev over unrelated dev and diagnoses invalid bases", script => {
+test.each(["quality/ratchet.mjs", "check-person-reads.mjs", "check-copy.mjs", "check-hangul.mjs"])("%s selects a related public/dev over unrelated dev and diagnoses invalid bases", script => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "quality-ref-")));
   const env = { ...process.env };
   delete env.QUALITY_BASE;
@@ -13,10 +13,10 @@ test.each(["quality/ratchet.mjs", "check-person-reads.mjs", "check-copy.mjs"])("
     for (const dir of ["scripts/quality", "backend/app/src", "backend/crates", "apps/web/src", "apps/web/public", "packages/api/src", "packages/i18n/src/catalogs/ko", "packages/i18n/src/catalogs/en"])
       mkdirSync(path.join(root, dir), { recursive: true });
     symlinkSync(path.resolve("node_modules"), path.join(root, "node_modules"), "dir");
-    for (const file of ["scripts/quality/ratchet.mjs", "scripts/check-person-reads.mjs", "scripts/check-copy.mjs", "packages/i18n/src/josa.ts"])
+    for (const file of ["scripts/quality/base.mjs", "scripts/check-hangul.mjs", "scripts/quality/ratchet.mjs", "scripts/check-person-reads.mjs", "scripts/check-copy.mjs", "packages/i18n/src/josa.ts"])
       copyFileSync(file, path.join(root, file));
     for (const [file, text] of Object.entries({
-      ".gitignore": "node_modules/\n",
+      ".gitignore": "node_modules\n",
       "package.json": '{"type":"module"}',
       "scripts/person-reads-baseline.json": "{}",
       "scripts/copy-maturity-baseline.json": "{}",
@@ -26,6 +26,8 @@ test.each(["quality/ratchet.mjs", "check-person-reads.mjs", "check-copy.mjs"])("
     })) writeFileSync(path.join(root, file), text);
     const git = (...args: string[]) => execFileSync("git", ["-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", ...args], { cwd: root, encoding: "utf8", stdio: "pipe" }).trim();
     git("init", "-b", "lane");
+    git("add", ".");
+    writeFileSync(path.join(root, "scripts/copy-hangul-baseline.json"), JSON.stringify({ allow: [] }));
     git("add", ".");
     git("commit", "-m", "quality fixture");
     git("branch", "dev");
@@ -46,7 +48,11 @@ test.each(["quality/ratchet.mjs", "check-person-reads.mjs", "check-copy.mjs"])("
     }
     const override = run("lane");
     expect(override.status, override.stderr).toBe(0);
+    git("update-ref", "refs/remotes/origin/dev", "lane");
     git("update-ref", "-d", "refs/remotes/public/dev");
+    const origin = run();
+    expect(origin.status, origin.stderr).toBe(0);
+    git("update-ref", "-d", "refs/remotes/origin/dev");
     const noAncestor = run();
     expect(noAncestor.status).toBe(1);
     expect(noAncestor.stderr).toContain("cannot resolve quality merge-base between HEAD and dev");

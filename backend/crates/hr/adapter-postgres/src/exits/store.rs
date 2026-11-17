@@ -35,7 +35,8 @@ pub async fn load_exit_case_context(
             e.org_unit,
             e.position,
             e.worksite_name,
-            to_char(e.hire_on, 'YYYY-MM-DD') AS hire_date,
+            to_char(COALESCE(h.severance_start_date, h.hire_date, e.hire_on), 'YYYY-MM-DD') AS hire_date,
+            to_char(COALESCE(h.service_start_date, h.hire_date, e.hire_on), 'YYYY-MM-DD') AS service_start_date,
             c.branch_id,
             b.name AS branch_name,
             c.status,
@@ -43,9 +44,12 @@ pub async fn load_exit_case_context(
             c.effective_exit_date::TEXT AS effective_exit_date,
             c.site_manager_note
         FROM employee_exit_cases c
-        JOIN employees e
+        JOIN person_employees_current e
           ON e.id = c.employee_id
          AND e.org_id = c.org_id
+        LEFT JOIN employment_heads h
+          ON h.org_id = c.org_id AND h.id = c.employment_id AND h.employee_id = c.employee_id
+         AND NOT h.needs_confirmation
         LEFT JOIN branches b
           ON b.id = c.branch_id
          AND b.org_id = c.org_id
@@ -75,6 +79,7 @@ pub async fn load_exit_case_context(
         position: row.try_get("position")?,
         worksite_name: row.try_get("worksite_name")?,
         hire_date: row.try_get("hire_date")?,
+        service_start_date: row.try_get("service_start_date")?,
         branch_id: row.try_get("branch_id")?,
         branch_name: row.try_get("branch_name")?,
         status: row.try_get("status")?,

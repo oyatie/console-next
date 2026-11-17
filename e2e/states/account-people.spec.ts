@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
 import { authz, employees, failure, id, user } from "../mock/fixtures";
@@ -8,6 +10,9 @@ import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { mockLifecycleSheets, moveDetail } from "../mock/lifecycle-sheets";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
+import { routeReady } from "../flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 type User = components["schemas"]["UserSummary"];
 const employee = { ...employees(1)[0]!, name: "김직원", employee_number: "EMP-12", company: "연결회사", org_unit: "인사팀" };
@@ -48,6 +53,29 @@ async function fixture(page: Page, initial: User = linked) {
   });
   return { ...shell, writes, setAccount: (next: User) => { account = next; }, failSearch: () => { searchFailed = true; }, recoverSearch: () => { searchFailed = false; } };
 }
+
+for (const intent of ["hover", "focus"] as const) test(`a person link ${intent} preloads code without reading the record @ui-state`, async ({ page }) => {
+  const f = await fixture(page);
+  const reads: string[] = [];
+  page.on("request", request => {
+    const path = new URL(request.url()).pathname;
+    if (path === `/api/v1/employees/${employee.id}` || path === "/api/v1/employment-assignments") reads.push(path);
+  });
+  try {
+    await page.goto(`/people?view=accounts&sel=${linked.id}`);
+    await routeReady(page);
+    const person = page.getByRole("region", { name: t("accounts.section.employee"), exact: true })
+      .getByRole("link", { name: new RegExp(`${employee.name}.*${employee.employee_number}`) });
+    const chunk = page.waitForResponse(/\/assets\/card-page-[^/]+\.js$/);
+    if (intent === "hover") await person.hover();
+    else await person.focus();
+    await (await chunk).finished();
+    await routeReady(page);
+    expect(reads).toEqual([]);
+    expect(f.unexpected).toEqual([]);
+    await expect(page).toHaveURL(/view=accounts/);
+  } finally { await page.close(); f.release(); }
+});
 
 for (const width of [1440, 390]) {
   test(`direct relink keeps the current employee until independent confirmation at ${width}px @ui-state`, async ({ page }) => {
@@ -193,7 +221,7 @@ for (const width of [1440, 390]) {
   test(`the gallery includes a person reference at ${width}px @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await fixture(page);
-    await page.goto("/_gallery?entry=links");
+    await mockNavigate(page, "/_gallery?entry=links");
     await expect(page.getByRole("link", { name: /1번 직원.*E-001.*한결물산.*인사부/ })).toHaveAttribute("href", "/people/gallery-person");
     await expectAxe(page, "person reference gallery");
     expect(await page.evaluate(() => document.scrollingElement!.scrollWidth - innerWidth)).toBe(0);
@@ -305,7 +333,7 @@ test("a failed person search reports the refusal without an empty-result claim @
   await expect(page.getByRole("option", { name: "일치하는 결과가 없습니다", exact: true })).toHaveCount(0);
   await expect(page.getByText("일치하는 직원이 없습니다. 직원 기록이 없으면 먼저 직원을 등록합니다.", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("status").filter({ hasText: "0건" })).toHaveCount(0);
-  await expect(page.getByRole("status").filter({ hasText: "잠시 뒤 다시 시도하십시오." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toBeVisible();
   f.recoverSearch();
   await page.getByRole("button", { name: "다시 불러오기", exact: true, includeHidden: true }).click();
   await expect(search).not.toHaveAttribute("aria-invalid", "true");

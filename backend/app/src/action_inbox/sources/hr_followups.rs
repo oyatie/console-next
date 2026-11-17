@@ -125,6 +125,7 @@ pub(crate) async fn page(
                 .into_iter()
                 .take(query.limit)
                 .map(|(id, name, created_at, due)| ActionInboxSourceItem {
+                    due_basis: None,
                     context: Some(serde_json::json!({ "review_count": total })),
                     id: format!("{namespace}:{id}"),
                     kind: kind.into(),

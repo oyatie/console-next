@@ -64,8 +64,8 @@ test.each([
   ["leave v2 leave_type", schemas.LeaveRequestV2View!.properties!.leave_type!, 2],
   ["change request kind", schemas.ChangeRequest!.properties!.kind!, 9],
   ["change request subject_type", schemas.ChangeRequest!.properties!.subject_type!, 5],
-  ["access domain", schemas.AccessDomain!, 19],
-  ["action inbox source", schemas.ActionInboxItem!.properties!.kind!, 46],
+  ["access domain", schemas.AccessDomain!, 20],
+  ["action inbox source", schemas.ActionInboxItem!.properties!.kind!, 49],
 ] as const)("%s permits future response values and retains every documented value", (_, schema, count) => {
   expect(schema.type).toBe("string");
   expect(schema.enum).toBeUndefined();
@@ -96,6 +96,7 @@ test("org decision 409 is one object preserving the N-1 error and optional refus
   expect(schemas.ErrorBody).not.toHaveProperty("oneOf");
   expect(schemas.ErrorBody!.properties!.error!.properties!.details).toEqual({ type: "object", properties: {
     current_version: { type: "string", description: "Current opaque decision version; re-read the document before deciding again." },
+    latest: { type: "string", format: "date", description: "The last day an inbox item may be postponed to, present on a snooze_past_legal_due refusal." },
   } });
   expect(schemas.ErrorBody!.properties!.error!.required).toEqual(["code", "message"]);
   expect(schemas.ErrorBody!.properties!.error!.properties!.current_version!.type).toBe("integer");
@@ -131,4 +132,11 @@ test("day detail adds only an optional row-density query and leaves the response
   });
   expect(path.get.parameters.filter(p => p.required).map(p => p.name)).toEqual(["date"]);
   expect(path.get.responses["200"]).toMatchObject({ content: { "application/json": { schema: { $ref: "#/components/schemas/AttendanceDayBoard" } } } });
+});
+
+test("import confirmation is optional without extending released sheet statuses", () => {
+  const sheet = schemas.EmployeeImportSheetReport!;
+  expect(sheet.properties!.status!.enum).toEqual(["mapped", "needs_mapping", "empty", "skipped"]);
+  expect(sheet.properties!.needs_confirmation!.type).toBe("boolean");
+  expect(sheet.required).not.toContain("needs_confirmation");
 });

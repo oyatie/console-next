@@ -11,29 +11,26 @@ import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { usePageActive } from "../../../lib/react/page-active";
 import { freshOnOpen } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
-import { editable } from "../../../ui/long-table/row-keys";
+import { useKeys } from "../../../lib/react/use-keys";
 import { contractsQuery, employeeQuery, endOptionsQuery, eventsQuery, exitCasesQuery } from "../api";
 import { rrnStatusQuery } from "../api/record";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
+import { unitsQuery } from "../../../reference/org/api";
 import { authzApplies, authzQuery, granted } from "../../../reference/authz/api";
 import { verbStates } from "../domain/lifecycle";
 import type { Done } from "./person-act";
-import { ProfileHost } from "./profile-host";
-import { CancelHost } from "./cancel-sheet";
 import { CardBar, CardBody } from "./card-body";
 import { CardHead, type CardTab } from "./card-head";
 import { chunk } from "../../../lib/chunk-guard";
 import { CardSkeleton } from "./card-states";
 import { CardTabs } from "./card-tabs";
-import { FixHost } from "./fix-host";
 import { useCard } from "./use-card";
 import { useQuick } from "./use-quick";
 import { directorySearch } from "./use-linked-account";
-import { CaseSheet } from "./lifecycle-trail";
 import { PeopleJump } from "./people-jump";
 import s from "./card.module.css";
 
-const ActHost = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.ActHost })));
+const CardActions = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.CardActions })));
 const CardPrint = lazy(() => chunk(import("./card-print")).then(m => ({ default: m.CardPrint })));
 
 type Detail = components["schemas"]["EmployeeDetail"];
@@ -53,6 +50,7 @@ export function EmployeeCard() {
   const events = freshOnOpen(useQuery({ ...eventsQuery(id), refetchOnMount: "always" }));
   const placed = useFreshOnArrival(useQuery(placement), placement);
   const entities = useFreshOnArrival(useQuery(entitiesRef), entitiesRef);
+  const units = useQuery(unitsQuery);
   const can = granted(authz.data?.capabilities, authz.isError);
   const manage = can("employee_directory_manage", "all");
   const users = can("user_manage");
@@ -68,7 +66,7 @@ export function EmployeeCard() {
   const first = (q: { isPending: boolean; failureCount: number }) => q.isPending && q.failureCount === 0;
   const view = queryView(detail);
   if (view === "denied" || view === "not-found" || (detail.error && !detail.data)) return <div className={s.page}><QueryState q={detail} layout="record" back={{ to: "/people", label: t("peopleJump.keys.group.roster") }}>{() => null}</QueryState></div>;
-  const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || (manage && (first(contracts) || first(ends) || first(exits) || first(rrn))) || (users && !!detail.data && first(account));
+  const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || first(units) || (manage && (first(contracts) || first(ends) || first(exits) || first(rrn))) || (users && !!detail.data && first(account));
   if (detail.isPending || (opened !== id && loading)) return <CardSkeleton />;
   // Later reads keep the mounted card and anything typed into it, including a changed account-search key.
   if (detail.isSuccess && opened !== id) setOpened(id);
@@ -79,6 +77,9 @@ function Card({ d }: { d: Detail }) {
   const c = useCard(d);
   const quick = useQuick(c);
   const { act, back, tab: requestedTab = "card" } = route.useSearch();
+  // Keep action hosts mounted after their first use so closing a sheet preserves its receipt.
+  const [actionsOpened, setActionsOpened] = useState(Boolean(act));
+  if (act && !actionsOpened) setActionsOpened(true);
   const documents = useDocumentsServed();
   const tab = requestedTab === "docs" && !documents ? "card" : requestedTab;
   const navigate = route.useNavigate();
@@ -128,19 +129,12 @@ function Card({ d }: { d: Detail }) {
     // H: the record's history (change history), where every dated fact and correction of its sections is listed.
     keys.current.history = () => onTab("ledger");
   });
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || editable(e.target) || document.querySelector("[role=dialog]")) return;
-      if (/^[1-8]$/.test(e.key)) keys.current.jump(Number(e.key));
-      else if (e.key === "j") keys.current.next?.();
-      else if (e.key === "k") keys.current.prev?.();
-      else if (e.key === "h") keys.current.history();
-      else return;
-      e.preventDefault();
-    };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
-  }, []);
+  useKeys({
+    "card.section": (_, n) => keys.current.jump(Number(n)),
+    "card.next": () => keys.current.next?.(),
+    "card.prev": () => keys.current.prev?.(),
+    "card.history": () => keys.current.history(),
+  });
   // The print view replaces the whole card, so its code load needs the page-shaped wait.
   if (act === "print") return <Suspense fallback={<CardSkeleton />}><CardPrint c={c} onClose={close} /></Suspense>;
   const verbs = c.editable && d.employee.status !== "EXITED" ? verbStates(d, c.events.data?.items ?? []) : [];
@@ -150,11 +144,7 @@ function Card({ d }: { d: Detail }) {
         <CardHead c={c} onTab={onTab} onAct={open} onGo={go} onKeys={(next, prev) => Object.assign(keys.current, { next, prev })} />
         {tab === "card" && c.manage && <CardBar c={c} current={current} onJump={jumpTo} />}
       </div>
-      {act && <Suspense fallback={null}><ActHost d={d} act={act} back={back} events={c.events} onClose={close} onOpen={open} onRecorded={recorded} /></Suspense>}
-      <ProfileHost d={d} act={act} onClose={close} />
-      <FixHost c={c} act={act} onClose={close} onAct={open} />
-      {act?.startsWith("case:") && <CaseSheet id={act.slice(5)} onClose={close} />}
-      <CancelHost e={d.employee} act={act} onClose={close} onAct={open} />
+      {actionsOpened && <Suspense fallback={null}><CardActions c={c} act={act} back={back} onClose={close} onOpen={open} onRecorded={recorded} /></Suspense>}
       {tab === "card" ? (
         <CardBody c={c} quick={quick} act={act} onAct={open} onTab={onTab} onJump={jumpTo} />
       ) : (

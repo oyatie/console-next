@@ -28,6 +28,7 @@ impl ActionInboxSourcePort for Sources {
                 .iter()
                 .enumerate()
                 .map(|(n, kind)| ActionInboxSourceItem {
+                    due_basis: None,
                     context: None,
                     id: format!(
                         "{}:{}",
@@ -133,6 +134,7 @@ fn every_approval_kind_and_only_approval_kinds_contribute() {
     ] {
         let now = OffsetDateTime::UNIX_EPOCH;
         let item = ActionInboxSourceItem {
+            due_basis: None,
             context: None,
             id: kind.into(),
             kind: kind.into(),

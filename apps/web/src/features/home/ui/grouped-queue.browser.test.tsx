@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import { chromium, firefox, expect as pw, type Browser, type Page } from "@playwright/test";
+import { expect as pw, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
-import { browserTestOptimizeDeps } from "../../../lib/browser-test";
-// Firefox runs with the cross-browser suite (E2E_XBROWSER=1); CI installs Chromium only.
-const ENGINES = process.env.E2E_XBROWSER === "1" ? [chromium, firefox] : [chromium];
+import { browserEngine, browserTestOptimizeDeps } from "../../../lib/browser-test";
+const ENGINES = [browserEngine()];
 
 type Item = components["schemas"]["ActionInboxItem"] & { age_days?: number | null };
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, kind: "register_review", title: id, ref: "", lane: "turn", urg: "wait", dueTone: "neutral", days_remaining: null, done: false, links: [], ...extra });

@@ -22,7 +22,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { checkContrast } from "./check-contrast.mjs";
+import { checkTokens, experienceFiles } from "./check-contrast.mjs";
 import { brokenRefs, decodeIdent, parseCss } from "./check-ds-refs.mjs";
 export { decodeIdent } from "./check-ds-refs.mjs";
 
@@ -90,6 +90,8 @@ const TOKENS = "packages/tokens/tokens.css";
 export function measure(root, problems = []) {
   const files = walk(path.join(root, APP)).map((p) => posix(path.relative(root, p)));
   if (existsSync(path.join(root, TOKENS))) files.push(TOKENS);
+  // An experience file is checked like the base: its values are references, and its own names stay its own.
+  files.push(...experienceFiles(path.join(root, TOKENS)).map((p) => posix(path.relative(root, p))));
   const sources = new Map(files.filter((f) => /\.(?:css|tsx?)$/.test(f) && !/\.test\.tsx?$/.test(f))
     .map((f) => [f, readFileSync(path.join(root, f), "utf8")]));
   const counts = {};
@@ -171,7 +173,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   }
   const problems = [...hardFailures, ...compare(counts, existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {})];
   const tokens = path.join(root, TOKENS);
-  if (existsSync(tokens)) problems.push(...checkContrast(readFileSync(tokens, "utf8")).problems);
+  if (existsSync(tokens)) problems.push(...checkTokens(tokens).problems);
   console.log(`design system: ${METRICS.map((m) => `${m}=${Object.values(counts).reduce((sum, c) => sum + (c[m] ?? 0), 0)}`).join(" ")}`);
   if (problems.length) {
     console.error(`design system: ${problems.length} problem(s):\n${problems.join("\n")}`);

@@ -14,11 +14,19 @@ import { personalFactsQuery } from "../api/record";
 import { fmtDay, whyText } from "../present";
 import type { LifecycleEvent } from "../api";
 import { CancelSheet } from "./lifecycle-cancel";
+import { CancelHost } from "./cancel-sheet";
 import { RescindSheet } from "./lifecycle-rescind";
 import { GroupTransferSheet } from "./group-transfer-sheet";
 import { LifecycleSheet } from "./lifecycle-sheet";
 import { RehireSheet } from "./register-rehire";
+import { ProfileHost } from "./profile-host";
+import { FixHost } from "./fix-host";
+import { CaseSheet } from "./lifecycle-trail";
+import type { Card } from "./use-card";
 import s from "./person.module.css";
+
+// Account binding shares the record's on-demand action entry.
+export { AccountLinkContent } from "./account-link-content";
 
 type Detail = components["schemas"]["EmployeeDetail"];
 type Allowed = Detail["allowed_events"][number];
@@ -134,6 +142,8 @@ export function ActHost({ d, act, back, events, onClose, onOpen, onRecorded }: {
     if (!mine || r) setSnap(mine && r ? { act: mine, back, at: d.employee.updated_at, head: events.data?.head_version ?? 0, r } : null);
   }
   const e = d.employee;
+  // Registration cancellation shares the click-loaded action entry, keeping its sheet out of the initial card.
+  if (act === "cancel") return <CancelHost e={e} act={act} onClose={onClose} onAct={onOpen} />;
   if (mine === "menu") return <LifecycleMenu d={d} verbs={verbStates(d, events.data?.items ?? [])} setup={setup} onOpen={(next) => onOpen(next)} onClose={onClose} />;
   // A rehire (spec E3-rehire) opens from a retained exit; anyone else is told why.
   if (mine === "rehire")
@@ -215,3 +225,17 @@ export function ActHost({ d, act, back, events, onClose, onOpen, onRecorded }: {
     />
   );
 }
+
+/** Record forms share the interaction chunk; their hosts retain receipts after the sheet closes. */
+export function CardActions({ c, act, back, onClose, onOpen, onRecorded }: { c: Card; act?: string; back?: string; onClose: () => void; onOpen: (act: string, back?: string) => void; onRecorded: (done: Done) => void }) {
+  return <>
+    {act && <ActHost d={c.d} act={act} back={back} events={c.events} onClose={onClose} onOpen={onOpen} onRecorded={onRecorded} />}
+    <ProfileHost d={c.d} act={act} onClose={onClose} />
+    <FixHost c={c} act={act} onClose={onClose} onAct={onOpen} />
+    {act?.startsWith("case:") && <CaseSheet id={act.slice(5)} onClose={onClose} />}
+  </>;
+}
+
+export { StepForm } from "./exit-axis";
+export { CloseForm } from "./exit-close";
+export { ReportForm } from "./exit-report";

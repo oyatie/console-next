@@ -107,13 +107,29 @@ pub fn completes_one_year_of_service(
     hire_date: Date,
     exit_date: Date,
 ) -> Result<bool, KernelError> {
+    completes_service_years(hire_date, exit_date, 1)
+}
+
+/// Calendar service threshold supplied by the exit-dated statutory register.
+/// The anniversary interpretation remains pending labor-attorney review.
+pub fn completes_service_years(
+    hire_date: Date,
+    exit_date: Date,
+    years: i32,
+) -> Result<bool, KernelError> {
     if exit_date < hire_date {
         return Err(KernelError::validation(
             "exit date must be on or after hire date",
         ));
     }
-    let anniversary =
-        same_day_or_next_month_start(hire_date.year() + 1, hire_date.month(), hire_date.day())?;
+    if years <= 0 {
+        return Err(KernelError::validation("service years must be positive"));
+    }
+    let year = hire_date
+        .year()
+        .checked_add(years)
+        .ok_or_else(|| KernelError::validation("service anniversary is out of range"))?;
+    let anniversary = same_day_or_next_month_start(year, hire_date.month(), hire_date.day())?;
     Ok(loss_date(exit_date)? >= anniversary)
 }
 
@@ -284,6 +300,18 @@ mod tests {
         assert!(!yes(date!(2024 - 02 - 29), date!(2025 - 02 - 27)));
         // 200 days of service.
         assert!(!yes(date!(2026 - 01 - 01), date!(2026 - 07 - 19)));
+    }
+
+    #[test]
+    fn service_years_are_supplied_and_must_be_positive_and_representable() {
+        assert!(!completes_service_years(date!(2025 - 01 - 01), date!(2025 - 12 - 31), 2).unwrap());
+        assert!(completes_service_years(date!(2025 - 01 - 01), date!(2026 - 12 - 31), 2).unwrap());
+        for years in [0, -1, i32::MAX] {
+            assert!(
+                completes_service_years(date!(2025 - 01 - 01), date!(2025 - 12 - 31), years)
+                    .is_err()
+            );
+        }
     }
 
     #[test]

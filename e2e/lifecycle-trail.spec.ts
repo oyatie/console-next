@@ -18,7 +18,7 @@ import { reasonChip } from "./helpers/lifecycle";
 import { filingRow, prepareFilingCompletion } from "./helpers/statutory";
 import { holdRead } from "./helpers/read";
 import { releaseChangeRules } from "./helpers/filing-register";
-import { fillDate, reasonBox, signOff, todayPreset } from "./sheet";
+import { fillDate, reasonBox, sheet, signOff, todayPreset } from "./sheet";
 
 type Case = components["schemas"]["LifecycleCase"];
 type Item = components["schemas"]["LifecycleCaseItem"];
@@ -289,7 +289,7 @@ test("one intercompany transfer shows two linked cases in one history entry and 
   const history = admin.getByRole("region", { name: "인사 이력", exact: true });
   const entry = history.locator(`[id="ev-${event.id}"]`);
   await expect(entry).toHaveCount(1);
-  await expect(history.getByRole("status").filter({ hasText: /강연결.*전적했습니다/ })).toHaveCount(1);
+  await expect(admin.getByRole("status").filter({ hasText: /강연결.*전적했습니다/ })).toHaveCount(1);
   await entry.getByRole("button", { name: title, exact: true }).click();
   const sheet = admin.getByRole("dialog", { name: title, exact: true });
   await expect(sheet.getByRole("region", { name: "신고", exact: true })).toBeVisible();
@@ -358,9 +358,10 @@ test(`a workplace appointment ${released ? "records released filings and closes 
   const restore = released ? releaseChangeRules() : undefined;
   try {
   await hrAct(admin, "전보");
-  const transfer = admin.getByRole("dialog", { name: "전보", exact: true });
+  const transfer = sheet(admin, "한발령 전보");
   await transfer.getByRole("combobox", { name: "어디로" }).fill("지점업무");
   await admin.getByRole("option", { name: /지점업무/ }).click();
+  await expect(transfer).toHaveAccessibleName("전근");
   await todayPreset(transfer).click();
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("지점 사업장으로 발령");
@@ -375,7 +376,7 @@ test(`a workplace appointment ${released ? "records released filings and closes 
   }
   const preview = await transfer.locator("[data-trail-preview-item]").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-trail-preview-item")));
   await audit(admin, "workplace composer trail preview");
-  await transfer.getByRole("button", { name: "전보 1명 적용", exact: true }).click();
+  await transfer.getByRole("button", { name: "전근 1명 적용", exact: true }).click();
   await expect(transfer).toBeHidden();
   const cases = await read<Case[]>(`/api/v1/employees/${person}/lifecycle-cases`);
   const appointment = cases.find((value) => value.kind === "APPOINT")!;

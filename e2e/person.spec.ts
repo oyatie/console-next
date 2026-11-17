@@ -5,7 +5,7 @@ import { go, koDate, kstDate, registerEmployee } from "./flows";
 import { hrAct, openHistory } from "./record";
 import { registerBranch, staffedTenant } from "./setup-flows";
 import { koDay } from "./dates";
-import { chooseWorkbook } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "./helpers/import";
 import { workbook } from "./helpers/import-layouts";
 import { reasonChip } from "./helpers/lifecycle";
 import { reasonBox, said, sheet, todayPreset, fillDate } from "./sheet";
@@ -66,7 +66,7 @@ test("employee page: effective-date history, change a reservation, statutory pla
   await backdated.click();
   const promoted = history.getByRole("listitem").filter({ hasText: "소급 승진" });
   await expect(promoted).toBeFocused();
-  await expect(history.getByRole("status").filter({ hasText: "정기록님을 대리로 승진 처리했습니다" })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: "정기록님을 대리로 승진 처리했습니다" })).toBeVisible();
   await expect(history.getByRole("listitem")).toHaveText([/채용팀으로 전보했습니다/, /소급 승진/, /직원 등록/]);
   await expect(history.getByRole("separator", { name: /^오늘 · / })).toBeVisible();
   await expectAccessible(admin, "employee page: history by effective date with a receipt");
@@ -120,6 +120,7 @@ test("employee page: effective-date history, change a reservation, statutory pla
     ["PG-0002", "정미배치", "", "사원", "2025-03-03", "정규직"],
   ] }]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await admin.getByRole("button", { name: /^명부 반영: 신규 1명/ }).click();
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();

@@ -13,9 +13,10 @@ pub(crate) async fn page(
     principal: &Principal,
     query: ActionInboxSourceQuery,
     register: &super::super::request_register::Register,
+    log_access: bool,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     let register = async {
-        super::super::request_register::get(pool, register)
+        super::super::request_register::get(pool, register, principal.org_id, query.as_of)
             .await
             .map_err(|error| {
                 HrError::from_kernel(super::super::source_failure("hr_insurance", error))
@@ -37,6 +38,7 @@ pub(crate) async fn page(
                 .after
                 .clone()
                 .map(|position| (position.due, position.created_at, position.id)),
+            log_access,
         )
         .await
     {
@@ -50,6 +52,14 @@ pub(crate) async fn page(
         .into_iter()
         .map(|task| {
             let metadata = serde_json::to_value(&task).map_err(|_| KernelError::internal("failed to project filing identity"))?;
+            let due = task
+                .due_date
+                .as_deref()
+                .and_then(|d| console_hr_domain::text::parse_yyyy_mm_dd(d).ok())
+                .map(|d| {
+                    PrimitiveDateTime::new(d, Time::MAX - time::Duration::nanoseconds(999))
+                        .assume_offset(UtcOffset::from_hms(9, 0, 0).unwrap_or(UtcOffset::UTC))
+                });
             Ok(ActionInboxSourceItem {
             context: Some(serde_json::json!({ "insurance": {
                 "insurer": task.insurer, "kind": task.kind, "effective_date": task.effective_date,
@@ -64,14 +74,8 @@ pub(crate) async fn page(
             title: task.name,
             site: task.workplace_name,
             who: None,
-            due: task
-                .due_date
-                .as_deref()
-                .and_then(|d| console_hr_domain::text::parse_yyyy_mm_dd(d).ok())
-                .map(|d| {
-                    PrimitiveDateTime::new(d, Time::MAX - time::Duration::nanoseconds(999))
-                        .assume_offset(UtcOffset::from_hms(9, 0, 0).unwrap_or(UtcOffset::UTC))
-                }),
+            due_basis: due.map(|_| console_action_inbox_application::DueBasis::Statutory),
+            due,
             submitted: None,
             created_at: task.created_at,
             links: vec![ActionInboxLink {

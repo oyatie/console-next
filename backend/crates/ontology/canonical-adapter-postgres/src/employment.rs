@@ -75,7 +75,9 @@
 //! trait ever gains an async form.
 
 mod appointment;
+mod appointment_batch;
 mod change_window;
+mod checks;
 mod derived;
 mod error;
 mod legacy_head;
@@ -87,11 +89,13 @@ mod read;
 mod receipt;
 mod write;
 
+pub use appointment_batch::appoint_legacy_heads_in_tx;
 pub use derived::{appoint_legacy_head_in_tx, reassign_org_unit_via_transfers_in_tx};
 pub use error::EmploymentError;
 pub use legacy_head::{
     EmploymentChange, NewEmployeeRecord, apply_employment_change, assignable_org_unit_name,
-    insert_employee_record, set_employee_org_unit,
+    assignable_org_units, insert_employee_record, insert_employee_records, set_employee_org_unit,
+    set_employee_org_units,
 };
 pub use lookups::{ensure_job_position_exists, ensure_org_unit_exists};
 pub use model::{EmploymentAttributes, EmploymentCommand, EmploymentQuery};

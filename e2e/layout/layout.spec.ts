@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { expect, test } from "@playwright/test";
 
 for (const width of [390, 1280, 1440, 1920]) for (const theme of ["light", "dark"]) {
@@ -7,7 +8,7 @@ for (const width of [390, 1280, 1440, 1920]) for (const theme of ["light", "dark
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     // Other gallery entries may read access facts; no live API participates in this component proof.
     await page.route("**/api/**", route => route.fulfill({ status: 403, json: { error: { code: "forbidden", message: "" } } }));
-    await page.goto("/_gallery");
+    await mockNavigate(page, "/_gallery");
     // The lazy gallery route must mount before the table assertions use their own budget.
     await expect(page.getByRole("heading", { name: "컴포넌트 갤러리", level: 1, includeHidden: true })).toBeVisible({ timeout: 15_000 });
     if (width === 390) {

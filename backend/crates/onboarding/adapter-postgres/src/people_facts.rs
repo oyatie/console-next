@@ -4,10 +4,8 @@ use console_onboarding_domain::{Breakdown, Record, Records};
 use sqlx::{Postgres, Row, Transaction};
 
 macro_rules! current { () => { "WITH RECURSIVE today AS (SELECT entity_today() AS d), \
- people AS (SELECT e.id, e.name, entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employed, e.org_unit_id, e.source_metadata, up.employee_id IS NOT NULL AS unplaced, a.legal_entity_id, cp.workplace_id \
- FROM person_employees_current e LEFT JOIN employment_resolved_assignments a ON a.employee_id=e.id AND a.org_id=e.org_id \
- LEFT JOIN employment_unplaced_people up ON up.org_id=e.org_id AND up.employee_id=e.id \
- LEFT JOIN employment_current_placements cp ON cp.employee_id=e.id AND cp.org_id=e.org_id \
+ people AS (SELECT e.id, e.org_id, entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employed, e.org_unit_id, e.source_metadata, a.workplace_id IS NULL AS unplaced, a.legal_entity_id, a.workplace_id \
+ FROM (SELECT id,org_id,hire_on,exit_on,employment_status,org_unit_id,source_metadata,merged_into_employee_id FROM employees) e LEFT JOIN employment_resolved_assignments a ON a.employee_id=e.id AND a.org_id=e.org_id \
  WHERE entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) NOT IN ('EXITED','VOIDED') \
  AND e.merged_into_employee_id IS NULL) " }; }
 
@@ -17,7 +15,7 @@ pub(crate) async fn records(
     let sql = concat!(
         current!(),
         ", reviewed AS (SELECT *, employed AND (org_unit_id IS NULL OR org_unit_id NOT IN (SELECT department_unit_ids())) AS no_department FROM people) \
-        SELECT id::text, name, legal_entity_id::text AS entity, no_department, \
+        SELECT id::text, (SELECT p.name FROM person_employees_current p WHERE p.org_id=reviewed.org_id AND p.id=reviewed.id) AS name, legal_entity_id::text AS entity, no_department, \
         unplaced, \
         (org_unit_id IS NULL AND source_metadata ? 'unresolved_org_unit') AS department_missing \
         FROM reviewed WHERE no_department OR legal_entity_id IS NULL OR unplaced \
@@ -103,4 +101,17 @@ pub(crate) async fn breakdown(
             })
         })
         .collect()
+}
+
+/// The checklist needs counts, without preview records or personal display facts.
+pub(crate) async fn counts(
+    tx: &mut Transaction<'_, Postgres>,
+) -> Result<[i64; 4], PgOnboardingError> {
+    let row: (i64,i64,i64,i64) = sqlx::query_as(concat!(current!(),
+        "SELECT count(*) FILTER (WHERE unplaced), \
+         count(*) FILTER (WHERE org_unit_id IS NULL AND source_metadata ? 'unresolved_org_unit'), \
+         count(*) FILTER (WHERE employed AND (org_unit_id IS NULL OR org_unit_id NOT IN (SELECT department_unit_ids()))), \
+         count(*) FILTER (WHERE legal_entity_id IS NULL) FROM people"))
+        .fetch_one(tx.as_mut()).await?;
+    Ok([row.0, row.1, row.2, row.3])
 }

@@ -127,7 +127,7 @@ infer = { version = "0.22.0", default-features = false, features = ["std"] }
 # must mean 09:00 KST, not UTC). chrono was already in the lockfile
 # transitively; `time` stays the workspace-wide datetime type and chrono is
 # confined to the cron boundary.
-croner = "3.0.1"
+croner = "4.0.3"
 chrono = { version = "0.4.45", default-features = false, features = ["std"] }
 chrono-tz = "0.10.4"
 # Versions verified live against crates.io 2026-06-12:

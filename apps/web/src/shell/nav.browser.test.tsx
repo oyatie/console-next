@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { chromium, expect as element, firefox, type Browser, type Page } from "@playwright/test";
+import { expect as element, type Browser, type Page } from "@playwright/test";
 import { user } from "../../../../e2e/mock/fixtures";
 import { clearShifts } from "../../../../e2e/stability";
-import { waitForBrowserTestPage } from "../lib/browser-test";
+import { browserEngine, waitForBrowserTestPage } from "../lib/browser-test";
 import { navFixture } from "./nav.browser-fixture";
 
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 let errors: string[];
-beforeAll(async () => { ({ server, browser, page, errors } = await navFixture(process.env.E2E_XBROWSER === "1" ? firefox : chromium)); }, 60_000);
+beforeAll(async () => { ({ server, browser, page, errors } = await navFixture(browserEngine())); }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 async function controlBounds() {

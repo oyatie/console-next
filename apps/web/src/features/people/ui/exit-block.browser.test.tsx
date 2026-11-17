@@ -23,6 +23,7 @@ beforeAll(async () => {
     "./exit-axis": "export const StepForm=()=>null;",
     "./exit-close": "export const CloseForm=()=>null;",
   };
+  mocks["./person-act"] = ["./exit-report", "./exit-axis", "./exit-close"].map(name => mocks[name]).join("\n");
   server = await createServer({ configFile: false, cacheDir: ".cache/exit-receipt-test", logLevel: "error",
     optimizeDeps: browserTestOptimizeDeps,
     server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
@@ -79,6 +80,7 @@ test.each([1440, 390])("a late report receipt keeps the next exit control in pla
   await page.getByRole("button", { name: "퇴직 보고", exact: true }).waitFor();
   expect(await page.getByRole("status").count()).toBe(0);
   await page.evaluate(() => (window as unknown as { openExit: () => void }).openExit());
+  await page.waitForFunction(() => typeof (window as unknown as { exitReceipt?: () => void }).exitReceipt === "function");
   const reserved = (await page.locator('[class*="receiptSlot"]').boundingBox())!.height;
   await page.evaluate(() => (window as unknown as { readExit: () => void }).readExit());
   const control = page.getByRole("button", { name: "인사 확인하고 퇴직 처리", exact: true });

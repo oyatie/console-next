@@ -1,6 +1,6 @@
 //! IMPORT-2 (decisions #25): which row of a sheet is its header and which
 //! column is which target, for any layout. In order: the operator's mapping
-//! for the sheet, then the tenant's remembered header labels, then the
+//! for the sheet, then remembered exclusions, exact column keys, remembered mappings, then the
 //! catalog aliases. A sheet with content but no row naming a name column is
 //! not guessed at: it comes back `NeedsMapping` with its likeliest header
 //! rows, and its cells are not kept.
@@ -9,7 +9,9 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::classification::{import_header_match_key, normalize_header_label};
+use super::classification::{
+    employee_import_target_for_header, import_header_match_key, normalize_header_label,
+};
 use super::detect_candidates::candidates;
 pub use super::detect_candidates::{CandidateCell, HeaderCandidate};
 use super::fields::EMPLOYEE_IMPORT_FIELD_DEFINITIONS;
@@ -115,7 +117,7 @@ pub fn memory_key(label: &str) -> String {
     import_header_match_key(label)
 }
 
-/// A header label's target: remembered first, then the catalog.
+/// A header label's suggestion: remembered exclusion, exact key, memory, synonyms.
 fn target_of(
     label: &str,
     memory: &BTreeMap<String, Option<String>>,
@@ -123,23 +125,22 @@ fn target_of(
     if label.is_empty() {
         return (None, MappingSource::Catalog);
     }
+    if memory.get(&memory_key(label)) == Some(&None) {
+        return (None, MappingSource::Remembered);
+    }
+    if let Some(target) = known_target(label) {
+        return (Some(target), MappingSource::Catalog);
+    }
     if let Some(remembered) = memory.get(&memory_key(label)) {
         return (
             remembered.as_deref().and_then(known_target),
             MappingSource::Remembered,
         );
     }
-    let key = import_header_match_key(label);
-    let target = EMPLOYEE_IMPORT_FIELD_DEFINITIONS
-        .iter()
-        .find(|field| {
-            field
-                .aliases
-                .iter()
-                .any(|a| import_header_match_key(a) == key)
-        })
-        .map(|field| field.target);
-    (target, MappingSource::Catalog)
+    (
+        employee_import_target_for_header(label),
+        MappingSource::Catalog,
+    )
 }
 
 /// A header cell's label: an RRN-shaped "header" (a form-layout sheet) is no label.

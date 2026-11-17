@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import { chromium, firefox, expect as dom, type Browser, type Page, type Route } from "@playwright/test";
+import { expect as dom, type Browser, type Page, type Route } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
-import { browserTestOptimizeDeps } from "../../../lib/browser-test";
+import { browserEngine, browserTestOptimizeDeps } from "../../../lib/browser-test";
 
 let server: ViteDevServer, browser: Browser, page: Page;
 beforeAll(async () => {
@@ -63,7 +63,7 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  browser = await (process.env.E2E_XBROWSER === "1" ? firefox : chromium).launch();
+  browser = await browserEngine().launch();
   page = await browser.newPage();
   await page.route("**/api/v1/**", route => {
     const path = new URL(route.request().url()).pathname;

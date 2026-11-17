@@ -70,7 +70,7 @@ export function entityReadAccess() {
   const auth = readFileSync(new URL("backend/crates/entity/rest/src/auth.rs", root), "utf8");
   const feature = auth.match(/Need::Read => Feature::(\w+)/)?.[1];
   const caller = source("entity/rest/src/reach.rs");
-  if (!caller.includes("granted_scope(nodes)")) throw new Error("Entity read reach no longer uses shared scope grants");
+  if (!caller.includes("granted_scope(subject.reading_nodes())")) throw new Error("Entity read reach no longer uses shared scope grants");
   const reach = source("platform/authz/src/cedar_pbac/facts/scope.rs").split("fn granted_scope")[1]?.split("\nfn ids")[0];
   if (!featureAccess()[feature] || !reach) throw new Error("Entity read guard or reach not found");
   const scopes = [...reach.matchAll(/((?:NodeKind::\w+\s*(?:\|\s*)?)+)=>\s*(?:return None|ids\.push\(id\))/g)]

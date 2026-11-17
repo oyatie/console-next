@@ -1,6 +1,11 @@
 // Korean copy for `exit.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 import type { enExit } from "../en/exit";
 export const koExit: Record<keyof typeof enExit, string> = {
+  "exit.settlement.notEligible.serviceYears": "퇴직금 미해당 (근속 {threshold}년 미만)",
+  "exit.settlement.notEligible.weeklyHours": "퇴직금 미해당 (주 {threshold}시간 미만)",
+  "exit.settlement.notEligible.consequence": "{name}의 퇴직금 미해당 근거로 4대보험 상실 신고·결재 문서를 작성합니다. 상신하면 퇴직 절차가 끝나 반려하거나 수정할 수 없습니다.",
+  "exit.settlement.reviewPending": "노무사 검토 전",
+  "exit.settlement.ruleEffective": "{date}부터 적용되는 법정 기준",
   "exit.board.board": "단계별 업무",
   "exit.board.ribbon": "사건 일정",
   "exit.board.leg.approval": "결재",
@@ -162,6 +167,10 @@ export const koExit: Record<keyof typeof enExit, string> = {
   "exit.settlement.unit.won": "원",
   "exit.settlement.totalWage": "기간 임금 총액",
   "exit.settlement.ordinaryWage": "월 통상임금",
+  "exit.settlement.sources.title": "계산에 필요한 자료",
+  "exit.settlement.sources.hire": "입사일 확인·정정",
+  "exit.settlement.sources.rules": "법정 기준 누락 · 관리자에게 퇴직일 기준 법정 기준 대장 검토를 요청하십시오",
+  "exit.settlement.sources.enter": "입력 후 다시 계산",
   "exit.settlement.missing": "이 값이 있어야 계산합니다",
   "exit.settlement.why.notComputed": "초안을 저장해 계산한 뒤 상신할 수 있습니다",
   "exit.settlement.why.changed": "입력이 바뀌었습니다 · 다시 저장해 계산하십시오",
@@ -196,6 +205,7 @@ export const koExit: Record<keyof typeof enExit, string> = {
   "exit.noticePay.ground": "단서 근거",
   "exit.noticePay.evidence": "단서 증빙 참조",
   "exit.error.dismissal_notice_short": "해고예고가 대장 기준보다 짧습니다. 해고예고수당 지급 또는 증빙이 있는 대장 단서를 선택하십시오.",
+  "exit.error.severance_statutory_basis_unavailable": "퇴직일에 적용할 퇴직금 근속 기준을 확인할 수 없습니다. 법정 기준 대장 검토를 요청하십시오.",
   "exit.error.employee_exited_read_only": "퇴직한 직원의 인사기록은 읽기 전용입니다. 변경은 정정으로 요청하십시오.",
   "exit.error.fixed_term_basis_unconfirmed": "계약 이력이 없어 기간제 한도를 확인할 수 없습니다. 계약 이력을 기록하거나 증빙이 있는 예외를 선택하십시오.",
   "exit.error.rehire_exit_case_open": "이전 퇴직 결정이 끝나지 않았습니다. 본사 확인을 마친 뒤 남은 절차를 확인하십시오.",

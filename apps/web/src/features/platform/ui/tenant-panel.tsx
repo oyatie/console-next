@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { recoveryQuery } from "../api";
+import { eraseQuery, recoveryQuery } from "../api";
 import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
 import { OpsRecovery } from "./ops-recovery";
 import { useState } from "react";
 import { X } from "lucide-react";
@@ -12,7 +13,7 @@ import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import type { Health, Issued, Org, Recorded } from "../api";
 import { MOVES, type Move } from "../domain/tenants";
-import { TenantErase } from "./tenant-erase";
+import { EraseControls } from "./tenant-erase";
 import { Reissue } from "./reissue";
 import { RemoveDialog } from "./remove-dialog";
 import { DomainDialog } from "./domain-dialog";
@@ -33,6 +34,7 @@ export function TenantPanel({ org, health, onIssued, onRecorded, onRemoved, onCl
   onClose: () => void;
 }) {
   const recovery = useQuery(recoveryQuery(org.id));
+  const erase = useQuery(eraseQuery(org.id));
   const [domainOpen, setDomainOpen] = useState(false);
   const [move, setMove] = useState<Move | null>(null);
   const [removing, setRemoving] = useState<"guarded" | null>(null);
@@ -67,12 +69,6 @@ export function TenantPanel({ org, health, onIssued, onRecorded, onRemoved, onCl
 
       <Button onClick={() => setDomainOpen(true)}>{t("tenants.domain.change")}</Button>
       {domainOpen && <DomainDialog org={org} onClose={() => setDomainOpen(false)} onDone={(r) => { setDomainOpen(false); onRecorded(r); }} />}
-      {/* The server issues a code only for an active tenant. The status and removal sections are drawn once the recovery read has landed
-          (or failed): drawn under its skeleton, they moved down under the pointer when it arrived. */}
-      <QueryState q={recovery}>{data => <>
-        {org.status === "ACTIVE" && <Reissue org={org} enrolled={data.ops_enrolled} onEnrolled={() => { void recovery.refetch(); }} onIssued={onIssued} />}
-        <OpsRecovery org={org} data={data} onIssued={onIssued} />
-      </>}</QueryState>
 
       <section className={s.section} aria-labelledby="tenant-status">
         <h3 id="tenant-status" className={s.heading}>{t("tenants.col.status")}</h3>
@@ -81,16 +77,21 @@ export function TenantPanel({ org, health, onIssued, onRecorded, onRemoved, onCl
         </div>
       </section>
 
-      <section className={s.section} aria-labelledby="tenant-remove">
-        <h3 id="tenant-remove" className={s.heading}>{t("tenants.section.remove")}</h3>
-        <p className={s.note}>{t("tenants.remove.consequence")}</p>
-        {org.removable === true ? <Button onClick={() => setRemoving("guarded")}>{t("tenants.remove", { org: org.name })}</Button> : (
-          <DisabledReason control={p => <Button {...p}>{t("tenants.remove", { org: org.name })}</Button>}
-            reason={t(org.removal_refusal === "blocked_legal_hold" ? "tenants.remove.legalHold" : org.removal_refusal === "tenant_has_data" ? "tenants.remove.hasData" : "tenants.remove.checking", { org: org.name })}
-            remedy={org.status !== "ARCHIVED" && <Button variant="ghost" onClick={archive}>{t("tenants.status.archive", { org: org.name })}</Button>} />
-        )}
-        <TenantErase org={org} />
-      </section>
+      {/* Both reads settle last so neither can move an already available control. */}
+      <QueryState q={readGroup([recovery, erase])}>{() => <>
+        {org.status === "ACTIVE" && <Reissue org={org} enrolled={recovery.data!.ops_enrolled} onEnrolled={() => { void recovery.refetch(); }} onIssued={onIssued} />}
+        <OpsRecovery org={org} data={recovery.data!} onIssued={onIssued} />
+        <section className={s.section} aria-labelledby="tenant-remove">
+          <h3 id="tenant-remove" className={s.heading}>{t("tenants.section.remove")}</h3>
+          <p className={s.note}>{t("tenants.remove.consequence")}</p>
+          {org.removable === true ? <Button onClick={() => setRemoving("guarded")}>{t("tenants.remove", { org: org.name })}</Button> : (
+            <DisabledReason control={p => <Button {...p}>{t("tenants.remove", { org: org.name })}</Button>}
+              reason={t(org.removal_refusal === "blocked_legal_hold" ? "tenants.remove.legalHold" : org.removal_refusal === "tenant_has_data" ? "tenants.remove.hasData" : "tenants.remove.checking", { org: org.name })}
+              remedy={org.status !== "ARCHIVED" && <Button variant="ghost" onClick={archive}>{t("tenants.status.archive", { org: org.name })}</Button>} />
+          )}
+          <EraseControls org={org} data={erase.data!} />
+        </section>
+      </>}</QueryState>
 
       <StatusDialog
         org={org}

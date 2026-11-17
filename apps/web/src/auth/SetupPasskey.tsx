@@ -60,9 +60,10 @@ export function SetupPasskey() {
     void documents.refetch();
   };
 
+  // Consent controls appear only once the fresh documents determine the centered form's final layout.
   return (
     <main className="auth">
-      <div className="auth__frame"><Card flush><div className="auth__content">
+      {loading && !documents.data ? <Skeleton bones={["title", "row", "row"]} label={t("common.loading")} /> : <div className="auth__frame"><Card flush><div className="auth__content">
         <PageHead title={t(isAppSession ? "auth.setup.consent.title" : "auth.setup.title")} />
         {error && <Banner tone="danger" live="assertive">{error}</Banner>}
         {loading && <Skeleton bones={["row", "row"]} label={t("common.loading")} />}
@@ -100,7 +101,7 @@ export function SetupPasskey() {
         <Button variant="ghost" disabled={busy} onClick={() => void logout().then(() => nav({ to: "/login", search: isAppSession || unpublished ? {} : { cancelled: 1 } }))}>
           <LogOut size={16} aria-hidden /> {t(isAppSession || unpublished ? "shell.logout" : "auth.setup.cancel")}
         </Button>
-      </div></Card></div>
+      </div></Card></div>}
     </main>
   );
 }

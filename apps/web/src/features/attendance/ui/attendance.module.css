@@ -26,3 +26,7 @@
 .dayInputs > * { flex: 1 1 calc(var(--space-6) * 3); min-width: 0; }
 .slotTools { display: flex; gap: var(--space-1); align-items: center; }
 .checks { display: flex; flex-direction: column; gap: var(--space-1); }
+
+.historyBody { display: grid; }
+.historyBody > * { grid-area: 1 / 1; min-width: 0; }
+.historyReserve { visibility: hidden; }

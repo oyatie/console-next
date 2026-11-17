@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - me
+operationId: unsnoozeMyActionInboxItem
+summary: Bring one of my postponed inbox items back
+description: >-
+  Ends the caller's own snooze of an item, so it returns to their list at once. Bringing back
+  an item that is not postponed changes nothing and still answers 204. The item is resolved
+  through the caller's own sources, postponed or not, so another person's item, an unknown id
+  and a malformed id answer the same 404 lifecycle.refuse.scope.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  description: The item id as the list serves it (kind:uuid).
+  schema:
+    type: string
+responses:
+  '204':
+    description: The item is in the caller's list again.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '404':
+    description: lifecycle.refuse.scope - the item is not in the caller's inbox or does not exist, one answer for both.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

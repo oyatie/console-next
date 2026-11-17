@@ -39,6 +39,13 @@ jobs:
         with: {persist-credentials: false, fetch-depth: 0}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version}
+      - name: Repository Hangul ratchet
+        if: github.event_name != 'push'
+        env:
+          QUALITY_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          node --test scripts/check-hangul.test.mjs scripts/check-hangul-refresh.test.mjs
+          node scripts/check-hangul.mjs --report
       - run: node --test scripts/ci-affected.test.mjs
         if: github.event_name != 'push'
       - name: Classify changes against the merge base
@@ -596,6 +603,36 @@ jobs:
           path: test-results
           if-no-files-found: error
 
+      - name: WebKit for focused PR coverage
+        if: ${{ !cancelled() }}
+        run: npx playwright install --with-deps webkit
+      - name: Focused WebKit states
+        if: ${{ !cancelled() }}
+        env:
+          E2E_BROWSER: webkit
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/webkit/states.json
+        run: npm run e2e:states -- --grep @webkit-pr --output=.cache/webkit/states-traces
+      - name: Solo journey on WebKit
+        if: ${{ !cancelled() }}
+        env:
+          E2E_BROWSER: webkit
+          E2E_SERVED: "1"
+          E2E_PREBUILT: "1"
+          E2E_REPORTER: line,json
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/webkit/live.json
+          CONSOLE_APP_BIN: .cache/home-backend/console-app
+        run: npx playwright test e2e/first-run-solo.spec.ts --grep @webkit-pr --output=.cache/webkit/live-traces
+      - name: WebKit results by spec
+        if: ${{ !cancelled() }}
+        run: node scripts/e2e-live-report.mjs .cache/webkit/*.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: webkit-pr
+          path: .cache/webkit/
+          include-hidden-files: true
+          if-no-files-found: error
+
       - name: Firefox for D7 solo journey
         if: ${{ !cancelled() && github.event_name == 'merge_group' }}
         run: npx playwright install --with-deps firefox
@@ -761,25 +798,17 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version}
-      # Reuse approved artifact actions for a cross-run binary cache; only dev writes it.
+      # Reuse approved artifact actions for a cross-run binary cache; only a successful push of this workflow to dev
+      # supplies it, and a failed lookup builds the tools instead. The -sha256 key holds only artifacts carrying digests.
       - name: Find trusted tool cache
         id: cache
         env:
           GH_TOKEN: ${{ github.token }}
-          CACHE_KEY: cargo-security-${{ runner.os }}-${{ runner.arch }}-deny-${{ env.CARGO_DENY_VERSION }}-audit-${{ env.CARGO_AUDIT_VERSION }}
+          CACHE_KEY: cargo-security-${{ runner.os }}-${{ runner.arch }}-deny-${{ env.CARGO_DENY_VERSION }}-audit-${{ env.CARGO_AUDIT_VERSION }}-sha256
         run: |
           echo "TOOL_ROOT=${RUNNER_TEMP}/cargo-security-tools" >> "$GITHUB_ENV"
           echo "key=${CACHE_KEY}" >> "$GITHUB_OUTPUT"
-          curl --fail --silent --show-error --retry 4 --get \
-            -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' \
-            --data-urlencode "name=${CACHE_KEY}" --data-urlencode 'per_page=100' \
-            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/artifacts" > "${RUNNER_TEMP}/tool-cache.json"
-          node --input-type=module <<'JS'
-          import { readFileSync, appendFileSync } from 'node:fs';
-          const { artifacts } = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/tool-cache.json`, 'utf8'));
-          const cached = artifacts.find(a => !a.expired && a.workflow_run?.head_branch === 'dev' && a.workflow_run.head_repository_id === a.workflow_run.repository_id);
-          if (cached) appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${cached.workflow_run.id}\n`);
-          JS
+          node .github/ci-proof.cjs "$CACHE_KEY" ci.yml push || echo "::warning::No trusted tool cache found; building the pinned tools"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         if: steps.cache.outputs.run-id != ''
         with:
@@ -792,8 +821,11 @@ jobs:
         run: |
           cargo install cargo-deny --locked --version "${CARGO_DENY_VERSION}" --root "$TOOL_ROOT"
           cargo install cargo-audit --locked --version "${CARGO_AUDIT_VERSION}" --root "$TOOL_ROOT"
+          cd "$TOOL_ROOT/bin" && sha256sum cargo-deny cargo-audit > cargo-security.sha256
       - name: Restore executable permissions
         run: chmod +x "$TOOL_ROOT/bin/cargo-deny" "$TOOL_ROOT/bin/cargo-audit"
+      - name: Verify recorded tool digests
+        run: cd "$TOOL_ROOT/bin" && sha256sum cargo-deny cargo-audit | cmp - cargo-security.sha256
       - name: Prove licence and advisory refusals
         run: node --test scripts/supply-chain-fixtures.test.mjs
       - name: cargo-deny

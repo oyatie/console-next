@@ -4,6 +4,7 @@ import { commitLabel } from "../apps/web/src/ui/composer/actions";
 import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { kstDate, registerEmployee } from "./flows";
+import { passkeyAssertion } from "./auth";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { hrAct } from "./record";
@@ -43,12 +44,7 @@ test("a sole recorder corrects a lifecycle date only with its bound passkey", { 
   const startResponse = await api("/auth/passkey/step-up/start", "POST", { binding });
   expect(startResponse.ok()).toBeTruthy();
   const start = await startResponse.json() as { ceremony_id: string; challenge: { publicKey: PublicKeyCredentialRequestOptionsJSON } };
-  const credential = await admin.evaluate(async (options) => {
-    const assertion = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) }) as PublicKeyCredential | null;
-    return assertion?.toJSON();
-  }, start.challenge.publicKey);
-  expect(credential).toBeTruthy();
-  const step_up = { binding, assertion: { ceremony_id: start.ceremony_id, credential } };
+  const step_up = { binding, assertion: await passkeyAssertion(admin, start) };
   const mismatch = await api(path, "POST", { ...body, replacement: { ...replacement, expected_return_date: kstDate(31) }, step_up });
   expect(mismatch.status()).toBe(401);
   expect(await codeOf(mismatch)).toBe("step_up_failed");

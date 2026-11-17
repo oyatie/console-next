@@ -7,11 +7,7 @@ import { stepKey } from "../../reference/entity/api";
 import { applyOrgBatch, entityBatch, type Committed } from "../../reference/org/api/setup-batch";
 export { BATCH_READS, applyOrgBatch, entityBatch, undoOrgBatch, undoEntityBatch, undoCommitted, type Committed } from "../../reference/org/api/setup-batch";
 
-export const structureQuery = get("/api/v1/org-structure");
-export const orgBatchesQuery = get("/api/v1/org-structure/batches");
-export const entityBatchesQuery = get("/api/v1/entity-setup/batches");
-/** The newest governed org changes, any status (the history and its scheduled banner). */
-export const changesQuery = get("/api/v1/org-changes", { params: { query: { limit: 200 } } });
+export { orgStructureRef as structureQuery, orgBatchesQuery, entityBatchesQuery, changesQuery } from "../../reference/entity/api";
 /**
  * The people a sheet names as heads, by exact employee number in one read (org-06; ≤ 500, the endpoint's own cap). Those who left
  * are not heads, so only people still employed are asked for.

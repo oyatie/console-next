@@ -768,6 +768,23 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/action-inbox/items/{id}/snooze",
+        operations: &[
+            Operation {
+                method: "delete",
+                body: include_str!(
+                    "../openapi/paths/api__v1__me__action-inbox__items__id__snooze.delete.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../openapi/paths/api__v1__me__action-inbox__items__id__snooze.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/me/action-inbox/reference",
         operations: &[Operation {
             method: "get",
@@ -1122,6 +1139,15 @@ const PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/users/employee-link-attestations/{id}/review",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__users__employee-link-attestations__id__review.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/users/me",
         operations: &[
             Operation {
@@ -1133,6 +1159,37 @@ const PATHS: &[PathItem] = &[
                 body: include_str!("../openapi/paths/api__v1__users__me.patch.yaml"),
             },
         ],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__users__me__employee-link.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__v1__users__me__employee-link.post.yaml"),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link/prepare",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__users__me__employee-link__prepare.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link/withdraw",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__users__me__employee-link__withdraw.post.yaml"
+            ),
+        }],
     },
     PathItem {
         path: "/api/v1/users/{id}",
@@ -1783,6 +1840,26 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "RouteAdoptionMetric",
         body: include_str!("../openapi/schemas/RouteAdoptionMetric.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingError",
+        body: include_str!("../openapi/schemas/SelfBindingError.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingPrepareRequest",
+        body: include_str!("../openapi/schemas/SelfBindingPrepareRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingRequest",
+        body: include_str!("../openapi/schemas/SelfBindingRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingReviewRequest",
+        body: include_str!("../openapi/schemas/SelfBindingReviewRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingWithdrawRequest",
+        body: include_str!("../openapi/schemas/SelfBindingWithdrawRequest.yaml"),
     },
     NamedYaml {
         name: "SetAccessRoleStatusRequest",

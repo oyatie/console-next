@@ -21,13 +21,16 @@ const child: Node = { id: "child", kind: "DEPARTMENT", name: "품질팀", childr
 const node: Node = { ...child, id: "unit", name: "본사", children: [child], headcount: 148, direct_headcount: 12, code: "HQ" };
 const parent: Node = { ...child, id: "workplace", kind: "WORKPLACE", name: "서울 사업장" };
 const place: Place = { node, parent, entity: { ...parent, kind: "LEGAL_ENTITY", name: "법인" }, workplace: parent, path: [parent.name] };
-const render = (setup: boolean, readOnly = false) => renderToStaticMarkup(<UnitEdit.Provider value={true}><DeptPanel place={place} setup={setup} readOnly={readOnly} onClose={() => undefined} /></UnitEdit.Provider>);
+const render = (setup: boolean, readOnly = false, allowed = true) => renderToStaticMarkup(<UnitEdit.Provider value={allowed}><DeptPanel place={place} setup={setup} readOnly={readOnly} onClose={() => undefined} /></UnitEdit.Provider>);
 
 test.each([true, false])("department vacancy has a direct appoint action, with one rename and one details action (setup %s)", setup => {
   const html = render(setup);
   const basic = html.match(/<section id="dept-basic"[\s\S]*?<\/section>/)?.[0];
   expect(basic).toBeDefined();
-  expect(basic?.match(/<button/g)).toHaveLength(1);
+  expect(basic?.match(/<button/g)).toHaveLength(2);
+  expect(basic).toContain('id="act-dept-rename"');
+  expect(basic).toContain(`aria-label="${t("uiRecordActions.of", { field: t("orgUnit.fact.name"), verb: t("uiRecordActions.edit") })}"`);
+  expect(basic).toMatch(new RegExp(`<dd>${node.name}</dd><dd[^>]*><button[^>]*id="act-dept-rename"[^>]*>${t("uiRecordActions.edit")}</button>`));
   expect(basic).toContain('id="act-dept-head"');
   expect(basic).toContain("부서장 없음");
   expect(basic).toContain("chip--warn");
@@ -53,6 +56,11 @@ test("historical department facts offer no edit actions", () => {
   expect(html).not.toContain('id="dept-actions"');
   expect(html).not.toContain('id="act-dept-code"');
   expect(html).not.toContain('id="act-dept-head"');
+  expect(html).not.toContain('id="act-dept-rename"');
+});
+
+test.each([true, false])("department name edit preserves a refused server draft decision (setup %s)", setup => {
+  expect(render(setup, false, false)).not.toContain('id="act-dept-rename"');
 });
 
 test("department employee anchors and headings follow the glossary", () => {

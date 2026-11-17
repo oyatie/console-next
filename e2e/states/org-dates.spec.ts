@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
@@ -90,7 +91,7 @@ test("org: exact knowledge links stay visible without offering a knowledge-date 
 test("org: empty date fields use a Korean placeholder and presets show one resolved date @ui-state", async ({ page }) => {
   const fixture = await mockScreen(page, screens[2], "populated");
   try {
-    await page.goto("/_gallery?entry=date");
+    await mockNavigate(page, "/_gallery?entry=date");
     await expect(page.getByRole("textbox").first()).toHaveAttribute("placeholder", "연도. 월. 일.");
     await orgPanelReads(page);
     await page.goto(`/org?act=dept-add&sel=${id(4)}`);

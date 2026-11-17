@@ -39,3 +39,16 @@ test("an atomic apply timeout offers review and retry without splitting the file
   expect(out).not.toContain("이미 들어간");
   expect(out).not.toContain("나누어");
 });
+
+
+test.each(["import_apply_forbidden", "import_apply_timed_out"] as const)("a failed job names %s through the import refusal catalog", async code => {
+  const client = new QueryClient();
+  await client.prefetchQuery({ ...applyJobQuery("synthetic-run"), queryFn: async () => ({
+    run_id: "synthetic-run", state: "failed", total: 2, done: 0,
+    dry_run_digest: "synthetic-digest", requested_by: "synthetic-viewer", error: { code, message: "private database detail" },
+  }) });
+  const out = renderToStaticMarkup(<QueryClientProvider client={client}><JobStep runId="synthetic-run" onDone={() => {}} onFailed={() => {}} /></QueryClientProvider>);
+  expect(out).toContain(code === "import_apply_timed_out" ? t("import.timedOut", { rows: 1 }) : t("import.error.import_apply_forbidden"));
+  expect(out).not.toContain("private database detail");
+  expect(out).toContain(t("importJob.back"));
+});

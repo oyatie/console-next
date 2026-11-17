@@ -1,4 +1,4 @@
-import { assertBoundPasskeyHash, sha256Hex, api, ApiError, unwrap } from "@console/api";
+import { assertBoundPasskeyHash, sha256Hex, api, ApiError, unwrap, requestDeadline, LONG_REQUEST_TIMEOUT_MS } from "@console/api";
 import type { components, paths } from "@console/api/schema";
 import { get } from "../../../lib/query";
 import { employeeRecord, pinned } from "../../../lib/record-versions";
@@ -92,11 +92,11 @@ type PhotoType = components["schemas"]["EmployeePhotoUpload"]["content_type"];
 /**
  * Uploads one photo the way the server asks (MR-34): a presigned PUT it signs for this type and size, then confirm (it checks
  * the stored object), then PATCH the employee's `photo` to the confirmed upload. Each step's refusal is the server's own;
- * a refused PUT (the store's own answer) says `putFailed(status)`.
+ * a refused PUT (the store's own answer) says `putFailed(status)`. The direct storage transfer gets the long deadline.
  */
 export async function uploadPhoto(id: string, updatedAt: string, file: File, putFailed: (status: number) => string) {
   const issued = await unwrap(api.POST("/api/v1/employees/{id}/photo-uploads", { params: { path: { id } }, body: { content_type: file.type as PhotoType, byte_size: file.size } }));
-  const put = await fetch(issued.put.url, { method: issued.put.method, headers: issued.put.headers.map(([k, v]) => [k ?? "", v ?? ""] as [string, string]), body: file });
+  const put = await fetch(issued.put.url, { method: issued.put.method, headers: issued.put.headers.map(([k, v]) => [k ?? "", v ?? ""] as [string, string]), body: file, signal: requestDeadline(LONG_REQUEST_TIMEOUT_MS) });
   if (!put.ok) throw new Error(putFailed(put.status));
   await unwrap(api.POST("/api/v1/employees/{id}/photo-uploads/{upload_id}/confirm", { params: { path: { id, upload_id: issued.upload_id } } }));
   return correctEmployee(id, updatedAt, { photo: issued.upload_id }, "QUICK_EDIT");

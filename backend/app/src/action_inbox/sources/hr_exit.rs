@@ -59,9 +59,10 @@ pub(crate) async fn page(
             let routed = approval_routes_in_tx(tx.as_mut(), org, SettingKey::ApprovalPolicyExit)
                 .await
                 .map_err(HrError::from_kernel)?;
-            let register = super::super::request_register::get_in(tx.as_mut(), &register)
-                .await
-                .map_err(HrError::from_kernel)?;
+            let register =
+                super::super::request_register::get_in(tx.as_mut(), &register, org, input.as_of)
+                    .await
+                    .map_err(HrError::from_kernel)?;
             let bands = read::deadline_bands(&register)?;
             let mut visible = Vec::new();
             let mut scan = input.clone();
@@ -148,6 +149,8 @@ pub(crate) async fn page(
             title: row.name,
             site: row.site,
             who: None,
+            due_basis: (kind == "hr_exit_settle" && row.due.is_some())
+                .then_some(console_action_inbox_application::DueBasis::Statutory),
             due: row.due,
             submitted: None,
             links: vec![

@@ -30,6 +30,26 @@ function fixture() {
   return { write, git, run };
 }
 
+test("only gallery code may opt previews out of route readiness", () => {
+  const { write, git, run } = fixture();
+  write("apps/web/src/gallery/gallery.tsx", '<main data-route-preview />');
+  write("apps/web/src/lib/react/route-href.ts", 'element.closest("[data-route-preview]");');
+  write("apps/web/src/lib/react/route-ready.browser.test.tsx", 'element.dataset.routePreview = "";');
+  git("add", ".");
+  expect(run().status).toBe(0);
+  for (const [file, source] of [
+    ["features/probe/ui/screen.tsx", '<main data-route-preview />'],
+    ["ui/preview.tsx", 'element.setAttribute("data-route-preview", "");'],
+    ["lib/preview.ts", 'element.dataset.routePreview = "";'],
+  ]) {
+    write(`apps/web/src/${file}`, source);
+  }
+  const result = run();
+  expect(result.status).toBe(1);
+  for (const file of ["features/probe/ui/screen.tsx", "ui/preview.tsx", "lib/preview.ts"])
+    expect(result.stderr).toContain(`apps/web/src/${file}: route previews belong only in gallery/`);
+});
+
 test("component journeys and gallery cache fixtures preserve production source rules", () => {
   const { write, git, run } = fixture();
   const slice = "apps/web/src/features/probe/ui/";
@@ -60,6 +80,25 @@ test("only go-live may synchronize its confirmed phase through the shared profil
   git("add", ".");
   expect(run().status).toBe(0);
   write(file, source + " cache.setQueryData(other.queryKey, []);");
+  const result = run();
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain(`${file}: cacheWrites ×1`);
+  expect(result.stderr).toContain(`${file}: queryKey ×1`);
+});
+
+test("an org decision may seed only its own server-confirmed detail", () => {
+  const { write, git, run } = fixture();
+  const file = "apps/web/src/features/org/ui/change-decision.tsx";
+  const source = "qc.setQueryData(changeQuery(d.id).queryKey, detail);";
+  write(file, source);
+  git("add", ".");
+  expect(run().status).toBe(0);
+  const other = "apps/web/src/features/org/ui/other.tsx";
+  write(other, source);
+  git("add", ".");
+  expect(run().stderr).toContain(`${other}: cacheWrites ×1`);
+  write(other, "");
+  write(file, source + " qc.setQueryData(other.queryKey, []);");
   const result = run();
   expect(result.status).toBe(1);
   expect(result.stderr).toContain(`${file}: cacheWrites ×1`);

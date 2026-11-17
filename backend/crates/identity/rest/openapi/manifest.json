@@ -252,6 +252,13 @@
     "/api/v1/me/action-inbox/done": [
       "get"
     ],
+    "/api/v1/me/action-inbox/items/{id}/activity": [
+      "get"
+    ],
+    "/api/v1/me/action-inbox/items/{id}/snooze": [
+      "delete",
+      "post"
+    ],
     "/api/v1/me/action-inbox/reference": [
       "get"
     ],
@@ -381,9 +388,22 @@
       "get",
       "post"
     ],
+    "/api/v1/users/employee-link-attestations/{id}/review": [
+      "post"
+    ],
     "/api/v1/users/me": [
       "get",
       "patch"
+    ],
+    "/api/v1/users/me/employee-link": [
+      "get",
+      "post"
+    ],
+    "/api/v1/users/me/employee-link/prepare": [
+      "post"
+    ],
+    "/api/v1/users/me/employee-link/withdraw": [
+      "post"
     ],
     "/api/v1/users/{id}": [
       "get",
@@ -557,6 +577,11 @@
     "RegionSummary",
     "ReplacePolicyRoleAssignmentsRequest",
     "RouteAdoptionMetric",
+    "SelfBindingError",
+    "SelfBindingPrepareRequest",
+    "SelfBindingRequest",
+    "SelfBindingReviewRequest",
+    "SelfBindingWithdrawRequest",
     "SetAccessRoleStatusRequest",
     "SignInIdHistory",
     "SignInIdRecord",

@@ -1,5 +1,5 @@
 import { createPrivateKey, createPublicKey } from "node:crypto";
-import type { BrowserContext, Page } from "@playwright/test";
+import { expect, type BrowserContext, type Page } from "@playwright/test";
 
 /**
  * A passkey in CDP's WebAuthn.Credential shape (binaries as base64). Both engines export and import it, so a
@@ -103,28 +103,49 @@ async function contextAuthenticator(page: Page): Promise<Authenticator> {
 }
 
 /**
- * Page init script: Playwright 1.63's injected credential has a stub toJSON(), so rebuild it from the response
- * buffers (the app posts toJSON()), and report each assertion's signature counter to the test.
+ * Page init script: complete the injected authenticator's JSON surface, including Linux WebKit's missing native
+ * helpers, and report each assertion's signature counter. Native browser capabilities remain untouched outside tests.
  */
 function rebuildToJSON() {
   const b64u = (b: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const bytes = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), ch => ch.charCodeAt(0)).buffer;
+  const descriptor = (c: PublicKeyCredentialDescriptorJSON) => ({ ...c, id: bytes(c.id) }) as PublicKeyCredentialDescriptor;
+  const pkc = globalThis.PublicKeyCredential;
+  // shortcut: fixtures use binary ids and challenges only; decode binary extensions when a fixture requests them.
+  pkc.parseRequestOptionsFromJSON ??= o => ({ ...o, challenge: bytes(o.challenge), allowCredentials: o.allowCredentials?.map(descriptor) }) as PublicKeyCredentialRequestOptions;
+  pkc.parseCreationOptionsFromJSON ??= o => ({ ...o, challenge: bytes(o.challenge), user: { ...o.user, id: bytes(o.user.id) }, excludeCredentials: o.excludeCredentials?.map(descriptor) }) as PublicKeyCredentialCreationOptions;
+  if (!pkc.prototype) Object.defineProperty(pkc, "prototype", { value: {} });
+  function toJSON(this: PublicKeyCredential) {
+    const r = this.response as AuthenticatorAttestationResponse & AuthenticatorAssertionResponse;
+    const response = "attestationObject" in this.response
+      ? { clientDataJSON: b64u(r.clientDataJSON), attestationObject: b64u(r.attestationObject), transports: ["internal"] }
+      : { clientDataJSON: b64u(r.clientDataJSON), authenticatorData: b64u(r.authenticatorData), signature: b64u(r.signature), userHandle: r.userHandle ? b64u(r.userHandle) : undefined };
+    return { id: this.id, rawId: this.id, type: this.type, authenticatorAttachment: "platform", clientExtensionResults: {}, response };
+  }
+  pkc.prototype.toJSON ??= toJSON;
   const wrap = (name: "create" | "get") => {
     const orig = navigator.credentials[name].bind(navigator.credentials);
     navigator.credentials[name] = async (o?: CredentialCreationOptions & CredentialRequestOptions) => {
       const c = (await orig(o)) as PublicKeyCredential | null;
       if (!c) return c;
       const r = c.response as AuthenticatorAttestationResponse & AuthenticatorAssertionResponse;
-      let response;
-      if (name === "create") response = { clientDataJSON: b64u(r.clientDataJSON), attestationObject: b64u(r.attestationObject), transports: ["internal"] };
-      else {
+      if (name === "get") {
         await (window as unknown as { __e2eSignCount: (id: string, n: number) => Promise<void> }).__e2eSignCount(c.id, new DataView(r.authenticatorData).getUint32(33)); // after the 32-byte rpIdHash and the flags byte
-        response = { clientDataJSON: b64u(r.clientDataJSON), authenticatorData: b64u(r.authenticatorData), signature: b64u(r.signature), userHandle: r.userHandle ? b64u(r.userHandle) : undefined };
       }
-      const json = { id: c.id, rawId: c.id, type: c.type, authenticatorAttachment: "platform", clientExtensionResults: {}, response };
-      Object.defineProperty(c, "toJSON", { value: () => json, configurable: true });
+      Object.defineProperty(c, "toJSON", { value: toJSON, configurable: true });
       return c;
     };
   };
   wrap("create");
   wrap("get");
+}
+
+/** Complete the server's request with this page's enrolled passkey. */
+export async function passkeyAssertion(page: Page, ceremony: { ceremony_id: string; challenge: { publicKey: PublicKeyCredentialRequestOptionsJSON } }) {
+  const credential = await page.evaluate(async options => {
+    const assertion = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) }) as PublicKeyCredential | null;
+    return assertion?.toJSON();
+  }, ceremony.challenge.publicKey);
+  expect(credential).toBeTruthy();
+  return { ceremony_id: ceremony.ceremony_id, credential: credential as Record<string, unknown> };
 }

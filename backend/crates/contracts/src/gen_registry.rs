@@ -545,13 +545,7 @@ pub const ATTENDANCE_FRAGMENT: Fragment = Fragment {
     external_schemas: ATTENDANCE_FRAGMENT_EXTERNAL,
 };
 
-const ATTENDANCE_FRAGMENT_EXTERNAL: &[&str] = &[
-    "ActorKind",
-    "AuditLastChange",
-    "ErrorBody",
-    "FieldError",
-    "Uuid",
-];
+const ATTENDANCE_FRAGMENT_EXTERNAL: &[&str] = &["Uuid"];
 
 const ATTENDANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -1759,14 +1753,7 @@ pub const COMPLIANCE_FRAGMENT: Fragment = Fragment {
     external_schemas: COMPLIANCE_FRAGMENT_EXTERNAL,
 };
 
-const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &[
-    "MobilePasskeyStepUpBinding",
-    "MobilePasskeyStepUpEnvelope",
-    "MobileStepUpActionKind",
-    "PasskeyStepUpAssertion",
-    "Timestamp",
-    "Uuid",
-];
+const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &["MobilePasskeyStepUpEnvelope", "Timestamp", "Uuid"];
 
 const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -6438,6 +6425,23 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/action-inbox/items/{id}/snooze",
+        operations: &[
+            Operation {
+                method: "delete",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__me__action-inbox__items__id__snooze.delete.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__me__action-inbox__items__id__snooze.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/me/action-inbox/reference",
         operations: &[Operation {
             method: "get",
@@ -6858,6 +6862,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/users/employee-link-attestations/{id}/review",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__users__employee-link-attestations__id__review.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/users/me",
         operations: &[
             Operation {
@@ -6871,6 +6884,41 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
                 ),
             },
         ],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__users__me__employee-link.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__users__me__employee-link.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link/prepare",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__users__me__employee-link__prepare.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link/withdraw",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__users__me__employee-link__withdraw.post.yaml"
+            ),
+        }],
     },
     PathItem {
         path: "/api/v1/users/{id}",
@@ -7567,6 +7615,26 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "RouteAdoptionMetric",
         body: include_str!("../../identity/rest/openapi/schemas/RouteAdoptionMetric.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingError",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingError.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingPrepareRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingPrepareRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingReviewRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingReviewRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingWithdrawRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingWithdrawRequest.yaml"),
     },
     NamedYaml {
         name: "SetAccessRoleStatusRequest",
@@ -11884,14 +11952,7 @@ pub const PAYROLL_FRAGMENT: Fragment = Fragment {
     external_schemas: PAYROLL_FRAGMENT_EXTERNAL,
 };
 
-const PAYROLL_FRAGMENT_EXTERNAL: &[&str] = &[
-    "ActorKind",
-    "AuditLastChange",
-    "ErrorBody",
-    "FieldError",
-    "Timestamp",
-    "Uuid",
-];
+const PAYROLL_FRAGMENT_EXTERNAL: &[&str] = &["Timestamp", "Uuid"];
 
 const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -14563,6 +14624,41 @@ const TODOS_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/me/todos/requests",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../todos/rest/openapi/paths/api__v1__me__todos__requests.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../todos/rest/openapi/paths/api__v1__me__todos__requests.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/me/todos/requests/assignees",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../todos/rest/openapi/paths/api__v1__me__todos__requests__assignees.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/todos/requests/{todoId}",
+        operations: &[Operation {
+            method: "delete",
+            body: include_str!(
+                "../../todos/rest/openapi/paths/api__v1__me__todos__requests__todoId.delete.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/todos/{todoId}",
         operations: &[Operation {
             method: "delete",
@@ -14580,6 +14676,15 @@ const TODOS_FRAGMENT_PATHS: &[PathItem] = &[
             ),
         }],
     },
+    PathItem {
+        path: "/api/v1/me/todos/{todoId}/return",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../todos/rest/openapi/paths/api__v1__me__todos__todoId__return.post.yaml"
+            ),
+        }],
+    },
 ];
 
 const TODOS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
@@ -14588,8 +14693,24 @@ const TODOS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../todos/rest/openapi/schemas/CreateTodoRequest.yaml"),
     },
     NamedYaml {
+        name: "ReturnTodoRequest",
+        body: include_str!("../../todos/rest/openapi/schemas/ReturnTodoRequest.yaml"),
+    },
+    NamedYaml {
         name: "SetTodoDoneRequest",
         body: include_str!("../../todos/rest/openapi/schemas/SetTodoDoneRequest.yaml"),
+    },
+    NamedYaml {
+        name: "TodoAskRequest",
+        body: include_str!("../../todos/rest/openapi/schemas/TodoAskRequest.yaml"),
+    },
+    NamedYaml {
+        name: "TodoAssignee",
+        body: include_str!("../../todos/rest/openapi/schemas/TodoAssignee.yaml"),
+    },
+    NamedYaml {
+        name: "TodoAssigneePage",
+        body: include_str!("../../todos/rest/openapi/schemas/TodoAssigneePage.yaml"),
     },
     NamedYaml {
         name: "TodoPage",
@@ -14598,6 +14719,10 @@ const TODOS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "TodoRef",
         body: include_str!("../../todos/rest/openapi/schemas/TodoRef.yaml"),
+    },
+    NamedYaml {
+        name: "TodoRequestLink",
+        body: include_str!("../../todos/rest/openapi/schemas/TodoRequestLink.yaml"),
     },
     NamedYaml {
         name: "TodoSummary",

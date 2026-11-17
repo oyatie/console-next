@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[path = "pay_group_completed_retry.rs"]
+mod pay_group_completed_retry;
+
+#[path = "pay_group_concurrent_retry.rs"]
+mod pay_group_concurrent_retry;
+
 async fn fixture(pool: &PgPool) -> (axum::Router, String, Value, OrgId, UserId, Uuid) {
     let org = OrgId::new();
     let actor = seed_org_and_super_admin(pool, *org.as_uuid(), "pay-group-retry").await;
@@ -45,63 +51,6 @@ async fn counts(pool: &PgPool, org: OrgId) -> (i64, i64, i64) {
     .fetch_one(pool)
     .await
     .unwrap()
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn pay_group_retry_replays_concurrent_creates_once(pool: PgPool) {
-    let (service, token, input, org, _, _) = fixture(&pool).await;
-    for key in [
-        String::new(),
-        " ".repeat(16),
-        "x".repeat(15),
-        "x".repeat(201),
-        "é".repeat(16),
-    ] {
-        let refused = keyed(service.clone(), &token, input.clone(), &key).await;
-        assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(refused.json["error"]["code"], "invalid_request_key");
-        assert_eq!(counts(&pool, org).await, (0, 0, 0));
-    }
-    let key = Uuid::new_v4().to_string();
-    let (a, b) = tokio::join!(
-        keyed(service.clone(), &token, input.clone(), &key),
-        keyed(service.clone(), &token, input.clone(), &key),
-    );
-    let (created, concurrent) = if a.status == StatusCode::CREATED {
-        (a, b)
-    } else {
-        (b, a)
-    };
-    assert_eq!(created.status, StatusCode::CREATED, "{}", created.json);
-    if concurrent.status == StatusCode::CONFLICT {
-        assert_eq!(concurrent.json["error"]["code"], "command_processing");
-    } else {
-        assert_eq!(concurrent.status, created.status);
-        assert_eq!(concurrent.json, created.json);
-    }
-    let replay = keyed(
-        service.clone(),
-        &token,
-        input.clone(),
-        &format!("  {key}  "),
-    )
-    .await;
-    assert_eq!(replay.status, created.status);
-    assert_eq!(replay.json, created.json);
-    let stored_status: Option<i16> = sqlx::query_scalar(
-        "SELECT response_status FROM command_outcomes WHERE org_id=$1 AND idempotency_key=$2",
-    )
-    .bind(org.as_uuid())
-    .bind(&key)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert_eq!(stored_status, Some(StatusCode::CREATED.as_u16() as i16));
-    assert_eq!(counts(&pool, org).await, (1, 1, 1));
-    let fresh = keyed(service, &token, input, &Uuid::new_v4().to_string()).await;
-    assert_eq!(fresh.status, StatusCode::CREATED);
-    assert_ne!(fresh.json["id"], created.json["id"]);
-    assert_eq!(counts(&pool, org).await, (2, 2, 2));
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

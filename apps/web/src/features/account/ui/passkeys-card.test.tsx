@@ -137,7 +137,7 @@ test("rename roundtrip refreshes the row and the naming dialog passes axe", asyn
   await page.getByRole("button", { name: "개인 보안키 이름 변경", exact: true }).waitFor();
   expect(writes).toBe(1);
   expect(stored.label).toBe("개인 보안키");
-  expect(await page.getByRole("dialog").count()).toBe(0);
+  await expect.poll(() => page.getByRole("dialog").count()).toBe(0);
   await page.reload();
   await page.getByRole("button", { name: "개인 보안키 이름 변경", exact: true }).waitFor();
 }, 60_000);

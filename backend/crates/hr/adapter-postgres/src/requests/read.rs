@@ -1,16 +1,20 @@
 //! `GET /change-requests`: HR sees the org's requests (optionally only those
 //! named to it, or open to the role); everyone else sees only the requests it
 //! filed ("Waiting") or is named on (`assignee=me`: its requests for
-//! explanation).
+//! explanation). A correction carries the values it asks for, so HR's page is
+//! a list read of the people its corrections are about.
 
 use console_hr_domain::requests::ChangeRequestKind;
 use console_platform_authz::{Feature, Principal};
-use console_platform_db::with_org_conn;
+use console_platform_db::with_audits;
+use serde_json::json;
 use sqlx::postgres::PgRow;
 use sqlx::{Postgres, QueryBuilder, Row};
+use uuid::Uuid;
 
 use super::{ChangeRequestListQuery, ChangeRequestPage, ChangeRequestResponse};
 use crate::authz::{hr_reach, push_subject_in_reach};
+use crate::directory::access_log::{DirectoryAccess, access_event, actor_employee_id};
 use crate::metrics::record_hr_read;
 use crate::paging::{DEFAULT_LIMIT, MAX_LIMIT};
 use crate::{HrError, HrService};
@@ -125,30 +129,48 @@ impl HrService {
                 builder.push_bind(status);
             }
         };
-        let (items, total) =
-            with_org_conn::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
-                Box::pin(async move {
-                    let mut count = QueryBuilder::<Postgres>::new("SELECT count(*)");
-                    push_filters(&mut count);
-                    let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
-                    let mut rows = QueryBuilder::<Postgres>::new("SELECT ");
-                    rows.push(change_request_columns!());
-                    push_filters(&mut rows);
-                    rows.push(" ORDER BY created_at DESC, id DESC LIMIT ");
-                    rows.push_bind(limit);
-                    rows.push(" OFFSET ");
-                    rows.push_bind(offset);
-                    let items = rows
-                        .build()
-                        .fetch_all(tx.as_mut())
-                        .await?
-                        .iter()
-                        .map(change_request_from_row)
-                        .collect::<Result<Vec<_>, _>>()?;
-                    Ok((items, total))
-                })
+        let org = principal.org_id;
+        let (items, total) = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
+            Box::pin(async move {
+                let mut count = QueryBuilder::<Postgres>::new("SELECT count(*)");
+                push_filters(&mut count);
+                let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
+                let mut rows = QueryBuilder::<Postgres>::new("SELECT ");
+                rows.push(change_request_columns!());
+                push_filters(&mut rows);
+                rows.push(" ORDER BY created_at DESC, id DESC LIMIT ");
+                rows.push_bind(limit);
+                rows.push(" OFFSET ");
+                rows.push_bind(offset);
+                let items = rows
+                    .build()
+                    .fetch_all(tx.as_mut())
+                    .await?
+                    .iter()
+                    .map(change_request_from_row)
+                    .collect::<Result<Vec<_>, _>>()?;
+                let mut corrected: Vec<Uuid> = items
+                    .iter()
+                    .filter(|r| r.kind == "PROFILE_CORRECTION" && r.subject_type == "EMPLOYEE")
+                    .map(|r| r.subject_id)
+                    .collect();
+                corrected.sort_unstable();
+                corrected.dedup();
+                if !hr || corrected.is_empty() {
+                    return Ok(((items, total), Vec::new()));
+                }
+                let me = actor_employee_id(tx, &principal).await?;
+                let event = access_event(
+                    &principal,
+                    DirectoryAccess::List,
+                    &corrected,
+                    me,
+                    json!({ "view": "change_requests" }),
+                )?;
+                Ok(((items, total), vec![event]))
             })
-            .await?;
+        })
+        .await?;
         Ok(ChangeRequestPage {
             items,
             total,

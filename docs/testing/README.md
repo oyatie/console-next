@@ -10,10 +10,10 @@ not a claim that every tier is already wired in the public workflow.
 | Fast | Types, lint, affected unit/component tests, contract and ratchet gates; affected API/DB binaries | PRs and fix rounds; affected only |
 | Rust non-database | Every default-feature workspace test without a database; nextest JUnit reconciled against a fresh inventory | Affected PRs and merge results; dev pushes reuse the successful merge result; target ≤ 10 min wall, shard by measured duration above 5 min execution |
 | Rust database | Every SQLx and `test-postgres` workspace test against fresh PostgreSQL; nextest JUnit reconciled across four duration shards | Gate-changing PRs, push to dev and nightly; no retries |
-| PR browser | Affected critical journeys and first-run-solo smoke, Chromium and Firefox | Every PR; ≤ 8 min wall including stack startup |
+| PR browser | Affected critical journeys and first-run-solo smoke, Chromium and Firefox; focused WebKit set | Every PR; ≤ 8 min wall including stack startup |
 | Queue browser | Affected checks, journey smoke, solo first-run gate, route smoke and a no-new-reds sweep | Landing / merge result; browser smoke within the PR budget |
 | Full widening | Full suite for migrations, contracts, Cedar, auth/tenancy and tooling changes | When the change affects these shared boundaries |
-| Release / nightly | Full Chromium/Firefox E2E | Once per release unit and nightly; E2E ≤ 15 min wall including startup |
+| Release / nightly | Full Chromium/Firefox/WebKit E2E | Once per release unit and nightly; E2E ≤ 15 min wall including startup |
 | Scheduled | Mutation, soak, chaos and fuzz | Separate scheduled jobs |
 
 Owner policy (2026-10-15): select crates through the workspace dependency graph, web tests through the import

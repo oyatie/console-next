@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - me
+operationId: snoozeMyActionInboxItem
+summary: Postpone one of my inbox items
+description: >-
+  Hides an item from the caller's own list, pages and counts until the given day. Nothing on
+  the item changes and nobody else's list does. Postponing an item that is already postponed
+  moves its day. The item returns by itself on that day, and earlier when its decision version
+  changes or its deadline passes after it was postponed. The item is resolved through the
+  caller's own sources, the same read as the list, so another person's item, an unknown id and
+  a malformed id answer the same 404 lifecycle.refuse.scope. A refusal writes nothing.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  description: The item id as the list serves it (kind:uuid).
+  schema:
+    type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required: [until]
+        additionalProperties: false
+        properties:
+          until:
+            type: string
+            format: date
+            description: The day the item returns, later than today in Korea and no later than the item's snooze.latest.
+responses:
+  '204':
+    description: The item is postponed until that day.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '404':
+    description: lifecycle.refuse.scope - the item is not in the caller's inbox or does not exist, one answer for both.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: snooze_not_allowed - the item is a decision someone else is waiting on (snooze.allowed is false).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: >-
+      snooze_past when the day is today or earlier in Korea; snooze_past_legal_due when the
+      item's due date is a legal deadline and the day is on or after it, with the last allowed
+      day in error.details.latest; validation when until is not a date.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

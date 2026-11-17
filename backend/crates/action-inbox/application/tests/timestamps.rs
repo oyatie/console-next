@@ -9,6 +9,7 @@ fn inbox_deadlines_and_submissions_are_fractional_utc_strings() {
     for optional in [Some(at), None] {
         let item = ActionInboxItem {
             age_days: 0,
+            due_basis: None,
             fold_key: "item".into(),
             context: None,
             id: "item".into(),
@@ -25,6 +26,7 @@ fn inbox_deadlines_and_submissions_are_fractional_utc_strings() {
             done: false,
             lane: "turn",
             days_remaining: None,
+            snooze: Default::default(),
             created_at: at,
         };
         let wire = serde_json::to_value(item).unwrap();

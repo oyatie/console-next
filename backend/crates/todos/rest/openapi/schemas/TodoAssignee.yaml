@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+description: An account the caller may ask, by name only.
+required:
+- account_id
+- display_name
+properties:
+  account_id:
+    $ref: '#/components/schemas/Uuid'
+  display_name:
+    type: string

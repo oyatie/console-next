@@ -29,23 +29,6 @@ impl HrService {
     ) -> Result<EmployeeImportPreviewResponse, HrError> {
         let org = principal.org_id;
         let org_uuid = *org.as_uuid();
-        let workplaces =
-            console_platform_db::with_org_conn::<_, _, HrError>(&self.pool, org, |tx| {
-                Box::pin(async move {
-                    console_entity_adapter_postgres::employment_hire::open_workplaces(
-                        tx.as_mut(),
-                        org_uuid,
-                    )
-                    .await
-                    .map_err(crate::lifecycle::title_reason::coded)
-                })
-            })
-            .await?;
-        let mut names = std::collections::BTreeMap::<String, Vec<Uuid>>::new();
-        for (name, id) in workplaces {
-            names.entry(name).or_default().push(id);
-        }
-        crate::import::workbook::refine_place_columns(&mut parsed, &names);
         if upload.pay_period_start.is_none() {
             crate::import::period::drop_period_values(&mut parsed);
         }

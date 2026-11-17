@@ -8,7 +8,7 @@ pub(super) fn project_item(
     due_soon_days: i64,
 ) -> ActionInboxItem {
     let lane = match item.kind.as_str() {
-        "org_change_waiting" | "identifier_correction_waiting" => "waiting",
+        "org_change_waiting" | "identifier_correction_waiting" | "todo_requested" => "waiting",
         "org_change_scheduled" => "scheduled",
         _ => "turn",
     };
@@ -17,7 +17,8 @@ pub(super) fn project_item(
     } else {
         ("wait", "neutral")
     };
-    ActionInboxItem {
+    let mut item = ActionInboxItem {
+        snooze: crate::SnoozeFacts::default(),
         age_days: (now.to_offset(time::macros::offset!(+9)).date()
             - item.created_at.to_offset(time::macros::offset!(+9)).date())
         .whole_days()
@@ -31,6 +32,7 @@ pub(super) fn project_item(
         }),
         id: item.id,
         kind: item.kind,
+        due_basis: item.due_basis,
         urg,
         ref_code: item.ref_code,
         title: item.title,
@@ -42,7 +44,9 @@ pub(super) fn project_item(
         links: item.links,
         done: false,
         created_at: item.created_at,
-    }
+    };
+    item.snooze = crate::SnoozeFacts::of(&item, crate::kst_date(now));
+    item
 }
 
 pub fn urgency(

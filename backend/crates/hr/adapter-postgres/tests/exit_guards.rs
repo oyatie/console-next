@@ -105,3 +105,6 @@ mod register_tests;
 mod report_tests;
 #[path = "exit_guards/scheduled.rs"]
 mod scheduled_tests;
+
+#[path = "exit_guards/short_tenure.rs"]
+mod short_tenure;

@@ -61,7 +61,7 @@ test("D7 evidence imports reports on dev pushes; the queue gates solo journeys",
   const home = ci.jobs.home;
   assert.ok(home, "served journeys must run in Home CI");
   const journey = home.steps.find(s => s.name === "Solo journey on Chromium and Firefox");
-  for (const step of home.steps.filter(s => /D7|Solo journey/.test(s.name ?? "") || s.with?.name === "d7-playwright")) {
+  for (const step of home.steps.filter(s => /D7/.test(s.name ?? "") || s === journey || s.with?.name === "d7-playwright")) {
     assert.match(step.if, /github\.event_name == 'merge_group'/);
   }
   assert.match(journey.run, /for browser in 0 1/);

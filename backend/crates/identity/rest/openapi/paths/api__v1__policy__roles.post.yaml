@@ -4,7 +4,9 @@ operationId: createPolicyRole
 summary: Create a tenant custom role definition
 description: Creates an audited, tenant-scoped custom role definition. Custom roles never replace built-in users.roles,
   but ACTIVE assignments can add runtime-effective ordinary feature grants on the next request. Elevated policy-management
-  and scope-widening features are rejected.
+  and scope-widening features are rejected. Every permission the role carries must be one the caller holds, at
+  that level, over the branches the role reaches; otherwise the request is refused with 403 forbidden and nothing
+  is written.
 security:
 - bearerAuth: []
 requestBody:

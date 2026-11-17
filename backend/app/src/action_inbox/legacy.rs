@@ -43,6 +43,7 @@ impl PgActionInboxSources {
         let items = offers
             .into_iter()
             .map(|offer| ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: format!("dispatch:{}", offer.dispatch_id),
                 kind: "dispatch".to_owned(),
@@ -90,6 +91,7 @@ impl PgActionInboxSources {
         let items = tickets
             .into_iter()
             .map(|ticket| ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: format!("support:{}", ticket.id),
                 kind: "support".to_owned(),
@@ -140,6 +142,7 @@ impl PgActionInboxSources {
             .items
             .into_iter()
             .map(|row| ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: format!("work:{}", row.id),
                 kind: "work".to_owned(),
@@ -221,6 +224,7 @@ impl PgActionInboxSources {
         let items = runs
             .into_iter()
             .map(|run| ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: format!("payroll:{}", run.id),
                 kind: "payroll".to_owned(),
@@ -272,6 +276,7 @@ impl PgActionInboxSources {
         let items = requests
             .into_iter()
             .map(|request| ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: format!("governance:{}", request.id),
                 kind: "governance".to_owned(),

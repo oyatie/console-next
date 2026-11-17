@@ -157,6 +157,23 @@ test("brokenRef checks UI, shell, tokens and inline styles, with same-module def
   expect(checkBrokenRefs(root).filter((p: string) => p.startsWith(cssFile))).toEqual([]);
 });
 
+test("only the shell reads its own sizes; everything else clears the frame through its insets", () => {
+  const tokens = ":root { --rail-w: 1px; --topbar-h: 1px; --frame-top: var(--topbar-h); --space-4: 1px; }";
+  const root = fixture({
+    [tokenFile]: tokens,
+    "apps/web/src/ui/toast/toast.module.css": ".t { left: calc(VAR(--rail-w) + var(--space-4)); }",
+    "apps/web/src/ui/note.module.css": "/* never var(--rail-w) here */ .n { top: var(--frame-top); }",
+    "apps/web/src/features/x/ui/x.tsx": 'const style = { top: "var(--topbar-h)" };',
+    "apps/web/src/ui/ok.module.css": ".o { top: var(--frame-top); }",
+    "apps/web/src/shell/top.module.css": ".a { max-width: var(--rail-w); }",
+    "apps/web/src/app.css": ".shell { grid-template-columns: var(--rail-w) 1fr; }",
+  }, {});
+  const frame = (p: string) => p.includes("shell's size");
+  expect(checkBrokenRefs(root).filter(frame).map((p: string) => p.split(":")[0]).sort())
+    .toEqual(["apps/web/src/features/x/ui/x.tsx", "apps/web/src/ui/toast/toast.module.css"]);
+  expect(gate(root).stderr.split("\n").filter(frame)).toHaveLength(2);
+});
+
 test("dark-only and conditional definitions cannot satisfy light or unconditional refs", () => {
   for (const definition of [
     '@media (prefers-color-scheme: dark) { :root { --x: #000; } }',
@@ -230,4 +247,27 @@ test("merged-tree metric pins are fully admitted", () => {
   const root = fileURLToPath(new URL("../", import.meta.url));
   const baseline = JSON.parse(readFileSync(path.join(root, "scripts/ds-baseline.json"), "utf8"));
   expect(compare(measure(root), baseline)).toEqual([]);
+});
+
+const experienceFile = "packages/tokens/experiences/calm.css";
+const calm = (light: string, dark = "") => `:root[data-experience="calm"] { ${light} }\n:root[data-experience="calm"][data-theme="dark"] { ${dark} }`;
+
+test("literal token values in an experience file are not design-system debt", () => {
+  const css = readFileSync(new URL("../packages/tokens/tokens.css", import.meta.url), "utf8");
+  const r = gate(fixture({ [tokenFile]: css, [experienceFile]: calm("--border: #d0d7e0; --row-h: 36px;", "--border: #2b3542;") }, {}));
+  expect(r.stderr).toBe("");
+  expect(r.status).toBe(0);
+});
+
+test("check-ds runs the contrast pairs, the block rule and the dark rule on every experience file", () => {
+  const css = readFileSync(new URL("../packages/tokens/tokens.css", import.meta.url), "utf8");
+  const contrast = gate(fixture({ [tokenFile]: css, [experienceFile]: calm("", "--control-border: var(--surface);") }));
+  expect(contrast.status).toBe(1);
+  expect(contrast.stderr).toContain("experience calm, dark: --control-border/--surface 1.0000:1 < 3:1");
+  const shape = gate(fixture({ [tokenFile]: css, [experienceFile]: ":root { --row-h: 36px; }" }));
+  expect(shape.status).toBe(1);
+  expect(shape.stderr).toContain(`${experienceFile}: :root is not one of the experience's blocks`);
+  const lightOnly = gate(fixture({ [tokenFile]: css, [experienceFile]: calm("--border: #d0d7e0;") }));
+  expect(lightOnly.status).toBe(1);
+  expect(lightOnly.stderr).toContain(`${experienceFile}: --border is a colour set for light only`);
 });

@@ -5,7 +5,6 @@ pub mod classification;
 pub mod company_review;
 pub mod fields;
 pub mod fields_org;
-mod fields_place;
 pub mod pii;
 pub mod rollback;
 pub mod rrn;
@@ -38,5 +37,4 @@ pub mod roster_cells;
 pub mod summary;
 
 // --- lane: UX-R3 IMPORT ---
-mod fields_register;
 pub mod sex;

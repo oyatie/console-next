@@ -125,7 +125,8 @@ async fn fixed_term_read_refuses_revoked_grants_before_disclosing_the_employee(p
         ),
         (403, "forbidden")
     );
-    assert_eq!(f.count("audit_events").await, before);
+    // Only the admitted read leaves its access record.
+    assert_eq!(f.count("audit_events").await, before + 1);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

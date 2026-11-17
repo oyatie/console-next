@@ -47,6 +47,15 @@ parameters:
     enum: [all, turn, waiting, scheduled, deadlines, failures, notices]
     default: all
   description: Server-owned view; ownership and deadlines are never merged or filtered in the browser.
+- name: snoozed
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [only]
+  description: >-
+    With only, lists the items the caller postponed, each with snooze.until. Without it the
+    list, its pages and its counts leave those items out. Takes no filter and no attention value.
 - name: limit
   in: query
   required: false
@@ -78,7 +87,7 @@ responses:
         schema:
           type: string
   '422':
-    description: The cursor is malformed or attention was combined with a saved filter other than all or turn.
+    description: The cursor is malformed, attention was combined with a saved filter other than all or turn, or snoozed was combined with a filter or attention value.
     content:
       application/json:
         schema:

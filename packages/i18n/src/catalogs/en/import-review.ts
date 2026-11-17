@@ -24,7 +24,7 @@ export const enImportReview = {
   "importReview.info.rrn_unavailable": "The server has no key to encrypt resident registration numbers, so this column was dropped. People are matched by employee number and name.",
   "importReview.info.rrn_invalid": "Not a resident registration number, so it was not used. People are matched by employee number and name.",
   "importReview.info.other": "Applied as stated.",
-  "importReview.reason.sheet_needs_mapping": "Sheet with no header found",
+  "importReview.reason.sheet_needs_mapping": "Sheet column bindings need confirmation",
   "importReview.reason.unresolved_identity": "Who is this? (same name)",
   "importReview.reason.summary_row_skipped": "Total row · not a person",
   "importReview.reason.phone_invalid": "Not readable as a mobile number",

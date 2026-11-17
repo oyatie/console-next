@@ -18,7 +18,7 @@ const FOOT_ID = "workplace-attach-reason";
 /** 「attach a registration」 for one workplace, from the entity as read when the sheet opens (the choices depend on it). */
 export function AttachHost({ entityId, workplaceId, onClose }: { entityId: string; workplaceId: string; onClose: () => void }) {
   return (
-    <FreshEntity id={entityId}>
+    <FreshEntity id={entityId} title={t("workplace.list.title")} onClose={onClose}>
       {(e) => {
         const w = e.workplaces.find((x) => x.id === workplaceId);
         return w ? <WorkplaceAttachSheet e={e} w={w} onClose={onClose} /> : null;

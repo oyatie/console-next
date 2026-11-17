@@ -33,10 +33,11 @@ If five shards cannot fit, planning fails with `STATES_TIMEOUT_LIMIT`. Missing
 measurements are named in the error; optimize or split oversized specs rather than
 adding a committed timing row.
 
-Successful dev pushes publish per-spec wall durations and the measurement's worker
-count as `states-timings`. Plans restore the latest unexpired same-repository dev
-artifact with matching workers. Artifact lookup examines at most five pages of 100
-entries. If no compatible artifact exists, the newest trusted artifact is scaled by
+Dev pushes publish per-spec wall durations and the measurement's worker count as
+`states-timings`. Plans restore the latest unexpired artifact with matching workers
+from this repository's CI pushes on dev's history, whether or not the run passed.
+Artifact lookup examines at most five pages of 100 entries. If no compatible
+artifact exists, the newest trusted artifact is scaled by
 `measured workers / configured workers`, with a warning. If none exists, the configured
 four worker-seconds per test bootstrap the suite, also with a warning. This floor
 allows the initial run to produce measurements; it is not a capacity proof.
@@ -69,8 +70,21 @@ concurrent runs. The config builds the web app once, then starts Vite preview on
 the slot's strict port and never reuses another run's server. Vite's `test` mode
 includes `/_gallery` in this optimized build under `.cache/states-<port>`;
 normal production builds omit it, and their `apps/web/dist` output is preserved.
-Lazy chunks are already built before assertions start; the same `page.route` mocks supply API
-states. Each test has a fresh browser context. Service workers are blocked.
+Chunks are prebuilt but can still arrive after the shell. Use `mockNavigate(page, path)`
+from `navigation.ts` for settled mocked navigation: it waits for `routeReady` at the
+requested path or its registered redirect destination before content assertions.
+The same `page.route` mocks supply API states. Each test has a fresh browser context.
+Service workers are blocked.
+`check-e2e-policy` refuses direct gallery `goto` calls in mock, states and layout
+tests and helpers; use the shared navigation even for API-harness gallery opens.
+
+Tests that deliberately hold a chunk must start navigation without awaiting it,
+assert the shell loading state, then release the chunk and await navigation.
+`navigation.spec.ts` proves a configured content assertion expires while navigation
+remains pending, without raising timeouts or sleeping past a copied default.
+The gallery's `data-route-preview` marker lets busy component demonstrations remain
+visible without holding the containing route's readiness. The source gate confines
+the marker to `apps/web/src/gallery/`; production screens must settle their busy content.
 
 Fix-round proof (2026-10-27): `CONSOLE_WEB_PORT=5293 /usr/bin/time -p npm run e2e:states`
 passed all 113 Chromium cases in **143.58 s wall time**, including the single build

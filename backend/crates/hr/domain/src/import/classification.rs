@@ -2,7 +2,9 @@
 //! (canonical, restricted, location, retained), moved from `app/src/hr.rs`
 //! (R2-import).
 
-use super::fields::{EMPLOYEE_IMPORT_FIELD_DEFINITIONS, EmployeeImportFieldDefinition};
+use super::fields::{
+    Classification, EMPLOYEE_IMPORT_FIELD_DEFINITIONS, EmployeeImportFieldDefinition,
+};
 use super::pii as import_pii;
 
 pub fn normalize_header_label(raw: &str) -> String {
@@ -34,7 +36,7 @@ pub fn employee_import_target_for_header(header: &str) -> Option<&'static str> {
 /// (`retained`, raw text kept without a field, is no longer produced.)
 pub fn employee_import_column_classification(header: &str, target: Option<&str>) -> &'static str {
     if let Some(field) = target.and_then(employee_import_field_for_target) {
-        return field.classification;
+        return field.classification.as_str();
     }
     if target.is_none() || is_restricted_employee_import_header(header) {
         return "restricted";
@@ -47,19 +49,21 @@ pub fn employee_import_column_classification(header: &str, target: Option<&str>)
 
 pub fn employee_import_field_for_header(
     header: &str,
-) -> Option<&'static EmployeeImportFieldDefinition> {
+) -> Option<&'static EmployeeImportFieldDefinition<'static>> {
     let key = import_header_match_key(header);
-    EMPLOYEE_IMPORT_FIELD_DEFINITIONS.iter().find(|field| {
-        field
-            .aliases
-            .iter()
-            .any(|alias| import_header_match_key(alias) == key)
+    employee_import_field_for_target(header).or_else(|| {
+        EMPLOYEE_IMPORT_FIELD_DEFINITIONS.iter().find(|field| {
+            field
+                .aliases
+                .iter()
+                .any(|alias| import_header_match_key(alias) == key)
+        })
     })
 }
 
 pub fn employee_import_field_for_target(
     target: &str,
-) -> Option<&'static EmployeeImportFieldDefinition> {
+) -> Option<&'static EmployeeImportFieldDefinition<'static>> {
     EMPLOYEE_IMPORT_FIELD_DEFINITIONS
         .iter()
         .find(|field| field.target == target)
@@ -74,7 +78,7 @@ pub fn is_location_header(header: &str) -> bool {
 /// persist, even when the operator maps the column to another field.
 pub fn is_dropped_employee_import_header(header: &str) -> bool {
     match employee_import_field_for_header(header) {
-        Some(field) => field.classification == "restricted",
+        Some(field) => field.classification == Classification::Restricted,
         None => is_restricted_employee_import_header(header),
     }
 }
@@ -112,7 +116,7 @@ pub fn is_restricted_employee_import_header(header: &str) -> bool {
 
 pub fn target_header_aliases(target: &str) -> &'static [&'static str] {
     employee_import_field_for_target(target)
-        .map(|field| field.aliases)
+        .map(|field| field.aliases.as_slice())
         .unwrap_or(&[])
 }
 
@@ -146,6 +150,10 @@ mod tests {
         );
         assert_eq!(
             employee_import_column_classification("연락처", Some("phone")),
+            "restricted"
+        );
+        assert_eq!(
+            employee_import_column_classification("주민등록번호", Some("rrn")),
             "restricted"
         );
         // A header's own wording is judged apart from the mapping: a column the

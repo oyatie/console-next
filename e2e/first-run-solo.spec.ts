@@ -10,15 +10,16 @@ import { homeRail, registerBranch, registerEntity, registerWorkplace, startOpera
 import { addDepartments, findBox, findPressable } from "./structure-flows";
 import { rosterXlsx } from "./workbook";
 import { gradeJourney } from "./helpers/grade-fix";
-import { chooseWorkbook, payPeriod } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "./helpers/import";
 import { expectComposer } from "./helpers/composer";
+import { throttleCPU } from "./helpers/cpu-throttle";
 
 // The first-run solo gate (owner rule): one administrator, an empty tenant, no helper account. From the
 // first sign-in to operating, every prerequisite is created through the product, in place, with no second
 // person and no approval wait. Needs the backend's setup phase (branch hard/entity-depth, not yet merged).
 // Clicks are counted per task (fills are typing, not clicks); each ceiling is the measured count + 2.
 
-test("a solo administrator goes from an empty tenant to operating", { tag: "@first-run" }, async ({ browser }) => {
+test("a solo administrator goes from an empty tenant to operating", { tag: ["@first-run", "@webkit-pr"] }, async ({ browser }) => {
   const c = clickCounter();
   const companyDomain = unique("ganasol");
   const replacement = await test.step("J0 Provision tenant and replace cancelled code", async () => {
@@ -50,6 +51,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
 
   const admin = await test.step("J1 First sign-in and company domain", async () => {
     const admin = await firstSignIn(browser, replacement);
+    await throttleCPU(admin);
     await routeReady(admin);
     await expect(admin.locator('a[href="/setup/company-names"]')).toHaveCount(0);
     await go(admin, "/setup/company-names", true);
@@ -174,6 +176,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     await chooseWorkbook(admin, "roster.xlsx", await rosterXlsx("가나솔루션", [["GN-0101", "이개발", "개발팀", "선임", "2025-04-01"]]));
     await payPeriod(admin);
     await c.click(admin.getByRole("button", { name: "명부 미리보기" }));
+    await confirmImportColumns(admin);
     await c.click(admin.getByRole("button", { name: "모의 반영 실행" }));
     await c.click(admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }));
     await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();
@@ -203,6 +206,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     await addInput.press("Enter");
     const created = await (await applied).json() as { created_unit_ids: string[] };
     expect(created.created_unit_ids).toHaveLength(1);
+    await routeReady(admin);
     // org-19: stay on the chart, select the department the server created, and link its record in the receipt.
     await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(created.created_unit_ids[0]);
     await addInput.press("Escape");

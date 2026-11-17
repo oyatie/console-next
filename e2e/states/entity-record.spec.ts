@@ -3,11 +3,98 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { TABS } from "../../apps/web/src/features/entity/domain/tabs";
 import { expectAxe, fits } from "../a11y";
+import { routeReady } from "../flows";
 import { mockRoute } from "../mock/route";
-import { checklist, id } from "../mock/fixtures";
+import { checklist, failure, id } from "../mock/fixtures";
 import { entityRecordPath, entityRecordStates, mockEntityRecord } from "./entity-record";
 
 test.beforeAll(() => loadCatalog("ko"));
+
+for (const navigation of ["workplace", "list and back"] as const) test(`entity-record: ${navigation} keeps the cached record during an access refetch @ui-state`, async ({ page }) => {
+  const fixture = await mockEntityRecord(page, "populated");
+  const held = Promise.withResolvers<void>();
+  const requested = Promise.withResolvers<void>();
+  let hold = false;
+  await page.route(url => url.pathname === "/api/v1/access/me", async route => {
+    if (hold) { requested.resolve(); await held.promise; }
+    await route.fallback();
+  });
+  try {
+    await page.goto(entityRecordPath);
+    const main = page.getByRole("main");
+    const heading = main.getByRole("heading", { name: fixture.entity.current!.name!, level: 1 });
+    await expect(heading).toBeVisible();
+    await routeReady(page);
+    if (navigation === "list and back") {
+      await main.locator("header[data-band]").getByRole("link", { name: t("entity.list.title"), exact: true }).click();
+      await expect(page).toHaveURL(/\/org(\?tab=entities|\/entities$)/);
+      await routeReady(page);
+    }
+    hold = true;
+    const blanks = page.evaluate(async ({ path, workplace }) => {
+      let blank = 0;
+      let arrived = false;
+      for (let frame = 0; frame < 90; frame++) {
+        const main = document.querySelector("main");
+        if (location.pathname === path && (!workplace || new URLSearchParams(location.search).get("wp") === workplace)) {
+          arrived = true;
+          if (!main?.querySelector("h1") || main.querySelector('[data-read-layout="record"][aria-busy="true"]')) blank++;
+        }
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      }
+      return { blank, arrived };
+    }, { path: entityRecordPath, workplace: navigation === "workplace" ? fixture.entity.workplaces[0]!.id : null });
+    if (navigation === "workplace") {
+      await main.getByRole("grid", { name: t("entityRecord.workplaces.table"), exact: true }).getByRole("row").nth(1).click();
+      await expect(page).toHaveURL(url => url.searchParams.get("wp") === fixture.entity.workplaces[0]!.id);
+    } else {
+      await page.goBack();
+      await expect(page).toHaveURL(entityRecordPath);
+    }
+    await requested.promise;
+    expect(await blanks, "cached record must remain visible on every navigation frame").toEqual({ blank: 0, arrived: true });
+    await expect(heading).toBeVisible();
+    await expect(main.getByRole("tablist", { name: t("entityRecord.tabs") })).toHaveCount(1);
+    held.resolve();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); fixture.release(); }
+});
+
+test("entity-record: the first settings failure releases the record while its retry is pending @ui-state", async ({ page }) => {
+  const fixture = await mockEntityRecord(page, "populated");
+  const held = Promise.withResolvers<void>();
+  const retry = Promise.withResolvers<void>();
+  let requests = 0;
+  await mockRoute(page, "get", "/api/v1/settings", async () => {
+    if (++requests > 1) { retry.resolve(); await held.promise; }
+    return { status: 503, json: failure("service_unavailable") };
+  });
+  try {
+    await page.goto(entityRecordPath);
+    await retry.promise;
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { name: fixture.entity.current!.name!, level: 1 })).toBeVisible();
+    await expect(main.locator('[data-read-layout="record"][aria-busy="true"]')).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); fixture.release(); }
+});
+
+test("entity-record: a refusal is shown while the checklist is still pending @ui-state", async ({ page }) => {
+  const fixture = await mockEntityRecord(page, "refused");
+  const held = Promise.withResolvers<void>();
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    await held.promise;
+    return { status: 200, json: checklist };
+  });
+  try {
+    await page.goto(entityRecordPath);
+    const main = page.getByRole("main");
+    await expect(main.getByRole("region", { name: t("common.denied.title.plain") })).toBeVisible();
+    await expect(main.locator('[data-read-layout="record"][aria-busy="true"]')).toHaveCount(0);
+    await expect(main.getByRole("tablist")).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); fixture.release(); }
+});
 
 for (const state of entityRecordStates) for (const width of state === "long" ? [1440, 390, 320] : [1440, 390]) {
   test(`entity-record: ${state} at ${width}px @ui-state`, async ({ page }) => {
@@ -146,7 +233,7 @@ test("late document and history counts preserve the tab positions @ui-state", as
   }
 });
 
-test("entity-record: late phase facts do not move record fields or controls @ui-state", async ({ page }) => {
+test("entity-record: late phase facts arrive with the record fields and controls @ui-state", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   const fixture = await mockEntityRecord(page, "populated");
   const held = Promise.withResolvers<void>();
@@ -161,14 +248,51 @@ test("entity-record: late phase facts do not move record fields or controls @ui-
   try {
     await page.goto(entityRecordPath);
     const main = page.getByRole("main");
-    await expect(main.getByRole("heading", { name: fixture.entity.current!.name!, level: 1 })).toBeVisible();
-    await page.evaluate(() => document.fonts.ready);
+    await expect(main.locator('[data-read-layout="record"][aria-busy="true"]')).toBeVisible();
     await expect(main.getByRole("button", { name: "과세유형 수정", exact: true })).toHaveCount(0);
-    const fields = main.locator('[class*="_fact_"]');
-    const before = await fields.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
     held.resolve();
     await expect(main.getByRole("button", { name: "과세유형 수정", exact: true })).toBeVisible();
-    expect(await fields.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(before);
+    await expect(main.getByRole("heading", { name: fixture.entity.current!.name!, level: 1 })).toBeVisible();
+    await expect(main.locator('[data-read-layout="record"][aria-busy="true"]')).toHaveCount(0);
     expect(fixture.unexpected).toEqual([]);
   } finally { held.resolve(); await page.close(); fixture.release(); }
 });
+
+for (const read of ["checklist", "settings"]) for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
+  test(`entity-record: late receipt ${read} keeps certificate controls pending at ${width}px ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockEntityRecord(page, "populated");
+    const held = Promise.withResolvers<void>();
+    await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+      if (read === "checklist") await held.promise;
+      return { status: 200, json: { ...checklist, go_live_at: new Date().toISOString() } };
+    });
+    await mockRoute(page, "get", "/api/v1/settings", async () => {
+      if (read === "settings") await held.promise;
+      return { status: 200, json: { can_change: false, items: [{
+        key: "onboarding.receipt_days", value: 2, default: 2, kind: { type: "int" as const, unit: "days" as const },
+        looser_when: "neutral" as const, governance: "tenant" as const, legal_basis: null, version: "code_default" as const, effective_from: null, scheduled: [],
+        source: { layer: "code_default" as const, scope_entity_id: null }, chain: [],
+      }] } };
+    });
+    try {
+      const entityRead = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/legal-entities/${fixture.entity.id}`);
+      await page.goto(entityRecordPath);
+      await (await entityRead).finished();
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const main = page.getByRole("main");
+      await expect(main.locator('[data-read-layout="record"][aria-busy="true"]')).toBeVisible();
+      await expect(main.getByRole("tablist")).toHaveCount(0);
+      await fits(page, `entity-record/pending-receipt/${width}/${theme}`);
+      held.resolve();
+      await expect(main.getByRole("heading", { name: fixture.entity.current!.name!, level: 1 })).toBeVisible();
+      await expect(main.locator('[data-phase-band="started"]')).toHaveCount(1);
+      await expect(main.getByRole("tablist", { name: t("entityRecord.tabs") })).toHaveCount(1);
+      await fits(page, `entity-record/receipt/${width}/${theme}`);
+      await expectAxe(page, `entity-record/receipt/${width}/${theme}`);
+      await page.screenshot({ path: test.info().outputPath("entity-record-receipt.png"), fullPage: true });
+      expect(fixture.unexpected).toEqual([]);
+    } finally { held.resolve(); await page.close(); fixture.release(); }
+  });
+}

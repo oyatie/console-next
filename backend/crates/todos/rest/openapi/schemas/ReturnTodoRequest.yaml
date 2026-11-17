@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- note
+properties:
+  note:
+    type: string
+    description: Why it goes back; 1..=200 characters after trimming.

@@ -62,6 +62,7 @@ properties:
     - period_unlock
     - grant_notice
     - account_security
+    - account_binding_review
     - setup_entity
     - setup_workplace
     - setup_org
@@ -74,6 +75,8 @@ properties:
     - support_access
     - registration_check
     - privacy_request
+    - todo_assigned
+    - todo_requested
   urg:
     type: string
     enum:
@@ -93,6 +96,11 @@ properties:
     type: string
   due:
     $ref: '#/components/schemas/Timestamp'
+  due_basis:
+    type: string
+    enum:
+    - statutory
+    description: Present when the due date is a legal deadline read from the statutory register, such as a final-pay settlement, a social insurance filing or the answer to a privacy rights request. Absent for every other due date.
   dueTone:
     type: string
     enum:
@@ -114,6 +122,26 @@ properties:
   days_remaining:
     type: [integer, 'null']
     description: Calendar days remaining in the source deadline's timezone, computed from the database clock.
+  snooze:
+    type: object
+    description: Whether the caller may postpone this item in their own list, and to which day at most. The snooze command enforces the same facts.
+    required: [allowed]
+    properties:
+      allowed:
+        type: boolean
+        description: False when the item is a decision someone else is waiting on; no snooze control is offered then.
+      reason:
+        type: string
+        enum: [blocks_others]
+        description: Why the item cannot be postponed; present only when allowed is false.
+      until:
+        type: string
+        format: date
+        description: The day the item returns to the list; present only in the snoozed view.
+      latest:
+        type: string
+        format: date
+        description: The last day the item may be postponed to, the day before its legal deadline in Korea. Absent when the day is unbounded. When it is not later than today, no day is left.
   context:
     type: object
     description: Source-owned facts for the row's command and informed grant confirmation.
@@ -220,9 +248,20 @@ properties:
           $ref: '#/components/schemas/AccessEffectiveEntry'
       is_ops:
         type: boolean
+      todo:
+        type: object
+        description: Present on a to-do request the caller made; the note is present only when it was sent back.
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [open, returned]
+          return_note:
+            type: string
+            description: The line the assignee wrote when sending the request back.
   version:
     type: string
-    description: Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes.
+    description: Opaque version for org-change approval and HR request rows, and for to-do requests the caller made; changes when a step is decided, the request closes or it is sent back.
   policy:
     type: object
     description: Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy.

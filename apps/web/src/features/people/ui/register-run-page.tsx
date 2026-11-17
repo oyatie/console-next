@@ -1,5 +1,6 @@
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { useEffect, useRef, useState } from "react";
+import { useKeys } from "../../../lib/react/use-keys";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -107,17 +108,7 @@ export function RegisterRun() {
     if (pick.verdict !== "other" || !pick.code) return focusFirst();
     reg.mutate({ next: !finish, override: { candidate_ids: cands.map((c) => c.employee_id), reason_code: pick.code, note: pick.note.trim() || undefined } });
   };
-  const latest = useRef(save);
-  useEffect(() => void (latest.current = save));
-  useEffect(() => {
-    const keys = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey) || e.isComposing) return;
-      e.preventDefault();
-      latest.current(e.shiftKey);
-    };
-    window.addEventListener("keydown", keys);
-    return () => window.removeEventListener("keydown", keys);
-  }, [latest]);
+  useKeys({ "registerRun.next": () => save(false), "registerRun.finish": () => save(true) });
   // The name takes focus as the page opens.
   useEffect(() => void requestAnimationFrame(() => body.current?.querySelector<HTMLElement>('[data-run="name"]')?.focus()), [body]);
 

@@ -7,6 +7,7 @@ use axum::http::header::RETRY_AFTER;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use console_hr_adapter_postgres::HrError;
+use console_hr_adapter_postgres::import::apply::with_apply_support_reference;
 use console_hr_adapter_postgres::import::apply_drive::Started;
 use console_hr_adapter_postgres::import::apply_job::{ApplyJob, DriverSlot, RETRY_AFTER_SECS};
 use console_hr_adapter_postgres::import::sheet::SheetContext;
@@ -18,6 +19,7 @@ use console_hr_adapter_postgres::import::unplaced::{UnplacedPage, UnplacedQuery}
 use console_hr_adapter_postgres::import::workbook::{mapping_request, parse_workbook};
 use console_hr_rest::HrApiError;
 use console_platform_authz::{Feature, Principal};
+use tracing::{Instrument, instrument::WithSubscriber};
 use uuid::Uuid;
 
 use super::{
@@ -90,6 +92,9 @@ pub(super) async fn apply_employee_import(
     headers: HeaderMap,
     Json(body): Json<EmployeeImportApplyRequest>,
 ) -> Response {
+    let trace = crate::telemetry::current_trace_context();
+    let support_ref = trace.trace_id().to_owned();
+    let span = tracing::info_span!("import_apply", support_ref = %support_ref, run = %run_id);
     let respond = async {
         authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
         let command_store = require_leave_import_command_store(&state)?;
@@ -98,10 +103,14 @@ pub(super) async fn apply_employee_import(
             // or a closed connection never stops an apply half way (the
             // roster half settled); the job finishes and GET …/apply reads it.
             let hr = state.hr.clone();
-            let report = tokio::spawn(async move {
-                hr.apply_import(principal, command_store, run_id, body)
-                    .await
-            })
+            let report = tokio::spawn(
+                with_apply_support_reference(support_ref.clone(), async move {
+                    hr.apply_import(principal, command_store, run_id, body)
+                        .await
+                })
+                .instrument(span.clone())
+                .with_current_subscriber(),
+            )
             .await
             .map_err(|_| HrError::internal("the import apply task stopped"))??;
             return Ok(Json(report).into_response());
@@ -113,14 +122,14 @@ pub(super) async fn apply_employee_import(
             Started::Running(job) => (StatusCode::ACCEPTED, Json(job)).into_response(),
             Started::Job(job) => {
                 let hr = state.hr.clone();
-                let driver = tokio::spawn(async move {
+                let driver = tokio::spawn(with_apply_support_reference(support_ref, async move {
                     let _slot = slot;
                     let done = hr.drive_apply(Some(command_store), org, run_id).await;
                     if let Err(error) = &done {
                         tracing::info!(run = %run_id, code = error.code, "import apply job stopped");
                     }
                     done
-                });
+                }).instrument(span).with_current_subscriber());
                 // RFC 7240: a run that finishes within the grace answers its
                 // report (200) and a failure its refusal; a longer one its job
                 // (202), followed over the event stream. The driver goes on

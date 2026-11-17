@@ -91,7 +91,7 @@ export function BulkMovePage() {
       onSubmit={available ? () => { if (blockers.length === 0) { setInFlight(true); if (setup) run.mutate(undefined); else submit.mutate(true); } } : undefined}
       blocked={available && blockers.length ? { reason: blockers.join(", ") } : undefined}
       onSaveDraft={available && !setup && blockers.length === 0 ? () => { setInFlight(true); submit.mutate(false); } : undefined}
-      error={run.error ?? submit.error} notice={<CommandError error={run.error ?? submit.error} />}
+      error={run.error ?? submit.error} notice={<CommandError focusOnRefusal error={run.error ?? submit.error} />}
       sections={{
         preflight: available && (blockers.length || carried.length) ? <>
           {blockers.length > 0 && <span className={s.reason}><Lock size={14} aria-hidden />{blockers[0]}</span>}

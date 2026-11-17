@@ -1683,10 +1683,10 @@ async fn imported_balance_command_preserves_expand_window_and_audits_once(owner_
         .bind(branch_admin.as_uuid())
         .bind("0123456789abcdef0123456789abcdef")
         .bind("0123456789abcdef")
-        .fetch_one(&command_pool)
+        .fetch_one(&rt)
         .await
         .is_err(),
-        "branch-scoped ADMIN must not execute an org-wide balance import"
+        "the runtime role must not call the trusted balance writer directly"
     );
     let first = call("12.000001", expected)
         .fetch_one(&command_pool)

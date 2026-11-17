@@ -3183,7 +3183,7 @@ export interface paths {
         };
         /**
          * List change requests
-         * @description BW-17. HR (org-wide employee_directory_manage) sees the organization's requests; any other caller sees only the requests it filed ("waiting") or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only.
+         * @description BW-17. HR (org-wide employee_directory_manage) sees the organization's requests; any other caller sees only the requests it filed ("waiting") or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only. A correction carries the values it asks for, so an HR page with PROFILE_CORRECTION rows leaves one employee.list_read access log row naming the employees they are about, never the values.
          */
         get: operations["listChangeRequests"];
         put?: never;
@@ -3959,7 +3959,7 @@ export interface paths {
         };
         /**
          * The live entries of one personnel card section across the tenant (sheet export)
-         * @description One row per live entry with the bound employee of the lowest employee number, its entry id and version, in entry id order. The rows go back into the import sheet with entry_id and expected_version to correct or void entries in bulk. Takes org-wide employee_directory_manage. A restricted section (discipline, disability, veteran) is refused with 409 record_restricted_export_unavailable until the per-export approval tier exists.
+         * @description One row per live entry with the bound employee of the lowest employee number, its entry id and version, in entry id order. The rows go back into the import sheet with entry_id and expected_version to correct or void entries in bulk. Takes org-wide employee_directory_manage and, as a download, org-wide excel_download. A restricted section (discipline, disability, veteran) is refused with 409 record_restricted_export_unavailable until the per-export approval tier exists. Each page is a download, so export_purpose is required and the page is logged (excel_export_logs and an employee.export access log event naming its employees and the row count); a refusal is logged as employee.export_refused, naming the section.
          */
         get: operations["listEmployeeRecordSheet"];
         put?: never;
@@ -4082,7 +4082,7 @@ export interface paths {
         put?: never;
         /**
          * Preview a bulk correction of scalar employee fields (MR-27)
-         * @description Grid or "all n people matching the filter". Send either selection + changes (one set of values for every employee the server selection matches; status absent selects everyone but EXITED) or rows (each employee with its own values and optional expected_updated_at pin). Nothing is written and no row is locked. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk field goes to a second person), UNCHANGED (every value already recorded) or REFUSED with the failed precondition (stale_record, exit_date_needs_exit, employee_number_in_use, employee_merged, employee_correction_sole_holder_refused, a field's validation, ...), and the exact counts. preview_digest binds the commit; preview_id is the job id and the sole holder's step-up object. Needs employee_directory_manage org-wide.
+         * @description Grid or "all n people matching the filter". Send either selection + changes (one set of values for every employee the server selection matches; status absent selects everyone but EXITED) or rows (each employee with its own values and optional expected_updated_at pin). No employee field is written and no row is locked; the rows show each person's stored values, so one employee.list_read access log row names the people whose record was read and the fields, never the values. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk field goes to a second person), UNCHANGED (every value already recorded) or REFUSED with the failed precondition (stale_record, exit_date_needs_exit, employee_number_in_use, employee_merged, employee_correction_sole_holder_refused, a field's validation, ...), and the exact counts. preview_digest binds the commit; preview_id is the job id and the sole holder's step-up object. Needs employee_directory_manage org-wide.
          */
         post: operations["previewBulkEmployeeCorrection"];
         delete?: never;
@@ -4228,7 +4228,8 @@ export interface paths {
         put?: never;
         /**
          * Apply a dry-run employee import run, bound to its dry run
-         * @description BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry run's is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing people only get the fields import may write (job duties, title, work location, an empty date of birth): never name, status, exit date, department or legal entity. New people are created ACTIVE, PRE_HIRE (future hire date, ONBOARD scheduled) or EXITED (former employees, marked migrated). A replay of the APPLIED run with the same digest returns the stored report. Preserved rows remain raw-ledger evidence only.
+         * @description Cedar action import_apply decides admission and is rechecked inside the write transaction. 403 import_apply_forbidden means the database refused the admitted command. 503 import_apply_timed_out means a statement or transaction exceeded the server time limit; nothing was written, and the stored job retains the same refusal code.
+         *     BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry run's is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing people only get the fields import may write (job duties, title, work location, an empty date of birth): never name, status, exit date, department or legal entity. New people are created ACTIVE, PRE_HIRE (future hire date, ONBOARD scheduled) or EXITED (former employees, marked migrated). A replay of the APPLIED run with the same digest returns the stored report. Preserved rows remain raw-ledger evidence only.
          *     BE-MIG W11 (decisions #27, #28) — with Prefer respond-async every refusal above is still immediate, plus 422 import_row_limit (current-people rows over import.apply.max_rows, former employees apart, refusals [{max, rows}]) and 409 apply_in_progress (a job of this run with another digest is running); then a run that finishes within 2 s answers its 200 report (or its refusal), a longer one 202 with the job (the same digest again gets the same job; an applied and settled run gets its 200 report; RFC 7240). The job settles in chunks of 100 rows, each one transaction with a data_import.apply.progress audit on the run (the import_run realtime event); read it with GET. A job whose driver died is resumed by the schedule loop, or fails apply_interrupted when it stopped before writing (send it again). 503 import_apply_busy with Retry-After when the server already runs its apply drivers. Without the header the same job runs inline and the report is returned (200); 409 apply_in_progress while another driver runs it. Either way the driver outlives the request: a dropped connection or a request timeout never stops an apply half way (read the run with GET).
          */
         post: operations["applyEmployeeImport"];
@@ -4557,7 +4558,7 @@ export interface paths {
         };
         /**
          * Contract history of an employee (EMP-MODEL G1)
-         * @description Every recorded contract row, newest start first, including rows a later correction superseded (superseded_by set; they leave the live history). in_force marks the live row covering today (KST). Wages are compensation, so this takes org-wide employee_directory_manage.
+         * @description Every recorded contract row, newest start first, including rows a later correction superseded (superseded_by set; they leave the live history). in_force marks the live row covering today (KST). Wages are compensation, so this takes org-wide employee_directory_manage; each read leaves an access log row.
          */
         get: operations["listEmployeeContracts"];
         put?: never;
@@ -4618,7 +4619,7 @@ export interface paths {
         };
         /**
          * Person and employment facts (EMP-MODEL E3, E4, E5, E12, E13)
-         * @description Birth date, work email (an HR fact that only prefills an invitation), identification type (never the number, decision 6), and, when the employee has an employment profile, the employment type with its derived worker classification, base pay in whole won with its unit, and the probation period with its server clock (probation_state, probation_days_left; DUE_SOON needs the reminder-window setting and is not served yet). Personal data, so org-wide employee_directory_manage.
+         * @description Birth date, work email (an HR fact that only prefills an invitation), identification type (never the number, decision 6), and, when the employee has an employment profile, the employment type with its derived worker classification, base pay in whole won with its unit, and the probation period with its server clock (probation_state, probation_days_left; DUE_SOON needs the reminder-window setting and is not served yet). Personal data, so org-wide employee_directory_manage; each read leaves an access log row.
          */
         get: operations["getEmploymentFacts"];
         put?: never;
@@ -4642,7 +4643,7 @@ export interface paths {
         };
         /**
          * Whether a registration is cancelled or the person exits, and why not the other
-         * @description CRUD. cancel_route DELETE (setup) or VOID (after go-live, with the employee_void_* refusals); exit is refused employee_already_exited, exit_case_open (open_exit_case_id) or exit_already_scheduled. On the caller's own record (people-self-33) both are refused own_record_forbidden, unless the caller is the ops account and no other account holds the act.
+         * @description CRUD. cancel_route DELETE (setup) or VOID (after go-live, with the employee_void_* refusals); exit is refused employee_already_exited, exit_case_open (open_exit_case_id) or exit_already_scheduled. On the caller's own record (people-self-33) both are refused own_record_forbidden, unless the caller is the ops account and no other account holds the act. A branch reader gets 404 for a person outside its branches; each read leaves an access log row.
          */
         get: operations["employeeEndOptions"];
         put?: never;
@@ -4679,7 +4680,7 @@ export interface paths {
         };
         /**
          * Cumulative fixed-term service (BW-12, Fixed-Term Workers Act §4①)
-         * @description Service as of today (KST) from the live contract history (employee_contracts), else the profile's contract window, else the hire date (basis HIRE_DATE_FALLBACK, which needs a review). Parental leave is not counted (Equal Employment Opportunity Act §19⑤). applies is false for an employee who is neither CONTRACT nor has a fixed-term contract row; the other fields are then null. Takes org-wide employee_directory_read.
+         * @description Service as of today (KST) from the live contract history (employee_contracts), else the profile's contract window, else the hire date (basis HIRE_DATE_FALLBACK, which needs a review). Parental leave is not counted (Equal Employment Opportunity Act §19⑤). applies is false for an employee who is neither CONTRACT nor has a fixed-term contract row; the other fields are then null. Takes org-wide employee_directory_read; each read leaves an access log row.
          */
         get: operations["getEmployeeFixedTerm"];
         put?: never;
@@ -4942,7 +4943,7 @@ export interface paths {
         };
         /**
          * Personnel card sections of an employee (MR-31/33/35)
-         * @description Education, qualification and license, military service, training completed, language skills, award and family entries of the natural person this employee is bound to (two employee records of one person show the same entries), with each section's tenant switch (hr.record.<section>.enabled). Voided entries only with include_voided. Takes org-wide employee_directory_manage. Without section, the restricted sections (discipline, disability, veterans' status) are left out, knowing such a record exists is itself sensitive. section=discipline|disability|veteran needs a purpose (422 record_purpose_required, reason_code_invalid, reason_note_required), passes the employee_restricted_record Cedar action (403 record_restricted_forbidden; 403 record_restricted_self on one's own record), and writes one employee.record.restricted_read audit row naming the entries and the purpose, never the values. Responses carry Cache-Control no-store.
+         * @description Education, qualification and license, military service, training completed, language skills, award and family entries of the natural person this employee is bound to (two employee records of one person show the same entries), with each section's tenant switch (hr.record.<section>.enabled). Voided entries only with include_voided. Takes org-wide employee_directory_manage, and each read leaves an access log row. Without section, the restricted sections (discipline, disability, veterans' status) are left out, knowing such a record exists is itself sensitive. section=discipline|disability|veteran needs a purpose (422 record_purpose_required, reason_code_invalid, reason_note_required), passes the employee_restricted_record Cedar action (403 record_restricted_forbidden; 403 record_restricted_self on one's own record), and writes one employee.record.restricted_read access log row naming the entries and the purpose, never the values. Responses carry Cache-Control no-store.
          */
         get: operations["listEmployeeRecords"];
         put?: never;
@@ -5002,7 +5003,7 @@ export interface paths {
         };
         /**
          * Every revision of one personnel card entry, oldest first
-         * @description A restricted section (discipline, disability, veteran) needs a purpose and is audited, as for the list. Cache-Control no-store.
+         * @description Each read leaves an access log row. A restricted section (discipline, disability, veteran) needs a purpose and is recorded, as for the list. Cache-Control no-store.
          */
         get: operations["getEmployeeRecordHistory"];
         put?: never;
@@ -9044,12 +9045,36 @@ export interface paths {
         };
         /**
          * Activity on one of my inbox items
-         * @description The record column's activity list for an item in the caller's inbox. The item is resolved through the caller's own sources, the same read as the list, so another person's item, an unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item was not found while a source was unavailable. Rows are the audit events on the item's own record (the request, change, lock, grant or case its first link names; for an org change, also its approval steps), newest first, at most 50: what happened (a verb from a closed set, other for anything else), who did it (absent for system events) and when. Events on the person or account behind an item are not served, and audit snapshots never are.
+         * @description The record column's activity list for an item in the caller's inbox. The item is resolved through the caller's own sources, the same read as the list, so another person's item, an unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item was not found while a source was unavailable. Rows are the audit events on the item's own record (the request, change, lock, grant, case or to-do request its first link names; for an org change, also its approval steps), newest first, at most 50: what happened (a verb from a closed set, other for anything else), who did it (absent for system events) and when. Events on the person or account behind an item are not served, and audit snapshots never are.
          */
         get: operations["listMyActionInboxItemActivity"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/action-inbox/items/{id}/snooze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Postpone one of my inbox items
+         * @description Hides an item from the caller's own list, pages and counts until the given day. Nothing on the item changes and nobody else's list does. Postponing an item that is already postponed moves its day. The item returns by itself on that day, and earlier when its decision version changes or its deadline passes after it was postponed. The item is resolved through the caller's own sources, the same read as the list, so another person's item, an unknown id and a malformed id answer the same 404 lifecycle.refuse.scope. A refusal writes nothing.
+         */
+        post: operations["snoozeMyActionInboxItem"];
+        /**
+         * Bring one of my postponed inbox items back
+         * @description Ends the caller's own snooze of an item, so it returns to their list at once. Bringing back an item that is not postponed changes nothing and still answers 204. The item is resolved through the caller's own sources, postponed or not, so another person's item, an unknown id and a malformed id answer the same 404 lifecycle.refuse.scope.
+         */
+        delete: operations["unsnoozeMyActionInboxItem"];
         options?: never;
         head?: never;
         patch?: never;
@@ -9380,7 +9405,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the authenticated user's todos, open first then newest first */
+        /**
+         * List the authenticated user's todos, open first then newest first
+         * @description The caller's own todos only. Requests a colleague made of the caller are not listed here.
+         */
         get: operations["listMyTodos"];
         put?: never;
         /**
@@ -9389,6 +9417,70 @@ export interface paths {
          */
         post: operations["createMyTodo"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/todos/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List what the caller asked of others, newest first
+         * @description Only requests the caller made; a caller who asked nothing gets an empty list. A withdrawn request is deleted and appears in no state.
+         */
+        get: operations["listMyTodoRequests"];
+        put?: never;
+        /**
+         * Ask a colleague for a follow-up
+         * @description Creates a todo owned by the assignee and asked by the caller. Who may ask is any holder of a to-do request grant (a role line todo_request edit), over the people placed under that grant's scope node, and the tenant's ops account. A support session is refused first by the platform support guard (403 support.refuse.read_only). Cedar decides, inside the write, that the assignee is an active account of the caller's tenant placed under a node the caller's grants permit; an account with no linked employee or no current placement sits at the tenant node. Refusals, in order: 403 todo_assign_forbidden (neither a to-do request grant nor the ops account); 422 validation (text, links); 422 todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and out-of-scope accounts alike, and a grant revoked mid-request); 422 todo_assignee_inactive; 422 todo_due_past (before today in KST); 409 todo_assignee_full (the assignee already holds 100 open requests); 409 todo_requester_full (100 of the caller's requests are open or sent back, until one is done, withdrawn or cleared). Each side's requests are items in that account's work inbox, so neither side may hold more. Links name records by kind and id; a sent label is ignored and never stored. Audited as todo.request with the assignee and the due date only.
+         */
+        post: operations["createMyTodoRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/todos/requests/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the colleagues the caller may ask for a follow-up
+         * @description The active accounts of the caller's tenant, other than the caller, that an ask from the caller accepts: those placed under a node where the caller's to-do request grants permit asking (every account for the tenant's ops account). Names only, ordered by display name then id. Who may read it is who may ask; anyone else gets 403 todo_assign_forbidden. A support session is refused first by the platform support guard (403 support.refuse.out_of_scope).
+         */
+        get: operations["listMyTodoAssignees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/todos/requests/{todoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Withdraw a request the caller made, or clear one sent back
+         * @description Deletes the request, open or sent back, with its text and return note. Saved outcomes of earlier calls that returned it, the ask among them, are kept for the command-outcome retention period, as for any deleted todo, and a retry of such a call does not show it again. 404 when the id is not a request the caller made; 409 todo_closed once it is done. Afterwards the assignee's done or return on it is a 404. Audited as todo.withdraw.
+         */
+        delete: operations["withdrawMyTodoRequest"];
         options?: never;
         head?: never;
         patch?: never;
@@ -9406,7 +9498,7 @@ export interface paths {
         post?: never;
         /**
          * Delete one of the authenticated user's todos
-         * @description A cross-user id is a 404, never another user's row. Audited as todo.delete.
+         * @description A cross-user id is a 404, never another user's row. A request is 409 todo_is_request: only its requester takes it back. Audited as todo.delete.
          */
         delete: operations["deleteMyTodo"];
         options?: never;
@@ -9425,9 +9517,29 @@ export interface paths {
         put?: never;
         /**
          * Mark one of the authenticated user's todos done or undone
-         * @description Explicit target state so the same endpoint supports done AND undo. A cross-user id is a 404, never another user's row. Audited as todo.done / todo.undone.
+         * @description Explicit target state so the same endpoint supports done AND undo. A cross-user id is a 404, never another user's row. A request only moves forward: undoing a done request, or finishing a returned one, is 409 todo_closed. Audited as todo.done / todo.undone.
          */
         post: operations["setMyTodoDone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/todos/{todoId}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a request back to whoever asked
+         * @description Only the request's owner, while it is open. 404 for a private todo or one that is not the caller's; 409 todo_closed once done or returned; 422 validation for a note outside 1..=200 characters. Audited as todo.return, without the note.
+         */
+        post: operations["returnMyTodo"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11594,7 +11706,7 @@ export interface paths {
         put?: never;
         /**
          * Create a tenant custom role definition
-         * @description Creates an audited, tenant-scoped custom role definition. Custom roles never replace built-in users.roles, but ACTIVE assignments can add runtime-effective ordinary feature grants on the next request. Elevated policy-management and scope-widening features are rejected.
+         * @description Creates an audited, tenant-scoped custom role definition. Custom roles never replace built-in users.roles, but ACTIVE assignments can add runtime-effective ordinary feature grants on the next request. Elevated policy-management and scope-widening features are rejected. Every permission the role carries must be one the caller holds, at that level, over the branches the role reaches; otherwise the request is refused with 403 forbidden and nothing is written.
          */
         post: operations["createPolicyRole"];
         delete?: never;
@@ -11618,7 +11730,7 @@ export interface paths {
         head?: never;
         /**
          * Update a tenant custom role definition
-         * @description Updates mutable custom-role metadata, permissions, and ABAC/PBAC conditions. The role key and lifecycle status are not changed by this route. This is a sensitive policy-definition action: callers must have RoleManage, pass delegated-scope guardrails, and supply a fresh passkey step-up assertion. ACTIVE assigned custom-role changes become runtime-effective ordinary feature grants on the next request; unsupported ABAC/PBAC conditions and elevated/scope-widening features remain inert.
+         * @description Updates mutable custom-role metadata, permissions, and ABAC/PBAC conditions. The role key and lifecycle status are not changed by this route. This is a sensitive policy-definition action: callers must have RoleManage, pass delegated-scope guardrails, and supply a fresh passkey step-up assertion. ACTIVE assigned custom-role changes become runtime-effective ordinary feature grants on the next request; unsupported ABAC/PBAC conditions and elevated/scope-widening features remain inert. The edited role's permissions must each be held by the caller, at that level, over the branches the role reaches, and a caller who holds the role cannot change it; otherwise the request is refused with 403 forbidden and nothing is written.
          */
         patch: operations["updatePolicyRole"];
         trace?: never;
@@ -11638,7 +11750,7 @@ export interface paths {
         head?: never;
         /**
          * Publish, roll back, or retire a tenant custom role
-         * @description Changes a custom role lifecycle state. This is a sensitive policy action: callers must have RoleManage and supply a fresh passkey step-up assertion proving the actor, not just the bearer token, performed the change.
+         * @description Changes a custom role lifecycle state. This is a sensitive policy action: callers must have RoleManage and supply a fresh passkey step-up assertion proving the actor, not just the bearer token, performed the change. Activating a role requires the caller to hold each of its permissions, at that level, over the branches the role reaches, and a caller who holds the role cannot change its state; otherwise the request is refused with 403 forbidden and nothing is written.
          */
         patch: operations["updatePolicyRoleStatus"];
         trace?: never;
@@ -13063,6 +13175,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Every register row in reach as a download. export_purpose is required; the download is logged (excel_export_logs and an employee.export access log row naming the log row) and a refusal as employee.export_refused. */
         get: operations["exportWorkerRegister"];
         put?: never;
         post?: never;
@@ -13504,6 +13617,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/employee-link-attestations/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or revoke a self-attested account binding
+         * @description Requires an independent account manager and a fresh one-use passkey assertion. The command reloads Cedar facts inside its locked transaction. Confirmation retains the binding; revocation removes the current binding and restores the two-person rule. Confirmation does not prevent later revocation. A stale or replacement binding is never changed. Each accepted decision and its audit commit together.
+         */
+        post: operations["reviewSelfAccountBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me": {
         parameters: {
             query?: never;
@@ -13520,6 +13653,70 @@ export interface paths {
         head?: never;
         /** Update the authenticated user's own display name and phone */
         patch: operations["updateCurrentUser"];
+        trace?: never;
+    };
+    "/api/v1/users/me/employee-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the current account's self-attested employee binding
+         * @description Cedar authorizes the live account. Only a receipt matching its current employee link is returned. Revoked or withdrawn bindings return null; confirmed bindings remain visible with can_withdraw false. No employee link or management grant is required to recover the receipt.
+         */
+        get: operations["getSelfAccountBinding"];
+        put?: never;
+        /**
+         * Link the sole operator's own account to an employee
+         * @description Consumes a one-use command-bound passkey assertion. Cedar rechecks eligibility under the tenant write lock. The self-attestation, identity binding, configured review deadline and audit commit together. An existing second eligible account prevents this exception.
+         */
+        post: operations["selfBindAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/employee-link/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare a sole operator's own employee link
+         * @description Cedar checks current server facts and returns the binding for the authenticated account and selected employee. Start the existing passkey step-up ceremony with this binding when the user confirms. Submission rechecks eligibility in the locked transaction. No identity number is collected.
+         */
+        post: operations["prepareSelfAccountBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/employee-link/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw an unreviewed self-attested account binding
+         * @description Cedar admits only the original self-attester while the original binding is current and unreviewed. A fresh passkey is required. The binding removal, retained review receipt and audit commit together. Independent revocation continues to prevent another solo binding.
+         */
+        post: operations["withdrawSelfAccountBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/users/{id}": {
@@ -15201,7 +15398,7 @@ export interface components {
         };
         AccessRoleLineInput: {
             /** @enum {string} */
-            domain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access";
+            domain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access" | "todo_request";
             levels: components["schemas"]["AccessLevel"][];
         };
         /** @enum {string} */
@@ -15291,6 +15488,11 @@ export interface components {
             site?: string;
             who?: string;
             due?: components["schemas"]["Timestamp"];
+            /**
+             * @description Present when the due date is a legal deadline read from the statutory register, such as a final-pay settlement, a social insurance filing or the answer to a privacy rights request. Absent for every other due date.
+             * @enum {string}
+             */
+            due_basis?: "statutory";
             /** @enum {string} */
             dueTone: "danger" | "warn" | "neutral";
             submitted?: components["schemas"]["Timestamp"];
@@ -15303,6 +15505,26 @@ export interface components {
             lane: "turn" | "waiting" | "scheduled";
             /** @description Calendar days remaining in the source deadline's timezone, computed from the database clock. */
             days_remaining: number | null;
+            /** @description Whether the caller may postpone this item in their own list, and to which day at most. The snooze command enforces the same facts. */
+            snooze?: {
+                /** @description False when the item is a decision someone else is waiting on; no snooze control is offered then. */
+                allowed: boolean;
+                /**
+                 * @description Why the item cannot be postponed; present only when allowed is false.
+                 * @enum {string}
+                 */
+                reason?: "blocks_others";
+                /**
+                 * Format: date
+                 * @description The day the item returns to the list; present only in the snoozed view.
+                 */
+                until?: string;
+                /**
+                 * Format: date
+                 * @description The last day the item may be postponed to, the day before its legal deadline in Korea. Absent when the day is unbounded. When it is not later than today, no day is left.
+                 */
+                latest?: string;
+            };
             /** @description Source-owned facts for the row's command and informed grant confirmation. */
             context?: {
                 /** @description Optional physical work site, separate from the statutory placement path. */
@@ -15358,8 +15580,15 @@ export interface components {
                 command_id?: string | null;
                 grants?: components["schemas"]["AccessEffectiveEntry"][];
                 is_ops?: boolean;
+                /** @description Present on a to-do request the caller made; the note is present only when it was sent back. */
+                todo?: {
+                    /** @enum {string} */
+                    state: "open" | "returned";
+                    /** @description The line the assignee wrote when sending the request back. */
+                    return_note?: string;
+                };
             };
-            /** @description Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes. */
+            /** @description Opaque version for org-change approval and HR request rows, and for to-do requests the caller made; changes when a step is decided, the request closes or it is sent back. */
             version?: string;
             /** @description Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy. */
             policy?: {
@@ -15406,7 +15635,7 @@ export interface components {
                 source: string;
                 support_reference: string;
             }[];
-            /** @description Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. */
+            /** @description Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. Only sources that can fill a lane affect that lane's exactness, and an unavailable source makes every count inexact. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted. */
             counts: {
                 [key: string]: {
                     total: number;
@@ -15415,6 +15644,13 @@ export interface components {
             };
             /** @description Up to three scheduled changes from the admitted source pages, in deadline order. */
             upcoming: components["schemas"]["ActionInboxItem"][];
+            /** @description The snooze presets with their days resolved by the server in Korea's calendar. short and long are day counts from the tenant's settings; next_week is the coming Monday. A preset later than an item's snooze.latest is not available for that item. */
+            snooze_presets?: {
+                /** @enum {string} */
+                key: "short" | "next_week" | "long";
+                /** Format: date */
+                date: string;
+            }[];
             /** @description Whether this account holds any capability the console offers. */
             has_work: boolean;
             quick_starts: ("register" | "import" | "org" | "invite")[];
@@ -18977,7 +19213,10 @@ export interface components {
         };
         CreateUserRequest: {
             display_name: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description The employee the new account is linked to. Unless the caller manages accounts across the whole tenant, it must be homed in a branch where the caller manages accounts; otherwise, or when it has no home branch or does not exist, the request is refused with 403 forbidden and nothing is written.
+             */
             employee_id?: string | null;
             phone?: string | null;
             team?: components["schemas"]["Team"];
@@ -19964,11 +20203,12 @@ export interface components {
             total: number;
             done: number;
             report?: components["schemas"]["EmployeeImportReport"];
-            /** @description failed: the refusal (code, message, refusals) — e.g. rows_changed_since_preview, apply_interrupted. */
+            /** @description failed: the typed refusal code, fixed redacted message and support reference. Legacy jobs may have no support reference. */
             error?: {
                 code: string;
                 message: string;
-                refusals?: unknown;
+                /** @description Correlates the failure with its server log; absent on legacy jobs. */
+                support_ref?: string;
             };
         };
         EmployeeImportApplyRequest: {
@@ -19989,8 +20229,6 @@ export interface components {
              * @description Legacy column notes. New placement questions do not use this field.
              */
             notice?: string | null;
-            /** @description The column needs an operator choice between a statutory workplace and a physical work site. */
-            place_reading_required?: boolean;
         };
         EmployeeImportCompanyConfirmation: {
             value: string;
@@ -20493,6 +20731,8 @@ export interface components {
             name: string;
             /** @enum {string} */
             status: "mapped" | "needs_mapping" | "empty" | "skipped";
+            /** @description When true, a detected header awaits operator confirmation; status is needs_mapping and no values have been staged. */
+            needs_confirmation?: boolean;
             rows: number;
             /**
              * @description W12 (r3:hire-18): remembered — skipped because an earlier import skipped a sheet of this name; send `skip: false` for it to read it this time.
@@ -21445,6 +21685,11 @@ export interface components {
                 details?: {
                     /** @description Current opaque decision version; re-read the document before deciding again. */
                     current_version?: string;
+                    /**
+                     * Format: date
+                     * @description The last day an inbox item may be postponed to, present on a snooze_past_legal_due refusal.
+                     */
+                    latest?: string;
                 };
                 code: string;
                 message: string;
@@ -28335,6 +28580,10 @@ export interface components {
         ReturnSubstituteRequest: {
             return_note?: string | null;
         };
+        ReturnTodoRequest: {
+            /** @description Why it goes back; 1..=200 characters after trimming. */
+            note: string;
+        };
         ReverseVoucherRequest: {
             memo?: string;
         };
@@ -28511,6 +28760,34 @@ export interface components {
         /** @description Global search hits, each an ObjectHead scoped identically to resolveObject (a hit the caller could not resolve never appears). Grouped by kind; exists is always true for a hit. */
         SearchResponse: {
             results: components["schemas"]["ObjectHead"][];
+        };
+        SelfBindingError: {
+            error: {
+                /** @enum {string} */
+                code: "step_up_required" | "step_up_failed" | "account_link.refuse.solo_ineligible" | "account_link.refuse.employee_taken" | "account_link.refuse.not_own_record" | "account_link.refuse.withdraw_ineligible" | "account_link.refuse.review_stale" | "account_link.refuse.review_ineligible" | "account_link.refuse.identity_unbound" | "passkey_step_up_required" | "not_found" | "unauthorized" | "unavailable" | "internal";
+                message: string;
+            };
+        };
+        SelfBindingPrepareRequest: {
+            /** @description Exact full employee name, deliberately confirmed only when no existing record matches the account. */
+            confirmed_name?: string;
+            employee_id: components["schemas"]["Uuid"];
+        };
+        /** @description Submit the exact envelope returned by preparation after asserting the challenge. Missing step_up is a typed 428 refusal. */
+        SelfBindingRequest: {
+            /** @description Exact full employee name, deliberately confirmed only when no existing record matches the account. Included in the passkey command binding. */
+            confirmed_name?: string;
+            employee_id: components["schemas"]["Uuid"];
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        SelfBindingReviewRequest: {
+            /** @enum {string} */
+            decision: "CONFIRM" | "REVOKE";
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+        };
+        SelfBindingWithdrawRequest: {
+            attestation_id: components["schemas"]["Uuid"];
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
         SelfLeaveBalance: {
             employee_id: components["schemas"]["Uuid"];
@@ -29651,6 +29928,26 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        TodoAskRequest: {
+            assignee_account_id: components["schemas"]["Uuid"];
+            /** @description 1..=500 characters after trimming. */
+            text: string;
+            /**
+             * Format: date
+             * @description Today or later in KST.
+             */
+            due_on?: string;
+            /** @description Records the request is about; at most 20. */
+            links?: components["schemas"]["TodoRequestLink"][];
+        };
+        /** @description An account the caller may ask, by name only. */
+        TodoAssignee: {
+            account_id: components["schemas"]["Uuid"];
+            display_name: string;
+        };
+        TodoAssigneePage: {
+            items: components["schemas"]["TodoAssignee"][];
+        };
         TodoPage: {
             items: components["schemas"]["TodoSummary"][];
         };
@@ -29659,6 +29956,12 @@ export interface components {
             kind: string;
             id: string;
             label?: string;
+        };
+        /** @description A record a request is about, named by kind and id only; the reader's own rights decide what it shows. kind is one of the record kinds the work inbox opens from an id. */
+        TodoRequestLink: {
+            /** @enum {string} */
+            kind: "change_request" | "employee" | "exit_case" | "identifier_correction" | "org_change" | "period_lock" | "privacy_request" | "statutory" | "support_session";
+            id: components["schemas"]["Uuid"];
         };
         TodoSummary: {
             id: components["schemas"]["Uuid"];
@@ -29674,6 +29977,17 @@ export interface components {
              * @description When the todo was first marked done; null while open.
              */
             done_at: string | null;
+            /** @description The account that asked for this todo. Absent on the owner's own todo, as are due_on, returned_at and return_note. */
+            assigned_by_user_id?: components["schemas"]["Uuid"];
+            /**
+             * Format: date
+             * @description The day the requester asked for.
+             */
+            due_on?: string;
+            /** @description When the owner sent the request back. */
+            returned_at?: components["schemas"]["Timestamp"];
+            /** @description The line the owner wrote when sending it back. */
+            return_note?: string;
         };
         TokenPairResponse: {
             /** @description Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required. */
@@ -29981,7 +30295,7 @@ export interface components {
             display_name?: string;
             /**
              * Format: uuid
-             * @description A changed link requests a pending identity-binding change; it requires step_up and an independent eligible approver. An unchanged value is a no-op.
+             * @description A changed link requests a pending identity-binding change; it requires step_up and an independent eligible approver. An unchanged value is a no-op. Unless the caller manages accounts across the whole tenant, a new employee must be homed in a branch where the caller manages accounts; otherwise, or when it has no home branch or does not exist, the request is refused with 403 forbidden and no request is opened.
              */
             employee_id?: string | null;
             phone?: string | null;
@@ -31019,6 +31333,8 @@ export interface components {
             /** @description Today is before the first record takes effect (e.g. before the opening date); this is that first record. */
             before_first_record: boolean;
             name: string;
+            /** @description The address follows the linked registration at the requested read point. Absent on older servers. */
+            same_address_as_registration?: boolean;
             address?: components["schemas"]["KrAddress"] | null;
             mail_address?: components["schemas"]["KrAddress"] | null;
             /** Format: date */
@@ -38554,6 +38870,8 @@ export interface operations {
             query?: {
                 after?: components["schemas"]["Uuid"];
                 limit?: number;
+                /** @description The download purpose (public notice 2023-6 §8②). Missing or unknown is 422 export_purpose_required. */
+                export_purpose?: "AUDIT_RESPONSE" | "INTERNAL_REVIEW" | "DISPUTE_RESPONSE" | "DATA_SUBJECT_REQUEST" | "OTHER";
             };
             header?: never;
             path: {
@@ -38575,6 +38893,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     applyEmployeeRecordImport: {
@@ -39172,13 +39491,22 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            /** @description forbidden — Cedar did not admit tenant-wide directory management. import_apply_forbidden — the database refused the import command; no rows were written. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
-            /** @description import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds. */
+            /** @description import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds. import_apply_timed_out — the statement or transaction exceeded the server time limit; nothing was written. Review the dry run before applying again. */
             503: {
                 headers: {
+                    /** @description Present for import_apply_busy. */
                     "Retry-After"?: number;
                     [name: string]: unknown;
                 };
@@ -49882,6 +50210,8 @@ export interface operations {
                 attention?: "all" | "approvals" | "today" | "overdue";
                 /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
                 filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures" | "notices";
+                /** @description With only, lists the items the caller postponed, each with snooze.until. Without it the list, its pages and its counts leave those items out. Takes no filter and no attention value. */
+                snoozed?: "only";
                 /** @description Page size, clamped server-side to 1..=200. */
                 limit?: number;
                 /** @description Opaque immutable-traversal cursor returned as `next_cursor` by the previous page. */
@@ -49912,7 +50242,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description The cursor is malformed or attention was combined with a saved filter other than all or turn. */
+            /** @description The cursor is malformed, attention was combined with a saved filter other than all or turn, or snoozed was combined with a filter or attention value. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -50003,6 +50333,98 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    snoozeMyActionInboxItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The item id as the list serves it (kind:uuid). */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: date
+                     * @description The day the item returns, later than today in Korea and no later than the item's snooze.latest.
+                     */
+                    until: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The item is postponed until that day. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description lifecycle.refuse.scope - the item is not in the caller's inbox or does not exist, one answer for both. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description snooze_not_allowed - the item is a decision someone else is waiting on (snooze.allowed is false). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description snooze_past when the day is today or earlier in Korea; snooze_past_legal_due when the item's due date is a legal deadline and the day is on or after it, with the last allowed day in error.details.latest; validation when until is not a date. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    unsnoozeMyActionInboxItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The item id as the list serves it (kind:uuid). */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The item is in the caller's list again. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description lifecycle.refuse.scope - the item is not in the caller's inbox or does not exist, one answer for both. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             503: components["responses"]["ServiceUnavailable"];
         };
     };
@@ -50742,6 +51164,147 @@ export interface operations {
             };
         };
     };
+    listMyTodoRequests: {
+        parameters: {
+            query?: {
+                /** @description open (default), done or returned; anything else is 422 validation. */
+                state?: "open" | "done" | "returned";
+                /** @description Page size (clamped server-side to 1..=200; default 100). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's requests in that state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodoPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    createMyTodoRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TodoAskRequest"];
+            };
+        };
+        responses: {
+            /** @description The request, as the assignee's todo. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodoSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    listMyTodoAssignees: {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive match anywhere in the display name, after trimming. */
+                search?: string;
+                /** @description Page size (clamped server-side to 1..=50; default 20). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The accounts the caller may ask. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodoAssigneePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    withdrawMyTodoRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                todoId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request was withdrawn or cleared. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     deleteMyTodo: {
         parameters: {
             query?: never;
@@ -50762,6 +51325,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             /** @description JWT verification is not configured. */
             503: {
                 headers: {
@@ -50799,6 +51363,44 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    returnMyTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                todoId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnTodoRequest"];
+            };
+        };
+        responses: {
+            /** @description The request was sent back. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
             /** @description JWT verification is not configured. */
             503: {
                 headers: {
@@ -59658,6 +60260,69 @@ export interface operations {
             };
         };
     };
+    reviewSelfAccountBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfBindingReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Decision recorded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description account_link.refuse.review_ineligible or account_link.refuse.identity_unbound */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description account_link.refuse.review_stale */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            /** @description passkey_step_up_required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            /** @description Passkey service unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getCurrentUser: {
         parameters: {
             query?: never;
@@ -59721,6 +60386,212 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
+            };
+        };
+    };
+    getSelfAccountBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current self-attestation and Cedar withdrawal permission. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attestation: {
+                            /** Format: uuid */
+                            attestation_id: string;
+                            /** Format: uuid */
+                            employee_id: string;
+                            can_withdraw: boolean;
+                        } | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    selfBindAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfBindingRequest"];
+            };
+        };
+        responses: {
+            /** @description Self-attested binding recorded. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attestation_id: components["schemas"]["Uuid"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description step_up_failed (invalid, replayed or bound to another command), account_link.refuse.solo_ineligible, or account_link.refuse.not_own_record. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description account_link.refuse.employee_taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            /** @description step_up_required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            /** @description Passkey service unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    prepareSelfAccountBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfBindingPrepareRequest"];
+            };
+        };
+        responses: {
+            /** @description Start a passkey step-up ceremony with this exact binding. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobilePasskeyStepUpBinding"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description account_link.refuse.solo_ineligible or account_link.refuse.not_own_record */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description account_link.refuse.employee_taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            /** @description Passkey service unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    withdrawSelfAccountBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfBindingWithdrawRequest"];
+            };
+        };
+        responses: {
+            /** @description Self-attestation withdrawn. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description account_link.refuse.withdraw_ineligible */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description account_link.refuse.review_stale */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            /** @description passkey_step_up_required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfBindingError"];
+                };
+            };
+            /** @description Passkey service unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

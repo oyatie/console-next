@@ -2,13 +2,14 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go } from "../flows";
 import { apiOf, bearerOf } from "../helpers/api";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { workbook } from "../helpers/import-layouts";
 import { peopleWorld } from "../helpers/people-fixes";
 
 async function previewAndApply(page: import("@playwright/test").Page, lines: string[][], count: string) {
   await chooseWorkbook(page, "고용정보.xlsx", await workbook([{ name: "재직자", lines }]));
   await page.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(page);
   await page.getByRole("button", { name: "모의 반영 실행" }).click();
   await page.getByRole("button", { name: count, exact: true }).click();
   await expect(page.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 60_000 });

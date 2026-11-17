@@ -11,13 +11,11 @@ import type { PayrollState, OrgChangeState, Screen, State } from "../states/regi
 import { mockLifecycleSheets } from "./lifecycle-sheets";
 import { numberingReads } from "./numbering";
 import { mockDirectorySettings } from "./directory";
+import { throttleCPU } from "../helpers/cpu-throttle";
 
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
 export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState | PayrollState, modulesState: keyof typeof modules | "refused" = "ready") {
-  if (process.env.E2E_CPU_THROTTLE) {
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.E2E_CPU_THROTTLE) });
-  }
+  await throttleCPU(page);
   const unexpected: string[] = [];
   await page.route(url => url.pathname.startsWith("/api/"), async route => {
     unexpected.push(`${route.request().method()} ${new URL(route.request().url()).pathname}`);
@@ -26,6 +24,9 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: token() });
   await page.route("**/api/v1/client-errors", route => route.fulfill({ status: 204 }));
   await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: user });
+  await mockRoute(page, "post", "/api/v1/users/me/employee-link/prepare", { status: 403, json: failure("account_link.refuse.solo_ineligible") });
+  await page.route("**/api/v1/users/me/employee-link", route => route.request().method() === "GET"
+    ? route.fulfill({ json: { attestation: null } }) : route.fallback());
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
   await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } });
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: checklist });
@@ -43,6 +44,9 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
   // An opened 업무함 record reads its item's activity; a spec that cares overrides this empty answer.
   await mockRoute(page, "get", "/api/v1/me/action-inbox/items/{id}/activity", { status: 200, json: { items: [] } });
+  // Postponing an item and bringing it back answer no body; a spec that cares overrides them.
+  await mockRoute(page, "post", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 204 });
+  await mockRoute(page, "delete", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 204 });
   await mockDirectorySettings(page);
   await page.route("**/api/v1/me/employee-views", route => route.fulfill({ status: 404, json: failure("not_found") }));
   // route.fulfill buffers bodies; a browser stream keeps the shell healthy without fake reconnects.

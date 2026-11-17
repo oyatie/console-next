@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
-import { i18n, loadCatalog, t } from "@console/i18n";
+import { expect } from "@playwright/test";
+import { test } from "../locale-fixture";
+import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { failure, id, inbox } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
-test.afterEach(() => i18n.set("ko"));
-
-for (const locale of ["ko", "en"] as const) for (const state of ["populated", "empty", "loading", "failed"] as const) {
+for (const locale of LOCALES) for (const state of ["populated", "empty", "loading", "failed"] as const) {
   test(`period unlock inbox: ${state} in ${locale} at 390px in dark mode @ui-state`, async ({ page }) => {
     await loadCatalog(locale);
     i18n.set(locale);

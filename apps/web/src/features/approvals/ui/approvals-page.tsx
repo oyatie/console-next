@@ -5,7 +5,6 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
-import { codeText } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
 import { columnSelection } from "../../../lib/react/use-column-selection";
 import { Button } from "../../../ui/button/button";
@@ -14,7 +13,6 @@ import { ChainStepper } from "../../../ui/chain-stepper/chain-stepper";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
-import { KeyValue } from "../../../ui/key-value/key-value";
 import { Page } from "../../../ui/page/page";
 import { SearchField } from "../../../ui/search/search-field";
 import { SelectField } from "../../../ui/select/select-field";
@@ -78,7 +76,6 @@ export function ApprovalInboxView({ items, sel, selected, record, onSelect, onCl
     returnFocus: () => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
     children: <>
       {selected && <div className={s.meta}><Chip>{selected.source.label}</Chip><Chip tone={selected.status.tone}>{selected.status.label}</Chip></div>}
-      {selected?.decision_refusal && <KeyValue readOnly items={[{ key: "decision-refusal", label: t("approvals.field.verification"), value: codeText(selected.decision_refusal, t("approvals.blocked")) }]} />}
       {record}
     </>,
   }} />;

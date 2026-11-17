@@ -155,6 +155,7 @@ async fn record_access(
         items: items
             .iter()
             .map(|i| ActionInboxSourceItem {
+                due_basis: None,
                 context: None,
                 id: i.id.clone(),
                 kind: i.kind.clone(),

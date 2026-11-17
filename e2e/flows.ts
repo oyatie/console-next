@@ -48,6 +48,7 @@ export const tenantOnboardSubmit = (page: Page) => page.getByRole("dialog", { na
 
 /** Accepts required privacy notice and terms checkboxes unconditionally on /setup-passkey. */
 export async function acceptConsent(page: Page) {
+  await routeReady(page, "/setup-passkey");
   const privacyCheck = page.getByRole("checkbox", { name: /개인정보 수집·이용/ });
   const termsCheck = page.getByRole("checkbox", { name: /서비스 이용약관/ });
   await expect(privacyCheck).toBeVisible();
@@ -94,6 +95,11 @@ export async function routeReady(page: Page, path?: string) {
   }, { path });
 }
 
+/** Expected committed destination, including registered route redirects. */
+export function routeTarget(page: Page, path: string) {
+  return redirectTargets[new URL(path, page.url()).pathname] ?? path;
+}
+
 /**
  * In-app navigation, as the app's own links do it (no reload). A reload re-runs the session refresh,
  * which the server rate-limits per session (60 a minute).
@@ -110,8 +116,7 @@ export async function go(page: Page, path: string, mayRedirect = false) {
     }, to.href);
   }
   // `mayRedirect`: accept the rendered redirect destination, including a return to the starting pathname.
-  const target = redirectTargets[new URL(path, page.url()).pathname] ?? path;
-  await routeReady(page, mayRedirect ? undefined : target);
+  await routeReady(page, mayRedirect ? undefined : routeTarget(page, path));
 }
 
 /**
@@ -234,7 +239,7 @@ type Clicks = ReturnType<typeof clickCounter>;
 export const plain = { click: (l: import("@playwright/test").Locator) => l.click(), select: (l: import("@playwright/test").Locator, v: string) => l.selectOption(v).then(() => undefined) };
 
 /** The open proposal card (it takes the panel's place beside the tree or the tables). */
-export const proposal = (page: Page) => page.getByRole("dialog").filter({ hasText: "아직 저장하지 않았습니다" });
+const proposal = (page: Page) => page.getByRole("dialog").filter({ hasText: "아직 저장하지 않았습니다" });
 
 /**
  * Completes the open proposal card and submits it for approval: the effective date is never defaulted, so the

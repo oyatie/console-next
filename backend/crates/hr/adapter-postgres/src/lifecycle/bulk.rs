@@ -19,7 +19,8 @@ use uuid::Uuid;
 use super::bulk_job::{BulkProgress, PROGRESS_EVERY};
 use super::bulk_plan::{BulkPlan, bulk_input, plan_bulk};
 use super::hooks::LifecycleTrailHooks;
-use super::record_write::record_in_tx;
+use super::insert::insert_lifecycle_rows;
+use super::record_write::{apply_record_in_tx, prepare_record_in_tx};
 use super::requests::{BulkEmployeeLifecycleEventRequest, BulkEmployeeLifecycleEventResponse};
 use super::rows::employee_lifecycle_event_from_row;
 use super::title_reason::coded;
@@ -85,6 +86,10 @@ impl HrService {
                 if !refusals.is_empty() {
                     return Err(HrError::bulk_refused(refusals, employee_ids.len()));
                 }
+                crate::own_record::own_record_guard_many(
+                    tx, org, actor, &employee_ids,
+                    console_platform_authz::Feature::EmployeeDirectoryManage,
+                ).await?;
                 let register =
                     console_platform_db::statutory_read::load_statutory_register(tx.as_mut())
                         .await
@@ -96,24 +101,33 @@ impl HrService {
                 let batch_id = Uuid::new_v4();
                 let mut audits = Vec::with_capacity(employee_ids.len() + 1);
                 let mut event_ids = Vec::with_capacity(employee_ids.len());
+                let mut records = Vec::with_capacity(employee_ids.len());
                 step(&progress, "recording", 0, employee_ids.len());
-                for (n, employee_id) in employee_ids.iter().enumerate() {
-                    if n > 0 && n % PROGRESS_EVERY == 0 {
-                        step(&progress, "recording", n, employee_ids.len());
-                    }
+                for employee_id in &employee_ids {
                     let prepared = loaded
                         .get(employee_id)
                         .ok_or_else(|| HrError::internal("bulk employee was not loaded"))?;
-                    let (id, event) = record_in_tx(
+                    let (id, event) = prepare_record_in_tx(
                         tx,
                         org,
                         actor,
                         *employee_id,
                         &prepared.event,
                         Some(batch_id),
-                        &hooks,
                     )
                     .await?;
+                    event_ids.push(id);
+                    records.push((id, *employee_id, &prepared.event));
+                    audits.push(event);
+                }
+                insert_lifecycle_rows(tx, (*org.as_uuid(), *actor.as_uuid(), Some(batch_id)), &records).await?;
+                for (n, (id, employee_id, event)) in records.iter().enumerate() {
+                    if n > 0 && n % PROGRESS_EVERY == 0 {
+                        step(&progress, "recording", n, employee_ids.len());
+                    }
+                    apply_record_in_tx(tx, (*org.as_uuid(), *id, *actor.as_uuid(), *employee_id), event, &hooks).await?;
+                    let prepared = loaded.get(employee_id)
+                        .ok_or_else(|| HrError::internal("bulk employee was not loaded"))?;
                     if let Some(initial) = &prepared.initial {
                         hire_in_tx(
                             tx.as_mut(),
@@ -121,7 +135,7 @@ impl HrService {
                                 org_id: *org.as_uuid(),
                                 employee_id: *employee_id,
                                 actor_id: *actor.as_uuid(),
-                                command_id: id,
+                                command_id: *id,
                             },
                             initial.workplace,
                             initial.from,
@@ -129,8 +143,6 @@ impl HrService {
                         .await
                         .map_err(coded)?;
                     }
-                    event_ids.push(id);
-                    audits.push(event);
                 }
                 crate::cases::open::events_with_register(
                     tx,
