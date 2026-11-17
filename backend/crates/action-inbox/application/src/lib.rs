@@ -404,6 +404,7 @@ mod tests {
                 ActionInboxSource::GrantNotice,
                 ActionInboxSource::SupportAccess,
                 ActionInboxSource::PrivacyRequests,
+                ActionInboxSource::AccountBindingReview,
                 ActionInboxSource::TodoAssigned,
                 ActionInboxSource::TodoRequested,
             ]
@@ -1101,6 +1102,30 @@ mod tests {
         }
     }
 
+    #[test]
+    fn binding_review_contributes_to_approval_attention_without_counting_reference_notices() {
+        let now = OffsetDateTime::UNIX_EPOCH;
+        let items = ["account_binding_review", "grant_notice"]
+            .map(|kind| super::projection::project_item(item(kind, 1, now), now, 1));
+        let counts = super::attention::counts(&items, true);
+        assert_eq!(
+            counts
+                .iter()
+                .find(|count| count.key == super::Attention::Approvals)
+                .unwrap()
+                .total,
+            1
+        );
+        assert_eq!(
+            counts
+                .iter()
+                .find(|count| count.key == super::Attention::All)
+                .unwrap()
+                .total,
+            2
+        );
+    }
+
     fn namespaced_kind(source: ActionInboxSource) -> &'static str {
         match source {
             ActionInboxSource::Workflow => "approval",
@@ -1125,6 +1150,7 @@ mod tests {
             ActionInboxSource::GrantNotice => "grant_notice",
             ActionInboxSource::SupportAccess => "support_access",
             ActionInboxSource::PrivacyRequests => "privacy_request",
+            ActionInboxSource::AccountBindingReview => "account_binding_review",
             ActionInboxSource::HrInsurance => "insurance_filing_ACQUIRE_NPS",
             ActionInboxSource::TodoAssigned => "todo_assigned",
             ActionInboxSource::TodoRequested => "todo_requested",

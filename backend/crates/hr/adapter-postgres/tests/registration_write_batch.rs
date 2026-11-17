@@ -18,6 +18,10 @@ use uuid::Uuid;
 mod support;
 use support::*;
 
+#[path = "registration_write_batch/facts.rs"]
+mod facts;
+#[path = "registration_write_batch/freeze.rs"]
+mod freeze;
 #[path = "registration_write_batch/order.rs"]
 mod order;
 
@@ -67,7 +71,14 @@ async fn registration_batches_heads_persons_profiles_and_replays_in_input_order(
          'company',e.company,'number',e.employee_number,'unit',e.org_unit,'unit_id',e.org_unit_id, \
          'position',e.position,'site',e.worksite_name,'hash',p.request_hash, \
          'key',p.idempotency_key,'kind',p.employment_type,'phone',p.phone_e164,'pay',p.base_pay::text, \
-         'start',p.contract_start_date::text,'end',p.contract_end_date::text) \
+         'start',p.contract_start_date::text,'end',p.contract_end_date::text, \
+         'onboard', (SELECT jsonb_build_object('unit_id',l.to_org_unit_id,'unit',l.to_org_unit, \
+         'company',l.to_company,'position',l.to_position,'state',l.state) \
+         FROM employee_lifecycle_events l WHERE l.org_id=e.org_id AND l.employee_id=e.id \
+         AND l.event_type='ONBOARD'), \
+         'canonical', (SELECT r.attributes FROM employment_source_bindings b \
+         JOIN employment_revisions r ON r.org_id=b.org_id AND r.employment_id=b.employment_id \
+         WHERE b.org_id=e.org_id AND b.employee_id=e.id AND r.version=1)) \
          FROM employees e JOIN employee_employment_profiles p ON p.employee_id=e.id \
          WHERE e.id=ANY($1)",
     )
@@ -91,6 +102,15 @@ async fn registration_batches_heads_persons_profiles_and_replays_in_input_order(
                 "position": request.position, "site": request.site, "hash": input.request_hash,
                 "kind": request.employment_type, "phone": request.phone_e164, "pay": request.base_pay,
                 "start": request.contract_start_date, "end": request.contract_end_date,
+                "canonical": if input.employee_id == ids[2] { serde_json::Value::Null } else {
+                    serde_json::json!({"company":request.company,"org_unit_id":request.org_unit_id,
+                        "job_position_id":null,"employment_status":"ACTIVE"})
+                },
+                "onboard": {
+                    "unit_id": request.org_unit_id, "unit": request.org_unit,
+                    "company": request.company, "position": request.position,
+                    "state": if input.employee_id == ids[2] { "SCHEDULED" } else { "APPLIED" },
+                },
             })
         );
     }
@@ -102,6 +122,15 @@ async fn registration_batches_heads_persons_profiles_and_replays_in_input_order(
             .unwrap();
     assert_eq!(pre_hire, "PRE_HIRE");
     tx.commit().await.unwrap();
+    assert_eq!(
+        queries
+            .statements()
+            .iter()
+            .filter(|sql| sql.contains("p.probation_confirmed_at"))
+            .count(),
+        0,
+        "empty onboarding facts do not require per-employee checklist reads"
+    );
     assert_batched(&queries, 1);
 
     let queries = observe();

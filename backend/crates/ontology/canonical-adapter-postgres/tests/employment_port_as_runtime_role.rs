@@ -2354,45 +2354,8 @@ async fn a_rest_lifecycle_unparseable_date_is_validation_not_internal(owner_pool
     );
 }
 
-/// P1 follow-up: the lock date derives from the fixed KST offset, not the
-/// caller-supplied RFC3339 offset. A UTC instant late in one day — already the
-/// next day in KST — must be refused by a lock on the KST date.
-#[sqlx::test(migrator = "MIGRATOR")]
-async fn a_lock_on_the_kst_business_date_refuses_a_utc_instant(owner_pool: PgPool) {
-    let (org, actor, port) = fixture(&owner_pool).await;
-    let (_employee, employment_id) = appointed(&owner_pool, org, actor, &port, "kst").await;
-
-    // at(0) is 08:00Z; +12h lands at 20:00Z, whose KST (UTC+9) date is the next
-    // calendar day.
-    let utc_instant = at(43_200);
-    let kst_date = utc_instant.to_offset(offset!(+9)).date();
-    assert_ne!(
-        utc_instant.date(),
-        kst_date,
-        "fixture must cross a KST day boundary"
-    );
-    seed_period_lock(&owner_pool, ORG, "payroll", kst_date).await;
-
-    let refused = execute(
-        &port,
-        command(
-            org,
-            actor,
-            EmploymentQuery::Promote {
-                employment_id,
-                valid_from: utc_instant,
-                attributes: attributes(ORG_UNIT_SALES, JOB_LEAD, "ACTIVE"),
-            },
-        ),
-    )
-    .await
-    .expect_err("a lock on the KST business date must refuse the UTC instant");
-
-    assert!(
-        matches!(&refused, EmploymentError::Frozen(error) if error.kind == ErrorKind::Conflict),
-        "got {refused:?}"
-    );
-}
+#[path = "employment_port/business_date.rs"]
+mod business_date;
 
 /// ROADMAP item 5's assignment writer on the org tree: a provisioned empty
 /// tenant, as `console_rt`, creates Company / OrgUnit / JobPosition through

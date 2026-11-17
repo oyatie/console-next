@@ -63,7 +63,7 @@ pub(super) async fn planned(pool: &PgPool, org: Uuid, ops: UserId) -> Out<(Uuid,
         &ctx,
         &[sheet],
         &BTreeMap::new(),
-        &WorkbookMappingRequest::default(),
+        &serde_json::from_value::<WorkbookMappingRequest>(serde_json::json!({"sheets": {"명부": {"header_row": 1, "columns": {"A": "name", "B": "hire_date", "C": "employment_type"}}}})).unwrap(),
     )
     .map_err(|x| x.message)?;
     let upload = XlsxUpload {

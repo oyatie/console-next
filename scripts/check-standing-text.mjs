@@ -109,7 +109,7 @@ function screenBody(file, source, name) {
 }
 
 export function screenCounts(sources, newScreens = {}) {
-  const roots = Object.entries(sources).filter(([f]) => f.startsWith("apps/web/src/routes/") || f === "apps/web/src/main.tsx")
+  const roots = Object.entries(sources)
     .flatMap(([f, source]) => screens(f, source, sources));
   const standalone = Object.keys(newScreens).map((key) => key.split("#"));
   const boundaries = new Set(standalone.map(([file]) => file));

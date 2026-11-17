@@ -1,7 +1,7 @@
 import { expect, type Browser, type Page } from "@playwright/test";
 import { go } from "../flows";
 import { openTenant } from "../helpers/tenant";
-import { chooseWorkbook, payPeriod, people, rosterWorkbook, type Person } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod, people, rosterWorkbook, type Person } from "../helpers/import";
 import { registerBranch, setupCompany, startOperations } from "../setup-flows";
 import { addDepartments } from "../structure-flows";
 
@@ -51,6 +51,7 @@ async function importRoster(admin: Page, rows: Person[]) {
   await chooseWorkbook(admin, "인사명부_새온정밀.xlsx", await rosterWorkbook([{ name: `주식회사 ${ENTITY}`, rows }]));
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await expect(admin.locator('[aria-current="step"]')).toHaveText("열 확인", { timeout: 60_000 });
   const workplaceReading = admin.getByRole("button", { name: "법인 사업장으로 읽기" });
   if (await workplaceReading.isVisible()) await workplaceReading.click();

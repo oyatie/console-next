@@ -2,11 +2,12 @@
 //! Only usable, payload-bound exceptions are offered by the renewal picker.
 use super::fixed_term::{FixedTermView, fixed_term_view};
 use crate::clock::today_kst;
+use crate::directory::access_log::lookup_event;
 use crate::{HrError, HrService};
 use console_hr_domain::lifecycle::fixed_term_exemption::FixedTermExemption;
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use console_platform_authz::{Feature, Principal};
-use console_platform_db::with_org_conn;
+use console_platform_db::with_audits;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::PgConnection;
@@ -59,7 +60,8 @@ pub(super) async fn available(
 }
 
 impl HrService {
-    /// `GET /api/v1/employees/{id}/fixed-term`: service as of today (KST).
+    /// `GET /api/v1/employees/{id}/fixed-term`: service as of today (KST),
+    /// read as a lookup of that employee.
     pub async fn employee_fixed_term(
         &self,
         principal: Principal,
@@ -77,7 +79,7 @@ impl HrService {
     ) -> Result<FixedTermView, HrError> {
         let org = principal.org_id;
         let today = today_kst();
-        with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
+        with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let features: &[Feature] = if contract_end_date.is_some() {
                     &[
@@ -102,7 +104,8 @@ impl HrService {
                     end.as_deref(),
                 )
                 .await?;
-                Ok(view)
+                let event = lookup_event(tx, &principal, employee_id, "fixed_term").await?;
+                Ok((view, vec![event]))
             })
         })
         .await

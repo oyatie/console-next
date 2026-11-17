@@ -35,6 +35,7 @@ pub(super) fn source_of(value: &str) -> Option<S> {
         "support" => S::Support,
         "support_access" => S::SupportAccess,
         "privacy_request" => S::PrivacyRequests,
+        "account_binding_review" => S::AccountBindingReview,
         "work" => S::WorkOrder,
         "payroll" => S::Payroll,
         "governance" => S::Governance,

@@ -2,6 +2,8 @@
 // uploaded workbook, its header row and columns (IMPORT-2).
 import type { enImportSheet } from "../en/import-sheet";
 export const koImportSheet: Record<keyof typeof enImportSheet, string> = {
+  "importSheet.confirmation": "열 연결을 확인하면 {count, number}개 시트의 데이터를 읽습니다.",
+  "importSheet.status.needs_confirmation": "연결 확인 필요",
   "importSheet.title": "시트 {count, number}개",
   "importSheet.needs": "머리글을 찾지 못한 시트가 {count, number}개 있습니다. 머리글 행을 선택하고 열마다 직원 항목을 지정하거나, 그 시트를 건너뛰십시오.",
   "importSheet.sheet": "{name} 시트",

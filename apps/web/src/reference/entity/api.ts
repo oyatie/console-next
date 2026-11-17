@@ -3,6 +3,8 @@
 import { api, unwrap, type components } from "@console/api";
 import type { AllPaths } from "@console/api/pending";
 import { get } from "../../lib/query";
+import { entitiesRef } from "./api/reads";
+export { entitiesRef, assignmentsRef } from "./api/reads";
 
 /**
  * One intent saved in several writes: each write gets its own key, derived from the intent's, so a retry after a
@@ -14,10 +16,6 @@ export type AsOf = { as_of?: string; known_at?: string };
 export const entitiesAt = (query: AsOf) => query.as_of || query.known_at ? get("/api/v1/legal-entities", { params: { query } }) : entitiesRef;
 export const orgStructureAt = (query: AsOf) => query.as_of || query.known_at ? get("/api/v1/org-structure", { params: { query } }) : orgStructureRef;
 
-/** Every entity with its registrations and workplaces embedded. */
-export const entitiesRef = get("/api/v1/legal-entities");
-/** Tenant-wide workplace read, using the same scoped, dated record projection. */
-export const assignmentsRef = (employeeId: string) => get("/api/v1/employment-assignments", { params: { query: { employee_id: employeeId } } });
 export const checklistRef = get("/api/v1/onboarding/checklist");
 /** The workplace kind list: platform defaults, then the tenant's own. */
 export const kindsRef = get("/api/v1/workplace-kinds");

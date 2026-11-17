@@ -184,7 +184,7 @@ test("route load publishes failed measurements against the served synthetic tena
   const compose = yaml.load(read("deploy/dev/compose.e2e.yml"));
   assert.equal(job.services.postgres.image, compose.services.postgres.image);
   assert.ok(job.steps.some(step => step.uses?.startsWith("actions/download-artifact@") && step.with.name === "e2e-live-runtime"));
-  const probe = job.steps.find(step => step.run?.includes("e2e/perf/route-load.spec.ts"));
+  const probe = job.steps.find(step => step.run?.includes("--config=playwright.perf.config.ts"));
   assert.match(probe.run, /--project=parallel/);
   assert.match(probe.run, /--retries=0/);
   assert.equal(probe.env.CONSOLE_DEV_POSTGRES_CONTAINER, "${{ job.services.postgres.id }}");

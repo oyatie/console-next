@@ -28,7 +28,7 @@
   "apps/web/src/features/org-bulk/ui/import-page.tsx#ImportPage": 102,
   "apps/web/src/features/org-bulk/ui/paste-page.tsx#PastePage": 98,
   "apps/web/src/features/org/OrgChange.tsx#OrgChange": 145,
-  "apps/web/src/features/org/OrgChange.tsx#OrgChanges": 31,
+  "apps/web/src/features/org/ui/org-changes.tsx#OrgChanges": 31,
   "apps/web/src/features/org/ui/bulk-move-page.tsx#BulkMovePage": 55,
   "apps/web/src/features/people/ui/bulk-page.tsx#BulkPage": 82,
   "apps/web/src/features/people/ui/card-page.tsx#EmployeeCard": 445,

@@ -25,6 +25,9 @@ use uuid::Uuid;
 
 use crate::fixture::{Fixture, fixture};
 
+#[path = "../support/confirmed_mapping.rs"]
+mod confirmation;
+
 /// Test-only vault: the "ciphertext" is the digits reversed. Not cryptography;
 /// the shell's vault (app `hr::rrn_vault`) is the real one.
 pub struct MirrorVault;
@@ -142,6 +145,39 @@ impl Importer {
 
     /// [`Self::preview`] with the upload's pay period (W12: a roster has none).
     pub async fn preview_for(
+        &self,
+        file: &str,
+        sheets: &[GridSheet],
+        mapping: &WorkbookMappingRequest,
+        period: Option<(time::Date, time::Date)>,
+    ) -> Result<EmployeeImportPreviewResponse, HrError> {
+        let memory = self
+            .f
+            .hr
+            .import_column_memory(self.f.principal.org_id)
+            .await?;
+        let mapping = confirmation::confirmed_mapping(sheets, &memory, mapping);
+        self.preview_unconfirmed_for(file, sheets, &mapping, period)
+            .await
+    }
+
+    /// The actual upload path, without the fixture's explicit column confirmation.
+    pub async fn preview_unconfirmed(
+        &self,
+        file: &str,
+        sheets: &[GridSheet],
+        mapping: &WorkbookMappingRequest,
+    ) -> Result<EmployeeImportPreviewResponse, HrError> {
+        self.preview_unconfirmed_for(
+            file,
+            sheets,
+            mapping,
+            Some((date!(2026 - 10 - 01), date!(2026 - 10 - 31))),
+        )
+        .await
+    }
+
+    async fn preview_unconfirmed_for(
         &self,
         file: &str,
         sheets: &[GridSheet],

@@ -107,7 +107,8 @@ async fn items_many(
       CASE WHEN t.mode='OBSERVED' AND t.item_key='R1' AND l.state='APPLIED' THEN jsonb_build_object('table','employee_lifecycle_events','id',l.id) END, \
       CASE WHEN t.mode='OBSERVED' AND t.item_key='R1' AND l.state='APPLIED' THEN now() END \
       FROM lifecycle_cases c JOIN case_template_items t ON t.template_key=c.template_key AND t.version=c.template_version \
-      LEFT JOIN employee_lifecycle_events l ON l.org_id=c.org_id AND l.id=c.trigger_id \
+      LEFT JOIN LATERAL (SELECT l.id,l.state FROM employee_lifecycle_events l WHERE l.org_id=c.org_id \
+      AND l.id=c.trigger_id OFFSET 0) l ON true \
       WHERE c.org_id=$1 AND c.id=ANY($2) AND (t.variants IS NULL OR c.variant=ANY(t.variants)) \
       ON CONFLICT DO NOTHING")
         .bind(org).bind(cases).execute(tx.as_mut()).await?;

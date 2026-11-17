@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Plus, Trash2, UserPlus } from "lucide-react";
 import { t } from "@console/i18n";
+import { focusSoon } from "../../../lib/react/announce";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { Button } from "../../../ui/button/button";
 import { descendants, direct, type Place, type StructureAct } from "../../../reference/org/domain/structure";
@@ -29,7 +30,7 @@ export function WorkplaceActions({ place, setup, onAct }: { place: Place; setup:
   return (
     <Actions>
       {canEdit && (adding ? (
-        <div><DeptNameInline parent={n} setup={setup} onDone={() => setAdding(false)} /></div>
+        <div><DeptNameInline parent={n} setup={setup} onDone={() => { setAdding(false); focusSoon("act-dept-add"); }} /></div>
       ) : (
         <ActionRow
           control={(d) => <Button variant="primary" id="act-dept-add" className={css.actBtn} aria-describedby={d} onClick={() => setAdding(true)}><Plus size={16} aria-hidden />{t("orgUnit.add.action")}</Button>}

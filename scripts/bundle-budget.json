@@ -29,6 +29,7 @@
       "src/features/identifiers/ui/identifiers-page.tsx",
       "src/features/identifiers/ui/numbering-page.tsx",
       "src/features/org-bulk/ui/history-page.tsx",
+      "src/features/org/ui/org-changes.tsx",
       "src/features/org/ui/propose-card.tsx",
       "src/features/org/ui/structure-sheets.tsx",
       "src/features/payroll/ui/payroll-home.tsx",
