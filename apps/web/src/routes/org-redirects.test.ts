@@ -24,9 +24,11 @@ for (const row of cases) test(`${row.path} preserves validated parameters and ha
   }
 });
 
-test.each(["/org/changes/$id", "/org/entities/$id", "/org/entities/new", "/org/entities/$id/workplaces/new"])("%s keeps its record or creation screen", path => {
-  expect(routes[path]!.options.beforeLoad).toBeUndefined();
-  expect(routes[path]!.options.component).toBeDefined();
+test.each(["/org/changes/$id", "/org/entities/$id", "/org/entities/new", "/org/entities/$id/workplaces/new"])("%s keeps its record or creation screen", async path => {
+  const route = routes[path]!;
+  expect(route.options.beforeLoad).toBeUndefined();
+  const options = route.lazyFn ? (await route.lazyFn()).options : route.options;
+  expect(options.component).toBeDefined();
 });
 
 test("the org validator separates chart view, change filter and entity controls", () => {

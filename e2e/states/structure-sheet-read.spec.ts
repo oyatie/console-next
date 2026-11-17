@@ -59,11 +59,13 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       await expect(page.getByRole("tree", { includeHidden: true })).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
       const before = await chartBox();
+      const beforeOpen = await chart.boundingBox();
       if (act !== "wp-kind") await holdRead();
       opened = act === "wp-kind" ? page.goto(`/org?sel=${selected}&act=${act}`).then(() => undefined) : go(page, `/org?sel=${selected}&act=${act}`);
       const pendingSheet = page.getByRole("dialog", { name: title, exact: true });
       if (act === "wp-kind") await pendingSheet.waitFor();
       await expect(pendingSheet.getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
+      expect(await chart.boundingBox()).toEqual(beforeOpen);
       expect(await chartBox()).toEqual(before);
       await fits(page, "pending workplace sheet");
       await page.screenshot({ path: info.outputPath("loading.png") });
@@ -72,8 +74,10 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       expect(await chartBox()).toEqual(before);
       await page.goBack();
       await expect(pendingSheet).toBeVisible();
+      const pendingBox = await chart.boundingBox();
       held.resolve();
       await expect(pendingSheet.getByRole("alert")).toContainText(t("common.loadFailed.title"), { timeout: 15_000 });
+      expect(await chart.boundingBox()).toEqual(pendingBox);
       expect(await chartBox()).toEqual(before);
       await expect(pendingSheet).toHaveCount(1);
       await expectAxe(page, "failed workplace sheet read");

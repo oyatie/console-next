@@ -54,6 +54,7 @@ impl InboxFilter {
                     | S::PeriodUnlock
                     | S::SupportAccess
                     | S::EntityCorrections
+                    | S::AccountBindingReview
             ),
             InboxFilter::Deadlines | InboxFilter::Today | InboxFilter::Overdue => !matches!(
                 source,
@@ -325,6 +326,7 @@ mod tests {
             S::SupportAccess,
             S::EntityCorrections,
             S::PrivacyRequests,
+            S::AccountBindingReview,
             S::TodoAssigned,
         ];
         // The requester's side is never the caller's turn, so the turn view does not read it.
@@ -353,6 +355,7 @@ mod tests {
                     S::PeriodUnlock,
                     S::SupportAccess,
                     S::EntityCorrections,
+                    S::AccountBindingReview,
                 ][..],
             ),
         ] {
