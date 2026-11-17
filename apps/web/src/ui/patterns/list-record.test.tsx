@@ -15,6 +15,7 @@ import { listRecordOptionalRegions } from "./list-record-contract";
 import { PageMain } from "../page/page-main";
 
 beforeAll(() => loadCatalog("ko"));
+const registerLink = "Register link";
 const read = { isPending: false, error: null as unknown, data: true, refetch() {} };
 const mark = (name: string) => <span data-contract-region={name}>{name}</span>;
 async function markup(children: ReactNode) {
@@ -25,7 +26,7 @@ async function markup(children: ReactNode) {
   return renderToStaticMarkup(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
 const screen = (q: ReadState = read) => <ListRecord q={q}
-  head={{ title: mark("head"), titleId: "roster-title", asOf: mark("asOf"), actions: <a href="/people/new">Register link</a>, primary: { id: "register", label: "Register", onAction() {} }, commands: { label: "Commands", items: [{ id: "import", label: "Import", onAction() {} }] } }}
+  head={{ title: mark("head"), titleId: "roster-title", asOf: mark("asOf"), actions: <a href="/people/new">{registerLink}</a>, primary: { id: "register", label: "Register", onAction() {} }, commands: { label: "Commands", items: [{ id: "import", label: "Import", onAction() {} }] } }}
   tabs={<nav aria-label="Routes"><a href="/people" aria-current="page">{mark("tabs")}</a></nav>}
   views={<button aria-pressed="true">{mark("views")}</button>}
   find={mark("find")} filters={mark("filters")} tools={mark("tools")} notes={mark("notes")}
