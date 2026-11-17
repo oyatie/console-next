@@ -136,21 +136,17 @@ pub async fn appoint_legacy_head_in_tx(
     actor: UserId,
     employee_id: Uuid,
 ) -> Result<Option<CommandReceipt>, EmploymentError> {
-    let org_uuid = *org.as_uuid();
-    let row = sqlx::query(
-        "SELECT e.company, e.org_unit, e.org_unit_id, e.position, e.employment_status, \
-                e.hire_on, \
-                EXISTS (SELECT 1 FROM employment_source_bindings b \
-                        WHERE b.org_id = e.org_id AND b.employee_id = e.id) AS bound \
-         FROM employees e WHERE e.org_id = $1 AND e.id = $2",
-    )
-    .bind(org_uuid)
-    .bind(employee_id)
-    .fetch_optional(tx.as_mut())
-    .await?;
-    let Some(row) = row else {
-        return Ok(None);
-    };
+    super::appointment_batch::appoint_legacy_heads_in_tx(tx, org, actor, &[employee_id])
+        .await
+        .map(|mut receipts| receipts.pop())
+}
+
+pub(super) fn legacy_head_command(
+    org: OrgId,
+    actor: UserId,
+    employee_id: Uuid,
+    row: &sqlx::postgres::PgRow,
+) -> Result<Option<EmploymentCommand>, EmploymentError> {
     let employment_status: String = row.get("employment_status");
     if row.get::<bool, _>("bound") || employment_status == "EXITED" {
         return Ok(None);
@@ -163,7 +159,7 @@ pub async fn appoint_legacy_head_in_tx(
     let valid_from = row.get::<Option<Date>, _>("hire_on").map_or(now, |date| {
         date.midnight().assume_offset(offset!(+9)).min(now)
     });
-    let command = EmploymentCommand {
+    Ok(Some(EmploymentCommand {
         org_id: org,
         command_id: CommandId::from_uuid(derived_command_id(b"hr.appoint", employee_id)),
         actor_id: actor,
@@ -183,6 +179,5 @@ pub async fn appoint_legacy_head_in_tx(
         },
         action_key: "internal.appoint_legacy_head".to_owned(),
         object_type_id: Uuid::nil(),
-    };
-    write_in_tx(tx, &command).await.map(Some)
+    }))
 }

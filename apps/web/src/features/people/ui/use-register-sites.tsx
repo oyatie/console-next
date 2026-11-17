@@ -3,7 +3,6 @@ import { t } from "@console/i18n";
 import { entitiesRef } from "../../../reference/entity/api";
 import { factsQuery } from "../api";
 import { registerFactsQuery, workplaceCountsQuery } from "../api/record";
-import { maskedAddress } from "../domain/card";
 import s from "./card.module.css";
 import { entityName } from "../../../reference/entity/domain/names";
 
@@ -34,8 +33,8 @@ export function usePreviewFacts(ids: readonly string[]) {
     const careers = r?.careers;
     return {
       sex: r?.sex ? t(`empCard.sex.${r.sex}`) : r ? <span className={s.gap}>{t("empDoc.reg.blank")}</span> : "…",
-      birth: birth ? t("empDoc.reg.birthMasked", { year: birth.slice(0, 4) }) : facts[at]?.data ? <span className={s.gap}>{t("empDoc.reg.blank")}</span> : "…",
-      address: r?.address ? maskedAddress(r.address) : r ? <span className={s.gap}>{t("empDoc.reg.blank")}</span> : "…",
+      birth: birth ? birth : facts[at]?.data ? <span className={s.gap}>{t("empDoc.reg.blank")}</span> : "…",
+      address: r?.address ? r.address : r ?<span className={s.gap}>{t("empDoc.reg.blank")}</span> : "…",
       history: careers == null ? (r ? <span className={s.gap}>{t("empDoc.reg.blank")}</span> : "…") : careers.length ? careers.map((c) => c.employer_name).join(" · ") : t("empDoc.reg.noCareer"),
     };
   };

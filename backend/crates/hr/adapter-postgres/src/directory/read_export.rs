@@ -10,8 +10,8 @@ use futures::channel::{mpsc, oneshot};
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use http::StatusCode;
 use serde::Deserialize;
-use serde_json::json;
-use sqlx::Row;
+use serde_json::{Value, json};
+use sqlx::{PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
 
 use crate::authz::{HrReach, Tier, hr_reach_in};
@@ -102,7 +102,7 @@ pub fn neutralize_spreadsheet_formula(value: &str) -> String {
 
 /// `excel_export_logs.scope_key` as the reporting exports write it.
 /// The export log's scope column: `ALL`, or the reach's nodes and branches.
-fn scope_key(reach: &HrReach) -> String {
+pub(crate) fn scope_key(reach: &HrReach) -> String {
     let HrReach::Within { scope, branches } = reach else {
         return "ALL".to_owned();
     };
@@ -119,6 +119,58 @@ fn scope_key(reach: &HrReach) -> String {
         parts.extend(set.iter().map(ToString::to_string));
     }
     parts.join(",")
+}
+
+/// The stated download purpose, or 422 `export_purpose_required` with the
+/// refusal itself recorded, its details naming what was asked for (`view`).
+pub(crate) async fn admitted_purpose(
+    pool: &PgPool,
+    principal: &Principal,
+    given: Option<&str>,
+    mut view: Value,
+) -> Result<&'static str, HrError> {
+    let given = given.map(str::trim);
+    if let Some(purpose) = given.and_then(|given| EXPORT_PURPOSES.iter().find(|p| **p == given)) {
+        return Ok(purpose);
+    }
+    view["code"] = json!("export_purpose_required");
+    view["export_purpose_given"] = json!(given.is_some());
+    let refused = access_event(principal, DirectoryAccess::DownloadRefused, &[], None, view)?;
+    with_audits::<_, _, HrError>(pool, principal.org_id, move |_tx| {
+        Box::pin(async move { Ok(((), vec![refused])) })
+    })
+    .await?;
+    Err(export_purpose_required())
+}
+
+/// The `excel_export_logs` row of one download of `rows` rows; its id.
+pub(crate) async fn log_export(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: &Principal,
+    kind: &str,
+    scope_key: &str,
+    file_name: &str,
+    rows: usize,
+    purpose: &str,
+) -> Result<Uuid, HrError> {
+    let log_id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO excel_export_logs (id, org_id, actor, scope_key, export_kind, \
+         export_date, file_name, source_notes, export_purpose) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+    )
+    .bind(log_id)
+    .bind(*principal.org_id.as_uuid())
+    .bind(*principal.user_id.as_uuid())
+    .bind(scope_key)
+    .bind(kind)
+    .bind(today_kst())
+    .bind(file_name)
+    .bind(json!([{ "row_count": rows }]))
+    .bind(purpose)
+    .execute(tx.as_mut())
+    .await?;
+    Ok(log_id)
 }
 
 pub(crate) fn push_csv_row(csv: &mut String, row: &sqlx::postgres::PgRow) -> Result<(), HrError> {
@@ -147,36 +199,24 @@ impl HrService {
         // export level carries its view, so that reach is readable too).
         hr_reach_in(&principal, Feature::EmployeeDirectoryRead, Tier::Branch)?;
         let reach = hr_reach_in(&principal, Feature::ExcelDownload, Tier::Branch)?;
-        let filters =
+        let mut filters =
             EmployeeListFilters::from_query(&query, &principal.branch_scope)?.with_reach(reach);
         let layout = ExportLayout::parse(purpose.layout.as_deref())?;
         // The register carries date of birth and the personal phone, which a
-        // read-only reader never sees (`redact_for_reader`): HR (manage) only.
+        // read-only reader never sees (`redact_for_reader`): its rows are the
+        // people the reader both exports and edits.
         if layout == ExportLayout::Register {
-            hr_reach_in(&principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
+            let edit = hr_reach_in(&principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
+            filters = filters.within_edit(edit);
         }
         let org = principal.org_id;
-        let given = purpose.export_purpose.as_deref().map(str::trim);
-        let Some(purpose) = given.and_then(|given| EXPORT_PURPOSES.iter().find(|p| **p == given))
-        else {
-            let refused = access_event(
-                &principal,
-                DirectoryAccess::DownloadRefused,
-                &[],
-                None,
-                json!({ "code": "export_purpose_required", "export_purpose_given": given.is_some() }),
-            )?;
-            with_audits::<_, _, HrError>(&self.pool, org, move |_tx| {
-                Box::pin(async move { Ok(((), vec![refused])) })
-            })
-            .await?;
-            return Err(export_purpose_required());
-        };
+        let given = purpose.export_purpose.as_deref();
+        let view = json!({ "view": "employee_directory" });
+        let purpose = admitted_purpose(&self.pool, &principal, given, view).await?;
 
         let (sender, mut receiver) = mpsc::channel(4);
         let logged = filters.clone();
         let snapshot_principal = principal.clone();
-        let mut filters = filters;
         let (selected_subjects, selection) = oneshot::channel();
         let (ready, admitted) = oneshot::channel();
         let pool = self.pool.clone();
@@ -216,22 +256,12 @@ impl HrService {
         };
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                let log_id = Uuid::new_v4();
                 let rows = subjects.len();
-                sqlx::query(
-                    "INSERT INTO excel_export_logs (id, org_id, actor, scope_key, export_kind, \
-                     export_date, file_name, source_notes, export_purpose) \
-                     VALUES ($1, $2, $3, $8, 'employee_directory', $4, $5, $6, $7)",
+                let scope = scope_key(&logged.reach);
+                let log_id = log_export(
+                    tx, &principal, "employee_directory", &scope, layout.file_name(), rows, purpose,
                 )
-                .bind(log_id)
-                .bind(*principal.org_id.as_uuid())
-                .bind(*principal.user_id.as_uuid())
-                .bind(today_kst())
-                .bind(layout.file_name())
-                .bind(json!([{ "row_count": rows }]))
-                .bind(*purpose)
-                .bind(scope_key(&logged.reach))
-                .execute(tx.as_mut()).await?;
+                .await?;
                 let me = actor_employee_id(tx, &principal).await?;
                 let event = access_event(
                     &principal, DirectoryAccess::Download, &subjects, me,

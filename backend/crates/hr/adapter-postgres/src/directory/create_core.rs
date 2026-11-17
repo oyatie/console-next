@@ -13,9 +13,11 @@ use crate::directory::create::employee_create_db_error;
 use crate::directory::create_facts::record_registration_facts;
 use crate::directory::create_guard::revalidate_directory_manager;
 use crate::directory::create_onboard::{
-    RegistrationOnboard, is_pre_hire, mark_pre_hire, record_registration_onboard,
+    RegistrationOnboard, is_pre_hire, mark_pre_hire, record_registration_onboards,
 };
-use crate::directory::create_prepare::{RegistrationInput, prepare_registrations};
+use crate::directory::create_prepare::{
+    PreparedRegistration, RegistrationInput, prepare_registrations,
+};
 use crate::directory::read_detail::load_employee_detail;
 use crate::directory::types::{EmployeeDetailResponse, NormalizedCreateEmployeeRequest};
 
@@ -59,6 +61,26 @@ pub async fn create_employees_core(
     actor: UserId,
     inputs: &[RegistrationInput<'_>],
 ) -> Result<Vec<(EmployeeDetailResponse, bool)>, HrError> {
+    let prepared = write_registrations_core(tx, org_uuid, actor, inputs).await?;
+    let mut results = Vec::with_capacity(prepared.len());
+    for row in prepared {
+        results.push((
+            load_employee_detail(tx, org_uuid, row.employee_id).await?,
+            row.replayed,
+        ));
+    }
+    Ok(results)
+}
+
+/// Register a batch without reading full directory details for each result.
+/// Bulk callers consume identities; single-person callers retain detail and warning reads.
+/// Callers own authorization, duplicate admission, placement, audit and rollback on error.
+pub async fn write_registrations_core(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org_uuid: Uuid,
+    actor: UserId,
+    inputs: &[RegistrationInput<'_>],
+) -> Result<Vec<PreparedRegistration>, HrError> {
     revalidate_directory_manager(tx, org_uuid, actor).await?;
     let prepared = prepare_registrations(tx, org_uuid, inputs).await?;
     let fresh: Vec<_> = inputs
@@ -83,28 +105,23 @@ pub async fn create_employees_core(
         .await
         .map_err(employee_create_db_error)?;
     let today = today_kst();
+    let mut units = Vec::new();
+    let mut appointments = Vec::new();
     for (input, row) in &fresh {
         let request = input.request;
-        let employee_id = row.employee_id;
         let pre_hire = is_pre_hire(request.hire_date.as_deref(), today)?;
         if pre_hire {
-            mark_pre_hire(tx, org_uuid, employee_id).await?;
+            mark_pre_hire(tx, org_uuid, row.employee_id).await?;
+        } else {
+            appointments.push(row.employee_id);
         }
-        if let Some(org_unit_id) = request.org_unit_id {
-            employment::set_employee_org_unit(tx, org_uuid, employee_id, Some(org_unit_id), None)
-                .await?;
-        }
-        // Scheduled ONBOARD owns the future hire's canonical employment.
-        if !pre_hire {
-            employment::appoint_legacy_head_in_tx(
-                tx,
-                OrgId::from_uuid(org_uuid),
-                actor,
-                employee_id,
-            )
-            .await?;
+        if let Some(unit) = request.org_unit_id {
+            units.push((row.employee_id, unit));
         }
     }
+    employment::set_employee_org_units(tx, org_uuid, &units).await?;
+    employment::appoint_legacy_heads_in_tx(tx, OrgId::from_uuid(org_uuid), actor, &appointments)
+        .await?;
     let persons: Vec<_> = fresh
         .iter()
         .map(|(input, row)| {
@@ -147,22 +164,24 @@ pub async fn create_employees_core(
             &request.facts,
         )
         .await?;
-        record_registration_onboard(
-            tx,
-            org_uuid,
-            *actor.as_uuid(),
-            row.employee_id,
-            &RegistrationOnboard {
-                company: &request.company,
-                org_unit: &row.org_unit,
-                org_unit_id: request.org_unit_id,
-                position: &request.position,
-                hire_date: request.hire_date.as_deref(),
-            },
-            today,
-        )
-        .await?;
     }
+    let onboards: Vec<_> = fresh
+        .iter()
+        .map(|(input, row)| {
+            let request = input.request;
+            (
+                row.employee_id,
+                RegistrationOnboard {
+                    company: &request.company,
+                    org_unit: &row.org_unit,
+                    org_unit_id: request.org_unit_id,
+                    position: &request.position,
+                    hire_date: request.hire_date.as_deref(),
+                },
+            )
+        })
+        .collect();
+    record_registration_onboards(tx, org_uuid, *actor.as_uuid(), &onboards, today).await?;
     if !fresh.is_empty() {
         sqlx::query(
             "UPDATE employee_create_idempotency SET employee_id = input.id \
@@ -180,12 +199,5 @@ pub async fn create_employees_core(
         .execute(tx.as_mut())
         .await?;
     }
-    let mut results = Vec::with_capacity(prepared.len());
-    for row in prepared {
-        results.push((
-            load_employee_detail(tx, org_uuid, row.employee_id).await?,
-            row.replayed,
-        ));
-    }
-    Ok(results)
+    Ok(prepared)
 }

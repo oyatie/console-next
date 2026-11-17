@@ -108,6 +108,8 @@ fn no_store<T>(body: T) -> NoStore<T> {
 struct SheetQuery {
     after: Option<Uuid>,
     limit: Option<i64>,
+    /// The download purpose; a page without one is refused.
+    export_purpose: Option<String>,
 }
 
 async fn list(
@@ -196,7 +198,13 @@ async fn sheet(
     let section = section(&segment)?;
     Ok(Json(
         service
-            .record_section_sheet(principal, section, query.after, query.limit)
+            .record_section_sheet(
+                principal,
+                section,
+                query.after,
+                query.limit,
+                query.export_purpose.as_deref(),
+            )
             .await?,
     ))
 }

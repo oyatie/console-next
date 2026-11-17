@@ -26,7 +26,7 @@ async function openChart(page: Page, width: number) {
 }
 
 for (const width of [1440, 390]) {
-  test(`org: a workplace centre click after find selects it at ${width}px @ui-state`, async ({ page }) => {
+  test(`org: a workplace centre click after find selects it at ${width}px @ui-state`, { tag: "@webkit-pr" }, async ({ page }) => {
     const { fixture, tree } = await openChart(page, width);
     try {
       await page.goto("/org");
@@ -91,7 +91,7 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`org: workplace tools leave the parent corner clear at ${width}px @ui-state`, async ({ page }) => {
+  test(`org: workplace tools leave the parent corner clear at ${width}px @ui-state`, { tag: "@webkit-pr" }, async ({ page }) => {
     const { fixture, tree } = await openChart(page, width);
     try {
       await page.goto("/org");
@@ -107,11 +107,9 @@ for (const width of [1440, 390]) {
         await workplace.click();
         await expect(workplace).toHaveAttribute("aria-selected", "true");
         await expect(toolbar).toBeVisible();
-        const corner = await parent.evaluate(el => {
-          const r = el.getBoundingClientRect();
-          return { x: r.right - 8, y: r.bottom - 8 };
-        });
-        await page.mouse.click(corner.x, corner.y);
+        // Selecting the workplace opens a column; let locator actionability settle its canvas resize before clicking.
+        const corner = await parent.evaluate(el => ({ x: el.clientWidth - 8, y: el.clientHeight - 8 }));
+        await parent.click({ position: corner });
         await expect(parent).toHaveAttribute("aria-selected", "true");
         await expect(page.locator('[data-box][data-s~="edit"]')).toHaveCount(0);
         await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -120,7 +118,8 @@ for (const width of [1440, 390]) {
         await workplace.click();
         const edge = await page.getByRole("navigation", { name: t("structure.crumbs"), exact: true }).evaluate(el => el.closest('[class*="top"]')!.getBoundingClientRect().bottom + 8);
         const bounds = (await workplace.boundingBox())!;
-        await workplace.dispatchEvent("wheel", { deltaY: bounds.y - edge });
+        await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+        await page.mouse.wheel(0, bounds.y - edge);
         await expect.poll(async () => Math.abs((await workplace.boundingBox())!.y - edge)).toBeLessThan(1);
         await expect(toolbar.getByRole("button").first()).toBeInViewport();
         await expect.poll(() => toolbar.evaluate(el => {
@@ -132,11 +131,8 @@ for (const width of [1440, 390]) {
         })).toBe(true);
         await page.screenshot({ path: test.info().outputPath(`top-${theme}.png`) });
         await fits(page, `org toolbar edge/${width}/${theme}`);
-        const topCorner = await parent.evaluate(el => {
-          const r = el.getBoundingClientRect();
-          return { x: r.right - 2, y: r.bottom - 2 };
-        });
-        await page.mouse.click(topCorner.x, topCorner.y);
+        const topCorner = await parent.evaluate(el => ({ x: el.clientWidth - 2, y: el.clientHeight - 2 }));
+        await parent.click({ position: topCorner });
         await expect(parent).toHaveAttribute("aria-selected", "true");
         await expect(page.locator('[data-box][data-s~="edit"]')).toHaveCount(0);
         await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -151,3 +147,69 @@ for (const width of [1440, 390]) {
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+test("org: nested fields keep wheel scrolling without moving the chart at 390px @ui-state", { tag: "@webkit-pr" }, async ({ page }) => {
+  const { fixture } = await openChart(page, 390);
+  try {
+    await page.goto("/org");
+    const workplace = page.locator(`[data-box][data-id="${id(303)}"]`);
+    await expect(workplace).toBeAttached();
+    // Exercise native scrolling inside the shared viewport, including a descendant of a scrollable element.
+    await workplace.evaluate(el => {
+      const viewport = el.parentElement!.parentElement!;
+      const fields = document.createElement("div");
+      fields.dataset.wheelFields = "";
+      fields.style.cssText = "position:absolute;left:8px;top:120px;width:200px;z-index:10;background:var(--surface)";
+      const note = document.createElement("textarea");
+      note.setAttribute("aria-label", "Reason note");
+      note.rows = 2;
+      note.value = Array.from({ length: 40 }, (_, i) => `Reason ${i + 1}`).join("\n");
+      note.style.cssText = "width:100%;resize:none";
+      const input = document.createElement("input");
+      input.setAttribute("aria-label", "Organization name");
+      const scroll = document.createElement("div");
+      scroll.dataset.wheelScroll = "";
+      scroll.style.cssText = "width:200px;height:60px;overflow:auto";
+      const content = document.createElement("div");
+      content.style.cssText = "width:600px;height:300px";
+      content.textContent = "Organization change history";
+      scroll.append(content);
+      fields.append(note, input, scroll);
+      viewport.append(fields);
+    });
+    const note = page.getByRole("textbox", { name: "Reason note", exact: true });
+    const scroll = page.locator("[data-wheel-scroll]");
+    const stage = workplace.locator("..");
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      for (const field of [note, scroll]) {
+        for (const axis of field === note ? ["y"] : ["x", "y"]) {
+          await field.evaluate(el => { el.scrollTop = el.scrollLeft = 0; });
+          const transform = await stage.getAttribute("style");
+          for (const direction of [1, -1]) {
+            // A click ends Firefox's previous native scroll transaction before changing targets.
+            await field.click();
+            await page.mouse.wheel(axis === "x" ? direction * 60 : 0, axis === "y" ? direction * 60 : 0);
+            await expect.poll(() => field.evaluate((el, axis) => (axis === "x" ? el.scrollLeft : el.scrollTop) > 0, axis)).toBe(direction === 1);
+            await expect(stage).toHaveAttribute("style", transform!);
+          }
+        }
+      }
+      const transform = await stage.getAttribute("style");
+      const input = page.getByRole("textbox", { name: "Organization name", exact: true });
+      await input.evaluate(el => el.addEventListener("wheel", () => { el.dataset.wheeled = "true"; }, { once: true }));
+      await input.click();
+      await page.mouse.wheel(0, 60);
+      await expect(input).toHaveAttribute("data-wheeled", "true");
+      await expect(stage).toHaveAttribute("style", transform!);
+      await input.evaluate(el => { delete el.dataset.wheeled; });
+      // A subsequent wheel arriving at the nested scroll boundary belongs to the canvas again.
+      await scroll.click();
+      await page.mouse.wheel(0, -60);
+      await expect(stage).not.toHaveAttribute("style", transform!);
+      await fits(page, `org nested wheel/390/${theme}`);
+      await page.screenshot({ path: test.info().outputPath(`wheel-fields-${theme}.png`) });
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

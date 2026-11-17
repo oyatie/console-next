@@ -21,7 +21,7 @@ test("open binding evidence surfaces on employee and account records without a l
     const items = subject && (id === subject.id || linked) ? [{
       subject_kind: id === subject.id ? "EMPLOYEE" : "ACCOUNT", subject_id: id,
       reason: "NUMBER_BIRTH_AMBIGUOUS", created_at: new Date().toISOString(),
-      evidence: { candidates: employees.items.map((e) => ({ employee_id: e.id, name: e.name, employee_number: e.employee_number, birth_date: "1990-03-04" })) },
+      evidence: { candidates: employees.items.map((e) => ({ employee_id: e.id, name: e.name, employee_number: e.employee_number, birth_date: "1990-03-••" })) },
     }] : [];
     await route.fulfill({ json: { items, total: items.length, limit: 50, offset: 0 } });
   });

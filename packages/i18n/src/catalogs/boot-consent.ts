@@ -8,6 +8,8 @@ export const bootConsentEn = {
   "auth.setup.consent.required": "Confirm both required items to continue.",
   "auth.setup.consent.policy": "Privacy policy",
   "auth.setup.consent.reviewPending": "Under review",
+  "uiField.required": "Required",
+  "uiField.optional": "Optional",
 } as const;
 export const bootConsentKo: Record<keyof typeof bootConsentEn, string> = {
   "common.failed.code.privacy_consent_required": "개인정보 처리 안내와 이용약관을 확인하고 동의한 후 다시 시도하십시오.",
@@ -17,4 +19,6 @@ export const bootConsentKo: Record<keyof typeof bootConsentEn, string> = {
   "auth.setup.consent.required": "두 필수 항목을 확인하면 계속할 수 있습니다.",
   "auth.setup.consent.policy": "개인정보 처리방침",
   "auth.setup.consent.reviewPending": "검토 전",
+  "uiField.required": "필수",
+  "uiField.optional": "선택 사항",
 };

@@ -27,6 +27,17 @@ async fn facts_patch_is_tested_normalised_and_pay_is_first_record_only(pool: PgP
         (refused.status.as_u16(), refused.code),
         (422, "precondition_missing")
     );
+    let future = ops(json!([
+        { "op": "test", "path": "/birth_date", "value": null },
+        { "op": "replace", "path": "/birth_date", "value": "2999-01-01" }
+    ]));
+    assert_eq!(
+        f.hr.patch_employment_facts(p(), f.employee, future)
+            .await
+            .unwrap_err()
+            .status,
+        422
+    );
 
     let edit = ops(json!([
         { "op": "test", "path": "/birth_date", "value": null },
@@ -45,6 +56,7 @@ async fn facts_patch_is_tested_normalised_and_pay_is_first_record_only(pool: PgP
             .await
             .unwrap();
     assert_eq!(facts.work_email.as_deref(), Some("Kim@corp.example.com"));
+    assert_eq!(facts.birth_date.as_deref(), Some("••••-••-••"));
     assert_eq!(
         facts.employment.as_ref().unwrap().base_pay_won,
         Some(3_100_000)
@@ -74,25 +86,39 @@ async fn facts_patch_is_tested_normalised_and_pay_is_first_record_only(pool: PgP
     );
     // ME-3: a stale test whose write the record already holds → no conflict.
     let same = ops(json!([
-        { "op": "test", "path": "/birth_date", "value": null },
-        { "op": "replace", "path": "/birth_date", "value": "1994-03-02" }
+        { "op": "test", "path": "/id_type", "value": null },
+        { "op": "replace", "path": "/id_type", "value": "NOT_ISSUED" }
     ]));
     f.hr.patch_employment_facts(p(), f.employee, same)
         .await
         .unwrap();
 
-    let stale = ops(json!([
-        { "op": "test", "path": "/birth_date", "value": null },
-        { "op": "replace", "path": "/birth_date", "value": "1990-01-01" }
-    ]));
-    let conflict =
-        f.hr.patch_employment_facts(p(), f.employee, stale)
-            .await
-            .unwrap_err();
-    assert_eq!(
-        (conflict.status.as_u16(), conflict.code),
-        (409, "field_conflict")
-    );
+    // The birth date is tested as served (its mask): the stored value and another one answer alike.
+    for value in ["1994-03-02", "1990-01-01"] {
+        let stale = ops(json!([
+            { "op": "test", "path": "/birth_date", "value": null },
+            { "op": "replace", "path": "/birth_date", "value": value }
+        ]));
+        let conflict =
+            f.hr.patch_employment_facts(p(), f.employee, stale)
+                .await
+                .unwrap_err();
+        assert_eq!(
+            (conflict.status.as_u16(), conflict.code),
+            (409, "field_conflict")
+        );
+        let tested = ops(json!([
+            { "op": "test", "path": "/birth_date", "value": "••••-••-••" },
+            { "op": "replace", "path": "/birth_date", "value": value }
+        ]));
+        assert_eq!(
+            f.hr.patch_employment_facts(p(), f.employee, tested)
+                .await
+                .unwrap_err()
+                .code,
+            "correction_required"
+        );
+    }
 
     let repay = ops(json!([
         { "op": "test", "path": "/employment/base_pay_won", "value": 3_100_000 },
@@ -110,17 +136,6 @@ async fn facts_patch_is_tested_normalised_and_pay_is_first_record_only(pool: PgP
     ]));
     assert_eq!(
         f.hr.patch_employment_facts(p(), f.employee, read_only)
-            .await
-            .unwrap_err()
-            .status,
-        422
-    );
-    let future = ops(json!([
-        { "op": "test", "path": "/birth_date", "value": "1994-03-02" },
-        { "op": "replace", "path": "/birth_date", "value": "2999-01-01" }
-    ]));
-    assert_eq!(
-        f.hr.patch_employment_facts(p(), f.employee, future)
             .await
             .unwrap_err()
             .status,

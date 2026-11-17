@@ -7,7 +7,7 @@ import { inviteAccount } from "./access-flows";
 import { chooseRadio, go, kstDate } from "./flows";
 import { setupCompany, setupRail } from "./setup-flows";
 import { addDepartments } from "./structure-flows";
-import { chooseWorkbook } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "./helpers/import";
 import { many, plain, workbook } from "./helpers/import-layouts";
 import { grantSetupRole, probeActions } from "./helpers/first-run";
 import { rowsGrid } from "./helpers/import-queue";
@@ -75,6 +75,7 @@ test("BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared r
   await employees.getByRole("link", { name: "명부 가져오기", exact: true }).click();
   await chooseWorkbook(admin, "2000명.xlsx", await workbook([plain("첫운영정밀", rows)]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await expect(rowsGrid(admin)).toBeVisible({ timeout: 60_000 });
   await admin.getByRole("button", { name: "명부 반영: 신규 2,000명 · 갱신 0명" }).click();
@@ -130,6 +131,7 @@ test("BL-013 bulk paths keep legal facts and lock a pending employee paste read"
   await expect(admin.getByRole("textbox", { name: "직원 목록" })).toBeDisabled();
   release();
   await expect(admin.getByRole("button", { name: "모의 반영 실행" })).toBeVisible({ timeout: 30_000 });
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   const applied = admin.waitForResponse((r) => r.request().method() === "POST" && /\/employees\/import\/[^/]+\/apply$/.test(r.url()));
   await admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }).click();

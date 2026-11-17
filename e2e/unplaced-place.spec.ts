@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, kstDate } from "./flows";
 import { openTenant } from "./helpers/tenant";
-import { chooseWorkbook, people, rosterWorkbook } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook, people, rosterWorkbook } from "./helpers/import";
 import { apiOf, bearerOf } from "./helpers/api";
 import { setupCompany, startOperations } from "./setup-flows";
 import { addDepartments } from "./structure-flows";
@@ -25,6 +25,7 @@ async function world(page: Page, slug: string, n: number, operating = false) {
   await go(page, "/people/import");
   await chooseWorkbook(page, `${slug}.xlsx`, await rosterWorkbook([{ name: "재직자", rows }]));
   await page.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(page);
   await page.getByRole("button", { name: "모의 반영 실행" }).click({ timeout: 60_000 });
   const apply = page.getByRole("button", { name: new RegExp(`^명부 반영: 신규 ${n}명`) });
   await expect(apply).toBeEnabled({ timeout: 60_000 });

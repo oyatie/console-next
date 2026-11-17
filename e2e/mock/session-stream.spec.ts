@@ -49,7 +49,7 @@ for (const { screen, path } of [
   });
 }
 
-for (const theme of ["light", "dark"] as const) test(`sign-in opens the stream before any screen read at 390px ${theme}`, async ({ page }) => {
+for (const theme of ["light", "dark"] as const) test(`sign-in opens the stream before any screen read at 390px ${theme}`, { tag: "@webkit-pr" }, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
   const fixture = await mockScreen(page, screens[0], "populated");

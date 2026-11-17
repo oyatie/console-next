@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { workbook } from "../helpers/import-layouts";
 import { gridRow, openItem, panel, queue, rowsGrid, settled } from "../helpers/import-queue";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
@@ -33,9 +33,10 @@ test("import correctness: an unknown 고용형태 blocks until answered, a near 
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "인사기록.xlsx", await workbook([{ name: "본사", lines: [HEAD, ...ROWS] }]));
   // No pay period: the roster takes none (both or neither).
-  const previewed = admin.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname.endsWith("/import/preview"));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
-  const runId = ((await (await previewed).json()) as { run_id: string }).run_id;
+  const confirmed = await confirmImportColumns(admin);
+  expect(confirmed).toBeDefined();
+  const runId = confirmed!.run_id;
   // The phone column is read but never shown; its digits appear nowhere on the page.
   await expect(admin.getByRole("table", { name: "열", exact: true }).getByRole("row").filter({ hasText: "휴대전화" })).toBeVisible();
   await expect(admin.locator("main")).not.toContainText("1234-5678");

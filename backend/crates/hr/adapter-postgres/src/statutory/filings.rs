@@ -98,8 +98,9 @@ pub(super) async fn visible_tasks(
     }
     for task in &mut items {
         task.can_record_sensitive_facts = sensitive;
+        // Only the governed reveal opens a birth date; `birth_date_known` says whether one is recorded.
+        task.applicability_facts.birth_date = None;
         if !sensitive {
-            task.applicability_facts.birth_date = None;
             task.applicability_facts.monthly_income_won = None;
         }
     }

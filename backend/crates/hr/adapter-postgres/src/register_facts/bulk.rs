@@ -12,6 +12,7 @@
 
 use std::collections::HashSet;
 
+use console_hr_domain::profile::mask::RevealField;
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext};
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
@@ -80,7 +81,7 @@ pub struct BulkRegisterRow {
 pub struct BulkRowOutcome {
     pub index: usize,
     pub employee_id: Option<Uuid>,
-    /// Items whose value changes (or would change).
+    /// Items written (or that would be): changed values, and any recorded value the reveal governs.
     pub changed: Vec<String>,
     /// Why the row cannot be taken; the apply then writes nothing.
     pub error: Option<String>,
@@ -127,7 +128,8 @@ async fn resolve(
     }
 }
 
-/// The row's `(field, value)` pairs that differ from what is stored, checked
+/// The row's `(field, value)` pairs to write: those that differ from what is
+/// stored, and any sent for a recorded value the reveal governs; checked
 /// against the record as the apply will check them.
 async fn plan_row(
     tx: &mut Transaction<'_, Postgres>,
@@ -154,7 +156,11 @@ async fn plan_row(
             ));
         }
         let stored = normalize_value(field, value).map_err(|error| error.message)?;
-        if ledger_value(field, stored.as_deref()) != ledger_value(field, head.current(field)) {
+        let recorded = head.current(field);
+        // A value the reveal governs is written even when equal, so the answer never confirms a guess.
+        if ledger_value(field, stored.as_deref()) != ledger_value(field, recorded)
+            || (recorded.is_some() && RevealField::from_column(field).is_some())
+        {
             planned.push((field.clone(), stored));
         }
     }

@@ -149,7 +149,7 @@ async fn unclassified_facts_expand_the_wire_contract_and_remain_redacted_for_rea
         wire["employment"].is_null(),
         "N-1 clients never receive a null classification"
     );
-    assert_eq!(wire["pending_employment"]["phone_e164"], "+821012345678");
+    assert_eq!(wire["pending_employment"]["phone_e164"], "010-••••-5678");
     assert_eq!(wire["pending_employment"]["base_pay"], "3000000.00");
     let facts =
         f.hr.employment_facts(f.principal.clone(), detail.employee.id)

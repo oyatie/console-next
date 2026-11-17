@@ -4,7 +4,7 @@ import { go, unique } from "../flows";
 import { openTenant } from "../helpers/tenant";
 import { setupCompany } from "../setup-flows";
 import { apiOf, bearerOf, headcount } from "../helpers/api";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { workbook } from "../helpers/import-layouts";
 import { settled } from "../helpers/import-queue";
 import { psql } from "../idle-fixture";
@@ -26,9 +26,10 @@ test("an interrupted import leaves no people and retry replays the complete repo
     ["AT-001", "가검증", "2020-03-02", "정규직"],
     ["AT-002", "나검증", "2021-04-01", "정규직"],
   ] }]));
-  const previewed = admin.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/import/preview"));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
-  const { run_id: run } = await (await previewed).json() as { run_id: string };
+  const confirmed = await confirmImportColumns(admin);
+  expect(confirmed).toBeDefined();
+  const run = confirmed!.run_id;
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(admin);
   // Fault injection only: the tenant, structure and workbook all use the product.
@@ -44,6 +45,17 @@ CREATE TRIGGER fail_import_settle AFTER INSERT ON audit_events FOR EACH ROW EXEC
   try {
     await admin.getByRole("button", { name: /^명부 반영: 신규 2명/ }).click();
     await expect.poll(async () => (await (await api(applyPath)).json()).state, { timeout: 60_000 }).toBe("failed");
+    const failed = await (await api(applyPath)).json();
+    expect(failed.error.code).toBe("internal");
+    expect(failed.error.message).toBe("internal server error");
+    expect(failed.error.support_ref).toMatch(/^[0-9a-f]{32}$/);
+    // Old jobs can contain driver text even though GET succeeds with 200.
+    psql(unique(slug), `UPDATE data_import_runs SET apply_job=jsonb_set(apply_job,'{error}',
+      '{"code":"internal","message":"private database value","refusals":["private row value"]}'::jsonb)
+      WHERE id='${run}';`);
+    const legacy = await api(applyPath);
+    expect(legacy.status()).toBe(200);
+    expect((await legacy.json()).error).toEqual({ code: "internal", message: "internal server error" });
     await shotSet(admin, "import-interrupted");
     await forgetResize(admin);
     expect(await headcount(api), "the failed apply must leave the roster empty").toBe(0);
@@ -85,9 +97,10 @@ test("import progress reaches the screen before any employee is committed", { ta
     ["사번", "성명", "입사일", "고용형태"],
     ...Array.from({ length: 300 }, (_, n) => [`PR-${n}`, `검증직원${n}`, "2020-03-02", "정규직"]),
   ] }]));
-  const previewed = admin.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/import/preview"));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
-  const { run_id: run } = await (await previewed).json() as { run_id: string };
+  const confirmed = await confirmImportColumns(admin);
+  expect(confirmed).toBeDefined();
+  const run = confirmed!.run_id;
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(admin);
   // Hold each chunk until the browser has observed the preceding committed counter.

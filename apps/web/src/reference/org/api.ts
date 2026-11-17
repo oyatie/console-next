@@ -10,7 +10,7 @@ import { isDate } from "../../ui/date/days";
 
 export const regionsQuery = get("/api/v1/regions");
 export const branchesQuery = get("/api/v1/branches");
-export const unitsQuery = get("/api/v1/org-units");
+export { unitsQuery } from "./api/reads";
 
 /** The server decides whether a department is deleted or dissolved. */
 export const unitEndQuery = (id: string) => get("/api/v1/org-structure/units/{orgUnitId}/end-options", { params: { path: { orgUnitId: id } } });
