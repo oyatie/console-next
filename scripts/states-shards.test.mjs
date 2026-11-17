@@ -184,10 +184,10 @@ test("the real suite allows 30 added tests and ten percent timing drift within t
   const discovered = JSON.parse(result.stdout);
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
   const runs = existsSync(historyFile) ? JSON.parse(readFileSync(historyFile, "utf8")).runs : [];
-  const checked = checkHeadroom(discovered, timings, runs);
-  if (!checked) console.warn("::warning::Insufficient dev timing history; headroom not judged; checking growth against available measurements");
   const currentFile = process.env.STATES_TIMINGS_FILE ?? ".cache/states-timings/timings.json";
   const current = existsSync(currentFile) ? JSON.parse(readFileSync(currentFile, "utf8")) : undefined;
+  const checked = checkHeadroom(discovered, timings, runs, process.env.GITHUB_STEP_SUMMARY, current);
+  if (!checked) console.warn("::warning::Insufficient dev timing history; headroom not judged; checking growth against available measurements");
   const artifact = checked?.timings ?? [current, ...runs.map(run => run.timings)].find(measured => measured?.workers === timings.workers && Object.keys(measured.specs ?? {}).length);
   if (!artifact) return t.skip("no compatible measurements available for the growth guard");
   const timeoutSeconds = Math.floor(timings.runLimitSeconds / RUN_HEADROOM);
@@ -549,6 +549,61 @@ test("three samples suffice while newer specs use the planner P95 estimate", asy
   assert.deepEqual(checked.plan.shards.flatMap(shard => shard.files).sort(), ["e2e/mock/a.spec.ts", "e2e/states/b.spec.ts"]);
 });
 
+test("sparse specs use this push's per-test measurements scaled to current counts", async () => {
+  const { checkHeadroom } = await load();
+  const specs = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`states/fixture-${i}.spec.ts`, { tests: 10, seconds: i ? 50 : 200 }]));
+  const file = "states/new.spec.ts";
+  const counts = { ...Object.fromEntries(Object.entries(specs).map(([file, entry]) => [file, entry.tests])), [file]: 10 };
+  const current = { workers: settings.workers, specs: { ...specs, "states/fixture-0.spec.ts": { tests: 10, seconds: 1 }, [file]: { tests: 5, seconds: 25 } } };
+  for (const samples of [0, 1, 2]) withSummary(summary => {
+    const runs = capacityHistory().map((run, i) => ({ ...run, timings: { workers: settings.workers,
+      specs: { ...specs, ...(i < samples ? { [file]: { tests: 10, seconds: 200 } } : {}) },
+    } }));
+    const checked = checkHeadroom(report(counts), capacitySettings, runs, summary, current);
+    assert.ok(checked.headroom >= 15);
+    assert.deepEqual(checked.timings.specs[file], { tests: 10, seconds: 50 });
+    assert.equal(checked.timings.specs["states/fixture-0.spec.ts"].seconds, 200);
+    const text = readFileSync(summary, "utf8");
+    assert.match(text, /measured on this push only.*states\/new\.spec\.ts/i);
+    assert.doesNotMatch(text, /P95 estimate/);
+  });
+  const runs = capacityHistory().map(run => ({ ...run, timings: { workers: settings.workers, specs } }));
+  assert.throws(() => checkHeadroom(report(counts), capacitySettings, runs, null,
+    { ...current, specs: { ...current.specs, "states/fixture-0.spec.ts": { tests: 10, seconds: 0 } } }), /STATES_INVALID_TIMINGS/);
+});
+
+test("a sparse spec missing from this push is priced at P95 and named in the summary", async () => {
+  const { checkHeadroom, planStates } = await load();
+  const file = "states/new.spec.ts";
+  const input = report({ "mock/a.spec.ts": 1, "states/b.spec.ts": 1, [file]: 1 });
+  withSummary(summary => {
+    const runs = capacityHistory(200);
+    const checked = checkHeadroom(input, capacitySettings, runs, summary, runs[0].timings);
+    assert.equal(checked.timings.specs[file], undefined);
+    assert.deepEqual(checked.plan, planStates(input, capacitySettings, runs[0].timings));
+    assert.match(readFileSync(summary, "utf8"), /P95 estimate.*states\/new\.spec\.ts/);
+    assert.doesNotMatch(readFileSync(summary, "utf8"), /measured on this push only/i);
+    const incompatible = { workers: settings.workers + 1, specs: { [file]: { tests: 1, seconds: 1 } } };
+    assert.deepEqual(checkHeadroom(input, capacitySettings, runs, null, incompatible).plan, checked.plan);
+  });
+});
+
+test("a dev-sized suite plus three new specs at median cost keeps measured headroom", async () => {
+  const { checkHeadroom } = await load();
+  const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
+  const specs = Object.fromEntries(Array.from({ length: 178 }, (_, i) => [`states/fixture-${i}.spec.ts`, { tests: 15, seconds: 15 * (i < 10 ? 3.76 : 1.45) }]));
+  const current = { workers: timings.workers, specs: { ...specs, ...Object.fromEntries(Array.from({ length: 3 }, (_, i) => [`states/new-${i}.spec.ts`, { tests: 32, seconds: 32 * 1.45 }])) } };
+  const input = report(Object.fromEntries(Object.entries(current.specs).map(([file, entry]) => [file, entry.tests])));
+  const runs = capacityHistory().map(run => ({ ...run, timings: { workers: timings.workers, specs } }));
+  withSummary(summary => {
+    const checked = checkHeadroom(input, timings, runs, summary, current);
+    assert.equal(checked.plan.shards.length, timings.maxShards);
+    assert.ok(checked.headroom >= 15 && checked.headroom < 20);
+    assert.match(readFileSync(summary, "utf8"), /measured on this push only.*new-0.*new-1.*new-2/i);
+    assert.throws(() => checkHeadroom(input, timings, runs, null), /STATES_HEADROOM_EXHAUSTED/);
+  });
+});
+
 test("the dev growth guard runs with fresh or recent measurements when history is insufficient", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "states-growth-"));
   try {
@@ -573,6 +628,18 @@ test("the dev growth guard runs with fresh or recent measurements when history i
       assert.equal(result.status, seconds === 800 ? 0 : 1, result.stdout + result.stderr);
       if (seconds === 830) assert.match(result.stdout, /STATES_SPEC_OVER_BUDGET/);
     }
+    writeFileSync(path.join(dir, "node_modules/@playwright/test/cli.js"), `console.log(${JSON.stringify(JSON.stringify(report({ "mock/a.spec.ts": 100, "states/b.spec.ts": 120 })))});`);
+    writeFileSync(history, JSON.stringify({ runs: capacityHistory().map(run => ({ ...run,
+      timings: { workers: settings.workers, specs: { "mock/a.spec.ts": { tests: 100, seconds: 700 } } },
+    })) }));
+    writeFileSync(current, JSON.stringify(measured(100)));
+    const result = spawnSync(process.execPath, ["--test", "--test-name-pattern=the real suite allows", "scripts/states-shards.test.mjs"], {
+      cwd: dir, encoding: "utf8", env: { ...process.env, NODE_TEST_CONTEXT: undefined, CI: "true", STATES_CHECK_CAPACITY: "1", STATES_TIMINGS_FILE: current,
+        STATES_TIMINGS_HISTORY_FILE: history, GITHUB_STEP_SUMMARY: path.join(dir, "summary.md") },
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /measured on this push only.*states\/b\.spec\.ts/i);
+    assert.doesNotMatch(result.stdout, /# SKIP/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

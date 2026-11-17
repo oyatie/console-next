@@ -106,22 +106,31 @@ function validateHeadroomRuns(settings) {
     refuse("STATES_INVALID_TIMINGS", "headroomRuns must be an integer of at least three");
 }
 
-/** Per-test medians allow suite growth; sparsely measured specs use the planner's P95 estimate. */
-export function checkHeadroom(report, settings, runs, summary = process.env.GITHUB_STEP_SUMMARY) {
+/** Per-test medians allow suite growth; sparse specs use this push's measurement before P95. */
+export function checkHeadroom(report, settings, runs, summary = process.env.GITHUB_STEP_SUMMARY, current) {
   validateTimings(settings);
   validateHeadroomRuns(settings);
   if (!Array.isArray(runs)) refuse("STATES_INVALID_TIMINGS", "expected timing history");
   const recent = [...new Map(runs.filter(run => run.timings.workers === settings.workers)
     .map(run => [run.runId, run])).values()].slice(0, settings.headroomRuns);
   for (const run of recent) validateTimings({ ...settings, specs: run.timings.specs });
+  if (current?.workers === settings.workers) validateTimings({ ...settings, specs: current.specs });
   const counts = new Map();
   for (const { file } of listedTests(report)) counts.set(file, (counts.get(file) ?? 0) + 1);
   const specs = {};
   const estimated = [];
+  const measuredOnPush = [];
   for (const [file, tests] of counts) {
     const seconds = recent.map(run => run.timings.specs?.[file]).filter(Boolean)
       .map(entry => entry.seconds / entry.tests).sort((a, b) => a - b);
-    if (seconds.length < MIN_HEADROOM_RUNS) { estimated.push(file); continue; }
+    if (seconds.length < MIN_HEADROOM_RUNS) {
+      const entry = current?.workers === settings.workers && current.specs?.[file];
+      if (entry) {
+        specs[file] = { tests, seconds: tests * entry.seconds / entry.tests };
+        measuredOnPush.push(file);
+      } else estimated.push(file);
+      continue;
+    }
     const middle = Math.floor(seconds.length / 2);
     specs[file] = { tests, seconds: tests * (seconds[middle] + seconds[Math.ceil(seconds.length / 2) - 1]) / 2 };
   }
@@ -138,7 +147,7 @@ export function checkHeadroom(report, settings, runs, summary = process.env.GITH
   const timeoutSeconds = Math.floor(settings.runLimitSeconds / RUN_HEADROOM);
   const maximum = Math.max(...plan.shards.map(shard => shard.seconds));
   const headroom = 100 * (1 - maximum / timeoutSeconds);
-  publish(`Typical headroom: **${headroom.toFixed(1)}%** (per-test median over ${recent.length} dev runs, scaled to current counts); maximum ${maximum.toFixed(1)}s / ${timeoutSeconds}s; required headroom: 15%.${maximum > timeoutSeconds * 0.8 ? " Capacity follow-up: another shard or faster slow specs is due." : ""}${estimated.length ? `\n\nP95 estimates (fewer than ${MIN_HEADROOM_RUNS} samples): ${estimated.join(", ")}.` : ""}`);
+  publish(`Typical headroom: **${headroom.toFixed(1)}%** (per-test median over ${recent.length} dev runs, scaled to current counts); maximum ${maximum.toFixed(1)}s / ${timeoutSeconds}s; required headroom: 15%.${maximum > timeoutSeconds * 0.8 ? " Capacity follow-up: another shard or faster slow specs is due." : ""}${measuredOnPush.length ? `\n\nMeasured on this push only (fewer than ${MIN_HEADROOM_RUNS} history samples): ${measuredOnPush.join(", ")}.` : ""}${estimated.length ? `\n\nP95 estimate (missing this push's measurement and fewer than ${MIN_HEADROOM_RUNS} history samples): ${estimated.join(", ")}.` : ""}`);
   if (maximum > timeoutSeconds * 0.85) refuse("STATES_HEADROOM_EXHAUSTED", "the measured suite needs at least fifteen percent headroom");
   return { timings, plan, headroom };
 }
