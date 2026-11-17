@@ -39,6 +39,7 @@ properties:
           type: array
           items:
             type: object
+            description: A birth date is the reveal mask in `current` and `before`, never the value.
             required: [field, current, before]
             properties:
               field:

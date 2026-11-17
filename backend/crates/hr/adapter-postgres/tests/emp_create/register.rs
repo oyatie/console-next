@@ -16,7 +16,7 @@ fn needs_end(kind: &str) -> bool {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn every_employment_type_registers_with_its_facts_in_one_call(pool: PgPool) {
-    let f = fixture(pool).await;
+    let f = fixture(pool.clone()).await;
     for (n, kind) in EmploymentType::ALL.iter().enumerate() {
         let employee_kind = kind.worker_classification().as_str() == "EMPLOYEE";
         let contract_kind = contract_kinds(*kind)[0].as_str();
@@ -57,7 +57,15 @@ async fn every_employment_type_registers_with_its_facts_in_one_call(pool: PgPool
             facts.work_email.as_deref(),
             Some(format!("Person{n}@corp.co.kr").as_str())
         );
-        assert_eq!(facts.birth_date.as_deref(), Some("1994-03-02"));
+        // The read serves the mask; the stored date is what the registration sent.
+        assert_eq!(facts.birth_date.as_deref(), Some("••••-••-••"));
+        let stored: Option<String> =
+            sqlx::query_scalar("SELECT COALESCE(console_employee_facts(org_id,id)->>'birth_date', birth_date::text) FROM employees WHERE id = $1")
+                .bind(id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(stored.as_deref(), Some("1994-03-02"));
         assert_eq!(facts.id_type, Some(IdType::Rrn));
         let profile = facts.employment.unwrap();
         assert_eq!(

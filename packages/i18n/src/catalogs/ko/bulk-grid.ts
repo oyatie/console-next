@@ -17,7 +17,7 @@ export const koBulkGrid: Record<keyof typeof enBulkGrid, string> = {
   "bulkGrid.filter.same": "그대로 {n, number}",
   "bulkGrid.columns": "열 선택 · {n, number}",
   "bulkGrid.paste": "붙여넣기",
-  "bulkGrid.paste.skipped": "붙여넣지 못한 칸{readOnly, plural, =0 {} other { · 읽기 전용 #칸}}{outside, plural, =0 {} other { · 범위 밖 #칸}}",
+  "bulkGrid.paste.skipped": "붙여넣지 못한 칸{readOnly, plural, =0 {} other { · 읽기 전용 #칸}}{outside, plural, =0 {} other { · 범위 밖 #칸}}{kept, plural, =0 {} other { · 가려진 기록 #칸(변경하려면 한 칸씩 입력)}}",
   "bulkGrid.fill": "아래로 채우기",
   "bulkGrid.verbs": "날짜 있는 칸은 열마다 어떻게 기록할지 정합니다",
   "bulkGrid.verb.correct": "잘못 적음 · 정정",

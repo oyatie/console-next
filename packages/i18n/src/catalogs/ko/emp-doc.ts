@@ -6,7 +6,6 @@ export const koEmpDoc: Record<keyof typeof enEmpDoc, string> = {
   "empDoc.reg.siteN": "사업장 {count, number}",
   "empDoc.reg.siteCount": "{workers} + 퇴직 {exited}",
   "empDoc.reg.blank": "빈칸",
-  "empDoc.reg.birthMasked": "{year}-••-••",
   "empDoc.reg.noCareer": "경력 없음 (입사 때 적음)",
   "empDoc.reg.asOf.today": "오늘 {date}",
   "empDoc.reg.asOf.monthEnd": "지난달 말",
