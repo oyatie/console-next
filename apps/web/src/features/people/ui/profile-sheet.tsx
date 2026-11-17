@@ -4,7 +4,7 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate, fmtKrw, fmtNumber } from "@console/i18n/format";
 import { EMPLOYMENT_TYPE, label } from "../../../lib/labels";
-import { FORMATS, phoneDisplay } from "../../../lib/pure/formats";
+import { FORMATS } from "../../../lib/pure/formats";
 import { todayKst } from "../../../lib/pure/today";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -63,7 +63,8 @@ export function ProfileSheet({ d, mode, onClose, onDone }: { d: Detail; mode: "c
     const c = current[k];
     if (hidden(k)) return t("people.field.restricted");
     if (!c) return t("person.field.notSet");
-    return k === "phone" ? phoneDisplay(c) : k === "hire_date" ? fmtDate(c) : k === "employment_type" ? label(EMPLOYMENT_TYPE, c) : k === "base_pay" ? fmtKrw(c) : c;
+    // The phone arrives as the server's mask, shown as is.
+    return k === "hire_date" ? fmtDate(c) : k === "employment_type" ? label(EMPLOYMENT_TYPE, c) : k === "base_pay" ? fmtKrw(c) : c;
   };
   const hint = (k: Key) => t("profile.current", { value: was(k) });
   const consequence =

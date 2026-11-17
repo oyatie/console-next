@@ -23,9 +23,8 @@ function card(birth_date: string | null) {
   return renderToStaticMarkup(<FactsCard e={{ id: "person", name: "한기록" } as Parameters<typeof FactsCard>[0]["e"]} editing={false} onEdit={() => {}} />);
 }
 
-test("the employment record masks a recorded birth date before reveal", () => {
-  const html = card("1965-01-01");
-  expect(html).not.toContain("1965");
+test("the employment record shows a recorded birth date's server mask and opens it only through the reveal", () => {
+  const html = card("••••-••-••");
   expect(html).toContain("••••-••-••");
   expect(html).toContain(t("empCard.reveal.open", { field: t("facts.birthDate") }));
 });

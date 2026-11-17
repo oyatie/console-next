@@ -4,6 +4,7 @@
 //! does not see, so the read needs `employee_directory_manage` (as the
 //! register export does) and leaves an access log row like the detail read.
 
+use console_hr_domain::profile::mask::RevealField;
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
 use serde::Serialize;
@@ -26,8 +27,8 @@ pub struct RegisterFactsResponse {
     pub updated_at: OffsetDateTime,
     /// `MALE` | `FEMALE`; null = not entered.
     pub sex: Option<String>,
-    /// The structured address (`KrAddress`); null = not entered.
-    pub address: Value,
+    /// The address's reveal mask; null = not entered. Only the governed reveal returns the address.
+    pub address: Option<String>,
     /// Null = not entered; `[]` = "no work history".
     pub careers: Value,
     pub exit_reason_code: Option<String>,
@@ -72,7 +73,10 @@ impl HrService {
                     employee_id,
                     updated_at,
                     sex: row.sex,
-                    address: ledger_value("address", row.address.as_deref()),
+                    address: row
+                        .address
+                        .as_deref()
+                        .map(|address| RevealField::Address.masked(address)),
                     careers: ledger_value("careers", row.careers.as_deref()),
                     exit_reason_code: row.exit_reason_code,
                     exit_reason_label: row.exit_reason_label,

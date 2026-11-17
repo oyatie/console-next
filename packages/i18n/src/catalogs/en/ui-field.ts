@@ -1,6 +1,4 @@
 export const enUiField = {
-  "uiField.required": "Required",
-  "uiField.optional": "Optional",
   "uiField.valueMissing": "This field is required.",
   "uiField.typeMismatch": "Enter a value in the correct format.",
   "uiField.patternMismatch": "Enter a value matching the required pattern.",
