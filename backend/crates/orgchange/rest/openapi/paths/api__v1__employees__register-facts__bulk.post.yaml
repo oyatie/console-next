@@ -14,7 +14,9 @@ description: >-
   what each row would change and why a row cannot be taken. The apply is
   all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and
   writes one correction ledger row per changed item; an unchanged value writes
-  nothing. At most 500 rows.
+  nothing, except a recorded `address` or `personal_email`, which is written
+  and listed as changed whether or not it equals the record, so neither the
+  plan nor the apply confirms a recorded value. At most 500 rows.
 security:
 - bearerAuth: []
 requestBody:
