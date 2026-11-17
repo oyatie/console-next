@@ -165,8 +165,10 @@ pub fn parse_workbook(
         let mut stored = sheet_report(sheet, &detection, rows, false);
         let mut shown = sheet_report(sheet, &detection, rows, true);
         if unconfirmed {
-            stored["status"] = "needs_confirmation".into();
-            shown["status"] = "needs_confirmation".into();
+            stored["status"] = "needs_mapping".into();
+            stored["needs_confirmation"] = true.into();
+            shown["status"] = "needs_mapping".into();
+            shown["needs_confirmation"] = true.into();
         }
         if remembered_skip {
             stored["source"] = "remembered".into();

@@ -20643,11 +20643,10 @@ export interface components {
         /** @description IMPORT-2: one sheet of the workbook as the import read it. */
         EmployeeImportSheetReport: {
             name: string;
-            /**
-             * @description needs_confirmation means a detected header awaits an operator binding; no values have been staged.
-             * @enum {string}
-             */
-            status: "mapped" | "needs_mapping" | "needs_confirmation" | "empty" | "skipped";
+            /** @enum {string} */
+            status: "mapped" | "needs_mapping" | "empty" | "skipped";
+            /** @description When true, a detected header awaits operator confirmation; status is needs_mapping and no values have been staged. */
+            needs_confirmation?: boolean;
             rows: number;
             /**
              * @description W12 (r3:hire-18): remembered — skipped because an earlier import skipped a sheet of this name; send `skip: false` for it to read it this time.

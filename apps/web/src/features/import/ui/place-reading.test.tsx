@@ -15,7 +15,7 @@ vi.mock("../../../ui/button/button", async (original) => {
 });
 beforeAll(() => loadCatalog("ko"));
 const sheet: ImportSheet = {
-  name: "Synthetic", status: "needs_confirmation", rows: 3, header_row: 1,
+  name: "Synthetic", status: "needs_mapping", needs_confirmation: true, rows: 3, header_row: 1,
   columns: [{ column: "A", label: "name", target: "name", source: "catalog" }, { column: "B", label: "workplace", target: "workplace", source: "catalog" }],
 };
 

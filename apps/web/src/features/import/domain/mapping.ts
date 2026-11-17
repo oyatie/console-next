@@ -56,4 +56,4 @@ export const sheetMapping = (d: Draft): SheetMapping =>
 export const rereadsSkipped = (s: ImportSheet, d: Draft) => !d.skip && s.status === "skipped" && d.header_row == null;
 
 /** Sheets that keep the dry run closed until the operator confirms their bindings. */
-export const sheetsToMap = (sheets: readonly ImportSheet[]) => sheets.filter((s) => s.status === "needs_mapping" || s.status === "needs_confirmation");
+export const sheetsToMap = (sheets: readonly ImportSheet[]) => sheets.filter((s) => s.status === "needs_mapping");

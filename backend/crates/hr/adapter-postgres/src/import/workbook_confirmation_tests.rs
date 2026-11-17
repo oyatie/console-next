@@ -80,7 +80,8 @@ fn unconfirmed_suggestions_never_read_cells_or_call_the_vault() {
             assert!(parsed.identities.is_empty());
             assert!(parsed.phones.is_empty());
             assert!(parsed.remembered.is_empty());
-            assert_eq!(parsed.shown[0]["status"], "needs_confirmation");
+            assert_eq!(parsed.shown[0]["status"], "needs_mapping");
+            assert_eq!(parsed.shown[0]["needs_confirmation"], true);
             assert_eq!(parsed.shown[0]["rows"], 1);
             assert_eq!(parsed.sheets[0]["rows"], 1);
             assert_eq!(
@@ -129,6 +130,7 @@ fn confirmation_counts_only_nonblank_data_rows_without_staging_them() {
     )
     .unwrap();
     assert_eq!(parsed.shown[0]["rows"], 2);
-    assert_eq!(parsed.sheets[0]["status"], "needs_confirmation");
+    assert_eq!(parsed.sheets[0]["status"], "needs_mapping");
+    assert_eq!(parsed.sheets[0]["needs_confirmation"], true);
     assert!(parsed.rows.is_empty());
 }

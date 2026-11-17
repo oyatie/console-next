@@ -41,7 +41,7 @@ test("unconfirmed restricted and ordinary columns wait for a person's mapping @h
   expect(preview.sealed_identities).toBe(0);
   expect(preview.sample_rows).toEqual([]);
   expect(preview.sheets_needing_mapping).toBe(1);
-  expect(preview.sheets[0]).toMatchObject({ status: "needs_confirmation", rows: 1, header_row: 1 });
+  expect(preview.sheets[0]).toMatchObject({ status: "needs_mapping", needs_confirmation: true, rows: 1, header_row: 1 });
   await expect(admin.getByText(t("importSheet.needs", { count: 1 }))).toHaveCount(0);
   await expect(admin.getByText(t("importSheet.confirmation", { count: 1 }), { exact: true })).toBeVisible();
   await expect(admin.getByRole("table", { name: t("import.columns"), exact: true })).toHaveCount(0);

@@ -21,7 +21,7 @@ test("column confirmation waits for a slow preview and returns the confirmed run
       run_id: id(confirmed ? 4002 : 4001), entity_type: "employee_hr", source_filename: "synthetic.csv", source_sha256: "a".repeat(64),
       input_rows: confirmed ? 1 : 0, candidate_rows: confirmed ? 1 : 0, preserved_rows: 0, sealed_identities: 0,
       columns: [], sample_rows: [], mapping_profile: {}, sheets_needing_mapping: confirmed ? 0 : 1, available_targets: ["name"],
-      sheets: [{ name: sheet, status: confirmed ? "mapped" : "needs_confirmation", rows: 1, header_row: 1,
+      sheets: [{ name: sheet, status: confirmed ? "mapped" : "needs_mapping", needs_confirmation: !confirmed, rows: 1, header_row: 1,
         columns: [{ column: "A", label: "name", target: "name", source: "catalog" }],
         header_candidates: [{ row: 1, cells: [{ column: "A", label: "name" }] }],
       }],

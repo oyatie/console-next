@@ -265,7 +265,8 @@ async fn confirmed_mixed_workplaces_resolve_sites_per_value_without_losing_known
         .preview_unconfirmed("mixed.xlsx", &file, &Default::default())
         .await
         .unwrap();
-    assert_eq!(unconfirmed.sheets[0]["status"], "needs_confirmation");
+    assert_eq!(unconfirmed.sheets[0]["status"], "needs_mapping");
+    assert_eq!(unconfirmed.sheets[0]["needs_confirmation"], true);
     assert_eq!(unconfirmed.sheets[0]["rows"], 2);
     assert!(unconfirmed.columns.is_empty());
     let bound = i

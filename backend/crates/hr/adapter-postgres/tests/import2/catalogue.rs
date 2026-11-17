@@ -4,7 +4,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 use std::{fs, path::Path};
 
-use crate::harness::{importer, table};
+use crate::harness::{decisions, importer, table};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn remembered_rrn_exclusion_survives_an_exact_key_preview(pool: PgPool) {
@@ -89,7 +89,23 @@ async fn unconfirmed_columns_store_no_cells_or_restricted_values_at_preview(pool
             assert_eq!(preview.input_rows, 0);
             assert!(preview.sample_rows.is_empty());
             assert_eq!(preview.sheets_needing_mapping, 1);
-            assert_eq!(preview.sheets[0]["status"], "needs_confirmation");
+            assert_eq!(preview.sheets[0]["status"], "needs_mapping");
+            assert_eq!(preview.sheets[0]["needs_confirmation"], true);
+            // An older client may ignore the flag and try dry-run/apply anyway.
+            let plan = i.dry_run(preview.run_id, decisions()).await;
+            let refused = i
+                .apply(preview.run_id, &plan.dry_run_digest)
+                .await
+                .unwrap_err();
+            assert_eq!(
+                (refused.status.as_u16(), refused.code),
+                (422, "import_unresolved")
+            );
+            assert_eq!(
+                i.count("SELECT count(*) FROM employees WHERE org_id=$1")
+                    .await,
+                0
+            );
             assert_eq!(
                 i.count("SELECT count(*) FROM data_import_rows WHERE org_id=$1")
                     .await,
@@ -122,6 +138,8 @@ async fn unconfirmed_columns_store_no_cells_or_restricted_values_at_preview(pool
         .preview_unconfirmed("synthetic.xlsx", &sheets, &mapping)
         .await
         .unwrap();
+    assert_eq!(preview.sheets[0]["status"], "mapped");
+    assert!(preview.sheets[0]["needs_confirmation"].is_null());
     assert_eq!(preview.input_rows, 1);
     assert_eq!(preview.sealed_identities, 1);
     assert_eq!(

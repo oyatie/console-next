@@ -21,8 +21,8 @@ export function SheetsPanel({ preview, mapping, busy, onRemap }: { preview: Impo
   const save = (name: string, d: Draft) => onRemap({ ...mapping, [name]: sheetMapping(d) });
   // r3:hire-18: a sheet skipped because an earlier import skipped it is read this time, in place.
   const unskip = (name: string) => onRemap({ ...mapping, [name]: { skip: false } });
-  const needsMapping = preview.sheets.filter((s) => s.status === "needs_mapping").length;
-  const needsConfirmation = preview.sheets.filter((s) => s.status === "needs_confirmation").length;
+  const needsMapping = preview.sheets.filter((s) => s.status === "needs_mapping" && !s.needs_confirmation).length;
+  const needsConfirmation = preview.sheets.filter((s) => s.needs_confirmation).length;
   return (
     <section className="card" aria-labelledby="import-sheets">
       <div className="section-head">
@@ -52,7 +52,7 @@ function SheetRow({ s: sh, open, busy, targets, onOpen, onSave, onUnskip }: {
     <section className={css.sheet} aria-label={title}>
       <div className="toolbar">
         <h3 className="toolbar__title">{title}</h3>
-        {remembered ? <Chip tone={labeled(IMPORT_SHEET_STATUS, sh.status).tone}>{t("importSheet.status.remembered")}</Chip> : <EnumValue e={IMPORT_SHEET_STATUS} value={sh.status} />}
+        {remembered ? <Chip tone={labeled(IMPORT_SHEET_STATUS, sh.status).tone}>{t("importSheet.status.remembered")}</Chip> : <EnumValue e={IMPORT_SHEET_STATUS} value={sh.needs_confirmation ? "needs_confirmation" : sh.status} />}
         <span className="muted num">{t("importSheet.rows", { count: sh.rows })}</span>
         {sh.header_row != null && <span className="muted num">{t("importSheet.headerRow", { row: sh.header_row })}</span>}
         {remembered && <Button variant="primary" disabled={busy} onClick={onUnskip}>{t("importSheet.unskip", { name: sh.name })}</Button>}

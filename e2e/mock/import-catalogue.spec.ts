@@ -18,7 +18,7 @@ for (const confirmation of [false, true]) for (const width of [390, 1440]) for (
       input_rows: 0, candidate_rows: 0, preserved_rows: 0, sealed_identities: 0,
       columns: [], sample_rows: [], mapping_profile: {}, sheets_needing_mapping: 1,
       available_targets: ["name", "company_brn", "future_target"],
-      sheets: [{ name: "Synthetic sheet", status: confirmation ? "needs_confirmation" : "needs_mapping", rows: 1, ...(confirmation ? { header_row: 1, columns: [{ column: "A", label: "Synthetic name", target: "name", source: "catalog" }, { column: "B", label: "Synthetic registry column with a long descriptive header", target: "company_brn", source: "catalog" }] } : {}), header_candidates: [{ row: 1, cells: [
+      sheets: [{ name: "Synthetic sheet", status: "needs_mapping", needs_confirmation: confirmation, rows: 1, ...(confirmation ? { header_row: 1, columns: [{ column: "A", label: "Synthetic name", target: "name", source: "catalog" }, { column: "B", label: "Synthetic registry column with a long descriptive header", target: "company_brn", source: "catalog" }] } : {}), header_candidates: [{ row: 1, cells: [
         { column: "A", label: "Synthetic name" }, { column: "B", label: "Synthetic registry column with a long descriptive header" },
       ] }] }],
     } });
