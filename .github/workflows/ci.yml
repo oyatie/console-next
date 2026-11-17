@@ -301,10 +301,15 @@ jobs:
           retention-days: 90
           if-no-files-found: error
       - run: npm ci --no-audit --no-fund
+      - name: Restore recent compatible dev timing history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/states-shards.mjs history e2e/mock/timings.json .cache/states-history.json
       - name: Check measured capacity on dev
         env:
           STATES_CHECK_CAPACITY: "1"
           STATES_TIMINGS_FILE: .cache/states-timings/timings.json
+          STATES_TIMINGS_HISTORY_FILE: .cache/states-history.json
         run: node --test scripts/states-shards.test.mjs
 
   backend:

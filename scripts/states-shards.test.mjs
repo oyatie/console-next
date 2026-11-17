@@ -8,7 +8,7 @@ import test from "node:test";
 import yaml from "js-yaml";
 import { RUN_HEADROOM } from "./states-shards.mjs";
 
-const artifactFile = process.env.STATES_TIMINGS_FILE ?? ".cache/states-timings/timings.json";
+const historyFile = process.env.STATES_TIMINGS_HISTORY_FILE ?? ".cache/states-history.json";
 const settings = { setupAllowanceSeconds: 120, budgetSeconds: 300, startupSeconds: 40, workers: 2, defaultTestSeconds: 10, specs: {} };
 const report = (counts, seconds = 4) => ({
   errors: [],
@@ -177,20 +177,16 @@ test("artifact measurements cover a spec that grew on dev without editing settin
 
 test("the real suite allows 30 added tests and ten percent timing drift within the runner cap", async t => {
   if (process.env.STATES_CHECK_CAPACITY !== "1") return t.skip("capacity is checked on dev pushes with fresh measurements");
-  if (!existsSync(artifactFile) && !process.env.CI) return t.skip("restore dev timings or set STATES_TIMINGS_FILE before checking capacity locally");
-  const { planStates, filesForShard } = await load();
+  if (!existsSync(historyFile) && !process.env.CI) return t.skip("restore dev timing history or set STATES_TIMINGS_HISTORY_FILE before checking capacity locally");
+  const { checkHeadroom, planStates, filesForShard } = await load();
   const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", "--config=e2e/mock/playwright.config.ts", "--list", "--reporter=json"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr);
   const discovered = JSON.parse(result.stdout);
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
-  const artifact = JSON.parse(readFileSync(artifactFile, "utf8"));
-  assert.equal(artifact.workers, timings.workers, "capacity requires compatible CI measurements");
-  assert.ok(Object.keys(artifact.specs).length, "capacity requires measured specs");
+  const checked = checkHeadroom(discovered, timings, JSON.parse(readFileSync(historyFile, "utf8")).runs);
+  if (!checked) return t.skip("insufficient dev timing history; headroom not judged");
+  const artifact = checked.timings;
   const timeoutSeconds = Math.floor(timings.runLimitSeconds / RUN_HEADROOM);
-  const current = planStates(discovered, timings, artifact);
-  const maximum = Math.max(...current.shards.map(s => s.seconds));
-  t.diagnostic(`measured maximum: ${maximum.toFixed(1)}s / ${timeoutSeconds}s; headroom: ${(100 * (1 - maximum / timeoutSeconds)).toFixed(1)}%`);
-  assert.ok(maximum <= timeoutSeconds * 0.85, "the measured suite needs at least fifteen percent headroom");
   assert.equal(timings.timeoutSeconds, 1080, "suite growth must fit without extending the planning limit");
   for (const drift of [1, 1.1]) {
     const input = { ...discovered, suites: [...discovered.suites, ...report({ "states/growth.spec.ts": 30 }).suites] };
@@ -442,6 +438,146 @@ const devRun = (url, runs = {}) => {
   return id && Response.json({ id: Number(id), path: ".github/workflows/ci.yml", event: "push", status: "completed", conclusion: "success",
     head_branch: "dev", head_sha: `sha${id}`, repository: { id: 1 }, head_repository: { id: 1 }, ...runs[id] });
 };
+
+const capacitySettings = { ...settings, headroomRuns: 5, maxShards: 2, timeoutSeconds: 600, runLimitSeconds: 960 };
+const capacitySuite = report({ "mock/a.spec.ts": 1, "states/b.spec.ts": 1 });
+const capacityRun = (runId, seconds = 420) => ({ runId, timings: { workers: settings.workers,
+  specs: Object.fromEntries(["mock/a.spec.ts", "states/b.spec.ts"].map(file => [file, { seconds, tests: 1 }])) } });
+const capacityHistory = seconds => Array.from({ length: 5 }, (_, i) => capacityRun(5 - i, seconds));
+const withSummary = check => {
+  const dir = mkdtempSync(path.join(tmpdir(), "states-capacity-"));
+  const summary = path.join(dir, "summary.md");
+  try { return check(summary); } finally { rmSync(dir, { recursive: true, force: true }); }
+};
+
+test("median headroom survives one slow timing file that fails the one-run limit", async () => {
+  const { checkHeadroom, planStates } = await load();
+  withSummary(summary => {
+    const dir = path.dirname(summary);
+    const runs = capacityHistory(420);
+    runs[0] = capacityRun(5, 480);
+    const files = runs.map(run => {
+      const file = path.join(dir, `${run.runId}.json`);
+      writeFileSync(file, JSON.stringify(run));
+      return file;
+    });
+    const history = files.map(file => JSON.parse(readFileSync(file, "utf8")));
+    const old = planStates(capacitySuite, capacitySettings, history[0].timings);
+    assert.ok(Math.max(...old.shards.map(s => s.seconds)) > capacitySettings.timeoutSeconds * 0.85);
+    const result = checkHeadroom(capacitySuite, capacitySettings, history, summary);
+    assert.equal(result.headroom, 100 * (1 - 460 / 600));
+    assert.equal(result.timings.specs["mock/a.spec.ts"].seconds, 420);
+    assert.match(readFileSync(summary, "utf8"), /23\.3%.*5.*dev runs/);
+  });
+});
+
+test("consistently slow timing files still fail and publish the measured headroom", async () => {
+  const { checkHeadroom } = await load();
+  withSummary(summary => {
+    assert.throws(() => checkHeadroom(capacitySuite, capacitySettings, capacityHistory(480), summary), /STATES_HEADROOM_EXHAUSTED/);
+    assert.match(readFileSync(summary, "utf8"), /13\.3%/);
+    assert.match(readFileSync(summary, "utf8"), /15%/);
+  });
+});
+
+test("capacity below twenty percent reports the next shard or faster specs before the limit", async () => {
+  const { checkHeadroom } = await load();
+  withSummary(summary => {
+    assert.ok(checkHeadroom(capacitySuite, capacitySettings, capacityHistory(450), summary).headroom < 20);
+    assert.match(readFileSync(summary, "utf8"), /another shard or faster slow specs is due/i);
+  });
+});
+
+test("the fifteen percent threshold remains inclusive and twenty percent needs no capacity warning", async () => {
+  const { checkHeadroom } = await load();
+  withSummary(summary => {
+    assert.ok(checkHeadroom(capacitySuite, capacitySettings, capacityHistory(470), summary));
+    assert.throws(() => checkHeadroom(capacitySuite, capacitySettings, capacityHistory(470.1), summary), /STATES_HEADROOM_EXHAUSTED/);
+  });
+  withSummary(summary => {
+    checkHeadroom(capacitySuite, capacitySettings, capacityHistory(440), summary);
+    assert.doesNotMatch(readFileSync(summary, "utf8"), /another shard/);
+  });
+});
+
+test("too few distinct compatible runs or matching spec counts leave capacity unjudged", async () => {
+  const { checkHeadroom } = await load();
+  const partial = capacityHistory(480);
+  partial[0].timings.specs["mock/a.spec.ts"].tests = 2;
+  const missing = capacityHistory(480);
+  delete missing[0].timings.specs["states/b.spec.ts"];
+  const workers = capacityHistory(480);
+  workers[0].timings.workers = 1;
+  for (const runs of [[], partial, missing, workers, capacityHistory(480).slice(1), Array(5).fill(capacityRun(1, 480))]) {
+    withSummary(summary => {
+      assert.equal(checkHeadroom(capacitySuite, capacitySettings, runs, summary), undefined);
+      assert.match(readFileSync(summary, "utf8"), /Insufficient history/);
+      assert.match(readFileSync(summary, "utf8"), /headroom not judged/i);
+      assert.doesNotMatch(readFileSync(summary, "utf8"), /Typical headroom/);
+    });
+  }
+});
+
+test("medians are per spec and only the recent configured window is measured", async () => {
+  const { checkHeadroom } = await load();
+  const runs = capacityHistory(420);
+  runs[0].timings.specs["mock/a.spec.ts"].seconds = 480;
+  runs[1].timings.specs["states/b.spec.ts"].seconds = 480;
+  runs.push(...Array.from({ length: 5 }, (_, i) => capacityRun(10 + i, 550)));
+  const measured = checkHeadroom(capacitySuite, capacitySettings, runs, null);
+  assert.deepEqual(measured.timings.specs, capacityRun(1).timings.specs);
+  const even = checkHeadroom(capacitySuite, { ...capacitySettings, headroomRuns: 4 },
+    [400, 420, 440, 460].map((seconds, i) => capacityRun(i + 1, seconds)), null);
+  assert.equal(even.timings.specs["mock/a.spec.ts"].seconds, 430);
+});
+
+test("capacity rejects invalid history settings and malformed measurements", async () => {
+  const { checkHeadroom } = await load();
+  for (const headroomRuns of [undefined, 0, 1, 2, 3.5, "5"]) {
+    assert.throws(() => checkHeadroom(capacitySuite, { ...capacitySettings, headroomRuns }, capacityHistory()), /STATES_INVALID_TIMINGS/);
+  }
+  const runs = capacityHistory();
+  runs[0].timings.specs["mock/a.spec.ts"].seconds = -1;
+  assert.throws(() => checkHeadroom(capacitySuite, capacitySettings, runs), /STATES_INVALID_TIMINGS/);
+  assert.throws(() => checkHeadroom(capacitySuite, capacitySettings, {}), /STATES_INVALID_TIMINGS/);
+});
+
+test("history restores distinct compatible trusted dev runs without scaling or bootstrap samples", async () => {
+  const { restoreDevTimings } = await load();
+  const requests = [];
+  const artifacts = [artifact(10), artifact(9), artifact(8), artifact(7), artifact(6), artifact(5), artifact(4),
+    artifact(3, { workflow_run: { id: 4, head_branch: "dev" } }), artifact(2), artifact(1)];
+  const runs = { 10: { status: "in_progress" }, 9: { event: "pull_request" }, 8: { head_sha: "unmerged" },
+    6: { conclusion: "failure" }, 5: { head_repository: { id: 9 } } };
+  const request = async url => {
+    requests.push(url);
+    const id = Number(url.match(/artifacts\/(\d+)\/zip$/)?.[1]);
+    return devRun(url, runs) ?? new Response(id ? zip({ ...capacityRun(id).timings, workers: id === 7 ? 1 : 2 }) : JSON.stringify({ artifacts }));
+  };
+  const restored = await restoreDevTimings(capacitySettings, { ...config, history: true }, request);
+  assert.deepEqual(restored.runs.map(run => run.runId), [6, 4, 2, 1]);
+  assert.ok(restored.runs.every(run => run.timings.workers === 2));
+  assert.ok(!requests.some(url => url.endsWith("/3/zip")), "duplicate runs cannot count twice");
+  const empty = await restoreDevTimings(capacitySettings, { ...config, history: true }, async () => Response.json({ artifacts: [] }));
+  assert.deepEqual(empty.runs, []);
+});
+
+test("history restoration stops at the configured window and CI supplies it to the capacity check", async () => {
+  const { restoreDevTimings } = await load();
+  let downloads = 0;
+  const request = async url => devRun(url) ?? new Response(url.endsWith("/zip")
+    ? (downloads++, zip(capacityRun(downloads).timings))
+    : JSON.stringify({ artifacts: Array.from({ length: 9 }, (_, i) => artifact(i + 1)) }));
+  const restored = await restoreDevTimings(capacitySettings, { ...config, history: true }, request);
+  assert.equal(downloads, capacitySettings.headroomRuns);
+  assert.deepEqual(restored.runs.map(run => run.runId), [9, 8, 7, 6, 5]);
+  const steps = workflow.jobs["states-timings"].steps;
+  const restore = steps.findIndex(s => s.run?.includes("states-shards.mjs history"));
+  const check = steps.findIndex(s => s.env?.STATES_CHECK_CAPACITY === "1");
+  assert.ok(restore > steps.findIndex(s => s.with?.name === "states-timings"));
+  assert.ok(restore < check);
+  assert.equal(steps[check].env.STATES_TIMINGS_HISTORY_FILE, ".cache/states-history.json");
+});
 
 test("CI restores the latest compatible unexpired dev artifact across pages", async () => {
   const { restoreDevTimings } = await load();
