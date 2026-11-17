@@ -17,7 +17,8 @@ export const INITIAL_BUDGET_KB = 148.8;
 export const DEFAULT_BUDGET_FILE = "scripts/bundle-budget.json";
 
 // Saved views must keep the record and its command forms behind record navigation.
-const orgLists = new Set(["src/routes/org-tabs.tsx", "src/features/org/ui/org-changes.tsx", "src/features/org-bulk/ui/history-page.tsx"]);
+const orgTabs = "src/routes/org-tabs.tsx";
+const orgLists = new Set(["src/features/org/ui/org-changes.tsx", "src/features/org-bulk/ui/history-page.tsx"]);
 const orgRecord = "src/features/org/OrgChange.tsx";
 
 export const kb = (dist, f) => gzipSync(readFileSync(path.join(dist, f))).length / 1024;
@@ -31,7 +32,14 @@ export function checkInitialBudget(dist, budgetKb = INITIAL_BUDGET_KB) {
 
   const chunks = readdirSync(path.join(dist, "assets"))
     .filter((f) => f.endsWith(".js"))
-    .map((f) => ({ file: `assets/${f}`, kb: kb(dist, `assets/${f}`) }))
+    .map((f) => {
+      const file = `assets/${f}`;
+      // Hash churn changes gzip entropy without changing the code delivered on first paint.
+      const bytes = initial.has(file)
+        ? Buffer.from(readFileSync(path.join(dist, file), "latin1").replace(/-[A-Za-z0-9_-]{8}\.(js|css)/g, "-HASHHASH.$1"), "latin1")
+        : readFileSync(path.join(dist, file));
+      return { file, kb: gzipSync(bytes).length / 1024 };
+    })
     .sort((a, b) => b.kb - a.kb);
 
   const size = chunks.filter((c) => initial.has(c.file)).reduce((n, c) => n + c.kb, 0);
@@ -58,6 +66,11 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
   for (const source of deferred) {
     if (!manifest[source]?.isDynamicEntry) failures.push({ error: `check-bundle: ${source} must have its own dynamic entry` });
   }
+  for (const source of [orgTabs, ...orgLists]) {
+    if (!manifest[source]?.isDynamicEntry) failures.push({ route: source, error: `check-bundle: ${source} must have its own dynamic entry` });
+    // The tabs module also declares the lazy record route; the list screens never load it themselves.
+    if (orgLists.has(source) && manifest[source]?.dynamicImports?.includes(orgRecord)) failures.push({ route: source, error: `check-bundle: ${source} dynamically imports ${orgRecord}; load it on record navigation` });
+  }
   for (const [source, entry] of Object.entries(manifest)) {
     // Catalogs and third-party utilities are not screens; every local dynamic entry is budgeted explicitly.
     if (!entry.isDynamicEntry || !source.startsWith("src/") || deferred.has(source)) continue;
@@ -74,7 +87,7 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
       for (const imported of chunk.imports ?? []) visit(imported);
     };
     visit(source);
-    if (orgLists.has(source)) {
+    if (source === orgTabs || orgLists.has(source)) {
       if (!manifest[orgRecord]?.isDynamicEntry) failures.push({ route: source, error: `check-bundle: ${orgRecord} must have its own dynamic entry` });
       for (const [key, chunk] of Object.entries(manifest)) {
         if ((key === orgRecord || chunk.name === "effectuate-consequence") && (files.has(chunk.file) || initial.has(chunk.file))) failures.push({

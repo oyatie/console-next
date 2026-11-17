@@ -13,8 +13,7 @@ import { ReadSkeleton } from "../ui/skeleton/skeleton";
 import { AccessGate } from "../reference/authz/ui/access-gate";
 import { readRequirement } from "./route-reads";
 import { ORG_TABS, orgTab } from "./org-tab-search";
-import { entitiesAt } from "../reference/entity/api";
-import { changesQuery, entityBatchesQuery, orgBatchesQuery, structureQuery } from "../features/org-bulk/api";
+import { entitiesAt, changesQuery, entityBatchesQuery, orgBatchesQuery, orgStructureRef as structureQuery } from "../reference/entity/api";
 
 const Chart = lazy(() => chunk(import("./org-screen")).then(m => ({ default: m.OrgScreen })));
 const EntityContent = lazy(() => chunk(import("../features/entity/ui/entity-routes")).then(m => ({ default: m.EntitiesScreen })));

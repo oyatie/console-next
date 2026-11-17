@@ -23,6 +23,10 @@ export const checklistRef = get("/api/v1/onboarding/checklist");
 export const kindsRef = get("/api/v1/workplace-kinds");
 /** The composed tree entity › workplace › department › team (which workplace each unit sits at). */
 export const orgStructureRef = get("/api/v1/org-structure");
+export const orgBatchesQuery = get("/api/v1/org-structure/batches");
+export const entityBatchesQuery = get("/api/v1/entity-setup/batches");
+/** The newest governed org changes, any status (the history and its scheduled banner). */
+export const changesQuery = get("/api/v1/org-changes", { params: { query: { limit: 200 } } });
 /** Binds an employee to a legal entity and workplace from a date; a change of entity is refused (that is a group transfer). */
 export const bindAssignment = (key: string, body: AllPaths["/api/v1/employment-assignments"]["post"]["requestBody"]["content"]["application/json"]) =>
   unwrap(api.POST("/api/v1/employment-assignments", { params: { header: { "Idempotency-Key": key } }, body }));
