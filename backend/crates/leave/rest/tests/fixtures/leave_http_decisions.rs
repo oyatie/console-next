@@ -249,3 +249,6 @@ async fn leave_http_refuses_unlinked_reviewed_and_bootstrap_people(owner: PgPool
 
 #[path = "leave_http_grants.rs"]
 mod grants;
+
+#[path = "leave_http_refusals.rs"]
+mod refusals;

@@ -232,7 +232,6 @@ async fn load_requests(
     params: ListParams,
 ) -> Result<LeaveRequestPage, RestError> {
     let principal = principal_from_headers(state, headers).await?;
-    require_read(&principal)?;
     let status = match params.status.as_deref() {
         Some(s) => Some(LeaveStatus::parse(s).map_err(RestError::from_kernel)?),
         None => None,
@@ -240,7 +239,7 @@ async fn load_requests(
     state
         .store
         .list_requests(ListLeaveRequestsQuery {
-            branch_scope: principal.branch_scope,
+            reader: principal.user_id,
             status,
             limit: params.limit.unwrap_or(100),
             cursor: params.cursor,

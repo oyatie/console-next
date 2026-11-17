@@ -257,3 +257,5 @@ pub mod approval_document_list;
 pub mod approval_document_read;
 
 pub mod leave_manage;
+
+pub mod leave_read;

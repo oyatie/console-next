@@ -9,14 +9,7 @@ impl PgLeaveStore {
         let request_id = command.request_id;
         let decider = command.decider;
 
-        // Read-first to classify before mutating: NotFound (or out-of-branch),
-        // already-decided (409), or self-decision (SoD, 403). A branch-scoped
-        // read means an out-of-scope request is indistinguishable from a
-        // missing one — deny-by-omission.
-        let existing = self
-            .fetch_request_scoped(org, request_id, &command.branch_scope)
-            .await?
-            .ok_or_else(|| KernelError::not_found("leave request not found"))?;
+        let existing = self.fetch_managed_request(org, request_id, decider).await?;
         if existing.status != LeaveStatus::Pending {
             return Err(KernelError::conflict(format!(
                 "leave request is already {} and cannot be decided again",
@@ -60,14 +53,6 @@ impl PgLeaveStore {
             .into());
         }
 
-        self.require_management(
-            decider,
-            existing.subject_employee_id,
-            Some(existing.branch_id),
-            None,
-        )
-        .await?;
-
         console_platform_db::command_outcomes::execution::bind(&mut tx).await?;
         let row = sqlx::query(
             "SELECT * FROM leave_api.decide_request(\
@@ -96,12 +81,10 @@ impl PgLeaveStore {
                 "leave decision routine returned an unknown outcome",
             )));
         }
-        self.fetch_request_scoped(org, request_id, &command.branch_scope)
-            .await?
-            .ok_or_else(|| {
-                PgLeaveError::Domain(KernelError::internal(
-                    "leave command committed but decided request was not readable",
-                ))
-            })
+        self.fetch_request(org, request_id).await?.ok_or_else(|| {
+            PgLeaveError::Domain(KernelError::internal(
+                "leave command committed but decided request was not readable",
+            ))
+        })
     }
 }

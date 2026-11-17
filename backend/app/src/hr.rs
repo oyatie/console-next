@@ -5484,10 +5484,11 @@ E-001,홍길동,본사,2026-07-01,abc
             BTreeSet::from([Role::SuperAdmin]),
             BranchScope::All,
         );
+        let runtime = console_platform_test_support::runtime_role_pool(&pool).await;
         let command_store = PgLeaveStore::new(
-            pool.clone(),
+            runtime.clone(),
             std::sync::Arc::new(console_inbox_adapter_postgres::PgInboxStore::new(
-                pool.clone(),
+                runtime.clone(),
             )),
         )
         .with_leave_command_pool(pool.clone());

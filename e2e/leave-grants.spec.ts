@@ -8,9 +8,10 @@ import { bearerOf } from "./helpers/api";
 import { psql } from "./idle-fixture";
 import { SETUP_DEPARTMENT, tenantInSetup } from "./setup-flows";
 
-test("a tenant-granted employee approves leave within their workplace", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+for (const scope of ["workplace", "department"] as const) {
+test(`a tenant-granted employee approves leave within their ${scope}`, { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(600_000);
-  const slug = "leavegrant";
+  const slug = `leavegrant${scope}`;
   const { admin } = await tenantInSetup(browser, slug, "Leave Example", false, "Leave Workplace", "none");
   const adminBearer = bearerOf(admin);
   const people = [];
@@ -42,9 +43,19 @@ test("a tenant-granted employee approves leave within their workplace", { tag: [
   const path = `/api/v2/leave/requests/${leave.id}`;
   const decision = { decision: "approve", expected_version: leave.request_version };
   const refused = await approver!.request.post(`${path}/decide`, { headers: { authorization: approverBearer() }, data: decision });
-  expect([403, 404]).toContain(refused.status());
-  await grantAccess(admin, "Leave Approver", "full", /Leave Workplace/);
+  expect(refused.status(), await refused.text()).toBe(403);
+  const stale = await approver!.request.post(`${path}/decide`, {
+    headers: { authorization: approverBearer() }, data: { ...decision, expected_version: leave.request_version + 1 },
+  });
+  expect(stale.status(), await stale.text()).toBe(403);
+  const unchanged = await requester!.request.get("/api/v2/me/leave", { headers: { authorization: requesterBearer() } });
+  expect(unchanged.status(), await unchanged.text()).toBe(200);
+  expect((await unchanged.json()).requests.items).toContainEqual(expect.objectContaining({ id: leave.id, status: "pending", request_version: leave.request_version }));
+  await grantAccess(admin, "Leave Approver", "full", scope === "department" ? new RegExp(SETUP_DEPARTMENT) : /Leave Workplace/);
   await go(approver!, "/account");
+  const queue = await approver!.request.get("/api/v2/leave/requests", { headers: { authorization: approverBearer() } });
+  expect(queue.status(), await queue.text()).toBe(200);
+  expect((await queue.json()).items).toContainEqual(expect.objectContaining({ id: leave.id }));
   const resolution = {
     expected_version: leave.request_version,
     date_charges: [{ date, obligation: { kind: "scheduled", minutes: 480 }, charge_units: "1" }],
@@ -62,3 +73,4 @@ test("a tenant-granted employee approves leave within their workplace", { tag: [
   await requester!.context().close();
   await approver!.context().close();
 });
+}

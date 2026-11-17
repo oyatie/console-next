@@ -17,6 +17,7 @@ use std::sync::Arc;
 
 mod admission;
 mod command_tx;
+mod queue_visibility;
 use command_tx::map_leave_command_sqlx;
 
 use console_inbox_application::{EmitInboxDocCommand, InboxDocSink};
@@ -487,13 +488,11 @@ impl PgLeaveStore {
             .await?;
         let committed_id = LeaveRequestId::from_uuid(created.try_get("request_id")?);
 
-        self.fetch_request_scoped(org, committed_id, &BranchScope::All)
-            .await?
-            .ok_or_else(|| {
-                PgLeaveError::Domain(KernelError::internal(
-                    "leave command committed but created request was not readable",
-                ))
-            })
+        self.fetch_request(org, committed_id).await?.ok_or_else(|| {
+            PgLeaveError::Domain(KernelError::internal(
+                "leave command committed but created request was not readable",
+            ))
+        })
     }
 
     /// Resolve the caller's OWN filing context for a self-service leave request:
@@ -545,7 +544,7 @@ impl PgLeaveStore {
     }
 
     // -----------------------------------------------------------------------
-    // Queue read (branch-scoped)
+    // Queue read (Cedar employee visibility)
     // -----------------------------------------------------------------------
 
     pub async fn list_requests(
@@ -556,13 +555,14 @@ impl PgLeaveStore {
         let limit = query.limit.clamp(1, 200);
         let rows = with_org_conn::<_, _, PgLeaveError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                let visibility = queue_visibility::load(tx, org, query.reader).await?;
                 let cursor = if let Some(cursor_id) = query.cursor {
                     let mut cursor_builder = QueryBuilder::<Postgres>::new(
                         "SELECT CASE WHEN status = 'pending' THEN 1 ELSE 0 END AS pending_rank, created_at, id FROM leave_requests WHERE id = ",
                     );
                     cursor_builder.push_bind(*cursor_id.as_uuid());
                     cursor_builder.push(" AND ");
-                    push_branch_scope(&mut cursor_builder, &query.branch_scope);
+                    visibility.push(&mut cursor_builder);
                     if let Some(status) = query.status {
                         cursor_builder.push(" AND status = ");
                         cursor_builder.push_bind(status.as_str());
@@ -586,7 +586,7 @@ impl PgLeaveStore {
                 let mut builder = QueryBuilder::<Postgres>::new(format!(
                     "SELECT {REQUEST_COLUMNS} FROM leave_requests WHERE "
                 ));
-                push_branch_scope(&mut builder, &query.branch_scope);
+                visibility.push(&mut builder);
                 if let Some(status) = query.status {
                     builder.push(" AND status = ");
                     builder.push_bind(status.as_str());
@@ -736,16 +736,8 @@ impl PgLeaveStore {
     ) -> Result<LeaveChargeResolutionView, PgLeaveError> {
         let org = current_org().map_err(KernelError::from)?;
         let existing = self
-            .fetch_request_scoped(org, command.request_id, &command.branch_scope)
-            .await?
-            .ok_or_else(|| KernelError::not_found("leave request not found"))?;
-        self.require_management(
-            command.resolver,
-            existing.subject_employee_id,
-            Some(existing.branch_id),
-            None,
-        )
-        .await?;
+            .fetch_managed_request(org, command.request_id, command.resolver)
+            .await?;
         if existing.status != LeaveStatus::Pending {
             return Err(KernelError::conflict(
                 "only a pending leave request can receive a charge resolution",
@@ -895,27 +887,43 @@ impl PgLeaveStore {
         row.as_ref().map(request_from_row).transpose()
     }
 
-    async fn fetch_request_scoped(
+    async fn fetch_request(
         &self,
         org: OrgId,
         id: LeaveRequestId,
-        branch_scope: &BranchScope,
     ) -> Result<Option<LeaveRequestView>, PgLeaveError> {
-        let id_uuid = *id.as_uuid();
-        let branch_scope = branch_scope.clone();
         let row = with_org_conn::<_, _, PgLeaveError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let mut builder = QueryBuilder::<Postgres>::new(format!(
                     "SELECT {REQUEST_COLUMNS} FROM leave_requests WHERE id = "
                 ));
-                builder.push_bind(id_uuid);
-                builder.push(" AND ");
-                push_branch_scope(&mut builder, &branch_scope);
+                builder.push_bind(*id.as_uuid());
                 Ok(builder.build().fetch_optional(tx.as_mut()).await?)
             })
         })
         .await?;
         row.as_ref().map(request_from_row).transpose()
+    }
+
+    async fn fetch_managed_request(
+        &self,
+        org: OrgId,
+        id: LeaveRequestId,
+        actor: UserId,
+    ) -> Result<LeaveRequestView, PgLeaveError> {
+        let request = self.fetch_request(org, id).await?.ok_or_else(|| {
+            KernelError::forbidden(
+                "leave management is not permitted at this employee or routing scope",
+            )
+        })?;
+        self.require_management(
+            actor,
+            request.subject_employee_id,
+            Some(request.branch_id),
+            None,
+        )
+        .await?;
+        Ok(request)
     }
 
     // -----------------------------------------------------------------------
@@ -1351,25 +1359,6 @@ impl PgLeaveStore {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/// Narrow a query to the caller's branch scope. `BranchScope::All` sees every
-/// branch-scoped row; an empty `Branches` set matches nothing (deny-by-omission).
-fn push_branch_scope(builder: &mut QueryBuilder<Postgres>, scope: &BranchScope) {
-    match scope {
-        BranchScope::All => {
-            builder.push("TRUE");
-        }
-        BranchScope::Branches(branches) if branches.is_empty() => {
-            builder.push("FALSE");
-        }
-        BranchScope::Branches(branches) => {
-            let ids = branches.iter().map(|b| *b.as_uuid()).collect::<Vec<_>>();
-            builder.push("branch_id = ANY(");
-            builder.push_bind(ids);
-            builder.push(")");
-        }
-    }
-}
 
 fn push_employee_branch_scope(builder: &mut QueryBuilder<Postgres>, scope: &BranchScope) {
     match scope {

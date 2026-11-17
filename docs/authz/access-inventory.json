@@ -501,27 +501,21 @@
     },
     {
       "model": "BranchScope",
-      "file": "backend/crates/leave/adapter-postgres/src/decisions.rs",
-      "kind": "reference",
-      "count": 2
-    },
-    {
-      "model": "BranchScope",
       "file": "backend/crates/leave/adapter-postgres/src/lib.rs",
       "kind": "reference",
-      "count": 15
+      "count": 6
     },
     {
       "model": "BranchScope",
       "file": "backend/crates/leave/application/src/lib.rs",
       "kind": "reference",
-      "count": 4
+      "count": 3
     },
     {
       "model": "BranchScope",
       "file": "backend/crates/leave/rest/src/lib.rs",
       "kind": "reference",
-      "count": 9
+      "count": 8
     },
     {
       "model": "BranchScope",
