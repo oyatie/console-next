@@ -34,12 +34,14 @@ pub(crate) async fn refresh_many(
       t.opens_on AS fixed_opens,COALESCE(i.opens_rule_ref,t.opens_rule_ref) AS opens_rule_ref,ct.release_disposition,s.case_opens_offset_days,s.recording_held,\
       (now() AT TIME ZONE lifecycle_time_zone(c.org_id,c.employee_id,c.effective_date,c.workplace_id))::date AS today, \
       lifecycle_go_live_on(c.org_id,c.employee_id,c.effective_date,c.workplace_id) AS go_live_on \
-      FROM lifecycle_case_items i JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id \
+      FROM lifecycle_case_items i CROSS JOIN LATERAL (SELECT c.id,c.org_id,c.employee_id,c.workplace_id,c.effective_date, \
+        c.trigger_id,c.exit_case_id,c.template_key,c.template_version,c.kind,c.state FROM lifecycle_cases c \
+        WHERE c.org_id=i.org_id AND c.id=i.case_id OFFSET 0) c \
       JOIN case_template_items t ON t.template_key=c.template_key AND t.version=c.template_version AND t.item_key=i.item_key \
       JOIN case_templates ct ON ct.template_key=c.template_key AND ct.version=c.template_version \
       LEFT JOIN lifecycle_filing_rules s ON s.code=t.due_register_code AND s.effective_from<=c.effective_date \
         AND (s.effective_to_exclusive IS NULL OR c.effective_date<s.effective_to_exclusive) \
-      WHERE i.org_id=$1 AND c.id=ANY($2) AND c.state='OPEN' AND i.status IN ('OPEN','PENDING_TRIGGER','BLOCKED') FOR UPDATE OF i")
+      WHERE i.org_id=$1 AND i.case_id=ANY($2) AND c.state='OPEN' AND i.status IN ('OPEN','PENDING_TRIGGER','BLOCKED') FOR UPDATE OF i")
         .bind(org).bind(cases).fetch_all(tx.as_mut()).await?;
     let mut holds = Vec::new();
     let mut windows = Vec::with_capacity(rows.len());
