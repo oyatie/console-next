@@ -126,6 +126,10 @@ async fn capture(response: Response, path: &str) -> (Response, Option<Value>, Op
         return (response, None, None);
     }
     let replay_status = super::response::replay_status(status, path);
+    // A clear value opens only through the governed reveal, so its answer is never kept for a replay.
+    if path.ends_with("/reveal") {
+        return (response, None, Some(replay_status.as_u16() as i16));
+    }
     if !response
         .headers()
         .get(http::header::CONTENT_TYPE)

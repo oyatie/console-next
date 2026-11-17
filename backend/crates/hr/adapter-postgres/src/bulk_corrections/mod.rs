@@ -133,10 +133,11 @@ pub struct BulkCorrectionCounts {
     pub refused: usize,
 }
 
-/// One field that differs from the record.
+/// One field to write.
 #[derive(Debug, Clone, Serialize)]
 pub struct BulkCorrectionField {
     pub field: String,
+    /// The recorded value; a field the reveal governs as its mask.
     pub before: Option<String>,
     pub after: Option<String>,
     /// NOW, SECOND_PERSON or SOLE_HOLDER_REVIEW.
@@ -152,7 +153,7 @@ pub struct BulkCorrectionPreviewRow {
     pub updated_at: Option<OffsetDateTime>,
     /// CHANGE, PENDING, UNCHANGED or REFUSED.
     pub outcome: &'static str,
-    /// Only the fields whose value differs.
+    /// The fields that differ, and any sent for a recorded value the reveal governs.
     pub fields: Vec<BulkCorrectionField>,
     /// REFUSED: the first refusal's code and message (see `refusals`).
     #[serde(skip_serializing_if = "Option::is_none")]
