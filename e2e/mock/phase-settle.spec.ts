@@ -13,6 +13,7 @@ import { attendanceBoardScreens } from "../states/attendance";
 import { screens } from "../states/registry";
 import { expectStable, recordShifts } from "../stability";
 import { orgPanelReads } from "./org-work";
+import { advanceUntil } from "./clock";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -20,18 +21,6 @@ async function freezeClock(page: Page) {
   const start = Date.now();
   await page.clock.install({ time: start });
   await page.clock.pauseAt(start + 60_000);
-}
-
-async function advanceUntil(page: Page, request: Promise<unknown>) {
-  let answered = false;
-  void request.then(() => { answered = true; }, () => undefined);
-  const start = await page.evaluate(() => Date.now());
-  while (!answered) {
-    await page.clock.runFor(50);
-    // Page task yields can exhaust fake time before throttled I/O and rendering catch up.
-    await new Promise(resolve => setTimeout(resolve, 100));
-    expect(await page.evaluate(() => Date.now()) - start).toBeLessThan(1_500);
-  }
 }
 
 for (const width of [1440, 390]) test(`a deep-linked workplace Sheet keeps focus and Escape after the phase hold at ${width}px @ui-state`, async ({ page }, info) => {

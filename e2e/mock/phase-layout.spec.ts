@@ -8,6 +8,7 @@ import { orgChangeScreens } from "../states/registry";
 import { checklist } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
+import { advanceUntil } from "./clock";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -26,7 +27,9 @@ for (const surface of surfaces) for (const [width, colorScheme] of [[1440, "ligh
       ? await mockScreen(page, surface.screen, surface.name === "flow record" ? "approval" : "populated")
       : await mockEntityRecord(page, "populated");
     const held = Promise.withResolvers<void>();
+    const requested = Promise.withResolvers<void>();
     await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+      requested.resolve();
       await held.promise;
       return { status: 200, json: checklist };
     });
@@ -35,10 +38,8 @@ for (const surface of surfaces) for (const [width, colorScheme] of [[1440, "ligh
     try {
       await page.goto(surface.screen?.path ?? entityRecordPath);
       const pending = page.locator("[data-phase-pending]");
-      await expect.poll(async () => {
-        await page.clock.runFor(50);
-        return pending.count();
-      }).toBe(1);
+      await advanceUntil(page, requested.promise);
+      await expect(pending).toHaveCount(1);
       await expect(pending).toHaveAttribute("inert", "");
       await expect(pending).toHaveAttribute("aria-hidden", "true");
       await expect(pending).toHaveCSS("display", "block");
