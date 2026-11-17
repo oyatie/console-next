@@ -12,6 +12,9 @@ const dots = (n: number) => DOT.repeat(n);
 /** birth date as shown by default: nothing of it (the reveal opens it with a reason). */
 export const maskedBirth = () => `${dots(4)}-${dots(2)}-${dots(2)}`;
 
+/** Whether a value is shown as a mask (ours or the server's), so it is not the value itself. */
+export const isMasked = (v: string) => v.includes(DOT);
+
 /** Default phone display keeps the local prefix and last four digits. */
 export function maskedPhone(e164: string): string {
   const d = e164.replace(/\D/g, "").replace(/^82/, "0");

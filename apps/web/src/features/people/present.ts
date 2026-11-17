@@ -7,6 +7,7 @@ import { CHANGE_REQUEST_STATUS, EMPLOYMENT_TYPE, LEAVE_TYPE, LIFECYCLE_EVENT, LI
 import { phoneDisplay } from "../../lib/pure/formats";
 import type { ChangeRequest, LifecycleEvent } from "./api";
 import { FIELDS, type Field } from "./domain/corrections";
+import { isMasked } from "./domain/card";
 import type { Kind, Row } from "./domain/bulk";
 import { reasonLabel } from "../../lib/reason-codes";
 import { continuityShape } from "./domain/group-transfer";
@@ -157,7 +158,7 @@ export const subjectText = (r: ChangeRequest, e?: Employee) =>
 /** A corrected value as people read it. */
 export const valueText = (f: Field, v: unknown) =>
   v == null || v === "" ? "—"
-  : f === "phone" ? (String(v).includes("•") ? String(v) : phoneDisplay(String(v)))
+  : f === "phone" ? (isMasked(String(v)) ? String(v) : phoneDisplay(String(v)))
   : f === "hire_date" ? fmtDate(String(v))
   : f === "employment_type" ? label(EMPLOYMENT_TYPE, String(v))
   : f === "base_pay" ? fmtKrw(String(v))
