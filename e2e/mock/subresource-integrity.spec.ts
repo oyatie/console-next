@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
@@ -10,6 +11,8 @@ const resources = 'script[src], link[rel="stylesheet"], link[rel="modulepreload"
 // Preview serves the built files; apply the production server's policy to the document.
 const server = readFileSync(new URL("../../backend/app/src/spa.rs", import.meta.url), "utf8");
 const policy = server.match(/const SPA_CSP: &str = "([\s\S]*?)";/)![1]!.replace(/\\\n\s*/g, "");
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test.beforeEach(async ({ page }) => {
   await page.route(url => !url.pathname.startsWith("/api/") && !/\.[a-z0-9]+$/.test(url.pathname), async route => {
@@ -119,8 +122,8 @@ for (const persistent of [false, true]) test(`mixed-release public scripts recov
   });
   await page.goto("/", { waitUntil: "commit" });
   if (persistent) {
-    await expect(page.getByRole("heading", { name: "화면을 표시하지 못했습니다" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "페이지 새로 고침", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: t("common.crashed.title") })).toBeVisible();
+    await expect(page.getByRole("button", { name: t("common.crashed.action"), exact: true })).toBeVisible();
   } else await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", "/");
   expect(documents).toHaveLength(2);
   expect(new URL(documents[1]!).searchParams.has("_r")).toBe(true);
