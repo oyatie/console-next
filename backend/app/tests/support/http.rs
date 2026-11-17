@@ -13,8 +13,7 @@ use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
-use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgPool, postgres::PgPoolOptions};
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -232,6 +231,8 @@ pub fn keys() -> (String, String) {
     )
 }
 
+pub const ACCESS_TOKEN_TTL: Duration = Duration::minutes(15);
+
 pub async fn token(
     pool: &PgPool,
     keys: &(String, String),
@@ -243,7 +244,7 @@ pub async fn token(
         JwtSettings {
             issuer: ISSUER.to_owned(),
             audience: AUDIENCE.to_owned(),
-            access_token_ttl: Duration::minutes(15),
+            access_token_ttl: ACCESS_TOKEN_TTL,
         },
         keys.0.as_bytes(),
         keys.1.as_bytes(),

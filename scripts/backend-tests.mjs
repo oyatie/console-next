@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, globSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripRustCommentsAndStringLiterals } from "./check-executed-tests-cfg.mjs";
@@ -210,7 +210,7 @@ const summary = (text, env = process.env) => {
 function cli() {
   const args = process.argv.slice(2);
   if (args[0] === "--collect") {
-    assert.ok(args.length >= 4, "usage: --collect <plan> <timings-output> <junit...>");
+    assert.ok(args.length >= 4, "usage: --collect <results-directory> <timings-output> <junit...>");
     return { collect: args.slice(1) };
   }
   let database = false, shard = "1/1", timings;
@@ -234,8 +234,14 @@ function main() {
   const root = path.resolve(import.meta.dirname, "..");
   const command = cli();
   if (command.collect) {
-    const [planFile, output, ...reports] = command.collect;
-    const result = collectDatabaseResults(JSON.parse(readFileSync(planFile, "utf8")), reports.map((file) => readFileSync(file, "utf8")));
+    const [directory, output, ...reports] = command.collect;
+    const plans = globSync("db-test-results-*/plan.json", { cwd: directory })
+      .map(file => JSON.parse(readFileSync(path.join(directory, file), "utf8")));
+    assert.ok(plans.length, "no database shard plan found");
+    for (const plan of plans) assert.deepEqual(
+      plan.tests.map(identity).sort(), plans[0].tests.map(identity).sort(), "database shard plans differ",
+    );
+    const result = collectDatabaseResults(plans[0], reports.map((file) => readFileSync(file, "utf8")));
     mkdirSync(path.dirname(output), { recursive: true });
     writeFileSync(output, JSON.stringify(result.timings, null, 2) + "\n");
     summary(`Database JUnit verified: ${result.counts.tests} run, ${result.counts.passed} passed, ${result.counts.failed} failed; every planned shard accounted for.`);
