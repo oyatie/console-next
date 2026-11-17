@@ -25,6 +25,8 @@ function stackFixture(t) {
   writeFileSync(path.join(dir, "bin/docker"), `#!${process.execPath}
 const fs = require("node:fs");
 const args = process.argv.slice(2);
+if (args[0] === "version") { console.log("28.0.4"); process.exit(0); }
+if (args[0] === "compose" && args[1] === "version") { console.log("2.38.2"); process.exit(0); }
 const state = JSON.parse(fs.readFileSync(process.env.STACK_STATE, "utf8"));
 state.calls.push({ args, context: process.env.DOCKER_CONTEXT });
 let status = 0;
