@@ -20,12 +20,12 @@ console-platform-authz = { path = "../../platform/authz" }
 console-platform-db = { workspace = true }
 console-platform-request-context = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
-uuid = { workspace = true }
 
 [dev-dependencies]
+serde_json = { workspace = true }
+uuid = { workspace = true }
 console-platform-db = { workspace = true }
 console-platform-test-support = { workspace = true }
 p256 = { workspace = true, features = ["ecdsa", "pkcs8", "pem"] }

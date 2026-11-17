@@ -1,7 +1,7 @@
 //! `write_in_tx`: one Employment command applied inside an armed transaction.
 
 use super::appointment::insert_appointments;
-use super::change_window::business_date;
+use super::change_window::{business_date, postgres_instant};
 use super::checks::{WriteChecks, check_preflight};
 use super::error::EmploymentError;
 use super::legacy_head::{EmploymentChange, apply_employment_change, set_employee_org_unit};
@@ -60,7 +60,7 @@ pub async fn write_in_tx(
     WriteChecks::default().check(tx, command).await?;
 
     let target = command.query.target();
-    let valid_from = command.query.valid_from();
+    let valid_from = postgres_instant(command.query.valid_from());
     let attributes = command.query.attributes();
 
     let (employment_id, version, backdated) = match &command.query {

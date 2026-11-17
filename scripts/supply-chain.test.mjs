@@ -273,8 +273,10 @@ test("Dependabot keeps runtime constraints and defers incompatible npm updates",
     { "dependency-name": "stylelint", versions: ["18.x"] },
     { "dependency-name": "oxlint", versions: ["1.91.x"] },
     { "dependency-name": "@tanstack/react-query", versions: [">=5.105.2"] },
+    { "dependency-name": "@playwright/test", versions: ["1.65.x"] },
   ]);
   assert.match(read(".github/dependabot.yml"), /#.*openapi-typescript.*JavaScript compiler API/);
+  assert.match(read(".github/dependabot.yml"), /#.*Revisit when a release ships Firefox build 1575 or later/);
   const manifest = JSON.parse(read("package.json"));
   const runtime = manifest.engines.node.match(/^>=(\d+)$/)?.[1];
   assert.ok(runtime, "Node runtime must have a major floor");

@@ -82,7 +82,7 @@ function Cases({ status, q, findSlot, onFind, onReset }: { status?: ExitFilter; 
       width: "2fr",
       cell: (c) => (
         <span className={s.cellStack}>
-          <Link to="/people/exits/$id" params={{ id: c.id }} search={{}} onMouseEnter={() => prefetch(caseQuery(c.id))} onFocus={() => prefetch(caseQuery(c.id))}>
+          <Link to="/people/exits/$id" params={{ id: c.id }} search={{}} onFocus={() => prefetch(caseQuery(c.id))}>
             {c.employee_name}
           </Link>
           {c.employee_number && <span className="code muted">{c.employee_number}</span>}
@@ -137,6 +137,7 @@ function Cases({ status, q, findSlot, onFind, onReset }: { status?: ExitFilter; 
           onLoadMore={() => void list.fetchNextPage()}
           find={{ label: t("exit.list.find"), defaultValue: q, onFind: value => onFind(value.trim()) }}
           findSlot={findSlot}
+          onRowHover={(id) => prefetch(caseQuery(id))}
           onRowAction={(id) => void navigate({ to: "/people/exits/$id", params: { id }, search: {} })}
           empty={
             status || q ? (

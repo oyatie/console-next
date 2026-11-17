@@ -28,7 +28,6 @@ console-settings-adapter-postgres = { path = "../../settings/adapter-postgres" }
 console-settings-domain = { path = "../../settings/domain" }
 # The Employment query decodes from the action payload so one generic
 # dispatcher can serve all three `hr.*` targets without a handler per target.
-serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 sqlx = { workspace = true }
@@ -37,12 +36,12 @@ time = { workspace = true }
 # `CanonicalPort::execute` is synchronous and `sqlx` is async-only, so the
 # Employment port needs a runtime handle to bridge the two. Same reason the
 # Person lane added it to the canonical adapter.
-tokio = { workspace = true }
 # The scheduled-change run logs a tenant's or a change's failure and goes on.
 tracing = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
+tokio = { workspace = true }
 console-platform-test-support = { workspace = true }
 
 [lints]

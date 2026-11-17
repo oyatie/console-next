@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# Fast probes stop at the first success; steady-state settings live in compose.e2e.yml.
+services:
+  postgres:
+    healthcheck:
+      start_interval: 1s
+  seaweedfs:
+    healthcheck:
+      start_interval: 1s

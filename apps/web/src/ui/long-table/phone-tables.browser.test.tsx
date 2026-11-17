@@ -164,6 +164,44 @@ test.each([564, 724])("%spx containers keep row identity and actions together in
   }
 }, 30_000);
 
+test.each([390, 564, 724, 1440])("row actions and sticky headers remain pointer targets immediately after scrolling at %spx", async width => {
+  await page.setViewportSize({ width, height: 900 });
+  for (const theme of ["light", "dark"]) {
+    await page.goto(`${server.resolvedUrls!.local[0]}phone-tables`);
+    await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
+    const grid = page.getByRole("grid", { name: "Long", exact: true });
+    await visible(grid).toHaveAttribute("data-layout", width === 1440 ? "rows" : "cards");
+    const action = grid.getByRole("button", { name: "Open MOB-2", exact: true });
+    await action.focus();
+    await visible(action).toBeInViewport({ ratio: 1 });
+    const targets = await action.evaluate(el => {
+      // Check hit testing before the virtualizer's scroll window can end.
+      const grid = el.closest('[role="grid"]')!;
+      grid.dispatchEvent(new Event("scroll"));
+      const rect = el.getBoundingClientRect();
+      const headers = [...grid.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+      const visibleHeaders = headers.filter(header => header.getBoundingClientRect().height > 1);
+      return {
+        action: document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) === el,
+        headers: visibleHeaders.map(header => {
+          const box = header.getBoundingClientRect();
+          const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+          return { inside: hit?.closest('[role="columnheader"]') === header, row: hit?.closest('[data-row-id]')?.getAttribute('data-row-id') ?? null, background: getComputedStyle(header).backgroundColor };
+        }),
+      };
+    });
+    expect(targets.action).toBe(true);
+    expect(targets.headers.length).toBeGreaterThan(0);
+    for (const header of targets.headers) {
+      expect(header.inside).toBe(true);
+      expect(header.row).toBeNull();
+      expect(header.background).not.toBe("rgba(0, 0, 0, 0)");
+    }
+    await action.click();
+    await visible(page.locator("#action")).toHaveText("MOB-2");
+  }
+}, 30_000);
+
 test("container boundary, virtualization and keyboard state survive card/row changes; desktop widths return", async () => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`${server.resolvedUrls!.local[0]}phone-tables`);
