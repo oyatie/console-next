@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { createLazyRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { screen } from "../../../lib/fonts";
 import { Printer, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
@@ -9,6 +11,11 @@ import { PrintPaper } from "./print-paper";
 import { Band } from "../../../ui/band/band";
 import { PaperWell } from "../../../ui/paper/paper";
 import s from "./card.module.css";
+
+// oxlint-disable-next-line react/only-export-components -- Share the small record entry without loading the roster.
+export const employee = createLazyRoute("/app/people/$id")({
+  component: lazyRouteComponent(screen(() => import("./card-page")), "EmployeeCard"),
+});
 
 const PARTS = ["register", "personal", "job", "contract", "events", "records"] as const;
 
