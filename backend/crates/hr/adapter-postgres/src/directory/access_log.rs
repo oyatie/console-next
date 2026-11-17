@@ -81,6 +81,23 @@ pub async fn actor_employee_id(
     )
 }
 
+/// The access log row of one employee's personnel card read as `view`.
+pub async fn lookup_event(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    principal: &Principal,
+    employee: Uuid,
+    view: &str,
+) -> Result<AuditEvent, HrError> {
+    let me = actor_employee_id(tx, principal).await?;
+    access_event(
+        principal,
+        DirectoryAccess::Detail,
+        &[employee],
+        me,
+        json!({ "view": view }),
+    )
+}
+
 /// One access log row. `target_id` is the employee id for a detail or
 /// history read and `query` otherwise; `details` adds kind-specific fields
 /// (export purpose, row count).

@@ -11,7 +11,7 @@ use console_hr_domain::profile::enums::PayUnit;
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
 use console_platform_authz::{Feature, Principal};
-use console_platform_db::{with_audits, with_org_conn};
+use console_platform_db::with_audits;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{Postgres, Row};
@@ -20,6 +20,7 @@ use uuid::Uuid;
 
 use crate::authz::{authorize_hr_person, hr_reach};
 use crate::clock::today_kst;
+use crate::directory::access_log::lookup_event;
 use crate::metrics::record_hr_read;
 use crate::own_record::own_record_guard;
 use crate::profile::date_text;
@@ -197,24 +198,27 @@ fn terms_of(request: &RecordContractRequest) -> Result<ContractTerms, HrError> {
 }
 
 impl HrService {
+    /// Wages are compensation: the manager tier, as in the employee detail,
+    /// and each read leaves an access log row.
     pub async fn employee_contracts(
         &self,
         principal: Principal,
         employee_id: Uuid,
     ) -> Result<ContractList, HrError> {
-        // Wages are compensation: the manager tier, as in the employee detail.
         hr_reach(&principal, MANAGE)?;
         record_hr_read("employee_contracts");
         let org_uuid = *principal.org_id.as_uuid();
-        with_org_conn::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
+        with_audits::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
             Box::pin(async move {
                 authorize_hr_person(tx, &principal, MANAGE, employee_id).await?;
                 require_employee(tx, org_uuid, employee_id, false).await?;
                 let all = load_stored(tx, org_uuid, employee_id).await?;
                 let today = today_kst();
-                Ok(ContractList {
+                let list = ContractList {
                     items: all.iter().map(|s| view(&all, s, today)).collect(),
-                })
+                };
+                let event = lookup_event(tx, &principal, employee_id, "contracts").await?;
+                Ok((list, vec![event]))
             })
         })
         .await

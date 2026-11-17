@@ -4,6 +4,9 @@ use console_platform_authz::Principal;
 use console_platform_excel::umya_spreadsheet;
 use serde::Deserialize;
 
+const XLSX_FILE: &str = "worker-register.xlsx";
+const PRINT_FILE: &str = "worker-register.json";
+
 #[derive(Debug, Deserialize)]
 pub struct RegisterExport {
     pub format: String,
@@ -24,22 +27,21 @@ impl HrService {
         query: RegisterQuery,
         export: RegisterExport,
     ) -> Result<RegisterFile, HrError> {
-        if !["xlsx", "pdf"].contains(&export.format.as_str()) {
-            return Err(HrError::validation("format must be xlsx or pdf"));
-        }
+        let filename = match export.format.as_str() {
+            "xlsx" => XLSX_FILE,
+            "pdf" => PRINT_FILE,
+            _ => return Err(HrError::validation("format must be xlsx or pdf")),
+        };
+        let purpose = export.export_purpose.unwrap_or_default();
         let page = self
-            .register_read(
-                principal,
-                query,
-                Some(export.export_purpose.unwrap_or_default()),
-            )
+            .register_read(principal, query, Some((purpose, filename)))
             .await?;
-        if export.format == "pdf" {
+        if filename == PRINT_FILE {
             return Ok(RegisterFile {
                 bytes: serde_json::to_vec(&page)
                     .map_err(|_| HrError::internal("register print data could not be written"))?,
                 content_type: "application/json",
-                filename: "worker-register.json",
+                filename,
             });
         }
         let mut book = umya_spreadsheet::new_file();
@@ -70,7 +72,7 @@ impl HrService {
         Ok(RegisterFile {
             bytes,
             content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename: "worker-register.xlsx",
+            filename,
         })
     }
 }
