@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import { ModalOverlay, Button, Dialog, Heading, Modal } from "react-aria-components";
 import { X } from "lucide-react";
 import { t } from "@console/i18n";
@@ -6,13 +6,16 @@ import { Skeleton } from "../skeleton/skeleton";
 import { useLiveHold } from "../../lib/live/hold";
 import { useCurrentSheetDraft } from "./sheet-draft";
 import { useSheetDismiss } from "./sheet-dismiss";
+import { SheetReadContext } from "./read-context";
+import { QueryState } from "../../lib/react/query-state";
+import { readGroup } from "../../lib/react/query-view";
 import s from "./sheet.module.css";
 
 /**
  * A side sheet for one action on a record (components.html §7, detail-sheet-keeps-context): it opens over the side
  * of the page so the record or list stays in view. React Aria keeps focus inside and returns it to the trigger.
  * Anatomy: head (title, subtitle, close), a scrolling body, and a foot that always states the `consequence` (one
- * sentence built from the values the request sends) above the `actions`. `notice` sits above the consequence for
+ * sentence built from the values the request sends) above the `actions`. Read notices and `notice` sit in the foot above the consequence for
  * what the server said (a refusal, a lost response). `kicker` names where it applies, above the title. While `pending` it cannot be dismissed, by Esc, an outside
  * click or the close button, and its actions cannot be pressed again. `size="lg"` is for a table (bulk lines).
  */
@@ -48,9 +51,10 @@ export function Sheet(p: Props) {
 
 function OpenSheet(p: Props) {
   const draft = useCurrentSheetDraft();
+  const reads = useContext(SheetReadContext);
   const { ref, dirty, armed, requestClose, onInput, onBackdrop } = useSheetDismiss<HTMLDivElement>({ ...p, dirty: draft?.dirty ?? p.dirty });
   return (
-    <ModalOverlay className={s.overlay} isOpen onOpenChange={(open) => !open && requestClose()}
+    <SheetReadContext value={[]}><ModalOverlay className={s.overlay} isOpen onOpenChange={(open) => !open && requestClose()}
       isDismissable={false} isKeyboardDismissDisabled={Boolean(p.pending || (dirty && !armed))}
       onPointerDown={(event) => event.target === event.currentTarget && onBackdrop()}>
       <Modal ref={ref} className={s.sheet} data-size={p.size ?? "md"} data-sheet-layer>
@@ -65,6 +69,7 @@ function OpenSheet(p: Props) {
           </div>
           <div className={s.body} inert={p.pending || p.locked || undefined} onInputCapture={onInput} onChangeCapture={onInput}>{p.loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("common.loading")} /> : p.children}</div>
           <div className={s.foot}>
+            {reads.length > 0 && <QueryState q={readGroup(reads)}>{() => null}</QueryState>}
             {p.notice}
             {draft && (draft.problem || draft.restored) && <div role="status">{t(draft.problem ? "draft.unavailable" : "draft.restored")}{draft.restored && !draft.problem && <Button className="btn btn--ghost" onPress={draft.discard}>{t("draft.discard")}</Button>}</div>}
             {armed && dirty && <div role="status">{t("composer.unsaved")}</div>}
@@ -73,6 +78,6 @@ function OpenSheet(p: Props) {
           </div>
         </Dialog>
       </Modal>
-    </ModalOverlay>
+    </ModalOverlay></SheetReadContext>
   );
 }

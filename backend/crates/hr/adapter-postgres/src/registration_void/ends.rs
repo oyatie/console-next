@@ -3,13 +3,14 @@
 
 use console_hr_domain::registration_void::{VoidFacts, check_setup_delete, void_basis};
 use console_platform_authz::{Feature, Principal};
-use console_platform_db::with_org_conn;
+use console_platform_db::with_audits;
 use console_settings_domain::SettingKey;
 use serde::Serialize;
 use uuid::Uuid;
 
 use super::facts::{int_setting, lock, today_kst};
-use crate::authz::{authorize_hr_org_wide, authorize_hr_scoped};
+use crate::authz::{Tier, authorize_hr_org_wide, authorize_hr_person_in, authorize_hr_scoped};
+use crate::directory::access_log::lookup_event;
 use crate::own_record::{OwnRecord, own_record_decision};
 use crate::{HrError, HrService};
 
@@ -64,8 +65,12 @@ const ROUTE_SETUP: &str = "DELETE";
 const ROUTE_VOID: &str = "VOID";
 
 impl HrService {
+    /// The person's hire date and exit state, within the reader's reach and
+    /// read as a lookup of that employee.
+    ///
     /// # Errors
-    /// 403 without `employee_directory_read`; 404 for an unknown or voided record.
+    /// 403 without `employee_directory_read`; 404 for an unknown or voided
+    /// record, or one outside a branch reader's branches.
     pub async fn employee_end_options(
         &self,
         principal: &Principal,
@@ -76,8 +81,11 @@ impl HrService {
         let can_report_exit = authorize_hr_scoped(principal, Feature::ExitCaseReport).is_ok();
         let org = *principal.org_id.as_uuid();
         let (tenant, actor) = (principal.org_id, principal.user_id);
-        with_org_conn(&self.pool, principal.org_id, move |tx| {
+        let reader = principal.clone();
+        with_audits(&self.pool, principal.org_id, move |tx| {
             Box::pin(async move {
+                let read = Feature::EmployeeDirectoryRead;
+                authorize_hr_person_in(tx, &reader, read, employee_id, Tier::Branch).await?;
                 let phase: Option<String> =
                     sqlx::query_scalar("SELECT phase FROM tenant_phase WHERE org_id = $1")
                         .bind(org)
@@ -148,7 +156,8 @@ impl HrService {
                     .updated_at
                     .format(&time::format_description::well_known::Rfc3339)
                     .map_err(|_| HrError::internal("updated_at does not format"))?;
-                Ok(EmployeeEndOptions {
+                let event = lookup_event(tx, &reader, employee_id, "end_options").await?;
+                let options = EmployeeEndOptions {
                     employee_id,
                     phase: if setup { "SETUP" } else { "OPERATING" },
                     cancel: EndOffer::of(cancel),
@@ -162,7 +171,8 @@ impl HrService {
                     updated_at,
                     can_cancel,
                     can_report_exit,
-                })
+                };
+                Ok((options, vec![event]))
             })
         })
         .await

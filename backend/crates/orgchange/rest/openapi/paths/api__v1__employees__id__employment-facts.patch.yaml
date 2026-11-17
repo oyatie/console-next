@@ -8,7 +8,9 @@ description: A JSON Patch where every write is preceded by a `test` of its base 
   (together; the pay counts as recorded once its unit is), and /employment/probation_end_date. A value already
   recorded is changed only by a correction (PATCH /api/v1/employees/{id}), 409 correction_required. 422
   precondition_missing for a write without its test; 409 field_conflict (error.refusals lists pointer, current,
-  at) when a tested value changed, unless the record already holds the written value. Audited as
+  at) when a tested value changed, unless the record already holds the written value. Tests are checked against
+  the record as read, so /birth_date is tested against its mask; any write to a recorded /birth_date is 409
+  correction_required whatever its value. Audited as
   employee.facts.update with field names only.
   403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
 security:
@@ -50,7 +52,7 @@ responses:
               type: [string, 'null']
             birth_date:
               type: [string, 'null']
-              format: date
+              description: The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date.
             work_email:
               type: [string, 'null']
             id_type:

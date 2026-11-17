@@ -19,5 +19,6 @@ mod backfill;
 mod definer_guards;
 mod import_acceptance;
 mod legacy_settle;
+mod refusals;
 mod shared;
 mod trigger_boundaries;

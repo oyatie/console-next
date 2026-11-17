@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
 import { fmtDate } from "@console/i18n/format";
@@ -124,7 +125,7 @@ for (const eligibility of [{ outcome: "OPEN" }, outcome("UNDER_SERVICE_YEARS", 0
 test("not applicable settlement is discoverable in the gallery @ui-state", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
   try {
-    await page.goto("/_gallery?entry=exit-settlement");
+    await mockNavigate(page, "/_gallery?entry=exit-settlement");
     const gallery = page.locator("#gallery-exit-settlement");
     await expect(gallery).toContainText("퇴직금 미해당 (근속 1년 미만)");
     await expect(gallery).toContainText("노무사 검토 전");

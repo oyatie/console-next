@@ -28,7 +28,7 @@ export const koImportReview: Record<keyof typeof enImportReview, string> = {
   "importReview.info.rrn_unavailable": "서버에 주민등록번호 암호화 키가 없어 이 열을 버렸습니다. 직원은 사번과 이름으로 맞춥니다.",
   "importReview.info.rrn_invalid": "주민등록번호 형식이 아니라 쓰지 않았습니다. 직원은 사번과 이름으로 맞춥니다.",
   "importReview.info.other": "적힌 대로 반영합니다.",
-  "importReview.reason.sheet_needs_mapping": "머리글을 찾지 못한 시트",
+  "importReview.reason.sheet_needs_mapping": "열 연결을 확인해야 하는 시트",
   "importReview.reason.unresolved_identity": "누구인지 확인(동명이인)",
   "importReview.reason.summary_row_skipped": "합계 행 · 사람이 아님",
   "importReview.reason.phone_invalid": "휴대전화로 읽을 수 없음",

@@ -21,7 +21,7 @@ async function openChart(page: Page) {
   return { fixture, tree };
 }
 
-test("an opened chart menu takes the toolbar from the selection", async ({ page }) => {
+test("an opened chart menu takes the toolbar from the selection", { tag: "@webkit-pr" }, async ({ page }) => {
   const { fixture, tree } = await openChart(page);
   const entity = tree.entities[0]!;
   const parent = entity.children[0]!;
@@ -40,7 +40,7 @@ test("an opened chart menu takes the toolbar from the selection", async ({ page 
 });
 
 for (const width of [1280, 390]) for (const theme of ["light", "dark"]) {
-  test(`inline department editor keeps one chart toolbar at ${width}px in ${theme}`, async ({ page }, info) => {
+  test(`inline department editor keeps one chart toolbar at ${width}px in ${theme}`, { tag: "@webkit-pr" }, async ({ page }, info) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 720 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const { fixture, tree } = await openChart(page);

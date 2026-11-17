@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
@@ -16,7 +17,7 @@ import { screens } from "../states/registry";
 test.beforeAll(() => loadCatalog("ko"));
 
 async function openFormSheet(page: Page) {
-  await page.goto("/_gallery?entry=sheet");
+  await mockNavigate(page, "/_gallery?entry=sheet");
   return showFormSheet(page);
 }
 
@@ -25,7 +26,7 @@ async function showFormSheet(page: Page) {
   return page.getByRole("dialog", { name: tg("sheet.title"), exact: true });
 }
 
-test("a dirty Sheet asks before Escape and keeps its draft", async ({ page }) => {
+test("a dirty Sheet asks before Escape and keeps its draft", { tag: "@webkit-pr" }, async ({ page }) => {
   const sheet = await openFormSheet(page);
   const draft = sheet.getByRole("textbox", { name: tg("sheet.reason") });
   await draft.fill("검토 중인 내용");
@@ -41,7 +42,7 @@ test("a dirty Sheet asks before Escape and keeps its draft", async ({ page }) =>
   await expect(page.getByRole("dialog").getByRole("textbox", { name: tg("sheet.reason") })).toHaveValue("검토 중인 내용");
 });
 
-test("a clean Sheet closes immediately, while a form ignores its backdrop", async ({ page }) => {
+test("a clean Sheet closes immediately, while a form ignores its backdrop", { tag: "@webkit-pr" }, async ({ page }) => {
   let sheet = await openFormSheet(page);
   await page.mouse.click(4, 400);
   await expect(sheet).toBeVisible();
@@ -75,7 +76,7 @@ test("a search input and a reverted value leave a Sheet clean", async ({ page })
   await expect(sheet).toHaveCount(0);
 });
 
-test("uncommitted combobox filter text in 직원 등록 closes cleanly, while a committed pick asks", async ({ page }) => {
+test("uncommitted combobox filter text in employee registration closes cleanly, while a committed pick asks", { tag: "@webkit-pr" }, async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
   await mockLifecycleSheets(page, lifecycleSheetScreens[0]);
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
@@ -99,7 +100,7 @@ test("uncommitted combobox filter text in 직원 등록 closes cleanly, while a 
 
 test("Escape outside a dock leaves it open and reaches the page", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const dock = page.getByRole("complementary", { name: tg("dockSheet.title"), exact: true });
   await expect(dock).toBeVisible();
   await page.getByRole("button", { name: tg("dockSheet.open"), exact: true }).focus();
@@ -112,7 +113,7 @@ test("Escape outside a dock leaves it open and reaches the page", async ({ page 
 });
 
 test("Back asks before leaving a dirty Sheet", async ({ page }) => {
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   await page.locator('[data-panel-trigger="populated"]').evaluate((button: HTMLElement) => button.click());
   await expect(page).toHaveURL(/sel=populated/);
   const href = page.url();
@@ -134,7 +135,7 @@ test("Back asks before leaving a dirty Sheet", async ({ page }) => {
 
 test("Escape dismissal cannot reach a dirty lower Sheet", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/_gallery");
+  await mockNavigate(page, "/_gallery");
   const lower = page.getByRole("dialog", { name: tg("dockSheet.title"), exact: true });
   await expect(lower).toBeVisible();
   const lowerDraft = await lower.getByText(tg("dockSheet.body"), { exact: true }).evaluateHandle(element => {
@@ -159,7 +160,7 @@ test("Escape dismissal cannot reach a dirty lower Sheet", async ({ page }) => {
 
 test("Back closes a clean top Sheet and keeps a dirty lower draft", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/_gallery#prior");
+  await mockNavigate(page, "/_gallery#prior");
   await go(page, "/_gallery");
   const href = page.url();
   await page.locator('[data-panel-trigger="populated"]').evaluate((button: HTMLElement) => button.click());
@@ -343,7 +344,7 @@ test("a real Sheet draft survives confirmed close and reopen", async ({ page }) 
 
 test("Escape inside a clean wide DockSheet closes it", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/_gallery?entry=dock-sheet");
+  await mockNavigate(page, "/_gallery?entry=dock-sheet");
   const dock = page.getByRole("complementary", { name: tg("dockSheet.title"), exact: true });
   await expect(dock.getByRole("heading")).toBeVisible();
   await dock.getByRole("heading").focus();
@@ -351,7 +352,7 @@ test("Escape inside a clean wide DockSheet closes it", async ({ page }) => {
   await expect(dock).toHaveCount(0);
 });
 
-test("a committed picker change clears an armed Sheet prompt", async ({ page }) => {
+test("a committed picker change clears an armed Sheet prompt", { tag: "@webkit-pr" }, async ({ page }) => {
   const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
   await page.goto(lifecycleSheetScreens[0].path);
   const sheet = page.getByRole("dialog");
@@ -369,7 +370,7 @@ test("a committed picker change clears an armed Sheet prompt", async ({ page }) 
   expect(fixture.unexpected).toEqual([]);
 });
 
-test("Escape on an expanded picker leaves a dirty Sheet unarmed", async ({ page }) => {
+test("Escape on an expanded picker leaves a dirty Sheet unarmed", { tag: "@webkit-pr" }, async ({ page }) => {
   const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
   await page.goto(lifecycleSheetScreens[0].path);
   const sheet = page.getByRole("dialog");
@@ -385,7 +386,7 @@ test("Escape on an expanded picker leaves a dirty Sheet unarmed", async ({ page 
   expect(fixture.unexpected).toEqual([]);
 });
 
-test("Escape from a listbox with DOM focus leaves a dirty Sheet unarmed", async ({ page }) => {
+test("Escape from a listbox with DOM focus leaves a dirty Sheet unarmed", { tag: "@webkit-pr" }, async ({ page }) => {
   const sheet = await openFormSheet(page);
   const draft = sheet.getByRole("textbox", { name: tg("sheet.reason") });
   await draft.fill("배치 검토");

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { ArrowLeft, Maximize2, Minimize2, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, IconButton } from "../button/button";
@@ -104,7 +104,7 @@ export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFin
   const openRelated = openRecord && related ? related : undefined;
   const depth = openRelated ? 2 : openRecord ? 1 : 0;
   const liveRef = useRef({ openId: openRecord?.id, onSelect, onOpen });
-  useEffect(() => { liveRef.current = { openId: openRecord?.id, onSelect, onOpen }; });
+  useLayoutEffect(() => { liveRef.current = { openId: openRecord?.id, onSelect, onOpen }; });
   const closePane = useCallback((pane: FlexibleColumnPane) => { clearTimeout(settleRef.current); restoreRef.current = pane.returnFocus ?? null; pane.onClose(); }, []);
 
   useEffect(() => {

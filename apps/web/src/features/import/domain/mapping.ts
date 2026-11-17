@@ -55,5 +55,5 @@ export const sheetMapping = (d: Draft): SheetMapping =>
 /** A sheet skipped (by the operator or remembered from an earlier import) whose header was never read: un-skipping reads it. */
 export const rereadsSkipped = (s: ImportSheet, d: Draft) => !d.skip && s.status === "skipped" && d.header_row == null;
 
-/** Sheets that keep the dry run closed: no header the server could read, and not skipped. */
+/** Sheets that keep the dry run closed until the operator confirms their bindings. */
 export const sheetsToMap = (sheets: readonly ImportSheet[]) => sheets.filter((s) => s.status === "needs_mapping");

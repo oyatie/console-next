@@ -42,7 +42,7 @@ async fn branch_hr_sees_employee_and_account_reviews_without_foreign_evidence(po
     for (kind, id) in [("EMPLOYEE", a.id), ("EMPLOYEE", b.id), ("ACCOUNT", account)] {
         sqlx::query("INSERT INTO person_binding_reviews(org_id,subject_kind,subject_id,reason,evidence) VALUES($1,$2,$3,'NUMBER_BIRTH_AMBIGUOUS',$4) ON CONFLICT DO NOTHING")
             .bind(f.principal.org_id.as_uuid()).bind(kind).bind(id)
-            .bind(json!({"candidates":[{"employee_id":a.id},{"employee_id":b.id}]}))
+            .bind(json!({"birth_date":"1990-04-17","candidates":[{"employee_id":a.id,"birth_date":"1990-04-17"},{"employee_id":b.id,"birth_date":"1991-05-06"}]}))
             .execute(&pool).await.unwrap();
     }
     let unlinked: Uuid = sqlx::query_scalar(
@@ -81,7 +81,13 @@ async fn branch_hr_sees_employee_and_account_reviews_without_foreign_evidence(po
         assert_eq!(candidates[0]["employee_id"], a.id.to_string());
         assert_eq!(candidates[0]["name"], a.name);
         assert_eq!(candidates[0]["employee_number"], json!(a.employee_number));
+        // A namesake review tells birth dates apart by year and month only.
+        if review.subject_id != unlinked {
+            assert_eq!(review.evidence["birth_date"], "1990-04-••");
+            assert_eq!(candidates[0]["birth_date"], "1990-04-••");
+        }
     }
+    assert!(!serde_json::to_string(&page).unwrap().contains("1990-04-17"));
     let outside =
         f.hr.person_binding_reviews(
             principal.clone(),

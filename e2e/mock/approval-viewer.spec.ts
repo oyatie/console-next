@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "./navigation";
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -133,7 +134,7 @@ test("approval document without a route omits the route card", async ({ page }) 
 
 test("approval document remains visible in the component gallery", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto("/_gallery?entry=approvals-page");
+  await mockNavigate(page, "/_gallery?entry=approvals-page");
   const section = page.locator(".gallery__section", { has: page.getByRole("heading", { name: "결재함", exact: true }) });
   await expect(section.getByRole("region", { name: "문서 정보", exact: true })).toContainText("시행일");
   await expect(section.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);

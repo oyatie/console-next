@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { rrn, workbook } from "../helpers/import-layouts";
 import { apiOf, bearerOf } from "../helpers/api";
 
@@ -22,6 +22,7 @@ test("import register facts: 성별 from its column or the 주민등록번호, �
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "명부.xlsx", await workbook([{ name: "재직자", lines }]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   const columns = admin.getByRole("table", { name: "열", exact: true });
   await expect(columns.getByRole("row").filter({ hasText: "성별" }).first()).toContainText("직원 정보로 반영", { timeout: 30_000 });
   await expect(columns.getByRole("row").filter({ hasText: "계약종료일" }).first()).toContainText("계약종료일");

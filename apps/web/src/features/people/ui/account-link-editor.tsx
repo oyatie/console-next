@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
-import { t } from "@console/i18n";
+import { isMessageId, t } from "@console/i18n";
 import { PasskeyError } from "../../../lib/react/passkey-error";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
+
+const accountRefusal = (code: string) => {
+  const id = `accounts.code.${code}`;
+  return isMessageId(id) ? t(id) : undefined;
+};
 
 /** The same link draft, pending confirmation and refusal on either side of an account–employee link. */
 export function AccountLinkEditor({ picker, pending, busy, error, own, focusPicker, children }: {
@@ -29,6 +34,6 @@ export function AccountLinkEditor({ picker, pending, busy, error, own, focusPick
       <ServerPicker {...picker} />
       {children}
     </>}
-    <PasskeyError error={error} own={own} />
+    <PasskeyError error={error} own={own ?? accountRefusal} />
   </div>;
 }

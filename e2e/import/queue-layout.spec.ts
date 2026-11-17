@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
-import { chooseWorkbook, payPeriod } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "../helpers/import";
 import { plain, workbook } from "../helpers/import-layouts";
 import { openItem, panel, queue } from "../helpers/import-queue";
 
@@ -35,6 +35,7 @@ test("import queue: the grid stays inside its card when the page scrolls to the 
   await chooseWorkbook(admin, "인사기록.xlsx", await workbook([plain("본사", rows)]));
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await expect(queue(admin).first()).toBeVisible({ timeout: 30_000 });
   await openItem(admin, "품질팀");

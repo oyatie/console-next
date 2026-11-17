@@ -5,7 +5,7 @@ summary: Whether a registration is cancelled or the person exits, and why not th
 description: CRUD. cancel_route DELETE (setup) or VOID (after go-live, with the employee_void_* refusals); exit is refused
   employee_already_exited, exit_case_open (open_exit_case_id) or exit_already_scheduled. On the caller's own record
   (people-self-33) both are refused own_record_forbidden, unless the caller is the ops account and no other account
-  holds the act.
+  holds the act. A branch reader gets 404 for a person outside its branches; each read leaves an access log row.
 security:
 - bearerAuth: []
 parameters:

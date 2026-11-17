@@ -20,7 +20,7 @@ import { reasonCodesQuery, reasonLabel, useExitClass } from "../../../lib/reason
 import { useDraft } from "../../../lib/react/use-draft";
 import { QueryState } from "../../../lib/react/query-state";
 import { eventsQuery, exitGuardsQuery, reportExit } from "../api";
-import { OpsExitNote } from "./account-link-card";
+import { OpsExitNote } from "./ops-exit-note";
 import { StepFrame } from "./exit-foot";
 import { ExitPreflight } from "./legal-preflight";
 import { useTrailPreview } from "./lifecycle-trail-preview";

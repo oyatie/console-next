@@ -6,6 +6,7 @@ import path from "node:path";
 import { expect, test, type BrowserContext } from "@playwright/test";
 import { vendorPage } from "../flows";
 import { routeList } from "../helpers/route-list";
+import { launchHTTP1 } from "./transport";
 import { budget } from "./budget";
 import { buildTenant } from "./fixture";
 import { assertBudget, measure, observePaint, reportActivity, summarize, type Sample } from "./measurement";
@@ -115,24 +116,27 @@ test("a previous document's event stream is outside the next load", { tag: "@per
   }
 });
 
-test("cold and warm route LCP at the synthetic tenant size, with a held-read control", { tag: "@perf" }, async ({ browser }, info) => {
+test("cold and warm route LCP at the synthetic tenant size, with a held-read control", { tag: "@perf" }, async ({ browser, baseURL }, info) => {
   test.setTimeout(1_200_000);
   expect(process.env.E2E_SERVED, "lab evidence requires the built application").toBe("1");
   const dir = path.resolve(process.env.PERF_EVIDENCE_DIR ?? "");
   expect(process.env.PERF_EVIDENCE_DIR && path.relative(process.cwd(), dir).startsWith(`..${path.sep}`), "PERF_EVIDENCE_DIR must be outside the repository").toBeTruthy();
+  expect(new URL(baseURL!).protocol, "use the paired perf profile").toBe("https:");
   const probe = await browser.newPage();
   const supported = await probe.evaluate(() => PerformanceObserver.supportedEntryTypes.includes("largest-contentful-paint"));
   await probe.close();
   test.skip(!supported, "This engine does not expose native LCP; no load evidence can be claimed");
-  const rows: ReturnType<typeof summarize>[] = [];
+  const rows: (ReturnType<typeof summarize> & { protocol: string })[] = [];
+  const comparison: typeof rows = [];
   const report = {
     commit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), run_at: new Date().toISOString(),
-    source_command: `E2E_SERVED=1 E2E_PERF=1 E2E_BROWSER=${browser.browserType().name()} npx playwright test e2e/perf/route-load.spec.ts --project=${info.project.name}`,
-    browser: browser.browserType().name(), build: "served", budget, negative_control: {} as object, failure: null as string | null, rows,
+    source_command: `E2E_SERVED=1 E2E_PERF=1 E2E_BROWSER=${browser.browserType().name()} npx playwright test --config=playwright.perf.config.ts --project=${info.project.name}`,
+    browser: browser.browserType().name(), build: "served", budget, negative_control: {} as object, failure: null as string | null, rows, comparison,
   };
   await mkdir(dir, { recursive: true });
   const save = () => writeFile(path.join(dir, "route-load.json"), JSON.stringify(report, null, 2) + "\n");
   let context: BrowserContext | undefined;
+  const h1 = await launchHTTP1(browser);
   try {
     const { admin, urls } = await test.step("Build the synthetic tenant through product controls", () => buildTenant(browser), { timeout: 1_200_000 });
     test.setTimeout(budget.run_ms);
@@ -142,8 +146,9 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
     // A setup tab must not later rotate the cookie copied into the measured context.
     await admin.context().close();
     await vendor.context().close();
-    const fresh = async (realm: keyof typeof states) => {
-      context = await browser.newContext({ storageState: states[realm], baseURL: origin, locale: "ko-KR", timezoneId: "Asia/Seoul", viewport: { width: 1440, height: 900 }, serviceWorkers: "block" });
+    const transports = [{ protocol: "http/1.1", browser: h1 }, { protocol: "h2", browser }];
+    const fresh = async (realm: keyof typeof states, engine = browser) => {
+      context = await engine.newContext({ storageState: states[realm], baseURL: origin, ignoreHTTPSErrors: true, locale: "ko-KR", timezoneId: "Asia/Seoul", viewport: { width: 1440, height: 900 }, serviceWorkers: "block" });
       context.setDefaultTimeout(30_000);
       await context.addInitScript(observePaint);
       return context.newPage();
@@ -172,33 +177,35 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
     for (const { path: route } of [...routeList].sort((a, b) => Number(b.path === "/platform") - Number(a.path === "/platform"))) {
       const realm = route === "/platform" ? "vendor" : "tenant";
       const url = urls[route] ?? route;
-      const samples = { cold: [] as Awaited<ReturnType<typeof measure>>[], warm: [] as Awaited<ReturnType<typeof measure>>[] };
-      if (!url.includes("$")) {
-        for (let n = 0; n < budget.samples; n++) {
-          const page = await fresh(realm);
-          for (const cache of ["cold", "warm"] as const) {
-            // Full navigations refresh the same session (60/min); pacing is outside the measured navigation.
-            await new Promise(resolve => setTimeout(resolve, Math.max(0, 1050 - (Date.now() - lastNavigation))));
-            lastNavigation = Date.now();
-            samples[cache].push(await measure(page, url));
+      for (const transport of transports) {
+        const samples = { cold: [] as Awaited<ReturnType<typeof measure>>[], warm: [] as Awaited<ReturnType<typeof measure>>[] };
+        if (!url.includes("$")) {
+          for (let n = 0; n < budget.samples; n++) {
+            const page = await fresh(realm, transport.browser);
+            for (const cache of ["cold", "warm"] as const) {
+              // Full navigations refresh the same session (60/min); pacing is outside the measured navigation.
+              await new Promise(resolve => setTimeout(resolve, Math.max(0, 1050 - (Date.now() - lastNavigation))));
+              lastNavigation = Date.now();
+              samples[cache].push(await measure(page, url, cache === "cold" ? transport.protocol : undefined));
+            }
+            if (realm === "tenant") {
+              // Input ends native LCP observation: report real activity only after both samples are captured.
+              samples.warm.at(-1)!.errors.push(...await reportActivity(page));
+            }
+            states[realm] = await context!.storageState();
+            await context!.close();
+            context = undefined;
+            if (samples.cold.at(-1)?.errors.length || samples.warm.at(-1)?.errors.length) break;
           }
-          if (realm === "tenant") {
-            // Input ends native LCP observation: report real activity only after both samples are captured.
-            samples.warm.at(-1)!.errors.push(...await reportActivity(page));
-          }
-          states[realm] = await context!.storageState();
-          await context!.close();
-          context = undefined;
-          if (samples.cold.at(-1)?.errors.length || samples.warm.at(-1)?.errors.length) break;
         }
+        for (const cache of ["cold", "warm"] as const) {
+          const row = { ...summarize(route, cache, samples[cache]), protocol: transport.protocol };
+          (transport.protocol === "h2" ? rows : comparison).push(row);
+          console.log(`${transport.protocol} ${route} ${cache} p95=${row.lcp_p95_ms ?? "unknown"}ms (${row.sample_count} samples)`);
+          try { assertBudget(row); } catch (error) { failures.push((error as Error).message); }
+        }
+        await save();
       }
-      for (const cache of ["cold", "warm"] as const) {
-        const row = summarize(route, cache, samples[cache]);
-        rows.push(row);
-        console.log(`${route} ${cache} p95=${row.lcp_p95_ms ?? "unknown"}ms (${row.sample_count} samples)`);
-        try { assertBudget(row); } catch (error) { failures.push((error as Error).message); }
-      }
-      await save();
     }
     expect(failures, "route-load.json retains every measured route, including reds and unknowns").toEqual([]);
   } catch (error) {
@@ -206,6 +213,7 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
     throw error;
   } finally {
     await context?.close();
+    await h1.close();
     await save();
   }
 });

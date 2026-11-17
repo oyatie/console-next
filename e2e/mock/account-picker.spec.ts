@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { AT, failure, id } from "./fixtures";
 import { screens } from "../states/registry";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const accounts: components["schemas"]["DirectoryPerson"][] = Array.from({ length: 50 }, (_, n) => ({
   id: id(500 + n), display_name: `검색계정 ${n + 1}`, employee_id: id(100 + n),
@@ -58,7 +61,7 @@ async function fixture(page: Page, delay?: number) {
   return { ...screen, search, searches, release, failRefetch: () => { failRefetch = true; } };
 }
 
-test("account search uses server matches and counts, and selecting opens the existing account panel", async ({ page }) => {
+test("account search uses server matches and counts, and selecting opens the existing account panel", { tag: "@webkit-pr" }, async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
   await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(50);
@@ -74,7 +77,7 @@ test("account search uses server matches and counts, and selecting opens the exi
   expect(f.unexpected).toEqual([]);
 });
 
-test("Tab after hovering and editing preserves the query until a result is explicitly focused", async ({ page }) => {
+test("Tab after hovering and editing preserves the query until a result is explicitly focused", { tag: "@webkit-pr" }, async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
   await page.getByRole("listbox").getByRole("option", { name: /검색계정 2 PICK-2/ }).hover();
@@ -115,7 +118,7 @@ test("account search debounces typing and waits for IME composition to end", asy
   expect(f.unexpected).toEqual([]);
 });
 
-test("Tab preserves keyboard selection and never commits an unmatched hovered result", async ({ page }) => {
+test("Tab preserves keyboard selection and never commits an unmatched hovered result", { tag: "@webkit-pr" }, async ({ page }) => {
   const f = await fixture(page);
   await f.search.fill("이전이름");
   await page.getByRole("listbox").getByRole("option", { name: /검색계정 2 PICK-2/ }).hover();
@@ -138,8 +141,8 @@ test("a failed background account refetch drops the previous total as well as th
   await expect(f.search).toHaveAttribute("aria-invalid", "true", { timeout: 20_000 });
   await expect(page.getByRole("listbox").getByRole("option", { name: /검색계정/ })).toHaveCount(0);
   await expect(page.locator(".popover").getByRole("status").filter({ hasText: /^0건$/ })).toHaveCount(0);
-  await expect(page.locator(".popover").getByRole("status").filter({ hasText: "잠시 뒤 다시 시도하십시오." })).toBeVisible();
-  await expect(page.locator(".popover").getByText("잠시 뒤 다시 시도하십시오.", { exact: true })).toHaveCount(1);
+  await expect(page.locator(".popover").getByRole("status").filter({ hasText: t("common.read.failedReason") })).toBeVisible();
+  await expect(page.locator(".popover").getByText(t("common.read.failedReason"), { exact: true })).toHaveCount(1);
   await expect(page.locator(".popover").getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(0);
   await expect(page.getByText("처음 50건만 표시합니다. 검색어를 더 입력해 범위를 좁히십시오.", { exact: true })).toHaveCount(0);
   expect(f.unexpected).toEqual([]);

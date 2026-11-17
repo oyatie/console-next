@@ -16,31 +16,66 @@ mod support;
 use chaos::{arm_kill, arm_slow, disarm, kill_running};
 use support::{Ctx, audits, count, ctx, structure, tenant};
 
+#[path = "../../crates/hr/adapter-postgres/tests/support/confirmed_mapping.rs"]
+mod confirmation;
+
 const ADMIN: &[&str] = &["SUPER_ADMIN"];
 const ROWS: usize = 105;
 
-fn roster() -> Vec<u8> {
+fn roster() -> (Vec<u8>, Vec<console_hr_domain::import::grid::GridSheet>) {
+    use console_hr_domain::import::grid::{Cell, GridRow, GridSheet};
+    let cells = |values: &[String]| {
+        values
+            .iter()
+            .enumerate()
+            .map(|(c, value)| (c as u32, Cell::Text(value.clone())))
+            .collect()
+    };
+    let mut rows = vec![GridRow {
+        index: 0,
+        cells: cells(&["성명".into(), "사번".into(), "입사일".into()]),
+    }];
+    rows.extend((0..ROWS).map(|row| GridRow {
+        index: row as u32 + 1,
+        cells: cells(&[
+            format!("가져온{row}"),
+            format!("IM-{row:03}"),
+            "2026-01-02".into(),
+        ]),
+    }));
     let mut book = umya_spreadsheet::new_file();
     let sheet = book.sheet_by_name_mut("Sheet1").unwrap();
-    for (col, header) in ["성명", "사번", "입사일"].iter().enumerate() {
-        sheet.cell_mut((col as u32 + 1, 1)).set_value(*header);
-    }
-    for row in 0..ROWS {
-        let r = row as u32 + 2;
-        sheet.cell_mut((1, r)).set_value(format!("가져온{row}"));
-        sheet.cell_mut((2, r)).set_value(format!("IM-{row:03}"));
-        sheet.cell_mut((3, r)).set_value("2026-01-02");
+    for row in &rows {
+        for (column, cell) in &row.cells {
+            sheet
+                .cell_mut((*column + 1, row.index + 1))
+                .set_value(cell.text());
+        }
     }
     let mut out = Vec::new();
     umya_spreadsheet::writer::xlsx::write_writer(&book, &mut out).unwrap();
-    out
+    (
+        out,
+        vec![GridSheet {
+            name: "Sheet1".into(),
+            rows,
+        }],
+    )
 }
 
 /// Preview + dry run; returns (apply URI, apply body).
 async fn dry_run(ctx: &Ctx) -> (String, Value) {
     let boundary = "chaosboundary";
+    let (bytes, sheets) = roster();
+    let mapping = serde_json::to_string(&confirmation::confirmed_mapping(
+        &sheets,
+        &Default::default(),
+        &Default::default(),
+    ))
+    .unwrap();
     let mut body = Vec::new();
     for (name, value) in [
+        ("mapping", mapping.as_str()),
         ("pay_period_start", "2026-01-01"),
         ("pay_period_end", "2026-01-31"),
     ] {
@@ -58,7 +93,7 @@ async fn dry_run(ctx: &Ctx) -> (String, Value) {
         )
         .into_bytes(),
     );
-    body.extend(roster());
+    body.extend(bytes);
     body.extend(format!("\r\n--{boundary}--\r\n").into_bytes());
     let content = format!("multipart/form-data; boundary={boundary}");
     let (status, preview) = ctx
@@ -104,10 +139,31 @@ async fn setup(pool: &PgPool) -> (Uuid, Ctx, String, Value) {
     (org, ctx, apply, body)
 }
 
+/// A request timeout does not stop the detached driver; observe its terminal result.
+async fn finished_job(ctx: &Ctx, apply: &str, expected: &str) -> Value {
+    tokio::time::timeout(std::time::Duration::from_secs(60), async {
+        loop {
+            let (status, job) = ctx.call("GET", apply, None).await;
+            assert_eq!(status, StatusCode::OK, "{job}");
+            if matches!(job["state"].as_str(), Some("done" | "failed")) {
+                assert_eq!(job["state"], expected, "{job}");
+                return job;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("the detached driver did not finish")
+}
+
 /// Re-applies until done; the run ends APPLIED with ROWS people, once.
 async fn finishes_once(pool: &PgPool, org: Uuid, ctx: &Ctx, apply: &str, body: &Value) {
-    let (status, report) = ctx.call("POST", apply, Some(body.clone())).await;
-    assert_eq!(status, StatusCode::OK, "{report}");
+    let (status, mut report) = ctx.call("POST", apply, Some(body.clone())).await;
+    if status == StatusCode::SERVICE_UNAVAILABLE && report["error"]["code"] == "unavailable" {
+        report = finished_job(ctx, apply, "done").await["report"].clone();
+    } else {
+        assert_eq!(status, StatusCode::OK, "{report}");
+    }
     let rows_before: Vec<(Uuid, Value)> =
         sqlx::query_as("SELECT id, to_jsonb(e) FROM employees e WHERE org_id=$1 ORDER BY id")
             .bind(org)
@@ -146,6 +202,7 @@ async fn apply_killed_inside_the_batch_writes_nothing_and_reapplies_once(pool: P
     arm_kill(&pool, "employees", "AFTER INSERT", "true").await;
     let (status, died) = ctx.call("POST", &apply, Some(body.clone())).await;
     assert!(status.is_server_error(), "{status} {died}");
+    finished_job(&ctx, &apply, "failed").await;
     assert_eq!(count(&pool, "employees", org).await, 0, "no half write");
     assert_eq!(run_status(&pool, org).await, "DRY_RUN");
     disarm(&pool).await;
@@ -164,6 +221,7 @@ async fn apply_killed_in_the_settle_is_finished_by_the_reapply(pool: PgPool) {
     .await;
     let (status, died) = ctx.call("POST", &apply, Some(body.clone())).await;
     assert!(status.is_server_error(), "{status} {died}");
+    finished_job(&ctx, &apply, "failed").await;
     assert_eq!(audits(&pool, org, "employee.import.settle").await, 0);
     assert_eq!(
         count(&pool, "employees", org).await,
@@ -198,6 +256,7 @@ async fn apply_terminated_from_outside_mid_batch_writes_nothing_and_reapplies_on
         tokio::join!(ctx.call("POST", &apply, Some(body.clone())), killer);
     assert!(killed, "the batch never showed up in pg_stat_activity");
     assert!(status.is_server_error(), "{status} {died}");
+    finished_job(&ctx, &apply, "failed").await;
     assert_eq!(count(&pool, "employees", org).await, 0, "no half write");
     assert_eq!(run_status(&pool, org).await, "DRY_RUN");
     disarm(&pool).await;

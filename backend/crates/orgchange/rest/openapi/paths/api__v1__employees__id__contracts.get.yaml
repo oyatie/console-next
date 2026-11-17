@@ -4,7 +4,7 @@ operationId: listEmployeeContracts
 summary: Contract history of an employee (EMP-MODEL G1)
 description: Every recorded contract row, newest start first, including rows a later correction superseded
   (superseded_by set; they leave the live history). in_force marks the live row covering today (KST). Wages are
-  compensation, so this takes org-wide employee_directory_manage.
+  compensation, so this takes org-wide employee_directory_manage; each read leaves an access log row.
 security:
 - bearerAuth: []
 parameters:

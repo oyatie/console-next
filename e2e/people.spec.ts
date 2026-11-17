@@ -4,7 +4,7 @@ import { forgetResize } from "./stability";
 import { go, routeReady } from "./flows";
 import { tenantWithExecutive } from "./setup-flows";
 import { rosterXlsx } from "./workbook";
-import { chooseWorkbook, payPeriod } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "./helpers/import";
 
 test("an HR admin imports a roster: preview → dry run → apply bound to it", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await tenantWithExecutive(browser, "peopleco", "사람주식회사");
@@ -31,6 +31,7 @@ test("an HR admin imports a roster: preview → dry run → apply bound to it", 
   ]));
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await expect(admin.locator('[aria-current="step"]')).toHaveText("열 확인");
   await expectAccessible(admin, "import: column review");
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();

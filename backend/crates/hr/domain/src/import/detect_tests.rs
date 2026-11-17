@@ -47,6 +47,48 @@ fn none() -> BTreeMap<String, Option<String>> {
 }
 
 #[test]
+fn exact_column_key_wins_over_remembered_mapping() {
+    let memory = BTreeMap::from([(memory_key("name"), Some("position".into()))]);
+    assert_eq!(
+        target_of("name", &memory),
+        (Some("name"), MappingSource::Catalog)
+    );
+}
+
+#[test]
+fn remembered_exclusion_wins_over_every_suggestion_until_changed() {
+    for field in EMPLOYEE_IMPORT_FIELD_DEFINITIONS.iter() {
+        let memory = BTreeMap::from([(memory_key(field.target), None)]);
+        assert_eq!(
+            target_of(field.target, &memory),
+            (None, MappingSource::Remembered)
+        );
+    }
+    let s = sheet("Synthetic", &[&["name", "rrn"]]);
+    let memory = BTreeMap::from([(memory_key("rrn"), None)]);
+    let request = SheetMappingRequest {
+        header_row: Some(1),
+        columns: BTreeMap::from([("B".into(), Some("rrn".into()))]),
+        ..Default::default()
+    };
+    assert_eq!(
+        mapped(detect(&s, &memory, Some(&request)).unwrap()).1[1].1,
+        Some("rrn")
+    );
+}
+
+#[test]
+fn every_stable_column_key_is_a_header_even_without_a_synonym() {
+    for field in EMPLOYEE_IMPORT_FIELD_DEFINITIONS.iter() {
+        assert_eq!(target_of(field.target, &none()).0, Some(field.target));
+        assert_eq!(
+            crate::import::classification::employee_import_target_for_header(field.target),
+            Some(field.target)
+        );
+    }
+}
+
+#[test]
 fn a_header_below_title_rows_and_in_english_is_found() {
     let s = sheet(
         "명부",

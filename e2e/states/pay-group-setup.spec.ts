@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { mockNavigate } from "../mock/navigation";
 import { expect, test, type Locator } from "@playwright/test";
 import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
@@ -177,7 +178,7 @@ test("an empty legal entity list does not invent a company or offer a create com
 });
 
 test("the payroll gallery opens the same blank setup sheet", async ({ page }) => {
-  await page.goto("/_gallery?entry=payroll");
+  await mockNavigate(page, "/_gallery?entry=payroll");
   await page.getByRole("button", { name: t("payroll.setup.add"), exact: true }).click();
   const sheet = page.getByRole("dialog", { name: t("payroll.setup.add"), exact: true });
   await expect(sheet).toBeVisible();

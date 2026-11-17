@@ -1,23 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { Dialog } from "../../../ui/dialog";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Field, TextInput } from "../../../ui/field/field";
-import { eraseQuery, eraseWrite, operatorId, type EraseAction, type EraseRead, type Org } from "../api";
+import { eraseWrite, operatorId, type EraseAction, type EraseRead, type Org } from "../api";
 
-export function TenantErase({ org }: { org: Org }) {
-  const query = useQuery(eraseQuery(org.id));
-  return <QueryState q={query}>{data => <EraseControls org={org} data={data} />}</QueryState>;
-}
-
-function EraseControls({ org, data }: { org: Org; data: EraseRead }) {
+export function EraseControls({ org, data }: { org: Org; data: EraseRead }) {
   const [opening, setOpening] = useState(false);
   const [typed, setTyped] = useState("");
   const request = data.request;

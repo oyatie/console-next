@@ -7,12 +7,12 @@
 //! (`apply_drive`).
 
 use console_hr_domain::import::plan::{Decisions, PlannedRow};
-use console_kernel_core::KernelError;
+use console_kernel_core::{KernelError, TraceContext};
 use console_leave_adapter_postgres::PgLeaveError;
 use console_platform_db::DbError;
 use serde_json::{Value, json};
 use sqlx::Postgres;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, future::Future};
 use uuid::Uuid;
 
 use crate::import::apply_job::require_row_limit;
@@ -22,6 +22,19 @@ use crate::import::dry_run::{plan_digest, plan_run};
 use crate::import::store::import_run_for_update;
 use crate::import::types::EmployeeImportReport;
 use crate::{HrError, HrService};
+
+tokio::task_local! { static SUPPORT_REFERENCE: String; }
+
+/// Keep the transport reference across detached work and log-level filters.
+pub async fn with_apply_support_reference<F: Future>(reference: String, work: F) -> F::Output {
+    SUPPORT_REFERENCE.scope(reference, work).await
+}
+
+pub(super) fn apply_support_reference() -> String {
+    SUPPORT_REFERENCE
+        .try_with(Clone::clone)
+        .unwrap_or_else(|_| TraceContext::generate().trace_id().to_owned())
+}
 
 /// Name → ids of every ACTIVE Site/Department/Team in the armed tenant.
 pub async fn active_org_units_by_name(
@@ -87,23 +100,23 @@ fn changed_rows(stored: &Value, now: &[PlannedRow]) -> Value {
 pub(crate) fn apply_failure(error: PgLeaveError) -> HrError {
     if let PgLeaveError::Db(DbError::Sqlx(sqlx)) = &error
         && let Some(db) = sqlx.as_database_error()
+        && let Some(sqlstate @ ("42501" | "25P04" | "57014")) = db.code().as_deref()
     {
-        match db.code().as_deref() {
-            Some("42501") => {
-                return HrError::from_kernel(
-                    KernelError::forbidden("the import command was not admitted")
-                        .with_code("import_apply_forbidden"),
-                );
+        let support_reference = apply_support_reference();
+        tracing::warn!(sqlstate, %support_reference, "import command refused by the database");
+        return if sqlstate == "42501" {
+            HrError::from_kernel(
+                KernelError::forbidden("the import command was not admitted")
+                    .with_code("import_apply_forbidden"),
+            )
+        } else {
+            HrError {
+                code: "import_apply_timed_out",
+                ..HrError::unavailable(
+                    "the import exceeded the server time limit; nothing was written",
+                )
             }
-            Some("25P04") => {
-                return conflict(
-                    "import_apply_timed_out",
-                    "the import transaction exceeded the server time limit",
-                    json!([]),
-                );
-            }
-            _ => {}
-        }
+        };
     }
     if let PgLeaveError::Db(DbError::Sqlx(sqlx)) = &error
         && let Some(db) = sqlx.as_database_error()

@@ -1,3 +1,4 @@
+pub(super) mod account_binding;
 pub(super) mod audit_personnel;
 pub(super) mod entity_corrections;
 pub(super) mod grants;
@@ -12,3 +13,5 @@ pub(super) mod privacy_requests;
 pub(super) mod registration_checks;
 pub(super) mod setup;
 pub(super) mod support_access;
+#[cfg(feature = "todos")]
+pub(super) mod todos;

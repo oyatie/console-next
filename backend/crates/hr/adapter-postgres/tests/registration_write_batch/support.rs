@@ -100,6 +100,10 @@ pub fn assert_batched(queries: &trail_queries::Queries, expected: usize) {
     for sql in [
         "INSERT INTO employees (",
         "INSERT INTO persons (",
+        "INSERT INTO employment_heads",
+        "INSERT INTO employee_lifecycle_events",
+        "INSERT INTO lifecycle_cases (org_id,id,kind,variant",
+        "INSERT INTO lifecycle_case_items (org_id,case_id,item_key",
         "INSERT INTO employee_employment_profiles (",
         "UPDATE employee_create_idempotency SET employee_id",
     ] {
