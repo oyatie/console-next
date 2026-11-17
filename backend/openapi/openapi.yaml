@@ -43214,14 +43214,17 @@ components:
           $ref: '#/components/schemas/EmployeeImportReport'
         error:
           type: object
-          description: 'failed: the refusal (code, message, refusals) — e.g. rows_changed_since_preview, apply_interrupted.'
+          additionalProperties: false
+          description: 'failed: the typed refusal code, fixed redacted message and support reference. Legacy jobs may have no support reference.'
           required: [code, message]
           properties:
             code:
               type: string
             message:
               type: string
-            refusals: {}
+            support_ref:
+              type: string
+              description: Correlates the failure with its server log; absent on legacy jobs.
     EmployeeImportApplyRequest:
       type: object
       additionalProperties: false

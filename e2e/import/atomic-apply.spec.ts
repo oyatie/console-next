@@ -44,6 +44,17 @@ CREATE TRIGGER fail_import_settle AFTER INSERT ON audit_events FOR EACH ROW EXEC
   try {
     await admin.getByRole("button", { name: /^명부 반영: 신규 2명/ }).click();
     await expect.poll(async () => (await (await api(applyPath)).json()).state, { timeout: 60_000 }).toBe("failed");
+    const failed = await (await api(applyPath)).json();
+    expect(failed.error.code).toBe("internal");
+    expect(failed.error.message).toBe("internal server error");
+    expect(failed.error.support_ref).toMatch(/^[0-9a-f]{32}$/);
+    // Old jobs can contain driver text even though GET succeeds with 200.
+    psql(unique(slug), `UPDATE data_import_runs SET apply_job=jsonb_set(apply_job,'{error}',
+      '{"code":"internal","message":"private database value","refusals":["private row value"]}'::jsonb)
+      WHERE id='${run}';`);
+    const legacy = await api(applyPath);
+    expect(legacy.status()).toBe(200);
+    expect((await legacy.json()).error).toEqual({ code: "internal", message: "internal server error" });
     await shotSet(admin, "import-interrupted");
     await forgetResize(admin);
     expect(await headcount(api), "the failed apply must leave the roster empty").toBe(0);
