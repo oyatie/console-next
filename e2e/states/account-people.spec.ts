@@ -64,7 +64,8 @@ for (const intent of ["hover", "focus"] as const) test(`a person link ${intent} 
   try {
     await page.goto(`/people?view=accounts&sel=${linked.id}`);
     await routeReady(page);
-    const person = page.getByRole("region", { name: "직원 연결", exact: true }).getByRole("link", { name: /김직원.*EMP-12/ });
+    const person = page.getByRole("region", { name: t("accounts.section.employee"), exact: true })
+      .getByRole("link", { name: new RegExp(`${employee.name}.*${employee.employee_number}`) });
     const chunk = page.waitForResponse(/\/assets\/card-page-[^/]+\.js$/);
     if (intent === "hover") await person.hover();
     else await person.focus();
