@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { workbook } from "../helpers/import-layouts";
 import { apiOf, bearerOf } from "../helpers/api";
 
@@ -16,6 +16,7 @@ test("import conflict answers: 재직 with a future 입사일 comes in 입사 �
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "명부.xlsx", await workbook([{ name: "재직자", lines }]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   const answer = admin.getByRole("button", { name: "입사 예정으로 가져오기 (2행)" });
   await expect(answer).toBeVisible({ timeout: 30_000 });

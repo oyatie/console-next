@@ -2,34 +2,13 @@
 //! A settle refusal rolls back the whole import and keeps its typed reason.
 use sqlx::PgPool;
 
-use super::shared::{setup_headquarters, stage_roster};
+use super::shared::{HQ_ROW, setup_headquarters, stage_roster};
 use crate::harness::importer;
 
 async fn refused_settle(pool: PgPool, state: &str, status: u16, code: &str) {
     let i = importer(pool).await;
-    let (_, workplace) = setup_headquarters(&i, i.f.branch).await;
-    let workplace_name: String = sqlx::query_scalar(
-        "SELECT name FROM workplace_revisions WHERE org_id=$1 AND workplace_id=$2",
-    )
-    .bind(i.org())
-    .bind(workplace)
-    .fetch_one(&i.owner)
-    .await
-    .unwrap();
-    let (run, digest) = stage_roster(
-        &i,
-        "Roster",
-        &[&[
-            "REF-1",
-            "Example",
-            "2024-03-04",
-            "REGULAR",
-            &workplace_name,
-            "",
-            "Staff",
-        ]],
-    )
-    .await;
+    setup_headquarters(&i, i.f.branch).await;
+    let (run, digest) = stage_roster(&i, "Roster", &[&HQ_ROW]).await;
     sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
         "CREATE OR REPLACE FUNCTION import_api.set_employee_import_home_branch(\
          p_org UUID,p_run UUID,p_employee UUID,p_actor UUID,p_trace TEXT,p_span TEXT) \

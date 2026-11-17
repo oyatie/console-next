@@ -18,6 +18,8 @@ per category: Rust source, Rust test files, E2E, web test files, scripts, migrat
 docs, and other text. Inline Rust test modules remain in the source-file category.
 Tracked and non-ignored new UTF-8 files are checked; binary files, locale catalog source,
 and the generated API declaration `packages/api/src/schema.d.ts` are excluded.
+The typed employee import dictionary also owns multilingual header synonyms in its `fields[].aliases`;
+other text in that dictionary remains checked. Historical alias compatibility is retained as digest fixtures.
 Web product source keeps its zero-debt rule; only `.test.ts` and `.test.tsx` files are exempt.
 Pre-existing escaped product text is baselined; new escaped product text is refused.
 

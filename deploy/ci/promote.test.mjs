@@ -678,6 +678,11 @@ test('promotion workflow binds reusable gates, proof, permissions and channel se
   assert.equal(workflow.jobs.gates.with.sha, '${{ needs.proof.outputs.sha }}');
   assert.deepEqual(workflow.jobs.publish.needs, ['proof', 'gates']);
   assert.match(workflow.jobs.publish.if, /needs.gates.outputs.result == 'pass'/);
+  const gates = load(readFileSync(join(root, '.github/workflows/gates.yml'), 'utf8')).jobs.predicate;
+  assert.equal(gates.outputs.result, '${{ steps.predicate.outputs.verdict }}', 'github-script owns its own result output');
+  const baseline = gates.steps.find(step => step.run?.includes('GATES_BASE'));
+  assert.match(baseline.run, /^base="\$\(node deploy\/ci\/api-compat.mjs base\)"$/m, 'a failed baseline lookup fails the step');
+  assert.ok(!baseline.run.includes('tools.py'), 'installed tools reach PATH only in later steps');
   assert.match(workflow.jobs.publish.concurrency.group, /matrix.channel/);
   assert.equal(workflow.jobs.publish.concurrency['cancel-in-progress'], false);
   const permissions = workflow.jobs.publish.permissions;

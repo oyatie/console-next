@@ -1,6 +1,10 @@
 // Korean copy for `people.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 import type { enPeople } from "../en/people";
 export const koPeople: Record<keyof typeof enPeople, string> = {
+  "people.account.bindingReview": "직접 연결한 계정 검토",
+  "people.account.confirmBinding": "계정 연결 확인",
+  "people.account.revokeBinding": "계정 연결 취소",
+  "people.account.reviewed": "계정 연결 검토를 기록했습니다",
   "people.label.unnamed": "이름 없음",
   "people.label.identityMissing": "식별 정보 없음",
   "people.label.accountCreated": "계정 생성 {at}",
@@ -108,6 +112,13 @@ export const koPeople: Record<keyof typeof enPeople, string> = {
   "people.lifecycle.ack.change.retirement_settlement_ack": "퇴직금 정산 영향을 확인했습니다.",
   "people.lifecycle.ack.change.privacy_notice_ack": "이 인사 조치에 따른 개인정보 처리 사실을 직원에게 알렸습니다.",
   "people.account.title": "로그인 계정",
+  "people.account.confirmName": "성명 확인: {name}",
+  "people.account.confirmNameExample": "김하나",
+  "people.account.ownLink": "내 계정 연결",
+  "people.account.ownLinked": "내 계정을 연결했습니다",
+  "people.account.selfAttested": "본인 확인 연결 · 검토 대기",
+  "people.account.withdrawOwn": "내 계정 연결 철회",
+  "people.account.ownWithdrawn": "직접 연결한 계정을 철회했습니다",
   "people.account.waiting": "확인 대기",
   "people.account.pending": "확인 대기: {account} → {employee} · 요청자 {requester}",
   "people.account.unlink": "계정 연결 해제",

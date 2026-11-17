@@ -166,6 +166,20 @@ async fn a_branch_admin_reads_only_its_own_branch(pool: PgPool) {
     .await
     .unwrap();
     assert_eq!(read, vec![in_a.to_string()]);
+    // The end options are that person's hire date and exit state: the same reach.
+    hr.employee_end_options(&admin_a(), in_a).await.unwrap();
+    for other in [in_b, branchless] {
+        let err = hr
+            .employee_end_options(&admin_a(), other)
+            .await
+            .unwrap_err();
+        assert_eq!(
+            err.status,
+            StatusCode::NOT_FOUND,
+            "{other}: {}",
+            err.message
+        );
+    }
 
     // An org-wide reader still sees everyone, branchless included.
     let all = principal(org, user, Role::SuperAdmin, BranchScope::All);

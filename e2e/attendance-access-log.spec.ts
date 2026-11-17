@@ -147,7 +147,7 @@ test("attendance reads commit one access row naming the people returned", { tag:
   await expect(appoint).toBeHidden();
   await startOperations(admin);
   const operatingPanel = await openUnit(admin, SETUP_DEPARTMENT);
-  await operatingPanel.getByRole("button", { name: "이름 변경" }).click();
+  await operatingPanel.getByRole("button", { name: "부서 이름 수정", exact: true }).click();
   const renameInput = operatingPanel.getByRole("textbox", { name: new RegExp(`^${SETUP_DEPARTMENT}의 새 이름`) });
   await renameInput.fill("접속기록 부서");
   await inlineUnitDetails(admin, operatingPanel, kstDate(3));

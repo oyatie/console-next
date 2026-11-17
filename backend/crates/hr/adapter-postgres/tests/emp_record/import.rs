@@ -147,12 +147,12 @@ async fn exported_sheet_comes_back_as_corrections_and_voids(pool: PgPool) {
     .unwrap();
 
     let export =
-        f.hr.record_section_sheet(p(), s, None, Some(1))
+        f.hr.record_section_sheet(p(), s, None, Some(1), Some("INTERNAL_REVIEW"))
             .await
             .unwrap();
     assert_eq!(export.items.len(), 1);
     let rest =
-        f.hr.record_section_sheet(p(), s, export.next_after, None)
+        f.hr.record_section_sheet(p(), s, export.next_after, None, Some("INTERNAL_REVIEW"))
             .await
             .unwrap();
     assert!(rest.next_after.is_none());
@@ -200,7 +200,7 @@ async fn exported_sheet_comes_back_as_corrections_and_voids(pool: PgPool) {
         (2, "고친대학교")
     );
     assert_eq!(
-        f.hr.record_section_sheet(p(), s, None, None)
+        f.hr.record_section_sheet(p(), s, None, None, Some("INTERNAL_REVIEW"))
             .await
             .unwrap()
             .items

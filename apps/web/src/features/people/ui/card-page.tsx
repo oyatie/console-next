@@ -19,21 +19,18 @@ import { unitsQuery } from "../../../reference/org/api";
 import { authzApplies, authzQuery, granted } from "../../../reference/authz/api";
 import { verbStates } from "../domain/lifecycle";
 import type { Done } from "./person-act";
-import { ProfileHost } from "./profile-host";
 import { CardBar, CardBody } from "./card-body";
 import { CardHead, type CardTab } from "./card-head";
 import { chunk } from "../../../lib/chunk-guard";
 import { CardSkeleton } from "./card-states";
 import { CardTabs } from "./card-tabs";
-import { FixHost } from "./fix-host";
 import { useCard } from "./use-card";
 import { useQuick } from "./use-quick";
 import { directorySearch } from "./use-linked-account";
-import { CaseSheet } from "./lifecycle-trail";
 import { PeopleJump } from "./people-jump";
 import s from "./card.module.css";
 
-const ActHost = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.ActHost })));
+const CardActions = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.CardActions })));
 const CardPrint = lazy(() => chunk(import("./card-print")).then(m => ({ default: m.CardPrint })));
 
 type Detail = components["schemas"]["EmployeeDetail"];
@@ -80,6 +77,9 @@ function Card({ d }: { d: Detail }) {
   const c = useCard(d);
   const quick = useQuick(c);
   const { act, back, tab: requestedTab = "card" } = route.useSearch();
+  // Keep action hosts mounted after their first use so closing a sheet preserves its receipt.
+  const [actionsOpened, setActionsOpened] = useState(Boolean(act));
+  if (act && !actionsOpened) setActionsOpened(true);
   const documents = useDocumentsServed();
   const tab = requestedTab === "docs" && !documents ? "card" : requestedTab;
   const navigate = route.useNavigate();
@@ -144,10 +144,7 @@ function Card({ d }: { d: Detail }) {
         <CardHead c={c} onTab={onTab} onAct={open} onGo={go} onKeys={(next, prev) => Object.assign(keys.current, { next, prev })} />
         {tab === "card" && c.manage && <CardBar c={c} current={current} onJump={jumpTo} />}
       </div>
-      {act && <Suspense fallback={null}><ActHost d={d} act={act} back={back} events={c.events} onClose={close} onOpen={open} onRecorded={recorded} /></Suspense>}
-      <ProfileHost d={d} act={act} onClose={close} />
-      <FixHost c={c} act={act} onClose={close} onAct={open} />
-      {act?.startsWith("case:") && <CaseSheet id={act.slice(5)} onClose={close} />}
+      {actionsOpened && <Suspense fallback={null}><CardActions c={c} act={act} back={back} onClose={close} onOpen={open} onRecorded={recorded} /></Suspense>}
       {tab === "card" ? (
         <CardBody c={c} quick={quick} act={act} onAct={open} onTab={onTab} onJump={jumpTo} />
       ) : (

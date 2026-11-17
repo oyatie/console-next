@@ -1,5 +1,7 @@
 operationId: exportWorkerRegister
 tags: [HR]
+description: Every register row in reach as a download. export_purpose is required; the download is logged
+  (excel_export_logs and an employee.export access log row naming the log row) and a refusal as employee.export_refused.
 parameters:
 - { in: query, name: workplace_id, required: true, schema: { type: string, format: uuid } }
 - { in: query, name: as_of, required: true, schema: { type: string, format: date } }

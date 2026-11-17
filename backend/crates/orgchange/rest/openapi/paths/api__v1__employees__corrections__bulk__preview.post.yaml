@@ -5,8 +5,9 @@ summary: Preview a bulk correction of scalar employee fields (MR-27)
 description: >-
   Grid or "all n people matching the filter". Send either selection + changes (one set of values for every
   employee the server selection matches; status absent selects everyone but EXITED) or rows (each
-  employee with its own values and optional expected_updated_at pin). Nothing is written and no row is
-  locked. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk
+  employee with its own values and optional expected_updated_at pin). No employee field is written and no row
+  is locked; the rows show each person's stored values, so one employee.list_read access log row names the
+  people whose record was read and the fields, never the values. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk
   field goes to a second person), UNCHANGED (every value already recorded) or REFUSED with the failed
   precondition (stale_record, exit_date_needs_exit, employee_number_in_use, employee_merged,
   employee_correction_sole_holder_refused, a field's validation, ...), and the exact counts.

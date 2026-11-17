@@ -3,7 +3,7 @@ use console_hr_adapter_postgres::directory::read_list::EmployeeListQuery;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::shared::{setup_headquarters, stage_roster};
+use super::shared::{HQ_ROW, setup_headquarters, stage_roster};
 use crate::harness::importer;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -18,7 +18,7 @@ async fn test_import_sheet_placing_people_sets_home_branch_and_clears_review_and
         &i,
         "본사 명단",
         &[
-            &["E-101", "김일", "2024-03-04", "정규직", "본사", "", "사원"],
+            &HQ_ROW,
             &["E-102", "김이", "2024-03-04", "정규직", "본사", "", "대리"],
             &["E-103", "김삼", "2024-03-04", "정규직", "본사", "", "과장"],
         ],

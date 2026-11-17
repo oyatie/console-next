@@ -20,6 +20,8 @@ for (const [name, files, expected] of [
   ["CI and tooling", [".github/workflows/ci.yml", "scripts/check.mjs"], both],
   ["documentation", ["README.md", "CONTRIBUTING.md", "docs/apps/x.md", "docs/security/code-scanning-triage.md", "docs/quality/dependency-owner-summary.md"], both],
   ["unknown", ["new-area/source.txt", ".cargo/config.toml", "tsconfig.json", "deploy/backend/x.rs"], both],
+  ["import catalogue labels", ["packages/i18n/src/catalogs/ko/import.ts", "packages/i18n/src/catalogs/en/import.ts"], both],
+  ["import catalogue data", ["backend/crates/hr/domain/data/employee.json"], backend],
   ["shared backend contracts", ["backend/openapi/openapi.yaml", "backend/openapi/ops.yaml", "backend/openapi/schemas/Example.yaml"], both],
 ]) {
   test(`classifies each ${name} path`, async () => {

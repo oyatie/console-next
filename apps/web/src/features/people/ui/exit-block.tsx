@@ -2,7 +2,8 @@ import { retirementDate } from "../domain/employment";
 import { commitLabel } from "../../../ui/composer/actions";
 import { exitUndoVerb } from "../domain/exits";
 import { ReceiptReference } from "../../../ui/composer/receipt-reference";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
+import { chunk } from "../../../lib/chunk-guard";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
@@ -21,13 +22,14 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import { caseQuery, exitCasesQuery } from "../api";
 import { whoLine } from "../present";
 import { isClosed, isForward, type BackKey, type ForwardKey } from "../domain/exits";
-import { StepForm } from "./exit-axis";
-import { CloseForm } from "./exit-close";
 import { RelDay } from "./exit-facts";
-import { ReportForm } from "./exit-report";
 import { useCaseActions, useOwnRecord } from "./use-case-actions";
 import s from "./exit.module.css";
 import { Muted } from "../../../ui/muted/muted";
+
+const StepForm = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.StepForm })));
+const CloseForm = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.CloseForm })));
+const ReportForm = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.ReportForm })));
 
 type Case = components["schemas"]["EmployeeExitCase"];
 type Employee = components["schemas"]["Employee"];
@@ -106,7 +108,7 @@ export function ExitCases({ employee, act }: { employee: Employee; act?: string 
           </>
         )}
       </QueryState>
-      <ActSheet act={act} want={want} target={target} employee={employee} canReport={canReport} loaded={cases.isSuccess} onClose={() => show()} onDone={done} />
+      <Suspense fallback={null}><ActSheet act={act} want={want} target={target} employee={employee} canReport={canReport} loaded={cases.isSuccess} onClose={() => show()} onDone={done} /></Suspense>
     </section>
   );
 }

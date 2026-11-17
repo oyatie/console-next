@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { firstSignIn, go } from "../flows";
 import { openTenant } from "../helpers/tenant";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { apiOf, bearerOf } from "../helpers/api";
 import { registerEntity } from "../setup-flows";
 import { firstWorkplace } from "../helpers/entity";
@@ -27,6 +27,7 @@ test("merged workbook company cells remain an explicit source queue and create n
   await go(p, "/people/import");
   await chooseWorkbook(p, "회사_대표자_명부.xlsx", await source());
   await p.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(p);
   await p.getByRole("button", { name: "모의 반영 실행" }).click();
   const alias = p.getByRole("grid", { name: "값 연결 · 소속 이름 후보" }).getByRole("row", { name: /^김예시,박예시/ });
   await expect(alias).toBeVisible();
