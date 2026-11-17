@@ -1,5 +1,5 @@
 {
-  "_generated_by": "console-hr-domain example import_aliases; edit import/fields.rs or fields_org.rs",
+  "_generated_by": "console-hr-domain example import_aliases; edit data/employee.json or import/fields_org.rs",
   "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
   "aliases": {
     "code": [

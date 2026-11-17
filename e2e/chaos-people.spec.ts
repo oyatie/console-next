@@ -7,7 +7,7 @@ import { go, kstDate } from "./flows";
 import { setupCompany } from "./setup-flows";
 import { addDepartments } from "./structure-flows";
 import { rosterXlsx } from "./workbook";
-import { chooseWorkbook, payPeriod } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "./helpers/import";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -75,6 +75,7 @@ async function dryRun(admin: Page, company: string, file: string, rows: string[]
   await chooseWorkbook(admin, file, await rosterXlsx(company, rows));
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
 }
 

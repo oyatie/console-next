@@ -16,7 +16,7 @@ export const unmappedCompaniesQuery = get("/api/v1/employment-assignments/unmapp
 export const mapCompany = (key: string, body: { company_text: string; legal_entity_id: string; workplace_id: string }) =>
   unwrap(api.POST("/api/v1/employment-assignments/map-company", { params: { header: { "Idempotency-Key": key } }, body }));
 
-export const employeeQuery = (id: string) => get("/api/v1/employees/{id}", { params: { path: { id } } });
+export { employeeQuery } from "./api/employee-read";
 export const exitGuardsQuery = (id: string, effective_exit_date: string, exit_reason_code: string | null, dismissal_notice_served_on?: string) =>
   get("/api/v1/employees/{id}/exit-guards", { params: { path: { id }, query: { effective_exit_date, exit_reason_code: exit_reason_code ?? undefined, dismissal_notice_served_on: dismissal_notice_served_on || undefined } } });
 export const eventsQuery = (id: string) => get("/api/v1/employees/{id}/lifecycle-events", { params: { path: { id } } });

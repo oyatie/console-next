@@ -3,7 +3,7 @@ import { expectAccessible } from "../a11y";
 import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
 import { addDepartments } from "../structure-flows";
-import { chooseWorkbook, payPeriod } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "../helpers/import";
 import { crew, empty, notes, plain, rrn, titled, workbook, type Row } from "../helpers/import-layouts";
 import { gridRow, openItem, openRow, panel, queue, rowsGrid, settled } from "../helpers/import-queue";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
@@ -38,6 +38,7 @@ async function upload(admin: Page, name: string, buffer: Buffer, open = true) {
   await chooseWorkbook(admin, name, buffer);
   await payPeriod(admin);
   await button(admin, "명부 미리보기").click();
+  await confirmImportColumns(admin);
   await expect(step(admin)).toHaveText("열 확인", { timeout: 30_000 });
 }
 

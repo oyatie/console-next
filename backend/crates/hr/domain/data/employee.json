@@ -1,0 +1,709 @@
+{
+  "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "object": "employee",
+  "fields": [
+    {
+      "target": "name",
+      "aliases": [
+        "성명",
+        "이름",
+        "직원명",
+        "사원명",
+        "근로자명",
+        "임직원명",
+        "name",
+        "employee_name",
+        "employeename",
+        "worker_name",
+        "workername"
+      ],
+      "classification": "canonical",
+      "required": true,
+      "label_ids": {
+        "ko": "import.target.name",
+        "en": "import.target.name"
+      },
+      "value_type": "text",
+      "format": "text",
+      "example": "Synthetic example",
+      "code_catalogue": null
+    },
+    {
+      "target": "employee_number",
+      "aliases": [
+        "사번",
+        "사원번호",
+        "직원번호",
+        "사용자ID",
+        "user_id",
+        "userid",
+        "employee_id",
+        "employeeid",
+        "employee_number",
+        "employeenumber",
+        "staff_id",
+        "staffid"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.employee_number",
+        "en": "import.target.employee_number"
+      },
+      "value_type": "text",
+      "format": "text",
+      "example": "SYN-0001",
+      "code_catalogue": null
+    },
+    {
+      "target": "org_unit",
+      "aliases": [
+        "본부",
+        "부문",
+        "부",
+        "실",
+        "파트",
+        "과",
+        "그룹",
+        "division",
+        "sector",
+        "part",
+        "section",
+        "group",
+        "unit",
+        "부서명",
+        "부서",
+        "소속",
+        "소속부서",
+        "조직",
+        "팀",
+        "org_unit",
+        "orgunit",
+        "department",
+        "dept",
+        "team"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.org_unit",
+        "en": "import.target.org_unit"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "Synthetic catalogue label",
+      "code_catalogue": {
+        "source": "tenant",
+        "resource": "org_units"
+      }
+    },
+    {
+      "target": "job",
+      "aliases": [
+        "업무",
+        "담당업무",
+        "종사업무",
+        "종사하는업무",
+        "직무",
+        "직종",
+        "job",
+        "work_type",
+        "worktype"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.job",
+        "en": "import.target.job"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "Synthetic catalogue label",
+      "code_catalogue": {
+        "source": "tenant",
+        "resource": "job_titles",
+        "kind": "JOB"
+      }
+    },
+    {
+      "target": "position",
+      "aliases": [
+        "직책",
+        "직위",
+        "직함",
+        "position",
+        "title"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.position",
+        "en": "import.target.position"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "Synthetic catalogue label",
+      "code_catalogue": {
+        "source": "tenant",
+        "resource": "job_titles",
+        "kind": "TITLE"
+      }
+    },
+    {
+      "target": "workplace",
+      "aliases": [
+        "사업장",
+        "사업장명",
+        "사업소",
+        "근무사업장",
+        "workplace",
+        "workplace_name"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.workplace",
+        "en": "import.target.workplace"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "Synthetic catalogue label",
+      "code_catalogue": {
+        "source": "tenant",
+        "resource": "workplaces"
+      }
+    },
+    {
+      "target": "worksite_name",
+      "aliases": [
+        "근무지",
+        "현장",
+        "현장명",
+        "worksite",
+        "site"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.worksite_name",
+        "en": "import.target.worksite_name"
+      },
+      "value_type": "text",
+      "format": "text",
+      "example": "Synthetic example",
+      "code_catalogue": null
+    },
+    {
+      "target": "worksite_address",
+      "aliases": [
+        "근무지(주소)",
+        "근무지주소",
+        "근무지주소지",
+        "현장주소",
+        "사업장주소",
+        "worksite_address",
+        "worksiteaddress",
+        "workplace_address",
+        "workplaceaddress",
+        "site_address",
+        "siteaddress"
+      ],
+      "classification": "location",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.worksite_address",
+        "en": "import.target.worksite_address"
+      },
+      "value_type": "text",
+      "format": "text",
+      "example": "Synthetic example",
+      "code_catalogue": null
+    },
+    {
+      "target": "hire_date",
+      "aliases": [
+        "입사일",
+        "입사일자",
+        "채용일",
+        "보험가입일",
+        "hire_date",
+        "hiredate",
+        "start_date",
+        "startdate"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.hire_date",
+        "en": "import.target.hire_date"
+      },
+      "value_type": "date",
+      "format": "iso_date",
+      "example": "2026-01-15",
+      "code_catalogue": null
+    },
+    {
+      "target": "exit_date",
+      "aliases": [
+        "퇴사일",
+        "퇴사일자",
+        "퇴직일",
+        "보험상실일",
+        "exit_date",
+        "exitdate",
+        "end_date",
+        "enddate",
+        "termination_date",
+        "terminationdate"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.exit_date",
+        "en": "import.target.exit_date"
+      },
+      "value_type": "date",
+      "format": "iso_date",
+      "example": "2026-01-15",
+      "code_catalogue": null
+    },
+    {
+      "target": "sex",
+      "aliases": [
+        "성별",
+        "남녀",
+        "sex",
+        "gender"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.sex",
+        "en": "import.target.sex"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "MALE",
+      "code_catalogue": {
+        "source": "domain",
+        "resource": "import::sex::sex_of_text"
+      }
+    },
+    {
+      "target": "contract_end_date",
+      "aliases": [
+        "계약종료일",
+        "계약만료일",
+        "계약기간종료일",
+        "계약종료",
+        "contract_end",
+        "contract_end_date"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.contract_end_date",
+        "en": "import.target.contract_end_date"
+      },
+      "value_type": "date",
+      "format": "iso_date",
+      "example": "2026-01-15",
+      "code_catalogue": null
+    },
+    {
+      "target": "probation_end_date",
+      "aliases": [
+        "수습종료일",
+        "수습만료일",
+        "수습기간종료일",
+        "수습종료",
+        "probation_end",
+        "probation_end_date"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.probation_end_date",
+        "en": "import.target.probation_end_date"
+      },
+      "value_type": "date",
+      "format": "iso_date",
+      "example": "2026-01-15",
+      "code_catalogue": null
+    },
+    {
+      "target": "birth_date",
+      "aliases": [
+        "생년월일",
+        "birth_date",
+        "birthdate",
+        "date_of_birth",
+        "dob"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.birth_date",
+        "en": "import.target.birth_date"
+      },
+      "value_type": "date",
+      "format": "iso_date",
+      "example": "2026-01-15",
+      "code_catalogue": null
+    },
+    {
+      "target": "leave_accrued",
+      "aliases": [
+        "발생연차",
+        "연차발생",
+        "부여연차",
+        "발생휴가",
+        "leave_accrued",
+        "leaveaccrued"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.leave_accrued",
+        "en": "import.target.leave_accrued"
+      },
+      "value_type": "decimal",
+      "format": "decimal_days",
+      "example": "8.5",
+      "code_catalogue": null
+    },
+    {
+      "target": "leave_used",
+      "aliases": [
+        "사용연차",
+        "연차사용",
+        "사용휴가",
+        "leave_used",
+        "leaveused"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.leave_used",
+        "en": "import.target.leave_used"
+      },
+      "value_type": "decimal",
+      "format": "decimal_days",
+      "example": "8.5",
+      "code_catalogue": null
+    },
+    {
+      "target": "leave_remaining",
+      "aliases": [
+        "잔여연차",
+        "남은연차",
+        "연차잔여",
+        "잔여휴가",
+        "leave_balance",
+        "leavebalance",
+        "leave_remaining",
+        "leaveremaining"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.leave_remaining",
+        "en": "import.target.leave_remaining"
+      },
+      "value_type": "decimal",
+      "format": "decimal_days",
+      "example": "8.5",
+      "code_catalogue": null
+    },
+    {
+      "target": "work_days",
+      "aliases": [
+        "근무일수",
+        "근무일"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.work_days",
+        "en": "import.target.work_days"
+      },
+      "value_type": "decimal",
+      "format": "decimal_days",
+      "example": "8.5",
+      "code_catalogue": null
+    },
+    {
+      "target": "regular_hours",
+      "aliases": [
+        "근무시간",
+        "기본시간",
+        "기본근무"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.regular_hours",
+        "en": "import.target.regular_hours"
+      },
+      "value_type": "decimal",
+      "format": "decimal_hours",
+      "example": "8.5",
+      "code_catalogue": null
+    },
+    {
+      "target": "overtime_hours",
+      "aliases": [
+        "연장시간",
+        "특근연장시간",
+        "특근연장"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.overtime_hours",
+        "en": "import.target.overtime_hours"
+      },
+      "value_type": "decimal",
+      "format": "decimal_hours",
+      "example": "8.5",
+      "code_catalogue": null
+    },
+    {
+      "target": "night_hours",
+      "aliases": [
+        "심야시간"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.night_hours",
+        "en": "import.target.night_hours"
+      },
+      "value_type": "decimal",
+      "format": "decimal_hours",
+      "example": "8.5",
+      "code_catalogue": null
+    },
+    {
+      "target": "holiday_hours",
+      "aliases": [
+        "특근시간"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.holiday_hours",
+        "en": "import.target.holiday_hours"
+      },
+      "value_type": "decimal",
+      "format": "decimal_hours",
+      "example": "8.5",
+      "code_catalogue": null
+    },
+    {
+      "target": "employment_type",
+      "aliases": [
+        "고용형태",
+        "고용구분",
+        "고용유형",
+        "계약형태",
+        "employment_type",
+        "employmenttype"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.employment_type",
+        "en": "import.target.employment_type"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "REGULAR",
+      "code_catalogue": {
+        "source": "domain",
+        "resource": "profile::enums::EmploymentType"
+      }
+    },
+    {
+      "target": "company_brn",
+      "aliases": [
+        "사업자등록번호",
+        "등록번호",
+        "company_brn",
+        "registration_number",
+        "registration number",
+        "business registration number"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.company_brn",
+        "en": "import.target.company_brn"
+      },
+      "value_type": "text",
+      "format": "business_registration_number",
+      "example": "000-00-00001",
+      "code_catalogue": null
+    },
+    {
+      "target": "company",
+      "aliases": [
+        "회사",
+        "법인",
+        "회사명",
+        "법인명",
+        "company name",
+        "entity",
+        "소속회사",
+        "계열사",
+        "조직회사",
+        "company",
+        "corporation",
+        "legal_entity",
+        "legalentity"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.company",
+        "en": "import.target.company"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "Synthetic catalogue label",
+      "code_catalogue": {
+        "source": "tenant",
+        "resource": "legal_entities"
+      }
+    },
+    {
+      "target": "rrn",
+      "aliases": [
+        "주민등록번호",
+        "주민번호",
+        "rrn",
+        "resident_registration_number"
+      ],
+      "classification": "restricted",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.rrn",
+        "en": "import.target.rrn"
+      },
+      "value_type": "text",
+      "format": "resident_registration_number",
+      "example": "900101-1000000",
+      "code_catalogue": null
+    },
+    {
+      "target": "phone",
+      "aliases": [
+        "휴대폰",
+        "휴대폰번호",
+        "휴대전화",
+        "휴대전화번호",
+        "핸드폰",
+        "핸드폰번호",
+        "연락처",
+        "전화번호",
+        "전화",
+        "phone",
+        "phone_number",
+        "mobile"
+      ],
+      "classification": "restricted",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.phone",
+        "en": "import.target.phone"
+      },
+      "value_type": "text",
+      "format": "e164",
+      "example": "+821000000000",
+      "code_catalogue": null
+    },
+    {
+      "target": "employment_status",
+      "aliases": [
+        "재직상태",
+        "재직구분",
+        "재직여부",
+        "근무상태",
+        "employment_status"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.employment_status",
+        "en": "import.target.employment_status"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "ACTIVE",
+      "code_catalogue": {
+        "source": "domain",
+        "resource": "import::normalize::STATUS_CODES"
+      }
+    },
+    {
+      "target": "leave_start_date",
+      "aliases": [
+        "휴직시작일",
+        "휴직개시일",
+        "휴직일",
+        "leave_start_date"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.leave_start_date",
+        "en": "import.target.leave_start_date"
+      },
+      "value_type": "date",
+      "format": "iso_date",
+      "example": "2026-01-15",
+      "code_catalogue": null
+    },
+    {
+      "target": "leave_type",
+      "aliases": [
+        "휴직구분",
+        "휴직유형",
+        "휴직종류",
+        "leave_type"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.leave_type",
+        "en": "import.target.leave_type"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "OTHER",
+      "code_catalogue": {
+        "source": "domain",
+        "resource": "lifecycle::leave_facts::LEAVE_TYPES"
+      }
+    },
+    {
+      "target": "leave_return_date",
+      "aliases": [
+        "복직예정일",
+        "복귀예정일",
+        "휴직종료예정일",
+        "expected_return_date"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.leave_return_date",
+        "en": "import.target.leave_return_date"
+      },
+      "value_type": "date",
+      "format": "iso_date",
+      "example": "2026-01-15",
+      "code_catalogue": null
+    }
+  ]
+}

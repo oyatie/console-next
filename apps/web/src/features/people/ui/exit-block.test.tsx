@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test, vi } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToReadableStream } from "react-dom/server";
 import type { components } from "@console/api/schema";
 import { loadCatalog, t } from "@console/i18n";
 import type { ReactNode } from "react";
@@ -32,11 +32,19 @@ vi.mock("./exit-close", () => ({ CloseForm: () => null }));
 vi.mock("./exit-report", () => ({ ReportForm: () => null }));
 vi.mock("./exit-facts", () => ({ RelDay: () => null }));
 
+vi.mock("./person-act", async () => ({ ...await import("./exit-axis"), ...await import("./exit-close"), ...await import("./exit-report") }));
+
 beforeAll(() => loadCatalog("ko"));
 
-test.each([undefined, "exit.report"])("receipt space is reserved only for an open report (%s)", (act) => {
+async function markup(element: ReactNode) {
+  const stream = await renderToReadableStream(element);
+  await stream.allReady;
+  return new Response(stream).text();
+}
+
+test.each([undefined, "exit.report"])("receipt space is reserved only for an open report (%s)", async (act) => {
   reads.cases = [];
-  const html = renderToStaticMarkup(<ExitCases employee={{ id: "person", name: "한기록", status: "ACTIVE" } as components["schemas"]["Employee"]} act={act} />);
+  const html = await markup(<ExitCases employee={{ id: "person", name: "한기록", status: "ACTIVE" } as components["schemas"]["Employee"]} act={act} />);
   expect(html.includes(s.receiptSlot!)).toBe(act === "exit.report");
 });
 
@@ -45,31 +53,31 @@ function sheet(detail?: Case, error: Error | null = null) {
   reads.cases = [c];
   reads.detail = detail;
   reads.error = error;
-  return renderToStaticMarkup(<ExitCases employee={{ id: "person-1", name: "Synthetic employee", status: "ACTIVE" } as components["schemas"]["Employee"]} act="exit.confirm_exit:case-1" />);
+  return markup(<ExitCases employee={{ id: "person-1", name: "Synthetic employee", status: "ACTIVE" } as components["schemas"]["Employee"]} act="exit.confirm_exit:case-1" />);
 }
 
-test("the HR sheet opens from its list row while the detail read is pending", () => {
-  expect(sheet()).toContain('role="dialog">case-1');
-  expect(sheet()).toMatch(/<button[^>]*disabled=""/);
+test("the HR sheet opens from its list row while the detail read is pending", async () => {
+  expect(await sheet()).toContain('role="dialog">case-1');
+  expect(await sheet()).toMatch(/<button[^>]*disabled=""/);
 });
 
-test("the HR sheet refines the list row with the authorized protected periods", () => {
+test("the HR sheet refines the list row with the authorized protected periods", async () => {
   const detail = { id: "case-1", protected_periods: [{ lifecycle_event_id: "leave-1", article: "제23조제2항" }] } as unknown as Case;
-  expect(sheet(detail)).toContain("제23조제2항");
-  expect(sheet(detail)).not.toMatch(/<button[^>]*disabled=/);
+  expect(await sheet(detail)).toContain("제23조제2항");
+  expect(await sheet(detail)).not.toMatch(/<button[^>]*disabled=/);
 });
 
-test("a failed case-detail read keeps confirmation disabled and offers its retry", () => {
-  const html = sheet(undefined, new Error("detail unavailable"));
+test("a failed case-detail read keeps confirmation disabled and offers its retry", async () => {
+  const html = await sheet(undefined, new Error("detail unavailable"));
   expect(html).toMatch(/<button[^>]*disabled=""/);
   expect(html).toContain(t("common.retry"));
   reads.error = null;
 });
 
 
-test("a same-day last working day displays tomorrow as the scheduled retirement date", () => {
+test("a same-day last working day displays tomorrow as the scheduled retirement date", async () => {
   reads.cases = [{ id: "scheduled", status: "HR_CONFIRMED", effective_exit_date: "2026-10-24", exit_event_state: "SCHEDULED" }];
-  const html = renderToStaticMarkup(<ExitCases employee={{ id: "person", name: "경계직원", status: "ACTIVE" } as components["schemas"]["Employee"]} />);
+  const html = await markup(<ExitCases employee={{ id: "person", name: "경계직원", status: "ACTIVE" } as components["schemas"]["Employee"]} />);
   expect(html).toContain("2026. 10. 25. 퇴직");
   expect(html).toContain("2026. 10. 25.에 퇴직 처리가 반영됩니다");
   expect(html).not.toContain("2026. 10. 24. 퇴직");

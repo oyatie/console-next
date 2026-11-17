@@ -45,6 +45,7 @@ const queryClient = new QueryClient({
 // Screens are lazy route chunks; the entry keeps only the router, shell and sign-in.
 const router = createRouter({
   routeTree: routeTree,
+  context: { queryClient },
   defaultPreload: "intent",
   scrollRestoration: true,
   // Paint resolved parents while a screen chunk loads, retaining the shell and its session observers.

@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
+import { hangulDebt } from "./check-hangul.mjs";
 import { fixture, ko } from "./test-fixtures/hangul.mjs";
 
 
@@ -283,4 +284,14 @@ test("multiline static selector constructors are counted on their original lines
   const result = f.run();
   assert.equal(result.status, 1, result.stdout);
   assert.match(result.stderr, /e2e: now 2, baseline 0/);
+});
+
+test("the declared import dictionary owns header synonyms without exempting other text or fixtures", () => {
+  const file = "backend/crates/hr/domain/data/employee.json";
+  const catalogue = { object: "employee", fields: [{ target: "name", aliases: [ko], label_ids: { ko: "import.target.name", en: "import.target.name" } }] };
+  const check = (file, data) => hangulDebt([{ file, text: JSON.stringify(data) }], []);
+  assert.deepEqual(check(file, catalogue).counts, {});
+  assert.equal(check("backend/crates/hr/domain/tests/fixtures/input.json", catalogue).counts.other, 1);
+  assert.equal(check(file, { ...catalogue, note: ko }).counts.other, 1);
+  assert.throws(() => check(file, { fields: [{ aliases: [123] }] }), /aliases must be strings/);
 });

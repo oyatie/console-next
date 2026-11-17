@@ -1,8 +1,12 @@
-//! The two reads: the preview (no locks, nothing written) and a recorded job.
+//! The two reads: the preview (no locks; only its access record is written)
+//! and a recorded job.
+
+use std::collections::BTreeSet;
 
 use console_kernel_core::KernelError;
 use console_platform_authz::{Feature, Principal};
-use console_platform_db::with_org_conn;
+use console_platform_db::{with_audits, with_org_conn};
+use serde_json::json;
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -13,6 +17,7 @@ use super::{
 };
 use crate::authz::authorize_hr_org_wide;
 use crate::corrections::{SecondPersonContext, normalize_value, route_or_refuse};
+use crate::directory::access_log::{DirectoryAccess, access_event, actor_employee_id};
 use crate::requests::{note, reason_code};
 use crate::{HrError, HrService};
 
@@ -41,7 +46,9 @@ fn count(row: &sqlx::postgres::PgRow, column: &str) -> Result<usize, HrError> {
 }
 
 impl HrService {
-    /// POST `/api/v1/employees/corrections/bulk/preview`.
+    /// POST `/api/v1/employees/corrections/bulk/preview`. The rows show each
+    /// selected person's stored values, so the preview is a list read: one
+    /// access record names the people whose record was read and the fields.
     pub async fn preview_bulk_correction(
         &self,
         principal: Principal,
@@ -52,11 +59,34 @@ impl HrService {
         let (reason, note) = check_request(&body)?;
         let org = principal.org_id;
         let org_uuid = *org.as_uuid();
-        with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
+        with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let inputs = resolve(tx, &body).await?;
                 let planned = plan(tx, org_uuid, &inputs, holders).await?;
-                preview(&planned, &reason, note.as_deref())
+                let preview = preview(&planned, &reason, note.as_deref())?;
+                let shown: Vec<Uuid> = planned
+                    .iter()
+                    .filter(|p| p.head.is_some())
+                    .map(|p| p.row.employee_id)
+                    .collect();
+                let fields: BTreeSet<&str> = preview
+                    .rows
+                    .iter()
+                    .flat_map(|r| r.fields.iter().map(|f| f.field.as_str()))
+                    .collect();
+                let me = actor_employee_id(tx, &principal).await?;
+                let event = access_event(
+                    &principal,
+                    DirectoryAccess::List,
+                    &shown,
+                    me,
+                    json!({
+                        "view": "bulk_correction_preview",
+                        "fields": fields,
+                        "row_count": preview.rows.len(),
+                    }),
+                )?;
+                Ok((preview, vec![event]))
             })
         })
         .await

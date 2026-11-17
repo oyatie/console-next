@@ -183,8 +183,18 @@ if (!existsSync(BIN)) throw new Error(`no backend binary at ${BIN}; build with \
 
 // --reset: start from an empty database (E2E runs the whole onboarding path, and the
 // cold-start code is single-use).
-if (process.argv.includes("--reset")) {
-  must(compose(["down", "-v"]), "reset");
+const reset = process.argv.includes("--reset");
+// Reclaim this project's interrupted stack before allocating a network; reuse keeps its volumes.
+must(compose(["down", "--remove-orphans", ...(reset ? ["-v"] : [])]), reset ? "reset" : "previous stack cleanup");
+// Register before up: even a partially started stack must be removed on failure or a signal.
+process.once("exit", () => {
+  const result = compose(["down", "--remove-orphans"]);
+  if (result.status !== 0) {
+    console.error(`compose teardown failed (exit ${result.status}): ${result.error?.message ?? "see Docker diagnostics"}`);
+    process.exitCode ||= 1;
+  }
+});
+if (reset) {
   if (postgresContainer) resetServicePostgres();
   // The vendor's passkey (e2e/flows.ts) belongs to the database just dropped.
   rmSync(path.join(CACHE, "vendor-passkey.json"), { force: true });

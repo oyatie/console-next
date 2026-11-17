@@ -3,7 +3,9 @@ use crate::authz::push_reach_at_unit;
 use crate::authz::{Tier, hr_reach_in, out_of_scope, place_in_reach};
 use crate::clock::today_kst;
 use crate::directory::access_log::{DirectoryAccess, access_event, actor_employee_id};
-use crate::directory::read_export::{EXPORT_PURPOSES, export_purpose_required};
+use crate::directory::read_export::{
+    EXPORT_PURPOSES, export_purpose_required, log_export, scope_key,
+};
 use crate::directory::read_export_register::{ExportLayout, REGISTER_SELECT, register_cells};
 use crate::{HrError, HrService};
 use console_hr_domain::text::parse_yyyy_mm_dd;
@@ -88,12 +90,15 @@ impl HrService {
     ) -> Result<RegisterPage, HrError> {
         self.register_read(p, query, None).await
     }
+    /// One page, or with `export` (the purpose and the delivered file's name)
+    /// every row as a download in the export log.
     pub(super) async fn register_read(
         &self,
         p: Principal,
         query: RegisterQuery,
-        purpose: Option<String>,
+        export: Option<(String, &'static str)>,
     ) -> Result<RegisterPage, HrError> {
+        let (purpose, file_name) = export.unzip();
         let reach = hr_reach_in(&p, Feature::EmployeeDirectoryManage, Tier::Branch)?;
         let export_reach = purpose
             .as_ref()
@@ -158,9 +163,15 @@ impl HrService {
                 items.push(RegisterRow { employee_id: row.try_get("employee_id")?, missing: gaps(&cells), cells });
             }
             let ids = items.iter().map(|i| i.employee_id).collect::<Vec<_>>();
+            let log_id = match (&purpose, file_name, &export_reach) {
+                (Some(purpose), Some(file), Some(reach)) => Some(
+                    log_export(tx, &p, "worker_register", &scope_key(reach), file, items.len(), purpose).await?,
+                ),
+                _ => None,
+            };
             let me = actor_employee_id(tx, &p).await?;
             let event = access_event(&p, if all {DirectoryAccess::Download} else {DirectoryAccess::List}, &ids, me,
-                json!({"view":"worker_register", "as_of":query.as_of, "workplace_id":query.workplace_id, "export_purpose":purpose, "row_count":items.len()}))?;
+                json!({"view":"worker_register", "as_of":query.as_of, "workplace_id":query.workplace_id, "export_purpose":purpose, "row_count":items.len(), "export_log_id":log_id}))?;
             let next = items.last().filter(|_| more).map(|i| i.employee_id);
             let page = RegisterPage {as_of: query.as_of, workplace_id: query.workplace_id, workplace_name,
                 headers: ExportLayout::Register.header().trim_end().split(',').map(str::to_owned).collect(), items, total, next};
