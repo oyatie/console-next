@@ -99,13 +99,6 @@
     "checked": "2026-11-17",
     "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
   },
-  "package.json:devDependencies:@playwright/test": {
-    "requirement": "^1.65.0",
-    "version": "1.65.0",
-    "registry": "https://registry.npmjs.org/%40playwright%2Ftest/1.65.0",
-    "checked": "2026-11-17",
-    "note": "docs/quality/dependencies/npm-group-2026-11-17.md"
-  },
   "packages/i18n/package.json:dependencies:intl-messageformat": {
     "requirement": "^12.1.5",
     "version": "12.1.5",
