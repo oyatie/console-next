@@ -6,7 +6,7 @@ import { bootBootstrapKo } from "../../../../packages/i18n/src/catalogs/boot-boo
 
 // Entry loading/recovery uses bootstrap copy; sign-in and shell copy may await the boot catalog.
 const BOOTSTRAP = ["main.tsx", "shell/locale.ts", "lib/react/crash-screen.tsx", "lib/react/support-reference.tsx", "ui/skeleton/skeleton.tsx"];
-const BOOT = ["routes/app.ts", "shell/shell.tsx", "shell/nav.ts", "auth/Login.tsx", "auth/IdleGuard.tsx", "ui/empty-state.tsx", "lib/refusal.ts", "lib/react/command-error.tsx", "lib/react/query-state.tsx", "lib/react/denied.tsx", "lib/react/announce.ts", "reference/authz/api.ts"];
+const BOOT = ["routes/app.ts", "shell/shell.tsx", "shell/nav.ts", "auth/Login.tsx", "auth/SetupPasskey.tsx", "auth/IdleGuard.tsx", "ui/empty-state.tsx", "lib/refusal.ts", "lib/react/command-error.tsx", "lib/react/query-state.tsx", "lib/react/denied.tsx", "lib/react/announce.ts", "reference/authz/api.ts"];
 
 for (const [name, files, catalog] of [["bootstrap", BOOTSTRAP, bootBootstrapKo], ["boot", BOOT, bootKo]] as const) {
   test(`${name} surfaces have translated copy before their catalog boundary`, () => {

@@ -41,7 +41,7 @@ export const login = createRoute({
   beforeLoad: async () => (await guards()).leaveSignInWhenSignedIn(),
   component: lazyRouteComponent(bootScreen(() => import("../auth/Login")), "Login"),
 });
-const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: async () => (await guards()).ensureEnrolling(), component: lazyRouteComponent(screen(() => import("../auth/SetupPasskey")), "SetupPasskey") });
+const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: async () => (await guards()).ensureEnrolling(), component: lazyRouteComponent(bootScreen(() => import("../auth/SetupPasskey")), "SetupPasskey") });
 export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await ensureSession(context); await streamReady(); } });
 
 const tenants = createRoute({

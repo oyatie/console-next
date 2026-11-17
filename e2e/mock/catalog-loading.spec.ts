@@ -31,15 +31,21 @@ for (const path of ["/login", "/setup-passkey", "/people"]) for (const width of 
     await page.route(catalog, async route => { await held.promise; await route.continue(); });
     try {
       const requested = page.waitForRequest(request => catalog.test(new URL(request.url()).pathname));
+      // Enrollment paints from boot copy alone: wait for its chunk and the boot catalog, never the held screen catalog.
+      const painted = path === "/setup-passkey" ? [/\/assets\/SetupPasskey-[^/]+\.js$/, /\/assets\/boot-ko-[^/]+\.js$/].map(chunk => page.waitForResponse(response => chunk.test(new URL(response.url()).pathname))) : [];
       await page.goto(path);
       await requested;
       if (path === "/login") {
         await expect(page.getByRole("heading", { name: t("auth.login.title"), exact: true })).toBeVisible();
         await expect(page.getByRole("button", { name: t("auth.login.passkey"), exact: true })).toBeVisible();
+      } else if (path === "/setup-passkey") {
+        await Promise.all(painted);
+        await expect(page.getByRole("checkbox")).toHaveCount(2);
+        await expect(page.locator("[data-marker]")).toHaveText(t("uiField.required"));
+        await expect(page.locator("body")).not.toContainText("uiField.");
       } else {
         await expect(page.getByRole("status", { name: t("common.loading"), exact: true }).first()).toBeVisible();
         await expect(page.getByRole("navigation", { name: t("shell.nav"), exact: true })).toHaveCount(0);
-        if (path === "/setup-passkey") await expect(page.getByRole("checkbox")).toHaveCount(0);
       }
       await page.screenshot({ path: testInfo.outputPath("catalog-held.png") });
       held.resolve();

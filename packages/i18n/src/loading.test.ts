@@ -27,9 +27,9 @@ for (const locale of ["ko", "en"] as const) test(`boot-only loading in ${locale}
   await first;
   const catalog = locale === "ko" ? bootKo : bootEn;
   expect(t("auth.login.title")).toBe(catalog["auth.login.title"]);
-  expect(t("uiField.required")).toBe("uiField.required");
+  expect(t("uiField.valueMissing")).toBe("uiField.valueMissing");
   await loadCatalog(locale);
-  expect(t("uiField.required")).not.toBe("uiField.required");
+  expect(t("uiField.valueMissing")).not.toBe("uiField.valueMissing");
 });
 
 test("a failed boot-only fetch can be retried", async () => {

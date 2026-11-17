@@ -145,7 +145,7 @@ export function checkSignInBudget(dist, budgetsPathOrObj, sources = Object.fromE
       for (const imported of entry.imports ?? []) visit(imported);
     };
     visit("src/lib/react/session.ts");
-    for (const source of ["src/auth/Login.tsx", "src/auth/IdleGuard.tsx"]) {
+    for (const source of ["src/auth/Login.tsx", "src/auth/SetupPasskey.tsx", "src/auth/IdleGuard.tsx"]) {
       const loader = boundaries.get(source);
       if (!loader) throw new Error(`check-bundle: missing catalog boundary for ${source}`);
       visit(source);

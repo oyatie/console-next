@@ -42,10 +42,11 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
   it("sign-in counts only the locale catalogs its loaders await, including shared imports once", () => {
     const mock = createMockDist();
     try {
-      for (const file of ["index-main.js", "vendor-boot.js", "login.js", "idle.js", "session.js", "shared.js", "boot-ko.js", "boot-en.js"]) mock.writeChunk(file, file);
+      for (const file of ["index-main.js", "vendor-boot.js", "login.js", "setup.js", "idle.js", "session.js", "shared.js", "boot-ko.js", "boot-en.js"]) mock.writeChunk(file, file);
       for (const locale of ["ko", "en"]) mock.writeChunk(`${locale}.js`, randomBytes(100_000).toString("hex"));
       mock.dynamic("src/auth/Login.tsx", "login.js", ["_shared"]);
       mock.dynamic("src/auth/IdleGuard.tsx", "idle.js", ["_shared"]);
+      mock.dynamic("src/auth/SetupPasskey.tsx", "setup.js", ["_shared"]);
       mock.dynamic("src/lib/react/session.ts", "session.js");
       mock.manifest._shared = { file: "assets/shared.js" };
       for (const locale of ["ko", "en"]) {
@@ -53,13 +54,13 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
         mock.dynamic(`../../packages/i18n/src/catalogs/${locale}.ts`, `${locale}.js`);
       }
       const sources = {
-        "src/routes/app.ts": 'component: lazyRouteComponent(bootScreen(() => import("../auth/Login")), "Login")',
+        "src/routes/app.ts": 'component: lazyRouteComponent(bootScreen(() => import("../auth/Login")), "Login"); lazyRouteComponent(bootScreen(() => import("../auth/SetupPasskey")), "SetupPasskey")',
         "src/main.tsx": 'const IdleGuard = lazy(() => bootScreen(() => import("./auth/IdleGuard"))())',
       };
       const budgets = { shell: { budget_kb: 10 } };
       const result = checkSignInBudget(mock.dist, budgets, sources);
       assert.strictEqual(result.ok, true);
-      assert.strictEqual(result.chunksCount, 5);
+      assert.strictEqual(result.chunksCount, 6);
       for (const file of Object.keys(sources)) {
         const changed = { ...sources, [file]: sources[file].replace("bootScreen(", "screen(") };
         const failure = checkSignInBudget(mock.dist, budgets, changed);
