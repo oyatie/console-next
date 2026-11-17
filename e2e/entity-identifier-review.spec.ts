@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { FORMATS } from "../apps/web/src/lib/pure/formats";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
-import { grantAccess } from "./access-flows";
+import { confirmGrantNotice, grantAccess, openGrantNotice } from "./access-flows";
 import { firstSignIn, go, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { letGrantsAge } from "./second-person-fixture";
@@ -87,16 +87,13 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(manager.getByRole("heading", { name: t("structure.title"), exact: true })).toBeVisible();
   await expect(register(manager)).toBeHidden();
   await expect(manager.getByText("이 화면에 접근 권한이 없습니다", { exact: true })).toBeHidden();
-  const notice = inbox(reviewer).getByRole("row").filter({ has: reviewer.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
-  await expect(notice).toContainText("전체 업무 · 전체 ·", { timeout: 20_000 });
-  // The notice arrived live. Reopen the pre-grant stream under its new access scope (period-unlock-approve).
+  // Reopen the pre-grant stream under its new access scope before confirming in 참조.
   await reviewer.reload();
   await passkeyLogin(reviewer);
-  const confirmed = reviewer.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/notice"));
-  await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
-  expect((await confirmed).status()).toBe(200);
-  // The confirmation and its SSE hint can restart an in-flight inbox read.
-  await expect(notice).toBeHidden({ timeout: 20_000 });
+  const notice = await openGrantNotice(reviewer, "전체 업무");
+  await expect(notice).toContainText("전체 업무 · 전체 ·", { timeout: 20_000 });
+  await confirmGrantNotice(reviewer, "전체 업무");
+  await go(reviewer, "/");
   letGrantsAge(unique(slug), "김검토");
   let reviewerLoads = 0;
   reviewer.on("request", (request) => { if (request.isNavigationRequest() && request.resourceType() === "document") reviewerLoads++; });

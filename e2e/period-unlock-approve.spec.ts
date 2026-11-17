@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { OWN_ECHO_MS } from "../apps/web/src/lib/freshness";
 import { expectAccessible } from "./a11y";
 import { forgetResize } from "./stability";
-import { grantAccess } from "./access-flows";
+import { confirmGrantNotice, grantAccess, openGrantNotice } from "./access-flows";
 import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
@@ -63,15 +63,13 @@ test("period unlock: a second close authority refuses, then approves; the reques
     await go(page, "/", true);
     await passkeyLogin(page);
     await page.reload();
-    const notices = page.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ has: page.getByRole("button", { name: "기간 마감 부여 확인 기록", exact: true }) });
+    const notices = await openGrantNotice(page, "기간 마감");
     await expect(notices).toContainText("기간 마감 · 전체 ·", { timeout: 20_000 });
     await expectAccessible(page, "grant notice");
-    const acknowledged = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/notice"));
-    await notices.getByRole("button", { name: "기간 마감 부여 확인 기록" }).click();
-    expect((await acknowledged).status()).toBe(200);
-    await expect(notices).toBeHidden();
+    await confirmGrantNotice(page, "기간 마감");
     letGrantsAge(unique(slug), name);
   }
+  await go(exec, "/");
   // A frame within OWN_ECHO_MS of this tab's own write is that write's echo (lib/live): the requester acts after it.
   await exec.waitForTimeout(OWN_ECHO_MS);
   const paintedRows = exec.getByRole("region", { name: "업무함", exact: true }).locator("tbody tr");
@@ -201,12 +199,7 @@ test("a sole close authority delivers separate inbox reviews before and after go
   await grantAccess(operator, "단독마감", "full");
   await go(human, "/", true);
   await passkeyLogin(human);
-  const notice = human.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ has: human.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
-  const acknowledged = human.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/notice"));
-  await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
-  expect((await acknowledged).status()).toBe(200);
-  await human.reload();
-  await expect(notice).toBeHidden();
+  await confirmGrantNotice(human, "전체 업무");
   letGrantsAge(unique(slug), "단독마감");
   await lockPayroll(human);
   const row = human.getByRole("row", { name: /월 급여 마감/ });

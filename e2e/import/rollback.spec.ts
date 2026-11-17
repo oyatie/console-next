@@ -3,8 +3,10 @@ import { execFileSync } from "node:child_process";
 import { readDevSecrets } from "../../scripts/dev-secrets";
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api/schema";
+import { ko } from "../../packages/i18n/src/catalogs/ko";
 import { OWN_ECHO_MS } from "../../apps/web/src/lib/freshness";
 import { expectAccessible } from "../a11y";
+import { confirmGrantNotice } from "../access-flows";
 import { go, option, registerEmployee, unique } from "../flows";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "../setup-flows";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
@@ -191,13 +193,10 @@ test("OPERATING rollback waits for another holder and reaches done through the l
   await admin.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: "권한", exact: true }).click();
   await admin.getByRole("combobox", { name: "연결할 계정" }).fill("이임");
   await admin.getByRole("option", { name: /이임원/ }).click();
-  await admin.getByRole("button", { name: "계정 연결", exact: true }).click();
+  await admin.getByRole("button", { name: ko["uiOverrideSheet.stepUp"].replace("{action}", ko["people.account.link"]), exact: true }).click();
   await expect(admin.getByRole("status").filter({ hasText: "이임원 계정을 연결했습니다" })).toBeVisible();
   await startOperations(admin);
-  await go(exec, "/");
-  const notice = exec.getByRole("region", { name: "확인할 새 권한 1건" });
-  await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
-  await expect(notice).toBeHidden();
+  await confirmGrantNotice(exec, "전체 업무");
   letGrantsAge(unique(slug), "이임원");
   routeRollbackPolicy(unique(slug));
   const run = await applyRoster(admin, "결정명부.xlsx", [rosterHeader,

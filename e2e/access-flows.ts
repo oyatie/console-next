@@ -32,6 +32,15 @@ export async function openGrantNotice(page: Page, role: string) {
   return notice;
 }
 
+/** Confirm through the product and wait for the refreshed pending-grant list. */
+export async function confirmGrantNotice(page: Page, role: string) {
+  const notice = await openGrantNotice(page, role);
+  const confirmed = page.waitForResponse(r => r.request().method() === "POST" && /\/access\/grants\/[^/]+\/notice$/.test(new URL(r.url()).pathname));
+  await notice.getByRole("button", { name: ko["home.grantNotices.confirm"].replace("{role}", role), exact: true }).click();
+  expect((await confirmed).status()).toBe(200);
+  await expect(notice).toBeHidden();
+}
+
 /** The tenant role for `access`, made once per tenant through the role editor. */
 async function ensureRole(admin: Page, access: Access) {
   const { name: FULL, levels } = ROLE[access];
