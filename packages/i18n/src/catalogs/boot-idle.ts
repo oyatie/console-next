@@ -1,5 +1,4 @@
-// The idle sign-out warning and the re-auth dialog: shell copy, drawn beside the router before any screen
-// catalog, so it ships in the entry with boot.ts (which spreads it). Same rules as boot.ts.
+// The idle warning and re-auth dialog load beside the router after their locale catalog.
 export const bootIdleEn = {
   "idle.reauth.title": "Sign in again",
   "idle.reauth.idle": "For security, you were signed out after a period of inactivity. Your unsaved work is still on this screen; sign in again with the same account to continue.",

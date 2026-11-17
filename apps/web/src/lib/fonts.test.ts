@@ -37,3 +37,23 @@ test.each(["pending", "failed", "ready"])("the boot font is %s: choose its metri
   expect(painted).toBe(true);
   expect(dataset).toEqual(state === "ready" ? {} : { fontFallback: "" });
 });
+
+test("a boot screen waits for boot copy without loading the screen catalog", async () => {
+  vi.resetModules();
+  const copy = Promise.withResolvers<void>();
+  const loadFullCatalog = vi.fn();
+  const loadBootCatalog = vi.fn(() => copy.promise);
+  vi.doMock("@console/i18n", () => ({ i18n: { locale: "ko" }, loadBootCatalog, loadCatalog: loadFullCatalog }));
+  try {
+    const { bootScreen } = await import("./fonts");
+    const module = { login: true };
+    let painted = false;
+    const loading = bootScreen(async () => module)().then(value => { painted = true; return value; });
+    await Promise.resolve();
+    expect(painted).toBe(false);
+    expect(loadBootCatalog).toHaveBeenCalledExactlyOnceWith("ko");
+    expect(loadFullCatalog).not.toHaveBeenCalled();
+    copy.resolve();
+    await expect(loading).resolves.toBe(module);
+  } finally { copy.resolve(); vi.doUnmock("@console/i18n"); }
+});

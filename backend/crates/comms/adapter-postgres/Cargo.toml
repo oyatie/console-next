@@ -17,11 +17,11 @@ serde_json = { workspace = true }
 sha2 = { workspace = true }
 sqlx = { workspace = true }
 thiserror = { workspace = true }
-time = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
+time = { workspace = true }
 console-platform-test-support = { workspace = true }
 console-comms-credential-cipher = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

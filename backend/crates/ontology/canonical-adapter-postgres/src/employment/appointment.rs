@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! One appointment insert for canonical commands and registration batches.
+//! Shared canonical hire inserts and lifecycle appointment head updates.
 
 use std::collections::HashMap;
 
@@ -9,6 +9,54 @@ use console_ontology_canonical_domain::{CanonicalQuery, CommandReceipt, ReceiptO
 use sqlx::{Postgres, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+/// The validated head left by a lifecycle APPOINT, shared by single and bulk writes.
+pub struct AppointmentHead<'a> {
+    pub valid_from: OffsetDateTime,
+    pub company: &'a str,
+    pub org_unit: Option<&'a str>,
+    pub position: Option<&'a str>,
+    pub rebind: Option<Option<Uuid>>,
+    pub employment_status: &'a str,
+    pub classification: [Option<Uuid>; 4],
+    pub job: Option<&'a str>,
+}
+
+/// Apply validated appointments to existing heads; callers own authorization and rollback.
+pub async fn apply_appointment_heads_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    org: Uuid,
+    heads: &[(Uuid, AppointmentHead<'_>)],
+) -> Result<(), EmploymentError> {
+    if heads.is_empty() {
+        return Ok(());
+    }
+    let mut checks = super::checks::WriteChecks::default();
+    for (_, head) in heads {
+        checks.check_date(tx, org, head.valid_from).await?;
+    }
+    let attributes: Vec<_> = heads.iter().map(|(_, head)| {
+        let [grade, position_kind, job_id, job_family] = head.classification;
+        serde_json::json!({"company":head.company,"unit":head.org_unit,"position":head.position,
+            "status":head.employment_status,"rebind":head.rebind.is_some(),"unit_id":head.rebind.flatten(),"grade":grade,"position_kind":position_kind,
+            "job_id":job_id,"job_family":job_family,"job":head.job})
+    }).collect();
+    sqlx::query(
+        "UPDATE employees e SET company=r.attrs->>'company',org_unit=r.attrs->>'unit', \
+         org_unit_id=CASE WHEN (r.attrs->>'rebind')::boolean THEN (r.attrs->>'unit_id')::uuid ELSE e.org_unit_id END, \
+         position=COALESCE(r.attrs->>'position',e.position),employment_status=r.attrs->>'status', \
+         exit_on=CASE WHEN r.attrs->>'status'='EXITED' THEN r.on_date END, \
+         exit_date=CASE WHEN r.attrs->>'status'='EXITED' THEN to_char(r.on_date,'YYYY-MM-DD') END, \
+         grade_id=(r.attrs->>'grade')::uuid,position_kind_id=(r.attrs->>'position_kind')::uuid, \
+         job_id=(r.attrs->>'job_id')::uuid,job_family_id=(r.attrs->>'job_family')::uuid,job=r.attrs->>'job', \
+         head_version=e.head_version+1,updated_at=now() \
+         FROM unnest($2::uuid[],$3::date[],$4::jsonb[]) r(id,on_date,attrs) \
+         WHERE e.org_id=$1 AND e.id=r.id",
+    ).bind(org).bind(heads.iter().map(|(id, _)| *id).collect::<Vec<_>>())
+        .bind(heads.iter().map(|(_, head)| super::change_window::business_date(head.valid_from)).collect::<Vec<_>>())
+        .bind(attributes).execute(tx.as_mut()).await?;
+    Ok(())
+}
 
 /// Callers have checked preflight, references, replay and the locked change window.
 /// Commands share the tenant, actor and action metadata of a registration batch.
@@ -32,7 +80,10 @@ pub(super) async fn insert_appointments(
         .iter()
         .map(|(_, c)| *c.command_id.as_uuid())
         .collect();
-    let valid_from: Vec<_> = commands.iter().map(|(_, c)| c.query.valid_from()).collect();
+    let valid_from: Vec<_> = commands
+        .iter()
+        .map(|(_, c)| super::change_window::postgres_instant(c.query.valid_from()))
+        .collect();
     let attributes: Vec<_> = commands
         .iter()
         .map(|(_, c)| c.query.attributes().to_json())

@@ -12,7 +12,6 @@ console-kernel-core = { workspace = true }
 console-notifications-domain = { workspace = true }
 serde = { workspace = true }
 time = { workspace = true }
-uuid = { workspace = true }
 
 [lints]
 workspace = true
