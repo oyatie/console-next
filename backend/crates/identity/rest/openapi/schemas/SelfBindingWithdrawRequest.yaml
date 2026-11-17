@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [attestation_id]
+properties:
+  attestation_id:
+    $ref: '#/components/schemas/Uuid'
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'

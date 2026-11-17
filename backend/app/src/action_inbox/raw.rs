@@ -61,6 +61,9 @@ impl ActionInboxSourcePort for Raw<'_> {
                 ActionInboxSource::GrantNotice => {
                     sources::grants::page(&sources.pool, &sources.principal, query).await
                 }
+                ActionInboxSource::AccountBindingReview => {
+                    sources::account_binding::page(&sources.pool, &sources.principal, query).await
+                }
                 ActionInboxSource::SupportAccess => {
                     sources::support_access::page(
                         &sources.pool,
