@@ -1,15 +1,18 @@
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { announce, focusSoon } from "../../../lib/react/announce";
+import { useOnline } from "../../../lib/react/use-online";
+import { queryView } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { TENANT_STATUS, TENANT_LIFECYCLE, labeled } from "../../../lib/labels";
 import { Chip } from "../../../ui/chip";
 import { Button, Form, ToggleButton } from "../../../ui/button/button";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Receipt } from "../../../ui/receipt/receipt";
@@ -34,6 +37,9 @@ export function TenantsPage() {
   const set = (s: TenantsSearch) => navigate({ search: (p) => ({ ...p, ...s }), replace: true });
   const list = useQuery(tenantsQuery);
   const ops = useQuery(opsQuery);
+  const online = useOnline();
+  const viewState = queryView(online ? list : { ...list, fetchStatus: "paused" });
+  const unavailable = list.data === undefined && (viewState === "failed" || viewState === "offline");
   const health = new Map<string, Health>((ops.data?.tenants ?? []).map((h) => [h.id, h]));
   // Typed text stays local (no lag while composing Korean); the URL follows it once typing pauses, and
   // a navigation that changes the URL's search (a link, Back) replaces it.
@@ -80,36 +86,35 @@ export function TenantsPage() {
     if (onboarded) void set({ sel: onboarded.id });
     record(onboarded ? { message: t("tenants.onboard.done", { org }), meta: t("tenants.onboard.meta", { slug: onboarded.slug }) } : { message: t("tenants.reissue.done", { org }), meta: t("common.expiresAt", { at: fmtDateTime(expiresAt) }) });
   };
-  const empty = list.isSuccess && all.length === 0;
+  const empty = list.data !== undefined && all.length === 0;
+  const create = (
+    <Button variant="primary" disabled={!list.data} onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>
+  );
 
-  return (
+  const renderPage = (control: ReactNode, reason: ReactNode) => (
     <div className="page">
       <h1 id="tenants-title" className="page__title" tabIndex={-1}>{t("tenants.title")}</h1>
       <PageReadGate q={list}>
-      <div className="page__head">
-        {!empty && (
-          <div role="group" aria-label={t("tenants.views")} className="tabs">
-            {VIEWS.map((v) => (
-              <ToggleButton key={v} pressed={view === v} onClick={() => set({ view: v === "active" ? undefined : v })}>
-                {t(`tenants.view.${v}`, { n: all.filter((o) => inView(o, v)).length })}
-              </ToggleButton>
-            ))}
-          </div>
-        )}
+      {!empty && <div className="page__head">
+        <div role="group" aria-label={t("tenants.views")} className="tabs">
+          {VIEWS.map((v) => (
+            <ToggleButton key={v} pressed={view === v} count={list.data ? fmtNumber(all.filter((o) => inView(o, v)).length) : ""} onClick={() => set({ view: v === "active" ? undefined : v })}>
+              {t(`tenants.view.${v}`)}
+            </ToggleButton>
+          ))}
+        </div>
         <span className="top__spacer" />
-        {!empty && (
-          <Form role="search" className="search" onSubmit={() => undefined}>
-            <Field label={t("tenants.search")} required={null}>{p => <TextInput {...p}
-              placeholder={t("tenants.search.example")}
-              value={q}
-              onKeyDown={toFirstMatch}
-              onChange={(e) => setQ(e.target.value)}
-            />}</Field>
-          </Form>
-        )}
-        {list.data && !empty && <Button variant="primary" onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>}
-      </div>
-      <QueryState q={list} layout="list">{() => <>
+        <Form role="search" className="search" onSubmit={() => undefined}>
+          <Field label={t("tenants.search")} required={null}>{p => <TextInput {...p}
+            placeholder={t("tenants.search.example")}
+            value={q}
+            onKeyDown={toFirstMatch}
+            onChange={(e) => setQ(e.target.value)}
+          />}</Field>
+        </Form>
+        {unavailable ? control : create}
+      </div>}
+      <QueryState q={list} layout="list" failedActions={reason}>{() => <>
       <SupportLookup />
       <KeyNotices notices={[...(ops.data?.notices ?? []), ...(ops.data?.registration_check_notices ?? [])]} />
       {recorded && (
@@ -120,7 +125,7 @@ export function TenantsPage() {
       <div className="split" data-open={Boolean(selected)}>
         <section id="tenants-list" className="card" aria-label={t("tenants.table")}>
           {empty ? (
-                <EmptyState title={t("tenants.empty.title")} reason={t("tenants.empty.reason")} actions={<Button variant="primary" onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>} />
+                <EmptyState title={t("tenants.empty.title")} reason={t("tenants.empty.reason")} actions={create} />
               ) : found.length === 0 ? (
                 <EmptyState title={t("tenants.search.none", { q: q.trim() })} reason={t("tenants.search.noneReason")} actions={<Button onClick={() => setQ("")}>{t("tenants.search.reset")}</Button>} />
               ) : rows.length === 0 ? (
@@ -181,4 +186,7 @@ export function TenantsPage() {
       </PageReadGate>
     </div>
   );
+  return <DisabledReason reason={t("tenants.create.unavailable")} control={p => <Button variant="primary" {...p}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>}>
+    {({ control, reason }) => renderPage(control, reason)}
+  </DisabledReason>;
 }

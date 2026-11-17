@@ -1,12 +1,14 @@
 //! Reads: one employee's entries, one entry's history, and the per-section
 //! sheet export (employee number + entry id + version) that the import sheet
-//! takes back for bulk corrections and voids.
+//! takes back for bulk corrections and voids. Each read leaves an access log
+//! row: a lookup of the employee, or a download for the sheet.
 
 use console_hr_domain::record::Section;
 use console_kernel_core::KernelError;
 use console_platform_authz::{Feature, Principal};
-use console_platform_db::with_org_conn;
+use console_platform_db::with_audits;
 use serde::Serialize;
+use serde_json::json;
 use sqlx::{Postgres, Row, Transaction};
 use uuid::Uuid;
 
@@ -16,6 +18,10 @@ use super::support::view;
 use super::switch::section_states;
 use super::{RecordEntryView, RecordHistory, RecordList, RecordPurpose, RecordRevisionView};
 use crate::authz::{authorize_hr_org_wide, authorize_hr_person, hr_reach};
+use crate::directory::access_log::{
+    DirectoryAccess, access_event, actor_employee_id, lookup_event,
+};
+use crate::directory::read_export::{admitted_purpose, log_export};
 use crate::metrics::record_hr_read;
 use crate::paging::MAX_LIMIT;
 use crate::{HrError, HrService};
@@ -53,7 +59,7 @@ impl HrService {
         hr_reach(&principal, Feature::EmployeeDirectoryManage)?;
         record_hr_read("employee_records");
         let org = principal.org_id;
-        with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
+        with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 authorize_hr_person(tx, &principal, Feature::EmployeeDirectoryManage, employee)
                     .await?;
@@ -70,7 +76,8 @@ impl HrService {
                         .map(view)
                         .collect(),
                 };
-                Ok(RecordList { sections, items })
+                let event = lookup_event(tx, &principal, employee, "records").await?;
+                Ok((RecordList { sections, items }, vec![event]))
             })
         })
         .await
@@ -92,11 +99,13 @@ impl HrService {
         hr_reach(&principal, Feature::EmployeeDirectoryManage)?;
         record_hr_read("employee_record_history");
         let org = principal.org_id;
-        with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
+        with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let manage = Feature::EmployeeDirectoryManage;
                 authorize_hr_person(tx, &principal, manage, employee).await?;
-                history_in_tx(tx, *org.as_uuid(), employee, section, entry).await
+                let history = history_in_tx(tx, *org.as_uuid(), employee, section, entry).await?;
+                let event = lookup_event(tx, &principal, employee, "record_history").await?;
+                Ok((history, vec![event]))
             })
         })
         .await
@@ -104,14 +113,18 @@ impl HrService {
 
     /// Live entries of one section across the tenant, by entry id, one row
     /// per entry under the bound employee with the lowest employee number.
+    /// A page is a download: it takes the export level, states its purpose and
+    /// is in the export log, as the employee CSV export is.
     pub async fn record_section_sheet(
         &self,
         principal: Principal,
         section: Section,
         after: Option<Uuid>,
         limit: Option<i64>,
+        export_purpose: Option<&str>,
     ) -> Result<SectionSheet, HrError> {
         authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
+        authorize_hr_org_wide(&principal, Feature::ExcelDownload)?;
         if section.restricted() {
             // a bulk read of sensitive/disciplinary sections needs the
             // per-export approval tier (access-model GR-25), which is not
@@ -125,10 +138,12 @@ impl HrService {
                 refusals: None,
             });
         }
+        let asked = json!({ "view": "employee_records", "section": section.as_str() });
+        let purpose = admitted_purpose(&self.pool, &principal, export_purpose, asked).await?;
         record_hr_read("employee_record_sheet");
         let limit = limit.unwrap_or(MAX_LIMIT).clamp(1, MAX_LIMIT);
         let org = principal.org_id;
-        with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
+        with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let org_uuid = *org.as_uuid();
                 let rows = sqlx::query(
@@ -171,7 +186,28 @@ impl HrService {
                     });
                 }
                 let next_after = more.then(|| items.last().map(|r| r.entry.id)).flatten();
-                Ok(SectionSheet { items, next_after })
+                let mut subjects: Vec<Uuid> = items.iter().map(|r| r.employee_id).collect();
+                subjects.sort_unstable();
+                subjects.dedup();
+                let file_name = format!("employee-records-{}", section.segment());
+                let rows = items.len();
+                let log_id =
+                    log_export(tx, &principal, "employee_records", "ALL", &file_name, rows, purpose)
+                        .await?;
+                let me = actor_employee_id(tx, &principal).await?;
+                let event = access_event(
+                    &principal,
+                    DirectoryAccess::Download,
+                    &subjects,
+                    me,
+                    json!({
+                        "export_purpose": purpose,
+                        "row_count": rows,
+                        "export_log_id": log_id,
+                        "section": section.as_str(),
+                    }),
+                )?;
+                Ok((SectionSheet { items, next_after }, vec![event]))
             })
         })
         .await

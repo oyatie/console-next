@@ -247,7 +247,7 @@ printf 'apps/web/src/features/auth/login.ts\\0docs/login.ts\\0'
     if (failed) checks.splice(0, 1);
     const outputs = {};
     await collector.emit(github, {setOutput:(name, value) => { outputs[name] = value; }}, sha, 'c'.repeat(40), runUrl);
-    assert.equal(outputs.result, failed ? 'fail' : 'pass');
+    assert.equal(outputs.verdict, failed ? 'fail' : 'pass');
     const predicate = JSON.parse(readFileSync('console-gates.json', 'utf8'));
     assert.equal(predicate.bake, 'long');
     assert.equal(hostAccepts(predicate), !failed);

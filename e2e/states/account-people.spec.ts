@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { mockNavigate } from "../mock/navigation";
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
 import { authz, employees, failure, id, user } from "../mock/fixtures";
@@ -9,6 +10,8 @@ import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { mockLifecycleSheets, moveDetail } from "../mock/lifecycle-sheets";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 type User = components["schemas"]["UserSummary"];
 const employee = { ...employees(1)[0]!, name: "김직원", employee_number: "EMP-12", company: "연결회사", org_unit: "인사팀" };
@@ -306,7 +309,7 @@ test("a failed person search reports the refusal without an empty-result claim @
   await expect(page.getByRole("option", { name: "일치하는 결과가 없습니다", exact: true })).toHaveCount(0);
   await expect(page.getByText("일치하는 직원이 없습니다. 직원 기록이 없으면 먼저 직원을 등록합니다.", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("status").filter({ hasText: "0건" })).toHaveCount(0);
-  await expect(page.getByRole("status").filter({ hasText: "잠시 뒤 다시 시도하십시오." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toBeVisible();
   f.recoverSearch();
   await page.getByRole("button", { name: "다시 불러오기", exact: true, includeHidden: true }).click();
   await expect(search).not.toHaveAttribute("aria-invalid", "true");

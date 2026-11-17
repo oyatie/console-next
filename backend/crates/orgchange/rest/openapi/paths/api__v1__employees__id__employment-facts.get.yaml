@@ -6,7 +6,7 @@ description: Birth date, work email (an HR fact that only prefills an invitation
   the number, decision 6), and, when the employee has an employment profile, the employment type with its
   derived worker classification, base pay in whole won with its unit, and the probation period with its server
   clock (probation_state, probation_days_left; DUE_SOON needs the reminder-window setting and is not served
-  yet). Personal data, so org-wide employee_directory_manage.
+  yet). Personal data, so org-wide employee_directory_manage; each read leaves an access log row.
 security:
 - bearerAuth: []
 parameters:

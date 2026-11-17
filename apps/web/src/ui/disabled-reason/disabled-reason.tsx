@@ -17,21 +17,20 @@ export type DisabledProps = {
  * (`aria-disabled`, not `disabled`), so a keyboard or screen-reader user reaches it and hears why.
  * Presses do nothing; the caller's own submit handler still re-checks the hard block.
  * `inline` puts the reason beside the control; `disclosure` reveals it on hover or focus.
+ * `children` places the linked control and reason in separate regions without adding a wrapper.
  */
-export function DisabledReason({ control, reason, remedy, layout = "stacked" }: {
+export function DisabledReason({ control, reason, remedy, layout = "stacked", children }: {
   control: (p: DisabledProps) => ReactNode;
   reason: ReactNode;
   remedy?: ReactNode;
   layout?: "stacked" | "inline" | "disclosure";
+  children?: (slots: { control: ReactNode; reason: ReactNode }) => ReactNode;
 }) {
   const id = useId();
-  return (
-    <span className={s[layout]}>
-      {control({ "aria-disabled": true, "aria-describedby": id, type: "button", onClick: (e) => e.preventDefault(), className: s.off })}
-      <span className={`${s.why} prose`}>
-        <span id={id}>{reason}</span>
-        {remedy}
-      </span>
-    </span>
-  );
+  const button = control({ "aria-disabled": true, "aria-describedby": id, type: "button", onClick: (e) => e.preventDefault(), className: s.off });
+  const explanation = <span className={`${s.why} prose`}>
+    <span id={id}>{reason}</span>
+    {remedy}
+  </span>;
+  return children ? children({ control: button, reason: explanation }) : <span className={s[layout]}>{button}{explanation}</span>;
 }
