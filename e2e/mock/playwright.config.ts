@@ -22,6 +22,6 @@ export default defineConfig({
   timeout: 60_000,
   retries: 0,
   use: { browserName: e2eBrowser(), baseURL: origin, locale: "ko-KR", timezoneId: "Asia/Seoul", serviceWorkers: "block", trace: "retain-on-failure",
-    storageState: { cookies: [], origins: [{ origin, localStorage: [{ name: EXPERIENCE_KEY, value: process.env.E2E_EXPERIENCE ?? "baseline" }] }] } },
+    storageState: { cookies: [], origins: process.env.E2E_EXPERIENCE ? [{ origin, localStorage: [{ name: EXPERIENCE_KEY, value: process.env.E2E_EXPERIENCE }] }] : [] } },
   webServer: { command: `VITE_REVIEW_STATE_ROUTES=1 npm run build -w @console/web -- --mode test --outDir ${dist} --emptyOutDir && npm run preview -w @console/web -- --outDir ${dist} --port ${PORTS.web} --strictPort`, url: `http://localhost:${PORTS.web}`, reuseExistingServer: false },
 });

@@ -18,7 +18,7 @@ export function ExperienceChooser() {
       }}>
       {experiences.map(experience => <option key={experience.id} value={experience.id}>{t(experience.label)}</option>)}
     </SelectInput>
-    <span id="account-experience-hint" className="muted">{t("account.experience.device")}</span>
+    <p id="account-experience-hint" className="muted">{t("account.experience.device")}</p>
     {failed && <span role="alert">{t("account.experience.failed")}</span>}
   </>;
 }

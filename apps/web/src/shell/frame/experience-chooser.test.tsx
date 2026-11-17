@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
-import { i18n, loadCatalog } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { ExperienceChooser } from "./experience-chooser";
 
 vi.mock("../../experience/table", async original => {
@@ -16,8 +16,8 @@ test.each(["en", "ko"] as const)("%s: registering a second pack adds its choice 
     const html = renderToStaticMarkup(<ExperienceChooser />);
     expect(html.match(/<option\b/g)).toHaveLength(2);
     expect(html).toContain('value="second"');
-    expect(html).toContain(locale === "ko" ? "기본" : "Baseline");
-    expect(html).toContain(locale === "ko" ? "화면" : "Appearance");
-    expect(html).toContain(locale === "ko" ? "이 기기에 저장" : "Saved on this device");
+    expect(html).toContain(t("account.experience.baseline"));
+    expect(html).toContain(t("account.field.theme"));
+    expect(html).toContain(t("account.experience.device"));
   } finally { i18n.set("ko"); }
 });
