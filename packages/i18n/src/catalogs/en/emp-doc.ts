@@ -4,7 +4,6 @@ export const enEmpDoc = {
   "empDoc.reg.siteN": "{count, number} workplaces",
   "empDoc.reg.siteCount": "{workers} + {exited} exited",
   "empDoc.reg.blank": "blank",
-  "empDoc.reg.birthMasked": "{year}-••-••",
   "empDoc.reg.noCareer": "No prior career (recorded at hire)",
   "empDoc.reg.asOf.today": "Today {date}",
   "empDoc.reg.asOf.monthEnd": "End of last month",

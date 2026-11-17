@@ -139,6 +139,7 @@ pub(super) fn task(
         basis: rule,
         birth_date_known: assessment.facts.birth_date.is_some(),
         birth_date_for_assessment: assessment.facts.birth_date.clone(),
+        income_for_assessment: assessment.facts.monthly_income_won,
         can_record_sensitive_facts: false,
         applicability: assessment.applicability,
         applicability_facts: assessment.facts,

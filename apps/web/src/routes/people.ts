@@ -1,3 +1,5 @@
+import { cardReads } from "../features/people/api/card-load";
+import type { QueryClient } from "@tanstack/react-query";
 import { readRequirement } from "./route-reads";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { chunk } from "../lib/chunk-guard";
@@ -40,6 +42,12 @@ const employee = createRoute({
   getParentRoute: () => app,
   path: "/people/$id", staticData: { access: "signed-in", floorplan: "P-02" },
   remountDeps: ({ params }) => params.id,
+  loader: ({ params: { id }, context, preload }) => {
+    if (preload) return;
+    const { queryClient } = context as { queryClient: QueryClient };
+    // The page owns read failures; warming its cache must not replace its refusal or retry UI.
+    void Promise.allSettled(cardReads(id).map(query => queryClient.ensureQueryData<unknown>(query)));
+  },
   // `act` opens an HR action's sheet (a queue on Home links straight to it); the server's allowed events still decide.
   // `back` is the sheet a detour started from (a refusal's "cancel that reservation"): its receipt offers the way back.
   // `tab` is the record's tab (personnel card when absent): action history, documents, change history, access.

@@ -50,12 +50,13 @@ export function SheetEditor({ sheet, targets, busy, onSave }: { sheet: ImportShe
           {d.columns.length > 0 && (
             <Table
               label={t("importSheet.map.columns", { name: sheet.name })}
+              mobileLayout="cards"
               rows={d.columns}
               rowId={(c) => c.column}
               columns={[
                 { header: t("importSheet.col.column"), cell: (c) => <span className="code">{c.column}</span>, fit: true },
                 { header: t("importSheet.col.label"), cell: (c) => c.label },
-                { header: t("importSheet.col.target"), cell: (c) => <Target c={c} sheet={sheet.name} targets={targets} onChange={(v) => setD(withTarget(d, c.column, v))} /> },
+                { header: t("importSheet.col.target"), card: "action", cell: (c) => <Target c={c} sheet={sheet.name} targets={targets} onChange={(v) => setD(withTarget(d, c.column, v))} /> },
               ]}
             />
           )}

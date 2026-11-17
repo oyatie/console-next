@@ -8,7 +8,7 @@ import { expectAccessible } from "../a11y";
 import { go, option, registerEmployee, unique } from "../flows";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "../setup-flows";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { workbook } from "../helpers/import-layouts";
 import { settled } from "../helpers/import-queue";
 import { letGrantsAge } from "../second-person-fixture";
@@ -26,9 +26,10 @@ test("J-ONB-19: the applied run opens with file, actor, time and stored counts f
     ["RB-001", "가테스트", "2020-03-02", "정규직"],
     ["RB-002", "나테스트", "2021-04-01", "정규직"],
   ] }]));
-  const previewed = admin.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname.endsWith("/import/preview"));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
-  const run = ((await (await previewed).json()) as { run_id: string }).run_id;
+  const confirmed = await confirmImportColumns(admin);
+  expect(confirmed).toBeDefined();
+  const run = confirmed!.run_id;
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(admin);
   await admin.getByRole("button", { name: /^명부 반영: 신규 2명/ }).click();
@@ -56,9 +57,10 @@ test("J-ONB-19: the applied run opens with file, actor, time and stored counts f
 async function applyRoster(page: Page, filename: string, lines: string[][]) {
   await page.goto("/people/import");
   await chooseWorkbook(page, filename, await workbook([{ name: "명부", lines }]));
-  const previewed = page.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname.endsWith("/import/preview"));
   await page.getByRole("button", { name: "명부 미리보기" }).click();
-  const run = ((await (await previewed).json()) as { run_id: string }).run_id;
+  const confirmed = await confirmImportColumns(page);
+  expect(confirmed).toBeDefined();
+  const run = confirmed!.run_id;
   await page.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(page);
   await page.getByRole("button", { name: /^명부 반영: 신규/ }).click();

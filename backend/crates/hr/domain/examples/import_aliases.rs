@@ -3,7 +3,7 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let source = serde_json::to_string_pretty(&serde_json::json!({
         "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
-        "_generated_by": "console-hr-domain example import_aliases; edit import/fields.rs or fields_org.rs",
+        "_generated_by": "console-hr-domain example import_aliases; edit data/employee.json or import/fields_org.rs",
         "aliases": console_hr_domain::import::fields_org::aliases(),
     }))? + "\n";
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

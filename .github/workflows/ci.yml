@@ -33,7 +33,7 @@ jobs:
       backend: ${{ steps.paths.outputs.backend || steps.import.outputs.backend }}
       web: ${{ steps.paths.outputs.web || steps.import.outputs.web }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false, fetch-depth: 0}
@@ -105,7 +105,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       # Full history: the ratchet tests (scripts/gates.test.ts ai-quality) diff against the dev branch.
@@ -184,7 +184,7 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
@@ -223,7 +223,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs['states-plan'].outputs.matrix) }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -264,7 +264,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
@@ -322,7 +322,7 @@ jobs:
       CARGO_INCREMENTAL: "0"
     steps:
       - &backend-harden
-        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - &backend-checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -573,7 +573,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
@@ -601,6 +601,36 @@ jobs:
         with:
           name: home-inbox-performance
           path: test-results
+          if-no-files-found: error
+
+      - name: WebKit for focused PR coverage
+        if: ${{ !cancelled() }}
+        run: npx playwright install --with-deps webkit
+      - name: Focused WebKit states
+        if: ${{ !cancelled() }}
+        env:
+          E2E_BROWSER: webkit
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/webkit/states.json
+        run: npm run e2e:states -- --grep @webkit-pr --output=.cache/webkit/states-traces
+      - name: Solo journey on WebKit
+        if: ${{ !cancelled() }}
+        env:
+          E2E_BROWSER: webkit
+          E2E_SERVED: "1"
+          E2E_PREBUILT: "1"
+          E2E_REPORTER: line,json
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/webkit/live.json
+          CONSOLE_APP_BIN: .cache/home-backend/console-app
+        run: npx playwright test e2e/first-run-solo.spec.ts --grep @webkit-pr --output=.cache/webkit/live-traces
+      - name: WebKit results by spec
+        if: ${{ !cancelled() }}
+        run: node scripts/e2e-live-report.mjs .cache/webkit/*.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: webkit-pr
+          path: .cache/webkit/
+          include-hidden-files: true
           if-no-files-found: error
 
       - name: Firefox for D7 solo journey
@@ -672,7 +702,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
@@ -762,7 +792,7 @@ jobs:
       CARGO_DENY_VERSION: 0.20.2
       CARGO_AUDIT_VERSION: 0.22.2
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}

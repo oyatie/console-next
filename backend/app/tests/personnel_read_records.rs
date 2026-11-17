@@ -221,8 +221,9 @@ async fn a_bulk_correction_preview_lists_the_people_it_shows(pool: PgPool) {
     assert!(!details.to_string().contains(&before), "{before}");
 }
 
-/// HR's change request list shows the values a correction asks for: one list
-/// record naming the people they are about, never the values.
+/// HR's change request list shows what a correction asks for, a personal field
+/// only as its mask: one list record naming the people they are about, never
+/// the values.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn the_change_request_list_names_the_people_its_corrections_are_about(pool: PgPool) {
     let (c, id, _) = one_employee(&pool).await;
@@ -238,7 +239,7 @@ async fn the_change_request_list_names_the_people_its_corrections_are_about(pool
     assert_eq!(status, StatusCode::OK, "{body}");
     assert_eq!(
         body["items"][0]["payload"]["changes"]["birth_date"],
-        "1990-01-02"
+        "••••-••-••"
     );
     assert_eq!(written.len(), 1, "{written:?}");
     let (action, _, details) = &written[0];

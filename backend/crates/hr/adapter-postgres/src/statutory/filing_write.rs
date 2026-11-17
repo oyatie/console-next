@@ -150,15 +150,12 @@ async fn write(
     {
         crate::authz::authorize_hr_org_wide(p, Feature::EmployeeDirectoryManage)?;
     }
-    if body
-        .applicability_facts
-        .as_ref()
-        .and_then(|f| f.birth_date.as_deref())
-        .is_some_and(|b| {
-            task.birth_date_for_assessment
-                .as_deref()
-                .is_some_and(|known| known != b)
-        })
+    // Any value, equal or not, gets this one answer: a refusal must not confirm a recorded birth date.
+    if task.birth_date_for_assessment.is_some()
+        && body
+            .applicability_facts
+            .as_ref()
+            .is_some_and(|f| f.birth_date.is_some())
     {
         return Err(refusal(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -184,6 +181,10 @@ async fn write(
         .clone()
         .unwrap_or_else(|| task.applicability_facts.clone());
     facts.birth_date = task.birth_date_for_assessment.clone().or(facts.birth_date);
+    // A holder who cannot record sensitive facts is served no income, so the record keeps the one assessed.
+    if !task.can_record_sensitive_facts {
+        facts.monthly_income_won = task.income_for_assessment;
+    }
     let anchors = FilingAnchors {
         effective_date: Some(on),
         acquire_date: if kind == "ACQUIRE" {
@@ -265,10 +266,11 @@ async fn write(
         .transpose()
         .map_err(|_| HrError::internal("filing reason encoding failed"))?
         .and_then(|v| v.as_str().map(str::to_owned));
+    // Facts are read back without the birth date, so the record keeps the one assessed.
     let facts = body
         .applicability_facts
         .as_ref()
-        .map(serde_json::to_value)
+        .map(|_| serde_json::to_value(&facts))
         .transpose()
         .map_err(|_| HrError::internal("filing facts encoding failed"))?;
     let version = task

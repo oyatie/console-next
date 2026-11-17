@@ -8,6 +8,7 @@ export const enFacts = {
   "facts.title": "Employment record",
   "facts.noProfile": "There is no employment record, so employment type, base pay and probation cannot be recorded.",
   "facts.birthDate": "Date of birth",
+  "facts.birthDate.recordedMeanwhile": "A date of birth was recorded meanwhile (you entered {date}). A recorded date of birth changes through a correction on the personnel card.",
   "facts.workEmail": "Work email",
   "facts.workEmail.invalid": "Not an email address",
   "facts.idType": "ID document type",

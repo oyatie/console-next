@@ -1,310 +1,129 @@
-//! The employee import target catalog: canonical targets, their header
-//! aliases and classification (moved from `app/src/hr.rs`, R2-import).
+// SPDX-License-Identifier: LicenseRef-Proprietary
+//! Versioned employee import metadata, loaded once from the declared catalogue.
 
-use super::{fields_place, fields_register};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::sync::LazyLock;
 
-#[derive(Debug)]
-pub struct EmployeeImportFieldDefinition {
-    pub target: &'static str,
-    pub aliases: &'static [&'static str],
-    pub classification: &'static str,
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct EmployeeImportFieldDefinition<'a> {
+    #[serde(borrow)]
+    pub target: &'a str,
+    #[serde(borrow)]
+    pub aliases: Vec<&'a str>,
+    pub classification: Classification,
     pub required: bool,
+    pub label_ids: LabelIds,
+    pub value_type: ValueType,
+    pub format: ValueFormat,
+    pub code_catalogue: Option<CodeCatalogue>,
+    pub example: String,
 }
 
-pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = &[
-    EmployeeImportFieldDefinition {
-        target: "name",
-        aliases: &[
-            "성명",
-            "이름",
-            "직원명",
-            "사원명",
-            "근로자명",
-            "임직원명",
-            "name",
-            "employee_name",
-            "employeename",
-            "worker_name",
-            "workername",
-        ],
-        classification: "canonical",
-        required: true,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Classification {
+    Canonical,
+    Restricted,
+    Location,
+}
+
+impl Classification {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Canonical => "canonical",
+            Self::Restricted => "restricted",
+            Self::Location => "location",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct LabelIds {
+    pub ko: String,
+    pub en: String,
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueType {
+    Text,
+    Date,
+    Decimal,
+    Code,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueFormat {
+    Text,
+    IsoDate,
+    DecimalDays,
+    DecimalHours,
+    CatalogueLabel,
+    E164,
+    BusinessRegistrationNumber,
+    ResidentRegistrationNumber,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "source", rename_all = "snake_case", deny_unknown_fields)]
+pub enum CodeCatalogue {
+    Domain {
+        resource: String,
     },
-    EmployeeImportFieldDefinition {
-        target: "employee_number",
-        aliases: &[
-            "사번",
-            "사원번호",
-            "직원번호",
-            "사용자ID",
-            "user_id",
-            "userid",
-            "employee_id",
-            "employeeid",
-            "employee_number",
-            "employeenumber",
-            "staff_id",
-            "staffid",
-        ],
-        classification: "canonical",
-        required: false,
+    Refdata {
+        resource: String,
     },
-    fields_place::ORG_UNIT,
-    EmployeeImportFieldDefinition {
-        target: "job",
-        aliases: &[
-            "업무",
-            "담당업무",
-            // r3:records-02: worker register "kind of work engaged in".
-            "종사업무",
-            "종사하는업무",
-            "직무",
-            "직종",
-            "job",
-            "work_type",
-            "worktype",
-        ],
-        classification: "canonical",
-        required: false,
+    Tenant {
+        resource: String,
+        kind: Option<String>,
     },
-    EmployeeImportFieldDefinition {
-        target: "position",
-        // r3:hire-16: a grade is not a title (a post); it stays "keep original
-        // only" rather than overwriting the person's title.
-        aliases: &["직책", "직위", "직함", "position", "title"],
-        classification: "canonical",
-        required: false,
-    },
-    fields_place::WORKPLACE,
-    fields_place::WORKSITE_NAME,
-    fields_place::WORKSITE_ADDRESS,
-    EmployeeImportFieldDefinition {
-        target: "hire_date",
-        aliases: &[
-            "입사일",
-            "입사일자",
-            "채용일",
-            "보험가입일",
-            "hire_date",
-            "hiredate",
-            "start_date",
-            "startdate",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "exit_date",
-        aliases: &[
-            "퇴사일",
-            "퇴사일자",
-            "퇴직일",
-            "보험상실일",
-            "exit_date",
-            "exitdate",
-            "end_date",
-            "enddate",
-            "termination_date",
-            "terminationdate",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    // BW-10 / decisions #6: date of birth is the identity discriminator and a
-    // register fact (Enforcement Decree of the Labor Standards Act §20), so this
-    // column is kept, typed and checked.
-    // r3:hire-16 / records-02: worker register (Enforcement Decree of the Labor
-    // Standards Act §20) facts.
-    fields_register::SEX,
-    fields_register::CONTRACT_END_DATE,
-    fields_register::PROBATION_END_DATE,
-    EmployeeImportFieldDefinition {
-        target: "birth_date",
-        aliases: &[
-            "생년월일",
-            "birth_date",
-            "birthdate",
-            "date_of_birth",
-            "dob",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "leave_accrued",
-        aliases: &[
-            "발생연차",
-            "연차발생",
-            "부여연차",
-            "발생휴가",
-            "leave_accrued",
-            "leaveaccrued",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "leave_used",
-        aliases: &[
-            "사용연차",
-            "연차사용",
-            "사용휴가",
-            "leave_used",
-            "leaveused",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "leave_remaining",
-        aliases: &[
-            "잔여연차",
-            "남은연차",
-            "연차잔여",
-            "잔여휴가",
-            "leave_balance",
-            "leavebalance",
-            "leave_remaining",
-            "leaveremaining",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    // Days and hours worked in the file's pay period: typed here and read by
-    // the payroll roster, in place of twelve header words it read as raw
-    // text. Those words are the suggestions; no word is added.
-    EmployeeImportFieldDefinition {
-        target: "work_days",
-        aliases: &["근무일수", "근무일"],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "regular_hours",
-        aliases: &["근무시간", "기본시간", "기본근무"],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "overtime_hours",
-        aliases: &["연장시간", "특근연장시간", "특근연장"],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "night_hours",
-        aliases: &["심야시간"],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "holiday_hours",
-        aliases: &["특근시간"],
-        classification: "canonical",
-        required: false,
-    },
-    // MR-7: employment type, recorded on the employment profile. A code maps as
-    // is; a label (regular, post-retirement contract) is mapped by the operator,
-    // since the labels live in the client catalogs.
-    EmployeeImportFieldDefinition {
-        target: "employment_type",
-        aliases: &[
-            "고용형태",
-            "고용구분",
-            "고용유형",
-            "계약형태",
-            "employment_type",
-            "employmenttype",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "company_brn",
-        aliases: &[
-            "사업자등록번호",
-            "등록번호",
-            "company_brn",
-            "registration_number",
-            "registration number",
-            "business registration number",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "company",
-        aliases: &[
-            "회사",
-            "법인",
-            "회사명",
-            "법인명",
-            "company name",
-            "entity",
-            "소속회사",
-            "계열사",
-            "조직회사",
-            "company",
-            "corporation",
-            "legal_entity",
-            "legalentity",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    // IMPORT-2 (decisions #25): sealed at the parse, matched by keyed hash,
-    // never stored in a raw row ("restricted").
-    EmployeeImportFieldDefinition {
-        target: "rrn",
-        aliases: &[
-            "주민등록번호",
-            "주민번호",
-            "rrn",
-            "resident_registration_number",
-        ],
-        classification: "restricted",
-        required: false,
-    },
-    // W12: the person's mobile phone (restricted; stored on the profile at apply).
-    fields_register::PHONE,
-    // IMPORT-2 (decisions #26): the current status and a leave of absence's
-    // start, recorded as setup facts.
-    EmployeeImportFieldDefinition {
-        target: "employment_status",
-        aliases: &[
-            "재직상태",
-            "재직구분",
-            "재직여부",
-            "근무상태",
-            "employment_status",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "leave_start_date",
-        aliases: &["휴직시작일", "휴직개시일", "휴직일", "leave_start_date"],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "leave_type",
-        aliases: &["휴직구분", "휴직유형", "휴직종류", "leave_type"],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "leave_return_date",
-        aliases: &[
-            "복직예정일",
-            "복귀예정일",
-            "휴직종료예정일",
-            "expected_return_date",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-];
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct EmployeeImportCatalogue<'a> {
+    #[serde(rename = "_license", skip_serializing)]
+    _license: String,
+    pub object: String,
+    #[serde(skip_deserializing)]
+    pub version: String,
+    #[serde(borrow)]
+    pub fields: Vec<EmployeeImportFieldDefinition<'a>>,
+}
+
+impl<'a> EmployeeImportCatalogue<'a> {
+    fn parse(source: &'a str) -> Result<Self, serde_json::Error> {
+        let mut catalogue: Self = serde_json::from_str(source)?;
+        let hash: String = Sha256::digest(source.as_bytes())
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        catalogue.version = format!("sha256:{hash}");
+        Ok(catalogue)
+    }
+}
+
+static CATALOGUE: LazyLock<EmployeeImportCatalogue<'static>> = LazyLock::new(|| {
+    // A corrupt built-in catalogue must fail closed; contract tests validate this embedded data.
+    #[expect(clippy::expect_used)]
+    EmployeeImportCatalogue::parse(include_str!("../../data/employee.json"))
+        .expect("embedded employee catalogue must match its typed schema")
+});
+
+#[must_use]
+pub fn employee_import_catalogue() -> &'static EmployeeImportCatalogue<'static> {
+    &CATALOGUE
+}
+
+/// Compatibility view used by the importer and its existing preview target options.
+pub static EMPLOYEE_IMPORT_FIELD_DEFINITIONS: LazyLock<
+    &'static [EmployeeImportFieldDefinition<'static>],
+> = LazyLock::new(|| &employee_import_catalogue().fields);
 
 #[cfg(test)]
 #[path = "fields_tests.rs"]
