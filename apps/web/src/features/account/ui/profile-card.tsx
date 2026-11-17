@@ -9,6 +9,7 @@ import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { ProfileName } from "./profile-name";
+import { ExperienceChooser } from "../../../shell/frame/experience-chooser";
 import { claims, signOutHere, type Me } from "../api";
 
 /**
@@ -42,6 +43,7 @@ export function ProfileCard({ locale, me }: { locale: ReactNode; me: UseQueryRes
           ...(vendor ? [{ key: "roles", label: t("account.field.roles"), value: <Chip>{t("account.field.platform")}</Chip> }] : []),
           { key: "locale", label: <label htmlFor="acct-locale">{t("shell.locale")}</label>, value: locale },
           { key: "theme", label: t("account.field.theme"), value: <span className="muted">{t("account.field.theme.where")}</span> },
+          { key: "experience", label: <label htmlFor="account-experience">{t("account.experience")}</label>, value: <ExperienceChooser /> },
         ]}
       />
     </Card>

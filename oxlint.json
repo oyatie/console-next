@@ -47,15 +47,18 @@
     { "files": ["apps/web/src/routes/**"], "rules": { "react/only-export-components": "off" } },
     { "files": ["apps/web/src/lib/**", "apps/web/src/main.tsx"], "rules": { "no-restricted-imports": "off" } },
 
+    { "files": ["apps/web/src/features/**"], "rules": { "no-restricted-imports": ["error", { "patterns": [{ "group": ["**/experience", "**/experience/**"], "message": "Features never read the experience; use shared shell parts and page patterns" }], "paths": [{ "name": "@tanstack/react-query", "importNames": ["useMutation", "useQueryClient"], "message": "Writes go through lib/command.ts" }] }] } },
     { "files": ["apps/web/src/features/*/domain/**", "apps/web/src/lib/pure/**"],
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
+          { "group": ["**/experience", "**/experience/**"], "message": "Features never read the experience; use shared shell parts and page patterns" },
           { "group": ["react", "react-dom", "react-dom/**", "@tanstack/**", "react-aria*", "react-aria*/**", "lucide-react", "@console/i18n", "@console/i18n/**"], "message": "domain ring: no frameworks, no copy" },
           { "group": ["@console/api", "@console/api/web"], "message": "domain may import only types from @console/api/schema" } ] }],
         "no-restricted-globals": ["error", "window", "document", "navigator", "location", "localStorage", "sessionStorage", "fetch"] } },
     { "files": ["apps/web/src/features/*/*.ts", "apps/web/src/features/*/api/*.ts", "apps/web/src/reference/*/*.ts", "apps/web/src/reference/*/api/*.ts"],
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
+          { "group": ["**/experience", "**/experience/**"], "message": "Features never read the experience; use shared shell parts and page patterns" },
           { "group": ["react", "react-dom", "react-dom/**", "@tanstack/**", "react-aria*", "react-aria*/**", "lucide-react", "@console/api/web"], "message": "slice root is pure TS; React and TanStack live under ui/" } ] }],
         "no-restricted-globals": ["error", "window", "document", "navigator", "location", "localStorage", "sessionStorage"] } },
     { "files": ["apps/web/src/ui/**"],
@@ -65,16 +68,22 @@
     { "files": ["packages/api/src/**", "packages/i18n/src/**"],
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
+          { "group": ["**/experience", "**/experience/**"], "message": "Features never read the experience; use shared shell parts and page patterns" },
           { "group": ["react", "react-dom", "react-dom/**", "@tanstack/**", "react-aria*", "react-aria*/**"], "message": "packages are platform-neutral" } ] }],
         "no-restricted-globals": ["error", "window", "document", "navigator", "location", "localStorage", "sessionStorage"] } },
     { "files": ["packages/api/src/web.ts"], "rules": { "no-restricted-globals": "off" } },
-    { "files": ["apps/web/src/features/*/ui/**", "apps/web/src/reference/*/ui/**", "apps/web/src/routes/**"],
+    { "files": ["apps/web/src/features/*/ui/**", "apps/web/src/reference/*/ui/**"],
       "rules": {
         "react/forbid-elements": ["error", { "forbid": ["button", "input", "select", "textarea", "table", "dialog", "a", "form"] }],
         "no-restricted-imports": ["error", {
-          "patterns": [{ "group": ["react-aria*", "react-aria*/**", "@console/api", "@console/api/web"], "message": "views use ui/ and the slice api.ts" }],
+          "patterns": [{ "group": ["**/experience", "**/experience/**"], "message": "Features never read the experience; use shared shell parts and page patterns" }, { "group": ["react-aria*", "react-aria*/**", "@console/api", "@console/api/web"], "message": "views use ui/ and the slice api.ts" }],
           "paths": [{ "name": "@tanstack/react-query", "importNames": ["useMutation", "useQueryClient"], "message": "Writes go through lib/command.ts" }] }] } },
 
+    { "files": ["apps/web/src/routes/**"], "rules": {
+      "react/forbid-elements": ["error", { "forbid": ["button", "input", "select", "textarea", "table", "dialog", "a", "form"] }],
+      "no-restricted-imports": ["error", {
+        "patterns": [{ "group": ["react-aria*", "react-aria*/**", "@console/api", "@console/api/web"], "message": "views use ui/ and the slice api.ts" }],
+        "paths": [{ "name": "@tanstack/react-query", "importNames": ["useMutation", "useQueryClient"], "message": "Writes go through lib/command.ts" }] }] } },
     { "files": ["apps/web/src/main.tsx"], "rules": { "react/only-export-components": "off" } },
     { "files": ["apps/web/src/**/*.gallery.tsx"], "rules": { "react/only-export-components": ["error", { "allowExportNames": ["order"] }] } },
 

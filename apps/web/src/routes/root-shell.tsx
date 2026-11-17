@@ -5,8 +5,9 @@ import { screen } from "../lib/fonts";
 import { CrashScreen } from "../lib/react/crash-screen";
 import { RouteFrame } from "../lib/react/route-ready";
 import { ReadSkeleton } from "../ui/skeleton/skeleton";
+import { loadPack } from "../experience/pack";
 
-const Shell = lazy(screen(() => import("../shell/baseline/shell")));
+const Shell = lazy(screen(loadPack));
 
 /** Keep application chrome outside the router's pending screen boundary. */
 export function RootShell({ children }: { children: ReactNode }): ReactNode {

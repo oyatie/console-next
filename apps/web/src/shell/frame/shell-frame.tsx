@@ -6,9 +6,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalSt
 import { Outlet, useLocation, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { refresh, session } from "@console/api";
-import { i18n, LOCALES, t, type Locale } from "@console/i18n";
-import { focusSoon } from "../../lib/react/announce";
-import { setLocale } from "../locale";
+import { t } from "@console/i18n";
 import { ChangeNotice } from "../../ui/live/change-notice";
 import { HeldNotice } from "../../ui/live/held-notice";
 import { navigationRead, read } from "../../lib/query";
@@ -35,11 +33,10 @@ const JumpPalette = lazy(() => chunk(import("../../features/structure/ui/jump-pa
 
 export interface ShellLayoutProps {
   children: ReactNode;
-  skipLink: ReactNode;
   platform: boolean;
   restoring: boolean;
-  scope?: string;
   menu: readonly NavHub[] | undefined;
+  navigationState: "loading" | "failed" | "ready";
   navigationNotice: ReactNode;
   onSearch: () => void;
 }
@@ -131,15 +128,17 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [platform]);
-  return (
+  const coldFault = !displayed && [access, support, me, checklist].find(q => q.isError && !isAnswer(q.error));
+  const scope = platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined);
+  return (<>
+    <a className="skip" href="#main">{t("shell.skip")}</a>
     <Layout platform={platform} restoring={restoring} menu={platform || displayed ? menu : undefined}
-      scope={platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined)}
-      skipLink={<a className="skip" href="#main">{t("shell.skip")}</a>} onSearch={() => setJump(true)}
-      navigationNotice={!platform && answered && modulesFault && (pageFailures > 0
+      navigationState={platform || displayed ? "ready" : coldFault ? "failed" : "loading"} onSearch={() => setJump(true)}
+      navigationNotice={coldFault ? <QueryState q={{ ...coldFault, data: undefined }} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState> : !platform && answered && modulesFault && (pageFailures > 0
         ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
         : <QueryState q={modules} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState>)}>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1 requires keyboard access to this named scroll container. */}
-      <PageMain className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>
+      <PageMain className="main" id="main" data-console-scope={scope} tabIndex={0} aria-label={t("shell.main")}>
         <SessionRecovery>
         <ChangeNotice key={pathname} />
         <HeldNotice />
@@ -157,24 +156,5 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
         </Suspense>
       )}
     </Layout>
-  );
-}
-
-/**
- * The UI language; the choice is kept on this device (shell/locale). The switch re-renders every
- * screen, which replaces this select: focus is put back on it (`id` names it), never dropped to the body.
- * `label` names it itself when no visible <label> does.
- */
-export function LocaleSelect({ id, label }: { id: string; label?: boolean }) {
-  return (
-    <select
-      id={id}
-      className="field__input"
-      aria-label={label ? t("shell.locale") : undefined}
-      value={i18n.locale}
-      onChange={(e) => void setLocale(e.target.value as Locale).then(() => focusSoon(id), () => undefined)}
-    >
-      {LOCALES.map((l) => <option key={l} value={l}>{t(`shell.locale.${l}`)}</option>)}
-    </select>
-  );
+  </>);
 }

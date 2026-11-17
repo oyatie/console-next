@@ -4,8 +4,10 @@ import { defineConfig } from "@playwright/test";
 import { e2eBrowser } from "../browser";
 import { OUTPUT_DIR, PORTS } from "../slot";
 import timings from "./timings.json" with { type: "json" };
+import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 
 const dist = `../../.cache/states-${PORTS.web}`;
+const origin = `http://localhost:${PORTS.web}`;
 
 // Prebuild lazy chunks once so state assertions never wait on Vite's dev transforms.
 export default defineConfig({
@@ -19,6 +21,7 @@ export default defineConfig({
   reporter: process.env.PLAYWRIGHT_JSON_OUTPUT_FILE ? [["dot"], ["json"]] : "list",
   timeout: 60_000,
   retries: 0,
-  use: { browserName: e2eBrowser(), baseURL: `http://localhost:${PORTS.web}`, locale: "ko-KR", timezoneId: "Asia/Seoul", serviceWorkers: "block", trace: "retain-on-failure" },
+  use: { browserName: e2eBrowser(), baseURL: origin, locale: "ko-KR", timezoneId: "Asia/Seoul", serviceWorkers: "block", trace: "retain-on-failure",
+    storageState: { cookies: [], origins: [{ origin, localStorage: [{ name: EXPERIENCE_KEY, value: process.env.E2E_EXPERIENCE ?? "baseline" }] }] } },
   webServer: { command: `VITE_REVIEW_STATE_ROUTES=1 npm run build -w @console/web -- --mode test --outDir ${dist} --emptyOutDir && npm run preview -w @console/web -- --outDir ${dist} --port ${PORTS.web} --strictPort`, url: `http://localhost:${PORTS.web}`, reuseExistingServer: false },
 });

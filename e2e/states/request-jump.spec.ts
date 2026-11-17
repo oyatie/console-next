@@ -27,7 +27,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
     try {
       await page.goto("/");
       await expect(page.getByRole("heading", { name: t("home.noWork.title"), exact: true })).toBeVisible();
-      await page.keyboard.press("Control+KeyK");
+      await page.getByRole("banner").getByRole("button", { name: t("shell.jump"), exact: true }).click();
       const palette = page.getByRole("dialog", { name: t("shell.jumpLabel"), exact: true });
       const input = palette.getByRole("searchbox");
       await expect(input).toHaveAttribute("placeholder", t("shell.jump"));

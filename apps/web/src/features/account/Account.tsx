@@ -14,7 +14,7 @@ import { PrivacyReceipt } from "./ui/privacy-receipt";
 import { PrivacyRequest } from "./ui/privacy-request";
 import { PrivacyRequestsView } from "./ui/privacy-requests";
 import s from "./ui/account.module.css";
-import { LocaleSelect } from "../../shell/frame/shell-frame";
+import { LocaleSelect } from "../../shell/frame/locale-select";
 import { MePage } from "./ui/me-page";
 
 /** Route entry for /account: the shell's language control goes in as a prop, so ui/ never imports the shell. */

@@ -5,6 +5,7 @@ import { mockRoute } from "./route";
 import { screenAccess, user } from "./fixtures";
 import { screens } from "../states/registry";
 import { expectAxe } from "../a11y";
+import { shell } from "../shell";
 
 test("route navigation focuses h1 and announces the page title with the current tenant", async ({ page, browserName }) => {
   await mockScreen(page, screens[1], "populated");
@@ -19,7 +20,7 @@ test("route navigation focuses h1 and announces the page title with the current 
   await expect(page).toHaveTitle(peopleTitle);
   await expect(page.locator('[role="status"].sr-only')).toHaveText(peopleTitle);
   await expectAxe(page, "managed page heading focus");
-  const orgLink = page.locator('.rail a[href="/org"]');
+  const orgLink = shell(page).navigation.locator('a[href="/org"]');
   await orgLink.click();
   await expect(page).toHaveURL(/\/org$/);
   await expect(heading).toBeFocused();
