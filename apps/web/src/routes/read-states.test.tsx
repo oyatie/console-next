@@ -55,8 +55,12 @@ for (const screen of screens) test.each([403, 503])(`${screen.name}: %i owns the
   const html = renderToStaticMarkup(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
   expect(html).toContain(t(status === 403 ? "common.denied.title.plain" : "common.loadFailed.title"));
   expect(html).toContain("route-reference");
-  if (["accounts", "day attendance", "month attendance", "statutory"].includes(screen.name) && status === 503) expect(html).toContain(t(screen.control));
+  if (["accounts", "platform", "day attendance", "month attendance", "statutory"].includes(screen.name) && status === 503) expect(html).toContain(t(screen.control));
   else expect(html).not.toContain(t(screen.control));
+  if (screen.name === "platform" && status === 503) {
+    expect(html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)?.find(button => button.includes(t("tenants.create")))).toContain('aria-disabled="true"');
+    expect(html).toContain(t("tenants.create.unavailable"));
+  }
   if (status === 403) expect(html).not.toMatch(/<form|role="tablist"|role="toolbar"/);
   if (status === 403 && screen.name === "accounts") expect(html).not.toContain('aria-labelledby="accounts-title"');
   if (status === 403 && screen.name === "platform") expect(html).not.toContain(t("tenants.search"));

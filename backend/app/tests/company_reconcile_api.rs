@@ -60,7 +60,7 @@ async fn company_evidence_and_confirmation_refuse_other_tenants_and_lower_grants
         },
         &[grid],
         &std::collections::BTreeMap::new(),
-        &WorkbookMappingRequest::default(),
+        &serde_json::from_value::<WorkbookMappingRequest>(serde_json::json!({"sheets": {"roster": {"header_row": 1, "columns": {"A": "company", "B": "name", "C": "employee_number", "D": "hire_date", "E": "employment_type"}}}})).unwrap(),
     )
     .unwrap();
     let principal = Principal::new(

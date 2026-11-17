@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
+#[path = "self_binding.rs"]
+mod self_binding;
 
 async fn fixture(pool: &PgPool) -> (Harness, UserId, UserId, uuid::Uuid) {
     let harness = Harness::new(pool.clone()).await;

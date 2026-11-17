@@ -53,8 +53,7 @@ const orgChange = createRoute({
   getParentRoute: () => app,
   path: "/org/changes/$id", staticData: { access: "signed-in" },
   validateSearch: (s: Record<string, unknown>): { unsent?: boolean; done?: (typeof DONE)[number] } => ({ unsent: flag(s.unsent), done: oneOf(DONE, s.done) }),
-  component: lazyRouteComponent(screen(() => import("../features/org/OrgChange")), "OrgChange"),
-});
+}).lazy(() => screen(() => import("./org-tabs"))().then(m => m.orgChange));
 
 /** S8: moving the department `ids` (comma-separated, as chosen on the chart) to one place, as one batch or one proposal. */
 const orgMove = createRoute({

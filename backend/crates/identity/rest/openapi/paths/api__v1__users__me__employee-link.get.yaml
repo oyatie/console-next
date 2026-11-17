@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [users]
+operationId: getSelfAccountBinding
+summary: Read the current account's self-attested employee binding
+description: Cedar authorizes the live account. Only a receipt matching its current employee link is returned. Revoked or withdrawn bindings return null; confirmed bindings remain visible with can_withdraw false. No employee link or management grant is required to recover the receipt.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Current self-attestation and Cedar withdrawal permission.
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [attestation]
+          properties:
+            attestation:
+              type: object
+              nullable: true
+              additionalProperties: false
+              required: [attestation_id, employee_id, can_withdraw]
+              properties:
+                attestation_id:
+                  type: string
+                  format: uuid
+                employee_id:
+                  type: string
+                  format: uuid
+                can_withdraw:
+                  type: boolean
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

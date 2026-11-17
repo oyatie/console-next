@@ -10,6 +10,19 @@ export type CanvasHandle = { fit: () => void; reveal: (r: Rect) => void };
 /** Before the bars are measured: their single-row height plus the space kept clear of them. */
 const BARS: Insets = { top: 56, bottom: 64 };
 
+function keepsWheel(target: EventTarget | null, viewport: HTMLElement, dx: number, dy: number) {
+  for (let el = target instanceof Element ? target : null; el && el !== viewport; el = el.parentElement) {
+    if (!(el instanceof HTMLElement)) continue;
+    if (el.matches("input")) return true;
+    const style = getComputedStyle(el);
+    // Firefox scrolls textareas natively even when their computed overflow is visible.
+    const textarea = el instanceof HTMLTextAreaElement;
+    if ((textarea || /auto|scroll/.test(style.overflowY)) && (dy < 0 ? el.scrollTop > 0 : dy > 0 && el.scrollTop + el.clientHeight < el.scrollHeight)) return true;
+    if ((textarea || /auto|scroll/.test(style.overflowX)) && (dx < 0 ? el.scrollLeft > 0 : dx > 0 && el.scrollLeft + el.clientWidth < el.scrollWidth)) return true;
+  }
+  return false;
+}
+
 /**
  * A pan/zoom canvas for a laid-out chart (spec §2 OrgCanvas): connectors in one SVG, boxes as absolutely positioned
  * children of the stage, the zoom bar and the minimap floating in its corners. Panning drags the background (or
@@ -58,6 +71,16 @@ export const OrgCanvas = forwardRef<CanvasHandle, {
     return { ...barInsets(v, top, bottom), corner: corner?.height ? { x: corner.left - v.left, y: corner.top - v.top, w: corner.width, h: corner.height } : undefined };
   };
   const { view, vp, fit, zoomBy, panBy, reveal, centre, relayout } = useView(viewport, p.size, p.resetKey, insets, p.keep);
+  useLayoutEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    // React's wheel listener is passive; cancel native ancestor scrolling after the canvas handles the gesture.
+    const preventScroll = (event: WheelEvent) => {
+      if (!keepsWheel(event.target, el, event.deltaX, event.deltaY)) event.preventDefault();
+    };
+    el.addEventListener("wheel", preventScroll, { passive: false });
+    return () => el.removeEventListener("wheel", preventScroll);
+  }, []);
   const bars = useRef(relayout);
   useLayoutEffect(() => {
     bars.current = () => {
@@ -97,7 +120,11 @@ export const OrgCanvas = forwardRef<CanvasHandle, {
           drag.current = { x: e.clientX, y: e.clientY };
         }}
         onPointerUp={() => void (drag.current = null)}
-        onWheel={(e) => (e.ctrlKey || e.metaKey ? zoomBy(e.deltaY < 0 ? ZOOM.step : -ZOOM.step) : panBy(-e.deltaX, -e.deltaY))}
+        onWheel={(e) => {
+          if (keepsWheel(e.target, e.currentTarget, e.deltaX, e.deltaY)) return;
+          if (e.ctrlKey || e.metaKey) zoomBy(e.deltaY < 0 ? ZOOM.step : -ZOOM.step);
+          else panBy(-e.deltaX, -e.deltaY);
+        }}
       >
         <div
           {...p.stage}

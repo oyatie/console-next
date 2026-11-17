@@ -6,14 +6,14 @@ import { announce } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { useDirtyEscape } from "../../../lib/react/dirty-escape";
-import { edit, isConflict, load, rebaseAll, resolve, type Fields } from "../../../lib/pure/three-way";
+import { edit, isConflict, load, resolve, type Fields } from "../../../lib/pure/three-way";
 import { todayKst } from "../../../lib/pure/today";
 import { Button, Form } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { ConflictPanel } from "../../../ui/conflict/field-conflict";
 import { DateField } from "../../../ui/date/date-field";
 import { Field, TextInput } from "../../../ui/field/field";
-import { FACT_PATHS, PAY_UNITS, emailOk, factValues, factsPatch, type FactKey, type FactValues, type Facts } from "../domain/facts";
+import { FACT_PATHS, PAY_UNITS, emailOk, factValues, factsPatch, rebaseFacts, type FactKey, type FactValues, type Facts } from "../domain/facts";
 import { isFieldConflict, patchFacts } from "../api";
 
 const KEYS = Object.keys(FACT_PATHS) as FactKey[];
@@ -41,10 +41,13 @@ export function FactsForm({ f, name, refetch, onClose }: { f: Facts; name: strin
   const [form, setForm] = useState(() => fields(factValues(f)));
   const [seen, setSeen] = useState(f.updated_at);
   const [tried, setTried] = useState(false);
+  const [typedBirth, setTypedBirth] = useState<FactValues[FactKey]>(null);
   if (f.updated_at !== seen) {
     // The record moved while the form was open: merge it, never reset what was typed.
     setSeen(f.updated_at);
-    setForm(rebaseAll(form, factValues(f)).fields);
+    const next = rebaseFacts(form, f);
+    setForm(next.fields);
+    if (next.typed != null) setTypedBirth(next.typed);
   }
   const v = yours(form);
   const set = (k: FactKey) => (value: string | number | null) => setForm((x) => ({ ...x, [k]: edit(x[k], value === "" ? null : value) }));
@@ -53,7 +56,7 @@ export function FactsForm({ f, name, refetch, onClose }: { f: Facts; name: strin
   const errors = {
     email: v.work_email != null && !emailOk(String(v.work_email)) ? t("facts.workEmail.invalid") : undefined,
     pay: (v.base_pay_won == null) !== (v.pay_unit == null) ? t("facts.edit.payPair") : undefined,
-    form: tried && patch.length === 0 ? t("facts.edit.nothing") : undefined,
+    form: typedBirth != null ? t("facts.birthDate.recordedMeanwhile", { date: fmtDate(typedBirth) }) : tried && patch.length === 0 ? t("facts.edit.nothing") : undefined,
   };
   const save = useCommand({
     run: () => patchFacts(f.employee_id, patch),
@@ -71,7 +74,7 @@ export function FactsForm({ f, name, refetch, onClose }: { f: Facts; name: strin
   };
   const { ref, armed } = useDirtyEscape<HTMLDivElement>(patch.length > 0, onClose);
   const shown = (k: FactKey, x: unknown) =>
-    x == null ? "" : k === "id_type" ? label(ID_TYPE, String(x)) : k === "pay_unit" ? label(PAY_UNIT, String(x)) : k === "base_pay_won" ? fmtNumber(Number(x)) : k.endsWith("date") ? fmtDate(x) : String(x);
+    x == null ? "" : k === "id_type" ? label(ID_TYPE, String(x)) : k === "pay_unit" ? label(PAY_UNIT, String(x)) : k === "base_pay_won" ? fmtNumber(Number(x)) : k.endsWith("date") && /^\d{4}-\d{2}-\d{2}$/.test(String(x)) ? fmtDate(x) : String(x);
   const payRecorded = m?.pay_unit != null && form.pay_unit.base != null;
   return (
     <div ref={ref}>
@@ -84,7 +87,8 @@ export function FactsForm({ f, name, refetch, onClose }: { f: Facts; name: strin
             conflicts={conflicts.map((k) => ({ field: k, label: t(LABEL[k]), base: shown(k, form[k].base), mine: shown(k, form[k].yours), current: shown(k, form[k].current), at: fmtDateTime(f.updated_at) }))}
           />
         )}
-        <DateField label={t("facts.birthDate")} required={false} value={String(v.birth_date ?? "")} onChange={set("birth_date")} today={today} max={today} />
+        {/* A recorded birth date arrives masked and changes only by correction on the card: only a first record is typed here. */}
+        {f.birth_date == null && <DateField label={t("facts.birthDate")} required={false} value={String(v.birth_date ?? "")} onChange={set("birth_date")} today={today} max={today} />}
         <Field label={t("facts.workEmail")} required={false}  error={tried ? errors.email : undefined}>
           {(p) => <TextInput {...p} type="email" autoComplete="off" value={String(v.work_email ?? "")} onChange={(e) => set("work_email")(e.target.value.trim())} />}
         </Field>

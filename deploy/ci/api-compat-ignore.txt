@@ -9,3 +9,24 @@
 # remain errors. Remove when no supported released baseline needs this transition.
 POST /api/v1/office/callback added the new `0.00` enum value to the `error` response property for the response status `200`
 POST /api/v1/office/callback the `error` response property's min was unset from `0.00` for the response status `200`
+
+# Reviewed response change: the employment facts record serves birth_date as the
+# reveal mask (••••-••-••) instead of the date; only the employee reveal
+# (POST /api/v1/employees/{id}/reveal) returns it. Released web clients display the
+# field and show a dash where they format it as a date.
+# backend/app/tests/masked_personal_reads.rs covers the three responses.
+# Keep these three exact lines together; other properties and endpoints remain
+# errors. Remove when no supported released baseline declares format date here.
+GET /api/v1/employees/{id}/employment-facts the `birth_date` response's property `format` changed from `date` to `none` for status `200`
+PATCH /api/v1/employees/{id}/employment-facts the `birth_date` response's property `format` changed from `date` to `none` for status `200`
+POST /api/v1/employees/{id}/probation/confirm the `birth_date` response's property `format` changed from `date` to `none` for status `200`
+
+# Reviewed response change: a person binding review serves each birth date as
+# the year and month with the day masked (1990-04-••) instead of the date; only
+# the employee reveal (POST /api/v1/employees/{id}/reveal) returns it. Released
+# web clients display the field and show a dash where they format it as a date.
+# backend/crates/hr/adapter-postgres/tests/person_binding_reviews.rs covers it.
+# Keep these two exact lines together; other properties and endpoints remain
+# errors. Remove when no supported released baseline declares format date here.
+GET /api/v1/person-binding-reviews the `items/items/evidence/birth_date` response's property `format` changed from `date` to `none` for status `200`
+GET /api/v1/person-binding-reviews the `items/items/evidence/candidates/items/birth_date` response's property `format` changed from `date` to `none` for status `200`

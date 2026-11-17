@@ -136,7 +136,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
 
   // Scheduled rename and creation share a future change-date marker, while today's tree stays unchanged.
   const sales = await openUnit(admin, "영업팀");
-  await sales.getByRole("button", { name: "이름 변경" }).click();
+  await sales.getByRole("button", { name: "부서 이름 수정", exact: true }).click();
   await sales.getByRole("textbox", { name: /^영업팀의 새 이름/ }).fill("국내영업팀");
   await inlineUnitDetails(admin, sales, due);
   await sales.getByRole("button", { name: "이름 변경", exact: true }).click();

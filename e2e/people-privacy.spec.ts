@@ -6,7 +6,7 @@ import { go } from "./flows";
 import { setupCompany } from "./setup-flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
-import { chooseWorkbook } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "./helpers/import";
 import { rrn, workbook } from "./helpers/import-layouts";
 
 // Slices 1–3: one policy, a bound passkey and an accountable field reveal.
@@ -21,6 +21,7 @@ test("solo: RRN and birth-date reveals use passkeys and remask on the card and i
     ["PR-0001", "한기록", rrn("1990-01-01", 1, 1), "1990-01-01", "2024-01-02"],
   ] }]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명", exact: true }).click();
   await expect(admin.getByRole("heading", { name: /명부를 반영했습니다|반영했습니다/ })).toBeVisible();

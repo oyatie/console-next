@@ -16,6 +16,7 @@ export async function importPeople(page: Page) {
     });
     const preview = await page.request.post("/api/v1/employees/import/preview", { headers, multipart: {
       file: { name: "directory.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: await rosterXlsx(COMPANY, rows) },
+      mapping: JSON.stringify({ sheets: { [COMPANY]: { header_row: 1, columns: { A: "employee_number", B: "name", C: "org_unit", D: "position", E: "hire_date" } } } }),
       pay_period_start: "2026-10-01", pay_period_end: "2026-10-31",
     } });
     expect(preview.ok()).toBeTruthy();

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
 import { openGradeFix } from "../helpers/grade-fix";
@@ -10,6 +11,33 @@ import { moveDetail } from "./lifecycle-sheets";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
+
+test.beforeAll(() => loadCatalog("ko"));
+
+test("grade helper waits for promotion reasons before returning the editor", async ({ page }) => {
+  const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+  await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { items: [], can_manage: true } });
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await mockRoute(page, "get", "/api/v1/reason-codes", async request => {
+    await held;
+    return { status: 200, json: { domain: new URL(request.url()).searchParams.get("domain")!, items: [] } };
+  });
+  await page.goto(`/people/${id(4000)}`);
+  await routeReady(page);
+  let waiting = false;
+  page.waitForFunction = new Proxy(page.waitForFunction, {
+    apply(wait, context, args) { waiting = true; return Reflect.apply(wait, context, args); },
+  });
+  const opening = openGradeFix(page, false);
+  try {
+    await expect.poll(() => waiting, "the helper waits for route readiness while reasons are held").toBe(true);
+  } finally { release(); }
+  const editor = await opening;
+  await expect(editor).toContainText(t("empFix.catalog.empty", { field: t("empFix.change.new", { field: t("empFix.field.grade") }) }));
+  await expect(editor.getByRole("button", { name: t("lifecycle.appoint.add", { what: t("enum.jobTitleKind.GRADE") }), exact: true })).toBeVisible();
+  expect(fixture.unexpected).toEqual([]);
+});
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`a modal Sheet preserves the personnel card grid at ${width}px in ${theme}`, async ({ page }) => {

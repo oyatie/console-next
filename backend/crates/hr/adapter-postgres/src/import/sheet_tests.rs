@@ -60,6 +60,9 @@ impl RrnVault for Mirror {
     }
 }
 
+#[path = "../../tests/support/confirmed_mapping.rs"]
+pub(crate) mod confirmation;
+
 fn parse(
     sheets: &[GridSheet],
     vault: Option<&dyn RrnVault>,
@@ -70,7 +73,8 @@ fn parse(
         org: Uuid::nil(),
         vault,
     };
-    parse_workbook(&ctx, sheets, &BTreeMap::new(), mapping).unwrap()
+    let mapping = confirmation::confirmed_mapping(sheets, &BTreeMap::new(), mapping);
+    parse_workbook(&ctx, sheets, &BTreeMap::new(), &mapping).unwrap()
 }
 
 #[test]

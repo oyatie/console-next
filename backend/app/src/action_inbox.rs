@@ -273,6 +273,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
             if self.log_access && matches!(
                 source,
                 ActionInboxSource::HrIdentity
+                    | ActionInboxSource::AccountBindingReview
                     | ActionInboxSource::HrUnplaced
                     | ActionInboxSource::HrContract
                     | ActionInboxSource::HrRegister

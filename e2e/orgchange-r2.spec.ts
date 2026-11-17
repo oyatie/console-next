@@ -130,7 +130,7 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
 
   // A rename dated in three days: 예약, and the chart says so next to its as-of date (org-26).
   const s1 = await openUnit(admin, "영업1팀");
-  await s1.getByRole("button", { name: "이름 변경" }).click();
+  await s1.getByRole("button", { name: "부서 이름 수정", exact: true }).click();
   await s1.getByRole("textbox", { name: /^영업1팀의 새 이름/ }).fill("국내영업팀");
   await inlineUnitDetails(admin, s1, due);
   await s1.getByRole("button", { name: "이름 변경", exact: true }).click();

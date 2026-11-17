@@ -76,7 +76,7 @@ test("an unknown support session keeps the unrecognized word and diagnostic code
 const migrated = [
   [enums.IMPORT_OUTCOME, "import.outcome", ["ok", "info", "neutral", "neutral", "danger", "warn"]],
   [enums.IMPORT_RUN_STATUS, "import.status", ["neutral", "neutral", "neutral", "ok", "danger", "warn", "warn", "neutral"]],
-  [enums.IMPORT_SHEET_STATUS, "importSheet.status", ["ok", "danger", "neutral", "neutral"]],
+  [enums.IMPORT_SHEET_STATUS, "importSheet.status", ["ok", "danger", "info", "neutral", "neutral"]],
   [enums.SUPPORT_SESSION_STATE, "supportAccess.state", ["neutral", "neutral", "warn", "neutral", "neutral", "neutral", "neutral"]],
   [enums.ATTENDANCE_PATTERN_STATUS, "attendancePatterns.patternStatus", ["ok", "neutral"]],
 ] as const;

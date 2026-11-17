@@ -245,3 +245,23 @@ pub async fn assignable_org_units(
         })
         .collect()
 }
+
+/// Assign registration units together; validation belongs to the registration preparation.
+pub async fn set_employee_org_units(
+    tx: &mut Transaction<'_, Postgres>,
+    org: Uuid,
+    units: &[(Uuid, Uuid)],
+) -> Result<(), sqlx::Error> {
+    if !units.is_empty() {
+        sqlx::query(
+            "UPDATE employees e SET org_unit_id=r.unit,updated_at=now() \
+            FROM unnest($2::uuid[],$3::uuid[]) r(id,unit) WHERE e.org_id=$1 AND e.id=r.id",
+        )
+        .bind(org)
+        .bind(units.iter().map(|r| r.0).collect::<Vec<_>>())
+        .bind(units.iter().map(|r| r.1).collect::<Vec<_>>())
+        .execute(tx.as_mut())
+        .await?;
+    }
+    Ok(())
+}
