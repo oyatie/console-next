@@ -20,6 +20,12 @@ async fn workbench_inbox_loads_its_access_subject_once(pool: PgPool) {
     assert_shared_authorization(pool, "/api/v1/me/workbench", true).await;
 }
 
+#[cfg(feature = "workspace")]
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn workbench_operator_loads_its_access_subject_once(pool: PgPool) {
+    assert_shared_authorization(pool, "/api/v1/me/workbench", false).await;
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn granted_reader_reuses_its_principal_projection_for_the_inbox(pool: PgPool) {
     assert_shared_authorization(pool, "/api/v1/me/action-inbox", true).await;
