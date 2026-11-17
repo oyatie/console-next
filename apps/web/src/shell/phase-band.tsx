@@ -12,7 +12,7 @@ import { settingsQuery } from "../reference/settings/api";
 import { Button } from "../ui/button/button";
 import { PagePhase } from "../ui/page/page-scope";
 import { PhaseLine } from "../ui/page-head/phase-line";
-import { ReadSkeleton, Skeleton } from "../ui/skeleton/skeleton";
+import { Skeleton } from "../ui/skeleton/skeleton";
 import { currentStep } from "../ui/setup-rail/setup-rail";
 import s from "./phase-band.module.css";
 
@@ -69,7 +69,7 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   const text = next ? `${label} · ${codeText(`setup.step.${next}`, "")}` : label;
   const slot = <PhaseSlot phase={band === "started" && dismissed === receipt ? undefined : band ?? undefined} text={text} dismiss={dismiss} />;
   return <PagePhase value={{ slot, settled: decided }}>
-    {!decided && <ReadSkeleton layout="list" />}
+    {!decided && <div className="page"><Skeleton bones={["crumb", "title", "line", "row", "row", "row"]} label={t("common.loading")} /></div>}
     <div className={s.content} data-phase-pending={!decided || undefined} inert={!decided} aria-hidden={!decided || undefined}>{children}</div>
   </PagePhase>;
 }

@@ -1,13 +1,58 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
-import { failure, id } from "../mock/fixtures";
+import { checklist, failure, id } from "../mock/fixtures";
+import { loadCatalog, t } from "@console/i18n";
 import { STALE_TIME_MS } from "../../apps/web/src/lib/freshness";
 import { mockPeopleImport } from "../mock/people-import";
 import { mockRoute } from "../mock/route";
 import { peopleImportScreens, type PeopleImportState } from "./people-import";
 
 const failedReads: Partial<Record<PeopleImportState, string>> = { "entities-failed": "법인", "numbers-failed": "사번 규칙", "reasons-failed": "사유 코드" };
+
+test.beforeAll(() => loadCatalog("ko"));
+
+for (const width of [1440, 390]) test(`the phase hold keeps one import read layout at ${width}px @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockPeopleImport(page, "loading");
+  const held = Promise.withResolvers<void>();
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    await held.promise;
+    return { status: 200, json: checklist };
+  });
+  const start = Date.now();
+  await page.clock.install({ time: start });
+  await page.clock.pauseAt(start + 60_000);
+  try {
+    await page.goto("/people/import");
+    const main = page.getByRole("main");
+    const pending = main.locator("[data-phase-pending]");
+    const layout = main.locator("[data-read-layout]");
+    await expect.poll(async () => {
+      await page.clock.runFor(50);
+      return pending.locator("[data-read-layout]").count();
+    }, { intervals: [100] }).toBe(1);
+    await expect(layout).toHaveCount(1);
+    await expect(layout).toBeHidden();
+    await expect(pending).toHaveAttribute("inert", "");
+    await expect(main.getByRole("status", { name: t("common.loading"), exact: true })).toHaveAttribute("aria-busy", "true");
+    held.resolve();
+    await page.clock.resume();
+    await expect(pending).toHaveCount(0);
+    await expect(layout).toHaveCount(1);
+    await expect(layout).toBeVisible();
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+      await fits(page, `import read layout/${width}/${theme}`);
+      await expectAxe(page, `import read layout/${width}/${theme}`);
+      await page.screenshot({ path: test.info().outputPath(`${theme}.png`), fullPage: true });
+    }
+    fixture.release();
+    await expect(layout).toHaveCount(0);
+    await expect(main.getByRole("button", { name: t("uiFileDrop.pick"), exact: true })).toBeEnabled();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); fixture.release(); }
+});
 
 for (const screen of peopleImportScreens) for (const state of Object.keys(screen.states) as PeopleImportState[]) for (const width of [1440, 390]) {
   test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {

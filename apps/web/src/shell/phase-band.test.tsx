@@ -7,6 +7,7 @@ import type { Checklist } from "@console/api/pending";
 import { loadCatalog, t } from "@console/i18n";
 import { PageHead } from "../ui/page-head/page-head";
 import { PageHeadingLevel, PagePhase } from "../ui/page/page-scope";
+import { ReadSkeleton } from "../ui/skeleton/skeleton";
 import { checklist } from "../../../../e2e/mock/fixtures";
 import { PhaseBand } from "./phase-band";
 import { queryPath } from "../lib/query";
@@ -31,6 +32,14 @@ function PhaseRead() {
   return <output>{String(useContext(PagePhase).settled)}</output>;
 }
 const settled = () => renderToStaticMarkup(<PhaseBand><PhaseRead /></PhaseBand>);
+
+test("the phase hold leaves the read layout owned by the mounted page", () => {
+  const html = renderToStaticMarkup(<main><PhaseBand><ReadSkeleton layout="record" /></PhaseBand></main>);
+  expect(html.match(/data-read-layout=/g)).toHaveLength(1);
+  expect(html).toContain('data-read-layout="record"');
+  expect(html).toContain('data-phase-pending="true" inert="" aria-hidden="true"');
+  expect(html).toContain(`aria-label="${t("common.loading")}"`);
+});
 
 test("access must answer or fail before the shared phase settles", () => {
   state.phase = undefined;
