@@ -1,10 +1,11 @@
-//! The EMP-MODEL facts view: one record per employee, the shape both the GET
-//! and the field PATCH (ME-6) work on. Dates are `YYYY-MM-DD` strings and
-//! timestamps RFC 3339, so a GET → unchanged PATCH round trip never fails a
-//! `test` (ME-9).
+//! The employment facts view: one record per employee, the shape both the GET
+//! and the field PATCH work on. Dates are `YYYY-MM-DD` strings and timestamps
+//! RFC 3339, and the PATCH tests against the masked record served, so a GET →
+//! unchanged PATCH round trip never fails a `test`.
 
 use console_hr_domain::profile::enums::{EmploymentType, IdType, PayUnit, WorkerClassification};
 use console_hr_domain::profile::facts::{ProbationState, probation_state};
+use console_hr_domain::profile::mask::RevealField;
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use console_kernel_core::KernelError;
 use console_platform_authz::{Feature, Principal};
@@ -60,6 +61,14 @@ pub struct EmploymentProfileFacts {
 }
 
 impl EmploymentFacts {
+    /// The record as served: the birth date opens only through the governed reveal.
+    pub(crate) fn masked(mut self) -> Self {
+        self.birth_date = self
+            .birth_date
+            .map(|date| RevealField::BirthDate.masked(&date));
+        self
+    }
+
     pub(crate) fn hire(&self) -> Option<Date> {
         self.hire_date
             .as_deref()
@@ -172,7 +181,8 @@ fn serialize_classified_profile<S: serde::Serializer>(
 impl HrService {
     /// GET the facts. Birth date, ID type and pay are personal data: only the
     /// org-wide directory manager reads them (the same tier that sees pay in
-    /// the employee detail), and each read leaves an access log row.
+    /// the employee detail), the birth date only as its mask, and each read
+    /// leaves an access log row.
     pub async fn employment_facts(
         &self,
         principal: Principal,
@@ -203,5 +213,6 @@ impl HrService {
             })
         })
         .await
+        .map(EmploymentFacts::masked)
     }
 }

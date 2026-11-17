@@ -19,7 +19,7 @@ import { Crumbs } from "../../../ui/page-head/crumbs";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { SheetGrid, type SheetGridColumn } from "../../../ui/sheet-grid/sheet-grid";
 import { commitBulkCorrection, previewBulkCorrection } from "../api";
-import { DEFAULT_COLUMNS, GRID_FIELDS, TYPES, parseTsv, previewCounts, readCell, refusedCells, rowState, shownText, shownValue, type Cell, type GridKey } from "../domain/grid";
+import { DEFAULT_COLUMNS, GRID_FIELDS, TYPES, keepsOnPaste, parseTsv, previewCounts, readCell, refusedCells, rowState, shownText, shownValue, type Cell, type GridKey } from "../domain/grid";
 import { pasteSkippedText, refusedText } from "../present";
 import { GridColumns } from "./grid-columns";
 import { GridDone } from "./grid-done";
@@ -90,7 +90,7 @@ function GridWorkspace() {
       const changed = row.typed[c] !== undefined && "send" in cell && row.typed[c]!.trim() !== row.current[c];
       const invalid = "bad" in cell;
       return {
-        label: t("bulkGrid.cell", { row: r + 1, field: fieldLabel(field.key) }), value, changed,
+        label: t("bulkGrid.cell", { row: r + 1, field: fieldLabel(field.key) }), value, changed, keepOnPaste: keepsOnPaste(row.current[c] ?? ""),
         previous: row.current[c] || t("bulkGrid.blank"), invalid,
         error: invalid ? (cell.bad === "server" ? t("bulkGrid.err.server", { row: r + 1, field: fieldLabel(field.key), why: refusedText(cell.code) })
           : cell.bad !== "choice" ? t(`bulkGrid.err.${cell.bad}`, { row: r + 1, field: fieldLabel(field.key) })

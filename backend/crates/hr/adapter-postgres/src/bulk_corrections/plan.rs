@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 
 use console_hr_domain::corrections::bulk::{FieldPath, RowOutcome, field_path};
 use console_hr_domain::corrections::route_for_current;
+use console_hr_domain::profile::mask::RevealField;
 use http::StatusCode;
 use serde_json::json;
 use sqlx::{Postgres, Transaction};
@@ -44,6 +45,20 @@ fn stored_form<'a>(field: &str, value: Option<&'a str>) -> Option<&'a str> {
 
 fn current<'a>(head: &'a LockedEmployee, field: &str) -> Option<&'a str> {
     stored_form(field, head.current(field))
+}
+
+/// The recorded value as a preview shows it: a field the reveal governs as its mask.
+fn shown(head: &LockedEmployee, field: &str) -> Option<String> {
+    current(head, field).map(|value| {
+        RevealField::from_column(field).map_or_else(|| value.to_owned(), |f| f.masked(value))
+    })
+}
+
+/// Whether `value` is a write: it differs from the record, or it lands on a
+/// value the reveal governs, where dropping it as unchanged would confirm a guess.
+fn writes(head: &LockedEmployee, field: &str, value: Option<&str>) -> bool {
+    let recorded = current(head, field);
+    recorded != value || (recorded.is_some() && RevealField::from_column(field).is_some())
 }
 
 /// One refusal of a row: the field it is about (`None`: the whole row).
@@ -134,7 +149,7 @@ async fn plan_row(
         );
         return Ok(Err(vec![refused_by(None, &stale)]));
     }
-    checked.retain(|((field, value), _)| current(&head, field) != value.as_deref());
+    checked.retain(|((field, value), _)| writes(&head, field, value.as_deref()));
     checked.sort_by(|a, b| a.0.0.cmp(&b.0.0));
     // check_against_record sees the database only: an employee number given
     // twice in one batch is refused here, before the commit could meet it.
@@ -214,7 +229,7 @@ pub(super) async fn plan(
                     .iter()
                     .map(|((field, after), path)| BulkCorrectionField {
                         field: field.clone(),
-                        before: current(&head, field).map(str::to_owned),
+                        before: shown(&head, field),
                         after: after.clone(),
                         path: path.as_str(),
                     })
