@@ -117,7 +117,7 @@ test("renamed pages retain inherited debt but reject additional headings", () =>
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test.each(["dev", "public/dev", "review-base"])("advancing %s cannot turn inherited floorplan debt into new debt", ref => {
+test.each(["dev", "origin/dev", "review-base"])("advancing %s cannot turn inherited floorplan debt into new debt", ref => {
   const root = mkdtempSync(join(tmpdir(), "floorplan-base-"));
   const screen = join(root, "apps/web/src/screen.tsx");
   const inherited = 'export const Screen = () => <main><PageHead title="Title" /></main>;';
@@ -140,7 +140,7 @@ test.each(["dev", "public/dev", "review-base"])("advancing %s cannot turn inheri
     git("switch", "dev");
     writeFileSync(screen, 'export const Screen = () => <Page floorplan="P-01" head={{title:"Title"}}>Body</Page>;');
     commit("dev clears debt");
-    if (ref !== "dev") git("update-ref", ref === "public/dev" ? "refs/remotes/public/dev" : "refs/heads/review-base", "HEAD");
+    if (ref !== "dev") git("update-ref", ref === "origin/dev" ? "refs/remotes/origin/dev" : "refs/heads/review-base", "HEAD");
     git("switch", "lane");
     const run = () => spawnSync("node", [resolve("scripts/quality/ratchet.mjs"), "--root", root], { encoding: "utf8", env });
     const unchanged = run();

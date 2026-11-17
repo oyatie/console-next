@@ -13,8 +13,8 @@ test tiers in [testing/README.md](testing/README.md) and the browser-test strate
 - `npm run check` needs two tools that `npm ci` does not install: `gitleaks` on `PATH` (the secret scan and
   the hygiene test run it) and the Playwright browsers (`npx playwright install chromium firefox`; unit
   tests and the state suite launch Chromium, the cross-browser runs use Firefox).
-- The checks that compare a branch with its base read the local branch `dev`. Keep it current, or name the
-  ref that holds the base: `QUALITY_BASE=<remote>/dev npm run check`.
+- The quality ratchets use `dev`'s configured upstream, then `origin/dev`, then local `dev`. Fetch the
+  remote before running them, or select a base explicitly: `QUALITY_BASE=<ref> npm run check`.
 - Database-backed backend tests need the Postgres topology that `.github/workflows/db-tests.yml` creates.
   Reproduce that job's setup locally rather than inventing one.
 

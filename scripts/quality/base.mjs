@@ -16,7 +16,11 @@ export function baselineGrowth(current, previous) {
 }
 
 export function qualityRef(root) {
-  return process.env.QUALITY_BASE ?? (["public/dev", "origin/dev"].find(ref => spawnSync("git", ["rev-parse", "--verify", "--quiet", `refs/remotes/${ref}`], { cwd: root }).status === 0) ?? "dev");
+  if (process.env.QUALITY_BASE !== undefined) return process.env.QUALITY_BASE;
+  const upstream = spawnSync("git", ["rev-parse", "--abbrev-ref", "dev@{upstream}"], { cwd: root, encoding: "utf8" });
+  if (upstream.status === 0) return upstream.stdout.trim();
+  const origin = spawnSync("git", ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/dev"], { cwd: root });
+  return origin.status === 0 ? "origin/dev" : "dev";
 }
 
 // Git distinguishes a missing path from an invalid base; unknown evidence must not become green.
