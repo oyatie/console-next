@@ -8,6 +8,7 @@ import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 
 const dist = `../../.cache/states-${PORTS.web}`;
 const origin = `http://localhost:${PORTS.web}`;
+const assertionTimeout = 5_000;
 
 // Prebuild lazy chunks once so state assertions never wait on Vite's dev transforms.
 export default defineConfig({
@@ -20,6 +21,7 @@ export default defineConfig({
   workers: Number(process.env.E2E_WORKERS ?? timings.workers),
   reporter: process.env.PLAYWRIGHT_JSON_OUTPUT_FILE ? [["dot"], ["json"]] : "list",
   timeout: 60_000,
+  expect: { timeout: assertionTimeout },
   retries: 0,
   use: { browserName: e2eBrowser(), baseURL: origin, locale: "ko-KR", timezoneId: "Asia/Seoul", serviceWorkers: "block", trace: "retain-on-failure",
     storageState: { cookies: [], origins: process.env.E2E_EXPERIENCE ? [{ origin, localStorage: [{ name: EXPERIENCE_KEY, value: process.env.E2E_EXPERIENCE }] }] : [] } },
