@@ -17,5 +17,13 @@ are outside this coverage. Live clock tests and gallery visual baselines remain
 Chromium-only. The non-resident security-key test in `e2e/sign-in-id.spec.ts`
 explicitly skips non-Chromium engines because only CDP models that authenticator;
 other passkey journeys use the existing context credential helper.
-The canonical table describes the WebKit delivery contract; the PR subset and
-nightly WebKit workflow are not wired yet.
+The `@webkit-pr` tag selects the focused WebKit set in the existing `home` PR and
+merge-group job: solo onboarding, passkey-free code sign-in, inline chart editing,
+keyboard focus, combobox selection, Sheet dismissal, date entry and org toolbar
+hit targets. Mock cases include 390 px and dark coverage. Run it locally with
+`E2E_BROWSER=webkit npm run e2e:states -- --grep @webkit-pr` and
+`E2E_BROWSER=webkit npm run e2e -- e2e/first-run-solo.spec.ts --grep @webkit-pr`.
+The job publishes per-spec results and traces as `webkit-pr`; no PR cases are
+skipped for WebKit. Its 45-minute limit stays unchanged: hosted elapsed time,
+including setup and existing work, must stay below 38m15s to retain 15% headroom.
+Nightly full WebKit coverage remains pending.
