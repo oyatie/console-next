@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "vitest";
-import { t } from "@console/i18n";
+import { beforeAll, expect, test } from "vitest";
+import { loadCatalog, t } from "@console/i18n";
 import { expect as element } from "@playwright/test";
 import { browserEngine } from "../lib/browser-test";
 import { navFixture } from "./nav.browser-fixture";
+
+beforeAll(() => loadCatalog("ko"));
 
 test("support approval changes only on navigation, including revocation", async () => {
   const { server, browser, page, errors } = await navFixture(browserEngine());
