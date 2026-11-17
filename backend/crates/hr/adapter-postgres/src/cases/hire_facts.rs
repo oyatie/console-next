@@ -10,7 +10,15 @@ pub(super) async fn observe_many(
     org: Uuid,
     cases: &[Uuid],
 ) -> Result<(), HrError> {
-    let employees: Vec<(Uuid, Uuid)> = sqlx::query_as("SELECT c.id,c.employee_id FROM lifecycle_cases c WHERE c.org_id=$1 AND c.id=ANY($2) AND c.kind='HIRE' AND c.state='OPEN' AND EXISTS(SELECT 1 FROM lifecycle_case_items i JOIN case_template_items t ON t.template_key=c.template_key AND t.version=c.template_version AND t.item_key=i.item_key WHERE i.org_id=c.org_id AND i.case_id=c.id AND t.checklist_item IS NOT NULL AND i.status='OPEN')")
+    // Empty intake facts cannot complete an observed item; preserve the shared derivation otherwise.
+    // shortcut: populated checklists still load per employee, batch those reads when intake supplies facts at scale.
+    let employees: Vec<(Uuid, Uuid)> = sqlx::query_as("SELECT c.id,c.employee_id FROM lifecycle_cases c \
+        LEFT JOIN person_employees_current e ON e.org_id=c.org_id AND e.id=c.employee_id \
+        LEFT JOIN employee_employment_profiles p ON p.org_id=c.org_id AND p.employee_id=c.employee_id \
+        WHERE c.org_id=$1 AND c.id=ANY($2) AND c.kind='HIRE' AND c.state='OPEN' \
+        AND (e.id IS NULL OR e.id_type IS NOT NULL OR e.birth_date IS NOT NULL OR p.pay_unit IS NOT NULL \
+            OR EXISTS(SELECT 1 FROM employee_contracts k WHERE k.org_id=c.org_id AND k.employee_id=c.employee_id)) \
+        AND EXISTS(SELECT 1 FROM lifecycle_case_items i JOIN case_template_items t ON t.template_key=c.template_key AND t.version=c.template_version AND t.item_key=i.item_key WHERE i.org_id=c.org_id AND i.case_id=c.id AND t.checklist_item IS NOT NULL AND i.status='OPEN')")
         .bind(org).bind(cases).fetch_all(tx.as_mut()).await?;
     for (case, employee) in employees {
         let mut observations = Vec::new();

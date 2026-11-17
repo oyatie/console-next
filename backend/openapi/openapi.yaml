@@ -5824,6 +5824,9 @@ paths:
         requests; any other caller sees only the requests it filed ("waiting")
         or is named on. `assignee=me` lists the requests named to the
         caller (an explanation request to answer); `assignee=role` is HR-only.
+        A correction carries the values it asks for, so an HR page with
+        PROFILE_CORRECTION rows leaves one employee.list_read access log row
+        naming the employees they are about, never the values.
       security:
       - bearerAuth: []
       parameters:
@@ -7541,9 +7544,12 @@ paths:
       summary: The live entries of one personnel card section across the tenant (sheet export)
       description: One row per live entry with the bound employee of the lowest employee number, its entry id and version, in
         entry id order. The rows go back into the import sheet with entry_id and expected_version to correct or
-        void entries in bulk. Takes org-wide employee_directory_manage. A restricted section (discipline,
+        void entries in bulk. Takes org-wide employee_directory_manage and, as a download, org-wide
+        excel_download. A restricted section (discipline,
         disability, veteran) is refused with 409 record_restricted_export_unavailable until the per-export
-        approval tier exists.
+        approval tier exists. Each page is a download, so export_purpose is required and the page is logged
+        (excel_export_logs and an employee.export access log event naming its employees and the row count);
+        a refusal is logged as employee.export_refused, naming the section.
       security:
       - bearerAuth: []
       parameters:
@@ -7565,6 +7571,13 @@ paths:
           format: int64
           minimum: 1
           maximum: 1000
+      - name: export_purpose
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [AUDIT_RESPONSE, INTERNAL_REVIEW, DISPUTE_RESPONSE, DATA_SUBJECT_REQUEST, OTHER]
+        description: The download purpose (public notice 2023-6 §8②). Missing or unknown is 422 export_purpose_required.
       responses:
         '200':
           description: One page of the sheet.
@@ -7578,6 +7591,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/employee-records/{section}/import/apply:
     post:
       tags:
@@ -8011,8 +8026,9 @@ paths:
       description: >-
         Grid or "all n people matching the filter". Send either selection + changes (one set of values for every
         employee the server selection matches; status absent selects everyone but EXITED) or rows (each
-        employee with its own values and optional expected_updated_at pin). Nothing is written and no row is
-        locked. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk
+        employee with its own values and optional expected_updated_at pin). No employee field is written and no row
+        is locked; the rows show each person's stored values, so one employee.list_read access log row names the
+        people whose record was read and the fields, never the values. Every selected employee is returned in id order with outcome CHANGE, PENDING (a high-risk
         field goes to a second person), UNCHANGED (every value already recorded) or REFUSED with the failed
         precondition (stale_record, exit_date_needs_exit, employee_number_in_use, employee_merged,
         employee_correction_sole_holder_refused, a field's validation, ...), and the exact counts.
@@ -8522,7 +8538,12 @@ paths:
         - employees
       operationId: applyEmployeeImport
       summary: Apply a dry-run employee import run, bound to its dry run
-      description: 'BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against
+      description: 'Cedar action import_apply decides admission and is rechecked inside the write transaction.
+        403 import_apply_forbidden means the database refused the admitted command.
+        503 import_apply_timed_out means a statement or transaction exceeded the server time limit;
+        nothing was written, and the stored job retains the same refusal code.
+
+        BW-10 7: applies the plan of the latest dry run, named by dry_run_digest. The run is re-planned against
         the live roster with the stored decisions; any difference is 409 rows_changed_since_preview listing the rows
         (error.refusals [{source_key, sheet, row, outcome_before, outcome_now}]); a digest that is not the latest dry
         run''s is 409 dry_run_digest_mismatch; a row still refused or unresolved is 422 import_unresolved. Existing
@@ -8578,7 +8599,12 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: 'forbidden — Cedar did not admit tenant-wide directory management.
+            import_apply_forbidden — the database refused the import command; no rows were written.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -8586,9 +8612,12 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
-          description: import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds.
+          description: 'import_apply_busy — the server runs its apply drivers already; retry after Retry-After seconds.
+            import_apply_timed_out — the statement or transaction exceeded the server time limit; nothing was written.
+            Review the dry run before applying again.'
           headers:
             Retry-After:
+              description: Present for import_apply_busy.
               schema:
                 type: integer
           content:
@@ -9169,7 +9198,9 @@ paths:
         what each row would change and why a row cannot be taken. The apply is
         all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and
         writes one correction ledger row per changed item; an unchanged value writes
-        nothing. At most 500 rows.
+        nothing, except a recorded `address` or `personal_email`, which is written
+        and listed as changed whether or not it equals the record, so neither the
+        plan nor the apply confirms a recorded value. At most 500 rows.
       security:
       - bearerAuth: []
       requestBody:
@@ -9502,7 +9533,7 @@ paths:
       summary: Contract history of an employee (EMP-MODEL G1)
       description: Every recorded contract row, newest start first, including rows a later correction superseded
         (superseded_by set; they leave the live history). in_force marks the live row covering today (KST). Wages are
-        compensation, so this takes org-wide employee_directory_manage.
+        compensation, so this takes org-wide employee_directory_manage; each read leaves an access log row.
       security:
       - bearerAuth: []
       parameters:
@@ -9795,7 +9826,7 @@ paths:
         the number, decision 6), and, when the employee has an employment profile, the employment type with its
         derived worker classification, base pay in whole won with its unit, and the probation period with its server
         clock (probation_state, probation_days_left; DUE_SOON needs the reminder-window setting and is not served
-        yet). Personal data, so org-wide employee_directory_manage.
+        yet). Personal data, so org-wide employee_directory_manage; each read leaves an access log row.
       security:
       - bearerAuth: []
       parameters:
@@ -9819,7 +9850,7 @@ paths:
                     type: [string, 'null']
                   birth_date:
                     type: [string, 'null']
-                    format: date
+                    description: The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date.
                   work_email:
                     type: [string, 'null']
                   id_type:
@@ -9909,7 +9940,9 @@ paths:
         (together; the pay counts as recorded once its unit is), and /employment/probation_end_date. A value already
         recorded is changed only by a correction (PATCH /api/v1/employees/{id}), 409 correction_required. 422
         precondition_missing for a write without its test; 409 field_conflict (error.refusals lists pointer, current,
-        at) when a tested value changed, unless the record already holds the written value. Audited as
+        at) when a tested value changed, unless the record already holds the written value. Tests are checked against
+        the record as read, so /birth_date is tested against its mask; any write to a recorded /birth_date is 409
+        correction_required whatever its value. Audited as
         employee.facts.update with field names only.
         403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
       security:
@@ -9951,7 +9984,7 @@ paths:
                     type: [string, 'null']
                   birth_date:
                     type: [string, 'null']
-                    format: date
+                    description: The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date.
                   work_email:
                     type: [string, 'null']
                   id_type:
@@ -10047,7 +10080,7 @@ paths:
       description: CRUD. cancel_route DELETE (setup) or VOID (after go-live, with the employee_void_* refusals); exit is refused
         employee_already_exited, exit_case_open (open_exit_case_id) or exit_already_scheduled. On the caller's own record
         (people-self-33) both are refused own_record_forbidden, unless the caller is the ops account and no other account
-        holds the act.
+        holds the act. A branch reader gets 404 for a person outside its branches; each read leaves an access log row.
       security:
       - bearerAuth: []
       parameters:
@@ -10129,7 +10162,7 @@ paths:
       description: Service as of today (KST) from the live contract history (employee_contracts), else the profile's
         contract window, else the hire date (basis HIRE_DATE_FALLBACK, which needs a review). Parental leave is not counted
         (Equal Employment Opportunity Act §19⑤). applies is false for an employee who is neither CONTRACT nor has a fixed-term contract
-        row; the other fields are then null. Takes org-wide employee_directory_read.
+        row; the other fields are then null. Takes org-wide employee_directory_read; each read leaves an access log row.
       security:
       - bearerAuth: []
       parameters:
@@ -10947,7 +10980,7 @@ paths:
                     type: [string, 'null']
                   birth_date:
                     type: [string, 'null']
-                    format: date
+                    description: The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date.
                   work_email:
                     type: [string, 'null']
                   id_type:
@@ -11043,11 +11076,11 @@ paths:
       description: Education, qualification and license, military service, training completed, language skills, award and family entries of the natural person this employee is bound to (two
         employee records of one person show the same entries), with each section's tenant switch
         (hr.record.<section>.enabled). Voided entries only with include_voided. Takes org-wide
-        employee_directory_manage. Without section, the restricted sections (discipline, disability, veterans' status) are left out,
+        employee_directory_manage, and each read leaves an access log row. Without section, the restricted sections (discipline, disability, veterans' status) are left out,
         knowing such a record exists is itself sensitive. section=discipline|disability|veteran needs a
         purpose (422 record_purpose_required, reason_code_invalid, reason_note_required), passes the
         employee_restricted_record Cedar action (403 record_restricted_forbidden; 403 record_restricted_self
-        on one's own record), and writes one employee.record.restricted_read audit row naming the entries and
+        on one's own record), and writes one employee.record.restricted_read access log row naming the entries and
         the purpose, never the values. Responses carry Cache-Control no-store.
       security:
       - bearerAuth: []
@@ -11239,8 +11272,8 @@ paths:
         - employees
       operationId: getEmployeeRecordHistory
       summary: Every revision of one personnel card entry, oldest first
-      description: A restricted section (discipline, disability, veteran) needs a purpose and is audited, as for
-        the list. Cache-Control no-store.
+      description: Each read leaves an access log row. A restricted section (discipline, disability, veteran) needs a
+        purpose and is recorded, as for the list. Cache-Control no-store.
       security:
       - bearerAuth: []
       parameters:
@@ -19498,7 +19531,7 @@ paths:
         through the caller's own sources, the same read as the list, so another person's item, an
         unknown id and a malformed id answer the same 404 inbox_item_not_found; 503 when the item
         was not found while a source was unavailable. Rows are the audit events on the item's own
-        record (the request, change, lock, grant or case its first link names; for an org change,
+        record (the request, change, lock, grant, case or to-do request its first link names; for an org change,
         also its approval steps), newest first, at most 50: what happened (a verb from a closed set,
         other for anything else), who did it (absent for system events) and when. Events on the
         person or account behind an item are not served, and audit snapshots never are.
@@ -19529,7 +19562,7 @@ paths:
                       properties:
                         verb:
                           type: string
-                          x-extensible-enum: [create, submit, approve, reject, decide, apply, withdraw, cancel, update, confirm, other]
+                          x-extensible-enum: [create, submit, approve, reject, decide, apply, withdraw, cancel, update, confirm, return, other]
                         actor_name:
                           type: string
                           description: The acting account's display name; absent for system events.
@@ -20434,8 +20467,12 @@ paths:
         account); 422 validation (text, links); 422
         todo_assign_self; 422 todo_assignee_out_of_scope (unknown, other-tenant and
         out-of-scope accounts alike, and a grant revoked mid-request); 422
-        todo_assignee_inactive; 422 todo_due_past (before today in KST). Links name
-        records by kind and id; a sent label is ignored and never stored. Audited as
+        todo_assignee_inactive; 422 todo_due_past (before today in KST); 409
+        todo_assignee_full (the assignee already holds 100 open requests); 409
+        todo_requester_full (100 of the caller's requests are open or sent back, until
+        one is done, withdrawn or cleared). Each side's requests are items in that
+        account's work inbox, so neither side may hold more. Links name records by
+        kind and id; a sent label is ignored and never stored. Audited as
         todo.request with the assignee and the due date only.
       security:
       - bearerAuth: []
@@ -20456,6 +20493,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
@@ -20519,15 +20558,14 @@ paths:
       tags:
         - me
       operationId: withdrawMyTodoRequest
-      summary: Withdraw an open request the caller made
+      summary: Withdraw a request the caller made, or clear one sent back
       description: >-
-        Deletes the request. Saved outcomes of earlier calls that returned it, the
-        ask among them, are kept for the command-outcome retention period, as for
-        any deleted todo, and a retry of such a call does not show it again. 404
-        when the id is not a
-        request the caller made; 409 todo_closed once it is done or returned.
-        Afterwards the assignee's done or return on it is a 404. Audited as
-        todo.withdraw.
+        Deletes the request, open or sent back, with its text and return note.
+        Saved outcomes of earlier calls that returned it, the ask among them, are
+        kept for the command-outcome retention period, as for any deleted todo, and
+        a retry of such a call does not show it again. 404 when the id is not a
+        request the caller made; 409 todo_closed once it is done. Afterwards the
+        assignee's done or return on it is a 404. Audited as todo.withdraw.
       security:
       - bearerAuth: []
       parameters:
@@ -20538,7 +20576,7 @@ paths:
           $ref: '#/components/schemas/Uuid'
       responses:
         '204':
-          description: The request was withdrawn.
+          description: The request was withdrawn or cleared.
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -28928,6 +28966,8 @@ paths:
     get:
       operationId: exportWorkerRegister
       tags: [HR]
+      description: Every register row in reach as a download. export_purpose is required; the download is logged
+        (excel_export_logs and an employee.export access log row naming the log row) and a refusal as employee.export_refused.
       parameters:
       - { in: query, name: workplace_id, required: true, schema: { type: string, format: uuid } }
       - { in: query, name: as_of, required: true, schema: { type: string, format: date } }
@@ -30163,6 +30203,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/users/employee-link-attestations/{id}/review:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: reviewSelfAccountBinding
+      summary: Confirm or revoke a self-attested account binding
+      description: Requires an independent account manager and a fresh one-use passkey assertion. The command reloads Cedar facts inside its locked transaction. Confirmation retains the binding; revocation removes the current binding and restores the two-person rule. Confirmation does not prevent later revocation. A stale or replacement binding is never changed. Each accepted decision and its audit commit together.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingReviewRequest'
+      responses:
+        '200':
+          description: Decision recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: account_link.refuse.review_ineligible or account_link.refuse.identity_unbound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.review_stale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: passkey_step_up_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '503':
+          description: Passkey service unavailable.
   /api/v1/users/me:
     get:
       tags:
@@ -30218,6 +30313,185 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/users/me/employee-link:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: getSelfAccountBinding
+      summary: Read the current account's self-attested employee binding
+      description: Cedar authorizes the live account. Only a receipt matching its current employee link is returned. Revoked or withdrawn bindings return null; confirmed bindings remain visible with can_withdraw false. No employee link or management grant is required to recover the receipt.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current self-attestation and Cedar withdrawal permission.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [attestation]
+                properties:
+                  attestation:
+                    type: object
+                    nullable: true
+                    additionalProperties: false
+                    required: [attestation_id, employee_id, can_withdraw]
+                    properties:
+                      attestation_id:
+                        type: string
+                        format: uuid
+                      employee_id:
+                        type: string
+                        format: uuid
+                      can_withdraw:
+                        type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: selfBindAccount
+      summary: Link the sole operator's own account to an employee
+      description: Consumes a one-use command-bound passkey assertion. Cedar rechecks eligibility under the tenant write lock. The self-attestation, identity binding, configured review deadline and audit commit together. An existing second eligible account prevents this exception.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingRequest'
+      responses:
+        '201':
+          description: Self-attested binding recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attestation_id]
+                properties:
+                  attestation_id:
+                    $ref: '#/components/schemas/Uuid'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: step_up_failed (invalid, replayed or bound to another command), account_link.refuse.solo_ineligible, or account_link.refuse.not_own_record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.employee_taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: step_up_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '503':
+          description: Passkey service unavailable.
+  /api/v1/users/me/employee-link/prepare:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: prepareSelfAccountBinding
+      summary: Prepare a sole operator's own employee link
+      description: Cedar checks current server facts and returns the binding for the authenticated account and selected employee. Start the existing passkey step-up ceremony with this binding when the user confirms. Submission rechecks eligibility in the locked transaction. No identity number is collected.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingPrepareRequest'
+      responses:
+        '200':
+          description: Start a passkey step-up ceremony with this exact binding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobilePasskeyStepUpBinding'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: account_link.refuse.solo_ineligible or account_link.refuse.not_own_record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.employee_taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          description: Passkey service unavailable.
+  /api/v1/users/me/employee-link/withdraw:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [users]
+      operationId: withdrawSelfAccountBinding
+      summary: Withdraw an unreviewed self-attested account binding
+      description: Cedar admits only the original self-attester while the original binding is current and unreviewed. A fresh passkey is required. The binding removal, retained review receipt and audit commit together. Independent revocation continues to prevent another solo binding.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfBindingWithdrawRequest'
+      responses:
+        '200':
+          description: Self-attestation withdrawn.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: account_link.refuse.withdraw_ineligible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: account_link.refuse.review_stale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: passkey_step_up_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfBindingError'
+        '503':
+          description: Passkey service unavailable.
   /api/v1/users/{id}:
     get:
       tags:
@@ -34811,6 +35085,7 @@ components:
           - period_unlock
           - grant_notice
           - account_security
+          - account_binding_review
           - setup_entity
           - setup_workplace
           - setup_org
@@ -34823,6 +35098,8 @@ components:
           - support_access
           - registration_check
           - privacy_request
+          - todo_assigned
+          - todo_requested
         urg:
           type: string
           enum:
@@ -34994,9 +35271,20 @@ components:
                 $ref: '#/components/schemas/AccessEffectiveEntry'
             is_ops:
               type: boolean
+            todo:
+              type: object
+              description: Present on a to-do request the caller made; the note is present only when it was sent back.
+              required: [state]
+              properties:
+                state:
+                  type: string
+                  enum: [open, returned]
+                return_note:
+                  type: string
+                  description: The line the assignee wrote when sending the request back.
         version:
           type: string
-          description: Opaque version for org-change approval and HR request rows; changes when a step is decided or the request closes.
+          description: Opaque version for org-change approval and HR request rows, and for to-do requests the caller made; changes when a step is decided, the request closes or it is sent back.
         policy:
           type: object
           description: Named policy for stored approval steps or a classed OPEN HR request, with flags from the request settings snapshot. Live routing changes do not remove an in-flight item’s policy. Absent without approval evidence. Commands recheck live policy.
@@ -35115,7 +35403,7 @@ components:
                 type: string
         counts:
           type: object
-          description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted.
+          description: Counts from the same server traversal, authoritative on the first page only. Continuation pages describe source prefixes; inexact values are lower bounds. Only sources that can fill a lane affect that lane's exactness, and an unavailable source makes every count inexact. The snoozed key counts the caller's postponed items that are hidden now; an item whose snooze has ended is not counted.
           additionalProperties:
             type: object
             required: [total, total_is_exact]
@@ -37487,7 +37775,8 @@ components:
                 enum: [CHANGE, PENDING, UNCHANGED, REFUSED]
               fields:
                 type: array
-                description: Only the fields whose value differs from the record.
+                description: The fields to write. Each value that differs from the record, and each sent for a recorded birth
+                  date, address, phone or personal email, which a preview never reports as unchanged.
                 items:
                   type: object
                   required: [field, path]
@@ -37496,6 +37785,8 @@ components:
                       type: string
                     before:
                       type: [string, 'null']
+                      description: The recorded value. A birth date, address, phone or personal email is its mask; only the
+                        governed reveal returns those.
                     after:
                       type: [string, 'null']
                     path:
@@ -38334,6 +38625,9 @@ components:
         payload:
           type: object
           additionalProperties: true
+          description: >-
+            The request's details. In `changes`, a birth date, address, phone or personal email is the
+            reveal mask, never the value; only POST /api/v1/employees/{id}/reveal returns a recorded one.
         reason_code:
           type: string
         note:
@@ -42386,8 +42680,9 @@ components:
           enum: [REGULAR, CONTRACT, PART_TIME, INTERN]
         phone_e164:
           type: [string, 'null']
-          description: Omitted for callers without employee_directory_manage (read-only directory access); null when
-            not recorded (a profile an import created, MR-7).
+          description: The reveal mask (the prefix and last four digits) for employee_directory_manage; only POST
+            /api/v1/employees/{id}/reveal returns the number. Omitted for callers without employee_directory_manage
+            (read-only directory access); null when not recorded (a profile an import created).
         base_pay:
           description: Omitted for callers without employee_directory_manage (read-only directory access); null when
             not recorded (a profile an import created, MR-7).
@@ -42930,14 +43225,17 @@ components:
           $ref: '#/components/schemas/EmployeeImportReport'
         error:
           type: object
-          description: 'failed: the refusal (code, message, refusals) — e.g. rows_changed_since_preview, apply_interrupted.'
+          additionalProperties: false
+          description: 'failed: the typed refusal code, fixed redacted message and support reference. Legacy jobs may have no support reference.'
           required: [code, message]
           properties:
             code:
               type: string
             message:
               type: string
-            refusals: {}
+            support_ref:
+              type: string
+              description: Correlates the failure with its server log; absent on legacy jobs.
     EmployeeImportApplyRequest:
       type: object
       additionalProperties: false
@@ -43000,9 +43298,6 @@ components:
           type: [string, 'null']
           deprecated: true
           description: Legacy column notes. New placement questions do not use this field.
-        place_reading_required:
-          type: boolean
-          description: The column needs an operator choice between a statutory workplace and a physical work site.
     EmployeeImportCompanyConfirmation:
       type: object
       required: [value, source_column, cell, registration_number, candidates, confirmed_employer]
@@ -43894,6 +44189,7 @@ components:
                 type: array
                 items:
                   type: object
+                  description: A birth date is the reveal mask in `current` and `before`, never the value.
                   required: [field, current, before]
                   properties:
                     field:
@@ -44121,6 +44417,9 @@ components:
         status:
           type: string
           enum: [mapped, needs_mapping, empty, skipped]
+        needs_confirmation:
+          type: boolean
+          description: When true, a detected header awaits operator confirmation; status is needs_mapping and no values have been staged.
         rows:
           type: integer
           minimum: 0
@@ -44685,6 +44984,8 @@ components:
           pattern: '^[A-Z]{2}$'
         personal_email:
           type: [string, 'null']
+          description: The reveal mask when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the
+            email.
         emergency_contacts:
           type: [array, 'null']
           items:
@@ -44751,9 +45052,9 @@ components:
           type: [string, 'null']
           enum: [MALE, FEMALE, null]
         address:
-          oneOf:
-          - $ref: '#/components/schemas/KrAddress'
-          - type: 'null'
+          type: [string, 'null']
+          description: The reveal mask when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the
+            address.
         careers:
           description: null = not entered; [] = no prior experience.
           type: [array, 'null']
@@ -48570,7 +48871,11 @@ components:
       type: object
       additionalProperties: false
       properties:
-        birth_date: { type: string, format: date, nullable: true }
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+          description: Sent only to record a birth date when none is known. Never returned; birth_date_known says whether one is recorded.
         monthly_hours: { type: integer, minimum: 0, nullable: true }
         weekly_hours: { type: integer, minimum: 0, nullable: true }
         continuous_months: { type: integer, minimum: 0, nullable: true }
@@ -48627,7 +48932,9 @@ components:
         due_in_days: { type: integer, nullable: true }
         version: { type: integer, format: int64 }
         can_record_sensitive_facts: { type: boolean }
-        birth_date_known: { type: boolean }
+        birth_date_known:
+          type: boolean
+          description: Whether a birth date is recorded. The date itself opens only through the governed reveal.
         opens_on: { type: string, format: date, nullable: true }
         opens_in_days: { type: integer, format: int64, nullable: true }
         target_on: { type: string, format: date, nullable: true }
@@ -55882,7 +56189,7 @@ components:
                     type: [string, "null"]
                   birth_date:
                     type: [string, "null"]
-                    format: date
+                    description: The birth year and month with the day masked (1990-04-••), never the date.
                   candidates:
                     type: array
                     items:
@@ -55895,7 +56202,7 @@ components:
                           type: [string, "null"]
                         birth_date:
                           type: [string, "null"]
-                          format: date
+                          description: The birth year and month with the day masked (1990-04-••), never the date.
                         person_id:
                           type: [string, "null"]
                           format: uuid
@@ -60616,6 +60923,80 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ObjectHead'
+    SelfBindingError:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - step_up_required
+                - step_up_failed
+                - account_link.refuse.solo_ineligible
+                - account_link.refuse.employee_taken
+                - account_link.refuse.not_own_record
+                - account_link.refuse.withdraw_ineligible
+                - account_link.refuse.review_stale
+                - account_link.refuse.review_ineligible
+                - account_link.refuse.identity_unbound
+                - passkey_step_up_required
+                - not_found
+                - unauthorized
+                - unavailable
+                - internal
+            message:
+              type: string
+    SelfBindingPrepareRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [employee_id]
+      properties:
+        confirmed_name:
+          type: string
+          description: Exact full employee name, deliberately confirmed only when no existing record matches the account.
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+    SelfBindingRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [employee_id]
+      properties:
+        confirmed_name:
+          type: string
+          description: Exact full employee name, deliberately confirmed only when no existing record matches the account. Included in the passkey command binding.
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+      description: Submit the exact envelope returned by preparation after asserting the challenge. Missing step_up is a typed 428 refusal.
+    SelfBindingReviewRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [CONFIRM, REVOKE]
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    SelfBindingWithdrawRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [attestation_id]
+      properties:
+        attestation_id:
+          $ref: '#/components/schemas/Uuid'
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
     SelfLeaveBalance:
       type: object
       required:

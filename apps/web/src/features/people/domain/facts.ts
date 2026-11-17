@@ -1,6 +1,7 @@
 // Employment facts and contracts (EMP-MODEL): what a facts edit sends and what a contract needs. Pure rules; the
 // server enforces each of them again.
 import type { paths } from "@console/api/schema";
+import { isConflict, rebaseAll, resolve, type Fields } from "../../../lib/pure/three-way";
 
 export type Facts = paths["/api/v1/employees/{id}/employment-facts"]["get"]["responses"][200]["content"]["application/json"];
 export type Contract = paths["/api/v1/employees/{id}/contracts"]["get"]["responses"][200]["content"]["application/json"]["items"][number];
@@ -44,6 +45,16 @@ export function factsPatch(base: FactValues, next: FactValues): PatchOp[] {
     { op: "test" as const, path: FACT_PATHS[k], value: base[k] },
     { op: "replace" as const, path: FACT_PATHS[k], value: next[k] },
   ]);
+}
+
+/**
+ * A re-read merged into the form. A birth date recorded meanwhile arrives as its mask and changes only by correction,
+ * so a first one typed here cannot be kept: the form takes the record's, and `typed` names the one entered.
+ */
+export function rebaseFacts(form: Fields<FactKey>, f: Facts): { fields: Fields<FactKey>; typed: FactValues[FactKey] } {
+  const fields = rebaseAll(form, factValues(f)).fields;
+  if (f.birth_date == null || !isConflict(fields.birth_date)) return { fields, typed: null };
+  return { fields: { ...fields, birth_date: resolve(fields.birth_date, "theirs") }, typed: fields.birth_date.yours as FactValues[FactKey] };
 }
 
 /** A plain address check (one @, a dot after it); the server validates again. */

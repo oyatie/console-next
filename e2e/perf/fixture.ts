@@ -7,7 +7,7 @@ import { bizRegNoChecksumOk, corpRegNoChecksumOk } from "../../apps/web/src/lib/
 import { chooseRadio, firstSignIn, go, kstDate, stepUp, takeCode } from "../flows";
 import { apiOf, bearerOf, headcount } from "../helpers/api";
 import { firstWorkplace } from "../helpers/entity";
-import { chooseWorkbook, payPeriod } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "../helpers/import";
 import { many, plain, workbook } from "../helpers/import-layouts";
 import { panel, quickWorkplace } from "../helpers/structure";
 import { openTenant } from "../helpers/tenant";
@@ -74,6 +74,7 @@ export async function buildTenant(browser: Browser) {
       await chooseWorkbook(admin, `가상명부_${i + 1}_${at}.xlsx`, await workbook([plain(company, rows.slice(at, at + 200))]));
       await payPeriod(admin);
       await admin.getByRole("button", { name: "명부 미리보기" }).click();
+      await confirmImportColumns(admin);
       await admin.getByRole("button", { name: "모의 반영 실행" }).click();
       const applied = admin.waitForResponse(r => r.request().method() === "POST" && /\/employees\/import\/[^/]+\/apply$/.test(new URL(r.url()).pathname));
       await admin.getByRole("button", { name: "명부 반영: 신규 200명 · 갱신 0명" }).click();
@@ -186,7 +187,7 @@ export async function recordRoutes(admin: Page, urls: Record<string, string>, de
   await go(admin, `/org?sel=${departmentId}`);
   const selected = panel(admin, depts.at(-1)!);
   await expect(selected).toBeVisible();
-  await selected.getByRole("button", { name: "이름 변경" }).click();
+  await selected.getByRole("button", { name: "부서 이름 수정", exact: true }).click();
   const renameInput = selected.getByRole("textbox", { name: new RegExp(`^${depts.at(-1)!}의 새 이름`) });
   await renameInput.fill("가상미래부서");
   await inlineUnitDetails(admin, selected, kstDate(14));

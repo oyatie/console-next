@@ -95,13 +95,15 @@ pub(super) async fn readable_result(
             return false;
         };
         saved["can_record_sensitive_facts"] = Value::Bool(current.can_record_sensitive_facts);
-        if !current.can_record_sensitive_facts
-            && let Some(facts) = saved
-                .get_mut("applicability_facts")
-                .and_then(Value::as_object_mut)
+        if let Some(facts) = saved
+            .get_mut("applicability_facts")
+            .and_then(Value::as_object_mut)
         {
+            // A saved result may predate the birth date's mask: no reader gets it back.
             facts.insert("birth_date".into(), Value::Null);
-            facts.insert("monthly_income_won".into(), Value::Null);
+            if !current.can_record_sensitive_facts {
+                facts.insert("monthly_income_won".into(), Value::Null);
+            }
         }
     }
     true

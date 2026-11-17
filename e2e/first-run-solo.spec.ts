@@ -11,7 +11,7 @@ import { homeRail, registerBranch, registerEntity, registerWorkplace, startOpera
 import { addDepartments, findBox, findPressable } from "./structure-flows";
 import { rosterXlsx } from "./workbook";
 import { gradeJourney } from "./helpers/grade-fix";
-import { chooseWorkbook, payPeriod } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "./helpers/import";
 import { expectComposer } from "./helpers/composer";
 import { throttleCPU } from "./helpers/cpu-throttle";
 
@@ -20,7 +20,7 @@ import { throttleCPU } from "./helpers/cpu-throttle";
 // person and no approval wait. Needs the backend's setup phase (branch hard/entity-depth, not yet merged).
 // Clicks are counted per task (fills are typing, not clicks); each ceiling is the measured count + 2.
 
-test("a solo administrator goes from an empty tenant to operating", { tag: "@first-run" }, async ({ browser }) => {
+test("a solo administrator goes from an empty tenant to operating", { tag: ["@first-run", "@webkit-pr"] }, async ({ browser }) => {
   const c = clickCounter();
   const companyDomain = unique("ganasol");
   const replacement = await test.step("J0 Provision tenant and replace cancelled code", async () => {
@@ -177,6 +177,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     await chooseWorkbook(admin, "roster.xlsx", await rosterXlsx("가나솔루션", [["GN-0101", "이개발", "개발팀", "선임", "2025-04-01"]]));
     await payPeriod(admin);
     await c.click(admin.getByRole("button", { name: "명부 미리보기" }));
+    await confirmImportColumns(admin);
     await c.click(admin.getByRole("button", { name: "모의 반영 실행" }));
     await c.click(admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }));
     await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();

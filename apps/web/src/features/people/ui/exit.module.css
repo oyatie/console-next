@@ -12,7 +12,7 @@
 .grow { flex: 1; }
 .missing { font-size: var(--text-sm); color: var(--danger-tx); }
 .lines { margin: 0; padding-left: var(--space-4); }
-.group { min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; border: 0; }
+.group { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; border: 0; }
 .groupTitle { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-strong); color: var(--steel); }
 .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--panel-w) / 2.5), 1fr)); gap: var(--space-3); }
 .said { display: block; font-weight: var(--fw-body); color: var(--steel); }

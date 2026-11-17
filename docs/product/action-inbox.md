@@ -46,8 +46,8 @@ receipts are filtered after the candidate limit so their lateral lookups stay bo
 The ordinary statutory panel and Workbench retain their exact-count read.
 
 The release mounts the queue without workspace. Workflow, dispatch, work order,
-support, payroll and governance contribute only when their own compiled module is
-on. Source-specific SSE topics invalidate the queue. Account work emits a payload-free
+support, payroll, governance and to-do requests contribute only when their own compiled
+module is on. Source-specific SSE topics invalidate the queue. Account work emits a payload-free
 `inbox` hint, so its holder needs no user/role administration grant. Own-write echo
 and sheet holds keep record snapshots stable while the queue still refreshes.
 

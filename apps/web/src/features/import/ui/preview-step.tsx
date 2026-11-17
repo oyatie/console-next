@@ -10,7 +10,7 @@ import { Table } from "../../../ui/table";
 import { Card } from "../../../ui/card/card";
 import { dryRun, rowLimitOf, runExpired } from "../api";
 import type { ImportColumn, ImportDryRun, ImportPreview } from "../domain/contract";
-import { draftOf, draftProblem, sheetMapping, sheetsToMap, withTarget, type Mapping } from "../domain/mapping";
+import { sheetsToMap, type Mapping } from "../domain/mapping";
 import { type Picks } from "../domain/steps";
 import { classLabel, fieldLabel, importError, sourceLabel } from "../present";
 import { IMPORT_CLASSIFICATION, labeled } from "../../../lib/labels";
@@ -41,12 +41,9 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
     onSuccess: onDryRun,
   });
   const shown = preview.columns.filter((c) => c.preview_allowed);
-  const placeReadings = preview.sheets.flatMap((sheet) => sheet.status === "needs_mapping" && sheet.header_row != null
-    ? (sheet.columns ?? []).filter((column) => column.target == null && preview.columns.some((c) => c.source_header === column.label.trim() && c.place_reading_required)).map((column) => ({ sheet, column }))
-    : []);
   const toMap = sheetsToMap(preview.sheets).length;
   const reason =
-    toMap > 0 ? t("import.block.sheets", { count: toMap })
+    toMap > 0 ? t(preview.sheets.some((sheet) => sheet.status === "needs_mapping") ? "import.block.sheets" : "import.block.confirmation", { count: toMap })
     // r3:hire-18: rows held by a skipped sheet are not "no named rows"; the sheet is named with its way back.
     : preview.candidate_rows === 0 && preview.sheets.some((x) => x.status === "skipped") ? t("import.block.skipped", { names: preview.sheets.filter((x) => x.status === "skipped").map((x) => x.name).join(", ") })
     : preview.candidate_rows === 0 ? t("import.block.empty")
@@ -56,12 +53,12 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
   const read = (c: ImportColumn) => preview.sheets.flatMap((x) => x.columns ?? []).find((x) => x.label === c.source_header);
   return (
     <>
-      <section className="card">
+      {toMap === 0 && <section className="card">
         <div className="stats">
           <div className="stat"><span className="stat__label">{t("import.stat.preserved")}</span><span className="stat__value num">{fmtNumber(preview.preserved_rows)}</span></div>
           <div className="stat"><span className="stat__label">{t("import.stat.sealed")}</span><span className="stat__value num">{fmtNumber(preview.sealed_identities)}</span></div>
         </div>
-      </section>
+      </section>}
       {/* The workspace (spec E7-columns): the file as read on the left, the column links on the right. */}
       <div className={s.workspace}>
         <div className={s.pane}>
@@ -87,24 +84,8 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
             </ol>
           </Card>
           <SheetsPanel key={preview.run_id} preview={preview} mapping={mapping} busy={rereading} onRemap={onRemap} />
-          {placeReadings.map(({ sheet, column }, index) => (
-            <Card level={3} titleId={`import-place-${index}`} title={`${sheet.name} · ${column.column} · ${column.label}`} key={`${sheet.name}:${column.column}`}>
-              <div className="row">
-                {(["workplace", "worksite_name"] as const).map((target) => {
-                  const draft = withTarget(draftOf(sheet), column.column, target);
-                  const problem = draftProblem(draft);
-                  const label = t(target === "workplace" ? "import.place.workplace" : "import.place.worksite");
-                  return problem ? (
-                    <DisabledReason key={target} control={(p) => <Button disabled={rereading} {...p}>{label}</Button>} reason={t(`importSheet.map.problem.${problem}`)} />
-                  ) : (
-                    <Button key={target} disabled={rereading} onClick={() => onRemap({ ...mapping, [sheet.name]: sheetMapping(draft) })}>{label}</Button>
-                  );
-                })}
-              </div>
-            </Card>
-          ))}
         </div>
-        <Card titleId="import-cols" title={t("import.columnsCount", { count: preview.columns.length })}>
+        {preview.columns.length > 0 && <Card titleId="import-cols" title={t("import.columnsCount", { count: preview.columns.length })}>
           <Table
             label={t("import.columns")}
             rows={preview.columns}
@@ -117,7 +98,7 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
               { header: t("import.col.classification"), cell: (c) => <Chip tone={labeled(IMPORT_CLASSIFICATION, c.classification).tone}>{c.classification === "restricted" && c.target ? t("import.class.restrictedKept") : classLabel(c.classification)}</Chip>, fit: true },
             ]}
           />
-        </Card>
+        </Card>}
       </div>
       {!runExpired(dry.error) && (
         <CommandError error={dry.error} own={(code) => (rowLimitOf(dry.error) ? t("import.error.rowLimit", rowLimitOf(dry.error)!) : importError(code))} />

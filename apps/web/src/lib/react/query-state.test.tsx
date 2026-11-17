@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from "@tanstack/react-router";
@@ -29,8 +30,8 @@ test("a missing read shows its catalog reason without a server fallback", async 
 });
 
 type Read = { isPending: boolean; error: unknown; data: string | undefined; refetch: () => unknown; fetchStatus?: "paused"; isPlaceholderData?: boolean };
-async function markup(q: Read, own?: (code: string) => string | undefined, keepOnLoss = false, panel = false) {
-  const content = <QueryState q={q} own={own} keepOnLoss={keepOnLoss}>{value => <span>{value}</span>}</QueryState>;
+async function markup(q: Read, own?: (code: string) => string | undefined, keepOnLoss = false, panel = false, failedActions?: ReactNode) {
+  const content = <QueryState q={q} own={own} keepOnLoss={keepOnLoss} failedActions={failedActions}>{value => <span>{value}</span>}</QueryState>;
   const root = createRootRoute({ component: () => panel ? <SidePanel open title="Record" onClose={() => {}}>{content}</SidePanel> : content });
   const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ["/"] }) });
   await router.load();
@@ -140,4 +141,16 @@ test("a required read group carries placeholder status to the region", () => {
   const group = readGroup([read]);
   expect(group).toHaveProperty("isPlaceholderData", true);
   expect(queryView(group)).toBe("ready");
+});
+
+
+test("a first-read failure keeps additional actions beside retry, never in ready or stale content", async () => {
+  const q = { isPending: false, error: new ApiError(503, "service_unavailable", "unavailable"), data: undefined, refetch: () => {} };
+  const unavailable = "create unavailable";
+  const actions = <span>{unavailable}</span>;
+  const html = await markup(q, undefined, false, false, actions);
+  expect(html).toMatch(new RegExp(`class="state__actions"><button[^>]*>${t("common.retry")}</button><span>create unavailable</span></div>`));
+  for (const read of [{ ...q, data: "cached" }, { ...q, data: "ready", error: null }, { ...q, error: new ApiError(403, "forbidden", "denied") }]) {
+    expect(await markup(read, undefined, false, false, actions)).not.toContain("create unavailable");
+  }
 });

@@ -47,30 +47,35 @@ pub(crate) async fn apply(
     cases: &[Uuid],
     register: &StatutoryRegister,
 ) -> Result<(), HrError> {
+    // Fresh batches need key lookups before table statistics are available.
     let rows = sqlx::query(
         "SELECT i.id,i.item_key,i.status,i.status_code,i.mode,i.kind AS item_kind,l.event_type,i.due_rule_ref,t.applicability,c.variant,c.kind, \
            c.effective_date,e.hire_on,e.birth_date::text AS birth_date,p.employment_type,f.nationality, \
            s.severance_pay_won,g.continuity,COALESCE(g.annual_leave_continuity,g.continuity) AS annual_continuity, \
            (now() AT TIME ZONE lifecycle_time_zone(c.org_id,c.employee_id,c.effective_date,c.workplace_id))::date AS today, \
-           EXISTS(SELECT 1 FROM employee_lifecycle_events l WHERE l.org_id=c.org_id \
-             AND l.id=COALESCE(x.exit_lifecycle_event_id,c.trigger_id) AND l.state='SCHEDULED') AS scheduled, \
+           COALESCE(l.state='SCHEDULED',false) AS scheduled, \
            CASE WHEN COALESCE(c.legal_entity_id,anchor.legal_entity_id) IS NULL THEN NULL ELSE EXISTS( \
              SELECT 1 FROM employment_assignments a WHERE a.org_id=c.org_id AND a.employee_id=c.employee_id \
                AND a.superseded_at IS NULL AND a.legal_entity_id<>COALESCE(c.legal_entity_id,anchor.legal_entity_id) \
                AND (a.valid_from>=c.effective_date OR a.valid_to IS NULL OR a.valid_to>c.effective_date)) END AS elsewhere \
-         FROM lifecycle_case_items i JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id \
+         FROM lifecycle_case_items i CROSS JOIN LATERAL (SELECT c.id,c.org_id,c.employee_id,c.legal_entity_id,c.workplace_id, \
+           c.effective_date,c.trigger_id,c.exit_case_id,c.template_key,c.template_version,c.variant,c.kind,c.state \
+           FROM lifecycle_cases c \
+           WHERE c.org_id=i.org_id AND c.id=i.case_id OFFSET 0) c \
          JOIN case_template_items t ON t.template_key=c.template_key AND t.version=c.template_version AND t.item_key=i.item_key \
          JOIN person_employees_current e ON e.org_id=c.org_id AND e.id=c.employee_id \
          LEFT JOIN employee_employment_profiles p ON p.org_id=e.org_id AND p.employee_id=e.id \
          LEFT JOIN employee_personal_facts f ON f.org_id=e.org_id AND f.employee_id=e.id \
          LEFT JOIN employee_exit_cases x ON x.org_id=c.org_id AND x.id=c.exit_case_id \
-         LEFT JOIN employee_lifecycle_events l ON l.org_id=c.org_id AND l.id=COALESCE(x.exit_lifecycle_event_id,c.trigger_id) \
-         LEFT JOIN employee_group_transfers g ON g.org_id=c.org_id AND g.lifecycle_event_id=COALESCE(x.exit_lifecycle_event_id,c.trigger_id) \
+         CROSS JOIN LATERAL (SELECT COALESCE(x.exit_lifecycle_event_id,c.trigger_id) AS event_id OFFSET 0) trigger_event \
+         LEFT JOIN LATERAL (SELECT l.event_type,l.state FROM employee_lifecycle_events l WHERE l.org_id=c.org_id \
+           AND l.id=trigger_event.event_id OFFSET 0) l ON true \
+         LEFT JOIN employee_group_transfers g ON g.org_id=c.org_id AND g.lifecycle_event_id=trigger_event.event_id \
          LEFT JOIN employee_exit_settlement_packages s ON s.org_id=c.org_id AND s.exit_case_id=c.exit_case_id \
          LEFT JOIN LATERAL (SELECT a.legal_entity_id FROM employment_assignments a \
            WHERE a.org_id=c.org_id AND a.employee_id=c.employee_id AND a.superseded_at IS NULL \
              AND a.valid_from<=c.effective_date ORDER BY a.valid_from DESC LIMIT 1) anchor ON true \
-         WHERE i.org_id=$1 AND c.id=ANY($2) AND c.state='OPEN' AND i.status IN ('OPEN','PENDING_TRIGGER','BLOCKED') \
+         WHERE i.org_id=$1 AND i.case_id=ANY($2) AND c.state='OPEN' AND i.status IN ('OPEN','PENDING_TRIGGER','BLOCKED') \
          FOR UPDATE OF i",
     ).bind(org).bind(cases).fetch_all(tx.as_mut()).await?;
     let mut updates = Vec::with_capacity(rows.len());

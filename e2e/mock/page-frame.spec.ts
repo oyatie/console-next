@@ -6,6 +6,7 @@ import { tg } from "@console/i18n/gallery";
 import { mockRoute } from "./route";
 import { screenAccess } from "./fixtures";
 import { breakpoints, mediaQueries } from "../../apps/web/src/ui/breakpoints";
+import { mockNavigate } from "./navigation";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -15,7 +16,7 @@ for (const width of [1440, 1024, 390, 320]) for (const theme of ["light", "dark"
     await mockRoute(page, "get", "/api/v1/access/granters", { status: 200, json: { count: 0, names: [] } });
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess("/_gallery") });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
-    await page.goto("/_gallery");
+    await mockNavigate(page, "/_gallery");
     if (width === 320) await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
     expect(await page.evaluate(query => matchMedia(query).matches, mediaQueries.phone)).toBe(width < breakpoints.md);
     // Another gallery demo opens its dock sheet automatically at phone widths.

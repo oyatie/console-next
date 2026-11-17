@@ -102,7 +102,7 @@ test("operating: new department and dissolution proposals, a governed move, dele
 
   // A future change reaches the selected unit's timeline through the existing live reads.
   const marketing = await openUnit(admin, "마케팅팀");
-  await marketing.getByRole("button", { name: "이름 변경", exact: true }).click();
+  await marketing.getByRole("button", { name: "부서 이름 수정", exact: true }).click();
   await marketing.getByRole("textbox", { name: /^마케팅팀의 새 이름/ }).fill("브랜드마케팅팀");
   await inlineUnitDetails(admin, marketing, kstDate(3));
   await marketing.getByRole("button", { name: "이름 변경", exact: true }).click();

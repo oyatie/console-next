@@ -21,7 +21,7 @@ import { SidePanelReadContext } from "../../ui/side-panel/read-context";
  * Refetches keep rendered content and focus; only a first load may show a layout placeholder.
  * Filter/date/search reads use keepPreviousData; the retained region is busy until the answer lands.
  */
-export function QueryState<T>({ q, empty, children, own, loading, denied, layout, back, removed, inline, keepOnLoss, need, failedTitle }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; denied?: ReactNode; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean; need?: AccessRequirement; failedTitle?: string }) {
+export function QueryState<T>({ q, empty, children, own, loading, denied, layout, back, removed, inline, keepOnLoss, need, failedTitle, failedActions }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; denied?: ReactNode; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean; need?: AccessRequirement; failedTitle?: string; failedActions?: ReactNode }) {
   const online = useOnline();
   const panel = useContext(SidePanelReadContext);
   const recovery = useContext(ReadFailureContext);
@@ -68,7 +68,7 @@ export function QueryState<T>({ q, empty, children, own, loading, denied, layout
         alert
         title={offline ? t("common.read.offline") : failedTitle ?? t("common.loadFailed.title")}
         reason={readFailureText(q.error, own)}
-        actions={retry}
+        actions={<>{retry}{failedActions}</>}
         meta={reference}
       />
     );

@@ -4,6 +4,7 @@ import { getRouteApi } from "@tanstack/react-router";
 import { Network } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { focusSoon } from "../../../lib/react/announce";
 import { readGroup } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { scheduledUnitChangesQuery } from "../api";
@@ -17,6 +18,8 @@ import { depts, direct, type Place } from "../../../reference/org/domain/structu
 import { DeptActions } from "./dept-actions";
 import { DeptDetails } from "./dept-details";
 import { OrderButtons } from "../../../reference/org/ui/order-buttons";
+import { useUnitEdit } from "../../../reference/org/ui/use-unit-edit";
+import { DeptNameInline } from "../../../reference/org/ui/dept-name-inline";
 import { Members } from "../../../reference/org/ui/structure-members";
 import { Facts, PanelShell, Sec, Stats } from "../../../reference/org/ui/panel-shell";
 import { unitCounts } from "../../../reference/org/present";
@@ -31,6 +34,7 @@ const route = getRouteApi("/app/org");
  */
 export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = false }: { place: Place; setup: boolean; onClose: () => void; as_of?: string; known_at?: string; readOnly?: boolean }) {
   const navigate = route.useNavigate();
+  const canEdit = useUnitEdit(setup, readOnly);
   const n = place.node;
   const detail = useQuery(get("/api/v1/org-units/{id}", { params: { path: { id: n.id } } }));
   const units = useQuery(unitsQuery);
@@ -42,7 +46,12 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
   const sub = depts(n);
   const select = (id: string) => navigate({ search: (s) => ({ ...s, sel: id, act: undefined }) });
   const [details, setDetails] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [ordering, setOrdering] = useState(false);
+  const finishRename = () => {
+    setRenaming(false);
+    focusSoon("act-dept-rename");
+  };
   const h = n.head;
   return (
     <PanelShell
@@ -70,7 +79,8 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
           rows={[
             {
               label: t("orgUnit.fact.name"),
-              value: n.name,
+              value: renaming && canEdit ? <DeptNameInline parent={parent} unit={n} setup={setup} onDone={finishRename} /> : n.name,
+              act: canEdit && !renaming && <Button variant="ghost" size="sm" id="act-dept-rename" aria-label={t("uiRecordActions.of", { field: t("orgUnit.fact.name"), verb: t("uiRecordActions.edit") })} onClick={() => setRenaming(true)}>{t("uiRecordActions.edit")}</Button>,
             },
             {
               label: t("orgUnit.fact.parent"),

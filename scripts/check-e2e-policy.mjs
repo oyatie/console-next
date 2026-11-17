@@ -44,7 +44,7 @@ export function checkE2ePolicy(root, today = new Date().toISOString().slice(0, 1
       }
     });
   }
-  for (const file of tracked.filter((name) => name.startsWith("e2e/") && name.endsWith(".spec.ts")).sort()) {
+  for (const file of tracked.filter((name) => name.startsWith("e2e/") && name.endsWith(".ts")).sort()) {
     const source = ts.createSourceFile(file, readFileSync(path.join(root, file), "utf8"), ts.ScriptTarget.Latest, true);
     const isolated = source.statements.some(statement => {
       if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) return false;
@@ -54,9 +54,19 @@ export function checkE2ePolicy(root, today = new Date().toISOString().slice(0, 1
         && bindings.elements.some(binding => !binding.isTypeOnly && (binding.propertyName ?? binding.name).text === "test")
         && path.resolve(root, path.dirname(file), `${statement.moduleSpecifier.text}.ts`) === path.resolve(root, "e2e/locale-fixture.ts");
     });
-    if (isolated) continue;
     const visit = node => {
-      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+      if (/^e2e\/(?:mock|states|layout)\//.test(file)
+        && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+        && node.expression.name.text === "goto") {
+        const target = node.arguments[0];
+        const prefix = target && (ts.isStringLiteralLike(target) ? target.text : ts.isTemplateExpression(target) ? target.head.text : "");
+        if (/^(?:https?:\/\/[^/]+)?\/_gallery(?:[?#]|$)/.test(prefix ?? "")) {
+          const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
+          problems.push(`${file}:${line + 1}: gallery navigation requires mockNavigate`);
+        }
+      }
+      if (file.endsWith(".spec.ts") && !isolated
+        && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
         && node.expression.expression.getText(source) === "i18n" && node.expression.name.text === "set") {
         const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
         problems.push(`${file}:${line + 1}: i18n.set requires test from e2e/locale-fixture.ts`);
@@ -75,6 +85,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.error(`E2E policy failed:\n${problems.map((problem) => `- ${problem}`).join("\n")}`);
     process.exitCode = 1;
   } else {
-    console.log("E2E policy passed: focus guards, fixme ownership and catalog isolation.");
+    console.log("E2E policy passed: focus guards, fixme ownership, catalog isolation and gallery readiness.");
   }
 }

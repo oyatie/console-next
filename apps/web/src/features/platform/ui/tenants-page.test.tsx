@@ -43,7 +43,7 @@ const render = (locale: "ko" | "en", search: typeof state.search) => {
 test.each(["ko", "en"] as const)("%s status tab totals stay global while the rows are searched", (locale) => {
   const html = render(locale, { q: "Alpha" });
   for (const [view, n] of [["active", 2], ["suspended", 1], ["archived", 1], ["all", 4]] as const) {
-    expect(html).toContain(`>${t(`tenants.view.${view}`, { n })}</button>`);
+    expect(html).toContain(`>${t(`tenants.view.${view}`)}<span class="btn__count">${n}</span></button>`);
   }
   expect(html).toContain('data-id="alpha"');
   expect(html).not.toContain('data-id="beta"');
@@ -62,4 +62,16 @@ test.each(["ko", "en"] as const)("%s search has a visible label and no-match res
   expect(html).toContain(`id="${label?.[1]}"`);
   expect(html).toContain("“missing-customer”");
   expect(html).toContain(`>${t("tenants.search.reset")}</button>`);
+});
+
+for (const count of [0, 1]) test.each(["ko", "en"] as const)(`%s empty customer list with ${count} platform rows offers only its empty-card create action`, locale => {
+  const saved = state.tenants;
+  state.tenants = count ? saved.filter(org => (org as Org).slug === "platform") : [];
+  try {
+    const html = render(locale, {});
+    expect(html).not.toContain('role="search"');
+    expect(html).not.toContain(`aria-label="${t("tenants.views")}"`);
+    expect(html.match(/<button\b/g)).toHaveLength(1);
+    expect(html).toMatch(new RegExp(`class="state__actions"[\\s\\S]*${t("tenants.create")}`));
+  } finally { state.tenants = saved; }
 });

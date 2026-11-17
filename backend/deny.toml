@@ -26,6 +26,10 @@ ignore = [
   # release (>=0.39) is outside sqlx's accepted range; remove this exception
   # when sqlx moves to it.
   "RUSTSEC-2026-0459", # expires 2027-01-09: libsqlite3-sys is lockfile-only via sqlx's optional SQLite driver and absent from the all-target build graph; fixed 0.39 is outside sqlx's range
+  # chrono: unmaintained (not a vulnerability); the advisory names no flaw and
+  # no fixed release. It is the date and time type across the backend, so
+  # replacing it is its own change.
+  "RUSTSEC-2026-0543", # expires 2027-01-16: chrono is unmaintained, not vulnerable; it is the backend's date and time library, and moving off it is a separate change
 ]
 
 [licenses]

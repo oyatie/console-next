@@ -2,8 +2,8 @@ tags:
   - employees
 operationId: getEmployeeRecordHistory
 summary: Every revision of one personnel card entry, oldest first
-description: A restricted section (discipline, disability, veteran) needs a purpose and is audited, as for
-  the list. Cache-Control no-store.
+description: Each read leaves an access log row. A restricted section (discipline, disability, veteran) needs a
+  purpose and is recorded, as for the list. Cache-Control no-store.
 security:
 - bearerAuth: []
 parameters:

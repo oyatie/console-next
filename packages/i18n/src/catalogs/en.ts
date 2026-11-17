@@ -131,7 +131,7 @@ import { enPeopleJump } from "./en/people-jump";
 
 // Source catalog for the screens: English defines every id; ko.ts must cover each one, and any other
 // locale may be partial and falls back to English. Sign-in, shell and shared-state copy (app., auth.,
-// common., shell.) is in boot.ts. ICU MessageFormat; Korean particles via `{name|을를}` in ko/.
+// common., shell.) is in boot-en.ts. ICU MessageFormat; Korean particles via `{name|을를}` in ko/.
 // Never put an ASCII apostrophe before `{` (ICU quoting) — use “ ” for quotes.
 // One file per id prefix: `<ns>.` ids live in en/<ns>.ts and ko/<ns>.ts (kebab-case file name).
 // A new namespace appends one import and one spread line here and in ko.ts.

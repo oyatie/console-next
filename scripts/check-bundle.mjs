@@ -3,7 +3,7 @@
 // Bundle budget: gzips every JS chunk of the built SPA, prints the sizes, and fails when the
 // initial load (the entry chunk index.html runs plus the chunks it statically imports, i.e. its
 // modulepreloads) exceeds the budget. Screens are lazy route chunks, so growth here means
-// something eager was added to the sign-in/shell path.
+// something eager was added to the entry. Sign-in also budgets its awaited catalog chunks.
 //
 // JRN-FIRSTPAINT (J-HP-4): Also sums each lazy route's chunk set (route chunk + its static imports)
 // and checks it against scripts/bundle-budget.json (per page type: shell, list, record, wizard).
@@ -12,9 +12,15 @@ import path from "node:path";
 import { leakedCopy } from "./bundle-copy.mjs";
 import { gzipSync } from "node:zlib";
 
-// Measured 146.8 KB gz locally, with 2 KB headroom for CI and ordinary feature growth.
-export const INITIAL_BUDGET_KB = 148.8;
+// Clean dev dadcc1f7c9: raw 148.6640625 KB gz, hash-normalised 145.0751953125 KB gz.
+// Preserve strictness: 148.8 - (148.6640625 - 145.0751953125) = 145.2111328125; floor to 0.001 KB.
+export const INITIAL_BUDGET_KB = 145.211;
 export const DEFAULT_BUDGET_FILE = "scripts/bundle-budget.json";
+
+// Saved views must keep the record and its command forms behind record navigation.
+const orgTabs = "src/routes/org-tabs.tsx";
+const orgLists = new Set(["src/features/org/ui/org-changes.tsx", "src/features/org-bulk/ui/history-page.tsx"]);
+const orgRecord = "src/features/org/OrgChange.tsx";
 
 export const kb = (dist, f) => gzipSync(readFileSync(path.join(dist, f))).length / 1024;
 
@@ -27,7 +33,14 @@ export function checkInitialBudget(dist, budgetKb = INITIAL_BUDGET_KB) {
 
   const chunks = readdirSync(path.join(dist, "assets"))
     .filter((f) => f.endsWith(".js"))
-    .map((f) => ({ file: `assets/${f}`, kb: kb(dist, `assets/${f}`) }))
+    .map((f) => {
+      const file = `assets/${f}`;
+      // Hash churn changes gzip entropy without changing the code delivered on first paint.
+      const bytes = initial.has(file)
+        ? Buffer.from(readFileSync(path.join(dist, file), "latin1").replace(/-[A-Za-z0-9_-]{8}\.(js|css)/g, "-HASHHASH.$1"), "latin1")
+        : readFileSync(path.join(dist, file));
+      return { file, kb: gzipSync(bytes).length / 1024 };
+    })
     .sort((a, b) => b.kb - a.kb);
 
   const size = chunks.filter((c) => initial.has(c.file)).reduce((n, c) => n + c.kb, 0);
@@ -54,6 +67,11 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
   for (const source of deferred) {
     if (!manifest[source]?.isDynamicEntry) failures.push({ error: `check-bundle: ${source} must have its own dynamic entry` });
   }
+  for (const source of [orgTabs, ...orgLists]) {
+    if (!manifest[source]?.isDynamicEntry) failures.push({ route: source, error: `check-bundle: ${source} must have its own dynamic entry` });
+    // The tabs module also declares the lazy record route; the list screens never load it themselves.
+    if (orgLists.has(source) && manifest[source]?.dynamicImports?.includes(orgRecord)) failures.push({ route: source, error: `check-bundle: ${source} dynamically imports ${orgRecord}; load it on record navigation` });
+  }
   for (const [source, entry] of Object.entries(manifest)) {
     // Catalogs and third-party utilities are not screens; every local dynamic entry is budgeted explicitly.
     if (!entry.isDynamicEntry || !source.startsWith("src/") || deferred.has(source)) continue;
@@ -70,6 +88,14 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
       for (const imported of chunk.imports ?? []) visit(imported);
     };
     visit(source);
+    if (source === orgTabs || orgLists.has(source)) {
+      if (!manifest[orgRecord]?.isDynamicEntry) failures.push({ route: source, error: `check-bundle: ${orgRecord} must have its own dynamic entry` });
+      for (const [key, chunk] of Object.entries(manifest)) {
+        if ((key === orgRecord || chunk.name === "effectuate-consequence") && (files.has(chunk.file) || initial.has(chunk.file))) failures.push({
+          route: source, error: `check-bundle: ${key} is statically loaded by ${source}; load it on record navigation`,
+        });
+      }
+    }
     for (const interaction of budgetConfig[pageType].deferred ?? []) {
       const file = manifest[interaction]?.file;
       if (file && (files.has(file) || initial.has(file))) failures.push({
@@ -117,6 +143,49 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
   };
 }
 
+/** Sign-in's additional blocking chunks share the existing shell budget, including awaited copy. */
+export function checkSignInBudget(dist, budgetsPathOrObj, sources = Object.fromEntries(
+  ["src/routes/app.ts", "src/main.tsx"].map(file => [file, readFileSync(path.join("apps/web", file), "utf8")]),
+)) {
+  const budgets = typeof budgetsPathOrObj === "string" ? JSON.parse(readFileSync(budgetsPathOrObj, "utf8")) : budgetsPathOrObj;
+  const manifest = JSON.parse(readFileSync(path.join(dist, ".vite/manifest.json"), "utf8"));
+  const { initial } = checkInitialBudget(dist);
+  const boundaries = new Map();
+  for (const [file, code] of Object.entries(sources)) {
+    // shortcut: direct entry imports only; extend this parser if an entry switches to a named loader.
+    for (const [, loader, imported] of code.matchAll(/\b(bootScreen|screen)\(\s*\(\)\s*=>\s*import\(["']([^"']+)["']\)\s*\)/g)) {
+      boundaries.set(path.posix.normalize(path.posix.join(path.posix.dirname(file), imported)) + ".tsx", loader);
+    }
+  }
+  let maxKb = 0;
+  let chunksCount = 0;
+  const catalogs = Object.keys(manifest).filter(key => manifest[key].isDynamicEntry && /\/catalogs\/boot-[^/]+\.ts$/.test(key));
+  if (!catalogs.length) throw new Error("check-bundle: missing boot catalog entries");
+  for (const catalog of catalogs) {
+    const files = new Set();
+    const visit = key => {
+      const entry = manifest[key];
+      if (!entry) throw new Error(`check-bundle: missing sign-in critical chunk ${key}`);
+      if (initial.has(entry.file) || files.has(entry.file)) return;
+      files.add(entry.file);
+      for (const imported of entry.imports ?? []) visit(imported);
+    };
+    visit("src/lib/react/session.ts");
+    for (const source of ["src/auth/Login.tsx", "src/auth/SetupPasskey.tsx", "src/auth/IdleGuard.tsx"]) {
+      const loader = boundaries.get(source);
+      if (!loader) throw new Error(`check-bundle: missing catalog boundary for ${source}`);
+      visit(source);
+      visit(catalog);
+      if (loader === "screen") visit(catalog.replace(/boot-([^/]+)\.ts$/, "$1.ts"));
+    }
+    const size = [...files].reduce((sum, file) => sum + kb(dist, file), 0);
+    if (size > maxKb) { maxKb = size; chunksCount = files.size; }
+  }
+  const budgetKb = budgets.shell.budget_kb;
+  return { ok: maxKb <= budgetKb, sizeKb: maxKb, chunksCount, budgetKb,
+    error: maxKb > budgetKb ? `check-bundle: sign-in critical path is ${maxKb.toFixed(1)} KB gz, over the ${budgetKb} KB shell budget` : undefined };
+}
+
 export function checkGalleryCopy(dist) {
   const strings = (file) => [...readFileSync(file, "utf8").matchAll(/^\s+"[^"]+": "(.+)",$/gm)].map((m) => m[1]);
   const catalogs = "packages/i18n/src/catalogs";
@@ -160,6 +229,10 @@ export function checkBundle(dist = "apps/web/dist", budgetFile = DEFAULT_BUDGET_
     }
     process.exit(1);
   }
+
+  const signIn = checkSignInBudget(dist, budgetFile);
+  console.log(`sign-in critical path ${signIn.sizeKb.toFixed(1)} KB gz beyond entry / shell budget ${signIn.budgetKb} KB`);
+  if (!signIn.ok) { console.error(signIn.error); process.exit(1); }
 
   // 3. Dev-only gallery copy check
   const gallery = checkGalleryCopy(dist);

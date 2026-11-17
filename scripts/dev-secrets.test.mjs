@@ -12,6 +12,11 @@ import { DEV_SECRETS_FILE, ensureDevSecrets } from "./dev-secrets.ts";
 import { PORTS } from "../e2e/slot.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+const dockerVersions = `case "$1 $2" in
+  "version --format") echo 28.0.4; exit 0 ;;
+  "compose version") echo 2.38.2; exit 0 ;;
+esac
+`;
 
 async function freePort() {
   const server = new net.Server();
@@ -53,7 +58,7 @@ test("backend-dev prints where the secrets are, never a secret", async (t) => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-backend-dev-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   mkdirSync(path.join(dir, "bin"));
-  for (const fake of ["bin/docker", "console-app"]) writeFileSync(path.join(dir, fake), "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+  for (const fake of ["bin/docker", "console-app"]) writeFileSync(path.join(dir, fake), `#!/bin/sh\n${dockerVersions}exit 0\n`, { mode: 0o700 });
   const run = spawnSync(process.execPath, ["scripts/backend-dev.mjs"], {
     cwd: root,
     encoding: "utf8",
@@ -92,7 +97,7 @@ test("the CI launcher resets the service Postgres and starts only the object sto
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const bin = path.join(dir, "bin"), log = path.join(dir, "docker.log"), input = path.join(dir, "docker-input");
   mkdirSync(bin);
-  writeFileSync(path.join(bin, "docker"), "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$DOCKER_LOG\"\ncat >> \"$DOCKER_INPUT\"\n", { mode: 0o700 });
+  writeFileSync(path.join(bin, "docker"), `#!/bin/sh\n${dockerVersions}printf '%s\\n' "$*" >> "$DOCKER_LOG"\ncat >> "$DOCKER_INPUT"\n`, { mode: 0o700 });
   writeFileSync(path.join(dir, "console-app"), "#!/bin/sh\nexit 0\n", { mode: 0o700 });
   const run = spawnSync(process.execPath, ["scripts/backend-dev.mjs", "--reset"], {
     cwd: root,

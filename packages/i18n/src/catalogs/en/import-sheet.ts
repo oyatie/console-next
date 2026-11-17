@@ -1,4 +1,6 @@
 export const enImportSheet = {
+  "importSheet.confirmation": "Confirm the column bindings to read data from {count, number} sheets.",
+  "importSheet.status.needs_confirmation": "Confirm bindings",
   "importSheet.title": "{count, plural, one {# sheet} other {# sheets}}",
   "importSheet.needs": "{count, plural, one {# sheet has} other {# sheets have}} no header the import could find. Choose the header row and an employee field per column, or skip the sheet.",
   "importSheet.sheet": "Sheet {name}",

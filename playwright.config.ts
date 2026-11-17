@@ -12,6 +12,8 @@ import { AGENT, CACHE_DIR, COMPOSE_PROJECT, OUTPUT_DIR, PORTS } from "./e2e/slot
 const served = process.env.E2E_SERVED === "1";
 // E2E_REUSE=1 reuses a dev/visual stack; served release proofs always start with an empty database.
 const reuse = process.env.E2E_REUSE === "1" && !served;
+// Docker teardown needs the same daemon budget as startup, including on a loaded shared host.
+const stackTimeout = 300_000;
 const browserName = e2eBrowser();
 const xbrowser = browserName !== "chromium";
 const perfTag = /(?:^|\s)@perf(?=\s|$)/;
@@ -94,8 +96,8 @@ export default defineConfig({
         : `node scripts/backend-dev.mjs${reuse ? "" : " --reset"}`,
       // Start the launcher before probing a port that may belong to a dead run.
       ...(reuse ? { url: `http://127.0.0.1:${PORTS.backend}/readyz` } : { wait: { stdout: /\[backend\] ready/ } }),
-      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
-      timeout: 300_000,
+      gracefulShutdown: { signal: "SIGTERM", timeout: stackTimeout },
+      timeout: stackTimeout,
       reuseExistingServer: reuse,
       env: backendEnv,
       // E2E_BACKEND_LOG=1: the backend's log (RUST_LOG, default info) in this run's output, as [WebServer] lines.

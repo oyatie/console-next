@@ -26,12 +26,12 @@ const fixtureRoots = [];
 // and source-derived re-export/Option resolution. Any route, body, or accepted enum value change fails
 // until this snapshot is deliberately re-derived.
 const LIVE_CENSUS = Object.freeze({
-  population: 417,
-  resolved: 179,
-  skipped: 238,
-  enumCandidates: 83,
-  enumResolved: 68,
-  enumSkipped: 15,
+  population: 446,
+  resolved: 198,
+  skipped: 248,
+  enumCandidates: 92,
+  enumResolved: 73,
+  enumSkipped: 19,
 });
 
 const handoverAnchor = "POST /api/v1/equipment-3r/rental-cases/{case_id}/handover";

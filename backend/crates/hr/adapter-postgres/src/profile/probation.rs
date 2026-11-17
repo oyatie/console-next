@@ -47,7 +47,8 @@ impl HrService {
                 )
                 .await?;
                 crate::employee_state::require_editable(tx.as_mut(), org_uuid, employee_id).await?;
-                let current = load_facts(tx, org_uuid, employee_id, true).await?;
+                // The record as served: an expected birth date is checked, and refused, against its mask.
+                let current = load_facts(tx, org_uuid, employee_id, true).await?.masked();
                 let doc =
                     serde_json::to_value(&current).map_err(|e| HrError::internal(e.to_string()))?;
                 check_expected(
@@ -81,7 +82,7 @@ impl HrService {
                 .execute(tx.as_mut())
                 .await?;
                 touch_employee(tx, org_uuid, employee_id).await?;
-                let after = load_facts(tx, org_uuid, employee_id, false).await?;
+                let after = load_facts(tx, org_uuid, employee_id, false).await?.masked();
                 let audit = AuditEvent::new(
                     Some(actor),
                     AuditAction::new("employee.probation.confirm").map_err(HrError::from_kernel)?,

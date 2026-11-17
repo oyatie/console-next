@@ -21,6 +21,31 @@ fn bundle() -> Result<&'static ActionBundle, String> {
         .map_err(Clone::clone)
 }
 
+/// Evaluate a set-loaded pair from the canonical decision-people fact loader.
+pub fn decide_people(
+    org: uuid::Uuid,
+    actor: uuid::Uuid,
+    maker: Option<uuid::Uuid>,
+    checker: Option<uuid::Uuid>,
+) -> Result<bool, String> {
+    bundle()?.decide(
+        &actor.to_string(),
+        &org.to_string(),
+        &[],
+        &org.to_string(),
+        &[
+            (
+                "makerPerson",
+                Fact::Str(maker.map_or_else(String::new, |id| id.to_string())),
+            ),
+            (
+                "checkerPerson",
+                Fact::Str(checker.map_or_else(String::new, |id| id.to_string())),
+            ),
+        ],
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Refusal {
     IdentityUnbound,
@@ -82,6 +107,17 @@ mod tests {
     #[test]
     fn missing_and_non_independent_facts_deny() {
         let bundle = bundle().unwrap();
+        let org = uuid::Uuid::new_v4();
+        let maker = uuid::Uuid::new_v4();
+        let checker = uuid::Uuid::new_v4();
+        for (a, b, allowed) in [
+            (None, Some(checker), false),
+            (Some(maker), None, false),
+            (Some(maker), Some(maker), false),
+            (Some(maker), Some(checker), true),
+        ] {
+            assert_eq!(super::decide_people(org, checker, a, b), Ok(allowed));
+        }
         assert!(bundle.decide("u", "o", &[], "o", &[]).is_err());
         for (maker, checker, allowed) in [
             ("a", "a", false),

@@ -19,9 +19,9 @@ jobs:
       actions: read
       checks: read
     outputs:
-      result: ${{ steps.predicate.outputs.result }}
+      result: ${{ steps.predicate.outputs.verdict }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
         with: {egress-policy: audit}
       - name: Refuse candidates outside dev before checkout
         id: ancestry
@@ -44,7 +44,10 @@ jobs:
           python3 deploy/ci/tools.py flux cosign
           npm ci --ignore-scripts --no-audit --no-fund
           printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
-          echo "GATES_BASE=$(node deploy/ci/api-compat.mjs base)" >> "${GITHUB_ENV}"
+      - name: Released revision
+        run: |
+          base="$(node deploy/ci/api-compat.mjs base)"
+          echo "GATES_BASE=${base}" >> "${GITHUB_ENV}"
       - id: predicate
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         env: {CANDIDATE_SHA: '${{ inputs.sha }}'}

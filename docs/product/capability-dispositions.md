@@ -15,6 +15,10 @@ Partially exposed operations keep their current route and component; their refus
 
 | Operation | Measured | Disposition | Destination or reason |
 | --- | --- | --- | --- |
+| `POST /api/v1/users/me/employee-link/prepare` | exposed | expose | `/people/$id` · `SelfAccountLink` asks Cedar whether an own-account link is available. |
+| `POST /api/v1/users/me/employee-link` | exposed | expose | `/people/$id` · `SelfAccountLink` submits the command-bound passkey assertion. |
+| `POST /api/v1/users/me/employee-link/withdraw` | exposed | expose | `/people/$id` · `SelfAccountLink` withdraws its unreviewed receipt with a fresh passkey. |
+| `POST /api/v1/users/employee-link-attestations/{id}/review` | exposed | expose | `/inbox` · `SelfBindingReview` confirms or revokes an independently reviewed account link with a fresh passkey. |
 | `GET /api/platform/groups` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/platform/groups` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `PATCH /api/platform/groups/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |

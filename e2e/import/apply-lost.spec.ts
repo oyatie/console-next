@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { plain, workbook } from "../helpers/import-layouts";
 import { apiOf, bearerOf, headcount } from "../helpers/api";
 
@@ -18,6 +18,7 @@ test("import apply: a lost answer re-reads the run and follows the job to the mi
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "인사기록.xlsx", await workbook([plain("본사", rows)]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   const apply = admin.getByRole("button", { name: "명부 반영: 신규 3명 · 갱신 0명" });
   await expect(apply).toBeEnabled({ timeout: 30_000 });

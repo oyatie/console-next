@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { CornerDownRight, GitMerge, PencilLine, Plus, Trash2, UserPlus } from "lucide-react";
+import { CornerDownRight, GitMerge, Plus, Trash2, UserPlus } from "lucide-react";
 import { t } from "@console/i18n";
+import { focusSoon } from "../../../lib/react/announce";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { Button } from "../../../ui/button/button";
 import type { Place } from "../../../reference/org/domain/structure";
@@ -25,7 +26,6 @@ export function DeptActions({ place, setup }: { place: Place; setup: boolean }) 
   const canEdit = useUnitEdit(setup);
   const navigate = route.useNavigate();
   const [adding, setAdding] = useState(false);
-  const [renaming, setRenaming] = useState(false);
   const n = place.node;
   const go = (act: "dept-add" | "dept-rename" | "dept-delete" | "dept-dissolve" | "dept-merge") => navigate({ search: (s) => ({ ...s, act }) });
   const ending = useQuery(unitEndQuery(n.id));
@@ -41,14 +41,9 @@ export function DeptActions({ place, setup }: { place: Place; setup: boolean }) 
   return (
     <Actions>
       {canEdit && (adding ? (
-        <div><DeptNameInline parent={n} setup={setup} onDone={() => setAdding(false)} /></div>
+        <div><DeptNameInline parent={n} setup={setup} onDone={() => { setAdding(false); focusSoon("act-dept-add"); }} /></div>
       ) : (
         <div><Button variant="primary" id="act-dept-add" className={css.actBtn} onClick={() => setAdding(true)}><Plus size={16} aria-hidden />{t("orgUnit.add.child")}</Button></div>
-      ))}
-      {canEdit && (renaming ? (
-        <div><DeptNameInline parent={place.parent!} unit={n} setup={setup} onDone={() => setRenaming(false)} /></div>
-      ) : (
-        <div><Button variant="ghost" id="act-dept-rename" className={css.actBtn} onClick={() => setRenaming(true)}><PencilLine size={16} aria-hidden />{t("orgUnit.rename.action")}</Button></div>
       ))}
       {can("employee_directory_manage", "all") && (
         <div><Link className={`btn btn--ghost ${css.actBtn}`} to="/people/new" search={{ unit: n.id }}><UserPlus size={16} aria-hidden />{t("orgTree.act.register", { name: n.name })}</Link></div>

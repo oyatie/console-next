@@ -70,6 +70,10 @@ updates:
         versions: ["0.6.*"]
       - dependency-name: "webauthn-authenticator-rs"
         versions: ["0.6.*"]
+      # Only the vendored calamine fork (third-party/rust/vendor) uses atoi_simd, and vendored sources are not edited in place.
+      # Revisit when that fork is re-vendored from an upstream release that requires 0.18.
+      - dependency-name: "atoi_simd"
+        versions: [">=0.18"]
     groups:
       cargo:
         patterns: ["*"]

@@ -65,11 +65,9 @@ pub struct EmployeeImportColumn {
     pub target: Option<String>,
     pub classification: String,
     pub preview_allowed: bool,
-    /// N-1 column notes; new placement questions use their own optional field.
+    /// Column notes shown alongside the binding.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notice: Option<&'static str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub place_reading_required: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]

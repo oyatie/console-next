@@ -6,7 +6,7 @@ import { CommandError } from "../../../lib/react/command-error";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
-import { apply, changedRows, dryRun, importCode, lostAnswer, OTHER, readJob, retryAfterOf, timedOut } from "../api";
+import { apply, changedRows, dryRun, importCode, lostAnswer, OTHER, readJob, retryAfterOf } from "../api";
 import type { ApplyJob, ImportDryRun, ImportReport } from "../domain/contract";
 import { keepJob } from "../domain/job";
 
@@ -129,9 +129,7 @@ export function DryRunStep({ picks, onPicks, dry, onDryRun, onApplied, onJob, on
           </div>
         )}
         {block.pending && <p className="muted" role="status">{t("import.rerun.pending")}</p>}
-        <CommandError error={rerun.error ?? commit.error} own={importError}>
-          {timedOut(commit.error) && <p>{t("import.timedOut", { rows: dry.candidate_rows })}</p>}
-        </CommandError>
+        <CommandError error={rerun.error ?? commit.error} own={importError} />
         <div className={s.bar}>
           <Button onClick={onRestart}>{t("import.otherFile")}</Button>
           {missing > 0 ? (
