@@ -58,8 +58,8 @@ export async function sheetFrames(a: Page) {
   await a.getByRole("textbox", { name: "개인 이메일" }).fill("hajun@example.com");
   await a.getByRole("textbox", { name: "개인 이메일" }).press("Enter");
   const clash = a.getByRole("group", { name: /먼저 변경했습니다|다른 칸을 변경했습니다/ });
-  // The 409 re-reads the person: the other value is there to choose, the field itself having moved.
-  await expect(clash.getByText(/^그 값 사용 · hajun\.yoon@mail\.example/)).toBeVisible({ timeout: 15_000 });
+  // The 409 re-reads the person: the other value is there to choose, as the server's mask.
+  await expect(clash.getByText(/^그 값 사용 · •{4}$/)).toBeVisible({ timeout: 15_000 });
   await shot(a, "E12-conflict");
   await clash.getByText(/^그 값 사용/).click();
   await clash.getByRole("button", { name: "선택대로 저장" }).click();

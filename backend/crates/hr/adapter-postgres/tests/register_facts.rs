@@ -93,7 +93,7 @@ async fn register_items_are_corrected_with_a_ledger_and_kept_history(pool: PgPoo
         &w,
         stale.clone(),
         json!({
-            "address": address("서울특별시 강남구 테헤란로 2"), "careers": [],
+            "address": address("Seoul Gangnam-gu 2 Teheran-ro"), "careers": [],
         }),
     )
     .await
@@ -109,10 +109,8 @@ async fn register_items_are_corrected_with_a_ledger_and_kept_history(pool: PgPoo
 
     let facts = w.hr.register_facts(w.hr(w.hr_one), w.in_a).await.unwrap();
     assert_eq!(facts.sex.as_deref(), Some("FEMALE"));
-    assert_eq!(
-        facts.address["road_addr_part1"],
-        "서울특별시 강남구 테헤란로 2"
-    );
+    // The read serves the reveal mask; the ledger below holds the address recorded.
+    assert_eq!(facts.address.as_deref(), Some("••••"));
     assert_eq!(facts.careers, json!([]));
     assert_eq!(facts.register_note.as_deref(), Some("야간 근무 희망"));
     let kept: (i64, i64) = sqlx::query_as(
@@ -125,6 +123,11 @@ async fn register_items_are_corrected_with_a_ledger_and_kept_history(pool: PgPoo
     .unwrap();
     assert_eq!(kept, (2, 1), "the old address and career row stay");
     let last = ledger(&pool, w.in_a).await;
+    let address = last.iter().rfind(|row| row.0 == "address").unwrap();
+    assert_eq!(
+        address.2["road_addr_part1"],
+        "Seoul Gangnam-gu 2 Teheran-ro"
+    );
     let career = last.iter().rfind(|row| row.0 == "careers").unwrap();
     assert_eq!(career.1.as_ref().unwrap()[0]["employer_name"], "가나상사");
     assert_eq!(career.2, json!([]));
@@ -238,11 +241,10 @@ async fn the_import_profile_dry_runs_then_applies_all_or_nothing(pool: PgPool) {
         w.hr.bulk_correct_register_facts(w.hr(w.hr_one), bulk(false, rows))
             .await
             .unwrap();
-    assert!(
-        again.rows[0].changed.is_empty(),
-        "an unchanged value writes no ledger row"
-    );
-    assert_eq!(ledger(&pool, w.in_b).await.len(), 2);
+    // An address sent again is written as any other value, so the answer never confirms one;
+    // an unchanged work history writes nothing.
+    assert_eq!(again.rows[0].changed, ["address"]);
+    assert_eq!(ledger(&pool, w.in_b).await.len(), 3);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

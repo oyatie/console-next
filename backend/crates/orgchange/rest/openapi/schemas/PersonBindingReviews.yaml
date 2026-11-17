@@ -24,7 +24,7 @@ properties:
               type: [string, "null"]
             birth_date:
               type: [string, "null"]
-              format: date
+              description: The birth year and month with the day masked (1990-04-••), never the date.
             candidates:
               type: array
               items:
@@ -37,7 +37,7 @@ properties:
                     type: [string, "null"]
                   birth_date:
                     type: [string, "null"]
-                    format: date
+                    description: The birth year and month with the day masked (1990-04-••), never the date.
                   person_id:
                     type: [string, "null"]
                     format: uuid

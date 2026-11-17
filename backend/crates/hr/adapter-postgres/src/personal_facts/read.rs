@@ -4,6 +4,7 @@
 //! the detail read. The REST layer turns `photo.object_key` into a
 //! short-lived presigned GET; the key itself is never serialized.
 
+use console_hr_domain::profile::mask::RevealField;
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
 use serde::Serialize;
@@ -50,6 +51,7 @@ pub struct PersonalFactsResponse {
     pub nationality: Option<String>,
     /// Active official reference options for the nationality editor.
     pub countries: Vec<CountryOption>,
+    /// The reveal mask; only the governed reveal returns the email itself.
     pub personal_email: Option<String>,
     /// `[{name, relation, phone}]`; null = not entered.
     pub emergency_contacts: Value,
@@ -154,7 +156,9 @@ impl HrService {
                     name_en: row.name_en,
                     nationality: row.nationality,
                     countries,
-                    personal_email: row.personal_email,
+                    personal_email: row
+                        .personal_email
+                        .map(|email| RevealField::PersonalEmail.masked(&email)),
                     emergency_contacts: if contacts.is_empty() {
                         Value::Null
                     } else {

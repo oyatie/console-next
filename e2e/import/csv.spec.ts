@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { confirmImportColumns } from "../helpers/import";
 import { expect, test } from "@playwright/test";
 import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
@@ -13,6 +14,7 @@ test("a CP949 roster reaches preview, apply and employee search without conversi
   await admin.getByRole("button", { name: "파일 선택", exact: true }).click();
   await (await chooser).setFiles({ name: "명부.csv", mimeType: "text/csv", buffer: Buffer.from("bbe7b9f82cbcbab8ed2cc0d4bbe7c0cf2cb0edbfebc7fcc5c20d0a4353562d303030312c8c63b0a1b3aa2c323032342d30332d30342cc1a4b1d4c1f70d0a", "hex") });
   await admin.getByRole("button", { name: "명부 미리보기", exact: true }).click();
+  await confirmImportColumns(admin);
   await admin.getByRole("button", { name: "모의 반영 실행", exact: true }).click();
   await expect(admin.getByRole("main")).toContainText("똠가나");
   await admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명", exact: true }).click();

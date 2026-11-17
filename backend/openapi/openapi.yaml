@@ -9198,7 +9198,9 @@ paths:
         what each row would change and why a row cannot be taken. The apply is
         all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and
         writes one correction ledger row per changed item; an unchanged value writes
-        nothing. At most 500 rows.
+        nothing, except a recorded `address` or `personal_email`, which is written
+        and listed as changed whether or not it equals the record, so neither the
+        plan nor the apply confirms a recorded value. At most 500 rows.
       security:
       - bearerAuth: []
       requestBody:
@@ -9848,7 +9850,7 @@ paths:
                     type: [string, 'null']
                   birth_date:
                     type: [string, 'null']
-                    format: date
+                    description: The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date.
                   work_email:
                     type: [string, 'null']
                   id_type:
@@ -9938,7 +9940,9 @@ paths:
         (together; the pay counts as recorded once its unit is), and /employment/probation_end_date. A value already
         recorded is changed only by a correction (PATCH /api/v1/employees/{id}), 409 correction_required. 422
         precondition_missing for a write without its test; 409 field_conflict (error.refusals lists pointer, current,
-        at) when a tested value changed, unless the record already holds the written value. Audited as
+        at) when a tested value changed, unless the record already holds the written value. Tests are checked against
+        the record as read, so /birth_date is tested against its mask; any write to a recorded /birth_date is 409
+        correction_required whatever its value. Audited as
         employee.facts.update with field names only.
         403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
       security:
@@ -9980,7 +9984,7 @@ paths:
                     type: [string, 'null']
                   birth_date:
                     type: [string, 'null']
-                    format: date
+                    description: The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date.
                   work_email:
                     type: [string, 'null']
                   id_type:
@@ -10976,7 +10980,7 @@ paths:
                     type: [string, 'null']
                   birth_date:
                     type: [string, 'null']
-                    format: date
+                    description: The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date.
                   work_email:
                     type: [string, 'null']
                   id_type:
@@ -37771,7 +37775,8 @@ components:
                 enum: [CHANGE, PENDING, UNCHANGED, REFUSED]
               fields:
                 type: array
-                description: Only the fields whose value differs from the record.
+                description: The fields to write. Each value that differs from the record, and each sent for a recorded birth
+                  date, address, phone or personal email, which a preview never reports as unchanged.
                 items:
                   type: object
                   required: [field, path]
@@ -37780,6 +37785,8 @@ components:
                       type: string
                     before:
                       type: [string, 'null']
+                      description: The recorded value. A birth date, address, phone or personal email is its mask; only the
+                        governed reveal returns those.
                     after:
                       type: [string, 'null']
                     path:
@@ -38618,6 +38625,9 @@ components:
         payload:
           type: object
           additionalProperties: true
+          description: >-
+            The request's details. In `changes`, a birth date, address, phone or personal email is the
+            reveal mask, never the value; only POST /api/v1/employees/{id}/reveal returns a recorded one.
         reason_code:
           type: string
         note:
@@ -42670,8 +42680,9 @@ components:
           enum: [REGULAR, CONTRACT, PART_TIME, INTERN]
         phone_e164:
           type: [string, 'null']
-          description: Omitted for callers without employee_directory_manage (read-only directory access); null when
-            not recorded (a profile an import created, MR-7).
+          description: The reveal mask (the prefix and last four digits) for employee_directory_manage; only POST
+            /api/v1/employees/{id}/reveal returns the number. Omitted for callers without employee_directory_manage
+            (read-only directory access); null when not recorded (a profile an import created).
         base_pay:
           description: Omitted for callers without employee_directory_manage (read-only directory access); null when
             not recorded (a profile an import created, MR-7).
@@ -43287,9 +43298,6 @@ components:
           type: [string, 'null']
           deprecated: true
           description: Legacy column notes. New placement questions do not use this field.
-        place_reading_required:
-          type: boolean
-          description: The column needs an operator choice between a statutory workplace and a physical work site.
     EmployeeImportCompanyConfirmation:
       type: object
       required: [value, source_column, cell, registration_number, candidates, confirmed_employer]
@@ -44181,6 +44189,7 @@ components:
                 type: array
                 items:
                   type: object
+                  description: A birth date is the reveal mask in `current` and `before`, never the value.
                   required: [field, current, before]
                   properties:
                     field:
@@ -44408,6 +44417,9 @@ components:
         status:
           type: string
           enum: [mapped, needs_mapping, empty, skipped]
+        needs_confirmation:
+          type: boolean
+          description: When true, a detected header awaits operator confirmation; status is needs_mapping and no values have been staged.
         rows:
           type: integer
           minimum: 0
@@ -44972,6 +44984,8 @@ components:
           pattern: '^[A-Z]{2}$'
         personal_email:
           type: [string, 'null']
+          description: The reveal mask when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the
+            email.
         emergency_contacts:
           type: [array, 'null']
           items:
@@ -45038,9 +45052,9 @@ components:
           type: [string, 'null']
           enum: [MALE, FEMALE, null]
         address:
-          oneOf:
-          - $ref: '#/components/schemas/KrAddress'
-          - type: 'null'
+          type: [string, 'null']
+          description: The reveal mask when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the
+            address.
         careers:
           description: null = not entered; [] = no prior experience.
           type: [array, 'null']
@@ -48857,7 +48871,11 @@ components:
       type: object
       additionalProperties: false
       properties:
-        birth_date: { type: string, format: date, nullable: true }
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+          description: Sent only to record a birth date when none is known. Never returned; birth_date_known says whether one is recorded.
         monthly_hours: { type: integer, minimum: 0, nullable: true }
         weekly_hours: { type: integer, minimum: 0, nullable: true }
         continuous_months: { type: integer, minimum: 0, nullable: true }
@@ -48914,7 +48932,9 @@ components:
         due_in_days: { type: integer, nullable: true }
         version: { type: integer, format: int64 }
         can_record_sensitive_facts: { type: boolean }
-        birth_date_known: { type: boolean }
+        birth_date_known:
+          type: boolean
+          description: Whether a birth date is recorded. The date itself opens only through the governed reveal.
         opens_on: { type: string, format: date, nullable: true }
         opens_in_days: { type: integer, format: int64, nullable: true }
         target_on: { type: string, format: date, nullable: true }
@@ -56169,7 +56189,7 @@ components:
                     type: [string, "null"]
                   birth_date:
                     type: [string, "null"]
-                    format: date
+                    description: The birth year and month with the day masked (1990-04-••), never the date.
                   candidates:
                     type: array
                     items:
@@ -56182,7 +56202,7 @@ components:
                           type: [string, "null"]
                         birth_date:
                           type: [string, "null"]
-                          format: date
+                          description: The birth year and month with the day masked (1990-04-••), never the date.
                         person_id:
                           type: [string, "null"]
                           format: uuid

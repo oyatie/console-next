@@ -151,7 +151,7 @@ async fn employee_create_is_idempotent_unique_and_tenant_scoped(pool: PgPool) {
         &second.json
     };
     let employee_id = created["employee"]["id"].as_str().unwrap();
-    assert_eq!(created["employment"]["phone_e164"], "+821012345678");
+    assert_eq!(created["employment"]["phone_e164"], "010-••••-5678");
     assert_employee_create_omits_compensation_pii(created);
     let signoffs: Value = sqlx::query_scalar(
         "SELECT signoffs FROM employee_lifecycle_events WHERE org_id = $1 AND employee_id = $2",
@@ -706,7 +706,7 @@ async fn employee_create_assigns_numbers_warns_on_same_name_and_masks_readers(po
     assert_eq!(events.status, StatusCode::OK, "{:?}", events.json);
     assert_eq!(events.json["items"][0]["state"], "APPLIED");
     let full = get(service.clone(), &format!("{EMPLOYEES_PATH}/{id}"), &token).await;
-    assert_eq!(full.json["employment"]["phone_e164"], "+821011112222");
+    assert_eq!(full.json["employment"]["phone_e164"], "010-••••-2222");
     assert_eq!(full.json["employment"]["base_pay"], "50000000.00");
     let denied = post(
         service,

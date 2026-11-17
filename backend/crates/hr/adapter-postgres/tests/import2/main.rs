@@ -7,6 +7,7 @@
 mod apply_authorization;
 mod apply_progress;
 mod atomic_apply;
+mod catalogue;
 mod company_names;
 mod field_reveal;
 #[path = "../emp_create/fixture.rs"]

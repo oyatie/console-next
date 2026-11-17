@@ -15,7 +15,7 @@ export const enBulkGrid = {
   "bulkGrid.filter.same": "Unchanged {n, number}",
   "bulkGrid.columns": "Columns · {n, number}",
   "bulkGrid.paste": "Paste",
-  "bulkGrid.paste.skipped": "Not pasted{readOnly, plural, =0 {} other { · # read-only}}{outside, plural, =0 {} other { · # outside the grid}}",
+  "bulkGrid.paste.skipped": "Not pasted{readOnly, plural, =0 {} other { · # read-only}}{outside, plural, =0 {} other { · # outside the grid}}{kept, plural, =0 {} one { · # masked record (type in a cell to change it)} other { · # masked records (type in a cell to change one)}}",
   "bulkGrid.fill": "Fill down",
   "bulkGrid.verbs": "For dated columns, choose how each is recorded",
   "bulkGrid.verb.correct": "Written wrong · correct",

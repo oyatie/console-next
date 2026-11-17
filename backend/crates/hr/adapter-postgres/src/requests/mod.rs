@@ -8,8 +8,9 @@ pub mod done;
 pub mod inbox;
 pub mod read;
 
+use console_hr_domain::profile::mask::RevealField;
 use http::StatusCode;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_json::Value;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -76,6 +77,8 @@ pub struct ChangeRequestResponse {
     pub kind: String,
     pub subject_type: String,
     pub subject_id: Uuid,
+    /// The stored payload, which an apply reads; it is served with `changes` masked.
+    #[serde(serialize_with = "served_payload")]
     pub payload: Value,
     pub reason_code: String,
     pub note: Option<String>,
@@ -92,6 +95,22 @@ pub struct ChangeRequestResponse {
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339::option")]
     pub decided_at: Option<OffsetDateTime>,
+}
+
+/// A request names a value the reveal governs only by its mask: once applied it is the record.
+fn served_payload<S: Serializer>(payload: &Value, serializer: S) -> Result<S::Ok, S::Error> {
+    let mut payload = payload.clone();
+    if let Some(changes) = payload.get_mut("changes").and_then(Value::as_object_mut) {
+        for (field, value) in changes.iter_mut() {
+            if let Some(reveal) = RevealField::from_column(field).filter(|_| !value.is_null()) {
+                let text = value
+                    .as_str()
+                    .map_or_else(|| value.to_string(), str::to_owned);
+                *value = Value::String(reveal.masked(&text));
+            }
+        }
+    }
+    payload.serialize(serializer)
 }
 
 #[derive(Debug, Serialize)]

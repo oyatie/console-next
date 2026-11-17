@@ -83,3 +83,40 @@ for (const action of ["multi", "exit.report"]) for (const width of [1440, 390]) 
     fixture.release();
   }
 });
+
+test("the employee and placement reads overlap the record chunk and are shared on mount", async ({ page }) => {
+  const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+  const held = Promise.withResolvers<void>();
+  const requested = Promise.withResolvers<void>();
+  const reads: string[] = [];
+  await mockRoute(page, "get", "/api/v1/employees/{id}", request => {
+    reads.push(new URL(request.url()).pathname);
+    return { status: 200, json: moveDetail };
+  });
+  await mockRoute(page, "get", "/api/v1/employment-assignments", request => {
+    reads.push(new URL(request.url()).pathname);
+    expect(new URL(request.url()).searchParams.get("employee_id")).toBe(moveDetail.employee.id);
+    return { status: 200, json: { items: [] } };
+  });
+  await page.route(/\/assets\/card-page-[^/]+\.js$/, async route => {
+    requested.resolve();
+    await held.promise;
+    await route.continue();
+  });
+  try {
+    await page.goto(`/people/${moveDetail.employee.id}`, { waitUntil: "commit" });
+    await requested.promise;
+    await expect.poll(() => reads.slice().sort(), { message: "the record reads must start before its chunk finishes" }).toEqual([
+      `/api/v1/employees/${moveDetail.employee.id}`, "/api/v1/employment-assignments",
+    ].sort());
+    held.resolve();
+    await expect(page.getByRole("heading", { level: 1, name: moveDetail.employee.name, exact: true })).toBeVisible();
+    await routeReady(page);
+    expect(reads).toHaveLength(2);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    held.resolve();
+    await page.close();
+    fixture.release();
+  }
+});
