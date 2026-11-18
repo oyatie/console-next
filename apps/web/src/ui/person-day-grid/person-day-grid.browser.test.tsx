@@ -209,3 +209,55 @@ test("a press inside the open editor places the caret and keeps the editor", asy
   await page.keyboard.press("Enter");
   await element(drafts).toHaveText(`{${FIRST}}`);
 });
+
+test("Enter, F2 and a double-click open the editor on the cell's draft, and leaving it unchanged keeps the draft", async () => {
+  await month();
+  const DRAFT = '{"0001|2026-10-05":"9-18"}';
+  await dayCell(1, 5).dblclick();
+  await page.keyboard.type("9-18");
+  await dayCell(2, 2).click();
+  await element(drafts).toHaveText(DRAFT);
+
+  // A double-click, then a press on another cell.
+  await dayCell(1, 5).dblclick();
+  await element(editor).toBeFocused();
+  await dayCell(2, 2).click();
+  await element(editor).toHaveCount(0);
+  await element(drafts).toHaveText(DRAFT);
+  await dayCell(1, 5).dblclick();
+  await element(editor).toHaveValue("9-18");
+  await page.keyboard.press("Escape");
+  // Enter then Enter, F2 then Tab.
+  for (const [open, close] of [["Enter", "Enter"], ["F2", "Tab"]] as const) {
+    await dayCell(1, 5).click();
+    await page.keyboard.press(open);
+    await element(editor).toHaveValue("9-18");
+    await page.keyboard.press(close);
+    await element(editor).toHaveCount(0);
+    await element(drafts).toHaveText(DRAFT);
+  }
+  // None of those was a change, so one step back undoes the draft itself.
+  await dayCell(2, 2).click();
+  await page.keyboard.press("Control+z");
+  await element(drafts).toHaveText("{}");
+  await page.keyboard.press("Control+y");
+  await element(drafts).toHaveText(DRAFT);
+
+  // A typed character still starts over, and emptying the editor still removes the draft.
+  await dayCell(1, 5).click();
+  await page.keyboard.type("x");
+  await element(editor).toHaveValue("x");
+  await page.keyboard.press("Escape");
+  await element(drafts).toHaveText(DRAFT);
+  await dayCell(1, 5).dblclick();
+  await editor.fill("");
+  await page.keyboard.press("Enter");
+  await element(drafts).toHaveText("{}");
+  // A cell with no draft opens empty, and leaving it is not a step to undo.
+  await dayCell(3, 3).dblclick();
+  await element(editor).toHaveValue("");
+  await page.keyboard.press("Enter");
+  await dayCell(2, 2).click();
+  await page.keyboard.press("Control+z");
+  await element(drafts).toHaveText(DRAFT);
+});

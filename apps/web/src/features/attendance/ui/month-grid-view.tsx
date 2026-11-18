@@ -18,9 +18,9 @@ import type { useDrafts } from "./use-drafts";
 const HOLIDAY = new Set(["PUBLIC_HOLIDAY", "SUBSTITUTE_HOLIDAY", "ELECTION_DAY", "LABOR_DAY", "CONTRACTUAL_HOLIDAY"]);
 const REST = new Set(["WEEKLY_HOLIDAY", "REST_DAY"]);
 
-/** The open editor: its person-day, the If-Match base seen when typing began, whether its month is closed, and the
- * drafts scope it was typed in. */
-type Editing = { value: string; key: string; base: string | null; own: boolean; closed: boolean; name: string; scope: string };
+/** The open editor: its person-day, the cell's draft when it opened ("" for none), the If-Match base seen when typing
+ * began, whether its month is closed, and the drafts scope it was typed in. */
+type Editing = { value: string; was: string; key: string; base: string | null; own: boolean; closed: boolean; name: string; scope: string };
 
 export type GridAct =
   | { kind: "day"; row: GridRow; day: number }
@@ -69,7 +69,9 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
   const start = (value: string): Editing | null => {
     if (!f) return null;
     const x = facts(f.r, f.c);
-    return { value, key: x.key, base: baseOf(drafts, x.key, x.entryId), own: x.own, closed: x.closed, name: rows[f.r]!.name, scope: store.scope };
+    // Opened without a typed character (Enter, F2, a double-click), the editor holds the cell's draft.
+    const was = drafts[x.key]?.value ?? "";
+    return { value: value || was, was, key: x.key, base: baseOf(drafts, x.key, x.entryId), own: x.own, closed: x.closed, name: rows[f.r]!.name, scope: store.scope };
   };
   const columns: DayColumn[] = useMemo(() => days.map((d, c) => {
     const kind = rows[0]?.cells[c]?.plan_kind ?? "";
@@ -82,8 +84,10 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
     // Closed is read at the commit, not when typing began: a live unlock or re-lock may have landed in between.
     const row = editing.scope === store.scope ? rows.find((x) => x.employee_id === splitKey(editing.key).employee_id) : undefined;
     const shut = row ? closed(row.month_state) : editing.closed;
-    const refused = editing.own ? t("attendanceRecords.grid.ownRow") : shut ? t("attendanceRecords.grid.closedRow") : null;
-    if (!refused) store.put(editing.key, v ? { value: v, base: editing.base } : null);
+    // Left as it opened: nothing to write, to undo or to refuse.
+    const changed = v !== editing.was;
+    const refused = !changed ? null : editing.own ? t("attendanceRecords.grid.ownRow") : shut ? t("attendanceRecords.grid.closedRow") : null;
+    if (changed && !refused) store.put(editing.key, v ? { value: v, base: editing.base } : null);
     setEditing(null);
     const { employee_id, work_date } = splitKey(editing.key);
     const r = axes.rows.indexOf(employee_id);
@@ -97,7 +101,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
   // its person's draft in the scope it was typed in, never the scope on screen now, and says so.
   const leave = (e: Editing) => {
     const v = e.value.trim();
-    if (!v) return;
+    if (!v || v === e.was) return;
     if (e.own || e.closed) return act({ kind: "note", message: t(e.own ? "attendanceRecords.grid.editDiscarded" : "attendanceRecords.grid.editDiscardedClosed", { name: e.name }) });
     const problem = store.keep(e.scope, e.key, { value: v, base: e.base });
     act({ kind: "note", message: t(problem ? "attendanceRecords.grid.editNotKept" : "attendanceRecords.grid.editKept", { name: e.name }) });

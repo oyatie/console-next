@@ -28,6 +28,8 @@ type Props<R> = {
   onRange: (range: Range) => void;
   /** The open editor and the cell it belongs to: it is drawn only there, whatever has moved since. */
   editing: { value: string; cell: Cell } | null;
+  /** With no editor open: a typed character starts an edit on that character, and "" (Enter, F2, a double-click) asks
+   * for one on what the cell holds, which only the caller knows. With one open: its new text. null closes it unsaved. */
   onEdit: (value: string | null) => void;
   /** Commit the open editor; the grid then moves `then`. */
   onCommit: (then: "down" | "right" | "stay") => void;
