@@ -15,8 +15,8 @@ const manifests = [
 ];
 
 const lock = { packages: {
-  "node_modules/react": { version: "19.3.1", resolved: "https://registry.npmjs.org/react/-/react-19.3.1.tgz" },
-  "node_modules/vitest": { version: "5.0.5", resolved: "https://registry.npmjs.org/vitest/-/vitest-5.0.5.tgz" },
+  "node_modules/react": { version: "19.3.1", resolved: "https://registry.npmjs.org/react/-/react-19.3.1.tgz", integrity: "sha512-Zml4dHVyZQ==" },
+  "node_modules/vitest": { version: "5.0.5", resolved: "https://registry.npmjs.org/vitest/-/vitest-5.0.5.tgz", integrity: "sha512-Zml4dHVyZQ==" },
 } };
 
 const register = {
@@ -117,11 +117,125 @@ test("accepts bundled copies without a resolved URL while checking other pins", 
 });
 
 test("reads nested and multiple resolved versions from the lock", () => {
-  const nestedLock = { packages: { ...lock.packages, "apps/web/node_modules/react": { version: "19.2.0", resolved: "https://registry.npmjs.org/react/-/react-19.2.0.tgz" } } };
+  const nestedLock = { packages: { ...lock.packages, "apps/web/node_modules/react": { ...lock.packages["node_modules/react"], version: "19.2.0", resolved: "https://registry.npmjs.org/react/-/react-19.2.0.tgz" } } };
   assert.deepEqual(checkDeps(manifests, register, nestedLock), []);
   delete nestedLock.packages["node_modules/react"];
   nestedLock.packages["apps/web/node_modules/react"].version = "19.2.1";
   assert.deepEqual(checkDeps(manifests, register, nestedLock), []);
+});
+
+test("refuses registry pins without an integrity hash, including nested copies", () => {
+  for (const location of ["node_modules/react", "apps/web/node_modules/react"]) {
+    for (const integrity of [undefined, "", "not-a-hash"]) {
+      const changed = structuredClone(lock);
+      changed.packages[location] = { ...lock.packages["node_modules/react"], integrity };
+      assert.match(checkDeps(manifests, register, changed).join("\n"), /react.*integrity/);
+    }
+  }
+});
+
+function routineUpdate(oldVersion = "5.0.5", version = "5.1.0") {
+  const current = [{ file: "package.json", json: { devDependencies: { vitest: `^${version}` } } }];
+  const previous = { "package.json": { devDependencies: { vitest: `^${oldVersion}` } } };
+  const pin = (value) => ({ version: value, license: "MIT", integrity: "sha512-Zml4dHVyZQ==", resolved: `https://registry.npmjs.org/vitest/-/vitest-${value}.tgz` });
+  return {
+    current, previous, notes: {}, lock: { packages: { "node_modules/vitest": pin(version) } },
+    evidence: { register: structuredClone(register), previousRegister: structuredClone(register), previousLock: { packages: { "node_modules/vitest": pin(oldVersion) } } },
+  };
+}
+
+const verifyUpdate = (f) => checkDependencyNotes(f.current, f.previous, f.notes, f.lock, () => { throw new Error("routine updates must not read a note"); }, f.evidence);
+
+for (const [oldVersion, version] of [["5.0.5", "5.1.0"], ["5.0.5", "5.0.6"], ["0.5.1", "0.5.2"]]) {
+  test(`registered routine update ${oldVersion} → ${version} uses automated evidence without a note`, () => {
+    assert.deepEqual(verifyUpdate(routineUpdate(oldVersion, version)), []);
+  });
+}
+
+for (const [reason, change] of [
+  ["new package", (f) => { f.previous = {}; f.evidence.previousRegister.rows = []; }],
+  ["new declaration of a registered package", (f) => { f.previous = {}; }],
+  ["unrecorded consumer", (f) => { f.current[0].json.name = "another-user"; }],
+  ["new use even if added to the current register", (f) => {
+    f.current[0].json.name = "another-user";
+    f.evidence.register.rows.find((r) => r.name === "vitest").uses[0].user = "another-user";
+  }],
+  ["new layer", (f) => { f.current[0].json.dependencies = f.current[0].json.devDependencies; delete f.current[0].json.devDependencies; }],
+  ["changed owner decision", (f) => { f.evidence.register.rows[1].approval = { by: "owner" }; }],
+  ["missing register", (f) => { delete f.evidence.register; }],
+  ["missing previous register", (f) => { delete f.evidence.previousRegister; }],
+  ["missing previous pin", (f) => { f.evidence.previousLock = { packages: {} }; }],
+  ["missing current pin", (f) => { f.lock = { packages: {} }; }],
+  ["changed licence", (f) => { f.lock.packages["node_modules/vitest"].license = "GPL-3.0-only"; }],
+  ["missing licence", (f) => { delete f.lock.packages["node_modules/vitest"].license; }],
+  ["missing previous licence", (f) => { delete f.evidence.previousLock.packages["node_modules/vitest"].license; }],
+  ["missing integrity", (f) => { delete f.lock.packages["node_modules/vitest"].integrity; }],
+  ["non-registry source", (f) => { f.lock.packages["node_modules/vitest"].resolved = "https://example.com/vitest.tgz"; }],
+]) {
+  test(`${reason} still requires a verification note`, () => {
+    const f = routineUpdate();
+    change(f);
+    assert.match(verifyUpdate(f).join("\n"), /needs a verification note/);
+  });
+}
+
+for (const [oldVersion, version] of [["5.0.5", "6.0.0"], ["0.5.1", "0.6.0"], ["5.0.5", "5.1.0-beta.1"]]) {
+  test(`incompatible or prerelease update ${oldVersion} → ${version} needs a note`, () => {
+    assert.match(verifyUpdate(routineUpdate(oldVersion, version)).join("\n"), /needs a verification note/);
+  });
+}
+
+test("lock-only changes cannot bypass major and licence review", () => {
+  for (const kind of ["routine", "major", "licence"]) {
+    const f = routineUpdate("5.0.5", kind === "major" ? "6.0.0" : "5.1.0");
+    f.current[0].json.devDependencies.vitest = f.previous["package.json"].devDependencies.vitest;
+    if (kind === "licence") f.lock.packages["node_modules/vitest"].license = "GPL-3.0-only";
+    const problems = verifyUpdate(f);
+    if (kind === "routine") assert.deepEqual(problems, []);
+    else assert.match(problems.join("\n"), /needs a verification note/);
+  }
+});
+
+test("a new use or owner decision needs review even without a version change", () => {
+  for (const kind of ["consumer", "decision"]) {
+    const f = routineUpdate("5.0.5", "5.0.5");
+    if (kind === "consumer") {
+      f.current[0].json.name = "another-user";
+      f.evidence.register.rows[1].uses[0].user = "another-user";
+    } else f.evidence.register.rows[1].approval = { by: "owner" };
+    assert.match(verifyUpdate(f).join("\n"), /needs a verification note/);
+  }
+});
+
+test("workspace updates compare their nearest installed pins rather than a hoisted copy", () => {
+  const f = routineUpdate();
+  f.current[0].file = "apps/web/package.json";
+  f.previous["apps/web/package.json"] = f.previous["package.json"];
+  const use = { file: "apps/web/package.json", layer: "test" };
+  for (const r of [f.evidence.register, f.evidence.previousRegister]) r.rows[1].uses = [use];
+  const nested = "apps/web/node_modules/vitest";
+  for (const l of [f.lock, f.evidence.previousLock]) l.packages[nested] = structuredClone(l.packages["node_modules/vitest"]);
+  f.lock.packages["node_modules/vitest"].license = "GPL-3.0-only";
+  assert.deepEqual(verifyUpdate(f), []);
+  f.lock.packages[nested].license = "GPL-3.0-only";
+  assert.match(verifyUpdate(f).join("\n"), /needs a verification note/);
+});
+
+test("routine updates in workspaces preserve internal workspace declarations", () => {
+  const f = routineUpdate();
+  f.current[0].json.dependencies = { "@console/api": "*" };
+  f.current.push({ file: "packages/api/package.json", json: { name: "@console/api" } });
+  assert.deepEqual(verifyUpdate(f), []);
+});
+
+test("an incompatible update can still supply its version-specific review note", () => {
+  const f = routineUpdate("5.0.5", "6.0.0");
+  f.notes["package.json:devDependencies:vitest"] = {
+    requirement: "^6.0.0", version: "6.0.0", registry: "https://registry.npmjs.org/vitest/6.0.0",
+    checked: "2026-11-18", note: "docs/quality/dependencies/vitest-major.md",
+  };
+  assert.deepEqual(checkDependencyNotes(f.current, f.previous, f.notes, f.lock,
+    () => "Reason: migration reviewed\nProvenance: registry verified\nLicense: MIT reviewed\nSecurity: advisories reviewed", f.evidence), []);
 });
 
 test("refuses a declared package missing its resolved lock version", () => {

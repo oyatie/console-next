@@ -5,9 +5,33 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { inventory } from "./quality/tooling-inventory.mjs";
 
 const FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
+
+function registryTarball(name, source) {
+  const url = URL.canParse(source ?? "") && new URL(source);
+  return url && url.origin === "https://registry.npmjs.org" && url.pathname.startsWith(`/${name}/-/`) && url.href === source;
+}
+
+const integrityHash = (value) => typeof value === "string" && /^sha(?:1|256|384|512)-[A-Za-z0-9+/]+={0,2}$/.test(value);
+
+function installedPin(lock, file, name) {
+  let dir = path.dirname(file);
+  while (true) {
+    const pin = lock?.packages?.[`${dir === "." ? "" : dir + "/"}node_modules/${name}`];
+    if (pin) return pin;
+    if (dir === ".") return undefined;
+    dir = path.dirname(dir);
+  }
+}
+
+function compatibleVersions(previous, current) {
+  const stable = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+  const old = stable.exec(previous ?? ""), next = stable.exec(current ?? "");
+  return old && next && old[1] === next[1] && (old[1] !== "0" || old[2] === next[2]);
+}
 
 // manifests: [{ file, json }]; returns the problem lines (empty = pass).
 export function checkDeps(manifests, register, lock) {
@@ -27,10 +51,11 @@ export function checkDeps(manifests, register, lock) {
       problems.push(`"${row.name}": resolved version is missing from package-lock.json`);
     if (entry && row.pins?.some((pin) => {
       if (pin.inBundle && pin.source === null) return false;
-      const url = URL.canParse(pin.source ?? "") && new URL(pin.source);
-      return !url || url.origin !== "https://registry.npmjs.org" || !url.pathname.startsWith(`/${row.name}/-/`) || url.href !== pin.source;
+      return !registryTarball(row.name, pin.source);
     }))
       problems.push(`"${row.name}": resolved source must be its npm registry tarball in package-lock.json`);
+    if (entry && row.pins?.some((pin) => !pin.inBundle && registryTarball(row.name, pin.source) && !integrityHash(pin.integrity)))
+      problems.push(`"${row.name}": resolved pin must have an integrity hash in package-lock.json`);
   }
   return problems;
 }
@@ -52,9 +77,12 @@ export function readManifests(root) {
   return out;
 }
 
-// Added/changed requirements need version-specific registry/provenance evidence, not just an allowlist edit.
-export function checkDependencyNotes(manifests, previous, notes, lock, readNote) {
+// Routine updates use merge-base evidence; new uses and incompatible changes still need review.
+export function checkDependencyNotes(manifests, previous, notes, lock, readNote, evidence = {}) {
   const internal = new Set(manifests.map((m) => m.json.name).filter(Boolean));
+  const rows = (register) => new Map((register?.rows ?? []).filter((r) => r.kind === "npm" && r.direct).map((r) => [r.name, r]));
+  const registered = rows(evidence.register), previousRegistered = rows(evidence.previousRegister);
+  const declarationsRegistered = evidence.register && checkDeps(manifests, evidence.register, lock).length === 0;
   const problems = [];
   for (const { file, json } of manifests) {
     for (const field of FIELDS) {
@@ -68,11 +96,20 @@ export function checkDependencyNotes(manifests, previous, notes, lock, readNote)
         const priorRequirement = priorField && typeof priorField === "object" && Object.hasOwn(priorField, name)
           ? priorField[name]
           : undefined;
-        if (internal.has(name) || priorRequirement === requirement) continue;
+        if (internal.has(name)) continue;
+        const pin = installedPin(lock, file, name);
+        const priorPin = installedPin(evidence.previousLock, file, name);
+        const entry = registered.get(name);
+        const registerUnchanged = isDeepStrictEqual(entry, previousRegistered.get(name));
+        if (priorRequirement === requirement && priorFile.name === json.name &&
+          (!evidence.previousLock || isDeepStrictEqual(pin, priorPin) && registerUnchanged)) continue;
+        if (priorRequirement !== undefined && entry && registerUnchanged &&
+          declarationsRegistered &&
+          compatibleVersions(priorPin?.version, pin?.version) &&
+          typeof pin.license === "string" && pin.license.length > 0 && pin.license === priorPin.license &&
+          registryTarball(name, pin.resolved) && integrityHash(pin.integrity)) continue;
         const key = `${file}:${field}:${name}`;
         const note = notes[key];
-        const pin = lock.packages?.[`${path.dirname(file) === "." ? "" : path.dirname(file) + "/"}node_modules/${name}`]
-          ?? lock.packages?.[`node_modules/${name}`];
         if (!note || note.requirement !== requirement || !pin?.version || note.version !== pin.version ||
           !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(note.version) || !pin.integrity ||
           note.registry !== `https://registry.npmjs.org/${encodeURIComponent(name)}/${note.version}` ||

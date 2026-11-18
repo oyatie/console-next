@@ -8,6 +8,7 @@ import { patterns } from "./quality/patterns.mjs";
 import { deadCode } from "./quality/dead-code.mjs";
 import { ratchet, baselineGrowth } from "./quality/ratchet.mjs";
 import { checkDependencyNotes } from "./check-deps.mjs";
+import { dependencyProblems } from "./quality/dependencies.mjs";
 
 const repo = path.resolve(import.meta.dirname, "..");
 const dirs: string[] = [];
@@ -17,7 +18,7 @@ const put = (dir: string, file: string, text: string) => {
   writeFileSync(path.join(dir, file), text);
 };
 
-function fixture(files: Record<string, string>) {
+function fixture(files: Record<string, string>, initial: Record<string, string> = {}) {
   const root = mkdtempSync(path.join(repo, ".quality-"));
   dirs.push(root);
   for (const dir of ["apps/web/src", "packages/api/src", "packages/i18n/src", "e2e", "scripts/quality"]) mkdirSync(path.join(root, dir), { recursive: true });
@@ -25,8 +26,10 @@ function fixture(files: Record<string, string>) {
   put(root, "package.json", '{"name":"fixture","workspaces":["apps/*","packages/*"]}');
   put(root, "package-lock.json", '{"packages":{}}');
   put(root, "scripts/quality/dependency-verification.json", "{}");
+  put(root, "docs/quality/dependency-register.json", '{"rows":[]}');
   put(root, "scripts/quality/baseline.json", "{}");
   put(root, "apps/web/src/main.tsx", "export {};\n");
+  Object.entries(initial).forEach(([file, text]) => put(root, file, text));
   const git = (args: string[]) => {
     const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
     expect(r.status, r.stderr).toBe(0);
@@ -133,6 +136,25 @@ const verification = {
 };
 const lock = { packages: { "node_modules/example": { version: "1.2.3", integrity: "fixture-integrity" } } };
 const noteText = "Reason: installed alternative evaluated\nProvenance: registry and upstream checked\nLicense: MIT reviewed\nSecurity: advisories reviewed";
+
+test("dependency ratchet loads automated evidence from the git base and checks lock-only changes", () => {
+  const manifest = (version: string) => JSON.stringify({ devDependencies: { example: `^${version}` } });
+  const pinned = (version: string, license = "MIT") => JSON.stringify({ packages: {
+    "node_modules/example": { version, license, resolved: `https://registry.npmjs.org/example/-/example-${version}.tgz`, integrity: "sha512-Zml4dHVyZQ==" },
+  } });
+  const root = fixture({ "package.json": manifest("1.1.0"), "package-lock.json": pinned("1.1.0") }, {
+    "package.json": manifest("1.0.0"), "package-lock.json": pinned("1.0.0"),
+    "docs/quality/dependency-register.json": JSON.stringify({ rows: [
+      { kind: "npm", name: "example", direct: true, uses: [{ file: "package.json", layer: "test" }] },
+    ] }),
+  });
+  expect(dependencyProblems(root, "fixture-base")).toEqual([]);
+  put(root, "package.json", manifest("1.0.0"));
+  put(root, "package-lock.json", pinned("2.0.0"));
+  expect(dependencyProblems(root, "fixture-base")).toEqual([expect.stringContaining("needs a verification note")]);
+  put(root, "package-lock.json", pinned("1.1.0", "GPL-3.0-only"));
+  expect(dependencyProblems(root, "fixture-base")).toEqual([expect.stringContaining("needs a verification note")]);
+});
 test("dependency control: notes bind added/changed requirements to exact lock versions and review", () => {
   expect(checkDependencyNotes(manifests, {}, {}, lock, () => noteText)).toHaveLength(1);
   expect(checkDependencyNotes(manifests, {}, verification, lock, () => noteText)).toEqual([]);

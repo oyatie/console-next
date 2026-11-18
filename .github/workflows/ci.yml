@@ -126,6 +126,8 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Verify npm registry signatures and provenance
+        run: npm audit signatures
       - &playwright-version
         name: Locked Playwright version
         id: playwright
