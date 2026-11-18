@@ -11,6 +11,7 @@ const refuse = (reason, detail) => { throw new Error(`${reason}: ${detail}`); };
 const positive = n => Number.isFinite(n) && n > 0;
 // Run-to-run runner speed varies by about a third, so a shard gets this much time over its measured plan.
 export const RUN_HEADROOM = 1.6;
+const MIN_HEADROOM_RUNS = 3;
 const specPath = file => /^(?:(?:mock|states)\/[^/]+\.spec\.ts|layout\/layout\.spec\.ts)$/.test(file);
 
 function validateTimings(timings) {
@@ -22,50 +23,133 @@ function validateTimings(timings) {
 }
 
 /** Only this repository's CI pushes on dev's history may supply timings, red runs included since the capacity check fails after publishing; PRs cannot replace trusted measurements. */
-export async function restoreDevTimings(settings, { apiUrl, repository, repositoryId, token }, request = fetch) {
+export async function restoreDevTimings(settings, { apiUrl, repository, repositoryId, token, history = false, cachedTimings, summary = process.env.GITHUB_STEP_SUMMARY }, request = fetch) {
   validateTimings(settings);
+  if (history) validateHeadroomRuns(settings);
+  class Unavailable extends Error {}
+  const fallbackTimings = () => {
+    if (cachedTimings?.workers === settings.workers && Object.keys(cachedTimings.specs ?? {}).length) {
+      validateTimings({ ...settings, specs: cachedTimings.specs });
+      return { timings: { workers: settings.workers, specs: cachedTimings.specs } };
+    }
+    return { timings: { workers: settings.workers, specs: {} } };
+  };
   const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" };
   const get = async url => {
-    const response = await request(url, { headers, signal: AbortSignal.timeout(60_000) });
+    const networkError = error => { throw new Unavailable(`${url}: network error: ${error.message}`); };
+    let response;
+    try { response = await request(url, { headers, signal: AbortSignal.timeout(60_000) }); }
+    catch (error) { networkError(error); }
+    if (response.status === 429 || response.status >= 500 && response.status < 600)
+      throw new Unavailable(`${url}: HTTP ${response.status}`);
     if (!response.ok) refuse("STATES_TIMINGS_FETCH", `HTTP ${response.status}`);
-    return response;
+    return Buffer.from(await response.arrayBuffer().catch(networkError));
   };
-  const artifacts = [];
-  for (let page = 1; page <= 5; page++) {
-    const response = await get(`${apiUrl}/repos/${repository}/actions/artifacts?name=states-timings&per_page=100&page=${page}`);
-    const batch = (await response.json()).artifacts;
-    if (!Array.isArray(batch)) refuse("STATES_TIMINGS_FETCH", "missing artifact list");
-    artifacts.push(...batch);
-    if (batch.length < 100) break;
+  const json = async url => JSON.parse((await get(url)).toString());
+  try {
+    const artifacts = [];
+    for (let page = 1; page <= 5; page++) {
+      const batch = (await json(`${apiUrl}/repos/${repository}/actions/artifacts?name=states-timings&per_page=100&page=${page}`)).artifacts;
+      if (!Array.isArray(batch)) refuse("STATES_TIMINGS_FETCH", "missing artifact list");
+      artifacts.push(...batch);
+      if (batch.length < 100) break;
+    }
+    const api = route => json(`${apiUrl}/repos/${repository}/${route}`);
+    let fallback;
+    const runs = [];
+    for await (const artifact of trustedArtifacts(artifacts, api, repositoryId, "ci.yml", ["push"], { anyConclusion: true })) {
+      if (runs.some(run => run.runId === artifact.workflow_run.id)) continue;
+      const response = await get(`${apiUrl}/repos/${repository}/actions/artifacts/${artifact.id}/zip`);
+      const archive = mkdtempSync(path.join(tmpdir(), "states-timings-"));
+      let measured;
+      try {
+        const file = path.join(archive, "timings.zip");
+        writeFileSync(file, response);
+        // Print only the named member; never extract artifact-controlled paths.
+        const decoded = spawnSync("unzip", ["-p", file, "timings.json"], { maxBuffer: 16 * 1024 * 1024 });
+        if (decoded.status !== 0) refuse("STATES_TIMINGS_FETCH", "cannot read timings archive");
+        measured = JSON.parse(decoded.stdout.toString());
+      } finally { rmSync(archive, { recursive: true, force: true }); }
+      if (!Number.isInteger(measured.workers) || measured.workers <= 0) refuse("STATES_INVALID_TIMINGS", "invalid measured workers");
+      validateTimings({ ...settings, specs: measured.specs });
+      if (!measured.specs || !Object.keys(measured.specs).length) refuse("STATES_INVALID_TIMINGS", "empty measurements");
+      const restored = { timings: { workers: measured.workers, specs: measured.specs }, runId: artifact.workflow_run.id };
+      if (history) {
+        if (measured.workers === settings.workers) runs.push(restored);
+        if (runs.length === settings.headroomRuns) break;
+        continue;
+      }
+      if (measured.workers === settings.workers) return restored;
+      fallback ??= restored;
+    }
+    if (history) return { runs };
+    if (fallback) {
+      console.warn(`::warning::No compatible dev timings; scaling run ${fallback.runId} from ${fallback.timings.workers} to ${settings.workers} workers`);
+      return { runId: fallback.runId, timings: { workers: settings.workers, specs: Object.fromEntries(
+        Object.entries(fallback.timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * fallback.timings.workers / settings.workers }])) } };
+    }
+    const restored = fallbackTimings();
+    console.warn(`::warning::No unexpired dev timings; using ${Object.keys(restored.timings.specs).length ? "cached dev timings" : "the configured per-test bootstrap floor"}`);
+    return restored;
+  } catch (error) {
+    if (!(error instanceof Unavailable)) throw error;
+    const restored = history ? { runs: [] } : fallbackTimings();
+    const message = `Dev timings unavailable: ${error.message}; ${history ? "Insufficient history; headroom not judged" : Object.keys(restored.timings.specs).length ? "using cached dev timings" : "using the configured bootstrap floor"}.`;
+    console.warn(`::warning::${message}`);
+    if (summary) appendFileSync(summary, `\n${message}\n`);
+    return restored;
   }
-  const api = async route => (await get(`${apiUrl}/repos/${repository}/${route}`)).json();
-  let fallback;
-  for await (const artifact of trustedArtifacts(artifacts, api, repositoryId, "ci.yml", ["push"], { anyConclusion: true })) {
-    const response = await get(`${apiUrl}/repos/${repository}/actions/artifacts/${artifact.id}/zip`);
-    const archive = mkdtempSync(path.join(tmpdir(), "states-timings-"));
-    let measured;
-    try {
-      const file = path.join(archive, "timings.zip");
-      writeFileSync(file, Buffer.from(await response.arrayBuffer()));
-      // Print only the named member; never extract artifact-controlled paths.
-      const decoded = spawnSync("unzip", ["-p", file, "timings.json"], { maxBuffer: 16 * 1024 * 1024 });
-      if (decoded.status !== 0) refuse("STATES_TIMINGS_FETCH", "cannot read timings archive");
-      measured = JSON.parse(decoded.stdout.toString());
-    } finally { rmSync(archive, { recursive: true, force: true }); }
-    if (!Number.isInteger(measured.workers) || measured.workers <= 0) refuse("STATES_INVALID_TIMINGS", "invalid measured workers");
-    validateTimings({ ...settings, specs: measured.specs });
-    if (!measured.specs || !Object.keys(measured.specs).length) refuse("STATES_INVALID_TIMINGS", "empty measurements");
-    const restored = { timings: { workers: measured.workers, specs: measured.specs }, runId: artifact.workflow_run.id };
-    if (measured.workers === settings.workers) return restored;
-    fallback ??= restored;
+}
+
+function validateHeadroomRuns(settings) {
+  if (!Number.isInteger(settings.headroomRuns) || settings.headroomRuns < MIN_HEADROOM_RUNS)
+    refuse("STATES_INVALID_TIMINGS", "headroomRuns must be an integer of at least three");
+}
+
+/** Per-test medians allow suite growth; sparse specs use this push's measurement before P95. */
+export function checkHeadroom(report, settings, runs, summary = process.env.GITHUB_STEP_SUMMARY, current) {
+  validateTimings(settings);
+  validateHeadroomRuns(settings);
+  if (!Array.isArray(runs)) refuse("STATES_INVALID_TIMINGS", "expected timing history");
+  const recent = [...new Map(runs.filter(run => run.timings.workers === settings.workers)
+    .map(run => [run.runId, run])).values()].slice(0, settings.headroomRuns);
+  for (const run of recent) validateTimings({ ...settings, specs: run.timings.specs });
+  if (current?.workers === settings.workers) validateTimings({ ...settings, specs: current.specs });
+  const counts = new Map();
+  for (const { file } of listedTests(report)) counts.set(file, (counts.get(file) ?? 0) + 1);
+  const specs = {};
+  const estimated = [];
+  const measuredOnPush = [];
+  for (const [file, tests] of counts) {
+    const seconds = recent.map(run => run.timings.specs?.[file]).filter(Boolean)
+      .map(entry => entry.seconds / entry.tests).sort((a, b) => a - b);
+    if (seconds.length < MIN_HEADROOM_RUNS) {
+      const entry = current?.workers === settings.workers && current.specs?.[file];
+      if (entry) {
+        specs[file] = { tests, seconds: tests * entry.seconds / entry.tests };
+        measuredOnPush.push(file);
+      } else estimated.push(file);
+      continue;
+    }
+    const middle = Math.floor(seconds.length / 2);
+    specs[file] = { tests, seconds: tests * (seconds[middle] + seconds[Math.ceil(seconds.length / 2) - 1]) / 2 };
   }
-  if (fallback) {
-    console.warn(`::warning::No compatible dev timings; scaling run ${fallback.runId} from ${fallback.timings.workers} to ${settings.workers} workers`);
-    return { runId: fallback.runId, timings: { workers: settings.workers, specs: Object.fromEntries(
-      Object.entries(fallback.timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * fallback.timings.workers / settings.workers }])) } };
+  const publish = message => {
+    console.log(message);
+    if (summary) appendFileSync(summary, `\n### State shard headroom\n\n${message}\n`);
+  };
+  if (recent.length < MIN_HEADROOM_RUNS) {
+    publish(`Insufficient history: ${recent.length}/${MIN_HEADROOM_RUNS} compatible dev runs required; headroom not judged.`);
+    return;
   }
-  console.warn("::warning::No unexpired dev timings; bootstrapping with the configured per-test floor");
-  return { timings: { workers: settings.workers, specs: {} } };
+  const timings = { workers: settings.workers, specs };
+  const plan = planStates(report, settings, timings);
+  const timeoutSeconds = Math.floor(settings.runLimitSeconds / RUN_HEADROOM);
+  const maximum = Math.max(...plan.shards.map(shard => shard.seconds));
+  const headroom = 100 * (1 - maximum / timeoutSeconds);
+  publish(`Typical headroom: **${headroom.toFixed(1)}%** (per-test median over ${recent.length} dev runs, scaled to current counts); maximum ${maximum.toFixed(1)}s / ${timeoutSeconds}s; required headroom: 15%.${maximum > timeoutSeconds * 0.8 ? " Capacity follow-up: another shard or faster slow specs is due." : ""}${measuredOnPush.length ? `\n\nMeasured on this push only (fewer than ${MIN_HEADROOM_RUNS} history samples): ${measuredOnPush.join(", ")}.` : ""}${estimated.length ? `\n\nP95 estimate (missing this push's measurement and fewer than ${MIN_HEADROOM_RUNS} history samples): ${estimated.join(", ")}.` : ""}`);
+  if (maximum > timeoutSeconds * 0.85) refuse("STATES_HEADROOM_EXHAUSTED", "the measured suite needs at least fifteen percent headroom");
+  return { timings, plan, headroom };
 }
 
 /** Settings are committed; cached wall durations are reusable only at the same worker count. */
@@ -171,13 +255,16 @@ function writeJson(file, value) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [command, first, second, third, ...rest] = process.argv.slice(2);
-    if (command === "restore") {
+    if (command === "restore" || command === "history") {
       const restored = await restoreDevTimings(readJson(first), {
         apiUrl: process.env.GITHUB_API_URL, repository: process.env.GITHUB_REPOSITORY,
         repositoryId: Number(process.env.GITHUB_REPOSITORY_ID), token: process.env.GH_TOKEN,
+        history: command === "history",
+        cachedTimings: command === "restore" && existsSync(second) ? readJson(second) : undefined,
       });
-      writeJson(second, restored.timings);
-      console.log(`Restored state timings from ${restored.runId ? `dev run ${restored.runId}` : "the bootstrap floor"}`);
+      writeJson(second, command === "history" ? restored : restored.timings);
+      console.log(command === "history" ? `Restored ${restored.runs.length} compatible dev timing runs`
+        : `Restored state timings from ${restored.runId ? `dev run ${restored.runId}` : "fallback estimates"}`);
     } else if (command === "plan") {
       const timings = readJson(second);
       const plan = planStates(readJson(first), timings, rest[0] && existsSync(rest[0]) ? readJson(rest[0]) : undefined);
@@ -198,7 +285,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       process.exitCode = result.status ?? 1;
     } else if (command === "refresh") {
       writeJson(third, refreshTimings(readJson(first), readJson(second), rest.map(readJson)));
-    } else refuse("STATES_INVALID_COMMAND", "use restore <settings> <measurements>, plan <listing> <settings> <plan> [measurements], run <plan> <shard>, or refresh <settings> <plan> <output> <reports...>");
+    } else refuse("STATES_INVALID_COMMAND", "use restore <settings> <measurements>, history <settings> <history>, plan <listing> <settings> <plan> [measurements], run <plan> <shard>, or refresh <settings> <plan> <output> <reports...>");
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
