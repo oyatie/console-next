@@ -22,9 +22,9 @@ export function IconButton({ label, variant = "ghost", ...rest }: Omit<ButtonHTM
 export function ToggleButton({ pressed, look, count, countTone, className, children, ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-pressed"> & {
   pressed: boolean;
   size?: ButtonSize;
-  /** `chip`: a filter drawn as a pill (kit .optchip), bordered when off. */
+  /** `chip`: a filter drawn as a pill, bordered when off. */
   look?: "chip";
-  /** The server's count after the label (kit .fchip .n): it keeps its width while it loads, so nothing beside it moves. */
+  /** The server's count after the label: it keeps its width while it loads, so nothing beside it moves. */
   count?: ReactNode;
   /** `warn`: a to-do count (something waits on someone). */
   countTone?: "warn";

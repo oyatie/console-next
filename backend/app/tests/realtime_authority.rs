@@ -207,11 +207,27 @@ impl Fixture {
     }
     async fn block_authority(&self) -> Transaction<'_, Postgres> {
         let mut tx = self.owner.begin().await.unwrap();
-        sqlx::query("LOCK auth_refresh_token_families IN ACCESS EXCLUSIVE MODE")
+        // Production account owners lock this row first, and so does the authority read.
+        sqlx::query("SELECT 1 FROM users WHERE id=$1 FOR NO KEY UPDATE")
+            .bind(*self.user.as_uuid())
             .execute(&mut *tx)
             .await
             .unwrap();
         tx
+    }
+    async fn wait_for_blocked_authority(&self, tx: &mut Transaction<'_, Postgres>) {
+        let blocker: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+            .fetch_one(&mut **tx)
+            .await
+            .unwrap();
+        timeout(StdDuration::from_secs(3), async {
+            loop {
+                let parked: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND usename='console_rt' AND $1=ANY(pg_blocking_pids(pid)))")
+                    .bind(blocker).fetch_one(&self.owner).await.unwrap();
+                if parked { break; }
+                tokio::task::yield_now().await;
+            }
+        }).await.expect("delivery's authority read must wait on the blocker");
     }
     async fn block_messages(&self) -> Transaction<'_, Postgres> {
         let mut tx = self.owner.begin().await.unwrap();
@@ -290,44 +306,29 @@ async fn queued_denied(owner: PgPool, change: &str, kind: &str) {
     let mut stream = f.connect(None).await;
     let mut tx = f.block_authority().await;
     f.enqueue(f.event(kind)).await;
-    match change {
+    f.wait_for_blocked_authority(&mut tx).await;
+    let query = match change {
         "family" => {
             sqlx::query("UPDATE auth_refresh_token_families SET revoked_at=now() WHERE id=$1")
                 .bind(f.family)
-                .execute(&mut *tx)
-                .await
-                .unwrap();
         }
         "account" => {
-            sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
-                .bind(*f.user.as_uuid())
-                .execute(&mut *tx)
-                .await
-                .unwrap();
+            sqlx::query("UPDATE users SET is_active=false WHERE id=$1").bind(*f.user.as_uuid())
         }
-        "company" => {
-            sqlx::query("UPDATE organizations SET status='SUSPENDED' WHERE id=$1")
-                .bind(*OrgId::one().as_uuid())
-                .execute(&mut *tx)
-                .await
-                .unwrap();
-        }
+        "company" => sqlx::query("UPDATE organizations SET status='SUSPENDED' WHERE id=$1")
+            .bind(*OrgId::one().as_uuid()),
         "branch" => {
-            sqlx::query("DELETE FROM user_branches WHERE user_id=$1")
-                .bind(*f.user.as_uuid())
-                .execute(&mut *tx)
-                .await
-                .unwrap();
+            sqlx::query("DELETE FROM user_branches WHERE user_id=$1").bind(*f.user.as_uuid())
         }
-        "thread" => {
-            sqlx::query("DELETE FROM messenger_thread_members WHERE user_id=$1")
-                .bind(*f.user.as_uuid())
-                .execute(&mut *tx)
-                .await
-                .unwrap();
-        }
+        "thread" => sqlx::query("DELETE FROM messenger_thread_members WHERE user_id=$1")
+            .bind(*f.user.as_uuid()),
         _ => panic!("unknown change"),
-    }
+    };
+    assert_eq!(
+        query.execute(&mut *tx).await.unwrap().rows_affected(),
+        1,
+        "the queued authority change must update its fixture row"
+    );
     tx.commit().await.unwrap();
     closed(&mut stream, 1008).await;
     f.assert_removed().await;
