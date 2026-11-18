@@ -3,6 +3,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, koDate, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
+import { expectFieldChange, revisionItems } from "./helpers/entity";
 import { registerEntity, registerWorkplace } from "./setup-flows";
 import { fillDate } from "./sheet";
 
@@ -102,7 +103,7 @@ test("sequential edits on a 법인 with a 등록증 and a 사업장 save one aft
 
   // The 대표전화 정정 lists only 대표전화, not the scheduled 대표자 변경 (backend history diff).
   await a.getByRole("tab", { name: /^이력/ }).click();
-  const newest = a.locator("ol.timeline").first().locator("li").first();
+  const newest = revisionItems(a.getByRole("region", { name: t("entity.history.title"), exact: true })).first();
   await expect(newest).toContainText("대표전화");
   await expect(newest).not.toContainText("대표자");
   await expect(newest).not.toContainText("대표 방식");
@@ -161,11 +162,7 @@ test("a real conflict shows what changed meanwhile and re-applies the value on t
   await expect(a.getByText("02-555-0142").first()).toBeVisible();
   // Both are in the history: the other person's 정정, then this one; the refused attempt wrote nothing.
   await a.getByRole("tab", { name: /^이력/ }).click();
-  const items = a.locator("ol.timeline").first().locator("li");
-  const latestPhone = items.nth(0).locator("dl > div").filter({ hasText: t("entityRecord.field.mainPhone") }).first();
-  const priorPhone = items.nth(1).locator("dl > div").filter({ hasText: t("entityRecord.field.mainPhone") }).first();
-  await expect(latestPhone.locator("dd")).toContainText(`${t("timeline.before")}02-555-0199`);
-  await expect(latestPhone.locator("dd")).toContainText(`${t("timeline.after")}02-555-0142`);
-  await expect(priorPhone.locator("dd")).toContainText(t("timeline.before"));
-  await expect(priorPhone.locator("dd")).toContainText(`${t("timeline.after")}02-555-0199`);
+  const items = revisionItems(a.getByRole("region", { name: t("entity.history.title"), exact: true }));
+  await expectFieldChange(items.nth(0), t("entityRecord.field.mainPhone"), "02-555-0199", "02-555-0142");
+  await expectFieldChange(items.nth(1), t("entityRecord.field.mainPhone"), t("timeline.noValue"), "02-555-0199");
 });
