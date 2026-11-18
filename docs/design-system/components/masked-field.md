@@ -82,7 +82,7 @@ There is one look and one size. No prop changes either.
 | Tab, Shift+Tab | Moves focus to and from the input. Anything focusable in `status` follows it. |
 | A digit | Adds the digit. The separators appear by themselves, and the caret stays after the digit just typed, also in the middle of the value. A full-width digit is read as the same digit. |
 | A digit when the value is full | At the end, dropped. In the middle, added, and the last digit falls off: the value is cut at `max` from the end. |
-| Any other character | Dropped. The text and the caret stay where they were. |
+| Any other character | Dropped. The text stays as it was. The caret stays too, except just after a separator: there it moves to before the separator, as Backspace there does. |
 | Backspace, Delete on a digit | Removes the digit. The rest is reformatted and the caret stays after the same digit. |
 | Backspace just after a separator | Removes nothing: the separator comes back and the caret moves to before it. The next Backspace removes the digit there. |
 | Delete just before a separator | Removes nothing: the separator comes back and the caret does not move, so pressing Delete again does the same. The digit after the separator cannot be removed this way. |
@@ -136,9 +136,11 @@ The WCAG 2.2 criteria that apply:
 The gallery shows five fields in `apps/web/src/ui/masked-field/masked-field.gallery.tsx`: an empty one with an
 example; one with a warning and a status chip; one with an error; a phone number with a hint; and an optional one.
 
-The folder has one test, `caret.test.ts`, for the caret position and full-width digits. Nothing renders
-`MaskedField` in a test: its handling of typing, pasting and composition is not tested. The formats have their own
-test, `apps/web/src/lib/pure/formats.test.ts`.
+The folder has one test, `caret.test.ts`, for the caret arithmetic and full-width digits. No test in the folder
+renders `MaskedField`. End-to-end specs fill masked fields and assert the formatted value: `e2e/entity-ops.spec.ts`
+fills a registration number as plain digits and reads it back with its separators. Where the caret lands in the
+rendered input, and composition, are not tested. The formats have their own test,
+`apps/web/src/lib/pure/formats.test.ts`.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
