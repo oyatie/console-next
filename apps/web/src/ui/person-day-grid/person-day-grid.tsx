@@ -70,6 +70,16 @@ export function PersonDayGrid<R>(p: Props<R>) {
     window.addEventListener("resize", read);
     return () => window.removeEventListener("resize", read);
   }, []);
+  const leads = p.lead.length, tails = p.tail.length;
+  // After every render, since the rows drawn decide how wide the columns are, and whenever the box or the table
+  // changes size without one (a font arriving, a window or a docked sheet resizing).
+  useLayoutEffect(() => placeSides(box.current!, leads, tails));
+  useLayoutEffect(() => {
+    const el = box.current!, watch = new ResizeObserver(() => placeSides(el, leads, tails));
+    watch.observe(el);
+    watch.observe(el.firstElementChild!);
+    return () => watch.disconnect();
+  }, [leads, tails]);
   const [drag, setDrag] = useState(false);
   const table = useRef<HTMLTableElement>(null);
   // The editor left while it held the focus (Enter, Tab, Escape, a press on another cell): the grid takes the focus
@@ -210,6 +220,29 @@ export function PersonDayGrid<R>(p: Props<R>) {
       </table>
     </div>
   );
+}
+
+/**
+ * Sticky side columns stand side by side: each is held past the ones outside it, at an offset measured from the head
+ * row (a column is as wide as what it holds) and set on the box for the styles. The lead columns are always held. The
+ * totals are held from the outside in while a week of days stays in view between the two sides; in a narrower box the
+ * inner ones, then all of them, scroll with the days.
+ */
+function placeSides(box: HTMLElement, leads: number, tails: number) {
+  const widths = [...box.querySelector("thead tr")!.children].map((c) => c.getBoundingClientRect().width);
+  const set = (name: string, value: string) => box.style.getPropertyValue(name) === value || box.style.setProperty(name, value);
+  let left = 0, right = 0;
+  widths.slice(0, leads).forEach((w, k) => {
+    if (k) set(`--lead-${k}`, `${left}px`);
+    left += w;
+  });
+  let room = box.clientWidth - left - 7 * (widths[leads] ?? 0);
+  widths.slice(widths.length - tails).reverse().forEach((w, k) => {
+    // Once one does not fit, none inside it is held.
+    room = room >= w ? room - w : -Infinity;
+    set(`--tail-${k}`, room >= 0 ? `${right}px` : "auto");
+    right += w;
+  });
 }
 
 /** The in-cell input: Enter commits and moves down, Tab right, Esc cancels; an IME composition is never cut. */

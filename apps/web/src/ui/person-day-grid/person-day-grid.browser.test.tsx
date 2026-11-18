@@ -261,3 +261,79 @@ test("Enter, F2 and a double-click open the editor on the cell's draft, and leav
   await page.keyboard.press("Control+z");
   await element(drafts).toHaveText(DRAFT);
 });
+
+/**
+ * The head row and the first person's row at a sideways scroll position: what is wrong with the sticky side columns
+ * (one lying on another, a gap or an overlap between neighbours in view), how many totals are in view, how far the
+ * last one ends from the box's right edge, and how many whole day columns show between the two sides.
+ */
+const sideways = (grid: Locator, to: number, lead: number) => grid.locator("..").evaluate((el, [to, lead]) => {
+  el.scrollLeft = to;
+  const box = el.getBoundingClientRect(), right = box.left + el.clientWidth, faults: string[] = [];
+  const shows = (cell: Element) => {
+    const b = cell.getBoundingClientRect();
+    return cell.contains(document.elementFromPoint((b.left + b.right) / 2, (b.top + b.bottom) / 2));
+  };
+  const seen = { days: 0, totals: 0 };
+  for (const row of [el.querySelector("thead tr")!, el.querySelector("tbody tr:not([aria-hidden])")!]) {
+    const cells = [...row.children], sides = [...cells.slice(0, lead), ...cells.slice(-4)];
+    const bounds = sides.map(c => c.getBoundingClientRect()), inView = bounds.map(b => b.left < right - 1);
+    sides.forEach((cell, i) => {
+      const b = bounds[i]!, name = `${row.parentElement!.tagName} ${i < lead ? "lead" : "total"} ${i < lead ? i + 1 : i - lead + 1}`;
+      if (inView[i] && !shows(cell)) faults.push(`${name} is covered`);
+      if (i > 0 && i !== lead && inView[i - 1] && Math.abs(b.left - bounds[i - 1]!.right) > 1) faults.push(`${name} starts at ${Math.round(b.left)}, its neighbour ends at ${Math.round(bounds[i - 1]!.right)}`);
+    });
+    if (Math.abs(bounds[0]!.left - box.left) > 1) faults.push(`${row.parentElement!.tagName} lead 1 starts at ${Math.round(bounds[0]!.left)}`);
+    const from = bounds[lead - 1]!.right, until = Math.min(right, ...bounds.slice(lead).map(b => b.left));
+    seen.days = cells.slice(lead, -4).filter(c => c.getBoundingClientRect().left >= from - 1 && c.getBoundingClientRect().right <= until + 1 && shows(c)).length;
+    seen.totals = inView.slice(lead).filter(Boolean).length;
+  }
+  return { faults, ...seen, end: el.scrollWidth - el.clientWidth, totalsEnd: Math.abs(Math.round(right - el.querySelector("thead tr")!.lastElementChild!.getBoundingClientRect().right)) };
+}, [to, lead] as const);
+
+// The month view passes four total columns and, when someone has no schedule, a third lead column.
+test.each([["", 2], ["&unscheduled", 3]] as const)("sticky side columns stand side by side at every sideways scroll position (%s)", async (extra, lead) => {
+  const grid = await month(`?w=1000${extra}`);
+  const { end } = await sideways(grid, 0, lead);
+  expect(end).toBeGreaterThan(600);
+  for (const to of [0, 300, end]) {
+    // All four totals stay at the right edge, with a week of days and more between the two sides.
+    const at = await sideways(grid, to, lead);
+    expect({ ...at, days: at.days >= 7 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 4, end, totalsEnd: 0 });
+  }
+});
+
+test("a box with less room holds the outer totals only, and a week of days stays in view", async () => {
+  // About the grid column beside a docked sheet on a laptop.
+  const grid = await month("?w=640");
+  const { end } = await sideways(grid, 0, 2);
+  for (const to of [0, 300]) {
+    const at = await sideways(grid, to, 2);
+    expect({ ...at, days: at.days >= 7 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 2, end, totalsEnd: 0 });
+  }
+  // The other two are where the row ends, beside the two that were held.
+  expect(await sideways(grid, end, 2)).toMatchObject({ faults: [], totals: 4, totalsEnd: 0 });
+});
+
+test("a box too narrow for any holds no totals: they scroll with the days and end the row", async () => {
+  const grid = await month("?w=452&unscheduled");
+  const { end } = await sideways(grid, 0, 3);
+  for (const to of [0, 300]) {
+    const at = await sideways(grid, to, 3);
+    expect({ ...at, days: at.days >= 3 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 0, end, totalsEnd: at.totalsEnd });
+  }
+  // At the end of the row the totals show whole (over the lead columns, which a box this narrow cannot also show).
+  const last = await sideways(grid, end, 3);
+  expect(last.faults.filter(fault => fault.includes("total"))).toEqual([]);
+  expect(last).toMatchObject({ totals: 4, totalsEnd: 0 });
+});
+
+test("a grid that fits its box has every column where the table puts it", async () => {
+  await page.setViewportSize({ width: 2300, height: 720 });
+  try {
+    const grid = await month("?w=2200&unscheduled");
+    expect(await sideways(grid, 0, 3)).toEqual({ faults: [], days: 31, totals: 4, end: 0, totalsEnd: 0 });
+  } finally {
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
+});

@@ -6,8 +6,19 @@
 .lead { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; padding: 0 var(--space-2); white-space: nowrap; font-weight: var(--fw-body); }
 .lead[data-w="name"] { left: 64px; min-width: 96px; }
 .lead[data-w="code"] { width: 64px; font-family: var(--font-mono); }
+/* Sticky side columns stand side by side, each held past the ones outside it. A column is as wide as what it holds, so
+   the grid measures the offsets and sets them on the box; until it has, they are the fixed ones here.
+   shortcut: four sticky columns a side, a fifth needs its own rule here. */
+.box { --lead-1: 64px; --lead-2: 64px; --lead-3: 64px; --tail-0: 0; --tail-1: 0; --tail-2: 0; --tail-3: 0; }
+.lead:nth-child(2) { left: var(--lead-1); }
+.lead:nth-child(3) { left: var(--lead-2); }
+.lead:nth-child(4) { left: var(--lead-3); }
 .table thead .lead { z-index: 3; }
 .tail { position: sticky; right: 0; z-index: 1; background: var(--surface); border-left: 1px solid var(--border); padding: 0 var(--space-2); text-align: right; white-space: nowrap; min-width: 64px; }
+.tail:nth-last-child(1) { right: var(--tail-0); }
+.tail:nth-last-child(2) { right: var(--tail-1); }
+.tail:nth-last-child(3) { right: var(--tail-2); }
+.tail:nth-last-child(4) { right: var(--tail-3); }
 .table thead .tail { z-index: 3; }
 .day { min-width: 44px; text-align: center; cursor: pointer; }
 .day[data-tone="holiday"] { color: var(--danger-tx); }
