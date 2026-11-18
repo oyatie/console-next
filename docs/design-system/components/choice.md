@@ -119,6 +119,7 @@ No prop picks a size. `look="chips"` and `columns` on `ChoiceField` are the only
 
 | State | What changes |
 |---|---|
+| Rest | The looks under Looks and sizes. Nothing is chosen until the person chooses. |
 | Hover | A segment, a pill, a `ChipChoice` chip and a `GroupedChoice` row take a `--muted` fill. A card's border turns `--control-border`. A `Checks` item, `ChoiceAdd` and the select have no hover look. A disabled option does not react. |
 | Keyboard focus | A segment: a 2 px `--primary` outline, 3 px inside its edge. A card, a pill and a `ChipChoice` chip: the `--focus` ring, 2 px of `--surface` then 2 px of `--primary`. A `GroupedChoice` row: a 2 px `--primary` outline, 2 px inside its edge. A `Checks` item: the `--focus` ring around the tick box. `ChoiceAdd` and the select: the global rule, a 2 px `--primary` outline 2 px away. |
 | Pressed down | No look. No rule reads `data-pressed`. |
