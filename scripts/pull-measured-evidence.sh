@@ -28,6 +28,8 @@ run = runs[0]
 if run['event'] != 'push' or run['headBranch'] != 'dev': sys.exit('only a dev push run may be ingested')
 job_pages = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/actions/runs/{run["databaseId"]}/jobs', '--paginate', '--slurp'], text=True))
 jobs = {job['name']: job.get('conclusion') for page in job_pages for job in page['jobs']}
+job_names = {'states-timings': 'Reconcile UI state test results',
+             'release-evidence': 'Collect release test evidence'}
 pages = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/actions/runs/{run["databaseId"]}/artifacts', '--paginate', '--slurp'], text=True))
 names = {a['name'] for page in pages for a in page['artifacts'] if not a.get('expired')}
 # Accept older combined artifacts during the independent producers' rollout.
@@ -37,7 +39,7 @@ for name, candidates in {'states': ('states-evidence', 'd8-evidence'),
                          'nextest': ('nextest-evidence', 'd7-evidence')}.items():
     artifact = next((candidate for candidate in candidates if candidate in names), None)
     job = 'states-timings' if (artifact or candidates[0]) == 'states-evidence' else 'release-evidence'
-    conclusion = jobs.get(job)
+    conclusion = jobs.get(job_names[job])
     if conclusion not in ('success', 'skipped'):
         sys.exit(f'measured source {name}: producer {job} concluded {conclusion or "unknown"}')
     if artifact: artifacts[name] = artifact

@@ -545,13 +545,7 @@ pub const ATTENDANCE_FRAGMENT: Fragment = Fragment {
     external_schemas: ATTENDANCE_FRAGMENT_EXTERNAL,
 };
 
-const ATTENDANCE_FRAGMENT_EXTERNAL: &[&str] = &[
-    "ActorKind",
-    "AuditLastChange",
-    "ErrorBody",
-    "FieldError",
-    "Uuid",
-];
+const ATTENDANCE_FRAGMENT_EXTERNAL: &[&str] = &["Uuid"];
 
 const ATTENDANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -1759,14 +1753,7 @@ pub const COMPLIANCE_FRAGMENT: Fragment = Fragment {
     external_schemas: COMPLIANCE_FRAGMENT_EXTERNAL,
 };
 
-const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &[
-    "MobilePasskeyStepUpBinding",
-    "MobilePasskeyStepUpEnvelope",
-    "MobileStepUpActionKind",
-    "PasskeyStepUpAssertion",
-    "Timestamp",
-    "Uuid",
-];
+const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &["MobilePasskeyStepUpEnvelope", "Timestamp", "Uuid"];
 
 const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
@@ -6875,6 +6862,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/users/employee-link-attestations/{id}/review",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__users__employee-link-attestations__id__review.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/users/me",
         operations: &[
             Operation {
@@ -6888,6 +6884,41 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
                 ),
             },
         ],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__users__me__employee-link.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__users__me__employee-link.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link/prepare",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__users__me__employee-link__prepare.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/users/me/employee-link/withdraw",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__users__me__employee-link__withdraw.post.yaml"
+            ),
+        }],
     },
     PathItem {
         path: "/api/v1/users/{id}",
@@ -7584,6 +7615,26 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "RouteAdoptionMetric",
         body: include_str!("../../identity/rest/openapi/schemas/RouteAdoptionMetric.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingError",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingError.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingPrepareRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingPrepareRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingReviewRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingReviewRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfBindingWithdrawRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfBindingWithdrawRequest.yaml"),
     },
     NamedYaml {
         name: "SetAccessRoleStatusRequest",
@@ -11901,14 +11952,7 @@ pub const PAYROLL_FRAGMENT: Fragment = Fragment {
     external_schemas: PAYROLL_FRAGMENT_EXTERNAL,
 };
 
-const PAYROLL_FRAGMENT_EXTERNAL: &[&str] = &[
-    "ActorKind",
-    "AuditLastChange",
-    "ErrorBody",
-    "FieldError",
-    "Timestamp",
-    "Uuid",
-];
+const PAYROLL_FRAGMENT_EXTERNAL: &[&str] = &["Timestamp", "Uuid"];
 
 const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {

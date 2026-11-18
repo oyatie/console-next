@@ -14,8 +14,10 @@ hex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
-time = { workspace = true }
 uuid = { workspace = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+time = { workspace = true }

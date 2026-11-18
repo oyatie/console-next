@@ -15,12 +15,12 @@ import { ProfileCard } from "./profile-card";
 import s from "./account.module.css";
 
 /**
- * My account, for both tiers: who I am, my passkeys, what I agreed to, and (tenant accounts) what I may do. `locale` is the shell's
- * language control, handed in by the route's composition file.
+ * My account, for both tiers: who I am, my passkeys, what I agreed to, and (tenant accounts) what I may do. The shell controls are
+ * handed in by the route's composition file.
  * Extension points (no affordance until the API exists): ESS sections, sessions and sign-in
  * history, the location-consent link.
  */
-export function MePage({ locale }: { locale: ReactNode }) {
+export function MePage({ locale, experience }: { locale: ReactNode; experience: ReactNode }) {
   const vendor = Boolean(claims()?.platform);
   // Wait for the passkey warning's facts so it never pushes the cards below it down after they are drawn.
   const keys = useQuery(passkeysQuery);
@@ -30,7 +30,7 @@ export function MePage({ locale }: { locale: ReactNode }) {
     <div className={`page ${s.column}`}>
       <PageHead title={t("account.title")} />
       <QueryState q={reads} layout="record">{() => <>
-          <ProfileCard locale={locale} me={me} />
+          <ProfileCard locale={locale} experience={experience} me={me} />
           <PasskeysCard ops={vendor ? false : me.data?.is_tenant_ops} passkeys={keys} />
           <ConsentCard />
           {!vendor && <Link to="/account/privacy">{t("account.privacy.title")}</Link>}

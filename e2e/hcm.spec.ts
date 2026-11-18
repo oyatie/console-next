@@ -12,7 +12,7 @@ import { reasonChip } from "./helpers/lifecycle";
 import { box, revealUnit } from "./structure-flows";
 import { reasonBox, sheet, signOff, todayPreset, fillDate } from "./sheet";
 import { rosterXlsx } from "./workbook";
-import { chooseWorkbook, payPeriod } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "./helpers/import";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -47,7 +47,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await expectAccessible(admin, "register employee");
   // The full form at phone width: its rows wrap instead of scrolling sideways.
   await admin.setViewportSize({ width: 390, height: 844 });
-  expect(await admin.evaluate(() => [document.scrollingElement!.scrollWidth - innerWidth, document.querySelector(".main")!.scrollWidth - document.querySelector(".main")!.clientWidth])).toEqual([0, 0]);
+  expect(await admin.evaluate(() => [document.scrollingElement!.scrollWidth - innerWidth, document.querySelector("#main")!.scrollWidth - document.querySelector("#main")!.clientWidth])).toEqual([0, 0]);
   await admin.setViewportSize({ width: 1280, height: 720 });
   await forgetResize(admin);
   // The employment type and hire date are chosen, never defaulted (the unit came with the link).
@@ -175,6 +175,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await chooseWorkbook(admin, "roster.xlsx", await rosterXlsx("한결물산", [["HK-0002", "윤바다", "인사부", "사원", "2026-01-05"]]));
   await payPeriod(admin);
   await c.click(admin.getByRole("button", { name: "명부 미리보기" }));
+  await confirmImportColumns(admin);
   await c.click(admin.getByRole("button", { name: "모의 반영 실행" }));
   await c.click(admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }));
   await expect(admin.getByRole("heading", { name: "반영했습니다" })).toBeVisible();

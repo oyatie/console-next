@@ -19,12 +19,16 @@ mod harness;
 use fixture::{Out, code, e, planned};
 use harness::{Caller, keys, router, token, user};
 
+// The driver limit is process-wide; these cases must reach the injected refusal.
+static DRIVER_TEST: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 async fn refused_apply(
     pool: PgPool,
     sqlstate: &str,
     status: StatusCode,
     expected: &str,
 ) -> Out<()> {
+    let _driver = DRIVER_TEST.lock().await;
     let org = Uuid::new_v4();
     sqlx::query("INSERT INTO organizations (id,slug,name) VALUES ($1,$2,'Import refusal')")
         .bind(org)
@@ -95,6 +99,7 @@ async fn refused_apply(
     assert_eq!(job_status, StatusCode::OK, "{job}");
     assert_eq!(job["state"], "failed");
     assert_eq!(job["error"]["code"], expected);
+    assert_eq!(job["error"]["support_ref"], body["error"]["support_ref"]);
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM employees WHERE org_id=$1")
         .bind(org)
         .fetch_one(&pool)

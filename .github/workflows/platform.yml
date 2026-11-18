@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-name: platform
+name: Platform validation and images
 on:
   pull_request:
   merge_group:
@@ -15,12 +15,13 @@ concurrency:
 
 jobs:
   validate:
+    name: Platform contracts and admission
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions:
       contents: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
@@ -83,6 +84,7 @@ jobs:
           bash deploy/ci/image-smoke.sh "console-platform:${ARCH}"
 
   prune-image-cache:
+    name: Maintain image build cache
     if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.ref == 'refs/heads/dev'
     continue-on-error: true
     runs-on: ubuntu-24.04
@@ -91,7 +93,7 @@ jobs:
       contents: read
       actions: write
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
@@ -99,9 +101,9 @@ jobs:
         id: prune
         env:
           CACHE_RETENTION_BACKEND_APPLY: ${{ vars.CACHE_RETENTION_BACKEND_APPLY }}
-          CACHE_RETENTION_DB_TESTS_APPLY: ${{ vars.CACHE_RETENTION_DB_TESTS_APPLY }}
           CACHE_RETENTION_NPM_APPLY: ${{ vars.CACHE_RETENTION_NPM_APPLY }}
           CACHE_RETENTION_PLAYWRIGHT_APPLY: ${{ vars.CACHE_RETENTION_PLAYWRIGHT_APPLY }}
+          CACHE_RETENTION_STATES_TIMINGS_APPLY: ${{ vars.CACHE_RETENTION_STATES_TIMINGS_APPLY }}
           CACHE_RETENTION_CODEQL_APPLY: ${{ vars.CACHE_RETENTION_CODEQL_APPLY }}
           CACHE_RETENTION_BUILDKIT_APPLY: ${{ vars.CACHE_RETENTION_BUILDKIT_APPLY }}
         continue-on-error: true
@@ -110,7 +112,7 @@ jobs:
           script: |
             const {maintainCaches} = await import(`${process.env.GITHUB_WORKSPACE}/scripts/cache-retention.mjs`);
             const result = await maintainCaches(github, context, {
-              applyFamilies: ['backend', 'db-tests', 'npm', 'playwright', 'codeql', 'buildkit'].filter(
+              applyFamilies: ['backend', 'npm', 'playwright', 'states-timings', 'codeql', 'buildkit'].filter(
                 family => process.env[`CACHE_RETENTION_${family.replaceAll('-', '_').toUpperCase()}_APPLY`] === 'true'),
             });
             await core.summary.addRaw(result.summary).write();
@@ -121,6 +123,7 @@ jobs:
           echo '**Warning:** Actions cache cleanup failed or was skipped. Build and publish will continue; caches may remain near the repository cache limit.' >> "$GITHUB_STEP_SUMMARY"
 
   build:
+    name: Native image smoke test · ${{ matrix.arch }}
     if: github.event_name == 'merge_group' || github.event_name == 'push'
     strategy:
       fail-fast: false
@@ -134,7 +137,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
@@ -160,6 +163,7 @@ jobs:
           compression-level: 0
 
   publish:
+    name: Publish signed platform artifacts
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     needs: [validate, build]
     runs-on: ubuntu-24.04
@@ -173,7 +177,7 @@ jobs:
       artifact: ${{ steps.artifact.outputs.reference }}
       image: ${{ steps.image.outputs.name }}@${{ steps.image.outputs.digest }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
@@ -269,13 +273,14 @@ jobs:
           echo "reference=oci://${DEPLOY}@${digest}" >> "${GITHUB_OUTPUT}"
 
   scan:
+    name: Image vulnerability scan
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     needs: publish
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions: {contents: read, packages: read}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
@@ -298,6 +303,7 @@ jobs:
           done < "${RUNNER_TEMP}/image-sboms.jsonl"
 
   negative-signer:
+    name: Artifact signature rejection
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     needs: publish
     permissions:
@@ -310,6 +316,7 @@ jobs:
       artifact: ${{ needs.publish.outputs.artifact }}
 
   exit-test:
+    name: Platform recovery · ${{ matrix.runner }} · repetition ${{ matrix.repetition }}
     if: always() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && needs.negative-signer.result == 'success'))
     needs: [publish, negative-signer]
     strategy:
@@ -323,7 +330,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false, ref: dev}

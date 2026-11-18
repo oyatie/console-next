@@ -6,8 +6,9 @@ import { loadCatalog, t } from "@console/i18n";
 import type { ToggleButton } from "../../../ui/button/button";
 import type { Node, Place } from "../../../reference/org/domain/structure";
 import { DeptPanel } from "./dept-panel";
+import { UnitEdit } from "../../../reference/org/ui/use-unit-edit";
 
-const view = vi.hoisted(() => ({ cursor: 0, values: [] as unknown[], toggle: undefined as Parameters<typeof ToggleButton>[0]["onClick"] }));
+const view = vi.hoisted(() => ({ cursor: 0, values: [] as unknown[], rename: undefined as Parameters<typeof ToggleButton>[0]["onClick"], toggle: undefined as Parameters<typeof ToggleButton>[0]["onClick"] }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof import("react")>();
   return { ...actual, useState: (initial: unknown) => {
@@ -24,11 +25,14 @@ vi.mock("./dept-actions", () => ({ DeptActions: () => null }));
 vi.mock("./dept-details", () => ({ DeptDetails: () => null }));
 vi.mock("./unit-history", () => ({ UnitHistory: () => null }));
 vi.mock("../../../reference/org/ui/structure-members", () => ({ Members: () => null }));
-vi.mock("../../../reference/org/ui/dept-name-inline", () => ({ DeptNameInline: () => null }));
+vi.mock("../../../reference/org/ui/dept-name-inline", () => ({ DeptNameInline: () => <span data-editor="department-name" /> }));
 vi.mock("../../../ui/record-actions/record-actions", () => ({ RowActions: () => null }));
 vi.mock("../../../ui/button/button", async (original) => {
   const actual = await original<typeof import("../../../ui/button/button")>();
-  return { ...actual, ToggleButton: (props: Parameters<typeof ToggleButton>[0]) => {
+  return { ...actual, Button: (props: Parameters<typeof actual.Button>[0]) => {
+    if (props.id === "act-dept-rename") view.rename = props.onClick;
+    return <actual.Button {...props} />;
+  }, ToggleButton: (props: Parameters<typeof ToggleButton>[0]) => {
     view.toggle = props.onClick;
     return <actual.ToggleButton {...props} />;
   } };
@@ -39,10 +43,11 @@ const children = [node("첫째 부서"), node("마지막 부서")];
 const parent = { ...node("사업장"), kind: "WORKPLACE" as const };
 const entity = { ...node("법인"), kind: "LEGAL_ENTITY" as const };
 const place: Place = { node: node("상위 부서", children), parent, entity, workplace: parent, path: [entity.name, parent.name] };
-function render(readOnly = false, subdepartments = place.node.children) {
+function render(readOnly = false, subdepartments = place.node.children, allowed = true) {
   view.cursor = 0;
   view.toggle = undefined;
-  return renderToStaticMarkup(<DeptPanel place={{ ...place, node: { ...place.node, children: subdepartments } }} setup onClose={() => {}} readOnly={readOnly} />);
+  view.rename = undefined;
+  return renderToStaticMarkup(<UnitEdit.Provider value={allowed}><DeptPanel place={{ ...place, node: { ...place.node, children: subdepartments } }} setup onClose={() => {}} readOnly={readOnly} /></UnitEdit.Provider>);
 }
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => { view.values = []; });
@@ -74,4 +79,15 @@ test("read-only and single-child panels offer no order editor", () => {
   expect(html).not.toContain('aria-pressed=');
   expect(html).not.toContain(t("orgStructure.order.down", { name: children[0]!.name }));
   expect(render(false, [children[0]!])).not.toContain('aria-pressed=');
+});
+
+
+test.each(["refused", "historical"])("an open department editor disappears when the decision becomes %s", mode => {
+  render();
+  expect(view.rename).toBeDefined();
+  view.rename?.({} as MouseEvent<HTMLButtonElement>);
+  expect(render()).toContain('data-editor="department-name"');
+  const html = render(mode === "historical", place.node.children, mode !== "refused");
+  expect(html).not.toContain('data-editor="department-name"');
+  expect(html).not.toContain('id="act-dept-rename"');
 });

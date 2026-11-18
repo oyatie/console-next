@@ -26,13 +26,13 @@ const sha = git('rev-parse', 'HEAD');
 const image = `example.invalid/console@sha256:${'a'.repeat(64)}`;
 const repository = 'example/console';
 const exitNames = ['ubuntu-24.04', 'ubuntu-24.04-arm'].flatMap(runner =>
-  [1, 2].map(repetition => `exit-test (${runner}, ${repetition})`));
+  [1, 2].map(repetition => `Platform recovery · ${runner} · repetition ${repetition}`));
 
 function proof() {
   return {sha, repository, currentRevision:previous, gatesResult:'pass',
     run:{id:42, path:'.github/workflows/platform.yml', event:'push', head_branch:'dev',
       head_repository:{full_name:repository}, head_sha:sha, status:'completed', conclusion:'success'},
-    jobs:['validate', 'build (amd64, ubuntu-24.04)', 'build (arm64, ubuntu-24.04-arm)', 'publish', 'scan', 'negative-signer / sign', 'prune-image-cache', ...exitNames]
+    jobs:['Platform contracts and admission', 'Native image smoke test · amd64', 'Native image smoke test · arm64', 'Publish signed platform artifacts', 'Image vulnerability scan', 'Artifact signature rejection / Sign rejection fixture', 'Maintain image build cache', ...exitNames]
       .map((name, index) => ({id:index + 1, name, run_id:42, head_sha:sha, status:'completed', conclusion:'success'})),
   };
 }
@@ -158,7 +158,7 @@ for (const conclusion of ['failure', 'skipped', 'cancelled', 'neutral', null]) {
   test(`PROMOTE_NOT_GREEN: refuses ${conclusion} cache maintenance evidence`, async () => {
     const {assertPromotion} = await api();
     const input = proof();
-    const cleanup = input.jobs.find(job => job.name === 'prune-image-cache');
+    const cleanup = input.jobs.find(job => job.name === 'Maintain image build cache');
     cleanup.status = conclusion === null ? 'in_progress' : 'completed';
     cleanup.conclusion = conclusion;
     assert.throws(() => assertPromotion(input, historyRoot), /PROMOTE_NOT_GREEN/);
@@ -180,10 +180,12 @@ for (const [reason, change] of [
   ['red run', input => { input.run.conclusion = 'failure'; }],
   ['pending run', input => { input.run.status = 'in_progress'; }],
   ['empty jobs', input => { input.jobs = []; }],
-  ['missing publish job', input => { input.jobs = input.jobs.filter(job => job.name !== 'publish'); }],
-  ['missing cache maintenance job', input => { input.jobs = input.jobs.filter(job => job.name !== 'prune-image-cache'); }],
-  ['wrong cache maintenance SHA', input => { input.jobs.find(job => job.name === 'prune-image-cache').head_sha = previous; }],
-  ['wrong cache maintenance run', input => { input.jobs.find(job => job.name === 'prune-image-cache').run_id = 41; }],
+  ['missing publish job', input => { input.jobs = input.jobs.filter(job => job.name !== 'Publish signed platform artifacts'); }],
+  ['legacy display name', input => { input.jobs[0].name = 'validate'; }],
+  ['duplicate display name', input => { input.jobs.push({...input.jobs[0], id:100}); }],
+  ['missing cache maintenance job', input => { input.jobs = input.jobs.filter(job => job.name !== 'Maintain image build cache'); }],
+  ['wrong cache maintenance SHA', input => { input.jobs.find(job => job.name === 'Maintain image build cache').head_sha = previous; }],
+  ['wrong cache maintenance run', input => { input.jobs.find(job => job.name === 'Maintain image build cache').run_id = 41; }],
   ['missing native build', input => { input.jobs.splice(1, 1); }],
   ['missing exit test', input => { input.jobs.pop(); }],
   ['duplicate exit test', input => { input.jobs.push({...input.jobs.at(-1), id:100}); }],
@@ -250,9 +252,38 @@ test('PROMOTE_NOT_GREEN: refuses unknown expressions and malformed event matrix 
       assert.notEqual(config, source);
       writeFileSync(join(dir, '.github/workflows/platform.yml'), config);
       const input = {...proof(), currentRevision:null};
-      input.jobs = input.jobs.filter(job => !job.name.startsWith('exit-test ('));
+      input.jobs = input.jobs.filter(job => !job.name.startsWith('Platform recovery · '));
       assert.throws(() => assertPromotion(input, dir), /PROMOTE_NOT_GREEN/);
     }
+  } finally { rmSync(dir, {recursive:true, force:true}); }
+});
+
+for (const [name, message] of [
+  [undefined, /missing display name/],
+  ['Native image smoke test', /ambiguous matrix display names/],
+  ['Native image smoke test · ${{ github.sha }}', /unsupported job name expression/],
+  ['Native image smoke test · ${{ matrix.unknown }}', /unsupported job name expression/],
+]) test(`PROMOTE_NOT_GREEN: refuses unsupported matrix display name ${name}`, async () => {
+  const {assertPromotion} = await api();
+  const {load, dump} = await import('js-yaml');
+  const dir = mkdtempSync(join(tmpdir(), 'promotion-name-'));
+  try {
+    mkdirSync(join(dir, '.github/workflows'), {recursive:true});
+    const workflow = load(readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8'));
+    workflow.jobs.build.name = name;
+    writeFileSync(join(dir, '.github/workflows/platform.yml'), dump(workflow));
+    assert.throws(() => assertPromotion({...proof(), currentRevision:null}, dir), message);
+  } finally { rmSync(dir, {recursive:true, force:true}); }
+});
+
+test('PROMOTE_NOT_GREEN: refuses expressions in non-matrix display names', async () => {
+  const {assertPromotion} = await api();
+  const dir = mkdtempSync(join(tmpdir(), 'promotion-name-'));
+  try {
+    mkdirSync(join(dir, '.github/workflows'), {recursive:true});
+    const source = readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8');
+    writeFileSync(join(dir, '.github/workflows/platform.yml'), source.replace('name: Platform contracts and admission', 'name: Platform contracts · ${{ github.sha }}'));
+    assert.throws(() => assertPromotion({...proof(), currentRevision:null}, dir), /unsupported job name expression/);
   } finally { rmSync(dir, {recursive:true, force:true}); }
 });
 
@@ -673,11 +704,16 @@ test('platform publishes a SHA shadow and signs its digest before moving the mut
 test('promotion workflow binds reusable gates, proof, permissions and channel serialization', async () => {
   const {load} = await import('js-yaml');
   const workflow = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
-  assert.deepEqual(workflow.on.workflow_run, {workflows:['platform'], types:['completed']});
+  assert.deepEqual(workflow.on.workflow_run, {workflows:['Platform validation and images'], types:['completed']});
   assert.equal(workflow.jobs.gates.uses, './.github/workflows/gates.yml');
   assert.equal(workflow.jobs.gates.with.sha, '${{ needs.proof.outputs.sha }}');
   assert.deepEqual(workflow.jobs.publish.needs, ['proof', 'gates']);
   assert.match(workflow.jobs.publish.if, /needs.gates.outputs.result == 'pass'/);
+  const gates = load(readFileSync(join(root, '.github/workflows/gates.yml'), 'utf8')).jobs.predicate;
+  assert.equal(gates.outputs.result, '${{ steps.predicate.outputs.verdict }}', 'github-script owns its own result output');
+  const baseline = gates.steps.find(step => step.run?.includes('GATES_BASE'));
+  assert.match(baseline.run, /^base="\$\(node deploy\/ci\/api-compat.mjs base\)"$/m, 'a failed baseline lookup fails the step');
+  assert.ok(!baseline.run.includes('tools.py'), 'installed tools reach PATH only in later steps');
   assert.match(workflow.jobs.publish.concurrency.group, /matrix.channel/);
   assert.equal(workflow.jobs.publish.concurrency['cancel-in-progress'], false);
   const permissions = workflow.jobs.publish.permissions;

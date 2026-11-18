@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { plain, workbook } from "../helpers/import-layouts";
 import { apiOf, bearerOf, headcount } from "../helpers/api";
 
@@ -28,6 +28,7 @@ test("import apply refusals: row limit, a shed apply held for its wait, a job al
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "인사기록.xlsx", await workbook([plain("본사", rows)]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await confirmImportColumns(admin);
 
   // 422 import_row_limit on the dry run: the file's rows and the most one apply takes are named, with what to do.
   await once(admin, /\/import\/[^/]+\/dry-run$/, answer(422, "import_row_limit", [{ max: 2000, rows: 2500 }]));

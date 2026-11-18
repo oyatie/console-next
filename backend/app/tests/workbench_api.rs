@@ -157,6 +157,7 @@ fn ok_readers() -> Readers {
         action: Ok(ActionInboxPage {
             as_of: now(),
             total: 3,
+            todos_unavailable: false,
             items: vec![
                 action("wait", WorkbenchUrgency::Wait, 1),
                 action("today", WorkbenchUrgency::Today, 3),

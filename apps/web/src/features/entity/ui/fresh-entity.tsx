@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { LegalEntity } from "@console/api/pending";
 import { freshOnOpen } from "../../../lib/query";
 import { QueryState } from "../../../lib/react/query-state";
 import { queryView, type ReadState } from "../../../lib/react/query-view";
 import { Sheet } from "../../../ui/sheet/sheet";
+import { SheetReadContext } from "../../../ui/sheet/read-context";
 import { entityQuery } from "../api";
 
 /**
@@ -19,8 +20,9 @@ export function FreshEntity({ id, title, onClose, children }: { id: string; titl
 
 export function ReadInSheet<T>({ q, title, onClose, children }: { q: ReadState<T>; title: string; onClose: () => void; children: (data: T) => ReactNode }) {
   const view = queryView(q);
+  const reads = useContext(SheetReadContext);
   const read = <QueryState q={q} layout="form">{children}</QueryState>;
   // Sheet reads must not insert a page-sized placeholder beside the chart they cover.
-  return q.data !== undefined && view !== "denied" && view !== "not-found" ? read
+  return q.data !== undefined && view !== "denied" && view !== "not-found" ? <SheetReadContext value={[...reads, q]}>{children(q.data)}</SheetReadContext>
     : <Sheet open title={title} onClose={onClose} consequence={null} actions={null}>{read}</Sheet>;
 }

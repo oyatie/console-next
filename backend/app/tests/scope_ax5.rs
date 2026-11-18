@@ -24,6 +24,8 @@ use uuid::Uuid;
 
 #[path = "scope_ax5/attendance.rs"]
 mod attendance;
+#[path = "scope_ax5/export.rs"]
+mod export;
 #[path = "support/go_live.rs"]
 mod go_live;
 #[path = "support/refusals.rs"]

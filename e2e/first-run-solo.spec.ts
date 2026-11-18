@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { t } from "@console/i18n";
 import { resolveFilingNotApplicable } from "./helpers/statutory";
 import { expectAccessible } from "./a11y";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
@@ -10,7 +11,7 @@ import { homeRail, registerBranch, registerEntity, registerWorkplace, startOpera
 import { addDepartments, findBox, findPressable } from "./structure-flows";
 import { rosterXlsx } from "./workbook";
 import { gradeJourney } from "./helpers/grade-fix";
-import { chooseWorkbook, payPeriod } from "./helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod } from "./helpers/import";
 import { expectComposer } from "./helpers/composer";
 import { throttleCPU } from "./helpers/cpu-throttle";
 
@@ -19,7 +20,7 @@ import { throttleCPU } from "./helpers/cpu-throttle";
 // person and no approval wait. Needs the backend's setup phase (branch hard/entity-depth, not yet merged).
 // Clicks are counted per task (fills are typing, not clicks); each ceiling is the measured count + 2.
 
-test("a solo administrator goes from an empty tenant to operating", { tag: "@first-run" }, async ({ browser }) => {
+test("a solo administrator goes from an empty tenant to operating", { tag: ["@first-run", "@webkit-pr"] }, async ({ browser }) => {
   const c = clickCounter();
   const companyDomain = unique("ganasol");
   const replacement = await test.step("J0 Provision tenant and replace cancelled code", async () => {
@@ -176,6 +177,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     await chooseWorkbook(admin, "roster.xlsx", await rosterXlsx("가나솔루션", [["GN-0101", "이개발", "개발팀", "선임", "2025-04-01"]]));
     await payPeriod(admin);
     await c.click(admin.getByRole("button", { name: "명부 미리보기" }));
+    await confirmImportColumns(admin);
     await c.click(admin.getByRole("button", { name: "모의 반영 실행" }));
     await c.click(admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }));
     await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();
@@ -187,7 +189,12 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     await go(admin, "/");
     await c.click(rail.getByRole("link", { name: "이용약관 동의" }));
     await expect(admin.getByRole("heading", { name: "운영 시작", level: 1 })).toBeVisible();
+    const firstHomePaint = admin.evaluate(() => new Promise<string[]>(resolve => {
+      const frame = () => location.pathname === "/" ? resolve(Array.from(document.querySelectorAll("#rail a"), a => a.textContent!.trim())) : requestAnimationFrame(frame);
+      requestAnimationFrame(frame);
+    }));
     await startOperations(admin, true, c);
+    expect(await firstHomePaint).toEqual(expect.arrayContaining([t("shell.link.attendance"), t("shell.link.statutory")]));
     expect(c.done("운영 시작")).toBeLessThanOrEqual(BUDGET.golive);
   });
 

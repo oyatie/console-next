@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { grantAccess } from "./access-flows";
+import { confirmGrantNotice, grantAccess } from "./access-flows";
 import { letGrantsAge } from "./second-person-fixture";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { expectDrafts, cellOf, officeSchedule, openMonth } from "./helpers/attendance-records";
@@ -32,12 +32,7 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   await go(admin, "/", true);
   await passkeyLogin(admin);
   await admin.reload();
-  const notice = admin.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true });
-  const noticed = admin.waitForResponse((r) => r.request().method() === "POST" && /\/access\/grants\/[^/]+\/notice$/.test(new URL(r.url()).pathname));
-  await notice.click();
-  expect((await noticed).status()).toBe(200);
-  await admin.reload();
-  await expect(notice).toBeHidden();
+  await confirmGrantNotice(admin, "full");
   letGrantsAge(unique(slug), "김마감");
   const api = apiOf(admin, bearer);
   const people = (await (await api("/employees?limit=10")).json()) as { items: { id: string; name: string }[] };

@@ -2,18 +2,18 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "../a11y";
-import { firstSignIn, go, kstDate, option, routeReady, unique } from "../flows";
+import { firstSignIn, go, kstDate, option, unique } from "../flows";
 import { registerEntity, registerWorkplace, SECOND, SETUP_DEPARTMENT, setupCompany } from "../setup-flows";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
 import { openTenant } from "../helpers/tenant";
 import { activatePendingGrants, letGrantsAge } from "../second-person-fixture";
 import { workbook } from "../helpers/import-layouts";
 import { addDepartments, leaveScreen } from "../structure-flows";
-import { chooseWorkbook, payPeriod, people, protectedWorkbook, rosterWorkbook, type Person } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook, payPeriod, people, protectedWorkbook, rosterWorkbook, type Person } from "../helpers/import";
 import { gridRow, openItem, openRow, panel, queue, rowsGrid, settled } from "../helpers/import-queue";
 
 // Roster import across two legal entities. A person's workplace and legal entity follow their department.
-// Ambiguous workplace columns require an explicit reading per sheet.
+// Confirm column bindings first, then resolve ambiguous workplace values in the dry run.
 
 const step = (page: Page) => page.locator('[aria-current="step"]');
 const button = (page: Page, name: string | RegExp) => page.getByRole("button", { name });
@@ -59,18 +59,13 @@ test("an HR admin imports 300 people across two legal entities, answers each unp
   await chooseWorkbook(admin, "인사명부_2026-10.xlsx", await rosterWorkbook([{ name: "가람", rows: g }, { name: "누리", rows: n }]));
   await payPeriod(admin);
   await button(admin, "명부 미리보기").click();
+  await confirmImportColumns(admin);
   await expect(step(admin)).toHaveText("열 확인", { timeout: 30_000 });
   const columns = admin.getByRole("table", { name: "열", exact: true });
   // r3:hire-38: what is stored says so (the sealed 주민등록번호, the 휴대전화), what is dropped says so (the account).
   for (const col of ["주민등록번호", "휴대전화"])
     await expect(columns.getByRole("row").filter({ hasText: col }).first()).toContainText("가려서 보관 · 원본에 남기지 않음");
   await expect(columns.getByRole("row").filter({ hasText: "급여계좌" }).first()).toContainText("저장하지 않음");
-  // 가람's values all name its workplace; 누리 also has a customer site, so its reading needs a choice.
-  const reading = admin.getByRole("region", { name: "누리 · D · 사업장", exact: true });
-  const remapped = admin.waitForResponse(r => r.request().method() === "POST" && /\/import\/preview$/.test(new URL(r.url()).pathname));
-  await reading.getByRole("button", { name: "법인 사업장으로 읽기", exact: true }).click();
-  expect((await remapped).status()).toBe(200);
-  await expect(reading).toBeHidden();
   await expect(columns.getByRole("row").filter({ hasText: "사업장" }).first()).toContainText("직원 정보로 반영");
   await expectAccessible(admin, "import: columns");
   await button(admin, "모의 반영 실행").click();
@@ -135,6 +130,7 @@ test("an HR admin imports 300 people across two legal entities, answers each unp
   await chooseWorkbook(admin, "인사명부_2026-10_수정.xlsx", await rosterWorkbook([{ name: "가람", rows: [...g2, twin] }, { name: "누리", rows: n2 }]));
   await payPeriod(admin);
   await button(admin, "명부 미리보기").click();
+  await confirmImportColumns(admin);
   await button(admin, "모의 반영 실행").click();
   await expect(step(admin)).toHaveText("모의 반영", { timeout: 30_000 });
   await expect(await openRow(admin, g2[0]!.number)).toContainText("직위: 사원 → 부장");
@@ -271,7 +267,7 @@ test("a second person rolls an applied import back within its configured window"
   const before = await headcount(api);
   const previewed = await admin.request.post("/api/v1/employees/import/preview", {
     headers: { authorization: adminToken() },
-    multipart: { file: { name: "확인할명부.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: await workbook([{ name: "명부", lines: [
+    multipart: { mapping: JSON.stringify({ sheets: { 명부: { header_row: 1, columns: { A: "employee_number", B: "name", C: "hire_date", D: "employment_type" } } } }), file: { name: "확인할명부.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: await workbook([{ name: "명부", lines: [
       ["사번", "성명", "입사일", "고용형태"],
       ["RB-SECOND", "가져온직원", kstDate(-10), "정규직"],
     ] }]) } },
@@ -302,9 +298,6 @@ test("a second person rolls an applied import back within its configured window"
   const self = await api(`/change-requests/${outcome.request_id}/decide`, "POST", { decision: "APPLY", reason_code: "REVIEWED" });
   expect([self.status(), await codeOf(self)]).toEqual([403, "authz_sod_requester"]);
   expect(await headcount(api)).toBe(before + 1);
-  // shortcut: the shell repaints a stale saved rail after go-live (an 80 px nav shift in Chromium), so refresh it first; remove once the shell stops painting a saved rail across a phase change.
-  await signedInReviewer.goto(`/people/requests?sel=${outcome.request_id}`);
-  await routeReady(signedInReviewer);
   const reviewer = await signedInReviewer.context().newPage();
   await signedInReviewer.close();
   await go(reviewer, `/people/requests?sel=${outcome.request_id}`);

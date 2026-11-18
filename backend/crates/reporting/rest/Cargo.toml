@@ -20,7 +20,6 @@ console-reporting-adapter-postgres = { workspace = true }
 console-reporting-application = { workspace = true }
 console-reporting-domain = { workspace = true }
 serde = { workspace = true }
-sqlx = { workspace = true }
 time = { workspace = true }
 uuid = { workspace = true }
 

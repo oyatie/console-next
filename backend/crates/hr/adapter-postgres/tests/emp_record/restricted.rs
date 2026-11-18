@@ -187,7 +187,7 @@ async fn restricted_entries_are_read_only_with_a_purpose_and_audited(pool: PgPoo
 
     // No sheet export of a restricted section.
     let export =
-        f.hr.record_section_sheet(p(), Section::Disability, None, None)
+        f.hr.record_section_sheet(p(), Section::Disability, None, None, None)
             .await
             .unwrap_err();
     assert_eq!(export.code, "record_restricted_export_unavailable");

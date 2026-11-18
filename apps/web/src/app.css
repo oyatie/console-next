@@ -290,7 +290,7 @@ aside.panel { position: sticky; top: 0; }
    react-aria injects these as <style> elements, which `style-src 'self'` blocks (browser-support.md S2, FB-3).
    Copied from usePress.mjs (no click delay from double-tap zoom on touch screens) and usePreventScroll.mjs (no
    scroll chaining out of an open modal; react-aria applies it on iOS only). Anonymous layers, as react-aria
-   uses, so app rules still win. Delete when react-aria stops injecting them or the backend serves a per-response
-   nonce with <meta property="csp-nonce">. */
+   uses, so app rules still win. The HTML stylesheet link carries the press rule's id to prevent its duplicate
+   injection. shortcut: the id follows react-aria's injection guard, revisit when upgrading react-aria. */
 @layer { [data-react-aria-pressable] { touch-action: pan-x pan-y pinch-zoom; } }
 @layer { .overlay, .overlay * { overscroll-behavior: contain; } }

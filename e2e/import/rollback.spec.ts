@@ -5,10 +5,11 @@ import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api/schema";
 import { OWN_ECHO_MS } from "../../apps/web/src/lib/freshness";
 import { expectAccessible } from "../a11y";
-import { go, option, registerEmployee, unique } from "../flows";
+import { confirmGrantNotice, grantAccess } from "../access-flows";
+import { firstSignIn, go, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "../flows";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "../setup-flows";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
-import { chooseWorkbook } from "../helpers/import";
+import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
 import { workbook } from "../helpers/import-layouts";
 import { settled } from "../helpers/import-queue";
 import { letGrantsAge } from "../second-person-fixture";
@@ -26,9 +27,10 @@ test("J-ONB-19: the applied run opens with file, actor, time and stored counts f
     ["RB-001", "가테스트", "2020-03-02", "정규직"],
     ["RB-002", "나테스트", "2021-04-01", "정규직"],
   ] }]));
-  const previewed = admin.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname.endsWith("/import/preview"));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
-  const run = ((await (await previewed).json()) as { run_id: string }).run_id;
+  const confirmed = await confirmImportColumns(admin);
+  expect(confirmed).toBeDefined();
+  const run = confirmed!.run_id;
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(admin);
   await admin.getByRole("button", { name: /^명부 반영: 신규 2명/ }).click();
@@ -56,9 +58,10 @@ test("J-ONB-19: the applied run opens with file, actor, time and stored counts f
 async function applyRoster(page: Page, filename: string, lines: string[][]) {
   await page.goto("/people/import");
   await chooseWorkbook(page, filename, await workbook([{ name: "명부", lines }]));
-  const previewed = page.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname.endsWith("/import/preview"));
   await page.getByRole("button", { name: "명부 미리보기" }).click();
-  const run = ((await (await previewed).json()) as { run_id: string }).run_id;
+  const confirmed = await confirmImportColumns(page);
+  expect(confirmed).toBeDefined();
+  const run = confirmed!.run_id;
   await page.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(page);
   await page.getByRole("button", { name: /^명부 반영: 신규/ }).click();
@@ -182,21 +185,19 @@ test("a later correction blocks every inverse row and a forced rollback writes n
 test("OPERATING rollback waits for another holder and reaches done through the live import frame", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
   test.setTimeout(8 * 60_000);
   const slug = "rollbackroute";
-  const { admin, exec } = await tenantInSetup(browser, slug, "결정상사", false, "본점", "full");
+  const { admin } = await tenantInSetup(browser, slug, "결정상사", false, "본점", "none");
   const api = apiOf(admin, bearerOf(admin));
-  // D0.2 excludes an unlinked account without a non-employee exception from second-person eligibility.
-  await registerEmployee(admin, { name: "이임원", number: "RB-HOLDER", hired: "2020-03-02", unit: SETUP_DEPARTMENT });
-  await admin.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: "권한", exact: true }).click();
-  await admin.getByRole("combobox", { name: "연결할 계정" }).fill("이임");
-  await admin.getByRole("option", { name: /이임원/ }).click();
-  await admin.getByRole("button", { name: "계정 연결", exact: true }).click();
-  await expect(admin.getByRole("status").filter({ hasText: "이임원 계정을 연결했습니다" })).toBeVisible();
+  // Invite from the employee record so the reviewer is linked before receiving authority.
+  await registerEmployee(admin, { name: "김검토", number: "RB-HOLDER", hired: "2020-03-02", unit: SETUP_DEPARTMENT });
+  await admin.getByRole("button", { name: "계정 초대", exact: true }).click();
+  await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
+  const exec = await firstSignIn(browser, await takeCode(admin));
   await startOperations(admin);
-  await go(exec, "/");
-  const notice = exec.getByRole("region", { name: "확인할 새 권한 1건" });
-  await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
-  await expect(notice).toBeHidden();
-  letGrantsAge(unique(slug), "이임원");
+  await grantAccess(admin, "김검토", "full");
+  await exec.reload();
+  await passkeyLogin(exec);
+  await confirmGrantNotice(exec, "full");
+  letGrantsAge(unique(slug), "김검토");
   routeRollbackPolicy(unique(slug));
   const run = await applyRoster(admin, "결정명부.xlsx", [rosterHeader,
     ["RB-ROUTE", "결정직원", "2020-03-02", "정규직", "사원"],

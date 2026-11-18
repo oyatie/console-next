@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 # A distinct GitHub workflow identity signs ONLY the rejection fixture.
-name: platform-negative-signer
+name: Artifact signature rejection
 on:
   workflow_call:
     inputs:
@@ -11,6 +11,7 @@ on:
 permissions: {}
 jobs:
   sign:
+    name: Sign rejection fixture
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -22,7 +23,7 @@ jobs:
     outputs:
       artifact: ${{ steps.sign.outputs.artifact }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}

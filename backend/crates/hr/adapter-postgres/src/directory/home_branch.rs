@@ -10,7 +10,6 @@ use sqlx::{PgPool, Row};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::authz::authorize_home_branch_transition;
 use crate::directory::create_placement::{branch_refused, workplace_branch};
 use crate::directory::read_detail::load_employee_detail;
 use crate::directory::types::{
@@ -137,6 +136,12 @@ impl HrService {
         body: SetEmployeeHomeBranchRequest,
     ) -> Result<EmployeeHomeBranchResponse, HrError> {
         let org = principal.org_id;
+        console_platform_request_context::scope_org(
+            org,
+            command_store.admit_home_branch(principal.user_id, employee_id, body.branch_id),
+        )
+        .await
+        .map_err(HrError::from_leave_store)?;
         let org_uuid = *org.as_uuid();
         let actor = principal.user_id;
         let target_branch_id = body.branch_id;
@@ -147,7 +152,7 @@ impl HrService {
         .map_err(|_| HrError::validation("expected_updated_at must be an RFC 3339 timestamp"))?;
         let trace = TraceContext::generate();
 
-        let (branch_name, prior_branch_id, prior_updated_at) =
+        let (branch_name, prior_updated_at) =
             with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
                 Box::pin(async move {
                     let branch = sqlx::query(
@@ -177,7 +182,6 @@ impl HrService {
                     "employee was not found in this organization",
                 ))
             })?;
-                    let prior_branch_id: Option<Uuid> = employee.try_get("home_branch_id")?;
                     let prior_updated_at: OffsetDateTime = employee.try_get("updated_at")?;
                     // UX-R1 PLACEMENT (org-19): a placed person's branch is their workplace's;
                     // changing where they work is a dated reassignment, never this one click.
@@ -188,12 +192,11 @@ impl HrService {
                         return Err(branch_refused());
                     }
 
-                    Ok((branch_name, prior_branch_id, prior_updated_at))
+                    Ok((branch_name, prior_updated_at))
                 })
             })
             .await?;
 
-        authorize_home_branch_transition(&principal, prior_branch_id, target_branch_id)?;
         if prior_updated_at != expected_updated_at {
             return Err(HrError::from_kernel(KernelError::conflict(
                 "employee changed since it was read; reload before assigning a home branch",
@@ -202,9 +205,9 @@ impl HrService {
 
         // Sensitive employee routing columns are mechanically protected from
         // direct `console_rt` UPDATE. The adapter routes this mutation through the
-        // separately credentialed command pool; the database re-checks tenant,
-        // actor, branch authority, active-branch state, and optimistic version and
-        // owns the one atomic before/after audit.
+        // separately credentialed command pool, rechecking Cedar admission. The
+        // database checks tenant, actor, active branch and optimistic version,
+        // and owns the one atomic before/after audit.
         let updated = console_platform_request_context::scope_org(org, async move {
             command_store
                 .set_employee_home_branch(

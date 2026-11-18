@@ -10,7 +10,7 @@ pub fn aliases() -> std::collections::BTreeMap<&'static str, &'static [&'static 
                 "company" | "company_brn" | "workplace" | "org_unit"
             )
         })
-        .map(|field| (field.target, field.aliases))
+        .map(|field| (field.target, field.aliases.as_slice()))
         .chain([
             (
                 "parent",
@@ -71,7 +71,7 @@ mod generated_aliases {
     fn organization_aliases_match_the_generated_client_table() {
         let expected = serde_json::json!({
             "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
-            "_generated_by": "console-hr-domain example import_aliases; edit import/fields.rs or fields_org.rs",
+            "_generated_by": "console-hr-domain example import_aliases; edit data/employee.json or import/fields_org.rs",
             "aliases": super::aliases(),
         });
         let actual: serde_json::Value = serde_json::from_str(include_str!(

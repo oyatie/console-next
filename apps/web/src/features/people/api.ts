@@ -16,7 +16,7 @@ export const unmappedCompaniesQuery = get("/api/v1/employment-assignments/unmapp
 export const mapCompany = (key: string, body: { company_text: string; legal_entity_id: string; workplace_id: string }) =>
   unwrap(api.POST("/api/v1/employment-assignments/map-company", { params: { header: { "Idempotency-Key": key } }, body }));
 
-export const employeeQuery = (id: string) => get("/api/v1/employees/{id}", { params: { path: { id } } });
+export { employeeQuery } from "./api/employee-read";
 export const exitGuardsQuery = (id: string, effective_exit_date: string, exit_reason_code: string | null, dismissal_notice_served_on?: string) =>
   get("/api/v1/employees/{id}/exit-guards", { params: { path: { id }, query: { effective_exit_date, exit_reason_code: exit_reason_code ?? undefined, dismissal_notice_served_on: dismissal_notice_served_on || undefined } } });
 export const eventsQuery = (id: string) => get("/api/v1/employees/{id}/lifecycle-events", { params: { path: { id } } });
@@ -130,6 +130,12 @@ export const cancelScheduledEvent = ({ x, reason }: { x: LifecycleEvent; reason:
 /** Requests or independently approves an employee link change with the actor's fresh passkey assertion. */
 export const linkAccount = async (userId: string, employeeId: string | null, requestId?: string) =>
   unwrap(api.PATCH("/api/v1/users/{id}", { params: { path: { id: userId } }, body: { employee_id: employeeId, step_up: await assertPasskey(), account_link_request_id: requestId } }));
+
+export async function reviewSelfAttestedBinding(id: string, decision: components["schemas"]["SelfBindingReviewRequest"]["decision"]) {
+  return unwrap(api.POST("/api/v1/users/employee-link-attestations/{id}/review", {
+    params: { path: { id } }, body: { decision, step_up: await assertPasskey() },
+  }));
+}
 
 /** Someone changed the record since it was read (a 409 on an optimistic-concurrency write). */
 export const isStale = (e: unknown) => e instanceof ApiError && e.status === 409;

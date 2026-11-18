@@ -9,7 +9,7 @@
 # backend also runs non-database Rust tests, including full-feature OpenAPI drift, with nextest
 # and reconciles JUnit with a fresh test inventory.
 # Database tests remain INTEG's; solo journeys gate merge groups, mocked states run for affected web changes.
-name: ci
+name: Candidate checks
 on:
   push:
     branches: [dev]
@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   affected:
+    name: Select affected checks
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -33,7 +34,7 @@ jobs:
       backend: ${{ steps.paths.outputs.backend || steps.import.outputs.backend }}
       web: ${{ steps.paths.outputs.web || steps.import.outputs.web }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false, fetch-depth: 0}
@@ -92,11 +93,13 @@ jobs:
           JS
 
   workflows:
+    name: Commit and workflow checks
     if: github.event_name != 'push'
     permissions: {contents: read}
     uses: ./.github/workflows/workflows-check.yml
 
   web:
+    name: Web unit tests and build
     needs: [affected]
     if: &web-affected ${{ github.event_name != 'push' && needs.affected.outputs.web == 'true' }}
     runs-on: ubuntu-24.04
@@ -105,7 +108,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       # Full history: the ratchet tests (scripts/gates.test.ts ai-quality) diff against the dev branch.
@@ -126,6 +129,8 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Verify npm registry signatures and provenance
+        run: npm audit signatures
       - &playwright-version
         name: Locked Playwright version
         id: playwright
@@ -174,6 +179,7 @@ jobs:
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
   states-plan:
+    name: Plan UI state tests
     needs: [affected]
     if: *web-affected
     runs-on: ubuntu-24.04
@@ -184,13 +190,20 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
       - run: npm ci --no-audit --no-fund
+      - name: Restore cached dev timing fallback
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        continue-on-error: true
+        with:
+          path: .cache/states-timings/timings.json
+          key: states-timings-${{ github.run_id }}
+          restore-keys: states-timings-
       - name: Restore latest compatible dev timings
         env:
           GH_TOKEN: ${{ github.token }}
@@ -213,6 +226,7 @@ jobs:
           if-no-files-found: error
 
   states:
+    name: UI state tests · shard ${{ matrix.shard }}
     needs: states-plan
     runs-on: ubuntu-24.04
     # Plan-derived run budget plus setupAllowanceSeconds; setup cannot consume the run allowance.
@@ -223,7 +237,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs['states-plan'].outputs.matrix) }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -254,8 +268,16 @@ jobs:
           path: .cache/states-report-${{ matrix.shard }}.json
           include-hidden-files: true
           if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ failure() }}
+        with:
+          name: states-failures-${{ matrix.shard }}
+          path: test-results-mock
+          retention-days: 7
+          if-no-files-found: ignore
 
   states-timings:
+    name: Reconcile UI state test results
     if: github.event_name == 'push' && needs.affected.outputs.web == 'true'
     needs: [affected]
     runs-on: ubuntu-24.04
@@ -264,7 +286,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
@@ -293,21 +315,34 @@ jobs:
           if-no-files-found: error
       - name: Refresh measurements from complete CI results
         run: node scripts/states-shards.mjs refresh e2e/mock/timings.json .cache/states-plan/plan.json .cache/states-timings/timings.json .cache/states-reports/*.json
+      - name: Cache complete dev timings before capacity checks
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        continue-on-error: true
+        with:
+          path: .cache/states-timings/timings.json
+          key: states-timings-${{ github.run_id }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: states-timings
+          # Keep at least headroomRuns compatible dev copies for the capacity window.
           path: .cache/states-timings/timings.json
           include-hidden-files: true
           retention-days: 90
           if-no-files-found: error
       - run: npm ci --no-audit --no-fund
+      - name: Restore recent compatible dev timing history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/states-shards.mjs history e2e/mock/timings.json .cache/states-history.json
       - name: Check measured capacity on dev
         env:
           STATES_CHECK_CAPACITY: "1"
           STATES_TIMINGS_FILE: .cache/states-timings/timings.json
+          STATES_TIMINGS_HISTORY_FILE: .cache/states-history.json
         run: node --test scripts/states-shards.test.mjs
 
   backend:
+    name: Rust formatting and lint
     needs: [affected]
     if: &backend-affected ${{ !cancelled() && github.event_name != 'push' && needs.affected.outputs.backend == 'true' }}
     runs-on: ubuntu-24.04-arm
@@ -322,7 +357,7 @@ jobs:
       CARGO_INCREMENTAL: "0"
     steps:
       - &backend-harden
-        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - &backend-checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -391,6 +426,7 @@ jobs:
           if-no-files-found: error
 
   backend-gates:
+    name: Backend release code gates
     needs: [affected]
     if: ${{ !cancelled() && (github.event_name == 'push' || needs.affected.outputs.backend == 'true') }}
     runs-on: ubuntu-24.04-arm
@@ -427,6 +463,7 @@ jobs:
       - *cache-upload
 
   backend-release:
+    name: Build backend for browser tests
     needs: [affected]
     if: ${{ !cancelled() && github.event_name != 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true') }}
     runs-on: ubuntu-24.04-arm
@@ -452,6 +489,7 @@ jobs:
       - *cache-upload
 
   backend-tests:
+    name: Backend unit tests · shard ${{ matrix.shard }}
     needs: [affected]
     if: *backend-affected
     runs-on: ubuntu-24.04-arm
@@ -498,6 +536,7 @@ jobs:
 
   # Import only the successful queue proof; all cache writes stay on dev.
   backend-cache:
+    name: Maintain Rust build cache
     if: github.event_name == 'push' && needs.affected.outputs.backend == 'true'
     needs: [affected]
     runs-on: ubuntu-24.04-arm
@@ -566,6 +605,7 @@ jobs:
           echo '**Warning:** Rust cache cleanup failed or was skipped. Delivery continues; cache usage may remain above the configured limit.' >> "$GITHUB_STEP_SUMMARY"
 
   home:
+    name: Core browser journeys
     needs: [affected, backend-release]
     if: ${{ !cancelled() && github.event_name != 'push' && needs.affected.result == 'success' && (needs.affected.outputs.web == 'true' || needs.affected.outputs.backend == 'true') && needs['backend-release'].result == 'success' }}
     runs-on: ubuntu-24.04-arm
@@ -573,7 +613,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
@@ -601,6 +641,36 @@ jobs:
         with:
           name: home-inbox-performance
           path: test-results
+          if-no-files-found: error
+
+      - name: WebKit for focused PR coverage
+        if: ${{ !cancelled() }}
+        run: npx playwright install --with-deps webkit
+      - name: Focused WebKit states
+        if: ${{ !cancelled() }}
+        env:
+          E2E_BROWSER: webkit
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/webkit/states.json
+        run: npm run e2e:states -- --grep @webkit-pr --output=.cache/webkit/states-traces
+      - name: Solo journey on WebKit
+        if: ${{ !cancelled() }}
+        env:
+          E2E_BROWSER: webkit
+          E2E_SERVED: "1"
+          E2E_PREBUILT: "1"
+          E2E_REPORTER: line,json
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .cache/webkit/live.json
+          CONSOLE_APP_BIN: .cache/home-backend/console-app
+        run: npx playwright test e2e/first-run-solo.spec.ts --grep @webkit-pr --output=.cache/webkit/live-traces
+      - name: WebKit results by spec
+        if: ${{ !cancelled() }}
+        run: node scripts/e2e-live-report.mjs .cache/webkit/*.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: webkit-pr
+          path: .cache/webkit/
+          include-hidden-files: true
           if-no-files-found: error
 
       - name: Firefox for D7 solo journey
@@ -664,6 +734,7 @@ jobs:
           if-no-files-found: error
 
   release-evidence:
+    name: Collect release test evidence
     if: github.event_name == 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true')
     needs: [affected]
     runs-on: ubuntu-24.04
@@ -672,7 +743,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
@@ -752,6 +823,7 @@ jobs:
           if-no-files-found: error
 
   supply-chain:
+    name: Dependency security and licenses
     if: github.event_name != 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -762,7 +834,7 @@ jobs:
       CARGO_DENY_VERSION: 0.20.2
       CARGO_AUDIT_VERSION: 0.22.2
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
@@ -813,6 +885,7 @@ jobs:
           if-no-files-found: error
 
   dev-artifacts:
+    name: Cache proven build artifacts
     if: github.event_name == 'push'
     needs: [affected]
     runs-on: ubuntu-24.04
@@ -850,6 +923,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
 
   ci-ok:
+    name: ci-ok
     permissions: {contents: read}
     if: ${{ always() }}
     needs: [affected, workflows, web, states-plan, states, states-timings, backend, backend-gates, backend-tests, backend-release, home, supply-chain, dev-artifacts, backend-cache, release-evidence]

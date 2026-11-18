@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { inviteAccount } from "./access-flows";
+import { confirmGrantNotice, inviteAccount } from "./access-flows";
 import { apiAs } from "./chaos";
 import { go, unique } from "./flows";
 import { letGrantsAge } from "./second-person-fixture";
@@ -10,10 +10,7 @@ import { tenantInSetup } from "./setup-flows";
 test("employee account binding requires passkey and waits for a second person, including after reload", { tag: "@hr" }, async ({ browser }) => {
   const slug = "linkguard";
   const { admin, exec } = await tenantInSetup(browser, slug, "연결검증", false, "본점", "full");
-  await go(exec, "/");
-  const notices = exec.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ has: exec.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
-  await notices.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
-  await expect(notices).toBeHidden();
+  await confirmGrantNotice(exec, "full");
   letGrantsAge(unique(slug), "이임원");
   await inviteAccount(admin, "연결대상", "none");
   const read = apiAs(admin);

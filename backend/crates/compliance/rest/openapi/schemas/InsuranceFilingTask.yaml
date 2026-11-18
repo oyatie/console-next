@@ -23,7 +23,9 @@ properties:
   due_in_days: { type: integer, nullable: true }
   version: { type: integer, format: int64 }
   can_record_sensitive_facts: { type: boolean }
-  birth_date_known: { type: boolean }
+  birth_date_known:
+    type: boolean
+    description: Whether a birth date is recorded. The date itself opens only through the governed reveal.
   opens_on: { type: string, format: date, nullable: true }
   opens_in_days: { type: integer, format: int64, nullable: true }
   target_on: { type: string, format: date, nullable: true }

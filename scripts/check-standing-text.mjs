@@ -2,6 +2,7 @@
 // Count message/hint sites on each screen surface, including delegated shared components.
 import { readFileSync, readdirSync } from "node:fs";
 import { readRegistry } from "./standing-text-registry.mjs";
+import { qualityRef } from "./quality/base.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -109,7 +110,7 @@ function screenBody(file, source, name) {
 }
 
 export function screenCounts(sources, newScreens = {}) {
-  const roots = Object.entries(sources).filter(([f]) => f.startsWith("apps/web/src/routes/") || f === "apps/web/src/main.tsx")
+  const roots = Object.entries(sources)
     .flatMap(([f, source]) => screens(f, source, sources));
   const standalone = Object.keys(newScreens).map((key) => key.split("#"));
   const boundaries = new Set(standalone.map(([file]) => file));
@@ -157,7 +158,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const sources = Object.fromEntries(filesIn("apps/web/src").filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f)).map((f) => [f, readFileSync(f, "utf8")]));
   const { baseline, newScreens } = readRegistry();
   const now = screenCounts(sources, newScreens);
-  const previous = readRegistry(process.env.QUALITY_BASE ?? "dev").baseline;
+  const previous = readRegistry(qualityRef(ROOT)).baseline;
   const problems = ratchet(now, baseline, previous, newScreens);
   if (problems.length) {
     console.error(`standing-text: ${problems.length} problem(s):\n${problems.join("\n")}`);

@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [users]
+operationId: withdrawSelfAccountBinding
+summary: Withdraw an unreviewed self-attested account binding
+description: Cedar admits only the original self-attester while the original binding is current and unreviewed. A fresh passkey is required. The binding removal, retained review receipt and audit commit together. Independent revocation continues to prevent another solo binding.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SelfBindingWithdrawRequest'
+responses:
+  '200':
+    description: Self-attestation withdrawn.
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: account_link.refuse.withdraw_ineligible
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: account_link.refuse.review_stale
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    description: passkey_step_up_required
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfBindingError'
+  '503':
+    description: Passkey service unavailable.

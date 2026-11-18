@@ -22,7 +22,7 @@
 # OCI_CONFIG (a [DEFAULT] profile without key_file) and OCI_API_KEY, and
 # ONS_TOPIC_ID. console-ci-notify may only publish to the alert topics: no deploy
 # key, no registry credential, no console-infra checkout.
-name: probe
+name: Production availability
 on:
   schedule:
     - cron: "*/10 * * * *"
@@ -34,6 +34,7 @@ concurrency:
 
 jobs:
   probe:
+    name: Probe production availability
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
     permissions:
@@ -41,7 +42,7 @@ jobs:
     outputs:
       page: ${{ steps.page.outputs.page }}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       - name: GET / and its module entry (edge, tunnel, host, assets)
@@ -64,6 +65,7 @@ jobs:
           if [[ "${prev}" != failure || "$(date -u +%M)" -lt 10 ]]; then echo "page=true" >>"${GITHUB_OUTPUT}"; fi
 
   notify:
+    name: Report availability failure
     needs: probe
     if: failure() && needs.probe.outputs.page == 'true'
     runs-on: ubuntu-24.04-arm
@@ -71,7 +73,7 @@ jobs:
     timeout-minutes: 10
     permissions: {}
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       # The official OCI CLI image, pinned by digest (multi-arch index of tag 20261007).
