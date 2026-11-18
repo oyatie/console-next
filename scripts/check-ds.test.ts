@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, expect, test } from "vitest";
 // @ts-expect-error: a plain .mjs script, no types
-import { METRICS, checkBrokenRefs, compare, controlClasses, countCss, countTsx, frozenTokens, measure, serialize } from "./check-ds.mjs";
+import { METRICS, checkBrokenRefs, compare, controlClasses, countCss, countTsx, frozenTokens, measure, serialize, styleSelectors } from "./check-ds.mjs";
 
 const script = fileURLToPath(new URL("./check-ds.mjs", import.meta.url));
 const roots: string[] = [];
@@ -319,4 +319,28 @@ test("the gate compares the token file with the merge base and refuses a changed
   mkdirSync(path.join(root, "scripts"), { recursive: true });
   writeFileSync(path.join(root, "scripts/ds-token-changes.json"), JSON.stringify({ "--row-h": { light: "36px", dark: "36px" } }));
   expect(run().stderr).toBe("");
+});
+
+test("a rule may name a visual style only through the guard every new style shares", () => {
+  const guard = ':where([data-experience]:not([data-experience="baseline"]))';
+  const offending = (css: string) => styleSelectors(css, "x.css");
+  // The accepted shape, as an ancestor, as a nesting parent, with the parent after it, and with single quotes.
+  expect(offending(`${guard} .find { min-width: 0; }
+    ${guard} { .keys { gap: 0; } @media (width < 768px) { .hint { display: none; } } }
+    .top { ${guard} & { .jump { min-width: auto; } } }
+    :where([data-experience]:not([data-experience='baseline'])) .a, ${guard} .b { gap: 0; }`)).toEqual([]);
+  // A style named outright, the attribute alone, the guard without :where (it would add specificity), and a second
+  // attribute test beside an accepted guard.
+  expect(offending(`[data-experience="control-room"] .btn { gap: 0; }
+    [data-experience] .btn { gap: 0; }
+    [data-experience]:not([data-experience="baseline"]) .btn { gap: 0; }
+    ${guard} .a, ${guard}[data-experience="warm-clear"] .b { gap: 0; }
+    .ok { gap: 0; }`)).toEqual([
+    '[data-experience="control-room"] .btn', "[data-experience] .btn", '[data-experience]:not([data-experience="baseline"]) .btn',
+    `${guard}[data-experience="warm-clear"] .b`]);
+
+  const named = gate(fixture({ "apps/web/src/features/x/ui/x.module.css": '[data-experience="control-room"] .row { gap: 0; }\n', "apps/web/src/ui/y/y.module.css": `${guard} .row { gap: 0; }\n` }, {}));
+  expect(named.status).toBe(1);
+  expect(named.stderr).toContain('apps/web/src/features/x/ui/x.module.css: [data-experience="control-room"] .row names a visual style');
+  expect(named.stderr).not.toContain("y.module.css");
 });
