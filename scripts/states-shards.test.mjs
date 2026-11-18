@@ -20,6 +20,20 @@ const report = (counts, seconds = 4) => ({
 const load = () => import("./states-shards.mjs");
 const workflow = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
 
+test("failed state shards upload traces and failure files separately from JSON reports with bounded retention", () => {
+  const uploads = workflow.jobs.states.steps.filter(step => step.uses?.startsWith("actions/upload-artifact@"));
+  const report = uploads.find(step => step.with.name === "states-report-${{ matrix.shard }}");
+  assert.equal(report.if, "${{ !cancelled() }}");
+  assert.equal(report.with.path, ".cache/states-report-${{ matrix.shard }}.json");
+  const failures = uploads.find(step => step.with.name === "states-failures-${{ matrix.shard }}");
+  assert.ok(failures, "failed shards must publish Playwright failure files");
+  assert.equal(failures.uses, report.uses);
+  assert.equal(failures.if, "${{ failure() }}");
+  assert.equal(failures.with.path, "test-results-mock");
+  assert.ok(Number.isInteger(failures.with["retention-days"]) && failures.with["retention-days"] > 0 && failures.with["retention-days"] <= 7);
+  assert.equal(failures.with["if-no-files-found"], "ignore");
+});
+
 test("the module route inventory includes app floorplan declarations", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "module-routes-"));
   try {
@@ -475,10 +489,13 @@ test("median headroom survives one slow timing file that fails the one-run limit
   });
 });
 
-test("consistently slow timing files still fail and publish the measured headroom", async () => {
+test("consistently slow timing files warn without failing and publish the measured headroom", async t => {
   const { checkHeadroom } = await load();
+  const warning = t.mock.method(console, "warn", () => {});
   withSummary(summary => {
-    assert.throws(() => checkHeadroom(capacitySuite, capacitySettings, capacityHistory(480), summary), /STATES_HEADROOM_EXHAUSTED/);
+    const checked = checkHeadroom(capacitySuite, capacitySettings, capacityHistory(480), summary);
+    assert.ok(checked.headroom < 15);
+    assert.deepEqual(warning.mock.calls.map(call => call.arguments), [["::warning::STATES_HEADROOM_EXHAUSTED: the measured suite needs at least fifteen percent headroom"]]);
     assert.match(readFileSync(summary, "utf8"), /13\.3%/);
     assert.match(readFileSync(summary, "utf8"), /15%/);
   });
@@ -492,15 +509,19 @@ test("capacity below twenty percent reports the next shard or faster specs befor
   });
 });
 
-test("the fifteen percent threshold remains inclusive and twenty percent needs no capacity warning", async () => {
+test("the fifteen percent threshold remains inclusive and twenty percent needs no capacity warning", async t => {
   const { checkHeadroom } = await load();
+  const warning = t.mock.method(console, "warn", () => {});
   withSummary(summary => {
     assert.ok(checkHeadroom(capacitySuite, capacitySettings, capacityHistory(470), summary));
-    assert.throws(() => checkHeadroom(capacitySuite, capacitySettings, capacityHistory(470.1), summary), /STATES_HEADROOM_EXHAUSTED/);
+    assert.equal(warning.mock.callCount(), 0);
+    assert.ok(checkHeadroom(capacitySuite, capacitySettings, capacityHistory(470.1), summary));
+    assert.equal(warning.mock.callCount(), 1);
   });
   withSummary(summary => {
     checkHeadroom(capacitySuite, capacitySettings, capacityHistory(440), summary);
     assert.doesNotMatch(readFileSync(summary, "utf8"), /another shard/);
+    assert.equal(warning.mock.callCount(), 1);
   });
 });
 
@@ -534,7 +555,7 @@ test("changing test counts still judges normalized medians and catches sustained
     const slow = runs.map(run => ({ ...run, timings: { ...run.timings,
       specs: Object.fromEntries(Object.entries(run.timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * 1.15 }])),
     } }));
-    assert.throws(() => checkHeadroom(report(counts), capacitySettings, slow, summary), /STATES_HEADROOM_EXHAUSTED/);
+    assert.ok(checkHeadroom(report(counts), capacitySettings, slow, summary).headroom < 15);
   });
 });
 
@@ -600,7 +621,7 @@ test("a dev-sized suite plus three new specs at median cost keeps measured headr
     assert.equal(checked.plan.shards.length, timings.maxShards);
     assert.ok(checked.headroom >= 15 && checked.headroom < 20);
     assert.match(readFileSync(summary, "utf8"), /measured on this push only.*new-0.*new-1.*new-2/i);
-    assert.throws(() => checkHeadroom(input, timings, runs, null), /STATES_HEADROOM_EXHAUSTED/);
+    assert.ok(checkHeadroom(input, timings, runs, null).headroom < 15);
   });
 });
 

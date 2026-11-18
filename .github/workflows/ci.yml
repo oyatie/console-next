@@ -261,6 +261,13 @@ jobs:
           path: .cache/states-report-${{ matrix.shard }}.json
           include-hidden-files: true
           if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ failure() }}
+        with:
+          name: states-failures-${{ matrix.shard }}
+          path: test-results-mock
+          retention-days: 7
+          if-no-files-found: ignore
 
   states-timings:
     if: github.event_name == 'push' && needs.affected.outputs.web == 'true'
