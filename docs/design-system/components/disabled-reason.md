@@ -75,17 +75,21 @@ the button's own rules for `aria-disabled="true"` in `app.css` still supply thos
 | `Button` in `secondary`, `ghost` or `danger` | `--muted` fill, `--border` border, `--steel` text, at half opacity. The danger fill never shows. |
 | `Button` in `primary` | Full opacity and a dashed border, from `app.css`. The colours are a tie: see below. |
 | `Button` in `ghost-danger` | Half opacity. The colours are a tie: see below. |
+| `ToggleButton` that is on | Half opacity. The colours are a tie: see below. A toggle that is off looks as the first row says. |
 
-The inert class is written twice in its selector so that it outranks a variant's one-class rule. Two rules in
+The inert class is written twice in its selector so that it outranks a variant's one-class rule. Three rules in
 `app.css` carry two classes, or a class and an attribute, and so rank the same as it does:
 
 - `.btn--primary[aria-disabled="true"]` sets a `--primary` border, a `--primary-soft` fill and `--primary` text.
 - `.btn--ghost.btn--danger` sets no fill, no visible border and `--danger-tx` text.
+- `.btn[aria-pressed="true"]`, the on look of a `ToggleButton`, sets a `--primary` border, a `--primary-soft` fill
+  and `--primary` text. One call site spreads the inert attributes on toggles, one of which is on:
+  `features/org/ui/org-change-views.tsx`.
 
-For those two variants the colours at rest come from whichever of the two stylesheets the build loads later.
-Neither stylesheet fixes that order, and the component's tests do not check a colour. On hover the inert rule
-outranks the primary rule, so an inert primary is `--muted` with `--steel` text while the pointer is on it,
-whatever it shows at rest.
+For those three the colours at rest come from whichever of the two stylesheets the build loads later. Neither
+stylesheet fixes that order, and the component's tests do not check a colour. On hover the inert rule outranks
+the primary rule and the pressed rule, so an inert primary, or an inert toggle that is on, is `--muted` with
+`--steel` text while the pointer is on it, whatever it shows at rest.
 
 There is one size: the control keeps the size it has.
 
@@ -98,7 +102,7 @@ end.
 | State | What happens |
 |---|---|
 | Rest | The inert look. In `stacked` and `inline` the reason is always shown. |
-| Hover | The inert rule repeats its values on hover, so a variant's hover fill does not show and the control does not change. The exceptions are the two ties under Looks and sizes. The cursor is not-allowed. In `disclosure`, hovering the wrapper shows the reason. |
+| Hover | The inert rule repeats its values on hover, so a variant's hover fill does not show and the control does not change. The exceptions are the ties under Looks and sizes. The cursor is not-allowed. In `disclosure`, hovering the wrapper shows the reason. |
 | Keyboard focus | The control shows the global focus outline: 2 px `--primary`, 2 px away. The component has no focus rule of its own. In `disclosure`, focus anywhere in the wrapper shows the reason. |
 | Pressed down | Nothing happens and nothing changes. There is no `:active` rule. |
 | Disabled | This is the component's only state. The control is always inert. |
@@ -141,8 +145,8 @@ Known gaps:
 - In `disclosure` the reason shows only on hover or focus. The component has no press or tap handler that shows
   it, so on a touch screen it depends on whether a tap leaves the control hovered or focused.
 - An inert `Button` other than `primary` is drawn at half opacity, text included.
-- The colours of an inert `primary` and `ghost-danger` control depend on the order of two stylesheets: see Looks
-  and sizes.
+- The colours of an inert `primary` or `ghost-danger` button, and of an inert toggle that is on, depend on the
+  order of two stylesheets: see Looks and sizes.
 
 The WCAG 2.2 criteria that apply:
 
@@ -166,7 +170,8 @@ What the gallery shows:
 | `stacked` with a link as the remedy | `apps/web/src/gallery/sections/links.gallery.tsx` |
 | A blocked primary inside a sticky action bar | `apps/web/src/ui/action-bar/action-bar.gallery.tsx` |
 
-These entries show no inert `danger` or `ghost-danger` button and no control that is not a `Button`.
+These entries show no inert `danger` or `ghost-danger` button, no inert toggle and no control that is not a
+`Button`.
 
 `disabled-reason.test.tsx` has two tests, both on static markup. The control is a `type="button"` with
 `aria-disabled="true"` and no `disabled`, described by the reason, even when the caller passed `type="submit"`
