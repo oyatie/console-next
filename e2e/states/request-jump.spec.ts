@@ -27,7 +27,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
     try {
       await page.goto("/");
       await expect(page.getByRole("heading", { name: t("home.noWork.title"), exact: true })).toBeVisible();
-      await page.keyboard.press("Control+KeyK");
+      await page.getByRole("banner").getByRole("button", { name: new RegExp(t("shell.jumpLabel")) }).click();
       const palette = page.getByRole("dialog", { name: t("shell.jumpLabel"), exact: true });
       const input = palette.getByRole("searchbox");
       await expect(input).toHaveAttribute("placeholder", t("shell.jump"));
@@ -54,3 +54,15 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+test("the command chord opens the jump dialog", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[0], "empty");
+  try {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: t("home.noWork.title"), exact: true })).toBeVisible();
+    await page.keyboard.press("ControlOrMeta+KeyK");
+    const palette = page.getByRole("dialog", { name: t("shell.jumpLabel"), exact: true });
+    await expect(palette).toBeVisible();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

@@ -5,7 +5,7 @@ import { app, root } from "./app";
 import { streamReady } from "../lib/live/session-stream";
 
 vi.mock("../lib/react/session", () => ({ ensureSession: () => {}, ensureEnrolling: () => {}, leaveSignInWhenSignedIn: () => {} }));
-vi.mock("../shell/shell", () => ({ Shell: () => null }));
+vi.mock("../shell/baseline/shell", () => ({ default: () => null }));
 vi.mock("../lib/live/session-stream", () => ({ streamReady: vi.fn() }));
 
 test("the app waits for its session stream before a child loader reads data", async () => {
