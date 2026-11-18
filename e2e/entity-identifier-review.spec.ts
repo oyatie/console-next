@@ -12,6 +12,7 @@ import { REGISTRATION_FIXTURES, SETUP_DEPARTMENT, startOperations, tenantInSetup
 test.beforeAll(() => loadCatalog("ko"));
 
 const inbox = (page: Page) => page.getByRole("region", { name: "업무함", exact: true });
+const heldNotice = (page: Page) => page.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
 const register = (page: Page) => page.getByRole("region", { name: "번호 정정 · 사후 검토", exact: true });
 const detail = (page: Page) => page.getByRole("dialog", { name: "번호 정정 요청", exact: true });
 
@@ -74,7 +75,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   await startOperations(admin);
   await go(reviewer, "/inbox?tab=reference");
   await grantAccess(admin, "김검토", "full");
-  const held = reviewer.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
+  const held = heldNotice(reviewer);
   const grantButton = inbox(reviewer).getByRole("button", { name: t("home.grantNotices.confirm", { role: "전체 업무" }), exact: true });
   await expect(held).toBeVisible();
   await expect(grantButton).toHaveCount(0);
@@ -148,8 +149,13 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(detail(reviewer)).toContainText("승인됨 · 적용 대기");
   await detail(reviewer).getByRole("button", { name: "돌아가기", exact: true }).click();
 
+  // d6ac208cbb holds the approval while the requester's waiting list has rows.
+  const requesterHeld = heldNotice(admin);
+  await expect(requesterHeld).toBeVisible();
+  await requesterHeld.click();
   await expect(waiting).toBeHidden({ timeout: 20_000 });
-  await inbox(admin).getByRole("link", { name: /^내 차례/ }).click();
+  // e2ca8c65ae renamed the inbox tabs.
+  await inbox(admin).getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.turn")}`) }).click();
   const apply = inbox(admin).getByRole("row").filter({ has: admin.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
   await expect(apply).toContainText("처리 상태: 승인됨 · 적용 대기");
   await capture(admin, "requester-approved-home");
