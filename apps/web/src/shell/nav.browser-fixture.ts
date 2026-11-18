@@ -28,7 +28,7 @@ export async function navFixture(engine = chromium) {
         import {createRootRoute,createRoute,createRouter,RouterProvider,Link} from '@tanstack/react-router';
         import {configure,refresh,session} from '@console/api'; import {webPlatform} from '@console/api/web';
         import {loadCatalog} from '@console/i18n';
-        import {Shell} from '/apps/web/src/shell/shell.tsx';
+        import Shell from '/apps/web/src/shell/baseline/shell.tsx';
         import {PageHead} from '/apps/web/src/ui/page-head/page-head.tsx';
         import {GoLive} from '/apps/web/src/features/onboarding/ui/go-live.tsx';
         import {meQuery} from '/apps/web/src/features/account/api.ts';
@@ -38,17 +38,17 @@ export async function navFixture(engine = chromium) {
         import '/apps/web/src/app.css';
         configure({...webPlatform,passkeys:{get:async()=>({id:'test-passkey'}),create:async()=>null}}); await refresh(); await loadCatalog('ko');
         const root=createRootRoute({component:Shell});
-        const paths=['/','/people','/people/exits','/people/period-locks','/people/requests','/org','/org/entities','/org/history','/access','/attendance','/statutory','/settings'];
+        const paths=['/','/people','/people/exits','/people/period-locks','/people/requests','/org','/org/entities','/org/history','/access','/attendance','/statutory','/settings','/audit/support-access'];
         function Fixture(){
           useQuery(checklistQuery);
           const me=useQuery(navigationRead(meQuery));
-          window.__navFacts={phase:me.data?.tenant?.phase};
+          window.__navFacts={phase:me.data?.tenant?.phase,state:me.status};
           const complete=useCommand({run:()=>skipStep('org'),invalidates:SETUP_READS});
           return React.createElement(React.Fragment,null,React.createElement(PageHead,{title:'Setup'}),React.createElement(Link,{to:'/setup/go-live'},'Start operations'),React.createElement(Link,{to:'/people/period-locks'},'Period locks'),React.createElement('button',{onClick:()=>complete.mutate()},'Complete setup'));
         }
         const routes=paths.map(path=>createRoute({getParentRoute:()=>root,path,staticData:{access:'signed-in'},component:Fixture}));
         const router=createRouter({routeTree:root.addChildren([...routes,createRoute({getParentRoute:()=>root,path:'/setup/go-live',staticData:{access:'signed-in'},component:GoLive})])});
-        const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:Infinity}}});
+        const client=new QueryClient({defaultOptions:{queries:{retry:false,retryOnMount:false,staleTime:Infinity}}});
         window.switchNavPrincipal=()=>{
           session.set({access_token:'h.'+btoa(JSON.stringify({...session.claims,sub:'other-principal',name:'Test operator'}))+'.s',token_type:'Bearer',refresh_expires_at:'2099-01-01T00:00:00Z',requires_passkey_setup:false,privacy_consent_accepted:true});
           void router.navigate({to:'/org'});

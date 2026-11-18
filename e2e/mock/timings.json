@@ -4,6 +4,7 @@
   "runLimitSeconds": 1500,
   "setupAllowanceSeconds": 720,
   "maxShards": 6,
+  "headroomRuns": 5,
   "startupSeconds": 40,
   "workers": 2,
   "defaultTestSeconds": 4

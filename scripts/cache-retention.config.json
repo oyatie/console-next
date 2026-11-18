@@ -43,6 +43,16 @@
       "restoreCopies": 1,
       "prefixes": 1
     },
+    "states-timings": {
+      "purpose": "Retain complete dev measurements when the artifact API is unavailable",
+      "readers": [
+        "ci.yml states-plan on PRs and merge groups: newest dev fallback"
+      ],
+      "keyPattern": "^(states-timings-)(\\d+)$",
+      "copies": 1,
+      "restoreCopies": 1,
+      "prefixes": 1
+    },
     "codeql": {
       "purpose": "Reuse CodeQL overlay base databases",
       "readers": [

@@ -46,29 +46,40 @@ export function assertPromotion({sha, repository, run, jobs, gatesResult, curren
       job.status === 'completed' && job.conclusion === 'success'),
   'PROMOTE_NOT_GREEN: require completed successful jobs for this platform run and SHA');
   const workflow = load(readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8'));
-  for (const [name, job] of Object.entries(workflow.jobs)) {
+  for (const [id, job] of Object.entries(workflow.jobs)) {
+    const name = job.name;
+    assert.ok(typeof name === 'string' && name.trim().length > 0,
+      `PROMOTE_NOT_GREEN: missing display name for ${id}`);
     const matrix = job.strategy?.matrix;
     if (!matrix) {
-      assert.ok(jobs.some(actual => actual.name === name || actual.name.startsWith(`${name} / `)),
+      assert.ok(!name.includes('${{'), 'PROMOTE_NOT_GREEN: unsupported job name expression');
+      assert.equal(jobs.filter(actual => actual.name === name ||
+        (job.uses && actual.name.startsWith(`${name} / `))).length, 1,
         `PROMOTE_NOT_GREEN: missing ${name}`);
       continue;
     }
-    // GitHub's default matrix job names follow the declared axis order.
+    // Render only named matrix fields; never evaluate workflow expressions as code.
     assert.ok(!matrix.exclude && (!matrix.include || Object.keys(matrix).length === 1),
       'PROMOTE_NOT_GREEN: unsupported matrix; update proof inventory before changing the workflow');
-    const rows = matrix.include?.map(row => Object.values(row)) ?? Object.values(matrix)
-      .reduce((combinations, values) => {
+    const rows = matrix.include ?? Object.entries(matrix)
+      .reduce((combinations, [axis, values]) => {
         if (typeof values === 'string') {
           // Resolve only the event-conditioned JSON axis used by scheduled repetitions; never evaluate workflow code.
           const expression = values.match(/^\$\{\{ fromJSON\(github\.event_name == '([a-z_]+)' && '(\[[\d, ]+\])' \|\| '(\[[\d, ]+\])'\) \}\}$/);
           assert.ok(expression, 'PROMOTE_NOT_GREEN: unsupported matrix expression');
           values = JSON.parse(expression[run.event === expression[1] ? 2 : 3]);
-          assert.ok(values.length > 0, 'PROMOTE_NOT_GREEN: empty matrix axis');
         }
-        return combinations.flatMap(row => values.map(value => [...row, value]));
-      }, [[]]);
-    const expected = rows.map(row => `${name} (${row.join(', ')})`).sort();
-    const actual = jobs.filter(actualJob => actualJob.name.startsWith(`${name} (`)).map(actualJob => actualJob.name).sort();
+        assert.ok(Array.isArray(values) && values.length > 0, 'PROMOTE_NOT_GREEN: empty or invalid matrix axis');
+        return combinations.flatMap(row => values.map(value => ({...row, [axis]:value})));
+      }, [{}]);
+    const expected = rows.map(row => name.replace(/\$\{\{([\s\S]*?)\}\}/g, (_, expression) => {
+      const field = expression.trim().match(/^matrix\.([a-zA-Z_][a-zA-Z_0-9]*)$/)?.[1];
+      assert.ok(field && Object.hasOwn(row, field) && ['string', 'number'].includes(typeof row[field]),
+        'PROMOTE_NOT_GREEN: unsupported job name expression');
+      return row[field];
+    })).sort();
+    assert.equal(new Set(expected).size, rows.length, 'PROMOTE_NOT_GREEN: ambiguous matrix display names');
+    const actual = jobs.filter(actualJob => expected.includes(actualJob.name)).map(actualJob => actualJob.name).sort();
     assert.deepEqual(actual, expected, `PROMOTE_NOT_GREEN: require every ${name} matrix job exactly once`);
   }
   assert.equal(gatesResult, 'pass', 'PROMOTE_GATES: release gates must pass');

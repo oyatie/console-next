@@ -189,7 +189,7 @@ pub async fn seed_role_and_grant(
 
     sqlx::query(
         "INSERT INTO access_role_lines (org_id, role_id, version, domain, levels)
-         VALUES ($1, $2, 1, 'settings', ARRAY['edit'])",
+         VALUES ($1, $2, 1, 'settings', ARRAY['view','edit'])",
     )
     .bind(org)
     .bind(role_id)

@@ -1,3 +1,4 @@
+import { shell } from "./shell";
 import { expect, test, type Page } from "@playwright/test";
 import { ko } from "../packages/i18n/src/catalogs/ko";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
@@ -112,9 +113,9 @@ for (const { key, scope } of [
       await routeReady(hr);
       await expect(denied(hr)).toHaveCount(0);
     }
-    await expect(hr.locator(".rail__link[href='/org']")).toHaveCount(key === "department" ? 0 : 1);
-    await expect(hr.locator(".rail__link[href='/org/entities']")).toHaveCount(0);
-    await expect(hr.locator(".rail__link[href='/attendance']")).toHaveCount(0);
+    await expect(shell(hr).navigation.locator("a[href='/org']")).toHaveCount(key === "department" ? 0 : 1);
+    await expect(shell(hr).navigation.locator("a[href='/org/entities']")).toHaveCount(0);
+    await expect(shell(hr).navigation.locator("a[href='/attendance']")).toHaveCount(0);
     for (const read of ["/org-structure", "/legal-entities", "/org-units", "/org-changes", "/org-structure/batches"]) expect((await readAsHr(read)).status()).toBe(key === "department" ? 403 : 200);
     expect((await readAsHr("/hr/exit-cases")).status()).toBe(key === "department" ? 403 : 200);
     for (const [tab, read] of [

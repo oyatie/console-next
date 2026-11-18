@@ -1367,12 +1367,8 @@ pub fn build_statutory_insurance_draft(
         input.monthly_standard_hours,
         input.pay_date,
     )?;
-    match minimum_wage.passes {
-        Some(false) => blockers.push(
-            "최저임금 미달: 고용노동부고시 제2025-47호 시간급 10,320원에 미달한다".to_owned(),
-        ),
-        None => blockers.push("최저임금 비교 불가: 월 소정근로시간이 근로계약에 없다".to_owned()),
-        Some(true) => {}
+    if let Some(code) = minimum_wage.blocker_code() {
+        blockers.push(code.to_owned());
     }
 
     let not_computed = vec![
@@ -2989,7 +2985,7 @@ mod tests {
     }
 
     #[test]
-    fn minimum_wage_check_fails_a_sub_floor_contract_and_refuses_to_pass_without_hours() {
+    fn minimum_wage_check_blocks_a_sub_floor_contract() {
         let below = build_statutory_insurance_draft(&StatutoryInsuranceInput {
             pay_date: date!(2026 - 08 - 10),
             monthly_remuneration_won: 2_000_000,
@@ -2999,16 +2995,51 @@ mod tests {
         .unwrap();
         // 2,000,000 ÷ 209 = 9,569 < 10,320.
         assert_eq!(below.minimum_wage.passes, Some(false));
-        assert!(below.blockers.iter().any(|b| b.contains("최저임금 미달")));
+        assert!(
+            below
+                .blockers
+                .iter()
+                .any(|b| b == "MINIMUM_WAGE_BELOW_FLOOR")
+        );
+    }
 
-        // No hours => NOT comparable, and "not comparable" is not a pass.
+    #[test]
+    fn minimum_wage_check_refuses_to_pass_without_hours() {
         let unknown = build_statutory_insurance_draft(&StatutoryInsuranceInput {
             monthly_standard_hours: None,
             ..golden_case_input()
         })
         .unwrap();
         assert_eq!(unknown.minimum_wage.passes, None);
-        assert!(unknown.blockers.iter().any(|b| b.contains("비교 불가")));
+        assert!(
+            unknown
+                .blockers
+                .iter()
+                .any(|b| b == "MINIMUM_WAGE_NOT_COMPARABLE")
+        );
+    }
+
+    #[test]
+    fn minimum_wage_blocker_uses_the_rate_and_notice_in_force_on_the_pay_date() {
+        for (pay_date, hourly, monthly, notice) in [
+            (date!(2026 - 01 - 15), 10_320, 2_156_880, "2025-47"),
+            (date!(2027 - 01 - 15), 10_700, 2_236_300, "2026-60"),
+        ] {
+            let check = check_minimum_wage(2_000_000, Some(209), pay_date).unwrap();
+            assert_eq!(check.blocker_code(), Some("MINIMUM_WAGE_BELOW_FLOOR"));
+            assert_eq!(check.hourly_floor_won, hourly);
+            assert_eq!(check.monthly_209h_floor_won, monthly);
+            assert!(check.instrument.promulgation_ko.contains(notice));
+            assert_eq!(
+                check.instrument,
+                minimum_wage_on(pay_date).unwrap().instrument
+            );
+
+            let at_floor = check_minimum_wage(monthly, Some(209), pay_date).unwrap();
+            assert_eq!(at_floor.blocker_code(), None);
+            let unknown = check_minimum_wage(monthly, None, pay_date).unwrap();
+            assert_eq!(unknown.blocker_code(), Some("MINIMUM_WAGE_NOT_COMPARABLE"));
+        }
     }
 
     #[test]

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { shell } from "../shell";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -35,7 +36,7 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
         await page.screenshot({ path: info.outputPath(`${surface}-arrival-${width}-${theme}.png`), fullPage: true });
         const unknown = state === "failed" || state === "refused";
         const label = unknown ? "업무함 · 확인 불가" : state === "zero" ? t("home.inbox.title") : t(state === "inexact" ? "shell.needsMe.countMore" : "shell.needsMe.count", { count: state === "inexact" ? 12 : 3 });
-        const header = page.locator("header.top");
+        const header = shell(page).banner;
         const trigger = header.getByRole("button", { name: label, exact: true });
         await expect(trigger).toBeVisible({ timeout: 20_000 });
         if (unknown || state === "zero") await expect(trigger.locator("[data-count]")).toHaveCount(0);
@@ -103,7 +104,7 @@ test("platform header never mounts or reads the tenant task panel", async ({ pag
     if (/\/assets\/needs-me-[^/]+\.js$/.test(path)) chunks.push(path);
   });
   await page.goto("/platform");
-  await expect(page.locator("header.top").getByRole("button", { name: t("shell.logout"), exact: true })).toBeVisible();
+  await expect(shell(page).banner.getByRole("button", { name: t("shell.logout"), exact: true })).toBeVisible();
   await page.waitForLoadState("networkidle");
   await expect(page.locator("#top-needs-me")).toHaveCount(0);
   expect(chunks).toEqual([]);
@@ -200,19 +201,19 @@ for (const width of [641, 700, 767, 768, 769, 1024, 1279]) for (const theme of [
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "populated");
     await page.goto("/people");
-    const header = page.locator("header.top");
+    const header = shell(page).banner;
     await expect(header.locator("#top-needs-me [data-count]")).toHaveText("3", { timeout: 20_000 });
-    const prompt = header.locator(".top__jumpText");
+    const prompt = shell(page).searchText;
     await expect(prompt).toBeVisible();
     expect(await prompt.evaluate(el => el.clientWidth / el.scrollWidth)).toBeGreaterThanOrEqual(1);
-    await expect(header.locator(".top__jump svg")).toBeVisible();
-    expect((await header.locator(".top__jump").boundingBox())!.width).toBeGreaterThanOrEqual(40);
+    await expect(shell(page).search.locator("svg")).toBeVisible();
+    expect((await shell(page).search.boundingBox())!.width).toBeGreaterThanOrEqual(40);
     const logout = header.getByRole("button", { name: t("shell.logout"), exact: true });
     await expect(logout).toBeVisible();
     expect(await logout.evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThan(0);
-    const spacer = await header.locator(".top__spacer").boundingBox();
+    const spacer = await shell(page).spacer.boundingBox();
     if (spacer!.width > 1) {
-      const jump = header.locator(".top__jump");
+      const jump = shell(page).search;
       // Spare space is valid only after the search field reaches its desktop basis.
       expect((await jump.boundingBox())!.width).toBeGreaterThanOrEqual(await jump.evaluate(el => Number.parseFloat(getComputedStyle(el).flexBasis)));
     }

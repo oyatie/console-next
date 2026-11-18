@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { shell, shellSelectors } from "../shell";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { bootEn, bootKo } from "../../packages/i18n/src/catalogs/boot";
@@ -47,12 +48,12 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 1024, 390
         await expect(trigger.getByText(title, { exact: true })).toBeVisible({ visible: width >= breakpoints.xl });
         for (const theme of ["light", "dark"]) {
           await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
-          const scan = await new AxeBuilder({ page }).include(".top").withRules(["label-content-name-mismatch", "button-name"]).analyze();
+          const scan = await new AxeBuilder({ page }).include(shellSelectors().banner).withRules(["label-content-name-mismatch", "button-name"]).analyze();
           expect.soft(scan.violations, `${theme} header label in name`).toEqual([]);
         }
-        const jump = page.locator(".top__jump");
+        const jump = shell(page).search;
         await expect(jump).toHaveAccessibleName((locale === "ko" ? bootKo : bootEn)[width === 1440 ? "shell.jump" : "shell.jumpLabel"]);
-        await expectAxe(page, `inbox label ${locale} ${width} ${state}`, { include: ".top" });
+        await expectAxe(page, `inbox label ${locale} ${width} ${state}`, { include: shellSelectors().banner });
         await fits(page, `inbox label ${locale} ${width} ${state}`);
         expect(mock.unexpected).toEqual([]);
       } finally { release(); }

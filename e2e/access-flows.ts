@@ -23,6 +23,15 @@ const ROLE: Record<Access, { name: string; levels: string[] }> = {
   close: { name: "기간 마감", levels: ["예외·정정 등록·수정"] },
 };
 
+/** Pending grant confirmations live in 참조, separate from the Home work queue. */
+export async function openGrantNotice(page: Page, role: string) {
+  await go(page, "/inbox?tab=reference");
+  const notice = page.getByRole("region", { name: ko["home.inbox.title"], exact: true }).getByRole("listitem")
+    .filter({ has: page.getByRole("button", { name: ko["home.grantNotices.confirm"].replace("{role}", role), exact: true }) });
+  await expect(notice).toBeVisible();
+  return notice;
+}
+
 /** The tenant role for `access`, made once per tenant through the role editor. */
 async function ensureRole(admin: Page, access: Access) {
   const { name: FULL, levels } = ROLE[access];
