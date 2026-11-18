@@ -5,6 +5,9 @@ use console_settings_domain::{Governance, SettingKey, SettingKind};
 use serde_json::{Value, json};
 use sqlx::{Connection, PgPool};
 
+#[path = "../../../settings/domain/examples/support/definition_sql.rs"]
+mod definition_sql;
+
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 fn definition(key: SettingKey) -> Value {
@@ -227,4 +230,30 @@ async fn retired_definitions_remain_readable_for_older_binaries(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(kind, "bool");
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn generated_upserts_add_and_update_only_requested_definitions(pool: PgPool) {
+    let keys = [
+        SettingKey::DisplayPageSize,
+        SettingKey::ExitAccessRevokeModeVoluntary,
+    ];
+    let names: Vec<_> = keys.iter().map(|key| key.as_str()).collect();
+    for before in [
+        "DELETE FROM setting_definitions WHERE key = ANY($1)",
+        "UPDATE setting_definitions SET kind = 'int', min_value = 0, max_value = 1, \
+         default_ordinal = 0, looser_when = 'neutral', governance = 'read_only', codes = NULL \
+         WHERE key = ANY($1)",
+    ] {
+        sqlx::query(sqlx::AssertSqlSafe(before))
+            .bind(&names)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(definition_sql::generated(&keys)))
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert_registry(&pool).await;
+    }
 }

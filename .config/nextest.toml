@@ -7,8 +7,8 @@
 [test-groups.cluster-global]
 max-threads = 1
 
-# binary(), NOT test(). `test()` matches TEST NAMES; every name below is a test
-# BINARY name, so the old `test(/apalis_adapter/)` form grouped only the tests whose
+# Use binary() for whole suites and test() for individual role mutators.
+# The old `test(/apalis_adapter/)` form grouped only the tests whose
 # own name happened to contain the binary name. Measured 2026-08-18 with
 # `cargo nextest show-config test-groups`: apalis_adapter 1 of 4 tests grouped,
 # apalis_schema_contract 1 of 1, and leave_migration_expand_contract 0 of 9 -- the
@@ -23,8 +23,16 @@ filter = '''
   + binary(apalis_schema_contract)
   + binary(apalis_runtime_release)
   + binary(group_of_one_expand_contract)
+  + test(=definitions_migrated_by_console_app_are_read_only_for_runtime)
+  + test(=placement_migrations_run_as_console_app)
+  + test(=console_app_may_set_its_own_lock_timeout_default)
+  + test(=status_worker_age_is_queue_scoped_read_only_and_missing_is_unknown)
+  + test(/status_public_evidence_answers_aggregate_age_only_beside_tenant_data$/)
+  + test(/serving_pool_rejects_overrides_and_restores_role_defaults_after_release$/)
 '''
 test-group = 'cluster-global'
+# Roles are cluster-wide; role mutators and console_app migrations must run alone.
+threads-required = "num-test-threads"
 
 [profile.ci]
 # Hosted: no flake-hide retries. Slow timeout generous for PG.

@@ -98,8 +98,8 @@ in a new forward-only migration. In `backend/`, generate the INSERT with
 `cargo run -q -p console-settings-domain --example setting_definitions -- <key> [<key> ...]`.
 Head the migration `-- migration-class: contract — <reason>` (definition INSERTs and UPDATEs
 are data writes). Never regenerate or replace `setting_definition()`; its signature is the shared lookup contract.
-For an existing key, update only that key’s row, for example:
-`UPDATE setting_definitions SET default_ordinal = 50 WHERE key = 'display.page_size';`.
+For an existing key, generate its row again in a new migration; the generated
+`INSERT … ON CONFLICT (key) DO UPDATE` replaces that key’s definition.
 Keep override data and the lookup signature compatible with older binaries; prove both the
 upgrade lineage and a fresh install. Against a disposable test database configured as in
 [Set up](#set-up), run from `backend/`:
@@ -107,7 +107,8 @@ upgrade lineage and a fresh install. Against a disposable test database configur
 `cargo test -p console-settings-adapter-postgres`.
 The guard compares the migrated database with the live Rust registry, including bounds,
 defaults, code order and governance. The non-DB check
-`cargo test -p console-settings-domain --test migration_rows` checks row coverage before merge.
+`cargo test -p console-settings-domain --test migration_rows` compares every definition value
+with the latest generated INSERT row before merge.
 Read-only infrastructure keys need no new SQL row; existing SQL rows remain for older binaries.
 When removing a registry key, set its row’s `retired_at` in the same release; keep it readable
 for older binaries and delete it after the next release. A removal migration needs a leading
