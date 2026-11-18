@@ -387,7 +387,6 @@ contracts are regenerated with the repository OpenAPI and TypeScript generators.
 - `backend/crates/settings/domain/src/keys/display.rs`
 - `backend/crates/settings/domain/src/keys/perf.rs`
 - `backend/crates/settings/domain/tests/registry.rs`
-- `backend/crates/settings/domain/tests/sql_definitions.rs`
 - `docs/product/action-inbox.md`
 - `e2e/d26-solo-exit.spec.ts`
 - `e2e/home-truth.spec.ts`
