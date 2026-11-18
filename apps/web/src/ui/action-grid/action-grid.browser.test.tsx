@@ -21,11 +21,17 @@ beforeAll(async () => {
 }, 120_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
-test("with single keys off the grid's letters wait while ⌘X, Enter and Escape still act; back on, a letter picks with no reload", async () => {
+test("with single keys off the grid's letters wait and show no hint while ⌘X, Enter and Escape still act; back on, a letter picks with no reload", async () => {
   const grid = page.getByRole("dialog", { name: "Acts" });
   const picked = page.getByRole("status", { name: "Picked" });
-  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}action-grid-test`, grid);
+  const hints = grid.locator("kbd");
+  const open = () => openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}action-grid-test`, grid);
+  await open();
+  await element(hints).toHaveText(["M", "⌘X"]);
   await page.evaluate(key => localStorage.setItem(key, "off"), SINGLE_KEYS_KEY);
+  // The grid reads the setting when it draws: a letter that waits has no hint, the chord keeps its own.
+  await open();
+  await element(hints).toHaveText(["⌘X"]);
   // The letters are pressed first: had one picked, its act would stand before the chord's.
   await page.keyboard.press("m");
   await page.keyboard.press("Shift+M");
@@ -38,6 +44,7 @@ test("with single keys off the grid's letters wait while ⌘X, Enter and Escape 
   await page.evaluate(key => localStorage.removeItem(key), SINGLE_KEYS_KEY);
   await page.keyboard.press("m");
   await element(picked).toHaveText("exit move move");
+  await element(hints).toHaveText(["M", "⌘X"]);
 
   await page.evaluate(key => localStorage.setItem(key, "off"), SINGLE_KEYS_KEY);
   await page.keyboard.press("Escape");

@@ -13,7 +13,8 @@ export type ActionGroup = { title: string; items: readonly ActionItem[] };
  * A grid of acts in groups (spec E5-menu): each with its icon, a short description and its letter key; an act that
  * cannot be done now stays listed, dimmed, with why. Opens anchored under its trigger (top right of the record),
  * focuses the first available act, picks by click, Enter or the letter, and closes on Esc or a click outside. The
- * letters act from anywhere on the page while the grid is open, so they wait while this device has single keys off.
+ * letters act from anywhere on the page while the grid is open, so they wait, and their hints are not drawn, while this
+ * device has single keys off.
  */
 export function ActionGrid({ label, head, groups, tail, foot, onPick, onClose }: {
   label: string;
@@ -51,7 +52,7 @@ export function ActionGrid({ label, head, groups, tail, foot, onPick, onClose }:
       <span className={s.icon} aria-hidden>{i.disabled ? <Ban size={14} /> : i.icon}</span>
       <span className={s.title}>{i.title}</span>
       <small id={`${i.id}-d`} className={s.desc}>{i.disabled ?? i.desc}</small>
-      {i.keys && !i.disabled && <Kbd keys={i.keys} />}
+      {i.keys && !i.disabled && (i.keys.length > 1 || singleKeysOn()) && <Kbd keys={i.keys} />}
     </button>
   );
   return (
