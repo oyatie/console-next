@@ -164,7 +164,7 @@ The WCAG 2.2 criteria that apply:
 | 1.3.1 Info and Relationships | In part. The title is marked as strong text and the text is its own block. Nothing ties the title to the text, and without `live` the banner has no role. |
 | 1.4.1 Use of Color | Each tone has its own icon as well as its colours. For a screen reader only the words carry the tone. |
 | 1.4.3 Contrast (Minimum) | Each tone pairs a text token with its own fill token. The text is 13 px, so it needs 4.5:1. A link in the text is the gap: see below. |
-| 1.4.10 Reflow | The parts wrap and the text can shrink. Nothing has a fixed width or height. |
+| 1.4.10 Reflow | The parts wrap and the text can shrink. Only the icon has a fixed size, 16 px. |
 | 2.1.1 Keyboard | The banner has nothing of its own to operate. |
 | 2.4.7 Focus Visible | The global focus outline, when the caller makes the banner focusable. |
 | 4.1.2 Name, Role, Value | No role and no name unless `live` is set. |
