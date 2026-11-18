@@ -34,8 +34,9 @@ passkey list asks for a passkey's name in one.
 | Title | `<h2 class="panel__title">` | `title`. It names the dialog. |
 | Body | `children` | Whatever the caller renders: text, a form, buttons. |
 
-There is no close button, no footer and no slot for actions. The caller renders its own buttons among `children`.
-Call sites put them in a `<div class="form__actions">`, which aligns them to the end of the row and lets them wrap.
+There is no close button, no footer and no slot for actions. The caller renders its own buttons among `children`
+and lays them out itself. Many call sites use a `<div class="form__actions">`, which aligns the buttons to the end
+of the row and lets them wrap. Others use `ActionBar` (`ui/action-bar`).
 
 When the dialog can be dismissed, React Aria adds one element at the start of the box: a visually hidden dismiss
 button for screen readers. See the accessibility contract.
