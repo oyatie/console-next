@@ -8,7 +8,7 @@ import { authzQuery } from "../reference/authz/api";
 import { tenantsQuery } from "../features/platform/api";
 
 vi.mock("../lib/react/session", () => ({ ensureSession: () => {}, ensureEnrolling: () => {}, leaveSignInWhenSignedIn: () => {} }));
-vi.mock("../shell/shell", () => ({ Shell: () => null }));
+vi.mock("../shell/baseline/shell", () => ({ default: () => null }));
 beforeAll(() => loadCatalog(i18n.locale));
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
