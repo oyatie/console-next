@@ -52,7 +52,7 @@ What holds each rule today:
    `npx playwright test e2e/visual.spec.ts --project=parallel --grep "pass axe"`.
    It fails on a serious or critical axe violation anywhere in the gallery, in either theme.
 
-Three pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
+Fifteen pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
 
 ## The outline of a component page
 
@@ -145,6 +145,18 @@ rendered, in the order of its `order` export.
 
 | Page | Components | Source |
 |---|---|---|
+| [Action bar](components/action-bar.md) | `ActionBar` | `apps/web/src/ui/action-bar` |
+| [Banner](components/banner.md) | `Banner` | `apps/web/src/ui/banner` |
 | [Button](components/button.md) | `Button`, `IconButton`, `ToggleButton`, `Segmented`, `Form`, `Check` | `apps/web/src/ui/button` |
+| [Card](components/card.md) | `Card`, `SectionHead` | `apps/web/src/ui/card` |
 | [Chip](components/chip.md) | `Chip` | `apps/web/src/ui/chip.tsx` |
+| [Choice](components/choice.md) | `ChoiceField`, `ChipChoice`, `Checks`, `GroupedChoice`, `ChoiceAdd` | `apps/web/src/ui/choice` |
+| [Date](components/date.md) | `DateField`, `DateInput`, `DateCalendar` | `apps/web/src/ui/date` |
+| [Dialog](components/dialog.md) | `Dialog` | `apps/web/src/ui/dialog.tsx` |
+| [Disabled reason](components/disabled-reason.md) | `DisabledReason` | `apps/web/src/ui/disabled-reason` |
 | [Field](components/field.md) | `Field`, `FieldSet`, `Marker`, `TextInput`, `TextArea`, `SelectInput`, `DerivedValue` | `apps/web/src/ui/field` |
+| [Key-value](components/key-value.md) | `KeyValue`, `StatRow` | `apps/web/src/ui/key-value` |
+| [Masked field](components/masked-field.md) | `MaskedField` | `apps/web/src/ui/masked-field` |
+| [Menu](components/menu.md) | `ActionMenu`, `MenuButton` | `apps/web/src/ui/menu` |
+| [Receipt](components/receipt.md) | `Receipt` | `apps/web/src/ui/receipt` |
+| [Sheet](components/sheet.md) | `Sheet` and its draft and read-context helpers | `apps/web/src/ui/sheet` |
