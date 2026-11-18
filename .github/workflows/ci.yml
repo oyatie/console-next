@@ -33,6 +33,7 @@ jobs:
       tools: ${{ fromJSON(steps.proof.outputs.result || '{}').tools }}
       backend: ${{ steps.paths.outputs.backend || steps.import.outputs.backend }}
       web: ${{ steps.paths.outputs.web || steps.import.outputs.web }}
+      docs: ${{ steps.paths.outputs.docs }}
     steps:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
@@ -116,6 +117,12 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Repository text gates for documentation
+        if: needs.affected.outputs.backend == 'false' && needs.affected.outputs.docs != 'none'
+        working-directory: backend
+        run: |
+          cargo run --locked -p console-gate-vendor-lockin
+          cargo run --locked -p console-gate-layer-boundary
       - name: local dev branch for the ratchet base
         run: git rev-parse --verify -q refs/heads/dev >/dev/null || git branch dev origin/dev
       # npm run secrets and scripts/hygiene.test.ts need the real scanner (pinned release, checksum-verified).
@@ -463,7 +470,7 @@ jobs:
   backend-release:
     name: Build backend for browser tests
     needs: [affected]
-    if: ${{ !cancelled() && github.event_name != 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true') }}
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.affected.outputs.backend == 'true' || needs.affected.outputs.web == 'true' && (github.event_name != 'pull_request' || needs.affected.outputs.docs != 'only')) }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions: {contents: read}
@@ -940,7 +947,8 @@ jobs:
           }
           const backend = jobs.affected.outputs.backend !== 'false';
           const web = jobs.affected.outputs.web !== 'false';
-          const backendJobs = ['backend', 'backend-gates', 'backend-tests', 'backend-release'];
+          const docsPR = process.env.GITHUB_EVENT_NAME === 'pull_request' && !backend && jobs.affected.outputs.docs === 'only';
+          const backendJobs = ['backend', 'backend-gates', 'backend-tests'];
           for (const [name, job] of Object.entries(jobs)) {
             let skip = push;
             if (name === 'affected') skip = false;
@@ -949,10 +957,9 @@ jobs:
             else if (name === 'backend-cache') skip = !push || !backend;
             else if (name === 'release-evidence') skip = !push || !backend && !web;
             else if (name === 'backend-gates') skip = !push && !backend;
-            else if (name === 'backend-release') skip ||= !backend && !web;
+            else if (name === 'backend-release' || name === 'home') skip ||= docsPR || !backend && !web;
             else if (backendJobs.includes(name)) skip ||= !backend;
             else if (['web', 'states-plan', 'states'].includes(name)) skip ||= !web;
-            else if (name === 'home') skip ||= !web && !backend;
             if (job.result !== (skip ? 'skipped' : 'success')) throw new Error(`${name}: ${job.result}`);
           }
           const fs = require('node:fs');
