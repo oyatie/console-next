@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 // eslint-disable-next-line no-restricted-imports -- Go-live synchronizes the server-confirmed phase before navigation.
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ApiError } from "../api";
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
 import { freshOnOpen } from "../../../lib/query";
+import { myAccessQuery } from "../../../reference/authz/api";
+import { MAX_RETRY_AFTER_MS } from "../../../lib/react/query-defaults";
 import { meQuery } from "../../account/api";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -21,7 +23,7 @@ import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { StatRow } from "../../../ui/key-value/key-value";
-import { goLive, goLivePreviewQuery, goLiveReceiptQuery, SETUP_READS, type GoLiveFactsSnapshot } from "../api";
+import { goLive, goLivePreviewQuery, goLiveReceiptQuery, modulesQuery, SETUP_READS, type GoLiveFactsSnapshot } from "../api";
 import { Blockers, Warnings } from "./go-live-items";
 import { onboardingError } from "../present";
 import { GoLiveDetails } from "./go-live-details";
@@ -36,21 +38,37 @@ export function GoLive() {
   const receipt = useQuery({ ...goLiveReceiptQuery, enabled: q.data?.phase === "OPERATING" });
   const qc = useQueryClient();
   const nav = useNavigate();
+  const router = useRouter();
+  const location = useRef(router.state.location);
   const [acknowledgedDigest, setAcknowledgedDigest] = useState<string | null>(null);
   const ack = acknowledgedDigest === q.data?.digest;
   const refreshFailed = q.data?.phase === "SETUP" && queryView(q) === "stale";
   const run = useCommand({
-    run: (_: undefined, key: string) => goLive(q.data!.digest, ack, q.data!.line_digests, key),
-    // Freeze the destination rail only after its server readiness includes this command.
-    invalidates: ["/api/v1/onboarding/modules", ...SETUP_READS],
-    awaitFirstRead: true,
-    announce: (r) => t("setup.golive.done", { at: fmtDateTime(r.go_live_at) }),
-    onSuccess: (result) => {
+    run: async (_: undefined, key: string) => {
+      location.current = router.state.location;
+      const result = await goLive(q.data!.digest, ack, q.data!.line_digests, key);
       // The command's answer updates the rail before a slower profile refetch can move its entries.
       qc.setQueriesData(meQuery, (meData: Awaited<ReturnType<typeof meQuery.queryFn>> | undefined) => meData?.tenant ? {
         ...meData, tenant: { ...meData.tenant, phase: result.phase, go_live_at: result.go_live_at },
       } : meData);
-      void nav({ to: "/" });
+      // shortcut: readiness uses the retry-after limit, use a command deadline when one is exposed.
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      try {
+        // Reuse pending reads; a failed readiness refresh must not hold a completed go-live.
+        await Promise.race([
+          Promise.all([
+            qc.refetchQueries(myAccessQuery, { cancelRefetch: false }),
+            qc.refetchQueries(modulesQuery, { cancelRefetch: false }),
+          ]),
+          new Promise<void>(resolve => { timeout = setTimeout(resolve, MAX_RETRY_AFTER_MS); }),
+        ]).catch(() => undefined);
+      } finally { clearTimeout(timeout); }
+      return result;
+    },
+    invalidates: SETUP_READS,
+    announce: (r) => t("setup.golive.done", { at: fmtDateTime(r.go_live_at) }),
+    onSuccess: () => {
+      if (router.state.location === location.current) void nav({ to: "/" });
     },
   });
   const changed = run.error instanceof ApiError && run.error.code === "preview_stale"

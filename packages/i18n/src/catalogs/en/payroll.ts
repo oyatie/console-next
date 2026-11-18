@@ -160,6 +160,7 @@ export const enPayroll = {
   "payroll.employee.gross": "Gross pay",
   "payroll.employee.minimumWage": "Minimum wage check",
   "payroll.employee.hourlyFloor": "Statutory hourly floor",
+  "payroll.employee.monthlyFloor": "Monthly floor (209 hours)",
   "payroll.employee.effectiveHourly": "Effective hourly wage",
   "payroll.employee.minimumPass": "Meets minimum",
   "payroll.employee.minimumBelow": "Below the minimum wage.",

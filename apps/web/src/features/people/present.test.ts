@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, loadCatalog } from "@console/i18n";
 import type { LifecycleEvent } from "./api";
-import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, nextEventText, pasteSkippedText, placeText } from "./present";
+import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, nextEventText, pasteSkippedText, placeText, valueText } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -94,12 +94,19 @@ test("pasteSkippedText names only non-zero skipped counts and matches the paste 
   expect(pasteSkippedText({ readOnly: 2, outside: 0 })).toBe("붙여넣지 못한 칸 · 읽기 전용 2칸");
   expect(pasteSkippedText({ readOnly: 0, outside: 1 })).toBe("붙여넣지 못한 칸 · 범위 밖 1칸");
   expect(pasteSkippedText({ readOnly: 2, outside: 1 })).toBe("붙여넣지 못한 칸 · 읽기 전용 2칸 · 범위 밖 1칸");
+  expect(pasteSkippedText({ readOnly: 0, outside: 0, kept: 3 })).toBe("붙여넣지 못한 칸 · 가려진 기록 3칸(변경하려면 한 칸씩 입력)");
   try {
     await loadCatalog("en");
     i18n.set("en");
     expect(pasteSkippedText({ readOnly: 0, outside: 1 })).toBe("Not pasted · 1 outside the grid");
     expect(pasteSkippedText({ readOnly: 1, outside: 1 })).toBe("Not pasted · 1 read-only · 1 outside the grid");
+    expect(pasteSkippedText({ readOnly: 0, outside: 0, kept: 1 })).toBe("Not pasted · 1 masked record (type in a cell to change it)");
   } finally {
     i18n.set("ko");
   }
+});
+
+test("a requested phone the server sends as its mask reads as the mask", () => {
+  expect(valueText("phone", "010-••••-0001")).toBe("010-••••-0001");
+  expect(valueText("phone", "+821055550001")).toBe("010-5555-0001");
 });

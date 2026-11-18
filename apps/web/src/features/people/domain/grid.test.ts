@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { GRID_FIELDS, parseTsv, readCell, refusedCells, rowState, shownText } from "./grid";
+import { GRID_FIELDS, keepsOnPaste, parseTsv, readCell, refusedCells, rowState, shownText } from "./grid";
 
 const f = (k: string) => GRID_FIELDS.find((x) => x.key === k)!;
 const SEX = { MALE: "남", FEMALE: "여" };
@@ -14,6 +14,7 @@ test("a typed cell reads as a value, a keep, or why it is not one", () => {
   expect(readCell(f("employment_type"), "계약", { REGULAR: "정규직", CONTRACT: "계약직" })).toEqual({ bad: "choice", suggest: "계약직" });
   expect(readCell(f("address"), "경기 평택시 고덕동 31", SEX)).toEqual({ send: { source: "MANUAL_UNVERIFIED", road_addr_part1: "경기 평택시 고덕동 31", si_nm: "경기", sgg_nm: "평택시" } });
   expect(readCell(f("address"), "고덕동 31", SEX)).toEqual({ bad: "address" });
+  expect(readCell(f("address"), "••••경기 평택시 고덕동 31", SEX)).toEqual({ bad: "address" });
 });
 
 test("a spreadsheet copy splits into rows and cells; a row counts its changes and errors", () => {
@@ -48,6 +49,16 @@ test("the check's values read as the grid shows them", () => {
   expect(shownText(f("address"), JSON.stringify({ road_addr_part1: "경기 평택시 고덕동 31", zip_no: null }), SEX)).toBe("경기 평택시 고덕동 31");
   expect(shownText(f("sex"), "FEMALE", SEX)).toBe(SEX.FEMALE);
   expect(shownText(f("address"), "not json", SEX)).toBe("not json");
+  // A recorded birth date or address comes back as the server's mask and reads as it.
+  expect(shownText(f("address"), "••••", SEX)).toBe("••••");
+  expect(shownText(f("birth_date"), "••••-••-••", SEX)).toBe("••••-••-••");
+});
+
+test("a recorded value shown as the server's mask keeps it under a pasted block; an open value takes the paste", () => {
+  expect(keepsOnPaste("••••-••-••")).toBe(true);
+  expect(keepsOnPaste("Gyeonggi Pyeongtaek-si ••••")).toBe(true);
+  expect(keepsOnPaste("")).toBe(false);
+  expect(keepsOnPaste("Gyeonggi Pyeongtaek-si Godeok-dong 31")).toBe(false);
 });
 
 test("cells the server refused are kept per person and field; a refusal of the whole row names no cell", () => {

@@ -10,7 +10,6 @@ publish.workspace = true
 [dependencies]
 console-kernel-core = { workspace = true }
 serde = { workspace = true }
-time = { workspace = true }
 
 [lints]
 workspace = true

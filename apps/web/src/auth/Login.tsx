@@ -11,6 +11,7 @@ import { Banner } from "../ui/banner/banner";
 import { Button, Form } from "../ui/button/button";
 import { Field, TextInput } from "../ui/field/field";
 import { PageHead } from "../ui/page-head/page-head";
+import { announce } from "../lib/react/announce";
 import { consentDestination } from "../lib/react/session";
 import { IDLE_EXPIRED } from "./idle";
 import { autofillPaused, rememberDomain, rememberedDomains, resumeAutofill } from "./sign-in-id";
@@ -39,7 +40,7 @@ const passkeyRecovery = (e: unknown): Recovery => (signInError(e) === null ? "pa
  * renewed before its ceremony expires, aborted before any modal ceremony (a pending one makes the next fail). Not
  * started after a sign-out or a failed sign-in in this tab (auth/sign-in-id.ts) until the next sign-in.
  */
-function useAutofill(signedIn: () => Promise<void>) {
+function useAutofill(signedIn: () => Promise<void>, setBusy: (busy: boolean) => void) {
   const pending = useRef<AbortController | null>(null);
   // Set once a modal ceremony starts or the screen leaves: a start still awaiting the feature check then stays out.
   const stopped = useRef(false);
@@ -54,14 +55,21 @@ function useAutofill(signedIn: () => Promise<void>) {
     const onStart = (expiresAt: string) => {
       renew = setTimeout(() => (cancel(), void start.current()), Math.max(0, Date.parse(expiresAt) - Date.now() - 15_000));
     };
+    let asserted = false;
+    const onAsserted = () => {
+      asserted = true;
+      clearTimeout(renew);
+      setBusy(true);
+    };
     try {
-      await loginWithPasskey({ mediation: "conditional", signal: ctl.signal, onStart });
+      await loginWithPasskey({ mediation: "conditional", signal: ctl.signal, onStart, onAsserted });
       await signedIn();
     } catch (e) {
       void e;
       // Conditional autofill is passive: failures are never displayed as error banners (issue #44).
     } finally {
       clearTimeout(renew);
+      if (asserted) setBusy(false);
       if (pending.current === ctl) pending.current = null;
     }
   });
@@ -109,12 +117,13 @@ export function Login() {
     resumeAutofill();
     await nav({ href: session.stage === "enroll" ? "/setup-passkey" : consentDestination() });
   };
-  const abortAutofill = useAutofill(signedIn);
-  const run = async (fn: () => Promise<void>, onFail: (e: unknown) => Recovery) => {
+  const abortAutofill = useAutofill(signedIn, setBusy);
+  const run = async (fn: () => Promise<void>, onFail: (e: unknown) => Recovery, pending?: string) => {
     abortAutofill();
     setBusy(true);
     setError(null);
     setRecovery(null);
+    announce(pending ?? "");
     try {
       await fn();
       await signedIn();
@@ -122,11 +131,12 @@ export function Login() {
       setError(signInError(e));
       setRecovery(onFail(e));
     } finally {
+      announce("");
       setBusy(false);
     }
   };
   const submitOtp = () => {
-    if (otp.trim()) void run(() => redeemOtp(otp), codeRecovery);
+    if (otp.trim()) void run(() => redeemOtp(otp), codeRecovery, t("auth.login.pending"));
   };
   // Identifier first: the challenge names this account's passkeys, so a security key with no resident slot works.
   const signInAs = (identifier: string) => run(() => loginWithPasskey({ identifier }), passkeyRecovery);
@@ -141,7 +151,7 @@ export function Login() {
 
   return (
     <main className="auth">
-      <div className="card auth__card">
+      <div className="card auth__card" aria-busy={busy || undefined}>
         <PageHead title={t("auth.login.title")} />
         {/* `enrolled`: the passkey is registered; only the automatic sign-in after enrollment failed. */}
         {error && (
@@ -161,6 +171,7 @@ export function Login() {
             {(p) => (
               <TextInput
                 {...p}
+                readOnly={busy}
                 autoComplete="username webauthn"
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -195,6 +206,7 @@ export function Login() {
             {(p) => (
               <TextInput
                 {...p}
+                readOnly={busy}
                 className="code"
                 ref={codeInput}
                 autoComplete="one-time-code"

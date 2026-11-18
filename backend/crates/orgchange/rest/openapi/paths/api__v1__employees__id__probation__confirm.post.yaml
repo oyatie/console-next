@@ -45,7 +45,7 @@ responses:
               type: [string, 'null']
             birth_date:
               type: [string, 'null']
-              format: date
+              description: The reveal mask (••••-••-••) when recorded, null when not; only POST /api/v1/employees/{id}/reveal returns the date.
             work_email:
               type: [string, 'null']
             id_type:

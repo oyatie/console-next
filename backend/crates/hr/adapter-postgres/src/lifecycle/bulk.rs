@@ -121,11 +121,17 @@ impl HrService {
                     audits.push(event);
                 }
                 insert_lifecycle_rows(tx, (*org.as_uuid(), *actor.as_uuid(), Some(batch_id)), &records).await?;
+                let appointments = input.transition.event_type == "APPOINT";
+                if appointments {
+                    super::record_write::apply_appointments_in_tx(tx, *org.as_uuid(), &records, &hooks).await?;
+                }
                 for (n, (id, employee_id, event)) in records.iter().enumerate() {
                     if n > 0 && n % PROGRESS_EVERY == 0 {
                         step(&progress, "recording", n, employee_ids.len());
                     }
-                    apply_record_in_tx(tx, (*org.as_uuid(), *id, *actor.as_uuid(), *employee_id), event, &hooks).await?;
+                    if !appointments {
+                        apply_record_in_tx(tx, (*org.as_uuid(), *id, *actor.as_uuid(), *employee_id), event, &hooks).await?;
+                    }
                     let prepared = loaded.get(employee_id)
                         .ok_or_else(|| HrError::internal("bulk employee was not loaded"))?;
                     if let Some(initial) = &prepared.initial {

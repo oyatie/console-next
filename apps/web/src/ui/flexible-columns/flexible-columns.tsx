@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Keyboar
 import { ArrowLeft, Maximize2, Minimize2, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, IconButton } from "../button/button";
-import { editable, ROW_SELECTOR } from "../long-table/row-keys";
+import { editable, FOCUS_SETTLE_MS, ROW_SELECTOR } from "../long-table/row-keys";
 import { SidePanelReadContext } from "../side-panel/read-context";
 import s from "./flexible-columns.module.css";
 
@@ -13,7 +13,6 @@ type FlexibleColumnPane = {
   closeLabel?: string; onClose: () => void; returnFocus?: () => HTMLElement | null | undefined; children: ReactNode;
 };
 
-const FOCUS_SETTLE_MS = 150;
 const rowElOf = (el: EventTarget | null) => (el instanceof Element ? el.closest<HTMLElement>(ROW_SELECTOR) : null);
 const rowKeyOf = (el: Element | null) => el?.getAttribute("data-row-id") ?? el?.getAttribute("data-id") ?? null;
 const setColumnWidth = (el: HTMLElement, kind: Kind, width?: number) => {

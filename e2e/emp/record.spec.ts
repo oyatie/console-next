@@ -210,7 +210,8 @@ test("record card: a hire date corrected within budget, a taken number refused, 
   await a.getByRole("textbox", { name: "개인 이메일" }).fill("mine@mail.example");
   await a.getByRole("textbox", { name: "개인 이메일" }).press("Enter");
   const clash = a.getByRole("group", { name: /먼저 변경했습니다/ });
-  await expect(clash.getByText(/^그 값 사용 · theirs@mail\.example/)).toBeVisible({ timeout: 15_000 });
+  // The other value shows as the server serves it, masked; only the reveal opens it.
+  await expect(clash.getByText(/^그 값 사용 · •{4}$/)).toBeVisible({ timeout: 15_000 });
   await expect(clash.getByRole("radio", { checked: true })).toHaveCount(0);
   await clash.getByRole("button", { name: "선택대로 저장" }).press("Enter"); // nothing chosen: it goes to the choice
   await expect(clash).toBeVisible();
@@ -218,7 +219,7 @@ test("record card: a hire date corrected within budget, a taken number refused, 
   await clash.getByText(/^내 값 유지/).click();
   await clash.getByRole("button", { name: "선택대로 저장" }).click();
   await expect(clash).toBeHidden();
-  await expect(a.getByRole("region", { name: "인적사항" })).toContainText(/m•{4}@•{4}\.example|mine@mail\.example/);
+  await expect(a.getByRole("status").filter({ hasText: "개인 이메일 저장했습니다" })).toBeVisible();
   // The stream comes back and its outage note leaves the top bar: what that moved is the test's cut, not a screen's.
   await restoreRecordUpdates(a);
   await a.evaluate(() => void window.__shifts?.splice(0));

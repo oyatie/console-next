@@ -222,6 +222,7 @@ test('bounded count applies to npm, browsers, CodeQL overlays and image indexes'
   const families = {
     npm: n => `node-cache-Linux-x64-npm-${String(n).padStart(64, 'a')}`,
     playwright: n => `playwright-Linux-X64-chromium-1.64.${n}`,
+    'states-timings': n => `states-timings-${n}`,
     codeql: n => `codeql-overlay-base-database-1-673738e94a8102ad-javascript-2.27.4-${String(n).padStart(40, '0')}-123-1`,
     buildkit: n => `index-console-platform-arm64-1-5a70b200#${n}`,
   };

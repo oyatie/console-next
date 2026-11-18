@@ -34,11 +34,34 @@ async fn settings_and_statutory_answer_signed_in_users_and_writes_stay_closed(po
         assert_eq!(status, StatusCode::UNAUTHORIZED, "{uri}: {body}");
     }
 
-    // Every registered key resolves for a plain member, defaults included.
+    // Members retain runtime values without exposing the settings registry.
     let (status, page) = send(&service, "GET", settings, Some(&member_token), None).await;
     assert_eq!(status, StatusCode::OK, "{page}");
     let items = page["items"].as_array().unwrap();
-    assert_eq!(items.len(), SettingKey::ALL.len(), "{page}");
+    assert_eq!(
+        items.len(),
+        SettingKey::ALL
+            .iter()
+            .filter(|key| key.client_required())
+            .count(),
+        "{page}"
+    );
+    assert!(
+        items.iter().all(|item| item["key"]
+            .as_str()
+            .unwrap()
+            .parse::<SettingKey>()
+            .unwrap()
+            .client_required()),
+        "{page}"
+    );
+    for key in [
+        "authz.sole_holder.mode",
+        "audit.access_log.retention",
+        "db.pool.api_connections",
+    ] {
+        assert!(!items.iter().any(|item| item["key"] == key), "{page}");
+    }
     assert!(
         page.to_string().contains("auth.idle_timeout_minutes"),
         "{page}"
@@ -125,6 +148,12 @@ async fn tenant_ops_without_grants_can_write_settings_and_reason_codes(pool: PgP
     let keys = keys();
     let token = token(&pool, &keys, org, admin, "SUPER_ADMIN").await;
     let service = build_router(app_state(runtime_pool(&pool).await, keys.1).unwrap());
+    let (status, page) = send(&service, "GET", "/api/v1/settings", Some(&token), None).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    assert_eq!(
+        page["items"].as_array().unwrap().len(),
+        SettingKey::ALL.len()
+    );
     for (uri, body) in [
         (
             "/api/v1/settings/approval.policy.org_structure",

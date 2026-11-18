@@ -15,7 +15,6 @@ hickory-resolver = { workspace = true }
 ipnet = { workspace = true }
 secrecy = { workspace = true }
 thiserror = { workspace = true }
-tracing = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]

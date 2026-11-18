@@ -305,7 +305,7 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   assert.doesNotMatch(file, /CI-[A-Z]+/);
   assert.match(file, /push:\s*\n\s*branches: \[dev\]/);
   assert.match(file, /schedule:\s*\n\s*- cron:/);
-  assert.equal(dbWorkflow.concurrency.group, "db-tests-${{ github.event_name == 'pull_request' && github.ref || 'trunk' }}");
+  assert.equal(dbWorkflow.concurrency.group, "db-tests-${{ github.event_name == 'pull_request' && github.ref || github.event_name == 'schedule' && 'nightly' || 'trunk' }}");
   assert.equal(dbWorkflow.concurrency["cancel-in-progress"], false);
   assert.deepEqual(dbWorkflow.on.pull_request.paths, [
     ".github/workflows/db-tests.yml",

@@ -6,6 +6,7 @@ import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
 import { inbox } from "./fixtures";
 import { expectAxe, fits } from "../a11y";
+import { openGrantNotice } from "../access-flows";
 import { screens } from "../states/registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -75,13 +76,14 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       read = true;
       return { status: 200, json: notice(unreadId, "조직 변경 안내", { type: "object", kind: "org_change", id: "c1" }) };
     });
-    await page.goto("/inbox?tab=reference");
+    await page.goto("/");
+    const pendingGrant = await openGrantNotice(page, grant.title);
     const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("listitem");
     await expect(list).toHaveCount(5);
     const tab = page.getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.reference")}`) });
     await expect(tab).toHaveText(`${t("home.inbox.tab.reference")} 1`);
     await expect(list.nth(0).getByRole("button", { name: t("home.grantNotices.confirm", { role: "급여 담당" }), exact: true })).toBeVisible();
-    await list.nth(0).getByRole("button", { name: t("home.grantNotices.confirm", { role: "급여 담당" }), exact: true }).click();
+    await pendingGrant.getByRole("button", { name: t("home.grantNotices.confirm", { role: grant.title }), exact: true }).click();
     await expect(list).toHaveCount(4);
     await expect(tab).toHaveText(`${t("home.inbox.tab.reference")} 0`);
     await expect(list.nth(0).getByRole("link", { name: "조직 변경 안내", exact: true })).toHaveAttribute("href", "/org/changes/c1");

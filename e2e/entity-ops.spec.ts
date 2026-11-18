@@ -3,6 +3,7 @@ import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, koDate, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
+import { expectFieldChange } from "./helpers/entity";
 import { registerEntity, registerWorkplace, typeAddress } from "./setup-flows";
 
 // UX-R1 ENTITY, from an empty tenant through the UI; each failed on the parent FE (no such verb or no such hold):
@@ -27,7 +28,7 @@ test("a 사업장 records 휴업 with its expected end, then 재개, and moves o
   const a = await openTenant(browser, "uxr1-ops", "새온그룹");
   const panel = await workplaceTab(a);
   const history = panel.getByRole("region", { name: "이력" });
-  await expect(history).toContainText("건설 사업장 여부: — → 아님");
+  await expectFieldChange(history, "건설 사업장 여부", "—", "아님");
   await expect(history).not.toContainText(/\b[a-z]+_[a-z_]+\b|\b(true|false)\b/);
 
   // 휴업: start, reason, an optional expected end; an end before the start is held with its reason.
