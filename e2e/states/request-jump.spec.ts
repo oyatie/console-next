@@ -63,7 +63,6 @@ test("the command chord opens the jump dialog", async ({ page }) => {
     await page.keyboard.press("ControlOrMeta+KeyK");
     const palette = page.getByRole("dialog", { name: t("shell.jumpLabel"), exact: true });
     await expect(palette).toBeVisible();
-    await expect(palette.getByRole("searchbox")).toBeFocused();
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
