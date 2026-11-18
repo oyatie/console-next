@@ -42,6 +42,8 @@ export const koTenants: Record<keyof typeof enTenants, string> = {
   "tenants.panel.users": "활성 {active, plural, other {#명}} / 전체 {total, plural, other {#명}}",
   "tenants.section.code": "첫 관리자 코드",
   "tenants.section.remove": "삭제",
+  "tenants.recoveryFailed": "운영 계정 복구를 불러오지 못했습니다",
+  "tenants.eraseFailed": "데이터 삭제를 불러오지 못했습니다",
   // Onboarding and the code
   "tenants.form.name": "고객 이름",
   "tenants.form.nameRequired": "고객 이름을 입력하십시오",
