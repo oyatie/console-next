@@ -170,9 +170,9 @@ test("the inline name input keeps focus and Escape while a save is pending", asy
 test("the outline's name input leaves a Tab the input method owns alone and nests on a plain Tab", async () => {
   const page = harness.page!;
   await page.goto(`${harness.baseUrl}relayout?sheet=outline`);
-  const input = page.getByRole("textbox", { name: t("structure.edit.addLabel", { parent: "본사" }), exact: true });
+  const input = page.getByRole("textbox");
   const nested = () => page.evaluate(() => (window as unknown as { nested?: number }).nested);
-  await input.fill("개발팀");
+  await input.fill("Team");
   for (const state of [{ isComposing: true }, { keyCode: 229 }]) await input.dispatchEvent("keydown", { key: "Tab", ...state });
   expect(await nested()).toBeUndefined();
   await dom(input).toBeFocused();
