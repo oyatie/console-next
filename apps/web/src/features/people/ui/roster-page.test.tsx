@@ -131,7 +131,8 @@ test("the product roster renders the list-record arrangement", () => {
   state.search = { sel: "person", sel2: "department" };
   expect(render()).toContain('data-pattern="list-record"');
   const props = arrangement.mock.calls[0]![0];
-  for (const region of ["head", "views", "filters", "notes", "list", "record", "related", "foot", "overlays"]) expect(props[region], region).toBeTruthy();
+  for (const region of ["head", "views", "filters", "notes", "list", "record", "related", "foot"]) expect(props[region], region).toBeTruthy();
+  expect(props.overlays).toBeFalsy();
   expect(props.head.title).toBe(t("roster.page.roster"));
  });
 

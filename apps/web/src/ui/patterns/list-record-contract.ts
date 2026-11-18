@@ -13,6 +13,8 @@ export const listRecordOptionalRegions = ["facts"] as const;
  * route tabs are links with aria-current; overlays use Sheet/Dialog. FlexibleColumns owns the named
  * complementary record/related regions, closing and return focus. Page owns the one h1 in main.
  * Facts carry the position, selection and sort sentence; selection commands stay inside the grid.
+ * Overlays stay mounted while the list read loads or fails. Use overlays only for sheets and dialogs
+ * that work independently of the read. Put list data consumers and list shortcuts in notes, list or foot.
  */
 export type ListRecordProps = Pick<ComponentProps<typeof FlexibleColumns>, "list" | "record" | "related" | "full" | "onFull" | "onSelect" | "onOpen" | "onFind"> & {
   q: ReadState;

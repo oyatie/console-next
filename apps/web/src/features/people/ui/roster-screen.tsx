@@ -167,15 +167,18 @@ export function RosterScreen({ manage, scoped = false, switcher, notice, screen,
         onFind={() => findSlot?.querySelector("input")?.focus()}
         record={!voided && !firstRun && open && { id: open, label: t("people.panel"), closeLabel: t("roster.panel.close"), onClose: () => select(undefined), returnFocus: () => rowById(scroller.current, open), children: <RosterPanel id={open} today={today} unitTriggerRef={unitTrigger} onOpenUnit={selectRelated} /> }}
         related={!voided && !firstRun && open && openUnit && { id: openUnit, label: t("roster.panel.unit"), title: selectedUnit?.name ?? t("roster.panel.unit"), crumb: selectedUnit ? unitPath(unitItems, selectedUnit) : undefined, expand: <Link className={buttonClass("secondary", { size: "sm" })} to="/org" search={{ sel: openUnit, focus: openUnit }}>{t("roster.panel.openOrg")}</Link>, onClose: () => selectRelated(undefined), returnFocus: () => unitTrigger.current, children: <RosterUnitPanel unitId={openUnit} units={unitItems} /> }}
-      foot={<RosterFoot
-        shown={rowCount}
-        total={total}
-        changed={r.changed && (
-          // A filter whose count moved since the rows were read (someone else's change): the rows stay, the way to re-read is here.
-          <span className={s.changed} role="status"><Button onClick={() => void r.list.refetch()}>{t("roster.changed")}</Button></span>
-        )}
-      />}
-      overlays={<>{manage && search.bulk === "paste" && <BulkSheet source={{ paste: "" }} onClose={closePaste} onDone={bulkDone} />}<PeopleJump /></>}
+      foot={<>
+        <RosterFoot
+          shown={rowCount}
+          total={total}
+          changed={r.changed && (
+            // A filter whose count moved since the rows were read (someone else's change): the rows stay, the way to re-read is here.
+            <span className={s.changed} role="status"><Button onClick={() => void r.list.refetch()}>{t("roster.changed")}</Button></span>
+          )}
+        />
+        <PeopleJump />
+      </>}
+      overlays={manage && search.bulk === "paste" && <BulkSheet source={{ paste: "" }} onClose={closePaste} onDone={bulkDone} />}
     />
   );
 }
