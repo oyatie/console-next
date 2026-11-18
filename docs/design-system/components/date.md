@@ -37,7 +37,7 @@ date is `""`.
 | Input and calendar | `DateInput` | See below. It follows the quick picks in the same wrapping row. |
 | Hint line | The hint `<p>` of `Field` | In this order, joined by middle dots: `echo` (only while a date is set), `basis`, the reason of `minFrom` when it sets the floor, the out-of-range sentence when a preset is outside the bounds and no `minFrom` reason is shown, and the unavailable-date sentence when `disabledDates` has entries. |
 | Error line | The error `<p>` of `Field` | `error`. Without it, for a set date that is outside the bounds or blocked: the caller's reason for that bound, or the family's own sentence. Then `remedy`, in a `<span>`. |
-| Weekend suggestion | `<p>` | Shown when `suggestWeekday` is set and the date is a Saturday or a Sunday. A sentence, then a `<button class="link">` that changes the date to the next Monday. |
+| Weekend suggestion | `<p>` | Shown when `suggestWeekday` is set and the date is a Saturday or a Sunday. A sentence, then a `<button class="link">` that changes the date to the next Monday. The Monday is not checked against the bounds or the blocked dates, so the button can set a date that the error line then refuses. Only Saturday and Sunday count as non-working days. |
 
 `DateInput` renders, in one wrapping row:
 
@@ -52,6 +52,7 @@ date is `""`.
 
 | Part | Element | Holds |
 |---|---|---|
+| Calendar | `<div role="application">`, written by the library | Everything below. The library names it with the calendar's label and the visible month. It also puts a visually hidden heading with the same text before the header, and a visually hidden next-month `<button>`, which is not a tab stop, after the grid. |
 | Header | `<header>` | A previous-month `<button>`, the month heading, a next-month `<button>`. |
 | Grid | `<table role="grid">` | A row of short weekday names, then one row per week. |
 | Day | `<td role="gridcell">` holding a `<div role="button">` | The day number. |
@@ -77,6 +78,10 @@ allowed is written back in the locale's form (year, month, day with dots in Kore
 in English) and `onChange` is called once with the `YYYY-MM-DD` value. Text that is not a date, and a date that is
 outside the bounds or blocked, stays in the input as typed: the problem line appears, `onInvalid(true)` is called
 and `onChange("")` empties the value. Emptying the input calls `onChange("")` and `onInvalid(false)`.
+
+`onInvalid` is called in two places only: when typed text is read, and when a day is picked in the calendar. A
+date set by a quick pick, by the weekend button or by the caller replaces the text without calling it. After a
+refused entry, the last `onInvalid(true)` therefore still stands although the date is now valid.
 
 `onDraftChange` changes that last step. A caller that passes it receives every keystroke as text, and a refused
 date does not empty the value: the caller keeps the text and validates it.
@@ -107,13 +112,14 @@ Two values in the stylesheet are not tokens: the input's `10.5rem` minimum width
 | Rest | The looks under Looks and sizes. A set date is shown as text in the locale's form, and the calendar is closed. |
 | Empty | The input shows its placeholder, message `uiDate.placeholder`: the shape of a date in the locale. |
 | Hover | The calendar button, a quick pick and a month button take a `--muted` fill. The input has no hover look, and neither has a day. The weekend button takes the `link` look, so on hover its underline takes the text colour. |
-| Keyboard focus | The calendar button, the month buttons and a day: a 2 px `--primary` outline, 2 px away, from the family's own rules. The input, a quick pick and the weekend button: the same outline, from the global rule. The weekend button also shows the `link` focus look. |
+| Keyboard focus | The calendar button, the month buttons and a day: a 2 px `--primary` outline, 2 px away, from the family's own rules. One day is the exception: today, while it is not the selected day, keeps its 1 px inner outline and shows no focus look. Its rest rule is more specific than the focus rule and sets the same two properties. The input, a quick pick and the weekend button: the 2 px outline, from the global rule. The weekend button also shows the `link` focus look. |
 | Pressed down | No look. There is no `:active` rule and none reads `data-pressed`. |
 | Chosen quick pick (`aria-pressed="true"`) | `--primary` border and text on a `--primary-soft` fill. The date it stands for turns `--primary` too. A quick pick is pressed when its date equals the value. |
 | Quick pick that cannot be used | `--muted` fill, `--steel` text, a not-allowed cursor, `aria-disabled="true"`. It stays visible and focusable, and pressing it does nothing. A quick pick is off when it has a `disabledReason`, or its date is outside the bounds, or its date is in `disabledDates`. |
 | Selected day | `--primary` fill, `--on-primary` text. |
-| Today | A 1 px `--primary` outline inside the day's edge, unless the day is selected. The library decides which day is today from the browser's clock and time zone. The `today` prop does not set it. |
+| Today | A 1 px `--primary` outline inside the day's edge, unless the day is selected. It looks the same with keyboard focus as without: see Keyboard focus. The library decides which day is today from the browser's clock and time zone. The `today` prop does not set it. |
 | Day outside the bounds, or of another month | `--steel` text and a default cursor. It cannot be picked. |
+| Month button at a bound | The library disables a month button natively when the month it leads to is wholly outside `min` or `max`. It has no disabled look: the stylesheet has only a rest rule and a hover rule for a month button, so a disabled one looks like an enabled one and keeps the pointer cursor. |
 | Blocked day (`disabledDates`) | No look. The library marks it `data-unavailable`, and the stylesheet styles `data-disabled` and `data-outside-month` only. A blocked day looks like one that can be picked and keeps the pointer cursor; pressing it does nothing. |
 | Invalid, typed text | The problem line appears under the input and the input gets `aria-invalid="true"`. Inside a `Field` its border turns `--danger-solid`; outside one the border does not change, because that rule is `Field`'s. The line shows after the person leaves the input or presses Enter, never while they type. It also shows at once when the value passed in is not a date and, in a `DateInput` used alone, when it is a date the bounds refuse. |
 | Invalid, set value | `DateField` only. A value that is outside the bounds or blocked, or an `error` from the caller, shows in the error line of `Field`, with `remedy` after it. The typed-text line never carries `remedy`. |
@@ -160,7 +166,8 @@ move onto a blocked day.
 | Quick pick | `button` | Its text: the label, the date it stands for and the reason. | `aria-pressed`. When it cannot be used: `aria-disabled="true"`, the field's hint and error lines as its description, and `disabledReason` as its `title`. |
 | Calendar button | `button` | Message `uiDate.calendar.open`. | The same description as the input, less the problem line. The library sets `aria-expanded` on it. |
 | Calendar popover | `dialog` | Message `uiDate.calendar.label`. | Nothing. |
-| Month buttons | `button` | Messages `uiDate.calendar.previous` and `uiDate.calendar.next`. | Nothing the family sets. |
+| Calendar | `application` | The calendar's label, message `uiDate.calendar.label`, then the visible month. The library joins them. | Nothing. |
+| Month buttons | `button` | Messages `uiDate.calendar.previous` and `uiDate.calendar.next`. | Nothing the family sets. The library disables one natively at a bound: see States. |
 | Day | `button` inside a `gridcell` | The full date with its weekday, written by the library in the app's locale. | `aria-disabled="true"` on a day outside the bounds and on a blocked day. `aria-selected` on the cell of the selected day. |
 | Weekend button | `button` | Message `uiDate.weekend.use`, which names the day it changes to. | Nothing. |
 
@@ -172,13 +179,24 @@ What is announced:
 - The error line of `Field` is not a live region. A set value that turns invalid is read as the input's
   description when the input has focus, and is not announced.
 - The weekend suggestion is not a live region. It appears without an announcement.
+- When a month button changes the visible month, the library announces the new month through its live
+  announcer. It does not do so when the month changes while focus is in the grid.
+- The library also has an announcement for a newly selected date. A pick closes the calendar in the same step,
+  and whether that announcement is ever made here was not confirmed.
 - The visible month heading is hidden from assistive technology. The library writes a visually hidden heading
-  with the calendar's name in its place.
+  with the calendar's label and the visible month in its place.
 
 Known gaps:
 
+- The day marked as today shows no focus look unless it is the selected day: see States. With no date set, the
+  calendar opens with focus on the day the `today` prop names, or on the nearest bound. When that is the day the
+  browser calls today, the focused day cannot be told from an unfocused one.
 - A blocked day has no look: see States.
-- A disabled calendar button has no disabled look: see States.
+- A disabled calendar button and a disabled month button have no disabled look: see States.
+- `onInvalid` is not called when the date is set from outside the input: by a quick pick, by the weekend button
+  or by the caller. A form that holds its save on that flag alone stays held after a refused entry is replaced
+  that way.
+- The weekend button sets the next Monday without checking the bounds or the blocked dates.
 - A chosen quick pick differs from the others by colour only: border, fill and text. `aria-pressed` exposes it.
 - Every calendar button has the same name. It does not include the field's label, so two date fields on a page
   have two buttons that are told apart only by their description, which is empty when the field has no hint and
@@ -195,13 +213,13 @@ The WCAG 2.2 criteria that apply:
 | 1.4.3 Contrast (Minimum), 1.4.11 Non-text Contrast | Every colour is a token; none is written in the family. Control edges are `--control-border`. |
 | 2.1.1 Keyboard | Everything the pointer can do, the keyboard can do. A date can always be typed without the calendar. |
 | 2.4.3 Focus Order | Opening the calendar moves focus into it, and closing it returns focus to the calendar button. |
-| 2.4.7 Focus Visible | The focus looks under States. |
+| 2.4.7 Focus Visible | The focus looks under States. Not met for the day marked as today while it is not selected: it shows no focus look. See the gaps. |
 | 2.5.8 Target Size (Minimum) | The calendar button, the month buttons and the days are 44 px. A quick pick is at least 32 px high. The input is 40 px high. |
 | 3.3.1 Error Identification | The refused text is named in words: the month or the day that does not exist, a shape that is not a date, a date outside the bounds, a blocked date. |
 | 3.3.2 Labels or Instructions | The visible label, the placeholder that shows the shape of a date, and the hint line with the bounds and their reasons. |
 | 3.3.3 Error Suggestion | The format error names the shape to type. A bound's reason is the caller's, through `minFrom`, `minReason` and `maxReason`. The weekend suggestion offers the next Monday. |
 | 4.1.2 Name, Role, Value | The table above. |
-| 4.1.3 Status Messages | The problem line and the failed-to-load message are alerts. The error line of `Field` and the weekend suggestion are not announced. |
+| 4.1.3 Status Messages | The problem line and the failed-to-load message are alerts. The library announces the new month when a month button changes it. The error line of `Field` and the weekend suggestion are not announced. |
 
 What the gallery shows of this family:
 
