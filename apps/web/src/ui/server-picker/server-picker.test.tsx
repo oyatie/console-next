@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { AxeBuilder } from "@axe-core/playwright";
-import { chromium, expect as expectElement, type Browser, type Page } from "@playwright/test";
+import { expect as expectElement, type Browser, type Page } from "@playwright/test";
+import { browserEngine } from "../../lib/browser-test";
+import { throttleCPU } from "../../../../../e2e/helpers/cpu-throttle";
 import type { ViteDevServer } from "vite";
 import { pickerTestServer } from "./browser-test";
 import { afterAll, beforeAll, expect, test } from "vitest";
@@ -55,11 +57,12 @@ beforeAll(async () => {
         }
         createRoot(document.getElementById('root')).render(h(Picker));
       `);
-  browser = await chromium.launch();
+  browser = await browserEngine().launch();
   page = await (await browser.newContext()).newPage();
   page.setDefaultTimeout(15000);
   await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
   await page.getByRole("combobox", { name: "Person" }).waitFor();
+  await throttleCPU(page);
 }, 60_000);
 
 afterAll(async () => { await browser?.close(); await server?.close(); });
@@ -75,6 +78,16 @@ test("an open picker passes axe in both themes and preserves existing inert rest
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
     expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
   }
+  // Deliver pre-click scrolling during the press, as can happen on a busy renderer.
+  await page.evaluate(() => {
+    let scrollTarget: EventTarget | null = null;
+    const deferScroll = (event: Event) => { event.stopImmediatePropagation(); scrollTarget = event.target; };
+    window.addEventListener("scroll", deferScroll, true);
+    window.addEventListener("pointerup", () => {
+      window.removeEventListener("scroll", deferScroll, true);
+      scrollTarget?.dispatchEvent(new Event("scroll"));
+    }, { once: true, capture: true });
+  });
   await page.getByRole("option", { name: "Namesake · HR" }).click();
   await expectElement(input).toHaveAttribute("aria-expanded", "false");
   await expectElement(page.getByRole("option").first()).toBeHidden();
@@ -248,4 +261,21 @@ test("a custom person label shows its employee number only once", async () => {
   await page.getByRole("combobox", { name: "Person" }).fill("Coded");
   const option = page.getByRole("option", { name: "Coded · E-3" });
   expect((await option.textContent())?.match(/E-3/g)).toHaveLength(1);
+}, 10000);
+
+test.each([320, 390, 1280])("a viewport-wide picker does not scroll the page to select an option at %i px", async (width) => {
+  const viewport = page.viewportSize()!;
+  try {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+    const input = page.getByRole("combobox", { name: "Person" });
+    await input.fill("Namesake");
+    await expectElement(page.locator(".popover")).toBeInViewport({ ratio: 1 });
+    await page.getByRole("option", { name: "Namesake · HR" }).click();
+    await expectElement(page.locator("#selected")).toHaveText("a");
+    await expectElement(input).toHaveAttribute("aria-expanded", "false");
+    expect(await page.evaluate(() => window.scrollX)).toBe(0);
+  } finally {
+    await page.setViewportSize(viewport);
+  }
 }, 10000);
