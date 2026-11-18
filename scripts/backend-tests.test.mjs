@@ -429,6 +429,24 @@ test("database wall-clock budgets reserve every test slot without excluding case
   assert.equal(budget[2], "num-test-threads");
 });
 
+test("cluster-wide role mutators and console_app migrations share exclusive execution", () => {
+  const config = readFileSync(new URL("../.config/nextest.toml", import.meta.url), "utf8");
+  const group = config.split("[[profile.default.overrides]]")[1].split("[profile.ci]")[0];
+  assert.match(group, /test-group = 'cluster-global'/);
+  assert.match(group, /threads-required = "num-test-threads"/);
+  for (const name of [
+    "leave_migration_expand_contract", "key_revision_migration_upgrade",
+    "attendance_console_migration_contract", "apalis_adapter", "apalis_schema_contract",
+    "apalis_runtime_release", "group_of_one_expand_contract",
+    "definitions_migrated_by_console_app_are_read_only_for_runtime",
+    "placement_migrations_run_as_console_app", "console_app_may_set_its_own_lock_timeout_default",
+    "status_worker_age_is_queue_scoped_read_only_and_missing_is_unknown",
+    "status_public_evidence_answers_aggregate_age_only_beside_tenant_data",
+    "serving_pool_rejects_overrides_and_restores_role_defaults_after_release",
+  ]) assert.ok(group.includes(name), `${name} must share the exclusive role group`);
+  assert.match(config, /\[test-groups\.cluster-global\]\s+max-threads = 1/);
+});
+
 test("PostgreSQL provisioning exports matching random fixture credentials and refuses initialization failures", () => {
   const job = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8")).jobs["db-tests"];
   const init = job.steps.find(step => step.name === "Provision PostgreSQL test roles");
