@@ -244,7 +244,6 @@
   "unused-export:apps/web/src/ui/setup-rail/setup-rail.tsx:SetupState": 1,
   "unused-export:apps/web/src/ui/skeleton/skeleton.tsx:Bone": 1,
   "unused-export:apps/web/src/ui/step-line/step-line.tsx:Step": 1,
-  "unused-export:apps/web/src/ui/timeline-lanes/timeline-line.tsx:TimelineLineProps": 1,
   "unused-export:e2e/auth.ts:Authenticator": 1,
   "unused-export:e2e/chaos.ts:Fault": 1,
   "unused-export:e2e/console-guard.ts:DOM_NESTING": 1,

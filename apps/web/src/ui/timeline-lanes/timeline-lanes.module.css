@@ -28,7 +28,6 @@
 .diff dd { margin: 0; overflow-wrap: anywhere; }
 .long { display: inline-block; max-width: 100%; white-space: pre-wrap; }
 .long summary { min-height: var(--target); cursor: pointer; color: var(--info-tx); }
-.retention { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .empty { padding: var(--space-4); text-align: center; color: var(--steel); font-size: var(--text-sm); }
 .error { padding: var(--space-3); color: var(--danger-solid); font-size: var(--text-sm); }
 .loading { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
