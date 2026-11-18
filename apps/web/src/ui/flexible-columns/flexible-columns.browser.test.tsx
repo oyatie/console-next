@@ -230,8 +230,8 @@ for (const enterOnCommit of [false, true]) columnTest(`J/K and arrow keys move t
   await element(page.locator("main")).toHaveAttribute("data-opened", "b");
 }, enterOnCommit ? "?enterOnCommit" : "");
 
-for (const width of [1440, 1024]) for (const depth of [1, 2]) {
-  columnTest(`rightmost full pane at ${width}px depth ${depth}: toggle, keys, restore then close`, width, async page => {
+for (const width of [1440, 1024]) for (const depth of [1, 2]) for (const close of ["Escape", "button"]) {
+  columnTest(`rightmost full pane at ${width}px depth ${depth}: restore and close by ${close}`, width, async page => {
     const row = page.getByRole("button", { name: "직원 A", exact: true });
     await row.click();
     const record = recordColumn(page);
@@ -249,25 +249,23 @@ for (const width of [1440, 1024]) for (const depth of [1, 2]) {
     if (depth === 2) await element(record).toBeHidden();
     const root = (await page.locator("[data-flexible-columns]").boundingBox())!;
     expect((await pane.boundingBox())!.width).toBeCloseTo(root.width, 0);
-    for (const key of ["j", "k", "ArrowDown", "ArrowUp"]) await toggle.press(key);
-    await element(page.locator("main")).toHaveAttribute("data-selected", "a");
-    await toggle.press("Escape");
+    if (close === "Escape") {
+      for (const key of ["j", "k", "ArrowDown", "ArrowUp"]) await page.keyboard.press(key);
+      await element(page.locator("main")).toHaveAttribute("data-selected", "a");
+      await page.keyboard.press("Escape");
+    } else {
+      await toggle.click();
+    }
     await element(toggle).toHaveAttribute("aria-pressed", "false");
     await element(toggle).toBeFocused();
     await element(record).toBeVisible();
     await element(page.getByRole("separator")).toHaveCount(depth);
-    await toggle.press("Escape");
-    await element(pane).toHaveCount(0);
-    await element(depth === 2 ? unit : row).toBeFocused();
-
-    if (depth === 1) await row.click();
-    else await unit.click();
-    await toggle.click();
-    await toggle.click();
-    await element(toggle).toHaveAttribute("aria-pressed", "false");
-    await element(toggle).toBeFocused();
-    await toggle.click();
-    await pane.getByRole("button", { name: depth === 2 ? "연관 항목 닫기" : "직원 상세 닫기", exact: true }).click();
+    if (close === "Escape") {
+      await page.keyboard.press("Escape");
+    } else {
+      await toggle.click();
+      await pane.getByRole("button", { name: depth === 2 ? "연관 항목 닫기" : "직원 상세 닫기", exact: true }).click();
+    }
     await element(pane).toHaveCount(0);
     await element(page.locator("[data-flexible-columns]")).not.toHaveAttribute("data-full");
     await element(depth === 2 ? unit : row).toBeFocused();
