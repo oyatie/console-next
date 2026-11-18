@@ -145,6 +145,7 @@ export function verifyJUnit(xml, expected) {
 
 export function collectDatabaseResults(plan, reports) {
   assert.equal(plan.version, 1, "invalid database plan");
+  assert.ok(plan.tests.length, "zero database tests planned");
   const expected = plan.shards.flatMap((shard) => shard.tests);
   assert.deepEqual(expected.map(identity).sort(), plan.tests.map(identity).sort(), "database plan identities differ");
   let tests = 0, failures = 0, errors = 0;
@@ -210,7 +211,7 @@ const summary = (text, env = process.env) => {
 function cli() {
   const args = process.argv.slice(2);
   if (args[0] === "--collect") {
-    assert.ok(args.length >= 3, "usage: --collect <results-directory> <timings-output> [junit...]");
+    assert.ok(args.length === 3, "usage: --collect <results-directory> <timings-output>");
     return { collect: args.slice(1) };
   }
   let database = false, shard = "1/1", timings;
@@ -234,17 +235,20 @@ function main() {
   const root = path.resolve(import.meta.dirname, "..");
   const command = cli();
   if (command.collect) {
-    const [directory, output, ...reports] = command.collect;
+    const [directory, output] = command.collect;
     const plans = globSync("db-test-results-*/plan.json", { cwd: directory })
       .map(file => JSON.parse(readFileSync(path.join(directory, file), "utf8")));
     assert.ok(plans.length, "no database shard plan found");
     for (const plan of plans) assert.deepEqual(
       plan.tests.map(identity).sort(), plans[0].tests.map(identity).sort(), "database shard plans differ",
     );
-    const result = collectDatabaseResults(plans[0], reports.map((file) => readFileSync(file, "utf8")));
+    const reports = globSync("db-test-results-*/junit-*.xml", { cwd: directory })
+      .map(file => readFileSync(path.join(directory, file), "utf8"));
+    const result = collectDatabaseResults(plans[0], reports);
     mkdirSync(path.dirname(output), { recursive: true });
     writeFileSync(output, JSON.stringify(result.timings, null, 2) + "\n");
     summary(`Database JUnit verified: ${result.counts.tests} run, ${result.counts.passed} passed, ${result.counts.failed} failed; every planned shard accounted for.`);
+    if (result.counts.failed !== 0) process.exitCode = 1;
     return;
   }
   const env = { ...process.env, SQLX_OFFLINE: "true" };

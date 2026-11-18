@@ -333,6 +333,9 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   assert.match(run.run, /--timings/);
   assert.equal(dbWorkflow.jobs["db-test-timings"].needs, "db-tests");
   assert.equal(dbWorkflow.jobs["db-test-timings"].if, "${{ always() && needs.db-tests.result != 'cancelled' }}");
+  const steps = dbWorkflow.jobs["db-test-timings"].steps;
+  const timings = steps.find(step => step.with?.name === "db-test-timings");
+  assert.equal(timings.if, `\${{ !cancelled() && hashFiles('${timings.with.path}') != '' }}`);
   assert.deepEqual(dbWorkflow.permissions, {});
   const results = job.steps.find(step => step.with?.name === "db-test-results-${{ matrix.shard }}");
   assert.equal(results.if, "${{ !cancelled() }}");
@@ -469,6 +472,31 @@ test("timing artifacts come only from this workflow's own dev push and nightly r
   assert.ok(job.steps.findIndex(s => s.uses?.startsWith("actions/checkout@")) < job.steps.indexOf(step));
 });
 
+test("database collection requires exactly the results directory and timings output", () => {
+  const script = fileURLToPath(new URL("./backend-tests.mjs", import.meta.url));
+  for (const args of [["results"], ["results", "timings.json", "junit.xml"]]) {
+    const result = spawnSync(process.execPath, [script, "--collect", ...args], { encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /usage: --collect/);
+  }
+});
+
+test("database reconciliation refuses a plan with zero tests", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "database-results-"));
+  try {
+    const shard = path.join(root, "db-test-results-1");
+    mkdirSync(shard);
+    writeFileSync(path.join(shard, "plan.json"), JSON.stringify({ version: 1, tests: [], shards: [] }));
+    const output = path.join(root, "timings.json");
+    const result = spawnSync(process.execPath, [
+      fileURLToPath(new URL("./backend-tests.mjs", import.meta.url)), "--collect", root, output,
+    ], { encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /zero database tests/);
+    assert.ok(!existsSync(output));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test("database reconciliation uses any available shard plan and refuses incomplete or conflicting evidence", () => {
   const root = mkdtempSync(path.join(tmpdir(), "database-results-"));
   const ids = [["binary", "one"], ["binary", "two"]];
@@ -501,9 +529,11 @@ test("database reconciliation uses any available shard plan and refuses incomple
     assert.ok(!existsSync(output));
     writeFileSync(firstReport, junit([ids[0]], "<failure/>", 1));
     result = run();
-    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.match(result.stdout, /2 run, 1 passed, 1 failed/);
+    assert.deepEqual(Object.keys(JSON.parse(readFileSync(output)).tests), ids.map(id => JSON.stringify(id)));
     rmSync(output);
+    writeFileSync(firstReport, junit([ids[0]]));
     const firstPlan = path.join(results, "db-test-results-1/plan.json");
     writeFileSync(firstPlan, JSON.stringify({ ...plan, tests: [...ids].reverse(), shards: [...plan.shards].reverse() }));
     result = run();
@@ -522,12 +552,6 @@ test("database reconciliation uses any available shard plan and refuses incomple
     assert.ok(!existsSync(output));
     rmSync(firstReport);
     rmSync(path.join(results, "db-test-results-2/junit-featured.xml"));
-    writeFileSync(planFile, JSON.stringify({ version: 1, tests: [], shards: [] }));
-    result = run();
-    assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.match(result.stdout, /0 run, 0 passed, 0 failed/);
-    assert.deepEqual(JSON.parse(readFileSync(output)), { version: 1, tests: {} });
-    rmSync(output);
     writeFileSync(planFile, JSON.stringify(plan));
     result = run();
     assert.notEqual(result.status, 0);
