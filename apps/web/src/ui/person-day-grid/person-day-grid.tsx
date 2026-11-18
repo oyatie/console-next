@@ -115,8 +115,9 @@ export function PersonDayGrid<R>(p: Props<R>) {
     else if (bottom > el.scrollTop + el.clientHeight) el.scrollTop = bottom - el.clientHeight;
   }, [focusRow, rowHeight]);
   // Sideways the sticky lead columns cover the left of the box and the held totals the right: a column is in view
-  // between them. It is read from the head row, which is always drawn. A press on a lead cell selects its row with
-  // the focus on the last day, and the box stays where the person has it.
+  // between them. It is read from the head row, which is always drawn. It follows every range that is set, not only
+  // a new column: the box may have been scrolled away by hand since. A press on a lead cell selects its row with the
+  // focus on the last day, and the box stays where the person has it.
   const focusCol = f?.c, editing = !!p.editing, rowPress = useRef(false);
   useEffect(() => {
     const el = box.current;
@@ -129,7 +130,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
     else if (day.right > until) el.scrollLeft += Math.min(day.right - until, day.left - from);
     // An editor opening is not read above, but it widens its column, which is.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [focusCol, editing, leads, tails]);
+  }, [p.range, focusCol, editing, leads, tails]);
   useEffect(() => {
     const up = () => (setDrag(false), rowPress.current = false);
     window.addEventListener("pointerup", up);

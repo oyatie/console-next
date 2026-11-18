@@ -399,3 +399,41 @@ test.each([[1000, 12], [640, 7]])("moving the active cell sideways keeps it in v
   await expect.poll(() => activeShows(grid)).toBe("in view");
   await element(grid.locator('td[aria-selected="true"]')).toHaveCount(1);
 });
+
+test("a key that keeps the active cell's column brings it back into view after the box was moved without it", async () => {
+  const grid = await month("?w=1000");
+  const box = grid.locator(".."), scrollTo = (left: number) => box.evaluate((el, to) => { el.scrollLeft = to; }, left);
+  await grid.focus();
+  // On day 1 with the box scrolled away by hand: a move down, then two keys with nowhere further to go.
+  for (const [key, cell] of [["ArrowDown", "1,0"], ["ArrowLeft", "1,0"], ["Home", "1,0"]] as const) {
+    await scrollTo(500);
+    await page.keyboard.press(key);
+    await expect.poll(active).toBe(cell);
+    await expect.poll(() => activeShows(grid), { message: key }).toBe("in view");
+  }
+  // On day 31 with the box scrolled back to the start.
+  await page.keyboard.press("End");
+  for (const [key, cell] of [["ArrowDown", "2,30"], ["Shift+ArrowDown", "3,30"]] as const) {
+    await scrollTo(0);
+    await page.keyboard.press(key);
+    await expect.poll(active).toBe(cell);
+    await expect.poll(() => activeShows(grid), { message: key }).toBe("in view");
+  }
+  // A press on a person's number leaves the box where it is; the next key is followed.
+  await scrollTo(0);
+  await grid.getByText("1002", { exact: true }).click();
+  expect(await active()).toBe("1,30");
+  expect(await box.evaluate(el => el.scrollLeft)).toBe(0);
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(active).toBe("2,30");
+  await expect.poll(() => activeShows(grid)).toBe("in view");
+  // So is the key after a press on a number that the browser cancelled (a touch that became a pan).
+  await scrollTo(0);
+  const number = grid.getByText("1004", { exact: true });
+  await number.dispatchEvent("pointerdown");
+  await number.dispatchEvent("pointercancel");
+  await expect.poll(active).toBe("3,30");
+  await page.keyboard.press("ArrowLeft");
+  await expect.poll(active).toBe("3,29");
+  await expect.poll(() => activeShows(grid)).toBe("in view");
+});
