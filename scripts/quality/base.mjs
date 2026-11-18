@@ -28,7 +28,7 @@ export function qualityRef(root) {
 
 // Git distinguishes a missing path from an invalid base; unknown evidence must not become green.
 export function atBase(root, base, file) {
-  const git = (args) => spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  const git = (args) => spawnSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const valid = git(["rev-parse", "--verify", `${base}^{commit}`]);
   if (valid.status !== 0) throw new Error(`quality: cannot resolve base ${base}: ${valid.stderr}`);
   const list = git(["ls-tree", "--name-only", base, "--", file]);

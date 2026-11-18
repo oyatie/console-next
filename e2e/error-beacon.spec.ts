@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, vendorPage, unique, tenantSlugField } from "./flows";
@@ -55,6 +56,14 @@ test("an app that never renders is reported by the boot watchdog after 15 s", as
   const got = beacons(page);
   await page.clock.install();
   // The entry loads but renders nothing (no error either): only the watchdog can see it.
+  // Keep the document's SRI pin consistent with the empty test entry in served builds.
+  await page.route("**/login", async route => {
+    const response = await route.fetch();
+    const integrity = `sha384-${createHash("sha384").update("").digest("base64")}`;
+    const body = (await response.text()).replace(/<script\b[^>]*\btype="module"[^>]*>/g,
+      tag => tag.replace(/\bintegrity="[^"]*"/, `integrity="${integrity}"`));
+    await route.fulfill({ response, body });
+  });
   await page.route((u) => ENTRY.test(u.pathname), (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: "" }));
   await page.goto("/login");
   await page.clock.fastForward(14_000);
