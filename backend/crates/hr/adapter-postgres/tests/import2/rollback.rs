@@ -246,6 +246,9 @@ mod rollback_1_journey;
 #[path = "rollback_2_journey.rs"]
 mod rollback_2_journey;
 
+#[path = "rollback_birth_mask.rs"]
+mod rollback_birth_mask;
+
 #[path = "rollback_3_journey.rs"]
 mod rollback_3_journey;
 

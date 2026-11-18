@@ -9,6 +9,41 @@ use console_action_inbox_application::{
     canonical_action_link_kind, list_complete_action_inbox,
 };
 use console_kernel_core::ErrorKind;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+struct WorkbenchSources<'a> {
+    sources: &'a PgActionInboxSources,
+    todos_unavailable: AtomicBool,
+}
+
+impl ActionInboxSourcePort for WorkbenchSources<'_> {
+    fn deadline_due_soon_days(&self) -> Result<i64, KernelError> {
+        self.sources.deadline_due_soon_days()
+    }
+
+    fn list_source_page(
+        &self,
+        source: ActionInboxSource,
+        query: ActionInboxSourceQuery,
+    ) -> ActionInboxSourceFuture<'_> {
+        Box::pin(async move {
+            match self.sources.list_source_page(source, query).await {
+                Err(_)
+                    if matches!(
+                        source,
+                        ActionInboxSource::TodoAssigned | ActionInboxSource::TodoRequested
+                    ) =>
+                {
+                    // The workbench reports this dependency failure on its todo source.
+                    self.todos_unavailable.store(true, Ordering::Relaxed);
+                    Ok(empty_source_page())
+                }
+                result => result,
+            }
+        })
+    }
+}
+
 /// Reuses the native action-inbox application boundary for the aggregate
 /// workbench. The workbench must not query source tables or reproduce source
 /// authorization; it only narrows the already-authorized projection into its
@@ -61,9 +96,14 @@ pub(crate) async fn read_workbench_action_inbox(
         snoozes: Snoozes::new(snoozed, SnoozeMode::Exclude, as_of),
         log_access: true,
     };
+    let sources = WorkbenchSources {
+        sources: &sources,
+        todos_unavailable: AtomicBool::new(false),
+    };
     let page = list_complete_action_inbox(&sources, as_of)
         .await
         .map_err(workbench_complete_source_error)?;
+    let todos_unavailable = sources.todos_unavailable.load(Ordering::Relaxed);
     let items = page
         .items
         .into_iter()
@@ -73,6 +113,7 @@ pub(crate) async fn read_workbench_action_inbox(
         as_of,
         total: page.total,
         items,
+        todos_unavailable,
     })
 }
 

@@ -21,12 +21,11 @@ console-platform-jobs = { workspace = true }
 console-platform-request-context = { workspace = true }
 console-platform-push = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
-sqlx = { workspace = true }
-thiserror = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
-uuid = { workspace = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+serde_json = { workspace = true }

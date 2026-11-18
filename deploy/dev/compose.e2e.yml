@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 # Existing E2E images only; no production ingress, telemetry or mail services.
+# The launcher adds compose.startup.yml on Engine 25+ / Compose 2.20.2+.
+# Older versions retain these safe intervals but can take 30s to report readiness.
 services:
   postgres:
     image: postgres:18.4@sha256:65f70a152846cf504dff86e807007e9aeac98c3aeb7b62541b2c55ab9d264e56
@@ -19,9 +21,10 @@ services:
       - ./postgres-init.sh:/docker-entrypoint-initdb.d/10-console.sh:ro
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
-      interval: 1s
-      timeout: 5s
-      retries: 60
+      interval: 30s
+      timeout: 2s
+      retries: 1
+      start_period: 60s
   seaweedfs:
     image: chrislusf/seaweedfs:4.32@sha256:bcfb7aac11928f314e0032d68275b7166222987f72b60dafeac71ede5d2a38a4
     entrypoint: [/bin/sh, -ec]
@@ -39,9 +42,10 @@ services:
       - objects-data:/data
     healthcheck:
       test: [CMD-SHELL, 'wget -q -O /dev/null http://127.0.0.1:8333/status']
-      interval: 1s
-      timeout: 5s
-      retries: 60
+      interval: 30s
+      timeout: 2s
+      retries: 1
+      start_period: 60s
 volumes:
   postgres-data:
   objects-data:

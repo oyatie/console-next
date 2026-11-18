@@ -5,7 +5,6 @@ import { ChipChoice } from "../../../ui/choice/chip-choice";
 import { DateInput } from "../../../ui/date/date-input";
 import { TextInput } from "../../../ui/field/field";
 import { useAddressSearch } from "../../../reference/entity/ui/use-address-search";
-import { maskedAddress } from "../domain/card";
 import { CATALOG_FIELD, CATALOG_KIND, type FixField } from "../domain/fix";
 import type { Draft } from "./use-fix-draft";
 import { focusOnce } from "../../../lib/react/focus-once";
@@ -38,7 +37,7 @@ export function FixValue({ c, field, value, onChange, focus }: { c: Card; field:
         hits={search.hits}
         loading={search.loading}
         problem={search.problem}
-        printed={c.register.data?.address ? maskedAddress(c.register.data.address) : undefined}
+        printed={c.register.data?.address ?? undefined}
       />
     );
   if (field.endsWith("date")) return <DateInput label={name} required value={typeof value === "string" ? value : ""} onDraftChange={onChange} onChange={onChange} inputRef={focus ? focusOnce : undefined} />;

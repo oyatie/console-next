@@ -659,7 +659,7 @@ test("shell and common have no glossary or standing-prose debt", async () => {
     const entries = copyEntries(file, readFileSync(path.join(root, file), "utf8")).filter((e) => /^(shell|common)\./.test(e.id));
     expect(checkTerms(entries, []), file).toEqual([]);
   }
-  const shared = copyEntries("boot.ts", readFileSync(path.join(root, "packages/i18n/src/catalogs/boot.ts"), "utf8"));
+  const shared = files.flatMap(file => copyEntries(file, readFileSync(path.join(root, file), "utf8")));
   expect(shared.find((e) => e.id === "shell.jumpLabel")?.text).toBe("검색·이동");
   expect(shared.find((e) => e.id === "shell.jump")?.text).toMatch(/^검색·이동/);
   expect(shared.find((e) => e.id === "common.denied.granters")?.text).toContain("권한을 부여할 수 있는 담당자");

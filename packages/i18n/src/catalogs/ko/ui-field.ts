@@ -2,8 +2,6 @@
 // the example prefix and the 자동 tag on server-computed values. Rules: the header of ../ko.ts.
 import type { enUiField } from "../en/ui-field";
 export const koUiField: Record<keyof typeof enUiField, string> = {
-  "uiField.required": "필수",
-  "uiField.optional": "선택 사항",
   "uiField.valueMissing": "필수 항목입니다.",
   "uiField.typeMismatch": "올바른 형식으로 입력하십시오.",
   "uiField.patternMismatch": "지정된 형식에 맞게 입력하십시오.",

@@ -4,7 +4,6 @@ import { fmtDate } from "@console/i18n/format";
 import { EMPLOYMENT_TYPE, label } from "../../../lib/labels";
 import type { AddressValue } from "../../../ui/address-field/address-field";
 import { jobTitlesQuery, type CorrectionChanges } from "../api";
-import { fullAddress } from "../domain/card";
 import { CATALOG_FIELD, correctionField, normalizeDate, type FixField } from "../domain/fix";
 import { tx } from "../present";
 import type { Card } from "./use-card";
@@ -12,10 +11,14 @@ import type { Card } from "./use-card";
 /** A typed new value: text or a date, a pick, or an address from the search. */
 export type Draft = string | AddressValue | null;
 
-/** A field's value now, raw (for the change) and as shown in the sheet (dates formatted, the address in full to its fixer). */
+/**
+ * A field's value now, raw (for the change) and as shown in the sheet (dates formatted). Birth date and address arrive
+ * as the server's mask and are shown as is: with no raw value, any typed value is a change.
+ */
 export function currentOf(c: Card, field: FixField): { raw: string | null; text: string } {
   const r = c.register.data;
   const date = (d: string | null | undefined) => ({ raw: d ?? null, text: d ? fmtDate(d) : t("empCard.missing") });
+  const masked = (m: string | null | undefined) => ({ raw: null, text: m ?? t("empCard.missing") });
   switch (field) {
     case "grade": case "position": case "title": case "family": {
       const id = c.d.classification[CATALOG_FIELD[field]];
@@ -23,12 +26,12 @@ export function currentOf(c: Card, field: FixField): { raw: string | null; text:
     }
     case "name": return { raw: c.e.name, text: c.e.name };
     case "employee_number": return { raw: c.e.employee_number ?? null, text: c.e.employee_number ?? t("empCard.missing") };
-    case "birth_date": return date(c.facts.data?.birth_date);
+    case "birth_date": return masked(c.facts.data?.birth_date);
     case "hire_date": return date(c.e.hire_date);
     case "group_service_start_date": return date(c.personal.data?.group_service_start_date);
     case "probation_end_date": return date(c.facts.data?.employment?.probation_end_date);
     case "sex": return { raw: r?.sex ?? null, text: r?.sex ? t(`empCard.sex.${r.sex}`) : t("empCard.missing") };
-    case "address": return { raw: r?.address ? fullAddress(r.address) : null, text: r?.address ? fullAddress(r.address) : t("empCard.missing") };
+    case "address": return masked(r?.address);
     case "employment_type": return { raw: c.d.employment?.employment_type ?? null, text: c.d.employment?.employment_type ? label(EMPLOYMENT_TYPE, c.d.employment.employment_type) : t("empCard.missing") };
     case "job": return { raw: c.e.job ?? null, text: c.e.job ?? t("empCard.missing") };
     default: return { raw: c.e.position ?? null, text: c.e.position ?? t("empCard.missing") };

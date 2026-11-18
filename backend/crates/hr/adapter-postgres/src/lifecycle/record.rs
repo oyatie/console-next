@@ -43,54 +43,87 @@ pub async fn apply_lifecycle_head<'c, H: LifecycleApplyHooks<sqlx::Transaction<'
         .await
         .map_err(super::title_reason::coded)?;
     // The canonical Employment owner holds the employee DML.
-    employment::apply_employment_change(
-        tx,
-        org_uuid,
-        employee_id,
-        employment::EmploymentChange {
-            company: &target.company,
-            org_unit: target.org_unit.as_deref(),
-            position: target.position.as_deref(),
-            employment_status: &transition.to_status,
-            effective_date: &transition.effective_date,
-        },
-    )
-    .await?;
-    employment_job_title::bump_head_version(tx, org_uuid, employee_id).await?;
-    if transition.event_type == "PROMOTE" {
-        employment_job_title::set_employee_job_title(
+    if transition.event_type == "APPOINT" {
+        employment::apply_appointment_heads_in_tx(
+            tx,
+            org_uuid,
+            &[(employee_id, appointment_head(transition, target)?)],
+        )
+        .await?;
+    } else {
+        employment::apply_employment_change(
             tx,
             org_uuid,
             employee_id,
-            target.job_title_id,
+            employment::EmploymentChange {
+                company: &target.company,
+                org_unit: target.org_unit.as_deref(),
+                position: target.position.as_deref(),
+                employment_status: &transition.to_status,
+                effective_date: &transition.effective_date,
+            },
         )
         .await?;
-    }
-    if let Some(binding) = target.rebind {
-        employment::set_employee_org_unit(tx, org_uuid, employee_id, binding, None).await?;
-    }
-    if let Some(to) = target.workplace {
-        let on = parse_yyyy_mm_dd(&transition.effective_date)?;
-        // A group transfer's assignments carry its event id as the group_transfer_id.
-        let group = (transition.event_type == "GROUP_TRANSFER").then_some(event_id);
-        apply_move(tx, (org_uuid, employee_id, actor), event_id, to, on, group).await?;
-    }
-    if let Some(contract_end_date) = transition.contract_end_date.as_deref() {
-        sqlx::query(
-            "UPDATE employee_employment_profiles SET contract_end_date = $3::DATE \
+        employment_job_title::bump_head_version(tx, org_uuid, employee_id).await?;
+        if transition.event_type == "PROMOTE" {
+            employment_job_title::set_employee_job_title(
+                tx,
+                org_uuid,
+                employee_id,
+                target.job_title_id,
+            )
+            .await?;
+        }
+        if let Some(binding) = target.rebind {
+            employment::set_employee_org_unit(tx, org_uuid, employee_id, binding, None).await?;
+        }
+        if let Some(to) = target.workplace {
+            let on = parse_yyyy_mm_dd(&transition.effective_date)?;
+            // A group transfer's assignments carry its event id as the group_transfer_id.
+            let group = (transition.event_type == "GROUP_TRANSFER").then_some(event_id);
+            apply_move(tx, (org_uuid, employee_id, actor), event_id, to, on, group).await?;
+        }
+        if let Some(contract_end_date) = transition.contract_end_date.as_deref() {
+            sqlx::query(
+                "UPDATE employee_employment_profiles SET contract_end_date = $3::DATE \
              WHERE org_id = $1 AND employee_id = $2",
-        )
-        .bind(org_uuid)
-        .bind(employee_id)
-        .bind(contract_end_date)
-        .execute(tx.as_mut())
-        .await?;
+            )
+            .bind(org_uuid)
+            .bind(employee_id)
+            .bind(contract_end_date)
+            .execute(tx.as_mut())
+            .await?;
+        }
+        apply_classification(tx, org_uuid, employee_id, &transition.event_type, target).await?;
     }
-    apply_classification(tx, org_uuid, employee_id, &transition.event_type, target).await?;
     hooks
         .after_apply(tx, &hook_event)
         .await
         .map_err(super::title_reason::coded)
+}
+
+pub(super) fn appointment_head<'a>(
+    transition: &'a NormalizedEmployeeLifecycleTransition,
+    target: &'a LifecycleTarget,
+) -> Result<employment::AppointmentHead<'a>, HrError> {
+    let classification = &target.classification;
+    Ok(employment::AppointmentHead {
+        valid_from: parse_yyyy_mm_dd(&transition.effective_date)?
+            .midnight()
+            .assume_offset(time::macros::offset!(+9)),
+        company: &target.company,
+        org_unit: target.org_unit.as_deref(),
+        position: target.position.as_deref(),
+        rebind: target.rebind,
+        employment_status: &transition.to_status,
+        classification: [
+            classification.grade_id,
+            classification.position_kind_id,
+            classification.job_id,
+            classification.job_family_id,
+        ],
+        job: classification.job.as_deref(),
+    })
 }
 
 /// Records one event and its audit using the default transactional hooks.

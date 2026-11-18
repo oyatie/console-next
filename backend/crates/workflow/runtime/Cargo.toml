@@ -13,8 +13,10 @@ console-workflow-domain = { workspace = true }
 console-platform-authz = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-time = { workspace = true }
 uuid = { workspace = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+time = { workspace = true }

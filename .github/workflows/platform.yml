@@ -104,6 +104,7 @@ jobs:
           CACHE_RETENTION_DB_TESTS_APPLY: ${{ vars.CACHE_RETENTION_DB_TESTS_APPLY }}
           CACHE_RETENTION_NPM_APPLY: ${{ vars.CACHE_RETENTION_NPM_APPLY }}
           CACHE_RETENTION_PLAYWRIGHT_APPLY: ${{ vars.CACHE_RETENTION_PLAYWRIGHT_APPLY }}
+          CACHE_RETENTION_STATES_TIMINGS_APPLY: ${{ vars.CACHE_RETENTION_STATES_TIMINGS_APPLY }}
           CACHE_RETENTION_CODEQL_APPLY: ${{ vars.CACHE_RETENTION_CODEQL_APPLY }}
           CACHE_RETENTION_BUILDKIT_APPLY: ${{ vars.CACHE_RETENTION_BUILDKIT_APPLY }}
         continue-on-error: true
@@ -112,7 +113,7 @@ jobs:
           script: |
             const {maintainCaches} = await import(`${process.env.GITHUB_WORKSPACE}/scripts/cache-retention.mjs`);
             const result = await maintainCaches(github, context, {
-              applyFamilies: ['backend', 'db-tests', 'npm', 'playwright', 'codeql', 'buildkit'].filter(
+              applyFamilies: ['backend', 'db-tests', 'npm', 'playwright', 'states-timings', 'codeql', 'buildkit'].filter(
                 family => process.env[`CACHE_RETENTION_${family.replaceAll('-', '_').toUpperCase()}_APPLY`] === 'true'),
             });
             await core.summary.addRaw(result.summary).write();
