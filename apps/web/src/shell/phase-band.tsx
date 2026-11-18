@@ -33,10 +33,10 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   const [settled, setSettled] = useState(() => deadlines.get(principal) === null);
   const decided = settled || (access.data !== undefined || access.failureCount > 0)
     && (access.data?.phase === "SETUP" || !q.isPending || q.failureCount > 0);
+  if (decided && !settled) setSettled(true);
   useEffect(() => {
     if (decided) {
       if (principal) deadlines.set(principal, null);
-      setSettled(true);
       return;
     }
     const until = deadlines.get(principal) ?? Date.now() + PHASE_HOLD_MS;
