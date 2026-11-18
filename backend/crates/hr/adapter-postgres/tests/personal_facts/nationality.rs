@@ -237,7 +237,8 @@ async fn country_upgrade_preserves_unknown_values_and_unrelated_corrections(pool
         migrations: Cow::Owned(
             console_platform_test_support::MIGRATOR
                 .iter()
-                .filter(|m| !m.description.contains("country nationality"))
+                // Later migrations depend on the country catalog; seed the pre-upgrade prefix only.
+                .take_while(|m| !m.description.contains("country nationality"))
                 .cloned()
                 .collect(),
         ),

@@ -2,6 +2,11 @@ import { expect, test } from "vitest";
 import { mergeRegistry, readRegistry } from "./standing-text-registry.mjs";
 import { ratchet } from "./check-standing-text.mjs";
 
+test("only an omitted registry ref reads the working tree", () => {
+  expect(() => readRegistry()).not.toThrow();
+  expect(() => readRegistry("")).toThrow("cannot read registry at :");
+});
+
 test("disjoint lanes merge reductions while the existing ratchet refuses raised pins", () => {
   const { baseline } = mergeRegistry({ a: 2, b: 3 }, {}, [["one", { baseline: { a: 1 } }], ["two", { baseline: { b: 2 } }]]);
   expect(baseline).toEqual({ a: 1, b: 2 });

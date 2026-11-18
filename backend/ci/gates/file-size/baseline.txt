@@ -5,7 +5,7 @@ app/src/collaboration.rs	1499
 app/src/hr.rs	3491
 app/src/objects.rs	2007
 app/src/office.rs	891
-app/src/workbench.rs	658
+app/src/workbench.rs	650
 app/src/workflow_object_context.rs	460
 app/src/workflow_studio.rs	7162
 app/tests/action_inbox_api.rs	877
@@ -49,7 +49,7 @@ app/tests/recruiting_pipeline_api.rs	767
 app/tests/registry_api.rs	577
 app/tests/search_api.rs	505
 app/tests/submittable_definitions_api.rs	385
-app/tests/workbench_native_api.rs	619
+app/tests/workbench_native_api.rs	588
 app/tests/workflow_four_eyes_publish.rs	967
 app/tests/workflow_object_context_api.rs	564
 app/tests/workflow_run_read_surface.rs	606
@@ -172,7 +172,7 @@ crates/ontology/canonical-adapter-postgres/src/job_position.rs	493
 crates/ontology/canonical-adapter-postgres/src/org_unit.rs	605
 crates/ontology/canonical-adapter-postgres/src/person.rs	429
 crates/ontology/canonical-adapter-postgres/tests/employment_effective_projection_as_runtime_role.rs	779
-crates/ontology/canonical-adapter-postgres/tests/employment_port_as_runtime_role.rs	2726
+crates/ontology/canonical-adapter-postgres/tests/employment_port_as_runtime_role.rs	2697
 crates/ontology/canonical-adapter-postgres/tests/job_position_port_as_runtime_role.rs	820
 crates/ontology/canonical-adapter-postgres/tests/org_unit_kinds_as_runtime_role.rs	356
 crates/ontology/canonical-adapter-postgres/tests/org_unit_port_as_runtime_role.rs	992
@@ -196,7 +196,7 @@ crates/payroll/adapter-postgres/src/pay_run.rs	525
 crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs	1190
 crates/payroll/adapter-postgres/tests/payroll_lifecycle_rls_as_runtime_role.rs	417
 crates/payroll/adapter-postgres/tests/payroll_rls_surfaces_as_runtime_role.rs	373
-crates/payroll/domain/src/lib.rs	1195
+crates/payroll/domain/src/lib.rs	1191
 crates/payroll/rest/src/lib.rs	336
 crates/payroll/rest/src/lifecycle.rs	609
 crates/payroll/rest/src/payslip_draft.rs	370
