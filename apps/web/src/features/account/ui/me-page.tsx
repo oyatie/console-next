@@ -6,7 +6,7 @@ import { SupportLookup } from "../../../lib/react/support-lookup";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
-import { claims, consentDocumentsQuery, consentQuery, meQuery, operatorMeQuery, passkeysQuery, type Me } from "../api";
+import { claims, meQuery, operatorMeQuery, passkeysQuery, type Me } from "../api";
 import { OpsRecoveryNotice } from "./ops-recovery-notice";
 import { ConsentCard } from "./consent-card";
 import { MyAccessCard } from "./my-access";
@@ -25,10 +25,7 @@ export function MePage({ locale }: { locale: ReactNode }) {
   // Wait for the passkey warning's facts so it never pushes the cards below it down after they are drawn.
   const keys = useQuery(passkeysQuery);
   const me = useQuery<Me>(vendor ? operatorMeQuery : meQuery);
-  const consent = useQuery(consentQuery);
-  const documents = useQuery(consentDocumentsQuery);
-  // Consent owns its failures; wait only for its first result so the cards below never shift.
-  const reads = { ...readGroup([keys, me]), isPending: [keys, me, consent, documents].some(q => q.isPending) };
+  const reads = readGroup([keys, me]);
   return (
     <div className={`page ${s.column}`}>
       <PageHead title={t("account.title")} />
