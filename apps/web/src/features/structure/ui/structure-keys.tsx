@@ -16,7 +16,7 @@ export function StructureKeys({ view }: { view: "chart" | "outline" }) {
   useKeys({ "structure.keys": () => setOpen(true) });
   const group = (id: "chart" | "outline", entries: typeof CHART_KEYS | typeof OUTLINE) => ({ id, title: t(`structure.view.${id}`), keys: entries.map(([command, keys]) => ({ keys: keys.map(keyLabel), what: t(`structure.shortcuts.${command}`) })) });
   return <>
-    <Button variant="ghost" aria-label={t("structure.shortcuts.title")} aria-keyshortcuts="Shift+/" onClick={() => setOpen(true)}><CircleHelp size={16} aria-hidden /></Button>
+    <Button variant="ghost" aria-label={t("structure.shortcuts.title")} aria-keyshortcuts={singleKeysOn() ? "Shift+/" : undefined} onClick={() => setOpen(true)}><CircleHelp size={16} aria-hidden /></Button>
     <KeyMap open={open} onClose={() => setOpen(false)} title={t("structure.shortcuts.title")} note={!singleKeysOn() && t("account.singleKeys.off")} groups={[...(view === "outline" ? [group("outline", OUTLINE)] : []), group("chart", CHART_KEYS)]} />
   </>;
 }
