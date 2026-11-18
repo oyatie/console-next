@@ -246,9 +246,9 @@ export function PersonDayGrid<R>(p: Props<R>) {
 
 /**
  * Sticky side columns stand side by side: each is held past the ones outside it, at an offset measured from the head
- * row (a column is as wide as what it holds) and set on the box for the styles. The lead columns are always held. The
- * totals are held from the outside in while a week of days stays in view between the two sides; in a narrower box the
- * inner ones, then all of them, scroll with the days.
+ * row (a column is as wide as what it holds) and set on the box for the styles. The lead columns are always held, and
+ * so is a total with no other beside it. Several totals are held from the outside in while a week of days stays in
+ * view between the two sides; in a narrower box the inner ones, then all of them, scroll with the days.
  */
 function placeSides(box: HTMLElement, leads: number, tails: number) {
   const widths = [...box.querySelector("thead tr")!.children].map((c) => c.getBoundingClientRect().width);
@@ -263,7 +263,7 @@ function placeSides(box: HTMLElement, leads: number, tails: number) {
   widths.slice(widths.length - tails).reverse().forEach((w, k) => {
     // Once one does not fit, none inside it is held.
     room = room >= w ? room - w : -Infinity;
-    set(`--tail-${k}`, room >= 0 ? `${right}px` : "auto");
+    set(`--tail-${k}`, room >= 0 || tails === 1 ? `${right}px` : "auto");
     right += w;
   });
 }

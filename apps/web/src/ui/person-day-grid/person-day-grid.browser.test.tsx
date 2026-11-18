@@ -21,11 +21,12 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage();
-  // A short box, and for `?row=` its own compact row height, set on a container the way a visual style would set it.
+  // A short box, for `?w=` a narrow one, and for `?row=` its own compact row height, set on a container the way a
+  // visual style would set it.
   await page.route("**/grid-test*", route => {
-    const query = new URL(route.request().url()).searchParams, row = query.get("row");
+    const query = new URL(route.request().url()).searchParams, row = query.get("row"), width = query.get("w");
     return route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Person-day grid</title>
-      <style>main { display: flex; flex-direction: column; height: ${Number(query.get("box") ?? 320)}px; ${row ? `--row-h-compact: ${Number(row)}px;` : ""} }</style>
+      <style>main { display: flex; flex-direction: column; height: ${Number(query.get("box") ?? 320)}px; ${width ? `width: ${Number(width)}px;` : ""} ${row ? `--row-h-compact: ${Number(row)}px;` : ""} }</style>
       <div id="root"></div><script type="module" src="${fixture}"></script></html>` });
   });
   // The month view in a box of `?w=` by `?h=` px: 31 days are wider than most boxes.
@@ -90,6 +91,24 @@ test("a box taller than 600 px is filled with rows before the first scroll", asy
   } finally {
     await page.setViewportSize({ width: 1280, height: 720 });
   }
+});
+
+// One total cannot lie on another, so it is held in a box of any width: a phone's, and one with no room for a week of days.
+test.each([390, 300])("a grid with one total column keeps it at the right edge of a %s px box", async width => {
+  await page.goto(`${server.resolvedUrls!.local[0]}grid-test?total&w=${width}`);
+  const grid = page.getByRole("grid", { name: "October" });
+  await element(grid.getByText("Person 1", { exact: true })).toBeVisible();
+  // How far the total's head and first cell end from the box's right edge, at a sideways scroll position.
+  const total = (to: number) => grid.locator("..").evaluate((el, left) => {
+    el.scrollLeft = left;
+    const right = el.getBoundingClientRect().left + el.clientWidth;
+    const ends = [el.querySelector("thead tr")!, el.querySelector("tbody tr:not([aria-hidden])")!].map(row => Math.round(right - row.lastElementChild!.getBoundingClientRect().right));
+    return { ends, end: el.scrollWidth - el.clientWidth };
+  }, to);
+  const { end } = await total(0);
+  // Ten days do not fit: the box scrolls sideways.
+  expect(end).toBeGreaterThan(100);
+  for (const to of [0, 100, end]) await expect.poll(async () => (await total(to)).ends, { message: `scrolled to ${to}` }).toEqual([0, 0]);
 });
 
 // The month view: twelve people, October's 31 days, no drafts. Keys after the first focus go to the page, as a person's do.
