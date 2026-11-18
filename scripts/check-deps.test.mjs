@@ -196,15 +196,26 @@ test("lock-only changes cannot bypass major and licence review", () => {
   }
 });
 
-test("a new use or owner decision needs review even without a version change", () => {
-  for (const kind of ["consumer", "decision"]) {
-    const f = routineUpdate("5.0.5", "5.0.5");
-    if (kind === "consumer") {
-      f.current[0].json.name = "another-user";
-      f.evidence.register.rows[1].uses[0].user = "another-user";
-    } else f.evidence.register.rows[1].approval = { by: "owner" };
-    assert.match(verifyUpdate(f).join("\n"), /needs a verification note/);
-  }
+test("a new consumer needs review even without a version change", () => {
+  const f = routineUpdate("5.0.5", "5.0.5");
+  f.current[0].json.name = "another-user";
+  f.evidence.register.rows[1].uses[0].user = "another-user";
+  assert.match(verifyUpdate(f).join("\n"), /needs a verification note/);
+});
+
+for (const version of ["5.0.5", "5.1.0"]) {
+  test(`a callsite move needs no note for vitest 5.0.5 → ${version}`, () => {
+    const f = routineUpdate("5.0.5", version);
+    f.evidence.previousRegister.rows[1].callsites = ["package.json:10"];
+    f.evidence.register.rows[1].callsites = ["package.json:11"];
+    assert.deepEqual(verifyUpdate(f), []);
+  });
+}
+
+test("an owner ruling needs no dependency note for an unchanged declaration and pin", () => {
+  const f = routineUpdate("5.0.5", "5.0.5");
+  f.evidence.register.rows[1].approval = { by: "owner" };
+  assert.deepEqual(verifyUpdate(f), []);
 });
 
 test("workspace updates compare their nearest installed pins rather than a hoisted copy", () => {

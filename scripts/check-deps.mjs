@@ -6,7 +6,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
-import { inventory } from "./quality/tooling-inventory.mjs";
+import { inventory, registerDecision } from "./quality/tooling-inventory.mjs";
 
 const FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
 
@@ -99,11 +99,11 @@ export function checkDependencyNotes(manifests, previous, notes, lock, readNote,
         if (internal.has(name)) continue;
         const pin = installedPin(lock, file, name);
         const priorPin = installedPin(evidence.previousLock, file, name);
-        const entry = registered.get(name);
-        const registerUnchanged = isDeepStrictEqual(entry, previousRegistered.get(name));
         if (priorRequirement === requirement && priorFile.name === json.name &&
-          (!evidence.previousLock || isDeepStrictEqual(pin, priorPin) && registerUnchanged)) continue;
-        if (priorRequirement !== undefined && entry && registerUnchanged &&
+          (!evidence.previousLock || isDeepStrictEqual(pin, priorPin))) continue;
+        const entry = registered.get(name);
+        if (priorRequirement !== undefined && entry &&
+          isDeepStrictEqual(registerDecision(entry), registerDecision(previousRegistered.get(name))) &&
           declarationsRegistered &&
           compatibleVersions(priorPin?.version, pin?.version) &&
           typeof pin.license === "string" && pin.license.length > 0 && pin.license === priorPin.license &&
