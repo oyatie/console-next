@@ -359,7 +359,7 @@ test("a file with a syntax error fails, naming the file, and the page and block 
 test("a type cell does not depend on the other pages: union members are in one fixed order", () => {
   const root = fixture({
     [`${PAGES}/zed.md`]: empty("props", "apps/web/src/ui/zed.tsx"),
-    "apps/web/src/ui/zed.tsx": 'export function Zed({ tone }: { tone?: "calm" | "loud" | "mute"; size: "sm" | "lg"; pick: (to: "b" | "a" | null) => void }) { return null; }\n',
+    "apps/web/src/ui/zed.tsx": 'type Volume = "quiet" | "full";\nexport function Zed({ tone }: { tone?: "calm" | "loud" | "mute"; size: "sm" | "lg"; pick: (to: "b" | "a" | null) => void; volume?: Volume }) { return null; }\n',
   });
   const alone = generated(root, "ds:props apps/web/src/ui/zed.tsx");
   expect(alone).toBe(`### Zed
@@ -367,10 +367,12 @@ test("a type cell does not depend on the other pages: union members are in one f
 ${HEAD}
 | \`pick\` | yes | \`(to: "a" \\| "b" \\| null) => void\` |  |  |
 | \`size\` | yes | \`"lg" \\| "sm"\` |  |  |
-| \`tone\` | no | \`"calm" \\| "loud" \\| "mute"\` |  |  |`);
-  // A second page whose source names the same literals in another order, and is read first.
+| \`tone\` | no | \`"calm" \\| "loud" \\| "mute"\` |  |  |
+| \`volume\` | no | \`Volume\` |  |  |`);
+  // A second page, read first, whose source names the same literals in another order: inline where the first
+  // page uses a named type, and through a named type where the first page is inline.
   writeFileSync(path.join(root, PAGES, "alpha.md"), empty("props", "apps/web/src/ui/alpha.tsx"));
-  writeFileSync(path.join(root, "apps/web/src/ui/alpha.tsx"), 'export function Alpha({ tone }: { tone?: "mute" | "loud" | "calm"; size: "lg" | "sm"; pick: (to: "a" | null | "b") => void }) { return null; }\n');
+  writeFileSync(path.join(root, "apps/web/src/ui/alpha.tsx"), 'type Mood = "mute" | "loud" | "calm";\nexport function Alpha({ tone }: { tone?: Mood; size: "lg" | "sm"; pick: (to: "a" | null | "b") => void; volume?: "full" | "quiet" }) { return null; }\n');
   const { pages, problems } = render(root);
   expect(problems).toEqual([]);
   expect(pages[1].file).toBe(`${PAGES}/zed.md`);
