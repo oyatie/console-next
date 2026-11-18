@@ -31,13 +31,19 @@ A card holds a section of a page. A list of records is one table inside one card
 | Facts as label and value pairs | `KeyValue`, inside the card: see [KeyValue](key-value.md). |
 | A view with nothing in it, or a view that failed to load | `EmptyState` (`ui/empty-state.tsx`), inside the card. |
 | The loading shape of a view | `Skeleton` (`ui/skeleton`), which takes the shapes to draw and a label. The card's own `loading` draws one bar and has no label. |
-| A hand-written `class="card"` | `Card`. See the next paragraph. |
+| A hand-written `card` or `section-head` class | `Card` or `SectionHead`. See the next paragraph. |
 
 `app.css` has a global `card` class with the same fill, border, radius and shadow, and a `card__body` class, a
 padded column. They are for hand-written markup. `Card` does not use them: every class it writes comes from
 `card.module.css`, so no global `card` rule reaches it. That includes `[data-embed] .card`, the rule that flattens
-a hand-written card mounted inside a record section. Views still write the global class by hand. The design-system
-check counts each hand-written use, and the count may only go down.
+a hand-written card mounted inside a record section.
+
+`app.css` also has a global `section-head` class, the hand-written counterpart of `SectionHead`. It is a line
+with 12 px padding top and bottom (`--space-3`) and 16 px at the sides (`--space-4`). It draws no rule line and
+styles no title. `SectionHead` does not use it.
+
+Views still write these global classes by hand. The design-system check counts each hand-written use, and the
+count may only go down.
 
 ## Anatomy
 
@@ -77,10 +83,10 @@ rendered.
 | Part | Look |
 |---|---|
 | Surface | `--surface` fill, a 1 px `--border` border, a 10 px radius (`--radius-lg`), and the `--shadow` shadow. |
-| Head | At least 52 px high (`calc(var(--row-h) + var(--space-3))`). 8 px padding top and bottom (`--space-2`), 16 px at the sides (`--space-4`). A 1 px `--border` line under it. Parts are 8 px apart and wrap. |
+| Head | At least 52 px high (`calc(var(--row-h) + var(--space-3))`). 8 px padding top and bottom (`--space-2`), 16 px at the sides (`--space-4`). A 1 px `--border` line under it. Parts are 8 px apart (`--space-2`) and wrap. |
 | Title | 14 px (`--text-body`), `--fw-strong`. |
 | Meta | 13 px (`--text-sm`), `--steel`. |
-| Body | A column with 12 px between its children (`--space-3`). 12 px padding at the top, 16 px at the sides and the bottom. |
+| Body | A column with 12 px between its children (`--space-3`). 12 px padding at the top (`--space-3`), 16 px at the sides and the bottom (`--space-4`). |
 | Body with `flush` | No padding and no gap, for a table or a list that runs edge to edge. It scrolls sideways by itself (`overflow-x: auto`). |
 
 `look` changes the surface and the body:
@@ -103,9 +109,9 @@ the `flush` rule, so the 12 px padding and the 8 px gap stay. Only the sideways 
 
 `level` changes the heading element and nothing visible.
 
-`SectionHead` has one look. The line is at least 32 px high (`--target`) with 8 px between its parts. The title is
-12 px (`--text-xs`), `--fw-medium`, `--steel`, with `--tracking-label` letter spacing, on one line. The rule is
-1 px of `--border-soft`. `level` changes the heading element and nothing visible.
+`SectionHead` has one look. The line is at least 32 px high (`--target`) with 8 px between its parts
+(`--space-2`). The title is 12 px (`--text-xs`), `--fw-medium`, `--steel`, with `--tracking-label` letter spacing,
+on one line. The rule is 1 px of `--border-soft`. `level` changes the heading element and nothing visible.
 
 ## States
 
@@ -119,7 +125,7 @@ the `flush` rule, so the 12 px padding and the 8 px gap stay. Only the sideways 
 | Disabled | Does not exist. |
 | Read-only | Does not exist. |
 | Invalid | Does not exist. |
-| Loading (`loading` on `Card`) | The root gets `aria-busy="true"`. The body is replaced by the loading block: 16 px padding (`--space-4`) around one bar, 32 px high (`--space-6`), `--border-soft`, with a 6 px radius. `children` are not rendered. The head stays. The bar does not move, and the block holds no text. |
+| Loading (`loading` on `Card`) | The root gets `aria-busy="true"`. The body is replaced by the loading block: 16 px padding (`--space-4`) around one bar, 32 px high (`--space-6`), `--border-soft`, with a 6 px radius (`--radius`). `children` are not rendered. The head stays. The bar does not move, and the block holds no text. |
 | Empty | No look. A card with no `children` renders no body: the head alone, or an empty `<section>` when it has no head either. |
 
 `SectionHead` has no loading state.
@@ -161,7 +167,7 @@ The WCAG 2.2 criteria that apply:
 | 1.3.1 Info and Relationships | `<section>`, a heading, and `aria-labelledby` between them. |
 | 1.4.3 Contrast (Minimum) | The meta and the `SectionHead` title are `--steel` at 13 px and 12 px, so they need 4.5:1. The fills a card can have are `--surface`, `--canvas` and `--muted`. Computed from the token values, `--steel` on those is at least 5.24:1 in the light theme and 6.44:1 in the dark theme. |
 | 1.4.10 Reflow | The card can shrink, the head wraps, and a `flush` body scrolls sideways inside the card. `SectionHead` does not wrap: see the phone section. |
-| 2.4.3 Focus Order | Document order: the title, the meta, the tools, then the body. |
+| 2.4.3 Focus Order | Tab order is document order: the controls in `tools`, then those in the body. The title is never a Tab stop. |
 | 2.4.6 Headings and Labels | The title is a heading. Its level and its words are the caller's. |
 | 2.4.7 Focus Visible | The global focus outline, on a title that was given focus. |
 | 4.1.2 Name, Role, Value | The table above. |
