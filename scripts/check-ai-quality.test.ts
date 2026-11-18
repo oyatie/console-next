@@ -137,14 +137,14 @@ const verification = {
 const lock = { packages: { "node_modules/example": { version: "1.2.3", integrity: "fixture-integrity" } } };
 const noteText = "Reason: installed alternative evaluated\nProvenance: registry and upstream checked\nLicense: MIT reviewed\nSecurity: advisories reviewed";
 
-test("dependency ratchet loads automated evidence from the git base and checks lock-only changes", () => {
+test("dependency ratchet loads a large git-base register and checks lock-only changes", () => {
   const manifest = (version: string) => JSON.stringify({ devDependencies: { example: `^${version}` } });
   const pinned = (version: string, license = "MIT") => JSON.stringify({ packages: {
     "node_modules/example": { version, license, resolved: `https://registry.npmjs.org/example/-/example-${version}.tgz`, integrity: "sha512-Zml4dHVyZQ==" },
   } });
   const root = fixture({ "package.json": manifest("1.1.0"), "package-lock.json": pinned("1.1.0") }, {
     "package.json": manifest("1.0.0"), "package-lock.json": pinned("1.0.0"),
-    "docs/quality/dependency-register.json": JSON.stringify({ rows: [
+    "docs/quality/dependency-register.json": JSON.stringify({ evidence: "review evidence ".repeat(100_000), rows: [
       { kind: "npm", name: "example", direct: true, uses: [{ file: "package.json", layer: "test" }] },
     ] }),
   });
