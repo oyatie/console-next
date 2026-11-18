@@ -9,7 +9,6 @@
       "src/features/structure/ui/jump-palette.tsx",
       "src/lib/react/route-error.tsx",
       "src/lib/react/session.ts",
-      "src/shell/shell.tsx",
       "src/shell/top-bar/needs-me.tsx",
       "src/shell/top-bar/needs-me-panel.tsx"
     ]
@@ -95,5 +94,9 @@
       "src/features/people/ui/register-run-page.tsx",
       "src/features/people/ui/renew-page.tsx"
     ]
+  },
+  "pack": {
+    "budget_kb": 69,
+    "routes": ["src/shell/baseline/shell.tsx"]
   }
 }

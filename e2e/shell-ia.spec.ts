@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { shellSelectors } from "./shell";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { go } from "./flows";
@@ -21,7 +22,7 @@ for (const theme of ["light", "dark"] as const) {
         const response = await api("/users/me");
         expect(response.status()).toBe(200);
         expect((await response.json()).tenant).toEqual({ name, phase: "SETUP", go_live_at: null });
-        const accessibility = await new AxeBuilder({ page }).include(".top").analyze();
+        const accessibility = await new AxeBuilder({ page }).include(shellSelectors().banner).analyze();
         expect(accessibility.violations).toEqual([]);
       }
       await page.context().close();

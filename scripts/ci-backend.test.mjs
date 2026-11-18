@@ -48,10 +48,11 @@ test("release policy CI evidence runs on every dev push and is required by ci-ok
     .filter(definition => definition.workflow === "ci.yml");
   assert.ok(definitions.length > 0);
   for (const { job: name, step } of definitions) {
-    const job = ci.jobs[name];
-    assert.ok(job, name);
+    const matches = Object.entries(ci.jobs).filter(([, job]) => job.name === name);
+    assert.equal(matches.length, 1, name);
+    const [id, job] = matches[0];
     assert.deepEqual(job.needs, ["affected"]);
-    assert.ok(ci.jobs["ci-ok"].needs.includes(name), name);
+    assert.ok(ci.jobs["ci-ok"].needs.includes(id), name);
     const condition = new Function("github", "needs", "cancelled", `return ${job.if.slice(3, -2)}`);
     for (const backend of ["true", "false", ""]) {
       assert.equal(condition({ event_name: "push" }, { affected: { outputs: { backend } } }, () => false), true, name);
