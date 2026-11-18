@@ -210,7 +210,7 @@ const summary = (text, env = process.env) => {
 function cli() {
   const args = process.argv.slice(2);
   if (args[0] === "--collect") {
-    assert.ok(args.length >= 4, "usage: --collect <results-directory> <timings-output> <junit...>");
+    assert.ok(args.length >= 3, "usage: --collect <results-directory> <timings-output> [junit...]");
     return { collect: args.slice(1) };
   }
   let database = false, shard = "1/1", timings;

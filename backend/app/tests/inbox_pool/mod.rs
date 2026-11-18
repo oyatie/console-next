@@ -32,7 +32,6 @@ pub fn count<'a>(page: &'a Value, key: &str) -> &'a Value {
 
 pub struct Probe {
     pub pool: PgPool,
-    pub keys: (String, String),
     acquisitions: Arc<AtomicUsize>,
 }
 impl Probe {
@@ -99,12 +98,5 @@ pub async fn context(owner: &PgPool, org: Uuid, user: UserId) -> (http::Ctx, Pro
         &keys,
     ));
     ctx.token = http::token(owner, &keys, org, user, &["SUPER_ADMIN"]).await;
-    (
-        ctx,
-        Probe {
-            pool,
-            keys,
-            acquisitions,
-        },
-    )
+    (ctx, Probe { pool, acquisitions })
 }

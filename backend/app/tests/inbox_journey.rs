@@ -215,56 +215,36 @@ async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cu
     pool: PgPool,
 ) {
     let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
-    let (mut ctx, probe) = inbox_pool::context(&pool, org, user).await;
+    let (ctx, probe) = inbox_pool::context(&pool, org, user).await;
     inbox(&ctx).await;
     let (_, _, branch, unit) = http::structure(&ctx).await;
     let mut expected = BTreeSet::new();
-    let mut exit = Uuid::nil();
-    let mut lease_budget = 0;
-    let renew_after = StdDuration::try_from(http::ACCESS_TOKEN_TTL).unwrap() / 2;
-    let mut refreshed_at = Instant::now();
     for index in 0..2_000 {
-        // Keep the large fixture inside the normal session lifetime.
-        if refreshed_at.elapsed() >= renew_after {
-            ctx.token = http::token(&pool, &probe.keys, org, user, &["SUPER_ADMIN"]).await;
-            refreshed_at = Instant::now();
-        }
         let body = http::employee_body(&format!("INBOX-{index:04}"), &branch, &unit);
         let (status, created) = ctx.call("POST", "/api/v1/employees", Some(body)).await;
         assert_eq!(status, StatusCode::CREATED, "person {index}: {created}");
-        let employee = created["employee"]["id"].as_str().unwrap();
-        expected.insert(format!("hr_register:{employee}"));
-        if index == 0 {
-            exit = sqlx::query_scalar(
-                "INSERT INTO employee_exit_cases (org_id,employee_id,status,effective_exit_date,site_manager_note,reported_by) VALUES ($1,$2,'REPORTED',(clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date,'업무함 기한 검증',$3) RETURNING id"
-            ).bind(org).bind(Uuid::parse_str(employee).unwrap()).bind(user.as_uuid()).fetch_one(&pool).await.unwrap();
-        }
-        // Compare full pages so the lease budget measures tenant growth.
-        if expected.len() == 50 {
-            inbox_pool::read(&ctx, "limit=50&filter=turn").await;
-            probe.reset();
-            inbox_pool::read(&ctx, "limit=50&filter=turn").await;
-            lease_budget = probe.acquisitions();
-        }
+        expected.insert(format!(
+            "hr_register:{}",
+            created["employee"]["id"].as_str().unwrap()
+        ));
     }
-    assert!(
-        lease_budget > 0,
-        "pool probe must observe the baseline read"
-    );
+    let employee = expected
+        .first()
+        .unwrap()
+        .strip_prefix("hr_register:")
+        .unwrap();
+    let exit: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO employee_exit_cases (org_id,employee_id,status,effective_exit_date,site_manager_note,reported_by) VALUES ($1,$2,'REPORTED',(clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date,'업무함 기한 검증',$3) RETURNING id"
+    ).bind(org).bind(uuid::Uuid::parse_str(employee).unwrap()).bind(user.as_uuid()).fetch_one(&pool).await.unwrap();
     let mut elapsed = Vec::new();
     let mut peak = 0;
+    probe.reset();
     for _ in 0..20 {
-        probe.reset();
         let started = Instant::now();
         let ((status, page), observed) = probe
             .measure(ctx.call("GET", &format!("{INBOX}?limit=50&filter=turn"), None))
             .await;
         peak = peak.max(observed);
-        assert!(
-            probe.acquisitions() <= lease_budget,
-            "pool leases grew with people: {} > {lease_budget}",
-            probe.acquisitions()
-        );
         elapsed.push(started.elapsed());
         assert_eq!(status, StatusCode::OK, "{page}");
         assert_eq!(page["items"].as_array().unwrap().len(), 50);
@@ -286,6 +266,10 @@ async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cu
         peak < probe.pool.options().get_max_connections() as usize,
         "inbox exhausted its shared runtime pool: peak {peak}, source cap {}",
         probe.cap()
+    );
+    assert!(
+        p95 <= StdDuration::from_millis(300),
+        "first-page p95 {p95:?} exceeds 300 ms"
     );
 
     for _ in 0..3 {

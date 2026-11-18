@@ -346,7 +346,7 @@ test("the database workflow is tiered, pinned and limited to four duration shard
 test("database results upload without archiving or restoring unused Rust caches", () => {
   const workflow = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
   const steps = workflow.jobs["db-tests"].steps;
-  assert.ok(!steps.some(step => step.uses?.startsWith("actions/cache/")));
+  assert.ok(!steps.some(step => step.uses?.startsWith("actions/cache")));
   assert.ok(!steps.some(step => step.id === "cache-budget"));
 });
 
@@ -519,6 +519,19 @@ test("database reconciliation uses any available shard plan and refuses incomple
     result = run();
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /no database shard plan/);
+    assert.ok(!existsSync(output));
+    rmSync(firstReport);
+    rmSync(path.join(results, "db-test-results-2/junit-featured.xml"));
+    writeFileSync(planFile, JSON.stringify({ version: 1, tests: [], shards: [] }));
+    result = run();
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /0 run, 0 passed, 0 failed/);
+    assert.deepEqual(JSON.parse(readFileSync(output)), { version: 1, tests: {} });
+    rmSync(output);
+    writeFileSync(planFile, JSON.stringify(plan));
+    result = run();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /identities differ/);
     assert.ok(!existsSync(output));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

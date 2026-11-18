@@ -217,6 +217,15 @@ test('Rust producer census: successful save and merge gate retention, with revie
   }
 });
 
+test('database caches have no retention policy or apply switch after removing their writer', () => {
+  const policy = config();
+  assert.ok(!Object.hasOwn(policy.families, 'db-tests'));
+  const platform = readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8');
+  assert.doesNotMatch(platform, /CACHE_RETENTION_DB_TESTS_APPLY|'db-tests'/);
+  const docs = readFileSync(join(root, 'docs/ops/actions-cache-retention.md'), 'utf8');
+  assert.doesNotMatch(docs, /CACHE_RETENTION_DB_TESTS_APPLY|\| db-tests \|/);
+});
+
 test('bounded count applies to npm, browsers, CodeQL overlays and image indexes', async () => {
   const {planCaches} = await load();
   const families = {

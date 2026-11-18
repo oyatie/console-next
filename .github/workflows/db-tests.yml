@@ -184,11 +184,12 @@ jobs:
           pattern: db-test-results-*
           path: .cache/db-test-results
       - name: Reconcile every shard and refresh timings
-        run: >-
-          node scripts/backend-tests.mjs --collect
-          .cache/db-test-results
-          .cache/db-test-timings/timings.json
-          .cache/db-test-results/db-test-results-*/junit-*.xml
+        run: |
+          shopt -s nullglob
+          reports=(.cache/db-test-results/db-test-results-*/junit-*.xml)
+          node scripts/backend-tests.mjs --collect \
+            .cache/db-test-results \
+            .cache/db-test-timings/timings.json "${reports[@]}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v6.0.0
         with:
           name: db-test-timings
