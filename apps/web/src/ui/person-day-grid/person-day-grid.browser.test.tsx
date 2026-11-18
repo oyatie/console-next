@@ -252,6 +252,11 @@ test("a press inside the open editor places the caret and keeps the editor", asy
   await element(editor).toBeFocused();
   await element(editor).toHaveValue("12345");
   await element(drafts).toHaveText("{}");
+  // The cell is taller and wider than the input's line of text: a press on the cell beside it keeps the editor too.
+  await dayCell(1, 1).click({ position: { x: 40, y: 2 } });
+  await element(editor).toBeFocused();
+  await element(editor).toHaveValue("12345");
+  await element(drafts).toHaveText("{}");
   // A double-click selects the word it is on; what is typed next replaces it.
   await editor.dblclick();
   await element(editor).toHaveValue("12345");
