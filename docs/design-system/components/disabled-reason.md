@@ -53,7 +53,9 @@ the control's own props:
 
 The component cannot make a control inert by itself. A press does nothing only because the spread `onClick` and
 `type` replace the caller's. A control that sets `onClick` or `type` after the spread, or does not spread them at
-all, still acts. Nothing checks this.
+all, still acts. Nothing checks this. `Composer` (`ui/composer`) does so on purpose: its blocked commit sets
+`onClick` after the spread, calls the inert handler first, and then runs the caller's `press` unless the form is
+pending, loading or locked.
 
 `children` is a second render prop, for a control and a reason that must sit in different regions of a view. It is
 called with `{ control, reason }`, where `reason` is the whole explanation element, and what it returns is rendered
@@ -74,8 +76,9 @@ reason and the remedy and 4 px (`--space-1`) between wrapped rows, and never wid
 `prose` class a link inside it takes the look of a link in running text: `--primary`, with a thin underline.
 
 The inert class sets five things on the control: a `--border` border colour, a `--muted` fill, `--steel` text, a
-not-allowed cursor, and `white-space: nowrap`. It sets neither the opacity nor the border style. On a `Button`,
-the button's own rules for `aria-disabled="true"` in `app.css` still supply those two.
+not-allowed cursor, and `white-space: nowrap`. It sets neither the opacity nor the border style. On a `Button`
+that carries the `btn` class, which is every variant but `link`, the rules for `aria-disabled="true"` on that
+class in `app.css` still supply those two.
 
 | Control | Inert look |
 |---|---|
@@ -121,7 +124,7 @@ end.
 | Rest | The inert look. In `stacked` and `inline` the reason is always shown. |
 | Hover | The inert rule repeats its values on hover, so a variant's hover fill does not show and the control does not change. The exceptions are the ties under Looks and sizes, the hover fill of an inert `ghost-danger` button among them. The cursor is not-allowed. In `disclosure`, hovering the wrapper shows the reason. |
 | Keyboard focus | The component has no focus rule of its own, so the control shows what its own class gives it. A `Button` shows the global focus outline: 2 px `--primary`, 2 px away. The inert tab of `PageTabs` shows the tab's ring instead: a 2 px `--primary` outline with `outline-offset: -2px`, from `ui/tabs/tabs.module.css`. In `disclosure`, focus anywhere in the wrapper shows the reason. |
-| Pressed down | Nothing happens and nothing changes. There is no `:active` rule. |
+| Pressed down | Nothing changes: there is no `:active` rule. Nothing happens either, unless the caller set a handler of its own after the spread, as under Anatomy. |
 | Disabled | This is the component's only state: it has no live state to switch to. A control is inert when it takes the inert attributes, and one caller spreads them only some of the time: see When to use it. |
 | Selected, read-only, invalid, loading | Do not exist. |
 | Empty | `reason` is required, and nothing checks that it has text. With an empty reason the control is described by an empty element. |
@@ -161,7 +164,7 @@ Known gaps:
 - Nothing checks that the control can take focus or that it spread the inert attributes.
 - In `disclosure` the reason shows only on hover or focus. The component has no press or tap handler that shows
   it, so on a touch screen it depends on whether a tap leaves the control hovered or focused.
-- An inert `Button` other than `primary` is drawn at half opacity, text included.
+- An inert `Button` other than `primary` and `link` is drawn at half opacity, text included.
 - The colours of an inert `primary` or `ghost-danger` button, and of an inert toggle that is on, depend on the
   order of two stylesheets: see Looks and sizes.
 
@@ -190,10 +193,13 @@ What the gallery shows:
 | `inline` on a small ghost `Button`, through `RowActions` | `apps/web/src/ui/record-actions/record-actions.gallery.tsx` |
 
 No entry found shows an inert `danger`, `ghost-danger` or `link` button, or an inert toggle. The entries were
-found by searching the gallery files for `DisabledReason`, `disabledReason` and `why=`. Three more components
-render this one: `Composer` when its commit is blocked, `LongTable` when a selection is over its limit, and
-`AsofControl`. No gallery file passes `blocked` to a `Composer` or a selection `limit` to `ui/long-table`, and none
-renders `AsofControl`. Gallery entries of feature views were not followed.
+found by searching the gallery files for `DisabledReason`, `disabledReason` and `why=`. The same search hits two
+props that do not render this component: `why` on `TargetTree` and `disabledReason` on the server picker.
+
+Three more components in `apps/web/src/ui` render this one: `Composer` when its commit is blocked, the selection
+bar of `ui/long-table`, which blocks its offer to select every match when there are more matches than its `limit`
+allows, and `AsofControl`. No gallery file passes `blocked` to a `Composer` or a `limit` to that selection bar, and
+none renders `AsofControl`. Gallery entries of feature views were not followed.
 
 `disabled-reason.test.tsx` has two tests, both on static markup. The control is a `type="button"` with
 `aria-disabled="true"` and no `disabled`, described by the reason, even when the caller passed `type="submit"`
