@@ -18,7 +18,13 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage();
-  await page.route("**/grid-test*", route => route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Person-day grid</title><div id="root"></div><script type="module" src="${fixture}"></script></html>` }));
+  // A short box, and for `?row=` its own compact row height, set on a container the way a visual style would set it.
+  await page.route("**/grid-test*", route => {
+    const row = new URL(route.request().url()).searchParams.get("row");
+    return route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Person-day grid</title>
+      <style>main { display: flex; flex-direction: column; height: 320px; ${row ? `--row-h-compact: ${Number(row)}px;` : ""} }</style>
+      <div id="root"></div><script type="module" src="${fixture}"></script></html>` });
+  });
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
