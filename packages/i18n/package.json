@@ -3,5 +3,5 @@
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts", "./format": "./src/format.ts", "./gallery": "./src/gallery.ts", "./payroll-blockers": "./src/payroll-blockers.ts" },
-  "dependencies": { "intl-messageformat": "*" }
+  "dependencies": { "intl-messageformat": "^12.1.5" }
 }

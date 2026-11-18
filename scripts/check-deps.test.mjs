@@ -29,6 +29,12 @@ const register = {
   ],
 };
 
+test("the web workspace and root browser fixtures share one Vite server type", () => {
+  const { packages } = JSON.parse(readFileSync(new URL("../package-lock.json", import.meta.url), "utf8"));
+  const vitePins = Object.keys(packages).filter(key => /(?:^|\/)node_modules\/vite$/.test(key));
+  assert.deepEqual(vitePins, ["node_modules/vite"]);
+});
+
 test("passes recorded external declarations and real workspace dependencies", () => {
   assert.deepEqual(checkDeps(manifests, register, lock), []);
 });
