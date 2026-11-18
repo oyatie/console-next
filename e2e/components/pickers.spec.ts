@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { loadCatalog } from "@console/i18n";
+import { tg } from "@console/i18n/gallery";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test.skip(process.env.E2E_SERVED === "1", "the component gallery is dev-only");
 
@@ -42,6 +46,23 @@ test("the 2,000-person picker announces the exact matching total once while open
 });
 
 for (const theme of ["light", "dark"] as const) {
+  test(`ServerPicker options fit the phone viewport in ${theme}`, async ({ page }, info) => {
+    await page.emulateMedia({ colorScheme: theme });
+    const width = 320;
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/_gallery?entry=picker");
+    const search = page.getByRole("combobox", { name: tg("picker.search", { count: 16 }), exact: true });
+    await search.scrollIntoViewIfNeeded();
+    await search.fill(tg("sample.person", { n: 2 }));
+    await search.press("ArrowDown");
+    await expect(page.locator(".popover")).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: info.outputPath(`picker-${width}-${theme}.png`) });
+    await page.getByRole("listbox").getByRole("option", { name: tg("sample.person", { n: 2 }), exact: true }).click();
+    await expect(search).toHaveAttribute("aria-expanded", "false");
+    expect(await page.evaluate(() => window.scrollX)).toBe(0);
+    await search.press("ArrowDown");
+    await expect(page.getByRole("listbox").getByRole("option", { name: tg("sample.person", { n: 2 }), exact: true })).toHaveAttribute("aria-selected", "true");
+  });
   test(`ServerPicker states remain accessible in ${theme}`, async ({ page }, info) => {
     await page.emulateMedia({ colorScheme: theme });
     await page.goto("/_gallery");

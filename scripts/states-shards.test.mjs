@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -19,6 +19,20 @@ const report = (counts, seconds = 4) => ({
 });
 const load = () => import("./states-shards.mjs");
 const workflow = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
+
+test("failed state shards upload traces and failure files separately from JSON reports with bounded retention", () => {
+  const uploads = workflow.jobs.states.steps.filter(step => step.uses?.startsWith("actions/upload-artifact@"));
+  const report = uploads.find(step => step.with.name === "states-report-${{ matrix.shard }}");
+  assert.equal(report.if, "${{ !cancelled() }}");
+  assert.equal(report.with.path, ".cache/states-report-${{ matrix.shard }}.json");
+  const failures = uploads.find(step => step.with.name === "states-failures-${{ matrix.shard }}");
+  assert.ok(failures, "failed shards must publish Playwright failure files");
+  assert.equal(failures.uses, report.uses);
+  assert.equal(failures.if, "${{ failure() }}");
+  assert.equal(failures.with.path, "test-results-mock");
+  assert.ok(Number.isInteger(failures.with["retention-days"]) && failures.with["retention-days"] > 0 && failures.with["retention-days"] <= 7);
+  assert.equal(failures.with["if-no-files-found"], "ignore");
+});
 
 test("the module route inventory includes app floorplan declarations", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "module-routes-"));
@@ -176,7 +190,7 @@ test("artifact measurements cover a spec that grew on dev without editing settin
   assert.equal(planStates(report({ "mock/a.spec.ts": 11 }), floor, measured).shards[0].seconds, floor.startupSeconds + 25);
 });
 
-test("the real suite allows 30 added tests and ten percent timing drift within the runner cap", async t => {
+test("the dev capacity forecast checks headroom and growth against the runner cap", async t => {
   if (process.env.STATES_CHECK_CAPACITY !== "1") return t.skip("capacity is checked on dev pushes with fresh measurements");
   const { checkHeadroom, planStates, filesForShard } = await load();
   const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", "--config=e2e/mock/playwright.config.ts", "--list", "--reporter=json"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
@@ -186,8 +200,20 @@ test("the real suite allows 30 added tests and ten percent timing drift within t
   const runs = existsSync(historyFile) ? JSON.parse(readFileSync(historyFile, "utf8")).runs : [];
   const currentFile = process.env.STATES_TIMINGS_FILE ?? ".cache/states-timings/timings.json";
   const current = existsSync(currentFile) ? JSON.parse(readFileSync(currentFile, "utf8")) : undefined;
-  const checked = checkHeadroom(discovered, timings, runs, process.env.GITHUB_STEP_SUMMARY, current);
-  if (!checked) console.warn("::warning::Insufficient dev timing history; headroom not judged; checking growth against available measurements");
+  const summary = process.env.GITHUB_STEP_SUMMARY;
+  const warnCapacity = (code, error) => {
+    if (!/^STATES_(TIMEOUT_LIMIT|SPEC_OVER_BUDGET):/.test(error.message)) throw error;
+    const warning = `::warning::${code}: ${error.message}`;
+    console.warn(warning);
+    if (summary) appendFileSync(summary, `\n${warning}\n`);
+  };
+  let checked;
+  try {
+    checked = checkHeadroom(discovered, timings, runs, summary, current);
+    if (!checked) console.warn("::warning::Insufficient dev timing history; headroom not judged; checking growth against available measurements");
+  } catch (error) {
+    warnCapacity("STATES_HEADROOM_EXHAUSTED", error);
+  }
   const artifact = checked?.timings ?? [current, ...runs.map(run => run.timings)].find(measured => measured?.workers === timings.workers && Object.keys(measured.specs ?? {}).length);
   if (!artifact) return t.skip("no compatible measurements available for the growth guard");
   const timeoutSeconds = Math.floor(timings.runLimitSeconds / RUN_HEADROOM);
@@ -195,7 +221,13 @@ test("the real suite allows 30 added tests and ten percent timing drift within t
   for (const drift of [1, 1.1]) {
     const input = { ...discovered, suites: [...discovered.suites, ...report({ "states/growth.spec.ts": 30 }).suites] };
     const measured = { workers: timings.workers, specs: Object.fromEntries(Object.entries(artifact.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * drift }])) };
-    const plan = planStates(input, timings, measured);
+    let plan;
+    try {
+      plan = planStates(input, timings, measured);
+    } catch (error) {
+      warnCapacity("STATES_GROWTH_EXHAUSTED", error);
+      continue;
+    }
     t.diagnostic(`30 added tests, drift ${drift}: ${plan.shards.length} shards, maximum ${Math.max(...plan.shards.map(s => s.seconds)).toFixed(1)}s`);
     assert.ok(plan.shards.length <= timings.maxShards);
     assert.ok(plan.budgetSeconds >= timings.budgetSeconds && plan.budgetSeconds <= timeoutSeconds);
@@ -475,10 +507,13 @@ test("median headroom survives one slow timing file that fails the one-run limit
   });
 });
 
-test("consistently slow timing files still fail and publish the measured headroom", async () => {
+test("consistently slow timing files warn without failing and publish the measured headroom", async t => {
   const { checkHeadroom } = await load();
+  const warning = t.mock.method(console, "warn", () => {});
   withSummary(summary => {
-    assert.throws(() => checkHeadroom(capacitySuite, capacitySettings, capacityHistory(480), summary), /STATES_HEADROOM_EXHAUSTED/);
+    const checked = checkHeadroom(capacitySuite, capacitySettings, capacityHistory(480), summary);
+    assert.ok(checked.headroom < 15);
+    assert.deepEqual(warning.mock.calls.map(call => call.arguments), [["::warning::STATES_HEADROOM_EXHAUSTED: the measured suite needs at least fifteen percent headroom"]]);
     assert.match(readFileSync(summary, "utf8"), /13\.3%/);
     assert.match(readFileSync(summary, "utf8"), /15%/);
   });
@@ -492,15 +527,19 @@ test("capacity below twenty percent reports the next shard or faster specs befor
   });
 });
 
-test("the fifteen percent threshold remains inclusive and twenty percent needs no capacity warning", async () => {
+test("the fifteen percent threshold remains inclusive and twenty percent needs no capacity warning", async t => {
   const { checkHeadroom } = await load();
+  const warning = t.mock.method(console, "warn", () => {});
   withSummary(summary => {
     assert.ok(checkHeadroom(capacitySuite, capacitySettings, capacityHistory(470), summary));
-    assert.throws(() => checkHeadroom(capacitySuite, capacitySettings, capacityHistory(470.1), summary), /STATES_HEADROOM_EXHAUSTED/);
+    assert.equal(warning.mock.callCount(), 0);
+    assert.ok(checkHeadroom(capacitySuite, capacitySettings, capacityHistory(470.1), summary));
+    assert.equal(warning.mock.callCount(), 1);
   });
   withSummary(summary => {
     checkHeadroom(capacitySuite, capacitySettings, capacityHistory(440), summary);
     assert.doesNotMatch(readFileSync(summary, "utf8"), /another shard/);
+    assert.equal(warning.mock.callCount(), 1);
   });
 });
 
@@ -518,8 +557,9 @@ test("fewer than three distinct compatible runs leave capacity unjudged", async 
   }
 });
 
-test("changing test counts still judges normalized medians and catches sustained slowdown", async () => {
+test("changing test counts still judges normalized medians and catches sustained slowdown", async t => {
   const { checkHeadroom } = await load();
+  const warning = t.mock.method(console, "warn", () => {});
   const counts = { "mock/a.spec.ts": 12, "states/b.spec.ts": 10 };
   const runs = capacityHistory().map((run, i) => ({ ...run, timings: { ...run.timings,
     specs: Object.fromEntries(Object.keys(counts).map(file => {
@@ -534,7 +574,8 @@ test("changing test counts still judges normalized medians and catches sustained
     const slow = runs.map(run => ({ ...run, timings: { ...run.timings,
       specs: Object.fromEntries(Object.entries(run.timings.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * 1.15 }])),
     } }));
-    assert.throws(() => checkHeadroom(report(counts), capacitySettings, slow, summary), /STATES_HEADROOM_EXHAUSTED/);
+    assert.ok(checkHeadroom(report(counts), capacitySettings, slow, summary).headroom < 15);
+    assert.equal(warning.mock.callCount(), 1);
   });
 });
 
@@ -588,8 +629,9 @@ test("a sparse spec missing from this push is priced at P95 and named in the sum
   });
 });
 
-test("a dev-sized suite plus three new specs at median cost keeps measured headroom", async () => {
+test("a dev-sized suite plus three new specs at median cost keeps measured headroom", async t => {
   const { checkHeadroom } = await load();
+  const warning = t.mock.method(console, "warn", () => {});
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
   const specs = Object.fromEntries(Array.from({ length: 178 }, (_, i) => [`states/fixture-${i}.spec.ts`, { tests: 15, seconds: 15 * (i < 10 ? 3.76 : 1.45) }]));
   const current = { workers: timings.workers, specs: { ...specs, ...Object.fromEntries(Array.from({ length: 3 }, (_, i) => [`states/new-${i}.spec.ts`, { tests: 32, seconds: 32 * 1.45 }])) } };
@@ -600,11 +642,12 @@ test("a dev-sized suite plus three new specs at median cost keeps measured headr
     assert.equal(checked.plan.shards.length, timings.maxShards);
     assert.ok(checked.headroom >= 15 && checked.headroom < 20);
     assert.match(readFileSync(summary, "utf8"), /measured on this push only.*new-0.*new-1.*new-2/i);
-    assert.throws(() => checkHeadroom(input, timings, runs, null), /STATES_HEADROOM_EXHAUSTED/);
+    assert.ok(checkHeadroom(input, timings, runs, null).headroom < 15);
+    assert.equal(warning.mock.callCount(), 1);
   });
 });
 
-test("the dev growth guard runs with fresh or recent measurements when history is insufficient", () => {
+test("the dev capacity check warns on forecast refusals and rejects invalid measurements", async t => {
   const dir = mkdtempSync(path.join(tmpdir(), "states-growth-"));
   try {
     for (const folder of ["scripts", ".github/workflows", "e2e/mock", "node_modules/@playwright/test"])
@@ -612,34 +655,61 @@ test("the dev growth guard runs with fresh or recent measurements when history i
     for (const file of ["scripts/states-shards.mjs", "scripts/states-shards.test.mjs", "scripts/e2e-timings.mjs", ".github/ci-proof.cjs", ".github/workflows/ci.yml", "e2e/mock/timings.json"])
       cpSync(file, path.join(dir, file));
     symlinkSync(path.resolve("node_modules/js-yaml"), path.join(dir, "node_modules/js-yaml"), "dir");
-    writeFileSync(path.join(dir, "node_modules/@playwright/test/cli.js"), `console.log(${JSON.stringify(JSON.stringify(report({ "mock/a.spec.ts": 100, "states/b.spec.ts": 100 })))});`);
+    const discover = counts => writeFileSync(path.join(dir, "node_modules/@playwright/test/cli.js"),
+      `console.log(${JSON.stringify(JSON.stringify(report(counts)))});`);
+    discover({ "mock/a.spec.ts": 100, "states/b.spec.ts": 100 });
     const history = path.join(dir, "history.json"), current = path.join(dir, "current.json");
     const measured = seconds => ({ workers: settings.workers, specs: Object.fromEntries(["mock/a.spec.ts", "states/b.spec.ts"].map(file => [file, { tests: 100, seconds }])) });
-    for (const source of ["current", "history"]) for (const seconds of [800, 830]) {
+    const summary = path.join(dir, "summary.md");
+    const runGuard = () => {
+      writeFileSync(summary, "");
+      return spawnSync(process.execPath, ["--test", "--test-name-pattern=the dev capacity forecast", "scripts/states-shards.test.mjs"], {
+        cwd: dir, encoding: "utf8", env: { ...process.env, NODE_TEST_CONTEXT: undefined, CI: "true", STATES_CHECK_CAPACITY: "1", STATES_TIMINGS_FILE: current,
+          STATES_TIMINGS_HISTORY_FILE: history, GITHUB_STEP_SUMMARY: summary },
+      });
+    };
+    for (const source of ["current", "history"]) for (const seconds of [800, 830]) await t.test(`${source} at ${seconds}s`, () => {
       writeFileSync(history, JSON.stringify({ runs: source === "history" ? [{ runId: 1, timings: measured(seconds) }] : [] }));
       if (source === "current") writeFileSync(current, JSON.stringify(measured(seconds)));
       else rmSync(current, { force: true });
-      const result = spawnSync(process.execPath, ["--test", "--test-name-pattern=the real suite allows", "scripts/states-shards.test.mjs"], {
-        cwd: dir, encoding: "utf8", env: { ...process.env, NODE_TEST_CONTEXT: undefined, CI: "true", STATES_CHECK_CAPACITY: "1", STATES_TIMINGS_FILE: current,
-          STATES_TIMINGS_HISTORY_FILE: history, GITHUB_STEP_SUMMARY: path.join(dir, "summary.md") },
-      });
+      const result = runGuard();
       assert.match(result.stdout, /Insufficient history/, result.stderr);
       assert.doesNotMatch(result.stdout, /# SKIP/);
-      assert.equal(result.status, seconds === 800 ? 0 : 1, result.stdout + result.stderr);
-      if (seconds === 830) assert.match(result.stdout, /STATES_SPEC_OVER_BUDGET/);
-    }
-    writeFileSync(path.join(dir, "node_modules/@playwright/test/cli.js"), `console.log(${JSON.stringify(JSON.stringify(report({ "mock/a.spec.ts": 100, "states/b.spec.ts": 120 })))});`);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      const warning = /::warning::STATES_GROWTH_EXHAUSTED: STATES_SPEC_OVER_BUDGET/;
+      for (const output of [result.stdout, readFileSync(summary, "utf8")]) {
+        if (seconds === 830) assert.match(output, warning);
+        else assert.doesNotMatch(output, warning);
+      }
+    });
+    discover({ "mock/a.spec.ts": 100, "states/b.spec.ts": 120 });
     writeFileSync(history, JSON.stringify({ runs: capacityHistory().map(run => ({ ...run,
       timings: { workers: settings.workers, specs: { "mock/a.spec.ts": { tests: 100, seconds: 700 } } },
     })) }));
     writeFileSync(current, JSON.stringify(measured(100)));
-    const result = spawnSync(process.execPath, ["--test", "--test-name-pattern=the real suite allows", "scripts/states-shards.test.mjs"], {
-      cwd: dir, encoding: "utf8", env: { ...process.env, NODE_TEST_CONTEXT: undefined, CI: "true", STATES_CHECK_CAPACITY: "1", STATES_TIMINGS_FILE: current,
-        STATES_TIMINGS_HISTORY_FILE: history, GITHUB_STEP_SUMMARY: path.join(dir, "summary.md") },
-    });
+    const result = runGuard();
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.match(result.stdout, /measured on this push only.*states\/b\.spec\.ts/i);
     assert.doesNotMatch(result.stdout, /# SKIP/);
+
+    // Seven whole specs each need their own shard in the six-shard plan.
+    const counts = Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`states/fixture-${i}.spec.ts`, 100]));
+    discover(counts);
+    const specs = Object.fromEntries(Object.keys(counts).map(file => [file, { tests: 100, seconds: 500 }]));
+    const runs = capacityHistory().map(run => ({ ...run, timings: { workers: settings.workers, specs } }));
+    writeFileSync(history, JSON.stringify({ runs }));
+    rmSync(current);
+    const overLimit = runGuard();
+    assert.equal(overLimit.status, 0, overLimit.stdout + overLimit.stderr);
+    for (const output of [overLimit.stdout, readFileSync(summary, "utf8")]) {
+      assert.match(output, /::warning::STATES_HEADROOM_EXHAUSTED: STATES_TIMEOUT_LIMIT/);
+      assert.match(output, /::warning::STATES_GROWTH_EXHAUSTED: STATES_TIMEOUT_LIMIT/);
+    }
+
+    writeFileSync(current, JSON.stringify(measured(-1)));
+    const invalid = runGuard();
+    assert.equal(invalid.status, 1, invalid.stdout + invalid.stderr);
+    assert.match(invalid.stdout, /STATES_INVALID_TIMINGS/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
