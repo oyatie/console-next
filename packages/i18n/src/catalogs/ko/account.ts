@@ -28,6 +28,7 @@ export const koAccount: Record<keyof typeof enAccount, string> = {
   "account.singleKeys": "한 글자 단축키",
   "account.singleKeys.device": "J, K, ?처럼 화면 어디서나 동작하는 한 글자 단축키를 켜거나 끕니다. 초점이 있는 표, 조직도, 입력 칸 안의 키는 항상 동작합니다. 이 기기에 저장합니다.",
   "account.singleKeys.failed": "이 기기에 설정을 저장하지 못했습니다. 사이트 저장소를 허용한 후 다시 시도하십시오.",
+  "account.singleKeys.off": "화면 어디서나 동작하는 한 글자 단축키는 이 기기에서 꺼져 있습니다 · 초점이 있는 표나 조직도 안의 키는 그대로 동작합니다 · 「내 계정」에서 켭니다",
   // Passkeys keep the user-selected name alongside registration and last-use dates.
   "account.passkeys": "패스키",
   "account.passkey.add": "패스키 등록",

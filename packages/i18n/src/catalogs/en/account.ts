@@ -24,6 +24,7 @@ export const enAccount = {
   "account.singleKeys": "Single-key shortcuts",
   "account.singleKeys.device": "Turns the one-character shortcuts that act anywhere on a page, such as J, K and ?, on or off. Keys inside a focused table, chart or field always work. Saved on this device.",
   "account.singleKeys.failed": "This device could not save the setting. Allow site storage and try again.",
+  "account.singleKeys.off": "Single keys that act anywhere on the page are off on this device · keys inside a focused table or chart still work · turn them on in My account",
   "account.passkeys": "Passkeys",
   "account.passkey.add": "Register passkey",
   "account.passkey.added": "You registered a new passkey",
