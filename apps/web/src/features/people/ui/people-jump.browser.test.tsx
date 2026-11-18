@@ -28,7 +28,7 @@ afterAll(async () => { i18n.set("ko"); await browser?.close(); await server?.clo
 test("with single keys off ? waits and ⌘/ still opens the people key map, which lists that chord and says single keys are off", async () => {
   const map = page.getByRole("dialog", { name: t("peopleJump.keys"), exact: true });
   const off = map.getByText(t("account.singleKeys.off"), { exact: true });
-  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}people-jump-test`, page.getByRole("heading", { name: t("people.title"), exact: true }));
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}people-jump-test`, page.getByText(t("people.title"), { exact: true }));
 
   await page.keyboard.press("Shift+Slash");
   await element(map).toBeVisible();

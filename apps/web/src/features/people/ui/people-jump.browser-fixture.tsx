@@ -8,6 +8,7 @@ import "../../../app.css";
 
 i18n.set("en");
 await loadCatalog("en");
-const root = createRootRoute({ component: () => <main><h1>{t("people.title")}</h1><PeopleJump /></main> });
+// A paragraph, not a heading, marks the page as drawn: a page heading belongs to a real page.
+const root = createRootRoute({ component: () => <main><p>{t("people.title")}</p><PeopleJump /></main> });
 const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ["/"] }) });
 createRoot(document.getElementById("root")!).render(<QueryClientProvider client={new QueryClient()}><RouterProvider router={router} /></QueryClientProvider>);
