@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { isImeKey } from "../../lib/pure/ime";
 import { at, indexOf, inRect, moveRange, rectIn, spanIn, type Cell, type Range } from "../sheet-grid/range";
 import s from "./person-day-grid.module.css";
 
@@ -196,7 +197,7 @@ function Editor({ value, label, onChange, onCommit }: { value: string; label: st
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={(e) => {
-        if (e.nativeEvent.isComposing) return;
+        if (isImeKey(e)) return;
         e.stopPropagation();
         if (e.key === "Enter") {
           e.preventDefault();

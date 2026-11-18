@@ -30,7 +30,8 @@ test tiers in [testing/README.md](testing/README.md) and the browser-test strate
 
 Green checks leave two kinds of test unrun. Database-backed backend tests run on pushes to `dev` and
 nightly; `.github/workflows/db-tests.yml` runs on a pull request only when the pull request changes that
-workflow or the test tooling it names. Of the journey specs, a pull request runs one
+workflow or the test tooling it names. Releases currently ship without proof from the database tests: neither
+merge admission nor release promotion waits for this workflow. Of the journey specs, a pull request runs one
 (`e2e/performance/home-inbox.spec.ts`) and the merge queue adds three (`e2e/first-run-solo.spec.ts`,
 `e2e/authz/write-refusals.spec.ts`, `e2e/error-beacon.spec.ts`); the rest run nightly
 (`.github/workflows/e2e-live.yml`). When you add or change a database test or a journey spec, run it

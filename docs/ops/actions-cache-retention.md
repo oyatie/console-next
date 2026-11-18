@@ -11,7 +11,6 @@ failure can block delivery; failed or skipped cleanup writes a summary warning.
 | Family | Reader | Retained copies per cache version |
 | --- | --- | --- |
 | backend | Rust checks, tests, release and collector on dev/PRs | Two per runner, with the current saved prefix and saved/restored keys protected |
-| db-tests | DB test shards | One per runner/debug profile |
 | npm | setup-node in all workflows | One per OS/architecture |
 | playwright | Web and states browser jobs | One per OS/architecture/browser |
 | codeql | Overlay analysis | One per language |
@@ -53,7 +52,7 @@ A projection never changes the observed budget status. Rust readers report
 
 Before enabling deletion, review the dry-run keep set and three consecutive dev
 restores plus a PR restore. Each family has its own repository variable:
-`CACHE_RETENTION_BACKEND_APPLY`, `CACHE_RETENTION_DB_TESTS_APPLY`,
+`CACHE_RETENTION_BACKEND_APPLY`,
 `CACHE_RETENTION_NPM_APPLY`, `CACHE_RETENTION_PLAYWRIGHT_APPLY`,
 `CACHE_RETENTION_CODEQL_APPLY`, `CACHE_RETENTION_BUILDKIT_APPLY`. Only the exact
 value `true` enables that family; unset it to return to dry-run. The old global
