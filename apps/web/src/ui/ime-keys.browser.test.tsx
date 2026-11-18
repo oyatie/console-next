@@ -61,13 +61,14 @@ const open = (which: string) => page.goto(`${server.resolvedUrls!.local[0]}ime-t
 const send = (target: Locator, init: { key: string; isComposing: boolean; keyCode?: number }) =>
   target.evaluate((el, i) => el.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...i })), init);
 
-const ENTRIES = [{ which: "field", value: "ab", caller: true }, { which: "area", value: "ab", caller: true }, { which: "masked", value: "12", caller: false }, { which: "reason", value: "ab", caller: false }];
+const ENTRIES = [{ which: "field", value: "ab", caller: true }, { which: "search", value: "ab", caller: true }, { which: "area", value: "ab", caller: true }, { which: "masked", value: "12", caller: false }, { which: "reason", value: "ab", caller: false }];
+const boxOf = (which: string) => page.getByRole(which === "search" ? "searchbox" : "textbox");
 test.each(ENTRIES.flatMap(entry => ["Escape", "Tab"].flatMap(key => COMPOSING.map(state => ({ ...entry, key, state })))))(
-  "$which: $key while composing $state reaches no handler, and the next $key acts", async ({ which, value, caller, key, state }) => {
+  "$which: a dispatched $key marked as the input method's $state reaches no bubble-phase handler, and a plain $key acts", async ({ which, value, caller, key, state }) => {
     await open(which);
-    const box = page.getByRole("textbox");
+    const box = boxOf(which);
     await box.focus();
-    // The Tab's own action stays with the browser, which commits the syllable and moves on; the Escape's is cancelled.
+    // The guard cancels the Escape's default action and leaves the Tab's to the browser.
     expect(await send(box, { key, ...state })).toBe(key === "Tab");
     await element(page.locator("#heard")).toHaveText("");
     await element(box).toHaveValue(value);
@@ -77,12 +78,34 @@ test.each(ENTRIES.flatMap(entry => ["Escape", "Tab"].flatMap(key => COMPOSING.ma
     await element(page.locator("#heard")).toHaveText(caller ? "native caller above window" : "native above window");
   });
 
-test("a real Escape and Tab while Chromium composes a syllable reach no handler; the Tab commits the syllable and moves on", async () => {
-  await open("field");
-  const box = page.getByRole("textbox");
+// No input method runs in these tests. The debugging protocol opens a composition in Chromium and the key is sent
+// through it: with key code 229, as a browser reports a key the input method holds, or with the key's own code.
+const compose = async (which: string) => {
+  await open(which);
+  const box = boxOf(which);
   await box.press("End");
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.imeSetComposition", { text: "c", selectionStart: 1, selectionEnd: 1 });
+  return { box, cdp };
+};
+
+test.each(["field", "search"].flatMap(which => ["Escape", "Tab"].map(key => ({ which, key }))))(
+  "$which: $key sent with key code 229 into an open composition does nothing, and a plain $key acts once the text is committed", async ({ which, key }) => {
+    const { box, cdp } = await compose(which);
+    await cdp.send("Input.dispatchKeyEvent", { type: "rawKeyDown", key, code: key, windowsVirtualKeyCode: 229, nativeVirtualKeyCode: 229 });
+    // Chromium gives this keydown no default action: nothing is committed, cleared or moved, and no handler heard it.
+    await element(page.locator("#heard")).toHaveText("");
+    await element(box).toHaveValue("abc");
+    await element(box).toBeFocused();
+    await cdp.send("Input.insertText", { text: "c" });
+    await page.keyboard.press(key);
+    await element(page.locator("#heard")).toHaveText("native caller above window");
+    await element(box).toHaveValue(key === "Tab" ? "abc>" : "");
+    await element(box).toBeFocused();
+  });
+
+test("field: Escape and Tab sent with their own key codes into an open composition reach no bubble-phase handler; the Tab's default action commits the text and moves focus on, so the caller's Tab command does not run", async () => {
+  const { box } = await compose("field");
   await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
   await element(page.getByRole("button", { name: "Next" })).toBeFocused();
@@ -90,12 +113,8 @@ test("a real Escape and Tab while Chromium composes a syllable reach no handler;
   await element(page.locator("#heard")).toHaveText("");
 });
 
-test("a real Escape while Chromium composes a syllable in a search box does not clear the box", async () => {
-  await open("search");
-  const box = page.getByRole("searchbox");
-  await box.press("End");
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Input.imeSetComposition", { text: "c", selectionStart: 1, selectionEnd: 1 });
+test("search: Escape sent with its own key code into an open composition does not clear the box", async () => {
+  const { box } = await compose("search");
   await page.keyboard.press("Escape");
   await element(box).toHaveValue("abc");
   await element(page.locator("#heard")).toHaveText("");

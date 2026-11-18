@@ -22,6 +22,6 @@ test("an Escape or Tab the input method owns stops at the field; its Enter and a
   expect(["Escape", "Tab"].flatMap(key => [stopped({ key, isComposing: true }), stopped({ key, keyCode: 229 })])).toEqual([true, true, true, true]);
   // A composing Enter is not this handler's: the text input stops that one itself.
   expect([stopped({ key: "Enter", isComposing: true }), stopped({ key: "Escape", keyCode: 27 }), stopped({ key: "Tab", keyCode: 9 })]).toEqual([false, false, false]);
-  // Only the Escape loses its default action (a search box clears on it); the Tab still commits the syllable and moves on.
+  // Only the Escape loses its default action (a search box clears on it); the Tab's is left to the browser.
   expect(prevented).toEqual(["Escape", "Escape"]);
 });

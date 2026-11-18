@@ -3,7 +3,7 @@ import { leaveImeKey } from "../../lib/pure/ime";
 
 /**
  * A multi-line text control for feature views (which may not render raw elements); put it inside a Field. An Escape or
- * Tab pressed while a syllable is composing is the input method's, as in TextInput: no handler sees it.
+ * Tab pressed while a syllable is composing is the input method's, as in TextInput: no bubble-phase handler sees it.
  */
 export function TextArea({ className, onKeyDownCapture, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement> & { ref?: Ref<HTMLTextAreaElement> }) {
   return (
