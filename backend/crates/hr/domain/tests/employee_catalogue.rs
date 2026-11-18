@@ -7,6 +7,10 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeSet, fs, path::Path, process::Command};
 
+#[path = "support/quality_base.rs"]
+mod quality_base;
+use quality_base::quality_ref;
+
 fn catalogue() -> Value {
     serde_json::from_str(
         &fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("data/employee.json"))
@@ -28,13 +32,7 @@ fn historical_fields() -> Vec<Value> {
             .output()
             .unwrap()
     };
-    let base_ref = std::env::var("QUALITY_BASE").unwrap_or_else(|_| {
-        ["refs/remotes/public/dev", "refs/remotes/origin/dev", "dev"]
-            .into_iter()
-            .find(|reference| git(&["rev-parse", "--verify", reference]).status.success())
-            .unwrap()
-            .into()
-    });
+    let base_ref = quality_ref(&git, std::env::var("QUALITY_BASE").ok());
     let base = git(&["merge-base", "HEAD", &base_ref]);
     assert!(
         base.status.success(),

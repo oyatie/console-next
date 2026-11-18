@@ -161,6 +161,7 @@ export const koPayroll: Record<keyof typeof enPayroll, string> = {
   "payroll.employee.gross": "총 지급액",
   "payroll.employee.minimumWage": "최저임금 확인",
   "payroll.employee.hourlyFloor": "법정 시간급 하한",
+  "payroll.employee.monthlyFloor": "월 환산액 (209시간)",
   "payroll.employee.effectiveHourly": "환산 시간급",
   "payroll.employee.minimumPass": "기준 충족",
   "payroll.employee.minimumBelow": "최저임금에 미달합니다.",

@@ -67,7 +67,7 @@ test("the executable ratchet rejects a planted sibling heading and permits neste
     const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
     git("init", "-b", "dev");
     git("add", ".");
-    git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "fixture");
+    git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture");
     const run = () => spawnSync("node", [script, "--root", root], { encoding: "utf8", env: { ...process.env, QUALITY_BASE: "dev" } });
     expect(run().status).toBe(0);
     writeFileSync(screen, 'export const Screen = () => <><PageHead title="Extra" /><Page floorplan="P-01" head={{title:"List"}}>Body</Page></>;');
@@ -98,7 +98,7 @@ test("renamed pages retain inherited debt but reject additional headings", () =>
     const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
     git("init", "-b", "dev");
     git("add", ".");
-    git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "fixture");
+    git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture");
     git("mv", "apps/web/src/before.tsx", "apps/web/src/after.tsx");
     const run = () => spawnSync("node", [resolve("scripts/quality/ratchet.mjs"), "--root", root], { encoding: "utf8", env: { ...process.env, QUALITY_BASE: "dev" } });
     const moved = run();
@@ -108,7 +108,7 @@ test("renamed pages retain inherited debt but reject additional headings", () =>
     expect(bad.status).toBe(1);
     expect(bad.stderr).toContain("multipleH1");
     writeFileSync(renamed, indebted);
-    git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "rename");
+    git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "rename");
     expect(run().status).toBe(0);
     writeFileSync(old, indebted);
     const added = run();
@@ -117,7 +117,7 @@ test("renamed pages retain inherited debt but reject additional headings", () =>
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test.each(["dev", "public/dev", "review-base"])("advancing %s cannot turn inherited floorplan debt into new debt", ref => {
+test.each(["dev", "origin/dev", "review-base"])("advancing %s cannot turn inherited floorplan debt into new debt", ref => {
   const root = mkdtempSync(join(tmpdir(), "floorplan-base-"));
   const screen = join(root, "apps/web/src/screen.tsx");
   const inherited = 'export const Screen = () => <main><PageHead title="Title" /></main>;';
@@ -130,7 +130,7 @@ test.each(["dev", "public/dev", "review-base"])("advancing %s cannot turn inheri
     const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
     const commit = (message: string) => {
       git("add", ".");
-      git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", message);
+      git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", message);
     };
     git("init", "-b", "dev");
     commit("inherited debt");
@@ -140,7 +140,8 @@ test.each(["dev", "public/dev", "review-base"])("advancing %s cannot turn inheri
     git("switch", "dev");
     writeFileSync(screen, 'export const Screen = () => <Page floorplan="P-01" head={{title:"Title"}}>Body</Page>;');
     commit("dev clears debt");
-    if (ref !== "dev") git("update-ref", ref === "public/dev" ? "refs/remotes/public/dev" : "refs/heads/review-base", "HEAD");
+    if (ref === "origin/dev") git("remote", "add", "origin", "https://example.invalid/console.git");
+    if (ref !== "dev") git("update-ref", ref === "origin/dev" ? "refs/remotes/origin/dev" : "refs/heads/review-base", "HEAD");
     git("switch", "lane");
     const run = () => spawnSync("node", [resolve("scripts/quality/ratchet.mjs"), "--root", root], { encoding: "utf8", env });
     const unchanged = run();
