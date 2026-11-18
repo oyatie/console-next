@@ -30,7 +30,8 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
       <Modal className={s.modal}>
         <Dialog className={s.dialog} aria-label={label}>
           <Autocomplete inputValue={query} onInputChange={onQuery}>
-            <SearchField className={s.field} aria-label={label}>
+            {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- A palette opened by its chord or its button must take typing at once. */}
+            <SearchField className={s.field} aria-label={label} autoFocus>
               <Search size={18} aria-hidden />
               <Input className={s.input} placeholder={placeholder} onKeyDownCapture={leaveImeKey} />
               <Keyboard className={s.kbd}>{t("uiCommandPalette.esc")}</Keyboard>
