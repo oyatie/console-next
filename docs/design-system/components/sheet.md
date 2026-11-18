@@ -100,7 +100,7 @@ The height is always `100dvh`.
 No prop picks a visual style. There is no open or close animation: the stylesheet has no transition and reads
 neither `data-entering` nor `data-exiting`.
 
-Every colour in the stylesheet is a token, and so is every length except the 1 px lines. The opacity of an inert
+Every colour in the stylesheet is a token, and so is every padding, gap and font size. The opacity of an inert
 body is the literal `0.5`.
 
 The global `.overlay` and `.dialog` rules in `app.css` do not apply to a sheet. Its overlay and its dialog carry
@@ -112,18 +112,22 @@ module classes of their own.
 |---|---|
 | Closed | Nothing is rendered. |
 | Open | The sheet is drawn, everything outside it is made inert, and React Aria locks the scroll of the document. |
-| Hover | The close button takes the button hover: a `--muted` fill. Nothing else in the sheet has a hover look. |
-| Focus | On open, focus moves to the dialog element itself, unless an element inside has already taken it. The dialog's rule sets `outline: none`. The close button and the controls inside show the global focus outline. |
+| Hover | The close button and the discard button of the draft line are ghost buttons and take the button hover: a `--muted` fill. The sheet's own stylesheet has no hover rule. |
+| Focus | On open, focus moves to the dialog element itself, unless an element inside has already taken it. The dialog's rule sets `outline: none`, to keep the global focus outline off it: see the note under this table. The close button and the controls inside show the global focus outline. |
 | Pressed, selected | Do not exist. |
 | Dirty | No look until the person tries to close. See below. |
 | Unsaved prompt | The unsaved line appears in the foot. The sheet stays open. |
 | Pending (`pending`) | The command is sending. The close button is disabled and takes the disabled button look: half opacity and a not-allowed cursor. The body is `inert` and at half opacity. The actions are `inert` too, with no look of their own: the stylesheet does not dim them. None of the four gestures below closes the sheet. |
 | Locked (`locked`) | The body is `inert` and at half opacity. The foot still acts and the sheet can still be closed. It is for a body that must not change while a lost response is being checked. |
-| Loading (`loading`) | The body shows a `Skeleton` of a title and three rows in place of `children`, so the form is drawn once, whole, when its lists have arrived. The head and the foot are drawn as usual. |
+| Loading (`loading`) | The body shows a `Skeleton` of a title and three rows in place of `children`, so the form is drawn once, whole, when its lists have arrived. The `Skeleton` is invisible for its first 200 ms: its own stylesheet starts it at `opacity: 0` and shows it after that delay. The head and the foot are drawn as usual. |
 | Disabled | Does not exist for the sheet as a whole. `pending` and `locked` are the two ways it stops taking input. |
 | Read-only | `locked`, above. |
 | Invalid | Does not exist. Errors belong to the fields inside and to `notice`. |
 | Empty | Does not exist. `children` is required. |
+
+The dialog's `outline: none` is a rule of one class, and the global `:focus-visible` rule in `app.css` is a rule of
+one pseudo-class. The two weigh the same, so the sheet's rule wins only when its stylesheet comes after `app.css`.
+This page did not check the order in a build of this branch. The [Menu](menu.md) page says the same of its items.
 
 ### Dirty, and how a sheet closes
 
@@ -143,11 +147,20 @@ Four gestures can close a sheet. Each calls `onClose`; none removes the sheet by
 |---|---|---|---|
 | The close button | Closes. | With a pointer, the first press shows the unsaved line and the second closes. With Enter or Space it does not close: see the known gaps. | Disabled. |
 | Escape | Closes. | The first press shows the unsaved line. The second closes. | Nothing. |
-| A press on the backdrop | Closes only when the sheet holds no form control and was not told its dirty state. Otherwise nothing. | Shows the unsaved line. It never closes a dirty sheet. | Nothing. |
+| A press on the backdrop | Closes only when the sheet holds no form control and was not told its dirty state. Otherwise nothing. | Shows the unsaved line. It never closes a dirty sheet. | Never closes. On a dirty sheet it still shows the unsaved line. |
 | The browser's Back | The history moves, and the sheet closes once the destination has rendered. | The first Back is held back and shows the unsaved line. The next one goes through. | Held back. |
 
 For the backdrop, a form control is a `<form>`, an element with the class `form`, an input, a select, a textarea,
 an editable element or an element with `data-form-value`.
+
+The Back row holds for every history move that is not a push or a replace, so the browser's Forward is treated the
+same way.
+
+The backdrop is the one gesture that still acts while `pending`, and a pending sheet is usually dirty: the person
+has just sent a filled form. What follows is read from `sheet-dismiss.ts`, not run. The unsaved line shown this way
+stays, and the sheet counts it as the first attempt to close. Once `pending` clears, the next Escape, pointer
+press on the close button or Back closes the sheet without asking again, unless a key or an input has withdrawn
+the line first.
 
 The unsaved line is withdrawn by any key other than Escape, by any input or change in the body, and by a change
 of a value the sheet reads. The next attempt to close then asks again.
@@ -225,7 +238,7 @@ The WCAG 2.2 criteria that apply:
 | 2.1.1 Keyboard | Escape and the close button, with the gap below for the close button of a dirty sheet. |
 | 2.1.2 No Keyboard Trap | Focus is held inside on purpose. Escape and the close button are the way out. While `pending` there is none, until the caller clears `pending`. |
 | 2.4.3 Focus Order | Focus moves into the sheet on open and back to where it was on close. |
-| 2.4.7 Focus Visible | The global 2 px outline on the close button and on the controls inside. The dialog element itself shows none. |
+| 2.4.7 Focus Visible | The global 2 px outline on the close button and on the controls inside. The dialog element itself is meant to show none, with the caveat under the States table. |
 | 2.4.11 Focus Not Obscured (Minimum) | The page behind is inert. Inside, the head and the foot sit beside the scrolling body, not over it. |
 | 2.5.8 Target Size (Minimum) | The close button is at least 36 px high and 42 px wide. |
 | 3.3.4 Error Prevention (Legal, Financial, Data) | The foot states the consequence above the buttons that commit, and a dirty sheet asks once before it is closed. Whether a command also needs a confirmation step is the caller's to decide. |
@@ -250,9 +263,20 @@ What the gallery shows:
 |---|---|
 | An `lg` sheet with a kicker, a subtitle, a two-line consequence, two actions and one field | `apps/web/src/ui/sheet/sheet.gallery.tsx` |
 | An `md` sheet with a title, a consequence and one action | `apps/web/src/gallery/sections/page.gallery.tsx` |
+| Two `md` sheets drawn by `Composer` in its drawer layout, each with one field | `apps/web/src/ui/composer/composer.gallery.tsx` |
+| An `md` sheet drawn by `DockSheet` below 960 px, with a kicker, a consequence and two actions. The entry starts open, so at that width the gallery loads with this sheet open. | `apps/web/src/ui/dock-sheet/dock-sheet.gallery.tsx` |
 
-The gallery does not show `pending`, `locked`, `loading`, `notice`, the read notice or the draft line. The unsaved
-line appears in the first entry once its field is edited and Escape is pressed.
+Three entries that belong to features open a sheet from a button, through a feature component:
+`features/people/ui/rrn-entry.gallery.tsx`, `features/payroll/ui/payroll.gallery.tsx` and
+`features/people/ui/roster-saved-views.gallery.tsx`. The last opens only once its list read has data. These seven
+are all there is: a trace of the imports of every `*.gallery.tsx` reaches one more feature entry, and it renders
+no sheet.
+
+No entry opens a sheet that starts `pending`, `locked` or `loading`. In the four entries of the table none of the
+three is ever true, and `notice` is not passed. The three feature entries tie them, and `notice`, to a command or
+a read; this page did not run them. No entry is under a `SheetDraftProvider` or passes reads through
+`SheetReadContext`, so none shows the draft line or the read notice. The unsaved line appears in the first entry
+once its field is edited and Escape is pressed.
 
 Tests: `ui/sheet` has no unit test of its own. The sheet is proved in a browser by
 `apps/web/src/ui/dialog.browser.test.tsx`, by `e2e/mock/sheet-interactions.spec.ts` and by
@@ -260,10 +284,21 @@ Tests: `ui/sheet` has no unit test of its own. The sheet is proved in a browser 
 checks that it fits, runs axe over the dialog, and checks that the record behind it does not change width when
 the sheet opens or closes.
 
+Other specs drive a sheet on the screen that owns it. One example: `e2e/states/structure-sheet-read.spec.ts` holds
+a read back and expects a `common.loading` status inside the sheet. Where this page traced it, for the sheet that
+adds a workplace, that status is the read placeholder the caller renders as the sheet's content
+(`features/entity/ui/fresh-entity.tsx`), not the sheet's own `loading` placeholder.
+
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
 skips itself on the served build, which is the one the workflows use. The command is in
 [the guide](../README.md#add-or-change-a-component).
+
+That scan does not reach an open sheet. A closed sheet renders nothing and the scan opens none. It runs at
+1280 px, where the `DockSheet` entry is docked and is not this sheet. For this component it covers the buttons
+that open the gallery's sheets and no more. An open sheet is scanned by two other specs:
+`e2e/mock/sheet-layout.spec.ts`, as above, and `e2e/mock/sheet-interactions.spec.ts`, which runs axe over the
+dialog while the unsaved line is shown, and again with a restored draft.
 
 ## Phone behaviour at 390 px
 
