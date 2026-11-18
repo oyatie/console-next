@@ -156,11 +156,11 @@ an editable element or an element with `data-form-value`.
 The Back row holds for every history move that is not a push or a replace, so the browser's Forward is treated the
 same way.
 
-The backdrop is the one gesture that still acts while `pending`, and a pending sheet is usually dirty: the person
-has just sent a filled form. What follows is read from `sheet-dismiss.ts`, not run. The unsaved line shown this way
-stays, and the sheet counts it as the first attempt to close. Once `pending` clears, the next Escape, pointer
-press on the close button or Back closes the sheet without asking again, unless a key or an input has withdrawn
-the line first.
+The backdrop is the one gesture that still acts while `pending`, and a pending sheet can still be dirty: its fields
+keep what was typed while the command is sending. What follows is read from `sheet-dismiss.ts`, not run. The
+unsaved line shown this way stays, and the sheet counts it as the first attempt to close. Once `pending` clears,
+the next Escape, pointer press on the close button or Back closes the sheet without asking again, unless the line
+has been withdrawn first.
 
 The unsaved line is withdrawn by any key other than Escape, by any input or change in the body, and by a change
 of a value the sheet reads. The next attempt to close then asks again.
@@ -273,8 +273,8 @@ are all there is: a trace of the imports of every `*.gallery.tsx` reaches one mo
 no sheet.
 
 No entry opens a sheet that starts `pending`, `locked` or `loading`. In the four entries of the table none of the
-three is ever true, and `notice` is not passed. The three feature entries tie them, and `notice`, to a command or
-a read; this page did not run them. No entry is under a `SheetDraftProvider` or passes reads through
+three is ever true, and `notice` is not passed. Between them, the three feature entries tie all three and `notice`
+to a command or a read; this page did not run them. No entry is under a `SheetDraftProvider` or passes reads through
 `SheetReadContext`, so none shows the draft line or the read notice. The unsaved line appears in the first entry
 once its field is edited and Escape is pressed.
 
@@ -296,7 +296,7 @@ skips itself on the served build, which is the one the workflows use. The comman
 
 That scan does not reach an open sheet. A closed sheet renders nothing and the scan opens none. It runs at
 1280 px, where the `DockSheet` entry is docked and is not this sheet. For this component it covers the buttons
-that open the gallery's sheets and no more. An open sheet is scanned by two other specs:
+that open the gallery's sheets and no more. Other specs do scan an open sheet. Two of them:
 `e2e/mock/sheet-layout.spec.ts`, as above, and `e2e/mock/sheet-interactions.spec.ts`, which runs axe over the
 dialog while the unsaved line is shown, and again with a restored draft.
 
