@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -39,13 +40,14 @@ for (const state of ["loading", "failed", "counts-failed", "counts-loading", "po
     await page.setViewportSize({ width, height: 900 });
     const screen = orgChangeScreens[0];
     const fixture = await mockScreen(page, screen, state === "loading" || state === "failed" ? state : "populated");
+    if (state === "counts-failed") await installFaultClock(page);
     const counts = await mockOrgChangeCounts(page, state);
     try {
       await page.goto(screen.path);
       const main = page.getByRole("main");
       const tabs = main.getByRole("group", { name: t("orgChange.list.views") });
       if (state === "failed" || state === "counts-failed") {
-        await expect(tabs.locator('span[title]').first()).toHaveText("—", { timeout: 20_000 });
+        await expect(tabs.locator('span[title]').first()).toHaveText("—");
         await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(1);
         if (state === "failed") await expect(main.getByRole("alert")).toHaveCount(1);
       } else if (state === "loading" || state === "counts-loading") {
@@ -135,6 +137,7 @@ for (const width of [1440, 390]) test(`saved-view changes preserve the effective
 });
 
 for (const width of [1440, 390]) test(`a failed mine read leaves a failed open count and usable views at ${width}px @ui-state`, async ({ page }) => {
+  await installFaultClock(page);
   await page.setViewportSize({ width, height: 900 });
   const screen = orgChangeScreens[0];
   const fixture = await mockScreen(page, screen, "populated");
@@ -147,7 +150,7 @@ for (const width of [1440, 390]) test(`a failed mine read leaves a failed open c
     await page.goto(screen.path);
     const tabs = page.getByRole("group", { name: t("orgChange.list.views") });
     const open = tabs.getByRole("button", { name: /^진행 중/ });
-    await expect(open.locator("span[title]")).toHaveText("—", { timeout: 20_000 });
+    await expect(open.locator("span[title]")).toHaveText("—");
     await expect(tabs.locator('span[aria-hidden="true"]')).toHaveCount(0);
     await expect(tabs.locator('button[aria-disabled="true"]')).toHaveCount(0);
     await tabs.getByRole("button", { name: "예정 1", exact: true }).click();

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { mockNavigate } from "../mock/navigation";
 import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expect } from "@playwright/test";
@@ -45,6 +46,7 @@ for (const locale of LOCALES) for (const width of [1440, 390]) {
   });
 
   test(`invalid stored citation explains the read refusal in ${locale} at ${width}px @ui-state`, async ({ page }) => {
+    await installFaultClock(page);
     await loadCatalog(locale); i18n.set(locale);
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(({ locale, width }) => {
@@ -58,7 +60,7 @@ for (const locale of LOCALES) for (const width of [1440, 390]) {
     });
     try {
       await page.goto("/statutory");
-      await expect(page.getByText(t("common.failed.code.filing_citation_source_url_invalid"), { exact: true })).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByText(t("common.failed.code.filing_citation_source_url_invalid"), { exact: true })).toBeVisible();
       await fits(page, "citation refusal");
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }

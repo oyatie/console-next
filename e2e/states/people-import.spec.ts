@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { failure, id } from "../mock/fixtures";
@@ -26,7 +27,7 @@ for (const screen of peopleImportScreens) for (const state of Object.keys(screen
         await expect(main.locator('input[type="file"]')).toHaveCount(0);
       } else if (state.endsWith("failed")) {
         const card = main.getByRole("alert");
-        await expect(card).toContainText("불러오지 못했습니다", { timeout: 20_000 });
+        await expect(card).toContainText("불러오지 못했습니다");
         const label = failedReads[state];
         if (label) await expect(card).toContainText(`${label} 정보를 불러오지 못했습니다.`);
         await expect(card).toContainText(id(99));
@@ -62,7 +63,7 @@ test("reference retry recovers the same import screen @ui-state", async ({ page 
   const fixture = await mockPeopleImport(page, "entities-failed");
   try {
     await page.goto("/people/import");
-    await expect(page.getByRole("alert")).toContainText("법인 정보를 불러오지 못했습니다.", { timeout: 20_000 });
+    await expect(page.getByRole("alert")).toContainText("법인 정보를 불러오지 못했습니다.");
     await mockRoute(page, "get", "/api/v1/legal-entities", { status: 200, json: { items: [] } });
     await page.getByRole("button", { name: "다시 불러오기", exact: true }).click();
     await expect(page.getByRole("button", { name: "파일 선택", exact: true })).not.toHaveAttribute("aria-disabled", "true");
@@ -72,6 +73,7 @@ test("reference retry recovers the same import screen @ui-state", async ({ page 
 });
 
 test("a failed cached entities refetch keeps the completed run report @ui-state", async ({ page }) => {
+  await installFaultClock(page);
   const fixture = await mockPeopleImport(page, "populated");
   try {
     await page.goto("/people/import");
@@ -84,7 +86,7 @@ test("a failed cached entities refetch keeps the completed run report @ui-state"
       return { status: 503, json: failure("service_unavailable") };
     });
     await recordedRun.click();
-    await expect.poll(() => failures, { timeout: 20_000 }).toBe(3);
+    await expect.poll(() => failures).toBe(3);
     await expect(page.locator("#import-done")).toHaveText("명부를 반영했습니다");
     await expect(page.getByRole("main")).toContainText("synthetic-roster.xlsx");
     await expect(page.getByRole("button", { name: "파일 선택", exact: true })).toHaveCount(0);

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { readFileSync } from "node:fs";
-import { expect as baseExpect, type Page, type TestInfo } from "@playwright/test";
+import { expect, type Page, type TestInfo } from "@playwright/test";
 import { routeReady } from "../flows";
 import { routeList } from "../helpers/route-list";
 import { authz, checklist, failure, id, modules, screenAccess, token, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
-import { installFaultClock } from "./fault-clock";
+import { mockEventStream } from "../mock/screen";
+import { faultAttempts, installFaultClock } from "./fault-clock";
 import { screens } from "./registry";
 
 type State = "failed" | "refused" | "no-reference";
@@ -20,7 +21,6 @@ const middle = Math.ceil(routes.length / 2);
 const parts = { a: routes.slice(0, middle), b: routes.slice(middle) };
 const reference = id(99).replaceAll("-", "");
 const raw = "서버 내부 진단 원문";
-const expect = baseExpect.configure({ timeout: 20_000 });
 
 const routeToken = (route: string) => {
   const pair = token();
@@ -59,38 +59,31 @@ export function supportReferenceTest(route: string, state: State) {
     }));
     await mockRoute(page, "get", "/api/v1/access/granters", { status: 200, json: { count: 0, names: [] } });
     await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } });
-    // Keep the shell's event stream healthy, as mockScreen does, without feature fixtures.
-    await page.addInitScript(() => {
-      const fetch = window.fetch;
-      window.fetch = (input, init) => {
-        const request = input instanceof Request ? input : new Request(input, init);
-        if (new URL(request.url).pathname !== "/api/v1/events") return fetch(input, init);
-        return Promise.resolve(new Response(new ReadableStream({ start(controller) {
-          controller.enqueue(new TextEncoder().encode(": connected\n\n"));
-          request.signal.addEventListener("abort", () => controller.close(), { once: true });
-        } }), { headers: { "content-type": "text/event-stream" } }));
-      };
-    });
+    await mockEventStream(page);
     const main = page.getByRole("main");
+    const frame = main.locator("[data-floorplan]").first();
     let settled = false;
     try {
-      const afterReadRetries = state === "refused" ? undefined : await installFaultClock(page);
+      if (state !== "refused") await installFaultClock(page);
       await page.goto(route.replace(/\$[^/]+/g, id(3)));
-      if (route !== "/login") await baseExpect.poll(() => reads.size, { message: "at least one failed feature read" }).toBeGreaterThan(0);
+      if (route !== "/login") await expect.poll(() => reads.size, { message: "at least one failed feature read" }).toBeGreaterThan(0);
       // The route marker waits for active queries; the network can be idle between retries.
-      if (afterReadRetries) await afterReadRetries(() => page.locator("[data-route-ready]").count()).toBe(1);
       await routeReady(page);
       await expect(main.locator('[aria-busy="true"]:visible:not([aria-hidden="true"] *, [inert] *)')).toHaveCount(0);
-      const screen = screens.find(screen => screen.path === route);
+      const screen = screens.find(candidate => candidate.path === route);
       if (screen) {
         const primary = [...reads].filter(([url]) => new URL(url).pathname === screen.read);
-        expect(primary.map(([, count]) => count), screen.read).toContain(state === "refused" ? 1 : 3);
+        expect(primary.map(([, count]) => count), screen.read).toContain(state === "refused" ? 1 : faultAttempts);
       }
+      if (route === "/account") {
+        await expect(main).toHaveAttribute("data-floorplan", "P-05");
+        await expect(frame).toHaveCount(0);
+      }
+      if (route === "/people") await expect(frame).toHaveAttribute("data-floorplan", "P-01");
       settled = true;
       if (state === "no-reference") await expect(main.locator("[data-support-reference]")).toHaveCount(0);
     } finally {
       const references = main.locator("[data-support-reference]");
-      const frame = main.locator("[data-floorplan]").first();
       const count = await references.count();
       const injected = [...reads.values()].reduce((sum, n) => sum + n, 0);
       const observation = {
@@ -103,11 +96,6 @@ export function supportReferenceTest(route: string, state: State) {
         floorplan: await frame.count() ? await frame.getAttribute("data-floorplan") : null,
         declared_floorplan: inventory.floorplans?.[route] ?? null,
       };
-      if (route === "/account") {
-        await expect(main).toHaveAttribute("data-floorplan", "P-05");
-        expect(observation.floorplan).toBeNull();
-      }
-      if (route === "/people") expect(observation.floorplan).toBe("P-01");
       const shown = state === "no-reference" ? count === 0 : count === 1 && observation.rendered_ref === reference
         && observation.display === reference.slice(0, 8) && observation.copy_count === 1;
       await info.attach("support-reference", { contentType: "application/json", body: Buffer.from(JSON.stringify({
