@@ -3,7 +3,7 @@
 
 use console_settings_domain::{Governance, SettingKey, SettingKind};
 use serde_json::{Value, json};
-use sqlx::PgPool;
+use sqlx::{Connection, PgPool};
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
@@ -23,10 +23,14 @@ fn definition(key: SettingKey) -> Value {
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn all_migrations_match_the_settings_registry(pool: PgPool) {
+    assert_registry(&pool).await;
+}
+
+async fn assert_registry(pool: &PgPool) {
     for &key in SettingKey::ALL {
         let actual: Value = sqlx::query_scalar("SELECT to_jsonb(d) FROM setting_definition($1) d")
             .bind(key.as_str())
-            .fetch_one(&pool)
+            .fetch_one(pool)
             .await
             .unwrap();
         // Infrastructure-only keys may have no SQL storage path; legacy rows still must match.
@@ -35,11 +39,12 @@ async fn all_migrations_match_the_settings_registry(pool: PgPool) {
         }
         assert_eq!(actual, definition(key), "definition for {}", key.as_str());
     }
-    let stored: Vec<String> =
-        sqlx::query_scalar("SELECT key FROM setting_definitions ORDER BY key")
-            .fetch_all(&pool)
-            .await
-            .unwrap();
+    let stored: Vec<String> = sqlx::query_scalar(
+        "SELECT key FROM setting_definitions WHERE retired_at IS NULL ORDER BY key",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap();
     assert!(!stored.is_empty());
     for key in stored {
         key.parse::<SettingKey>()
@@ -47,7 +52,7 @@ async fn all_migrations_match_the_settings_registry(pool: PgPool) {
     }
     let unknown: Value =
         sqlx::query_scalar("SELECT to_jsonb(d) FROM setting_definition('unknown') d")
-            .fetch_one(&pool)
+            .fetch_one(pool)
             .await
             .unwrap();
     assert!(unknown.as_object().unwrap().values().all(Value::is_null));
@@ -141,4 +146,85 @@ async fn independent_definition_inserts_compose_and_runtime_cannot_mutate_them(p
         );
         tx.rollback().await.unwrap();
     }
+}
+
+#[sqlx::test(migrations = false)]
+async fn definitions_migrated_by_console_app_are_read_only_for_runtime(pool: PgPool) {
+    let mut conn = pool.acquire().await.unwrap();
+    let database: String = sqlx::query_scalar("SELECT current_database()")
+        .fetch_one(&mut *conn)
+        .await
+        .unwrap();
+    sqlx::query(sqlx::AssertSqlSafe(format!(
+        "ALTER DATABASE \"{}\" OWNER TO console_app",
+        database.replace('"', "\"\"")
+    )))
+    .execute(&mut *conn)
+    .await
+    .unwrap();
+    sqlx::query("GRANT CREATE ON SCHEMA public TO console_app")
+        .execute(&mut *conn)
+        .await
+        .unwrap();
+    sqlx::query("SET SESSION AUTHORIZATION console_app")
+        .execute(&mut *conn)
+        .await
+        .unwrap();
+    let result = MIGRATOR.run(&mut *conn).await;
+    conn.detach().close().await.unwrap();
+    result.unwrap();
+    let grants: (bool, bool, bool, bool) = sqlx::query_as(
+        "SELECT has_table_privilege('console_rt','public.setting_definitions','SELECT'), \
+         has_table_privilege('console_rt','public.setting_definitions','INSERT'), \
+         has_table_privilege('console_rt','public.setting_definitions','UPDATE'), \
+         has_table_privilege('console_rt','public.setting_definitions','DELETE')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(grants, (true, false, false, false));
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn definition_domains_reject_invalid_metadata(pool: PgPool) {
+    for update in [
+        "kind = 'integer', min_value = NULL, max_value = NULL",
+        "looser_when = 'higer'",
+        "governance = 'tennant'",
+        "kind = 'code', codes = NULL, min_value = NULL, max_value = NULL",
+        "kind = 'bool', codes = ARRAY['yes'], min_value = NULL, max_value = NULL",
+        "kind = 'bool', min_value = 1",
+        "kind = 'bool', max_value = 1",
+        "min_value = 2, max_value = 1",
+    ] {
+        let error = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "UPDATE setting_definitions SET {update} WHERE key = $1"
+        )))
+        .bind(SettingKey::ALL[0].as_str())
+        .execute(&pool)
+        .await
+        .unwrap_err();
+        assert_eq!(
+            error.as_database_error().unwrap().code().as_deref(),
+            Some("23514"),
+            "{update}"
+        );
+    }
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn retired_definitions_remain_readable_for_older_binaries(pool: PgPool) {
+    sqlx::query(
+        "INSERT INTO setting_definitions(key,kind,looser_when,governance,retired_at) \
+                 VALUES ('test.retired','bool','neutral','tenant',now())",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    assert_registry(&pool).await;
+    let kind: String = sqlx::query_scalar("SELECT kind FROM setting_definition('test.retired')")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(kind, "bool");
 }
