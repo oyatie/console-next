@@ -1,3 +1,5 @@
+#[path = "filing_query_joins.rs"]
+mod joins;
 #[path = "filing_query_page.rs"]
 mod page;
 use page::push_page_order;
@@ -27,13 +29,7 @@ pub(super) fn non_employee_types() -> Vec<&'static str> {
         .map(EmploymentType::as_str)
         .collect()
 }
-// Keep employee and void lookups indexed before tenant statistics catch up.
-// Filter and order candidates before hydrating receipts, history and case links.
-const FROM: &str = " FROM sources l \
- JOIN LATERAL (SELECT * FROM person_employees_current WHERE org_id=l.org_id AND id=l.employee_id OFFSET 0) x ON true \
- LEFT JOIN LATERAL (SELECT a.workplace_id FROM employment_assignments a WHERE a.org_id=l.org_id AND a.employee_id=l.employee_id \
-   AND a.superseded_at IS NULL AND a.valid_from<l.effective_date::date AND l.to_workplace_id IS NOT NULL ORDER BY a.valid_from DESC LIMIT 1) previous ON true \
- CROSS JOIN LATERAL (SELECT DISTINCT r.filing_kind AS k,r.insurer,r.recording_held, \
+const FROM: &str = " CROSS JOIN LATERAL (SELECT DISTINCT r.filing_kind AS k,r.insurer,r.recording_held, \
    r.earliest_event_on FROM rules r \
    WHERE ((r.effective_from<=l.effective_date::date+r.loss_days \
      AND (r.effective_to_exclusive IS NULL OR l.effective_date::date+r.loss_days<r.effective_to_exclusive)) OR r.is_age) \
@@ -45,12 +41,6 @@ const FROM: &str = " FROM sources l \
         ELSE COALESCE(l.to_org_unit_id, x.org_unit_id) END AS org_unit_id) e \
  LEFT JOIN employee_employment_profiles profile ON profile.org_id=x.org_id AND profile.employee_id=x.id \
  LEFT JOIN age_facts assessment ON assessment.source_id=l.id AND assessment.insurer=agency.insurer AND assessment.filing_kind=kind.k \
-";
-const PLACEMENT: &str = " LEFT JOIN LATERAL (SELECT a.legal_entity_id, a.workplace_id FROM employment_assignments a \
-   WHERE a.org_id = l.org_id AND a.employee_id = l.employee_id AND a.superseded_at IS NULL \
-     AND a.valid_from <= l.placement_date::date \
-     AND (l.source_type <> 'GROUP_TRANSFER' OR kind.k NOT IN ('LOSE','SEPARATION_CERTIFICATE') OR a.valid_from < l.placement_date::date) \
-   ORDER BY a.valid_from DESC LIMIT 1) ea ON TRUE \
 ";
 const FILING: &str = " LEFT JOIN filing_obligations f ON f.org_id=l.org_id AND f.event_id=l.id AND f.filing_kind=kind.k AND f.insurer=agency.insurer \
 ";
@@ -128,8 +118,12 @@ pub(super) async fn query_rows(
     q.push_bind(bounds).push(
         ") AS cutoff(code text,effective_from date,earliest_event_on date) ON cutoff.code=r.code AND cutoff.effective_from=r.effective_from CROSS JOIN source_bounds b WHERE r.filing_rule IS NOT NULL \
              AND (r.filing_rule->>'age_trigger_years' IS NOT NULL OR (r.effective_from<=b.last_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0) \
-               AND (r.effective_to_exclusive IS NULL OR b.first_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0)<r.effective_to_exclusive)))), \
-      filtered AS (SELECT l.id,l.org_id,l.created_at AS source_created_at, \
+               AND (r.effective_to_exclusive IS NULL OR b.first_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0)<r.effective_to_exclusive))))",
+    );
+    if lightweight {
+        q.push(joins::RANKING_CTES);
+    }
+    q.push(", filtered AS (SELECT l.id,l.org_id,l.created_at AS source_created_at, \
       'insurance_filing_' || kind.k || '_' || agency.insurer || ':' || l.id AS inbox_id,l.employee_id, \
       kind.k AS kind,agency.insurer AS insurer,rule.recording_held, \
       CASE WHEN l.event_type='GROUP_TRANSFER' AND kind.k='LOSE' THEN (l.effective_date::date-1)::text ELSE l.effective_date END AS effective_date, \
@@ -140,9 +134,14 @@ pub(super) async fn query_rows(
     if placement_filter {
         q.push(",ea.legal_entity_id,ea.workplace_id");
     }
-    q.push(FROM);
+    q.push(if lightweight {
+        joins::FROM_SET
+    } else {
+        joins::FROM_INDEXED
+    })
+    .push(FROM);
     if placement_filter {
-        q.push(PLACEMENT);
+        q.push(joins::placement(lightweight));
     }
     if query.filing_id.is_some() {
         q.push(FILING);
@@ -266,7 +265,7 @@ pub(super) async fn query_rows(
     if placement_filter {
         q.push(" CROSS JOIN LATERAL (SELECT l.legal_entity_id,l.workplace_id) ea ");
     } else {
-        q.push(PLACEMENT);
+        q.push(joins::placement(lightweight));
     }
     if !lightweight {
         q.push(FILING);

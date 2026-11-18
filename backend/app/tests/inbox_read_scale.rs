@@ -87,6 +87,7 @@ async fn inbox_first_page_budget_scales_without_per_person_statements_or_cross_t
         }
         explain_register(&pool, org, &page, &events).await;
         explain_filing_hydration(&pool, org, &page, &events).await;
+        scale::filing_ranking::explain(&pool, org, &page, &events, size).await;
         if size == 2_000 {
             assert_source_isolation(&pool, &ctx).await;
         }

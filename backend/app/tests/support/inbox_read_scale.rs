@@ -4,6 +4,9 @@ use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+#[path = "inbox_filing_ranking.rs"]
+pub(super) mod filing_ranking;
+
 pub(super) async fn explain_filing_hydration(
     pool: &PgPool,
     org: Uuid,
