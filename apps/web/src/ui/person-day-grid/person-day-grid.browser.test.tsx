@@ -152,6 +152,8 @@ test("an edit opened with the pointer gives the focus to what is pressed next", 
   await element(drafts).toHaveText('{"0001|2026-10-05":"9-18"}');
   await element(grid).toBeFocused();
   expect(await active()).toBe("2,2");
+  // It has it as from any press: without the focus ring a key brings.
+  expect(await grid.evaluate(el => el.matches(":focus-visible"))).toBe(false);
   await page.keyboard.press("ArrowDown");
   await expect.poll(active).toBe("3,2");
   // Opened with a double-click and closed with a key, the grid has it too.
@@ -159,6 +161,7 @@ test("an edit opened with the pointer gives the focus to what is pressed next", 
   await page.keyboard.type("x");
   await page.keyboard.press("Enter");
   await element(grid).toBeFocused();
+  expect(await grid.evaluate(el => el.matches(":focus-visible"))).toBe(true);
   expect(await active()).toBe("2,1");
   // A press outside the grid commits and keeps the focus where the person put it.
   await dayCell(4, 4).dblclick();

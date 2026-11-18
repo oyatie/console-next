@@ -82,12 +82,13 @@ export function PersonDayGrid<R>(p: Props<R>) {
   }, [leads, tails]);
   const [drag, setDrag] = useState(false);
   const table = useRef<HTMLTableElement>(null);
-  // The editor left while it held the focus (Enter, Tab, Escape, a press on another cell): the grid takes the focus
-  // back, so the next key lands here. One left by a press elsewhere had already given the focus away.
-  const held = useRef(false);
+  // The editor left while it held the focus (Enter, Tab, Escape): the grid takes the focus back, so the next key lands
+  // here. One left by a press outside the grid had already given the focus away, and a press on the grid gives the
+  // grid the focus by itself, as a press does: without the focus ring a key brings.
+  const held = useRef(false), pressed = useRef(false);
   useEffect(() => {
-    if (!p.editing && held.current) table.current?.focus({ preventScroll: true });
-    held.current = false;
+    if (!p.editing && held.current && !pressed.current) table.current?.focus({ preventScroll: true });
+    held.current = pressed.current = false;
   }, [p.editing]);
   const axes = { rows: p.rows.map(p.rowKey), cols: p.days.map((d) => d.key) };
   const rect = rectIn(p.range, axes);
@@ -135,7 +136,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
   }, []);
 
   // A person moves the selection: what they were typing is committed first, where it was typed.
-  const select = (next: Range) => (p.editing && p.onCommit("stay"), p.onRange(next));
+  const select = (next: Range) => (p.editing && (pressed.current = true, p.onCommit("stay")), p.onRange(next));
   const keyDown = (e: KeyboardEvent<HTMLTableElement>) => {
     // The grid's keys are the ones pressed on the grid itself. A key on a link or a button inside a cell is that
     // control's: Enter follows the link.
