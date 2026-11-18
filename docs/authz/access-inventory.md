@@ -99,10 +99,9 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/kernel/core/src/access_scope.rs | reference | 7 |
 | BranchScope | backend/crates/kernel/core/src/branch.rs | reference | 2 |
 | BranchScope | backend/crates/kernel/core/src/lib.rs | reference | 1 |
-| BranchScope | backend/crates/leave/adapter-postgres/src/decisions.rs | reference | 2 |
-| BranchScope | backend/crates/leave/adapter-postgres/src/lib.rs | reference | 15 |
-| BranchScope | backend/crates/leave/application/src/lib.rs | reference | 4 |
-| BranchScope | backend/crates/leave/rest/src/lib.rs | reference | 9 |
+| BranchScope | backend/crates/leave/adapter-postgres/src/lib.rs | reference | 6 |
+| BranchScope | backend/crates/leave/application/src/lib.rs | reference | 3 |
+| BranchScope | backend/crates/leave/rest/src/lib.rs | reference | 8 |
 | BranchScope | backend/crates/logistics/rest/src/lib.rs | reference | 4 |
 | BranchScope | backend/crates/messenger/adapter-postgres/src/lib.rs | reference | 23 |
 | BranchScope | backend/crates/messenger/application/src/lib.rs | reference | 15 |
@@ -179,7 +178,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/app/src/cedar_parity.rs | reference | 1 |
 | matrix | backend/app/src/entity_wiring/correction_register.rs | reference | 2 |
 | matrix | backend/app/src/entity_wiring/exceptions.rs | reference | 2 |
-| matrix | backend/app/src/hr.rs | reference | 2 |
 | matrix | backend/app/src/http/support_reference.rs | reference | 6 |
 | matrix | backend/app/src/lifecycle.rs | reference | 2 |
 | matrix | backend/app/src/lifecycle/period_locks.rs | reference | 2 |

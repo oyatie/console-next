@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { OWN_ECHO_MS } from "../apps/web/src/lib/freshness";
 import { expectAccessible } from "./a11y";
-import { forgetResize } from "./stability";
-import { grantAccess } from "./access-flows";
+import { expectStable, forgetResize } from "./stability";
+import { confirmGrantNotice, grantAccess, openGrantNotice } from "./access-flows";
 import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
@@ -37,11 +37,8 @@ async function requestUnlock(admin: Page) {
   return row;
 }
 
-// BW-15 second person (P0: an unlock waiting for another close authority had no screen to approve it, so it sat until it
-// expired). The close authority is made on the 권한 screen and confirms the grant's notice on Home (decisions D0.2,
-// 155: before both, the two-person rule never applied in a UI-built tenant). The requester waits and sees the outcome
-// live; the second person finds it on Home and on the lock page, refuses it with a reason, then approves a new request
-// with their own passkey. Refusals change nothing.
+// The close authority confirms the grant's notice in 업무함 › 참조. The requester sees each outcome live;
+// the second person finds it on Home and the lock page, refuses it with a reason, then approves a new request.
 test("period unlock: a second close authority refuses, then approves; the requester sees each outcome", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(8 * 60_000); // two tenants, verified close authorities and two passkey decisions, all through the UI
   const slug = "unlockco";
@@ -63,15 +60,15 @@ test("period unlock: a second close authority refuses, then approves; the reques
     await go(page, "/", true);
     await passkeyLogin(page);
     await page.reload();
-    const notices = page.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ has: page.getByRole("button", { name: "기간 마감 부여 확인 기록", exact: true }) });
-    await expect(notices).toContainText("기간 마감 · 전체 ·", { timeout: 20_000 });
+    const notices = await openGrantNotice(page, "close");
+    await expect(notices).toContainText("기간 마감 · 전체 ·");
     await expectAccessible(page, "grant notice");
-    const acknowledged = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/notice"));
-    await notices.getByRole("button", { name: "기간 마감 부여 확인 기록" }).click();
-    expect((await acknowledged).status()).toBe(200);
-    await expect(notices).toBeHidden();
+    await confirmGrantNotice(page, "close", notices);
     letGrantsAge(unique(slug), name);
   }
+  await go(exec, "/");
+  await expect(exec.getByRole("region", { name: "업무함", exact: true }).locator("tbody tr").first()).toBeVisible();
+  await expectStable(exec, "Home after the grant is confirmed");
   // A frame within OWN_ECHO_MS of this tab's own write is that write's echo (lib/live): the requester acts after it.
   await exec.waitForTimeout(OWN_ECHO_MS);
   const paintedRows = exec.getByRole("region", { name: "업무함", exact: true }).locator("tbody tr");
@@ -201,12 +198,9 @@ test("a sole close authority delivers separate inbox reviews before and after go
   await grantAccess(operator, "단독마감", "full");
   await go(human, "/", true);
   await passkeyLogin(human);
-  const notice = human.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ has: human.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
-  const acknowledged = human.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/notice"));
-  await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
-  expect((await acknowledged).status()).toBe(200);
+  await confirmGrantNotice(human, "full");
+  // Reopen the event stream that was established before the grant changed its reader scope.
   await human.reload();
-  await expect(notice).toBeHidden();
   letGrantsAge(unique(slug), "단독마감");
   await lockPayroll(human);
   const row = human.getByRole("row", { name: /월 급여 마감/ });

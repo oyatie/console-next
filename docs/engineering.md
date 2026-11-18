@@ -30,7 +30,8 @@ test tiers in [testing/README.md](testing/README.md) and the browser-test strate
 
 Green checks leave two kinds of test unrun. Database-backed backend tests run on pushes to `dev` and
 nightly; `.github/workflows/db-tests.yml` runs on a pull request only when the pull request changes that
-workflow or the test tooling it names. Of the journey specs, a pull request runs one
+workflow or the test tooling it names. Releases currently ship without proof from the database tests: neither
+merge admission nor release promotion waits for this workflow. Of the journey specs, a pull request runs one
 (`e2e/performance/home-inbox.spec.ts`) and the merge queue adds three (`e2e/first-run-solo.spec.ts`,
 `e2e/authz/write-refusals.spec.ts`, `e2e/error-beacon.spec.ts`); the rest run nightly
 (`.github/workflows/e2e-live.yml`). When you add or change a database test or a journey spec, run it
@@ -112,12 +113,37 @@ because released clients do not send the field. A response enum that may gain va
 - A table that holds tenant data has row-level security, forced. The gates under `backend/ci/gates` check
   this, tenant isolation, personal-data classification and migration safety; run them after writing one.
 
+## Adding a settings key
+
+Declare the key in `console-settings-domain`, then add only its row to `setting_definitions`
+in a new forward-only migration. In `backend/`, generate the INSERT with
+`cargo run -q -p console-settings-domain --example setting_definitions -- <key> [<key> ...]`.
+Head the migration `-- migration-class: contract — <reason>` (definition INSERTs and UPDATEs
+are data writes). Never regenerate or replace `setting_definition()`; its signature is the shared lookup contract.
+For an existing key, generate its row again in a new migration; the generated
+`INSERT … ON CONFLICT (key) DO UPDATE` replaces that key’s definition.
+Keep override data and the lookup signature compatible with older binaries; prove both the
+upgrade lineage and a fresh install. Against a disposable test database configured as in
+[Set up](#set-up), run from `backend/`:
+`cargo test -p console-platform-db --test setting_definitions` and
+`cargo test -p console-settings-adapter-postgres`.
+The guard compares the migrated database with the live Rust registry, including bounds,
+defaults, code order and governance. The non-DB check
+`cargo test -p console-settings-domain --test migration_rows` compares every definition value
+with the latest generated INSERT row before merge.
+Read-only infrastructure keys need no new SQL row; existing SQL rows remain for older binaries.
+When removing a registry key, set its row’s `retired_at` in the same release; keep it readable
+for older binaries and delete it after the next release. A removal migration needs a leading
+`-- setting-definitions-removal: <compatibility reason>` header; this never permits rebuilding the function.
+Use the [settings brief template](templates/settings-brief.md) when planning the change.
+
 ## Adding or changing a screen
 
 A screen is proved in five steps, each cheaper than the next.
 
 1. **Compose it from the design system.** Components come from `apps/web/src/ui`, values from
-   `@console/tokens`. The design-system check refuses raw colours and one-off look-alikes.
+   `@console/tokens`. The design-system check refuses raw colours and one-off look-alikes. The
+   [design-system guide](design-system/README.md) has the working rules and a page for each documented component.
 2. **Show every state in the gallery.** Put a `<name>.gallery.tsx` beside the component. It default-exports
    a demo that renders the component with fixture data and no network. Entries are discovered
    automatically and served at `/_gallery` in development and test builds.

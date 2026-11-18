@@ -217,13 +217,21 @@ test('Rust producer census: successful save and merge gate retention, with revie
   }
 });
 
-test('bounded count applies to npm, browsers, DB targets, CodeQL overlays and image indexes', async () => {
+test('database caches have no retention policy or apply switch after removing their writer', () => {
+  const policy = config();
+  assert.ok(!Object.hasOwn(policy.families, 'db-tests'));
+  const platform = readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8');
+  assert.doesNotMatch(platform, /CACHE_RETENTION_DB_TESTS_APPLY|'db-tests'/);
+  const docs = readFileSync(join(root, 'docs/ops/actions-cache-retention.md'), 'utf8');
+  assert.doesNotMatch(docs, /CACHE_RETENTION_DB_TESTS_APPLY|\| db-tests \|/);
+});
+
+test('bounded count applies to npm, browsers, CodeQL overlays and image indexes', async () => {
   const {planCaches} = await load();
   const families = {
     npm: n => `node-cache-Linux-x64-npm-${String(n).padStart(64, 'a')}`,
     playwright: n => `playwright-Linux-X64-chromium-1.64.${n}`,
     'states-timings': n => `states-timings-${n}`,
-    'db-tests': n => `db-tests-Linux-ARM64-debug0-${'a'.repeat(64)}-${String(n).padStart(40, '0')}`,
     codeql: n => `codeql-overlay-base-database-1-673738e94a8102ad-javascript-2.27.4-${String(n).padStart(40, '0')}-123-1`,
     buildkit: n => `index-console-platform-arm64-1-5a70b200#${n}`,
   };
