@@ -18,10 +18,11 @@ export function assetSecurity(): Plugin {
         for (const file of Object.keys(bundle).filter(candidate => candidate.endsWith(".html"))) {
           const path = resolve(output.dir!, file);
           // This stylesheet already contains React Aria's press rule; skip its duplicate inline injection.
-          const source = readFileSync(path, "utf8").replace(/(<link\b[^>]*\brel="stylesheet")/, '$1 id="react-aria-pressable-style"');
-          const html = source.replace(/<(script|link)\b[^>]*>/g, (tag: string, kind: string) => {
-            if (kind === "link" && !/\brel="(?:stylesheet|modulepreload)"/.test(tag)) return tag;
-            const url = tag.match(/\b(?:src|href)="([^"]+)"/)?.[1];
+          const source = readFileSync(path, "utf8").replace(/(<link\b[^>]*\brel="stylesheet")/i, '$1 id="react-aria-pressable-style"');
+          // HTML tag and attribute names are case-insensitive.
+          const html = source.replace(/<(script|link)\b[^>]*>/gi, (tag: string, kind: string) => {
+            if (kind.toLowerCase() === "link" && !/\brel="(?:stylesheet|modulepreload)"/i.test(tag)) return tag;
+            const url = tag.match(/\b(?:src|href)="([^"]+)"/i)?.[1];
             // Stable public URLs can serve another release's recovery scripts during a rolling deploy.
             if (!url || !url.startsWith(`${base}${assetsDir}/`)) return tag;
             const bytes = readFileSync(resolve(output.dir!, url.slice(base.length)));
