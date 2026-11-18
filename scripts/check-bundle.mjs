@@ -7,6 +7,9 @@
 //
 // JRN-FIRSTPAINT (J-HP-4): Also sums each lazy route's chunk set (route chunk + its static imports)
 // and checks it against scripts/bundle-budget.json (per page type: shell, list, record, wizard).
+//
+// CSS is counted and printed beside the JS (the first page's stylesheets, and each page type's heaviest route) so its
+// growth is visible. It has no budget yet, so it never fails the check.
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { leakedCopy } from "./bundle-copy.mjs";
@@ -43,6 +46,9 @@ export function checkInitialBudget(dist, budgetKb = INITIAL_BUDGET_KB) {
     })
     .sort((a, b) => b.kb - a.kb);
 
+  // The stylesheets the document itself links: what the first page pays for in CSS.
+  const sheets = new Set([...html.matchAll(/rel="stylesheet"[^>]*href="\/?([^"]+\.css)"/g)].map((m) => m[1]));
+  const cssKb = [...sheets].reduce((n, f) => n + kb(dist, f), 0);
   const size = chunks.filter((c) => initial.has(c.file)).reduce((n, c) => n + c.kb, 0);
   const total = chunks.reduce((n, c) => n + c.kb, 0);
 
@@ -51,7 +57,7 @@ export function checkInitialBudget(dist, budgetKb = INITIAL_BUDGET_KB) {
     ? undefined
     : `check-bundle: initial load is ${size.toFixed(1)} KB gz, over the ${budgetKb} KB budget`;
 
-  return { ok, sizeKb: size, totalKb: total, count: chunks.length, chunks, initial, error };
+  return { ok, sizeKb: size, totalKb: total, count: chunks.length, chunks, initial, sheets, cssKb, error };
 }
 
 export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
@@ -60,9 +66,9 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
     : budgetsPathOrObj;
 
   const manifest = JSON.parse(readFileSync(path.join(dist, ".vite/manifest.json"), "utf8"));
-  const { initial } = checkInitialBudget(dist);
+  const { initial, sheets } = checkInitialBudget(dist);
   const failures = [];
-  const measured = Object.fromEntries(Object.keys(budgetConfig).map(type => [type, { maxKb: 0, chunk: null, chunksCount: 0 }]));
+  const measured = Object.fromEntries(Object.keys(budgetConfig).map(type => [type, { maxKb: 0, chunk: null, chunksCount: 0, maxCssKb: 0, cssChunk: null }]));
   const deferred = new Set(Object.values(budgetConfig).flatMap(config => config.deferred ?? []));
   for (const source of deferred) {
     if (!manifest[source]?.isDynamicEntry) failures.push({ error: `check-bundle: ${source} must have its own dynamic entry` });
@@ -81,10 +87,13 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
       continue;
     }
     const files = new Set();
+    const css = new Set();
     const visit = key => {
       const chunk = manifest[key];
       if (initial.has(chunk.file) || files.has(chunk.file)) return;
       files.add(chunk.file);
+      // A chunk names every stylesheet it needs; the first page's are already loaded.
+      for (const sheet of chunk.css ?? []) if (!sheets.has(sheet)) css.add(sheet);
       for (const imported of chunk.imports ?? []) visit(imported);
     };
     visit(source);
@@ -104,7 +113,9 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
     }
     const size = [...files].reduce((sum, file) => sum + kb(dist, file), 0);
     const budgetKb = budgetConfig[pageType].budget_kb;
-    if (size > measured[pageType].maxKb) measured[pageType] = { maxKb: size, chunk: source, chunksCount: files.size };
+    if (size > measured[pageType].maxKb) Object.assign(measured[pageType], { maxKb: size, chunk: source, chunksCount: files.size });
+    const cssSize = [...css].reduce((sum, file) => sum + kb(dist, file), 0);
+    if (cssSize > measured[pageType].maxCssKb) Object.assign(measured[pageType], { maxCssKb: cssSize, cssChunk: source });
     if (size > budgetKb) failures.push({
       route: source, pageType, sizeKb: size, budgetKb,
       error: `check-bundle: route chunk set for ${source} is ${size.toFixed(1)} KB gz, over the ${budgetKb} KB budget for page type '${pageType}'`,
@@ -222,6 +233,10 @@ export function checkBundle(dist = "apps/web/dist", budgetFile = DEFAULT_BUDGET_
   console.log("route budgets per page type:");
   for (const [pt, stats] of Object.entries(routeResult.measured)) {
     console.log(`  ${pt.padEnd(8)} ${stats.maxKb.toFixed(1).padStart(5)} KB gz (max: ${stats.chunk ?? "none"})`);
+  }
+  console.log(`CSS, not budgeted: first page ${initResult.cssKb.toFixed(1)} KB gz in ${initResult.sheets.size} stylesheet(s); heaviest route per page type:`);
+  for (const [pt, stats] of Object.entries(routeResult.measured)) {
+    console.log(`  ${pt.padEnd(8)} ${stats.maxCssKb.toFixed(1).padStart(5)} KB gz (max: ${stats.cssChunk ?? "none"})`);
   }
   if (!routeResult.ok) {
     for (const fail of routeResult.failures) {
