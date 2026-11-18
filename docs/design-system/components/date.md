@@ -119,7 +119,7 @@ Two values in the stylesheet are not tokens: the input's `10.5rem` minimum width
 | Selected day | `--primary` fill, `--on-primary` text. |
 | Today | A 1 px `--primary` outline inside the day's edge, unless the day is selected. It looks the same with keyboard focus as without: see Keyboard focus. The library decides which day is today from the browser's clock and time zone. The `today` prop does not set it. |
 | Day outside the bounds, or of another month | `--steel` text and a default cursor. It cannot be picked. |
-| Month button at a bound | The library disables a month button natively when the month it leads to is wholly outside `min` or `max`. It has no disabled look: the stylesheet has only a rest rule and a hover rule for a month button, so a disabled one looks like an enabled one and keeps the pointer cursor. |
+| Month button at a bound | The library disables a month button natively when the month it leads to is wholly outside `min` or `max`. It has no disabled look: the stylesheet has no disabled rule for a month button, so a disabled one looks like an enabled one and keeps the pointer cursor. |
 | Blocked day (`disabledDates`) | No look. The library marks it `data-unavailable`, and the stylesheet styles `data-disabled` and `data-outside-month` only. A blocked day looks like one that can be picked and keeps the pointer cursor; pressing it does nothing. |
 | Invalid, typed text | The problem line appears under the input and the input gets `aria-invalid="true"`. Inside a `Field` its border turns `--danger-solid`; outside one the border does not change, because that rule is `Field`'s. The line shows after the person leaves the input or presses Enter, never while they type. It also shows at once when the value passed in is not a date and, in a `DateInput` used alone, when it is a date the bounds refuse. |
 | Invalid, set value | `DateField` only. A value that is outside the bounds or blocked, or an `error` from the caller, shows in the error line of `Field`, with `remedy` after it. The typed-text line never carries `remedy`. |
@@ -188,9 +188,10 @@ What is announced:
 
 Known gaps:
 
-- The day marked as today shows no focus look unless it is the selected day: see States. With no date set, the
-  calendar opens with focus on the day the `today` prop names, or on the nearest bound. When that is the day the
-  browser calls today, the focused day cannot be told from an unfocused one.
+- The day marked as today shows no focus look unless it is the selected day: see States. With no date set, or
+  with a set date that the bounds or the blocked dates refuse, the calendar opens with focus on the day the
+  `today` prop names, or on the nearest bound. When that is the day the browser calls today, the focused day
+  cannot be told from an unfocused one.
 - A blocked day has no look: see States.
 - A disabled calendar button and a disabled month button have no disabled look: see States.
 - `onInvalid` is not called when the date is set from outside the input: by a quick pick, by the weekend button
