@@ -117,10 +117,10 @@ ${HEAD}
 test("props declared in node_modules collapse into one line naming the library type, and what was left out of it", () => {
   const root = fixture({
     [`${PAGES}/anchor.md`]: empty("props", "apps/web/src/ui/anchor.tsx"),
-    "node_modules/kit/index.d.ts": `export interface PressProps { /** Fires on press. */ onPress?: () => void; isDisabled?: boolean }
+    "node_modules/widgets/index.d.ts": `export interface PressProps { /** Fires on press. */ onPress?: () => void; isDisabled?: boolean }
 export interface LinkProps extends PressProps { href?: string; target?: string }
 `,
-    "apps/web/src/ui/anchor.tsx": `import type { LinkProps } from "kit";
+    "apps/web/src/ui/anchor.tsx": `import type { LinkProps } from "widgets";
 export function Anchor({ tone = "ok", ...rest }: LinkProps & { tone?: "ok" | "warn" }) { return null; }
 export function Bare(props: LinkProps) { return null; }
 export function Picky(props: Pick<LinkProps, "href"> & { id: string }) { return null; }
@@ -132,22 +132,22 @@ export function Quiet(props: Omit<LinkProps, "href">) { return null; }
 ${HEAD}
 | \`tone\` | no | \`"ok" \\| "warn"\` | \`"ok"\` |  |
 
-Also accepts the attributes of \`LinkProps\` (\`kit\`).
+Also accepts the attributes of \`LinkProps\` (\`widgets\`).
 
 ### Bare
 
-Accepts the attributes of \`LinkProps\` (\`kit\`).
+Accepts the attributes of \`LinkProps\` (\`widgets\`).
 
 ### Picky
 
 ${HEAD}
 | \`id\` | yes | \`string\` |  |  |
 
-Also accepts \`href\` of \`LinkProps\` (\`kit\`).
+Also accepts \`href\` of \`LinkProps\` (\`widgets\`).
 
 ### Quiet
 
-Accepts the attributes of \`LinkProps\` (\`kit\`), except \`href\`.`);
+Accepts the attributes of \`LinkProps\` (\`widgets\`), except \`href\`.`);
 });
 
 // Real React types, from this repository's node_modules: forwardRef and memo hide the function that holds the defaults.
