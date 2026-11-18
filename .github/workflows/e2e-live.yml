@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-name: e2e-live
+name: Full browser journeys
 on:
   schedule:
     - cron: "17 18 * * *"
@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   build:
+    name: Build browser test application
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     permissions:
@@ -68,6 +69,7 @@ jobs:
           if-no-files-found: error
 
   chromium:
+    name: Chromium journeys · ${{ matrix.shard }}
     needs: [build]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
@@ -159,6 +161,7 @@ jobs:
           if-no-files-found: error
 
   firefox:
+    name: Firefox journeys · ${{ matrix.shard }}
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     needs: [build, chromium]
     runs-on: ubuntu-24.04-arm
@@ -250,6 +253,7 @@ jobs:
           if-no-files-found: error
 
   firefox-states:
+    name: Firefox UI states · shard ${{ matrix.shard }}
     if: ${{ github.event_name == 'schedule' }}
     needs: [build]
     runs-on: ubuntu-24.04-arm

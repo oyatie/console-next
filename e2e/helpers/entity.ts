@@ -1,9 +1,21 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { go, kstDate, option } from "../flows";
 import { registerWorkplace } from "../setup-flows";
 import { fillRegister, openRegistered, pressRegister, receiptOf } from "./register";
 import { fillDate } from "../sheet";
+
+/** The entity's own revisions precede its certificates' separate histories. */
+export const revisionItems = (history: Locator) => history.getByRole("list").first().getByRole("listitem");
+
+/** FieldDiff names both values for assistive technology as well as showing their arrow. */
+export async function expectFieldChange(history: Locator, field: string, before: string, after: string) {
+  await loadCatalog("ko");
+  const row = history.getByText(field, { exact: true }).locator("..");
+  await expect(row.getByRole("term")).toHaveText(field);
+  await expect(row.getByRole("definition")).toHaveText(`${t("timeline.before")}${before} → ${t("timeline.after")}${after}`);
+}
 
 /**
  * On the 법인 record: opens 고치기 on one fact and chooses 변경 from `from` (today when omitted) or 정정, returning
