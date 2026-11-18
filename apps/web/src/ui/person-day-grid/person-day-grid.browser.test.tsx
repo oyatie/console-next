@@ -20,9 +20,9 @@ beforeAll(async () => {
   page = await browser.newPage();
   // A short box, and for `?row=` its own compact row height, set on a container the way a visual style would set it.
   await page.route("**/grid-test*", route => {
-    const row = new URL(route.request().url()).searchParams.get("row");
+    const query = new URL(route.request().url()).searchParams, row = query.get("row");
     return route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Person-day grid</title>
-      <style>main { display: flex; flex-direction: column; height: 320px; ${row ? `--row-h-compact: ${Number(row)}px;` : ""} }</style>
+      <style>main { display: flex; flex-direction: column; height: ${Number(query.get("box") ?? 320)}px; ${row ? `--row-h-compact: ${Number(row)}px;` : ""} }</style>
       <div id="root"></div><script type="module" src="${fixture}"></script></html>` });
   });
 }, 60_000);
@@ -64,4 +64,20 @@ test.each([null, 24, 40])("virtual rows are placed by the compact row height the
     }, active);
   }).toBe("in view");
   await element(grid.getByText("Person 61", { exact: true })).toBeVisible();
+});
+
+test("a box taller than 600 px is filled with rows before the first scroll", async () => {
+  await page.setViewportSize({ width: 1000, height: 1400 });
+  try {
+    await page.goto(`${server.resolvedUrls!.local[0]}grid-test?box=1200`);
+    const grid = page.getByRole("grid", { name: "October" });
+    await element(grid.getByText("Person 1", { exact: true })).toBeVisible();
+    // The last person drawn ends at or below the foot of the box: no blank band under the rows.
+    await expect.poll(() => grid.locator("..").evaluate(el => {
+      const rows = el.querySelectorAll("tbody tr:not([aria-hidden])");
+      return Math.round(rows[rows.length - 1]!.getBoundingClientRect().bottom - el.getBoundingClientRect().bottom) >= 0;
+    })).toBe(true);
+  } finally {
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
 });
