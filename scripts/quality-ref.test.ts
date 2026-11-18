@@ -51,7 +51,7 @@ test.each(["check-standing-text.mjs", "check-license-headers.mjs", "check-ai-qua
   const env = gitFixtureEnvironment();
   delete env.QUALITY_BASE;
   try {
-    for (const dir of ["scripts/quality", "apps/web/src", "packages/api/src", "packages/i18n/src", "e2e"]) mkdirSync(path.join(root, dir), { recursive: true });
+    for (const dir of ["scripts/quality", "docs/quality", "apps/web/src", "packages/api/src", "packages/i18n/src", "e2e"]) mkdirSync(path.join(root, dir), { recursive: true });
     symlinkSync(path.resolve("node_modules"), path.join(root, "node_modules"), "dir");
     for (const file of [script, "standing-text-registry.mjs", "check-deps.mjs", ...readdirSync("scripts/quality").filter(f => f.endsWith(".mjs")).map(f => `quality/${f}`)])
       copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
@@ -64,6 +64,7 @@ test.each(["check-standing-text.mjs", "check-license-headers.mjs", "check-ai-qua
     put("scripts/standing-text-new-screens.json", "{}");
     put("scripts/quality/baseline.json", "invalid JSON");
     put("scripts/quality/dependency-verification.json", "{}");
+    put("docs/quality/dependency-register.json", '{"rows":[]}');
     put("apps/web/src/main.tsx", "export {};\n");
     const git = (...args: string[]) => execFileSync("git", ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", ...args], { cwd: root, stdio: "pipe", env });
     const commit = () => { git("add", "."); git("commit", "-m", "test: seed quality baseline"); };
