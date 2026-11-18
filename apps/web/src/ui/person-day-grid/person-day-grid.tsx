@@ -177,6 +177,9 @@ export function PersonDayGrid<R>(p: Props<R>) {
                 ))}
                 {p.days.map((d, c) => {
                   const focused = !!f && r === f.r && c === f.c;
+                  // A press or a double-click in the cell that holds the open editor is the editor's own (the caret,
+                  // a word): the cell neither selects, which would commit and close it, nor opens it again.
+                  const open = p.editing?.cell.row === key && p.editing.cell.col === d.key;
                   return (
                     <td
                       key={d.key}
@@ -188,11 +191,11 @@ export function PersonDayGrid<R>(p: Props<R>) {
                       data-tone={d.tone}
                       data-look={p.look(row, c)}
                       data-focus={focused || undefined}
-                      onPointerDown={(e) => (setDrag(true), pick(key, d.key, e.shiftKey))}
+                      onPointerDown={(e) => open || (setDrag(true), pick(key, d.key, e.shiftKey))}
                       onPointerEnter={() => drag && pick(key, d.key, true)}
-                      onDoubleClick={() => p.onEdit("")}
+                      onDoubleClick={() => open || p.onEdit("")}
                     >
-                      {p.editing?.cell.row === key && p.editing.cell.col === d.key ? <Editor value={p.editing.value} label={p.describe(row, c)} onChange={p.onEdit} onCommit={p.onCommit} held={held} /> : p.cell(row, c)}
+                      {open ? <Editor value={p.editing!.value} label={p.describe(row, c)} onChange={p.onEdit} onCommit={p.onCommit} held={held} /> : p.cell(row, c)}
                     </td>
                   );
                 })}

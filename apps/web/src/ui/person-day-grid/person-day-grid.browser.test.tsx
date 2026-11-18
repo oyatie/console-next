@@ -192,3 +192,20 @@ test("a person's name link opens with Enter, and keys pressed on it are not the 
   await element(page.locator("#acts")).toHaveText("");
   expect(await active()).toBe("0,0");
 });
+
+test("a press inside the open editor places the caret and keeps the editor", async () => {
+  const grid = await month();
+  await grid.focus();
+  await page.keyboard.type("12345");
+  await editor.click();
+  await element(editor).toBeFocused();
+  await element(editor).toHaveValue("12345");
+  await element(drafts).toHaveText("{}");
+  // A double-click selects the word it is on; what is typed next replaces it.
+  await editor.dblclick();
+  await element(editor).toHaveValue("12345");
+  await page.keyboard.type("9-18");
+  await element(editor).toHaveValue("9-18");
+  await page.keyboard.press("Enter");
+  await element(drafts).toHaveText(`{${FIRST}}`);
+});
