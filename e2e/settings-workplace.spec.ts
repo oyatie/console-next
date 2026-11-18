@@ -1,7 +1,59 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { bootKo } from "../packages/i18n/src/catalogs/boot";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { tenantInSetup } from "./setup-flows";
+import { go } from "./flows";
+import { atPhoneWidth, expectAxe, fits } from "./a11y";
+
+test("settings readers keep the registry while members retain only client runtime settings", async ({ browser }) => {
+  const { admin, exec: member } = await tenantInSetup(browser, "settingsreader", "Settings visibility", false, "Head office", "none");
+  try {
+    const adminBearer = bearerOf(admin);
+    const memberBearer = bearerOf(member);
+    for (const [page, bearer] of [[admin, adminBearer], [member, memberBearer]] as const) {
+      await go(page, "/");
+      await page.reload();
+      await expect.poll(bearer, { timeout: 15_000 }).not.toBe("");
+    }
+    const adminApi = apiOf(admin, adminBearer);
+    const memberApi = apiOf(member, memberBearer);
+    const changed = await adminApi("/settings/auth.idle_timeout_minutes", "POST", {
+      value: 17, reason_code: "POLICY_REVIEW",
+    });
+    expect(changed.status()).toBe(201);
+    const read = async (api: ReturnType<typeof apiOf>) => {
+      const response = await api("/settings");
+      expect(response.status()).toBe(200);
+      return (await response.json()).items as { key: string; value: unknown }[];
+    };
+    const all = (await read(adminApi)).map(item => item.key);
+    const memberItems = await read(memberApi);
+    const runtime = memberItems.map(item => item.key);
+    expect(runtime.toSorted()).toEqual([
+      "auth.idle_timeout_minutes", "approval.policy.org_structure", "approval.policy.people_correction",
+      "approval.policy.identity_merge", "approval.policy.registration_void", "approval.policy.exit",
+      "approval.policy.import_rollback", "hr.contract_soon_days", "display.deadline_due_soon_days",
+      "onboarding.receipt_days", "period_lock.unlock_max_days",
+    ].toSorted());
+    for (const key of ["authz.sole_holder.mode", "audit.access_log.retention", "db.pool.api_connections"]) {
+      expect(all).toContain(key);
+      expect(runtime).not.toContain(key);
+    }
+    expect(memberItems.find(item => item.key === "auth.idle_timeout_minutes")?.value).toBe(17);
+    for (const [page, path] of [[admin, "/settings"], [member, "/"]] as const) {
+      await go(page, path);
+      await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveCount(1);
+      await atPhoneWidth(page, async () => {
+        await fits(page, path);
+        await expectAxe(page, path);
+      });
+    }
+    await go(member, "/settings");
+    await expect(member.getByRole("region", { name: bootKo["common.denied.title.plain"] })).toBeVisible();
+
+  } finally { await Promise.all([admin.context().close(), member.context().close()]); }
+});
 
 test("workplace settings inherit the legal entity and explain the deciding layer", async ({ browser }) => {
   const { admin } = await tenantInSetup(browser, "settingsscope", "설정범위", false, "본사");

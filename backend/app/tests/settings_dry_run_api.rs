@@ -168,3 +168,39 @@ async fn dry_run_domain_refusals_match_write_and_expose_earliest(pool: PgPool) {
 
 #[path = "settings_dry_run_api/plan.rs"]
 mod plan;
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn ungranted_changes_cannot_probe_hidden_values_or_versions(pool: PgPool) {
+    let (org, _, _) = fixture(&pool).await;
+    let keys = keys();
+    let member = seed_user(&pool, org, "MEMBER").await;
+    let bearer = token(&pool, &keys, org, member, "MEMBER").await;
+    let service = build_router(app_state(runtime_pool(&pool).await, keys.1).unwrap());
+    sqlx::query("INSERT INTO employees(id,org_id,company,name,source_filename,source_sheet,source_row,source_key,raw_row,source_metadata) VALUES($1,$2,'Synthetic','Reader','synthetic','employees',1,$3,'{}','{}')")
+        .bind(Uuid::new_v4()).bind(org).bind(Uuid::new_v4().to_string()).execute(&pool).await.unwrap();
+    for value in [28, 30, 31, 32] {
+        for version in [None, Some(Uuid::new_v4().to_string())] {
+            for query in ["?dry_run=true", ""] {
+                let mut change = json!({"value": value, "reason_code": "POLICY_REVIEW"});
+                if let Some(version) = &version {
+                    change["expected_version"] = json!({"override": version});
+                }
+                let (status, body) = send(
+                    &service,
+                    "POST",
+                    &format!("/api/v1/settings/review.sole_holder_exception.due{query}"),
+                    Some(&bearer),
+                    Some(change),
+                )
+                .await;
+                assert_eq!(status, StatusCode::FORBIDDEN, "{value}: {body}");
+                assert_eq!(body["error"]["code"], "forbidden");
+                assert!(body["error"].get("current_version").is_none(), "{body}");
+                assert!(
+                    body["error"].get("earliest_effective_from").is_none(),
+                    "{body}"
+                );
+            }
+        }
+    }
+}

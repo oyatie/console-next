@@ -4029,7 +4029,6 @@ mod tests {
         pool: sqlx::PgPool,
     ) -> Result<(), String> {
         use axum::extract::FromRequest;
-        use console_hr_domain::import::classification::employee_import_target_for_header;
         use console_kernel_core::UserId;
 
         const PLANTED: [&str; 15] = [
@@ -4099,7 +4098,8 @@ mod tests {
             BTreeSet::from([Role::SuperAdmin]),
             BranchScope::All,
         );
-        let upload = |filename: &str, bytes: Vec<u8>| {
+        let filename = "직원.xlsx";
+        let upload = |filename: &str, bytes: Vec<u8>, mapping: Option<&str>| {
             let boundary = "bw26boundary";
             let mut body = Vec::new();
             for (name, value) in [
@@ -4108,6 +4108,12 @@ mod tests {
             ] {
                 body.extend(
                     format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n")
+                        .into_bytes(),
+                );
+            }
+            if let Some(mapping) = mapping {
+                body.extend(
+                    format!("--{boundary}\r\nContent-Disposition: form-data; name=\"mapping\"\r\n\r\n{mapping}\r\n")
                         .into_bytes(),
                 );
             }
@@ -4180,7 +4186,7 @@ mod tests {
         // A file or sheet name carrying an RRN is refused before anything is
         // stored (the scan below proves no run row was written).
         let multipart =
-            Multipart::from_request(upload("직원_880808-1234567.xlsx", xlsx.clone())?, &())
+            Multipart::from_request(upload("직원_880808-1234567.xlsx", xlsx.clone(), None)?, &())
                 .await
                 .map_err(|error| error.to_string())?;
         let refused = preview_employee_import(
@@ -4199,7 +4205,7 @@ mod tests {
         let mut named_xlsx = Vec::new();
         umya_spreadsheet::writer::xlsx::write_writer(&named, &mut named_xlsx)
             .map_err(|error| error.to_string())?;
-        let multipart = Multipart::from_request(upload("직원.xlsx", named_xlsx)?, &())
+        let multipart = Multipart::from_request(upload(filename, named_xlsx, None)?, &())
             .await
             .map_err(|error| error.to_string())?;
         let refused = preview_employee_import(
@@ -4210,7 +4216,28 @@ mod tests {
         .await;
         assert!(refused.is_err(), "RRN in a sheet name must be refused");
 
-        let multipart = Multipart::from_request(upload("직원.xlsx", xlsx)?, &())
+        let multipart = Multipart::from_request(upload(filename, xlsx.clone(), None)?, &())
+            .await
+            .map_err(|error| error.to_string())?;
+        let Json(pending) = preview_employee_import(
+            State(state.clone()),
+            Extension(principal.clone()),
+            multipart,
+        )
+        .await
+        .map_err(|error| format!("unconfirmed employee preview failed: {error:?}"))?;
+        assert_eq!(pending.sheets_needing_mapping, 1);
+        assert_eq!(pending.sheets[0]["needs_confirmation"], true);
+        assert!(pending.columns.is_empty());
+        assert_eq!(pending.input_rows, 0);
+
+        // Confirm the fixture's bindings before testing staged-column privacy.
+        let mapping = json!({"sheets": {"Sheet1": {"header_row": 1, "columns": {
+            "A": "name", "B": "employee_number", "C": "org_unit",
+            "D": "rrn", "G": "phone", "M": "hire_date"
+        }}}})
+        .to_string();
+        let multipart = Multipart::from_request(upload(filename, xlsx, Some(&mapping))?, &())
             .await
             .map_err(|error| error.to_string())?;
         let Json(preview) = preview_employee_import(
@@ -4226,17 +4253,10 @@ mod tests {
             .filter(|column| column.classification == "restricted")
             .map(|column| column.normalized_header.as_str())
             .collect();
-        let expected: BTreeSet<&str> = header_row
-            .into_iter()
-            .filter(|header| !is_rrn_value(header))
-            .filter(|header| {
-                employee_import_column_classification(
-                    header,
-                    employee_import_target_for_header(header),
-                ) == "restricted"
-            })
-            .collect();
+        let expected = BTreeSet::from([3, 4, 5, 6, 7, 8, 10, 11].map(|column| header_row[column]));
         assert_eq!(restricted, expected);
+        assert_eq!(preview.sheets_needing_mapping, 0);
+        assert_eq!(preview.candidate_rows, 1);
         // The RRN-named row is kept raw-only, never as a candidate.
         assert_eq!(preview.preserved_rows, 1);
         let Json(summary) = dry_run_employee_import(
@@ -4279,9 +4299,10 @@ mod tests {
         );
         let csv = "사번,성명,지점,근무일,출근,퇴근,주민번호,연락처,메모\n\
                    E-1001,홍길동,본사,2026-06-01,09:00,18:00,850505-2345678,010-5555-6666,6602021234567\n";
-        let multipart = Multipart::from_request(upload("근태.csv", csv.as_bytes().to_vec())?, &())
-            .await
-            .map_err(|error| error.to_string())?;
+        let multipart =
+            Multipart::from_request(upload("근태.csv", csv.as_bytes().to_vec(), None)?, &())
+                .await
+                .map_err(|error| error.to_string())?;
         let Json(attendance) = preview_attendance_import(
             State(state.clone()),
             Extension(principal.clone()),
