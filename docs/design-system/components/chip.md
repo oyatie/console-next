@@ -66,25 +66,31 @@ The WCAG 2.2 criteria that apply:
 |---|---|
 | 1.4.1 Use of Color | Only through its text. The caller's word carries the state; the tone repeats it. |
 | 1.4.3 Contrast (Minimum) | Each tone pairs a text token with its own fill token. The text is 12 px medium, which is not large text, so the pair needs the full 4.5:1. |
-| 1.4.10 Reflow | The chip stays on one line and has no ellipsis, so a long label is the caller's to avoid. |
+| 1.4.10 Reflow | By its own rule the chip stays on one line and has no ellipsis, so a long label is the caller's to avoid. |
 
-The gallery shows the five tones and one long label in `apps/web/src/gallery/sections/chips.gallery.tsx`. That
-entry is scanned with the rest of the gallery: `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA rules in
-the light and the dark theme.
+The gallery shows the five tones and one long label in `apps/web/src/gallery/sections/chips.gallery.tsx`.
+
+No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
+rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
+skips itself on the served build, which is the one the workflows use. The command is in
+[the guide](../README.md#add-or-change-a-component).
 
 ## Phone behaviour at 390 px
 
-Nothing changes with the width of the screen. There is no phone rule.
+Nothing in the chip's own rules changes with the width of the screen. There is no phone rule.
 
-The chip never wraps its text (`white-space: nowrap`). It has no maximum width and no ellipsis, so a label wider
-than its container overflows it.
+By its own rule the chip never wraps its text (`white-space: nowrap`). It has no maximum width and no ellipsis,
+so a label wider than its container overflows it.
+
+A view can restyle a chip in its own stylesheet, and one does: `features/people/ui/bulk-page.module.css` lets a
+chip inside its table wrap and grow.
 
 ## Copy rules
 
 - The chip holds no text of its own and owns no message id.
 - Its word comes from the message catalog in `packages/i18n`, through the caller. The `en` catalog is the source
   and the `ko` catalog must define every id.
-- Keep it to a word or two. It cannot wrap.
+- Keep it to a word or two. It does not wrap unless the view around it says so.
 - The word must name the state without the colour.
 
 ## Props

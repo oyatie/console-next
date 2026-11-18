@@ -60,7 +60,7 @@ The other components:
 | `TextInput` | `<input class="field__input">` | None. Every other attribute goes to the input. |
 | `TextArea` | `<textarea class="field__input field__area">` | None. Every other attribute goes to the textarea. |
 | `SelectInput` | `<select class="field__input">` | `children`: the options. |
-| `FieldSet` | `<fieldset>` | A `<legend>` with `label` and the marker, when `label` is given, then `children`. Every other attribute goes to the fieldset. |
+| `FieldSet` | `<fieldset>` | A `<legend>` with `label` and the marker, when `label` is given, then `children`. `required={null}` leaves the marker out of the legend, for a group whose fields carry their own. Every other attribute goes to the fieldset. |
 | `Marker` | `<span data-marker>` | The word for required or optional. |
 | `DerivedValue` | `<div role="group">` | A label row with the label, a tag and an Edit button; the value; one line of explanation; a Revert button. |
 
@@ -91,12 +91,12 @@ The text typed into a control inherits the body size, 14 px.
 
 | State | What changes |
 |---|---|
-| Hover | Nothing. There is no hover rule. |
-| Keyboard focus | The global rule for every focusable element: a 2 px `--primary` outline, 2 px away. The family adds no focus rule of its own. |
+| Hover | Nothing on a control: there is no hover rule for it. The Edit and Revert buttons of `DerivedValue` take the `link` look, so on hover their underline takes the text colour. |
+| Keyboard focus | The global rule for every focusable element: a 2 px `--primary` outline, 2 px away. The control has no focus rule of its own. The Edit and Revert buttons also show the `link` focus look: the underline takes the text colour. |
 | Required | The marker says so, and the control gets the native `required` attribute. |
 | Invalid (`error` set) | The control gets `aria-invalid="true"`, its border turns `--danger-solid`, and the error line appears under it. This depends on the caller spreading the control attributes. |
 | Warning (`warning` set) | The warning line appears. The border does not change and `aria-invalid` is not set: a warning never blocks. |
-| Disabled | No look of its own. `field__input` has no disabled rule, so a disabled control looks as the browser draws it. A `FieldSet` with `disabled` disables every control inside it natively. |
+| Disabled | No look. `field__input` has no disabled rule, and the global rules set the text colour, the fill and the border of every control, which overrides the browser's own disabled colours. A disabled `TextInput` or `TextArea` therefore looks like an enabled one; only the cursor differs. A disabled `SelectInput` is dimmed by Chromium and not by Firefox. Do not rely on the look to show that a control is disabled. A `FieldSet` with `disabled` disables every control inside it natively. |
 | Read-only | No look. |
 | Overridden (`DerivedValue`) | The tag changes colour and word, the explanation shows the override, and Edit goes. Revert appears when `onRevert` is given. |
 
@@ -146,8 +146,21 @@ The WCAG 2.2 criteria that apply:
 | 4.1.2 Name, Role, Value | The table above. |
 | 4.1.3 Status Messages | Not answered by `Field`: an error that appears while focus is elsewhere is not announced. `Form` covers a failed submit. |
 
-The gallery entry is `apps/web/src/ui/field/field.gallery.tsx`. It is scanned with the rest of the gallery:
-`e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA rules in the light and the dark theme.
+What the gallery shows of this family:
+
+| Shown | Where |
+|---|---|
+| `Field` required and optional, with a unit, a hint, an example and an error; `TextInput`; `SelectInput`; `DerivedValue` computed and overridden | `apps/web/src/ui/field/field.gallery.tsx` |
+| `Field` with `TextInput`, `SelectInput` and `TextArea` inside a `Form` | `apps/web/src/gallery/sections/forms.gallery.tsx` |
+
+These two entries do not show `FieldSet`, `Marker` used alone, a `Field` with `required={null}`, `tag` or
+`warning`, or a disabled or read-only control. Some of those appear in the entries of other components and views,
+which use the family; none is shown here for its own sake.
+
+No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
+rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
+skips itself on the served build, which is the one the workflows use. The command is in
+[the guide](../README.md#add-or-change-a-component).
 
 ## Phone behaviour at 390 px
 
@@ -165,8 +178,10 @@ How many fields sit side by side at 390 px is decided by the layout around them,
 
 - The label, hint, example, unit, error and warning are the caller's text. They come from the message catalog in
   `packages/i18n`. The `en` catalog is the source and the `ko` catalog must define every id.
-- Every label carries the marker, so whether a field is required is never left unsaid. Pass `required={null}` only
-  for a search or filter box, which is neither.
+- A label carries the marker, so whether a field is required is never left unsaid. The rule is to pass
+  `required={null}` in two cases only: a search or filter box, which is neither required nor optional, and a
+  `FieldSet` whose fields carry their own markers. The code does not enforce it, and call sites exist that pass
+  `null` on an ordinary field, the sign-in form among them.
 - Pass `example` as the example alone. The family adds the "e.g." prefix through message `uiField.example`.
 - The unit goes in `unit`, after the control, not in the label.
 - An error from the server is shown in the same place as any other: the caller maps the refused field to `error`.

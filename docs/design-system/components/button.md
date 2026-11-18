@@ -39,8 +39,8 @@ this page covers them too.
 | `Form` | `<form novalidate>` | An error summary, shown first after a failed submit, then `children`. |
 | `Check` | `<label class="check">` | An `<input type="checkbox">`, then a `<span>` with the statement when `children` is given. |
 
-`Button` passes every other attribute to the `<button>`. `type` defaults to `"button"`, so a button inside a form
-submits only when it says `type="submit"`.
+`Button` passes every other attribute to the `<button>`. `type` defaults to `"button"` (the generated Props
+section says so too), so a button inside a form submits only when it says `type="submit"`.
 
 `Form` always prevents the browser's own submit. `onSubmit` receives the `value` attribute of the button that
 submitted, or `null`, so two submit buttons can mean two things.
@@ -66,7 +66,11 @@ submitted, or `null`, so two submit buttons can mean two things.
 | `sm` | 32 px, `--target` | 8 px | 13 px, `--text-sm` | 32 px |
 
 The `link` variant does not carry the `btn` class, so the base box, the hover fill and the disabled look do not
-apply to it. Its minimum height is 24 px (`--space-5`).
+apply to it. Its minimum height is 24 px (`--space-5`) and it has no padding.
+
+`size` and `icon` still add their classes to a `link`, and those rules come later in `app.css`. `sm` makes a
+link 32 px high with 8 px side padding and 13 px text. `icon` makes it 36 px wide, or 32 px with `sm`. No caller
+combines them, the gallery does not show the combination, and nothing tests it: it is not a supported look.
 
 `IconButton` defaults to `ghost` and cannot be `danger` or `ghost-danger`: its type leaves them out.
 
@@ -78,23 +82,28 @@ apply to it. Its minimum height is 24 px (`--space-5`).
 | `chip` | A pill: at least 28 px high, a 1 px `--control-border` border, fully rounded, 13 px regular text, one line. | The same pill with the "on" look and medium weight. |
 
 `Segmented` draws one group with a 1 px `--control-border` border. Its segments are at least 32 px high with
-13 px text and a hairline between them. `size` is passed to each segment.
+13 px text, 12 px side padding and a hairline between them.
 
-There is one look per variant, and no prop changes the structure.
+`size` on a `Segmented` is passed to each segment's button and changes nothing visible today. The segment's own
+rule sets the same three properties `sm` sets (height, side padding, text size), and in the built stylesheets it
+comes after the `sm` rule, so it wins at either size. No caller passes it.
+
+No prop picks a visual style: there is one look per variant. Two props change what is rendered: `count` adds an
+element after the label of a `ToggleButton`, and `icon` makes the box square.
 
 ## States
 
 | State | What changes |
 |---|---|
 | Hover | `secondary` and `ghost`: `--muted` fill. `primary`: `--primary-hover` fill. `danger`: `--danger-tx` fill and border. `ghost-danger`: `--danger-bg` fill. `link`: the underline takes the text colour. |
-| Keyboard focus | The global rule for every focusable element: a 2 px `--primary` outline, 2 px away. The family adds no focus rule of its own. |
+| Keyboard focus | The global rule for every focusable element: a 2 px `--primary` outline, 2 px away. The family adds one focus rule of its own: on keyboard focus, as on hover, the underline of the `link` variant takes the text colour. |
 | Pressed down | No look. There is no `:active` rule. |
 | On (`aria-pressed="true"`) | `--primary` border and text on a `--primary-soft` fill. The count turns `--primary`. A segment also gets a 1 px inset `--primary` ring. A button placed directly in a `.tabs` row shows the tab underline instead. |
 | Disabled (`disabled` or `aria-disabled="true"`) | Half opacity and a not-allowed cursor. |
 | Disabled `primary` with `aria-disabled="true"` | Stays at full opacity so it can be read: a dashed `--primary` border, `--primary-soft` fill, `--primary` text. |
 | Disabled `link` | No look. The disabled rule is on `btn`, which the link variant does not carry. |
 | Busy or loading | Does not exist. |
-| Count tone | `countTone="warn"` turns the count `--warn-tx`. The count keeps a minimum width of three characters, so the label does not move when the number arrives. |
+| Count tone | `countTone="warn"` turns the count `--warn-tx` while the button is off. The count of an on button is always `--primary`: the warn tone does not show. The count keeps a minimum width of three characters, so the label does not move when the number arrives. |
 
 `Check` has no styled states: the box is the browser's own checkbox, 32 px square.
 
@@ -143,7 +152,7 @@ The WCAG 2.2 criteria that apply:
 | Criterion | How the family answers it |
 |---|---|
 | 1.3.1 Info and Relationships | `Segmented` is a named group. `Check` ties its statement to the box with a `<label>`. |
-| 1.4.1 Use of Color | "On" is `aria-pressed` and a border as well as a colour. A destructive act says what it does in words: `IconButton` cannot take a danger look. |
+| 1.4.1 Use of Color | "On" is `aria-pressed`, and each look adds a cue that is not a colour. The default toggle gains a border: off, its border is transparent. The chip look goes from regular to medium weight. A segment gains an inset ring and medium weight. A destructive act says what it does in words: `IconButton` cannot take a danger look. |
 | 1.4.3 Contrast (Minimum), 1.4.11 Non-text Contrast | Every colour is a token; none is written in the family. A blocked primary command keeps full opacity. |
 | 2.1.1 Keyboard | Native `<button>` and `<input>` elements. |
 | 2.4.7 Focus Visible | The global 2 px focus outline. |
@@ -152,12 +161,26 @@ The WCAG 2.2 criteria that apply:
 | 4.1.2 Name, Role, Value | The table above. |
 | 4.1.3 Status Messages | The error summary is an alert. |
 
-The gallery entries for this family are scanned with the rest of the gallery: `e2e/visual.spec.ts` runs axe with
-the WCAG 2.2 A and AA rules in the light and the dark theme.
+What the gallery shows of this family:
+
+| Shown | Where |
+|---|---|
+| `Button` in the five boxed variants, a natively disabled button, one plain `ToggleButton` | `apps/web/src/ui/button/button.gallery.tsx` |
+| `sm` buttons, and `IconButton` at both sizes | `apps/web/src/ui/button/button-sizes.gallery.tsx` |
+| `Form` with a `Check` and two submit-row buttons | `apps/web/src/gallery/sections/forms.gallery.tsx` |
+
+No gallery entry reaches the `link` variant, the chip look, the count and its warn tone, or `Segmented`: those
+looks are shown nowhere in the gallery. A button with `aria-disabled` is shown by the `DisabledReason` entry,
+`apps/web/src/ui/disabled-reason/disabled-reason.gallery.tsx`.
+
+No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
+rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
+skips itself on the served build, which is the one the workflows use. The command is in
+[the guide](../README.md#add-or-change-a-component).
 
 ## Phone behaviour at 390 px
 
-Nothing in the family changes with the width of the screen.
+Nothing in the family's own rules changes with the width of the screen.
 
 - A button is as tall at 390 px as at 1440 px: 36 px, or 32 px for `sm`. It does not grow to the 44 px touch
   size; the family does not read `--target-touch`.
@@ -167,9 +190,14 @@ Nothing in the family changes with the width of the screen.
   instead of shrinking. Its segments must fit the row, which is why it holds two to four short labels.
 - A `Check` wraps its statement beside the box.
 
-The only rules that restyle a button by width belong to the shell's top bar, not to the family: they tighten the
-side padding of a button in the top bar to 8 px on narrow screens. They appear in the token table below because
-their selectors name `.btn`.
+The only rules in `app.css` that restyle a button by width belong to the shell's top bar, not to the family: they
+tighten the side padding of a button in the top bar to 8 px on narrow screens. They appear in the token table
+below because their selectors name `.btn`.
+
+Other components and views place or restyle these parts in their own stylesheets, and some of those rules do
+depend on width. Two examples: the address field puts its button in its own grid cell at phone width, and the long
+table hides the statement of a `Check` in a table head until a narrow table turns into cards. Such rules belong
+to the component that writes them and are not listed here.
 
 ## Copy rules
 

@@ -34,7 +34,7 @@ What holds each rule today:
 | 2 | Review. |
 | 3 | Review, plus the tests each component already has. |
 | 4 | Nothing to hold: it is a permission. |
-| 5 | In part. Every gallery entry is scanned: `e2e/visual.spec.ts` runs axe over the whole gallery in the light and the dark theme. `scripts/ds-docs.mjs` proves that the generated tables of a page that exists match the code; nothing checks the hand-written text. A check that fails a component with no page or no gallery entry is planned and does not exist yet. |
+| 5 | In part. `scripts/ds-docs.mjs` proves that the generated tables of a page that exists match the code; nothing checks the hand-written text. The scan exists but no workflow runs it: `e2e/visual.spec.ts` runs axe over the whole gallery in the light and the dark theme, and it skips itself on the served build, which is the only build the workflows open it against. Until a scan in CI exists, which is planned, the scan is step 6 below, run by hand. A check that fails a component with no page or no gallery entry is planned and does not exist yet. |
 
 ## Add or change a component
 
@@ -47,7 +47,10 @@ What holds each rule today:
    at the foot of this page.
 5. Refresh the generated blocks: `node scripts/ds-docs.mjs --write`.
 6. Prove the change as the engineering guide says in "Proving a change": `npm run check`, then the browser specs
-   for what you touched.
+   for what you touched. For a component, those include the gallery scan, which no workflow runs. Run it against
+   the local stack the engineering guide describes:
+   `npx playwright test e2e/visual.spec.ts --project=parallel --grep "pass axe"`.
+   It fails on a serious or critical axe violation anywhere in the gallery, in either theme.
 
 Three pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
 
