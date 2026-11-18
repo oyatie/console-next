@@ -1779,8 +1779,7 @@ async fn approve_writes_ledger_and_enforces_sod_branch_and_tenant(owner_pool: Pg
         "a requester cannot approve their own leave (SoD)"
     );
 
-    // Branch isolation: an approver scoped to branch B cannot see branch A's
-    // request — deny-by-omission (NotFound), not a leak.
+    // Cedar refuses an approver outside the request's branch before reading its state.
     let cross_branch = console_platform_request_context::scope_org(sae, async {
         store
             .decide(decide_cmd(
@@ -1796,7 +1795,7 @@ async fn approve_writes_ledger_and_enforces_sod_branch_and_tenant(owner_pool: Pg
         cross_branch
             .expect_err("out-of-branch decide must fail")
             .kind(),
-        ErrorKind::NotFound,
+        ErrorKind::Forbidden,
     );
 
     link_user_to_branch(&owner_pool, sae_uuid, approver, branch_a).await;
@@ -1850,12 +1849,11 @@ async fn approve_writes_ledger_and_enforces_sod_branch_and_tenant(owner_pool: Pg
         ErrorKind::Conflict
     );
 
-    // Queue: in-branch scope sees it; empty scope sees nothing; other tenant
-    // sees nothing.
+    // Queue visibility uses the live reader, including tenant RLS.
     let in_branch = console_platform_request_context::scope_org(sae, async {
         store
             .list_requests(ListLeaveRequestsQuery {
-                branch_scope: scope_of(branch_a),
+                reader: approver,
                 status: None,
                 limit: 50,
                 cursor: None,
@@ -1866,27 +1864,27 @@ async fn approve_writes_ledger_and_enforces_sod_branch_and_tenant(owner_pool: Pg
     .unwrap();
     assert_eq!(in_branch.items.len(), 1);
 
+    let unscoped = seed_user(&owner_pool, sae_uuid).await;
     let empty_scope = console_platform_request_context::scope_org(sae, async {
         store
             .list_requests(ListLeaveRequestsQuery {
-                branch_scope: BranchScope::Branches(BTreeSet::new()),
+                reader: unscoped,
                 status: None,
                 limit: 50,
                 cursor: None,
             })
             .await
     })
-    .await
-    .unwrap();
-    assert!(
-        empty_scope.items.is_empty(),
-        "an empty branch scope sees nothing (deny-by-omission)"
-    );
+    .await;
+    assert_eq!(empty_scope.unwrap_err().kind(), ErrorKind::Forbidden);
 
+    let other_reader = seed_user(&owner_pool, OTHER_ORG).await;
+    let other_branch = seed_branch(&owner_pool, OTHER_ORG).await;
+    link_user_to_branch(&owner_pool, OTHER_ORG, other_reader, other_branch).await;
     let cross_tenant = console_platform_request_context::scope_org(other, async {
         store
             .list_requests(ListLeaveRequestsQuery {
-                branch_scope: BranchScope::All,
+                reader: other_reader,
                 status: None,
                 limit: 50,
                 cursor: None,
@@ -1974,7 +1972,7 @@ async fn approve_rejects_when_days_exceed_remaining_balance(owner_pool: PgPool) 
     let still_pending = console_platform_request_context::scope_org(sae, async {
         store
             .list_requests(ListLeaveRequestsQuery {
-                branch_scope: scope_of(branch),
+                reader: approver,
                 status: None,
                 limit: 50,
                 cursor: None,
@@ -2072,7 +2070,7 @@ async fn leave_queue_keyset_pages_past_cap_without_concurrent_insert_drift(owner
 
     let store = test_store(&rt, &command_pool);
     let query = |cursor| ListLeaveRequestsQuery {
-        branch_scope: scope_of(branch),
+        reader: requester,
         status: None,
         limit: 200,
         cursor,

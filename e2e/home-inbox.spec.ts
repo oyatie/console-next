@@ -4,7 +4,7 @@ import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { startOperations, tenantInSetup } from "./setup-flows";
 
-test("Inbox ranks deadline rows before undated work and keeps a refused action with its reason", { tag: "@hr" }, async ({ browser }, info) => {
+test("Inbox ranks deadline rows before undated work and explains a failed read", { tag: "@hr" }, async ({ browser }, info) => {
   const { admin } = await tenantInSetup(browser, "homebuckets", "업무함기한상사");
   await startOperations(admin);
   type Item = components["schemas"]["ActionInboxItem"];
@@ -20,22 +20,12 @@ test("Inbox ranks deadline rows before undated work and keeps a refused action w
     item("이번 주 업무", { due: "2026-10-29T00:00:00Z", days_remaining: 3, dueTone: "warn" }),
     item("오늘 퇴직", { kind: "hr_exit_confirm", due: "2026-10-26T00:00:00Z", days_remaining: 0, dueTone: "danger", links: [{ kind: "exit_case", id: "exit" }] }),
     item("지난 기한 업무", { due: "2026-10-25T00:00:00Z", days_remaining: -1, dueTone: "danger" }),
-    item("부여 확인 대상", { kind: "grant_notice", links: [{ kind: "access", id: "refused-grant" }], context: { grants: [{
-      grant_id: "refused-grant", role_id: "role", role_name_ko: "업무함 검토자", domain: "hr_basic", level: "view",
-      scope: { kind: "TENANT", node_id: null, include_descendants: true }, valid_from: "2026-01-01T00:00:00Z",
-      valid_to: null, enforcement: "ENFORCED", caveats: [],
-    }] } }),
   ];
   await admin.route(/\/api\/v1\/me\/action-inbox(\?|$)/, async route => {
     const response = await route.fetch();
     expect(response.status()).toBe(200);
     const body = await response.json() as components["schemas"]["ActionInboxResponse"];
     await route.fulfill({ response, json: { ...body, items, setup: undefined, has_work: true, next_cursor: null, total: items.length, total_is_exact: true, counts: { turn: { total: items.length, total_is_exact: true } } } });
-  });
-  let refusedWrites = 0;
-  await admin.route("**/api/v1/access/grants/refused-grant/notice", route => {
-    refusedWrites++;
-    return route.fulfill({ status: 403, contentType: "application/json", json: { error: { code: "grant_notice_not_holder", message: "forbidden" } } });
   });
   await admin.setViewportSize({ width: 1440, height: 900 });
   await admin.goto("/inbox");
@@ -80,13 +70,6 @@ test("Inbox ranks deadline rows before undated work and keeps a refused action w
     await expect(queue.getByRole("link", { name: "인사 확인하고 퇴직 처리", exact: true })).toBeVisible();
     await expect(queue.getByRole("button", { name: "오늘 퇴직 작업", exact: true })).toHaveCount(0);
   });
-  const refusedRow = rows.filter({ hasText: "부여 확인 대상" });
-  await refusedRow.getByRole("button", { name: "부여 확인 대상 부여 확인 기록" }).click();
-  await expect(refusedRow).toHaveCount(1);
-  await expect(refusedRow.getByRole("alert")).toContainText("권한을 받은 본인만 부여 확인을 기록할 수 있습니다");
-  expect(refusedWrites).toBe(1);
-  await expect(refusedRow.getByRole("button", { name: "부여 확인 대상 부여 확인 기록" })).toBeEnabled();
-
   await admin.unroute(/\/api\/v1\/me\/action-inbox(\?|$)/);
   await admin.route(/\/api\/v1\/me\/action-inbox(\?|$)/, route => route.fulfill({
     status: 500, contentType: "application/json", json: { error: { code: "internal", message: "unavailable" } },

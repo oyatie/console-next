@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { fmtDateTime } from "@console/i18n/format";
 import { ko } from "../packages/i18n/src/catalogs/ko";
-import { expect, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
+import type { components } from "@console/api/schema";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { activatePendingGrants } from "./second-person-fixture";
 import { bearerOf } from "./helpers/api";
 import { expectAccessible } from "./a11y";
@@ -24,12 +26,33 @@ const ROLE: Record<Access, { name: string; levels: string[] }> = {
 };
 
 /** Pending grant confirmations live in 참조, separate from the Home work queue. */
-export async function openGrantNotice(page: Page, role: string) {
+// shortcut: before go-live setup hides the inbox tabs, so this opens 참조 by URL; use product navigation once setup has an entry point.
+export async function openGrantNotice(page: Page, access: Access) {
+  await loadCatalog("ko");
+  const confirm = t("home.grantNotices.confirm", { role: ROLE[access].name });
   await go(page, "/inbox?tab=reference");
-  const notice = page.getByRole("region", { name: ko["home.inbox.title"], exact: true }).getByRole("listitem")
-    .filter({ has: page.getByRole("button", { name: ko["home.grantNotices.confirm"].replace("{role}", role), exact: true }) });
+  const notice = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("listitem")
+    .filter({ has: page.getByRole("button", { name: confirm, exact: true }) });
   await expect(notice).toBeVisible();
   return notice;
+}
+
+/** Confirm through the product and wait for the refreshed pending-grant list. */
+export async function confirmGrantNotice(page: Page, access: Access, notice?: Locator) {
+  notice ??= await openGrantNotice(page, access);
+  const confirmed = page.waitForResponse(r => r.request().method() === "POST" && /\/access\/grants\/[^/]+\/notice$/.test(new URL(r.url()).pathname));
+  const refreshed = page.waitForResponse(async response => {
+    const url = new URL(response.url());
+    if (response.request().method() !== "GET" || url.pathname !== "/api/v1/me/action-inbox" || url.searchParams.get("filter") !== "notices" || !response.ok()) return false;
+    const id = new URL((await confirmed).url()).pathname.split("/").at(-2);
+    const body = await response.json() as components["schemas"]["ActionInboxResponse"];
+    return !body.items.some(item => item.id === `grant_notice:${id}`);
+  });
+  await notice.getByRole("button", { name: t("home.grantNotices.confirm", { role: ROLE[access].name }), exact: true }).click();
+  const response = await confirmed;
+  expect(response.status(), await response.text()).toBe(200);
+  await refreshed;
+  await expect(notice).toBeHidden();
 }
 
 /** The tenant role for `access`, made once per tenant through the role editor. */
