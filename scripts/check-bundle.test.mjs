@@ -156,6 +156,58 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
     }
   });
 
+  it("a route over its page type's CSS budget fails with the route and size, and passes under it", () => {
+    const mock = createMockDist();
+    try {
+      mock.writeChunk("index-main.js", "console.log('main');");
+      mock.writeChunk("vendor-boot.js", "console.log('vendor');");
+      // About 3 KB gzip: hex text of random bytes halves under gzip.
+      writeFileSync(path.join(mock.assets, "tenants.css"), `.a{content:"${randomBytes(3000).toString("hex")}"}`);
+      mock.writeChunk("Tenants-list.js", "export const x = 1;");
+      mock.dynamic("src/features/platform/Tenants.tsx", "Tenants-list.js");
+      mock.manifest["src/features/platform/Tenants.tsx"].css = ["assets/tenants.css"];
+      writeFileSync(path.join(mock.dist, ".vite/manifest.json"), JSON.stringify(mock.manifest));
+      const routes = ["src/features/platform/Tenants.tsx"];
+
+      const over = checkRouteBudgets(mock.dist, { list: { budget_kb: 300, css_budget_kb: 2, routes } });
+      assert.strictEqual(over.ok, false, "expected the CSS budget to fail the route");
+      assert.strictEqual(over.route, "src/features/platform/Tenants.tsx");
+      assert.ok(over.sizeKb > 2 && over.sizeKb < 4, `expected about 3 KB of CSS, got ${over.sizeKb}`);
+      assert.match(over.error, /CSS for src\/features\/platform\/Tenants\.tsx is .* KB gz, over the 2 KB CSS budget for page type 'list'/);
+      assert.strictEqual(checkRouteBudgets(mock.dist, { list: { budget_kb: 300, css_budget_kb: 4, routes } }).ok, true);
+    } finally {
+      mock.cleanup();
+    }
+  });
+
+  it("the first page's CSS has its own budget", () => {
+    const mock = createMockDist();
+    try {
+      mock.writeChunk("index-main.js", "console.log('main');");
+      mock.writeChunk("vendor-boot.js", "console.log('vendor');");
+      writeFileSync(path.join(mock.dist, "index.html"), `<!DOCTYPE html><html><head>
+        <script type="module" src="/assets/index-main.js"></script>
+        <link rel="modulepreload" href="/assets/vendor-boot.js">
+        <link rel="stylesheet" crossorigin href="/assets/index-main.css">
+      </head><body></body></html>`);
+      writeFileSync(path.join(mock.assets, "index-main.css"), `.a{content:"${randomBytes(3000).toString("hex")}"}`);
+
+      const over = checkInitialBudget(mock.dist, INITIAL_BUDGET_KB, 2);
+      assert.strictEqual(over.ok, false, "expected the first page's CSS budget to fail");
+      assert.match(over.error, /first page's CSS is .* KB gz, over the 2 KB CSS budget/);
+      assert.strictEqual(checkInitialBudget(mock.dist, INITIAL_BUDGET_KB, 4).ok, true);
+    } finally {
+      mock.cleanup();
+    }
+  });
+
+  it("every page type in the budget file has a CSS budget", () => {
+    const budgets = JSON.parse(readFileSync(DEFAULT_BUDGET_FILE, "utf8"));
+    for (const [type, config] of Object.entries(budgets)) {
+      assert.ok(Number.isFinite(config.css_budget_kb) && config.css_budget_kb > 0, `${type} has no css_budget_kb`);
+    }
+  });
+
   it("a set under its page-type budget passes", () => {
     const mock = createMockDist();
     try {
