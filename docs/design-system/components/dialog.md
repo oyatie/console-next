@@ -63,13 +63,19 @@ The rest of the look does not change with `size`.
 | Overlay | Fixed to the viewport at `z-index: var(--z-sheet)` (20), with 16 px of padding (`--space-4`). The dimming is written in the rule as `color-mix(in srgb, var(--ink) 40%, transparent)`. It does not read `--scrim`, the token the sheet's backdrop reads. |
 | Box | From the shared `card` class: `--surface` fill, a 1 px `--border` border, a 10 px radius (`--radius-lg`) and `--shadow`. From `dialog`: 24 px of padding (`--space-5`), `--ink` text, and a maximum height of `calc(100dvh - var(--space-6))`, the viewport height less 32 px. Past that the box scrolls. |
 | Dialog | A column with a 16 px gap (`--space-4`) between the title and each child. |
-| Title | From the shared `panel__title` class: 16 px (`--text-lg`), weight 700 (`--fw-strong`), no margin. |
+| Title | From the shared `panel__title` class: 16 px (`--text-lg`), weight 700 (`--fw-strong`), no margin, and `flex: 1`. |
 
 `read` adds the class `dialog__body--read`, which gives the column a minimum height of
 `min(var(--panel-w), calc(100dvh - var(--space-6) - var(--space-5) * 2))`: 440 px, or the viewport height less
 80 px when that is less. It is for a dialog whose content waits on a read, so the box keeps one height while the
 read loads, fails and arrives. `apps/web/src/lib/react/read-geometry.browser.test.tsx` measures that at 1440 and
 390 px.
+
+The title's `flex: 1` matters only under `read`. This is read from the CSS, not seen in a browser. Without `read`
+the column is as tall as its content, so nothing is left for the title to grow into. With `read`, when the content
+is shorter than the reserved height, the title is the one item the dialog's rules let grow. Its box takes the
+spare height and the children sit at the bottom of the box, unless a child grows too. The test above measures the
+height of the box, not where the content sits in it.
 
 No prop picks a visual style. There is no open or close animation: no rule reads the `data-entering` or
 `data-exiting` attribute React Aria sets.
@@ -156,14 +162,27 @@ Known gaps:
   caller adds.
 - The name of the hidden dismiss button is React Aria's text, not a message from `packages/i18n`.
 
-What the gallery shows: one `md` dialog with a line of text and one button, opened from the states section,
-`apps/web/src/gallery/sections/states.gallery.tsx`. There is no `dialog.gallery.tsx`. The gallery does not show
-`size="sm"`, `read` or a dialog that cannot be dismissed.
+What the gallery shows:
+
+| Shown | Where |
+|---|---|
+| One `md` dialog with a line of text and one button, opened from the states section | `apps/web/src/gallery/sections/states.gallery.tsx` |
+| Three `md` dialogs drawn by `OverrideSheet` (`ui/override-sheet`), each with a required field, a back button and a commit button | `apps/web/src/ui/override-sheet/override-sheet.gallery.tsx` |
+| One more `OverrideSheet` dialog, opened from the card `SoleHolderDecisionCard` draws | `apps/web/src/features/org/ui/sole-holder-decision.gallery.tsx` |
+
+There is no `dialog.gallery.tsx`. These five dialogs are all there is: a trace of the imports of every
+`*.gallery.tsx` reaches two more feature entries, and neither renders a dialog with its sample data. No entry
+passes `size="sm"` or `read`. No entry opens a dialog that starts out not dismissable. `OverrideSheet` makes its
+dialog not dismissable while it is `pending`; the second entry never passes `pending`, and the third ties it to
+its command.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
 skips itself on the served build, which is the one the workflows use. The command is in
 [the guide](../README.md#add-or-change-a-component).
+
+That scan opens the dialog of the states section and scans the page again with it open. It does not open the
+`OverrideSheet` dialogs.
 
 ## Phone behaviour at 390 px
 
