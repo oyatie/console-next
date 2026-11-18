@@ -276,6 +276,11 @@ test.each([["", 2], ["&unscheduled", 3]] as const)("sticky side columns stand si
     const at = await sideways(grid, to, lead);
     expect({ ...at, days: at.days >= 7 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 4, end, totalsEnd: 0 });
   }
+  // An open editor makes its day wider than the rest; the totals are held as before.
+  await grid.focus();
+  await page.keyboard.type("9");
+  await element(editor).toBeFocused();
+  expect(await sideways(grid, 0, lead)).toMatchObject({ faults: [], totals: 4, totalsEnd: 0 });
 });
 
 test("a box with less room holds the outer totals only, and a week of days stays in view", async () => {

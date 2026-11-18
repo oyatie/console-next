@@ -252,7 +252,8 @@ function placeSides(box: HTMLElement, leads: number, tails: number) {
     if (k) set(`--lead-${k}`, `${left}px`);
     left += w;
   });
-  let room = box.clientWidth - left - 7 * (widths[leads] ?? 0);
+  // A day is as wide as the narrowest one: an open editor or a long draft widens its own column only.
+  let room = box.clientWidth - left - 7 * Math.min(...widths.slice(leads, widths.length - tails));
   widths.slice(widths.length - tails).reverse().forEach((w, k) => {
     // Once one does not fit, none inside it is held.
     room = room >= w ? room - w : -Infinity;
