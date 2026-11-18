@@ -2,14 +2,16 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
-import { KEYMAP, conflicts, matches, pick, type KeyEventLike } from "./keys";
+import { KEYMAP, conflicts, matches, pick, singleKey, type KeyEventLike, type KeyId } from "./keys";
 
 const press = (key: string, code: string, mods: Partial<KeyEventLike> = {}): KeyEventLike =>
   ({ key, code, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...mods });
-const free = { typing: false, dialog: false, inRegion: false };
+const free = { typing: false, dialog: false, inRegion: false, singleKeys: true };
+// The jamo a Korean input mode reports for the J position.
+const jamo = press("ㅓ", "KeyJ");
 
 test("letters match the physical key, so a Korean input mode still works", () => {
-  expect(matches(press("ㅓ", "KeyJ"), "j")).toBe(true);
+  expect(matches(jamo, "j")).toBe(true);
   expect(matches(press("j", "KeyJ"), "j")).toBe(true);
   expect(matches(press("J", "KeyJ", { shiftKey: true }), "j")).toBe(false);
   expect(matches(press("ㅏ", "KeyK", { metaKey: true }), "Mod+k")).toBe(true);
@@ -44,6 +46,37 @@ test("a field keeps its keys, a dialog holds page keys, and a region key needs f
   const save = press("Enter", "Enter", { metaKey: true, shiftKey: true });
   expect(pick(save, ["registerSheet.save"], { ...free, typing: true })).toBeNull();
   expect(pick(save, ["registerSheet.save"], { ...free, typing: true, dialog: true, inRegion: true })?.id).toBe("registerSheet.save");
+});
+
+test("a single key is one printable character with no ⌘, Ctrl or Alt; Shift only picks the character", () => {
+  for (const e of [press("j", "KeyJ"), press("J", "KeyJ", { shiftKey: true }), jamo, press("3", "Numpad3"), press("?", "Slash", { shiftKey: true })]) expect(singleKey(e), e.key).toBe(true);
+  for (const e of [press("k", "KeyK", { metaKey: true }), press("k", "KeyK", { ctrlKey: true }), press("j", "KeyJ", { altKey: true }), press("Enter", "Enter"), press("Escape", "Escape"), press("F2", "F2"), press(" ", "Space")]) expect(singleKey(e), e.key).toBe(false);
+});
+
+test("with single keys off a page key of one character waits; chords and region keys still act", () => {
+  const off = { ...free, singleKeys: false };
+  expect(pick(press("j", "KeyJ"), ["card.next"], off)).toBeNull();
+  expect(pick(jamo, ["card.next"], off)).toBeNull();
+  expect(pick(press("3", "Digit3"), ["card.next", "card.section"], off)).toBeNull();
+  expect(pick(press("3", "Numpad3"), ["unplaced.place"], off)).toBeNull();
+  expect(pick(press("?", "Slash", { shiftKey: true }), ["people.keys"], off)).toBeNull();
+  expect(pick(press("?", "Slash", { shiftKey: true }), ["structure.keys"], off)).toBeNull();
+  expect(pick(press("k", "KeyK", { metaKey: true }), ["people.find"], off)?.id).toBe("people.find");
+  expect(pick(press("z", "KeyZ", { ctrlKey: true }), ["quick.undo"], off)?.id).toBe("quick.undo");
+  expect(pick(press("Enter", "Enter", { metaKey: true }), ["registerRun.next"], off)?.id).toBe("registerRun.next");
+  // A region key acts only while focus is inside its own component, so the setting leaves it alone.
+  const list = { "list.open": { keys: ["o"], scope: "region" } } as const;
+  expect(pick(press("o", "KeyO"), ["list.open" as KeyId], { ...off, inRegion: true }, list)).toEqual({ id: "list.open", chord: "o" });
+  expect(pick(press("o", "KeyO"), ["list.open" as KeyId], off, list)).toBeNull();
+  // The same binding page-wide is one the setting stops.
+  expect(pick(press("o", "KeyO"), ["list.open" as KeyId], off, { "list.open": { keys: ["o"], scope: "page" } })).toBeNull();
+});
+
+test("with single keys on every binding acts as before", () => {
+  expect(pick(press("j", "KeyJ"), ["card.next"], free)).toEqual({ id: "card.next", chord: "j" });
+  expect(pick(press("5", "Digit5"), ["unplaced.place"], free)).toEqual({ id: "unplaced.place", chord: "5" });
+  expect(pick(press("?", "Slash", { shiftKey: true }), ["people.keys"], free)).toEqual({ id: "people.keys", chord: "?" });
+  expect(pick(press("k", "KeyK", { metaKey: true }), ["people.find"], free)?.id).toBe("people.find");
 });
 
 test("no two keys of one screen share a chord", () => {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { browserTestOptimizeDeps, openBrowserTestPage } from "../browser-test";
+import { browserTestOptimizeDeps, openBrowserTestPage, waitForBrowserTestPage } from "../browser-test";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { createServer, searchForWorkspaceRoot, type ViteDevServer } from "vite";
 import { chromium, type Browser, type Page } from "@playwright/test";
@@ -50,6 +50,8 @@ beforeAll(async () => {
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 const heard = () => page.evaluate(() => (window as unknown as { heard: string[] }).heard.splice(0));
+// The jamo a Korean input mode reports for the J position.
+const jamo = { key: "ㅓ", code: "KeyJ" };
 const send = (init: { key: string; code: string; isComposing?: boolean }) =>
   page.evaluate(i => document.body.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...i })), init);
 
@@ -58,9 +60,8 @@ test("a screen's keys work in a Korean input mode, stay out of fields and compos
   await page.keyboard.press("3");
   expect(await heard()).toEqual(["next", "section 3"]);
 
-  // A Korean input mode reports the jamo for the J position.
-  await send({ key: "ㅓ", code: "KeyJ" });
-  await send({ key: "ㅓ", code: "KeyJ", isComposing: true });
+  await send(jamo);
+  await send({ ...jamo, isComposing: true });
   await send({ key: "Process", code: "KeyJ" });
   expect(await heard()).toEqual(["next"]);
 
@@ -75,4 +76,25 @@ test("a screen's keys work in a Korean input mode, stay out of fields and compos
   await page.getByRole("button", { name: "Open" }).click();
   await page.keyboard.press("j");
   expect(await heard()).toEqual([]);
+}, 60_000);
+
+test("with single keys off on this device a page key calls nothing, a chord still does, and turning them on needs no reload", async () => {
+  // A fresh page: the dialog the test above left open would hold every page key back by itself.
+  await page.reload({ waitUntil: "commit" });
+  await waitForBrowserTestPage(page, page.getByRole("heading", { name: "Keys" }));
+  await page.keyboard.press("j");
+  expect(await heard()).toEqual(["next"]);
+  try {
+    await page.evaluate(() => localStorage.setItem("console.singleKeys", "off"));
+    await page.keyboard.press("j");
+    await page.keyboard.press("3");
+    await send(jamo);
+    expect(await heard()).toEqual([]);
+    await page.keyboard.press("ControlOrMeta+Enter");
+    expect(await heard()).toEqual(["save"]);
+    await page.evaluate(() => localStorage.removeItem("console.singleKeys"));
+    await page.keyboard.press("j");
+    await page.keyboard.press("3");
+    expect(await heard()).toEqual(["next", "section 3"]);
+  } finally { await page.evaluate(() => localStorage.removeItem("console.singleKeys")); }
 }, 60_000);

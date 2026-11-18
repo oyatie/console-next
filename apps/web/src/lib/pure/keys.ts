@@ -10,7 +10,10 @@ export type KeyEventLike = { key: string; code: string; metaKey: boolean; ctrlKe
 type Binding = {
   /** Chords such as "j", "1", "?", "Mod+k", "Mod+Shift+Enter". */
   keys: readonly string[];
-  /** `page`: anywhere on the screen while no dialog is open. `region`: only while focus is inside the caller's element. */
+  /**
+   * `page`: anywhere on the screen while no dialog is open, and for a single key only while the device has single keys
+   * on. `region`: only while focus is inside the caller's element.
+   */
   scope: "page" | "region";
   /** Also while typing in a field; otherwise a field keeps its own keys. */
   inField?: true;
@@ -56,14 +59,28 @@ export function matches(e: KeyEventLike, chord: string) {
   return code ? e.code === code || (/^[0-9]$/.test(key) && e.key === key) : e.key === key;
 }
 
-type KeyContext = { typing: boolean; dialog: boolean; inRegion: boolean };
+/**
+ * A press of one printable character with no ⌘, Ctrl or Alt; Shift only picks the character, and Space is not one.
+ * A page-wide shortcut on such a key is one a person can turn off on their device (WCAG 2.1.4, Character Key
+ * Shortcuts). A page-wide handler outside the keymap asks this, with the device's setting, before it acts.
+ */
+export const singleKey = (e: Pick<KeyEventLike, "key" | "metaKey" | "ctrlKey" | "altKey">) =>
+  e.key.trim().length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey;
 
-/** The first of `ids` whose chord the event is and whose scope allows it here, with the chord it matched. */
-export function pick(e: KeyEventLike, ids: readonly KeyId[], at: KeyContext) {
+/** `singleKeys`: whether single-key shortcuts are on for this device. */
+type KeyContext = { typing: boolean; dialog: boolean; inRegion: boolean; singleKeys: boolean };
+
+/**
+ * The first of `ids` whose chord the event is and whose scope allows it here, with the chord it matched. `map` is the
+ * keymap; only a test gives another.
+ */
+export function pick(e: KeyEventLike, ids: readonly KeyId[], at: KeyContext, map: Record<string, Binding> = KEYMAP) {
+  // With single keys off every page binding waits for such a press: the only chord it could match is a single key.
+  const held = !at.singleKeys && singleKey(e);
   for (const id of ids) {
-    const b: Binding = KEYMAP[id];
+    const b = map[id]!;
     if (at.typing && !b.inField) continue;
-    if (b.scope === "page" ? at.dialog && !b.inDialog : !at.inRegion) continue;
+    if (b.scope === "page" ? held || (at.dialog && !b.inDialog) : !at.inRegion) continue;
     const chord = b.keys.find(k => matches(e, k));
     if (chord) return { id, chord };
   }
