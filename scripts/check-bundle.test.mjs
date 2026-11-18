@@ -122,6 +122,40 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
     }
   });
 
+  it("a route's CSS is the stylesheets of its chunks, without what the first page already links", () => {
+    const mock = createMockDist();
+    try {
+      mock.writeChunk("index-main.js", "console.log('main');");
+      mock.writeChunk("vendor-boot.js", "console.log('vendor');");
+      writeFileSync(path.join(mock.dist, "index.html"), `<!DOCTYPE html><html><head>
+        <script type="module" src="/assets/index-main.js"></script>
+        <link rel="modulepreload" href="/assets/vendor-boot.js">
+        <link rel="stylesheet" crossorigin href="/assets/index-main.css">
+      </head><body></body></html>`);
+      const sheet = (name, bytes) => writeFileSync(path.join(mock.assets, name), `.a{content:"${randomBytes(bytes).toString("hex")}"}`);
+      sheet("index-main.css", 3000);
+      sheet("tenants.css", 2000);
+      sheet("tenants-sub.css", 1000);
+      mock.writeChunk("Tenants-list.js", "export const x = 1;", ["tenants-sub.js"]);
+      mock.writeChunk("tenants-sub.js", "export const y = 42;");
+      mock.dynamic("src/features/platform/Tenants.tsx", "Tenants-list.js", ["_sub"]);
+      // A chunk names every stylesheet it needs, the first page's among them.
+      mock.manifest["src/features/platform/Tenants.tsx"].css = ["assets/tenants.css", "assets/index-main.css"];
+      mock.manifest._sub = { file: "assets/tenants-sub.js", css: ["assets/tenants-sub.css"] };
+      writeFileSync(path.join(mock.dist, ".vite/manifest.json"), JSON.stringify(mock.manifest));
+      const gz = (name) => gzipSync(readFileSync(path.join(mock.assets, name))).length / 1024;
+
+      const first = checkInitialBudget(mock.dist);
+      assert.strictEqual(first.cssKb, gz("index-main.css"));
+      const result = checkRouteBudgets(mock.dist, { list: { budget_kb: 300, routes: ["src/features/platform/Tenants.tsx"] } });
+      assert.strictEqual(result.ok, true, "CSS is reported, not budgeted");
+      assert.strictEqual(result.measured.list.cssChunk, "src/features/platform/Tenants.tsx");
+      assert.strictEqual(result.measured.list.maxCssKb, gz("tenants.css") + gz("tenants-sub.css"));
+    } finally {
+      mock.cleanup();
+    }
+  });
+
   it("a set under its page-type budget passes", () => {
     const mock = createMockDist();
     try {

@@ -26,6 +26,7 @@ async fn same_person_accounts_cannot_decide_leave(owner_pool: PgPool) {
     link_user_to_branch(&owner_pool, org_uuid, same, branch).await;
     let same_person_alias = seed_user(&owner_pool, org_uuid).await;
     person_fixtures::bind_user_to_person(&owner_pool, same_person_alias, person).await;
+    link_user_to_branch(&owner_pool, org_uuid, same_person_alias, branch).await;
     let request = scope_org(
         org,
         store.create_request(create_cmd(branch, maker, employee, 1.0)),
@@ -44,14 +45,23 @@ async fn same_person_accounts_cannot_decide_leave(owner_pool: PgPool) {
             .await
             .unwrap_err();
             assert_eq!(err.kind(), ErrorKind::Forbidden);
+            // Unknown accounts are refused before record-specific identity checks.
+            let code = (checker != unknown).then_some("leave_decide_requester_forbidden");
             assert!(
                 matches!(err, console_leave_adapter_postgres::PgLeaveError::Domain(ref e)
-                if e.code == Some(if checker==unknown {"leave.refuse.identity_unbound"} else {"leave_decide_requester_forbidden"}))
+                if e.code == code)
             );
             assert_eq!(snapshot(&owner_pool, *request.id.as_uuid()).await, before);
         }
     }
     let checker = seed_user(&owner_pool, org_uuid).await;
+    sqlx::query("INSERT INTO user_branches(org_id,user_id,branch_id) VALUES($1,$2,$3)")
+        .bind(org_uuid)
+        .bind(checker.as_uuid())
+        .bind(branch)
+        .execute(&owner_pool)
+        .await
+        .unwrap();
     for user in [checker, maker] {
         let mut identity = owner_pool.begin().await.unwrap();
         sqlx::query("UPDATE users SET is_tenant_ops=false,person_id=COALESCE(public.console_employee_person(org_id,employee_id),id) WHERE id=ANY($1)")

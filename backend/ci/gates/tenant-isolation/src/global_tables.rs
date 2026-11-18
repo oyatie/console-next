@@ -9,6 +9,10 @@
 pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
     &[
         (
+            "setting_definitions",
+            "migration-owned settings validation metadata; no tenant data or secrets, runtime SELECT only",
+        ),
+        (
             "residence_status_codes",
             "official residence-status identities; migration-owned public reference data, SELECT-only to console_rt",
         ),

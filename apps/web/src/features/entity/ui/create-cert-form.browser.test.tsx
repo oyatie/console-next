@@ -2,15 +2,17 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect as dom } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
+import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type Page } from "../../../lib/browser-test";
 import { mockRoute } from "../../../../../../e2e/mock/route";
 
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await createServer({
     configFile: false, cacheDir: ".cache/entity-cert-test", logLevel: "error",
     optimizeDeps: browserTestOptimizeDeps,
@@ -49,15 +51,44 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  browser = await chromium.launch();
+  browser = await browserEngine().launch();
   page = await browser.newPage();
   page.setDefaultTimeout(4000);
   await mockRoute(page, "get", "/api/v1/ref/lists/{key}/codes", { status: 200, json: { list: { key: "fixture", status: "NOT_LOADED" }, items: [] } });
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
+async function openCertificate(query: string) {
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}cert-test?${query}`,
+    page.getByRole("radiogroup", { name: new RegExp(t("entityCreate.field.unitTaxation")) }));
+}
+
+test("certificate controls work while an unrelated image is still loading", async () => {
+  const image = Promise.withResolvers<void>();
+  await page.route("**/cert-test?pending=1", async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, body: (await response.text()).replace("</html>", '<img src="/pending.png"></html>') });
+  });
+  await page.route("**/pending.png", async route => {
+    await image.promise;
+    await route.fulfill({ status: 204 });
+  });
+  try {
+    await openCertificate("pending=1");
+    const group = page.getByRole("radiogroup", { name: new RegExp(t("entityCreate.field.unitTaxation")) });
+    const yes = t("entityCreate.unitTaxation.yes");
+    await group.getByText(yes, { exact: true }).click();
+    await dom(group.getByRole("radio", { name: yes, exact: true })).toBeChecked();
+    expect(await page.evaluate(() => document.readyState)).toBe("interactive");
+  } finally {
+    image.resolve();
+    await page.unroute("**/cert-test?pending=1");
+    await page.unroute("**/pending.png");
+  }
+});
+
 test.each(["CORPORATION", "INDIVIDUAL"])("%s: choosing Y then N preserves every radio description/error target", async kind => {
-  await page.goto(`${server.resolvedUrls!.local[0]}cert-test?kind=${kind}`);
+  await openCertificate(`kind=${kind}`);
   const group = page.getByRole("radiogroup", { name: /사업자 단위 과세 적용/ });
   for (const name of ["여", "부"]) {
     const radio = group.getByRole("radio", { name, exact: true });
@@ -72,7 +103,7 @@ test.each(["CORPORATION", "INDIVIDUAL"])("%s: choosing Y then N preserves every 
 
 test("the corporation certificate fits its 390px page column with a wider fallback font", async () => {
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto(`${server.resolvedUrls!.local[0]}cert-test?kind=CORPORATION&address=1&frame=1`);
+  await openCertificate("kind=CORPORATION&address=1&frame=1");
   await page.locator("html").evaluate((html) => { html.dataset.fontFallback = ""; });
   const address = page.getByRole("button", { name: "주소 다시 찾기" }).locator("..");
   const overflow = await address.locator("span").first().evaluate((lines) => lines.scrollWidth - lines.clientWidth);
@@ -81,7 +112,7 @@ test("the corporation certificate fits its 390px page column with a wider fallba
 
 test("the head-office address search fits the phone column despite its intrinsic input width", async () => {
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto(`${server.resolvedUrls!.local[0]}cert-test?kind=CORPORATION&frame=1`);
+  await openCertificate("kind=CORPORATION&frame=1");
   const address = page.getByRole("combobox", { name: /본점 소재지/ });
   // Native input widths vary with the browser's font metrics.
   await address.evaluate(input => input.setAttribute("size", "40"));
