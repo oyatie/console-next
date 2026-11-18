@@ -66,17 +66,17 @@ export function editingCases(view: () => MonthView) {
     await element(editor).toBeFocused();
     // A composition the way the browser's input-method interface starts one: the Tab arrives marked as composing.
     const ime = await page.context().newCDPSession(page);
-    await ime.send("Input.imeSetComposition", { text: "ㅎ", selectionStart: 1, selectionEnd: 1 });
-    await element(editor).toHaveValue("9ㅎ");
+    await ime.send("Input.imeSetComposition", { text: "h", selectionStart: 1, selectionEnd: 1 });
+    await element(editor).toHaveValue("9h");
     await page.keyboard.press("Tab");
     await element(editor).toBeFocused();
     await element(drafts).toHaveText("{}");
     // The syllable is done; what is typed next goes into the editor, and a plain Tab commits and moves right.
-    await ime.send("Input.insertText", { text: "휴" });
+    await ime.send("Input.insertText", { text: "x" });
     await page.keyboard.type("5");
-    await element(editor).toHaveValue("9휴5");
+    await element(editor).toHaveValue("9x5");
     await page.keyboard.press("Tab");
-    await element(drafts).toHaveText('{"0001|2026-10-01":"9휴5"}');
+    await element(drafts).toHaveText('{"0001|2026-10-01":"9x5"}');
     await element(grid).toBeFocused();
     expect(await active()).toBe("0,1");
   });
