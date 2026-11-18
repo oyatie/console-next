@@ -26,8 +26,8 @@ export async function tableTest() {
         await loadCatalog('ko');
         function Fixture(){
           if(location.search==='?find') return React.createElement(LongTable,{
-            label:'찾기',rows:[{id:'a',name:'Alpha'}],rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
-            columns:[{id:'name',header:'이름',rowHeader:true,card:'title',cell:r=>r.name}],
+            label:'Rows',rows:[{id:'a',name:'Alpha'}],rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
+            columns:[{id:'name',header:'Name',rowHeader:true,card:'title',cell:r=>r.name}],
             find:{label:'Find a row',onFind:q=>document.body.dataset.found=q}
           });
           const navigation=location.search.match(/^\\?navigation-(cell|button|input)(-wrapped)?$/);
