@@ -104,6 +104,7 @@ Two values in the stylesheet are not tokens: the input's `10.5rem` minimum width
 
 | State | What changes |
 |---|---|
+| Rest | The looks under Looks and sizes. A set date is shown as text in the locale's form, and the calendar is closed. |
 | Empty | The input shows its placeholder, message `uiDate.placeholder`: the shape of a date in the locale. |
 | Hover | The calendar button, a quick pick and a month button take a `--muted` fill. The input has no hover look, and neither has a day. The weekend button takes the `link` look, so on hover its underline takes the text colour. |
 | Keyboard focus | The calendar button, the month buttons and a day: a 2 px `--primary` outline, 2 px away, from the family's own rules. The input, a quick pick and the weekend button: the same outline, from the global rule. The weekend button also shows the `link` focus look. |
@@ -221,6 +222,7 @@ What tests the family:
 | `date-input.browser.test.tsx` | In a browser: the calendar's bounds and blocked days, arrow keys, Enter, and focus returning to the button. |
 | `days.test.ts` | Date arithmetic and how typed text is read. |
 | `date-gate.test.ts` | No native date input and no ad hoc locale date formatting in the web source; no ISO date written in a catalog message. |
+| `apps/web/src/ui/canonical.test.tsx` | What `DateField` puts in its one hint line, the error line for a blocked date that is set, and the problem line of `DateInput` as an alert that keeps the caller's description. |
 | `e2e/mock/date-calendar.spec.ts` | The calendar's code loading on hover and on focus, and a load that fails. |
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
