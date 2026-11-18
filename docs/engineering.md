@@ -55,7 +55,7 @@ When renaming a check, inspect the active repository rulesets read-only and upda
 | `deploy/gates.json` and `deploy/ci/gates.mjs` | Release evidence matches exact job display names and step names; native smoke checks use `Native image smoke test · amd64` and `Native image smoke test · arm64` |
 | `scripts/pull-measured-evidence.sh` and `scripts/pull_measured_evidence_test.py` | Evidence ingestion matches **Reconcile UI state test results** and **Collect release test evidence**; diagnostics retain job IDs |
 | `.github/workflows/promote.yml` | `workflow_run.workflows` matches `Platform validation and images` |
-| `.github/release-admission-policy.json` and `.github/release-admission.cjs` | The CI workflow display name is `Candidate checks`; required check contexts remain unchanged |
+| `.github/release-admission-policy.json` and `.github/release-admission.cjs` | The policy records `Candidate checks` as workflow metadata; admission matches required check contexts, which remain unchanged |
 | `deploy/ci/promote.test.mjs`, `deploy/ci/gates.test.mjs`, `scripts/ci-backend.test.mjs` and `scripts/workflow-names.test.ts` | Fixtures and contract checks use the same display names, including reusable-workflow prefixes; dependency wiring still uses job IDs |
 
 The database workflow display name is `Database tests` (formerly `db-tests`), and shard checks are
