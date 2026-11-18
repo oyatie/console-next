@@ -75,16 +75,18 @@ prop speaks of a head; the code draws the rule only.
 **Rows are windowed.** Only the rows in view, and eight more on each side, are rendered. The rest are the two
 spacer rows.
 
-- `rowHeight` must be the height the stylesheet gives a row, `--row-h-compact`, which is 32 px. The spacers and
-  the window are worked out from it. Both callers pass the literal `32`.
+- The spacers and the window are worked out from the height the stylesheet gives a row, `--row-h-compact`, which
+  is 32 px. The grid reads that token from its own box when it mounts and when the window is resized, so a
+  container or a visual style that sets the token moves the rows and the arithmetic together. The token must be a
+  plain pixel value: a `calc()` is not read, and the grid keeps the last height it read.
 - On a table row that height is a least height. A cell whose content and borders together are taller than the row
   makes the row grow, and the spacers and the window then no longer match the rows drawn. Every cell has a 1 px
   border below, and the cells of a group's first row a 2 px border above. Keep what a cell draws within
   `--row-h-compact` less the cell's borders. The attendance view puts a `size="sm"` button in a lead cell, and
   that button is at least `--target` high, which is 32 px. Whether that row grows was read from the CSS, not
   measured.
-- The grid reads the height of its box only when the box scrolls. Until the first scroll it assumes 600 px, which
-  at 32 px a row is the first 27 rows. It does not measure the box when it mounts or when the box changes size.
+- The grid reads the height of its box when it mounts, when the window is resized and when the box scrolls. A
+  box that changes size with the window still (a panel opening beside it) is not followed until the next scroll.
 - Columns are not windowed. Every day is rendered.
 - The editor is drawn inside its row. A row scrolled out of the window is not rendered, so its input is removed
   with it. Nothing in the component commits or cancels at that point. Whether the browser fires the input's blur,
@@ -330,7 +332,7 @@ Known gaps:
 - The group's name is never shown or exposed.
 - A locked cell and a refused cell carry no ARIA state.
 - The header cells have no `scope`, and the lead and tail cells cannot be reached with the grid's keys.
-- The grid assumes a 600 px box until its first scroll and does not follow a change of size: see Anatomy.
+- The grid does not follow a change of its box's size while the window keeps its size: see Anatomy.
 - Columns of one kind share a sticky offset: see Looks and sizes.
 - The editor is at least `88px` wide and a day column at least `44px`, so by the CSS a narrow column widens while
   its editor is open. That was not measured.
@@ -460,7 +462,6 @@ uses touch: `e2e` was searched for `hasTouch`, `tap(`, `touchscreen` and `isMobi
 | `onKey` | yes | `(e: KeyboardEvent<Element>) => boolean` |  | The feature's keys first (⌘D, ⌘↵, =, Delete, P …); true when handled. |
 | `onRange` | yes | `(range: Range) => void` |  | The new selection. Never a commit: the grid commits the open editor itself before a person moves the selection, and its own collapse (the people under a range changed) leaves the editor and what is being typed alone. |
 | `range` | yes | `Range \| null` |  | By row and column key; null (or a corner not shown) selects nothing. |
-| `rowHeight` | yes | `number` |  | Must match the row height the CSS gives (--row-h-compact): virtual rows are placed by it. |
 | `rowKey` | yes | `(r: R) => string` |  |  |
 | `rows` | yes | `readonly R[]` |  |  |
 | `tail` | yes | `readonly SideColumn<R>[]` |  |  |
