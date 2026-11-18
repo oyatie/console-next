@@ -116,12 +116,11 @@ pub trait WorkCalendarPort: Send + Sync {
 // Queue read
 // ---------------------------------------------------------------------------
 
-/// List the branch-scoped approval queue. Pending-first, newest-first.
+/// List the Cedar-visible approval queue. Pending-first, newest-first.
 #[derive(Debug, Clone)]
 pub struct ListLeaveRequestsQuery {
-    /// Resolved from the principal; passed opaquely to the data layer which
-    /// narrows the query to these branches (deny-by-omission on empty scope).
-    pub branch_scope: BranchScope,
+    /// Authenticated reader; the adapter loads live Cedar facts under tenant RLS.
+    pub reader: UserId,
     /// When set, only requests in this status; otherwise every status,
     /// including the read-only historical `returned`/`rejected` states.
     pub status: Option<LeaveStatus>,

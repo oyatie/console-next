@@ -168,15 +168,16 @@ async fn an_authorizer_refusal_writes_nothing() {
 }
 
 #[tokio::test]
-async fn a_broken_rule_never_reaches_the_authorizer_or_the_store() {
+async fn a_broken_rule_checks_authority_but_never_reaches_the_store() {
     let mut store = Fake::default();
     let mut seen = None;
     let err = run(&mut store, cmd(json!(91), None), &mut seen, true)
         .await
         .unwrap_err();
     assert_eq!(err.code, Some("setting_out_of_range"));
-    assert!(seen.is_none());
+    assert_eq!(seen.as_ref().unwrap().direction, Direction::Neutral);
     assert!(store.inserted.is_empty());
+    seen = None;
 
     let err = run(
         &mut store,
@@ -191,6 +192,7 @@ async fn a_broken_rule_never_reaches_the_authorizer_or_the_store() {
     .unwrap_err();
     assert_eq!(err.code, Some("setting_unknown_key"));
     assert_eq!(err.field.as_deref(), Some("key"));
+    assert!(seen.is_none());
 }
 
 #[tokio::test]

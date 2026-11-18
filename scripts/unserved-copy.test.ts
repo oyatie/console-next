@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { expect, test } from "vitest";
 import ts from "typescript";
+import { qualityRef } from "./quality/base.mjs";
 
 const root = new URL("../", import.meta.url);
 const allowPath = "scripts/unserved-copy-allow.json";
@@ -57,7 +58,7 @@ test("a planted roadmap value and deleting its live exception both fail", () => 
 
 test("the committed exception list only shrinks", () => {
   const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
-  const base = git("merge-base", "HEAD", process.env.QUALITY_BASE ?? "dev");
+  const base = git("merge-base", "HEAD", qualityRef(root));
   const exists = git("ls-tree", "--name-only", base, "--", allowPath);
   // On first introduction the seed commit owns the ceiling; later dev carries it.
   const seed = exists ? base : git("log", "--reverse", "--diff-filter=A", "--format=%H", "HEAD", "--", allowPath).split("\n")[0];

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { t } from "@console/i18n";
 import { resolveFilingNotApplicable } from "./helpers/statutory";
 import { expectAccessible } from "./a11y";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
@@ -188,7 +189,12 @@ test("a solo administrator goes from an empty tenant to operating", { tag: ["@fi
     await go(admin, "/");
     await c.click(rail.getByRole("link", { name: "이용약관 동의" }));
     await expect(admin.getByRole("heading", { name: "운영 시작", level: 1 })).toBeVisible();
+    const firstHomePaint = admin.evaluate(() => new Promise<string[]>(resolve => {
+      const frame = () => location.pathname === "/" ? resolve(Array.from(document.querySelectorAll("#rail a"), a => a.textContent!.trim())) : requestAnimationFrame(frame);
+      requestAnimationFrame(frame);
+    }));
     await startOperations(admin, true, c);
+    expect(await firstHomePaint).toEqual(expect.arrayContaining([t("shell.link.attendance"), t("shell.link.statutory")]));
     expect(c.done("운영 시작")).toBeLessThanOrEqual(BUDGET.golive);
   });
 
