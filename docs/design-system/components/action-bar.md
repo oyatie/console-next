@@ -45,10 +45,10 @@ There are two looks, picked by `sticky`, and one size.
 
 | Part | Inline | `sticky` |
 |---|---|---|
-| Bar | A column, 12 px between its parts. A 1 px `--border-soft` line on top and 12 px of padding above the content. No fill, and no padding at the sides or the bottom. | `position: sticky` at `bottom: 0`, with `z-index: 5`. A `--surface` fill, a 1 px `--border` line on top, 12 px top and bottom and 24 px side padding. Its parts sit in one row that wraps, 16 px apart, with 8 px between wrapped rows. `margin-top: auto` pushes it to the end of a flex column. |
+| Bar | A column, 12 px (`--space-3`) between its parts. A 1 px `--border-soft` line on top and 12 px (`--space-3`) of padding above the content. No fill, and no padding at the sides or the bottom. | `position: sticky` at `bottom: 0`, with `z-index: 5`. A `--surface` fill, a 1 px `--border` line on top, 12 px (`--space-3`) top and bottom and 24 px (`--space-5`) side padding. Its parts sit in one row that wraps, 16 px (`--space-4`) apart, with 8 px (`--space-2`) between wrapped rows. They are centred on the cross axis. `margin-top: auto` pushes the bar to the end of a flex column. |
 | Notice | A row of the column. | A full row of its own. Every direct child of the bar that is not the consequence or the actions takes one. |
-| Consequence | A column of 13 px text (`--text-sm`), 4 px between its lines. | The same, growing to fill the row from a base of 320 px (`calc(var(--card-w) / 2)`). |
-| Actions | A row that wraps, aligned to the end, 8 px between buttons. | The same, pushed to the end of the row. |
+| Consequence | A column of 13 px text (`--text-sm`), 4 px (`--space-1`) between its lines. | The same, growing to fill the row from a base of 320 px (`calc(var(--card-w) / 2)`). |
+| Actions | A row that wraps, aligned to the end, 8 px (`--space-2`) between buttons. | The same, pushed to the end of the row. |
 
 Text in a `<b>` or a `<strong>` inside the consequence is bold (`--fw-strong`).
 
@@ -56,7 +56,10 @@ A sticky bar that is a direct child of an element with the global `page` class a
 `--space-5` at the sides and the bottom. They cancel that element's 24 px padding, so the bar runs from edge to
 edge and sits flush with the bottom.
 
-`z-index: 5` is a literal number in a stylesheet whose first line says it holds tokens only.
+`z-index: 5` is a literal number in a stylesheet whose first line says it holds tokens only. 5 is lower than
+every shared layer value: `--z-rail` is 10, `--z-panel` 15 and `--z-sheet` 20, and the status dock's stylesheet
+sets 40. Where one of those layers overlaps a sticky bar in the same stacking context, the layer paints on top.
+The stacking contexts between a bar and those layers were not traced for this page.
 
 Two more things the bar does:
 
@@ -156,7 +159,7 @@ One media query applies, `@media (max-width: 767px)`, and only to a sticky bar:
 
 | Part | At 767 px and narrower |
 |---|---|
-| Sticky bar | Side padding drops from 24 px to 16 px (`--space-4`). |
+| Sticky bar | Side padding drops from 24 px (`--space-5`) to 16 px (`--space-4`). |
 | Actions of a sticky bar | Take a full row of their own, under the consequence. The buttons stay aligned to the end and wrap. |
 
 An inline bar does not change with the width of the screen. It is already a column.
