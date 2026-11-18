@@ -110,7 +110,9 @@ export function PersonDayGrid<R>(p: Props<R>) {
   // A person moves the selection: what they were typing is committed first, where it was typed.
   const select = (next: Range) => (p.editing && p.onCommit("stay"), p.onRange(next));
   const keyDown = (e: KeyboardEvent<HTMLTableElement>) => {
-    if (p.editing || p.onKey(e)) return;
+    // The grid's keys are the ones pressed on the grid itself. A key on a link or a button inside a cell is that
+    // control's: Enter follows the link.
+    if (e.target !== e.currentTarget || p.editing || p.onKey(e)) return;
     const moved = moveRange(p.range, e.key, e.shiftKey, axes);
     if (moved) {
       e.preventDefault();

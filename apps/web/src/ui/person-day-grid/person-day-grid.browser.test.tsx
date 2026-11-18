@@ -167,3 +167,28 @@ test("an edit opened with the pointer gives the focus to what is pressed next", 
   await element(drafts).toHaveText('{"0001|2026-10-05":"9-18","0002|2026-10-02":"x","0004|2026-10-04":"o"}');
   await element(outside).toBeFocused();
 });
+
+test("a person's name link opens with Enter, and keys pressed on it are not the grid's", async () => {
+  const grid = await month();
+  // A draft under the selection, which Backspace on the grid would clear.
+  await dayCell(1, 1).dblclick();
+  await page.keyboard.type("9-18");
+  await dayCell(1, 2).click();
+  await dayCell(1, 1).click();
+  await element(drafts).toHaveText(`{${FIRST}}`);
+  await element(grid).toBeFocused();
+  await page.keyboard.press("Tab");
+  const link = grid.getByRole("link", { name: "Person 1", exact: true });
+  await element(link).toBeFocused();
+  await page.keyboard.press("Enter");
+  await element(page.locator("#search")).toHaveText("?person=00000000-0000-4000-8000-000000000001");
+  await element(editor).toHaveCount(0);
+  // The grid's own keys and the month view's (the day sheet, clear, the month, an edit) do nothing from the link.
+  await link.focus();
+  for (const key of ["p", "Backspace", "Delete", "]", "8", "F2", "ArrowDown"]) await page.keyboard.press(key);
+  await element(link).toBeFocused();
+  await element(editor).toHaveCount(0);
+  await element(drafts).toHaveText(`{${FIRST}}`);
+  await element(page.locator("#acts")).toHaveText("");
+  expect(await active()).toBe("0,0");
+});
