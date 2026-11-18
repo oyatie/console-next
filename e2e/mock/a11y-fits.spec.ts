@@ -58,8 +58,11 @@ for (const theme of ["light", "dark"]) {
         await expect(page.getByRole("main")).toHaveCount(2);
         await expect(main.getByRole("heading", { name: t("requestOutcome.title"), exact: true })).toBeVisible();
         await expect(main).toHaveClass(/\bmain\b/);
-        // A restyle can rename the shell class while preserving its landmark.
-        await main.evaluate(el => el.classList.remove("main"));
+        // A restyle can rename the shell's class and id while preserving its landmark.
+        await main.evaluate(el => {
+          el.classList.remove("main");
+          el.removeAttribute("id");
+        });
         await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
         await page.evaluate(() => document.fonts.ready);
         await fits(page, path);

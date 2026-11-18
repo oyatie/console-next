@@ -7,6 +7,8 @@ import { failure } from "./fixtures";
 import { screens } from "../states/registry";
 
 test.beforeAll(() => loadCatalog("ko"));
+// First-paint cases own their preferences, independently of the selected test pack.
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // The built entry chunk: nothing of the app has run until this script does.
 const ENTRY = /\/assets\/index-[^/]+\.js$/;
