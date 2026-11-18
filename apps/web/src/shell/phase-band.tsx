@@ -13,7 +13,7 @@ import { Button } from "../ui/button/button";
 import { PagePhase } from "../ui/page/page-scope";
 import { PhaseLine } from "../ui/page-head/phase-line";
 import { Skeleton } from "../ui/skeleton/skeleton";
-import { currentStep } from "../ui/setup-rail/setup-rail";
+import { currentStep } from "../ui/setup-rail/current-step";
 import s from "./phase-band.module.css";
 
 const PHASE_HOLD_MS = 2000;

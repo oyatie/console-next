@@ -1,110 +1,86 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { realpathSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
-import { createServer, type ViteDevServer } from "vite";
-import { browserEngine, browserTestOptimizeDeps, type Browser, type Page } from "../../lib/browser-test";
+import { columnsFixture } from "./flexible-columns.browser-fixture";
 
-let server: ViteDevServer;
-let browser: Browser;
-let page: Page;
-
-beforeAll(async () => {
-  server = await createServer({
-    configFile: false, cacheDir: ".cache/flexible-columns-test", logLevel: "error",
-    optimizeDeps: browserTestOptimizeDeps, resolve: { dedupe: ["react", "react-dom"] },
-    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), dirname(realpathSync("node_modules/pretendard"))] } },
-    plugins: [{
-      name: "flexible-columns-test",
-      resolveId: id => id === "/flexible-columns-test.js" ? "\0flexible-columns-test" : undefined,
-      load: id => id === "\0flexible-columns-test" ? `
-        import React, { useLayoutEffect, useRef, useState } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { loadCatalog, t } from '@console/i18n';
-        import { Button } from '/apps/web/src/ui/button/button.tsx';
-        import { Dialog } from '/apps/web/src/ui/dialog.tsx';
-        import { FlexibleColumns } from '/apps/web/src/ui/flexible-columns/flexible-columns.tsx';
-        import '/apps/web/src/app.css';
-        await loadCatalog('ko');
-        function App() {
-          const [sel, setSel] = useState(null);
-          const [full, setFull] = useState(new URLSearchParams(location.search).has("full"));
-          const [sel2, setSel2] = useState(null);
-          const [opened, setOpened] = useState(null);
-          const [dialog, setDialog] = useState(false);
-          const findRef = useRef(null);
-          const rowA = useRef(null), rowB = useRef(null);
-          const unitBtn = useRef(null);
-          useLayoutEffect(() => { if (sel === 'b' && new URLSearchParams(location.search).has('enterOnCommit')) rowB.current.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); }, [sel]);
-          const selectRow = id => { setSel(id); setSel2(prev => (id === sel ? prev : null)); };
-          return React.createElement('main', { className: 'main', 'data-opened': opened ?? '', 'data-selected': sel ?? '' },
-            React.createElement(FlexibleColumns, {
-              full, onFull: new URLSearchParams(location.search).has("fixed") ? undefined : setFull,
-              onSelect: selectRow,
-              onOpen: id => setOpened(id),
-              onFind: () => findRef.current?.focus(),
-              list: React.createElement('section', { 'aria-label': '목록 영역' },
-                React.createElement('input', { ref: findRef, type: 'search', 'aria-label': '목록 검색' }),
-                React.createElement(Button, { ref: rowA, 'data-row-id': 'a', onClick: () => selectRow('a') }, '직원 A'),
-                React.createElement(Button, { ref: rowB, 'data-row-id': 'b', onClick: () => selectRow('b') }, '직원 B'),
-                React.createElement('div', { role: 'tree', 'aria-label': '부서' },
-                  React.createElement('div', { role: 'treeitem', tabIndex: 0, 'data-id': 'tree-a' }, '부서 A'),
-                  React.createElement('div', { role: 'treeitem', tabIndex: -1, 'data-id': 'tree-b' }, '부서 B'),
-                ),
-              ),
-              record: sel && {
-                id: sel,
-                label: '직원 상세',
-                closeLabel: t('roster.panel.close'),
-                onClose: () => { setSel(null); setSel2(null); setFull(false); },
-                returnFocus: () => (sel === 'b' ? rowB.current : rowA.current),
-                children: React.createElement('div', null,
-                  React.createElement('h2', null, sel === 'b' ? '상세 B' : '상세 A'),
-                  React.createElement(Button, { ref: unitBtn, onClick: () => setSel2('unit-1') }, '인사팀 열기'),
-                  React.createElement(Button, { onClick: () => setDialog(true) }, '모달 열기'),
-                  React.createElement(Button, { 'aria-expanded': 'true' }, '열린 메뉴'),
-                  React.createElement('input', { 'aria-label': '내부 입력' }),
-                ),
-              },
-              related: sel && sel2 && {
-                id: sel2,
-                label: '소속 부서 상세',
-                title: '인사팀',
-                crumb: '본사 › 인사팀',
-                expand: React.createElement('a', { href: '/org?sel=unit-1', className: 'btn' }, '전체 화면으로 열기'),
-                closeLabel: t('common.closeRelated'),
-                onClose: () => { setSel2(null); setFull(false); },
-                returnFocus: () => unitBtn.current,
-                children: React.createElement('div', null, '부서원 12명'),
-              },
-            }),
-            React.createElement(Dialog, { open: dialog, title: '확인', onClose: () => setDialog(false) },
-              React.createElement(Button, { onClick: () => setDialog(false) }, '닫기'),
-            ),
-          );
-        }
-        createRoot(document.getElementById('root')).render(React.createElement(App));
-      ` : undefined,
-    }],
-  });
-  await server.listen();
-  browser = await browserEngine().launch();
-  page = await browser.newPage();
-  await page.route("**/columns-test*", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Columns</title><div id="root"></div><script type="module" src="/flexible-columns-test.js"></script></html>' }));
-}, 60_000);
-
-afterAll(async () => { await browser?.close(); await server?.close(); });
-
-const openFixture = async (width = 1440, search = "") => {
-  await page.setViewportSize({ width, height: 900 });
-  await page.goto("about:blank");
-  await page.goto(`${server.resolvedUrls!.local[0]}columns-test${search}`);
-  await element(page.getByRole("button", { name: "직원 A", exact: true })).toBeVisible();
-};
+const openFixture = columnsFixture(`
+  import React, { useLayoutEffect, useRef, useState } from 'react';
+  import { flushSync } from 'react-dom';
+  import { createRoot } from 'react-dom/client';
+  import { loadCatalog, t } from '@console/i18n';
+  import { Button } from '/apps/web/src/ui/button/button.tsx';
+  import { Dialog } from '/apps/web/src/ui/dialog.tsx';
+  import { FlexibleColumns } from '/apps/web/src/ui/flexible-columns/flexible-columns.tsx';
+  import '/apps/web/src/app.css';
+  await loadCatalog('ko');
+  function App() {
+    const [sel, setSel] = useState(null);
+    const [full, setFull] = useState(new URLSearchParams(location.search).has("full"));
+    const [sel2, setSel2] = useState(null);
+    const [opened, setOpened] = useState(null);
+    const [dialog, setDialog] = useState(false);
+    const findRef = useRef(null);
+    const rowA = useRef(null), rowB = useRef(null);
+    const unitBtn = useRef(null);
+    useLayoutEffect(() => { if (sel === 'b' && new URLSearchParams(location.search).has('enterOnCommit')) rowB.current.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); }, [sel]);
+    const selectRow = id => { setSel(id); setSel2(prev => (id === sel ? prev : null)); };
+    return React.createElement('main', { className: 'main', 'data-opened': opened ?? '', 'data-selected': sel ?? '' },
+      React.createElement(FlexibleColumns, {
+        full, onFull: new URLSearchParams(location.search).has("fixed") ? undefined : setFull,
+        onSelect: selectRow,
+        onOpen: id => setOpened(id),
+        onFind: () => findRef.current?.focus(),
+        list: React.createElement('section', { 'aria-label': '목록 영역' },
+          React.createElement('input', { ref: findRef, type: 'search', 'aria-label': '목록 검색' }),
+          React.createElement(Button, { ref: rowA, 'data-row-id': 'a', onClick: () => selectRow('a') }, '직원 A'),
+          React.createElement(Button, { ref: rowB, 'data-row-id': 'b', onClick: () => selectRow('b') }, '직원 B'),
+          React.createElement('div', { role: 'tree', 'aria-label': '부서' },
+            React.createElement('div', { role: 'treeitem', tabIndex: 0, 'data-id': 'tree-a' }, '부서 A'),
+            React.createElement('div', { role: 'treeitem', tabIndex: -1, 'data-id': 'tree-b' }, '부서 B'),
+          ),
+        ),
+        record: sel && {
+          id: sel,
+          label: '직원 상세',
+          closeLabel: t('roster.panel.close'),
+          onClose: () => { setSel(null); setSel2(null); setFull(false); },
+          returnFocus: () => (sel === 'b' ? rowB.current : rowA.current),
+          children: React.createElement('div', null,
+            React.createElement('h2', null, sel === 'b' ? '상세 B' : '상세 A'),
+            React.createElement(Button, { ref: unitBtn, onClick: () => setSel2('unit-1') }, '인사팀 열기'),
+            React.createElement(Button, { onClick: () => setDialog(true) }, '모달 열기'),
+            React.createElement(Button, { 'aria-expanded': 'true' }, '열린 메뉴'),
+            React.createElement('input', { 'aria-label': '내부 입력' }),
+          ),
+        },
+        related: sel && sel2 && {
+          id: sel2,
+          label: '소속 부서 상세',
+          title: '인사팀',
+          crumb: '본사 › 인사팀',
+          expand: React.createElement('a', { href: '/org?sel=unit-1', className: 'btn' }, '전체 화면으로 열기'),
+          closeLabel: t('common.closeRelated'),
+          onClose: () => { setSel2(null); setFull(false); },
+          returnFocus: () => unitBtn.current,
+          children: React.createElement('div', null, '부서원 12명'),
+        },
+      }),
+      React.createElement(Dialog, { open: dialog, title: '확인', onClose: () => setDialog(false) },
+        React.createElement(Button, { onClick: () => setDialog(false) }, '닫기'),
+      ),
+    );
+  }
+  const root = createRoot(document.getElementById('root'));
+  let revision = 0;
+  window.mountColumns = search => {
+    history.replaceState(null, '', '/columns-test' + search);
+    flushSync(() => root.render(React.createElement(App, { key: ++revision })));
+  };
+  window.mountColumns('');
+`);
 
 test("renders 1, 2, and 3 side-by-side columns at 1440px without overlapping the list", async () => {
-  await openFixture(1440);
+  const page = await openFixture(1440);
   const list = page.getByRole("region", { name: "목록 영역", exact: true });
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
   const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
@@ -128,7 +104,7 @@ test("renders 1, 2, and 3 side-by-side columns at 1440px without overlapping the
 });
 
 test("drag-resize and keyboard arrow keys resize columns via CSS custom properties", async () => {
-  await openFixture(1440);
+  const page = await openFixture(1440);
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
   const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
   const splitter = page.getByRole("separator", { name: "열 너비 조절" }).first();
@@ -151,7 +127,7 @@ test("drag-resize and keyboard arrow keys resize columns via CSS custom properti
 });
 
 test("collapses to 2 visible columns below 1280px and single column + Back at 390px", async () => {
-  await openFixture(1024);
+  const page = await openFixture(1024);
   const list = page.getByRole("region", { name: "목록 영역", exact: true });
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
   const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
@@ -190,7 +166,7 @@ test("collapses to 2 visible columns below 1280px and single column + Back at 39
 });
 
 test("Escape closes only the rightmost column, respects nested overlays/inputs, and '/' focuses search", async () => {
-  await openFixture(1440);
+  const page = await openFixture(1440);
   const rowA = page.getByRole("button", { name: "직원 A", exact: true });
   await rowA.click();
   const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
@@ -226,7 +202,7 @@ test("Escape closes only the rightmost column, respects nested overlays/inputs, 
 });
 
 test.each([false, true])("J/K and arrow keys move through list rows while record follows, and Enter opens then expands (Enter during commit: %s)", async enterOnCommit => {
-  await openFixture(1440, enterOnCommit ? "?enterOnCommit" : "");
+  const page = await openFixture(1440, enterOnCommit ? "?enterOnCommit" : "");
   const rowA = page.getByRole("button", { name: "직원 A", exact: true });
   const rowB = page.getByRole("button", { name: "직원 B", exact: true });
   const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
@@ -255,7 +231,7 @@ test.each([false, true])("J/K and arrow keys move through list rows while record
 
 for (const width of [1440, 1024]) for (const depth of [1, 2]) {
   test(`rightmost full pane at ${width}px depth ${depth}: toggle, keys, restore then close`, async () => {
-    await openFixture(width);
+    const page = await openFixture(width);
     const row = page.getByRole("button", { name: "직원 A", exact: true });
     await row.click();
     const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
@@ -299,7 +275,7 @@ for (const width of [1440, 1024]) for (const depth of [1, 2]) {
 }
 
 test("phone ignores full, hides the toggle and closes on the first Escape", async () => {
-  await openFixture(390, "?full=1");
+  const page = await openFixture(390, "?full=1");
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
   const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
   await record.getByRole("button", { name: "인사팀 열기", exact: true }).click();
@@ -313,7 +289,7 @@ test("phone ignores full, hides the toggle and closes on the first Escape", asyn
 });
 
 test("tree rows own their J/K, arrows, Enter and focus-follow", async () => {
-  await openFixture();
+  const page = await openFixture();
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
   const treeRow = page.getByRole("treeitem", { name: "부서 A", exact: true });
   await treeRow.focus();
@@ -328,7 +304,7 @@ test("tree rows own their J/K, arrows, Enter and focus-follow", async () => {
 });
 
 test("surfaces without onFull keep their existing controls", async () => {
-  await openFixture(1440, "?fixed");
+  const page = await openFixture(1440, "?fixed");
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
   await element(page.getByRole("button", { name: "전체 화면으로 보기", exact: true })).toHaveCount(0);
 });

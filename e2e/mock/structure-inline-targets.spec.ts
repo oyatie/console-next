@@ -100,3 +100,20 @@ for (const selection of ["none", "root", "collapsed"] as const) {
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+test("clicking department details at the panel edge scrolls its focused field into view @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 620 });
+  const { fixture, tree } = await openChart(page);
+  const dept = tree.entities[0]!.children[0]!.children[0]!;
+  try {
+    await page.goto(`/org?sel=${dept.id}`);
+    const edit = page.getByRole("button", { name: t("orgUnit.details.title"), exact: true });
+    await expect(edit).toBeVisible();
+    await edit.evaluate(el => el.scrollIntoView({ block: "end" }));
+    await edit.click();
+    const head = page.getByRole("combobox", { name: t("orgUnit.fact.head"), exact: true });
+    await expect(head).toBeFocused();
+    await expect(head).toBeInViewport({ ratio: 1 });
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

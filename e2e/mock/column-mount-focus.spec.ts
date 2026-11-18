@@ -47,3 +47,28 @@ for (const path of ["/", "/inbox"]) test(`the selected column on ${path} takes f
     expect(fixture.unexpected).toEqual([]);
   } finally { held.resolve(); await page.close(); fixture.release(); }
 });
+
+test("cold registration focuses the name cell after the held page opens @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
+  const fixture = await mockScreen(page, screens[1], "populated");
+  const held = Promise.withResolvers<void>();
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    await held.promise;
+    return { status: 200, json: checklist };
+  });
+  const start = Date.now();
+  await page.clock.install({ time: start });
+  await page.clock.pauseAt(start + 60_000);
+  try {
+    await page.goto("/people/run");
+    const name = page.locator('[data-run="name"]');
+    await advanceUntil(page, page.locator('[data-phase-pending] [data-run="name"]').waitFor({ state: "attached" }));
+    await page.clock.runFor(32);
+    held.resolve();
+    await page.clock.resume();
+    await expect(name).toBeFocused();
+    await fits(page, "/people/run");
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); fixture.release(); }
+});
