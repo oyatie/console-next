@@ -41,11 +41,12 @@ The outer element is always `<div role="status">`. What is inside depends on `st
 | `sending` | A card, `<div>` | A title `<p>`: a spinner icon and `message`. A detail `<p>`: message `uiReceipt.sending`. |
 | `recorded` | A card, `<div>` | A title `<p>`: a check icon and `message`. A detail `<p>`: a badge `<span>` with message `uiReceipt.recorded`, then `meta`. An actions `<div>` holding `actions`. |
 | `checking` | A card, `<div>` | A title `<p>`: an icon and `message`, or message `uiReceipt.checking.title` when `message` is not given. A detail `<p>`: message `uiReceipt.checking`. |
-| `applied` | A bar, `<div>` | A check icon. The message, a `<span>`. An undo `<button type="button">` with message `uiReceipt.undoApplied`, only when `onUndo` is given. Then `actions`, with no element around it. A dismiss `<button type="button">` that holds only an icon. |
+| `applied` | A bar, `<div>` | A check icon. The message, a `<span>`. An undo `<button type="button">`: an icon and message `uiReceipt.undoApplied`, only when `onUndo` is given. Then `actions`, with no element around it. A dismiss `<button type="button">` that holds only an icon. |
 
 Every icon is marked `aria-hidden`.
 
 - `message` is a string. `meta` and `actions` are slots: the caller's own elements.
+- `meta` is rendered inside the detail `<p>`, so it can hold inline content only: text, a link, a `<span>`.
 - Only `applied` has a dismiss button of its own. A `recorded` receipt that can be closed gets its close button
   from the caller, inside `actions`.
 - `recorded` renders the actions `<div>` whenever `actions` is not `null` or `undefined`. A caller that passes
@@ -71,12 +72,13 @@ There are two looks, the bar and the card, and one size. No prop picks a look: `
 
 | Part | Look |
 |---|---|
-| Bar | 13 px text (`--text-sm`), a 6 px radius, the `--shadow-pop` shadow. Padding: 8 px top and bottom, 16 px left, 12 px right. Its parts sit in one row that wraps, 12 px apart, with 8 px between wrapped rows. The message takes the spare width. |
-| Tag | 12 px medium text in a 1 px `--surface` border, a 4 px radius, 8 px side padding. |
-| Undo, dismiss, `receiptAction` | At least 32 px high (`--target`), 12 px side padding, a 1 px `--surface` border, a 6 px radius, no fill, medium `--surface` text, 4 px between icon and text. The dismiss button holds a 14 px icon, so it is 40 px wide. |
+| Bar | 13 px text (`--text-sm`), a 6 px radius (`--radius`), the `--shadow-pop` shadow. Padding: 8 px (`--space-2`) top and bottom, 16 px (`--space-4`) left, 12 px (`--space-3`) right. Its parts sit in one row that wraps, 12 px (`--space-3`) apart, with 8 px (`--space-2`) between wrapped rows. The message takes the spare width. |
+| Tag | 12 px (`--text-xs`) medium (`--fw-medium`) text in a 1 px `--surface` border, a 4 px radius (`--radius-sm`), 8 px (`--space-2`) side padding. |
+| Undo, dismiss, `receiptAction` | At least 32 px high (`--target`), 12 px (`--space-3`) side padding, a 1 px `--surface` border, a 6 px radius (`--radius`), no fill, medium (`--fw-medium`) `--surface` text, 4 px (`--space-1`) between icon and text. The dismiss button holds a 14 px icon, so it is 40 px wide. |
 
 **The card** (`sending`, `recorded`, `checking`) is a `--surface` box with a 1 px `--border` border, a 3 px left
-edge, a 6 px radius, 12 px top and bottom and 16 px side padding, and 13 px text. Its lines are 8 px apart.
+edge, a 6 px radius (`--radius`), 12 px (`--space-3`) top and bottom and 16 px (`--space-4`) side padding, and
+13 px text (`--text-sm`). Its lines are 8 px (`--space-2`) apart.
 
 | `state` | Left edge | Icon |
 |---|---|---|
@@ -86,17 +88,17 @@ edge, a 6 px radius, 12 px top and bottom and 16 px side padding, and 13 px text
 
 | Part | Look |
 |---|---|
-| Title | Bold (`--fw-strong`), with a 16 px icon 8 px before the text. |
-| Detail | 12 px, `--steel`. It wraps, and a long word breaks anywhere. |
-| Badge | `--ok-tx`, medium weight. |
-| Actions | A row that wraps: 16 px between items, 8 px between rows. |
+| Title | Bold (`--fw-strong`), with a 16 px icon 8 px (`--space-2`) before the text. |
+| Detail | 12 px (`--text-xs`), `--steel`. A row that wraps: the badge and each element or run of text in `meta` are items of the row, 12 px (`--space-3`) apart, with 4 px (`--space-1`) between wrapped rows. A long word breaks anywhere. |
+| Badge | `--ok-tx`, medium weight (`--fw-medium`). |
+| Actions | A row that wraps: 16 px (`--space-4`) between items, 8 px (`--space-2`) between rows. |
 
 Width and place:
 
 | `placement` | Look |
 |---|---|
 | `inline` | At most 640 px wide (`--card-w`). It can shrink to nothing (`min-width: 0`). |
-| `docked` | The receipt's own rule drops the 640 px limit and gives the outer element a `--surface` fill, a 6 px radius and the `--shadow-pop` shadow. The dock sets the rest in its own stylesheet: fixed at the bottom left, 16 px (`--space-4`) in from the frame's start and bottom edges, at `z-index` 40, and at most 770 px wide (`calc(var(--panel-w) * 1.75)`), less when the window is narrower. |
+| `docked` | The receipt's own rule drops the 640 px limit and gives the outer element a `--surface` fill, a 6 px radius (`--radius`) and the `--shadow-pop` shadow. The dock sets the rest in its own stylesheet: fixed at the bottom left, 16 px (`--space-4`) in from the frame's start and bottom edges, at `z-index` 40, and at most 770 px wide (`calc(var(--panel-w) * 1.75)`), less when the window is narrower. Pieces in the dock stack in a column, 12 px (`--space-3`) apart: each new piece is appended after the ones already there. The dock is never taller than `calc(100dvh - var(--frame-bottom) - var(--space-4) * 2 - var(--dock-clearance, 0px))`, and scrolls beyond that. |
 
 The component styles nothing that is passed in `meta` or `actions`. In an `applied` receipt, `actions` sits on the
 dark bar, so what goes there must read on `--ink`:
@@ -112,7 +114,7 @@ dark bar, so what goes there must read on `--ink`:
 | State | What happens |
 |---|---|
 | Rest | The look of the current `state`, above. |
-| Hover | No look. `receipt.module.css` has no hover rule. The undo and dismiss buttons show a pointer cursor. |
+| Hover | The undo and dismiss buttons have no hover look: `receipt.module.css` has no hover rule, and they show a pointer cursor. A link in `actions` with no class of its own, or with only `receiptAction`, is underlined on hover and on keyboard focus by the global link rule in `app.css`. A link that carries the `btn` class is not, because `.btn` sets `text-decoration: none`: `reference/org/ui/batch-receipt.tsx` passes one. A link with no class of its own in `meta` is inside the detail `<p>`, so it has the look of a link in running text: `--primary` with a thin underline at rest, which takes the link's colour on hover and focus. |
 | Keyboard focus | The undo button, the dismiss button and an element with `receiptAction` show two things at once: the global 2 px `--primary` outline, 2 px away, and the `--focus` shadow, a 2 px `--surface` ring with a 2 px `--primary` ring around it. The stylesheet adds the shadow and does not remove the outline. The receipt itself cannot take focus. |
 | Pressed down | No look. There is no `:active` rule. |
 | Selected | Does not exist. |
@@ -177,7 +179,7 @@ The WCAG 2.2 criteria that apply:
 | 2.4.3 Focus Order | Inline, the buttons are where the caller renders them. Docked, they come after the page's content. |
 | 2.4.7 Focus Visible | The global outline and the `--focus` ring. |
 | 2.4.11 Focus Not Obscured (Minimum) | A docked receipt is fixed over the page. While a dock exists, the dock's stylesheet pads the bottom of the main region (`#main`) by the space the dock takes plus `--space-4`, and sets the same scroll padding, so the page can scroll clear of it. |
-| 2.5.8 Target Size (Minimum) | The undo and dismiss buttons are at least 32 px high, above the 24 px minimum. |
+| 2.5.8 Target Size (Minimum) | The undo and dismiss buttons are at least 32 px high (`--target`), above the 24 px minimum. |
 | 4.1.2 Name, Role, Value | The role and the names above. |
 | 4.1.3 Status Messages | `role="status"`, without moving focus. |
 
@@ -205,13 +207,13 @@ Nothing in `receipt.module.css` changes with the width of the screen. Its one me
 
 - The bar is a row that wraps: when its parts do not fit on one line, the buttons drop to the next.
 - The card's detail line and its actions row wrap.
-- The buttons are at least 32 px high at every width. They do not grow to the 44 px touch size; the component
-  does not read `--target-touch`.
-- An inline receipt is a block: as wide as its container, up to 640 px.
+- The buttons are at least 32 px high (`--target`) at every width. They do not grow to the 44 px touch size; the
+  component does not read `--target-touch`.
+- An inline receipt is a block: as wide as its container, up to 640 px (`--card-w`).
 
 A docked receipt does change, through the dock's stylesheet and not its own. Below 768 px, the shared phone
-breakpoint, the dock runs from 8 px inside the left edge to 8 px inside the right edge and stretches what it holds
-to that width.
+breakpoint, the dock runs from 8 px (`--space-2`) inside the left edge to 8 px inside the right edge and stretches
+what it holds to that width.
 
 A sticky [`ActionBar`](action-bar.md) lifts the dock by the height the bar takes at the foot of the window, at
 every width, so a docked receipt sits above the bar's buttons, not on them.
