@@ -117,7 +117,8 @@ because released clients do not send the field. A response enum that may gain va
 A screen is proved in five steps, each cheaper than the next.
 
 1. **Compose it from the design system.** Components come from `apps/web/src/ui`, values from
-   `@console/tokens`. The design-system check refuses raw colours and one-off look-alikes.
+   `@console/tokens`. The design-system check refuses raw colours and one-off look-alikes. The
+   [design-system guide](design-system/README.md) has the working rules and a page for each documented component.
 2. **Show every state in the gallery.** Put a `<name>.gallery.tsx` beside the component. It default-exports
    a demo that renders the component with fixture data and no network. Entries are discovered
    automatically and served at `/_gallery` in development and test builds.
