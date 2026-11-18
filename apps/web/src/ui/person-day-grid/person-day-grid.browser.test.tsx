@@ -58,7 +58,8 @@ test.each([null, 24, 40])("virtual rows are placed by the compact row height the
     return scroller.evaluate((el, id) => {
       const cell = id ? document.getElementById(id) : null;
       if (!cell) return "no active cell";
-      const bounds = cell.getBoundingClientRect(), box = el.getBoundingClientRect(), head = el.querySelector("thead")!.getBoundingClientRect();
+      // The head cells are the sticky part: the row group they sit in scrolls away with the rows.
+      const bounds = cell.getBoundingClientRect(), box = el.getBoundingClientRect(), head = el.querySelector("thead th")!.getBoundingClientRect();
       return bounds.top >= head.bottom - 1 && bounds.bottom <= box.bottom + 1 ? "in view" : `out of view: ${bounds.top}-${bounds.bottom} in ${head.bottom}-${box.bottom}`;
     }, active);
   }).toBe("in view");
