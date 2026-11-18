@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { readFileSync } from "node:fs";
 import { expect as baseExpect, type Page, type TestInfo } from "@playwright/test";
+import { routeReady } from "../flows";
 import { routeList } from "../helpers/route-list";
 import { authz, checklist, failure, id, modules, screenAccess, token, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
+import { installFaultClock } from "./fault-clock";
+import { screens } from "./registry";
 
 type State = "failed" | "refused" | "no-reference";
 type Part = "a" | "b";
@@ -36,12 +39,15 @@ export function supportReferenceTest(route: string, state: State) {
     await page.emulateMedia({ colorScheme: "dark" });
     const body = failure(state === "refused" ? "forbidden" : "service_unavailable");
     body.error = { code: body.error.code, message: raw, ...(state === "no-reference" ? {} : { support_ref: reference }) };
-    let injected = 0;
-    // Catch every feature read first; later shell fixtures win by Playwright's registration order.
-    await page.route("**/api/**", async request => {
-      if (request.request().method() === "GET") injected++;
-      await request.fulfill({ status: state === "refused" ? 403 : 503, json: body });
+    const status = state === "refused" ? 403 : 503;
+    const reads = new Map<string, number>();
+    page.on("response", response => {
+      if (response.status() === status && response.request().method() === "GET" && new URL(response.url()).pathname.startsWith("/api/")) {
+        reads.set(response.url(), (reads.get(response.url()) ?? 0) + 1);
+      }
     });
+    // Catch every feature read first; later shell fixtures win by Playwright's registration order.
+    await page.route("**/api/**", request => request.fulfill({ status, json: body }));
     await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: routeToken(route) });
     await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: user });
     await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
@@ -68,17 +74,25 @@ export function supportReferenceTest(route: string, state: State) {
     const main = page.getByRole("main");
     let settled = false;
     try {
+      const afterReadRetries = state === "refused" ? undefined : await installFaultClock(page);
       await page.goto(route.replace(/\$[^/]+/g, id(3)));
-      // All HTTP reads are immediate mocks; the shell stream above has no network request.
-      await page.waitForLoadState("networkidle");
-      // Fault reads retry on timers; a hidden layout placeholder is not an active read.
-      settled = await expect(main.locator('[aria-busy="true"]:visible:not([aria-hidden="true"] *, [inert] *)'))
-        .toHaveCount(0).then(() => true, () => false);
+      if (route !== "/login") await baseExpect.poll(() => reads.size, { message: "at least one failed feature read" }).toBeGreaterThan(0);
+      // The route marker waits for active queries; the network can be idle between retries.
+      if (afterReadRetries) await afterReadRetries(() => page.locator("[data-route-ready]").count()).toBe(1);
+      await routeReady(page);
+      await expect(main.locator('[aria-busy="true"]:visible:not([aria-hidden="true"] *, [inert] *)')).toHaveCount(0);
+      const screen = screens.find(screen => screen.path === route);
+      if (screen) {
+        const primary = [...reads].filter(([url]) => new URL(url).pathname === screen.read);
+        expect(primary.map(([, count]) => count), screen.read).toContain(state === "refused" ? 1 : 3);
+      }
+      settled = true;
       if (state === "no-reference") await expect(main.locator("[data-support-reference]")).toHaveCount(0);
     } finally {
       const references = main.locator("[data-support-reference]");
       const frame = main.locator("[data-floorplan]").first();
       const count = await references.count();
+      const injected = [...reads.values()].reduce((sum, n) => sum + n, 0);
       const observation = {
         route, state, support_ref: body.error.support_ref ?? null,
         reference_count: count, injected, settled,
