@@ -85,33 +85,49 @@ The props and token tables are not written by hand. A page names a source betwee
 <!-- /ds:tokens -->
 ```
 
-- **`ds:props <file>`** takes a TypeScript module. Every export that starts with a capital letter and can be
-  called gets a table: each prop this repository declares, whether it is required, its type, its default and its
+- **`ds:props <file>`** takes a TypeScript module, and nothing after the path. Every export that starts with a
+  capital letter and can be called gets a table, and so does the default export, under the name it is declared
+  with. A table lists each prop this repository declares, whether it is required, its type, its default and its
   doc comment. Props that a library declares, such as the attributes of a native element, are one closing line
-  that names the library type, not a row each.
-- **`ds:tokens <file> [selector text]`** takes a stylesheet. It lists every token the file reads and the
-  properties that read it. With text after the path, only rules whose selector contains that text are read, so one
-  component's rules can be picked out of `app.css`.
+  that names the library type, not a row each. A default the component gives one of those props is named in that
+  line. A capitalised export that is a class, or whose first parameter is not an object, gets no table: a closing
+  line names it as not documented.
+- **`ds:tokens <file> [class]`** takes a stylesheet. It lists every token the file reads and the properties that
+  read it. With a class after the path, only rules whose selector names that class are read, so one component's
+  rules can be picked out of `app.css`. `.btn` takes `.btn:hover`, `.btn--sm` and `.btn__count`, and leaves
+  `.btn-group` to its own component.
 
-Text outside the markers is yours and is never touched. Do not edit between them: the next run overwrites it.
+Text outside the markers is yours and is never touched. Do not edit between them: the next run overwrites it. A
+marker inside a fenced code block is an example and is not read.
+
+Props are read from the files the root `tsconfig.json` names, the same ones `tsc` reads. A type declared in a file
+the component never imports is therefore resolved here as it is there.
 
 | Command | What it does |
 |---|---|
 | `node scripts/ds-docs.mjs --write` | Rewrites the generated blocks of every page. |
 | `node scripts/ds-docs.mjs --check` | Changes nothing. Fails, naming the page and the block, when a block differs from what the code says now. `npm run check` runs it. |
 
-The check also fails on a source path that does not exist, a marker that is never closed, a page with no
-generated block, a module that exports no component, and selector text that matches no rule.
+The check also fails on:
 
-Three things to know when a table looks wrong:
+- a source path that does not exist, or text after a `ds:props` path;
+- a marker that is never closed, a closing marker with nothing to close, or a comment that starts with `ds` and a
+  punctuation mark but is not a marker, which is how a mistyped marker looks;
+- a page with no generated block;
+- a module that exports no component, or a class after a `ds:tokens` path that no rule names;
+- a source that does not parse or does not typecheck. A file elsewhere in the project that does not parse fails it
+  too, because one program is built for every page.
+
+Four things to know when a table looks wrong:
 
 - A description is the prop's doc comment. TypeScript counts a comment that sits on its own line above the prop;
   one that follows other code on the same line is not picked up. The comment is copied as written, so it follows
   the documentation rules too.
 - A default is shown only when the component sets it where it destructures its props.
-- A type is printed as TypeScript prints it. A named type shows its name, not its members, and the order of an
-  inline union can follow the other sources in the run. `--write` refreshes every page at once, so run it and
-  commit what changes.
+- A type is printed as TypeScript prints it, with one change: the members of a union are in alphabetical order,
+  `null` and `undefined` last, not in the order the source wrote them. That keeps a table the same whichever
+  other pages exist. A named type shows its name, not its members.
+- A page checked out with Windows line endings is compared by its text, and a rewritten block keeps them.
 
 ## The live gallery
 

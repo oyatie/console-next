@@ -125,6 +125,7 @@ export function Anchor({ tone = "ok", ...rest }: LinkProps & { tone?: "ok" | "wa
 export function Bare(props: LinkProps) { return null; }
 export function Picky(props: Pick<LinkProps, "href"> & { id: string }) { return null; }
 export function Quiet(props: Omit<LinkProps, "href">) { return null; }
+export function Preset({ target = "_blank", isDisabled = false, ...rest }: LinkProps) { return null; }
 `,
   });
   expect(generated(root, "ds:props apps/web/src/ui/anchor.tsx")).toBe(`### Anchor
@@ -144,6 +145,10 @@ ${HEAD}
 | \`id\` | yes | \`string\` |  |  |
 
 Also accepts \`href\` of \`LinkProps\` (\`widgets\`).
+
+### Preset
+
+Accepts the attributes of \`LinkProps\` (\`widgets\`). Defaults \`isDisabled\` to \`false\` and \`target\` to \`"_blank"\`.
 
 ### Quiet
 
@@ -192,12 +197,16 @@ const CSS = `
 @media (width < 768px) { .top .btn { padding-inline: var(--space-2); } }
 .chip { color: var(--steel); background: var(--muted, var(--surface)); &:hover { color: var(--ink); } }
 .plain { display: flex; }
+.btn-group { gap: var(--group-gap); }
+.btn--wide .label, .btn__count { min-width: var(--count); }
 `;
 const tokens = (rows: string[]) => ["| Token | Read by |", "| --- | --- |", ...rows].join("\n");
 
 test("a CSS source lists every token it reads once, sorted, with the properties that read it", () => {
   expect(tokenTable(CSS)).toBe(tokens([
     "| `--border` | `border` |",
+    "| `--count` | `min-width` |",
+    "| `--group-gap` | `gap` |",
     "| `--ink` | `color`, `outline-color` |",
     "| `--muted` | `background` |",
     "| `--space-2` | `padding-inline` |",
@@ -206,11 +215,15 @@ test("a CSS source lists every token it reads once, sorted, with the properties 
     "| `--surface` | `background` |",
   ]));
   expect(tokenTable(".plain { display: flex; }")).toBe("Reads no tokens.");
+  // Code-unit order, so a capital sorts before every small letter on any machine.
+  expect(tokenTable(".a { color: var(--Zed); margin: var(--apple); }")).toBe(tokens(["| `--Zed` | `color` |", "| `--apple` | `margin` |"]));
 });
 
-test("a selector filter keeps only rules whose selector contains the text, nested rules included", () => {
+test("a selector filter keeps the rules that name the class or one of its -- and __ classes, nested rules included", () => {
+  // `.btn-group` only starts with the same letters: it is another component's class.
   expect(tokenTable(CSS, ".btn")).toBe(tokens([
     "| `--border` | `border` |",
+    "| `--count` | `min-width` |",
     "| `--ink` | `color`, `outline-color` |",
     "| `--muted` | `background` |",
     "| `--space-2` | `padding-inline` |",
@@ -296,4 +309,150 @@ test("--write keeps every byte outside the markers, and changes nothing a second
   const written = read(root, `${PAGES}/badge.md`);
   expect(cli(root, "--write").status).toBe(0);
   expect(read(root, `${PAGES}/badge.md`)).toBe(written);
+});
+
+test("types the source never imports are read as tsc reads them: an ambient declaration, and an augmentation in another file", () => {
+  const root = fixture({
+    [`${PAGES}/amb.md`]: empty("props", "apps/web/src/ui/amb.tsx"),
+    "apps/web/src/ambient.d.ts": 'interface KitProps {\n  /** The words. */\n  label: string;\n  tone?: "ok" | "warn";\n}\n',
+    "apps/web/src/main.ts": "export {};\ndeclare global { interface KitProps { wide?: boolean } }\n",
+    "apps/web/src/ui/amb.tsx": `export function Amb(props: KitProps) { return null; }
+export function Mixed({ size = "md", ...rest }: KitProps & { size?: "sm" | "md" }) { return null; }
+`,
+  });
+  const kit = '| `label` | yes | `string` |  | The words. |\n%| `tone` | no | `"ok" \\| "warn"` |  |  |\n| `wide` | no | `boolean` |  |  |';
+  expect(generated(root, "ds:props apps/web/src/ui/amb.tsx")).toBe(`### Amb
+
+${HEAD}
+${kit.replace("%", "")}
+
+### Mixed
+
+${HEAD}
+${kit.replace("%", '| `size` | no | `"md" \\| "sm"` | `"md"` |  |\n')}`);
+});
+
+test("a source that does not typecheck fails, naming the page, the block and the error, also when the component is declared in another file", () => {
+  const root = fixture({
+    [`${PAGES}/ghost.md`]: empty("props", "apps/web/src/ui/ghost.tsx"),
+    [`${PAGES}/via.md`]: empty("props", "apps/web/src/ui/index.ts"),
+    "apps/web/src/ui/ghost.tsx": 'import type { GhostProps } from "no-such-package";\n\nexport function Ghost(props: GhostProps) { return null; }\n',
+    "apps/web/src/ui/index.ts": 'export { Ghost } from "./ghost";\n',
+  });
+  const why = "does not typecheck, so its props cannot be read: apps/web/src/ui/ghost.tsx:1 Cannot find module 'no-such-package' or its corresponding type declarations.";
+  expect(render(root).problems).toEqual([
+    `${PAGES}/ghost.md: \`ds:props apps/web/src/ui/ghost.tsx\` ${why}`,
+    `${PAGES}/via.md: \`ds:props apps/web/src/ui/index.ts\` ${why}`,
+  ]);
+});
+
+test("a file with a syntax error fails, naming the file, and the page and block when a page names it", () => {
+  const root = badgeRoot();
+  writeFileSync(path.join(root, "apps/web/src/ui/badge.tsx"), `${BADGE}export function Broken({ a }: { a: string ) { return null; }\n`);
+  writeFileSync(path.join(root, "apps/web/src/other.ts"), "export const = 3;\n");
+  const { problems } = render(root);
+  expect(problems).toHaveLength(2);
+  expect(problems[1]).toMatch(/^apps\/web\/src\/other\.ts:1 does not parse \(.+\); no props block can be read until it does$/);
+  expect(problems[0]).toMatch(/^docs\/design-system\/components\/badge\.md: `ds:props apps\/web\/src\/ui\/badge\.tsx` does not parse: apps\/web\/src\/ui\/badge\.tsx:15 /);
+});
+
+test("a type cell does not depend on the other pages: union members are in one fixed order", () => {
+  const root = fixture({
+    [`${PAGES}/zed.md`]: empty("props", "apps/web/src/ui/zed.tsx"),
+    "apps/web/src/ui/zed.tsx": 'export function Zed({ tone }: { tone?: "calm" | "loud" | "mute"; size: "sm" | "lg"; pick: (to: "b" | "a" | null) => void }) { return null; }\n',
+  });
+  const alone = generated(root, "ds:props apps/web/src/ui/zed.tsx");
+  expect(alone).toBe(`### Zed
+
+${HEAD}
+| \`pick\` | yes | \`(to: "a" \\| "b" \\| null) => void\` |  |  |
+| \`size\` | yes | \`"lg" \\| "sm"\` |  |  |
+| \`tone\` | no | \`"calm" \\| "loud" \\| "mute"\` |  |  |`);
+  // A second page whose source names the same literals in another order, and is read first.
+  writeFileSync(path.join(root, PAGES, "alpha.md"), empty("props", "apps/web/src/ui/alpha.tsx"));
+  writeFileSync(path.join(root, "apps/web/src/ui/alpha.tsx"), 'export function Alpha({ tone }: { tone?: "mute" | "loud" | "calm"; size: "lg" | "sm"; pick: (to: "a" | null | "b") => void }) { return null; }\n');
+  const { pages, problems } = render(root);
+  expect(problems).toEqual([]);
+  expect(pages[1].file).toBe(`${PAGES}/zed.md`);
+  expect(pages[1].next).toBe(`<!-- ds:props apps/web/src/ui/zed.tsx -->\n\n${alone}\n\n<!-- /ds:props -->`);
+});
+
+test("a default export is documented under its declared name and an overloaded component by its first signature; a class and a helper are named as not documented", () => {
+  const root = fixture({
+    [`${PAGES}/mixed.md`]: empty("props", "apps/web/src/ui/mixed.tsx"),
+    "apps/web/src/ui/mixed.tsx": `export function Over(props: { a: string }): null;
+export function Over(props: { a: string; b: number }, extra: number): null;
+export function Over(props: { a: string; b?: number }) { return null; }
+export default function Defaulted({ label }: { label: string }) { return null; }
+export class Boundary { constructor(readonly props: { fallback: string }) {} }
+export function FormatAmount(amount: number, currency = "KRW") { return String(amount) + currency; }
+export const LIMIT = 3;
+`,
+  });
+  expect(generated(root, "ds:props apps/web/src/ui/mixed.tsx")).toBe(`### Defaulted
+
+${HEAD}
+| \`label\` | yes | \`string\` |  |  |
+
+### Over
+
+${HEAD}
+| \`a\` | yes | \`string\` |  |  |
+
+Not documented: \`Boundary\` (a class) and \`FormatAmount\` (its first parameter is not a props object).`);
+});
+
+test("a comment that looks like a marker but is not one is a problem, and so is a closing marker with no opener; a fenced example and plain words are left alone", () => {
+  for (const typo of ["ds-props", "ds: props", "DS:props", "ds_props", "ds.props"]) {
+    const found = markers(`<!-- ${typo} a.tsx -->\nstale by hand\n<!-- /${typo} -->`);
+    expect(found.blocks).toEqual([]);
+    expect(found.problems).toEqual([`<!-- ${typo} a.tsx -->`, `<!-- /${typo} -->`].map((marker) => `\`${marker}\` is not a marker this script reads; write <!-- ds:props path --> or <!-- ds:tokens path -->, and close it with <!-- /ds:props --> or <!-- /ds:tokens -->`));
+  }
+  expect(markers("words\n<!-- /ds:props -->\n")).toEqual({ blocks: [], problems: ["<!-- /ds:props --> closes no block; remove it or add the opening marker"] });
+  for (const fence of ["```", "~~~~"]) expect(markers(`${fence}md\n<!-- ds:props a.tsx -->\n<!-- /ds:props -->\n${fence}\n`)).toEqual({ blocks: [], problems: [] });
+  expect(markers("<!-- ds is mentioned here, /ds:props too -->\n<!-- dsl notes -->")).toEqual({ blocks: [], problems: [] });
+  // After a fence closes, a marker counts again.
+  expect(markers("```\ncode\n```\n<!-- ds:tokens a.css -->\n<!-- /ds:tokens -->").blocks).toHaveLength(1);
+});
+
+test("a marker is refused for an unknown kind, the wrong kind of file, a path that is absolute or climbs out, and text after a props path", () => {
+  const root = fixture({ "apps/web/src/ui/badge.tsx": BADGE, "apps/web/src/ui/a.css": ".a { color: var(--ink); }\n" });
+  const named = ["ds:prosp apps/web/src/ui/badge.tsx", "ds:props apps/web/src/ui/a.css", `ds:tokens ${path.join(root, "apps/web/src/ui/a.css")}`, "ds:tokens docs/../apps/web/src/ui/a.css", "ds:props apps/web/src/ui/badge.tsx Badge"];
+  mkdirSync(path.join(root, PAGES), { recursive: true });
+  writeFileSync(path.join(root, PAGES, "guards.md"), named.map((label) => `<!-- ${label} -->\n<!-- /${label.split(" ")[0]} -->\n`).join("\n"));
+  const outside = "names a source that does not exist; give a file path from the repository root";
+  expect(render(root).problems).toEqual([
+    "is not a block this script writes; use ds:props or ds:tokens",
+    "cannot read apps/web/src/ui/a.css; ds:props takes a .ts or .tsx file and ds:tokens a .css file",
+    outside,
+    outside,
+    "has text after the path; ds:props takes a file path and nothing else",
+  ].map((problem, i) => `${PAGES}/guards.md: \`${named[i]}\` ${problem}`));
+});
+
+test("a page with Windows line endings is compared by its text, and a rewritten block keeps the page's line endings", () => {
+  const root = badgeRoot();
+  refresh(root);
+  const page = path.join(root, PAGES, "badge.md");
+  writeFileSync(page, readFileSync(page, "utf8").replaceAll("\n", "\r\n"));
+  expect(render(root).pages[0].stale).toEqual([]);
+  writeFileSync(path.join(root, "apps/web/src/ui/badge.tsx"), BADGE.replace("label: string;", "label: string;\n  size?: number;"));
+  const [after] = render(root).pages;
+  expect(after.stale).toEqual(["ds:props apps/web/src/ui/badge.tsx"]);
+  expect(after.next).toContain("| `size` | no | `number` |  |  |\r\n");
+  expect(after.next).not.toMatch(/(?<!\r)\n/);
+});
+
+test("the script runs when it is started through a symlinked path", () => {
+  const root = badgeRoot();
+  const linked = mkdtempSync(path.join(tmpdir(), "ds-docs-link-"));
+  roots.push(linked);
+  symlinkSync(path.resolve(repo), path.join(linked, "repo"));
+  const r = spawnSync("node", [path.join(linked, "repo/scripts/ds-docs.mjs"), "--root", root], { encoding: "utf8" });
+  expect(r.stderr).toContain(`${PAGES}/badge.md: \`ds:props apps/web/src/ui/badge.tsx\` is out of date; run ${FIX}`);
+  expect(r.status).toBe(1);
+});
+
+test("npm run check runs the generator's check, straight after the reach check", () => {
+  expect(JSON.parse(readFileSync(path.join(repo, "package.json"), "utf8")).scripts.check).toContain("node scripts/check-reach.mjs && node scripts/ds-docs.mjs --check && ");
 });

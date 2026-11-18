@@ -198,7 +198,7 @@ their selectors name `.btn`.
 | `size` | no | `ButtonSize` |  |  |
 | `variant` | no | `ButtonVariant` | `"secondary"` |  |
 
-Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`).
+Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`). Defaults `type` to `"button"`.
 
 ### Check
 
@@ -224,7 +224,7 @@ Also accepts the attributes of `FormHTMLAttributes` (`@types/react`).
 | `label` | yes | `string` |  |  |
 | `ref` | no | `Ref<HTMLButtonElement>` |  |  |
 | `size` | no | `ButtonSize` |  |  |
-| `variant` | no | `"primary" \| "secondary" \| "ghost" \| "link"` | `"ghost"` |  |
+| `variant` | no | `"ghost" \| "link" \| "primary" \| "secondary"` | `"ghost"` |  |
 
 Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`), except `aria-label` and `title`.
 

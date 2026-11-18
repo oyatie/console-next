@@ -7,7 +7,7 @@
 // Everything between a pair is written here; everything outside is hand-written and never touched.
 //   node scripts/ds-docs.mjs [--check] [--root path]   fail when a block differs from what its source says now
 //   node scripts/ds-docs.mjs --write [--root path]     rewrite the blocks
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -31,9 +31,18 @@ const list = (items) => (items.length < 2 ? items.join("") : `${items.slice(0, -
 export function markers(text) {
   const blocks = [], problems = [];
   const unclosed = (block) => `\`${block.label}\` is not closed; add <!-- /ds:${block.kind} --> after it`;
+  // A marker shown as an example inside a code fence is not a marker.
+  const fences = [...text.matchAll(/^ {0,3}(`{3,}|~{3,})[^]*?(?:\n {0,3}\1|(?![^]))/gm)].map((fence) => [fence.index, fence.index + fence[0].length]);
   let open;
-  for (const found of text.matchAll(/<!--\s*(\/?)ds:(\w+)\s*(.*?)\s*-->/g)) {
-    const [marker, closing, kind, named] = found;
+  // A comment that opens with `ds` and a separator is this script's. One it cannot read is a mistyped marker, never prose.
+  for (const found of text.matchAll(/<!--\s*(\/?\s*ds(?![a-z0-9\s])(?:(?!-->)[^])*?)\s*-->/gi)) {
+    if (fences.some(([from, to]) => found.index >= from && found.index < to)) continue;
+    const marker = found[0], read = found[1].match(/^(\/?)ds:(\w+)(?:\s+([^]*))?$/);
+    if (!read) {
+      problems.push(`\`<!-- ${found[1].replace(/\s+/g, " ")} -->\` is not a marker this script reads; write <!-- ds:props path --> or <!-- ds:tokens path -->, and close it with <!-- /ds:props --> or <!-- /ds:tokens -->`);
+      continue;
+    }
+    const [, closing, kind] = read, named = (read[3] ?? "").replace(/\s+/g, " ");
     if (!closing) {
       if (open) problems.push(unclosed(open));
       open = { kind, label: `ds:${kind} ${named}`.trim(), source: named.split(/\s+/)[0], filter: named.replace(/^\S+\s*/, ""), from: found.index + marker.length };
@@ -46,19 +55,24 @@ export function markers(text) {
   return { blocks, problems };
 }
 
-/** Every token a stylesheet reads, with the properties that read it. `filter` keeps the rules whose selector contains it. */
+/**
+ * Every token a stylesheet reads, with the properties that read it. `filter` keeps the rules whose selector names it:
+ * the text, then nothing that continues a class name except `--` or `__`. So `.btn` takes `.btn:hover`, `.btn--sm` and
+ * `.btn__count`, and leaves `.btn-group` to its own component.
+ */
 export function tokenTable(css, filter = "", file) {
   const readers = new Map();
+  const names = new RegExp(`${filter.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:--|__|(?![\\w-]))`);
   let matched = !filter;
   parseCss(css, file).walkDecls((decl) => {
-    // A nested rule belongs to the rule around it, so any enclosing selector may carry the filter text.
+    // A nested rule belongs to the rule around it, so any enclosing selector may name the filter.
     let inside = !filter;
-    for (let rule = decl.parent; rule && !inside; rule = rule.parent) inside = rule.selector?.includes(filter) ?? false;
+    for (let rule = decl.parent; rule && !inside; rule = rule.parent) inside = names.test(rule.selector ?? "");
     if (!inside) return;
     matched = true;
     for (const [, name] of decl.value.matchAll(/var\(\s*(--[\w-]+)/g)) readers.set(name, (readers.get(name) ?? new Set()).add(decl.prop));
   });
-  if (!matched) throw new Error(`matches no rule: no selector in the file contains "${filter}"`);
+  if (!matched) throw new Error(`matches no rule: no selector in the file names "${filter}"`);
   if (!readers.size) return "Reads no tokens.";
   return table(["Token", "Read by"], [...readers].sort(([a], [b]) => byText(a, b)).map(([name, props]) => [code(name), [...props].sort(byText).map(code).join(", ")]));
 }
@@ -67,10 +81,36 @@ export function tokenTable(css, filter = "", file) {
 function defaults(checker, node) {
   if (!node) return new Map();
   if (ts.isVariableDeclaration(node)) return defaults(checker, node.initializer);
+  if (ts.isExportAssignment(node)) return defaults(checker, node.expression);
   if (ts.isCallExpression(node)) return defaults(checker, node.arguments[0]);
   if (ts.isIdentifier(node)) return defaults(checker, actual(checker, checker.getSymbolAtLocation(node))?.valueDeclaration);
   const pattern = ts.isFunctionLike(node) ? node.parameters[0]?.name : undefined;
   return new Map(pattern && ts.isObjectBindingPattern(pattern) ? pattern.elements.filter((e) => e.initializer).map((e) => [(e.propertyName ?? e.name).text, e.initializer.getText()]) : []);
+}
+
+const printer = ts.createPrinter({ removeComments: true });
+const print = (node) => printer.printNode(ts.EmitHint.Unspecified, node, undefined);
+const last = (text) => (text === "undefined" ? 2 : text === "null" ? 1 : 0);
+const sortUnions = (context) => (root) => {
+  const visit = (node) => {
+    const seen = ts.visitEachChild(node, visit, context);
+    if (!ts.isUnionTypeNode(seen)) return seen;
+    const members = seen.types.map((member) => [print(member), member]).sort(([a], [b]) => last(a) - last(b) || byText(a, b));
+    return ts.factory.updateUnionTypeNode(seen, ts.factory.createNodeArray(members.map(([, member]) => member)));
+  };
+  return ts.visitNode(root, visit);
+};
+
+/**
+ * A type as text. TypeScript lists the members of a union in the order it first met them anywhere in the program, so
+ * every union is sorted here (`null` and `undefined` last): a cell depends on its own prop, not on the other pages.
+ */
+function typeText(checker, type, optional = false) {
+  const [node] = ts.transform(checker.typeToTypeNode(type, undefined, ts.NodeBuilderFlags.NoTruncation | ts.NodeBuilderFlags.IgnoreErrors), [sortUnions]).transformed;
+  // An optional prop's type carries `undefined`; the Required column already says it may be left out.
+  const rest = optional && ts.isUnionTypeNode(node) ? node.types.filter((member) => member.kind !== ts.SyntaxKind.UndefinedKeyword) : [];
+  if (rest.length === 1) return print(ts.isParenthesizedTypeNode(rest[0]) ? rest[0].type : rest[0]);
+  return print(rest.length ? ts.factory.updateUnionTypeNode(node, ts.factory.createNodeArray(rest)) : node);
 }
 
 /**
@@ -105,44 +145,98 @@ function shape(checker, type, initialisers) {
   const library = (prop) => prop.declarations?.length > 0 && prop.declarations.every((d) => d.getSourceFile().fileName.includes("/node_modules/"));
   const own = all.filter((prop) => !library(prop)).map((prop) => {
     const optional = Boolean(prop.flags & ts.SymbolFlags.Optional);
-    const declared = checker.getTypeOfSymbol(prop);
-    const print = (t) => checker.typeToString(t, undefined, ts.TypeFormatFlags.NoTruncation);
-    // An optional prop's type carries `undefined`; the Required column already says it may be left out.
-    const rest = optional && declared.isUnion() ? declared.types.filter((t) => !(t.flags & ts.TypeFlags.Undefined)) : [];
-    const text = !optional ? print(declared) : rest.length === 1 ? print(rest[0]) : print(declared).replace(/ \| undefined$/, "");
+    const text = typeText(checker, checker.getTypeOfSymbol(prop), optional);
     const initial = initialisers.get(prop.name);
     return { name: prop.name, optional, row: [code(prop.name), optional ? "no" : "yes", code(text), initial ? code(initial) : "", prose(ts.displayPartsToString(prop.getDocumentationComment(checker)))] };
   }).sort((a, b) => a.optional - b.optional || byText(a.name, b.name));
   const parts = own.length ? [table(["Prop", "Required", "Type", "Default", "Description"], own.map((prop) => prop.row))] : [];
   const fromLibrary = all.filter(library);
-  if (fromLibrary.length) parts.push(inherited(checker, fromLibrary, new Set(all.map((p) => p.name)), own.length ? "Also accepts" : "Accepts"));
+  // A default the component gives a library's prop is the component's own fact, so the line says it.
+  const preset = fromLibrary.filter((prop) => initialisers.has(prop.name)).map((prop) => `${code(prop.name)} to ${code(initialisers.get(prop.name))}`).sort(byText);
+  if (fromLibrary.length) parts.push(inherited(checker, fromLibrary, new Set(all.map((p) => p.name)), own.length ? "Also accepts" : "Accepts") + (preset.length ? ` Defaults ${list(preset)}.` : ""));
   return parts.join("\n\n") || "Takes no props.";
 }
 
-/** A props table for every component a module exports: a capitalised export that can be called, re-exports included. */
-export function propsTables(checker, source) {
+/**
+ * A props table for every component a module exports: a capitalised export that can be called, re-exports included,
+ * and the default export under the name it is declared with. A capitalised export that is a class, or whose first
+ * parameter is not an object, is named in a closing line: nothing is left out without a word. `check` is called with
+ * the module and with each file that declares a component, and throws when the file cannot be trusted.
+ */
+export function propsTables(checker, source, check = () => {}) {
+  check(source);
   const module = checker.getSymbolAtLocation(source);
-  const sections = [];
-  for (const exported of (module ? checker.getExportsOfModule(module) : []).filter((e) => /^[A-Z]/.test(e.name)).sort((a, b) => byText(a.name, b.name))) {
+  const exports = module ? checker.getExportsOfModule(module) : [];
+  const components = new Map();
+  // The default export first, so a component exported both ways is written once, under its named export.
+  for (const exported of [...exports.filter((e) => e.name === "default"), ...exports.filter((e) => e.name !== "default")]) {
     const symbol = actual(checker, exported);
+    const name = exported.name !== "default" ? exported.name : symbol.name !== "default" ? symbol.name : (symbol.declarations?.[0]?.name?.text ?? "default");
+    if (name === "default" || /^[A-Z]/.test(name)) components.set(name, symbol);
+  }
+  const sections = [], skipped = [];
+  for (const [name, symbol] of [...components].sort(([a], [b]) => byText(a, b))) {
+    const type = symbol.flags & ts.SymbolFlags.Value ? checker.getTypeOfSymbol(symbol) : undefined;
     // shortcut: an overloaded component is documented by its first signature; write a table per signature when one exists.
-    const signature = symbol.flags & ts.SymbolFlags.Value ? checker.getTypeOfSymbol(symbol).getCallSignatures()[0] : undefined;
-    if (!signature) continue;
+    const signature = type?.getCallSignatures()[0];
+    if (!signature) {
+      if (type?.getConstructSignatures().length) skipped.push(`${code(name)} (a class)`);
+      continue;
+    }
+    for (const declaration of symbol.declarations ?? []) check(declaration.getSourceFile());
     const props = signature.parameters[0] && checker.getTypeOfSymbol(signature.parameters[0]);
-    const shapes = !props ? [] : props.isUnion() ? props.types.filter((t) => !(t.flags & ts.TypeFlags.Undefined)) : [props];
+    // A union's members come in the order the program met them, so the shapes are sorted by their text.
+    const shapes = (!props ? [] : props.isUnion() ? props.types.filter((t) => !(t.flags & ts.TypeFlags.Undefined)) : [props]).map((t) => [typeText(checker, t), t]).sort(([a], [b]) => byText(a, b)).map(([, t]) => t);
+    if (shapes.some((t) => t.flags & ts.TypeFlags.Primitive)) {
+      skipped.push(`${code(name)} (its first parameter is not a props object)`);
+      continue;
+    }
     const initialisers = defaults(checker, symbol.valueDeclaration);
-    const tables = shapes.map((type, i) => (shapes.length > 1 ? `**Shape ${i + 1} of ${shapes.length}${type.aliasSymbol ? `: ${code(type.aliasSymbol.name)}` : ""}**\n\n` : "") + shape(checker, type, initialisers));
-    sections.push(`### ${exported.name}\n\n${tables.join("\n\n") || "Takes no props."}`);
+    const tables = shapes.map((t, i) => (shapes.length > 1 ? `**Shape ${i + 1} of ${shapes.length}${t.aliasSymbol ? `: ${code(t.aliasSymbol.name)}` : ""}**\n\n` : "") + shape(checker, t, initialisers));
+    sections.push(`### ${name}\n\n${tables.join("\n\n") || "Takes no props."}`);
   }
   if (!sections.length) throw new Error("exports no component: a capitalised export that can be called");
-  return sections.join("\n\n");
+  return sections.join("\n\n") + (skipped.length ? `\n\nNot documented: ${list(skipped)}.` : "");
 }
 
-function sourceProblem(root, { kind, source }) {
+function sourceProblem(root, { kind, source, filter }) {
   if (!SOURCE[kind]) return "is not a block this script writes; use ds:props or ds:tokens";
-  if (!source || path.isAbsolute(source) || source.split("/").includes("..") || !statSync(path.join(root, source), { throwIfNoEntry: false })?.isFile())
+  // Joined to the root, so an absolute path names nothing; `..` is the one way out.
+  if (!source || source.split("/").includes("..") || !statSync(path.join(root, source), { throwIfNoEntry: false })?.isFile())
     return "names a source that does not exist; give a file path from the repository root";
-  return SOURCE[kind].test(source) ? undefined : `cannot read ${source}; ds:props takes a .ts or .tsx file and ds:tokens a .css file`;
+  if (!SOURCE[kind].test(source)) return `cannot read ${source}; ds:props takes a .ts or .tsx file and ds:tokens a .css file`;
+  return kind === "props" && filter ? "has text after the path; ds:props takes a file path and nothing else" : undefined;
+}
+
+/** The program every props block is read from, or undefined, with the reason in `problems`, when a file in it does not parse. */
+function program(root, pages, sources, problems) {
+  const rel = (file) => path.relative(root, file).split(path.sep).join("/");
+  // The files tsc reads, not only the named ones: a type from an ambient declaration, or from an augmentation in a
+  // file the source never imports, then resolves here as it does there, whichever pages exist.
+  const config = ts.parseJsonConfigFileContent(ts.readConfigFile(path.join(root, "tsconfig.json"), ts.sys.readFile).config ?? {}, ts.sys, root);
+  const files = [...new Set([...sources, ...config.fileNames.map(rel)])];
+  try {
+    const built = project(root, files);
+    const sound = (file) => {
+      const [first] = built.program.getSemanticDiagnostics(file);
+      if (!first) return;
+      const where = first.file ? `${rel(first.file.fileName)}:${first.file.getLineAndCharacterOfPosition(first.start).line + 1} ` : "";
+      throw new Error(`does not typecheck, so its props cannot be read: ${where}${ts.flattenDiagnosticMessageText(first.messageText, " ")}`);
+    };
+    return { ...built, sound };
+  } catch (error) {
+    const before = problems.length;
+    for (const file of files) {
+      const text = ts.sys.readFile(path.join(root, file));
+      const parsed = text === undefined ? undefined : ts.createSourceFile(file, text, ts.ScriptTarget.Latest);
+      const first = parsed?.parseDiagnostics[0];
+      if (!first) continue;
+      const why = [`${file}:${parsed.getLineAndCharacterOfPosition(first.start).line + 1}`, ts.flattenDiagnosticMessageText(first.messageText, " ")];
+      const named = pages.flatMap((page) => page.blocks.filter((b) => b.kind === "props" && b.source === file).map((b) => `${page.file}: \`${b.label}\` does not parse: ${why.join(" ")}`));
+      problems.push(...(named.length ? named : [`${why[0]} does not parse (${why[1]}); no props block can be read until it does`]));
+    }
+    if (problems.length === before) throw error;
+  }
 }
 
 /**
@@ -165,19 +259,24 @@ export function render(root) {
     problems.push(...found.problems.map((problem) => `${file}: ${problem}`));
     return { file, text, blocks };
   });
-  // One program for every component source any page names; sorted, so the checker meets the types in the same order each run.
+  // One program for every page; the named sources lead the file list, so `built.sources` lines up with `sources`.
   const sources = [...new Set(pages.flatMap((page) => page.blocks.filter((b) => b.kind === "props").map((b) => b.source)))].sort(byText);
-  const built = sources.length ? project(root, sources) : undefined;
+  const built = sources.length ? program(root, pages, sources, problems) : undefined;
   for (const page of pages) {
     page.stale = [];
     page.next = "";
+    // A page checked out with Windows line endings is compared by its text, and keeps them in a rewritten block.
+    const crlf = page.text.includes("\r\n") && !/(?<!\r)\n/.test(page.text);
     let at = 0;
     for (const block of page.blocks) {
       let current = page.text.slice(block.from, block.to);
       try {
-        const body = block.kind === "props" ? propsTables(built.checker, built.sources[sources.indexOf(block.source)]) : tokenTable(readFileSync(path.join(root, block.source), "utf8"), block.filter, block.source);
-        if (current !== `\n\n${body}\n\n`) page.stale.push(block.label);
-        current = `\n\n${body}\n\n`;
+        const body = block.kind === "tokens" ? tokenTable(readFileSync(path.join(root, block.source), "utf8"), block.filter, block.source) : built && propsTables(built.checker, built.sources[sources.indexOf(block.source)], built.sound);
+        const fresh = `\n\n${body}\n\n`;
+        if (body !== undefined && current.replaceAll("\r\n", "\n") !== fresh) {
+          page.stale.push(block.label);
+          current = crlf ? fresh.replaceAll("\n", "\r\n") : fresh;
+        }
       } catch (error) {
         problems.push(`${page.file}: \`${block.label}\` ${error.message}`);
       }
@@ -189,7 +288,8 @@ export function render(root) {
   return { pages, problems };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Real paths on both sides: started through a symlinked path, the script must still run, not exit 0 in silence.
+if (existsSync(process.argv[1] ?? "") && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   try {
     const root = path.resolve(args.includes("--root") ? args[args.indexOf("--root") + 1] : path.join(import.meta.dirname, ".."));
