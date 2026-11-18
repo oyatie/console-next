@@ -7,7 +7,7 @@
   "identity": "https://github.com/oyatie/console-next/.github/workflows/release-admission.yml@refs/heads/dev",
   "issuer": "https://token.actions.githubusercontent.com",
   "predicate_type": "https://cosskorea.com/attestations/pr-admission/v1",
-  "push_ci": {"workflow": "ci.yml", "name": "ci"},
+  "push_ci": {"workflow": "ci.yml", "name": "Candidate checks"},
   "check_app_id": 15368,
   "required_checks": [
     {"context": "ci-ok", "integration_id": 15368}

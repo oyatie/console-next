@@ -42,6 +42,6 @@ test("import queue: the grid stays inside its card when the page scrolls to the 
   await expectInsideQueue(admin);
   // As a person reads on: the open item is brought into view, which scrolls the main area under the grid.
   await panel(admin).scrollIntoViewIfNeeded();
-  await admin.locator(".main").evaluate((el) => el.scrollBy(0, 400));
+  await admin.locator("#main").evaluate((el) => el.scrollBy(0, 400));
   await expectInsideQueue(admin);
 });

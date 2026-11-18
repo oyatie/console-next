@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-name: route-load
+name: Route load performance
 on:
   schedule:
     - cron: "17 18 * * *"
@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   build:
+    name: Build route performance application
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     permissions:
@@ -41,6 +42,7 @@ jobs:
           if-no-files-found: error
 
   route-load:
+    name: Route load performance budgets
     needs: [build]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 210
