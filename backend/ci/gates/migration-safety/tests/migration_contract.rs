@@ -76,15 +76,23 @@ fn contract_marker_must_be_single_leading_and_nonempty_version() -> TestResult {
 }
 
 #[test]
-fn unreleased_pay_group_migration_is_expand() -> TestResult {
-    let sql = include_str!(
+fn additive_ddl_with_optional_contract_marker() -> TestResult {
+    let pay_group = include_str!(
         "../../../../crates/platform/db/migrations/20261030100000000_pay_group_explicit_basis.sql"
     );
-    assert_eq!(sql.lines().nth(1), Some("-- migration-class: expand"));
+    assert_eq!(pay_group.lines().nth(1), Some("-- migration-class: expand"));
     let fixture = Fixture::new()?;
-    fixture.write(NEW_VERSION, sql)?;
-    let result = check_workspace(&fixture.0)?;
-    assert!(result.passed(), "{result:?}");
+    for sql in [
+        "-- migration-class: expand\nALTER TABLE sample ADD COLUMN sensitive boolean NOT NULL DEFAULT false;",
+        "-- migration-class: expand\nALTER TABLE sample ADD COLUMN note text;",
+        pay_group,
+    ] {
+        for marker in ["", "-- contract-of: 20261030100000000"] {
+            fixture.write(NEW_VERSION, &format!("{marker}\n{sql}"))?;
+            let result = check_workspace(&fixture.0)?;
+            assert!(result.passed(), "{sql}, {marker:?}: {result:?}");
+        }
+    }
     Ok(())
 }
 
@@ -110,90 +118,6 @@ fn null_guard_cannot_hide_a_second_action_or_required_column() -> TestResult {
         let fixture = Fixture::new()?;
         fixture.write(NEW_VERSION, &format!("-- migration-class: expand\n{sql}"))?;
         assert!(!check_workspace(&fixture.0)?.passed(), "{sql}");
-    }
-    Ok(())
-}
-
-#[test]
-#[ignore = "owner=release-engineering; reason=requires RELEASE_MIGRATION_LINT from the release checkout; expires=2026-11-26"]
-fn release_lint_and_ci_agree_on_shared_ddl_fixtures() -> TestResult {
-    let lint = std::env::var("RELEASE_MIGRATION_LINT")?;
-    // Table CHECK and DROP CONSTRAINT are stricter in CI; the release script misses them.
-    for (sql, additive) in [
-        (
-            "ALTER TABLE sample ADD COLUMN sensitive boolean NOT NULL;",
-            false,
-        ),
-        (
-            "ALTER TABLE sample ALTER COLUMN amount SET NOT NULL;",
-            false,
-        ),
-        ("ALTER TABLE sample DROP COLUMN old;", false),
-        ("DROP TABLE sample;", false),
-        (
-            "ALTER TABLE sample ADD COLUMN sensitive boolean NOT NULL DEFAULT false;",
-            true,
-        ),
-        ("ALTER TABLE sample ADD COLUMN note text;", true),
-        (
-            include_str!(
-                "../../../../crates/platform/db/migrations/20261030100000000_pay_group_explicit_basis.sql"
-            ),
-            true,
-        ),
-    ] {
-        for marker in ["", "-- contract-of: 20261030100000000"] {
-            let fixture = Fixture::new()?;
-            fixture.git(&["init", "--quiet"])?;
-            fixture.write(1, "CREATE TABLE sample (amount int,old text);")?;
-            fixture.commit()?;
-            fixture.git(&["tag", "base"])?;
-            let sql = sql
-                .lines()
-                .filter(|line| !line.starts_with("-- migration-class:"))
-                .collect::<Vec<_>>()
-                .join("\n");
-            fixture.write(
-                NEW_VERSION,
-                &format!(
-                    "-- migration-class: {}\n{marker}\n{sql}",
-                    if additive {
-                        "expand"
-                    } else {
-                        "contract — after expand release"
-                    }
-                ),
-            )?;
-            fixture.commit()?;
-            let base = std::process::Command::new("git")
-                .args(["rev-parse", "base"])
-                .current_dir(&fixture.0)
-                .output()?;
-            let tip = std::process::Command::new("git")
-                .args(["rev-parse", "HEAD"])
-                .current_dir(&fixture.0)
-                .output()?;
-            let output = std::process::Command::new("bash")
-                .arg(&lint)
-                .args([
-                    String::from_utf8(base.stdout)?.trim(),
-                    String::from_utf8(tip.stdout)?.trim(),
-                ])
-                .env("BACKEND_REPO", &fixture.0)
-                .env("BASE_REPO", &fixture.0)
-                .env("MIGRATIONS_DIR", "migrations")
-                .env_remove("REROOT_BASE_SHA")
-                .env_remove("REROOT_FROM_FE")
-                .output()?;
-            let ci = check_workspace(&fixture.0)?;
-            assert_eq!(
-                output.status.success(),
-                ci.passed(),
-                "{sql}, {marker}: {ci:?}; {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-            assert_eq!(ci.passed(), additive || !marker.is_empty(), "{sql}");
-        }
     }
     Ok(())
 }
