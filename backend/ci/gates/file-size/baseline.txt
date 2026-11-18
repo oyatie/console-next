@@ -2,7 +2,7 @@
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
 app/src/collaboration.rs	1499
-app/src/hr.rs	3491
+app/src/hr.rs	3485
 app/src/objects.rs	2007
 app/src/office.rs	891
 app/src/workbench.rs	650
@@ -136,12 +136,12 @@ crates/inventory/adapter-postgres/tests/consume_idempotency_concurrency.rs	861
 crates/inventory/application/src/lib.rs	406
 crates/inventory/domain/src/lib.rs	409
 crates/inventory/rest/src/lib.rs	795
-crates/leave/adapter-postgres/src/lib.rs	1596
+crates/leave/adapter-postgres/src/lib.rs	1586
 crates/leave/adapter-postgres/tests/leave_migration_expand_contract.rs	1743
 crates/leave/adapter-postgres/tests/leave_rls_surfaces_as_runtime_role.rs	2678
 crates/leave/application/src/lib.rs	320
 crates/leave/domain/src/lib.rs	562
-crates/leave/rest/src/lib.rs	805
+crates/leave/rest/src/lib.rs	799
 crates/leave/rest/tests/leave_http_personas.rs	426
 crates/logistics/rest/src/lib.rs	452
 crates/messenger/adapter-postgres/src/lib.rs	1703
