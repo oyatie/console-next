@@ -43,6 +43,17 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
+test.each([{ isComposing: true }, { isComposing: false, keyCode: 229 }])("an Escape pressed while a syllable is composing %j keeps the quick edit open with what was typed", async state => {
+  const input = page.getByRole("textbox");
+  await page.getByRole("button").first().click();
+  await input.fill("typed");
+  await input.dispatchEvent("keydown", { key: "Escape", ...state });
+  await dom(input).toHaveValue("typed");
+  await dom(input).toBeFocused();
+  await input.press("Escape");
+  await dom(input).toHaveCount(0);
+});
+
 test("text quick edits retain keyboard cancellation, blur and saving feedback", async () => {
   const edit = page.getByRole("button", { name: "성명 한자 · 영문 수정", exact: true });
   const input = page.getByRole("textbox");

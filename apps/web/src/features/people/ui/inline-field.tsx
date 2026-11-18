@@ -3,6 +3,7 @@ import { t } from "@console/i18n";
 import { RowInput, Saving } from "../../../ui/record/inline";
 import { FieldMark, FieldRow } from "../../../ui/record/field-row";
 import { Kbd } from "../../../ui/record/record-section";
+import { isImeKey } from "../../../lib/pure/ime";
 import { focusOnce } from "../../../lib/react/focus-once";
 import { InlineConflict, type FieldConflict } from "./inline-conflict";
 import s from "./card.module.css";
@@ -38,7 +39,7 @@ export function InlineField({ label, children, raw, sub, sending, onSave, placeh
   const value = editing ? (
     <div ref={el => focusOnce(el?.querySelector("input") ?? null)}
       onKeyDownCapture={e => {
-        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(); }
+        if (e.key === "Escape" && !isImeKey(e)) { e.preventDefault(); e.stopPropagation(); done(); }
       }}
       onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) done(false); }}>
     {editor ? editor(draft, setDraft, save, () => done()) : <RowInput

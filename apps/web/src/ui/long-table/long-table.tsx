@@ -5,7 +5,7 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { t } from "@console/i18n";
 import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type Selection } from "./selection";
 import { DisabledReason } from "../disabled-reason/disabled-reason";
-import { editable, listenRowKeys, rowIdOf } from "./row-keys";
+import { editable, leaveImeKey, listenRowKeys, rowIdOf } from "./row-keys";
 import css from "./long-table.module.css";
 import { useSettledHover } from "./use-settled-hover";
 import cards from "./table-cards.module.css";
@@ -175,7 +175,7 @@ export function LongTable<R>(p: {
   const finder = p.find && (
     <SearchField className={css.find} value={find.value} onChange={value => setFind({ source: p.find?.defaultValue, value })} onSubmit={p.find.onFind} onClear={() => p.find?.onFind("")}>
       <Label className="sr-only">{p.find.label}</Label>
-      <Input ref={search} className="field__input" placeholder={p.find.label} />
+      <Input ref={search} className="field__input" placeholder={p.find.label} onKeyDownCapture={leaveImeKey} />
       <kbd className={css.kbd} aria-hidden="true">/</kbd>
     </SearchField>
   );

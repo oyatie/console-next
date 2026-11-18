@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
-import { isImeKey } from "../../lib/pure/ime";
+import { isImeKey, leaveImeKey } from "../../lib/pure/ime";
 import { at, indexOf, inRect, moveRange, rectIn, spanIn, type Cell, type Range } from "../sheet-grid/range";
 import s from "./person-day-grid.module.css";
 
@@ -290,10 +290,11 @@ function Editor({ value, label, onChange, onCommit, held }: { value: string; lab
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      // A composing Escape or Tab is the input method's: nothing here or above acts on it. The Tab's own action is
+      // cancelled as well, so the focus stays: it would leave the editor for the next link.
+      onKeyDownCapture={(e) => (leaveImeKey(e), e.key === "Tab" && isImeKey(e) && e.preventDefault())}
       onKeyDown={(e) => {
-        // A composing Tab ends the composition, as a composing Enter does, and the focus stays: the browser's own Tab
-        // would leave the editor for the next link.
-        if (isImeKey(e)) return void (e.key === "Tab" && e.preventDefault());
+        if (isImeKey(e)) return;
         e.stopPropagation();
         if (e.key === "Enter") {
           e.preventDefault();
