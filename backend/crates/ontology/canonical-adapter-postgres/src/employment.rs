@@ -89,6 +89,7 @@ mod read;
 mod receipt;
 mod write;
 
+pub use appointment::{AppointmentHead, apply_appointment_heads_in_tx};
 pub use appointment_batch::appoint_legacy_heads_in_tx;
 pub use derived::{appoint_legacy_head_in_tx, reassign_org_unit_via_transfers_in_tx};
 pub use error::EmploymentError;

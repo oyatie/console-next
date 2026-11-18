@@ -68,6 +68,7 @@ export async function phoneTableTest() {
           const [selected, select] = useState('');
           const [selection, setSelection] = useState(NO_SELECTION);
           const [open, setOpen] = useState('');
+          const [shown, setShown] = useState(true);
           if (location.hash.startsWith('#paged')) return h(Paged);
           if (location.hash === '#uncontained') return h('main', null,
             h('h1', null, 'Tables without cards'),
@@ -85,8 +86,10 @@ export async function phoneTableTest() {
             h('div', {id: 'container'},
               h(Table, {label: 'Short', rows: rows.slice(0, 2), columns, rowId: r => r.id, selected, onSelect: select,
                 detail: r => r.id === selected && h('span', null, 'Detail ' + r.id)}),
-              h(LongTable, {label: 'Long', rows, columns, rowId: r => r.id, hasMore: false, onLoadMore() {}, empty: 'Empty',
-                selection, onSelectionChange: setSelection, onRowAction: setOpen, rowKeys: {}})),
+              shown && h(LongTable, {label: 'Long', rows, columns, rowId: r => r.id, hasMore: false, onLoadMore() {}, empty: 'Empty',
+                selection, onSelectionChange: setSelection, onRowAction: setOpen, rowKeys: {},
+                onRowHover: id => document.body.dataset.hover = JSON.stringify([...JSON.parse(document.body.dataset.hover || '[]'), id])})),
+            h('button', {id: 'hide-table', onClick: () => setShown(false)}, 'Hide table'),
             h('output', {id: 'action'}, selected), h('output', {id: 'open'}, open));
         }
         createRoot(document.getElementById('root')).render(h(App));

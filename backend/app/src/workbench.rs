@@ -23,6 +23,11 @@ use sqlx::PgPool;
 use time::{Duration, OffsetDateTime, Time, macros::offset};
 use uuid::Uuid;
 
+#[path = "workbench/source.rs"]
+mod source;
+use source::bounded_source;
+pub use source::{SourceFailure, SourceFuture};
+
 pub const ME_WORKBENCH_PATH: &str = "/api/v1/me/workbench";
 pub const WORKBENCH_TIMEZONE: &str = console_orgchange_domain::PLATFORM_TIMEZONE;
 const DEFAULT_LIMIT: usize = 50;
@@ -30,7 +35,6 @@ const MAX_LIMIT: usize = 100;
 const MAX_RANGE: Duration = Duration::days(31);
 const SOURCE_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(750);
 
-pub type SourceFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, SourceFailure>> + Send + 'a>>;
 pub type ScopeFuture<'a> =
     Pin<Box<dyn Future<Output = Result<BranchScope, ScopeFailure>> + Send + 'a>>;
 
@@ -194,19 +198,6 @@ pub struct WorkbenchReadContext {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SourceFailure {
-    /// Ordinary source-read denial: the aggregate remains a partial 200 when
-    /// another source succeeds. It is intentionally distinct from preflight
-    /// explicit-branch scope denial.
-    Denied {
-        code: &'static str,
-    },
-    Unavailable {
-        code: &'static str,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScopeFailure {
     // Matched in `preflight_explicit_branch` but never constructed: every
     // current `ScopeFuture` yields `Ok` or `Unavailable`, so a source-level
@@ -292,6 +283,7 @@ pub struct ActionInboxPage {
     pub as_of: OffsetDateTime,
     pub total: usize,
     pub items: Vec<ActionInboxItem>,
+    pub todos_unavailable: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -351,11 +343,17 @@ pub async fn compose(
     readers: &dyn WorkbenchReaders,
     context: WorkbenchReadContext,
 ) -> Result<MyWorkbenchResponse, WorkbenchError> {
-    let (actions, todos, calendar) = futures::join!(
+    let (actions, mut todos, calendar) = futures::join!(
         bounded_source(readers.action_inbox(context.clone())),
         bounded_source(readers.todos(context.clone())),
         bounded_source(readers.calendar(context.clone()))
     );
+
+    if actions.as_ref().is_ok_and(|page| page.todos_unavailable) {
+        todos = Err(SourceFailure::Unavailable {
+            code: "todo_unavailable",
+        });
+    }
 
     let mut usable_source = false;
     let action_inbox = action_envelope(
@@ -395,15 +393,6 @@ pub async fn compose(
         todos,
         calendar,
     })
-}
-
-async fn bounded_source<T>(future: SourceFuture<'_, T>) -> Result<T, SourceFailure> {
-    match tokio::time::timeout(SOURCE_TIMEOUT, future).await {
-        Ok(result) => result,
-        Err(_) => Err(SourceFailure::Unavailable {
-            code: "source_timeout",
-        }),
-    }
 }
 
 async fn bounded_scope(future: ScopeFuture<'_>) -> Result<BranchScope, ScopeFailure> {

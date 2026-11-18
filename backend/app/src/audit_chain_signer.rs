@@ -9,9 +9,9 @@
 //! The custody *daemon* that holds the private key is out of process (HOLD —
 //! deploy/daemon lane). Until that daemon exists, operators either leave the
 //! seal worker OFF (default) or set `CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER=true`
-//! for explicit non-evidentiary local sealing. Enabling the seal worker without
-//! custody config and without the allow-dev escape hatch fails closed (worker
-//! does not start).
+//! for explicit non-evidentiary local sealing; this setting is refused in release
+//! builds. Enabling the seal worker without custody config and without the
+//! allow-dev escape hatch fails closed (worker does not start).
 
 use std::collections::BTreeMap;
 use std::io::{Read, Write};

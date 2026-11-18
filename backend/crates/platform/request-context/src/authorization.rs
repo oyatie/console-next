@@ -15,12 +15,22 @@ pub struct Authorization(Arc<OnceCell<Result<Arc<DecisionFacts>, KernelError>>>)
 impl Authorization {
     /// Prepare common facts before source budgets; each source still reports its failures.
     pub async fn prepare(&self, pool: &PgPool, principal: &Principal) {
+        let _ = self.load(pool, principal).await;
+    }
+
+    /// Load request facts for a point read, propagating database and Cedar failures.
+    pub async fn load(
+        &self,
+        pool: &PgPool,
+        principal: &Principal,
+    ) -> Result<Arc<DecisionFacts>, KernelError> {
         let (org, actor) = (principal.org_id, *principal.user_id.as_uuid());
         let authorization = self.clone();
-        let _ = with_org_conn(pool, org, move |tx| {
+        with_org_conn(pool, org, move |tx| {
             Box::pin(async move { Ok::<_, DbError>(authorization.get_in(tx, org, actor).await) })
         })
-        .await;
+        .await
+        .map_err(|error| KernelError::internal(error.to_string()))?
     }
 
     pub async fn get_in(

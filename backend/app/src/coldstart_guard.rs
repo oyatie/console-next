@@ -56,9 +56,41 @@ pub(crate) fn refuse_dev_auth(
     Ok(())
 }
 
+pub(crate) fn refuse_dev_audit_chain_signer(
+    allow_dev_signer: bool,
+    build_profile: BuildProfile,
+) -> Result<(), String> {
+    if build_profile == BuildProfile::NonDevelopment && allow_dev_signer {
+        return Err(
+            "CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER is not allowed in a release build".to_owned(),
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{BuildProfile, refuse_dev_auth, refuse_dev_literal};
+    use super::{BuildProfile, refuse_dev_audit_chain_signer, refuse_dev_auth, refuse_dev_literal};
+
+    #[test]
+    fn non_development_profile_refuses_dev_audit_chain_signer() {
+        let message = refuse_dev_audit_chain_signer(true, BuildProfile::NonDevelopment)
+            .expect_err("release builds must reject the development signer");
+        assert!(
+            message.contains("CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER"),
+            "{message}"
+        );
+    }
+
+    #[test]
+    fn non_development_profile_allows_boot_without_dev_audit_chain_signer() {
+        assert!(refuse_dev_audit_chain_signer(false, BuildProfile::NonDevelopment).is_ok());
+    }
+
+    #[test]
+    fn development_profile_allows_dev_audit_chain_signer() {
+        assert!(refuse_dev_audit_chain_signer(true, BuildProfile::Development).is_ok());
+    }
 
     #[test]
     fn non_development_profile_refuses_dev_auth_marker_or_feature() {

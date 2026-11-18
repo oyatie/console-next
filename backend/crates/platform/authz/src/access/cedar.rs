@@ -1,5 +1,5 @@
 //! AX-3: the tenant compiler. Role lines become Cedar templates, grants become
-//! links, and two platform policies sit beside them (access-model §4.2):
+//! links, and platform policies sit beside them (access-model §4.2):
 //!
 //! * `platform.isolation` — a `forbid` across tenants (GR-1);
 //! * `platform.ops` — the ops account's break-glass `permit` (GR-3). Tenant
@@ -38,10 +38,11 @@ pub enum AccessEngineError {
 }
 
 pub use super::cedar_schema::{
-    BULK_APPOINTMENT, GO_LIVE_RECEIPT_READ, PRIVACY_REQUEST_INTAKE_READ, schema_source,
+    BULK_APPOINTMENT, GO_LIVE_RECEIPT_READ, PRIVACY_REQUEST_INTAKE_READ, SETTINGS_RUNTIME_READ,
+    schema_source,
 };
 
-const PLATFORM_POLICIES: [(&str, &str); 2] = [
+const PLATFORM_POLICIES: [(&str, &str); 3] = [
     (
         "platform.isolation",
         "forbid (principal, action, resource) unless { resource.org == principal.org };",
@@ -49,6 +50,10 @@ const PLATFORM_POLICIES: [(&str, &str); 2] = [
     (
         "platform.ops",
         "permit (principal, action, resource) when { principal.is_ops };",
+    ),
+    (
+        "platform.settings_runtime",
+        "permit (principal, action == Action::\"settings_runtime_read\", resource);",
     ),
 ];
 

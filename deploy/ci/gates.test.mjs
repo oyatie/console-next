@@ -28,9 +28,9 @@ for (const [gate, definitions] of Object.entries(gatesPolicy.checks)) {
   });
 }
 
-test('native smoke keeps the default matrix names required by promotion', () => {
+test('native smoke names expose the architecture without runner configuration', () => {
   const workflow = yaml.load(readFileSync(resolve(root, '.github/workflows/platform.yml'), 'utf8'));
-  assert.equal(workflow.jobs.build.name, undefined);
+  assert.equal(workflow.jobs.build.name, 'Native image smoke test · ${{ matrix.arch }}');
 });
 
 const sha = 'a'.repeat(40);
@@ -170,9 +170,9 @@ test('shared check reader propagates API failure', async () => {
 function ciFixture() {
   let id = 100;
   const definitions = {
-    'ci.yml': [['backend-gates', 'Backend code gates (release parity)']],
-    'api-compat.yml': [['api-compat']],
-    'platform.yml': [['publish', 'SPDX SBOM'], ['scan'], ['build (amd64, ubuntu-24.04)', 'Test native image'], ['build (arm64, ubuntu-24.04-arm)', 'Test native image']],
+    'ci.yml': [['Backend release code gates', 'Backend code gates (release parity)']],
+    'api-compat.yml': [['Released API compatibility']],
+    'platform.yml': [['Publish signed platform artifacts', 'SPDX SBOM'], ['Image vulnerability scan'], ['Native image smoke test · amd64', 'Test native image'], ['Native image smoke test · arm64', 'Test native image']],
   };
   const runs = Object.fromEntries(Object.keys(definitions).map((file, index) => [file, {
     id:index + 1, head_sha:sha, event:'push', head_branch:'dev', path:`.github/workflows/${file}`,

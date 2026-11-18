@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { shell, shellSelectors } from "../shell";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "../a11y";
@@ -84,32 +85,32 @@ for (const name of [user.display_name, "u01234567@platform", user.display_name.r
   await page.route("**/*.woff2", async route => { await fonts.promise; await route.continue(); });
   try {
     await page.goto(path, { waitUntil: "domcontentloaded" });
-    await expect(page.locator(".top__name")).toHaveText(name);
+    await expect(shell(page).account).toHaveText(name);
     await expect(page.getByRole("main").locator(path === "/platform" ? '[role="alert"]' : '[role="tree"]')).toBeVisible({ timeout: 15_000 });
-    const controls = page.locator(".top button, .top a, .top select");
+    const controls = shell(page).banner.locator("button, a, select");
     const before = await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
     fonts.resolve();
     await page.evaluate(() => document.fonts.ready);
     expect(await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))).toEqual(before);
-    const bar = await page.locator(".top").boundingBox();
-    const nameSlot = await page.locator(".top__name").boundingBox();
+    const bar = await shell(page).banner.boundingBox();
+    const nameSlot = await shell(page).account.boundingBox();
     expect(nameSlot!.width).toBeLessThanOrEqual(bar!.width / 4);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     const logout = await page.getByRole("button", { name: t("shell.logout"), exact: true }).boundingBox();
     expect(logout).not.toBeNull();
     expect(logout!.x + logout!.width).toBeLessThanOrEqual(width);
     if (width >= 800) {
-      const fitted = await page.locator(".top__name span").evaluate(el => {
+      const fitted = await shell(page).accountText.evaluate(el => {
         const range = document.createRange();
         range.selectNodeContents(el);
         return { slot: el.getBoundingClientRect().width, text: range.getBoundingClientRect().width, compact: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--space-6")) * 2 };
       });
       expect(fitted.slot).toBeLessThanOrEqual(Math.max(fitted.text, fitted.compact) + 1);
       if (path === "/org") {
-        const jump = page.locator(".top__jump");
+        const jump = shell(page).search;
         const actual = await jump.boundingBox();
         // Compare with the populated base's intrinsic name sizing, without a fixed-width reserve.
-        await page.locator(".top__name span").evaluate(el => { (el as HTMLElement).style.minInlineSize = "calc(var(--space-6) * 2)"; });
+        await shell(page).accountText.evaluate(el => { (el as HTMLElement).style.minInlineSize = "calc(var(--space-6) * 2)"; });
         expect(await jump.boundingBox()).toEqual(actual);
       }
     }
@@ -190,11 +191,11 @@ for (const width of [1440, 390]) test(`shell: failed session restore keeps recov
   });
   try {
     await page.goto("/org");
-    await expect(page.locator(".top")).toHaveAttribute("aria-busy", "true");
-    await expect(page.locator(".top").getByRole("button")).toHaveCount(0);
+    await expect(shell(page).banner).toHaveAttribute("aria-busy", "true");
+    await expect(shell(page).banner.getByRole("button")).toHaveCount(0);
     held.resolve();
     await expect(page.getByRole("main").getByRole("alert")).toContainText(t("common.read.sessionRestoreReason"));
-    await expect(page.locator(".top")).not.toHaveAttribute("aria-busy");
+    await expect(shell(page).banner).not.toHaveAttribute("aria-busy");
     await expect(page.getByRole("combobox", { name: t("shell.locale"), exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: t("shell.theme.toDark"), exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: t("shell.logout"), exact: true })).toBeVisible();
@@ -210,12 +211,12 @@ for (const width of [1440, 390]) test(`shell: failed session restore keeps recov
 
 for (const width of [1440, 1024, 390]) test(`org: normal fonts never move painted controls at ${width}px @ui-state`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
-  await page.addInitScript(() => {
+  await page.addInitScript(banner => {
     const previous = new WeakMap<Element, { text: string | null; x: number; y: number }>();
     const moves: string[] = [];
     Object.assign(window, { fontControlMoves: moves });
     const sample = () => {
-      for (const el of document.querySelectorAll(".top button, .top a, .top select, main .page__head button, main section[aria-label] input, main section[aria-label] button")) {
+      for (const el of document.querySelectorAll(`${banner} button, ${banner} a, ${banner} select, main .page__head button, main section[aria-label] input, main section[aria-label] button`)) {
         const r = el.getBoundingClientRect();
         if (!r.width || !r.height) continue;
         const before = previous.get(el);
@@ -226,7 +227,7 @@ for (const width of [1440, 1024, 390]) test(`org: normal fonts never move painte
       requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
-  });
+  }, shellSelectors().banner);
   await page.addInitScript(recordShifts);
   const fixture = await mockScreen(page, screens[2], "populated");
   try {

@@ -86,6 +86,9 @@ async fn real_settings_change_step_up_permits_loosening_and_writes_row(pool: PgP
     };
     let view = store
         .change_setting(actor, cmd, audit(), |facts| {
+            if facts.direction == Direction::Neutral {
+                return Ok(());
+            }
             assert!(facts.step_up);
             assert_eq!(facts.direction, Direction::Loosen);
             Ok(())
@@ -147,6 +150,9 @@ async fn tightening_does_not_persist_an_unverified_step_up_id(pool: PgPool) {
     cmd.step_up_assertion_id = Some(Uuid::new_v4());
     let view = store
         .change_setting(actor, cmd, audit(), |facts| {
+            if facts.direction == Direction::Neutral {
+                return Ok(());
+            }
             assert!(!facts.step_up);
             Ok(())
         })

@@ -8,7 +8,7 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
 import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { editable, rowById } from "../../../ui/long-table/row-keys";
+import { FOCUS_SETTLE_MS, editable, rowById } from "../../../ui/long-table/row-keys";
 import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
 import { focusSoon } from "../../../lib/react/announce";
 import { columnSelection } from "../../../lib/react/use-column-selection";
@@ -47,8 +47,6 @@ import { ExitTabs, VoidedList, type ExitView } from "./exit-tabs";
 import { RosterSavedViews } from "./roster-saved-views";
 
 const route = getRouteApi("/app/people");
-/** Focus that rests on a row this long counts as a stop (J/K held down does not read every person it passes). */
-const FOCUS_SETTLE_MS = 150;
 
 /**
  * Where the roster was, kept in memory (never the URL or storage: the search may be a person's name) so Back from

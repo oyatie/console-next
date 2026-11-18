@@ -160,7 +160,7 @@ pub async fn change_setting<S, A>(
 ) -> Result<(SettingChangeView, Vec<AuditEvent>), ChangeError>
 where
     S: SettingsStore + Send,
-    A: FnOnce(&ChangeFacts) -> Result<(), KernelError> + Send,
+    A: FnMut(&ChangeFacts) -> Result<(), KernelError> + Send,
 {
     let (plan, row) = plan_setting(store, authorize, actor, cmd, false).await?;
     let step_up_assertion_id = row.step_up_assertion_id;

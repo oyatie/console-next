@@ -17,7 +17,7 @@ async function shellHolds(page: Page, screen: string) {
   const m = await page.evaluate(() => {
     const doc = document.scrollingElement!;
     const escaped = [...document.querySelectorAll("body *")]
-      .filter((el) => el.getBoundingClientRect().bottom > innerHeight + 1 && !el.closest(".main"))
+      .filter((el) => el.getBoundingClientRect().bottom > innerHeight + 1 && !el.closest("#main"))
       .map((el) => `${el.tagName.toLowerCase()}.${el.className}`)
       .slice(0, 5);
     return { over: doc.scrollHeight - innerHeight, scrolled: doc.scrollTop, escaped };

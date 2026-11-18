@@ -63,7 +63,7 @@ export function SetupPasskey() {
   // Consent controls appear only once the fresh documents determine the centered form's final layout.
   return (
     <main className="auth">
-      {loading && !documents.data ? <Skeleton bones={["title", "row", "row"]} label={t("common.loading")} /> : <div className="auth__frame"><Card flush><div className="auth__content">
+      {loading && !documents.data ? <Skeleton bones={["title", "row", "row"]} label={t("common.loading")} /> : <div className="auth__frame"><Card flush><div className="auth__content" aria-busy={busy || undefined}>
         <PageHead title={t(isAppSession ? "auth.setup.consent.title" : "auth.setup.title")} />
         {error && <Banner tone="danger" live="assertive">{error}</Banner>}
         {loading && <Skeleton bones={["row", "row"]} label={t("common.loading")} />}
