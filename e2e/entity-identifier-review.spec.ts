@@ -74,7 +74,12 @@ test("identifier correction: a second person approves, requester applies, and a 
   await startOperations(admin);
   await go(reviewer, "/inbox?tab=reference");
   await grantAccess(admin, "김검토", "full");
-  await expect(inbox(reviewer).getByRole("button", { name: t("home.grantNotices.confirm", { role: "전체 업무" }), exact: true })).toBeVisible();
+  const held = reviewer.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
+  const grantButton = inbox(reviewer).getByRole("button", { name: t("home.grantNotices.confirm", { role: "전체 업무" }), exact: true });
+  await expect(held).toBeVisible();
+  await expect(grantButton).toHaveCount(0);
+  await held.click();
+  await expect(grantButton).toBeVisible();
   await grantAccess(admin, "이범위", "full", /본사/);
   const managerBearer = bearerOf(manager);
   await manager.reload();
@@ -122,14 +127,18 @@ test("identifier correction: a second person approves, requester applies, and a 
   let requesterLoads = 0;
   admin.on("request", (request) => { if (request.isNavigationRequest() && request.resourceType() === "document") requesterLoads++; });
 
-  // The reviewer stays on Home after confirming the grant; the correction arrives through SSE.
+  // Home holds the SSE arrival until the reviewer asks to refresh.
   const queue = inbox(reviewer).getByRole("row").filter({ has: reviewer.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
+  await expect(held).toBeVisible();
+  await expect(queue).toHaveCount(0);
+  await held.click();
   await expect(queue).toContainText("번호검토주식회사", { timeout: 20_000 });
   await expect(queue).toContainText("처리 상태: 승인 대기");
   await capture(reviewer, "reviewer-home");
   expect(reviewerLoads, "the reviewer receives the request without reloading Home").toBe(0);
   await queue.getByRole("link", { name: "정정 요청 검토", exact: true }).click();
-  await expect(reviewer).toHaveURL(new RegExp(`correction=${requested.id}#identifier-corrections`));
+  // a57df3a480 redirects entity routes into the 조직 entities tab.
+  await expect(reviewer).toHaveURL(new RegExp(`/org\\?correction=${requested.id}&tab=entities#identifier-corrections$`));
   await expect(detail(reviewer)).toContainText(FORMATS.corpRegNo.display(REGISTRATION_FIXTURES.second.crn));
   await expectAccessible(reviewer, "identifier correction decision");
   await capture(reviewer, "decision");

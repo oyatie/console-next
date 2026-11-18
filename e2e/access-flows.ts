@@ -26,6 +26,7 @@ const ROLE: Record<Access, { name: string; levels: string[] }> = {
 };
 
 /** Pending grant confirmations live in 참조, separate from the Home work queue. */
+// shortcut: before go-live setup hides the inbox tabs, so this opens 참조 by URL; use product navigation once setup has an entry point.
 export async function openGrantNotice(page: Page, access: Access) {
   await loadCatalog("ko");
   const confirm = t("home.grantNotices.confirm", { role: ROLE[access].name });

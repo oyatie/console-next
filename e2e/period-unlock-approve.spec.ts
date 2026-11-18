@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { OWN_ECHO_MS } from "../apps/web/src/lib/freshness";
 import { expectAccessible } from "./a11y";
-import { forgetResize } from "./stability";
+import { expectStable, forgetResize } from "./stability";
 import { confirmGrantNotice, grantAccess, openGrantNotice } from "./access-flows";
 import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
@@ -66,10 +66,9 @@ test("period unlock: a second close authority refuses, then approves; the reques
     await confirmGrantNotice(page, "close", notices);
     letGrantsAge(unique(slug), name);
   }
-  const homeRead = exec.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === "/api/v1/me/action-inbox" && new URL(r.url()).searchParams.get("attention") === "all" && r.ok());
   await go(exec, "/");
-  await homeRead;
-  await exec.evaluate(() => void window.__shifts?.splice(0));
+  await expect(exec.getByRole("region", { name: "업무함", exact: true }).locator("tbody tr").first()).toBeVisible();
+  await expectStable(exec, "Home after the grant is confirmed");
   // A frame within OWN_ECHO_MS of this tab's own write is that write's echo (lib/live): the requester acts after it.
   await exec.waitForTimeout(OWN_ECHO_MS);
   const paintedRows = exec.getByRole("region", { name: "업무함", exact: true }).locator("tbody tr");
@@ -200,6 +199,8 @@ test("a sole close authority delivers separate inbox reviews before and after go
   await go(human, "/", true);
   await passkeyLogin(human);
   await confirmGrantNotice(human, "full");
+  // Reopen the event stream that was established before the grant changed its reader scope.
+  await human.reload();
   letGrantsAge(unique(slug), "단독마감");
   await lockPayroll(human);
   const row = human.getByRole("row", { name: /월 급여 마감/ });
