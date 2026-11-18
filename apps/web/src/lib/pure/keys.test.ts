@@ -61,6 +61,15 @@ test("with single keys off a page key of one character waits; chords and region 
   expect(pick(press("3", "Numpad3"), ["unplaced.place"], off)).toBeNull();
   expect(pick(press("?", "Slash", { shiftKey: true }), ["people.keys"], off)).toBeNull();
   expect(pick(press("?", "Slash", { shiftKey: true }), ["structure.keys"], off)).toBeNull();
+  // The chord holds the key, not what the press reports: a letter or digit matches by position even when `key` is a
+  // dead key, an unidentified one or a character of two code units.
+  expect(pick(press("Dead", "KeyJ"), ["card.next"], off)).toBeNull();
+  expect(pick(press("𝒿", "KeyJ"), ["card.next"], off)).toBeNull();
+  expect(pick(press("Unidentified", "KeyK"), ["card.prev"], off)).toBeNull();
+  expect(pick(press("Dead", "Digit6"), ["card.section"], off)).toBeNull();
+  expect(pick(press("Dead", "KeyJ"), ["card.next"], free)?.id).toBe("card.next");
+  // The people key map keeps a way in that is not a single key.
+  for (const mod of [{ metaKey: true }, { ctrlKey: true }]) expect(pick(press("/", "Slash", mod), ["people.keys"], off)).toEqual({ id: "people.keys", chord: "Mod+/" });
   expect(pick(press("k", "KeyK", { metaKey: true }), ["people.find"], off)?.id).toBe("people.find");
   expect(pick(press("z", "KeyZ", { ctrlKey: true }), ["quick.undo"], off)?.id).toBe("quick.undo");
   expect(pick(press("Enter", "Enter", { metaKey: true }), ["registerRun.next"], off)?.id).toBe("registerRun.next");
@@ -70,6 +79,9 @@ test("with single keys off a page key of one character waits; chords and region 
   expect(pick(press("o", "KeyO"), ["list.open" as KeyId], off, list)).toBeNull();
   // The same binding page-wide is one the setting stops.
   expect(pick(press("o", "KeyO"), ["list.open" as KeyId], off, { "list.open": { keys: ["o"], scope: "page" } })).toBeNull();
+  // Shift with a letter is still one character; a named key is not one.
+  expect(pick(press("O", "KeyO", { shiftKey: true }), ["list.open" as KeyId], off, { "list.open": { keys: ["Shift+o"], scope: "page" } })).toBeNull();
+  expect(pick(press("F2", "F2"), ["list.open" as KeyId], off, { "list.open": { keys: ["F2"], scope: "page" } })?.chord).toBe("F2");
 });
 
 test("with single keys on every binding acts as before", () => {

@@ -34,7 +34,8 @@ export const KEYMAP = {
   "unplaced.place": { keys: DIGITS(5), scope: "page" },
   // Shadows the shell's ⌘K on the people screens, dialogs included, so the shell never opens a second palette.
   "people.find": { keys: ["Mod+k", "Mod+Shift+k"], scope: "page", inField: true, inDialog: true },
-  "people.keys": { keys: ["?"], scope: "page" },
+  // ⌘/ opens the key map when the device has single keys off, where ? waits and the people screens have no button for it.
+  "people.keys": { keys: ["?", "Mod+/"], scope: "page" },
   "quick.undo": { keys: ["Mod+z"], scope: "page", inDialog: true },
   "structure.keys": { keys: ["?"], scope: "page" },
   "registerRun.next": { keys: ["Mod+Enter"], scope: "page", inField: true, inDialog: true },
@@ -75,14 +76,14 @@ type KeyContext = { typing: boolean; dialog: boolean; inRegion: boolean; singleK
  * keymap; only a test gives another.
  */
 export function pick(e: KeyEventLike, ids: readonly KeyId[], at: KeyContext, map: Record<string, Binding> = KEYMAP) {
-  // With single keys off every page binding waits for such a press: the only chord it could match is a single key.
-  const held = !at.singleKeys && singleKey(e);
   for (const id of ids) {
     const b = map[id]!;
     if (at.typing && !b.inField) continue;
-    if (b.scope === "page" ? held || (at.dialog && !b.inDialog) : !at.inRegion) continue;
+    if (b.scope === "page" ? at.dialog && !b.inDialog : !at.inRegion) continue;
     const chord = b.keys.find(k => matches(e, k));
-    if (chord) return { id, chord };
+    // With single keys off a page binding waits on a chord of one character, Shift or not. The chord decides, not
+    // `key`: a letter or digit matches by position, whatever the press reports (a dead key, an unidentified one).
+    if (chord && !(b.scope === "page" && !at.singleKeys && /^(Shift\+)?.$/u.test(chord))) return { id, chord };
   }
   return null;
 }
