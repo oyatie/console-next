@@ -79,14 +79,14 @@ pub struct Requirements {
 
 pub async fn plan_setting<S, A>(
     store: &mut S,
-    authorize_change: A,
+    mut authorize_change: A,
     actor: Actor,
     cmd: ChangeSetting,
     dry_run: bool,
 ) -> Result<(SettingChangePlan, NewOverride), ChangeError>
 where
     S: SettingsStore + Send,
-    A: FnOnce(&ChangeFacts) -> Result<(), KernelError> + Send,
+    A: FnMut(&ChangeFacts) -> Result<(), KernelError> + Send,
 {
     let key: SettingKey = cmd.key.parse().map_err(|_| crate::unknown_key(&cmd.key))?;
     let reason = store
@@ -95,6 +95,15 @@ where
     let facts = store.facts().await?;
     let effective_from = cmd.effective_from.unwrap_or(facts.now);
     let (chain, rows) = store.rows(key, cmd.scope_entity_id).await?;
+    // Check authority before version or loosening refusals reveal the current value.
+    authorize_change(&ChangeFacts {
+        resource_entities: chain.clone(),
+        key,
+        direction: Direction::Neutral,
+        step_up: dry_run,
+        step_up_assertion_id: cmd.step_up_assertion_id,
+        scope_entity_id: cmd.scope_entity_id,
+    })?;
     let current = match resolve_chain(key, &rows, &chain, facts.now) {
         Ok(resolved) => Some(resolved),
         Err(SettingError::FactUndeclared(_)) => None,

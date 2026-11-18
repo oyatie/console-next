@@ -133,7 +133,7 @@ test("a failed session restore keeps the navigation and device controls availabl
 });
 
 for (const secondary of ["modules", "support", "me"] as const) for (const cached of [false, true]) {
-  test(`${secondary} 403 gives a fresh rail with ${cached ? "cached" : "no previous"} secondary data`, async () => {
+  test(`${secondary} 403 resolves the rail with ${cached ? "cached" : "no previous"} secondary data`, async () => {
     const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
     try {
       await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
@@ -145,15 +145,16 @@ for (const secondary of ["modules", "support", "me"] as const) for (const cached
       const refusal = new ApiError(403, "forbidden", "", []);
       await expect(client.fetchQuery({ ...query, staleTime: 0, queryFn: async () => { throw refusal; } })).rejects.toBe(refusal);
       const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
-      expect(rail).toContain('href="/people"');
-      expect(rail.includes('href="/audit/support-access"')).toBe(secondary !== "support");
+      expect(rail.includes('href="/people"')).toBe(secondary !== "me");
+      expect(rail.includes('href="/audit/support-access"')).toBe(secondary === "modules");
+      if (secondary === "me") expect(rail).toContain(t("common.failed.permanent", { status: "403" }));
       expect(rail).not.toContain('aria-busy="true"');
     } finally { client.clear(); }
   });
 }
 
 for (const secondary of ["support", "me"] as const) for (const fault of [new ApiError(503, "unavailable", "", []), new TypeError("Failed to fetch")]) {
-  test(`${secondary} ${fault.name} fault gives a cold rail a recoverable error`, async () => {
+  test(`${secondary} ${fault.name} fault shows a cold rail read error`, async () => {
     const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
     try {
       await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
@@ -164,8 +165,7 @@ for (const secondary of ["support", "me"] as const) for (const fault of [new Api
       await expect(client.fetchQuery({ ...query, staleTime: 0, queryFn: async () => { throw fault; } })).rejects.toBe(fault);
       const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
       expect(rail).not.toContain('aria-busy="true"');
-      expect(rail).toContain(t("common.retry"));
-      expect(rail).toContain('role="alert"');
+      expect(rail).toContain(t(secondary === "support" ? "shell.nav.failed" : "common.retry"));
       expect(rail).not.toContain('href="/people"');
     } finally { client.clear(); }
   });
@@ -183,6 +183,22 @@ test.each([new ApiError(503, "unavailable", "", []), new TypeError("Failed to fe
     expect(rail.match(/role="alert"/g)).toHaveLength(1);
     expect(rail).toContain(t("common.retry"));
     expect(rail).not.toContain('aria-busy="true"');
+  } finally { client.clear(); }
+});
+
+test("a cold checklist fault keeps independent rail links without a rail error", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+  try {
+    await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
+    await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: false }) });
+    await client.fetchQuery({ ...navigationRead(meQuery), queryFn: async () => ({ tenant: { phase: "SETUP" } }) });
+    await client.fetchQuery({ ...modulesQuery, queryFn: async () => modules.ready });
+    await expect(client.fetchQuery({ ...checklistQuery, queryFn: async () => { throw new TypeError("Failed to fetch"); } })).rejects.toThrow("Failed to fetch");
+    const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
+    expect(rail).toContain('href="/"');
+    expect(rail).not.toContain('aria-busy="true"');
+    expect(rail).not.toContain('role="alert"');
+    expect(rail).not.toContain(t("shell.nav.failed"));
   } finally { client.clear(); }
 });
 

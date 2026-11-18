@@ -5,7 +5,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { loadCatalog, t } from "@console/i18n";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
+import { browserEngine, browserTestOptimizeDeps, type Browser, type Page } from "../../../lib/browser-test";
 import { AT, failure, id } from "../../../../../../e2e/mock/fixtures";
 
 let server: ViteDevServer;
@@ -37,7 +37,7 @@ beforeAll(async () => {
       ` : undefined }],
   });
   await server.listen();
-  browser = await chromium.launch();
+  browser = await browserEngine().launch();
   page = await browser.newPage();
   await page.route("**/tenants-test", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Tenants</title><div id="root"></div><script type="module" src="/tenants-test.js"></script></html>' }));
 }, 60_000);
@@ -77,6 +77,8 @@ test.each([1440, 390].flatMap(width => [0, 9].map(initial => ({ width, initial }
       await element(search).toBeFocused();
     }
     await element(page.getByRole("group").getByRole("button").first()).toContainText(String(count));
+    // Newly mounted view labels can request font subsets after the empty list's font wait.
+    await page.evaluate(() => document.fonts.ready);
     const populated = await controls.evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
     failed = true;
     await page.evaluate(() => (window as unknown as { refetchTenants: () => Promise<void> }).refetchTenants());

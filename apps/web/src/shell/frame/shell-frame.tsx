@@ -79,7 +79,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const ready = !access.isPending && !support.isPending && !me.isPending && (phase !== "SETUP" || !checklist.isPending) && (!modulesEnabled || !modules.isPending);
   const setupTargets = checklist.data?.steps.filter(s => s.state !== "blocked")
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
-  const [railTargets, setRailTargets] = useState<{ pathname: string; value: typeof setupTargets; modules: typeof modules.data | null }>();
+  const [railTargets, setRailTargets] = useState<{ key: typeof railKey; pathname: string; phase: typeof phase; value: typeof setupTargets; modules: typeof modules.data | null; access: typeof access.data; supportApproval: boolean }>();
   const modulesFault = modules.isError && !isAnswer(modules.error);
   const supportFault = support.isError && !isAnswer(support.error);
   const checklistFault = checklist.isError && !isAnswer(checklist.error);
@@ -98,21 +98,26 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   }, [modulesFault, refetchModules, supportFault, refetchSupport, checklistFault, refetchChecklist]);
   const recovery = useMemo(() => ({ register: registerFailure, retry: retryShell }), [registerFailure, retryShell]);
   const bannerRecovery = useMemo(() => ({ register: () => () => {}, retry: retryShell }), [retryShell]);
-  const answered = ready && access.isSuccess && [support, me].every(q => !(q.isError && !isAnswer(q.error)));
+  const answered = ready && access.isSuccess && me.isSuccess && !supportFault;
   // Late readiness reads reveal entries on the next navigation, never between inputs.
   // A cold fault has no readiness snapshot; its first answer can recover immediately after retry.
-  if (answered && (railTargets?.pathname !== pathname || modules.isSuccess && railTargets.modules == null)) setRailTargets({ pathname, value: setupTargets,
+  if (answered && (railTargets?.key !== railKey || railTargets?.pathname !== pathname || modules.isSuccess && railTargets.modules == null)) setRailTargets({ key: railKey, pathname, phase, value: setupTargets,
+    access: access.data, supportApproval: support.isSuccess && !!support.data?.can_approve,
     modules: modules.isSuccess ? modules.data : modulesFault && savedRail.key === railKey ? savedRail.answer?.context.modules : undefined });
-  const answer = useMemo(() => answered && access.data ? { access: access.data, supportApproval: support.isSuccess && !!support.data?.can_approve,
-    context: { pathname, phase, setupTargets: railTargets?.value,
+  const answer = useMemo(() => answered && railTargets?.access ? { access: railTargets.access, supportApproval: railTargets.supportApproval,
+    context: { pathname, phase: railTargets?.phase, setupTargets: railTargets?.value,
       modules: modules.isSuccess ? railTargets?.modules : modulesFault ? railTargets?.modules ?? null : undefined } } : undefined,
-  [answered, access.data, support.isSuccess, support.data?.can_approve, pathname, phase, railTargets, modules.isSuccess, modulesFault]);
+  [answered, pathname, railTargets, modules.isSuccess, modulesFault]);
   if (answer && savedRail.answer !== answer) setSavedRail({ key: railKey, answer });
   useEffect(() => {
     if (!railKey || !answer) return;
     try { localStorage.setItem(railKey, JSON.stringify(answer)); } catch { return; /* Storage is optional. */ }
   }, [railKey, answer]);
-  const displayed = answer ?? (savedRail.key === railKey ? savedRail.answer : undefined);
+  // A stored phase can predate go-live; show current entries first, using storage only after a read fault.
+  const railFault = [access, support, me].some(q => q.isError && !isAnswer(q.error));
+  const railError = [access, support, me].find(q => q.isError);
+  const displayed = answer ?? (railFault || railTargets?.key === railKey ? savedRail.answer : undefined);
+  const supportOwnsFailure = supportFault && !access.isError && !me.isError && pageFailures === 0 && !hasSupportNotice;
   const menu: readonly NavHub[] = platform ? PLATFORM_NAV : displayed ? tenantNav(displayed.access, router.routesByPath,
     displayed.supportApproval, displayed.context) : [];
   // ⌘K / Ctrl+K opens the jump palette anywhere in the tenant app (a modifier chord, so not a single-key shortcut).
@@ -128,13 +133,14 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [platform]);
-  const coldFault = !displayed && [access, support, me, checklist].find(q => q.isError && !isAnswer(q.error));
   const scope = platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined);
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
     <Layout platform={platform} restoring={restoring} menu={platform || displayed ? menu : undefined}
-      navigationState={platform || displayed ? "ready" : coldFault ? "failed" : "loading"} onSearch={() => setJump(true)}
-      navigationNotice={coldFault ? <QueryState q={{ ...coldFault, data: undefined }} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState> : !platform && answered && modulesFault && (pageFailures > 0
+      navigationState={platform || displayed ? "ready" : supportOwnsFailure || railError ? "failed" : "loading"} onSearch={() => setJump(true)}
+      navigationNotice={!platform && !displayed ? (supportOwnsFailure
+        ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
+        : railError && <ReadFailureContext.Provider value={bannerRecovery}><QueryState<unknown> q={railError} inline loading={null}>{() => null}</QueryState></ReadFailureContext.Provider>) : !platform && answered && modulesFault && (pageFailures > 0
         ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
         : <QueryState q={modules} loading={null} failedTitle={t("shell.nav.failed")}>{() => null}</QueryState>)}>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1 requires keyboard access to this named scroll container. */}
@@ -143,7 +149,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
         <ChangeNotice key={pathname} />
         <HeldNotice />
         <ReadFailureContext.Provider value={bannerRecovery}>
-          {!platform && <DomainNotice />}{!platform && !((access.isError || pageFailures > 0) && supportFault && !hasSupportNotice) && <ActiveSupportBanner />}
+          {!platform && <DomainNotice />}{!platform && !((access.isError || me.isError || pageFailures > 0) && supportFault && !hasSupportNotice) && <ActiveSupportBanner />}
         </ReadFailureContext.Provider>
         <ReadFailureContext.Provider value={recovery}>
           <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
