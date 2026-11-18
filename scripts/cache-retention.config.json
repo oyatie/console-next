@@ -13,16 +13,6 @@
       "restoreCopies": 1,
       "prefixes": 1
     },
-    "db-tests": {
-      "purpose": "Reuse compiled DB test targets and crates",
-      "readers": [
-        "db-tests.yml Rust test shards on dev and PRs"
-      ],
-      "keyPattern": "^(db-tests-[^-]+-[^-]+-debug\\d+-)([a-f0-9]{64}-)[a-f0-9]{40}$",
-      "copies": 1,
-      "restoreCopies": 1,
-      "prefixes": 1
-    },
     "npm": {
       "purpose": "Reuse downloaded npm packages",
       "readers": [
