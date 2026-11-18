@@ -109,18 +109,22 @@ Neither component takes `className` or passes another attribute through.
 |---|---|
 | Rest | The look above. |
 | Hover | The value of the row under the pointer takes `--ink`. That is the colour a value already inherits from `body`, so the hover changes nothing unless something around the list sets another text colour. The rule also names a `data-hovered` attribute, which the component never writes. |
-| Focus | No part of the list is focusable by itself. While focus is anywhere inside a row, that row's action cell gets the `--focus` ring as a box shadow: a 2 px `--surface` ring, then a 2 px `--primary` ring. The rule is `:focus-within`. It applies to focus from the pointer as well as the keyboard, and to focus on a control in the value, and it draws the ring on the action cell, not on the control that has focus. A list with no action column has no focus rule. The focused control also takes the global focus outline when the browser shows it. |
+| Focus | No part of the list is focusable by itself. While focus is anywhere inside a row, that row's action cell gets the `--focus` ring as a box shadow: a 2 px `--surface` ring, then a 2 px `--primary` ring. The rule is `:focus-within`. It applies to focus from the pointer as well as the keyboard, and to focus on a control in the value, and it draws the ring on the action cell, not on the control that has focus. The rule reaches a row with no action too, because that row still has an action cell: focus on a control in its value draws the ring on an empty cell. That is read from the CSS, not measured in a browser. A list with no action column has no focus rule. The focused control also takes the global focus outline when the browser shows it. |
 | Pressed | Does not exist. |
 | Selected | Does not exist. |
 | Disabled | Does not exist. |
 | Read-only (`readOnly` on the list or on an item) | The action is not rendered. The list and the row carry `data-readonly`, which no rule reads, so there is no look. The action column stays when any item has an action. No ARIA attribute is set. |
 | Invalid | Does not exist for a fact. A list that failed to load has the error state. |
-| Loading (`loading`) | The root gets `aria-busy="true"`. The state block replaces the rows: its `<dd>` has `role="status"` and holds one bar, 32 px high (`--space-6`), `--border-soft`, with a 4 px radius (`--radius-sm`), inside 12 px padding. The bar does not move, and the block holds no visible text. |
-| Error (`error`) | The state block replaces the rows: its `<dd>` has `role="alert"` and `data-state="error"`, and shows `error` at 13 px in `--danger-solid`, inside 12 px padding. |
-| Empty | With no items and `empty` given, the state block shows `empty` at 13 px in `--steel`, centred, inside 12 px padding. With no items and no `empty`, the list is an empty `<dl>`. There is no built-in empty text. |
+| Loading (`loading`) | The root gets `aria-busy="true"`. The state block replaces the rows: its `<dd>` has `role="status"` and holds one bar, 32 px high (`--space-6`), `--border-soft`, with a 4 px radius (`--radius-sm`), inside 12 px padding (`--space-3`). The bar does not move, and the block holds no visible text. |
+| Error (`error`) | The state block replaces the rows: its `<dd>` has `role="alert"` and `data-state="error"`, and shows `error` at 13 px (`--text-sm`) in `--danger-solid`, inside 12 px padding (`--space-3`). |
+| Empty | With no items and `empty` given, the state block shows `empty` at 13 px (`--text-sm`) in `--steel`, centred, inside 12 px padding (`--space-3`). With no items and no `empty`, the list is an empty `<dl>`. There is no built-in empty text. |
 
 `error` wins over `loading`, and `loading` wins over `empty`. `error` and `loading` hide the items even when there
 are some. `empty` shows only when there are none.
+
+`error` counts only when it is truthy. `empty` counts when it is anything but `null` or `undefined`: with no
+items, a `false` or an empty string opens a state block with nothing in it. `aria-busy` follows `loading` alone,
+so a list given both `error` and `loading` shows the error and is still `aria-busy="true"`.
 
 The state block is laid out in the label column, not across the list. Its wrapper `<div>` has no class and no
 rule, so it is a single item of the grid and takes the first column, 110 px wide. Its `<dd>` also keeps the
@@ -159,12 +163,16 @@ Neither component takes text, so there is no rule for a key the Korean input met
   to announce. The hidden `<dt>` beside it holds `label`, and is empty when `label` is not given.
 - **Error:** the `<dd>` has `role="alert"`, and the error text is its content.
 - **Announced:** nothing else. A value or a count that changes is not announced: neither component has a live
-  region for it.
+  region for it. A view that must announce a changed count calls `announce` from `lib/react/announce`. It speaks
+  through the shell's one polite live region (`Announcer`, `ui/announcer.tsx`).
 
 Known gap: the loading and the error state put `role="status"` and `role="alert"` on a `<dd>`. ARIA in HTML
 allows no role on a `<dd>`. In the axe-core version this repository installs, the `definition-list` rule, a
 WCAG 1.3.1 rule that the gallery scan runs, accepts only `definition`, `term` and `listitem` as an explicit role
-on a child of a `<dl>`, so by its source it reports a list in either state. The gallery shows the loading state.
+on a child of a `<dl>`, so by its source it reports a list in either state. The rule's impact is serious, and the
+scan helper, `e2e/a11y.ts`, fails on a serious violation. The gallery shows the loading list, so the gallery scan
+is expected to report `definition-list` there and fail. This is read from the rule's source and from the scan
+helper, not from a run.
 
 Known gap: the error text is `--danger-solid`, where `Field` uses `--danger-tx` for its error. Neither component
 has a fill, so the pair depends on the surface behind the list. Computed from the token values, in the light
@@ -182,7 +190,7 @@ The WCAG 2.2 criteria that apply:
 | 2.1.1 Keyboard | Neither component has anything of its own to operate. |
 | 2.4.7 Focus Visible | The global focus outline on the caller's control, and the ring on the row's action cell. |
 | 4.1.2 Name, Role, Value | The table above. |
-| 4.1.3 Status Messages | The error has the `alert` role. The loading block has the `status` role and no text. A changed value is not announced. |
+| 4.1.3 Status Messages | The error has the `alert` role. The loading block has the `status` role and no text. A changed value is not announced: the view calls `announce` for that. |
 
 The gallery entry is `apps/web/src/ui/key-value/key-value.gallery.tsx`. It shows a list of three facts, two with
 an action and one without, a loading list, and a `StatRow` of four counts. It does not show `empty`, `error`,
@@ -225,7 +233,8 @@ Neither component has a target of its own. The size of an action is that control
   does not enforce it, and a call site exists that passes `null` as a value.
 - The rule is one action for each fact. `action` is a node, so the code does not enforce that either. Name the
   action with the fact, so that two rows do not carry the same name.
-- `label` is a plain string that names the list.
+- `label` is a plain string that names the list for assistive technology. It is never visible, in either
+  component. A visible title for the list is a `Card` title or a `SectionHead`: see [Card](card.md).
 - `error` says what failed, in words. Its look is a colour and nothing else.
 - Format a number before passing it. Both components print a value as given.
 - A stat is a count the view acts on. Its label says what is counted.
