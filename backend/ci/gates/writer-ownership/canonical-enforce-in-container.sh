@@ -63,10 +63,7 @@ if [[ -n "${extra_sql}" ]]; then
 fi
 
 # 4. ENFORCEMENT, on a database that now has the real schema. The require flag
-#    turns "the census examined nothing" from a silent pass into a failure. It
-#    is 1 unless the caller asked for the UNARMED configuration -- the one every
-#    automated path runs BEFORE migrations -- which the census test uses to
-#    measure the two controls the armed run's step 1c would otherwise mask.
+#    rejects an empty census by default.
 enforcement_output=""
 if ! enforcement_output="$(
       POSTGRES_DB="${probe_db}" \

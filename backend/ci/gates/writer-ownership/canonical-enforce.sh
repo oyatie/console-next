@@ -30,19 +30,15 @@
 #                             [--skip-migrations | <extra_sql_path>]
 #
 #   --skip-migrations   deliberately leave the probe database bare, to prove the
-#                       zero-table guard fires. Used only by the census test.
+#                       zero-table guard fires.
 #   <extra_sql_path>    SQL applied as the cluster admin AFTER migrations and
 #                       BEFORE enforcement. It can only add grants; the
-#                       enforcement still runs. Used by the census test to plant
-#                       a rogue writer.
+#                       enforcement still runs.
 #
 # CANONICAL_REQUIRE_TABLES (env, default 1) selects
 # CONSOLE_TOPOLOGY_REQUIRE_CANONICAL_TABLES for the enforcement run. It defaults
 # to 1 because that is the point of this script: every automated path used to
 # run the reconcile before migrations, so the census saw nothing and passed.
-# The census test sets it to 0 for exactly two mutations, whose controls are the
-# only thing looking in the UNARMED configuration -- see `Mutation::armed` in
-# tests/census_executes_against_postgres.rs.
 set -euo pipefail
 
 repo_root="${1:?repo root}"
