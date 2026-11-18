@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
+import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
 import { screens } from "../states/registry";
 import { advanceUntil } from "./clock";
 import { checklist, inbox } from "./fixtures";
@@ -71,4 +72,14 @@ test("cold registration focuses the name cell after the held page opens @ui-stat
     await fits(page, "/people/run");
     expect(fixture.unexpected).toEqual([]);
   } finally { held.resolve(); await page.close(); fixture.release(); }
+});
+
+test("registration takes name focus from the departing sheet @ui-state", async ({ page }) => {
+  const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+  try {
+    await page.goto("/people/new");
+    await page.getByRole("dialog").getByRole("link", { name: t("register.run.open"), exact: true }).click();
+    await expect(page.locator('[data-run="name"]')).toBeFocused();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
 });
