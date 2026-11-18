@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { afterAll, beforeAll, beforeEach, onTestFailed } from "vitest";
+import { afterAll, beforeAll, describe, onTestFailed, test } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
 import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
 
@@ -23,29 +23,27 @@ export function columnsFixture(source: string) {
     });
     await server.listen();
     browser = await browserEngine().launch();
-    fixture = await loadFixture();
   }, 60_000);
-
-  async function loadFixture() {
-    const page = await browser.newPage();
-    await page.route("**/columns-test*", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Columns</title><div id="root"></div><script type="module" src="/flexible-columns-test.js"></script></html>' }));
-    await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}columns-test`, page.locator('[data-row-id="a"]'));
-    return page;
-  }
-
   afterAll(async () => { await browser?.close(); await server?.close(); });
 
-  beforeEach(async () => {
-    if (fixture.isClosed()) fixture = await loadFixture();
-    // A timed-out Playwright action must stop before it can target the next mount.
-    const page = fixture;
-    onTestFailed(() => page.close());
-  });
-
-  return async (width = 1440, search = "") => {
-    const page = fixture;
-    await page.setViewportSize({ width, height: 900 });
-    await page.evaluate(query => (window as unknown as { mountColumns(search: string): void }).mountColumns(query), search);
-    return page;
+  return (name: string, width: number, run: (page: Page) => Promise<void>, search = "") => {
+    describe(`${width}px`, () => {
+      let page: Page;
+      beforeAll(async () => {
+        if (!fixture || fixture.isClosed()) {
+          fixture = await browser.newPage();
+          await fixture.route("**/columns-test*", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Columns</title><div id="root"></div><script type="module" src="/flexible-columns-test.js"></script></html>' }));
+          await openBrowserTestPage(fixture, `${server.resolvedUrls!.local[0]}columns-test`, fixture.locator('[data-row-id="a"]'));
+        }
+        page = fixture;
+        await page.setViewportSize({ width, height: 900 });
+        await page.evaluate(query => (window as unknown as { mountColumns(search: string): void }).mountColumns(query), search);
+      }, 60_000);
+      test(name, async () => {
+        // Pending Playwright actions can outlive a timed-out test.
+        onTestFailed(() => page.close());
+        await run(page);
+      });
+    });
   };
 }

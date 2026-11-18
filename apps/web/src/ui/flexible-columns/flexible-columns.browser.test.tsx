@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "vitest";
-import { expect as element } from "@playwright/test";
+import { expect } from "vitest";
+import { expect as element, type Page } from "@playwright/test";
 import { columnsFixture } from "./flexible-columns.browser-fixture";
 
-const openFixture = columnsFixture(`
+const recordColumn = (page: Page) => page.getByRole("complementary", { name: "직원 상세", exact: true });
+
+const columnTest = columnsFixture(`
   import React, { useLayoutEffect, useRef, useState } from 'react';
   import { flushSync } from 'react-dom';
   import { createRoot } from 'react-dom/client';
@@ -79,11 +81,10 @@ const openFixture = columnsFixture(`
   window.mountColumns('');
 `);
 
-test("renders 1, 2, and 3 side-by-side columns at 1440px without overlapping the list", async () => {
-  const page = await openFixture(1440);
+columnTest("renders 1, 2, and 3 side-by-side columns at 1440px without overlapping the list", 1440, async page => {
   const list = page.getByRole("region", { name: "목록 영역", exact: true });
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
-  const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
+  const record = recordColumn(page);
   await element(record).toBeVisible();
   await element(record.getByRole("button", { name: "돌아가기", includeHidden: true })).toBeHidden();
   await element(record.getByRole("button", { name: "직원 상세 닫기", exact: true })).toBeVisible();
@@ -103,10 +104,9 @@ test("renders 1, 2, and 3 side-by-side columns at 1440px without overlapping the
   expect(rel3.x + rel3.width).toBeLessThanOrEqual(1440);
 });
 
-test("drag-resize and keyboard arrow keys resize columns via CSS custom properties", async () => {
-  const page = await openFixture(1440);
+columnTest("drag-resize and keyboard arrow keys resize columns via CSS custom properties", 1440, async page => {
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
-  const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
+  const record = recordColumn(page);
   const splitter = page.getByRole("separator", { name: "열 너비 조절" }).first();
   await element(splitter).toBeVisible();
   const initial = (await record.boundingBox())!.width;
@@ -126,11 +126,10 @@ test("drag-resize and keyboard arrow keys resize columns via CSS custom properti
   expect(Math.round((await record.boundingBox())!.width)).toBe(Math.round(initial));
 });
 
-test("collapses to 2 visible columns below 1280px and single column + Back at 390px", async () => {
-  const page = await openFixture(1024);
+columnTest("collapses to 2 visible columns below 1280px", 1024, async page => {
   const list = page.getByRole("region", { name: "목록 영역", exact: true });
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
-  const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
+  const record = recordColumn(page);
   await element(list).toBeVisible();
   await element(record).toBeVisible();
 
@@ -140,8 +139,12 @@ test("collapses to 2 visible columns below 1280px and single column + Back at 39
   await element(record).toBeVisible();
   await element(related).toBeVisible();
   expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
+});
 
-  await openFixture(390);
+columnTest("shows one column and Back at 390px", 390, async page => {
+  const list = page.getByRole("region", { name: "목록 영역", exact: true });
+  const record = recordColumn(page);
+  const related = page.getByRole("complementary", { name: "소속 부서 상세", exact: true });
   const rowA = page.getByRole("button", { name: "직원 A", exact: true });
   await rowA.click();
   await element(list).toBeHidden();
@@ -165,11 +168,10 @@ test("collapses to 2 visible columns below 1280px and single column + Back at 39
   await element(rowA).toBeFocused();
 });
 
-test("Escape closes only the rightmost column, respects nested overlays/inputs, and '/' focuses search", async () => {
-  const page = await openFixture(1440);
+columnTest("Escape closes only the rightmost column, respects nested overlays/inputs, and '/' focuses search", 1440, async page => {
   const rowA = page.getByRole("button", { name: "직원 A", exact: true });
   await rowA.click();
-  const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
+  const record = recordColumn(page);
   const unitBtn = record.getByRole("button", { name: "인사팀 열기", exact: true });
   await unitBtn.click();
   const related = page.getByRole("complementary", { name: "소속 부서 상세", exact: true });
@@ -201,11 +203,10 @@ test("Escape closes only the rightmost column, respects nested overlays/inputs, 
   await element(rowA).toBeFocused();
 });
 
-test.each([false, true])("J/K and arrow keys move through list rows while record follows, and Enter opens then expands (Enter during commit: %s)", async enterOnCommit => {
-  const page = await openFixture(1440, enterOnCommit ? "?enterOnCommit" : "");
+for (const enterOnCommit of [false, true]) columnTest(`J/K and arrow keys move through list rows while record follows, and Enter opens then expands (Enter during commit: ${enterOnCommit})`, 1440, async page => {
   const rowA = page.getByRole("button", { name: "직원 A", exact: true });
   const rowB = page.getByRole("button", { name: "직원 B", exact: true });
-  const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
+  const record = recordColumn(page);
 
   await rowA.focus();
   await page.keyboard.press("Enter");
@@ -227,14 +228,13 @@ test.each([false, true])("J/K and arrow keys move through list rows while record
 
   await page.keyboard.press("Enter");
   await element(page.locator("main")).toHaveAttribute("data-opened", "b");
-});
+}, enterOnCommit ? "?enterOnCommit" : "");
 
 for (const width of [1440, 1024]) for (const depth of [1, 2]) {
-  test(`rightmost full pane at ${width}px depth ${depth}: toggle, keys, restore then close`, async () => {
-    const page = await openFixture(width);
+  columnTest(`rightmost full pane at ${width}px depth ${depth}: toggle, keys, restore then close`, width, async page => {
     const row = page.getByRole("button", { name: "직원 A", exact: true });
     await row.click();
-    const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
+    const record = recordColumn(page);
     const unit = record.getByRole("button", { name: "인사팀 열기", exact: true });
     if (depth === 2) await unit.click();
     const pane = depth === 2 ? page.getByRole("complementary", { name: "소속 부서 상세", exact: true }) : record;
@@ -274,10 +274,9 @@ for (const width of [1440, 1024]) for (const depth of [1, 2]) {
   });
 }
 
-test("phone ignores full, hides the toggle and closes on the first Escape", async () => {
-  const page = await openFixture(390, "?full=1");
+columnTest("phone ignores full, hides the toggle and closes on the first Escape", 390, async page => {
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
-  const record = page.getByRole("complementary", { name: "직원 상세", exact: true });
+  const record = recordColumn(page);
   await record.getByRole("button", { name: "인사팀 열기", exact: true }).click();
   const related = page.getByRole("complementary", { name: "소속 부서 상세", exact: true });
   await element(page.getByRole("button", { name: "전체 화면으로 보기", exact: true })).toHaveCount(0);
@@ -286,10 +285,9 @@ test("phone ignores full, hides the toggle and closes on the first Escape", asyn
   await related.getByRole("heading").press("Escape");
   await element(related).toHaveCount(0);
   await element(record).toBeVisible();
-});
+}, "?full=1");
 
-test("tree rows own their J/K, arrows, Enter and focus-follow", async () => {
-  const page = await openFixture();
+columnTest("tree rows own their J/K, arrows, Enter and focus-follow", 1440, async page => {
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
   const treeRow = page.getByRole("treeitem", { name: "부서 A", exact: true });
   await treeRow.focus();
@@ -303,8 +301,7 @@ test("tree rows own their J/K, arrows, Enter and focus-follow", async () => {
   }
 });
 
-test("surfaces without onFull keep their existing controls", async () => {
-  const page = await openFixture(1440, "?fixed");
+columnTest("surfaces without onFull keep their existing controls", 1440, async page => {
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
   await element(page.getByRole("button", { name: "전체 화면으로 보기", exact: true })).toHaveCount(0);
-});
+}, "?fixed");
