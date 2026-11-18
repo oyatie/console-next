@@ -1,22 +1,18 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Findings of the coverage-guided fuzzer (`backend/fuzz`, ids FZ-n in
-//! `backend/fuzz/README.md`), pinned as regression tests. An `#[ignore]`d test
-//! is a finding still open in product code: it fails today and passes once the
-//! owner fixes it; then drop the `ignore` and the fuzz target's `known` skip.
+//! Regressions from coverage-guided fuzzing.
 
 use console_kernel_core::kr::PhoneE164;
 
-/// FZ-3: a stored phone must parse back to itself (the canonical form is a
-/// fixed point). Input with the international prefix `00 82 …` or a second
-/// `0` after `+82` is stored as `+820…`, which re-parses to another number, so
-/// the same phone can sit in two rows under two values.
 #[test]
-#[ignore = "owner=kernel; reason=FZ-3 PhoneE164 stores +820… that re-parses differently; expires=2026-12-20"]
 fn regression_fz3_a_stored_phone_parses_back_to_itself() {
-    for raw in ["00 82 10-1234-5678", "+82 00 10 1234 5678", "0055100080"] {
-        let stored = PhoneE164::parse(raw).expect("accepted today; a refusal also fixes FZ-3");
-        let again = PhoneE164::parse(stored.as_str()).map(|p| p.as_str().to_owned());
-        assert_eq!(again.ok().as_deref(), Some(stored.as_str()), "{raw:?}");
+    for (raw, expected) in [
+        ("00 82 10-1234-5678", "+821012345678"),
+        ("+82 00 10 1234 5678", "+821012345678"),
+        ("0055100080", "+55100080"),
+    ] {
+        let stored = PhoneE164::parse(raw).unwrap();
+        assert_eq!(PhoneE164::parse(stored.as_str()).unwrap(), stored);
+        assert_eq!(stored.as_str(), expected);
     }
 }
 

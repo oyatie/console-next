@@ -57,11 +57,12 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
   });
   expect((await patch(legacy)).status()).toBe(200);
   expect((await read()).emergency_contacts).toEqual(recorded);
-  legacy.push({ name: "이세리", relation: "SIBLING", phone: "010-5555-6666" });
+  legacy.push({ name: "이세리", relation: "SIBLING", phone: "00 82 10-5555-6666" });
   expect((await patch(legacy)).status()).toBe(200);
   const withLegacy = (await read()).emergency_contacts!;
   expect(withLegacy.slice(0, 2)).toEqual(recorded);
-  expect(withLegacy[2]).toMatchObject({ contact_notified: false, basis: null });
+  expect(withLegacy[2]).toMatchObject({ phone: "+821055556666", contact_notified: false, basis: null });
+  legacy[2]!.phone = withLegacy[2]!.phone;
   expect((await patch(legacy)).status()).toBe(200);
   expect((await read()).emergency_contacts).toEqual(withLegacy);
   await admin.reload();

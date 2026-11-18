@@ -4,7 +4,7 @@ use super::{canonical_serde, refusal};
 use crate::KernelError;
 
 /// An E.164 phone number (`+8210…`). Parsing accepts Korean domestic input
-/// (`010-1234-5678`, `02-123-4567`, `1588-1234`) and international `+…`.
+/// (`010-1234-5678`, `02-123-4567`, `1588-1234`) and international `+…` or `00…`.
 ///
 /// The one phone rule: the HR register's `normalize_phone_e164`
 /// (hr adapter `directory/normalize.rs`) delegates here.
@@ -41,14 +41,15 @@ impl PhoneE164 {
                 _ => return Err(refusal(Self::CODE_INVALID)),
             }
         }
-        let phone = if let Some(local) = compact.strip_prefix("+82") {
-            format!("+82{}", local.strip_prefix('0').unwrap_or(local))
-        } else if let Some(intl) = compact.strip_prefix("82") {
-            format!("+82{}", intl.strip_prefix('0').unwrap_or(intl))
+        let international = compact
+            .strip_prefix('+')
+            .or_else(|| compact.strip_prefix("00"));
+        let phone = if let Some(local) = international.unwrap_or(&compact).strip_prefix("82") {
+            format!("+82{}", local.trim_start_matches('0'))
+        } else if let Some(digits) = international {
+            format!("+{digits}")
         } else if let Some(local) = compact.strip_prefix('0') {
             format!("+82{local}")
-        } else if compact.starts_with('+') {
-            compact
         } else if compact.len() == 8 && matches!(compact.get(..2), Some("15" | "16" | "18")) {
             // Nationwide representative number (1588-xxxx): domestic only, stored under +82.
             format!("+82{compact}")

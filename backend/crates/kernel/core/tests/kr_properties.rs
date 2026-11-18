@@ -178,6 +178,9 @@ proptest! {
         let raw = format!("0{}{sep}{}", &national[..2], &national[2..]);
         let phone = PhoneE164::parse(&raw).unwrap();
         prop_assert_eq!(phone.as_str(), format!("+82{national}"));
+        let international = PhoneE164::parse(&format!("00 82 (0){national}")).unwrap();
+        prop_assert_eq!(&international, &phone);
+        prop_assert_eq!(PhoneE164::parse(international.as_str()).unwrap(), international);
         prop_assert_eq!(&PhoneE164::parse(&phone.display()).unwrap(), &phone);
         prop_assert_eq!(&PhoneE164::parse(&format!("+82 {national}")).unwrap(), &phone);
         prop_assert_eq!(&PhoneE164::parse(&format!("+82 (0){national}")).unwrap(), &phone);
