@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# StepLine
+# Step line
 
 A step line shows the steps of a page-wide task in one row: a numbered box and a label for each step, a check in
 the box once the step is done, and a rule between steps.

@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# ChainStepper
+# Chain stepper
 
 A chain stepper shows a chain of people who act in turn, such as an approval or an exit, as an ordered list: who
 has acted, whose turn it is and who waits.

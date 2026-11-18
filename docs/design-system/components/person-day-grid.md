@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# PersonDayGrid
+# Person-day grid
 
 `PersonDayGrid` is a grid with one row for each person and one column for each day, in which a person selects a
 range of cells and types into one of them.

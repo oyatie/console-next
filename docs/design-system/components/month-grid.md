@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# MonthGrid
+# Month grid
 
 `MonthGrid` draws one month as a table of weeks, one cell for each day, and lets the caller draw what each day
 holds.

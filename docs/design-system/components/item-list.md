@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# ItemList
+# Item list
 
 `ItemList` is a short list of rows inside a card or a panel: a `<ul>` whose rows each hold a leading mark, the
 text and a quiet value at the end, split by hairlines.

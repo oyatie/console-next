@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# Kbd
+# Key cap
 
 A `Kbd` is a small key cap that shows the key or chord of a command beside that command: a `<kbd>` drawn for the
 eye only, hidden from assistive technology.

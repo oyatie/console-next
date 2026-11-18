@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# DeadlineChip
+# Deadline chip
 
 `DeadlineChip` shows how many days are left to a deadline, or how many days it is overdue, as a tinted chip, and
 can put what is due and its legal basis beside it.

@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# ApprovalCard
+# Approval card
 
 An approval card is where one person decides one item at the step they hold: what approving does is stated above
 the decisions, reject and request changes stand beside approve at the same height, and each of those two opens a

@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# ReasonField
+# Reason field
 
 `ReasonField` asks why a command is being run: one reason code, picked from a row of chips, and a memo under it
 that becomes required when the code is Other.
