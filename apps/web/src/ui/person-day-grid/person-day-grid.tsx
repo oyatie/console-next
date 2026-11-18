@@ -113,6 +113,21 @@ export function PersonDayGrid<R>(p: Props<R>) {
     if (top < el.scrollTop) el.scrollTop = top;
     else if (bottom > el.scrollTop + el.clientHeight) el.scrollTop = bottom - el.clientHeight;
   }, [focusRow, rowHeight]);
+  // Sideways the sticky lead columns cover the left of the box and the held totals the right: a column is in view
+  // between them. It is read from the head row, which is always drawn.
+  const focusCol = f?.c, editing = !!p.editing;
+  useEffect(() => {
+    const el = box.current;
+    if (!el || focusCol === undefined) return;
+    const head = [...el.querySelector("thead tr")!.children].map((c) => c.getBoundingClientRect()), frame = el.getBoundingClientRect();
+    const day = head[leads + focusCol]!, from = head[leads - 1]?.right ?? frame.left;
+    const until = Math.min(frame.left + el.clientWidth, ...head.slice(head.length - tails).map((c) => c.left));
+    if (day.left < from) el.scrollLeft -= from - day.left;
+    // Never so far that the column's start goes under the lead columns.
+    else if (day.right > until) el.scrollLeft += Math.min(day.right - until, day.left - from);
+    // An editor opening is not read above, but it widens its column, which is.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [focusCol, editing, leads, tails]);
   useEffect(() => {
     const up = () => setDrag(false);
     window.addEventListener("pointerup", up);

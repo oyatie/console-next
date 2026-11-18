@@ -5,6 +5,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element, type Locator } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
+import { activeShows, sideways } from "./person-day-grid.browser-probes";
 
 const [fixture] = Object.values(import.meta.glob<string>("./person-day-grid.browser-fixture.tsx", { query: "?url", import: "default", eager: true }));
 // The grid as the attendance month view calls it: the real view, drafts, name links and side columns.
@@ -262,35 +263,6 @@ test("Enter, F2 and a double-click open the editor on the cell's draft, and leav
   await element(drafts).toHaveText(DRAFT);
 });
 
-/**
- * The head row and the first person's row at a sideways scroll position: what is wrong with the sticky side columns
- * (one lying on another, a gap or an overlap between neighbours in view), how many totals are in view, how far the
- * last one ends from the box's right edge, and how many whole day columns show between the two sides.
- */
-const sideways = (grid: Locator, to: number, lead: number) => grid.locator("..").evaluate((el, [to, lead]) => {
-  el.scrollLeft = to;
-  const box = el.getBoundingClientRect(), right = box.left + el.clientWidth, faults: string[] = [];
-  const shows = (cell: Element) => {
-    const b = cell.getBoundingClientRect();
-    return cell.contains(document.elementFromPoint((b.left + b.right) / 2, (b.top + b.bottom) / 2));
-  };
-  const seen = { days: 0, totals: 0 };
-  for (const row of [el.querySelector("thead tr")!, el.querySelector("tbody tr:not([aria-hidden])")!]) {
-    const cells = [...row.children], sides = [...cells.slice(0, lead), ...cells.slice(-4)];
-    const bounds = sides.map(c => c.getBoundingClientRect()), inView = bounds.map(b => b.left < right - 1);
-    sides.forEach((cell, i) => {
-      const b = bounds[i]!, name = `${row.parentElement!.tagName} ${i < lead ? "lead" : "total"} ${i < lead ? i + 1 : i - lead + 1}`;
-      if (inView[i] && !shows(cell)) faults.push(`${name} is covered`);
-      if (i > 0 && i !== lead && inView[i - 1] && Math.abs(b.left - bounds[i - 1]!.right) > 1) faults.push(`${name} starts at ${Math.round(b.left)}, its neighbour ends at ${Math.round(bounds[i - 1]!.right)}`);
-    });
-    if (Math.abs(bounds[0]!.left - box.left) > 1) faults.push(`${row.parentElement!.tagName} lead 1 starts at ${Math.round(bounds[0]!.left)}`);
-    const from = bounds[lead - 1]!.right, until = Math.min(right, ...bounds.slice(lead).map(b => b.left));
-    seen.days = cells.slice(lead, -4).filter(c => c.getBoundingClientRect().left >= from - 1 && c.getBoundingClientRect().right <= until + 1 && shows(c)).length;
-    seen.totals = inView.slice(lead).filter(Boolean).length;
-  }
-  return { faults, ...seen, end: el.scrollWidth - el.clientWidth, totalsEnd: Math.abs(Math.round(right - el.querySelector("thead tr")!.lastElementChild!.getBoundingClientRect().right)) };
-}, [to, lead] as const);
-
 // The month view passes four total columns and, when someone has no schedule, a third lead column.
 test.each([["", 2], ["&unscheduled", 3]] as const)("sticky side columns stand side by side at every sideways scroll position (%s)", async (extra, lead) => {
   const grid = await month(`?w=1000${extra}`);
@@ -336,4 +308,34 @@ test("a grid that fits its box has every column where the table puts it", async 
   } finally {
     await page.setViewportSize({ width: 1280, height: 720 });
   }
+});
+
+// The box's width, and the day column that starts in view and ends under the totals before any scroll.
+test.each([[1000, 12], [640, 7]])("moving the active cell sideways keeps it in view between the sticky columns (a %s px box)", async (width, cut) => {
+  const grid = await month(`?w=${width}`);
+  await grid.focus();
+  expect(await activeShows(grid)).toBe("in view");
+  for (let i = 0; i < 14; i++) await page.keyboard.press("ArrowRight");
+  await expect.poll(active).toBe("0,14");
+  await expect.poll(() => activeShows(grid)).toBe("in view");
+  // The editor is wider than a day, and shows whole too.
+  await page.keyboard.type("9");
+  await element(editor).toBeFocused();
+  await expect.poll(() => activeShows(grid)).toBe("in view");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("End");
+  await expect.poll(active).toBe("0,30");
+  await expect.poll(() => activeShows(grid)).toBe("in view");
+  // Back the other way the lead columns cover the left of the box.
+  for (let i = 0; i < 20; i++) await page.keyboard.press("ArrowLeft");
+  await expect.poll(active).toBe("0,10");
+  await expect.poll(() => activeShows(grid)).toBe("in view");
+  await page.keyboard.press("Home");
+  await expect.poll(active).toBe("0,0");
+  await expect.poll(() => grid.locator("..").evaluate(el => el.scrollLeft)).toBe(0);
+  // A press on the part of a cell that shows brings the rest of it into view, and selects that cell alone.
+  await dayCell(2, cut + 1).click({ position: { x: 6, y: 10 } });
+  await expect.poll(active).toBe(`1,${cut}`);
+  await expect.poll(() => activeShows(grid)).toBe("in view");
+  await element(grid.locator('td[aria-selected="true"]')).toHaveCount(1);
 });
