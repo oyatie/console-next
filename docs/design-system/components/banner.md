@@ -26,9 +26,13 @@ it is:
 | `inline` | A callout inside a card, a sheet or a form. |
 | `page` | A strip under the page head, for something that holds for the whole page. |
 
-A failed command is usually shown by `CommandError` (`lib/react/command-error.tsx`). It renders a banner, or an
-error summary when the server names the fields that failed, and picks the tone and the `live` value itself. A view
-rarely builds that banner by hand.
+Some banners are already rendered by a component. Use it before building the same banner by hand:
+
+- A failed command is usually shown by `CommandError` (`lib/react/command-error.tsx`). It renders a banner, or an
+  error summary when the server names the fields that failed. It picks the tone, and the `live` value unless the
+  caller passes one. Some views build a failure or refusal banner themselves.
+- The as-of strip under a page head is rendered by `AsOfControl` (`ui/asof-control`), with the button that returns
+  to today. It is the only caller of the `past` tone outside the gallery.
 
 | Do not use it for | Use instead |
 |---|---|
@@ -103,10 +107,12 @@ Neither placement sets a width. The banner is a block and fills its container.
 Any tone goes with either placement. No rule ties `past` to `page`.
 
 The icon has a top margin of `calc((var(--text-sm) * var(--lh-base) - var(--space-4)) / 2)`, 1.75 px, which
-centres it on the first line of the text when the parts are aligned to the top.
+centres it on the first line of the text when the parts are aligned to the top, as in `inline`. `page` does not
+reset the margin, though its parts are aligned to the middle. There the icon's margin box is what is centred, so
+the icon sits below the middle by half the margin.
 
 A link inside the text is styled by the global `prose` class as a link in running text: `--primary`, with a 1 px
-`--primary-bd` underline.
+`--primary-bd` underline. Its weight is `--fw-medium`, from the global rule for every link.
 
 ## States
 
@@ -152,6 +158,9 @@ handler, no `isComposing` check, no key code 229 check and no composition event.
 - **Announced:** nothing without `live`. With `live`, the role makes the root a live region. The role sits on the
   same element as the content: the component does not keep an empty region mounted and then fill it, so the region
   and its text arrive together when the view renders the banner.
+- **A change with no visible message:** not a banner. Call `announce` from `lib/react/announce`. It speaks through
+  the shell's one polite live region (`Announcer`, `ui/announcer.tsx`), which is in the page before the text
+  arrives.
 - **On load:** a banner that is there when the page loads leaves `live` unset. `live` is for a banner that appears
   after an action.
 - **Focus:** `ref` and `tabIndex` exist so that a view can move focus to the banner. `tabIndex={-1}` takes focus
@@ -163,21 +172,32 @@ The WCAG 2.2 criteria that apply:
 |---|---|
 | 1.3.1 Info and Relationships | In part. The title is marked as strong text and the text is its own block. Nothing ties the title to the text, and without `live` the banner has no role. |
 | 1.4.1 Use of Color | Each tone has its own icon as well as its colours. For a screen reader only the words carry the tone. |
-| 1.4.3 Contrast (Minimum) | Each tone pairs a text token with its own fill token. The text is 13 px, so it needs 4.5:1. A link in the text is the gap: see below. |
+| 1.4.3 Contrast (Minimum) | Each tone pairs a text token with its own fill token. The text is 13 px, so it needs 4.5:1. Computed from the token values, the lowest pair is 5.91:1 in the light theme (`danger`) and 8.60:1 in the dark theme (`info`). A link in the text is `--primary`. On the `info`, `warn`, `danger` and `ok` fills it is at least 6.48:1 in the light theme and 4.65:1 in the dark theme. On the `past` fill it fails: see the first gap below. |
 | 1.4.10 Reflow | The parts wrap and the text can shrink. Only the icon has a fixed size, 16 px. |
+| 1.4.11 Non-text Contrast | The icon is drawn in the text colour, so it has the text's ratio. The focus outline of a link in the text, or of a control in `actions`, is `--primary` on the banner's fill. That is the link's pair: it is above 3:1 on the four tinted fills and below it on the `past` fill. See the second gap below. |
 | 2.1.1 Keyboard | The banner has nothing of its own to operate. |
 | 2.4.7 Focus Visible | The global focus outline, when the caller makes the banner focusable. |
-| 4.1.2 Name, Role, Value | No role and no name unless `live` is set. |
+| 4.1.2 Name, Role, Value | No role unless `live` is set. No name in any case. |
 | 4.1.3 Status Messages | `live` gives the banner the `status` or the `alert` role. Without it, a banner that appears after an action is not announced. The choice is the caller's. |
 
+Both gaps are on the `past` tone. Their ratios are computed from the token values, not measured in a browser.
+
 Known gap: a link in the text of a `past` banner. The `prose` rule colours a link `--primary`, and the `past` fill
-is `--ink`. Computed from the token values, that pair is 2.47:1 in the light theme and 2.63:1 in the dark theme,
-below the 4.5:1 that 1.4.3 asks for. Nothing in the banner changes the link colour for this tone. The `past`
-banner in the gallery has no link.
+is `--ink`. That pair is 2.47:1 in the light theme and 2.63:1 in the dark theme, below the 4.5:1 that 1.4.3 asks
+for. Nothing in the banner changes the link colour for this tone. The `past` banner in the gallery has no link.
+
+Known gap: the focus outline inside a `past` banner. The global rule draws a 2 px `--primary` outline 2 px outside
+the focused element, so the outline of a control in `actions`, or of a link in the text, lies on the `--ink` fill.
+It is the same pair, 2.47:1 and 2.63:1, below the 3:1 that 1.4.11 asks for. `Button` sets no focus outline of its
+own. This is therefore the outline of the button that returns to today in the as-of strip, and of the button in
+the gallery's `past` banner.
 
 The gallery entry is `apps/web/src/ui/banner/banner.gallery.tsx`. It shows `info` with text alone, `warn` with a
 title, `danger` with an action, `ok` with `live="polite"`, and `past` as a page strip with an action. It does not
 show `live="assertive"`, a link in the text, or a banner that takes focus.
+
+The banner has no test file of its own. The assertions on its role and its hidden icon are in
+`apps/web/src/ui/canonical.test.tsx`.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
@@ -281,4 +301,5 @@ A link inside the text, through the global `prose` class in `app.css`:
 
 <!-- /ds:tokens -->
 
-The focus outline is a global rule and is not listed: it reads `--primary`.
+The focus outline and the weight of a link are global rules and are not listed: they read `--primary` and
+`--fw-medium`.
