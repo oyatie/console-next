@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from "react";
 import { t } from "@console/i18n";
 import { SINGLE_KEYS_KEY, singleKeysOn } from "../../lib/prefs";
 import { Check } from "../../ui/button/button";
+import css from "./single-keys-check.module.css";
 
 /**
  * Single-key shortcuts on this device (WCAG 2.1.4, Character Key Shortcuts): checked is on. Off is the one stored
@@ -18,7 +19,7 @@ export function SingleKeysCheck() {
     window.addEventListener("storage", read);
     return () => window.removeEventListener("storage", read);
   }, []);
-  return <>
+  return <div className={css.box}>
     <Check switch checked={on} aria-describedby={hint} onChange={next => {
       try {
         if (next) localStorage.removeItem(SINGLE_KEYS_KEY);
@@ -29,5 +30,5 @@ export function SingleKeysCheck() {
     }}>{t("account.singleKeys")}</Check>
     <p id={hint} className="muted">{t("account.singleKeys.device")}</p>
     {failed && <span role="alert">{t("account.singleKeys.failed")}</span>}
-  </>;
+  </div>;
 }
