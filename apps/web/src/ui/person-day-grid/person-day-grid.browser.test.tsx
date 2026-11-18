@@ -94,8 +94,8 @@ test("a box taller than 600 px is filled with rows before the first scroll", asy
   }
 });
 
-// One total cannot lie on another, so it is held in a box of any width: a phone's, and one with no room for a week of days.
-test.each([390, 300])("a grid with one total column keeps it at the right edge of a %s px box", async width => {
+// One total cannot lie on another, so it is held in a box of any width: a phone's, and one with no room for a day beside it.
+test.each([390, 180])("a grid with one total column keeps it at the right edge of a %s px box", async width => {
   await page.goto(`${server.resolvedUrls!.local[0]}grid-test?total&w=${width}`);
   const grid = page.getByRole("grid", { name: "October" });
   await element(grid.getByText("Person 1", { exact: true })).toBeVisible();
