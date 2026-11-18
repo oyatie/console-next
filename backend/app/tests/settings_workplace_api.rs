@@ -187,3 +187,60 @@ async fn scoped_settings_grants_follow_workplace_parent_only_downward(pool: PgPo
         }
     }
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn inactive_scopes_refuse_registry_reads_even_for_tenant_ops(pool: PgPool) {
+    for (parent, sql) in [
+        (
+            true,
+            "UPDATE legal_entities SET voided_at=now(), void_reason_code='DUPLICATE' WHERE org_id=$1 AND id=$2",
+        ),
+        (
+            true,
+            "UPDATE legal_entities SET closed_on=CURRENT_DATE+1, close_reason_code='BUSINESS_CLOSED' WHERE org_id=$1 AND id=$2",
+        ),
+        (
+            false,
+            "UPDATE workplaces SET voided_at=now(), void_reason_code='DUPLICATE' WHERE org_id=$1 AND id=$2",
+        ),
+        (
+            false,
+            "UPDATE workplaces SET closed_on=CURRENT_DATE+1 WHERE org_id=$1 AND id=$2",
+        ),
+    ] {
+        let (org, service, _, entity, workplace, keys) = fixture(&pool).await;
+        let ops = seed_user(&pool, org, "SUPER_ADMIN").await;
+        sqlx::query("UPDATE users SET is_tenant_ops=true WHERE org_id=$1 AND id=$2")
+            .bind(org)
+            .bind(ops.as_uuid())
+            .execute(&pool)
+            .await
+            .unwrap();
+        let bearer = token(&pool, &keys, org, ops, "SUPER_ADMIN").await;
+        let scope = if parent { entity } else { workplace };
+        sqlx::query(sql)
+            .bind(org)
+            .bind(scope)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let targets = if parent {
+            vec![entity, workplace]
+        } else {
+            vec![workplace]
+        };
+        for target in targets {
+            let (status, body) = send(
+                &service,
+                "GET",
+                &format!("/api/v1/settings?entity={target}"),
+                Some(&bearer),
+                None,
+            )
+            .await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{sql}: {body}");
+            assert_eq!(body["error"]["code"], "setting_scope_unknown");
+            assert!(body.get("can_change").is_none(), "{body}");
+        }
+    }
+}
