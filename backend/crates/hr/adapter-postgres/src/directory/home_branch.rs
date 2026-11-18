@@ -136,6 +136,12 @@ impl HrService {
         body: SetEmployeeHomeBranchRequest,
     ) -> Result<EmployeeHomeBranchResponse, HrError> {
         let org = principal.org_id;
+        console_platform_request_context::scope_org(
+            org,
+            command_store.admit_home_branch(principal.user_id, employee_id, body.branch_id),
+        )
+        .await
+        .map_err(HrError::from_leave_store)?;
         let org_uuid = *org.as_uuid();
         let actor = principal.user_id;
         let target_branch_id = body.branch_id;
@@ -199,9 +205,9 @@ impl HrService {
 
         // Sensitive employee routing columns are mechanically protected from
         // direct `console_rt` UPDATE. The adapter routes this mutation through the
-        // separately credentialed command pool; the database re-checks tenant,
-        // actor, branch authority, active-branch state, and optimistic version and
-        // owns the one atomic before/after audit.
+        // separately credentialed command pool, rechecking Cedar admission. The
+        // database checks tenant, actor, active branch and optimistic version,
+        // and owns the one atomic before/after audit.
         let updated = console_platform_request_context::scope_org(org, async move {
             command_store
                 .set_employee_home_branch(

@@ -13,6 +13,17 @@ use sqlx::types::Json;
 use uuid::Uuid;
 
 impl PgLeaveStore {
+    /// Admit a routing change before the caller reads employee or branch state.
+    pub async fn admit_home_branch(
+        &self,
+        actor: UserId,
+        employee: Uuid,
+        target: Uuid,
+    ) -> Result<(), PgLeaveError> {
+        self.require_management(actor, employee, None, Some(target))
+            .await
+    }
+
     pub(super) async fn require_management(
         &self,
         actor: UserId,
@@ -36,7 +47,7 @@ impl PgLeaveStore {
                     .fetch_optional(tx.as_mut())
                     .await?
                     .ok_or_else(|| {
-                        KernelError::forbidden("leave management requires an employee in this tenant")
+                        KernelError::forbidden("leave management is not permitted at this employee or routing scope")
                     })?;
                 let source = if target_branch.is_some() {
                     home

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[path = "leave_http_home_branch.rs"]
+mod home_branch;
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn tenant_granted_approver_is_confined_to_employee_workplace(owner: PgPool) {
     granted_approver(owner, false).await;
@@ -80,7 +83,7 @@ async fn granted_approver(owner: PgPool, department_only: bool) {
                 org,
                 approver,
                 resolver,
-                workplace,
+                Some(workplace),
                 (department_only && workplace == workplaces[0]).then_some(department),
             )
             .await;
@@ -240,7 +243,7 @@ async fn grant(
     org: OrgId,
     actor: UserId,
     maker: UserId,
-    workplace: Uuid,
+    workplace: Option<Uuid>,
     department: Option<Uuid>,
 ) {
     let role = Uuid::new_v4();
@@ -252,5 +255,5 @@ async fn grant(
     sqlx::query("INSERT INTO access_role_lines(org_id,role_id,version,domain,levels) VALUES($1,$2,1,'hr_basic',ARRAY['view','edit'])")
         .bind(org.as_uuid()).bind(role).execute(pool).await.unwrap();
     sqlx::query("INSERT INTO access_grants(org_id,account_id,role_id,scope_kind,workplace_id,org_unit_id,valid_from,effective_in_setup,change_mode,reason_code,granted_by) VALUES($1,$2,$3,$6,$4,$7,now()-interval '1 day',true,'SETUP','TEST',$5)")
-        .bind(org.as_uuid()).bind(actor.as_uuid()).bind(role).bind(department.is_none().then_some(workplace)).bind(maker.as_uuid()).bind(if department.is_some() {"DEPARTMENT"} else {"WORKPLACE"}).bind(department).execute(pool).await.unwrap();
+        .bind(org.as_uuid()).bind(actor.as_uuid()).bind(role).bind(workplace.filter(|_| department.is_none())).bind(maker.as_uuid()).bind(if department.is_some() {"DEPARTMENT"} else if workplace.is_some() {"WORKPLACE"} else {"TENANT"}).bind(department).execute(pool).await.unwrap();
 }

@@ -35,7 +35,7 @@ test(`a tenant-granted employee approves leave within their ${scope}`, { tag: ["
     data: { leave_type: "annual", idempotency_key: crypto.randomUUID(), start_date: date, end_date: date },
   });
   expect(created.status(), await created.text()).toBe(201);
-  const leave = await created.json() as { id: string; request_version: number; subject_employee_id: string };
+  const leave = await created.json() as { id: string; request_version: number; subject_employee_id: string; branch_id: string };
   // Entitlement import has no leave form; seed only the balance, keeping accounts and authority product-created.
   psql(unique(slug), `SET LOCAL ROLE console_leave_definer;
     UPDATE employees SET leave_accrued=1,leave_used=0,leave_remaining=1
@@ -51,6 +51,13 @@ test(`a tenant-granted employee approves leave within their ${scope}`, { tag: ["
   const unchanged = await requester!.request.get("/api/v2/me/leave", { headers: { authorization: requesterBearer() } });
   expect(unchanged.status(), await unchanged.text()).toBe(200);
   expect((await unchanged.json()).requests.items).toContainEqual(expect.objectContaining({ id: leave.id, status: "pending", request_version: leave.request_version }));
+  for (const employee of [crypto.randomUUID(), leave.subject_employee_id]) {
+    const home = await approver!.request.put(`/api/v1/employees/${employee}/home-branch`, {
+      headers: { authorization: approverBearer() },
+      data: { branch_id: leave.branch_id, expected_updated_at: new Date(0).toISOString() },
+    });
+    expect(home.status(), await home.text()).toBe(403);
+  }
   await grantAccess(admin, "Leave Approver", "full", scope === "department" ? new RegExp(SETUP_DEPARTMENT) : /Leave Workplace/);
   await go(approver!, "/account");
   const queue = await approver!.request.get("/api/v2/leave/requests", { headers: { authorization: approverBearer() } });
