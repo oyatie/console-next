@@ -16,7 +16,7 @@ this page covers them too.
 | `ToggleButton` | An on/off choice: a filter or a view switch in a toolbar. |
 | `Segmented` | Two to four views or modes of one thing, side by side, one of them on. |
 | `Form` | A form in a view. It validates native controls and reports what failed. |
-| `Check` | One checkbox with a visible statement, or an unlabelled box that selects a table row. |
+| `Check` | One checkbox with a visible statement, or an unlabelled box that selects a table row. With `switch`, a setting that is on or off and applies as soon as the box changes. |
 
 | Do not use it for | Use instead |
 |---|---|
@@ -237,6 +237,7 @@ Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`). Defaults
 | `aria-describedby` | no | `string` |  |  |
 | `aria-label` | no | `string` |  |  |
 | `children` | no | `ReactNode` |  |  |
+| `switch` | no | `boolean` |  |  |
 
 ### Form
 
