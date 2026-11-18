@@ -209,6 +209,8 @@ export function PersonDayGrid<R>(p: Props<R>) {
                   // A press or a double-click in the cell that holds the open editor is the editor's own (the caret,
                   // a word): the cell neither selects, which would commit and close it, nor opens it again.
                   const open = p.editing?.cell.row === key && p.editing.cell.col === d.key;
+                  // The press that ends an edit starts no drag: the closing editor narrows its column, which moves
+                  // other cells under the held pointer, and a drag would take them for the range.
                   return (
                     <td
                       key={d.key}
@@ -220,7 +222,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
                       data-tone={d.tone}
                       data-look={p.look(row, c)}
                       data-focus={focused || undefined}
-                      onPointerDown={(e) => open || (setDrag(true), pick(key, d.key, e.shiftKey))}
+                      onPointerDown={(e) => open || (p.editing || setDrag(true), pick(key, d.key, e.shiftKey))}
                       onPointerEnter={() => drag && pick(key, d.key, true)}
                       onDoubleClick={() => open || p.onEdit("")}
                     >

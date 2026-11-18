@@ -194,6 +194,31 @@ test("an edit opened with the pointer gives the focus to what is pressed next", 
   await element(outside).toBeFocused();
 });
 
+test("a press that ends an edit selects the pressed cell alone, though the closing editor moves it from under the pointer", async () => {
+  const grid = await month();
+  const selected = grid.locator('td[aria-selected="true"]');
+  // The open editor widens its column. As it closes, the cells in that column and right of it move left under the
+  // pointer: the cell below the editor first, then one right of it in its own row.
+  for (const [person, day, cell, draft] of [[2, 1, "1,0", '"0002|2026-10-01":"5"'], [1, 4, "0,3", '"0001|2026-10-04":"5"']] as const) {
+    await dayCell(1, 1).dblclick();
+    await element(editor).toBeFocused();
+    await dayCell(person, day).click();
+    await element(editor).toHaveCount(0);
+    await element(selected).toHaveCount(1);
+    expect(await active()).toBe(cell);
+    // What is typed next is that cell's.
+    await page.keyboard.type("5");
+    await page.keyboard.press("Enter");
+    await element(drafts).toContainText(draft);
+  }
+  // With no editor open a press still starts a drag over a range.
+  await dayCell(1, 1).hover();
+  await page.mouse.down();
+  await dayCell(3, 4).hover();
+  await page.mouse.up();
+  await element(selected).toHaveCount(12);
+});
+
 test("a person's name link opens with Enter, and keys pressed on it are not the grid's", async () => {
   const grid = await month();
   // A draft under the selection, which Backspace on the grid would clear.
