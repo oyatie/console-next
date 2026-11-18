@@ -31,7 +31,7 @@ What holds each rule today:
 | Rule | Held by |
 |---|---|
 | 1 | In part. The design-system check, `scripts/check-ds.mjs`, counts raw controls, hand-written system classes, restyled controls and literal values in feature code, and a count may only go down. That stops a view from rebuilding a component by hand. A second copy inside `apps/web/src/ui` is caught by review. |
-| 2 | Review. |
+| 2 | In part. `scripts/check-ds.mjs` compares each token of `packages/tokens/tokens.css`, in both themes, with the merge base and fails on a changed or removed value; an intended change is recorded in `scripts/ds-token-changes.json`. Whether a rule that now reads a new token still draws the same pixels is checked by review. |
 | 3 | Review, plus the tests each component already has. |
 | 4 | Nothing to hold: it is a permission. |
 | 5 | In part. `scripts/ds-docs.mjs` proves that the generated tables of a page that exists match the code; nothing checks the hand-written text. The scan exists but no workflow runs it: `e2e/visual.spec.ts` runs axe over the whole gallery in the light and the dark theme, and it skips itself on the served build, which is the only build the workflows open it against. Until a scan in CI exists, which is planned, the scan is step 6 below, run by hand. A check that fails a component with no page or no gallery entry is planned and does not exist yet. |
