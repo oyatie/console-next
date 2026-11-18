@@ -96,7 +96,7 @@ Every radio group and the checkbox group share three things: the group label is 
 |---|---|
 | Segmented control | One box with a 1 px `--control-border` border, a 6 px radius and a `--surface` fill, as wide as its segments. Each segment is at least 32 px high (`--target`), with 16 px side padding, medium weight and a 1 px line between segments. Text inherits the body size, 14 px. Segments wrap inside the box when the row is too narrow. |
 | Radio cards | A grid with an 8 px gap. Each card has 12 px padding, a 1 px `--border` border, a 6 px radius and a `--surface` fill. The dot is 16 px with a 2 px `--control-border` border. The label is medium; the description is 12 px `--steel`; the reason is 12 px `--warn-tx`. `columns={2}` or `columns={3}` makes the grid that many equal columns; without it the cards stack. |
-| Pills | A wrapping row with an 8 px gap. Each pill is at least 32 px high, with 12 px side padding, a 1 px `--control-border` border, a 16 px radius (`calc(var(--target) / 2)`) and 13 px text on one line. |
+| Pills | A wrapping row with an 8 px gap. Each pill is at least 32 px high, with 12 px side padding, a 1 px `--control-border` border, a 16 px radius (`calc(var(--target) / 2)`), and 13 px text on one line with a medium label. |
 | `ChoiceAdd` | A pill with a dashed border and `--steel` text. |
 | Select | The control box of [`Field`](field.md): 40 px high (`--row-h`). |
 | `note` | 12 px regular `--steel`, beside the label. |
@@ -123,8 +123,8 @@ No prop picks a size. `look="chips"` and `columns` on `ChoiceField` are the only
 | Hover | A segment, a pill, a `ChipChoice` chip and a `GroupedChoice` row take a `--muted` fill. A card's border turns `--control-border`. A `Checks` item, `ChoiceAdd` and the select have no hover look. A disabled option does not react. |
 | Keyboard focus | A segment: a 2 px `--primary` outline, 3 px inside its edge. A card, a pill and a `ChipChoice` chip: the `--focus` ring, 2 px of `--surface` then 2 px of `--primary`. A `GroupedChoice` row: a 2 px `--primary` outline, 2 px inside its edge. A `Checks` item: the `--focus` ring around the tick box. `ChoiceAdd` and the select: the global rule, a 2 px `--primary` outline 2 px away. |
 | Pressed down | No look. No rule reads `data-pressed`. |
-| Selected | A segment: `--primary-soft` fill, `--primary` text and a 1 px `--primary` outline inside its edge. A card: `--primary` border, `--primary-soft` fill, the same outline, and the dot filled by a 5 px `--primary` border. A pill: `--primary` border and text, `--primary-soft` fill, medium weight, the same outline, and the tick shown. A `ChipChoice` chip: `--primary` border and text, `--primary-soft` fill and the same outline. A `GroupedChoice` row: `--primary-soft` fill, `--primary` text, medium weight and the filled dot. A ticked `Checks` box: `--primary` fill and border with an `--on-primary` check. |
-| Disabled option, `ChoiceField` | The option stays listed and its reason is shown. As a card: `--muted` fill, a not-allowed cursor, a `--steel` label and the reason in `--warn-tx`. As a pill: no disabled rule exists; the pill looks like the others, with the reason after its label. In the select: a disabled `<option>` with the reason in its text. A disabled option never appears in a segmented control: a `disabled` reason turns the control into cards. |
+| Selected | A segment: `--primary-soft` fill, `--primary` text and a 1 px `--primary` outline inside its edge. A card: `--primary` border, `--primary-soft` fill, the same outline, and the dot filled by a 5 px `--primary` border. A pill: `--primary` border and text, `--primary-soft` fill, the same outline, and the tick shown; its label is medium at rest already, so its weight does not change. A `ChipChoice` chip: `--primary` border and text, `--primary-soft` fill and the same outline. A `GroupedChoice` row: `--primary-soft` fill, `--primary` text, medium weight and the filled dot. A ticked `Checks` box: `--primary` fill and border with an `--on-primary` check. |
+| Disabled option, `ChoiceField` | The option stays listed and its reason is shown. As a card: `--muted` fill, a not-allowed cursor, a `--steel` label and the reason in `--warn-tx`. As a pill: no disabled rule exists; the pill looks like the others, with the reason after its label. In the select: a disabled `<option>` with the reason in its text. A `disabled` reason turns a segmented control into cards, so a disabled segment arises in one case only. A reason must be non-empty text: an empty string still disables the option, but it shows no reason and does not turn the control into cards. In a segmented control that segment is disabled with no disabled look. |
 | Disabled option, `ChipChoice` | No look and no reason. The stylesheet it reads has no disabled rule, so a disabled chip looks like an enabled one and keeps the pointer cursor. It cannot be chosen and is skipped by the keyboard. |
 | Disabled, `Checks` | `isDisabled` disables every box: each item is at 60% opacity with a default cursor. One item cannot be disabled alone. |
 | Disabled, whole group | Does not exist for `ChoiceField`, `ChipChoice` or `GroupedChoice`. `GroupedChoice` has no disabled option either. |
@@ -164,7 +164,7 @@ handler comes from React Aria, and it ignores a key pressed while an input metho
 | `ChoiceField`, as a select | The native select's own, `combobox`. | The label, through `<label for>`, with the marker. | What [`Field`](field.md) ties to a control: the hint and error as its description, `aria-invalid`, `required`. |
 | `ChoiceAdd` | `button` | `label`. | Nothing. |
 | `ChipChoice` | `radiogroup` | The label `<span>`, with the marker when required. | `aria-required` when required. `aria-invalid` when `invalid` is true. `aria-orientation="horizontal"`. No description. |
-| `Checks` | `group` | The label `<span>`, with the marker when required. | Each box is a `checkbox` named by the item's `label`. An item's `description` is the id of an element on the page, not text: it becomes the box's `aria-describedby`. The error is added to each box's description when `error` is set. |
+| `Checks` | `group` | The label `<span>`, with the marker when required. | Each box is a `checkbox` named by the item's `label`. An item's `description` is the id of an element on the page, not text: it becomes the box's `aria-describedby`. The error is added to each box's description when `error` is set. While the group is required and no box is ticked, every box carries the native `required` attribute; once one box is ticked, none does. The group element carries no required attribute. |
 | `GroupedChoice` | `radiogroup` | The label `<span>`. The marker and `hint` are inside it, so they are part of the name. | `aria-required`, always. |
 | A row of it | `radio` | The option's `name`, through `aria-label`, when given. Otherwise the row's text: its label and `meta`. | Checked or not. |
 
@@ -179,9 +179,11 @@ Known gaps:
 - A heading in `GroupedChoice` is a plain `<div>`. It is not a group and not a heading, so nothing ties a row to
   the heading above it. A caller that needs the heading in a row's name puts it in the option's `name`.
 - `ChipChoice` shows invalid as a border colour and `aria-invalid` only. It has no slot for an error message.
-- A disabled pill in `ChoiceField` and a disabled chip in `ChipChoice` have no disabled look.
-- `Checks` passes `required` to the library's checkbox group, which reads it as "at least one box". That every
-  statement is ticked is the caller's check, shown through `error`.
+- A disabled pill in `ChoiceField`, a disabled chip in `ChipChoice` and a segment disabled by an empty-string
+  reason have no disabled look: see States.
+- `Checks` passes `required` to the library's checkbox group, which reads it as "at least one box": every box is
+  marked required until the first one is ticked, and none after. That every statement is ticked is the caller's
+  check, shown through `error`.
 - `GroupedChoice` cannot show an error and cannot be optional.
 
 The WCAG 2.2 criteria that apply:
@@ -189,7 +191,7 @@ The WCAG 2.2 criteria that apply:
 | Criterion | How the family answers it |
 |---|---|
 | 1.3.1 Info and Relationships | Each group is a `radiogroup` or a `group` named by its label, with native radio and checkbox inputs. The headings of `GroupedChoice` are not exposed: see the gaps. |
-| 1.4.1 Use of Color | Chosen is the checked state, and each look adds a cue that is not a colour: an inner outline on a segment, a card and a chip, a filled dot on a card and a row, a tick and medium weight on a pill, a check in a box. Invalid is an error line in text, except in `ChipChoice`, where it is a border colour only. Required is a word. |
+| 1.4.1 Use of Color | Chosen is the checked state, and each look adds a cue that is not a colour: an inner outline on a segment, a card, a pill and a chip, a filled dot on a card and a row, a tick on a pill, a check in a box. Invalid is an error line in text, except in `ChipChoice`, where it is a border colour only. Required is a word. |
 | 1.4.3 Contrast (Minimum), 1.4.11 Non-text Contrast | Every colour is a token; none is written in the family. The edges of the segmented box, pills, chips, dots and tick boxes are `--control-border`. A card's own edge is `--border`; its dot carries the control edge. A disabled `Checks` item is drawn at 60% opacity. |
 | 2.1.1 Keyboard | Native radio, checkbox, select and button elements. |
 | 2.4.7 Focus Visible | The focus looks under States. |
