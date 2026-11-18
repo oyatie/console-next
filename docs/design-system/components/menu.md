@@ -23,8 +23,8 @@ They are two separate components. They do not share a stylesheet, and their list
 | Picking a value in a form | `SelectField` (`ui/select`) or `ChoiceField` (`ui/choice`). A menu runs a command; it holds no value. |
 | Switching between views | `Segmented`, on the [Button](button.md) page, or `Tabs` and `TabNav` (`ui/tabs`). |
 | A small panel of content beside its trigger | `PopoverButton` (`ui/popover`). |
-| Finding a command anywhere in the console | `CommandPalette` (`ui/command-palette`). |
-| A menu of links, a submenu or a checked entry | Neither component has them. The account menu in the top bar builds its own React Aria menu for these, in `shell/top-bar/account-menu.tsx`, with the classes of `menu.module.css`. |
+| A search over places, people and tasks | `CommandPalette` (`ui/command-palette`). |
+| A menu of links, a submenu or a checked entry | Neither component has them. `AccountMenu`, in `shell/top-bar/account-menu.tsx`, builds its own React Aria menu for these, with the classes of `menu.module.css`. On this branch the top bar does not render it: only the gallery's shell section and one browser test do. |
 
 ## Anatomy
 
@@ -62,6 +62,9 @@ What the `MenuButton` trigger shows:
 
 So `icon` replaces the label only together with `caret={false}`.
 
+Both popovers ask for `placement="bottom end"` and sit 8 px from the trigger. The 8 px is React Aria's default
+offset in the installed version (`react-aria-components` 1.22.1); neither component passes one.
+
 An action or an entry is plain data. `MenuAction` is `{ id, label, shortcut?, danger?, onAction }`. `MenuEntry` is
 `{ id, label, text, hint?, why? }`: `text` is the entry's label as plain text. The menu matches typed letters
 against it, because `label` may be markup.
@@ -72,6 +75,11 @@ Running a command differs between the two. Each `MenuAction` carries its own `on
 `shortcut` is shown and nothing more. `ActionMenu` does not listen for the key; the caller binds it. The same
 holds for opening the menu by right-click or Shift+F10: the caller listens and sets `open`. The organisation chart
 does both.
+
+Passing `open` makes `ActionMenu` controlled: `open` and `onOpenChange` go straight to React Aria's menu trigger.
+The menu then opens and closes only as the caller changes `open`. A press on the trigger, Escape, a press outside
+or a chosen action calls `onOpenChange`, and the menu stays as it was until the caller updates `open` from it.
+With `open` left out, the menu keeps its own state.
 
 Neither component handles an empty list. With no actions or items the trigger is still drawn and opens an empty
 menu. Callers leave the menu out when they have nothing to list.
@@ -185,7 +193,7 @@ input method active.
 | Trigger of `ActionMenu` | `button` | `label`, through `aria-label`. It replaces any text inside `trigger`. | `aria-haspopup="true"`, `aria-expanded`, and `aria-controls` while open. |
 | Trigger of `MenuButton` | `button` | Its text, `label`. With an icon and no caret: `label`, through `aria-label`. | The same three. |
 | Popover | `dialog` | The trigger, through `aria-labelledby`. | React Aria gives a modal popover this role unless it holds a dialog of its own. |
-| Menu | `menu` | `label`, through `aria-label`. React Aria also points `aria-labelledby` at the trigger, which has the same name. | |
+| Menu | `menu` | The trigger's name, through `aria-labelledby`: React Aria points it at the trigger. The components also set `aria-label={label}` on the menu. `aria-labelledby` comes first when a name is computed, and the trigger's name is `label` too, so both say the same. | |
 | Item of `ActionMenu` | `menuitem` | The label, through `aria-labelledby`. | The shortcut is its description, through `aria-describedby`. |
 | Item of `MenuButton` | `menuitem` | Its content: the label, then the hint, then the reason. | `aria-disabled="true"` on an entry with `why`. |
 
@@ -233,8 +241,9 @@ What the gallery shows:
 | An icon-only `MenuButton` with two entries, and one with a single entry, inside the row actions | `apps/web/src/ui/record-actions/record-actions.gallery.tsx` |
 
 `ui/menu` has no gallery file of its own, so both menus are shown only where another component's entry uses them.
-These three entries do not show a `primary` or a caret `MenuButton`, a hint, or an unavailable entry with its
-reason. Other entries that render these components indirectly were not searched.
+These three are all there is: a trace of the imports of every `*.gallery.tsx` finds no other entry that renders
+either component. They do not show a `primary` or a caret `MenuButton`, a hint, or an unavailable entry with its
+reason.
 
 Tests: `ui/menu` has no unit test. The menus are driven in a browser through the screens that use them. Two
 examples: `apps/web/src/ui/page/page.browser.test.tsx` for an `ActionMenu` in a page head, and
@@ -245,6 +254,12 @@ No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` run
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
 skips itself on the served build, which is the one the workflows use. The command is in
 [the guide](../README.md#add-or-change-a-component).
+
+That scan opens neither an `ActionMenu` nor a `MenuButton`, so for these two components it covers the triggers in
+the gallery and no open menu. Another test in the same file opens the gallery's `AccountMenu` and runs axe over
+its menus, which carry the classes of `menu.module.css`. An open menu of these components is scanned elsewhere: a
+`MenuButton` by `e2e/mock/inbox-snooze.spec.ts`, as above, and the organisation chart's `ActionMenu`, opened by
+right-click, by `e2e/structure-order.spec.ts` and `e2e/structure-entity-order.spec.ts`.
 
 ## Phone behaviour at 390 px
 
@@ -329,7 +344,7 @@ secondary buttons and shows the same actions in an `ActionMenu`. That rule is in
 
 <!-- /ds:tokens -->
 
-`MenuButton`. The account menu in the top bar reads the same module.
+`MenuButton`. `AccountMenu` (`shell/top-bar/account-menu.tsx`) reads the same module.
 
 <!-- ds:tokens apps/web/src/ui/menu/menu.module.css -->
 
