@@ -183,7 +183,7 @@ query.
 
 - The card can shrink below the width of its content (`min-width: 0`), and so can the body.
 - The head wraps. Tools that do not fit beside the title move to a second line and start at its left edge.
-- The padding is the same at every width: 16 px at the sides of the head and the body.
+- The padding does not change with the width.
 - A `flush` body scrolls sideways inside the card, so a wide table does not push the page wide.
 - `SectionHead` stays on one line. Its title does not wrap and has no ellipsis, and the line has no wrap rule, so
   a title and tools wider than the line overflow it. The rule shrinks to nothing first.
@@ -196,7 +196,8 @@ The family has no target of its own. The size of a control in `tools` is that co
 - The family holds no text of its own and owns no message id.
 - The title, the meta, `label` and the `SectionHead` title come from the message catalog in `packages/i18n`,
   through the caller. The `en` catalog is the source and the `ko` catalog must define every id.
-- The title names the section. A count or a status that goes with it belongs in `meta`.
+- The title names the section. `meta` is the slot for a count or a status that goes with it. That is a
+  convention the code does not enforce, and a view exists that puts a count in the title.
 - `label` is a plain string. It is used only when there is no title, so write it as the title would read.
 - The loading block has no words. A card that must say what it is loading uses `Skeleton` with a label in its
   body.
