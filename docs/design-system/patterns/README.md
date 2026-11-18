@@ -39,7 +39,7 @@ A pattern lives in `apps/web/src/ui/patterns/`. The one that exists, `list-recor
 | `list-record.tsx` | The component, `ListRecord`. It arranges the regions, puts the head and the data regions behind the shared read boundary, and marks its root with `data-pattern="list-record"`. |
 | `list-record.module.css` | The layout of the frame, the head and the controls row. |
 | `list-record.fixture.tsx` | The pattern filled with synthetic content and no network. The review route `/_review/patterns/list-record` renders it inside the shell, and with `?state=refused` shows the refusal. The route exists only in a build made with `VITE_REVIEW_STATE_ROUTES=1`, which is how the mock browser suite builds the app. |
-| `list-record.test.tsx` | The in-process test. It renders the pattern to markup and asserts that every supplied region is placed once under one `main` and one `h1`, that a screen may leave regions out, that a refusal removes every data region and command, and that loading and failure keep the commands and their overlays mounted. |
+| `list-record.test.tsx` | The in-process test. It renders the pattern to markup and asserts that every supplied region except `facts` is placed once under one `main` and one `h1`, that a screen may leave regions out, that a refusal removes every data region and command, and that loading and failure keep the commands and their overlays mounted. |
 
 A new pattern is expected to arrive as the same kinds of file: a contract, the component, a fixture with a review
 route, and an in-process test.
