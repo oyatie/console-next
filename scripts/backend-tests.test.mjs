@@ -300,7 +300,8 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   const dbWorkflow = yaml.load(file);
   assert.deepEqual(Object.keys(dbWorkflow.on).sort(), ["pull_request", "push", "schedule"]);
   assert.doesNotMatch(file, /^\s*merge_group:/m);
-  assert.match(file, /merge_group.*queue timeout/);
+  assert.match(file, /merge_group.*database.*proof/);
+  assert.doesNotMatch(file, /60-minute queue/);
   assert.doesNotMatch(file, /CI-[A-Z]+/);
   assert.match(file, /push:\s*\n\s*branches: \[dev\]/);
   assert.match(file, /schedule:\s*\n\s*- cron:/);
@@ -330,68 +331,41 @@ test("the database workflow is tiered, pinned and limited to four duration shard
   const run = job.steps.find((step) => step.run?.includes("scripts/backend-tests.mjs --db"));
   assert.match(run.run, /--shard.*matrix\.shard.*\/4/);
   assert.match(run.run, /--timings/);
-  const restore = job.steps.find((step) => step.uses?.startsWith("actions/cache/restore@"));
-  const save = job.steps.find((step) => step.uses?.startsWith("actions/cache/save@"));
-  assert.deepEqual(restore.with.path.split("\n"), [
-    "~/.cargo/registry",
-    "backend/target/*/.fingerprint",
-    "backend/target/*/build",
-    "backend/target/*/deps",
-  ]);
-  assert.match(restore.with.key, /hashFiles\('backend\/rust-toolchain\.toml', 'backend\/Cargo\.lock', 'backend\/\*\*\/Cargo\.toml'\)/);
-  assert.equal(save.with.path, restore.with.path);
-  assert.match(save.if, /!cancelled\(\)/);
-  assert.match(save.if, /steps\.rust-cache\.outputs\.cache-hit != 'true'/);
-  assert.match(save.if, /github\.event_name == 'push'.*github\.ref == 'refs\/heads\/dev'.*matrix\.shard == 1/);
-  const budget = job.steps.find((step) => step.name === "Check Rust cache budget");
-  assert.equal(budget.env.RUST_CACHE_MAX_BYTES, "3221225472");
-  assert.equal(budget.if, "${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && matrix.shard == 1 && steps.rust-cache.outputs.cache-hit != 'true' }}");
-  assert.match(budget.run, /find.*\.cargo\/registry.*find backend\/target.*\.fingerprint.*build.*deps/s);
-  assert.match(budget.run, /tar.*zstd.*stat -c %s/s);
-  const overBudget = budget.run.match(/if \(\( cache_bytes > RUST_CACHE_MAX_BYTES \)\); then(?<body>[\s\S]*?)\n\s*else/)?.groups?.body;
-  assert.ok(overBudget);
-  assert.match(overBudget, /::warning::/);
-  assert.match(overBudget, /save=false/);
-  assert.doesNotMatch(overBudget, /(?:^|\n)\s*(?:exit(?:\s|$)|false\s*$)/m);
-  const budgetRoot = mkdtempSync(path.join(tmpdir(), "rust-cache-budget-"));
-  try {
-    for (const cacheBytes of [99, 100, 101]) {
-      const output = path.join(budgetRoot, String(cacheBytes));
-      const decision = spawnSync("bash", ["-e", "-c", budget.run.slice(budget.run.indexOf("if (("))], { encoding: "utf8", env: {
-        ...process.env, cache_bytes: String(cacheBytes), RUST_CACHE_MAX_BYTES: "100", GITHUB_OUTPUT: output,
-      } });
-      assert.equal(decision.status, 0, decision.stdout + decision.stderr);
-      assert.equal(readFileSync(output, "utf8"), `save=${cacheBytes <= 100}\n`);
-      if (cacheBytes > 100) assert.match(decision.stdout, /::warning::/);
-    }
-  } finally { rmSync(budgetRoot, { recursive: true, force: true }); }
-  assert.doesNotMatch(budget.run, /\btest\b.*RUST_CACHE_MAX_BYTES/);
-  assert.match(save.if, /steps\.cache-budget\.outputs\.save == 'true'/);
   assert.equal(dbWorkflow.jobs["db-test-timings"].needs, "db-tests");
   assert.equal(dbWorkflow.jobs["db-test-timings"].if, "${{ always() && needs.db-tests.result != 'cancelled' }}");
+  const steps = dbWorkflow.jobs["db-test-timings"].steps;
+  const timings = steps.find(step => step.with?.name === "db-test-timings");
+  assert.equal(timings.if, `\${{ !cancelled() && hashFiles('${timings.with.path}') != '' }}`);
   assert.deepEqual(dbWorkflow.permissions, {});
   const results = job.steps.find(step => step.with?.name === "db-test-results-${{ matrix.shard }}");
   assert.equal(results.if, "${{ !cancelled() }}");
   assert.equal(results.with["if-no-files-found"], "error");
-  const alert = dbWorkflow.jobs["alert-nightly"];
-  assert.deepEqual(alert.permissions, { contents: "read", issues: "write" });
-  assert.equal(alert.if, "${{ always() && github.event_name == 'schedule' && (needs.db-test-timing-source.result != 'success' || needs.db-tests.result != 'success' || needs.db-test-timings.result != 'success') }}");
-  assert.match(alert.steps.map((step) => step.run ?? "").join("\n"), /issues.*comments|comments.*issues/s);
   for (const workflowJob of Object.values(dbWorkflow.jobs)) for (const step of workflowJob.steps) {
     if (step.uses) assert.match(step.uses, /@[a-f0-9]{40}$/);
     assert.ok(!step["continue-on-error"]);
   }
 });
 
-test("database builds reclaim hosted disk before restoring Rust and report disk even on failure", () => {
+test("database results upload without archiving or restoring unused Rust caches", () => {
+  const workflow = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
+  const steps = workflow.jobs["db-tests"].steps;
+  assert.ok(!steps.some(step => step.uses?.startsWith("actions/cache")));
+  assert.ok(!steps.some(step => step.id === "cache-budget"));
+});
+
+test("database failures do not call the disabled Issues service", () => {
+  const workflow = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
+  assert.ok(!workflow.jobs["alert-nightly"]);
+  assert.ok(Object.values(workflow.jobs).every(job => !job.permissions?.issues));
+});
+
+test("database builds reclaim hosted disk before compilation and report disk even on failure", () => {
   const job = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8")).jobs["db-tests"];
   const cleanup = job.steps.find(step => step.name === "Reclaim runner disk");
   assert.ok(cleanup && !cleanup.if, "every database shard must reclaim disk");
-  const restoreIndex = job.steps.findIndex(step => step.id === "rust-cache");
   const runIndex = job.steps.findIndex(step => step.name === "Run duration shard");
-  assert.ok(job.steps.indexOf(cleanup) < restoreIndex && restoreIndex < runIndex);
+  assert.ok(job.steps.indexOf(cleanup) < runIndex);
   assert.equal(job.env.CARGO_PROFILE_TEST_DEBUG, "0");
-  for (const key of ["key", "restore-keys"]) assert.ok(job.steps[restoreIndex].with[key].includes("debug${{ env.CARGO_PROFILE_TEST_DEBUG }}-"), "old debug artifacts must not consume the reclaimed disk");
   const report = job.steps.find(step => step.name === "Report disk after database tests");
   assert.ok(report && job.steps.indexOf(report) > runIndex);
   assert.equal(report.if, "${{ !cancelled() }}");
@@ -516,40 +490,91 @@ test("timing artifacts come only from this workflow's own dev push and nightly r
   assert.ok(job.steps.findIndex(s => s.uses?.startsWith("actions/checkout@")) < job.steps.indexOf(step));
 });
 
-test("cache budget measures an archive containing registry and all restored target files", () => {
-  const dbWorkflow = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
-  const budget = dbWorkflow.jobs["db-tests"].steps.find(step => step.id === "cache-budget");
-  const root = mkdtempSync(path.join(tmpdir(), "cache-archive-"));
+test("database collection requires exactly the results directory and timings output", () => {
+  const script = fileURLToPath(new URL("./backend-tests.mjs", import.meta.url));
+  for (const args of [["results"], ["results", "timings.json", "junit.xml"]]) {
+    const result = spawnSync(process.execPath, [script, "--collect", ...args], { encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /usage: --collect/);
+  }
+});
+
+test("database reconciliation refuses a plan with zero tests", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "database-results-"));
   try {
-    const files = ["home/.cargo/registry/index/config.json", ...[".fingerprint", "build", "deps"].map(dir => `backend/target/debug/${dir}/artifact`)];
-    for (const file of files) {
-      mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-      writeFileSync(path.join(root, file), file.repeat(100));
+    const shard = path.join(root, "db-test-results-1");
+    mkdirSync(shard);
+    writeFileSync(path.join(shard, "plan.json"), JSON.stringify({ version: 1, tests: [], shards: [] }));
+    const output = path.join(root, "timings.json");
+    const result = spawnSync(process.execPath, [
+      fileURLToPath(new URL("./backend-tests.mjs", import.meta.url)), "--collect", root, output,
+    ], { encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /zero database tests/);
+    assert.ok(!existsSync(output));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("database reconciliation uses any available shard plan and refuses incomplete or conflicting evidence", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "database-results-"));
+  const ids = [["binary", "one"], ["binary", "two"]];
+  const plan = backendTests.planDatabaseTests(ids, {}, 2);
+  const workflow = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
+  const collect = workflow.jobs["db-test-timings"].steps.find(step => step.run?.includes("--collect"));
+  const run = () => spawnSync("bash", ["-e", "-o", "pipefail", "-c", collect.run], { cwd: root, encoding: "utf8" });
+  try {
+    mkdirSync(path.join(root, "scripts"));
+    for (const name of ["backend-tests.mjs", "check-executed-tests-cfg.mjs"])
+      writeFileSync(path.join(root, "scripts", name), readFileSync(new URL(name, import.meta.url)));
+    const results = path.join(root, ".cache/db-test-results");
+    for (const shard of [1, 2]) {
+      mkdirSync(path.join(results, `db-test-results-${shard}`), { recursive: true });
+      writeFileSync(path.join(results, `db-test-results-${shard}/junit-featured.xml`), junit([ids[shard - 1]]));
     }
-    mkdirSync(path.join(root, "bin"));
-    mkdirSync(path.join(root, "temp"));
-    // Keep tar's real input, with portable fixtures for compression and GNU stat.
-    writeFileSync(path.join(root, "bin/zstd"), `#!${process.execPath}
-const fs = require('node:fs');
-fs.writeFileSync(process.argv[process.argv.indexOf('-o') + 1], fs.readFileSync(0));
-`, { mode: 0o755 });
-    writeFileSync(path.join(root, "bin/stat"), `#!${process.execPath}
-console.log(require('node:fs').statSync(process.argv.at(-1)).size);
-`, { mode: 0o755 });
-    const output = path.join(root, "output"), summary = path.join(root, "summary");
-    const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", budget.run], { cwd: root, encoding: "utf8", env: {
-      ...process.env, HOME: path.join(root, "home"), RUNNER_TEMP: path.join(root, "temp"), PATH: `${root}/bin:${process.env.PATH}`,
-      GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary, ...budget.env,
-    } });
+    const planFile = path.join(results, "db-test-results-2/plan.json");
+    writeFileSync(planFile, JSON.stringify(plan));
+    let result = run();
     assert.equal(result.status, 0, result.stdout + result.stderr);
-    const archive = path.join(root, "temp/db-tests-rust-cache.tar.zst");
-    const entries = spawnSync("tar", ["-tf", archive], { encoding: "utf8" });
-    assert.equal(entries.status, 0, entries.stderr);
-    const names = entries.stdout.trim().split("\n");
-    assert.deepEqual(names.map(name => name.replace(/^.*\.cargo\//, "home/.cargo/")).sort(), files.sort());
-    assert.ok(readFileSync(archive).length > 0);
-    assert.match(readFileSync(summary, "utf8"), new RegExp(`candidate: ${readFileSync(archive).length} bytes`));
-    assert.equal(readFileSync(output, "utf8"), "save=true\n");
+    assert.match(result.stdout, /2 run, 2 passed, 0 failed/);
+    const output = path.join(root, ".cache/db-test-timings/timings.json");
+    assert.equal(Object.keys(JSON.parse(readFileSync(output)).tests).length, 2);
+    rmSync(output);
+    const firstReport = path.join(results, "db-test-results-1/junit-featured.xml");
+    rmSync(firstReport);
+    result = run();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /identities differ/);
+    assert.ok(!existsSync(output));
+    writeFileSync(firstReport, junit([ids[0]], "<failure/>", 1));
+    result = run();
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, /2 run, 1 passed, 1 failed/);
+    assert.deepEqual(Object.keys(JSON.parse(readFileSync(output)).tests), ids.map(id => JSON.stringify(id)));
+    rmSync(output);
+    writeFileSync(firstReport, junit([ids[0]]));
+    const firstPlan = path.join(results, "db-test-results-1/plan.json");
+    writeFileSync(firstPlan, JSON.stringify({ ...plan, tests: [...ids].reverse(), shards: [...plan.shards].reverse() }));
+    result = run();
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    rmSync(output);
+    writeFileSync(firstPlan, JSON.stringify({ ...plan, tests: [...ids, ["binary", "unplanned"]] }));
+    result = run();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /shard plans differ/);
+    assert.ok(!existsSync(output));
+    rmSync(firstPlan);
+    rmSync(planFile);
+    result = run();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /no database shard plan/);
+    assert.ok(!existsSync(output));
+    rmSync(firstReport);
+    rmSync(path.join(results, "db-test-results-2/junit-featured.xml"));
+    writeFileSync(planFile, JSON.stringify(plan));
+    result = run();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /identities differ/);
+    assert.ok(!existsSync(output));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
