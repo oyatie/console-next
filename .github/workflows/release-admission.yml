@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-name: release-admission
+name: Release admission
 on:
   push:
     branches: [dev]
@@ -15,6 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   plan:
+    name: Plan merged change admission
     if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -36,6 +37,7 @@ jobs:
           script: |
             return require('./.github/release-admission.cjs').plan(process.env.ADMISSION_BASE, context.sha);
   attest:
+    name: Attest merged change · ${{ matrix.merge }}
     needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 10
