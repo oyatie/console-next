@@ -20,6 +20,11 @@ pub(super) fn business_date(instant: OffsetDateTime) -> Date {
     instant.to_offset(offset!(+9)).date()
 }
 
+pub(super) fn postgres_instant(instant: OffsetDateTime) -> OffsetDateTime {
+    // SQLx truncates toward the PostgreSQL epoch; floor first to preserve pre-2000 business dates.
+    instant - time::Duration::nanoseconds(i64::from(instant.nanosecond() % 1_000))
+}
+
 /// §3.9.1 change freeze window — refuse an employment mutation whose effective date falls
 /// inside a closed payroll or accounting period. Runs in the caller's already-
 /// armed transaction, so the lookup is RLS-scoped to the caller's tenant and the

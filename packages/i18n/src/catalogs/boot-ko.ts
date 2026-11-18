@@ -97,6 +97,7 @@ export const bootKo: Record<BootMessageId, string> = {
   "common.oneTimeCode": "일회용 코드",
   "common.expiresAt": "{at} 만료",
   "auth.login.title": "로그인",
+  "auth.login.pending": "로그인 확인 중…",
   "auth.login.passkey": "패스키로 로그인",
   "auth.login.id": "아이디",
   "auth.login.idHint": "아이디@도메인 · 예: hong@acme",

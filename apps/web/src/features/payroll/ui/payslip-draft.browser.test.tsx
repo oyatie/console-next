@@ -4,10 +4,11 @@ import { resolve } from "node:path";
 import { expect as dom } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { commitLabel } from "../../../ui/composer/actions";
 import { screenAccess } from "../../../../../../e2e/mock/fixtures";
-import { draft } from "../../../../../../e2e/mock/employee-pay";
+import { draft, minimumWageDraft } from "../../../../../../e2e/mock/employee-pay";
 import type { Instrument } from "../present";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
 
@@ -23,7 +24,7 @@ beforeAll(async () => {
     plugins: [{ name: "payroll-register-test", resolveId: id => id === "/payroll-test.js" ? "\0payroll-test" : undefined,
       load: id => id === "\0payroll-test" ? `
         import React from 'react'; import {createRoot} from 'react-dom/client';
-        import {loadCatalog} from '@console/i18n';
+        import {loadCatalog,i18n} from '@console/i18n';
         import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
         import {createRouter,createRootRoute,createRoute,createMemoryHistory,RouterProvider,Outlet} from '@tanstack/react-router';
         import {EmployeePayLink} from '/apps/web/src/reference/payroll/ui/employee-pay-link.tsx';
@@ -35,6 +36,7 @@ beforeAll(async () => {
         const draft=${JSON.stringify(draft)}; const root=createRoot(document.getElementById('root'));
         window.draw=(mode)=>root.render(React.createElement(PayslipDraftView,{data:{...draft,issuable:true,gross_won:mode==='unsafe'?Number.MAX_SAFE_INTEGER+1:draft.gross_won,minimum_wage_check:{...draft.minimum_wage_check,instrument:{...draft.minimum_wage_check.instrument,url:mode==='held'?'':draft.minimum_wage_check.instrument.url},hourly_floor_won:mode==='unsafe'?1.5:draft.minimum_wage_check.hourly_floor_won,passes:mode==='below'?false:mode==='incomparable'?null:true},blockers:[...draft.blockers,...(mode==='below'?['최저임금 미달: raw backend sentence']:[])],contract:mode==='no-source'?{...draft.contract,source_note:''}:draft.contract,deductions:draft.deductions.map(row=>({...row,blocked_by:mode==='blocked'?'unresolved':null,share_instrument:mode==='held'?{...row.instrument,url:''}:null,instrument:{...row.instrument,url:mode==='held'?'':row.instrument.url}}))}}));
         window.drawSources=(share)=>root.render(React.createElement(PayslipDraftView,{data:{...draft,deductions:[{...draft.deductions[0],share_instrument:share}]}}));
+        window.drawMinimum=async(locale)=>{await loadCatalog(locale);i18n.set(locale);root.render(React.createElement(PayslipDraftView,{data:${JSON.stringify(minimumWageDraft(2027))}}));};
         window.drawLink=async(allowed,ready)=>{
           const client=new QueryClient({defaultOptions:{queries:{staleTime:Infinity}}});
           window.linkSettled=()=>client.getQueryCache().getAll().length===2&&client.getQueryCache().getAll().every(q=>q.state.status==='success');
@@ -112,6 +114,21 @@ test("blockers list retains attendance and cites the typed minimum-wage failure"
     await dom(page.getByText(/raw backend sentence/)).toHaveCount(0);
   }
 });
+test("the dated minimum-wage rate and notice render in both languages", async () => {
+  const draw = (locale: string) => page.evaluate(value => (window as unknown as { drawMinimum: (locale: string) => Promise<void> }).drawMinimum(value), locale);
+  try {
+    for (const locale of ["en", "ko"] as const) {
+      await loadCatalog(locale);
+      i18n.set(locale);
+      await draw(locale);
+      const minimum = page.getByRole("region", { name: t("payroll.employee.minimumWage"), exact: true });
+      for (const amount of [10700, 2236300]) await dom(minimum.getByText(t("payroll.employee.won", { amount: fmtNumber(amount) }), { exact: true })).toBeVisible();
+      await dom(minimum).toContainText(minimumWageDraft(2027).minimum_wage_check!.instrument.promulgation_ko);
+      await dom(page.getByText("MINIMUM_WAGE_BELOW_FLOOR")).toHaveCount(0);
+    }
+  } finally { i18n.set("ko"); await draw("ko"); }
+});
+
 test("held instruments render once per citation cell on mobile", async () => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.evaluate(() => (window as unknown as { draw: (mode: string) => void }).draw("held"));

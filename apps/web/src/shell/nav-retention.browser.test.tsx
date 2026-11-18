@@ -58,7 +58,7 @@ for (const engine of [browserEngine()]) test(`a cold modules fault reuses only t
   } finally { await browser.close(); await server.close(); }
 }, 60_000);
 
-test.each(["failed", "held"])("%s shell reads retain the answered rail across reloads for only this principal", async state => {
+test.each(["failed", "held"])("%s shell reads use remembered entries only after a fault for this principal", async state => {
   await loadCatalog("ko");
   const { server, browser, page } = await navFixture();
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -80,6 +80,11 @@ test.each(["failed", "held"])("%s shell reads retain the answered rail across re
     const requested = page.waitForRequest("**/api/v1/access/me");
     await page.reload();
     await requested;
+    if (state === "held") {
+      await element(rail.getByRole("status")).toBeVisible();
+      await element(rail.getByRole("link")).toHaveCount(0);
+      release();
+    }
     await element(rail.getByRole("link")).toHaveText(entries);
     expect(await rail.getByRole("link").evaluateAll(links => links.map(link => {
       const { y, height } = link.getBoundingClientRect(); return { y, height };
@@ -91,11 +96,42 @@ test.each(["failed", "held"])("%s shell reads retain the answered rail across re
       }
     });
     await page.reload();
-    await element(rail.getByRole("status")).toBeVisible();
+    await element(rail.locator('[role="status"], [role="alert"]')).toBeVisible();
     await element(rail.getByRole("link")).toHaveCount(0);
   } finally {
     release();
     await browser.close();
     await server.close();
   }
+}, 60_000);
+
+test.each(["access/me", "support-sessions/active", "users/me"])("a single %s fault restores the remembered rail", async path => {
+  await loadCatalog("ko");
+  const { server, browser, page } = await navFixture();
+  try {
+    await page.goto(server.resolvedUrls!.local[0]!);
+    const rail = page.getByRole("navigation", { name: t("shell.nav") });
+    await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
+    const entries = await rail.getByRole("link").allTextContents();
+    await page.route(`**/api/v1/${path}`, route => route.fulfill({ status: 503, json: { error: { code: "unavailable" } } }));
+    await page.reload();
+    await element(rail.getByRole("link")).toHaveText(entries);
+    await element(rail.getByRole("status", { name: t("common.loading") })).toHaveCount(0);
+  } finally { await browser.close(); await server.close(); }
+}, 60_000);
+
+for (const status of [403, 429]) test.each(["access/me", "users/me"])(`a refused %s ${status} read shows its normal error instead of a loading or saved rail`, async path => {
+  await loadCatalog("ko");
+  const { server, browser, page } = await navFixture();
+  try {
+    await page.goto(server.resolvedUrls!.local[0]!);
+    const rail = page.getByRole("navigation", { name: t("shell.nav") });
+    await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
+    await page.route(`**/api/v1/${path}`, route => route.fulfill({ status, json: { error: { code: "forbidden" } } }));
+    await page.reload();
+    await element(rail.getByRole("status")).toContainText(status === 403 ? t("common.failed.permanent", { status: "403" }) : t("common.read.failedReason"));
+    await element(rail.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
+    await element(rail.getByRole("status", { name: t("common.loading") })).toHaveCount(0);
+    await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toHaveCount(0);
+  } finally { await browser.close(); await server.close(); }
 }, 60_000);

@@ -6,7 +6,7 @@ use super::{EmploymentCommand, EmploymentError, PgEmploymentPort};
 use super::{change_window, lookups::ensure_attribute_refs};
 use console_ontology_canonical_domain::CanonicalPort;
 use sqlx::{Postgres, Transaction};
-use time::Date;
+use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
 pub(super) fn check_preflight(command: &EmploymentCommand) -> Result<(), EmploymentError> {
@@ -39,7 +39,16 @@ impl WriteChecks {
             ensure_attribute_refs(tx, org, attrs).await?;
             self.refs.insert((attrs.org_unit_id, attrs.job_position_id));
         }
-        let date = change_window::business_date(command.query.valid_from());
+        self.check_date(tx, org, command.query.valid_from()).await
+    }
+
+    pub(super) async fn check_date(
+        &mut self,
+        tx: &mut Transaction<'_, Postgres>,
+        org: Uuid,
+        valid_from: OffsetDateTime,
+    ) -> Result<(), EmploymentError> {
+        let date = change_window::business_date(valid_from);
         if !self.dates.contains(&date) {
             change_window::assert_employment_change_window_open(tx, org, date).await?;
             self.dates.insert(date);

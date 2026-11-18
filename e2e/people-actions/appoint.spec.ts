@@ -1,3 +1,4 @@
+import type { components } from "@console/api/schema";
 import { commitLabel } from "../../apps/web/src/ui/composer/actions";
 import { loadCatalog } from "@console/i18n";
 import { expect, test } from "@playwright/test";
@@ -24,6 +25,8 @@ test("appoint: the role list is filled from the sheet by the one who keeps it; t
   const api = apiOf(admin, bearerOf(admin));
   await registerEmployee(admin, { name: "김임면", number: "AP-0001" });
   const path = new URL(admin.url()).pathname;
+  const lifecyclePath = `/employees/${path.split("/").pop()}/lifecycle-events`;
+  const beforeAppointment = await (await api(lifecyclePath)).json() as components["schemas"]["EmployeeLifecycleEventPage"];
   expect((await titles(api)).items).toHaveLength(0);
 
   // The one who keeps them (the ops account): 「+ 직책 추가」 adds 팀장 to the company's list and chooses it.
@@ -42,8 +45,15 @@ test("appoint: the role list is filled from the sheet by the one who keeps it; t
   await expect(admin.getByRole("region", { name: "인사 이력" })).toContainText("직책·직무를 발령했습니다");
   // The appointment holds the 팀장 just added (the history line does not name it yet: EMP-A's history view).
   const [lead] = (await titles(api)).items.filter((x) => x.label === "팀장");
-  const events = ((await (await api(`/employees/${path.split("/").pop()}/lifecycle-events`)).json()) as { items: { event_type: string; to_position_kind_id?: string }[] }).items;
+  const afterAppointment = await (await api(lifecyclePath)).json() as components["schemas"]["EmployeeLifecycleEventPage"];
+  expect(afterAppointment.head_version).toBe(beforeAppointment.head_version + 1);
+  const events = afterAppointment.items;
   expect(events.find((e) => e.event_type === "APPOINT")?.to_position_kind_id).toBe(lead!.id);
+  const cases = await (await api(`/employees/${path.split("/").pop()}/lifecycle-cases`)).json() as components["schemas"]["LifecycleCase"][];
+  const appointment = events.find((event) => event.event_type === "APPOINT")!;
+  const recorded = cases.filter((value) => value.kind === "APPOINT" && value.trigger_id === appointment.id);
+  expect(recorded).toHaveLength(1);
+  expect(recorded[0]!.items.find((item) => item.item_key === "R1")).toMatchObject({ status: "DONE_OBSERVED", observed_ref: { id: appointment.id } });
 
   // The server's own line, each followed by a read that shows nothing was added.
   const before = (await titles(api)).items.length;
@@ -61,14 +71,16 @@ test("appoint: the role list is filled from the sheet by the one who keeps it; t
   }
   expect((await titles(api)).items.length).toBe(before);
 
-  // Someone the server does not let keep the lists (can_manage false, as it answers them; a fresh load): the list
-  // says who keeps it and offers no add.
+  // Someone the server does not let keep the lists can still choose an existing role, with no add control.
   await admin.route("**/api/v1/job-titles", async (r) => {
     const res = await r.fetch();
     await r.fulfill({ response: res, json: { ...(await res.json()), can_manage: false } });
   });
   await admin.reload();
   await go(admin, `${path}?act=APPOINT`);
-  await expect(s.getByRole("radiogroup", { name: /^직책/ })).toContainText("목록은 전체 범위의 조직 권한이 있는 사람이 관리합니다");
+  const existingRole = s.getByRole("radiogroup", { name: /^직책/ }).getByRole("radio", { name: lead!.label, exact: true });
+  await expect(existingRole).toBeEnabled();
+  await existingRole.locator("xpath=ancestor::label[1]").click();
+  await expect(existingRole).toBeChecked();
   await expect(s.getByRole("button", { name: /추가$/ })).toHaveCount(0);
 });

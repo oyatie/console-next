@@ -2,7 +2,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { expect, test } from "vitest";
-import { THEME_KEY, THEMES } from "./prefs";
+import { EXPERIENCE_KEY, THEME_KEY, THEMES } from "./prefs";
+import { experiences } from "../experience/table";
 
 const SRC = readFileSync(new URL("../../public/prefs.js", import.meta.url), "utf8");
 type Published = Record<"theme" | "experience", { key: string; values: string[] }>;
@@ -33,6 +34,7 @@ function boot(stored: Record<string, string> | "blocked" | "unreadable", source 
   runInNewContext(source, context);
   return { attributes, published: window.consolePrefs! };
 }
+
 test("a stored theme is on <html> as soon as the script has run, whatever the system prefers", () => {
   expect(boot({ "console.theme": "dark" }, SRC, "light").attributes).toEqual({ "data-theme": "dark" });
   expect(boot({ "console.theme": "light" }, SRC, "dark").attributes).toEqual({ "data-theme": "light" });
@@ -65,7 +67,7 @@ test("a browser that cannot say what the system prefers sets a stored theme and 
   }
 });
 
-for (const experience of ["warm-clear", "control-room"]) {
+for (const experience of ["baseline", "control-room", "warm-clear"]) {
   test(`${experience} applies the stored choice before the bundle in either theme`, () => {
     for (const theme of THEMES) {
       expect(boot({ "console.experience": experience, "console.theme": theme }).attributes).toEqual({ "data-theme": theme, "data-experience": experience });
@@ -74,7 +76,7 @@ for (const experience of ["warm-clear", "control-room"]) {
 }
 
 test("an unknown experience never applies", () => {
-  for (const value of ["calm", "baseline", "light", "dark", "Warm-clear", "control-room "]) {
+  for (const value of ["calm", "light", "dark", "Warm-clear", "control-room "]) {
     expect(boot({ "console.experience": value, "console.theme": "dark" }).attributes, value).toEqual({ "data-theme": "dark" });
   }
 });
@@ -84,7 +86,7 @@ test("the bundle uses the key and the themes the boot script applies", () => {
 });
 
 test("only the supported experiences are registered", () => {
-  expect(boot({}).published.experience).toEqual({ key: "console.experience", values: ["warm-clear", "control-room"] });
+  expect(boot({}).published.experience).toEqual({ key: EXPERIENCE_KEY, values: experiences.map(experience => experience.id) });
 });
 
 test("the known experiences are exactly the ones with a token file", () => {
@@ -92,7 +94,7 @@ test("the known experiences are exactly the ones with a token file", () => {
   const dir = new URL("../../../../packages/tokens/experiences/", import.meta.url);
   expect(existsSync(new URL("../tokens.css", dir)), "the folder is looked for beside the base token file").toBe(true);
   const files = existsSync(dir) ? readdirSync(dir).filter((name) => name.endsWith(".css")).map((name) => name.slice(0, -".css".length)) : [];
-  expect([...boot({}).published.experience.values].sort()).toEqual(files.sort());
+  expect(boot({}).published.experience.values.filter(id => id !== "baseline").sort()).toEqual(files.sort());
 });
 
 test("the boot script blocks the parser ahead of the entry, so it has run before anything can paint", () => {
