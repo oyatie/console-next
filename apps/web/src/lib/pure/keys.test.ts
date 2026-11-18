@@ -60,7 +60,8 @@ const OWN_LISTENERS = [
   // Not a shortcut: any key cancels a focus move that is still waiting.
   "lib/react/announce.ts",
   "lib/react/use-keys.ts",
-  "shell/shell.tsx",
+  "shell/baseline/shell.tsx",
+  "shell/frame/shell-frame.tsx",
   "ui/action-grid/action-grid.tsx",
   "ui/composer/composer.tsx",
   "ui/flexible-columns/flexible-columns.tsx",

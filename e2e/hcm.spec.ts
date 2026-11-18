@@ -47,7 +47,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await expectAccessible(admin, "register employee");
   // The full form at phone width: its rows wrap instead of scrolling sideways.
   await admin.setViewportSize({ width: 390, height: 844 });
-  expect(await admin.evaluate(() => [document.scrollingElement!.scrollWidth - innerWidth, document.querySelector(".main")!.scrollWidth - document.querySelector(".main")!.clientWidth])).toEqual([0, 0]);
+  expect(await admin.evaluate(() => [document.scrollingElement!.scrollWidth - innerWidth, document.querySelector("#main")!.scrollWidth - document.querySelector("#main")!.clientWidth])).toEqual([0, 0]);
   await admin.setViewportSize({ width: 1280, height: 720 });
   await forgetResize(admin);
   // The employment type and hire date are chosen, never defaulted (the unit came with the link).

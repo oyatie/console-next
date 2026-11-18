@@ -9,7 +9,7 @@
   var prefs = {
     theme: { key: "console.theme", values: ["light", "dark"] },
     // An experience becomes known by adding its id to this list; a test holds the list to the experience token files.
-    experience: { key: "console.experience", values: [] },
+    experience: { key: "console.experience", values: ["baseline"] },
   };
   // With no stored theme the shell follows the system (src/shell/theme.ts), so the first paint does too.
   function system() {
