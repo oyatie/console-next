@@ -67,8 +67,8 @@ test.each(ENTRIES.flatMap(entry => ["Escape", "Tab"].flatMap(key => COMPOSING.ma
     await open(which);
     const box = page.getByRole("textbox");
     await box.focus();
-    // The browser's own action is not cancelled either: a composing Tab still commits the syllable and moves on.
-    expect(await send(box, { key, ...state })).toBe(true);
+    // The Tab's own action stays with the browser, which commits the syllable and moves on; the Escape's is cancelled.
+    expect(await send(box, { key, ...state })).toBe(key === "Tab");
     await element(page.locator("#heard")).toHaveText("");
     await element(box).toHaveValue(value);
     // A dispatched event carries no default action, so this shows only that no handler moved focus.
@@ -86,6 +86,17 @@ test("a real Escape and Tab while Chromium composes a syllable reach no handler;
   await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
   await element(page.getByRole("button", { name: "Next" })).toBeFocused();
+  await element(box).toHaveValue("abc");
+  await element(page.locator("#heard")).toHaveText("");
+});
+
+test("a real Escape while Chromium composes a syllable in a search box does not clear the box", async () => {
+  await open("search");
+  const box = page.getByRole("searchbox");
+  await box.press("End");
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.imeSetComposition", { text: "c", selectionStart: 1, selectionEnd: 1 });
+  await page.keyboard.press("Escape");
   await element(box).toHaveValue("abc");
   await element(page.locator("#heard")).toHaveText("");
 });

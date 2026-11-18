@@ -13,6 +13,7 @@ import { KeyMap } from "./palette/key-map";
 import { Palette } from "./palette/palette";
 import { PersonDayGrid } from "./person-day-grid/person-day-grid";
 import { ReasonField } from "./reason/reason-field";
+import { SearchField } from "./search/search-field";
 import { Sheet } from "./sheet/sheet";
 import "../app.css";
 
@@ -49,6 +50,7 @@ function Entry() {
     <main>
       <div ref={box} role="presentation" onKeyDown={hear("above")}>
         {which === "field" && <TextInput aria-label="Name" value={text} onChange={e => setText(e.target.value)} onKeyDown={keys} />}
+        {which === "search" && <SearchField label="Name" value={text} onChange={setText} onKeyDown={keys} />}
         {which === "area" && <TextArea aria-label="Name" value={text} onChange={e => setText(e.target.value)} onKeyDown={keys} />}
         {which === "masked" && <MaskedField label="Name" required format={{ max: 10, display: d => d }} value={digits} onChange={setDigits} />}
         {which === "reason" && <ReasonField label="Why" codes={[]} other="other" value={{ code: null, memo: text }} onChange={r => setText(r.memo)} memoMax={100} />}
@@ -97,7 +99,7 @@ export function Fixture() {
       foot={<><output id="acted">{acted}</output><output id="closed">{closed}</output></>}
     />
   );
-  if (which !== "grid") return ["field", "area", "masked", "reason"].includes(which) ? <Entry /> : <Site />;
+  if (which !== "grid") return ["field", "search", "area", "masked", "reason"].includes(which) ? <Entry /> : <Site />;
   return (
     <main>
       <div role="presentation" onKeyDown={e => escapeOrTab(e) && setAbove(n => n + 1)}>

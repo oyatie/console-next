@@ -13,12 +13,15 @@ test("the input method owns a key pressed while composing, the Enter that ends a
 });
 
 test("an Escape or Tab the input method owns stops at the field; its Enter and a plain Escape or Tab go on", () => {
+  const prevented: string[] = [];
   const stopped = (e: { key: string; keyCode?: number; isComposing?: boolean }) => {
     let hit = false;
-    leaveImeKey({ ...e, stopPropagation: () => { hit = true; } });
+    leaveImeKey({ ...e, stopPropagation: () => { hit = true; }, preventDefault: () => prevented.push(e.key) });
     return hit;
   };
   expect(["Escape", "Tab"].flatMap(key => [stopped({ key, isComposing: true }), stopped({ key, keyCode: 229 })])).toEqual([true, true, true, true]);
   // A composing Enter is not this handler's: the text input stops that one itself.
   expect([stopped({ key: "Enter", isComposing: true }), stopped({ key: "Escape", keyCode: 27 }), stopped({ key: "Tab", keyCode: 9 })]).toEqual([false, false, false]);
+  // Only the Escape loses its default action (a search box clears on it); the Tab still commits the syllable and moves on.
+  expect(prevented).toEqual(["Escape", "Escape"]);
 });

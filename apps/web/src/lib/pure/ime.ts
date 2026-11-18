@@ -10,8 +10,11 @@ export const isImeKey = (e: { key?: string; keyCode?: number; isComposing?: bool
 /**
  * A text-entry element's capture-phase keydown handler. An Escape or Tab pressed while a syllable is composing is the
  * input method's: stopped here, at React's root listener, it reaches no handler on the field or above it, native
- * listeners included. Its default action stays, so the Tab commits the syllable and moves on as in a native field.
+ * listeners included. The Tab keeps its default action, so it commits the syllable and moves on as in a native field
+ * (cancelled, every Tab after Korean text would take two presses). The Escape loses its: a search box clears on it.
  */
-export const leaveImeKey = (e: Parameters<typeof isImeKey>[0] & { stopPropagation: () => void }) => {
-  if ((e.key === "Escape" || e.key === "Tab") && isImeKey(e)) e.stopPropagation();
+export const leaveImeKey = (e: Parameters<typeof isImeKey>[0] & { stopPropagation: () => void; preventDefault: () => void }) => {
+  if ((e.key !== "Escape" && e.key !== "Tab") || !isImeKey(e)) return;
+  e.stopPropagation();
+  if (e.key === "Escape") e.preventDefault();
 };
