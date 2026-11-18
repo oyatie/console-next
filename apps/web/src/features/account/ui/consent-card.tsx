@@ -20,8 +20,8 @@ export function ConsentCard() {
   }</QueryState>;
   return (
     <Card title={t("account.consent.title")}>
-      <KeyValue items={[{ key: "privacy", label, value: q.isError
-        ? <details><summary>{t("common.loadFailed.title")}</summary>{status}</details>
+      <KeyValue items={[{ key: "privacy", label, value: q.isLoadingError
+        ? <details><summary className="t-xs">{t("common.loadFailed.title")}</summary>{status}</details>
         : status }]} />
       <details>
         <summary>{label}{notice?.published_on ? t("account.consent.edition", { date: fmtDate(notice.published_on) }) : ""} · {t("auth.setup.consent.disclosure")}</summary>

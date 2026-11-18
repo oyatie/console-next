@@ -18,6 +18,13 @@ for (const path of ["/", "/inbox"]) test(`the selected column on ${path} takes f
     await held.promise;
     return { status: 200, json: checklist };
   });
+  await page.addInitScript(() => {
+    const focus = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function(options) {
+      if (this.closest("[data-phase-pending] [data-flexible-columns] aside")) this.dataset.focusedWhileHeld = "";
+      focus.call(this, options);
+    };
+  });
   const start = Date.now();
   await page.clock.install({ time: start });
   await page.clock.pauseAt(start + 60_000);
@@ -26,6 +33,7 @@ for (const path of ["/", "/inbox"]) test(`the selected column on ${path} takes f
     await page.goto(`${path}?${path === "/inbox" ? "tab=turn&" : ""}sel=${encodeURIComponent(id)}`);
     await advanceUntil(page, page.locator("[data-phase-pending] [data-flexible-columns] aside").waitFor({ state: "attached" }));
     await page.clock.runFor(32);
+    await expect(page.locator("[data-focused-while-held]")).toHaveCount(0);
     held.resolve();
     await page.clock.resume();
     const pane = page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true });

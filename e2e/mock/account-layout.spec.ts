@@ -40,13 +40,14 @@ for (const read of ["/api/v1/auth/privacy-consent/status", "/api/v1/onboarding/t
         const top = (await privacy.boundingBox())!.y;
         const answered = page.waitForResponse(response => new URL(response.url()).pathname === read);
         held.resolve();
-        await (await answered).finished();
+        const response = await answered;
+        await response.finished();
         await expect(privacy).toBeVisible();
         await expect(main.getByRole("heading", { name: t("account.access.title"), exact: true })).toBeVisible();
         if (status === 503 && read.endsWith("/status")) await expect(consent.locator("dd summary")).toHaveText(t("common.loadFailed.title"));
         if (status === 200) {
           if (read.endsWith("/status")) await expect(consent.locator("dd")).not.toHaveText(t("common.loading"));
-          else await expect(consent.locator("summary").last()).toContainText("개인정보 처리 안내");
+          else await expect(consent.locator("summary").last()).toContainText((await response.json()).privacy.title);
         }
         expect((await privacy.boundingBox())!.y).toBe(top);
         await expectStable(page, `account/${read}/${status}/${width}`);
