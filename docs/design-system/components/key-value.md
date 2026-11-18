@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # KeyValue
 
-`KeyValue` is a list of facts as label and value pairs, with at most one action on each fact. `StatRow`, in the
-same module, is a row of counts.
+`KeyValue` is a list of facts as label and value pairs, with room for one action at the end of each fact.
+`StatRow`, in the same module, is a row of counts.
 
 Both live in `apps/web/src/ui/key-value/key-value.tsx`, which also exports the type `KeyValueItem`.
 
@@ -221,8 +221,10 @@ Neither component has a target of its own. The size of an action is that control
   text.
 - Labels, values, `label`, `empty`, `error` and the labels of actions come from the message catalog in
   `packages/i18n`, through the caller. The `en` catalog is the source and the `ko` catalog must define every id.
-- A value is never blank. A fact with no value shows the caller's dash and its reason.
-- A fact has at most one action. Name the action with the fact, so that two rows do not carry the same name.
+- The rule is that a value is never blank: a fact with no value shows the caller's dash and its reason. The code
+  does not enforce it, and a call site exists that passes `null` as a value.
+- The rule is one action for each fact. `action` is a node, so the code does not enforce that either. Name the
+  action with the fact, so that two rows do not carry the same name.
 - `label` is a plain string that names the list.
 - `error` says what failed, in words. Its look is a colour and nothing else.
 - Format a number before passing it. Both components print a value as given.
