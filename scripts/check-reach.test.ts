@@ -207,17 +207,60 @@ test("privacy self-service does not promote dormant compliance operations into t
 });
 
 
+function releaseFixture(root: string) {
+  for (const dir of ["scripts/quality", "backend/app/src", "third-party"]) mkdirSync(path.join(root, dir), { recursive: true });
+  for (const file of ["check-reach.mjs", "quality/base.mjs", "quality/ratchet.mjs"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
+  symlinkSync(path.resolve("node_modules"), path.join(root, "node_modules"), "dir");
+  writeFileSync(path.join(root, "third-party/.keep"), "");
+  writeFileSync(path.join(root, "rustfmt.toml"), 'edition = "2021"\n');
+  writeFileSync(path.join(root, "backend/Cargo.toml"), '[workspace]\nmembers = ["app", "crates/hr/rest", "crates/payroll/rest"]\nresolver = "2"\n');
+  const app = '[package]\nname = "console-app"\nversion = "0.1.0"\nedition = "2021"\n[features]\ndefault = ["mvp"]\nmvp = []\npayroll = ["dep:console-payroll-rest"]\n[dependencies]\nconsole-hr-rest = { path = "../crates/hr/rest" }\nconsole-payroll-rest = { path = "../crates/payroll/rest", optional = true }\n';
+  writeFileSync(path.join(root, "backend/app/Cargo.toml"), app);
+  writeFileSync(path.join(root, "backend/app/src/main.rs"), "fn main() {}\n");
+  for (const module of ["hr", "payroll"]) {
+    const rest = path.join(root, `backend/crates/${module}/rest`);
+    mkdirSync(path.join(rest, "src"), { recursive: true });
+    mkdirSync(path.join(rest, "openapi/paths"), { recursive: true });
+    writeFileSync(path.join(rest, "Cargo.toml"), `[package]\nname = "console-${module}-rest"\nversion = "0.1.0"\nedition = "2021"\n`);
+    writeFileSync(path.join(rest, "src/lib.rs"), "// SPDX-License-Identifier: LicenseRef-Proprietary\n");
+    writeFileSync(path.join(rest, `openapi/paths/api__v1__${module}__probe.get.yaml`), "{}");
+  }
+  mkdirSync(path.join(root, "backend/openapi"), { recursive: true });
+  writeFileSync(path.join(root, "backend/openapi/openapi.yaml"), JSON.stringify({ paths: { "/api/v1/hr/probe": { get: {} }, "/api/v1/payroll/probe": { get: {} } } }));
+  return app;
+}
+
+function cliFixture(root: string) {
+  releaseFixture(root);
+  const put = (file: string, contents: string) => {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), contents);
+  };
+  const records = [{ record: reach[0]!.record, op: "end", lane: "unit: ra-x" }];
+  put("scripts/reach-baseline.json", JSON.stringify({ records, operations: { "GET /api/v1/hr/probe": { ...allowance, when: "mvp" } } }));
+  put("docs/product/record-lifecycle.json", JSON.stringify(lifecycle));
+  put("docs/product/capability-dispositions.md", "| `GET /api/v1/payroll/probe` | hidden | internal | deferred |");
+  put("e2e/record-actions/reach.ts", `export const REACH = ${JSON.stringify(reach.slice(0, 2))};`);
+  put("e2e/record-actions/facts.ts", "export const FACTS = [], UNTRACKED = [];");
+  put("registry/reach-units.json", JSON.stringify([...tree.units]));
+  put("apps/web/src/features/entity/present.ts", "");
+  mkdirSync(path.join(root, "apps/web/public"), { recursive: true });
+  mkdirSync(path.join(root, "packages/i18n/src/catalogs/ko"), { recursive: true });
+  return records;
+}
+
 test("operations: the CLI rejects a removed release-operation allowance against a committed base", () => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-cli-")));
   try {
-    for (const dir of ["scripts/quality", "apps/web"]) mkdirSync(path.join(root, dir), { recursive: true });
-    for (const file of ["check-reach.mjs", "backlog-claims.mjs", "backlog-sources.mjs", "quality/base.mjs", "quality/ratchet.mjs", "reach-baseline.json"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
-    for (const dir of ["node_modules", "backend", "docs", "e2e", "packages", "registry", "apps/web/src", "apps/web/public"]) symlinkSync(path.resolve(dir), path.join(root, dir), "dir");
-    for (const args of [["init"], ["add", "scripts/reach-baseline.json"], ["-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: seed reach baseline"]]) {
+    cliFixture(root);
+    for (const args of [["init"], ["add", "scripts/reach-baseline.json", "backend", "apps", "third-party"], ["-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: seed reach baseline"]]) {
       const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
       expect(result.status, result.stderr).toBe(0);
     }
-    const run = () => spawnSync("node", [path.join(root, "scripts/check-reach.mjs"), "--base", "HEAD"], { encoding: "utf8" });
+    const trace = path.join(root, "git-trace.jsonl");
+    const run = () => spawnSync("node", [path.join(root, "scripts/check-reach.mjs"), "--base", "HEAD"], {
+      encoding: "utf8", env: { ...process.env, GIT_TRACE2_EVENT: trace },
+    });
     const clean = run();
     expect(clean.status, clean.stderr).toBe(0);
     const data = JSON.parse(readFileSync(path.join(root, "scripts/reach-baseline.json"), "utf8"));
@@ -228,12 +271,17 @@ test("operations: the CLI rejects a removed release-operation allowance against 
     const planted = run();
     expect(planted.status, planted.stderr).toBe(1);
     expect(planted.stderr).toContain(`operation-unreachable: ${op}`);
+    const commands = readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line).name);
+    expect(commands).not.toContain("archive");
     data.operations[op] = allowance;
     data.operations[plantedOp] = allowance;
+    // A newly allowed dormant operation still needs evidence from the base release.
+    data.operations["GET /api/v1/payroll/probe"] = allowance;
     writeFileSync(path.join(root, "scripts/reach-baseline.json"), JSON.stringify(data));
     const grown = run();
     expect(grown.status, grown.stderr).toBe(1);
     expect(grown.stderr).toContain(`operations: ${plantedOp}: baseline must only shrink`);
+    expect(grown.stderr).not.toContain("operations: GET /api/v1/payroll/probe: baseline must only shrink");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -242,15 +290,8 @@ test("operations: the CLI rejects a removed release-operation allowance against 
 test("operations: the --lower CLI persists removal of newly called debt without dropping record gaps", () => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-cli-")));
   try {
-    for (const dir of ["scripts/quality", "apps/web/public"]) mkdirSync(path.join(root, dir), { recursive: true });
-    for (const file of ["check-reach.mjs", "backlog-claims.mjs", "backlog-sources.mjs", "quality/base.mjs", "quality/ratchet.mjs"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
-    for (const dir of ["node_modules", "backend", "docs", "e2e", "packages", "registry"]) symlinkSync(path.resolve(dir), path.join(root, dir), "dir");
-    symlinkSync(path.resolve("apps/web/src"), path.join(root, "apps/web/src"), "dir");
-    const data = JSON.parse(readFileSync("scripts/reach-baseline.json", "utf8"));
-    const records = Array.isArray(data) ? data : data.records;
-    const op = "GET /api/v1/attendance/me/week52";
-    writeFileSync(path.join(root, "scripts/reach-baseline.json"), JSON.stringify({ records, operations: { [op]: allowance } }));
-    writeFileSync(path.join(root, "apps/web/public/probe.js"), 'fetch("/api/v1/attendance/me/week52")');
+    const records = cliFixture(root);
+    writeFileSync(path.join(root, "apps/web/public/probe.js"), 'fetch("/api/v1/hr/probe")');
     const result = spawnSync("node", [path.join(root, "scripts/check-reach.mjs"), "--lower"], { encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);
     expect(JSON.parse(readFileSync(path.join(root, "scripts/reach-baseline.json"), "utf8"))).toEqual({ records, operations: {} });
@@ -271,25 +312,7 @@ test("operations: initial seeding is limited to uncalled operations already pres
 test("operations: promotion seeds only existing uncalled APIs excluded from the base release", () => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-promotion-")));
   try {
-    for (const dir of ["scripts/quality", "backend/app/src", "third-party"]) mkdirSync(path.join(root, dir), { recursive: true });
-    for (const file of ["check-reach.mjs", "quality/base.mjs", "quality/ratchet.mjs"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
-    symlinkSync(path.resolve("node_modules"), path.join(root, "node_modules"), "dir");
-    writeFileSync(path.join(root, "third-party/.keep"), "");
-    writeFileSync(path.join(root, "rustfmt.toml"), 'edition = "2021"\n');
-    writeFileSync(path.join(root, "backend/Cargo.toml"), '[workspace]\nmembers = ["app", "crates/hr/rest", "crates/payroll/rest"]\nresolver = "2"\n');
-    const app = '[package]\nname = "console-app"\nversion = "0.1.0"\nedition = "2021"\n[features]\ndefault = ["mvp"]\nmvp = []\npayroll = ["dep:console-payroll-rest"]\n[dependencies]\nconsole-hr-rest = { path = "../crates/hr/rest" }\nconsole-payroll-rest = { path = "../crates/payroll/rest", optional = true }\n';
-    writeFileSync(path.join(root, "backend/app/Cargo.toml"), app);
-    writeFileSync(path.join(root, "backend/app/src/main.rs"), "fn main() {}\n");
-    for (const module of ["hr", "payroll"]) {
-      const rest = path.join(root, `backend/crates/${module}/rest`);
-      mkdirSync(path.join(rest, "src"), { recursive: true });
-      mkdirSync(path.join(rest, "openapi/paths"), { recursive: true });
-      writeFileSync(path.join(rest, "Cargo.toml"), `[package]\nname = "console-${module}-rest"\nversion = "0.1.0"\nedition = "2021"\n`);
-      writeFileSync(path.join(rest, "src/lib.rs"), "// SPDX-License-Identifier: LicenseRef-Proprietary\n");
-      writeFileSync(path.join(rest, `openapi/paths/api__v1__${module}__probe.get.yaml`), "{}");
-    }
-    mkdirSync(path.join(root, "backend/openapi"), { recursive: true });
-    writeFileSync(path.join(root, "backend/openapi/openapi.yaml"), JSON.stringify({ paths: { "/api/v1/hr/probe": { get: {} }, "/api/v1/payroll/probe": { get: {} } } }));
+    const app = releaseFixture(root);
     const git = (...args: string[]) => {
       const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
       expect(result.status, result.stderr).toBe(0);
