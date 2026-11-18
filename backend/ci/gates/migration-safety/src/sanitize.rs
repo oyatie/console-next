@@ -107,3 +107,12 @@ pub(super) fn sanitize_sql(content: &str, mask_bodies: bool) -> String {
     }
     output
 }
+
+pub(super) fn normalize_identifier(identifier: &str) -> String {
+    identifier
+        .trim_matches(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_')
+        .rsplit('.')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase()
+}

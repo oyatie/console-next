@@ -1,6 +1,8 @@
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
-//! Manager attendance branch-scope contract. This file needs its generated
-//! Buck target before it can run independently.
+//! Manager attendance and home-branch access contracts.
+
+#[path = "hr_attendance_manager_scope/home_branch.rs"]
+mod home_branch;
 
 use axum::body::{Body, to_bytes};
 use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
@@ -8,6 +10,7 @@ use console_inbox_adapter_postgres::PgInboxStore;
 use console_kernel_core::{OrgId, TraceContext, UserId};
 use console_leave_adapter_postgres::PgLeaveStore;
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
+use console_platform_test_support::runtime_role_pool;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::Generate;
@@ -356,10 +359,6 @@ async fn bearer(pool: &sqlx::PgPool, keys: &Keys, user: UserId, role: &str) -> S
         Vec::new(),
     )
     .await
-}
-
-async fn runtime_role_pool(owner_pool: &PgPool) -> PgPool {
-    scoped_role_pool(owner_pool, "console_rt").await
 }
 
 async fn leave_command_role_pool(owner_pool: &PgPool) -> PgPool {

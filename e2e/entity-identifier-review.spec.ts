@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { FORMATS } from "../apps/web/src/lib/pure/formats";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
-import { grantAccess } from "./access-flows";
+import { confirmGrantNotice, grantAccess, openGrantNotice } from "./access-flows";
 import { firstSignIn, go, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { letGrantsAge } from "./second-person-fixture";
@@ -12,6 +12,7 @@ import { REGISTRATION_FIXTURES, SETUP_DEPARTMENT, startOperations, tenantInSetup
 test.beforeAll(() => loadCatalog("ko"));
 
 const inbox = (page: Page) => page.getByRole("region", { name: "업무함", exact: true });
+const heldNotice = (page: Page) => page.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
 const register = (page: Page) => page.getByRole("region", { name: "번호 정정 · 사후 검토", exact: true });
 const detail = (page: Page) => page.getByRole("dialog", { name: "번호 정정 요청", exact: true });
 
@@ -72,7 +73,14 @@ test("identifier correction: a second person approves, requester applies, and a 
   await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
   const manager = await firstSignIn(browser, await takeCode(admin));
   await startOperations(admin);
+  await go(reviewer, "/inbox?tab=reference");
   await grantAccess(admin, "김검토", "full");
+  const held = heldNotice(reviewer);
+  const grantButton = inbox(reviewer).getByRole("button", { name: t("home.grantNotices.confirm", { role: "전체 업무" }), exact: true });
+  await expect(held).toBeVisible();
+  await expect(grantButton).toHaveCount(0);
+  await held.click();
+  await expect(grantButton).toBeVisible();
   await grantAccess(admin, "이범위", "full", /본사/);
   const managerBearer = bearerOf(manager);
   await manager.reload();
@@ -87,16 +95,13 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(manager.getByRole("heading", { name: t("structure.title"), exact: true })).toBeVisible();
   await expect(register(manager)).toBeHidden();
   await expect(manager.getByText("이 화면에 접근 권한이 없습니다", { exact: true })).toBeHidden();
-  const notice = inbox(reviewer).getByRole("row").filter({ has: reviewer.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
-  await expect(notice).toContainText("전체 업무 · 전체 ·", { timeout: 20_000 });
-  // The notice arrived live. Reopen the pre-grant stream under its new access scope (period-unlock-approve).
+  // Reopen the pre-grant stream under its new access scope before confirming in 참조.
   await reviewer.reload();
   await passkeyLogin(reviewer);
-  const confirmed = reviewer.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/notice"));
-  await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
-  expect((await confirmed).status()).toBe(200);
-  // The confirmation and its SSE hint can restart an in-flight inbox read.
-  await expect(notice).toBeHidden({ timeout: 20_000 });
+  const notice = await openGrantNotice(reviewer, "full");
+  await expect(notice).toContainText("전체 업무 · 전체 ·");
+  await confirmGrantNotice(reviewer, "full", notice);
+  await go(reviewer, "/");
   letGrantsAge(unique(slug), "김검토");
   let reviewerLoads = 0;
   reviewer.on("request", (request) => { if (request.isNavigationRequest() && request.resourceType() === "document") reviewerLoads++; });
@@ -115,7 +120,7 @@ test("identifier correction: a second person approves, requester applies, and a 
 
   await go(admin, "/");
   await inbox(admin).getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
-  await inbox(admin).getByRole("link", { name: /^기다리는 중/ }).click();
+  await inbox(admin).getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.waiting")}`) }).click();
   const waiting = inbox(admin).getByRole("row").filter({ has: admin.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
   await expect(waiting).toContainText("처리 상태: 승인 대기", { timeout: 20_000 });
   await expect(waiting.getByRole("link", { name: "정정 요청 · 사후 검토 확인", exact: true })).toBeVisible();
@@ -123,14 +128,18 @@ test("identifier correction: a second person approves, requester applies, and a 
   let requesterLoads = 0;
   admin.on("request", (request) => { if (request.isNavigationRequest() && request.resourceType() === "document") requesterLoads++; });
 
-  // The reviewer stays on Home after confirming the grant; the correction arrives through SSE.
+  // Home holds the SSE arrival until the reviewer asks to refresh.
   const queue = inbox(reviewer).getByRole("row").filter({ has: reviewer.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
+  await expect(held).toBeVisible();
+  await expect(queue).toHaveCount(0);
+  await held.click();
   await expect(queue).toContainText("번호검토주식회사", { timeout: 20_000 });
   await expect(queue).toContainText("처리 상태: 승인 대기");
   await capture(reviewer, "reviewer-home");
   expect(reviewerLoads, "the reviewer receives the request without reloading Home").toBe(0);
   await queue.getByRole("link", { name: "정정 요청 검토", exact: true }).click();
-  await expect(reviewer).toHaveURL(new RegExp(`correction=${requested.id}#identifier-corrections`));
+  // a57df3a480 redirects entity routes into the 조직 entities tab.
+  await expect(reviewer).toHaveURL(new RegExp(`/org\\?correction=${requested.id}&tab=entities#identifier-corrections$`));
   await expect(detail(reviewer)).toContainText(FORMATS.corpRegNo.display(REGISTRATION_FIXTURES.second.crn));
   await expectAccessible(reviewer, "identifier correction decision");
   await capture(reviewer, "decision");
@@ -140,8 +149,13 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(detail(reviewer)).toContainText("승인됨 · 적용 대기");
   await detail(reviewer).getByRole("button", { name: "돌아가기", exact: true }).click();
 
+  // d6ac208cbb holds the approval while the requester's waiting list has rows.
+  const requesterHeld = heldNotice(admin);
+  await expect(requesterHeld).toBeVisible();
+  await requesterHeld.click();
   await expect(waiting).toBeHidden({ timeout: 20_000 });
-  await inbox(admin).getByRole("link", { name: /^내 차례/ }).click();
+  // e2ca8c65ae renamed the inbox tabs.
+  await inbox(admin).getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.turn")}`) }).click();
   const apply = inbox(admin).getByRole("row").filter({ has: admin.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
   await expect(apply).toContainText("처리 상태: 승인됨 · 적용 대기");
   await capture(admin, "requester-approved-home");
