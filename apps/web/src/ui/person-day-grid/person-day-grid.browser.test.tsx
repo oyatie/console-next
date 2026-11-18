@@ -141,6 +141,28 @@ test("when an edit ends the grid has the focus again, so the next key lands on i
   await expect.poll(active).toBe("2,2");
 });
 
+test("Tab pressed while a syllable is still composing keeps the keyboard in the editor", async () => {
+  const grid = await month();
+  await grid.focus();
+  await page.keyboard.type("9");
+  await element(editor).toBeFocused();
+  // A composition the way the browser's input-method interface starts one: the Tab arrives marked as composing.
+  const ime = await page.context().newCDPSession(page);
+  await ime.send("Input.imeSetComposition", { text: "ㅎ", selectionStart: 1, selectionEnd: 1 });
+  await element(editor).toHaveValue("9ㅎ");
+  await page.keyboard.press("Tab");
+  await element(editor).toBeFocused();
+  await element(drafts).toHaveText("{}");
+  // The syllable is done; what is typed next goes into the editor, and a plain Tab commits and moves right.
+  await ime.send("Input.insertText", { text: "휴" });
+  await page.keyboard.type("5");
+  await element(editor).toHaveValue("9휴5");
+  await page.keyboard.press("Tab");
+  await element(drafts).toHaveText('{"0001|2026-10-01":"9휴5"}');
+  await element(grid).toBeFocused();
+  expect(await active()).toBe("0,1");
+});
+
 test("an edit opened with the pointer gives the focus to what is pressed next", async () => {
   const grid = await month();
   // A press on another cell commits and the grid has the focus. (Cells left of the editor's column: they do not move

@@ -282,7 +282,9 @@ function Editor({ value, label, onChange, onCommit, held }: { value: string; lab
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={(e) => {
-        if (isImeKey(e)) return;
+        // A composing Tab ends the composition, as a composing Enter does, and the focus stays: the browser's own Tab
+        // would leave the editor for the next link.
+        if (isImeKey(e)) return void (e.key === "Tab" && e.preventDefault());
         e.stopPropagation();
         if (e.key === "Enter") {
           e.preventDefault();
