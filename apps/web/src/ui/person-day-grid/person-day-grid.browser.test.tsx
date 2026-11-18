@@ -379,14 +379,28 @@ test("a box with less room holds the outer totals only, and a week of days stays
   expect(await sideways(grid, end, 2)).toMatchObject({ faults: [], totals: 4, totalsEnd: 0 });
 });
 
-test("a box too narrow for any holds no totals: they scroll with the days and end the row", async () => {
-  const grid = await month("?w=452&unscheduled");
+// The last total stays at the right edge while a day shows beside it: a phone, and three lead columns in a wider box.
+test.each([["?w=358", 2], ["?w=452&unscheduled", 3]] as const)("a narrow box holds the last total only, with days in view beside it (%s)", async (query, lead) => {
+  const grid = await month(query);
+  const { end } = await sideways(grid, 0, lead);
+  for (const to of [0, 300]) {
+    const at = await sideways(grid, to, lead);
+    expect({ ...at, days: at.days >= 1 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 1, end, totalsEnd: 0 });
+  }
+  // At the end of the row all four show whole (over the lead columns, which a box this narrow cannot also show).
+  const last = await sideways(grid, end, lead);
+  expect(last.faults.filter(fault => fault.includes("total"))).toEqual([]);
+  expect(last).toMatchObject({ totals: 4, totalsEnd: 0 });
+});
+
+test("a box with no room for a day beside a total holds none: they scroll with the days and end the row", async () => {
+  // Three lead columns on a phone.
+  const grid = await month("?w=358&unscheduled");
   const { end } = await sideways(grid, 0, 3);
   for (const to of [0, 300]) {
     const at = await sideways(grid, to, 3);
-    expect({ ...at, days: at.days >= 3 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 0, end, totalsEnd: at.totalsEnd });
+    expect({ ...at, days: at.days >= 1 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 0, end, totalsEnd: at.totalsEnd });
   }
-  // At the end of the row the totals show whole (over the lead columns, which a box this narrow cannot also show).
   const last = await sideways(grid, end, 3);
   expect(last.faults.filter(fault => fault.includes("total"))).toEqual([]);
   expect(last).toMatchObject({ totals: 4, totalsEnd: 0 });

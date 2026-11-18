@@ -247,8 +247,9 @@ export function PersonDayGrid<R>(p: Props<R>) {
 /**
  * Sticky side columns stand side by side: each is held past the ones outside it, at an offset measured from the head
  * row (a column is as wide as what it holds) and set on the box for the styles. The lead columns are always held, and
- * so is a total with no other beside it. Several totals are held from the outside in while a week of days stays in
- * view between the two sides; in a narrower box the inner ones, then all of them, scroll with the days.
+ * so is a total with no other beside it. Of several totals the outermost is held while a day shows beside it, and the
+ * ones inside it, from the outside in, while a week of days stays in view between the two sides; in a narrower box
+ * the inner ones, then all of them, scroll with the days.
  */
 function placeSides(box: HTMLElement, leads: number, tails: number) {
   const widths = [...box.querySelector("thead tr")!.children].map((c) => c.getBoundingClientRect().width);
@@ -259,8 +260,11 @@ function placeSides(box: HTMLElement, leads: number, tails: number) {
     left += w;
   });
   // A day is as wide as the narrowest one: an open editor or a long draft widens its own column only.
-  let room = box.clientWidth - left - 7 * Math.min(...widths.slice(leads, widths.length - tails));
+  const day = Math.min(...widths.slice(leads, widths.length - tails));
+  // The outermost total needs one day in view beside it, the ones inside it a week.
+  let room = box.clientWidth - left - day;
   widths.slice(widths.length - tails).reverse().forEach((w, k) => {
+    if (k === 1) room -= 6 * day;
     // Once one does not fit, none inside it is held.
     room = room >= w ? room - w : -Infinity;
     set(`--tail-${k}`, room >= 0 || tails === 1 ? `${right}px` : "auto");
