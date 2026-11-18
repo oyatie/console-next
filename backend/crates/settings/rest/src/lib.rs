@@ -1,8 +1,8 @@
 //! Settings registry REST surface (BW-00).
 //!
 //! - `GET  /api/v1/settings[?entity=]`: every key resolved now, with its
-//!   definition and scheduled rows. Any signed-in member: the frontend reads
-//!   these values, it never decides with them (ADR-006).
+//!   definition and scheduled rows. Cedar settings-view holders see the registry
+//!   at their scope; other members see only client-required settings.
 //! - `GET  /api/v1/settings/{key}/history`: stored rows (carry `set_by` and
 //!   `reason_note`, personal data).
 //! - `POST /api/v1/settings/{key}`: change one key.
@@ -33,7 +33,9 @@ use axum::{Json, Router};
 use console_kernel_core::{KernelError, SettingVersionId, Timestamp};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::Principal;
-use console_platform_request_context::current_audit_context;
+use console_platform_authz::access::cedar::SETTINGS_RUNTIME_READ;
+use console_platform_authz::access::{NodeKind, NodeRef};
+use console_platform_request_context::{Authorization, current_audit_context};
 use console_settings_adapter_postgres::{EffectiveSettings, PgSettingsStore};
 use console_settings_application::{Actor, ChangeSetting};
 use console_settings_domain::SettingKey;
@@ -99,10 +101,35 @@ async fn list(
     Extension(principal): Extension<Principal>,
     Query(query): Query<ListQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let listed = state
+    let mut listed = state
         .store
-        .list_effective(principal.org_id, query.entity)
+        .list_live_effective(principal.org_id, query.entity)
         .await?;
+    let facts = Authorization::default()
+        .load(state.store.pool(), &principal)
+        .await?;
+    let kinds = if query.entity.is_some() {
+        &[NodeKind::LegalEntity, NodeKind::Workplace][..]
+    } else {
+        &[NodeKind::Tenant][..]
+    };
+    let mut can_read = false;
+    let mut can_read_runtime = false;
+    for &kind in kinds {
+        let node = NodeRef {
+            kind,
+            id: query.entity.unwrap_or(*principal.org_id.as_uuid()),
+        };
+        can_read |= facts
+            .authorize("settings::view", node)
+            .map_err(|error| KernelError::internal(error.to_string()))?;
+        can_read_runtime |= facts
+            .authorize(SETTINGS_RUNTIME_READ, node)
+            .map_err(|error| KernelError::internal(error.to_string()))?;
+    }
+    listed
+        .items
+        .retain(|item| can_read || (item.key.client_required() && can_read_runtime));
     Ok(list_response(&principal, listed))
 }
 

@@ -240,6 +240,12 @@ impl AppConfig {
         )
         .map_err(AppError::Config)?;
 
+        crate::coldstart_guard::refuse_dev_audit_chain_signer(
+            audit_chain_allow_dev_signer,
+            crate::coldstart_guard::BuildProfile::current(),
+        )
+        .map_err(AppError::Config)?;
+
         Ok(Self {
             realtime: crate::config::realtime::from_vars(&vars)?,
             role,
@@ -295,6 +301,27 @@ impl AppConfig {
 #[cfg(test)]
 mod tests {
     use crate::config::AppConfig;
+
+    #[test]
+    fn from_pairs_applies_dev_audit_chain_signer_guard_for_active_build_profile() {
+        for seal_enabled in ["false", "true"] {
+            let result = AppConfig::from_pairs([
+                ("CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER", "true"),
+                ("CONSOLE_AUDIT_CHAIN_SEAL_ENABLED", seal_enabled),
+            ]);
+            if cfg!(debug_assertions) {
+                assert!(result.unwrap().audit_chain_allow_dev_signer);
+            } else {
+                let error = result.expect_err("release builds must reject the development signer");
+                assert!(
+                    error
+                        .to_string()
+                        .contains("CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER"),
+                    "unexpected config error: {error}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn from_pairs_applies_dev_auth_guard_for_active_build_profile() {

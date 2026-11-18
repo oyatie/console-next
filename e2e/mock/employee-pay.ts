@@ -15,13 +15,19 @@ export const draft: components["schemas"]["PayrollPayslipDraft"] = {
   net_pay_won: null, not_computed: [{ code: "INCOME_TAX", label_ko: "모의 원천징수", reason_ko: "원천징수 미계산", instrument }],
 };
 export const employeePayScreen = { key: "payroll-employee", path: `/payroll/employees/${draft.employee_id}?period=2026-10&pay_date=2026-11-05`, read: "/api/v1/payroll/employees/{employeeId}/payslip-draft", states: { populated: "Cited draft", empty: "No contract", held: "Missing citation", below: "Below minimum wage", incomparable: "Minimum wage not comparable", failed: "Read failed", refused: "Read refused", loading: "Hold read" }, registry: "payroll-employee", live: "mock" } as const;
+export function minimumWageDraft(year: 2026 | 2027): typeof draft {
+  const [hourly, monthly, notice] = year === 2027 ? [10700, 2236300, "고용노동부고시 제2026-60호"] as const : [10320, 2156880, "고용노동부고시 제2025-47호"] as const;
+  return { ...draft, pay_date: `${year}-01-15`, blockers: ["MINIMUM_WAGE_BELOW_FLOOR"],
+    minimum_wage_check: { hourly_floor_won: hourly, monthly_209h_floor_won: monthly, monthly_standard_hours: 209, effective_hourly_won: 9569, passes: false,
+      instrument: { ...instrument, name_ko: `Synthetic minimum wage notice ${year}`, promulgation_ko: notice, enforced_on: `${year}-01-01` } } };
+}
 export async function mockEmployeePay(page: Page, state: string, held: Promise<void>) {
   await page.route("**/api/v1/payroll/employees/*/payslip-draft?*", async route => {
     if (state === "loading") await held;
     if (page.isClosed()) return;
     if (state === "failed" || state === "refused") return route.fulfill({ status: state === "failed" ? 500 : 403, json: failure(state === "failed" ? "internal_error" : "forbidden") });
     await route.fulfill({ json: { ...draft, contract: state === "empty" ? null : draft.contract,
-      blockers: [...draft.blockers, ...(state === "below" ? ["최저임금 미달: backend sentence must not render"] : state === "incomparable" ? ["최저임금 비교 불가: 월 소정근로시간이 근로계약에 없다"] : [])],
+      blockers: [...draft.blockers, ...(state === "below" ? ["MINIMUM_WAGE_BELOW_FLOOR"] : state === "incomparable" ? ["MINIMUM_WAGE_NOT_COMPARABLE"] : [])],
       minimum_wage_check: { ...draft.minimum_wage_check!, effective_hourly_won: state === "incomparable" ? null : state === "below" ? 12222 : draft.minimum_wage_check!.effective_hourly_won, monthly_standard_hours: state === "incomparable" ? null : draft.minimum_wage_check!.monthly_standard_hours, passes: state === "below" ? false : state === "incomparable" ? null : true, instrument: { ...instrument, url: state === "held" ? "" : instrument.url } },
       deductions: state === "empty" ? [] : state === "held" ? draft.deductions!.map(row => ({ ...row, instrument: { ...instrument, url: "" }, share_instrument: { ...instrument, url: "" } })) : draft.deductions } });
   });
