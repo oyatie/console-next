@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { afterAll, beforeAll, test } from "vitest";
+import { realpathSync } from "node:fs";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { i18n, loadCatalog, t } from "@console/i18n";
@@ -15,7 +16,7 @@ beforeAll(async () => {
   i18n.set("en");
   server = await createServer({ configFile: false, cacheDir: ".cache/people-jump-test", logLevel: "error",
     optimizeDeps: { ...browserTestOptimizeDeps, entries: ["apps/web/src/features/people/ui/people-jump.browser-fixture.tsx"] },
-    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [process.cwd()] } },
+    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [process.cwd(), realpathSync("node_modules/pretendard")] } },
   });
   await server.listen();
   browser = await chromium.launch();
@@ -42,4 +43,10 @@ test("with single keys off ? waits and ⌘/ still opens the people key map, whic
   await element(map).toHaveCount(0);
   await page.keyboard.press("ControlOrMeta+Slash");
   await element(off).toBeVisible();
+  // The line is longer than the hint it replaces: it wraps inside the panel's head, and the Esc chip beside it
+  // keeps its label inside its border.
+  const [panel, line] = [(await map.boundingBox())!, (await off.boundingBox())!];
+  expect(line.x).toBeGreaterThanOrEqual(panel.x);
+  expect(line.x + line.width).toBeLessThanOrEqual(panel.x + panel.width);
+  expect(await map.locator("kbd", { hasText: "Esc" }).first().evaluate(chip => chip.scrollWidth <= chip.clientWidth)).toBe(true);
 }, 60_000);

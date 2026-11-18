@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { PeopleJump } from "./people-jump";
+import "../../../app.css";
 
 i18n.set("en");
 await loadCatalog("en");
