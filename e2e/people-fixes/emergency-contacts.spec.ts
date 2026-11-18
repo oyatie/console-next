@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { apiOf, bearerOf, codeOf } from "../helpers/api";
 import { peopleWorld, registerAt } from "../helpers/people-fixes";
+import { andReread } from "../record-actions/world";
 
 test("solo: emergency contact notice is enforced; evidence survives sibling deletion and undo", { tag: ["@hr", "@regression", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
@@ -32,7 +33,7 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
     await sheet.getByRole("textbox", { name: /^휴대전화/ }).fill(phone!);
     await expect(sheet.getByRole("button", { name: /인사 정보 1명 정정/ })).toHaveAttribute("aria-disabled", "true");
     await sheet.getByRole("checkbox").check();
-    await sheet.getByRole("button", { name: /인사 정보 1명 정정/ }).click();
+    await andReread(admin, "/personal-facts", () => sheet.getByRole("button", { name: /인사 정보 1명 정정/ }).click());
     await expect(sheet).toBeHidden();
   }
   const recorded = (await read()).emergency_contacts!;
@@ -75,7 +76,7 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
   await expect(edit.getByRole("checkbox")).not.toBeChecked();
   await expect(edit.getByRole("button", { name: /인사 정보 1명 정정/ })).toHaveAttribute("aria-disabled", "true");
   await edit.getByRole("checkbox").check();
-  await edit.getByRole("button", { name: /인사 정보 1명 정정/ }).click();
+  await andReread(admin, "/personal-facts", () => edit.getByRole("button", { name: /인사 정보 1명 정정/ }).click());
   await expect(edit).toBeHidden();
   expect((await read()).emergency_contacts![2]).toMatchObject({ contact_notified: true, basis: recorded[0]!.basis });
   await expect(contacts.getByText("당사자 안내 미확인", { exact: true })).toHaveCount(0);
