@@ -73,6 +73,8 @@
     var button = main.querySelector("button");
     button.textContent = c[2];
     button.addEventListener("click", reload);
+    var root = document.getElementById("root");
+    if (root) root.hidden = true;
     (document.body || document.documentElement).appendChild(main);
     if (window.consoleErrorBeacon) window.consoleErrorBeacon.reference().then(function (receipt) {
       if (!receipt) return;
