@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { ModalOverlay, Dialog, Heading, Input, Modal, SearchField } from "react-aria-components";
 import { Info, Search } from "lucide-react";
+import { leaveImeKey } from "../../lib/pure/ime";
 import { Kbd } from "../record/record-section";
 import s from "./palette.module.css";
 
@@ -24,7 +25,7 @@ export function KeyMap({ open, onClose, title, note, groups, filter }: { open: b
             <Info size={18} aria-hidden /><Heading slot="title" className={s.keyTitle}>{title}</Heading>
             {filter && (
               <SearchField className={s.keyFind} aria-label={filter.label} value={q} onChange={setQ}>
-                <Search size={14} aria-hidden /><Input className={s.input} placeholder={filter.label} />
+                <Search size={14} aria-hidden /><Input className={s.input} placeholder={filter.label} onKeyDownCapture={leaveImeKey} />
               </SearchField>
             )}
             {filter?.hint && <span className={s.keyHint}>{filter.hint}</span>}
