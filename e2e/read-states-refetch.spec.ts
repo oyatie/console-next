@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { components } from "@console/api/schema";
 import { passkeyAssertion } from "./auth";
 import { go, kstDate, registerEmployee, routeReady } from "./flows";
-import { SETUP_DEPARTMENT, setupCompany, tenantBeforeSetup } from "./setup-flows";
+import { EXEC_NAME, SETUP_DEPARTMENT, setupCompany, tenantBeforeSetup } from "./setup-flows";
 import { openAsOf } from "./dates";
 
 const cases = [
@@ -62,11 +62,11 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
     role = await created.json();
     const listed = await admin.request.get("/api/v1/access/roles?status=ACTIVE", { headers });
     expect(listed.status()).toBe(200);
-    expect((await listed.json()).items).toEqual(expect.arrayContaining([expect.objectContaining({ id: role.id, name_ko: role.name_ko })]));
+    expect(await listed.json()).toEqual(expect.arrayContaining([expect.objectContaining({ id: role.id, name_ko: role.name_ko })]));
     // 6aaa2db324 shows the role filter only when the grant list is non-empty.
     const accounts = await admin.request.get("/api/v1/users", { headers });
     expect(accounts.status()).toBe(200);
-    const account = ((await accounts.json()).items as components["schemas"]["UserSummary"][]).find(account => account.display_name === "이임원");
+    const account = ((await accounts.json()).items as components["schemas"]["UserSummary"][]).find(user => user.display_name === EXEC_NAME);
     expect(account).toBeTruthy();
     const previewResponse = await admin.request.post("/api/v1/access/grants/preview", { headers, data: {
       operations: [{ op: "grant", account_id: account!.id, role_id: role.id, scope: { kind: "TENANT", include_descendants: true }, effective_in_setup: true }],
@@ -145,24 +145,23 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           await field.fill("읽기 유지");
           control = field;
           await control.focus();
-          await control.press("Enter");
         } else if ("select" in row) {
-          control = main.getByRole("button", { name: /역할/ });
+          control = main.getByRole("button", { name: / 역할$/ });
           await control.click();
           await page.getByRole("option", { name: role.name_ko, exact: true }).click();
         } else {
           const name = { name: row.button, exact: typeof row.button === "string" };
           control = main.getByRole("button", name).or(main.getByRole("link", name));
           await control.focus();
-          await control.press("Enter");
         }
+        const mountedControl = await control.elementHandle();
+        if ("search" in row || "button" in row) await control.press("Enter");
         await expect.poll(() => requested).toBe(true);
         const reserve = "reserve" in row ? row.reserve : undefined;
         if (reserve) await expect(main.locator(`[data-read-layout="${reserve}"]`)).toBeVisible();
         else await expect(main.locator('[data-read-region][aria-busy="true"]').last()).toBeVisible();
         const index = reserve ? -1 : (await Promise.all(regions.map(region => region.evaluate(el => el instanceof Element && el.isConnected && el.getAttribute("aria-busy") === "true")))).findIndex(Boolean);
         if (!reserve) expect(index).toBeGreaterThanOrEqual(0);
-        const mountedControl = await control.elementHandle();
         let intact = true;
         const started = Date.now();
         await expect.poll(async () => {
@@ -170,7 +169,8 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           intact &&= await mountedHead!.evaluate(el => el.isConnected);
           for (const bar of chrome) intact &&= await bar.evaluate(el => el instanceof Element && el.isConnected && el.getClientRects().length > 0);
           if (reserve) {
-            for (const region of regions) intact &&= await region.evaluate(el => !el.isConnected);
+            // The page-level region holds the head and toolbar and stays; the board region it reserved is gone.
+            for (const region of regions) intact &&= await region.evaluate((el, head) => el.contains(head) ? el.isConnected : !el.isConnected, mountedHead!);
             intact &&= await main.locator(`[data-read-layout="${reserve}"]`).isVisible();
           } else {
             intact &&= await regions[index]!.evaluate(el => el.isConnected);
@@ -187,7 +187,7 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           await (await refreshed).finished();
           await expect(main.locator('[aria-busy="true"]')).toHaveCount(0);
           await expect(main.locator("[data-read-layout]")).toHaveCount(0);
-          await expect(main.locator("[data-read-region]").last()).toBeAttached();
+          await expect(main.locator("[data-read-region]")).toHaveCount(regions.length);
         }
       } finally {
         held = false; release();
