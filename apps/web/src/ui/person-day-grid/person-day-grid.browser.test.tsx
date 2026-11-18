@@ -341,6 +341,11 @@ test.each([[1000, 12], [640, 7]])("moving the active cell sideways keeps it in v
   await page.keyboard.press("Home");
   await expect.poll(active).toBe("0,0");
   await expect.poll(() => grid.locator("..").evaluate(el => el.scrollLeft)).toBe(0);
+  // A press on a person's number selects the row, to its last day, and the box stays where it is.
+  await grid.getByText("1002", { exact: true }).click();
+  await element(grid.locator('td[aria-selected="true"]')).toHaveCount(31);
+  expect(await active()).toBe("1,30");
+  expect(await grid.locator("..").evaluate(el => el.scrollLeft)).toBe(0);
   // A press on the part of a cell that shows brings the rest of it into view, and selects that cell alone.
   await dayCell(2, cut + 1).click({ position: { x: 6, y: 10 } });
   await expect.poll(active).toBe(`1,${cut}`);

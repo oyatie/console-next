@@ -115,11 +115,12 @@ export function PersonDayGrid<R>(p: Props<R>) {
     else if (bottom > el.scrollTop + el.clientHeight) el.scrollTop = bottom - el.clientHeight;
   }, [focusRow, rowHeight]);
   // Sideways the sticky lead columns cover the left of the box and the held totals the right: a column is in view
-  // between them. It is read from the head row, which is always drawn.
-  const focusCol = f?.c, editing = !!p.editing;
+  // between them. It is read from the head row, which is always drawn. A press on a lead cell selects its row with
+  // the focus on the last day, and the box stays where the person has it.
+  const focusCol = f?.c, editing = !!p.editing, rowPress = useRef(false);
   useEffect(() => {
     const el = box.current;
-    if (!el || focusCol === undefined) return;
+    if (!el || focusCol === undefined || rowPress.current) return void (rowPress.current = false);
     const head = [...el.querySelector("thead tr")!.children].map((c) => c.getBoundingClientRect()), frame = el.getBoundingClientRect();
     const day = head[leads + focusCol]!, from = head[leads - 1]?.right ?? frame.left;
     const until = Math.min(frame.left + el.clientWidth, ...head.slice(head.length - tails).map((c) => c.left));
@@ -130,7 +131,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [focusCol, editing, leads, tails]);
   useEffect(() => {
-    const up = () => setDrag(false);
+    const up = () => (setDrag(false), rowPress.current = false);
     window.addEventListener("pointerup", up);
     return () => window.removeEventListener("pointerup", up);
   }, []);
@@ -201,7 +202,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
             return (
               <tr key={key} aria-rowindex={r + 2} className={s.row} data-group={newGroup ? group : undefined}>
                 {p.lead.map((c, k) => (
-                  <th key={c.key} className={s.lead} data-w={c.width} data-first={k === 0 || undefined} onPointerDown={() => select({ anchor: { row: key, col: firstCol }, focus: { row: key, col: lastCol } })}>{c.cell(row)}</th>
+                  <th key={c.key} className={s.lead} data-w={c.width} data-first={k === 0 || undefined} onPointerDown={() => (rowPress.current = true, select({ anchor: { row: key, col: firstCol }, focus: { row: key, col: lastCol } }))}>{c.cell(row)}</th>
                 ))}
                 {p.days.map((d, c) => {
                   const focused = !!f && r === f.r && c === f.c;
