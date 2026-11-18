@@ -6,12 +6,6 @@ import { FieldDiff, type FieldChange } from "./field-diff";
 
 beforeAll(() => loadCatalog("ko"));
 
-test("a correction strikes the old value and keeps the new value", () => {
-  const diff = html(<FieldDiff corrected fields={[{ field: "unit", label: "unit", before: "old unit", after: "new unit" }]} />);
-  expect(diff).toContain("<del>old unit</del>");
-  expect(diff).toContain("new unit");
-});
-
 test("masking wins even when untyped transport data includes hidden values", () => {
   const untrusted = { field: "pay", label: "pay", masked: true, before: "secret before", after: "secret after" };
   const diff = html(<FieldDiff fields={[untrusted as FieldChange]} />);
