@@ -34,7 +34,7 @@ What holds each rule today:
 | 2 | Review. |
 | 3 | Review, plus the tests each component already has. |
 | 4 | Nothing to hold: it is a permission. |
-| 5 | In part. Every gallery entry is scanned: `e2e/visual.spec.ts` runs axe over the whole gallery in the light and the dark theme. `scripts/ds-docs.mjs` proves that a page that exists matches the code. A check that fails a component with no page or no gallery entry is planned and does not exist yet. |
+| 5 | In part. Every gallery entry is scanned: `e2e/visual.spec.ts` runs axe over the whole gallery in the light and the dark theme. `scripts/ds-docs.mjs` proves that the generated tables of a page that exists match the code; nothing checks the hand-written text. A check that fails a component with no page or no gallery entry is planned and does not exist yet. |
 
 ## Add or change a component
 
@@ -49,8 +49,7 @@ What holds each rule today:
 6. Prove the change as the engineering guide says in "Proving a change": `npm run check`, then the browser specs
    for what you touched.
 
-Most components under `apps/web/src/ui` have no page yet. Changing one of them does not require writing its page
-today; writing it is welcome.
+Three pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
 
 ## The outline of a component page
 
@@ -101,8 +100,8 @@ Text outside the markers is yours and is never touched. Do not edit between them
 | `node scripts/ds-docs.mjs --write` | Rewrites the generated blocks of every page. |
 | `node scripts/ds-docs.mjs --check` | Changes nothing. Fails, naming the page and the block, when a block differs from what the code says now. `npm run check` runs it. |
 
-The check also fails on a source path that does not exist, a marker that is never closed, and a page with no
-generated block.
+The check also fails on a source path that does not exist, a marker that is never closed, a page with no
+generated block, a module that exports no component, and selector text that matches no rule.
 
 Three things to know when a table looks wrong:
 
