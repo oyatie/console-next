@@ -191,6 +191,13 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version-file: .node-version, cache: npm}
       - run: npm ci --no-audit --no-fund
+      - name: Restore cached dev timing fallback
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        continue-on-error: true
+        with:
+          path: .cache/states-timings/timings.json
+          key: states-timings-${{ github.run_id }}
+          restore-keys: states-timings-
       - name: Restore latest compatible dev timings
         env:
           GH_TOKEN: ${{ github.token }}
@@ -293,18 +300,30 @@ jobs:
           if-no-files-found: error
       - name: Refresh measurements from complete CI results
         run: node scripts/states-shards.mjs refresh e2e/mock/timings.json .cache/states-plan/plan.json .cache/states-timings/timings.json .cache/states-reports/*.json
+      - name: Cache complete dev timings before capacity checks
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        continue-on-error: true
+        with:
+          path: .cache/states-timings/timings.json
+          key: states-timings-${{ github.run_id }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: states-timings
+          # Keep at least headroomRuns compatible dev copies for the capacity window.
           path: .cache/states-timings/timings.json
           include-hidden-files: true
           retention-days: 90
           if-no-files-found: error
       - run: npm ci --no-audit --no-fund
+      - name: Restore recent compatible dev timing history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/states-shards.mjs history e2e/mock/timings.json .cache/states-history.json
       - name: Check measured capacity on dev
         env:
           STATES_CHECK_CAPACITY: "1"
           STATES_TIMINGS_FILE: .cache/states-timings/timings.json
+          STATES_TIMINGS_HISTORY_FILE: .cache/states-history.json
         run: node --test scripts/states-shards.test.mjs
 
   backend:
