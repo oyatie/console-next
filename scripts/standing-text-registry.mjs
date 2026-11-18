@@ -32,9 +32,10 @@ export function readRegistry(ref) {
     if (result.status !== 0) throw new Error(`cannot read registry at ${ref}: ${result.stderr}`);
     return result.stdout;
   };
-  const read = (file) => JSON.parse(ref ? git("show", `${ref}:${file}`) : readFileSync(file, "utf8"));
-  const files = ref ? git("ls-tree", "-r", "--name-only", ref, directory).trim().split("\n").filter((file) => file.endsWith(".json"))
-    : existsSync(directory) ? readdirSync(directory).filter((file) => file.endsWith(".json")).map((file) => `${directory}/${file}`) : [];
+  const read = (file) => JSON.parse(ref === undefined ? readFileSync(file, "utf8") : git("show", `${ref}:${file}`));
+  const files = ref === undefined
+    ? existsSync(directory) ? readdirSync(directory).filter((file) => file.endsWith(".json")).map((file) => `${directory}/${file}`) : []
+    : git("ls-tree", "-r", "--name-only", ref, directory).trim().split("\n").filter((file) => file.endsWith(".json"));
   return mergeRegistry(read(base), read(screens), files.sort().map((file) => [file, read(file)]));
 }
 
