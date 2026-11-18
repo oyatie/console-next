@@ -45,6 +45,9 @@ test.each(IME)("the grid editor leaves input-method keys %j alone, then commits 
   for (const key of ["Enter", "Tab", "Escape"]) await editor.dispatchEvent("keydown", { key, ...state });
   await element(page.locator("#committed")).toHaveText("0");
   await element(page.locator("#open")).toHaveText("open");
+  // The grid under the editor sees those keys too; it must leave what was typed alone.
+  await element(editor).toHaveValue("8");
+  await element(editor).toBeFocused();
   await editor.press("Enter");
   await element(page.locator("#committed")).toHaveText("1");
 });
