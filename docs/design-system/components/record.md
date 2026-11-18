@@ -315,7 +315,7 @@ tracking, and stick to the top.
 | Part | Look |
 |---|---|
 | `Strip` | A grid of nine columns with literal widths: `0.75fr 0.55fr 0.95fr 0.95fr 1.05fr 1.35fr 1.5fr 0.85fr 0.75fr`. Items fill it in order; a tenth item starts a second row. |
-| `StripItem` | 13 px text at a line height of 1.35, aligned to the left. The value wraps. The kit's rule also asks for a column, the label over the value, 2 px apart and aligned to the start; 8 px of padding; a 1 px `--border-soft` line on the left of every item but the first; no radius; regular weight (`--fw-body`). The shared button's class sets the same properties: see the ties below. |
+| `StripItem` | 13 px text at a line height of 1.35, aligned to the left. The value wraps. The kit's rule also asks for a column, the label over the value, 2 px apart and aligned to the start; 8 px of padding; a 1 px `--border-soft` line on the left of every item but the first; no radius; regular weight (`--fw-body`). The shared button's class sets the same properties, and the kit's values apply: see the ties below. |
 | Its label | 12 px, `--steel`. It never wraps. |
 | `SecNav` | A wrapping row with 2 px gaps. |
 | Its link | 30 px high (`calc(var(--space-6) - 2px)`), 8 px side padding, a 6 px radius, 13 px `--steel` text, no underline. It never wraps. Weight 600, from the global rule for links. |
@@ -358,23 +358,25 @@ The small parts:
 | `Tag` `void` | The colours of a tag with no kind, with a dashed border. |
 | `Kbd` | A box at least 18 px wide and 18 px high, with 4 px side padding, a 4 px radius, a 1 px `--border` border that is 2 px at the bottom, a `--kbd-bg` fill and 12 px `--steel` monospace text (`--font-mono`). |
 | `Masked` | 13 px monospace text with 0.5 px letter spacing, written as a literal. |
-| `RowInput` | The box of a `TextInput`, as wide as its cell up to 330 px (`calc(var(--panel-w) * 0.75)`). The kit asks for a height of 28 px (`calc(var(--space-6) - var(--space-1))`): see the ties below. |
+| `RowInput` | The box of a `TextInput`, as wide as its cell up to 330 px (`calc(var(--panel-w) * 0.75)`). 28 px high (`calc(var(--space-6) - var(--space-1))`), not the 40 px of `field__input`: see the ties below. |
 | `Saving` | A `--ok-bg` fill behind the value, with 4 px side padding and a 4 px radius. The tick is a 12 px ring, 4 px after the value: a 2 px `--control-border` border with a `--primary` top edge. |
 | `EditRow` | A column with 8 px gaps, 8 px above and below, 8 px of padding top and bottom. The same fill and bar as a `FieldRow` with `edit`, drawn 16 px wider than its place on each side. No rule makes it span the columns of a `two` body. Its one call site, the row editor of the people card, is rendered in one-column bodies, where the fill reaches both edges of the section. |
 
-Three sets of rules in this stylesheet meet a global rule of the same weight, so which one applies depends on the
-order of the two stylesheets in the build. This page did not work that order out from the imports and did not
-check it in a build of this branch. Each value below is one of two. Measure it in a build before relying on it.
+Three sets of rules in this stylesheet meet a global rule of the same weight. In each, the kit's rule wins
+because it comes later: the entry module imports `app.css` statically and reaches the kit only through lazy
+imports, so the kit's stylesheet loads after `app.css`. This was read from the stylesheets and the imports, not
+measured in a browser.
 
 - `StripItem`: its class and the `btn` class of the shared button both set the display, the alignment, the gap,
-  the padding, the border, the radius, the minimum height and the weight. The item is either a column with 8 px
-  of padding and no minimum height, or a centred row with 12 px side padding and a 36 px minimum height.
-- `RowInput`: its class sets a height of 28 px, and `field__input` sets 40 px (`--row-h`). The input is one or
-  the other.
+  the padding, the border, the radius, the minimum height and the weight, and the `btn--ghost` class sets the
+  border colour. The kit's values apply: the item is a column with 8 px of padding and no minimum height, not a
+  centred row with 12 px side padding and a 36 px minimum height.
+- `RowInput`: its class sets a height of 28 px, and `field__input` sets 40 px (`--row-h`). The input is 28 px
+  high.
 - `RecordRows` with `mobileLayout`: the kit's rule and the global `.table th` and `.table td` rules both set the
-  cell padding. It is either 6 px top and bottom with 8 px on the right, or 12 px at the sides and none above or
-  below. In the card layout a heavier rule sets it to 8 px: see the phone section. The exception is the right
-  padding of an `end` cell, which ties with that rule: see the known gaps.
+  cell padding. It is the kit's: 6 px top and bottom with 8 px on the right and none on the left, not 12 px at
+  the sides and none above or below. In the card layout a heavier rule sets it to 8 px: see the phone section.
+  The exception is the right padding of an `end` cell, which ties with that rule: see the known gaps.
 
 ## States
 
@@ -472,7 +474,8 @@ Known gaps:
   the people card is a `two` body whose rows are edited in place. Read from the CSS.
 - The kit has no rule that scrolls or clips a `RecordRows` table wider than its section.
 - Two components are named `Kbd`, with different looks, and nothing says which to use where.
-- The three ties under Looks and sizes. None of the three values has been measured.
+- `StripItem`, `RowInput` and the cells of a `RecordRows` with `mobileLayout` take the kit's values by load order
+  alone, not by a heavier rule: see Looks and sizes. None of the three values has been measured.
 
 The WCAG 2.2 criteria that apply:
 
@@ -490,7 +493,7 @@ The WCAG 2.2 criteria that apply:
 | 2.4.7 Focus Visible | The global outline. The kit has no focus rule. |
 | 2.4.11 Focus Not Obscured (Minimum) | A section has `scroll-margin-top: var(--record-sticky, var(--space-4))`. A screen that holds a head in view sets `--record-sticky` to clear it, and a section scrolled to stops below the head. The people card does. |
 | 2.5.3 Label in Name | The name of a `FieldMark` button is built from the visible verb and the field. With `name`, keeping the verb in it is the caller's job. |
-| 2.5.8 Target Size (Minimum) | A `FieldMark` button is at least 24 px high. A `SecNav` link is 30 px high. A `StripItem` holds two lines of text and is taller than 24 px whichever way its tie falls. |
+| 2.5.8 Target Size (Minimum) | A `FieldMark` button is at least 24 px high. A `SecNav` link is 30 px high. A `StripItem` holds two lines of text and is taller than 24 px. |
 | 4.1.2 Name, Role, Value | The table above. |
 | 4.1.3 Status Messages | Not answered. Nothing in the kit is announced. |
 

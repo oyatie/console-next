@@ -119,10 +119,11 @@ labelling attributes, global attributes, event handlers and `data-` attributes t
 anywhere in the markup, which the loading block satisfies.
 
 In each of these states the tree grid has no rows, so the grid itself is the tab stop, unless the state block
-holds a tabbable element. Its focus look depends on the order of two stylesheets. The module removes the root's
-outline with a single-class rule, and the global focus outline is a single pseudo-class rule, so whichever comes
-later wins. If the module's does, a focused empty tree shows nothing. This page did not check the order in a
-build of this branch.
+holds a tabbable element. A focused tree grid with no rows shows nothing. The module removes the root's outline
+with a single-class rule, and the global focus outline is a single pseudo-class rule. The two weigh the same,
+and the module's rule comes later: the entry module imports `app.css` statically and reaches the tree only
+through lazy imports, so the tree's stylesheet loads after `app.css`. This was read from the stylesheets and the
+imports, not checked in a browser.
 
 ## Keyboard
 
@@ -217,16 +218,19 @@ Known gaps:
 - ArrowLeft on a leaf does not go to its parent while the caller keeps the leaf's `id` in `expanded`: see
   Keyboard.
 - The tree grid is not marked busy while loading: see States.
-- An empty, loading or failed tree may show no focus look: see States.
+- An empty, loading or failed tree shows no focus look: see States.
 - While a row is selected, the tree takes Escape for itself: it clears the selection, stops the event and
   prevents its default. `Dialog` closes on an Escape that reaches React Aria's overlay, so by the source, with
   focus in a tree inside a dialog, the first Escape clears the selection and does not close the dialog. `Sheet`
   closes a clean sheet through the same overlay, so by the source the same holds in a sheet. A caller that
   ignores `onSelect(undefined)` keeps the row selected, and the tree then takes every Escape pressed inside it.
   Four of the five callers ignore it; only the move dialog of the structure page stores it. Of the four:
-  - the destination picker of a closing workplace is shown in a dialog;
-  - the target tree is shown in a dialog where the bulk move page adds departments, in a sheet where a
-    department is merged or dissolved, and on the bulk move page itself, where there is no overlay to close;
+  - the destination picker of a closing workplace is shown in a dialog. A pick closes that dialog, so a row is
+    selected there only when it is opened with a destination already chosen;
+  - the target tree is shown in a sheet where a department is merged or dissolved, and on the bulk move page
+    itself, where there is no overlay to close. The bulk move page also shows it in a dialog, to add
+    departments. That dialog is not affected: its value is always `null` and a pick closes it, so no row is
+    ever selected there and Escape reaches the dialog;
   - the scope tree of a grant is shown in a sheet;
   - the scope tree of attendance is on a page, with no overlay to close.
 

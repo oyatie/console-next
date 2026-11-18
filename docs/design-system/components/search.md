@@ -68,9 +68,10 @@ There is one look and one size. No prop changes either.
 Three things about these rules are not what they seem:
 
 - The left padding is set by the module's `input` class and the box by the global `field__input` class, whose
-  `padding` shorthand also sets the left padding, to 12 px. Both are single-class rules, so the module's 36 px
-  wins only when its stylesheet comes after `app.css`. This page did not check the order in a build of this
-  branch.
+  `padding` shorthand also sets the left padding, to 12 px. Both are single-class rules, and the module's comes
+  later: the entry module imports `app.css` statically and reaches this component only through lazy imports, so
+  the module's stylesheet loads after `app.css`. So the module's 36 px wins, and typed text does not sit under
+  the icon. This was read from the stylesheets and the imports, not checked in a browser.
 - The icon's place and the padding that clears it are written as `left` and `padding-left`. They do not follow
   the direction of the text.
 - `app.css` has a global `search` class of its own. The component does not carry it: its wrapper class comes from

@@ -113,9 +113,10 @@ Two rules take the focus outline away, and they do not weigh the same.
   rule in `app.css` whatever the order of the stylesheets, and it removes the box shadow too. The input never
   shows a focus indicator of its own.
 - On the dialog, the modal, the list and the items, the rule is one class against the one pseudo-class of the
-  global rule. The two weigh the same, so the palette's rule wins only when its stylesheet comes after `app.css`.
-  This page did not check the order in a build of this branch. The [Sheet](sheet.md) page says the same of its
-  dialog.
+  global rule. The two weigh the same, and the palette's rule comes later: the entry module imports `app.css`
+  statically and reaches the palette only through lazy imports, so the palette's stylesheet loads after
+  `app.css`. So none of the four shows the global outline. This was read from the stylesheets and the imports,
+  not checked in a browser.
 
 ## Keyboard
 

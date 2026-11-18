@@ -93,8 +93,10 @@ The block:
 
 One thing about the tone rules is not what it seems. The global `chip` rule sets `border: 1px solid`, a shorthand
 that resets the border colour to the text colour. The module's tone class then sets `border-color`. Both are
-single-class rules, so the tone's border wins only when the module's stylesheet comes after `app.css`; if it does
-not, the border takes the colour of the text. This page did not check the order in a build of this branch.
+single-class rules, and the module's comes later: the entry module imports `app.css` statically and reaches this
+component only through lazy imports, so the module's stylesheet loads after `app.css`. So the tone's border
+colour wins, and the border does not take the colour of the text. This was read from the stylesheets and the
+imports, not checked in a browser.
 
 No prop picks a visual style.
 
@@ -144,7 +146,8 @@ Known gaps:
   `apps/web/src/features/people/domain/exit-legs.ts`). The privacy views work out both in the browser, from the
   due date and the date the server's answer is as of, and never pass `far` (`privacyReceipt`, in
   `apps/web/src/features/account/api.ts`).
-- The border colour of a tone depends on the order of two stylesheets: see Looks and sizes.
+- The border colour of a tone wins over the global `chip` rule by load order alone, not by a heavier rule: see
+  Looks and sizes.
 
 The gallery entry is `apps/web/src/ui/deadline-chip/deadline-chip.gallery.tsx`. It shows four chips alone: `far`,
 `due`, `due` on the day, and `over`. It shows three blocks: `over` with what is due, a basis and the interest

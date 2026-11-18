@@ -334,8 +334,10 @@ Known gaps:
 - Columns of one kind share a sticky offset: see Looks and sizes.
 - The editor is at least `88px` wide and a day column at least `44px`, so by the CSS a narrow column widens while
   its editor is open. That was not measured.
-- The editor sets `outline: none`. That rule and the global `:focus-visible` rule weigh the same, so which one
-  applies depends on the order the stylesheets load, which was not checked.
+- The editor sets `outline: none` and shows no focus outline. That rule and the global `:focus-visible` rule
+  weigh the same, and the grid's comes later: the entry module imports `app.css` statically and reaches the grid
+  only through lazy imports, so the grid's stylesheet loads after `app.css`. This was read from the stylesheets
+  and the imports, not checked in a browser.
 - Drag selection was written for a pointer that hovers. The stylesheet sets no `touch-action`, and selection by
   touch was not checked.
 

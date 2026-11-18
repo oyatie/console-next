@@ -79,9 +79,10 @@ Five things about these rules are worth knowing:
 - The component does not carry the global `popover` class of `app.css` and relies on no rule of it. Its box is
   drawn by its own module.
 - The dialog's `outline: none` is a rule of one class, and the global `:focus-visible` rule in `app.css` is a
-  rule of one pseudo-class. The two weigh the same, so the module's rule wins only when its stylesheet comes
-  after `app.css`. This page did not check the order in a build of this branch. Where this page says that the
-  focused dialog shows no outline, it takes that order as given.
+  rule of one pseudo-class. The two weigh the same, and the module's rule comes later: the entry module imports
+  `app.css` statically and reaches this component only through lazy imports, so the module's stylesheet loads
+  after `app.css`. So the focused dialog shows no outline. This was read from the stylesheets and the imports,
+  not checked in a browser.
 - The module gives the popover no `overflow`. React Aria sets a maximum height on the popover element when it
   places it, and content taller than that is not scrolled by the popover.
 - React Aria also sets `z-index` on the popover element itself. The module sets none.
@@ -159,7 +160,7 @@ The WCAG 2.2 criteria that apply:
 | 2.1.1 Keyboard | The table above. |
 | 2.1.2 No Keyboard Trap | Escape closes the panel and returns focus to the trigger. |
 | 2.4.3 Focus Order | Focus moves into the panel on open and back to the trigger on close. |
-| 2.4.7 Focus Visible | The trigger shows the global outline. The dialog element, which takes focus on open, sets `outline: none` and shows nothing, given the stylesheet order noted under Looks and sizes. |
+| 2.4.7 Focus Visible | The trigger shows the global outline. The dialog element, which takes focus on open, sets `outline: none` and shows nothing: see Looks and sizes. |
 | 2.5.3 Label in Name | The caller's to keep: `aria-label` replaces the text in `trigger`, so `label` must contain that text. |
 | 2.5.8 Target Size (Minimum) | The `ghost` trigger is at least 36 px high and the `chip` trigger at least 28 px. The `link` trigger is 18 px high, below the 24 px minimum unless the space around it makes up for it. |
 | 4.1.2 Name, Role, Value | The table above. |
@@ -172,7 +173,7 @@ Known gaps:
   catalog: its name is `structure.headcount.explain`, and its visible text is `structure.headcount.label` followed
   by `uiBlocker.reason`.
 - Focus lands on the dialog element, which shows no focus look, so nothing visible has focus until Tab is pressed.
-  This holds when the module's stylesheet comes after `app.css`: see Looks and sizes.
+  See Looks and sizes.
 - The popover element has no role and still carries `aria-labelledby`, pointing at the trigger.
 - The title is a level 2 heading in every place the component is used.
 - Content taller than the height React Aria allows is not scrolled by the popover.

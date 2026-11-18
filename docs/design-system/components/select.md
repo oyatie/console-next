@@ -124,9 +124,10 @@ An option:
 | Disabled | Does not exist. `SelectOption` has no such field. |
 
 The `outline: none` of an option, and of the list, is a rule of one class. The global `:focus-visible` rule in
-`app.css` is a rule of one pseudo-class. The two weigh the same, so the module's rule wins only when its
-stylesheet comes after `app.css`. This page did not check the order in a build of this branch. Where this page
-says that a focused option shows no outline, it takes that order as given.
+`app.css` is a rule of one pseudo-class. The two weigh the same, and the module's rule comes later: the entry
+module imports `app.css` statically and reaches this component only through lazy imports, so the module's
+stylesheet loads after `app.css`. So a focused option shows no outline, and neither does the focused list. This
+was read from the stylesheets and the imports, not checked in a browser.
 
 `error` turns the invalid look on whenever it is not `null` or `undefined`. An empty string or `false` counts as
 an error and draws the red border with an empty line under it; pass `undefined` for no error.
@@ -232,7 +233,7 @@ The WCAG 2.2 criteria that apply:
 | 2.1.1 Keyboard | The tables above. |
 | 2.1.2 No Keyboard Trap | Escape closes the list and returns focus to the trigger. |
 | 2.4.3 Focus Order | Focus moves into the list on open and back to the trigger on close. |
-| 2.4.7 Focus Visible | The trigger shows a ring. A focused option shows a `--muted` fill. A focused option that is also the chosen one shows nothing of its own, given the stylesheet order noted under States. |
+| 2.4.7 Focus Visible | The trigger shows a ring. A focused option shows a `--muted` fill. A focused option that is also the chosen one shows nothing of its own: see States. |
 | 2.5.8 Target Size (Minimum) | The trigger is at least 32 px high. An option is at least 37 px high. |
 | 3.3.1 Error Identification | The error is text, under the trigger. It is not exposed as the trigger's description. |
 | 3.3.2 Labels or Instructions | The label is visible unless `hideLabel` is set, and the placeholder says what to pick. Whether a pick is required is not shown. |
@@ -246,8 +247,8 @@ Known gaps:
 - Required is neither shown nor exposed. `Field` writes a marker word beside its label; `SelectField` has none,
   and the trigger carries no `aria-required`.
 - A focused option that is also the chosen one has no focus look, and every option has `outline: none`. When the
-  list opens with a value chosen, focus is on that option, so keyboard focus is not visible until it moves. This
-  holds when the module's stylesheet comes after `app.css`: see States.
+  list opens with a value chosen, focus is on that option, so keyboard focus is not visible until it moves. See
+  States.
 - No option has a keyboard-only focus look: focus and hover look the same.
 - The list is at least 366.67 px wide, with no cap against the screen. On a screen narrower than 367 px, the
   320 px of the Reflow criterion included, it is wider than the screen.
