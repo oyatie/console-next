@@ -4,3 +4,4 @@
 // equal to the ones it applies.
 export const THEME_KEY = "console.theme";
 export const THEMES = ["light", "dark"] as const;
+export const EXPERIENCE_KEY = "console.experience";
