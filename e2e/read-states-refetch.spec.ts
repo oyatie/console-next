@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import type { components } from "@console/api/schema";
+import { passkeyAssertion } from "./auth";
 import { go, kstDate, registerEmployee, routeReady } from "./flows";
 import { SETUP_DEPARTMENT, setupCompany, tenantBeforeSetup } from "./setup-flows";
 import { openAsOf } from "./dates";
@@ -11,8 +13,9 @@ const cases = [
   { path: "/statutory", read: "/api/v1/statutory/insurance-filings", button: "처리 내역" },
   { path: "/statutory", read: "/api/v1/statutory/insurance-filings", search: "이름·사번 검색" },
   { path: "/statutory?tab=register&site=$site", read: "/api/v1/statutory/worker-register", date: true },
-  { path: "/attendance?tab=day", read: "/api/v1/attendance/days", button: "이전 날" },
-  { path: "/attendance?tab=day", read: "/api/v1/attendance/days", button: "확인 필요만" },
+  // 8633bdf705 and a6e60f5a68 reserve the grid for a changed date or filter.
+  { path: "/attendance?tab=day", read: "/api/v1/attendance/days", button: "이전 날", reserve: "grid" },
+  { path: "/attendance?tab=day", read: "/api/v1/attendance/days", button: "확인 필요만", reserve: "grid" },
   { path: "/attendance?tab=month", read: "/api/v1/attendance/month", button: "이전 달" },
   { path: "/attendance?tab=schedule", read: "/api/v1/attendance/schedule/calendar", button: "이전 달" },
   { path: "/attendance?tab=schedule&view=holidays", read: "/api/v1/attendance/holidays", button: "이전 연도" },
@@ -57,6 +60,28 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
     const created = await admin.request.post("/api/v1/access/roles", { headers, data: { name_ko: "읽기 유지 역할", status: "ACTIVE", lines: [{ domain: "org", levels: ["view"] }] } });
     expect(created.status()).toBe(201);
     role = await created.json();
+    const listed = await admin.request.get("/api/v1/access/roles?status=ACTIVE", { headers });
+    expect(listed.status()).toBe(200);
+    expect((await listed.json()).items).toEqual(expect.arrayContaining([expect.objectContaining({ id: role.id, name_ko: role.name_ko })]));
+    // 6aaa2db324 shows the role filter only when the grant list is non-empty.
+    const accounts = await admin.request.get("/api/v1/users", { headers });
+    expect(accounts.status()).toBe(200);
+    const account = ((await accounts.json()).items as components["schemas"]["UserSummary"][]).find(account => account.display_name === "이임원");
+    expect(account).toBeTruthy();
+    const previewResponse = await admin.request.post("/api/v1/access/grants/preview", { headers, data: {
+      operations: [{ op: "grant", account_id: account!.id, role_id: role.id, scope: { kind: "TENANT", include_descendants: true }, effective_in_setup: true }],
+      reason_code: "PROMOTION_OR_REASSIGNMENT",
+    } satisfies components["schemas"]["AccessGrantBatchRequest"] });
+    expect(previewResponse.status(), await previewResponse.text()).toBe(200);
+    const preview = await previewResponse.json() as components["schemas"]["AccessGrantPreview"];
+    expect(preview.refused).toBe(0);
+    const started = await admin.request.post("/api/v1/auth/passkey/login/start", { headers, data: {} });
+    expect(started.status(), await started.text()).toBe(200);
+    const ceremony = await started.json() as components["schemas"]["PasskeyLoginStartResponse"];
+    const step_up = await passkeyAssertion(admin, { ...ceremony, challenge: { publicKey: ceremony.challenge.publicKey as PublicKeyCredentialRequestOptionsJSON } });
+    const applied = await admin.request.post("/api/v1/access/grants/apply", { headers: { ...headers, "Idempotency-Key": randomUUID() }, data: { receipt_id: preview.receipt_id, step_up } });
+    expect(applied.status(), await applied.text()).toBe(200);
+    expect((await applied.json()).items).toEqual([expect.objectContaining({ account_id: account!.id, role_id: role.id, enforcement: "ENFORCED" })]);
   });
   test.afterAll(async () => { await admin?.context().close(); });
 
@@ -132,22 +157,38 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           await control.press("Enter");
         }
         await expect.poll(() => requested).toBe(true);
-        await expect(main.locator('[data-read-region][aria-busy="true"]').last()).toBeVisible();
-        const index = (await Promise.all(regions.map(region => region.evaluate(el => el instanceof Element && el.isConnected && el.getAttribute("aria-busy") === "true")))).findIndex(Boolean);
-        expect(index).toBeGreaterThanOrEqual(0);
+        const reserve = "reserve" in row ? row.reserve : undefined;
+        if (reserve) await expect(main.locator(`[data-read-layout="${reserve}"]`)).toBeVisible();
+        else await expect(main.locator('[data-read-region][aria-busy="true"]').last()).toBeVisible();
+        const index = reserve ? -1 : (await Promise.all(regions.map(region => region.evaluate(el => el instanceof Element && el.isConnected && el.getAttribute("aria-busy") === "true")))).findIndex(Boolean);
+        if (!reserve) expect(index).toBeGreaterThanOrEqual(0);
+        const mountedControl = await control.elementHandle();
         let intact = true;
         const started = Date.now();
         await expect.poll(async () => {
-          intact &&= await control.count() === 1 && await control.evaluate(el => el.isConnected && document.activeElement === el);
+          intact &&= await control.count() === 1 && await mountedControl!.evaluate(el => el.isConnected && document.activeElement === el);
           intact &&= await mountedHead!.evaluate(el => el.isConnected);
           for (const bar of chrome) intact &&= await bar.evaluate(el => el instanceof Element && el.isConnected && el.getClientRects().length > 0);
-          intact &&= await regions[index]!.evaluate(el => el.isConnected);
-          if (content[index]) intact &&= await content[index]!.evaluate(el => el.isConnected);
-          intact &&= await main.locator("[data-read-layout]").count() === 0;
+          if (reserve) {
+            for (const region of regions) intact &&= await region.evaluate(el => !el.isConnected);
+            intact &&= await main.locator(`[data-read-layout="${reserve}"]`).isVisible();
+          } else {
+            intact &&= await regions[index]!.evaluate(el => el.isConnected);
+            if (content[index]) intact &&= await content[index]!.evaluate(el => el.isConnected);
+            intact &&= await main.locator("[data-read-layout]").count() === 0;
+          }
           return Date.now() - started;
         }, { intervals: [100, 200, 250] }).toBeGreaterThanOrEqual(1500);
         expect(intact).toBe(true);
         await expect(control).toBeFocused();
+        if (reserve) {
+          const refreshed = page.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === read && r.ok());
+          held = false; release();
+          await (await refreshed).finished();
+          await expect(main.locator('[aria-busy="true"]')).toHaveCount(0);
+          await expect(main.locator("[data-read-layout]")).toHaveCount(0);
+          await expect(main.locator("[data-read-region]").last()).toBeAttached();
+        }
       } finally {
         held = false; release();
         await page.unrouteAll({ behavior: "wait" });
