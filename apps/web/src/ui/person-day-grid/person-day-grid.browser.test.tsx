@@ -242,6 +242,19 @@ test("a person's name link opens with Enter, and keys pressed on it are not the 
   await element(drafts).toHaveText(`{${FIRST}}`);
   await element(page.locator("#acts")).toHaveText("");
   expect(await active()).toBe("0,0");
+  // Nor is a paste on the link the grid's: the paste preview opens for one on the grid itself. (Read a frame later,
+  // once the page has drawn what the paste asked for.)
+  const paste = () => page.evaluate(() => {
+    const data = new DataTransfer();
+    data.setData("text/plain", "9-18");
+    document.activeElement!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+    return new Promise(done => requestAnimationFrame(() => setTimeout(done)));
+  });
+  await paste();
+  await element(page.getByRole("dialog")).toHaveCount(0);
+  await grid.focus();
+  await paste();
+  await element(page.getByRole("dialog")).toHaveCount(1);
 });
 
 test("a press inside the open editor places the caret and keeps the editor", async () => {

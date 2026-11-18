@@ -196,7 +196,8 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
     return false;
   };
 
-  // ⌘V while the grid has focus: rows by employee number, one row across from the focused cell.
+  // ⌘V while the grid itself has focus (not its editor, nor a link or a button in a cell): rows by employee number, one
+  // row across from the focused cell.
   const box = useRef({ rows, focus: f });
   useEffect(() => {
     box.current = { rows, focus: f };
@@ -204,7 +205,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
   useEffect(() => {
     const paste = (e: ClipboardEvent) => {
       const active = document.activeElement;
-      if (!(active instanceof HTMLElement) || active.matches("input, textarea, [contenteditable]") || !active.closest('[role="grid"]')) return;
+      if (!active?.matches('[role="grid"]')) return;
       const text = e.clipboardData?.getData("text/plain");
       if (!text) return;
       e.preventDefault();
