@@ -90,10 +90,10 @@ export function Form({ onSubmit, children, onChangeCapture, ...rest }: Omit<Form
 }
 
 /** A checkbox with a visible statement, or an accessible label for table selection. */
-export function Check({ checked, onChange, children, "aria-label": label }: { checked: boolean; onChange: (v: boolean) => void; children?: ReactNode; "aria-label"?: string }) {
+export function Check({ checked, onChange, children, "aria-label": label, "aria-describedby": describedBy }: { checked: boolean; onChange: (v: boolean) => void; children?: ReactNode; "aria-label"?: string; "aria-describedby"?: string }) {
   return (
     <label className="check">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} aria-describedby={describedBy} />
       {children != null && <span>{children}</span>}
     </label>
   );

@@ -234,6 +234,7 @@ Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`). Defaults
 | --- | --- | --- | --- | --- |
 | `checked` | yes | `boolean` |  |  |
 | `onChange` | yes | `(v: boolean) => void` |  |  |
+| `aria-describedby` | no | `string` |  |  |
 | `aria-label` | no | `string` |  |  |
 | `children` | no | `ReactNode` |  |  |
 

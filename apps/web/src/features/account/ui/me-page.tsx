@@ -20,7 +20,7 @@ import s from "./account.module.css";
  * Extension points (no affordance until the API exists): ESS sections, sessions and sign-in
  * history, the location-consent link.
  */
-export function MePage({ locale, experience }: { locale: ReactNode; experience: ReactNode }) {
+export function MePage({ locale, experience, singleKeys }: { locale: ReactNode; experience: ReactNode; singleKeys: ReactNode }) {
   const vendor = Boolean(claims()?.platform);
   // Wait for the passkey warning's facts so it never pushes the cards below it down after they are drawn.
   const keys = useQuery(passkeysQuery);
@@ -30,7 +30,7 @@ export function MePage({ locale, experience }: { locale: ReactNode; experience: 
     <div className={`page ${s.column}`}>
       <PageHead title={t("account.title")} />
       <QueryState q={reads} layout="record">{() => <>
-          <ProfileCard locale={locale} experience={experience} me={me} />
+          <ProfileCard locale={locale} experience={experience} singleKeys={singleKeys} me={me} />
           <PasskeysCard ops={vendor ? false : me.data?.is_tenant_ops} passkeys={keys} />
           <ConsentCard />
           {!vendor && <Link to="/account/privacy">{t("account.privacy.title")}</Link>}
