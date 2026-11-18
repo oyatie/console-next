@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { isImeKey } from "../../lib/pure/ime";
 import { at, indexOf, inRect, moveRange, rectIn, spanIn, type Cell, type Range } from "../sheet-grid/range";
 import s from "./person-day-grid.module.css";
@@ -69,6 +69,14 @@ export function PersonDayGrid<R>(p: Props<R>) {
     return () => window.removeEventListener("resize", read);
   }, []);
   const [drag, setDrag] = useState(false);
+  const table = useRef<HTMLTableElement>(null);
+  // The editor left while it held the focus (Enter, Tab, Escape, a press on another cell): the grid takes the focus
+  // back, so the next key lands here. One left by a press elsewhere had already given the focus away.
+  const held = useRef(false);
+  useEffect(() => {
+    if (!p.editing && held.current) table.current?.focus({ preventScroll: true });
+    held.current = false;
+  }, [p.editing]);
   const axes = { rows: p.rows.map(p.rowKey), cols: p.days.map((d) => d.key) };
   const rect = rectIn(p.range, axes);
   const f = p.range && indexOf(p.range.focus, axes);
@@ -126,6 +134,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
   return (
     <div ref={box} className={s.box} onScroll={(e) => setScroll({ top: e.currentTarget.scrollTop, height: e.currentTarget.clientHeight })}>
       <table
+        ref={table}
         className={s.table}
         {...{
           role: "grid",
@@ -181,7 +190,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
                       onPointerEnter={() => drag && pick(key, d.key, true)}
                       onDoubleClick={() => p.onEdit("")}
                     >
-                      {p.editing?.cell.row === key && p.editing.cell.col === d.key ? <Editor value={p.editing.value} label={p.describe(row, c)} onChange={p.onEdit} onCommit={p.onCommit} /> : p.cell(row, c)}
+                      {p.editing?.cell.row === key && p.editing.cell.col === d.key ? <Editor value={p.editing.value} label={p.describe(row, c)} onChange={p.onEdit} onCommit={p.onCommit} held={held} /> : p.cell(row, c)}
                     </td>
                   );
                 })}
@@ -197,13 +206,16 @@ export function PersonDayGrid<R>(p: Props<R>) {
 }
 
 /** The in-cell input: Enter commits and moves down, Tab right, Esc cancels; an IME composition is never cut. */
-function Editor({ value, label, onChange, onCommit }: { value: string; label: string; onChange: (v: string | null) => void; onCommit: (then: "down" | "right" | "stay") => void }) {
+function Editor({ value, label, onChange, onCommit, held }: { value: string; label: string; onChange: (v: string | null) => void; onCommit: (then: "down" | "right" | "stay") => void; held: RefObject<boolean> }) {
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = input.current;
     el?.focus();
     el?.setSelectionRange(el.value.length, el.value.length);
-  }, []);
+    // Whether it held the focus is read as it leaves, while it is still in the page; the grid acts on it once it is
+    // gone (moving the focus off a live input would be its blur, a second commit).
+    return () => { held.current = document.activeElement === el; };
+  }, [held]);
   return (
     <input
       ref={input}
