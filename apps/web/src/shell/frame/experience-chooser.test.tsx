@@ -13,7 +13,9 @@ beforeAll(async () => { await loadCatalog("ko"); await loadCatalog("en"); });
 test.each(["en", "ko"] as const)("%s: registering a second pack adds its choice without changing the chooser", locale => {
   i18n.set(locale);
   try {
-    const html = renderToStaticMarkup(<ExperienceChooser />);
+    const html = renderToStaticMarkup(<ExperienceChooser id="test-experience" />);
+    expect(html).toContain('id="test-experience"');
+    expect(html).toContain('aria-describedby="test-experience-hint"');
     expect(html.match(/<option\b/g)).toHaveLength(2);
     expect(html).toContain('value="second"');
     expect(html).toContain(t("account.experience.baseline"));

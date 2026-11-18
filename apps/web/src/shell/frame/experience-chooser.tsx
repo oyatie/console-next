@@ -5,11 +5,11 @@ import { experiences, resolveExperience } from "../../experience/table";
 import { EXPERIENCE_KEY } from "../../lib/prefs";
 import { SelectInput } from "../../ui/field/select-input";
 
-export function ExperienceChooser() {
+export function ExperienceChooser({ id }: { id: string }) {
   const [failed, setFailed] = useState(false);
   const selected = resolveExperience(typeof document === "undefined" ? undefined : document.documentElement.dataset.experience);
   return <>
-    <SelectInput id="account-experience" aria-label={t("account.experience")} aria-describedby="account-experience-hint"
+    <SelectInput id={id} aria-label={t("account.experience")} aria-describedby={`${id}-hint`}
       value={selected.id} onChange={event => {
         const next = resolveExperience(event.target.value);
         try { localStorage.setItem(EXPERIENCE_KEY, next.id); }
@@ -18,7 +18,7 @@ export function ExperienceChooser() {
       }}>
       {experiences.map(experience => <option key={experience.id} value={experience.id}>{t(experience.label)}</option>)}
     </SelectInput>
-    <p id="account-experience-hint" className="muted">{t("account.experience.device")}</p>
+    <p id={`${id}-hint`} className="muted">{t("account.experience.device")}</p>
     {failed && <span role="alert">{t("account.experience.failed")}</span>}
   </>;
 }
