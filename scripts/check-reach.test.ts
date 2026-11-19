@@ -253,7 +253,7 @@ test("operations: the CLI rejects a removed release-operation allowance against 
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-cli-")));
   try {
     cliFixture(root);
-    for (const args of [["init"], ["add", "scripts/reach-baseline.json", "backend", "apps", "third-party"], ["-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: seed reach baseline"]]) {
+    for (const args of [["init"], ["add", "scripts/reach-baseline.json", "backend", "apps", "third-party"], ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "test: seed reach baseline"]]) {
       const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
       expect(result.status, result.stderr).toBe(0);
     }
@@ -317,7 +317,7 @@ test("operations: promotion seeds only existing uncalled APIs excluded from the 
       const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
       expect(result.status, result.stderr).toBe(0);
     };
-    const commit = () => { git("add", "."); git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: release feature closure"); };
+    const commit = () => { git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "test: release feature closure"); };
     git("init");
     commit();
     const read = () => {

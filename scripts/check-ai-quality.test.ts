@@ -37,7 +37,7 @@ function fixture(files: Record<string, string>, initial: Record<string, string> 
   };
   git(["init", "--quiet", "-b", "fixture-base"]);
   git(["add", "."]);
-  git(["-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "-c", "core.hooksPath=/dev/null", "commit", "--quiet", "-m", "test: create isolated quality fixture"]);
+  git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "core.hooksPath=/dev/null", "commit", "--quiet", "-m", "test: create isolated quality fixture"]);
   Object.entries(files).forEach(([file, text]) => put(root, file, text));
   return root;
 }
