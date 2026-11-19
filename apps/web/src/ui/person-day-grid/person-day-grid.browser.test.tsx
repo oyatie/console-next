@@ -120,6 +120,8 @@ const month = async (query = "") => {
   const grid = page.getByRole("grid");
   editor = page.getByRole("textbox");
   await element(grid.getByRole("link", { name: "Person 1", exact: true })).toBeVisible();
+  // The web font can still be arriving: a column it widens moves the side columns a frame later, so measures wait for it.
+  await page.evaluate(() => document.fonts.ready);
   return grid;
 };
 const dayCell = (person: number, day: number) => page.locator("tbody tr").filter({ has: page.getByRole("link", { name: `Person ${person}`, exact: true }) }).locator("td").nth(day - 1);
@@ -189,7 +191,7 @@ test("a grid that fits its box has every column where the table puts it", async 
   await page.setViewportSize({ width: 2300, height: 720 });
   try {
     const grid = await month("?w=2200&unscheduled");
-    expect(await sideways(grid, 0, 3)).toEqual({ faults: [], days: 31, totals: 4, end: 0, totalsEnd: 0 });
+    await expect.poll(() => sideways(grid, 0, 3)).toEqual({ faults: [], days: 31, totals: 4, end: 0, totalsEnd: 0 });
   } finally {
     await page.setViewportSize({ width: 1280, height: 720 });
   }
