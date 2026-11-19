@@ -72,7 +72,6 @@ import { enUiHandoff } from "./en/ui-handoff";
 import { enUiLongTable } from "./en/ui-long-table";
 import { enUiServerPicker } from "./en/ui-server-picker";
 import { enUiSetupRail } from "./en/ui-setup-rail";
-import { enUiSourceChip } from "./en/ui-source-chip";
 import { enUiSectionConfirm } from "./en/ui-section-confirm";
 import { enUiFileDrop } from "./en/ui-file-drop";
 import { enUiCodePicker } from "./en/ui-code-picker";
@@ -202,7 +201,6 @@ export const en = {
   ...enUiLongTable,
   ...enUiServerPicker,
   ...enUiSetupRail,
-  ...enUiSourceChip,
   ...enUiSectionConfirm,
   ...enUiFileDrop,
   ...enUiCodePicker,

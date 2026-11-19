@@ -15,6 +15,8 @@ export const enAccount = {
   "account.field.theme": "Appearance",
   "account.experience": "Screen style",
   "account.experience.baseline": "Baseline",
+  "account.experience.controlRoom": "Control room",
+  "account.experience.warmClear": "Warm clear",
   "account.experience.device": "Saved on this device. Changing the style reloads the page.",
   "account.experience.failed": "This device could not save the style. Allow site storage and try again.",
   "account.field.theme.where": "Change light or dark mode with the button in the top bar",

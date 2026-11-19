@@ -45,7 +45,6 @@ export function Fixture() {
         onEdit={setValue}
         onCommit={() => setCommitted(n => n + 1)}
         onKey={() => false}
-        rowHeight={32}
       />
       <output id="committed">{committed}</output>
       <output id="open">{value === null ? "closed" : "open"}</output>
