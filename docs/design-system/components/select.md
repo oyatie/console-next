@@ -234,7 +234,7 @@ The WCAG 2.2 criteria that apply:
 | 1.3.1 Info and Relationships | A `listbox` of `option`s behind a button that says it opens one, all named by the label. While an error shows, the error line is the trigger's description and the trigger carries `aria-invalid="true"`. |
 | 1.4.1 Use of Color | The placeholder state is a dashed border and a lighter weight as well as a colour. Invalid is a border colour and an error line in words. The chosen option is a fill and a text colour only on screen, and `aria-selected` in the markup. |
 | 1.4.3 Contrast (Minimum), 1.4.11 Non-text Contrast | Every colour is a token. The trigger's edge is `--control-border` on `--surface`. |
-| 1.4.10 Reflow | The minimum width of the list is capped at the viewport less 24 px. At 320 px, the width the criterion is judged at, the list is 296 px wide and inside the screen, and a label too long for it wraps, inside a run with no space where it has to: see Phone behaviour. |
+| 1.4.10 Reflow | The minimum width of the list is capped at the viewport less 24 px. At 320 px, the width the criterion is judged at, the list under a narrower trigger is 296 px wide and inside the screen, and a label too long for it wraps, inside a run with no space where it has to: see Phone behaviour. |
 | 2.1.1 Keyboard | The tables above. |
 | 2.1.2 No Keyboard Trap | Escape closes the list and returns focus to the trigger. |
 | 2.4.3 Focus Order | Focus moves into the list on open and back to the trigger on close. |
@@ -261,15 +261,15 @@ Known gaps:
 - A trigger with no options does nothing when pressed and does not say why.
 - The names of the hidden dismiss buttons are React Aria's text, not messages from `packages/i18n`.
 - What the shared `Form` reports for an empty required `SelectField` was not tested for this page. `Form` checks
-  every `<select>` inside it, and the hidden one is one of them. The three files on this branch that put a
-  `SelectField` straight into a `Form` all pass `noValidate` and do their own checks.
+  every `<select>` inside it, and the hidden one is one of them. The four files that put a `SelectField`
+  straight into a `Form`, the component's browser fixture among them, all pass `noValidate` and do their own checks.
 
 What the gallery shows: nothing. `ui/select` has no gallery file, and no gallery entry renders a `SelectField`. A
 trace of the imports of every `*.gallery.tsx` finds one entry that imports a module using it, the approvals
 entry, and that entry renders a part of the module that has no `SelectField`.
 
 Tests: `ui/select` has one test file, `select-field.browser.test.tsx`, with `select-field.browser-fixture.tsx`
-beside it. It runs in Chromium on a form shaped like the statutory filing dialog, and checks that the trigger
+beside it. It runs in Chromium on a form shaped like the filing completion dialog, and checks that the trigger
 carries `aria-invalid="true"` and has the error line as its description while the error shows, and neither before
 the form is committed nor after a pick, once by keyboard and once by pointer. At 360 px and at 320 px it opens a
 list of short labels and a list of long ones, one of them a label of 60 Korean syllables with no space over a
