@@ -6,7 +6,7 @@ import { project, sourceFiles } from "./quality/project.mjs";
 import { clones } from "./quality/clones.mjs";
 import { patterns } from "./quality/patterns.mjs";
 import { deadCode } from "./quality/dead-code.mjs";
-import { atBase, baselineGrowth, ratchet } from "./quality/ratchet.mjs";
+import { atBase, baselineGrowth, qualityRef, ratchet } from "./quality/ratchet.mjs";
 import { dependencyProblems } from "./quality/dependencies.mjs";
 
 const BASELINE = "scripts/quality/baseline.json";
@@ -33,7 +33,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
     const option = (name, fallback) => args.includes(name) ? args[args.lastIndexOf(name) + 1] : fallback;
     const root = path.resolve(option("--root", path.resolve(import.meta.dirname, "..")));
-    const base = option("--base", process.env.QUALITY_BASE ?? "dev");
+    const base = option("--base", qualityRef(root));
     const found = findings(root);
     if (args.includes("--report")) {
       process.stdout.write(JSON.stringify(Object.fromEntries(Object.entries(found).sort(([a], [b]) => a.localeCompare(b))), null, 2) + "\n");

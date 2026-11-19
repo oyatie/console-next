@@ -5,8 +5,9 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { t } from "@console/i18n";
 import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type Selection } from "./selection";
 import { DisabledReason } from "../disabled-reason/disabled-reason";
-import { editable, listenRowKeys, rowIdOf } from "./row-keys";
+import { editable, leaveImeKey, listenRowKeys, rowIdOf } from "./row-keys";
 import css from "./long-table.module.css";
+import { useSettledHover } from "./use-settled-hover";
 import cards from "./table-cards.module.css";
 import type { CardColumn } from "./card-columns";
 import { CardContent } from "./card-content";
@@ -75,7 +76,7 @@ export function LongTable<R>(p: {
   /** Editing rows grow with validation messages. */
   editable?: boolean;
   onRowAction?: (id: string) => void;
-  /** Prefetch hooks: the pointer entered a row, or a row took focus. */
+  /** Prefetch hooks: the pointer rests on a row, or a row takes focus. */
   onRowHover?: (id: string) => void;
   onRowFocus?: (id: string) => void;
   find?: { label: string; onFind: (q: string) => void; defaultValue?: string };
@@ -98,6 +99,7 @@ export function LongTable<R>(p: {
   /** Stable router identity for restoring this virtualized scroller after Back/Forward. */
   scrollRestorationId?: string;
 }) {
+  const hover = useSettledHover(p.onRowHover);
   const search = useRef<HTMLInputElement>(null);
   const region = useRef<HTMLElement>(null);
   const grid = useRef<HTMLElement | null>(null);
@@ -173,12 +175,12 @@ export function LongTable<R>(p: {
   const finder = p.find && (
     <SearchField className={css.find} value={find.value} onChange={value => setFind({ source: p.find?.defaultValue, value })} onSubmit={p.find.onFind} onClear={() => p.find?.onFind("")}>
       <Label className="sr-only">{p.find.label}</Label>
-      <Input ref={search} className="field__input" placeholder={p.find.label} />
+      <Input ref={search} className="field__input" placeholder={p.find.label} onKeyDownCapture={leaveImeKey} />
       <kbd className={css.kbd} aria-hidden="true">/</kbd>
     </SearchField>
   );
   return (
-    <section ref={region} className={`${css.region} ${cards.container}`} aria-label={p.label} data-density={density}
+    <section ref={region} className={`${css.region} ${cards.container}`} aria-label={p.label} data-density={density} onScrollCapture={hover.cancel}
       onKeyDownCapture={(e) => {
         if (!cardLayout || e.key !== "Enter" || !p.onRowAction || !(e.target instanceof HTMLElement) || !e.target.matches('[role="row"], [role="rowheader"], [role="gridcell"]')) return;
         const id = rowIdOf(e.target);
@@ -264,7 +266,7 @@ export function LongTable<R>(p: {
               {(r) => {
                 const id = p.rowId(r);
                 return (
-                  <Row id={rowKey(id)} columns={cols} className={css.row} render={props => <div {...props} data-row-id={id} aria-rowindex={indices.get(id)! + 1} />} onHoverStart={p.onRowHover && (() => p.onRowHover?.(id))}>
+                  <Row id={rowKey(id)} columns={cols} className={css.row} render={props => <div {...props} data-row-id={id} aria-rowindex={indices.get(id)! + 1} />} onHoverStart={p.onRowHover && (() => hover.start(id))} onHoverEnd={hover.cancel}>
                     {(c) => {
                       const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
                       // Collection metadata needs row names; offscreen form controls can wait for a visible cell.

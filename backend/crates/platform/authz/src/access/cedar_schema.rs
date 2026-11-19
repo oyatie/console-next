@@ -11,6 +11,8 @@ pub const GO_LIVE_RECEIPT_READ: &str = "onboarding_go_live_receipt_read";
 pub const BULK_APPOINTMENT: &str = "bulk_appointment";
 /// Intake reads use the same scoped personal-data administration permission as decisions.
 pub const PRIVACY_REQUEST_INTAKE_READ: &str = "privacy_request_intake_read";
+/// Effective settings needed by signed-in clients, without administrative registry access.
+pub const SETTINGS_RUNTIME_READ: &str = "settings_runtime_read";
 
 /// The platform schema: the node hierarchy, grants, accounts, one action group
 /// per offered (domain, level) and one action per tagged operation key.
@@ -39,6 +41,7 @@ pub fn schema_source() -> String {
             action_group(domain, level)
         ));
     }
+    src.push_str(&format!("action \"{SETTINGS_RUNTIME_READ}\" {APPLIES}\n"));
     src.push_str(&format!(
         "action \"{BULK_APPOINTMENT}\" in [\"{}\", \"{}\"] {APPLIES}\n\
          action \"{}\" in [\"{}\", \"{}\"] {APPLIES}\n\

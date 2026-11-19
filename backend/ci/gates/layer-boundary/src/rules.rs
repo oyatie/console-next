@@ -38,11 +38,6 @@ pub const FORBIDDEN_DEP_EXCEPTIONS: &[(&str, &str, &str)] = &[
         "sqlx",
         "baseline 2026-10-02 (Tier 3)",
     ),
-    (
-        "console-dispatch-rest",
-        "sqlx",
-        "baseline 2026-10-02 (Tier 3)",
-    ),
     ("console-docs-rest", "sqlx", "baseline 2026-10-02 (Tier 3)"),
     (
         "console-facilities-rest",
@@ -86,11 +81,6 @@ pub const FORBIDDEN_DEP_EXCEPTIONS: &[(&str, &str, &str)] = &[
     ),
     (
         "console-production-rest",
-        "sqlx",
-        "baseline 2026-10-02 (Tier 3)",
-    ),
-    (
-        "console-reporting-rest",
         "sqlx",
         "baseline 2026-10-02 (Tier 3)",
     ),

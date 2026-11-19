@@ -22,7 +22,7 @@
 # OCI_CONFIG (a [DEFAULT] profile without key_file) and OCI_API_KEY, and
 # ONS_TOPIC_ID. console-ci-notify may only publish to the alert topics: no deploy
 # key, no registry credential, no console-infra checkout.
-name: probe
+name: Production availability
 on:
   schedule:
     - cron: "*/10 * * * *"
@@ -34,6 +34,7 @@ concurrency:
 
 jobs:
   probe:
+    name: Probe production availability
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
     permissions:
@@ -64,6 +65,7 @@ jobs:
           if [[ "${prev}" != failure || "$(date -u +%M)" -lt 10 ]]; then echo "page=true" >>"${GITHUB_OUTPUT}"; fi
 
   notify:
+    name: Report availability failure
     needs: probe
     if: failure() && needs.probe.outputs.page == 'true'
     runs-on: ubuntu-24.04-arm

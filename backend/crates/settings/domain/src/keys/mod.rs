@@ -140,3 +140,24 @@ mod privacy_rights;
 mod modules;
 
 roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery, display, support, nts, orgchange, privacy_reveal, access_log_review, privacy_rights, modules);
+
+impl SettingKey {
+    /// Client behavior and workflow copy require these effective values for every member.
+    #[must_use]
+    pub const fn client_required(self) -> bool {
+        matches!(
+            self,
+            Self::AuthIdleTimeoutMinutes
+                | Self::ApprovalPolicyOrgStructure
+                | Self::ApprovalPolicyPeopleCorrection
+                | Self::ApprovalPolicyIdentityMerge
+                | Self::ApprovalPolicyRegistrationVoid
+                | Self::ApprovalPolicyExit
+                | Self::ApprovalPolicyImportRollback
+                | Self::HrContractSoonDays
+                | Self::DeadlineDueSoonDays
+                | Self::OnboardingReceiptDays
+                | Self::PeriodLockUnlockMaxDays
+        )
+    }
+}

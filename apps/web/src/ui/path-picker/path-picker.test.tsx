@@ -56,3 +56,15 @@ test.each([1440, 390])("an open path picker exposes adjacent controls at %i px a
   await expectElement(page.locator("#before")).toBeFocused();
   await expectElement(input).toHaveAttribute("aria-expanded", "false");
 }, 30_000);
+
+test("an Escape marked as the input method's by key code 229 alone keeps the typed text and the open list; a plain Escape closes it", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}path-picker-test`);
+  const input = page.getByRole("combobox", { name: "Place", exact: true });
+  await input.fill("Company");
+  await page.getByRole("option").first().waitFor();
+  await input.dispatchEvent("keydown", { key: "Escape", keyCode: 229 });
+  await expectElement(input).toHaveValue("Company");
+  await expectElement(input).toHaveAttribute("aria-expanded", "true");
+  await input.press("Escape");
+  await expectElement(input).toHaveAttribute("aria-expanded", "false");
+});

@@ -31,6 +31,36 @@ pub fn settings_change_payload(key: SettingKey, value: &SettingValue) -> String 
     .to_string()
 }
 
+pub(crate) async fn require_live_scope(
+    conn: &mut sqlx::PgConnection,
+    org: OrgId,
+    entity: Option<Uuid>,
+) -> Result<(), KernelError> {
+    if let Some(entity) = entity {
+        let live: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM legal_entities e WHERE e.org_id=$1 AND e.id=$2
+               AND e.voided_at IS NULL AND e.closed_on IS NULL
+             UNION ALL SELECT 1 FROM workplaces w JOIN legal_entities e
+               ON e.org_id=w.org_id AND e.id=w.legal_entity_id
+             WHERE w.org_id=$1 AND w.id=$2 AND w.voided_at IS NULL
+               AND w.closed_on IS NULL
+               AND e.voided_at IS NULL AND e.closed_on IS NULL)",
+        )
+        .bind(org.as_uuid())
+        .bind(entity)
+        .fetch_one(conn)
+        .await
+        .map_err(db_error)?;
+        if !live {
+            tracing::warn!(code = "setting_scope_unknown", "settings scope refused");
+            return Err(KernelError::validation("unknown or inactive setting scope")
+                .with_code("setting_scope_unknown")
+                .with_field("scope_entity_id"));
+        }
+    }
+    Ok(())
+}
+
 impl SettingsStore for PgSettingsTx<'_, '_> {
     async fn facts(&mut self) -> Result<StoreFacts, KernelError> {
         let row = sqlx::query(
@@ -96,28 +126,7 @@ impl SettingsStore for PgSettingsTx<'_, '_> {
         key: SettingKey,
         entity: Option<Uuid>,
     ) -> Result<(Vec<Uuid>, Vec<OverrideRow>), KernelError> {
-        if let Some(entity) = entity {
-            let live: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM legal_entities e WHERE e.org_id=$1 AND e.id=$2
-                   AND e.voided_at IS NULL AND e.closed_on IS NULL
-                 UNION ALL SELECT 1 FROM workplaces w JOIN legal_entities e
-                   ON e.org_id=w.org_id AND e.id=w.legal_entity_id
-                 WHERE w.org_id=$1 AND w.id=$2 AND w.voided_at IS NULL
-                   AND w.closed_on IS NULL
-                   AND e.voided_at IS NULL AND e.closed_on IS NULL)",
-            )
-            .bind(self.org.as_uuid())
-            .bind(entity)
-            .fetch_one(self.tx.as_mut())
-            .await
-            .map_err(db_error)?;
-            if !live {
-                tracing::warn!(code = "setting_scope_unknown", "settings scope refused");
-                return Err(KernelError::validation("unknown or inactive setting scope")
-                    .with_code("setting_scope_unknown")
-                    .with_field("scope_entity_id"));
-            }
-        }
+        require_live_scope(self.tx.as_mut(), self.org, entity).await?;
         let (chain, mut rows) = load_rows_in_tx(self.tx.as_mut(), self.org, &[key], entity).await?;
         Ok((
             chain.into_iter().map(|scope| scope.id).collect(),

@@ -30,6 +30,8 @@ static EQUIPMENT_SEQUENCE: AtomicU16 = AtomicU16::new(1);
 
 #[path = "workbench_native_api/http.rs"]
 mod http_harness;
+#[path = "workbench_native_api/unavailable.rs"]
+mod unavailable;
 use http_harness::get;
 
 struct Keys {
@@ -224,50 +226,12 @@ async fn mounted_workbench_dispatch_respects_selected_branch_scope(pool: PgPool)
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn mounted_workbench_marks_todos_unavailable_when_runtime_role_loses_select(pool: PgPool) {
-    let keys = keys();
-    let branch = seed_branch(&pool, "Failure Region", "Failure Branch").await;
-    let user = UserId::new();
-    seed_user(&pool, user, &[branch]).await;
-    let base = OffsetDateTime::parse(
-        "2026-07-01T12:00:00Z",
-        &time::format_description::well_known::Rfc3339,
-    )
-    .unwrap();
-    let support = seed_support_ticket(&pool, branch, user, base).await;
-    let event = seed_calendar_event(&pool, user, base).await;
+    unavailable::assert_todo_source_unavailable(pool, false).await;
+}
 
-    // This is a real source failure at the runtime boundary, not an injected
-    // reader double: native todo storage receives SQLSTATE insufficient_privilege
-    // while action and calendar retain their independently granted access.
-    sqlx::query("REVOKE SELECT ON TABLE todos FROM console_rt")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    let service =
-        build_router(app_state(runtime_role_pool(&pool).await, keys.public_pem.clone()).unwrap());
-    let response = get(
-        service,
-        &format!(
-            "{PATH}?from={RANGE_FROM}&to={RANGE_TO}&branch_id={branch}&action_limit=1&todo_limit=1&calendar_limit=1"
-        ),
-        &bearer(&pool, &keys, user, &[branch]).await,
-    )
-    .await;
-
-    assert_eq!(response.status, StatusCode::OK, "{:?}", response.json);
-    assert_eq!(response.json["partial"], true, "{:?}", response.json);
-    assert_source(
-        &response.json["action_inbox"],
-        format!("support:{support}"),
-        1,
-        false,
-    );
-    assert_eq!(
-        response.json["todos"],
-        json!({"status": "unavailable", "code": "todo_unavailable"})
-    );
-    assert_source(&response.json["calendar"], event.to_string(), 1, false);
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn mounted_workbench_marks_todos_unavailable_when_only_request_reads_fail(pool: PgPool) {
+    unavailable::assert_todo_source_unavailable(pool, true).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

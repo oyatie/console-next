@@ -282,7 +282,6 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
       onEdit={(v) => setEditing(v === null ? null : editing ? { ...editing, value: v } : start(v))}
       onCommit={commit}
       onKey={onKey}
-      rowHeight={32}
       groupOf={(r) => r.unit_name ?? ""}
     />
       {pasting && <PastePreviewSheet plan={pasting.plan} people={pasting.people} month={pasting.month} onClose={() => setPasting(null)} onAccept={acceptPaste} />}

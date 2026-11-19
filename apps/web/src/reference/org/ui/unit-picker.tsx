@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { UNIT_KIND, label } from "../../../lib/labels";
+import { leaveImeKey } from "../../../lib/pure/ime";
 import { unitPath } from "../present";
 import s from "../../../ui/field/field.module.css";
 import { Muted } from "../../../ui/muted/muted";
@@ -30,7 +31,7 @@ export function UnitPicker({ units, options, value, onChange, labelText = t("org
     <ComboBox onOpenChange={onOpenChange} className="field" selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} isRequired={required} isInvalid={error != null} data-form-value={value}>
       <Label className="field__label">{labelText}</Label>
       <div className="combo">
-        <Input ref={input} className="field__input combo__input" placeholder={t("org.unit.picker.search")} />
+        <Input ref={input} className="field__input combo__input" placeholder={t("org.unit.picker.search")} onKeyDownCapture={leaveImeKey} />
         <Button className="combo__button" aria-label={t("org.unit.picker.open")}><ChevronDown size={16} aria-hidden /></Button>
       </div>
       <FieldError className={s.error}>{error}</FieldError>

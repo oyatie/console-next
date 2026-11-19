@@ -39,11 +39,13 @@ export const assertPasskey = async (): Promise<Assertion> => assertWith(await au
  * Passkey sign-in. With `identifier` (`login@domain`) the challenge names that account's passkeys; without one it is
  * usernameless (the passkey sign-in button), or the browser's autofill with `mediation: "conditional"`.
  */
-export async function loginWithPasskey(opts: { identifier?: string; onStart?: (expiresAt: string) => void } & PasskeyGet = {}) {
-  const { identifier, onStart, ...how } = opts;
+export async function loginWithPasskey(opts: { identifier?: string; onStart?: (expiresAt: string) => void; onAsserted?: () => void } & PasskeyGet = {}) {
+  const { identifier, onStart, onAsserted, ...how } = opts;
   const start = await authPost<Ceremony>(START, identifier ? { identifier } : {});
   onStart?.(start.expires_at);
-  const done = await authPost<TokenPair>("/api/v1/auth/passkey/login/finish", await assertWith(start, how));
+  const assertion = await assertWith(start, how);
+  onAsserted?.();
+  const done = await authPost<TokenPair>("/api/v1/auth/passkey/login/finish", assertion);
   signedInAs = identifier;
   signInProfile = done.passkey_profile;
   session.set(done);

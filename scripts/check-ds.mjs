@@ -11,19 +11,24 @@
 //   literal  a literal length (px, rem, em) or colour in a CSS value that is not a token: hairline borders and
 //            outlines (1px … 3px) and @media conditions excepted.
 //   brokenRef  unconditional hard failure, including fallback refs and theme/condition gaps.
-// Contrast is part of this gate too; --lower / --admit never bypass either hard failure.
+//   frozen   unconditional hard failure: a token of the base file whose value differs from the merge base's.
+//   style    unconditional hard failure: a selector that names a visual style (data-experience) in any shape but the
+//            one guard every new style shares. What one style alone needs is a token value in that style's own file.
+// Contrast is part of this gate too; --lower / --admit never bypass any hard failure.
 // scripts/ds-baseline.json holds today's counts. They may only go down: a count above its pin fails, a count below
 // fails too ("lower the baseline", in the same diff), and a file without a pin must count zero.
 //   node scripts/check-ds.mjs              check (npm test runs it through scripts/gates.test.ts)
 //   node scripts/check-ds.mjs --lower      rewrite pins that went down (never raises one)
 //   node scripts/check-ds.mjs --admit f…   pin the named files at their current counts (INTEG only, for a branch
 //                                          that was READY before this gate; the diff shows each admitted file)
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { checkTokens, experienceFiles } from "./check-contrast.mjs";
+import { checkTokens, experienceFiles, themeTokens } from "./check-contrast.mjs";
 import { brokenRefs, decodeIdent, parseCss } from "./check-ds-refs.mjs";
+import { atBase, qualityRef } from "./quality/base.mjs";
 export { decodeIdent } from "./check-ds-refs.mjs";
 
 export const METRICS = ["raw", "dsClass", "restyle", "literal"];
@@ -85,6 +90,23 @@ function walk(dir, out = []) {
   return out;
 }
 
+/**
+ * The selectors of a stylesheet that name a visual style in a shape the gate does not accept. One shape is accepted:
+ * `:where([data-experience]:not([data-experience="baseline"]))`, which matches every style but today's look and adds
+ * no specificity, so a rule under it is a correction all new styles share. Anything else (a style's own id, the bare
+ * attribute, the guard without `:where`) would let a rule belong to one style, or outrank the rules it corrects.
+ */
+const STYLE_GUARD = /:where\(\s*\[data-experience\]:not\(\s*\[data-experience\s*=\s*"baseline"\s*\]\s*\)\s*\)/g;
+export function styleSelectors(css, file) {
+  const found = [];
+  (typeof css === "string" ? parseCss(css, file) : css).walkRules((rule) => {
+    for (const selector of rule.selectors ?? []) {
+      if (selector.replaceAll("'", '"').replace(STYLE_GUARD, "").includes("data-experience")) found.push(selector.trim());
+    }
+  });
+  return found;
+}
+
 const TOKENS = "packages/tokens/tokens.css";
 /** Per-file counts; broken references have no baseline allowance, in every theme and scope. */
 export function measure(root, problems = []) {
@@ -108,6 +130,11 @@ export function measure(root, problems = []) {
   }
   const sheets = new Map([...sources].filter(([f]) => f.endsWith(".css")).map(([f, src]) => [f, parseCss(src, f)]));
   problems.push(...brokenRefs(sources, sheets, TOKENS));
+  const styleFiles = new Set([TOKENS, ...experienceFiles(path.join(root, TOKENS)).map((p) => posix(path.relative(root, p)))]);
+  for (const [f, sheet] of sheets) {
+    if (styleFiles.has(f)) continue;
+    for (const selector of styleSelectors(sheet)) problems.push(`${f}: ${selector} names a visual style outside the shared guard; write a correction every new style shares under :where([data-experience]:not([data-experience="baseline"])), and give one style its own value as a token in its file`);
+  }
   for (const [f, sheet] of sheets) {
     if (!EXEMPT.test(f) && f !== TOKENS)
       add(f, countCss(sheet, f.endsWith(".module.css") ? controlsByDir.get(path.dirname(f)) : undefined));
@@ -145,6 +172,44 @@ export function compare(counts, baseline) {
   return problems;
 }
 
+// The values today's look is drawn with stay as they are while a second style is built beside it: a new style sets its
+// own values in its own file, and a new role enters this file at the value the look already has.
+const TOKEN_CHANGES = "scripts/ds-token-changes.json";
+/** A token's value with every reference replaced by what it refers to, so an alias reads as the value it carries. */
+const flat = (tokens, value, seen = []) => value
+  .replace(/var\(\s*(--[\w-]+)\s*\)/g, (whole, name) => seen.includes(name) || tokens[name] === undefined ? whole : flat(tokens, tokens[name], [...seen, name]))
+  .replace(/\s+/g, " ").trim().toLowerCase();
+
+/**
+ * Every token the base file held, in both themes, against the same token now. A new token is not a change, and neither
+ * is an old one written through a new name at the same value. `allowed` records an intended change by the value it
+ * changes to (`{"--name": {light, dark}}`), so a later, different change needs a new record.
+ */
+export function frozenTokens(beforeCss, nowCss, allowed = {}) {
+  const before = themeTokens(beforeCss), now = themeTokens(nowCss), problems = [];
+  for (const theme of ["light", "dark"]) for (const [name, value] of Object.entries(before[theme])) {
+    const was = flat(before[theme], value);
+    const is = now[theme][name] === undefined ? undefined : flat(now[theme], now[theme][name]);
+    if (is === was || (is !== undefined && is === allowed[name]?.[theme]?.toLowerCase())) continue;
+    problems.push(`${TOKENS}: ${name} (${theme}) was ${was}, now ${is ?? "removed"} — today's look may not change here; set a new style's value in its own file, or record an intended change in ${TOKEN_CHANGES}`);
+  }
+  return problems;
+}
+
+/** The frozen-token problems of a checkout against its merge base; a root that is not a repository has no base to read. */
+function frozenAtBase(root) {
+  const git = (args) => spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  const top = git(["rev-parse", "--show-toplevel"]);
+  if (top.status !== 0 || realpathSync(top.stdout.trim()) !== realpathSync(root)) return [];
+  const ref = qualityRef(root);
+  const base = git(["merge-base", "HEAD", ref]);
+  if (base.status !== 0) throw new Error(`design system: cannot resolve the merge base of HEAD and ${ref}: ${base.stderr.trim() || "no common ancestor"}`);
+  const before = atBase(root, base.stdout.trim(), TOKENS);
+  if (before === undefined) return [];
+  const changes = path.join(root, TOKEN_CHANGES);
+  return frozenTokens(before, readFileSync(path.join(root, TOKENS), "utf8"), existsSync(changes) ? JSON.parse(readFileSync(changes, "utf8")) : {});
+}
+
 const BASELINE = "scripts/ds-baseline.json";
 // One file per line, sorted: two lanes lowering different files never touch the same line.
 export const serialize = (o) => `{\n${Object.keys(o).sort().map((k) => `${JSON.stringify(k)}: ${JSON.stringify(o[k])}`).join(",\n")}\n}\n`;
@@ -173,7 +238,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   }
   const problems = [...hardFailures, ...compare(counts, existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {})];
   const tokens = path.join(root, TOKENS);
-  if (existsSync(tokens)) problems.push(...checkTokens(tokens).problems);
+  if (existsSync(tokens)) problems.push(...checkTokens(tokens).problems, ...frozenAtBase(root));
   console.log(`design system: ${METRICS.map((m) => `${m}=${Object.values(counts).reduce((sum, c) => sum + (c[m] ?? 0), 0)}`).join(" ")}`);
   if (problems.length) {
     console.error(`design system: ${problems.length} problem(s):\n${problems.join("\n")}`);
