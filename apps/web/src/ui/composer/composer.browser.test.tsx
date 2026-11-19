@@ -4,7 +4,7 @@ import { commitLabel } from "./actions";
 import { browserTestOptimizeDeps } from "../../lib/browser-test";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, expect as element, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 
@@ -85,6 +85,11 @@ beforeAll(async () => {
   browser = await chromium.launch();
   page = await browser.newPage();
   page.setDefaultTimeout(10000);
+  // A test names a system in the address, and the page then reports it as a browser on that system would.
+  await page.addInitScript(() => {
+    const platform = new URLSearchParams(location.search).get("platform");
+    if (platform) Object.defineProperty(Navigator.prototype, "platform", { get: () => platform });
+  });
 }, 60_000);
 
 test.each([390, 1440])("resolving a page block keeps both controls fixed at %ipx", async (width) => {
@@ -294,4 +299,35 @@ test("remounting a kept command refusal does not take focus again", async () => 
   await page.locator("#mount").click();
   await page.getByRole("alert").waitFor();
   expect(await page.locator("#mount").evaluate(el => el === document.activeElement)).toBe(true);
+});
+
+// The handler takes Command or Control on every system; the hint names the one this system's keyboard has.
+const HINTS = [["Win32", "Ctrl+↵", "Control+Enter"], ["Linux x86_64", "Ctrl+↵", "Control+Enter"], ["MacIntel", "⌘↵", "Meta+Enter"], ["iPad", "⌘↵", "Meta+Enter"]] as const;
+test.each(HINTS.flatMap(([platform, hint, chord]) => ["drawer", "page", "inline"].map(layout => ({ platform, hint, chord, layout }))))(
+  "on $platform a $layout commit shows $hint, the chord that commits there", async ({ platform, hint, chord, layout }) => {
+    await open(`${layout}&platform=${platform}`);
+    expect(await page.evaluate(() => navigator.platform)).toBe(platform);
+    const commit = page.locator("#commit");
+    await element(commit.locator("kbd")).toHaveText(hint);
+    // The hint is for the eye; the name stays the label alone.
+    await element(commit).toHaveAccessibleName(commitLabel({ kind: "appointment", mode: "schedule", count: 3 }));
+    await page.getByLabel("Reason").press(chord);
+    await element(page.locator("#submits")).toHaveText("1");
+  });
+
+test.each(["page", "inline"])("the Control hint stays inside a %s commit with a long label at 390px", async (layout) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await open(`${layout}&platform=Win32`);
+  await page.locator("#toggle").click();
+  const commit = page.getByRole("button", { name: commitLabel({ kind: "EMPLOYMENT_TYPE_CHANGE", mode: "apply", count: 3 }), exact: true });
+  await commit.waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const [button, cap] = await Promise.all([commit.boundingBox(), commit.locator("kbd").boundingBox()]);
+  expect(cap!.x).toBeGreaterThanOrEqual(button!.x);
+  expect(cap!.x + cap!.width).toBeLessThanOrEqual(button!.x + button!.width);
+  expect(cap!.y).toBeGreaterThanOrEqual(button!.y);
+  expect(cap!.y + cap!.height).toBeLessThanOrEqual(button!.y + button!.height);
+  expect(await commit.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1440, height: 900 });
 });

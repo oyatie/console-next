@@ -96,7 +96,9 @@ Known gaps:
 - The key is not exposed to assistive technology in any way. The component cannot set `aria-keyshortcuts`, because
   it is a child of the control, and no caller does it for it: a search of `apps/web/src` for `aria-keyshortcuts`
   finds two controls, and neither holds a `Kbd` from this module.
-- `keys` is not adapted to the platform. A caller that passes the Command glyph shows it on every system.
+- `keys` is not adapted to the platform. A caller that passes the Command glyph shows it on every system. A
+  caller can pick the text first: the commit of `Composer` asks `hasCommandKey` (`lib/command-key`) and passes
+  `⌘↵` or `Ctrl+↵`.
 - There are two components with this name. `ui/record/record-section.tsx` exports another `Kbd`, which takes `k`
   instead of `keys` and has its own, smaller look in `record.module.css`. Outside tests and gallery files,
   thirteen files import each of them. This page documents the one in `ui/kbd`.

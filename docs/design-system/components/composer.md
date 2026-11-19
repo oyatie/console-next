@@ -88,7 +88,7 @@ The actions, in order:
 
 | Part | Element | Shown when |
 |---|---|---|
-| Commit | `<button type="submit" form="<form id>">`: the label from `action`, then a `Kbd` (see [Kbd](kbd.md)) with the text `⌘↵` | `onSubmit` is given and the commit is not blocked. Its id is `commitId`. |
+| Commit | `<button type="submit" form="<form id>">`: the label from `action`, then a `Kbd` (see [Kbd](kbd.md)) with the key hint: `⌘↵` on a system with a Command key, `Ctrl+↵` on any other | `onSubmit` is given and the commit is not blocked. Its id is `commitId`. |
 | Blocked commit | `DisabledReason` around a `<button type="button">` with the same label and no `Kbd`: see [DisabledReason](disabled-reason.md) | `blocked` is given and the server has not refused permission. It is shown with or without `onSubmit`. |
 | Missing line | `<span role="status">` with message `composer.missing` | `missing` is more than zero. |
 | Secondary | The caller's node | `secondary` is given. |
@@ -238,8 +238,13 @@ chord commits once the composition has ended.
 A plain Enter has no such check in the composer, because the composer does not handle it. Whether an Enter that
 ends a composition also submits the form is the browser's to decide.
 
-The hint in the commit always reads `⌘↵`. It is not changed for a system where the chord is Control+Enter, and
-the blocked commit has no hint although the chord still reaches it.
+The hint in the commit names the key of the system it is drawn on. It reads `⌘↵` where `hasCommandKey`
+(`lib/command-key`) finds a Command key, and `Ctrl+↵` everywhere else. `hasCommandKey` reads `navigator.platform`
+and answers yes for a Mac, an iPhone, an iPad and an iPod. The handler takes Command and Control on every system,
+whatever the hint reads. `composer.browser.test.tsx` sets the platform to Windows, Linux, a Mac and an iPad and
+checks, in all three layouts, the hint and that its chord commits. It also checks at 390 px that the wider hint
+stays inside a commit with a long label, in the page and inline layouts. The blocked commit has no hint although
+the chord still reaches it.
 
 ## Accessibility contract
 
@@ -389,7 +394,7 @@ Message ids the module uses for its own text:
 Two more ids start with `composer.` and are used elsewhere: `composer.unsaved` by the sheet, and
 `composer.reason` by callers that label a reason field with a verb.
 
-The text of the key hint, `⌘↵`, is a literal in `composer.tsx`, not a message.
+The two texts of the key hint, `⌘↵` and `Ctrl+↵`, are literals in `composer.tsx`, not messages.
 
 ## Props
 
