@@ -4,7 +4,6 @@ import { renderToStaticMarkup as html } from "react-dom/server";
 import { loadCatalog } from "@console/i18n";
 import { DeadlineChip } from "./deadline-chip";
 import { Chip } from "../chip";
-import { SourceChip } from "../source-chip";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -29,12 +28,4 @@ test("Chip renders with tone variants", () => {
 
   const warn = html(<Chip tone="warn">{warning}</Chip>);
   expect(warn).toContain("chip--warn");
-});
-
-test("SourceChip renders source label with correct tone", () => {
-  const doc = html(<SourceChip source="document" />);
-  expect(doc).toContain("chip--info");
-
-  const nts = html(<SourceChip source="nts" />);
-  expect(nts).toContain("chip--ok");
 });

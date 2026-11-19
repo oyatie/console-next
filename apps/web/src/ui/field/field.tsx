@@ -1,5 +1,6 @@
 import { useId, type ComponentProps, type InputHTMLAttributes, type ReactNode, type Ref } from "react";
 import { t } from "@console/i18n";
+import { isImeKey } from "../../lib/pure/ime";
 import s from "./field.module.css";
 
 /** What a Field hands its control: the ids that tie the label, hint and error to it. */
@@ -81,7 +82,7 @@ export function TextInput({ className, onKeyDown, ...rest }: InputHTMLAttributes
       className={className ? `field__input ${className}` : "field__input"}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
-          if (e.nativeEvent.isComposing || e.keyCode === 229) { e.stopPropagation(); return; }
+          if (isImeKey(e)) { e.stopPropagation(); return; }
           e.preventDefault();
         }
         onKeyDown?.(e);
