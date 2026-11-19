@@ -241,6 +241,9 @@ test.each([1440, 390])("the shared shell keeps flat module links and one current
   await element(rail.locator('[aria-current="page"]')).toHaveCount(1);
   await element(rail.getByRole("link", { name: "법인·사업장", exact: true })).toHaveCount(0);
   if (width === 390) {
+    // An Escape pressed while a syllable is composing is the input method's: the menu stays until a plain one.
+    for (const state of [{ isComposing: true }, { keyCode: 229 }]) await page.evaluate(init => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, ...init })), state);
+    await element(rail).toBeVisible();
     await page.keyboard.press("Escape");
     await element(rail).toBeHidden();
     await element(page.getByRole("button", { name: "메뉴", exact: true })).toBeFocused();

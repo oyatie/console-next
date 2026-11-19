@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { isImeKey } from "../../../lib/pure/ime";
 import { collapseSelection, movable, orderVerdicts, reorderedByDrag, verdicts, type Verdict } from "../domain/rules";
 import type { ChartNode, Structure } from "../domain/model";
 
@@ -35,7 +36,7 @@ export function useDragMove(s: Structure, sel: ReadonlySet<string>, onDrop: (nod
   useEffect(() => {
     if (!dragging) return;
     const key = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || isImeKey(e)) return;
       start.current = null;
       live.current = null;
       setView(null);
