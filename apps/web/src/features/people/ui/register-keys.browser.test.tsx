@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { dirname } from "node:path";
-import { afterAll, beforeAll, test } from "vitest";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { loadCatalog, t } from "@console/i18n";
@@ -44,5 +44,9 @@ test.each(SYSTEMS)("on $platform the registration sheet shows $next to register 
 
 test.each(SYSTEMS)("on $platform the run's entry row shows $next to save the row", async ({ platform, next }) => {
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=table&platform=${platform}`);
-  await element(page.getByRole("button", { name: t("register.run.save"), exact: true }).locator("kbd")).toHaveText(next);
+  const save = page.getByRole("button", { name: t("register.run.save"), exact: true });
+  await element(save.locator("kbd")).toHaveText(next);
+  // Speech input presses a control by the word on it, so the name holds the word the button shows.
+  await element(save).toContainText(t("register.run.submit"));
+  expect(t("register.run.save")).toContain(t("register.run.submit"));
 });
