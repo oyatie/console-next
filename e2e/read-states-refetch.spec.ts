@@ -188,6 +188,8 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           await expect(main.locator('[aria-busy="true"]')).toHaveCount(0);
           await expect(main.locator("[data-read-layout]")).toHaveCount(0);
           await expect(main.locator("[data-read-region]")).toHaveCount(regions.length);
+          // An empty region wrapper is not an answer: the released read must render content.
+          await expect(main.locator("[data-read-region]").last().locator(":scope > *")).not.toHaveCount(0);
         }
       } finally {
         held = false; release();
