@@ -154,7 +154,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 [data-embed] .panel { position: static; }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .field__label { font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
-.field__input { height: var(--row-h); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
+.field__input { height: var(--field-h); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
+/* In a toolbar a field has a height of its own, so a style can draw it level with the controls beside it. The toolbar
+   adds no weight to the selector: every rule that outranks a field's height today outranks this one as well. */
+:where(.toolbar) .field__input { height: var(--field-h-toolbar); }
 .field__error { font-size: var(--text-sm); color: var(--danger-tx); }
 /* Button sizes (ui/button size="sm", IconButton): the kit's .btn--sm and .btn--icon. */
 .btn--sm { min-height: var(--target); padding: 0 var(--space-2); font-size: var(--text-sm); }
@@ -269,7 +272,7 @@ aside.panel { position: sticky; top: 0; }
 .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .grow { flex: 1; }
 .page__sub { display: flex; flex-direction: column; gap: var(--space-4); }
-.field__area { height: auto; min-height: calc(var(--row-h) * 2); padding: var(--space-2) var(--space-3); resize: vertical; }
+.field__area { height: auto; min-height: calc(var(--field-h) * 2); padding: var(--space-2) var(--space-3); resize: vertical; }
 
 /* ── org tree (React Aria Tree) ────────────────────── */
 .tree__row { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h); padding-inline-start: calc((var(--tree-item-level, 1) - 1) * var(--space-5) + var(--space-2)); padding-inline-end: var(--space-2); }
@@ -281,7 +284,7 @@ aside.panel { position: sticky; top: 0; }
 .form--wide { max-width: calc(var(--panel-w) * 2.2); }
 .form__group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
 .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--panel-w) / 2), 1fr)); gap: var(--space-3); }
-.field__static { min-height: var(--row-h); display: flex; align-items: center; color: var(--steel); }
+.field__static { min-height: var(--field-h); display: flex; align-items: center; color: var(--steel); }
 .combo { display: flex; }
 .combo__input { flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .combo__button { border: 1px solid var(--control-border); border-left: 0; background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; padding: 0 var(--space-2); cursor: pointer; color: var(--steel); }

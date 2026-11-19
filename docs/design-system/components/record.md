@@ -371,7 +371,7 @@ measured in a browser.
   the padding, the border, the radius, the minimum height and the weight, and the `btn--ghost` class sets the
   border colour. The kit's values apply: the item is a column with 8 px of padding and no minimum height, not a
   centred row with 12 px side padding and a 36 px minimum height.
-- `RowInput`: its class sets a height of 28 px, and `field__input` sets 40 px (`--row-h`). The input is 28 px
+- `RowInput`: its class sets a height of 28 px, and `field__input` sets 40 px (`--field-h`). The input is 28 px
   high.
 - `RecordRows` with `mobileLayout`: the kit's rule and the global `.table th` and `.table td` rules both set the
   cell padding. It is the kit's: 6 px top and bottom with 8 px on the right and none on the left, not 12 px at

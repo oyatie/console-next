@@ -34,6 +34,8 @@
   --row-h: 56px; --row-h-compact: 32px; --control-h-sm: 36px; --target: 44px; --target-touch: 48px; --topbar-h: 72px;
   /* What the 56px row gave them: a button is the row less 4px, a decision button the row, a toolbar the button and 12px above and below. */
   --control-h: 52px; --control-h-lg: 56px; --toolbar-h: 76px;
+  /* A field is as tall as the 56px row, in a toolbar too. */
+  --field-h: 56px; --field-h-toolbar: 56px;
 }
 
 :root[data-experience="warm-clear"][data-theme="dark"] {

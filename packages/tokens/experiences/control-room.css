@@ -36,6 +36,8 @@
   /* As drawn: a 40px toolbar with 4px above and below its 24px controls. A decision button is 32px wherever it stands
      (the side pane draws 28), so the role has one value. A compact row holds a control as tall as itself. */
   --control-h: 24px; --control-h-lg: 32px; --control-h-compact: 24px; --toolbar-h: 40px; --toolbar-py: 4px;
+  /* A field is as tall as a row; in a toolbar it is level with the 24px controls beside it. */
+  --field-h: 28px; --field-h-toolbar: 24px;
 }
 
 :root[data-experience="control-room"][data-theme="dark"] {
@@ -76,5 +78,7 @@
     /* A control stays 44px, not the 48px drawn for one standing free: a 48px button in a 48px table row would grow the row. */
     /* A compact row is 40px, and what sits in it is as tall as the row: under the 44px touch size. */
     --control-h: 44px; --control-h-lg: 48px; --control-h-compact: 40px; --toolbar-h: 52px;
+    /* A field stays as tall as a row. In a toolbar it is 44px, so the toolbar holding it is the 52px its own height says. */
+    --field-h: 48px; --field-h-toolbar: 44px;
   }
 }
