@@ -2,7 +2,6 @@
 import { chromium, expect as expectElement, type Browser, type Page } from "@playwright/test";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { ViteDevServer } from "vite";
-import { loadCatalog, t } from "@console/i18n";
 import { pickerTestServer } from "./browser-test";
 
 let server: ViteDevServer;
@@ -11,7 +10,6 @@ let page: Page;
 let catalogCount = 15;
 
 beforeAll(async () => {
-  await loadCatalog("ko");
   server = await pickerTestServer("picker-states", `
     import { createElement as h, useEffect, useState } from 'react';
     import { createRoot } from 'react-dom/client';
@@ -293,8 +291,9 @@ test("above 15 roles a missing role marks the search invalid and is its descript
   await expectElement(input).toHaveAttribute("aria-invalid", "true");
   await expectElement(input).toHaveAccessibleDescription("Choose a role");
   await input.press("ArrowDown");
-  await expectElement(page.locator(".popover").getByRole("status")).toHaveText(t("uiServerPicker.count", { count: 16 }));
+  await expectElement(page.locator(".popover").getByRole("status")).toHaveText("16건");
   await input.fill("Nobody");
-  await expectElement(page.getByText(t("access.grant.role.none"), { exact: true })).toBeVisible();
+  await expectElement(page.locator(".popover").getByText("일치하는 결과가 없습니다", { exact: true })).toBeVisible();
+  await expectElement(page.getByText("그런 이름의 역할이 없습니다. 역할 목록에서 먼저 만드십시오.", { exact: true })).toBeVisible();
   await expectElement(input).toHaveAttribute("aria-invalid", "true");
 });
