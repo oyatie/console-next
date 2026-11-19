@@ -194,7 +194,7 @@ export const koStructure: Record<keyof typeof enStructure, string> = {
   "structure.delete.chosen": "선택한 부서",
   "structure.delete.line": "{name} · {count, number}명",
   "structure.delete.dissolveOne": "{name} 폐지",
-  "structure.headcount.explain": "인원 기준 보기",
+  "structure.headcount.explain": "인원 · 이유 보기",
   "structure.headcount.label": "인원",
   "structure.headcount.total": "인원 {count, number}명",
   "structure.headcount.basis": "인원은 하위 조직을 포함한 재직자(휴직 포함)입니다. 고용형태와 관계없이 포함하며, 겸직은 주 소속에서만 셉니다.",

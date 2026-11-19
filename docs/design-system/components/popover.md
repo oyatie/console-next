@@ -169,9 +169,9 @@ Known gaps:
 
 - The `link` trigger has no minimum height and no padding: 18 px for one line of text.
 - `aria-label` is always set, even when `trigger` is plain text. The visible text is then never the name, and
-  keeping the two alike is left to each caller. The headcount explainer does not keep them alike in the `en`
-  catalog: its name is `structure.headcount.explain`, and its visible text is `structure.headcount.label` followed
-  by `uiBlocker.reason`.
+  keeping the two alike is left to each caller. The headcount explainer passes one string as both, and
+  `apps/web/src/reference/org/ui/headcount-basis.browser.test.tsx` checks in a browser, in both catalogs, that
+  its name holds the text it shows.
 - Focus lands on the dialog element, which shows no focus look, so nothing visible has focus until Tab is pressed.
   See Looks and sizes.
 - The popover element has no role and still carries `aria-labelledby`, pointing at the trigger.
