@@ -8,8 +8,6 @@ export const pickerKo = {
   "picker.disabled": "직원 선택 (비활성화)",
   "picker.disabledWhy": "설정을 완료한 뒤 선택할 수 있습니다",
   "picker.error": "직원 선택 (오류)",
-  "picker.invalid": "직원 선택 (미선택)",
-  "picker.invalidWhy": "목록에서 직원을 고르십시오",
   "picker.loading": "직원 선택 (불러오는 중)",
 };
 
@@ -21,7 +19,5 @@ export const pickerEn = {
   "picker.disabled": "Choose an employee (disabled)",
   "picker.disabledWhy": "Complete setup before choosing",
   "picker.error": "Choose an employee (error)",
-  "picker.invalid": "Choose an employee (none chosen)",
-  "picker.invalidWhy": "Pick an employee from the list",
   "picker.loading": "Choose an employee (loading)",
 };
