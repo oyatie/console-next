@@ -25,6 +25,7 @@ import { PageMain } from "../../ui/page/page-main";
 import { meQuery } from "../../features/account/api";
 import { useMainScrollRestoration } from "../scroll-restoration";
 import { checklistQuery, modulesQuery } from "../../features/onboarding/api";
+import { canReadSetupChecklist } from "../../features/onboarding/domain/phase";
 import { fixFor } from "../../features/onboarding/domain/rail";
 import type { NavHub } from "../nav";
 
@@ -63,7 +64,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   // Keep the rail snapshot separate, but share the identity request with the shell and page.
   const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
-  const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP", retry: false });
+  const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data), retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
   const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
@@ -76,13 +77,13 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     if (meEnabled) void refetchMe({ cancelRefetch: false });
     if (checklistEnabled) void refetchChecklist({ cancelRefetch: false });
   }, [pathname, meEnabled, refetchMe, checklistEnabled, refetchChecklist]);
-  const ready = !access.isPending && !support.isPending && !me.isPending && (phase !== "SETUP" || !checklist.isPending) && (!modulesEnabled || !modules.isPending);
+  const ready = !access.isPending && !support.isPending && !me.isPending && (!checklistEnabled || !checklist.isPending) && (!modulesEnabled || !modules.isPending);
   const setupTargets = checklist.data?.steps.filter(s => s.state !== "blocked")
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
   const [railTargets, setRailTargets] = useState<{ key: typeof railKey; pathname: string; phase: typeof phase; value: typeof setupTargets; modules: typeof modules.data | null; access: typeof access.data; supportApproval: boolean }>();
   const modulesFault = modules.isError && !isAnswer(modules.error);
   const supportFault = support.isError && !isAnswer(support.error);
-  const checklistFault = checklist.isError && !isAnswer(checklist.error);
+  const checklistFault = checklistEnabled && checklist.isError && !isAnswer(checklist.error);
   const hasSupportNotice = Boolean(support.data && (support.data.sessions?.length || (support.data.can_approve && support.data.pending_count)));
   const [pageFailures, setPageFailures] = useState(0);
   const registerFailure = useMemo(() => () => {

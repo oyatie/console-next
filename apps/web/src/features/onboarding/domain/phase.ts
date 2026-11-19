@@ -1,3 +1,14 @@
+import type { components } from "@console/api/schema";
+
+type Schema = components["schemas"];
+
+/** Both access projections describe what the signed-in account currently holds. */
+export function canReadSetupChecklist(access: Schema["AccessEffective"] | Schema["MeAuthzResponse"] | undefined) {
+  if (!access) return false;
+  if ("capabilities" in access) return access.capabilities.some(c => c.permission !== "request_only");
+  return access.is_ops || access.entries.some(entry => entry.enforcement === "ENFORCED");
+}
+
 /** Missing or invalid settings never invent a receipt window. */
 export function receiptDuration(items: readonly { key: string; value?: unknown }[] | undefined) {
   const days = items?.find(item => item.key === "onboarding.receipt_days")?.value;
