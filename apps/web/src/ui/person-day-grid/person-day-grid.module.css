@@ -27,6 +27,11 @@
 .row { height: var(--row-h-compact); }
 .row > * { border-bottom: 1px solid var(--border); }
 .row[data-group] > * { border-top: 2px solid var(--control-border); }
+/* A visual style's rows can be as short as the smallest pointer target. There a row's rules take no room in it, and a
+   link in a side column is as tall as its row, so a name half under the sticky head is still a whole target. */
+:where([data-experience]:not([data-experience="baseline"])) .row > * { --rules: inset 0 -1px 0 var(--border); border-bottom: 0; box-shadow: var(--rules); }
+:where([data-experience]:not([data-experience="baseline"])) .row[data-group] > * { --rules: inset 0 2px 0 var(--control-border), inset 0 -1px 0 var(--border); border-top: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .lead > a { display: inline-flex; align-items: center; min-width: var(--target); min-height: var(--row-h-compact); }
 .cell { position: relative; text-align: center; padding: 0 var(--space-1); white-space: nowrap; cursor: cell; }
 .cell[data-tone="holiday"] { background: var(--danger-bg); }
 .cell[data-tone="rest"] { background: var(--canvas); }

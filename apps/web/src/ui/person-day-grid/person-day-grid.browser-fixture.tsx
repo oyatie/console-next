@@ -8,6 +8,8 @@ import "../../app.css";
 const ROWS = Array.from({ length: 400 }, (_, i) => ({ id: `p${i}`, name: `Person ${i + 1}` }));
 // `?total` gives the grid ten days and one total column, as the component gallery draws it.
 const total = new URLSearchParams(location.search).has("total");
+// `?groups` draws each name as a link and starts a group at every third person, as the attendance month does.
+const groups = new URLSearchParams(location.search).has("groups");
 
 /** 400 people. The page that loads this gives `main` its size and, for a case, its own compact row height. */
 export function Fixture() {
@@ -19,7 +21,8 @@ export function Fixture() {
         total={ROWS.length}
         rows={ROWS}
         rowKey={r => r.id}
-        lead={[{ key: "n", header: "Name", cell: r => r.name, width: "name" }]}
+        lead={[{ key: "n", header: "Name", cell: r => groups ? <a href={`#${r.id}`}>{r.name}</a> : r.name, width: "name" }]}
+        {...(groups ? { groupOf: (r: typeof ROWS[number]) => String(Math.floor(Number(r.id.slice(1)) / 3)) } : {})}
         days={total ? Array.from({ length: 10 }, (_, i) => ({ key: String(i + 1), label: i + 1, sub: "Thu" })) : [{ key: "1", label: 1, sub: "Thu" }]}
         tail={total ? [{ key: "t", header: "Total", cell: () => "56:00", width: "total" }] : []}
         cell={() => "8"}

@@ -3,6 +3,7 @@ import { realpathSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element, type Locator } from "@playwright/test";
+import { AxeBuilder } from "@axe-core/playwright";
 import { createServer, type ViteDevServer } from "vite";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
 import { editingCases } from "./person-day-grid.browser-editing";
@@ -23,10 +24,10 @@ beforeAll(async () => {
   browser = await chromium.launch();
   page = await browser.newPage();
   // A short box, for `?w=` a narrow one, and for `?row=` its own compact row height, set on a container the way a
-  // visual style would set it.
+  // visual style would set it; `?style=` names the visual style the page is drawn in.
   await page.route("**/grid-test*", route => {
-    const query = new URL(route.request().url()).searchParams, row = query.get("row"), width = query.get("w");
-    return route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Person-day grid</title>
+    const query = new URL(route.request().url()).searchParams, row = query.get("row"), width = query.get("w"), style = query.get("style");
+    return route.fulfill({ contentType: "text/html", body: `<html lang="ko"${style ? ` data-experience="${style}"` : ""}><title>Person-day grid</title>
       <style>main { display: flex; flex-direction: column; height: ${Number(query.get("box") ?? 320)}px; ${width ? `width: ${Number(width)}px;` : ""} ${row ? `--row-h-compact: ${Number(row)}px;` : ""} }</style>
       <div id="root"></div><script type="module" src="${fixture}"></script></html>` });
   });
@@ -265,4 +266,35 @@ test("a key that keeps the active cell's column brings it back into view after t
   await page.keyboard.press("ArrowLeft");
   await expect.poll(active).toBe("3,29");
   await expect.poll(() => activeShows(grid)).toBe("in view");
+});
+
+// Rows 24 px apart leave two neighbouring names exactly the spacing a pointer needs. So in a visual style a row's rules
+// take no room in it, and a name is a target as tall as its row.
+test("in a visual style, names stay evenly spaced and each is a whole pointer target, also half under the head", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}grid-test?groups&row=24&style=control-room`);
+  const grid = page.getByRole("grid", { name: "October" });
+  await element(grid.getByRole("link", { name: "Person 1", exact: true })).toBeVisible();
+  const drawn = await grid.evaluate(el => {
+    const rows = [...el.querySelectorAll("tbody tr:not([aria-hidden])")].slice(0, 9);
+    const links = rows.map(row => row.querySelector("a")!.getBoundingClientRect());
+    const centres = links.map(b => b.top + b.height / 2);
+    const rules = (row: number) => getComputedStyle(rows[row]!.firstElementChild!).boxShadow.split("inset").length - 1;
+    return {
+      rows: rows.map(row => row.getBoundingClientRect().height),
+      gaps: centres.slice(1).map((centre, i) => centre - centres[i]!),
+      smallest: Math.min(...links.flatMap(b => [b.width, b.height])),
+      rules: [rules(3), rules(4)],
+    };
+  });
+  const nine = <T,>(value: T) => Array.from({ length: 9 }, () => value);
+  expect(drawn.rows).toEqual(nine(24));
+  expect(drawn.gaps).toEqual(nine(24).slice(1));
+  expect(drawn.smallest).toBeGreaterThanOrEqual(24);
+  // The fourth person starts a group and has its rule above the line every row has below; the fifth has the line only.
+  expect(drawn.rules).toEqual([2, 1]);
+
+  // Scrolled so that one name is half under the sticky head, the names still meet the target-size rule.
+  await grid.locator("..").evaluate(el => { el.scrollTop = 24 * 5 + 12; });
+  const { violations } = await new AxeBuilder({ page }).withRules(["target-size"]).setLegacyMode(true).analyze();
+  expect(violations.flatMap(v => v.nodes.map(n => n.target.join(" ")))).toEqual([]);
 });
