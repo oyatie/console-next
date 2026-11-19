@@ -98,8 +98,9 @@ Known gaps:
   finds two controls, and neither holds a `Kbd` from this module.
 - `keys` is not adapted to the platform. A caller that passes the Command glyph shows it on every system. A
   caller can pick the text first: the commit of `Composer` asks `hasCommandKey` (`lib/command-key`) and passes
-  `⌘↵` or `Ctrl+↵`. The register sheet and the register run under `features/people/ui`, and the month tab under
-  `features/attendance/ui`, pick the text of their hints the same way.
+  `⌘↵` or `Ctrl+↵`. The register sheet and the register run's finish button under `features/people/ui`, and the
+  month tab under `features/attendance/ui`, pick the text of their hints the same way. The save button in the
+  register run's entry row does not: its column has no room for the wider text, so it shows `⌘↵` on every system.
 - There are two components with this name. `ui/record/record-section.tsx` exports another `Kbd`, which takes `k`
   instead of `keys` and has its own, smaller look in `record.module.css`. Outside tests and gallery files,
   thirteen files import each of them. This page documents the one in `ui/kbd`.

@@ -42,10 +42,11 @@ test.each(SYSTEMS)("on $platform the registration sheet shows $next to register 
   await element(sheet.getByRole("button", { name: commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 }), exact: true }).locator("kbd")).toHaveText(close);
 });
 
-test.each(SYSTEMS)("on $platform the run's entry row shows $next to save the row", async ({ platform, next }) => {
+// The row's save column has no room for the wider cap: with it the table scrolls sideways at 1440 px. It keeps the cap it had.
+test.each(SYSTEMS)("on $platform the run's entry row keeps the ⌘↵ cap and is named with the word it shows", async ({ platform }) => {
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=table&platform=${platform}`);
   const save = page.getByRole("button", { name: t("register.run.save"), exact: true });
-  await element(save.locator("kbd")).toHaveText(next);
+  await element(save.locator("kbd")).toHaveText("⌘↵");
   // Speech input presses a control by the word on it, so the name holds the word the button shows.
   await element(save).toContainText(t("register.run.submit"));
   expect(t("register.run.save")).toContain(t("register.run.submit"));
