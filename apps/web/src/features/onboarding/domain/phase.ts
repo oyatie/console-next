@@ -6,7 +6,8 @@ type Schema = components["schemas"];
 export function canReadSetupChecklist(access: Schema["AccessEffective"] | Schema["MeAuthzResponse"] | undefined) {
   if (!access) return false;
   if ("capabilities" in access) return access.capabilities.some(c => c.permission !== "request_only");
-  return access.is_ops || access.entries.some(entry => entry.enforcement === "ENFORCED");
+  // Mirrors the server's Domain::reads: a to-do request line widens no read, the checklist included.
+  return access.is_ops || access.entries.some(entry => entry.enforcement === "ENFORCED" && entry.domain !== "todo_request");
 }
 
 /** Missing or invalid settings never invent a receipt window. */

@@ -86,6 +86,7 @@ test.each([
   { kind: "grantless", is_ops: false, entries: [], enabled: false },
   { kind: "prepared", is_ops: false, entries: screenAccess("/people").entries.map(e => ({ ...e, enforcement: "PREPARED" })), enabled: false },
   { kind: "enforced", is_ops: false, entries: screenAccess("/people").entries, enabled: true },
+  { kind: "request-only", is_ops: false, entries: screenAccess("/people").entries.map(e => ({ ...e, domain: "todo_request" })), enabled: false },
   { kind: "ops", is_ops: true, entries: [], enabled: true },
 ])("SETUP rail only waits for a held checklist read: $kind", async ({ is_ops, entries, enabled }) => {
   const client = new QueryClient();
