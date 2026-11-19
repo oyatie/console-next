@@ -1,4 +1,6 @@
-import type { APIResponse, Page } from "@playwright/test";
+import { expect, type APIResponse, type Page } from "@playwright/test";
+import type { components } from "@console/api/schema";
+import { passkeyAssertion } from "../auth";
 import { responseTimestampProblems, timestampContract } from "../../scripts/check-timestamp-display.mjs";
 
 // The API as the signed-in page sends it, for negative tests: a refusal asserted at the server (status, code) and
@@ -24,6 +26,15 @@ export const apiOf = (page: Page, bearer: () => string) => async (path: string, 
   }
   return response;
 };
+
+/** A fresh assertion from the operator's enrolled passkey for API-only fixture setup. */
+export async function stepUpAssertion(page: Page, api: ReturnType<typeof apiOf>): Promise<components["schemas"]["PasskeyStepUpAssertion"]> {
+  await page.bringToFront();
+  const response = await api("/auth/passkey/login/start", "POST", {});
+  expect(response.status(), await response.text()).toBe(200);
+  const ceremony = await response.json() as components["schemas"]["PasskeyLoginStartResponse"];
+  return passkeyAssertion(page, { ...ceremony, challenge: { publicKey: ceremony.challenge.publicKey as PublicKeyCredentialRequestOptionsJSON } });
+}
 
 /** The error code of a refusal (`{error:{code}}`), or null for a success. */
 export async function codeOf(res: Pick<APIResponse, "ok" | "json">) {
