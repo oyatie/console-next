@@ -41,7 +41,7 @@ the React key of the step and must be unique among the steps of one line.
 |---|---|---|
 | List | `<ol aria-label>` | One item for each step, in the order given. |
 | Step | `<li data-state>` | The number and the label. A `current` step carries `aria-current="step"`. |
-| Number | `<span aria-hidden="true" data-n>` | For a `done` step, a 14 px check icon, an `<svg>`. For any other step, nothing: the stylesheet draws the number from `data-n`, the step's place counted from 1, as generated content. |
+| Number | `<span data-n>` | For a `done` step, a 14 px check icon, an `<svg>`. For any other step, nothing: the stylesheet draws the number from `data-n`, the step's place counted from 1, as generated content. On a `done` or a `waiting` step the box has `role="img"` and an `aria-label` that names the state. On any other step it has `aria-hidden="true"`. |
 | Label | `<span>` | `label`. |
 | Rule | The `::before` of every step but the first | A line. It is generated content of the step that follows it. |
 
@@ -103,23 +103,24 @@ of the component's folder for `isComposing`, `keyCode`, `229` and `composition` 
 - **Role:** `list`, from the `<ol>`, with a `listitem` for each step.
 - **Accessible name:** `aria-label` on the list, from `label`. The prop is required.
 - **Current step:** `aria-current="step"` on the item.
-- **What a step reads as:** its label and nothing else. The number box is hidden from a screen reader, with the
-  number or the check inside it. The place of a step comes from the order of the list.
+- **What a step reads as:** a `done` or a `waiting` step reads as an image named with its state, then its label.
+  The names are `uiStepLine.state.done` and `uiStepLine.state.waiting`: see Copy rules. The current step reads as
+  its label alone: its box is hidden from a screen reader, and so is the box of a step whose `state` the
+  component does not know. The check and the drawn number are never read. The place of a step comes from the
+  order of the list.
+- **Text:** the state adds no text to a step. The text of every step is its label alone.
 - **Announced:** nothing. The line has no live region. A step that becomes current or done is not announced.
 
 Known gaps:
 
-- Nothing tells a screen reader that a step is done. The check is inside the hidden box, and there is no hidden
-  word and no attribute for it. A step before the current one can be taken as done; when no step is current, as
-  on the import page after it has finished, nothing in the line says where the task stands.
 - A step cannot be marked as failed.
 
 The WCAG 2.2 criteria that apply:
 
 | Criterion | How the step line answers it |
 |---|---|
-| 1.1.1 Non-text Content | The number and the check have no text alternative. The number repeats the list order. The check does not repeat anything a screen reader gets: see the first gap. |
-| 1.3.1 Info and Relationships | An ordered list and `aria-current="step"`. The done state is on screen only. |
+| 1.1.1 Non-text Content | The box of a `done` or a `waiting` step is an image named with the state. The number in a box has no text alternative of its own: it repeats the list order. The box of the current step is hidden, and `aria-current` says what its fill shows. |
+| 1.3.1 Info and Relationships | An ordered list, `aria-current="step"` on the current step, and the name of the box on a `done` or a `waiting` step. |
 | 1.4.1 Use of Color | A done step has a check where the number was. The current step has a filled box and heavier, darker text. Neither rests on colour alone. |
 | 1.4.3 Contrast (Minimum), 1.4.11 Non-text Contrast | Every colour is a token; none is written in the component. |
 | 1.4.10 Reflow | The row wraps. |
@@ -134,6 +135,12 @@ These tests assert its output. They were found by searching `e2e` and `apps/web/
 - `apps/web/src/ui/step-line/step-line.test.tsx`, the first of its two tests: for a line of three steps it finds
   the labels of the first two in the markup, `aria-current="step"`, and the `done` and `current` states. The
   second test in that file is for `GateRail`.
+- `apps/web/src/ui/step-line/step-line.browser.test.tsx`, in Chromium, with the line as two callers pass it. Every
+  step of a finished import and every stage of an issued payroll run holds an image named
+  `uiStepLine.state.done`, and every stage of a void run one named `uiStepLine.state.waiting`. A calculated run
+  has two done stages, a current stage with no such image and a hidden box, and three waiting stages. The text
+  of each step is its label alone. The box of a done stage holds an `<svg>`, and the box of every other stage
+  draws its number.
 - `features/payroll/ui/run-header.browser.test.tsx`, for a staged, an issued and a void run: the list is found by
   its name and has six items, with no button or link inside. One item is current for the staged run and none for
   the other two. All six are `done` for the issued run and none for the other two.
@@ -145,7 +152,7 @@ These tests assert its output. They were found by searching `e2e` and `apps/web/
   that has `aria-current="step"`: `import.step.preview` or `import.step.dryrun`. They look for it in the whole
   page, not in the list.
 
-None of these asserts the check, the drawn number, the rule, a `waiting` step by its state or the wrapping.
+None of these asserts the rule or the wrapping.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
@@ -168,7 +175,15 @@ title row, which wraps too. So there the line shares a wrapping row with any oth
 
 ## Copy rules
 
-- The step line holds no text of its own and owns no message id. It does not import the message catalog.
+- The step line draws no text of its own. It owns two message ids, in
+  `packages/i18n/src/catalogs/en/ui-step-line.ts` and its `ko` twin. Each is the name of a number box and is not
+  shown on screen:
+
+| Message id | Where it is used |
+|---|---|
+| `uiStepLine.state.done` | The name of the box of a `done` step. |
+| `uiStepLine.state.waiting` | The name of the box of a `waiting` step. |
+
 - `label`, the name of the list, and the `label` of each step come from the message catalog in `packages/i18n`,
   through the caller. The `en` catalog is the source and the `ko` catalog must define every id.
 - The callers name the list with `bulk.page.steps`, `renew.steps`, `import.steps` and `payroll.stages.title`. The
