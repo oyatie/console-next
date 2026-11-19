@@ -8,12 +8,12 @@ export type FieldChange = { field: string; label: string } & (
 );
 
 /** Masking is checked before values enter the DOM, including collapsed text. */
-export function FieldDiff({ fields, corrected = false }: { fields: readonly FieldChange[]; corrected?: boolean }) {
+export function FieldDiff({ fields }: { fields: readonly FieldChange[] }) {
   return <dl className={s.diff}>{fields.map((change) => <div key={change.field}>
     <dt>{change.label}</dt>
     <dd>{change.masked ? t("timeline.restricted") : <>
       <span className="sr-only">{t("timeline.before")}</span>
-      {corrected ? <del><Value value={change.before} /></del> : <Value value={change.before} />}
+      <Value value={change.before} />
       <span aria-hidden="true">{arrow}</span>
       <span className="sr-only">{t("timeline.after")}</span>
       <Value value={change.after} />

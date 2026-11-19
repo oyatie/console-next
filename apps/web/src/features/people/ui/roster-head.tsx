@@ -22,7 +22,8 @@ const route = getRouteApi("/app/people");
 /**
  * The roster's phase, today's as-of fact, commands and built-in filter views, with its accounts switch.
  */
-export function RosterHead({ manage, status, review, soonDays, onView, actions, switcher, unplaced = false }: {
+// oxlint-disable-next-line react/only-export-components -- Share unchanged head data with the legacy unplaced screen.
+export function useRosterHead({ manage, status, review, soonDays, onView, actions, switcher, unplaced = false }: {
   manage: boolean;
   status: StatusView;
   review: readonly Review[];
@@ -38,9 +39,7 @@ export function RosterHead({ manage, status, review, soonDays, onView, actions, 
   const { peopleAccess } = route.useRouteContext();
   const navigate = useNavigate({ from: "/people" });
   const view = activeView(status, review)?.id ?? null;
-  return (
-    <Band className={s.band}>
-      <PageHead title={t(unplaced ? "roster.view.unplaced" : "roster.page.roster")} asOf={<AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} />} actions={manage && (
+  return { title: t(unplaced ? "roster.view.unplaced" : "roster.page.roster"), asOf: <AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} /> , actions: manage && (
           <>
             <Link className={buttonClass()} to="/people/import"><Upload size={16} aria-hidden /> {t("roster.head.import")}</Link>
             {actions}
@@ -57,11 +56,13 @@ export function RosterHead({ manage, status, review, soonDays, onView, actions, 
             />
             <Link className={buttonClass("primary")} to="/people/new" search={{}}><Plus size={16} aria-hidden /> {t("people.register")} <Kbd k="A" /></Link>
           </>
-        )} tabs={<div className={s.views} role="group" aria-label={t("roster.view.label")}>
+        ), tabs: <div className={s.views} role="group" aria-label={t("roster.view.label")}>
         {VIEWS.filter((v) => v.status && (v.id !== "contractSoon" || soonDays !== undefined)).map((v) => <ToggleButton key={v.id} pressed={!unplaced && view === v.id} onClick={() => onView(v)}>{v.id === "contractSoon" ? t("directoryViews.contractSoon", { days: soonDays ?? "—" }) : t(`roster.view.${v.id}`)}</ToggleButton>)}
         {access.data && accessRefusal(access.data, peopleAccess.unplaced) === null && <ToggleButton pressed={unplaced} onClick={() => void navigate({ to: "/people", search: previous => ({ ...previous, placement: unplaced ? undefined : "unplaced", sel: undefined }), replace: true })}>{t("roster.view.unplaced")}</ToggleButton>}
         {switcher}
-      </div>} />
-    </Band>
-  );
+      </div> };
+}
+
+export function RosterHead(props: Parameters<typeof useRosterHead>[0]) {
+  return <Band className={s.band}><PageHead {...useRosterHead(props)} /></Band>;
 }

@@ -25,7 +25,8 @@ for (const state of ["populated", "empty", "failed", "refused", "loading"] as co
 }
 
 const monthScreen = attendanceBoardScreens.find(screen => screen.key === "attendance-month")!;
-for (const [label, path] of [["tab=month", monthScreen.path], ["no-tab", "/attendance?month=2026-10"]] as const) for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`the month board (${label}) is the only vertical scroller and keeps 400 rows reachable at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {
+for (const experience of ["baseline", "warm-clear"]) for (const [label, path] of [["tab=month", monthScreen.path], ["no-tab", "/attendance?month=2026-10"]] as const) for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`the ${experience} month board (${label}) is the only vertical scroller and keeps 400 rows reachable at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {
+  if (experience !== "baseline") await page.addInitScript(value => localStorage.setItem("console.experience", value), experience);
   await page.emulateMedia({ colorScheme });
   await page.setViewportSize({ width, height: 640 });
   const fixture = await mockScreen(page, monthScreen, "populated");
@@ -41,7 +42,8 @@ for (const [label, path] of [["tab=month", monthScreen.path], ["no-tab", "/atten
 
   const grid = page.getByRole("grid", { name: t("attendanceRecords.grid.label"), exact: true });
   await expect(grid).toBeVisible();
-  await expect(grid.getByText("근태직원 1", { exact: true })).toBeVisible();
+  const first = grid.getByText("근태직원 1", { exact: true });
+  await expect(first).toBeVisible();
   await expect(grid.getByText("0:00", { exact: true })).toHaveCount(0);
   const scroller = grid.locator("..");
   const scroll = await scroller.evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
@@ -62,6 +64,21 @@ for (const [label, path] of [["tab=month", monthScreen.path], ["no-tab", "/atten
   await fits(page, `month-board/${label}/${width}/${colorScheme}`);
   await expectAxe(page, `month-board/${label}/${width}/${colorScheme}`);
   await testInfo.attach("month-board", { body: await page.screenshot(), contentType: "image/png" });
+  await scroller.evaluate(el => { el.scrollTop = 0; });
+  await expect(first).toBeVisible();
+  await grid.focus();
+  for (let row = 0; row < 40; row++) await grid.press("ArrowDown");
+  await expect.poll(async () => {
+    const active = await grid.getAttribute("aria-activedescendant");
+    return scroller.evaluate((el, id) => {
+      const cell = id && document.getElementById(id);
+      if (!cell) return false;
+      const bounds = cell.getBoundingClientRect();
+      const viewport = el.getBoundingClientRect();
+      const head = el.querySelector("thead th")!.getBoundingClientRect();
+      return bounds.bottom > head.bottom && bounds.top < viewport.bottom;
+    }, active);
+  }, { message: "the active cell stays visible inside the scroll viewport" }).toBe(true);
   expect(fixture.unexpected).toEqual([]);
 });
 
