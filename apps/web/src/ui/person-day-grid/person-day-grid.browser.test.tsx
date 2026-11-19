@@ -18,10 +18,11 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage();
-  // A short box, and for `?row=` its own compact row height, set on a container the way a visual style would set it.
+  // A short box, and for `?row=` its own compact row height, set on a container the way a visual style would set it;
+  // `?style=` names the visual style the page is drawn in.
   await page.route("**/grid-test*", route => {
-    const query = new URL(route.request().url()).searchParams, row = query.get("row");
-    return route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Person-day grid</title>
+    const query = new URL(route.request().url()).searchParams, row = query.get("row"), style = query.get("style");
+    return route.fulfill({ contentType: "text/html", body: `<html lang="ko"${style ? ` data-experience="${style}"` : ""}><title>Person-day grid</title>
       <style>main { display: flex; flex-direction: column; height: ${Number(query.get("box") ?? 320)}px; ${row ? `--row-h-compact: ${Number(row)}px;` : ""} }</style>
       <div id="root"></div><script type="module" src="${fixture}"></script></html>` });
   });
@@ -80,4 +81,20 @@ test("a box taller than 600 px is filled with rows before the first scroll", asy
   } finally {
     await page.setViewportSize({ width: 1280, height: 720 });
   }
+});
+
+// Rows 24 px apart leave two neighbouring names exactly the spacing a pointer needs, so the rule over a group's first
+// row may not push that row's text down.
+test("in a visual style, a group's first row keeps its name level with the rows around it", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}grid-test?groups&row=24&style=control-room`);
+  const grid = page.getByRole("grid", { name: "October" });
+  await element(grid.getByRole("link", { name: "Person 1", exact: true })).toBeVisible();
+  const drawn = await grid.evaluate(el => {
+    const centres = [...el.querySelectorAll("tbody a")].slice(0, 9).map(a => { const b = a.getBoundingClientRect(); return b.top + b.height / 2; });
+    const ruled = (row: number) => getComputedStyle(el.querySelectorAll("tbody tr:not([aria-hidden])")[row]!.firstElementChild!).boxShadow !== "none";
+    return { gaps: centres.slice(1).map((centre, i) => centre - centres[i]!), ruled: [ruled(3), ruled(4)] };
+  });
+  expect(drawn.gaps).toEqual(Array.from({ length: 8 }, () => 24));
+  // The rule is still drawn over the fourth person, who starts a group, and over nobody inside one.
+  expect(drawn.ruled).toEqual([true, false]);
 });
