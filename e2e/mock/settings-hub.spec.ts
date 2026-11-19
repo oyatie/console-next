@@ -29,6 +29,13 @@ const policy = (state: State, key = policyKeys[0]): components["schemas"]["Setti
   source: { layer: state === "fixed" ? "platform" : state === "fresh" ? "code_default" : "tenant", scope_entity_id: null }, chain: [],
   scheduled: state === "scheduled" && key === policyKeys[0] ? [{ id: id(91), scope_entity_id: null, value: "none", effective_from: "2026-12-01T00:00:00Z" }] : [],
 });
+const displayStyle = (state: State): components["schemas"]["SettingEntry"] => ({
+  key: "display.experience", kind: { type: "code", allowed: ["baseline", "control-room", "warm-clear"] }, default: "baseline",
+  looser_when: "neutral", governance: state === "fixed" ? "fixed" : "tenant", legal_basis: null,
+  value: state === "populated" || state === "scheduled" ? "control-room" : "baseline", version: "code_default", effective_from: null,
+  source: { layer: state === "fixed" ? "platform" : state === "fresh" ? "code_default" : "tenant", scope_entity_id: null }, chain: [],
+  scheduled: state === "scheduled" ? [{ id: id(92), scope_entity_id: null, value: "baseline", effective_from: "2026-12-01T00:00:00Z" }] : [],
+});
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (const state of states) {
   test(`settings cards ${state} at ${width}px in ${theme}`, async ({ page }) => {
@@ -53,7 +60,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       { id: id(22), label: "옛 항목", value_type: "TEXT", section: "JOB", visibility: "MANAGERS", choices: [], active: false },
     ] } });
     await mockRoute(page, "get", "/api/v1/period-locks", { status: 200, json: { items: [{ id: id(13), domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", reason: "월 마감", lockedAt: "2026-10-01T00:00:00Z", active: true, unlockReviewRequired: false }] } });
-    await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: state !== "fixed", items: policyKeys.map(key => policy(state, key)) } });
+    await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: state !== "fixed", items: [...policyKeys.map(key => policy(state, key)), displayStyle(state)] } });
     await mockRoute(page, "get", "/api/v1/reason-codes", { status: 200, json: { domain: "employee_number_change", items: [] } });
     const paths = [...rows.map(([to]) => routeReads[to].reads[0].slice(4)), settingsQuery.queryKey[0]];
     const reads: string[] = [];
@@ -85,6 +92,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       if (state === "fresh") { await expect(approval.getByRole("list")).toHaveCount(0); await expect(main).not.toContainText("신청 전"); }
       if (state === "scheduled") { await expect(approval).toContainText("2026. 12. 01."); await expect(approval).toContainText(t("settingsHub.code.none")); }
       if (state === "fixed") { await expect(approval.getByRole("listitem")).toHaveCount(2); await expect(approval).toContainText(t("settingsHub.governance.fixed")); await expect(approval).toContainText(t("settingsHub.readOnly")); await expect(approval).toContainText(t("settingsHub.layer.platform")); }
+      const screenStyle = main.getByRole("region", { name: t("settingsHub.key.display.experience"), exact: true });
+      await expect(screenStyle).toContainText(state === "populated" || state === "scheduled" ? t("settingsHub.code.control-room") : t("settingsHub.code.baseline"));
+      await expect(screenStyle.getByRole("button", { name: t("settingsHub.experience.change"), exact: true })).toHaveCount(state === "fixed" ? 0 : 1);
+      if (state === "scheduled") { await expect(screenStyle).toContainText("2026. 12. 01."); await expect(screenStyle).toContainText(t("settingsHub.code.baseline")); }
+      if (state === "fixed") { await expect(screenStyle).toContainText(t("settingsHub.governance.fixed")); await expect(screenStyle).toContainText(t("settingsHub.readOnly")); }
       expect(reads.toSorted()).toEqual(paths.toSorted());
       expect(identityReads).toBe(1);
       await fits(page, `settings/${state}/${width}/${theme}`);
@@ -113,7 +125,7 @@ for (const width of [1440, 390]) for (const profile of ["branch", "none"] as con
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: access });
     await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: false, items: [] } });
     await mockRoute(page, "get", "/api/v1/roster-fields", { status: 200, json: { can_manage: false, active_limit: 30, items: [] } });
-    await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [policy("direct")] } });
+    await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [policy("direct"), displayStyle("direct")] } });
     const paths = [...rows.map(([to]) => routeReads[to].reads[0].slice(4)), settingsQuery.queryKey[0]];
     const reads: string[] = [];
     page.on("request", request => { const path = new URL(request.url()).pathname; if (request.method() === "GET" && paths.includes(path)) reads.push(path); });
@@ -128,6 +140,7 @@ for (const width of [1440, 390]) for (const profile of ["branch", "none"] as con
       } else {
         await expect(main.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText(t("settingsHub.titles.empty"));
         await expect(main.getByRole("region", { name: t("settingsHub.approval"), exact: true })).toContainText(t("settingsHub.approval.direct"));
+        await expect(main.getByRole("region", { name: t("settingsHub.key.display.experience"), exact: true })).toContainText(t("settingsHub.code.baseline"));
         await expect(main.getByRole("region", { name: t("rosterFields.title"), exact: true })).toContainText(t("settingsHub.rosterFields.empty"));
         await expect(main.getByRole("link")).toHaveCount(2);
         const branchReads = [routeReads["/people/job-titles"].reads[0].slice(4), routeReads["/people/roster-fields"].reads[0].slice(4), settingsQuery.queryKey[0]].toSorted();
@@ -153,6 +166,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) test(`se
   await expect(demo.getByRole("link")).toHaveCount(5);
   await expect(demo).toContainText("example.test");
   await expect(demo.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText("직급 1 · 직위 1 · 직책 1");
+  await expect(demo.getByRole("region", { name: t("settingsHub.key.display.experience"), exact: true })).toContainText(t("settingsHub.code.baseline"));
   await expect(demo).toContainText(t("settingsHub.unknown"));
   await expectAxe(page, `settings gallery/${width}/${theme}`, { include: "[data-settings-gallery]" });
 });

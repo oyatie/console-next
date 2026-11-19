@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
+import { chunk } from "../../../lib/chunk-guard";
 import { get } from "../../../lib/query";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -9,10 +11,13 @@ import { myAccessQuery } from "../../../reference/authz/api";
 import { settingsQuery } from "../../../reference/settings/api";
 import { settingsViews, type SettingsView } from "../../../shell/settings-views";
 import { QueryState } from "../../../lib/react/query-state";
+import { Button } from "../../../ui/button/button-base";
 import { Page } from "../../../ui/page/page";
 import { Card } from "../../../ui/card/card";
-import { domainSummary, approvalSummary, summaryFormatters, type SummaryCopy } from "../domain/summaries";
+import { domainSummary, approvalSummary, experienceSummary, summaryFormatters, type SummaryCopy } from "../domain/summaries";
 import s from "./settings-hub.module.css";
+
+const ScreenStyleSheet = lazy(() => chunk(import("./screen-style-sheet")).then(m => ({ default: m.ScreenStyleSheet })));
 
 export function SettingsHub() {
   const access = useQuery(myAccessQuery);
@@ -49,11 +54,29 @@ function ApprovalSettingsCard() {
   </Card>;
 }
 
+function ScreenStyleSettingsCard() {
+  const [open, setOpen] = useState(false);
+  const q = useQuery({ ...settingsQuery, select: data => experienceSummary(data, settingsCopy, fmtDate), retry: false });
+  return <Card title={t("settingsHub.key.display.experience")}>
+    <QueryState q={q} inline own={() => t("settingsHub.unknown")}>
+      {summary => <>
+        <div className={s.row}>
+          <div className={s.value}>{summary.value}</div>
+          {summary.canEdit && summary.entry && <Button size="sm" aria-haspopup="dialog" onClick={() => setOpen(true)}>{t("settingsHub.experience.change")}</Button>}
+        </div>
+        {summary.hints.length > 0 && <ul className={`muted ${s.hints}`}>{summary.hints.map((hint, i) => <li key={i}>{hint}</li>)}</ul>}
+        {open && summary.entry && <Suspense fallback={null}><ScreenStyleSheet entry={summary.entry} onClose={() => setOpen(false)} /></Suspense>}
+      </>}
+    </QueryState>
+  </Card>;
+}
+
 export function SettingsHubView({ rows }: { rows: readonly SettingsView[] }) {
   return <Page floorplan="P-05" head={{ title: t("shell.link.settings") }}>
     <section className={s.grid} aria-label={t("shell.settings.basics")}>
       {rows.map(row => <SettingsCard key={row.to} row={row} />)}
       <ApprovalSettingsCard />
+      <ScreenStyleSettingsCard />
     </section>
   </Page>;
 }
