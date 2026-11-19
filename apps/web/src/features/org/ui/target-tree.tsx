@@ -56,6 +56,7 @@ export function TargetTree({ label, entity, show, why, right, workplaces, value,
             </span>
           )}
           selected={value ?? undefined}
+          required
           onSelect={(id) => id && !disabled.has(id) && onChange(id)}
           expanded={q ? new Set(all.map((n) => n.id)) : expanded}
           onExpandedChange={setExpanded}

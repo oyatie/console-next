@@ -5,7 +5,7 @@ import s from "./tree.module.css";
 
 /**
  * A single-select tree (React Aria treegrid): ↑↓ move, ←→ collapse and expand, Enter or a click selects,
- * Esc clears the selection. Expansion is the caller's state. `textValue` is each row's accessible name
+ * Esc clears the selection unless `required`. Expansion is the caller's state. `textValue` is each row's accessible name
  * (put everything the row shows in it: name, kind, count, marker), and type-ahead matches it. `disabled` rows stay
  * visible but cannot be chosen (say why in the row).
  */
@@ -18,6 +18,7 @@ export function TreeView<T extends { id: string }>({
   row,
   selected,
   onSelect,
+  required,
   expanded,
   onExpandedChange,
   disabled,
@@ -36,6 +37,8 @@ export function TreeView<T extends { id: string }>({
   row: (item: T) => ReactNode;
   selected?: string;
   onSelect: (id: string | undefined) => void;
+  /** For a caller that drops an empty selection: a chosen row cannot be cleared, so Esc is left to what holds the tree (a dialog or a sheet closes). */
+  required?: boolean;
   expanded: Set<string>;
   onExpandedChange: (keys: Set<string>) => void;
   disabled?: ReadonlySet<string>;
@@ -73,6 +76,8 @@ export function TreeView<T extends { id: string }>({
       data-state={error ? "error" : undefined}
       renderEmptyState={() => error ? <div className={s.error} role="alert">{error}</div> : loading ? <div className={s.loading} role="status" aria-busy="true"><div className={s.skeleton} /></div> : empty != null && <div className={s.empty}>{empty}</div>}
       selectionMode="single"
+      disallowEmptySelection={required}
+      escapeKeyBehavior={required ? "none" : undefined}
       keyboardNavigationBehavior={keyboardNavigationBehavior}
       selectedKeys={selected ? [selected] : []}
       onSelectionChange={(keys) => onSelect(keys instanceof Set ? ([...keys][0] as string | undefined) : undefined)}
