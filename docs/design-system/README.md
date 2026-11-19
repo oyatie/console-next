@@ -52,7 +52,7 @@ What holds each rule today:
    `npx playwright test e2e/visual.spec.ts --project=parallel --grep "pass axe"`.
    It fails on a serious or critical axe violation anywhere in the gallery, in either theme.
 
-Fifteen pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
+Thirty-three pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
 
 ## The outline of a component page
 
@@ -146,17 +146,35 @@ rendered, in the order of its `order` export.
 | Page | Components | Source |
 |---|---|---|
 | [Action bar](components/action-bar.md) | `ActionBar` | `apps/web/src/ui/action-bar` |
+| [Approval card](components/approval-card.md) | `ApprovalCard` | `apps/web/src/ui/approval-card` |
 | [Banner](components/banner.md) | `Banner` | `apps/web/src/ui/banner` |
 | [Button](components/button.md) | `Button`, `IconButton`, `ToggleButton`, `Segmented`, `Form`, `Check` | `apps/web/src/ui/button` |
 | [Card](components/card.md) | `Card`, `SectionHead` | `apps/web/src/ui/card` |
+| [Chain stepper](components/chain-stepper.md) | `ChainStepper` | `apps/web/src/ui/chain-stepper` |
 | [Chip](components/chip.md) | `Chip` | `apps/web/src/ui/chip.tsx` |
 | [Choice](components/choice.md) | `ChoiceField`, `ChipChoice`, `Checks`, `GroupedChoice`, `ChoiceAdd` | `apps/web/src/ui/choice` |
+| [Command palette](components/command-palette.md) | `CommandPalette` | `apps/web/src/ui/command-palette` |
+| [Composer](components/composer.md) | `Composer`, `RoutingPreview`, `ReceiptReference` | `apps/web/src/ui/composer` |
 | [Date](components/date.md) | `DateField`, `DateInput`, `DateCalendar` | `apps/web/src/ui/date` |
+| [Deadline chip](components/deadline-chip.md) | `DeadlineChip` | `apps/web/src/ui/deadline-chip` |
 | [Dialog](components/dialog.md) | `Dialog` | `apps/web/src/ui/dialog.tsx` |
 | [Disabled reason](components/disabled-reason.md) | `DisabledReason` | `apps/web/src/ui/disabled-reason` |
 | [Field](components/field.md) | `Field`, `FieldSet`, `Marker`, `TextInput`, `TextArea`, `SelectInput`, `DerivedValue` | `apps/web/src/ui/field` |
+| [Item list](components/item-list.md) | `ItemList` | `apps/web/src/ui/item-list` |
+| [Key cap](components/kbd.md) | `Kbd` | `apps/web/src/ui/kbd` |
 | [Key-value](components/key-value.md) | `KeyValue`, `StatRow` | `apps/web/src/ui/key-value` |
 | [Masked field](components/masked-field.md) | `MaskedField` | `apps/web/src/ui/masked-field` |
 | [Menu](components/menu.md) | `ActionMenu`, `MenuButton` | `apps/web/src/ui/menu` |
+| [Meter](components/meter.md) | `Meter` | `apps/web/src/ui/meter` |
+| [Month grid](components/month-grid.md) | `MonthGrid` | `apps/web/src/ui/month-grid` |
+| [Person-day grid](components/person-day-grid.md) | `PersonDayGrid` | `apps/web/src/ui/person-day-grid` |
+| [Popover](components/popover.md) | `PopoverButton` | `apps/web/src/ui/popover` |
+| [Reason field](components/reason.md) | `ReasonField` | `apps/web/src/ui/reason` |
 | [Receipt](components/receipt.md) | `Receipt` | `apps/web/src/ui/receipt` |
+| [Record](components/record.md) | `RecordSection`, `SectionLine`, `SubHead`, `FieldRow`, `FieldMark`, `RecordRows`, `Strip`, `StripItem`, `SecNav`, `Spine`, `EditRow`, `RowInput`, `Saving`, `Masked`, `Gate`, `Tag`, and the kit's own `Kbd` | `apps/web/src/ui/record` |
+| [Record actions](components/record-actions.md) | `RowActions`, `ListAdd`, `PathNote` | `apps/web/src/ui/record-actions` |
+| [Search](components/search.md) | `SearchField` | `apps/web/src/ui/search` |
+| [Select](components/select.md) | `SelectField` | `apps/web/src/ui/select` |
 | [Sheet](components/sheet.md) | `Sheet` and its draft and read-context helpers | `apps/web/src/ui/sheet` |
+| [Step line](components/step-line.md) | `StepLine` | `apps/web/src/ui/step-line` |
+| [Tree](components/tree.md) | `TreeView` | `apps/web/src/ui/tree` |
