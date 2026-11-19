@@ -67,12 +67,14 @@
   --scrim: rgba(6, 12, 18, 0.6); /* Derived, not drawn. */
 }
 
-/* A phone is used by touch: rows hold 44px controls and no target is under 44px, whatever the desk draws. */
+/* A phone is used by touch: rows hold 44px controls and, outside a compact grid, no target is under 44px, whatever the
+   desk draws. */
 @media (--phone) {
   :root[data-experience="control-room"] {
     --text-xs: 13px; --text-sm: 14px; --text-body: 15px; --text-lg: 17px; --text-xl: 22px;
     --row-h: 48px; --row-h-compact: 40px; --control-h-sm: 44px; --target: 44px; --topbar-h: 52px;
     /* A control stays 44px, not the 48px drawn for one standing free: a 48px button in a 48px table row would grow the row. */
+    /* A compact row is 40px, and what sits in it is as tall as the row: under the 44px touch size. */
     --control-h: 44px; --control-h-lg: 48px; --control-h-compact: 40px; --toolbar-h: 52px;
   }
 }
