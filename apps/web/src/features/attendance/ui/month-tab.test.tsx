@@ -99,3 +99,14 @@ test("opening save with a draft mounts the save dock", () => {
   state.drafts = { "person|2026-10-06": { value: "=", base: null } };
   expect(render()).toContain('data-testid="save-dock"');
 });
+
+// Save takes Command or Control in the grid; the hint names the key this system's keyboard has.
+test.each([["Win32", "Ctrl+S"], ["MacIntel", "⌘S"]])("on %s the save command's key hint reads %s", (platform, hint) => {
+  vi.stubGlobal("navigator", { platform, onLine: true });
+  state.drafts = { "person|2026-10-06": { value: "=", base: null } };
+  try {
+    expect(render()).toContain(`>${hint}</kbd>`);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

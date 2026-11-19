@@ -14,6 +14,7 @@ import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Kbd } from "../../../ui/kbd/kbd";
+import { hasCommandKey } from "../../../lib/command-key";
 import { Composer } from "../../../ui/composer/composer";
 import { commitLabel } from "../../../ui/composer/actions";
 import { duplicateCandidates, numberHolder, problemOf } from "../api";
@@ -144,7 +145,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
         <>
           <Link to="/people/import" className={buttonClass("ghost", { className: s.many })}><ClipboardPaste size={16} aria-hidden />{t("register.many")}</Link>
           <Link to="/people/run" className={buttonClass("ghost")}><ListPlus size={16} aria-hidden />{t("register.run.open")}</Link>
-          <Button disabled={reg.isPending} onClick={() => submit(false)}>{commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 })}<Kbd keys="⌘⇧↵" /></Button>
+          <Button disabled={reg.isPending} onClick={() => submit(false)}>{commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 })}<Kbd keys={hasCommandKey() ? "⌘⇧↵" : "Ctrl+Shift+↵"} /></Button>
         </>
       }
     >

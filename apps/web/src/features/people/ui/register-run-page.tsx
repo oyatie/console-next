@@ -13,6 +13,7 @@ import { phoneE164 } from "../../../lib/pure/formats";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { Kbd } from "../../../ui/kbd/kbd";
+import { hasCommandKey } from "../../../lib/command-key";
 import { parseTyped } from "../../../ui/date/days";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { PageHead } from "../../../ui/page-head/page-head";
@@ -138,7 +139,7 @@ export function RegisterRun() {
               {t("register.run.sum", { n: live.length })}
               {chosen && <> · {t("register.run.unitNow", { unit: chosen.unit.name, count: chosen.unit.headcount })}</>}
             </span>
-            {live.length > 0 && <Button onClick={() => save(true)}>{t("register.run.finish")}<Kbd keys="⌘⇧↵" /></Button>}
+            {live.length > 0 && <Button onClick={() => save(true)}>{t("register.run.finish")}<Kbd keys={hasCommandKey() ? "⌘⇧↵" : "Ctrl+Shift+↵"} /></Button>}
           </>
         }
       />

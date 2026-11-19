@@ -11,6 +11,7 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
 import { Kbd } from "../../../ui/kbd/kbd";
+import { hasCommandKey } from "../../../lib/command-key";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { at, rectIn, rectSize, type Range } from "../../../ui/sheet-grid/range";
 import { monthGridPages, type GridRow, type SaveReceipt } from "../api";
@@ -87,7 +88,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const empty = grid.isSuccess && total === 0;
   const saveButton = (
     <Button variant={dock ? "secondary" : "primary"} disabled={!!saveWhy} onClick={() => setDock({ kind: "save" })}>
-      {t("attendanceRecords.toolbar.save")} <Kbd keys="⌘S" />
+      {t("attendanceRecords.toolbar.save")} <Kbd keys={hasCommandKey() ? "⌘S" : "Ctrl+S"} />
     </Button>
   );
 

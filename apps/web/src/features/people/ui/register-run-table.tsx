@@ -9,6 +9,7 @@ import { DateInput } from "../../../ui/date/date-input";
 import { TextInput } from "../../../ui/field/field";
 import { SelectInput } from "../../../ui/field/select-input";
 import { Kbd } from "../../../ui/kbd/kbd";
+import { hasCommandKey } from "../../../lib/command-key";
 import { PathPicker, type PathOption } from "../../../ui/path-picker/path-picker";
 import { Table, type Column } from "../../../ui/table";
 import { EMPLOYMENT_TYPES, type CarryKey, type Draft, type EmploymentType, type Gap } from "../domain/register";
@@ -126,7 +127,7 @@ export function RunTable(p: Props) {
         l.kind === "done" ? (
           l.undone ? <span className={s.n}>{t("register.run.undone")}</span> : p.undoable ? <Button variant="ghost" aria-label={t("register.run.undoOf", { name: l.name })} onClick={() => p.onUndo(l)}>{t("register.run.undo")}</Button> : null
         ) : (
-          <Button variant="primary" aria-label={t("register.run.save")} onClick={p.onSave}>{t("register.run.submit")} <Kbd keys="⌘↵" /></Button>
+          <Button variant="primary" aria-label={t("register.run.save")} onClick={p.onSave}>{t("register.run.submit")} <Kbd keys={hasCommandKey() ? "⌘↵" : "Ctrl+↵"} /></Button>
         ),
     },
   ];
