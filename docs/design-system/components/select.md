@@ -28,11 +28,11 @@ is a pick in a form or in a plan row, and a filter in a toolbar, where the calle
 |---|---|---|
 | Root | `<div>` | Everything below. It carries `data-form-value` with the current `value`, or an empty string for `null`. |
 | Label | `<span>` | `label`. With `hideLabel` it carries the global `sr-only` class: still in the page, not visible. |
-| Trigger | `<button type="button">` | The icon, the value and the chevron. |
+| Trigger | `<button type="button">` | The icon, the value and the chevron. The component draws the element itself, through the `render` prop of React Aria's button, so that it can add `aria-invalid`. |
 | Icon | Whatever the caller passes | `icon`, before the value. Left out when not given. |
 | Value | `<span>` | The `label` of the chosen option, or `placeholder` when nothing is chosen. |
 | Chevron | `<svg>`, 14 px, `aria-hidden` | A down chevron at the end of the trigger. |
-| Error | `<span>` | `error`, under the trigger. Rendered only when `error` is not `null` or `undefined`. |
+| Error | `<span>` | `error`, under the trigger. Rendered only when `error` is not `null` or `undefined`. It is React Aria's `Text` in the `errorMessage` slot of the select, which gives it an id and puts that id in the trigger's `aria-describedby`. |
 | Hidden select | `<select>` in an `aria-hidden` wrapper | React Aria's own native select, out of sight and out of the tab order. It exists for native form validation and browser autofill. |
 | Popover | `<div role="dialog">` | The list. React Aria renders it in a portal on `<body>`, below the trigger and aligned to its start edge. |
 | List | `<div role="listbox">` | One option per entry of `options`, in the order given. |
@@ -103,7 +103,7 @@ The trigger:
 | Open | No look. React Aria sets `data-pressed` and `aria-expanded="true"` on the trigger and `data-open` on the root; no rule reads them. The chevron does not turn. |
 | Pressed | No look. Neither the module nor `app.css` has a rule for `:active` or `data-pressed`. |
 | Selected | Does not exist on the trigger. The pick is the trigger's text. |
-| Invalid (`error` set) | The border turns `--danger-solid`, and the error line appears under the trigger. With nothing chosen the border is dashed and `--danger-solid`. |
+| Invalid (`error` set) | The border turns `--danger-solid`, and the error line appears under the trigger. With nothing chosen the border is dashed and `--danger-solid`. The trigger carries `aria-invalid="true"`, and the error line is its description. |
 | Required | No look. See below. |
 | Disabled | Does not exist. `SelectField` has no `disabled` prop. |
 | Read-only | Does not exist. |
@@ -129,8 +129,8 @@ module imports `app.css` statically and reaches this component only through lazy
 stylesheet loads after `app.css`. So a focused option shows no outline, and neither does the focused list. This
 was read from the stylesheets and the imports, not checked in a browser.
 
-`error` turns the invalid look on whenever it is not `null` or `undefined`. An empty string or `false` counts as
-an error and draws the red border with an empty line under it; pass `undefined` for no error.
+`error` turns the invalid look and `aria-invalid` on whenever it is not `null` or `undefined`. An empty string or
+`false` counts as an error and draws the red border with an empty line under it; pass `undefined` for no error.
 
 `required` is `true` unless the caller passes `false`. It sets `data-required` on the root and the native
 `required` attribute on the hidden select, and nothing else: no marker word beside the label, no rule in the
@@ -195,19 +195,19 @@ Alt or Meta key:
 Two things were not tested for this page: which of the two a Korean keyboard sends while the trigger or the
 list has focus, and whether a single Hangul consonant or vowel matches the start of a label that begins with a
 whole syllable. So this page does not say that an option with a Korean label can be reached by typing. The
-three specs named at the end of the accessibility section use the pointer, and no test file under
-`apps/web/src` names the component.
+three specs named at the end of the accessibility section use the pointer, and the component's own browser test
+opens the list and picks with Enter; it types no letter.
 
 ## Accessibility contract
 
 | Part | Role | Accessible name | Also exposed |
 |---|---|---|---|
-| Trigger | `button` | The shown value, or the placeholder, and then `label`: `aria-labelledby` points at the value first and the label second. | `aria-haspopup="listbox"`, `aria-expanded`, and `aria-controls` while open. |
+| Trigger | `button` | The shown value, or the placeholder, and then `label`: `aria-labelledby` points at the value first and the label second. | `aria-haspopup="listbox"`, `aria-expanded`, and `aria-controls` while open. While `error` is set: `aria-invalid="true"`, and the error line as its description, through `aria-describedby`. Without an error it has neither attribute. |
 | Popover | `dialog` | `label`, through `aria-labelledby`. | React Aria gives a modal popover this role unless it holds a dialog of its own. |
 | List | `listbox` | `label`, through `aria-labelledby`. | |
 | Option | `option` | Its label, through `aria-labelledby`. | `aria-selected`. The description is its description, through `aria-describedby`. |
 | Label | None. It is a `<span>`, not a `<label>`. | | A press on it focuses the trigger. |
-| Error | None. | | See the gaps below. |
+| Error | None. | | It is the trigger's description while it shows. It is not a live region. |
 | Hidden select | Hidden from assistive technology: its wrapper is `aria-hidden`, and it is out of the tab order. | | |
 
 - **Hidden label:** `hideLabel` hides the label from sight only. It stays in the page and stays part of the
@@ -215,7 +215,8 @@ three specs named at the end of the accessibility section use the pointer, and n
 - **Modality:** while the list is open, everything outside the popover is `inert`, and React Aria locks the scroll
   of the document.
 - **Announced:** nothing through a live region. Opening moves focus into the list; choosing moves it back to the
-  trigger, whose name now starts with the new value.
+  trigger, whose name now starts with the new value. The error line is not announced when it appears: it is the
+  description of the trigger.
 - **Hidden dismiss buttons:** React Aria puts a visually hidden button at the start and at the end of the popover.
   Each closes the list. Neither is in the tab order. React Aria names them with its own text for "dismiss", in the
   locale the app gives React Aria.
@@ -226,7 +227,7 @@ The WCAG 2.2 criteria that apply:
 
 | Criterion | How the component answers it |
 |---|---|
-| 1.3.1 Info and Relationships | A `listbox` of `option`s behind a button that says it opens one, all named by the label. The error line is not tied to the trigger. |
+| 1.3.1 Info and Relationships | A `listbox` of `option`s behind a button that says it opens one, all named by the label. While an error shows, the error line is the trigger's description and the trigger carries `aria-invalid="true"`. |
 | 1.4.1 Use of Color | The placeholder state is a dashed border and a lighter weight as well as a colour. Invalid is a border colour and an error line in words. The chosen option is a fill and a text colour only on screen, and `aria-selected` in the markup. |
 | 1.4.3 Contrast (Minimum), 1.4.11 Non-text Contrast | Every colour is a token. The trigger's edge is `--control-border` on `--surface`. |
 | 1.4.10 Reflow | Not met at 320 px, the width the criterion is judged at. The list is at least 366.67 px wide with no cap against the screen, so there it is wider than the screen: see Phone behaviour. |
@@ -235,15 +236,16 @@ The WCAG 2.2 criteria that apply:
 | 2.4.3 Focus Order | Focus moves into the list on open and back to the trigger on close. |
 | 2.4.7 Focus Visible | The trigger shows a ring. A focused option shows a `--muted` fill. A focused option that is also the chosen one shows nothing of its own: see States. |
 | 2.5.8 Target Size (Minimum) | The trigger is at least 32 px high. An option is at least 37 px high. |
-| 3.3.1 Error Identification | The error is text, under the trigger. It is not exposed as the trigger's description. |
+| 3.3.1 Error Identification | The error is text, under the trigger, and it is the trigger's description. The trigger is marked `aria-invalid="true"` for as long as the error shows. |
 | 3.3.2 Labels or Instructions | The label is visible unless `hideLabel` is set, and the placeholder says what to pick. Whether a pick is required is not shown. |
 | 4.1.2 Name, Role, Value | The table above. The value is part of the trigger's name. |
 
 Known gaps:
 
-- The error line is not tied to the trigger. It is a plain `<span>`, not React Aria's error slot, so the trigger
-  gets no `aria-describedby`, and nothing on the trigger says it is invalid. A screen-reader user on the trigger
-  does not hear the error.
+- `aria-invalid` sits on an element whose role is `button`. The lint rule `jsx-a11y/role-supports-aria-props`
+  does not list the attribute for that role, and the component switches the rule off on that one line. How a
+  screen reader speaks the state on a button was not tested: the browser test reads the attribute and the
+  computed description, and runs no screen reader.
 - Required is neither shown nor exposed. `Field` writes a marker word beside its label; `SelectField` has none,
   and the trigger carries no `aria-required`.
 - A focused option that is also the chosen one has no focus look, and every option has `outline: none`. When the
@@ -263,8 +265,12 @@ What the gallery shows: nothing. `ui/select` has no gallery file, and no gallery
 trace of the imports of every `*.gallery.tsx` finds one entry that imports a module using it, the approvals
 entry, and that entry renders a part of the module that has no `SelectField`.
 
-Tests: `ui/select` has no unit test, and no test file under `apps/web/src` names `SelectField`. It is driven in a
-browser through the screens that use it. Three examples: `e2e/mock/approvals.spec.ts` opens the source filter and picks an
+Tests: `ui/select` has one test file, `select-field.browser.test.tsx`, with `select-field.browser-fixture.tsx`
+beside it. It runs in Chromium on a form shaped like the statutory filing dialog, and checks that the trigger
+carries `aria-invalid="true"` and has the error line as its description while the error shows, and neither before
+the form is committed nor after a pick, once by keyboard and once by pointer. There is no jsdom unit test.
+
+The component is also driven in a browser through the screens that use it. Three examples: `e2e/mock/approvals.spec.ts` opens the source filter and picks an
 option; `selectFilingFact` in `e2e/helpers/statutory.ts` finds a trigger by the label inside its name and picks an
 option; `e2e/ops-recovery.spec.ts` picks a role. All three use the pointer.
 

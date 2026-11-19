@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+/* oxlint-disable react/jsx-no-literals -- Browser-only component fixture. */
+import { createRoot } from "react-dom/client";
+import { useState } from "react";
+import { loadCatalog, t } from "@console/i18n";
+import { Button, Form } from "../button/button";
+import { Dialog } from "../dialog";
+import { SelectField } from "./select-field";
+import "../../app.css";
+
+await loadCatalog("ko");
+const RESOLUTIONS = [{ id: "COMPLETE", label: t("statutory.complete") }, { id: "NOT_APPLICABLE", label: t("statutory.notApplicable") }, { id: "ASSESS", label: t("statutory.assess") }];
+// The shape of a loss-code option: a code, a long label and a hold mark in one line.
+const CODES = [
+  { id: "11", label: "11 · Voluntary resignation for personal reasons such as relocation or study · Legal review pending" },
+  { id: "23", label: "23 · Dismissal for managerial reasons, recommended resignation or workforce reduction" },
+  { id: "32", label: "32 · End of the contract term or completion of the construction work", description: "Counted from the day after the last working day" },
+];
+
+/** The picks of the filing completion dialog: nothing chosen, checked when the form is committed, cleared by a pick. */
+export function Fixture() {
+  const [action, setAction] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null);
+  const [tried, setTried] = useState(false);
+  return <Dialog open read title="Record a filing" onClose={() => {}}>
+    <Form className="form" noValidate onSubmit={() => setTried(true)}>
+      <SelectField label={t("statutory.resolution")} placeholder={t("statutory.pickResolution")} value={action} onChange={setAction} options={RESOLUTIONS}
+        error={tried && !action ? t("statutory.requiredResolution") : undefined} />
+      <SelectField label={t("statutory.lossCode")} placeholder={t("statutory.pickCode")} value={code} onChange={setCode} options={CODES}
+        error={tried && !code ? t("statutory.requiredCode") : undefined} />
+      <div className="row"><Button type="submit" variant="primary">{t("statutory.preview")}</Button></div>
+    </Form>
+  </Dialog>;
+}
+
+createRoot(document.getElementById("root")!).render(<Fixture />);

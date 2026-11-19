@@ -24,12 +24,13 @@ export function SelectField({ label, hideLabel = false, options, value, onChange
   return (
     <Select className={s.select} value={value} onChange={(k) => k != null && onChange(String(k))} isRequired={required} isInvalid={error != null} placeholder={placeholder} data-form-value={value ?? ""}>
       <Label className={hideLabel ? "sr-only" : s.label}>{label}</Label>
-      <Button className={s.trigger}>
+      {/* oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- WAI-ARIA 1.2 keeps aria-invalid a global state, and React Aria's Button drops it; nothing else says the pick is invalid. */}
+      <Button className={s.trigger} render={(p) => <button {...p} aria-invalid={error != null || undefined} />}>
         {icon}
         <SelectValue className={s.value}>{({ selectedText, defaultChildren, isPlaceholder }) => (isPlaceholder ? defaultChildren : selectedText)}</SelectValue>
         <ChevronDown size={14} aria-hidden className={s.chev} />
       </Button>
-      {error != null && <span className={s.error}>{error}</span>}
+      {error != null && <Text slot="errorMessage" className={s.error}>{error}</Text>}
       <Popover className={s.pop}>
         <ListBox className={s.list}>
           {options.map((o) => (
