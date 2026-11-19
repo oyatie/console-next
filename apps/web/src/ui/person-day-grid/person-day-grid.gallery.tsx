@@ -30,7 +30,6 @@ export default function PersonDayGridGallery() {
         onEdit={() => undefined}
         onCommit={() => undefined}
         onKey={() => false}
-        rowHeight={32}
       />
     </section>
   );

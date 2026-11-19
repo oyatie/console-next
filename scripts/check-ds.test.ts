@@ -272,6 +272,17 @@ test("check-ds runs the contrast pairs, the block rule and the dark rule on ever
   expect(lightOnly.stderr).toContain(`${experienceFile}: --border is a colour set for light only`);
 });
 
+test("check-ds accepts an experience file's phone block of sizes and refuses a colour in it", () => {
+  const css = readFileSync(new URL("../packages/tokens/tokens.css", import.meta.url), "utf8");
+  const phone = (declarations: string) => `${calm("--border: #d0d7e0; --row-h: 28px;", "--border: #2b3542;")}\n@media (--phone) { :root[data-experience="calm"] { ${declarations} } }\n`;
+  const sizes = gate(fixture({ [tokenFile]: css, [experienceFile]: phone("--row-h: 48px;") }, {}));
+  expect(sizes.stderr).toBe("");
+  expect(sizes.status).toBe(0);
+  const colour = gate(fixture({ [tokenFile]: css, [experienceFile]: phone("--border: #111111;") }, {}));
+  expect(colour.status).toBe(1);
+  expect(colour.stderr).toContain(`${experienceFile}: --border is a colour in the phone block`);
+});
+
 const BASE_TOKENS = ':root { --surface: #ffffff; --primary: #2247d8; --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary); --row-h: 40px; }\n:root[data-theme="dark"] { --surface: #161c24; --primary: #6d8bff; }\n';
 
 test("an existing token value may not change in either theme, and a token may not disappear", () => {

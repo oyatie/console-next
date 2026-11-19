@@ -33,8 +33,6 @@ type Props<R> = {
   onCommit: (then: "down" | "right" | "stay") => void;
   /** The feature's keys first (⌘D, ⌘↵, =, Delete, P …); true when handled. */
   onKey: (e: KeyboardEvent) => boolean;
-  /** Must match the row height the CSS gives (--row-h-compact): virtual rows are placed by it. */
-  rowHeight: number;
   /** A row group's head is drawn above the first row of each group. */
   groupOf?: (r: R) => string;
 };
@@ -54,6 +52,22 @@ export function PersonDayGrid<R>(p: Props<R>) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const [scroll, setScroll] = useState({ top: 0, height: 600 });
+  // Virtual rows are placed by the height the CSS gives a row. It is read where the rows are, since a container or a
+  // visual style may set the token, and again on resize; 32 is the base value, kept where nothing can be read.
+  // The box's height is read with it: before the first scroll nothing else reports it, and a box taller than the
+  // 600 assumed above would draw too few rows.
+  const [rowHeight, setRowHeight] = useState(32);
+  useLayoutEffect(() => {
+    const read = () => {
+      const height = parseFloat(getComputedStyle(box.current!).getPropertyValue("--row-h-compact"));
+      if (height > 0) setRowHeight(height);
+      const boxHeight = box.current!.clientHeight;
+      if (boxHeight > 0) setScroll((was) => was.height === boxHeight ? was : { ...was, height: boxHeight });
+    };
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
   const [drag, setDrag] = useState(false);
   const axes = { rows: p.rows.map(p.rowKey), cols: p.days.map((d) => d.key) };
   const rect = rectIn(p.range, axes);
@@ -66,18 +80,19 @@ export function PersonDayGrid<R>(p: Props<R>) {
     if (p.range && seen.current.range === p.range && seen.current.span !== span && p.range.anchor.row !== p.range.focus.row) p.onRange({ anchor: p.range.focus, focus: p.range.focus });
     seen.current = { range: p.range, span };
   });
-  const first = Math.max(0, Math.floor(scroll.top / p.rowHeight) - OVERSCAN);
-  const last = Math.min(p.rows.length, Math.ceil((scroll.top + scroll.height) / p.rowHeight) + OVERSCAN);
+  const first = Math.max(0, Math.floor(scroll.top / rowHeight) - OVERSCAN);
+  const last = Math.min(p.rows.length, Math.ceil((scroll.top + scroll.height) / rowHeight) + OVERSCAN);
   const cellId = (r: number, c: number) => `${id}-r${r}-c${c}`;
   const focusRow = f?.r;
 
   useEffect(() => {
     const el = box.current;
     if (!el || focusRow === undefined) return;
-    const top = focusRow * p.rowHeight;
+    // The sticky head covers the top of the box, so a row is in view between the head's foot and the box's foot.
+    const top = focusRow * rowHeight, bottom = top + el.querySelector("thead")!.offsetHeight + rowHeight;
     if (top < el.scrollTop) el.scrollTop = top;
-    else if (top + p.rowHeight * 2 > el.scrollTop + el.clientHeight) el.scrollTop = top + p.rowHeight * 2 - el.clientHeight;
-  }, [focusRow, p.rowHeight]);
+    else if (bottom > el.scrollTop + el.clientHeight) el.scrollTop = bottom - el.clientHeight;
+  }, [focusRow, rowHeight]);
   useEffect(() => {
     const up = () => setDrag(false);
     window.addEventListener("pointerup", up);
@@ -138,7 +153,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
           </tr>
         </thead>
         <tbody>
-          {first > 0 && <tr aria-hidden><td aria-hidden colSpan={p.lead.length + p.days.length + p.tail.length} height={first * p.rowHeight} /></tr>}
+          {first > 0 && <tr aria-hidden><td aria-hidden colSpan={p.lead.length + p.days.length + p.tail.length} height={first * rowHeight} /></tr>}
           {p.rows.slice(first, last).map((row, i) => {
             const r = first + i;
             const key = axes.rows[r]!;
@@ -174,7 +189,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
               </tr>
             );
           })}
-          {last < p.rows.length && <tr aria-hidden><td aria-hidden colSpan={p.lead.length + p.days.length + p.tail.length} height={(p.rows.length - last) * p.rowHeight} /></tr>}
+          {last < p.rows.length && <tr aria-hidden><td aria-hidden colSpan={p.lead.length + p.days.length + p.tail.length} height={(p.rows.length - last) * rowHeight} /></tr>}
         </tbody>
       </table>
     </div>
