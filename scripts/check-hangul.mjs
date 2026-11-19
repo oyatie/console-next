@@ -79,6 +79,12 @@ export function hangulDebt(sources, allow) {
   for (const { file, text: sourceText } of sources) {
     let text = sourceText;
     if ((file.startsWith(`${CATALOGS}/`) && /\.(?:ts|json)$/.test(file) && !isDebtTest(file)) || file === "packages/api/src/schema.d.ts") continue;
+    // The shared synthetic target-board tenant dataset lives strictly in e2e/mock as pure JSON data, never in i18n or TS selectors.
+    if (file === "e2e/mock/saeon-universe.json") {
+      const parsed = JSON.parse(text);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("saeon-universe.json must be a JSON object");
+      continue;
+    }
     // Declared header synonyms are multilingual input data; all other catalogue text remains checked.
     if (file === "backend/crates/hr/domain/data/employee.json") {
       const catalogue = JSON.parse(text);
