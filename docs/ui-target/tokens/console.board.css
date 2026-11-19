@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
-/* Control room: token set. Quiet when normal, colour only for what needs a person. */
+/* Console: token set. Quiet when normal, colour only for what needs a person. */
 :root{
 /* type */
 --font:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;

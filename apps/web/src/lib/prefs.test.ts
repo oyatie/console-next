@@ -67,7 +67,7 @@ test("a browser that cannot say what the system prefers sets a stored theme and 
   }
 });
 
-for (const experience of ["baseline", "control-room", "warm-clear"]) {
+for (const experience of ["baseline", "console", "warm-clear"]) {
   test(`${experience} applies the stored choice before the bundle in either theme`, () => {
     for (const theme of THEMES) {
       expect(boot({ "console.experience": experience, "console.theme": theme }).attributes).toEqual({ "data-theme": theme, "data-experience": experience });
@@ -75,8 +75,12 @@ for (const experience of ["baseline", "control-room", "warm-clear"]) {
   });
 }
 
+test("legacy control-room stored on a device upgrades to console at first paint", () => {
+  expect(boot({ "console.experience": "control-room", "console.theme": "dark" }).attributes).toEqual({ "data-theme": "dark", "data-experience": "console" });
+});
+
 test("an unknown experience never applies", () => {
-  for (const value of ["calm", "light", "dark", "Warm-clear", "control-room "]) {
+  for (const value of ["calm", "light", "dark", "Warm-clear", "console "]) {
     expect(boot({ "console.experience": value, "console.theme": "dark" }).attributes, value).toEqual({ "data-theme": "dark" });
   }
 });

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 /* Status roles retain the shared grammar; chart categories retain the shared palette. */
-:root[data-experience="control-room"] {
+:root[data-experience="console"] {
   --canvas: #e9edf1;
   --surface: #ffffff;
   --muted: #f3f5f8;
@@ -40,7 +40,7 @@
   --field-h: 28px; --field-h-toolbar: 24px;
 }
 
-:root[data-experience="control-room"][data-theme="dark"] {
+:root[data-experience="console"][data-theme="dark"] {
   --canvas: #101820; /* Derived, not drawn. */
   --surface: #18232e; /* Derived, not drawn. */
   --muted: #202d3a; /* Derived, not drawn. */
@@ -72,7 +72,7 @@
 /* A phone is used by touch: rows hold 44px controls and, outside a compact grid, no target is under 44px, whatever the
    desk draws. */
 @media (--phone) {
-  :root[data-experience="control-room"] {
+  :root[data-experience="console"] {
     --text-xs: 13px; --text-sm: 14px; --text-body: 15px; --text-lg: 17px; --text-xl: 22px;
     --row-h: 48px; --row-h-compact: 40px; --control-h-sm: 44px; --target: 44px; --topbar-h: 52px;
     /* A control stays 44px, not the 48px drawn for one standing free: a 48px button in a 48px table row would grow the row. */

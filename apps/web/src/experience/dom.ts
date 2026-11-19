@@ -15,6 +15,10 @@ type MinimalStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 const EXPERIENCE_EVENT = "console:experience";
 const EXPERIENCE_KEY = "console.experience";
 
+function normalizeExperienceId(value: unknown): unknown {
+  return value === "control-room" ? "console" : value;
+}
+
 function isKnownExperienceId(value: unknown): value is ExperienceId {
   return typeof value === "string" && experiences.some(experience => experience.id === value);
 }
@@ -33,7 +37,7 @@ export function readStoredExperience(storage: MinimalStorage | null = defaultSto
 } {
   if (!storage) return { id: null, source: null };
   try {
-    const rawId = storage.getItem(EXPERIENCE_KEY);
+    const rawId = normalizeExperienceId(storage.getItem(EXPERIENCE_KEY));
     const rawSource = storage.getItem(EXPERIENCE_SOURCE_KEY);
     return {
       id: isKnownExperienceId(rawId) ? rawId : null,
@@ -87,8 +91,11 @@ export function resolveEffectiveExperience({
   source: ExperienceSource;
 } {
   const settingRow = settingsItems?.find(item => item.key === "display.experience");
-  const tenantId: ExperienceId = settingRow && isKnownExperienceId(settingRow.value) ? settingRow.value : "baseline";
-  const rawChoice = workspaceLayout && Object.hasOwn(workspaceLayout, "experience") ? workspaceLayout.experience : undefined;
+  const normalizedSetting = settingRow ? normalizeExperienceId(settingRow.value) : undefined;
+  const tenantId: ExperienceId = isKnownExperienceId(normalizedSetting) ? normalizedSetting : "baseline";
+  const rawChoice = workspaceLayout && Object.hasOwn(workspaceLayout, "experience")
+    ? normalizeExperienceId(workspaceLayout.experience)
+    : undefined;
 
   if (isKnownExperienceId(rawChoice)) {
     return { id: rawChoice, choice: rawChoice, tenantId, source: "personal" };

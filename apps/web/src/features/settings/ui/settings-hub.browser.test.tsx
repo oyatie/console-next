@@ -50,7 +50,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         : path.endsWith("users/me") ? { sign_in_id: "operator@current.test" }
         : path.endsWith("settings") ? { can_change: false, items: [
           { key: "approval.policy.org_structure", kind: { type: "code", allowed: ["none", "route"] }, value: "route", governance: "tenant", source: { layer: "tenant" }, scheduled: [{ value: "none", effective_from: "2026-12-01T00:00:00Z" }] },
-          { key: "display.experience", kind: { type: "code", allowed: ["baseline", "control-room", "warm-clear"] }, value: "baseline", version: "code_default", governance: "tenant", source: { layer: "code_default" }, scheduled: [] },
+          { key: "display.experience", kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] }, value: "baseline", version: "code_default", governance: "tenant", source: { layer: "code_default" }, scheduled: [] },
         ] }
         : { items: [] };
       return route.fulfill({ json });
@@ -158,7 +158,7 @@ test("tenant default screen style composer validates, sends expected_version and
         { key: "approval.policy.org_structure", kind: { type: "code", allowed: ["none", "route"] }, value: "none", governance: "tenant", source: { layer: "tenant" }, scheduled: [] },
         {
           key: "display.experience",
-          kind: { type: "code", allowed: ["baseline", "control-room", "warm-clear"] },
+          kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
           default: "baseline",
           looser_when: "neutral",
           value: currentStyle,
@@ -191,13 +191,13 @@ test("tenant default screen style composer validates, sends expected_version and
       });
       return;
     }
-    currentStyle = "control-room";
+    currentStyle = "console";
     await route.fulfill({
       status: 201,
       json: {
         id: "00000000-0000-4000-8000-000000000003",
         key: "display.experience",
-        value: "control-room",
+        value: "console",
         effective_from: "2026-11-20T00:00:00Z",
         scope_entity_id: null,
         immediate: true,
@@ -220,7 +220,7 @@ test("tenant default screen style composer validates, sends expected_version and
     const chooseRadio = (name: string) => dialog.getByRole("radio", { name, exact: true }).locator("xpath=ancestor::label[1]").click();
     await expect(commit).toHaveAttribute("aria-disabled", "true");
 
-    await chooseRadio(t("account.experience.preview", { style: t("account.experience.controlRoom") }));
+    await chooseRadio(t("account.experience.preview", { style: t("account.experience.console") }));
     await expect(commit).toHaveAttribute("aria-disabled", "true");
 
     await chooseRadio(t("reason.settings_change.OTHER"));
@@ -236,10 +236,10 @@ test("tenant default screen style composer validates, sends expected_version and
 
     await commit.click();
     await expect(dialog).toHaveCount(0);
-    await expect(card).toContainText(t("settingsHub.code.control-room"));
+    await expect(card).toContainText(t("settingsHub.code.console"));
     expect(payloads).toEqual([
-      { value: "control-room", reason_code: "POLICY_REVIEW", expected_version: { override: "00000000-0000-4000-8000-000000000001" } },
-      { value: "control-room", reason_code: "POLICY_REVIEW", expected_version: { override: "00000000-0000-4000-8000-000000000002" } },
+      { value: "console", reason_code: "POLICY_REVIEW", expected_version: { override: "00000000-0000-4000-8000-000000000001" } },
+      { value: "console", reason_code: "POLICY_REVIEW", expected_version: { override: "00000000-0000-4000-8000-000000000002" } },
     ]);
   } finally {
     await page.unroute("**/api/v1/settings/display.experience**");

@@ -82,7 +82,7 @@ pub const FILING_CADENCES: &[&str] = &["MONTHLY", "SEMIANNUAL"];
 /// A row without an employee number at import (decisions #25), strictest first.
 pub const UNNUMBERED_MODES: &[&str] = &["queue", "assign_by_rule"];
 /// Visual screen styles; switching appearance alters neither access nor statutory rules.
-pub const EXPERIENCES: &[&str] = &["baseline", "control-room", "warm-clear"];
+pub const EXPERIENCES: &[&str] = &["baseline", "console", "warm-clear"];
 
 const fn retention_years(years: i64) -> D {
     D::int(Years, Some(years), None, years, Lower)
