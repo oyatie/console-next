@@ -1,4 +1,6 @@
 @import "@console/tokens/tokens.css";
+@import "@console/tokens/experiences/warm-clear.css";
+@import "@console/tokens/experiences/control-room.css";
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @import "./generated/fonts/catalog.css";
 @property --trigger-width { syntax: "*"; inherits: true; }
@@ -95,6 +97,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
     .top__name span { font-size: 0; min-inline-size: 0; }
     .top__menu, .top__logout { font-size: 0; gap: 0; }
     > select { max-width: calc(var(--space-6) * 3); }
+    :where([data-experience]:not([data-experience="baseline"])) & {
+      .top__jump { min-width: auto; }
+      > select { field-sizing: content; min-width: 0; }
+    }
   }
 }
 /* The scroll container is also the containing block: an absolutely placed node inside (a visually hidden input) scrolls and clips with it instead of lengthening the document, which a focus would then scroll (E2-reveal). */
@@ -202,6 +208,9 @@ aside.panel { position: sticky; top: 0; }
 .state__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
 .state__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .state__actions > * { flex: none; max-width: 100%; }
+.state--compact { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; padding: 0; }
+.state--compact > .state__title { grid-column: 1 / -1; font-size: var(--text-sm); }
+.state--compact > .muted { grid-column: 1 / -1; }
 
 /* ── auth ──────────────────────────────────────────── */
 .auth { min-height: 100%; display: grid; place-items: center; padding: var(--space-4); }

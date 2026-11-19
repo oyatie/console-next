@@ -2,7 +2,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { beforeAll, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { TenantPanel } from "./tenant-panel";
 import { CodeDialog } from "./code-dialog";
 import { DomainDialog } from "./domain-dialog";
@@ -23,7 +23,7 @@ test("tenant data disables Delete before any command and offers archive", () => 
   const html = panel();
   expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*>Example 삭제<\/button>/);
   expect(html).toContain("운영 데이터");
-  expect(html.match(/Example 보관/g)).toHaveLength(1);
+  expect(html.split(t("tenants.status.archive", { org: org.name }))).toHaveLength(2);
 });
 test("issued tenant shows its derived lifecycle and zero enrolled accounts", () => {
   const html = panel();

@@ -57,11 +57,10 @@ test.each(["chromium", "firefox", "webkit"])("browser component fixtures select 
 test.each(["chromium", "firefox", "webkit"])("specialized configs select %s", async name => {
   vi.stubEnv("E2E_BROWSER", name);
   const { default: grid } = await import("../apps/web/src/features/people/ui/grid-table.playwright");
-  const { default: timeline } = await import("../apps/web/src/ui/timeline-lanes/timeline-line.playwright");
   const { default: focus } = await import("../e2e/mock/focus-stress.config");
   const { default: navigation } = await import("../playwright.navigation.config");
   expect(grid.use?.browserName).toBe(name);
-  for (const config of [timeline, focus, navigation]) {
+  for (const config of [focus, navigation]) {
     expect(config.projects?.map(project => project.use?.browserName ?? config.use?.browserName)).toEqual([name]);
   }
 });

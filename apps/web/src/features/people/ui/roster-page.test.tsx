@@ -8,7 +8,18 @@ import { RosterPage } from "./roster-page";
 import { rosterWindowQuery } from "../api/roster";
 import { VIEWS } from "../domain/roster";
 
-const state = vi.hoisted(() => ({ refused: false, settingsFailed: false, staleWindow: undefined as number | undefined, body: "roster rows", org: false, loading: false, empty: false, search: {} as { status?: string; review?: string; unit?: string; sort?: string } }));
+const state = vi.hoisted(() => ({ refused: false, settingsFailed: false, staleWindow: undefined as number | undefined, body: "roster rows", org: false, loading: false, empty: false, firstRun: false, voided: false, search: {} as { status?: string; review?: string; unit?: string; sort?: string; sel?: string; sel2?: string } }));
+const arrangement = vi.hoisted(() => vi.fn());
+vi.mock("../../../ui/patterns/list-record", async original => {
+  const { ListRecord } = await original<typeof import("../../../ui/patterns/list-record")>();
+  return { ListRecord: (props: Parameters<typeof ListRecord>[0]) => { arrangement(props); return <ListRecord {...props} />; } };
+});
+vi.mock("./use-roster-screen", async original => {
+  const hooks = await original<typeof import("./use-roster-screen")>();
+  return { useRosterScreen: () => ({ ...hooks.useRosterScreen(), exitView: state.voided ? "voided" : "kept" }) };
+});
+vi.mock("./roster-panel", () => ({ RosterPanel: () => <div data-record /> }));
+vi.mock("./roster-unit-panel", () => ({ RosterUnitPanel: () => <div data-related /> }));
 const table = vi.hoisted(() => vi.fn());
 const rosterRead = vi.hoisted(() => vi.fn());
 vi.mock("@tanstack/react-router", () => ({
@@ -31,10 +42,10 @@ vi.mock("../../../lib/reason-codes", () => ({ useReasonCodesReady: () => false }
 vi.mock("./roster-table", () => ({ RosterTable: (props: { empty: React.ReactNode }) => { table(props); return <div>{state.empty ? props.empty : state.body}</div>; } }));
 vi.mock("./use-roster", async original => ({ ...await original<typeof import("./use-roster")>(), useRoster: (...args: unknown[]) => { rosterRead(...args); return ({
   list: { data: state.refused ? undefined : { pages: [{ items: [], total: 1 }] }, isPending: false, hasNextPage: true, error: state.refused ? new ApiError(403, "access_denied", "") : null, refetch: vi.fn() },
-  rows: state.empty ? [] : [{ id: "person", name: "가상직원" }], total: 1, loading: state.loading, status: { totals: { all: 1 }, failed: [] }, review: { totals: {}, failed: [] }, query: {},
+  rows: state.empty || state.firstRun ? [] : [{ id: "person", name: "가상직원" }], total: state.firstRun ? 0 : 1, loading: state.loading, status: { totals: { all: state.firstRun ? 0 : 1 }, failed: [] }, review: { totals: {}, failed: [] }, query: {},
 }); } }));
 beforeAll(() => loadCatalog("ko"));
-beforeEach(() => { state.refused = false; state.settingsFailed = false; state.staleWindow = undefined; state.org = false; state.loading = false; state.empty = false; state.search = {}; table.mockClear(); rosterRead.mockClear(); });
+beforeEach(() => { state.refused = false; state.settingsFailed = false; state.staleWindow = undefined; state.org = false; state.loading = false; state.empty = false; state.firstRun = false; state.voided = false; state.search = {}; table.mockClear(); rosterRead.mockClear(); arrangement.mockClear(); });
 const render = () => {
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
   try { return renderToStaticMarkup(<QueryClientProvider client={client}><RosterPage manage={false} /></QueryClientProvider>); }
@@ -114,4 +125,25 @@ test.each([undefined, 21])("a settings outage keeps the roster and reports the f
   expect(html.split(t("common.read.failedReason"))).toHaveLength(2);
   expect(html).not.toContain(t("directoryViews.contractSoon", { days: "—" }));
   expect(html).not.toContain(t("roster.review.contractSoon", { days: "—" }));
+});
+
+test("the product roster renders the list-record arrangement", () => {
+  state.search = { sel: "person", sel2: "department" };
+  expect(render()).toContain('data-pattern="list-record"');
+  const props = arrangement.mock.calls[0]![0];
+  for (const region of ["head", "views", "filters", "notes", "list", "record", "related", "foot"]) expect(props[region], region).toBeTruthy();
+  expect(props.overlays).toBeFalsy();
+  expect(props.head.title).toBe(t("roster.page.roster"));
+ });
+
+test.each(["first-run", "voided"])("%s ignores stale selected-pane URLs", kind => {
+  state.firstRun = kind === "first-run";
+  state.voided = kind === "voided";
+  state.search = { status: state.voided ? "EXITED" : undefined, sel: "person", sel2: "department" };
+  const html = render();
+  const props = arrangement.mock.calls[0]![0];
+  expect(props.record).toBeFalsy();
+  expect(props.related).toBeFalsy();
+  expect(html).not.toContain("data-record");
+  expect(html).not.toContain("data-related");
 });

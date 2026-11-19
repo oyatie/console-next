@@ -21,7 +21,7 @@ import { SidePanelReadContext } from "../../ui/side-panel/read-context";
  * Refetches keep rendered content and focus; only a first load may show a layout placeholder.
  * Filter/date/search reads use keepPreviousData; the retained region is busy until the answer lands.
  */
-export function QueryState<T>({ q, empty, children, own, loading, denied, layout, back, removed, inline, keepOnLoss, need, failedTitle, failedActions }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; denied?: ReactNode; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean; need?: AccessRequirement; failedTitle?: string; failedActions?: ReactNode }) {
+export function QueryState<T>({ q, empty, children, own, loading, denied, layout, back, removed, inline, keepOnLoss, need, failedTitle, failedActions, compact }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; denied?: ReactNode; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean; need?: AccessRequirement; failedTitle?: string; failedActions?: ReactNode; compact?: boolean }) {
   const online = useOnline();
   const panel = useContext(SidePanelReadContext);
   const recovery = useContext(ReadFailureContext);
@@ -61,10 +61,11 @@ export function QueryState<T>({ q, empty, children, own, loading, denied, layout
     ? <EmptyState title={t("common.denied.panel")} reason={e ? own?.(e.code) ?? readFailureText(e) : null} meta={<ReadReference error={e} />} />
     : <Denied error={e} reason={e ? own?.(e.code) : undefined} back={back} need={need} />);
   if (view === "not-found" && !lost) return <div className="page"><EmptyState title={t("common.read.notFound.title")} reason={q.data !== undefined && removed ? removed : e && own?.(e.code) || t("common.read.notFound.reason")} actions={<Link to={back?.to ?? "/"} className="btn">{back?.label ?? t("common.notFound.action")}</Link>} /></div>;
-  if (view === "loading" && !retainedRefetch) return loading ?? (layout ? <ReadSkeleton layout={layout} /> : <Skeleton bones={["line"]} label={t("common.loading")} />);
+  if (view === "loading" && !retainedRefetch) return loading !== undefined ? loading : (layout ? <ReadSkeleton layout={layout} /> : <Skeleton bones={["line"]} label={t("common.loading")} />);
   if ((view === "failed" && !retainedRefetch) || (offline && q.data === undefined && !retainedRefetch)) {
     const failure = (
       <EmptyState
+        compact={compact}
         alert
         title={offline ? t("common.read.offline") : failedTitle ?? t("common.loadFailed.title")}
         reason={readFailureText(q.error, own)}

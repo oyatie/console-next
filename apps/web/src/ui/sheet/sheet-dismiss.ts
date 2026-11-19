@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { isImeKey } from "../../lib/pure/ime";
 import { useBackBlock } from "../../lib/react/navigation-block";
 
 const FORM_CONTROL = "form, .form, input, select, textarea, [contenteditable=true], [data-form-value]";
@@ -112,7 +113,7 @@ export function useSheetDismiss<E extends HTMLElement>({ onClose, pending, dirty
       const targetDialog = target.closest?.('[role="dialog"]');
       // An expanded control has a popup open that takes the key first; on a row the attribute only says the row is unfolded.
       const popupOpen = target.getAttribute?.("aria-expanded") === "true" && target.getAttribute("role") !== "row";
-      if (event.defaultPrevented || event.isComposing || target.closest?.('[role="listbox"]') || popupOpen
+      if (event.defaultPrevented || isImeKey(event) || target.closest?.('[role="listbox"]') || popupOpen
         || (targetDialog && targetDialog !== ownDialog) || !isTop()) return;
       if (pending) return;
       if (dirty && !armedRef.current) {

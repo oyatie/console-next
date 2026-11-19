@@ -41,7 +41,7 @@
 .said { composes: t-xs muted from global; margin: 0; }
 .peekCrumb { composes: t-xs muted from global; }
 @media (max-width: 639px) {
-  .page[data-detail] .band, .page[data-detail] .scope, .page[data-detail] .stats, .page[data-detail] .notes, .page[data-detail] .foot { display: none; }
+  [data-pattern="list-record"][data-detail] .band, [data-pattern="list-record"][data-detail] .scope, [data-pattern="list-record"][data-detail] .stats, [data-pattern="list-record"][data-detail] .notes, [data-pattern="list-record"][data-detail] .foot { display: none; }
 }
 .peekHead { display: flex; align-items: center; gap: var(--space-3); }
 .peekName { composes: t-lg from global; margin: 0; }

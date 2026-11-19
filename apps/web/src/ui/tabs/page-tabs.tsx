@@ -8,11 +8,11 @@ import s from "./tabs.module.css";
 
 type PageTabItem = TabItem & { disabledReason?: ReactNode };
 
-/** Links for URL views; measure labels so overflow follows available space and translated copy. */
+/** Links for URL views; omit children for a strip placed by a page pattern. Overflow follows measured labels. */
 export function PageTabs({ label, items, selected, onSelect, href, renderList, children }: {
   label: string; items: readonly PageTabItem[]; selected: string;
   onSelect: (id: string) => void; href: (id: string) => string;
-  renderList?: (list: ReactNode) => ReactNode; children: (id: string) => ReactNode;
+  renderList?: (list: ReactNode) => ReactNode; children?: (id: string) => ReactNode;
 }) {
   const current = items.find(i => i.id === selected && !i.disabledReason) ?? items.find(i => !i.disabledReason);
   const row = useRef<HTMLElement>(null);
@@ -67,6 +67,6 @@ export function PageTabs({ label, items, selected, onSelect, href, renderList, c
   if (!items.length) return null;
   return <div className={s.tabs}>
     {renderList ? renderList(list) : list}
-    {current && <div key={current.id} className={s.panel} data-page-view={current.id}>{children(current.id)}</div>}
+    {current && children && <div key={current.id} className={s.panel} data-page-view={current.id}>{children(current.id)}</div>}
   </div>;
 }

@@ -38,7 +38,6 @@ const html = (rows: R[], range: Range | null, editing: { value: string; cell: Ce
       onEdit={() => undefined}
       onCommit={() => undefined}
       onKey={() => false}
-      rowHeight={32}
     />,
   );
 /** The `<tr>` of a person, by their name in the lead column. */

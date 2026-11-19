@@ -2,6 +2,7 @@ import { useRef, type ComponentProps, type ReactNode } from "react";
 import { ComboBox, Input, Label, ListBox, ListBoxItem, Popover, Text } from "react-aria-components";
 import { Search } from "lucide-react";
 import { t } from "@console/i18n";
+import { leaveImeKey } from "../../lib/pure/ime";
 import fieldCss from "../field/field.module.css";
 import { Marker } from "../field/field";
 import { useNonModalSurroundings } from "../use-non-modal-surroundings";
@@ -72,7 +73,7 @@ function CodeSearch({ label, required, list, query, onQueryChange, options, valu
       <Label className={fieldCss.label}>{label}<Marker required={required} /></Label>
       <div className={css.input}>
         <Search aria-hidden="true" className={css.icon} />
-        <Input ref={input} className="field__input" />
+        <Input ref={input} className="field__input" onKeyDownCapture={leaveImeKey} />
       </div>
       {error != null && <Text slot="errorMessage" className={s.error}>{error}</Text>}
       <Popover ref={popover} className={`popover ${css.pop}`}>
