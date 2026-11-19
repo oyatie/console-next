@@ -171,3 +171,24 @@ test.each(["selected", "cancelled"])("%s passkey calls back only after selection
     expect(onAsserted).toHaveBeenCalledOnce();
   }
 });
+
+test.each(["challenge", "credential"])("aborting autofill during the %s discards its late answer", async stage => {
+  const controller = new AbortController();
+  const get = vi.fn(async () => {
+    controller.abort();
+    return { id: "autofill" };
+  });
+  configure({ baseUrl: "https://console.example", passkeys: { get, create: async () => null }, refresh: { kind: "cookie" } });
+  const fetch = vi.fn(async () => {
+    if (stage === "challenge") controller.abort();
+    return Response.json({ ceremony_id: "ceremony", challenge: { publicKey: {} } });
+  });
+  vi.stubGlobal("fetch", fetch);
+  const onStart = vi.fn();
+  const onAsserted = vi.fn();
+  await expect(loginWithPasskey({ mediation: "conditional", signal: controller.signal, onStart, onAsserted })).rejects.toMatchObject({ name: "AbortError" });
+  expect(get).toHaveBeenCalledTimes(stage === "challenge" ? 0 : 1);
+  expect(onStart).toHaveBeenCalledTimes(stage === "challenge" ? 0 : 1);
+  expect(onAsserted).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledOnce();
+});
