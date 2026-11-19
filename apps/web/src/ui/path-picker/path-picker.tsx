@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { Button, ComboBox, Input, ListBox, ListBoxItem, Popover } from "react-aria-components";
 import { ChevronDown } from "lucide-react";
 import { t } from "@console/i18n";
+import { leaveImeKey } from "../../lib/pure/ime";
 import { useNonModalSurroundings } from "../use-non-modal-surroundings";
 import s from "./path-picker.module.css";
 
@@ -32,7 +33,7 @@ export function PathPicker({ options, value, onChange, placeholder, label, inval
     <ComboBox onOpenChange={onOpenChange} className={s.picker} aria-label={label} selectedKey={value || null} onSelectionChange={(k) => onChange((k as string) ?? "")} defaultItems={options} allowsEmptyCollection isInvalid={invalid} data-chosen={chosen ? true : undefined} data-form-value={value}>
       <div className={s.box}>
         {icon != null && <span className={s.icon}>{icon}</span>}
-        <Input ref={input} className={s.input} placeholder={placeholder} />
+        <Input ref={input} className={s.input} placeholder={placeholder} onKeyDownCapture={leaveImeKey} />
         {chosen?.count != null && <span className={s.count}>{chosen.count}</span>}
         <Button className={s.button} aria-label={openLabel}><ChevronDown size={16} aria-hidden /></Button>
       </div>

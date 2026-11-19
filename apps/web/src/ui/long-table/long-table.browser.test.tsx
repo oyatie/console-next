@@ -254,3 +254,15 @@ test.each([1440, 390])("keyboard focus entering a nested action never returns to
   await dom(rows.nth(1)).not.toHaveAttribute("aria-selected", "true");
   expect(await page.locator("body").getAttribute("data-action")).toBeNull();
 });
+
+// An Escape pressed while a syllable is composing: marked as composing, or, where the browser ends the composition
+// before the keydown, by the key code alone.
+for (const state of [{ isComposing: true }, { isComposing: false, keyCode: 229 }]) test(`the find box keeps what was typed through an Escape pressed while composing ${JSON.stringify(state)}, then clears on a plain Escape`, async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?find`);
+  const box = page.getByRole("searchbox", { name: "Find a row" });
+  await box.fill("ab");
+  await box.evaluate((el, init) => el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true, ...init })), state);
+  await dom(box).toHaveValue("ab");
+  await box.press("Escape");
+  await dom(box).toHaveValue("");
+});

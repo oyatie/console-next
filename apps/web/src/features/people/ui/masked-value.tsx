@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
 import { isMessageId, t } from "@console/i18n";
+import { isImeKey } from "../../../lib/pure/ime";
 import { announce, focusSoon } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -58,7 +59,7 @@ function RevealValue({ masked, field, who, reveal, wrapMask }: Props & { reveal:
       else { setSeconds(Math.ceil(left / 1000)); timer = setTimeout(tick, Math.min(1000, left)); }
     };
     timer = setTimeout(tick, Math.min(1000, Math.max(0, shown.until - Date.now())));
-    const escape = (e: KeyboardEvent) => { if (e.key === "Escape") hide(); };
+    const escape = (e: KeyboardEvent) => { if (e.key === "Escape" && !isImeKey(e)) hide(); };
     document.addEventListener("keydown", escape);
     return () => { clearTimeout(timer); document.removeEventListener("keydown", escape); };
   }, [shown, hide]);

@@ -12,6 +12,8 @@
 //            outlines (1px … 3px) and @media conditions excepted.
 //   brokenRef  unconditional hard failure, including fallback refs and theme/condition gaps.
 //   frozen   unconditional hard failure: a token of the base file whose value differs from the merge base's.
+//   style    unconditional hard failure: a selector that names a visual style (data-experience) in any shape but the
+//            one guard every new style shares. What one style alone needs is a token value in that style's own file.
 // Contrast is part of this gate too; --lower / --admit never bypass any hard failure.
 // scripts/ds-baseline.json holds today's counts. They may only go down: a count above its pin fails, a count below
 // fails too ("lower the baseline", in the same diff), and a file without a pin must count zero.
@@ -88,6 +90,23 @@ function walk(dir, out = []) {
   return out;
 }
 
+/**
+ * The selectors of a stylesheet that name a visual style in a shape the gate does not accept. One shape is accepted:
+ * `:where([data-experience]:not([data-experience="baseline"]))`, which matches every style but today's look and adds
+ * no specificity, so a rule under it is a correction all new styles share. Anything else (a style's own id, the bare
+ * attribute, the guard without `:where`) would let a rule belong to one style, or outrank the rules it corrects.
+ */
+const STYLE_GUARD = /:where\(\s*\[data-experience\]:not\(\s*\[data-experience\s*=\s*"baseline"\s*\]\s*\)\s*\)/g;
+export function styleSelectors(css, file) {
+  const found = [];
+  (typeof css === "string" ? parseCss(css, file) : css).walkRules((rule) => {
+    for (const selector of rule.selectors ?? []) {
+      if (selector.replaceAll("'", '"').replace(STYLE_GUARD, "").includes("data-experience")) found.push(selector.trim());
+    }
+  });
+  return found;
+}
+
 const TOKENS = "packages/tokens/tokens.css";
 /** Per-file counts; broken references have no baseline allowance, in every theme and scope. */
 export function measure(root, problems = []) {
@@ -111,6 +130,11 @@ export function measure(root, problems = []) {
   }
   const sheets = new Map([...sources].filter(([f]) => f.endsWith(".css")).map(([f, src]) => [f, parseCss(src, f)]));
   problems.push(...brokenRefs(sources, sheets, TOKENS));
+  const styleFiles = new Set([TOKENS, ...experienceFiles(path.join(root, TOKENS)).map((p) => posix(path.relative(root, p)))]);
+  for (const [f, sheet] of sheets) {
+    if (styleFiles.has(f)) continue;
+    for (const selector of styleSelectors(sheet)) problems.push(`${f}: ${selector} names a visual style outside the shared guard; write a correction every new style shares under :where([data-experience]:not([data-experience="baseline"])), and give one style its own value as a token in its file`);
+  }
   for (const [f, sheet] of sheets) {
     if (!EXEMPT.test(f) && f !== TOKENS)
       add(f, countCss(sheet, f.endsWith(".module.css") ? controlsByDir.get(path.dirname(f)) : undefined));

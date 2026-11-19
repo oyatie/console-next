@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { t } from "@console/i18n";
+import { isImeKey } from "../../lib/pure/ime";
 import css from "./approval-card.module.css";
 
 type Form = "reject" | "return";
@@ -81,7 +82,7 @@ export function ApprovalCard(p: ReturnProps & {
     const box = cardBox.current;
     if (!form || !box || busy) return;
     const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+      if (event.key !== "Escape" || event.defaultPrevented || isImeKey(event)) return;
       event.preventDefault();
       event.stopPropagation();
       setForm(undefined);
