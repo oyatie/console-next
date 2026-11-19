@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { isMessageId, t } from "@console/i18n";
@@ -38,8 +38,19 @@ const receiptText = (r: Receipt) =>
   : r.decision === "APPROVED" ? t(r.status === "IN_APPROVAL" ? "approvals.receipt.approvedNext" : "approvals.receipt.approvedFinal")
   : t("approvals.receipt.recorded");
 
-/** The receipt takes the focus that its decision buttons held and lost with them; focus in another control stays there. */
-const takeLostFocus = (receipt: HTMLElement | null) => { if (receipt && document.activeElement === document.body) receipt.focus(); };
+/**
+ * The status line takes the focus that the decision buttons held and lost with them; focus in another control stays
+ * there. A line drawn again under another card takes focus only when the line it replaces held it.
+ */
+function useLostFocus() {
+  const held = useRef<boolean>(undefined);
+  // What a replaced line held counts for the line drawn in the same commit, not for one drawn later.
+  useEffect(() => { held.current = undefined; });
+  return useCallback((line: HTMLElement | null) => {
+    if (line && document.activeElement === document.body && held.current !== false) line.focus();
+    return () => { held.current = document.activeElement === line; };
+  }, []);
+}
 
 /** The reasons of one decision, from the catalog domain the server names. */
 function useDecisionReasons(domain: string | undefined) {
@@ -89,6 +100,8 @@ function ApprovalDecisionPanel({ document: d }: { document: ApprovalDocument }) 
   const [opinion, setOpinion] = useState("");
   const [reasons, setReasons] = useState<Record<DecisionForm, Reason>>({ reject: emptyReason(), return: emptyReason() });
   const [receipt, setReceipt] = useState<string>();
+  const [offered, setOffered] = useState(false);
+  const takeLostFocus = useLostFocus();
   const command = useCommand({
     run: (body: ApprovalDecision, key: string) => decideApproval(d.id, body, key),
     invalidates: ["/api/v1/approvals"], settle: true,
@@ -107,8 +120,12 @@ function ApprovalDecisionPanel({ document: d }: { document: ApprovalDocument }) 
   };
   // Only the action the server offers is drawn; nothing is inferred from the document's status.
   const reject = actions.kind === "approve" ? actions.reject : undefined;
-  const receiptMessage = receipt && <p role="status" tabIndex={-1} ref={takeLostFocus}>{receipt}</p>;
-  if (!reject) return receipt ? <Card>{receiptMessage}</Card> : null;
+  if (reject && !offered) setOffered(true);
+  // A decision that was drawn here and that a later read no longer offers (someone else decided) leaves a line that
+  // says so. A command still on its way passes through the same state just before its receipt, and shows nothing.
+  const status = receipt ?? (offered && !reject && !command.isPending ? t("approvals.viewer.unavailable") : undefined);
+  const statusLine = status && <p role="status" tabIndex={-1} ref={takeLostFocus}>{status}</p>;
+  if (!reject) return statusLine ? <Card>{statusLine}</Card> : null;
   const stale = readsAreStale(command.error) && command.variables?.seen_fingerprint === d.fingerprint;
   return <ApprovalCard
     eyebrow={[d.source.label, d.document_no].filter(Boolean).join(" · ")}
@@ -127,7 +144,7 @@ function ApprovalDecisionPanel({ document: d }: { document: ApprovalDocument }) 
     pending={command.isPending ? command.variables?.decision === "REJECT" ? "reject" : command.variables?.decision === "RETURN" ? "return" : "approve" : undefined}
     approveBlocked={stale ? t("approvals.viewer.changed") : undefined}
     meta={t("approvals.viewer.revision", { revision: d.revision })}
-    receipt={receiptMessage}
+    receipt={statusLine}
   >
     <CommandError error={command.error} own={code => code === "approval_document_changed" ? t("approvals.viewer.changed") : code === "approval_decision_unavailable" ? decisionRefusalText(code) : undefined} />
     <Field label={t("approvals.viewer.opinion")} required={false} hint={t("approvals.viewer.opinionHint")}>

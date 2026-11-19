@@ -46,8 +46,9 @@ export function ApprovalInboxView({ items, sel, selected, record, onSelect, onCl
   onMore?: () => void;
   emptyTitle?: string;
 }) {
+  const rows = useRef<HTMLDivElement>(null);
   const list = <Card label={t("approvals.list")} flush>
-    {items.length ? <div className={s.list}>
+    {items.length ? <div ref={rows} className={s.list}>
       <Table label={t("approvals.list")} rows={items} rowId={item => item.id} selected={sel} onSelect={onSelect} columns={[
         { header: t("approvals.field.documentNo"), card: "fact", fit: true, cell: item => <code className={s.secondary} title={item.document_no ?? "—"}>{item.document_no ?? "—"}</code> },
         // The date the document takes effect reads with its title, so a row says what it is and when it applies.
@@ -73,7 +74,12 @@ export function ApprovalInboxView({ items, sel, selected, record, onSelect, onCl
   return <FlexibleColumns list={list} onSelect={onSelect} onFind={onFind} full={full} onFull={onFull} record={sel && {
     id: sel, label: t("approvals.document.title"), title: selected?.title ?? t("approvals.document.title"), crumb: selected?.document_no,
     expand: <SourceViewerLink viewer={selected?.viewer} />, onClose,
-    returnFocus: () => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
+    returnFocus: () => {
+      // A decided document leaves the pending list: focus then goes to the first row left, or to the find box of an empty list.
+      const row = document.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`) ?? rows.current?.querySelector<HTMLElement>("[data-id]");
+      if (!row) onFind?.();
+      return row;
+    },
     children: <>
       {selected && <div className={s.meta}><Chip>{selected.source.label}</Chip><Chip tone={selected.status.tone}>{selected.status.label}</Chip></div>}
       {record}

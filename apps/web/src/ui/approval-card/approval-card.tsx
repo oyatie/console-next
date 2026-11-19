@@ -69,6 +69,7 @@ export function ApprovalCard(p: ReturnProps & {
   const lastForm = useRef<Form>(undefined);
   const cardBox = useRef<HTMLElement>(null);
   const formHead = useRef<HTMLHeadingElement>(null);
+  const pressed = useRef<Element>(null);
   const id = useId();
   useEffect(() => {
     if (form) {
@@ -78,6 +79,17 @@ export function ApprovalCard(p: ReturnProps & {
   }, [form]);
   const busy = p.pending !== undefined;
   const complete = typeof p.reasonComplete === "function" ? Boolean(form && p.reasonComplete(form)) : p.reasonComplete;
+  // A pressed commit is disabled while its command runs, and the browser then drops focus to the page, at once or a
+  // moment later. After a refusal the commit takes focus back once it can be pressed again, unless the person has
+  // moved focus elsewhere. Checked after every render: approve can stay blocked after its command has ended.
+  useEffect(() => {
+    const button = pressed.current;
+    const at = document.activeElement;
+    if (busy || !(button instanceof HTMLButtonElement)) return;
+    if (!button.isConnected || (at !== document.body && at !== button)) pressed.current = null;
+    else if (!button.disabled) { button.focus(); pressed.current = null; }
+  });
+  const commit = (run?: () => void) => (event: { target: Element }) => { pressed.current = event.target; run?.(); };
   useEffect(() => {
     const box = cardBox.current;
     if (!form || !box || busy) return;
@@ -127,7 +139,7 @@ export function ApprovalCard(p: ReturnProps & {
               className={`btn ${form === "reject" ? "btn--danger" : "btn--primary"}`}
               isDisabled={!complete || busy}
               aria-describedby={complete ? `${id}-then` : `${id}-why`}
-              onPress={form === "reject" ? p.onReject : p.onReturn}
+              onPress={commit(form === "reject" ? p.onReject : p.onReturn)}
             >
               {form === "reject" ? p.rejectLabel : p.returnLabel}
             </Button>
@@ -146,7 +158,7 @@ export function ApprovalCard(p: ReturnProps & {
               className="btn btn--primary"
               isDisabled={Boolean(p.approveBlocked) || busy}
               aria-describedby={p.approveBlocked ? `${id}-blocked` : `${id}-then`}
-              onPress={p.onApprove}
+              onPress={commit(p.onApprove)}
             >
               {p.approveLabel}
             </Button>
