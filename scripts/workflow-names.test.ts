@@ -65,9 +65,7 @@ test("release gate policies select declared display names and steps", () => {
   }
 });
 
-test("measured evidence looks up producer display names", () => {
+test("measured evidence looks up the release job by its display name", () => {
   const source = readFileSync("scripts/pull-measured-evidence.sh", "utf8");
-  for (const id of ["states-timings", "release-evidence"]) {
-    expect(source).toContain(`'${id}': '${workflows["ci.yml"].jobs[id].name}'`);
-  }
+  expect(source).toContain(`jobs.get('${workflows["ci.yml"].jobs["release-evidence"].name}')`);
 });
