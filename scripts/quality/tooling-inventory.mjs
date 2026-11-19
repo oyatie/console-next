@@ -172,6 +172,15 @@ export function registerRows(rows) {
   });
 }
 
+const generatedRegisterFields = new Set([
+  "callsites", "evidence", "lastRelease", "license", "maintainers", "adoption",
+  "footprint", "sourceSnapshot", "observedLayers", "layerFindings", "allowedUsers",
+]);
+
+export function registerDecision(row) {
+  return row && Object.fromEntries(Object.entries(row).filter(([key]) => !generatedRegisterFields.has(key)));
+}
+
 export function render(rows) {
   const direct = rows.filter((r) => r.direct);
   const dependencies = direct.filter((r) => dependencyKinds.has(r.kind));

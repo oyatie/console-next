@@ -70,6 +70,7 @@ const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
   : [];
 // Mock-state builds keep unserved screens testable without publishing their routes.
 const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
+  createRoute({ getParentRoute: () => app, path: "/_review/patterns/list-record", staticData: { access: "signed-in", floorplan: "P-01" }, validateSearch: (s: Record<string, unknown>): { state?: "refused" } => ({ state: s.state === "refused" ? "refused" : undefined }), component: lazyRouteComponent(screen(() => import("../review/list-record-review")), "ListRecordReview") }),
   createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") }),
   createRoute({
     getParentRoute: () => app, path: "/audit/access-log", staticData: { access: "signed-in", floorplan: "P-01" },

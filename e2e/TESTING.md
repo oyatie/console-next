@@ -16,6 +16,14 @@ second-person eligibility or its independent `min_grant_age` setting.
 
 Known gaps:
 
+- Before go-live, pending grant confirmations gate second-person eligibility but
+  have no product entry point: setup hides the inbox tabs and Home excludes grant
+  notices (`f058c5b97b`, `e2ca8c65ae`). `attendance-closed-month.spec.ts`, the sole
+  close authority case in `period-unlock-approve.spec.ts`, and
+  `account-link-guard.spec.ts` open 참조 by URL through `openGrantNotice`.
+  Passing these journeys does not prove setup navigation. The product owner must
+  choose a setup entry point; then these callers should navigate through it.
+
 - `org-sole-holder-live.spec.ts` uses `helpers/sole-holder.ts` to bind the sole
   administrator to an employee and natural person through SQL. The product
   forbids self-binding, so this proves approval only after identity binding.

@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/review/list-record-review.tsx#ListRecordReview": 10
+  },
+  "newScreens": {
+    "apps/web/src/review/list-record-review.tsx#ListRecordReview": {
+      "FACT": 6,
+      "REFUSAL": 1,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    }
+  }
+}
