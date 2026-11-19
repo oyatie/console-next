@@ -128,9 +128,11 @@ stop.
   passed, calls it. That was read from the code, not run in a browser. The attendance calendar puts no control in
   a cell.
 
-The component takes no text. It has one `keydown` handler, with no `isComposing` check, no key code 229 check and
-no composition event. It compares `key` with the names above, so a key that the Korean input method reports under
-another name is left alone.
+The component takes no text. It has one `keydown` handler and no composition event. The handler returns first on
+a key the input method owns, which `isImeKey` (`lib/pure/ime.ts`) tells by `isComposing`, key code 229 or the key
+name `Process`: that key moves nothing and keeps its default. So an arrow pressed while a syllable is composing in
+a text field the caller put in a cell stays with the input method. Otherwise the handler compares `key` with the
+names above, so a key that the Korean input method reports under another name is left alone.
 
 The browser test presses these keys in Chromium, on a grid drawn the way the attendance calendar passes it and on
 one that can be chosen from: see the table of tests below. The unit test renders to a string. A search of `e2e`
@@ -205,7 +207,7 @@ What tests it:
 | Test | Covers |
 |---|---|
 | `apps/web/src/ui/month-grid/month-grid.test.tsx` | That there is one tab stop, on the selected day or else the month's first day; that a day outside the month carries `data-out`; that a holiday carries its tone and the caller's words. |
-| `apps/web/src/ui/month-grid/month-grid.browser.test.tsx` | In Chromium, with the attendance calendar's October 2026: that Up in the first week and Down in the last week leave focus on the same day, from the tab stop and after a click, with the default prevented; that Up and Down keep the weekday; that Left and Right cross a week's end and stop at the first and the last day shown; Home and End; an arrow and Home with a modifier; that Page Up, Page Down, a letter and, with nothing to choose, Enter and Space are left to the browser; that Tab enters and leaves in one step and comes back to the day last focused; that with `onSelect` Enter, Space and a click choose the day. |
+| `apps/web/src/ui/month-grid/month-grid.browser.test.tsx` | In Chromium, with the attendance calendar's October 2026: that Up in the first week and Down in the last week leave focus on the same day, from the tab stop and after a click, with the default prevented; that Up and Down keep the weekday; that Left and Right cross a week's end and stop at the first and the last day shown; Home and End; an arrow and Home with a modifier; that Page Up, Page Down, a letter and, with nothing to choose, Enter and Space are left to the browser; that Tab enters and leaves in one step and comes back to the day last focused; that with `onSelect` Enter, Space and a click choose the day; that an arrow dispatched as the input method's, by `isComposing` or by key code 229, moves nothing and is not cancelled. |
 | `e2e/states/attendance-schedule.spec.ts` | The attendance calendar in each of its states at 1440 px and 390 px, ending with the fit check and an axe scan. |
 | `e2e/mock/attendance-calendar-stability.spec.ts` | That the grid, found by its name, stays on screen when the history read beside it fails and then recovers. |
 

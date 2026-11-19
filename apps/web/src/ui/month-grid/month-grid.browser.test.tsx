@@ -132,3 +132,15 @@ test("with a day to choose, Enter, Space and a click choose the focused day", as
   await element(page.locator("#chosen")).toHaveText("2026-09-28");
   await on("2026-09-28");
 });
+
+// The two ways a browser marks a key the input method owns: mid-composition, and by key code 229 alone.
+test.each([{ isComposing: true }, { isComposing: false, keyCode: 229 }])("an arrow the input method is composing %j is left alone, then a plain arrow moves", async state => {
+  await open();
+  await tabIn();
+  // True when nothing cancelled the key's default.
+  const left = await day("2026-10-01").evaluate((el, init) => el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true, ...init })), state);
+  expect(left).toBe(true);
+  await on("2026-10-01");
+  await press("ArrowDown");
+  await on("2026-10-08");
+});
