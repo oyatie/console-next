@@ -59,8 +59,8 @@ Partially exposed operations keep their current route and component; their refus
 | `POST /api/v1/group-admin/tenant-context` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/group-admin/tenant-context/exit` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/me/workbench` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/me/workspace` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PUT /api/v1/me/workspace` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/me/workspace` | exposed | expose | `/account` · `ExperienceChooser` reads the signed-in user's workspace preferences, including personal screen style override. |
+| `PUT /api/v1/me/workspace` | exposed | expose | `/account` · `ExperienceChooser` persists the signed-in user's personal screen style override without clobbering other workspace layout keys. |
 | `GET /api/v1/policy/assignments` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/policy/audit-events` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/policy/authorize` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |

@@ -595,11 +595,6 @@
    "reason": "H2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/me/workspace": {
-   "lane": "MAT-PARITY",
-   "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
-   "when": "excluded"
-  },
   "GET /api/v1/ops/summary": {
    "lane": "MAT-PARITY",
    "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
@@ -1139,11 +1134,6 @@
    "lane": "MAT-PARITY",
    "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
    "when": "ideal"
-  },
-  "PUT /api/v1/me/workspace": {
-   "lane": "MAT-PARITY",
-   "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
-   "when": "excluded"
   },
   "PUT /api/v1/policy/drafts/{draft_id}": {
    "lane": "K2",

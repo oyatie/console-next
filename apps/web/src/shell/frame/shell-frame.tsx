@@ -27,6 +27,7 @@ import { useMainScrollRestoration } from "../scroll-restoration";
 import { checklistQuery, modulesQuery } from "../../features/onboarding/api";
 import { canReadSetupChecklist } from "../../features/onboarding/domain/phase";
 import { fixFor } from "../../features/onboarding/domain/rail";
+import { useExperienceSync } from "../../experience/store";
 import type { NavHub } from "../nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
@@ -56,6 +57,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const [savedRail, setSavedRail] = useState(() => ({ key: railKey, answer: rememberedRail(railKey) }));
   if (savedRail.key !== railKey) setSavedRail({ key: railKey, answer: rememberedRail(railKey) });
   const platform = !!claims?.platform;
+  useExperienceSync(!platform && active && !pending);
   const identity = useQuery({ ...meQuery, enabled: !platform && active && !pending });
   const router = useRouter();
   useMainScrollRestoration(router);

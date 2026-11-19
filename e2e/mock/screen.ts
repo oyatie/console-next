@@ -48,6 +48,13 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await page.route("**/api/v1/users/me/employee-link", route => route.request().method() === "GET"
     ? route.fulfill({ json: { attestation: null } }) : route.fallback());
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
+  let workspaceLayout: Record<string, unknown> = {};
+  await mockRoute(page, "get", "/api/v1/me/workspace", () => ({ status: 200, json: { layout: workspaceLayout } }));
+  await mockRoute(page, "put", "/api/v1/me/workspace", request => {
+    const body = request.postDataJSON() as { layout?: Record<string, unknown> };
+    workspaceLayout = body?.layout ?? {};
+    return { status: 200, json: { layout: workspaceLayout } };
+  });
   await mockRoute(page, "get", "/api/v1/support-sessions/active", { status: 200, json: { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } });
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: checklist });
   await mockRoute(page, "get", "/api/v1/onboarding/modules", modulesState === "refused"

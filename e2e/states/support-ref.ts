@@ -51,6 +51,7 @@ export function supportReferenceTest(route: string, state: State) {
     await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: routeToken(route) });
     await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: user });
     await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
+    await mockRoute(page, "get", "/api/v1/me/workspace", { status: 200, json: { layout: {} } });
     await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: checklist });
     await mockRoute(page, "get", "/api/v1/onboarding/modules", { status: 200, json: modules.ready });
     await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { can_change: false, items: [] } });
