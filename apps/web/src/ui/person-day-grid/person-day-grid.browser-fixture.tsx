@@ -18,7 +18,7 @@ export function Fixture() {
         rows={ROWS}
         rowKey={r => r.id}
         lead={[{ key: "n", header: "Name", cell: r => r.name, width: "name" }]}
-        days={[{ key: "1", label: 1, sub: "" }]}
+        days={[{ key: "1", label: 1, sub: "Thu" }]}
         tail={[]}
         cell={() => "8"}
         look={() => undefined}

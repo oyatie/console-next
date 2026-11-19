@@ -8,8 +8,8 @@
 // JRN-FIRSTPAINT (J-HP-4): Also sums each lazy route's chunk set (route chunk + its static imports)
 // and checks it against scripts/bundle-budget.json (per page type: shell, list, record, wizard).
 //
-// CSS is counted and printed beside the JS (the first page's stylesheets, and each page type's heaviest route) so its
-// growth is visible. It has no budget yet, so it never fails the check.
+// CSS is counted beside the JS and has its own budgets: one for the stylesheets the first page links, and one per
+// page type (css_budget_kb in the budget file) for the route that loads the most CSS beyond them.
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { leakedCopy } from "./bundle-copy.mjs";
@@ -18,6 +18,9 @@ import { gzipSync } from "node:zlib";
 // Clean dev dadcc1f7c9: raw 148.6640625 KB gz, hash-normalised 145.0751953125 KB gz.
 // Preserve strictness: 148.8 - (148.6640625 - 145.0751953125) = 145.2111328125; floor to 0.001 KB.
 export const INITIAL_BUDGET_KB = 145.211;
+// The first page's stylesheets measured 21.1 KB gz when CSS was first counted; the budget leaves about a fifth above
+// that for a second visual style's values.
+export const INITIAL_CSS_BUDGET_KB = 26;
 export const DEFAULT_BUDGET_FILE = "scripts/bundle-budget.json";
 
 // Saved views must keep the record and its command forms behind record navigation.
@@ -27,7 +30,7 @@ const orgRecord = "src/features/org/OrgChange.tsx";
 
 export const kb = (dist, f) => gzipSync(readFileSync(path.join(dist, f))).length / 1024;
 
-export function checkInitialBudget(dist, budgetKb = INITIAL_BUDGET_KB) {
+export function checkInitialBudget(dist, budgetKb = INITIAL_BUDGET_KB, cssBudgetKb = INITIAL_CSS_BUDGET_KB) {
   const htmlPath = path.join(dist, "index.html");
   const html = readFileSync(htmlPath, "utf8");
   const entry = html.match(/<script type="module"[^>]*src="\/?([^"]+)"/)?.[1];
@@ -52,10 +55,12 @@ export function checkInitialBudget(dist, budgetKb = INITIAL_BUDGET_KB) {
   const size = chunks.filter((c) => initial.has(c.file)).reduce((n, c) => n + c.kb, 0);
   const total = chunks.reduce((n, c) => n + c.kb, 0);
 
-  const ok = size <= budgetKb;
-  const error = ok
-    ? undefined
-    : `check-bundle: initial load is ${size.toFixed(1)} KB gz, over the ${budgetKb} KB budget`;
+  const ok = size <= budgetKb && cssKb <= cssBudgetKb;
+  const error = size > budgetKb
+    ? `check-bundle: initial load is ${size.toFixed(1)} KB gz, over the ${budgetKb} KB budget`
+    : cssKb > cssBudgetKb
+      ? `check-bundle: the first page's CSS is ${cssKb.toFixed(1)} KB gz, over the ${cssBudgetKb} KB CSS budget`
+      : undefined;
 
   return { ok, sizeKb: size, totalKb: total, count: chunks.length, chunks, initial, sheets, cssKb, error };
 }
@@ -68,7 +73,7 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
   const manifest = JSON.parse(readFileSync(path.join(dist, ".vite/manifest.json"), "utf8"));
   const { initial, sheets } = checkInitialBudget(dist);
   const failures = [];
-  const measured = Object.fromEntries(Object.keys(budgetConfig).map(type => [type, { maxKb: 0, chunk: null, chunksCount: 0, maxCssKb: 0, cssChunk: null }]));
+  const measured = Object.fromEntries(Object.keys(budgetConfig).map(type => [type, { maxKb: 0, chunk: null, chunksCount: 0, maxCssKb: 0, cssChunk: null, cssBudgetKb: budgetConfig[type].css_budget_kb }]));
   const deferred = new Set(Object.values(budgetConfig).flatMap(config => config.deferred ?? []));
   for (const source of deferred) {
     if (!manifest[source]?.isDynamicEntry) failures.push({ error: `check-bundle: ${source} must have its own dynamic entry` });
@@ -116,6 +121,11 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
     if (size > measured[pageType].maxKb) Object.assign(measured[pageType], { maxKb: size, chunk: source, chunksCount: files.size });
     const cssSize = [...css].reduce((sum, file) => sum + kb(dist, file), 0);
     if (cssSize > measured[pageType].maxCssKb) Object.assign(measured[pageType], { maxCssKb: cssSize, cssChunk: source });
+    const cssBudgetKb = budgetConfig[pageType].css_budget_kb;
+    if (cssBudgetKb !== undefined && cssSize > cssBudgetKb) failures.push({
+      route: source, pageType, sizeKb: cssSize, budgetKb: cssBudgetKb,
+      error: `check-bundle: CSS for ${source} is ${cssSize.toFixed(1)} KB gz, over the ${cssBudgetKb} KB CSS budget for page type '${pageType}'`,
+    });
     if (size > budgetKb) failures.push({
       route: source, pageType, sizeKb: size, budgetKb,
       error: `check-bundle: route chunk set for ${source} is ${size.toFixed(1)} KB gz, over the ${budgetKb} KB budget for page type '${pageType}'`,
@@ -234,9 +244,9 @@ export function checkBundle(dist = "apps/web/dist", budgetFile = DEFAULT_BUDGET_
   for (const [pt, stats] of Object.entries(routeResult.measured)) {
     console.log(`  ${pt.padEnd(8)} ${stats.maxKb.toFixed(1).padStart(5)} KB gz (max: ${stats.chunk ?? "none"})`);
   }
-  console.log(`CSS, not budgeted: first page ${initResult.cssKb.toFixed(1)} KB gz in ${initResult.sheets.size} stylesheet(s); heaviest route per page type:`);
+  console.log(`CSS: first page ${initResult.cssKb.toFixed(1)} KB gz / budget ${INITIAL_CSS_BUDGET_KB} KB in ${initResult.sheets.size} stylesheet(s); heaviest route per page type:`);
   for (const [pt, stats] of Object.entries(routeResult.measured)) {
-    console.log(`  ${pt.padEnd(8)} ${stats.maxCssKb.toFixed(1).padStart(5)} KB gz (max: ${stats.cssChunk ?? "none"})`);
+    console.log(`  ${pt.padEnd(8)} ${stats.maxCssKb.toFixed(1).padStart(5)} KB gz / budget ${stats.cssBudgetKb ?? "none"} KB (max: ${stats.cssChunk ?? "none"})`);
   }
   if (!routeResult.ok) {
     for (const fail of routeResult.failures) {

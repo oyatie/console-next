@@ -54,11 +54,15 @@ export function PersonDayGrid<R>(p: Props<R>) {
   const [scroll, setScroll] = useState({ top: 0, height: 600 });
   // Virtual rows are placed by the height the CSS gives a row. It is read where the rows are, since a container or a
   // visual style may set the token, and again on resize; 32 is the base value, kept where nothing can be read.
+  // The box's height is read with it: before the first scroll nothing else reports it, and a box taller than the
+  // 600 assumed above would draw too few rows.
   const [rowHeight, setRowHeight] = useState(32);
   useLayoutEffect(() => {
     const read = () => {
       const height = parseFloat(getComputedStyle(box.current!).getPropertyValue("--row-h-compact"));
       if (height > 0) setRowHeight(height);
+      const boxHeight = box.current!.clientHeight;
+      if (boxHeight > 0) setScroll((was) => was.height === boxHeight ? was : { ...was, height: boxHeight });
     };
     read();
     window.addEventListener("resize", read);
