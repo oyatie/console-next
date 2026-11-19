@@ -95,6 +95,22 @@ test("typing that outruns the server still ends on the first person, and the arr
   await element(at()).toHaveText(`/people/${id(101)}`);
 });
 
+test("a row chosen with the keys keeps the highlight when late people land above it", async () => {
+  await open("chord");
+  found = q => [`Kim ${q}`];
+  let land = () => {};
+  landed = new Promise(done => { land = done; });
+  // Long enough to be a request key too: two rows stand before the people answer, the request lookup and the import.
+  await page.keyboard.type("kim-request-key-0001");
+  await lit(t("requestOutcome.find"));
+  await page.keyboard.press("End");
+  await lit(t("structure.import.label"));
+  land();
+  await element(row(/^Kim kim/)).toBeVisible();
+  await page.keyboard.press("Enter");
+  await element(at()).toHaveText("/org#structure-import");
+});
+
 test("a click on a row below the highlighted one opens that row", async () => {
   await open("button");
   found = q => [`Kim ${q}`, `Kimura ${q}`];

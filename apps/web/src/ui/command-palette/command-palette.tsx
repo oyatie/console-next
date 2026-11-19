@@ -13,11 +13,15 @@ export type PaletteSection = { id: string; title: string; items: readonly Palett
  * whenever the text or the first result changes (people the server finds late, a paste, a deletion). Each time, the
  * box is sent a Home key, which React Aria answers by giving the first result the list's focus: Enter opens it, the
  * arrows move on from it. The key is made here, not pressed, so it does not touch what an input method is composing.
+ * A row the person has moved to with the keys is theirs: until the text changes, late results do not take the highlight back.
  */
-function First({ box }: { box: RefObject<HTMLInputElement | null> }) {
-  useEffect(() => void box.current?.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", code: "Home", bubbles: true, cancelable: true })), [box]);
+function First({ box, moved }: { box: RefObject<HTMLInputElement | null>; moved: RefObject<boolean> }) {
+  useEffect(() => void (moved.current || box.current?.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", code: "Home", bubbles: true, cancelable: true }))), [box, moved]);
   return null;
 }
+
+/** The keys that move the highlight through the results. */
+const MOVES = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"]);
 
 /**
  * The jump palette (⌘K, spec S1-jump): one search field over sections of places, people and tasks. The caller
@@ -37,6 +41,8 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
 }) {
   const shown = sections.filter((x) => x.items.length > 0);
   const box = useRef<HTMLInputElement>(null);
+  // Set by a pressed key that moves the highlight (the Home made for the first result is not pressed), until the text changes.
+  const moved = useRef(false);
   // A caller's results may trail the text by a render (a deferred search), so the first result is marked only once that
   // render has caught up with the box. Text that returns to what it was before then is still marked afresh.
   const searched = useDeferredValue(query);
@@ -45,12 +51,12 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
     <ModalOverlay className={s.overlay} isOpen={open} onOpenChange={(o) => !o && onClose()} isDismissable>
       <Modal className={s.modal}>
         <Dialog className={s.dialog} aria-label={label}>
-          <Autocomplete inputValue={query} onInputChange={onQuery}>
+          <Autocomplete inputValue={query} onInputChange={(q) => { moved.current = false; onQuery(q); }}>
             {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- A palette opened by its chord or its button must take typing at once. */}
             <SearchField className={s.field} aria-label={label} autoFocus>
               <Search size={18} aria-hidden />
               {/* An Enter the input method owns ends a syllable; it is not a command, and stops here as its Escape and Tab do. */}
-              <Input ref={box} className={s.input} placeholder={placeholder} onKeyDownCapture={(e) => { leaveImeKey(e); if (e.key === "Enter" && isImeKey(e)) e.stopPropagation(); }} />
+              <Input ref={box} className={s.input} placeholder={placeholder} onKeyDownCapture={(e) => { leaveImeKey(e); if (e.isTrusted && MOVES.has(e.key)) moved.current = true; if (e.key === "Enter" && isImeKey(e)) e.stopPropagation(); }} />
               <Keyboard className={s.kbd}>{t("uiCommandPalette.esc")}</Keyboard>
             </SearchField>
             <Menu
@@ -69,7 +75,7 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
                   <Header className={s.header}>{sec.title}</Header>
                   {sec.items.map((i) => (
                     <MenuItem key={i.id} id={i.id} textValue={`${i.label} ${i.detail ?? ""}`} className={s.item}>
-                      {i.id === first && <First key={searched} box={box} />}
+                      {i.id === first && <First key={searched} box={box} moved={moved} />}
                       {i.icon}
                       <Text slot="label" className={s.label}>{i.label}</Text>
                       {i.detail && <Text slot="description" className={s.detail}>{i.detail}</Text>}
