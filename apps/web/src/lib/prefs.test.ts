@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { expect, test } from "vitest";
-import { EXPERIENCE_KEY, THEME_KEY, THEMES } from "./prefs";
+import { EXPERIENCE_KEY, SINGLE_KEYS_KEY, THEME_KEY, THEMES, singleKeysOn } from "./prefs";
 import { experiences } from "../experience/table";
 
 const SRC = readFileSync(new URL("../../public/prefs.js", import.meta.url), "utf8");
@@ -102,4 +102,25 @@ test("the boot script blocks the parser ahead of the entry, so it has run before
   // No async, defer or module type: any of them lets the page render before the script runs.
   expect(html.match(/<script\b[^>]*prefs\.js[^>]*>/g)).toEqual(['<script src="/prefs.js">']);
   expect(html.indexOf('<script src="/prefs.js">')).toBeLessThan(html.indexOf('<script type="module"'));
+});
+
+test("single keys are on unless this device stored off, and stay on when storage refuses the read", () => {
+  const own = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const read = (get: () => unknown) => {
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, get });
+    return singleKeysOn();
+  };
+  const stored = (value: string | null) => () => ({ getItem: (key: string) => (key === SINGLE_KEYS_KEY ? value : null) });
+  try {
+    expect(SINGLE_KEYS_KEY).toBe("console.singleKeys");
+    expect(read(stored(null))).toBe(true);
+    expect(read(stored("off"))).toBe(false);
+    for (const value of ["", "on", "OFF", "false", "0"]) expect(read(stored(value)), value).toBe(true);
+    expect(read(() => { throw new Error("storage is blocked"); })).toBe(true);
+    expect(read(() => ({ getItem() { throw new Error("storage cannot be read"); } }))).toBe(true);
+    expect(read(() => undefined)).toBe(true);
+  } finally {
+    if (own) Object.defineProperty(globalThis, "localStorage", own);
+    else delete (globalThis as { localStorage?: unknown }).localStorage;
+  }
 });
