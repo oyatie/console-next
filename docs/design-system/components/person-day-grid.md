@@ -141,7 +141,7 @@ There is one look and one size. No prop changes either, apart from the width a l
 | Head cells | Stick to the top of the box. `--surface` fill, a 1 px `--border` line below, 4 px padding top and bottom (`--space-1`), 8 px at the sides (`--space-2`), `--fw-medium`, `--steel`. |
 | Lead column | Held at the left of the box, past the lead columns before it: see the sticky side columns below. `--surface` fill, aligned left, 8 px side padding, one line, `--fw-body`. |
 | Lead column, `width: "code"` | `64px` wide, `--font-mono`. |
-| Lead column, `width: "name"` | At least `96px` wide. Its own rule sets `left: 64px`, which stands only for a `name` column in first place. |
+| Lead column, `width: "name"` | At least `96px` wide. Its own rule sets `left: 64px`, which stands for a `name` lead column that takes no measured offset: one in first place, and a fifth on its side. For the second, third and fourth lead column the measured offset replaces it. See the sticky side columns below. |
 | Lead column, `width: "total"` | No rule reads it. |
 | Tail column | Held at the right of the box, past the tail columns after it, while the box has room: see the sticky side columns below. `--surface` fill, a 1 px `--border` line on its left, 8 px side padding, aligned right, one line, at least `64px` wide. No rule reads `width` on a tail column. |
 | Day header | At least `44px` wide, centred, with a pointer cursor. `sub` is on its own line at 12 px (`--text-xs`). |
@@ -201,17 +201,18 @@ The lead columns and the tail columns stand side by side: each is held past the 
     day column shows whole between the two sides.
 - **At most four sticky columns a side are placed.** The stylesheet has a rule for the second to the fourth
   lead column and for the last four tail columns, and its comment says a fifth needs its own rule. The grid
-  still sets a property for a fifth, and no rule reads it. So a fifth lead column keeps `left: 0`, where the
-  first one is held, or `64px` for a `name` column. A fifth tail column from the end keeps `right: 0`, where the
-  last one is held, whether or not the box has room. The attendance view passes one `code` column, up to two
-  `name` columns and four tail columns.
+  still sets a property for a fifth, and no rule reads it. So a fifth lead column keeps the `left` a first one
+  has: `0`, or `64px` for a `name` column. A fifth tail column from the end keeps `right: 0`, where the last one
+  is held, whether or not the box has room. The attendance view passes one `code` column, up to two `name`
+  columns and four tail columns.
 - A `code` longer than 64 px widens its column, since in a table a cell's `width` is a least width. The offsets
   are measured, so the columns after it move with it. No test has such a code.
 
 `apps/web/src/ui/person-day-grid/person-day-grid.browser.test.tsx` covers this in a browser, with the attendance
-view's two and three lead columns and four totals. At the start of the sideways scroll, part way and at the end,
-it reads that no side column in view lies under another and that neighbours touch, in the head row and in a
-person's row.
+view's two and three lead columns and four totals. In the head row and in a person's row, it reads that no side
+column in view is covered at its centre and that neighbours on a side touch. It reads that at the start of the
+sideways scroll in every box below, 300 px in wherever the box scrolls, and at the end of the row in the boxes
+1000 px and 640 px wide. At the end of the row in the three narrowest cases it reads less: see below the table.
 
 | Width of the box | Lead columns | Totals held |
 |---|---|---|
@@ -222,9 +223,19 @@ person's row.
 | 358 px | Three | None. All four scroll with the days and end the row. |
 | 2200 px, wide enough for every column | Three | All four. Nothing scrolls sideways, and every column is where the table puts it. |
 
-In the three narrowest cases, scrolled to the end of the row, all four totals show whole. There they are drawn
-over the lead columns: a box that narrow cannot show both. The same test holds a lone total at the right edge of
-a box 390 px and 180 px wide, at the start of the sideways scroll, part way and at the end.
+Scrolled to the end of the row, the three narrowest cases assert the same three things. No total is covered at
+its centre, and each touches the total before it. All four totals start to the left of the box's right edge. The
+last one ends at that edge. A fault that names a lead column is left out of the check there, so the test does
+not assert where the lead columns are, or what covers them.
+
+- For 452 px with three lead columns and for 358 px with two, the test's comment says that all four totals show
+  whole there, over the lead columns, which a box that narrow cannot also show. That is the comment's wording.
+  The assertions are the three above, and none reads the overlap.
+- For 358 px with three lead columns, where no total is held, the test has no such comment. It asserts the
+  three things above and nothing about the lead columns: that the totals lie over them there is not asserted.
+
+The same test holds a lone total at the right edge of a box 390 px and 180 px wide, at the start of the sideways
+scroll, part way and at the end.
 
 ## States
 
@@ -310,14 +321,18 @@ While the editor is closed:
   `person-day-grid.browser.test.tsx` covers the first four in a browser, with the arrow keys, Home and End in
   the attendance view. The last two were read from the code.
 
-While the editor is open, keys go to the input:
+While the editor is open, keys go to the input. The table says what a plain key does. A key the input method
+owns commits nothing and cancels nothing: see the keys the Korean input method owns, below.
 
 | Key | What it does |
 |---|---|
 | Enter | Calls `onCommit("down")`. The default is prevented. |
 | Tab, Shift+Tab | Calls `onCommit("right")`. The default is prevented. Shift is not read, so Shift+Tab also asks to move right. |
 | Escape | Calls `onEdit(null)`: cancel. |
-| Any other key | Types into the input. The key is stopped there, so the caller's `onKey` does not run while the editor is open. |
+| Any other key | Types into the input. |
+
+A plain key is stopped at the input, whichever key it is, so it does not reach the table's handler. The caller's
+`onKey` does not run while the editor is open, for a plain key or for one the input method owns.
 
 Leaving the input in any other way commits too: its blur calls `onCommit("stay")`. So does a pointer press on
 another day cell, a day header or a lead cell, which commits and then selects.
@@ -353,20 +368,28 @@ the grid.
 - `person-day-grid.browser-editing.ts` runs each in a browser, and that one edit is still one step to undo:
   taking the focus back does not commit a second time.
 
-Where a journey spec of the timesheet presses a grid key after Enter, it still focuses the grid again or clicks a
-cell first.
+Where a journey spec of the timesheet goes on to a key on the grid after Enter, it gives the grid the focus
+itself first. It calls `focus()` on the grid and then presses the save key, Ctrl or Meta with S, as
+`e2e/attendance-long-span.spec.ts` and `e2e/attendance-approvals.spec.ts` do. Or it clicks a cell before the
+next key, as `e2e/attendance-records.spec.ts` and `e2e/session-recovery.spec.ts` do. None was found that presses
+a key on the grid straight after Enter: the files under `e2e` that reach a grid or a grid cell in attendance
+were searched for a press of Enter, and the lines after each were read.
 
 **Keys the Korean input method owns.**
 
 - The editor asks the shared helper `isImeKey` (`apps/web/src/lib/pure/ime.ts`) whether a key is the input
   method's. It is when the `isComposing` flag is set, when the key code is 229, or when the key is `Process`.
   `TextInput` uses the same helper. The editor listens to no composition event.
-- Such a key is left alone: no commit and no cancel. An Enter that carries the flag, or key code 229 alone, does
-  not commit the cell. The key is not stopped. It reaches the table's handler, which returns at once because the
-  key was not pressed on the table.
-- An Escape or a Tab pressed while a syllable is composing is the input method's. The shared helper `leaveImeKey`
-  stops it in the capture phase, so it reaches no handler on the input, on the table or above them in the bubble
-  phase. The helper cancels the Escape's own action and leaves the Tab's to the browser.
+- No such key commits or cancels. An Enter that carries the flag, or key code 229 alone, does not commit the
+  cell. What differs between such keys is whether the key is stopped.
+- **Not stopped:** Enter, a letter and every other key the input method owns, except Escape and Tab. The editor
+  returns without acting on the key and without stopping it. The key goes on to the table's handler, which
+  returns at once because the key was not pressed on the table, and the caller's `onKey` is not called. By the
+  code the key then goes on to any handler above the grid. No test reads that.
+- **Stopped:** an Escape or a Tab the input method owns, which is one pressed while a syllable is composing. The
+  shared helper `leaveImeKey` stops it in the capture phase, so it reaches no handler on the input, on the table
+  or above them in the bubble phase. The helper cancels the Escape's own action and leaves the Tab's to the
+  browser.
 - The editor cancels the composing Tab's own action as well, so the focus stays in the editor. Left to the
   browser, that Tab moves the focus out of the editor to the next tab stop, a name link in the attendance view.
 - `apps/web/src/ui/ime-keys.browser.test.tsx` sends Enter, Tab and Escape to the editor, marked with the flag
@@ -457,8 +480,8 @@ Known gaps:
 - The header cells have no `scope`, and the lead and tail cells cannot be reached with the grid's keys.
 - The rows drawn do not follow a change of the box's height while the window keeps its size, until the next
   scroll: see Anatomy.
-- At most four sticky columns a side are placed. A fifth has no rule and keeps the offset of its base rule: see
-  Looks and sizes. That was read from the stylesheet, not run in a browser.
+- At most four sticky columns a side are placed. A fifth takes no measured offset and keeps the one its other
+  rules give: see Looks and sizes. That was read from the stylesheet, not run in a browser.
 - A `name` column in first place is held 64 px from the left edge of the box by its own rule: see Looks and
   sizes. That was read from the stylesheet, not run in a browser.
 - A lone tail column is held in a box of any width. In a box with no room for a day between it and the lead
@@ -557,8 +580,10 @@ held, and the grid decides that from the width of its box, not of the screen: se
   all of them scroll with the days and end the row.
 - `person-day-grid.browser.test.tsx` runs the attendance view both ways in a browser, in a box 358 px wide, the
   width its cases take for a phone. With two lead columns the last total stays at the right edge with a day or
-  more showing whole beside it. With three, no total is held. Either way, at the end of the row all four totals
-  show whole, over the lead columns.
+  more showing whole beside it. With three, no total is held. Either way, at the end of the row the test asserts
+  that no total is covered at its centre, that all four start left of the box's right edge and that the last
+  one ends at it. For two lead columns its comment says the totals lie over the lead columns there. For three it
+  has no such comment, and that overlap is not asserted: see Looks and sizes.
 - A day cell stays at least 44 px wide and 32 px high. The 44 px is the literal `44px`: the module does not read
   `--target-touch`.
 - While an editor is open its column is wider: the stylesheet gives the editor `min-width: 88px`. By the least
