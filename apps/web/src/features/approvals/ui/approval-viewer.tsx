@@ -38,6 +38,9 @@ const receiptText = (r: Receipt) =>
   : r.decision === "APPROVED" ? t(r.status === "IN_APPROVAL" ? "approvals.receipt.approvedNext" : "approvals.receipt.approvedFinal")
   : t("approvals.receipt.recorded");
 
+/** The receipt takes the focus that its decision buttons held and lost with them; focus in another control stays there. */
+const takeLostFocus = (receipt: HTMLElement | null) => { if (receipt && document.activeElement === document.body) receipt.focus(); };
+
 /** The reasons of one decision, from the catalog domain the server names. */
 function useDecisionReasons(domain: string | undefined) {
   const known = domain as ReasonDomain | undefined;
@@ -104,7 +107,7 @@ function ApprovalDecisionPanel({ document: d }: { document: ApprovalDocument }) 
   };
   // Only the action the server offers is drawn; nothing is inferred from the document's status.
   const reject = actions.kind === "approve" ? actions.reject : undefined;
-  const receiptMessage = receipt && <p role="status">{receipt}</p>;
+  const receiptMessage = receipt && <p role="status" tabIndex={-1} ref={takeLostFocus}>{receipt}</p>;
   if (!reject) return receipt ? <Card>{receiptMessage}</Card> : null;
   const stale = readsAreStale(command.error) && command.variables?.seen_fingerprint === d.fingerprint;
   return <ApprovalCard

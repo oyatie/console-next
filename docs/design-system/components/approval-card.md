@@ -148,6 +148,12 @@ The card moves focus twice:
 Those are its only `focus()` calls, and both are in the effect that runs when the open form changes. It does not
 move focus when a commit is pressed, when `pending` is set or cleared, or when `receipt` arrives.
 
+The approval viewer moves focus when the receipt arrives. The receipt it passes is a
+`<p role="status" tabindex="-1">` that takes focus as it is drawn, if `document.activeElement` is the `<body>` at
+that moment, which is where the browser leaves focus once the button that held it is gone. Focus in a control
+outside the card stays where it is. Once the document offers no decision the viewer draws the same receipt in a
+plain [`Card`](card.md) in place of this card, and that receipt takes focus by the same rule.
+
 Escape is a native `keydown` listener on the `<article>`, in the bubble phase, added only while a form is open
 and `pending` is not set. A key pressed anywhere inside the card reaches it: in the form, in `progress` or in
 `children`. It does nothing when a handler that ran before it has called `preventDefault`. Otherwise it calls
@@ -203,7 +209,7 @@ Known gaps:
   keeps a blocked control focusable; the card does not use it.
 - The form heading takes focus and shows no focus indicator: see States.
 - When `receipt` arrives, the buttons are removed, including the one that held focus, and the card places focus
-  nowhere.
+  nowhere. It is left to the caller: the viewer's receipt takes focus itself, as Keyboard describes.
 - When a command starts, the button that was pressed gets the native `disabled` attribute while it holds focus.
   When `pending` clears with no receipt, as after a command the server refused, the card calls no `focus()`.
   Where a browser leaves focus on a button that was disabled and is enabled again was not checked.
@@ -224,9 +230,9 @@ The WCAG 2.2 criteria that apply:
 | 1.4.3 Contrast (Minimum) | Every colour is a token; none is written in the component. A disabled button is drawn at half opacity; the criterion does not cover an inactive control. |
 | 1.4.10 Reflow | The card is never wider than its container, and the bar wraps. |
 | 2.1.1 Keyboard | Native buttons, and Escape for the form. |
-| 2.4.3 Focus Order | Focus goes to the form heading when a form opens and back to its opener when it closes. Not answered when the receipt arrives, and not checked after a refused command: see the gaps. |
+| 2.4.3 Focus Order | Focus goes to the form heading when a form opens and back to its opener when it closes. When the receipt arrives the card leaves focus to the caller, and the viewer moves it to its receipt. Not checked after a refused command: see the gaps. |
 | 2.4.6 Headings and Labels | The title and the form heading are the caller's words. The form heading repeats the commit's label. |
-| 2.4.7 Focus Visible | The global outline on the buttons. Not answered for the form heading. |
+| 2.4.7 Focus Visible | The global outline on the buttons. Not answered for the form heading. The viewer's receipt draws the global outline when it takes focus after a decision made by keyboard, and none after one made by pointer. |
 | 2.5.8 Target Size (Minimum) | The buttons are at least 40 px high (`--row-h`), above the 24 px minimum. |
 | 3.3.4 Error Prevention (Legal, Financial, Data) | The type requires `consequence` and `rejectConsequence`, and `returnConsequence` with request changes, and each is drawn before its commit. Reject and request changes take two presses. Approve takes one. |
 | 4.1.2 Name, Role, Value | The roles, names and descriptions above. |
@@ -237,8 +243,8 @@ blocked, and recorded with a `next` link. All three pass `progress` and `meta`. 
 request changes is pressed. Pressing a commit there sets `pending`, and nothing clears it. The gallery does not
 show a card without request changes.
 
-The component has no test file of its own. Two browser specs drive it through the approval viewer against a
-mocked server. They were found by searching `e2e` and `apps/web/src` for the `uiApprovalCard` message ids, the
+The component has no test file of its own. Two browser specs and one Vitest browser test drive it through the
+approval viewer against a mocked server. They were found by searching `e2e` and `apps/web/src` for the `uiApprovalCard` message ids, the
 viewer's exports and the names of the card's buttons. That search finds no other test that presses the card's
 buttons.
 
@@ -261,12 +267,26 @@ no request changes:
   text typed in the opinion field and returns focus to reject.
 - A second Escape closes the column.
 
+`features/approvals/ui/approval-decision.browser.test.tsx`, a Vitest browser test in Chromium, with the viewer
+under a text field that stands for another part of the screen. The viewer is on a page of its own, except in the
+one case that names the record column:
+
+- After approve, reject and request changes made by keyboard, the plain card has replaced this card, no button is
+  left, focus is on the receipt, the receipt draws a solid outline and axe passes.
+- When the document that is read again still offers the decision, this card draws the receipt and it takes focus.
+  When a later read replaces this card with the plain one, focus is on the receipt there.
+- In the record column of the approvals list, after reject made by keyboard, focus is on the receipt inside the
+  column.
+- After approve by pointer, focus is on the receipt and it draws no outline.
+- While the server holds a decision the card has `aria-busy="true"`. A receipt that arrives while the person types
+  in the text field leaves focus there, and the next keys go into the field.
+
 The same search finds tests of the opposite case, a document that draws no decision button:
 `e2e/mock/approvals.spec.ts`, `e2e/mock/approval-document.spec.ts`, `e2e/mock/approval-refusal.spec.ts`,
 `e2e/approval-document.spec.ts` and `features/approvals/ui/approvals-page.browser.test.tsx`.
 
-None of these asserts `aria-busy`, the `aria-describedby` targets, the blocked reason's row, where focus is after
-the receipt or after a refused command, or a key pressed during a composition.
+None of these asserts the `aria-describedby` targets, the blocked reason's row, where focus is after a refused
+command, or a key pressed during a composition.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
