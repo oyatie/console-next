@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 
 type ScreenStatusSegment = {
   id: string;
@@ -25,25 +25,45 @@ function getSnapshot() {
   return currentSegments;
 }
 
+function sameSegments(a: readonly ScreenStatusSegment[] | null, b: readonly ScreenStatusSegment[] | null) {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((seg, i) => {
+    const other = b[i];
+    return Boolean(other && seg.id === other.id && seg.content === other.content && seg.tone === other.tone);
+  });
+}
+
 /** Publish contextual status-bar segments while the calling screen or pattern is mounted. */
 export function useScreenStatusBar(segments: readonly ScreenStatusSegment[] | null | undefined) {
+  const publishedRef = useRef<readonly ScreenStatusSegment[] | null>(null);
+
   useEffect(() => {
-    if (!segments || segments.length === 0) {
-      if (currentSegments !== null) {
+    const next = segments && segments.length > 0 ? segments : null;
+    if (!next) {
+      if (publishedRef.current && currentSegments === publishedRef.current) {
         currentSegments = null;
+        publishedRef.current = null;
         notify();
       }
       return;
     }
-    currentSegments = segments;
+    if (publishedRef.current === currentSegments && sameSegments(currentSegments, next)) return;
+    currentSegments = next;
+    publishedRef.current = next;
     notify();
-    return () => {
-      if (currentSegments === segments) {
+  }, [segments]);
+
+  useEffect(
+    () => () => {
+      if (publishedRef.current && currentSegments === publishedRef.current) {
         currentSegments = null;
+        publishedRef.current = null;
         notify();
       }
-    };
-  }, [segments]);
+    },
+    [],
+  );
 }
 
 /** Subscribe to any active screen-published status-bar segments. */
