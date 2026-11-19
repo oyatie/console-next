@@ -23,7 +23,7 @@ Use `PhoneTopBar` and `PhoneBottomNav` in the phone shell layout (`< 768px`) to 
   - Optional right-aligned `context` text (`--text-xs`, `--on-chrome-muted`) and `trailing` control slot.
 - **`PhoneBottomNav`:**
   - `<nav aria-label={label}>` on `--surface` above `env(safe-area-inset-bottom, 0)` with a `1px solid var(--border)` top rule.
-  - Up to five equal-width `<li>` slots (`56px` min-height): when `items.length <= 5`, all render inline; when `items.length > 5`, the first four render inline and slot five opens a top-end React Aria `Menu` for the remaining destinations.
+  - Up to five equal-width `<li>` slots (`56px` min-height): when `items.length <= 5`, all render inline; when `items.length > 5`, the first four render inline and slot five opens a top-aligned `BarOverflowLinks` disclosure for the remaining destinations.
   - Each slot stacks a `20px` icon (with optional `Badge`) above a single-line `<bdi>` label, crowned by a `2px` (`--space-half`) `--primary` top indicator bar when active.
 
 ## Looks and sizes
@@ -100,16 +100,15 @@ Designed specifically for 390 px phone viewports (`52px` top bar, five `78px × 
 | `--radius` | `border-radius` |
 | `--space-1` | `gap`, `min-height`, `padding`, `padding-inline-start` |
 | `--space-2` | `gap` |
-| `--space-3` | `gap`, `min-height`, `padding` |
+| `--space-3` | `min-height` |
 | `--space-4` | `padding` |
 | `--space-5` | `min-height` |
-| `--space-6` | `min-height`, `min-inline-size` |
+| `--space-6` | `min-height` |
 | `--space-half` | `border-block-start`, `gap` |
 | `--steel` | `color` |
 | `--surface` | `background` |
 | `--target-touch` | `height`, `min-height`, `width` |
 | `--text-lg` | `font-size` |
-| `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |
 
 <!-- /ds:tokens -->

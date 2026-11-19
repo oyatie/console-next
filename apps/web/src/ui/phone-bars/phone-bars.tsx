@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { ChevronLeft, Ellipsis, type LucideIcon } from "lucide-react";
-import { Button as AriaButton, Menu, MenuItem, MenuTrigger, Popover, Text } from "react-aria-components";
 import { t } from "@console/i18n";
-import { fmtNumber } from "@console/i18n/format";
+import { chunk } from "../../lib/chunk-guard";
 import { Badge } from "../badge/badge";
 import s from "./phone-bars.module.css";
+
+const BarOverflowLinks = lazy(() =>
+  chunk(import("../bar-overflow-links")).then(m => ({ default: m.BarOverflowLinks })),
+);
 
 type PhoneBackAction = {
   /** Accessible name for the back control (typically `common.back`). */
@@ -122,7 +125,6 @@ export function PhoneBottomNav({
   const resolvedMoreLabel = moreLabel ?? t("shell.nav.more");
   const inlineItems = items.length <= 5 ? items : items.slice(0, 4);
   const overflowItems = items.length <= 5 ? [] : items.slice(4);
-  const overflowActive = overflowItems.some(item => item.id === activeId);
 
   const renderSlotContent = (item: PhoneNavItem) => {
     const Icon = item.icon;
@@ -176,49 +178,37 @@ export function PhoneBottomNav({
         })}
         {overflowItems.length > 0 ? (
           <li className={s.entry}>
-            <MenuTrigger>
-              <AriaButton
-                className={s.slot}
-                data-active={overflowActive || undefined}
-                aria-label={resolvedMoreLabel}
-              >
-                <div className={s.iconRow}>
-                  <Ellipsis size={20} aria-hidden="true" />
-                </div>
-                <bdi className={s.label}>{resolvedMoreLabel}</bdi>
-              </AriaButton>
-              <Popover className="popover" placement="top end">
-                <Menu
-                  className={s.menu}
-                  aria-label={resolvedMoreLabel}
-                  onAction={key => {
-                    const target = overflowItems.find(item => item.id === String(key));
-                    if (!target) return;
-                    if (onNavigate) onNavigate(target);
-                    else window.location.assign(target.href);
-                  }}
-                >
-                  {overflowItems.map(item => {
-                    const isCurrent = item.id === activeId;
-                    const text =
-                      item.count !== undefined && item.count > 0
-                        ? `${item.label} (${fmtNumber(item.count)})`
-                        : item.label;
-                    return (
-                      <MenuItem
-                        key={item.id}
-                        id={item.id}
-                        textValue={text}
-                        className={s.menuItem}
-                        data-active={isCurrent || undefined}
-                      >
-                        <Text slot="label">{text}</Text>
-                      </MenuItem>
-                    );
-                  })}
-                </Menu>
-              </Popover>
-            </MenuTrigger>
+            <Suspense fallback={null}>
+              <BarOverflowLinks
+                label={resolvedMoreLabel}
+                triggerClassName={s.slot!}
+                triggerActive={overflowItems.some(item => item.id === activeId)}
+                placement="top"
+                trigger={
+                  <>
+                    <div className={s.iconRow}>
+                      <Ellipsis size={20} aria-hidden="true" />
+                    </div>
+                    <bdi className={s.label}>{resolvedMoreLabel}</bdi>
+                  </>
+                }
+                entries={overflowItems.map(item => ({
+                  id: item.id,
+                  label: item.label,
+                  href: item.href,
+                  count: item.count,
+                  current: item.id === activeId,
+                }))}
+                onSelect={
+                  onNavigate
+                    ? entry => {
+                        const matched = overflowItems.find(item => item.id === entry.id);
+                        if (matched) onNavigate(matched);
+                      }
+                    : undefined
+                }
+              />
+            </Suspense>
           </li>
         ) : null}
       </ul>

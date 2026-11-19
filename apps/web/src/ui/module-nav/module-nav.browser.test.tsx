@@ -93,7 +93,7 @@ test("ModuleNavBar passes WCAG 2.2 AA axe checks and keeps the active module inl
 
   const moreBtn = narrow.getByRole("button", { name: t("shell.nav.more") });
   await moreBtn.click();
-  const menuItem = page.getByRole("menuitem", { name: t("shell.link.payroll") });
-  await menuItem.click();
+  const menuLink = narrow.getByRole("link", { name: t("shell.link.payroll") });
+  await menuLink.click();
   await expect.poll(async () => await narrow.locator("a[aria-current='page']").textContent()).toBe(t("shell.link.payroll"));
 });
