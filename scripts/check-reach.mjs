@@ -279,7 +279,7 @@ export function operationsAtBase(base, unreleasedOnly = false) {
   return Object.fromEntries(gaps.map((op) => [op, {}]));
 }
 
-async function atBaseOf(base) {
+async function atBaseOf(base, operations) {
   const json = atBase(ROOT, base, "scripts/reach-baseline.json");
   const facts = atBase(ROOT, base, "e2e/record-actions/facts.ts");
   let untracked;
@@ -290,7 +290,8 @@ async function atBaseOf(base) {
   }
   const data = json === undefined ? undefined : JSON.parse(json);
   // Promotion may seed existing dormant APIs; already shipped APIs retain the shrink-only baseline.
-  const dormant = data?.operations && atBase(ROOT, base, "backend/Cargo.toml") !== undefined ? operationsAtBase(base, true) : {};
+  const added = Object.keys(callAllowances(operations)).some(op => !Object.hasOwn(data?.operations ?? {}, op));
+  const dormant = added && data?.operations && atBase(ROOT, base, "backend/Cargo.toml") !== undefined ? operationsAtBase(base, true) : {};
   return { baseline: Array.isArray(data) ? data : data?.records, operations: data?.operations ? { ...dormant, ...data.operations } : operationsAtBase(base), capabilities: data?.version >= 2 ? routeAllowances(data.operations ?? {}) : undefined, untracked };
 }
 
@@ -315,7 +316,7 @@ async function main() {
     return;
   }
   const at = process.argv.indexOf("--base");
-  tree.previous = await atBaseOf(at > 0 ? process.argv[at + 1] : qualityRef(ROOT));
+  tree.previous = await atBaseOf(at > 0 ? process.argv[at + 1] : qualityRef(ROOT), operations);
   const document = readFileSync(path.join(ROOT, "docs/product/capability-dispositions.md"), "utf8");
   const problems = [...check(tree), ...checkOperations({ ...opTree, operations, previous: tree.previous.operations }), ...checkDispositions({ document, served: opTree.served, gaps: opTree.dispositionGaps, operations: callAllowances(operations), capabilities: routeAllowances(operations), previous: tree.previous.capabilities })];
   if (problems.length) {

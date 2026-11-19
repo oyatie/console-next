@@ -66,8 +66,9 @@ test("--lower lowers pins and never raises one", () => {
   const file = "apps/web/src/features/x/ui/bad.tsx";
   const root = fixture({ [file]: RAW_BUTTON }, { [file]: { raw: 3, dsClass: 3 } });
   expect(spawnSync("node", [script, "--root", root, "--lower"], { encoding: "utf8" }).status).toBe(0);
-  expect(measure(root)).toEqual({ [file]: { raw: 1, dsClass: 1 } });
-  expect(compare(measure(root), { [file]: { raw: 0, dsClass: 0 } })).toHaveLength(2);
+  const counts = measure(root);
+  expect(counts).toEqual({ [file]: { raw: 1, dsClass: 1 } });
+  expect(compare(counts, { [file]: { raw: 0, dsClass: 0 } })).toHaveLength(2);
 });
 
 test("raw elements and hand-written DS classes are counted; utilities and components are not", () => {
@@ -151,10 +152,11 @@ test("brokenRef checks UI, shell, tokens and inline styles, with same-module def
     "apps/web/src/shell/x.tsx": 'const style = { color: "var(--absent)" };',
     [cssFile]: ".a { --local: 0; gap: var(--local); }",
   });
-  expect(checkBrokenRefs(root).some((p: string) => p.startsWith(tokenFile))).toBe(true);
-  expect(checkBrokenRefs(root).some((p: string) => p.startsWith("apps/web/src/ui/x.module.css"))).toBe(true);
-  expect(checkBrokenRefs(root).some((p: string) => p.startsWith("apps/web/src/shell/x.tsx"))).toBe(true);
-  expect(checkBrokenRefs(root).filter((p: string) => p.startsWith(cssFile))).toEqual([]);
+  const problems: string[] = checkBrokenRefs(root);
+  expect(problems.some((p) => p.startsWith(tokenFile))).toBe(true);
+  expect(problems.some((p) => p.startsWith("apps/web/src/ui/x.module.css"))).toBe(true);
+  expect(problems.some((p) => p.startsWith("apps/web/src/shell/x.tsx"))).toBe(true);
+  expect(problems.filter((p) => p.startsWith(cssFile))).toEqual([]);
 });
 
 test("only the shell reads its own sizes; everything else clears the frame through its insets", () => {
@@ -220,11 +222,18 @@ test("every design-system metric has a live positive fixture and refuses a rise"
   }
 });
 
-test("repo regression: refused outline, request divider and font weight resolve without fallback-only names", () => {
+const repoTest = test.extend("repo", { scope: "file" }, () => {
   const root = fileURLToPath(new URL("../", import.meta.url));
-  const counts = measure(root);
-  expect(checkBrokenRefs(root)).toEqual([]);
-  expect(compare(counts, JSON.parse(readFileSync(path.join(root, "scripts/ds-baseline.json"), "utf8")))).toEqual([]);
+  const problems: string[] = [];
+  const counts = measure(root, problems);
+  const baseline = JSON.parse(readFileSync(path.join(root, "scripts/ds-baseline.json"), "utf8"));
+  return { root, problems, pinProblems: compare(counts, baseline) };
+});
+
+repoTest("repo regression: refused outline, request divider and font weight resolve without fallback-only names", ({ repo }) => {
+  const { root } = repo;
+  expect(repo.problems).toEqual([]);
+  expect(repo.pinProblems).toEqual([]);
   const css = readFileSync(path.join(root, "apps/web/src/ui/person-day-grid/person-day-grid.module.css"), "utf8");
   expect(css).toMatch(/\[data-look="refused"\][^{]*\{[^}]*outline: 2px solid var\(--danger-solid\)/);
   expect(css).toContain("font-weight: var(--fw-body)");
@@ -243,10 +252,8 @@ test.each(["VAR(--nope)", String.raw`v\61 r(\2d \2d nope)`, "var(nope)", "var(--
   expect(result.stderr.match(/broken var reference/g)).toHaveLength(1);
 });
 
-test("merged-tree metric pins are fully admitted", () => {
-  const root = fileURLToPath(new URL("../", import.meta.url));
-  const baseline = JSON.parse(readFileSync(path.join(root, "scripts/ds-baseline.json"), "utf8"));
-  expect(compare(measure(root), baseline)).toEqual([]);
+repoTest("merged-tree metric pins are fully admitted", ({ repo }) => {
+  expect(repo.pinProblems).toEqual([]);
 });
 
 const experienceFile = "packages/tokens/experiences/calm.css";
