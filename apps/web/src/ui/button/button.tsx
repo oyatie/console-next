@@ -26,8 +26,8 @@ export function ToggleButton({ pressed, look, count, countTone, className, child
   look?: "chip";
   /** The server's count after the label: it keeps its width while it loads, so nothing beside it moves. */
   count?: ReactNode;
-  /** `warn`: a to-do count (something waits on someone). */
-  countTone?: "warn";
+  /** `warn` or `danger`: a to-do or overdue count waiting on someone. */
+  countTone?: "warn" | "danger";
 }) {
   const cls = [look === "chip" && "btn--chip", className].filter(Boolean).join(" ") || undefined;
   return (
@@ -93,11 +93,21 @@ export function Form({ onSubmit, children, onChangeCapture, ...rest }: Omit<Form
  * A checkbox with a visible statement, or an accessible label for table selection. `switch` is for a setting that is
  * on or off and applies as soon as the box changes: the same box, with the switch role, so it is announced as on or off.
  */
-export function Check({ checked, onChange, children, switch: asSwitch, "aria-label": label, "aria-describedby": describedBy }: { checked: boolean; onChange: (v: boolean) => void; children?: ReactNode; switch?: boolean; "aria-label"?: string; "aria-describedby"?: string }) {
+export function Check({ checked, onChange, children, count, switch: asSwitch, "aria-label": label, "aria-describedby": describedBy }: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  children?: ReactNode;
+  /** Optional facet or item count shown beside the checkbox statement. */
+  count?: ReactNode;
+  switch?: boolean;
+  "aria-label"?: string;
+  "aria-describedby"?: string;
+}) {
   return (
     <label className="check">
       <input type="checkbox" role={asSwitch ? "switch" : undefined} checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} aria-describedby={describedBy} />
       {children != null && <span>{children}</span>}
+      {count !== undefined && <data className="btn__count" value={typeof count === "number" || typeof count === "string" ? String(count) : undefined}>{count}</data>}
     </label>
   );
 }

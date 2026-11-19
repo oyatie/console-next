@@ -4,12 +4,21 @@
   --canvas: #e9edf1;
   --surface: #ffffff;
   --muted: #f3f5f8;
+  --surface-2: #f3f5f8;
+  --surface-rest: #e4e8ed;
+  --surface-hover: #f3f5f8; /* Derived, not drawn. */
+  --surface-pressed: #e4e8ed; /* Derived, not drawn. */
+  --surface-selected: #d8ecef;
   --border: #d3d9e0;
   --border-soft: #d3d9e0;
+  --border-strong: #aeb8c3;
   --ink: #141d26;
   --steel: #36424e;
   --faint: #55616d;
   --control-border: #77838f;
+  --control-selected: #15202b;
+  --on-control-selected: #ffffff;
+  --control-selected-border: #15202b;
   --primary: #0b6672;
   --primary-hover: #085660;
   --primary-soft: #dff0f2;
@@ -38,8 +47,12 @@
   --shadow-pop: 0 8px 24px rgba(20, 29, 38, 0.22);
   --scrim: rgba(20, 29, 38, 0.32);
   /* As drawn: labels and rows 12, document body 13. */
+  --font-system: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --text-xs: 12px; --text-sm: 12px; --text-body: 13px; --text-lg: 15px; --text-xl: 20px; --text-2xl: 30px;
-  --fw-body: 400; --fw-medium: 500; --fw-strong: 700; --lh-base: 1.5;
+  --control-text: var(--text-sm);
+  --fw-body: 400; --fw-medium: 500; --fw-semibold: 600; --fw-strong: 700; --lh-base: 1.5; --tracking-label: 0px;
+  --link-decoration: underline;
+  --page-pad: 0px; --cell-px: 8px;
   --radius-sm: 2px; --radius: 2px; --radius-lg: 3px; --radius-avatar: 2px;
   /* As drawn: 28px rows hold 24px controls, compact rows and the smallest pointer target are 24px. */
   --row-h: 28px; --row-h-compact: 24px; --control-h-sm: 24px; --target: 24px; --target-touch: 44px; --chip-h: 20px; --kbd-h: 16px; --kbd-min-w: 16px;
@@ -55,12 +68,21 @@
   --canvas: #101820; /* Derived, not drawn. */
   --surface: #18232e; /* Derived, not drawn. */
   --muted: #202d3a; /* Derived, not drawn. */
+  --surface-2: #202d3a; /* Derived, not drawn. */
+  --surface-rest: #141e28; /* Derived, not drawn. */
+  --surface-hover: #202d3a; /* Derived, not drawn. */
+  --surface-pressed: #263646; /* Derived, not drawn. */
+  --surface-selected: #16383f; /* Derived, not drawn. */
   --border: #3c4d5e; /* Derived, not drawn. */
   --border-soft: #2c3b49; /* Derived, not drawn. */
+  --border-strong: #4e6276; /* Derived, not drawn. */
   --ink: #eef2f6; /* Derived, not drawn. */
   --steel: #c3cdd8; /* Derived, not drawn. */
   --faint: #a7b3c0; /* Derived, not drawn. */
   --control-border: #7f8c99; /* Derived, not drawn. */
+  --control-selected: #eef2f6; /* Derived, not drawn. */
+  --on-control-selected: #101820; /* Derived, not drawn. */
+  --control-selected-border: #eef2f6; /* Derived, not drawn. */
   --primary: #6fd3df; /* Derived, not drawn. */
   --primary-hover: #9ce5ec; /* Derived, not drawn. */
   --primary-soft: #16383f; /* Derived, not drawn. */

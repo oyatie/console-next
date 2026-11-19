@@ -14,12 +14,14 @@ import type { ModuleNavItem } from "../../ui/module-nav/module-nav";
 import { PagePhoneHeader } from "../../ui/page/page-scope";
 import type { PhoneNavItem } from "../../ui/phone-bars/phone-bars";
 import { StatusBar } from "../../ui/status-bar/status-bar";
+import { usePublishedStatusBar } from "../../ui/status-bar/status-bar-store";
+import { openWorkspaceTab } from "../../ui/workspace-tabs/open-tab";
 import { WorkspaceTabs } from "../../ui/workspace-tabs/workspace-tabs";
 import { ShellFrame, type ShellLayoutProps } from "../frame/shell-frame";
 import { activeLink, type NavLink } from "../nav";
 import { ConsoleTopBar } from "./console-top-bar";
 import { useConsoleCounts } from "./use-console-counts";
-import { openWorkspaceTab, useWorkspaceTabs } from "./workspace-tabs-state";
+import { useWorkspaceTabs } from "./workspace-tabs-state";
 import s from "./shell.module.css";
 
 const PHONE_QUERY = "(max-width: 767px)";
@@ -144,7 +146,11 @@ function ConsoleLayout({
   );
   const phoneActiveId = pathname === "/account" || pathname.startsWith("/account/") ? "/account" : currentModuleTo;
 
+  const publishedSegments = usePublishedStatusBar();
   const statusSegments = useMemo(() => {
+    if (publishedSegments && publishedSegments.length > 0) {
+      return publishedSegments;
+    }
     const segments: { id: string; content: ReactNode; tone?: "default" | "strong" | "attention" }[] = [
       { id: "scope", content: platform ? t("shell.hub.platform") : tenantName ?? t("app.name"), tone: "strong" },
       { id: "module", content: currentTitle },
@@ -157,7 +163,7 @@ function ConsoleLayout({
       });
     }
     return segments;
-  }, [platform, tenantName, currentTitle, inboxCount, inboxExact]);
+  }, [publishedSegments, platform, tenantName, currentTitle, inboxCount, inboxExact]);
 
   return (
     <PagePhoneHeader value={{ shellOwnsH1: isPhone && Boolean(phoneHeader?.shellOwnsH1) }}>

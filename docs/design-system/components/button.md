@@ -221,7 +221,9 @@ to the component that writes them and are not listed here.
 
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
+| `block` | no | `boolean` |  | Stretch across the container width with centered content. |
 | `icon` | no | `boolean` |  |  |
+| `pending` | no | `boolean` |  | Busy command state: marks `aria-disabled="true"` and suppresses clicks while keeping keyboard focus on the button. |
 | `ref` | no | `Ref<HTMLButtonElement>` |  |  |
 | `size` | no | `ButtonSize` |  |  |
 | `variant` | no | `ButtonVariant` | `"secondary"` |  |
@@ -237,6 +239,7 @@ Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`). Defaults
 | `aria-describedby` | no | `string` |  |  |
 | `aria-label` | no | `string` |  |  |
 | `children` | no | `ReactNode` |  |  |
+| `count` | no | `ReactNode` |  | Optional facet or item count shown beside the checkbox statement. |
 | `switch` | no | `boolean` |  |  |
 
 ### Form
@@ -264,7 +267,7 @@ Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`), except `
 | --- | --- | --- | --- | --- |
 | `pressed` | yes | `boolean` |  |  |
 | `count` | no | `ReactNode` |  | The server's count after the label: it keeps its width while it loads, so nothing beside it moves. |
-| `countTone` | no | `"warn"` |  | `warn`: a to-do count (something waits on someone). |
+| `countTone` | no | `"danger" \| "warn"` |  | `warn` or `danger`: a to-do or overdue count waiting on someone. |
 | `look` | no | `"chip"` |  | `chip`: a filter drawn as a pill, bordered when off. |
 | `size` | no | `ButtonSize` |  |  |
 
@@ -278,10 +281,11 @@ Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`), except `
 
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `items` | yes | `readonly { id: T; label: ReactNode; }[]` |  |  |
+| `items` | yes | `readonly { id: T; label: ReactNode; icon?: ReactNode; count?: ReactNode; tone?: "danger" \| "warn" \| undefined; }[]` |  |  |
 | `label` | yes | `string` |  |  |
 | `onChange` | yes | `(id: T) => void` |  |  |
 | `value` | yes | `T` |  |  |
+| `block` | no | `boolean` |  | Stretch equally across the container width (phone filter bars). |
 | `size` | no | `ButtonSize` |  |  |
 
 <!-- /ds:props -->
@@ -298,13 +302,14 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | `--border` | `border` |
 | `--control-border` | `border-color` |
 | `--control-h` | `min-height`, `width` |
+| `--control-h-lg` | `min-height`, `width` |
+| `--control-text` | `font-size` |
 | `--danger-bg` | `background` |
 | `--danger-solid` | `background`, `border-color` |
 | `--danger-tx` | `background`, `border-color`, `color` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
 | `--ink` | `color` |
-| `--muted` | `background` |
 | `--on-danger` | `color` |
 | `--on-primary` | `color` |
 | `--primary` | `background`, `border-color`, `color` |
@@ -318,6 +323,7 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | `--space-6` | `min-height` |
 | `--steel` | `color` |
 | `--surface` | `background` |
+| `--surface-hover` | `background` |
 | `--tab-selected` | `box-shadow` |
 | `--target` | `min-height`, `width` |
 | `--text-sm` | `font-size` |
@@ -344,9 +350,18 @@ The `link` variant:
 
 | Token | Read by |
 | --- | --- |
-| `--space-2` | `gap` |
+| `--control-border` | `border` |
+| `--on-primary` | `border-bottom`, `border-left` |
+| `--primary` | `background`, `border-color` |
+| `--radius-sm` | `border-radius` |
+| `--space-1` | `height` |
+| `--space-1-5` | `gap` |
+| `--space-2` | `gap`, `width` |
+| `--space-3` | `height`, `width` |
 | `--space-6` | `height`, `width` |
-| `--target` | `min-height` |
+| `--space-half` | `height`, `transform`, `width` |
+| `--surface` | `background` |
+| `--target` | `height`, `min-height`, `width` |
 | `--text-sm` | `font-size` |
 
 <!-- /ds:tokens -->
@@ -358,14 +373,20 @@ The `link` variant:
 | Token | Read by |
 | --- | --- |
 | `--control-border` | `border`, `border-left` |
+| `--control-h` | `min-height` |
+| `--control-selected` | `background` |
+| `--control-selected-border` | `--ring-in` |
+| `--danger-tx` | `color` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
-| `--primary` | `--ring-in`, `color` |
-| `--primary-soft` | `background` |
+| `--on-control-selected` | `color` |
 | `--radius` | `border-radius` |
 | `--ring-in` | `box-shadow` |
+| `--space-1` | `gap` |
+| `--space-2` | `padding` |
 | `--space-3` | `padding` |
 | `--target` | `min-height` |
 | `--text-sm` | `font-size` |
+| `--warn-tx` | `color` |
 
 <!-- /ds:tokens -->

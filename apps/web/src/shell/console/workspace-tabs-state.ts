@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect, useState } from "react";
+import { OPEN_TAB_EVENT, type OpenTabPayload } from "../../ui/workspace-tabs/open-tab";
 import type { WorkspaceTab } from "../../ui/workspace-tabs/workspace-tabs";
 
 export const MAX_WORKSPACE_TABS = 8;
@@ -10,19 +11,6 @@ type StoredTab = {
   label: string;
   pinned?: boolean;
 };
-
-type OpenTabPayload = {
-  href: string;
-  label: string;
-};
-
-const OPEN_TAB_EVENT = "console:open-workspace-tab";
-
-/** Explicitly open a route in a separate workspace tab (capped at `MAX_WORKSPACE_TABS`). */
-export function openWorkspaceTab(payload: OpenTabPayload) {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent<OpenTabPayload>(OPEN_TAB_EVENT, { detail: payload }));
-}
 
 export function readStoredWorkspaceTabs(storageKey: string | null): StoredTab[] | null {
   if (!storageKey || typeof localStorage === "undefined") return null;

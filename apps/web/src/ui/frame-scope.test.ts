@@ -65,6 +65,21 @@ test("base and Console token files define the frame roles, bar insets, kbd sizin
     "--navbar-h",
     "--kbd-h",
     "--kbd-min-w",
+    "--surface-2",
+    "--surface-rest",
+    "--surface-hover",
+    "--surface-pressed",
+    "--surface-selected",
+    "--border-strong",
+    "--control-selected",
+    "--on-control-selected",
+    "--control-selected-border",
+    "--control-text",
+    "--link-decoration",
+    "--page-pad",
+    "--cell-px",
+    "--fw-semibold",
+    "--lh-tight",
   ];
   for (const name of required) {
     expect(base.light[name], `missing ${name} in tokens.css light`).toBeDefined();

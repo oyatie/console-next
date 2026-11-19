@@ -120,8 +120,11 @@ function checkThemes(themes, label = "", baseline = themes) {
       } catch (error) { problems.push(`${theme}: ${fg}/${bg}: ${error.message}`); }
     };
     for (const fg of ["--ink", "--steel", "--faint", "--primary"]) {
-      for (const bg of ["--surface", "--canvas", "--muted"]) check(fg, bg, "text");
+      for (const bg of ["--surface", "--canvas", "--muted", "--surface-2", "--surface-rest"]) check(fg, bg, "text");
     }
+    for (const fg of ["--ink", "--primary"]) check(fg, "--surface-selected", "text");
+    check("--on-control-selected", "--control-selected", "text");
+    check("--control-selected-border", "--surface", "non-text");
     for (const role of Object.keys(tokens).filter((name) => name.endsWith("-tx")).map((name) => name.slice(2, -3))) {
       check(`--${role}-tx`, `--${role}-bg`, "text");
       check(`--${role}-tx`, "--surface", "text");
