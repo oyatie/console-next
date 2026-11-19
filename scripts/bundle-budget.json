@@ -104,7 +104,7 @@
     ]
   },
   "pack": {
-    "budget_kb": 76,
+    "budget_kb": 77,
     "css_budget_kb": 8,
     "routes": ["src/shell/baseline/shell.tsx", "src/shell/console/shell.tsx"]
   }

@@ -46,22 +46,21 @@ export function BarOverflowLinks({
         setOpen(false);
       }
     };
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape" || isImeKey(event)) return;
-      event.preventDefault();
-      setOpen(false);
-      triggerRef.current?.focus();
-    };
     document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
+    return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
+  const closeFromEscape = (event: KeyboardEvent<HTMLElement>) => {
+    if (!open || event.key !== "Escape" || isImeKey(event)) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    setOpen(false);
+    triggerRef.current?.focus();
+    return true;
+  };
+
   const onLinkKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
-    if (isImeKey(event)) return;
+    if (closeFromEscape(event) || isImeKey(event)) return;
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Home" && event.key !== "End") return;
     const list = event.currentTarget.closest("ul");
     if (!list) return;
@@ -89,6 +88,7 @@ export function BarOverflowLinks({
         aria-label={label}
         aria-expanded={open}
         data-active={triggerActive || undefined}
+        onKeyDown={closeFromEscape}
         onClick={() => setOpen(prev => !prev)}
       >
         {trigger}

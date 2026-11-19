@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 import { i18n, LOCALES, t } from "@console/i18n";
@@ -36,19 +36,17 @@ export function ConsoleAccountMenu({
         setOpen(false);
       }
     };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || isImeKey(event)) return;
-      event.preventDefault();
-      setOpen(false);
-      btnRef.current?.focus();
-    };
     document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
+    return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
+
+  const onEscape = (event: KeyboardEvent<HTMLElement>) => {
+    if (!open || event.key !== "Escape" || isImeKey(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setOpen(false);
+    btnRef.current?.focus();
+  };
 
   const onLogout = async () => {
     setOpen(false);
@@ -65,6 +63,7 @@ export function ConsoleAccountMenu({
         className={m.accountBtn}
         aria-label={name}
         aria-expanded={open}
+        onKeyDown={onEscape}
         onClick={() => setOpen(prev => !prev)}
       >
         <Avatar name={name} size="sm" tone="accent" />
@@ -72,10 +71,10 @@ export function ConsoleAccountMenu({
       </button>
       {open ? (
         <div ref={panelRef} className={m.accountPop} role="group" aria-label={t("shell.account")}>
-          <Link to="/account" className={m.accountItem} onClick={() => setOpen(false)}>
+          <Link to="/account" className={m.accountItem} onKeyDown={onEscape} onClick={() => setOpen(false)}>
             {t("shell.account")}
           </Link>
-          <Link to="/account/privacy" className={m.accountItem} onClick={() => setOpen(false)}>
+          <Link to="/account/privacy" className={m.accountItem} onKeyDown={onEscape} onClick={() => setOpen(false)}>
             {t("account.privacy.title")}
           </Link>
           <hr className={m.accountRule} />
@@ -87,6 +86,7 @@ export function ConsoleAccountMenu({
                 type="button"
                 className={m.accountItem}
                 aria-pressed={selected}
+                onKeyDown={onEscape}
                 onClick={() => {
                   setOpen(false);
                   void setLocale(locale).then(() => focusSoon(id), () => focusSoon(id));
@@ -106,6 +106,7 @@ export function ConsoleAccountMenu({
                 type="button"
                 className={m.accountItem}
                 aria-pressed={selected}
+                onKeyDown={onEscape}
                 onClick={() => {
                   if (value !== theme) toggleTheme();
                   setOpen(false);
@@ -118,7 +119,7 @@ export function ConsoleAccountMenu({
             );
           })}
           <hr className={m.accountRule} />
-          <button type="button" className={m.accountItem} onClick={() => void onLogout()}>
+          <button type="button" className={m.accountItem} onKeyDown={onEscape} onClick={() => void onLogout()}>
             {t("shell.logout")}
           </button>
         </div>
