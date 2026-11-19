@@ -83,7 +83,7 @@ test("manual sign-in stays busy when it aborts passive autofill", async ({ page 
 });
 
 test("explicit sign-in completes while autofill is pending and discards a late selection", async ({ page }) => {
-  const fixture = await accountSecurityPasskey(page, "autofill");
+  const fixture = await accountSecurityPasskey(page, "autofill", { lateAnswer: true });
   const finish = "/api/v1/auth/passkey/login/finish";
   await mockRoute(page, "post", finish, { status: 200, json: token() });
   try {
