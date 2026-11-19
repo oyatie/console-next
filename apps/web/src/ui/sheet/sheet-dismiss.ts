@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { isImeKey } from "../../lib/pure/ime";
 import { useBackBlock } from "../../lib/react/navigation-block";
 
 const FORM_CONTROL = "form, .form, input, select, textarea, [contenteditable=true], [data-form-value]";
@@ -110,7 +111,7 @@ export function useSheetDismiss<E extends HTMLElement>({ onClose, pending, dirty
       const target = event.target as HTMLElement;
       const ownDialog = layer.matches('[role="dialog"]') ? layer : layer.querySelector('[role="dialog"]');
       const targetDialog = target.closest?.('[role="dialog"]');
-      if (event.defaultPrevented || event.isComposing || target.closest?.('[role="listbox"]') || target.getAttribute?.("aria-expanded") === "true"
+      if (event.defaultPrevented || isImeKey(event) || target.closest?.('[role="listbox"]') || target.getAttribute?.("aria-expanded") === "true"
         || (targetDialog && targetDialog !== ownDialog) || !isTop()) return;
       if (pending) return;
       if (dirty && !armedRef.current) {

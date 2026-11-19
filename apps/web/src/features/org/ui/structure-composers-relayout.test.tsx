@@ -14,6 +14,7 @@ import { flushSync } from 'react-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { loadCatalog } from '@console/i18n';
 import { NameBox } from '/apps/web/src/features/structure/ui/name-box.tsx';
+import { InlineUnitInput } from '/apps/web/src/features/structure/ui/outline-rows.tsx';
 import { DeptDetails } from '/apps/web/src/features/org/ui/dept-details.tsx';
 import { WorkplaceMoveSheet } from '/apps/web/src/features/entity/ui/workplace-move-sheet.tsx';
 import { ReadInSheet } from '/apps/web/src/features/entity/ui/fresh-entity.tsx';
@@ -62,6 +63,8 @@ const parentBefore = { id: 'site', kind: 'site', name: '본사', headcount: 0, c
             const [applied, setApplied] = useState(false);
             const [withRead, setWithRead] = useState(true);
             window.applyRefetch = () => flushSync(() => setApplied(true));
+            if (sheet === 'outline') return h(QueryClientProvider, { client },
+              h(InlineUnitInput, { parent: parentBefore, pending: false, onSave: () => {}, onIndent: dir => { window.nested = dir; }, onDone: () => {} }));
             if (sheet === 'nested') {
               const q = { isPending: false, data: 'record', error: null, refetch: () => {} };
               return h(ReadInSheet, { q, title: 'Outer', onClose: () => {} }, () =>
@@ -162,6 +165,20 @@ test("the inline name input keeps focus and Escape while a save is pending", asy
   expect(await input.evaluate(el => el === document.activeElement)).toBe(true);
   await input.press("Escape");
   expect(await page.evaluate(() => (window as unknown as { cancelled?: boolean }).cancelled)).toBe(true);
+});
+
+test("the outline's name input leaves a Tab the input method owns alone and nests on a plain Tab", async () => {
+  const page = harness.page!;
+  await page.goto(`${harness.baseUrl}relayout?sheet=outline`);
+  const input = page.getByRole("textbox");
+  const nested = () => page.evaluate(() => (window as unknown as { nested?: number }).nested);
+  await input.fill("Team");
+  for (const state of [{ isComposing: true }, { keyCode: 229 }]) await input.dispatchEvent("keydown", { key: "Tab", ...state });
+  expect(await nested()).toBeUndefined();
+  await dom(input).toBeFocused();
+  await input.press("Tab");
+  expect(await nested()).toBe(1);
+  await dom(input).toBeFocused();
 });
 
 test("refetched structure reads during settle do not flash duplicate-name alerts or nothing-changed blocks", async () => {

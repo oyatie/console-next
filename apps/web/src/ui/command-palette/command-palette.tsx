@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ModalOverlay, Autocomplete, Dialog, Header, Input, Keyboard, Menu, MenuItem, MenuSection, Modal, SearchField, Text } from "react-aria-components";
 import { Search } from "lucide-react";
 import { t } from "@console/i18n";
+import { leaveImeKey } from "../../lib/pure/ime";
 import s from "./command-palette.module.css";
 
 export type PaletteItem = { id: string; icon?: ReactNode; label: string; detail?: string; meta?: string; onAction: () => void };
@@ -31,7 +32,7 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
           <Autocomplete inputValue={query} onInputChange={onQuery}>
             <SearchField className={s.field} aria-label={label}>
               <Search size={18} aria-hidden />
-              <Input className={s.input} placeholder={placeholder} />
+              <Input className={s.input} placeholder={placeholder} onKeyDownCapture={leaveImeKey} />
               <Keyboard className={s.kbd}>{t("uiCommandPalette.esc")}</Keyboard>
             </SearchField>
             <Menu

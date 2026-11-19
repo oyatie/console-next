@@ -1,6 +1,7 @@
 import { useContext, useEffect, useId, useRef, type ReactNode } from "react";
 import { ChevronRight, Maximize2, X } from "lucide-react";
 import { t } from "@console/i18n";
+import { isImeKey } from "../../../lib/pure/ime";
 import { focusSoon } from "../../../lib/react/announce";
 import { Button } from "../../../ui/button/button";
 import { SidePanelReadContext } from "../../../ui/side-panel/read-context";
@@ -31,7 +32,7 @@ export function PanelShell({ crumb, icon, title, chips, anchors, open, children,
   // Esc inside the panel (not already taken by a popover) closes it.
   useEffect(() => {
     const el = ref.current;
-    const key = (e: KeyboardEvent) => e.key === "Escape" && !e.defaultPrevented && close();
+    const key = (e: KeyboardEvent) => e.key === "Escape" && !e.defaultPrevented && !isImeKey(e) && close();
     el?.addEventListener("keydown", key);
     return () => el?.removeEventListener("keydown", key);
   });
