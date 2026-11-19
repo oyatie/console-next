@@ -61,6 +61,13 @@ test("release policy CI evidence runs on every dev push and is required by ci-ok
   }
 });
 
+test("the live retention proof runs even when its database shard is red", () => {
+  const db = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
+  const steps = Object.values(db.jobs).flatMap(job => job.steps ?? []).filter(s => s.name === "Verify SeaweedFS compliance retention");
+  assert.equal(steps.length, 1);
+  assert.equal(steps[0].if, "${{ !cancelled() && matrix.shard == 1 }}");
+});
+
 test("Home uses a release artifact on every candidate; every Rust check stays required", () => {
   assert.deepEqual(ci.jobs.home.needs, ["affected", "backend-release"]);
   assert.equal(ci.jobs["d10-probes"], undefined);
