@@ -4,7 +4,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { FORMATS } from "../apps/web/src/lib/pure/formats";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { confirmGrantNotice, grantAccess, openGrantNotice } from "./access-flows";
-import { firstSignIn, go, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
+import { firstSignIn, go, option, registerEmployee, reloadAndWait, stepUp, takeCode, unique } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { letGrantsAge } from "./second-person-fixture";
 import { REGISTRATION_FIXTURES, SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
@@ -83,8 +83,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(grantButton).toBeVisible();
   await grantAccess(admin, "이범위", "full", /본사/);
   const managerBearer = bearerOf(manager);
-  await manager.reload();
-  await passkeyLogin(manager);
+  await reloadAndWait(manager);
   await expect.poll(managerBearer).not.toBe("");
   const scopedAuthz = await apiOf(manager, managerBearer)("/me/authz");
   expect(scopedAuthz.status()).toBe(200);
@@ -96,8 +95,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(register(manager)).toBeHidden();
   await expect(manager.getByText("이 화면에 접근 권한이 없습니다", { exact: true })).toBeHidden();
   // Reopen the pre-grant stream under its new access scope before confirming in 참조.
-  await reviewer.reload();
-  await passkeyLogin(reviewer);
+  await reloadAndWait(reviewer);
   const notice = await openGrantNotice(reviewer, "full");
   await expect(notice).toContainText("전체 업무 · 전체 ·");
   await confirmGrantNotice(reviewer, "full", notice);
