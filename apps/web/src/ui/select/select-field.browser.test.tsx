@@ -73,7 +73,7 @@ test.each([360, 320])("at %i px wide the open list fits inside the screen and no
     expect(options).toHaveLength(count);
     // The trigger is narrower still, so the list takes its capped minimum: the screen less 12 px at each side.
     expect((await box(pop)).width).toBeCloseTo(width - 24, 1);
-    // The text of an option is measured too: a line that only reaches into the option's padding is cut off as well.
+    // An option's own widths count its padding, so text that runs only into the padding is caught on the spans inside it.
     for (const part of [pop, ...options, ...await list().locator("span").all()]) {
       const { x, width: w } = await box(part);
       expect(x).toBeGreaterThanOrEqual(0);
