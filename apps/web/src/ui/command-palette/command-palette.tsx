@@ -13,7 +13,8 @@ export type PaletteSection = { id: string; title: string; items: readonly Palett
  * whenever the text or the first result changes (people the server finds late, a paste, a deletion). Each time, the
  * box is sent a Home key, which React Aria answers by giving the first result the list's focus: Enter opens it, the
  * arrows move on from it. The key is made here, not pressed, so it does not touch what an input method is composing.
- * A row the person has moved to with the keys is theirs: until the text changes, late results do not take the highlight back.
+ * A row the person has moved to with the keys is theirs: until the text changes, late results do not take the
+ * highlight back.
  */
 function First({ box, moved }: { box: RefObject<HTMLInputElement | null>; moved: RefObject<boolean> }) {
   useEffect(() => void (moved.current || box.current?.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", code: "Home", bubbles: true, cancelable: true }))), [box, moved]);
@@ -43,7 +44,7 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
 }) {
   const shown = sections.filter((x) => x.items.length > 0);
   const box = useRef<HTMLInputElement>(null);
-  // Set by a pressed key that moves the highlight (the Home made for the first result is not pressed), until the text changes.
+  // Set by a pressed key that moves the highlight, until the text changes. The Home made for the first result is not pressed.
   const moved = useRef(false);
   // A caller's results may trail the text by a render (a deferred search), so the first result is marked only once that
   // render has caught up with the box. Text that returns to what it was before then is still marked afresh.
@@ -60,11 +61,15 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
   const keys = (e: KeyboardEvent<HTMLInputElement>) => {
     leaveImeKey(e);
     if (e.isTrusted && MOVES.has(e.key)) moved.current = true;
+    // Escape empties the box. React Aria is told it is a deletion, so it drops the highlight as it does for Backspace.
+    // Untold, it takes the emptying for the letter typed last, highlights the first standing task, and Enter opens it.
+    if (e.key === "Escape" && !isImeKey(e)) e.currentTarget.dispatchEvent(new InputEvent("beforeinput", { inputType: "deleteContent" }));
     if (e.key !== "Enter") return;
     // An Enter the input method owns ends a syllable; it is not a command, and stops here as its Escape and Tab do.
     // Nor does Enter open a first result that may still change: it waits, unless the person chose a row with the keys.
     if (isImeKey(e) || (!settled && !moved.current)) return e.stopPropagation();
-    // A caret move or a click in the box drops the highlight, and React Aria's Enter then opens nothing: the first result still takes it.
+    // A caret move or a click in the box drops the highlight, and React Aria's Enter then opens nothing. With no row
+    // highlighted, Enter opens the first result.
     if (!first || e.currentTarget.closest("[role=dialog]")?.querySelector("[role=menuitem][data-focused]")) return;
     e.preventDefault();
     e.stopPropagation();

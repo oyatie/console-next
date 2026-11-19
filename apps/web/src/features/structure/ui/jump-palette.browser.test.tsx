@@ -157,6 +157,21 @@ test.each(["a caret move", "a click in the box"] as const)("Enter still opens th
   await element(palette()).toHaveCount(0);
 });
 
+test("emptied with Escape, the box highlights no standing task and Enter opens none", async () => {
+  await open("chord");
+  found = q => [`Kim ${q}`];
+  await page.keyboard.type("kim");
+  await lit(/^Kim kim/);
+  await page.keyboard.press("Escape");
+  await element(box()).toHaveValue("");
+  await element(palette().locator("[role=menuitem][data-focused]")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  // The palette is still open where it was: it takes the next search.
+  await page.keyboard.type("kim");
+  await lit(/^Kim kim/);
+  await element(at()).toHaveText("/");
+});
+
 test("a click on a row below the highlighted one opens that row", async () => {
   await open("button");
   found = q => [`Kim ${q}`, `Kimura ${q}`];
