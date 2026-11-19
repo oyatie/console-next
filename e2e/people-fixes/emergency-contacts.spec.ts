@@ -1,17 +1,31 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { expectAccessible } from "../a11y";
+import { go } from "../flows";
 import { apiOf, bearerOf, codeOf } from "../helpers/api";
-import { peopleWorld, registerAt } from "../helpers/people-fixes";
+import { firstWorkplace } from "../helpers/entity";
+import { registerAt } from "../helpers/people-fixes";
+import { openTenant } from "../helpers/tenant";
+import { andReread } from "../record-actions/world";
+import { registerEntity } from "../setup-flows";
 
 test("solo: emergency contact notice is enforced; evidence survives sibling deletion and undo", { tag: ["@hr", "@regression", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
-  const { admin } = await peopleWorld(browser, "emergencynotice");
+  const employee = { company: "사람기술", workplace: "본사", name: "연락인", number: "EC-0001" };
+  const admin = await openTenant(browser, "emergencynotice", employee.company);
+  await go(admin, "/org/entities/new");
+  await registerEntity(admin, employee.company);
+  await firstWorkplace(admin, employee.company, employee.workplace);
   const api = apiOf(admin, bearerOf(admin));
-  const worker = await registerAt(admin, "사람기술", "연락인", "EC-0001");
+  const worker = await registerAt(admin, employee.company, employee.name, employee.number);
   const read = async () => (await (await api(`/employees/${worker.id}/personal-facts`)).json()) as {
     updated_at: string;
     emergency_contacts: { name: string; relation: string; phone: string; contact_notified: boolean; basis: string | null; recorded_by_name: string; recorded_at: string }[] | null;
+  };
+  const saveContact = async (control: Locator) => {
+    const saved = admin.waitForResponse(r => r.request().method() === "PATCH" && new URL(r.url()).pathname === `/api/v1/employees/${worker.id}`);
+    await control.click();
+    expect((await saved).status()).toBe(200);
   };
   const before = await read();
   for (const contact_notified of [null, false]) {
@@ -32,8 +46,8 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
     await sheet.getByRole("textbox", { name: /^휴대전화/ }).fill(phone!);
     await expect(sheet.getByRole("button", { name: /인사 정보 1명 정정/ })).toHaveAttribute("aria-disabled", "true");
     await sheet.getByRole("checkbox").check();
-    await sheet.getByRole("button", { name: /인사 정보 1명 정정/ }).click();
-    await expect(sheet).toBeHidden();
+    await saveContact(sheet.getByRole("button", { name: /인사 정보 1명 정정/ }));
+    await sheet.waitFor({ state: "hidden" });
   }
   const recorded = (await read()).emergency_contacts!;
   for (const contact of recorded) {
@@ -47,24 +61,25 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
   await expect(contacts).not.toContainText(recorded[0]!.basis!);
   await expect(contacts).not.toContainText(recorded[0]!.recorded_at);
   await contacts.getByRole("button", { name: /배우자.*더보기/ }).click();
-  await admin.getByRole("menuitem", { name: /삭제|무효화/ }).click();
-  await expect.poll(async () => (await read()).emergency_contacts).toEqual([recorded[1]]);
-  await admin.getByRole("button", { name: "되돌리기 ⌘Z", exact: true }).click();
-  await expect.poll(async () => (await read()).emergency_contacts).toEqual(recorded);
+  await saveContact(admin.getByRole("menuitem", { name: /삭제|무효화/ }));
+  expect((await read()).emergency_contacts).toEqual([recorded[1]]);
+  await saveContact(admin.getByRole("button", { name: "되돌리기 ⌘Z", exact: true }));
+  expect((await read()).emergency_contacts).toEqual(recorded);
   const legacy = recorded.map(({ name, relation, phone }) => ({ name, relation, phone }));
   const patch = async (emergency_contacts: unknown[]) => api(`/employees/${worker.id}`, "PATCH", {
     expected_updated_at: (await read()).updated_at, reason_code: "QUICK_EDIT", changes: { emergency_contacts },
   });
   expect((await patch(legacy)).status()).toBe(200);
   expect((await read()).emergency_contacts).toEqual(recorded);
-  legacy.push({ name: "이세리", relation: "SIBLING", phone: "010-5555-6666" });
+  legacy.push({ name: "이세리", relation: "SIBLING", phone: "00 82 10-5555-6666" });
   expect((await patch(legacy)).status()).toBe(200);
   const withLegacy = (await read()).emergency_contacts!;
   expect(withLegacy.slice(0, 2)).toEqual(recorded);
-  expect(withLegacy[2]).toMatchObject({ contact_notified: false, basis: null });
+  expect(withLegacy[2]).toMatchObject({ phone: "+821055556666", contact_notified: false, basis: null });
+  legacy[2]!.phone = withLegacy[2]!.phone;
   expect((await patch(legacy)).status()).toBe(200);
   expect((await read()).emergency_contacts).toEqual(withLegacy);
-  await admin.reload();
+  await andReread(admin, "/personal-facts", () => admin.reload());
   const unconfirmed = contacts.getByRole("listitem").filter({ hasText: "형제자매" });
   await expect(unconfirmed.locator(".chip--warn")).toHaveText("당사자 안내 미확인");
   await expect(contacts.locator(".chip--warn")).toHaveCount(1);
@@ -74,8 +89,8 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
   await expect(edit.getByRole("checkbox")).not.toBeChecked();
   await expect(edit.getByRole("button", { name: /인사 정보 1명 정정/ })).toHaveAttribute("aria-disabled", "true");
   await edit.getByRole("checkbox").check();
-  await edit.getByRole("button", { name: /인사 정보 1명 정정/ }).click();
-  await expect(edit).toBeHidden();
+  await saveContact(edit.getByRole("button", { name: /인사 정보 1명 정정/ }));
+  await edit.waitFor({ state: "hidden" });
   expect((await read()).emergency_contacts![2]).toMatchObject({ contact_notified: true, basis: recorded[0]!.basis });
   await expect(contacts.getByText("당사자 안내 미확인", { exact: true })).toHaveCount(0);
   await expectAccessible(admin, "people: emergency contact evidence and undo");

@@ -418,6 +418,7 @@ test("cluster-wide role mutators and console_app migrations share exclusive exec
     "status_worker_age_is_queue_scoped_read_only_and_missing_is_unknown",
     "status_public_evidence_answers_aggregate_age_only_beside_tenant_data",
     "serving_pool_rejects_overrides_and_restores_role_defaults_after_release",
+    "corrects_stored_phones_and_preserves_revision_history",
   ]) assert.ok(group.includes(name), `${name} must share the exclusive role group`);
   assert.match(config, /\[test-groups\.cluster-global\]\s+max-threads = 1/);
 });
