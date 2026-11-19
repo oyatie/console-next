@@ -7,6 +7,7 @@ import { failure, inbox } from "./fixtures";
 import { fits, expectAxe } from "../a11y";
 import { screens } from "../states/registry";
 import { OPTIONAL_COLUMNS } from "../../apps/web/src/features/people/domain/columns";
+import { floorOf } from "../../apps/web/src/ui/experience-floors";
 
 test.beforeAll(() => loadCatalog("ko"));
 // First-paint cases own their preferences, independently of the selected test pack.
@@ -15,8 +16,8 @@ test.use({ storageState: { cookies: [], origins: [] } });
 // The built entry chunk: nothing of the app has run until this script does.
 const ENTRY = /\/assets\/index-[^/]+\.js$/;
 
-async function expectRenderedFloors(page: Page) {
-  const sizes = await page.evaluate(() => {
+async function expectRenderedFloors(page: Page, floor: { text: number; control: number }) {
+  const sizes = await page.evaluate(least => {
     const root = document.documentElement;
     const experience = root.dataset.experience!;
     const controls = [...document.querySelectorAll<HTMLElement>('header button, header .btn, header input, header select, main button, main .btn, main input:not([type="hidden"]), main select, main [role="tab"], [role="dialog"] button, [role="dialog"] .check input')].filter(el => el.checkVisibility());
@@ -26,16 +27,16 @@ async function expectRenderedFloors(page: Page) {
     const baseline = heights();
     root.dataset.experience = experience;
     return {
-      // Existing status chips and inline editors are below 32px on baseline; an experience must never shrink them.
-      controls: controls.map((el, i) => ({ name: el.getAttribute("aria-label") || el.textContent?.trim() || el.outerHTML, height: actual[i]!, floor: Math.min(32, baseline[i]!) })),
+      // Existing status chips and inline editors are below the floor on baseline; an experience must never shrink them.
+      controls: controls.map((el, i) => ({ name: el.getAttribute("aria-label") || el.textContent?.trim() || el.outerHTML, height: actual[i]!, floor: Math.min(least, baseline[i]!) })),
       // <small> already renders below the floor on baseline; leave its repair to the shared typography.
       text: [...document.querySelectorAll<HTMLElement>('header *, main *, [role="dialog"] *')].filter(el => el.checkVisibility() && !el.closest("small") && [...el.childNodes].some(node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())).map(el => ({ text: el.textContent?.trim(), size: parseFloat(getComputedStyle(el).fontSize) })),
     };
-  });
+  }, floor.control);
   expect(sizes.controls.length).toBeGreaterThan(0);
   expect.soft(sizes.controls.filter(control => control.height + 0.01 < control.floor), "rendered control heights").toEqual([]);
   // Icon-only phone controls hide their accessible text at 0px.
-  expect.soft(sizes.text.filter(text => text.size > 0 && text.size < 14), "rendered text sizes").toEqual([]);
+  expect.soft(sizes.text.filter(text => text.size > 0 && text.size < floor.text), "rendered text sizes").toEqual([]);
 }
 
 /** Records every write of data-theme on <html> from the first script of the page on, same value or not. */
@@ -168,7 +169,7 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
         return ["--canvas", "--primary"].map(name => css.getPropertyValue(name).trim());
       });
       expect(tokens).toEqual(theme === "light" ? [light, primaryLight] : [dark, primaryDark]);
-      await expectRenderedFloors(page);
+      await expectRenderedFloors(page, floorOf(experience, width === 390 ? "phone" : "desk"));
       const locale = await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).boundingBox();
       const banner = await page.getByRole("banner").boundingBox();
       expect(locale!.y).toBeGreaterThanOrEqual(banner!.y);
@@ -184,7 +185,7 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
       if (screen.key === "people") {
         await page.getByRole("button", { name: t("roster.columns.open", { count: OPTIONAL_COLUMNS.length + 2 }), exact: true }).click();
         await expect(page.getByRole("dialog", { name: t("roster.columns.title"), exact: true }).locator(".check input").first()).toBeVisible();
-        await expectRenderedFloors(page);
+        await expectRenderedFloors(page, floorOf(experience, width === 390 ? "phone" : "desk"));
       }
       expect(fixture.unexpected).toEqual([]);
     });
