@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { experiences } from "../../apps/web/src/experience/table";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { mockScreen } from "./screen";
 import { mockNavigate } from "./navigation";
@@ -9,6 +10,8 @@ import { accountReads } from "./account";
 import { screens } from "../states/registry";
 
 test.beforeAll(() => loadCatalog("ko"));
+// Start on a fresh device to exercise the default before switching styles.
+test.use({ storageState: { cookies: [], origins: [] } });
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`screen style round-trips on this device at ${width}px ${theme}`, async ({ page }, info) => {
@@ -24,9 +27,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     try {
       await page.goto("/account");
       const chooser = page.getByRole("combobox", { name: t("account.experience"), exact: true });
-      expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBe(process.env.E2E_EXPERIENCE ?? null);
+      expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBeNull();
       await expect(chooser).toHaveValue("baseline");
-      await expect(chooser.locator("option")).toHaveText([t("account.experience.baseline")]);
+      await expect(chooser.locator("option")).toHaveText(experiences.map(experience => t(experience.label)));
       await expect(chooser).toHaveAccessibleDescription(t("account.experience.device"));
       for (const unknown of ["unavailable", "constructor"]) {
         await page.evaluate(({ key, value }) => localStorage.setItem(key, value), { key: EXPERIENCE_KEY, value: unknown });
@@ -35,11 +38,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string }).experienceAtBoot)).toBeUndefined();
         await expect(page.getByRole("main")).toHaveCount(1);
       }
-      await Promise.all([page.waitForEvent("load"), chooser.selectOption("baseline")]);
-      await expect(chooser).toHaveValue("baseline");
-      await expect(page.locator("html")).toHaveAttribute("data-experience", "baseline");
-      expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBe("baseline");
-      expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string }).experienceAtBoot)).toBe("baseline");
+      for (const id of ["control-room", "warm-clear", "baseline"]) {
+        await Promise.all([page.waitForEvent("load"), chooser.selectOption(id)]);
+        await expect(chooser).toHaveValue(id);
+        await expect(page.locator("html")).toHaveAttribute("data-experience", id);
+        expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBe(id);
+        expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string }).experienceAtBoot)).toBe(id);
+      }
       await fits(page, `screen style ${width} ${theme}`);
       await page.screenshot({ path: info.outputPath("screen-style.png"), fullPage: true });
       await expectAxe(page, `screen style ${width} ${theme}`);

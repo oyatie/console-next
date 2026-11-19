@@ -45,6 +45,13 @@ test("URL views use current links and refuse temporarily unavailable destination
   expect(html).not.toContain(">unavailable</p>");
 });
 
+test("a route strip renders links without owning the screen body", () => {
+  const html = renderToStaticMarkup(<PageTabs label="Routes" items={items} selected="first" href={id => `?tab=${id}`} onSelect={() => {}} />);
+  expect(html).toContain('href="?tab=first" aria-current="page"');
+  expect(html).toContain('href="?tab=second"');
+  expect(html).not.toContain("data-page-view");
+});
+
 test("no usable URL views render no content, and empty URL views render nothing", () => {
   const renderLinks = (available: { id: string; label: string; disabledReason: string }[]) => renderToStaticMarkup(
     <PageTabs label="보기" selected="later" href={id => `?tab=${id}`} onSelect={() => {}} items={available}>{id => <p>{id}</p>}</PageTabs>,
