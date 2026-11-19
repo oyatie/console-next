@@ -47,14 +47,20 @@ test("Escape closes the merge sheet from a chosen row, as it does from the Cance
   await element(state("open")).toHaveText("closed");
 });
 
-test.each(["a chosen row", "the Cancel button"])("Escape from %s warns of unsaved input first, then closes the merge sheet", async (from) => {
+test.each([
+  ["a chosen row with none under it", "Support"],
+  ["a chosen row with its departments shown", "Sales"],
+  ["the Cancel button", "Support"],
+])("Escape from %s warns of unsaved input first, then closes the merge sheet", async (from, name) => {
   await open("in=sheet&dirty=1");
-  await row("Support").click();
-  if (from !== "a chosen row") await cancel().focus();
+  await row(name).click();
+  if (from === "the Cancel button") await cancel().focus();
+  else await element(row(name)).toBeFocused();
+  if (name === "Sales") await element(row(name)).toHaveAttribute("aria-expanded", "true");
   await page.keyboard.press("Escape");
   await element(page.getByRole("status").filter({ hasText: t("composer.unsaved") })).toBeVisible();
   await element(state("open")).toHaveText("open");
-  await element(state("to")).toHaveText("support");
+  await element(state("to")).toHaveText(name.toLowerCase());
   await page.keyboard.press("Escape");
   await element(state("open")).toHaveText("closed");
 });

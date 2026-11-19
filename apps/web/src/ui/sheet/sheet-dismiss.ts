@@ -110,7 +110,9 @@ export function useSheetDismiss<E extends HTMLElement>({ onClose, pending, dirty
       const target = event.target as HTMLElement;
       const ownDialog = layer.matches('[role="dialog"]') ? layer : layer.querySelector('[role="dialog"]');
       const targetDialog = target.closest?.('[role="dialog"]');
-      if (event.defaultPrevented || event.isComposing || target.closest?.('[role="listbox"]') || target.getAttribute?.("aria-expanded") === "true"
+      // An expanded control has a popup open that takes the key first; on a row the attribute only says the row is unfolded.
+      const popupOpen = target.getAttribute?.("aria-expanded") === "true" && target.getAttribute("role") !== "row";
+      if (event.defaultPrevented || event.isComposing || target.closest?.('[role="listbox"]') || popupOpen
         || (targetDialog && targetDialog !== ownDialog) || !isTop()) return;
       if (pending) return;
       if (dirty && !armedRef.current) {
