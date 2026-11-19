@@ -9,7 +9,8 @@ import { SETTINGS_VIEWS } from "./settings-views";
 import { APPROVALS_MODULE, moduleReady, PAYROLL_MODULE } from "../reference/onboarding/api";
 
 type Modules = AllPaths["/api/v1/onboarding/modules"]["get"]["responses"][200]["content"]["application/json"];
-type NavLink = { to: string; label: MessageId; icon: LucideIcon; module?: Modules[number]["key"]; requireReadiness?: boolean; supportApproval?: boolean; views?: readonly { to: string }[] };
+type NavCountKey = "inbox" | "approvals";
+type NavLink = { to: string; label: MessageId; icon: LucideIcon; countKey?: NavCountKey; module?: Modules[number]["key"]; requireReadiness?: boolean; supportApproval?: boolean; views?: readonly { to: string }[] };
 export type NavHub = { hub: MessageId; links: readonly NavLink[] };
 type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
 // null preserves an unanswered modules read across reloads without treating it as ready.
@@ -19,12 +20,12 @@ const REQUESTS: NavLink = { to: "/people/requests", label: "shell.link.requests"
 // One entry table; future destinations appear only when their route is served.
 export const TENANT_NAV: readonly NavHub[] = [
   { hub: "shell.hub.work", links: [
-    { to: "/", label: "shell.link.home", icon: Home },
+    { to: "/", label: "shell.link.home", icon: Home, countKey: "inbox" },
     // Keep own requests reachable until the inbox page includes the requester's tab.
     REQUESTS,
   ] },
   { hub: "shell.hub.approvals", links: [
-    { to: "/approvals", label: "shell.link.approvals", icon: ClipboardCheck, module: APPROVALS_MODULE, requireReadiness: true },
+    { to: "/approvals", label: "shell.link.approvals", icon: ClipboardCheck, countKey: "approvals", module: APPROVALS_MODULE, requireReadiness: true },
   ] },
   { hub: "shell.hub.people", links: [
     { to: "/org", label: "shell.link.org", icon: Building2, module: "org" },
