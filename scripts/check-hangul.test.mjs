@@ -295,3 +295,11 @@ test("the declared import dictionary owns header synonyms without exempting othe
   assert.equal(check(file, { ...catalogue, note: ko }).counts.other, 1);
   assert.throws(() => check(file, { fields: [{ aliases: [123] }] }), /aliases must be strings/);
 });
+
+test("the shared synthetic mock tenant JSON is pure data while any other e2e JSON or TS file remains checked", () => {
+  const file = "e2e/mock/saeon-universe.json";
+  assert.deepEqual(hangulDebt([{ file, text: JSON.stringify({ tenantName: ko }) }], []).counts, {});
+  assert.equal(hangulDebt([{ file: "e2e/mock/other.json", text: JSON.stringify({ tenantName: ko }) }], []).counts.e2e, 1);
+  assert.equal(hangulDebt([{ file: "e2e/mock/saeon.ts", text: `export const label = "${ko}";` }], []).counts.e2e, 1);
+  assert.throws(() => hangulDebt([{ file, text: "[]" }], []), /JSON object/);
+});
