@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useDeferredValue, useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { ModalOverlay, Autocomplete, Dialog, Header, Input, Keyboard, Menu, MenuItem, MenuSection, Modal, SearchField, Text } from "react-aria-components";
 import { Search } from "lucide-react";
 import { t } from "@console/i18n";
@@ -7,6 +7,17 @@ import s from "./command-palette.module.css";
 
 export type PaletteItem = { id: string; icon?: ReactNode; label: string; detail?: string; meta?: string; onAction: () => void };
 export type PaletteSection = { id: string; title: string; items: readonly PaletteItem[] };
+
+/**
+ * Drawn inside the first result while there is a search, so it runs once the list holds that result, and drawn anew
+ * whenever the text or the first result changes (people the server finds late, a paste, a deletion). Each time, the
+ * box is sent a Home key, which React Aria answers by giving the first result the list's focus: Enter opens it, the
+ * arrows move on from it. The key is made here, not pressed, so it does not touch what an input method is composing.
+ */
+function First({ box }: { box: RefObject<HTMLInputElement | null> }) {
+  useEffect(() => void box.current?.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", code: "Home", bubbles: true, cancelable: true })), [box]);
+  return null;
+}
 
 /**
  * The jump palette (⌘K, spec S1-jump): one search field over sections of places, people and tasks. The caller
@@ -25,6 +36,11 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
   empty?: ReactNode;
 }) {
   const shown = sections.filter((x) => x.items.length > 0);
+  const box = useRef<HTMLInputElement>(null);
+  // A caller's results may trail the text by a render (a deferred search), so the first result is marked only once that
+  // render has caught up with the box. Text that returns to what it was before then is still marked afresh.
+  const searched = useDeferredValue(query);
+  const first = searched.trim() && searched === query ? shown[0]?.items[0]?.id : undefined;
   return (
     <ModalOverlay className={s.overlay} isOpen={open} onOpenChange={(o) => !o && onClose()} isDismissable>
       <Modal className={s.modal}>
@@ -33,7 +49,7 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
             {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- A palette opened by its chord or its button must take typing at once. */}
             <SearchField className={s.field} aria-label={label} autoFocus>
               <Search size={18} aria-hidden />
-              <Input className={s.input} placeholder={placeholder} onKeyDownCapture={leaveImeKey} />
+              <Input ref={box} className={s.input} placeholder={placeholder} onKeyDownCapture={leaveImeKey} />
               <Keyboard className={s.kbd}>{t("uiCommandPalette.esc")}</Keyboard>
             </SearchField>
             <Menu
@@ -52,6 +68,7 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
                   <Header className={s.header}>{sec.title}</Header>
                   {sec.items.map((i) => (
                     <MenuItem key={i.id} id={i.id} textValue={`${i.label} ${i.detail ?? ""}`} className={s.item}>
+                      {i.id === first && <First key={searched} box={box} />}
                       {i.icon}
                       <Text slot="label" className={s.label}>{i.label}</Text>
                       {i.detail && <Text slot="description" className={s.detail}>{i.detail}</Text>}
