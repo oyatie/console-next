@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.rowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.footerWrap {
+  display: flex;
+  flex-direction: column;
+}

@@ -25,6 +25,7 @@
 }
 :where([data-experience]:not([data-experience="baseline"])) .title {
   font-size: var(--text-lg);
+  white-space: nowrap;
 }
 @media (--phone) {
   .secondary { display: none; }
@@ -33,6 +34,7 @@
   .meta { flex-basis: 100%; order: 1; }
   .filters { flex-basis: 100%; order: 2; }
   .grow { display: none; }
+  :where([data-experience]:not([data-experience="baseline"])) .tools { flex-basis: 100%; order: 3; }
 }
 .sub { margin: 0; color: var(--steel); font-size: var(--text-sm); }
 .crumbs { min-width: 0; font-size: var(--text-sm); color: var(--steel); }

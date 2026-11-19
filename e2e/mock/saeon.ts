@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components } from "@console/api";
-import raw from "./saeon-universe.json";
+import raw from "./saeon-universe.json" with { type: "json" };
 import {
   brnChecksumValid,
   crnChecksumValid,
@@ -318,6 +318,7 @@ export function saeonEmployeeFacets(): S["EmployeeFacets"] {
     status: [
       { value: "ACTIVE", count: counts.active },
       { value: "LEAVE", count: counts.leave },
+      { value: "PRE_HIRE", count: counts.joining },
       { value: "EXITED", count: counts.exited },
     ],
     employment_type: [
@@ -373,4 +374,176 @@ export function saeonRosterEmployees(offset = 1277, limit = 22): S["Employee"][]
       created_at: SAEON_AT,
       updated_at: SAEON_AT,
     }));
+}
+
+const SAEON_ORG_CHANGE_ID = "00000000-0000-4000-8600-000000000418";
+
+function kstDaysBetween(fromIso: string, toIso: string): number {
+  const fromMs = Date.parse(`${fromIso}T00:00:00+09:00`);
+  const toMs = Date.parse(`${toIso}T00:00:00+09:00`);
+  return Math.round((toMs - fromMs) / 86_400_000);
+}
+
+/** OpenAPI-typed `ActionInboxResponse` matching the boarded 10-row Saeon Console worklist. */
+export function saeonWorklistInbox(): S["ActionInboxResponse"] & {
+  attention_filters: { key: "all" | "approvals" | "today" | "overdue"; total: number; total_is_exact: boolean }[];
+} {
+  const { worklist, referenceDate, approval } = saeonUniverse;
+  const orgUnits = saeonOrgStructure().entities[0]?.children?.[0]?.children ?? [];
+  const items: S["ActionInboxItem"][] = worklist.items.map((row, index) => {
+    const daysRemaining = row.dueDate ? kstDaysBetween(referenceDate, row.dueDate) : null;
+    const dueTone: S["ActionInboxItem"]["dueTone"] =
+      daysRemaining != null && daysRemaining < 0
+        ? "danger"
+        : daysRemaining === 0 || row.kind === "approval"
+          ? "warn"
+          : "neutral";
+    const isPrimaryApproval = row.id === approval.documentNumber;
+    const isSecondaryApproval = row.kind === "approval" && !isPrimaryApproval;
+    const kind =
+      row.kind === "approval"
+        ? "org_change_approve"
+        : row.statutory && row.id.startsWith("ins-")
+          ? "insurance_filing"
+          : row.statutory && row.id.startsWith("exit-")
+            ? "hr_exit_settle"
+            : row.id.startsWith("exit-")
+              ? "hr_exit_confirm"
+              : row.id.startsWith("probation-")
+                ? "contract_renewal"
+                : row.id.startsWith("missing-")
+                  ? "register_review"
+                  : "hr_request";
+    const linkKind =
+      row.kind === "approval"
+        ? "org_change"
+        : kind === "insurance_filing"
+          ? "statutory"
+          : kind.startsWith("hr_exit")
+            ? "exit_case"
+            : kind === "contract_renewal" || kind === "register_review"
+              ? "employee"
+              : "change_request";
+    const linkId = isPrimaryApproval
+      ? SAEON_ORG_CHANGE_ID
+      : `00000000-0000-4000-8600-${padDigits(index + 1, 12)}`;
+
+    return {
+      id: row.id,
+      kind,
+      urg: daysRemaining != null && daysRemaining < 0 ? "now" : daysRemaining === 0 ? "today" : "wait",
+      ref: isPrimaryApproval ? approval.documentNumber : "",
+      title: row.title,
+      site: row.subject,
+      who: isPrimaryApproval ? approval.steps[0]?.actor : undefined,
+      due: row.dueDate ? `${row.dueDate}T09:00:00+09:00` : undefined,
+      due_basis: row.statutory ? "statutory" : undefined,
+      dueTone,
+      links: [{ kind: linkKind, id: linkId }],
+      done: false,
+      lane: "turn",
+      days_remaining: daysRemaining,
+      can_decide: row.kind === "approval" ? true : undefined,
+      snooze: row.kind === "approval" ? { allowed: false, reason: "blocks_others" } : { allowed: true },
+      context: {
+        ...(row.kind === "approval"
+          ? {
+              command: "approve" as const,
+              drafter: isPrimaryApproval ? approval.steps[0]?.actor : undefined,
+              reason: row.reason,
+            }
+          : { reason: row.reason }),
+        ...(isSecondaryApproval ? { is_ops: false } : {}),
+        ...(kind === "register_review" ? { register: { missing_fields: ["address"] } } : {}),
+        ...(orgUnits[0] && isPrimaryApproval ? { worksite_name: undefined } : {}),
+      },
+    };
+  });
+
+  return {
+    items,
+    total: worklist.totalCount,
+    total_is_exact: true,
+    next_cursor: null,
+    unavailable: [],
+    counts: {
+      turn: { total: worklist.totalCount, total_is_exact: true },
+      waiting: { total: 4, total_is_exact: true },
+      scheduled: { total: 2, total_is_exact: true },
+      failures: { total: 0, total_is_exact: true },
+    },
+    attention_filters: [
+      { key: "all", total: worklist.totalCount, total_is_exact: true },
+      { key: "approvals", total: worklist.approvalCount, total_is_exact: true },
+      { key: "today", total: worklist.todayCount, total_is_exact: true },
+      { key: "overdue", total: worklist.overdueCount, total_is_exact: true },
+    ],
+    upcoming: [],
+    snooze_presets: [
+      { key: "short", date: "2026-11-11" },
+      { key: "next_week", date: "2026-11-16" },
+      { key: "long", date: "2026-11-24" },
+    ],
+    has_work: true,
+    quick_starts: [],
+    as_of: `${referenceDate}T00:00:00Z`,
+    available_filters: ["turn", "waiting", "scheduled", "deadlines", "failures"],
+  };
+}
+
+/** OpenAPI-typed `OrgChangeDetail` for boarded approval document `OC-2026-0418`. */
+export function saeonApprovalOrgChange(): S["OrgChangeDetail"] {
+  const { approval } = saeonUniverse;
+  const roleKeys: S["OrgChangeApprovalRoleKey"][] = ["executive", "hr", "executive"];
+  return {
+    id: SAEON_ORG_CHANGE_ID,
+    code: approval.documentNumber,
+    kind: "REORG",
+    status: "IN_APPROVAL",
+    target: {
+      kind: "ORG_UNIT",
+      ref: "00000000-0000-4000-8400-000000000002",
+      label: approval.title,
+    },
+    effectiveDate: approval.effectiveDate,
+    reason: approval.reason,
+    headcount: approval.transferredCount,
+    siteCount: 1,
+    teamCount: 2,
+    draftedBy: "00000000-0000-4000-8000-000000000002",
+    draftedByName: approval.steps[0] ? `${approval.steps[0].actor} · ${approval.steps[0].unit}` : null,
+    createdAt: `${approval.draftedDate}T09:00:00+09:00`,
+    updatedAt: SAEON_AT,
+    proposal: [
+      {
+        op: "REASSIGN_ORG_UNIT",
+        fromOrgUnit: "00000000-0000-4000-8400-000000000003",
+        toOrgUnit: "00000000-0000-4000-8400-000000000002",
+        scope: { company: "00000000-0000-4000-8200-000000000001" },
+      },
+      {
+        op: "DISSOLVE_ORG_UNIT",
+        orgUnitId: "00000000-0000-4000-8400-000000000003",
+        mergedInto: "00000000-0000-4000-8400-000000000002",
+      },
+    ],
+    preflight: {
+      computedAt: SAEON_AT,
+      stale: false,
+      blockers: [],
+      warnings: [],
+      headcount: approval.afterHeadcount,
+      dependentsTotal: 1,
+    },
+    approvalSteps: approval.steps.map((step, index) => ({
+      id: `00000000-0000-4000-8700-${padDigits(index + 1, 12)}`,
+      stepOrder: step.step,
+      roleKey: roleKeys[index] ?? "hr",
+      decision: step.status === "DONE" ? "APPROVED" : "PENDING",
+      decidedByName: `${step.actor} · ${step.unit}`,
+      decidedAt: step.completedDate ? `${step.completedDate}T09:00:00+09:00` : undefined,
+    })),
+    settlementItems: [],
+    events: [],
+  };
 }

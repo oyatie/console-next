@@ -10,6 +10,7 @@ import {
   maskRrn,
   rrnChecksumValid,
   saeonAdminUser,
+  saeonApprovalOrgChange,
   saeonAttendanceSummary,
   saeonEmployeeFacets,
   saeonHeroUser,
@@ -17,6 +18,7 @@ import {
   saeonPayrollRow,
   saeonRosterEmployees,
   saeonUniverse,
+  saeonWorklistInbox,
   syntheticBrn,
   syntheticCrn,
   syntheticInvalidRrn,
@@ -176,6 +178,15 @@ test("worklist, approval OC-2026-0418, attendance month, and Console payroll tot
   expect(saeonUniverse.approval.effectiveDate).toBe("2026-11-17");
   expect(saeonUniverse.approval.steps).toHaveLength(3);
   expect(saeonUniverse.approval.transferredCount).toBe(12);
+
+  const inbox = saeonWorklistInbox();
+  expect(inbox.total).toBe(23);
+  expect(inbox.items).toHaveLength(10);
+  expect(inbox.items.filter(item => item.due_basis === "statutory")).toHaveLength(3);
+  expect(inbox.items.find(item => item.ref === "OC-2026-0418")?.context?.command).toBe("approve");
+  const orgChange = saeonApprovalOrgChange();
+  expect(orgChange.code).toBe("OC-2026-0418");
+  expect(orgChange.approvalSteps).toHaveLength(3);
 
   const attendance = saeonAttendanceSummary();
   expect(attendance).toEqual({

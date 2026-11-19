@@ -37,6 +37,32 @@ const SOURCE_TEXT: Record<string, MessageId> = {
   support_access: "home.part.support", workflow: "home.part.decide", dispatch: "home.inbox.source.dispatch", support: "home.inbox.source.support", work_order: "home.inbox.source.workOrder", payroll: "accessCodes.domain.pay", governance: "home.inbox.source.governance",
   org_change: "home.part.changes", hr_exit: "home.part.exits", hr_lifecycle: "home.part.failedActions", hr_requests: "home.part.requests", hr_register: "home.review.register", hr_insurance: "home.part.insurance", hr_identity: "home.review.identity", hr_branch: "home.review.unplaced", hr_unplaced: "home.review.unplaced", hr_contract: "people.lifecycle.action.CONTRACT_RENEWAL", period_unlock: "home.part.unlocks", setup: "setup.title", grant_notice: "access.grant.title",
 };
+/** Partial source failure banners shared by Classic and Console worklist views. */
+export function UnavailableBanners({
+  unavailable,
+  onRetry,
+  retrying,
+}: {
+  unavailable: readonly AttentionInboxResponse["unavailable"][number][];
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <>
+      {unavailable.map((part) => (
+        <Banner
+          tone="danger"
+          live="assertive"
+          key={part.source}
+          actions={<Button onClick={onRetry} disabled={retrying}>{t("common.retry")}</Button>}
+        >
+          {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
+        </Banner>
+      ))}
+    </>
+  );
+}
+
 /** Every surface reads this server queue; filters, ownership and deadlines stay with its sources. */
 type Props = { preview?: boolean; filter?: InboxFilter; setup?: (c: Checklist) => ReactNode; setupPhase?: boolean; setupPending?: boolean; action?: RowAction };
 export function InboxQueue(props: Props = {}) {
@@ -97,9 +123,7 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
           const noWork = !head?.has_work && unavailable.length === 0;
           if (!preview && (setupPhase || checklist) && !rows.length && !unavailable.length && !inbox.hasNextPage) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
           return <>
-            {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
-              {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
-            </Banner>)}
+            <UnavailableBanners unavailable={unavailable} onRetry={() => void inbox.refetch()} retrying={inbox.isFetching} />
             {checklist && setup?.(checklist)}
             {!checklist && noWork && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
             {rows.length > 0 ? <GroupedQueue items={preview ? rows.slice(0, HOME_PREVIEW_ROWS) : rows} action={action} extra={snooze} selected={columns ? sel : undefined} onSelect={columns ? selectItem : undefined} onOpen={focusRecord} /> : !checklist && !noWork && head && <QuietQueue page={head} filter={preview && attention !== "all" ? attention : filter} partial={unavailable.length > 0} />}
