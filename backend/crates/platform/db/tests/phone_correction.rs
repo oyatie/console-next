@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use console_kernel_core::kr::PhoneE164;
 use sqlx::PgPool;
 
 #[sqlx::test(migrations = false)]
@@ -22,7 +23,7 @@ async fn corrects_stored_phones_and_preserves_revision_history(pool: PgPool) {
         .unwrap();
     sqlx::raw_sql(
         "DO $$ DECLARE
-            org uuid; run uuid; actor uuid; employee uuid; entity uuid; workplace uuid; revision uuid;
+            org uuid; actor uuid; employee uuid; entity uuid; workplace uuid; revision uuid;
         BEGIN
             INSERT INTO organizations(slug,name) VALUES ('phone-correction','Contacts') RETURNING id INTO org;
             INSERT INTO users(org_id,display_name,phone) VALUES (org,'Owner','+82021234567') RETURNING id INTO actor;
@@ -34,9 +35,7 @@ async fn corrects_stored_phones_and_preserves_revision_history(pool: PgPool) {
             INSERT INTO employee_emergency_contacts(org_id,employee_id,seq,name,relation,phone_e164,created_by)
                 VALUES (org,employee,1,'Contact','OTHER','+820821012345678',actor);
             INSERT INTO data_import_runs(org_id,entity_type,status,source_filename,source_format,source_sha256,created_by)
-                VALUES (org,'employee_hr','PREVIEWED','sample.csv','csv',repeat('a',64),actor) RETURNING id INTO run;
-            INSERT INTO data_import_row_phones(org_id,run_id,source_key,phone_e164)
-                VALUES (org,run,'worker','+82055100080');
+                VALUES (org,'employee_hr','PREVIEWED','sample.csv','csv',repeat('a',64),actor);
             INSERT INTO legal_entities(org_id,created_change_mode,needs_confirmation)
                 VALUES (org,'MIGRATION',true) RETURNING id INTO entity;
             INSERT INTO legal_entity_revisions(org_id,legal_entity_id,version,command_id,effective_from,name,main_phone,
@@ -59,6 +58,27 @@ async fn corrects_stored_phones_and_preserves_revision_history(pool: PgPool) {
     .execute(&mut *conn)
     .await
     .unwrap();
+
+    let stored = [
+        "+8201012345678",
+        "+820821012345678",
+        "+82055100080",
+        "+82021234567",
+        "+82821012345678",
+        "+820000001",
+    ];
+    for (index, phone) in stored.iter().enumerate() {
+        sqlx::query(
+            "INSERT INTO data_import_row_phones(org_id,run_id,source_key,phone_e164)
+             SELECT r.org_id,r.id,$1,$2 FROM data_import_runs r JOIN organizations o ON o.id=r.org_id
+             WHERE o.slug='phone-correction'",
+        )
+        .bind(index.to_string())
+        .bind(phone)
+        .execute(&mut *conn)
+        .await
+        .unwrap();
+    }
 
     sqlx::query("SET SESSION AUTHORIZATION console_app")
         .execute(&mut *conn)
@@ -89,9 +109,20 @@ async fn corrects_stored_phones_and_preserves_revision_history(pool: PgPool) {
         )
     );
 
-    let staged: String = sqlx::query_scalar("SELECT phone_e164 FROM data_import_row_phones p JOIN organizations o ON o.id=p.org_id WHERE o.slug='phone-correction'")
-        .fetch_one(&mut *conn).await.unwrap();
-    assert_eq!(staged, "+8255100080");
+    let staged: Vec<String> = sqlx::query_scalar(
+        "SELECT phone_e164 FROM data_import_row_phones p JOIN organizations o ON o.id=p.org_id
+         WHERE o.slug='phone-correction' ORDER BY source_key",
+    )
+    .fetch_all(&mut *conn)
+    .await
+    .unwrap();
+    assert_eq!(staged.len(), stored.len());
+    for (raw, actual) in stored.into_iter().zip(staged) {
+        match PhoneE164::parse(raw) {
+            Ok(phone) => assert_eq!(actual, phone.as_str()),
+            Err(_) => assert_eq!(actual, raw),
+        }
+    }
     let history: Vec<(String, String, String, Option<String>, String)> = sqlx::query_as(
         "SELECT e.main_phone,w.phone,w.fax,w.mobile,r.name FROM legal_entity_revisions e
             JOIN organizations o ON e.org_id=o.id
@@ -138,12 +169,22 @@ async fn corrects_stored_phones_and_preserves_revision_history(pool: PgPool) {
                     ELSE to_jsonb('+82055100080'::text) END;
                 BEGIN
                     EXECUTE format('INSERT INTO %I SELECT (jsonb_populate_record(r,$1)).* FROM %I r
-                        WHERE org_id=(SELECT id FROM organizations WHERE slug=%L) LIMIT 1',
+                        WHERE org_id=(SELECT id FROM organizations WHERE slug=%L)
+                        ORDER BY (to_jsonb(r)->>''version'')::bigint DESC NULLS LAST LIMIT 1',
                         field.rel, field.rel, 'phone-correction') USING jsonb_build_object(field.col,val);
                     RAISE EXCEPTION 'Legacy write accepted on %.%', field.rel, field.col;
                 EXCEPTION WHEN check_violation THEN
                     IF SQLERRM <> 'Noncanonical Korean phone' THEN RAISE; END IF;
                 END;
+                IF field.rel IN ('users','employee_employment_profiles','employee_emergency_contacts','data_import_row_phones') THEN
+                    BEGIN
+                        EXECUTE format('UPDATE %I SET %I=$1 WHERE org_id=(SELECT id FROM organizations WHERE slug=%L)',
+                            field.rel, field.col, 'phone-correction') USING '+82821012345678'::text;
+                        RAISE EXCEPTION 'Legacy update accepted on %.%', field.rel, field.col;
+                    EXCEPTION WHEN check_violation THEN
+                        IF SQLERRM <> 'Noncanonical Korean phone' THEN RAISE; END IF;
+                    END;
+                END IF;
             END LOOP;
         END $$;"#,
     ).execute(&mut *conn).await.unwrap();
