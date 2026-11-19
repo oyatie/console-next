@@ -23,7 +23,8 @@ beforeAll(async () => {
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 // October 2026 is drawn in five weeks, from Sunday 27 September to Saturday 31 October. Its first day is a Thursday.
-const open = async (query = "") => {
+const open = async (query = "", size = { width: 1280, height: 720 }) => {
+  await page.setViewportSize(size);
   await page.goto(`${server.resolvedUrls!.local[0]}month-test${query}`);
   await element(page.getByRole("grid", { name: "October 2026" })).toBeVisible();
 };
@@ -36,6 +37,11 @@ const on = (date: string) => expect.poll(() => page.evaluate(() => ({
 /** The last key pressed, and whether the grid cancelled its default ("taken") or not ("left"). */
 const key = (text: string) => element(page.locator("#key")).toHaveText(text);
 const press = async (...keys: string[]) => { for (const k of keys) await page.keyboard.press(k); };
+// A viewport shorter than the fixture, so the page has room to scroll both ways from 40.
+const SHORT = { width: 390, height: 420 };
+const scrollPart = () => page.evaluate(() => scrollTo(0, 40));
+/** Where the page is scrolled to, read two frames on so that a scroll the last key started has moved it. */
+const scrolled = () => page.evaluate(() => new Promise<number>(done => requestAnimationFrame(() => requestAnimationFrame(() => done(scrollY)))));
 const tabIn = async () => {
   await page.getByRole("button", { name: "Before" }).focus();
   await press("Tab");
@@ -43,11 +49,13 @@ const tabIn = async () => {
 };
 
 test("Up in the first week stays on the day, from the tab stop and from a day that was clicked, and does not scroll the page", async () => {
-  await open();
+  await open("", SHORT);
   await tabIn();
+  await scrollPart();
   await press("ArrowUp");
   await on("2026-10-01");
   await key("ArrowUp taken");
+  expect(await scrolled()).toBe(40);
   await day("2026-09-29").click();
   await on("2026-09-29");
   await press("ArrowUp");
@@ -55,13 +63,15 @@ test("Up in the first week stays on the day, from the tab stop and from a day th
 });
 
 test("Down in the last week stays on the day, reached by arrows and by a click, and does not scroll the page", async () => {
-  await open();
+  await open("", SHORT);
   await tabIn();
   await press("ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown");
   await on("2026-10-29");
+  await scrollPart();
   await press("ArrowDown");
   await on("2026-10-29");
   await key("ArrowDown taken");
+  expect(await scrolled()).toBe(40);
   await day("2026-10-26").click();
   await on("2026-10-26");
   await press("ArrowDown");
