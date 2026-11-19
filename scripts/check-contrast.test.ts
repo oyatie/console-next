@@ -143,6 +143,14 @@ test("with no experience file the gate reports the base file alone", () => {
   expect(again()).toEqual([bare.status, bare.stdout, bare.stderr]);
 });
 
+test.each(["light", "dark"])("experience link underlines keep the base contrast against the %s surface", (mode) => {
+  const css = readFileSync(tokens, "utf8");
+  const r = run(css, { calm: blocks("calm", mode === "light" ? "--primary-bd: var(--border);" : "", mode === "dark" ? "--primary-bd: var(--border);" : "--primary-bd: #2f4694;") });
+  expect(r.status).toBe(1);
+  expect(r.stderr).toContain(`experience calm, ${mode}: --primary-bd/--surface`);
+  expect(r.stderr).toContain("below baseline");
+});
+
 test("a syntax error in an experience file is reported with the file's name", () => {
   const r = run(readFileSync(tokens, "utf8"), { calm: ':root[data-experience="calm"] {\n  --row-h: 36px;\n}}' });
   expect(r.status).toBe(1);

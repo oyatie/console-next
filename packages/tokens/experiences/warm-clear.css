@@ -1,0 +1,64 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Status roles retain the shared grammar; chart categories retain the shared palette. */
+:root[data-experience="warm-clear"] {
+  --canvas: #f6f1e9;
+  --surface: #ffffff;
+  --muted: #faf6f0;
+  --border: #e6ded2;
+  --border-soft: #e6ded2;
+  --ink: #211c16;
+  --steel: #574e43;
+  --faint: #6b6156;
+  --control-border: #8c8172;
+  --primary: #17694f;
+  --primary-hover: #0e523d;
+  --primary-soft: #e1f0e9;
+  --primary-bd: #82b59f; /* Derived, not drawn. */
+  --on-primary: #ffffff;
+  --danger-tx: #9c1f18;
+  --danger-bg: #fce6e1;
+  --danger-solid: #b3261e;
+  --info-bg: #e6eef8;
+  --info-tx: #1f4e8c;
+  --accent-bg: #ffe8cf;
+  --accent-tx: #8a480c;
+  /* Shared chart marks adjusted for 3:1 on the warm and cool grounds. */
+  --chart-cat-1: #0c85d5; --chart-cat-4: #858326; --chart-cat-6: #5f6b79;
+  --shadow: 0 1px 2px rgba(64, 48, 24, 0.06);
+  --shadow-pop: 0 1px 2px rgba(64, 48, 24, 0.05), 0 10px 28px rgba(64, 48, 24, 0.08);
+  --scrim: rgba(33, 28, 22, 0.32);
+  --text-xs: 14px; --text-sm: 15px; --text-body: 17px; --text-lg: 20px; --text-xl: 24px; --text-2xl: 32px;
+  --fw-body: 450; --fw-medium: 550; --fw-strong: 700; --lh-base: 1.5;
+  --radius-sm: 8px; --radius: 14px; --radius-lg: 20px;
+  /* Compact rows keep the shared virtual grid's 32px geometry. */
+  --row-h: 56px; --row-h-compact: 32px; --control-h-sm: 36px; --target: 44px; --target-touch: 48px; --topbar-h: 72px;
+}
+
+:root[data-experience="warm-clear"][data-theme="dark"] {
+  --canvas: #1d1914; /* Derived, not drawn. */
+  --surface: #262019; /* Derived, not drawn. */
+  --muted: #30281f; /* Derived, not drawn. */
+  --border: #514537; /* Derived, not drawn. */
+  --border-soft: #3d3328; /* Derived, not drawn. */
+  --ink: #f5eee3; /* Derived, not drawn. */
+  --steel: #d5c5b1; /* Derived, not drawn. */
+  --faint: #bdae9b; /* Derived, not drawn. */
+  --control-border: #a08e77; /* Derived, not drawn. */
+  --primary: #82d6b4; /* Derived, not drawn. */
+  --primary-hover: #a7e8cc; /* Derived, not drawn. */
+  --primary-soft: #173c2e; /* Derived, not drawn. */
+  --primary-bd: #407b61; /* Derived, not drawn. */
+  --on-primary: #10261c; /* Derived, not drawn. */
+  --danger-tx: #ffb4a6; /* Derived, not drawn. */
+  --danger-bg: #43231c; /* Derived, not drawn. */
+  --danger-solid: #f79c89; /* Derived, not drawn. */
+  --info-bg: #1d3045; /* Derived, not drawn. */
+  --info-tx: #accff8; /* Derived, not drawn. */
+  --accent-bg: #46321d; /* Derived, not drawn. */
+  --accent-tx: #ffd0a0; /* Derived, not drawn. */
+  --chart-cat-1: #29c1f6; --chart-cat-4: #b1bb27; /* Derived, not drawn; shared chart palette. */
+  --chart-cat-6: #8b9aab; /* Derived, not drawn. */
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4); /* Derived, not drawn. */
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.55); /* Derived, not drawn. */
+  --scrim: rgba(14, 11, 8, 0.6); /* Derived, not drawn. */
+}
