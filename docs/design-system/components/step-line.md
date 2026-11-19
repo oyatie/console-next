@@ -106,8 +106,9 @@ of the component's folder for `isComposing`, `keyCode`, `229` and `composition` 
 - **What a step reads as:** a `done` or a `waiting` step reads as an image named with its state, then its label.
   The names are `uiStepLine.state.done` and `uiStepLine.state.waiting`: see Copy rules. The current step reads as
   its label alone: its box is hidden from a screen reader, and so is the box of a step whose `state` the
-  component does not know. The check and the drawn number are never read. The place of a step comes from the
-  order of the list.
+  component does not know. The check is hidden too: its `<svg>` carries `aria-hidden="true"`. The number of a
+  `waiting` step is generated content inside the image. ARIA makes what an image holds presentational; whether a
+  screen reader speaks the number was not checked. The place of a step comes from the order of the list.
 - **Text:** the state adds no text to a step. The text of every step is its label alone.
 - **Announced:** nothing. The line has no live region. A step that becomes current or done is not announced.
 
@@ -139,8 +140,8 @@ These tests assert its output. They were found by searching `e2e` and `apps/web/
   step of a finished import and every stage of an issued payroll run holds an image named
   `uiStepLine.state.done`, and every stage of a void run one named `uiStepLine.state.waiting`. A calculated run
   has two done stages, a current stage with no such image and a hidden box, and three waiting stages. The text
-  of each step is its label alone. The box of a done stage holds an `<svg>`, and the box of every other stage
-  draws its number.
+  of each step is its label alone. The box of a done stage holds an `<svg>`, the first of them with
+  `aria-hidden="true"`, and the box of every other stage draws its number.
 - `features/payroll/ui/run-header.browser.test.tsx`, for a staged, an issued and a void run: the list is found by
   its name and has six items, with no button or link inside. One item is current for the staged run and none for
   the other two. All six are `done` for the issued run and none for the other two.
@@ -188,8 +189,8 @@ title row, which wraps too. So there the line shares a wrapping row with any oth
   through the caller. The `en` catalog is the source and the `ko` catalog must define every id.
 - The callers name the list with `bulk.page.steps`, `renew.steps`, `import.steps` and `payroll.stages.title`. The
   gallery uses `common.steps`.
-- A step's label is a word or two that names the step. It must make sense without its number: the number is not
-  read out.
+- A step's label is a word or two that names the step. It must make sense without its number: the number is drawn
+  by the stylesheet and is not part of the step's text.
 - The gallery's sample labels are in the gallery catalog, which production builds leave out.
 
 ## Props

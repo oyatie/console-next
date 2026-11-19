@@ -64,6 +64,8 @@ test("a run in progress reads done, current and waiting stages apart, the boxes 
   expect(await boxes.evaluateAll(all => all.map(box => box.querySelector("svg") ? "check" : getComputedStyle(box, "::before").content)))
     .toEqual(["check", "check", '"3"', '"4"', '"5"', '"6"']);
   await element(boxes.nth(2)).toHaveAttribute("aria-hidden", "true");
+  // The check is not read: the state of a done stage is the name of its box.
+  await element(boxes.first().locator("svg")).toHaveAttribute("aria-hidden", "true");
   const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
   expect(violations.map(v => `${v.id}: ${v.nodes.map(n => n.target).join(" ")}`)).toEqual([]);
 });
