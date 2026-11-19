@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Ban } from "lucide-react";
+import { isImeKey } from "../../lib/pure/ime";
 import { singleKey } from "../../lib/pure/keys";
 import { singleKeysOn } from "../../lib/prefs";
 import { Kbd } from "../kbd/kbd";
@@ -34,7 +35,7 @@ export function ActionGrid({ label, head, groups, tail, foot, onPick, onClose }:
     box.current?.querySelector<HTMLElement>("button:not([aria-disabled])")?.focus();
     const key = (e: KeyboardEvent) => {
       const { all: items, onPick: pick, onClose: close } = latest.current;
-      if (e.key === "Escape") return close();
+      if (e.key === "Escape" && !isImeKey(e)) return close();
       if (e.altKey || e.ctrlKey || e.isComposing || (singleKey(e) && !singleKeysOn())) return;
       const chord = e.metaKey ? `⌘${e.key.toUpperCase()}` : e.key.toUpperCase();
       const hit = items.find((i) => i.keys === chord && !i.disabled);

@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { isImeKey } from "../../lib/pure/ime";
+import { isImeKey, leaveImeKey } from "../../lib/pure/ime";
 import { at, indexOf, inRect, moveRange, rectIn, spanIn, type Cell, type Range } from "../sheet-grid/range";
 import s from "./person-day-grid.module.css";
 
@@ -211,6 +211,7 @@ function Editor({ value, label, onChange, onCommit }: { value: string; label: st
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onKeyDownCapture={leaveImeKey}
       onKeyDown={(e) => {
         if (isImeKey(e)) return;
         e.stopPropagation();
