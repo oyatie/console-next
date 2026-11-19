@@ -2,17 +2,18 @@
 /* oxlint-disable react/jsx-no-literals -- Browser-only component fixture. */
 import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
-import { monthOf, monthWeeks, weekday } from "../../features/attendance/domain/month";
+import { addDays } from "../date/days";
 import { MonthGrid } from "./month-grid";
 import "../../app.css";
 
-const MONTH = "2026-10";
-const WEEKS = monthWeeks(MONTH);
+// The weeks the attendance calendar's month helper gives for October 2026: Sunday 27 September to Saturday 31 October.
+const WEEKS = [0, 1, 2, 3, 4].map(w => Array.from({ length: 7 }, (_, d) => addDays("2026-09-27", w * 7 + d)));
 const HOLIDAY: Record<string, string> = { "2026-10-03": "National Foundation Day", "2026-10-09": "Hangul Day" };
+const sunday = (d: string) => WEEKS.some(w => w[0] === d);
 const choose = new URLSearchParams(location.search).has("choose");
 
 /**
- * October 2026 as the attendance calendar passes it: Sunday-first weeks from the same helper, the neighbouring months'
+ * October 2026 with the props the attendance calendar passes: Sunday-first weeks of seven, the neighbouring months'
  * days muted, a tone and its words on rest days and holidays, and nothing to choose. `?choose` adds a selection, as the
  * gallery does. `#key` names the last key that reached the window and says whether its default was cancelled.
  */
@@ -31,9 +32,9 @@ export function Fixture() {
         label="October 2026"
         weeks={WEEKS}
         weekdays={["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]}
-        inMonth={d => monthOf(d) === MONTH}
-        tone={d => (HOLIDAY[d] ? "holiday" : weekday(d) === 0 ? "rest" : undefined)}
-        cell={d => HOLIDAY[d] ?? (weekday(d) === 0 ? "Weekly rest day" : null)}
+        inMonth={d => d.startsWith("2026-10")}
+        tone={d => (HOLIDAY[d] ? "holiday" : sunday(d) ? "rest" : undefined)}
+        cell={d => HOLIDAY[d] ?? (sunday(d) ? "Weekly rest day" : null)}
         {...(choose ? { selected: day, onSelect: setDay } : {})}
       />
       <button type="button">After</button>
