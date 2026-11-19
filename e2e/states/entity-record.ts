@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import type { Page } from "@playwright/test";
 import type { paths } from "@console/api";
 import { failure, id, LONG_NAME } from "../mock/fixtures";
@@ -28,6 +29,7 @@ export function entityRecord(state: EntityRecordState): Entity {
 }
 
 export async function mockEntityRecord(page: Page, state: EntityRecordState) {
+  if (state === "failed") await installFaultClock(page);
   // shortcut: reuse the org shell until UI-DECOUPLE adds this record to the shared Screen union.
   const shell = await mockScreen(page, screens[2], "populated");
   const entity = entityRecord(state);

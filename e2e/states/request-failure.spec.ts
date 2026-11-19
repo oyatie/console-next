@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { faultAttempts, installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
@@ -47,6 +48,7 @@ for (const row of [
   { path: "/statutory?tab=register", read: "/api/v1/statutory/workplaces" },
   { path: "/", read: "/api/v1/org-structure" },
 ] as const) test(`${row.path}: a read outage offers retry and reference without command uncertainty`, async ({ page }) => {
+  await installFaultClock(page);
   const fixture = await mockScreen(page, screens[2], "populated");
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
   if (row.path === "/") {
@@ -68,7 +70,7 @@ for (const row of [
   try {
     await page.goto(row.path);
     const main = page.getByRole("main");
-    await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "주 메뉴" })).toBeVisible();
     await expect(main).not.toContainText(t("requestOutcome.checking"));
     await expect(main).not.toContainText("walk: simulated outage");
@@ -76,6 +78,7 @@ for (const row of [
     await expect(main.locator(`[data-support-reference="${id(98)}"]`)).toBeVisible();
     await expectAxe(page, `${row.path} read outage`);
     const before = attempts;
+    expect(before).toBe(faultAttempts);
     failing = false;
     await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
     await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toHaveCount(0);
