@@ -4,6 +4,7 @@ import { chromium, type Browser, type Page } from "@playwright/test";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { mediaQueries } from "./breakpoints";
+import { floorOf } from "./experience-floors";
 import { Button, Check, IconButton, ToggleButton } from "./button/button";
 import { RowInput } from "./record/inline";
 import classes from "./record/record.module.css";
@@ -32,11 +33,6 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await browser?.close(); });
 
-// The smallest text and the smallest control a style may draw, in px, on a desk and on a phone. Control room's are the
-// sizes its boards draw, as its owner ruled; a style with no entry keeps the first floor, 14 and 32 at every width.
-const FLOORS: Record<string, Record<"desk" | "phone", { text: number; control: number }>> = {
-  "control-room": { desk: { text: 12, control: 24 }, phone: { text: 13, control: 44 } },
-};
 const WIDTHS = { desk: 1280, phone: 390 } as const;
 
 const measure = (experience: string, theme: string) => page.evaluate(({ experience, theme }) => {
@@ -56,7 +52,7 @@ const measure = (experience: string, theme: string) => page.evaluate(({ experien
 
 for (const file of experiences) for (const theme of ["light", "dark"]) for (const form of ["desk", "phone"] as const) test(`${file} ${theme} preserves rendered control and text floors on a ${form}`, async () => {
   const experience = file.slice(0, -4);
-  const floor = FLOORS[experience]?.[form] ?? { text: 14, control: 32 };
+  const floor = floorOf(experience, form);
   await page.setViewportSize({ width: WIDTHS[form], height: 800 });
   const sizes = await measure(experience, theme);
   expect(sizes).toHaveLength(5);
