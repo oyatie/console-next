@@ -156,7 +156,8 @@ jobs:
       - name: Run duration shard
         run: node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
       - name: Verify SeaweedFS compliance retention
-        if: matrix.shard == 1
+        # Needs no database: a red database shard must not skip the retention proof.
+        if: ${{ !cancelled() && matrix.shard == 1 }}
         working-directory: backend
         env:
           AWS_ACCESS_KEY_ID: ${{ github.run_id }}
