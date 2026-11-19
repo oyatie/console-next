@@ -107,17 +107,18 @@ stop.
 |---|---|
 | Tab, Shift+Tab | Moves into the grid, onto the tab stop, and out again. Content the caller put in a cell that can take focus is a tab stop of its own. |
 | Left, Right | Moves one day. Right on the last day of a week goes to the first day of the next week, and Left the other way. |
-| Up, Down | Moves seven days. |
+| Up, Down | Moves seven days, to the same weekday of the week before or the week after. Up in the first week and Down in the last week move nothing. |
 | Home, End | Moves to the first or the last day of the week. |
 | Enter, Space | With `onSelect`: calls it with the focused date. Without it: nothing, and the key keeps its default, so Space scrolls the page. |
 | Any other key | Left alone. |
 
 - Moves stop at the first and the last day shown. They do not change the month: there is no Page Up or Page
   Down, and nothing is called when a move runs off the grid.
-- A move that would run off the grid lands on the first or the last day shown. Up in the first week therefore
-  goes to the first day of that week, not to the same weekday, and Down in the last week goes to its last day.
+- An arrow key with no day to land on moves nothing. Up in the first week and Down in the last week leave focus
+  on the same day, and so do Left on the first day shown and Right on the last.
 - Focus moves onto days outside the month like any other day.
-- Every key the grid handles has its default prevented.
+- Every key the grid handles has its default prevented, an arrow that moves nothing included, so the page does
+  not scroll at the grid's edges.
 - The handler reads no modifier key. An arrow, Home or End pressed with Ctrl, Alt, Meta or Shift moves focus the
   same way, and the handler prevents the default of that combination too.
 - A key pressed inside focusable content in a cell reaches the same handler, because the handler is on the cell
@@ -131,8 +132,9 @@ The component takes no text. It has one `keydown` handler, with no `isComposing`
 no composition event. It compares `key` with the names above, so a key that the Korean input method reports under
 another name is left alone.
 
-No test was found that presses a key in this grid. The unit test renders to a string. A search of `e2e` for the
-grid's label id and for `data-date` found one spec, and it checks only that the grid is visible.
+The browser test presses these keys in Chromium, on a grid drawn the way the attendance calendar passes it and on
+one that can be chosen from: see the table of tests below. The unit test renders to a string. A search of `e2e`
+for the grid's label id and for `data-date` found one spec, and it checks only that the grid is visible.
 
 ## Accessibility contract
 
@@ -203,6 +205,7 @@ What tests it:
 | Test | Covers |
 |---|---|
 | `apps/web/src/ui/month-grid/month-grid.test.tsx` | That there is one tab stop, on the selected day or else the month's first day; that a day outside the month carries `data-out`; that a holiday carries its tone and the caller's words. |
+| `apps/web/src/ui/month-grid/month-grid.browser.test.tsx` | In Chromium, with the attendance calendar's October 2026: that Up in the first week and Down in the last week leave focus on the same day, from the tab stop and after a click, with the default prevented; that Up and Down keep the weekday; that Left and Right cross a week's end and stop at the first and the last day shown; Home and End; an arrow and Home with a modifier; that Page Up, Page Down, a letter and, with nothing to choose, Enter and Space are left to the browser; that Tab enters and leaves in one step and comes back to the day last focused; that with `onSelect` Enter, Space and a click choose the day. |
 | `e2e/states/attendance-schedule.spec.ts` | The attendance calendar in each of its states at 1440 px and 390 px, ending with the fit check and an axe scan. |
 | `e2e/mock/attendance-calendar-stability.spec.ts` | That the grid, found by its name, stays on screen when the history read beside it fails and then recovers. |
 

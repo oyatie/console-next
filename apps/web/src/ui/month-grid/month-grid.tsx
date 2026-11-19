@@ -8,8 +8,8 @@ export type DayTone = "holiday" | "rest";
 
 /**
  * A month as a grid of weeks (A2 calendar): one row per week, one cell per day, the neighbouring months' days muted so the
- * grid keeps its shape. WAI-ARIA grid with a roving focus: arrows move by a day or a week, Home / End to the week's
- * ends, Enter or Space (or a click) chooses the day. The caller draws each cell (`cell`) and passes the weeks
+ * grid keeps its shape. WAI-ARIA grid with a roving focus: arrows move by a day or a week and stop at the grid's edges,
+ * Home / End to the week's ends, Enter or Space (or a click) chooses the day. The caller draws each cell (`cell`) and passes the weeks
  * (Sunday-first dates) and the weekday headers, so the component knows no calendar rule of its own.
  */
 export function MonthGrid({ label, weeks, weekdays, inMonth, cell, tone, selected, onSelect }: {
@@ -37,8 +37,10 @@ export function MonthGrid({ label, weeks, weekdays, inMonth, cell, tone, selecte
   const key = (e: KeyboardEvent, d: string) => {
     const i = flat.indexOf(d);
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
-    if (step !== undefined) move(i + step);
-    else if (e.key === "Home") move(i - (i % 7));
+    if (step !== undefined) {
+      // An arrow with no day to land on moves nothing, so Up and Down never leave their weekday.
+      if (flat[i + step]) move(i + step);
+    } else if (e.key === "Home") move(i - (i % 7));
     else if (e.key === "End") move(i - (i % 7) + 6);
     else if ((e.key === "Enter" || e.key === " ") && onSelect) onSelect(d);
     else return;
