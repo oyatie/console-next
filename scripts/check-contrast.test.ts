@@ -104,6 +104,34 @@ test("an experience's light block applies in both themes and its dark block over
   expect(own.problems).toEqual([expect.stringContaining("--b is a colour set for light only")]);
 });
 
+test("an experience file may hold one phone block: sizes only, after the light block, none of them set for dark", async () => {
+  const { experienceBlocks } = await import(/* @vite-ignore */ fileURLToPath(new URL("./check-ds-refs.mjs", import.meta.url)));
+  const light = ':root[data-experience="calm"]', dark = `${light}[data-theme="dark"]`;
+  const blocks = `${light} { --row-h: 28px; --ink: #111; } ${dark} { --ink: #eee; }`;
+  const read = (css: string) => experienceBlocks(css, "calm", new Set(["--ink"]));
+  const ok = read(`${blocks} @media (--phone) { /* Touch sizes. */ ${light} { --row-h: 48px; --target: 44px; } }`);
+  expect(ok.problems).toEqual([]);
+  expect(ok.phone).toEqual({ "--row-h": "48px", "--target": "44px" });
+  expect(ok.light["--row-h"]).toBe("28px");
+  expect(read(blocks).phone).toEqual({});
+
+  const refused = (css: string) => read(css).problems;
+  // A colour: by its value, and by a name the base sets for dark however the value is written.
+  expect(refused(`${blocks} @media (--phone) { ${light} { --edge: #222; --ink: var(--edge); } }`)).toEqual([
+    expect.stringContaining("--edge is a colour in the phone block"), expect.stringContaining("--ink is a colour in the phone block")]);
+  // The dark block outranks the phone block, so a size it also sets would never take its phone value in dark.
+  expect(refused(`${light} { --row-h: 28px; } ${dark} { --row-h: 30px; } @media (--phone) { ${light} { --row-h: 48px; } }`)).toEqual([
+    expect.stringContaining("--row-h is set in the dark block and in the phone block")]);
+  // The phone block ties the light block on specificity: only its place after it makes it win.
+  expect(refused(`@media (--phone) { ${light} { --row-h: 48px; } } ${blocks}`)).toEqual([expect.stringContaining("the phone block comes before")]);
+  expect(refused(`${blocks} @media (--phone) { ${light} { --row-h: 48px; } } @media (--phone) { ${light} { --target: 44px; } }`)).toEqual([expect.stringContaining("a second phone block")]);
+  // Any other query, and anything in the phone block that is not the light selector with tokens.
+  expect(refused(`${blocks} @media (--small) { ${light} { --row-h: 48px; } }`)).toEqual([expect.stringContaining("@media (--small) is not one of the experience's blocks")]);
+  expect(refused(`${blocks} @media (--phone) { ${dark} { --row-h: 48px; } }`)).toEqual([expect.stringContaining("is not the phone block's one rule")]);
+  expect(refused(`${blocks} @media (--phone) { ${light} { height: 48px; --row-h: 48px !important; } }`)).toEqual([
+    expect.stringContaining("height is not a token"), expect.stringContaining("--row-h is marked !important")]);
+});
+
 test("the pair list runs per experience and per theme, and a failure names the experience", () => {
   const css = readFileSync(tokens, "utf8");
   const checks = (r: { stdout: string }) => Number(r.stdout.match(/contrast: (\d+) checks/)![1]);
@@ -141,6 +169,14 @@ test("with no experience file the gate reports the base file alone", () => {
   mkdirSync(path.join(experiences, "shelf.css"), { recursive: true });
   writeFileSync(path.join(experiences, "notes.txt"), ":root { --ink: var(--surface); }");
   expect(again()).toEqual([bare.status, bare.stdout, bare.stderr]);
+});
+
+test.each(["light", "dark"])("experience link underlines keep the base contrast against the %s surface", (mode) => {
+  const css = readFileSync(tokens, "utf8");
+  const r = run(css, { calm: blocks("calm", mode === "light" ? "--primary-bd: var(--border);" : "", mode === "dark" ? "--primary-bd: var(--border);" : "--primary-bd: #2f4694;") });
+  expect(r.status).toBe(1);
+  expect(r.stderr).toContain(`experience calm, ${mode}: --primary-bd/--surface`);
+  expect(r.stderr).toContain("below baseline");
 });
 
 test("a syntax error in an experience file is reported with the file's name", () => {

@@ -275,6 +275,9 @@ export async function startOperations(admin: Page, audit = false, c: C = plain) 
   await expect(setupRail(admin)).toBeHidden();
 }
 
+/** The executive colleague every setup tenant invites. */
+export const EXEC_NAME = "이임원";
+
 /**
  * A fresh tenant in its setup phase with its admin and one executive colleague, before any entity or workplace. The
  * colleague holds a tenant-made 조회·결재 role over 회사 전체 (no preset roles), or nothing with `execAccess` "none".
@@ -290,7 +293,7 @@ export async function tenantBeforeSetup(browser: Browser, slug: string, name: st
   await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v, audit), undefined, audit);
 
-  const exec = await firstSignIn(browser, await inviteAccount(admin, "이임원", execAccess, audit), undefined, audit);
+  const exec = await firstSignIn(browser, await inviteAccount(admin, EXEC_NAME, execAccess, audit), undefined, audit);
   return { admin, exec };
 }
 

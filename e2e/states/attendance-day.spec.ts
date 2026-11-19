@@ -103,6 +103,11 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
   const main = await page.locator("#main").evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
   expect(scroll.scroll).toBeGreaterThan(scroll.client);
   expect(main.scroll).toBeLessThanOrEqual(main.client + 1);
+  await scroller.hover();
+  await page.mouse.wheel(0, 600);
+  await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  await page.locator("#main").evaluate(el => { el.scrollTop = el.scrollHeight; });
+  expect(await page.locator("#main").evaluate(el => el.scrollTop)).toBeLessThanOrEqual(1);
   const head = scroller.locator("[data-board-head]");
   if (width === 1440) {
     await expect(head).toBeVisible();

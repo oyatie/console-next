@@ -92,11 +92,12 @@ test.each([403, 429, 500])("a refused or failed reveal (%s) returns no value", a
   expect(await page.getByRole("dialog").locator('[role="alert"], [role="status"]').innerText()).not.toBe("");
 });
 
-test("Escape masks a revealed value immediately", async () => {
+// An Escape pressed while a syllable is composing is the input method's: the value stays shown until a plain one.
+test.each([{ composing: { isComposing: true }, shown: 1 }, { composing: { keyCode: 229 }, shown: 1 }, { composing: undefined, shown: 0 }])("Escape masks a revealed value immediately, unless the input method owns it: $composing", async ({ composing, shown }) => {
   await page.route("**/api/v1/employees/person/rrn/reveal", (route) => route.fulfill({ json: { employee_id: "person", rrn: secret, display_seconds: 60 } }));
   await ask(); await page.getByRole("timer").waitFor();
-  await page.keyboard.press("Escape");
-  expect(await page.getByText(secret, { exact: true }).count()).toBe(0);
+  await (composing ? page.evaluate(init => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, ...init })), composing) : page.keyboard.press("Escape"));
+  expect(await page.getByText(secret, { exact: true }).count()).toBe(shown);
 });
 
 

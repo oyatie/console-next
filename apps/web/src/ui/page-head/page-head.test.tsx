@@ -3,6 +3,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { PageHead } from "./page-head";
 import { PageHeadActions } from "./page-head-actions";
+import { PageHeadingLevel, PagePhase } from "../page/page-scope";
+
+test("a primary head leaves the shared hold to the shell and consumes its phase slot", () => {
+  const tabs = "Views", phase = "Setup";
+  const head = <PageHead title="Employees" tabs={<nav>{tabs}</nav>} />;
+  const slot = <aside>{phase}</aside>;
+  expect(renderToStaticMarkup(<PagePhase value={{ slot, settled: false }}>{head}</PagePhase>)).toContain("<h1");
+  const html = renderToStaticMarkup(<PagePhase value={{ slot, settled: true }}>{head}</PagePhase>);
+  expect(html).toContain("<h1");
+  expect(html.indexOf("Setup")).toBeLessThan(html.indexOf("Views"));
+  const embedded = renderToStaticMarkup(<PagePhase value={{ slot: null, settled: false }}><PageHeadingLevel value={2}><PageHead title="Section" /></PageHeadingLevel></PagePhase>);
+  expect(embedded).toContain("<h2");
+});
 
 test("the primary action, as-of control and secondary actions have distinct head slots", () => {
   const label = "Register";

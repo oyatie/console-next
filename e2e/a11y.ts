@@ -39,8 +39,7 @@ export async function expectAxe(page: Page, context: string, options: { include?
 
 /** At phone width (390px) no screen scrolls sideways: neither the page nor the main column. */
 export async function fits(page: Page, screen: string) {
-  const overflow = await page.evaluate(() => {
-    const main = document.querySelector(".main")!;
+  const overflow = await page.getByRole("main").first().evaluate(main => {
     return { page: document.scrollingElement!.scrollWidth - innerWidth, main: main.scrollWidth - main.clientWidth };
   });
   expect(overflow, `${screen} scrolls sideways at 390px`).toEqual({ page: 0, main: 0 });

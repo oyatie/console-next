@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect } from "@playwright/test";
 import { test } from "../locale-fixture";
 import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
@@ -20,6 +21,7 @@ for (const locale of LOCALES) for (const width of [1440, 390]) for (const change
     info.annotations.push({ type: "registry", description: "setup-go-live--go-live-disabled-with-reason" });
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, homeSetupScreen, "empty");
+    await installFaultClock(page);
     const preview = previewData("ready");
     preview.blockers = [{ code: "terms_not_accepted", count: null, remedy: "accept_terms", records: [] }];
     let accepted = false;
@@ -47,7 +49,7 @@ for (const locale of LOCALES) for (const width of [1440, 390]) for (const change
       await main.getByRole("button", { name: text("setup.terms.read"), exact: true }).click();
       await main.getByRole("button", { name: text("setup.terms.accept"), exact: true }).click();
       const retry = main.getByRole("button", { name: text("common.retry"), exact: true });
-      await expect(retry).toBeVisible({ timeout: 20_000 });
+      await expect(retry).toBeVisible();
       await expect(start).toHaveAttribute("aria-disabled", "true");
       await expect(start).toHaveAccessibleDescription(text("setup.golive.refreshFailed"));
       const banner = main.getByRole("status").filter({ has: page.getByRole("button", { name: text("common.retry"), exact: true }) });
@@ -87,6 +89,7 @@ for (const state of states) for (const width of [1440, 390]) {
     if (state === "failed") info.annotations.push({ type: "registry", description: "setup-go-live--load-failed-common-loadfailed-retry-operationid" });
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, homeSetupScreen, "empty");
+    if (state === "failed") await installFaultClock(page);
     const isReceipt = state.endsWith("receipt");
     await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: {
       ...user, is_tenant_ops: true, tenant: { name: "화면 검증 회사", phase: isReceipt ? "OPERATING" : "SETUP", go_live_at: isReceipt ? "2026-10-26T09:00:00Z" : null },
@@ -121,7 +124,7 @@ for (const state of states) for (const width of [1440, 390]) {
         await expect(main.locator('[aria-busy="true"]').last()).toBeVisible({ timeout: 20_000 });
         await expect(start).toHaveCount(0);
       } else if (state === "failed") {
-        await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible({ timeout: 20_000 });
+        await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible();
         await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
         await expect(start).toHaveCount(0);
       } else if (state === "refused") {

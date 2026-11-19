@@ -2,6 +2,7 @@ import { useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { ComboBox, Input, Label, ListBox, ListBoxItem, Popover } from "react-aria-components";
 import { MapPin, Search } from "lucide-react";
 import { t } from "@console/i18n";
+import { leaveImeKey } from "../../lib/pure/ime";
 import { Field, Marker, TextInput } from "../field/field";
 import { useNonModalSurroundings } from "../use-non-modal-surroundings";
 import fieldCss from "../field/field.module.css";
@@ -77,7 +78,7 @@ function AddressSearch({ label, required, onChange, query, onQueryChange, hits, 
         <Label className={fieldCss.label}>{label}<Marker required={required} /></Label>
         <div className={css.input}>
           <Search aria-hidden="true" className={css.icon} />
-          <Input ref={input} className="field__input" />
+          <Input ref={input} className="field__input" onKeyDownCapture={leaveImeKey} />
         </div>
         <Popover ref={popover} className={`popover ${css.pop}`}>
           <ListBox className="listbox" renderEmptyState={() => <div className={css.empty}>{loading ? t("uiAddressField.loading") : problem === "narrow" ? t("uiAddressField.narrow") : t("uiAddressField.none")}</div>}>

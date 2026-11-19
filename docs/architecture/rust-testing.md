@@ -40,7 +40,7 @@ commit. Only successful pushes to dev save it; pull requests and merge groups on
 Incremental compilation is disabled to limit cache size. A warm hosted run targets ten minutes including
 restore and upload; the first run or a changed dependency key builds cold and can exceed that target.
 Hosted summaries must establish the actual timing; the local cold proof took about seventeen minutes.
-The served Home budget runs on every candidate. Backend changes use the current release artifact;
+The served Home budget runs on every candidate except docs-only pull requests. Backend changes use the current release artifact;
 web-only candidates download `d10-backend` from the latest successful same-repository dev CI push.
 Dev release artifacts are retained for 90 days; a missing trusted artifact fails the job.
 The job summary reports selected and deferred cases, naming each existing
@@ -65,14 +65,13 @@ with the explicit SQLx bootstrap startup option. Four jobs are packed from
 the latest same-repository JUnit durations, with equal weights only when no measurement exists yet.
 Tests excluded by the development-auth feature run from a derived default-feature variant in the same
 plan, so mutually exclusive feature guards cannot make either side disappear.
-Before cache restore, each database shard removes the unused hosted .NET, Swift and CodeQL SDKs
+Before compilation, each database shard removes the unused hosted .NET, Swift and CodeQL SDKs
 from `/usr/share/dotnet`, `/usr/share/swift` and `/opt/hostedtoolcache/CodeQL`.
 These are disposable tools from the [hosted runner image](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Arm64-Readme.md);
-Rust, Node, Docker, the PostgreSQL service and restored build artifacts stay available.
+Rust, Node, Docker and the PostgreSQL service stay available.
 The job logs free disk before and after cleanup, and after the build/tests even if they fail.
 `CARGO_PROFILE_TEST_DEBUG=0` omits test debug information to reduce linker disk usage for both
-feature variants; hosted failure backtraces lack source lines. The cache key includes this setting so
-previous debug artifacts do not consume the reclaimed disk. Local test profiles retain line tables.
+feature variants; hosted failure backtraces lack source lines. Local test profiles retain line tables.
 Their reports are reconciled into one exact inventory before new timings are trusted. Source ignores
 must carry an owner, reason and a staggered, unexpired review date. Manual generators use
 `kind=generator` instead of an expiry because they are tools, not quarantined assertions. Only workspace

@@ -5,6 +5,7 @@ import { t } from "@console/i18n";
 import { Checks } from "../../../ui/choice/checks";
 import { TextInput } from "../../../ui/field/field";
 import { Kbd } from "../../../ui/kbd/kbd";
+import { isImeKey } from "../../../lib/pure/ime";
 import { GRID_FIELDS, type GridKey } from "../domain/grid";
 import s from "./grid-columns.module.css";
 
@@ -27,7 +28,7 @@ export function GridColumns({ value, onChange, onClose }: { value: readonly Grid
   const search = useRef<HTMLInputElement>(null);
   useEffect(() => {
     search.current?.focus();
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const key = (e: KeyboardEvent) => e.key === "Escape" && !isImeKey(e) && onClose();
     const out = (e: PointerEvent) => !box.current?.contains(e.target as Node) && onClose();
     window.addEventListener("keydown", key);
     window.addEventListener("pointerdown", out);

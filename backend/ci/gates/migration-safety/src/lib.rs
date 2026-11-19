@@ -6,7 +6,8 @@ pub use class::summary;
 pub mod order;
 mod privileges;
 mod sanitize;
-use sanitize::sanitize_sql;
+mod settings;
+use sanitize::{normalize_identifier, sanitize_sql};
 mod versions;
 use privileges::{
     check_audit_events_grants, check_audit_events_trigger, check_table_owner_revokes,
@@ -17,6 +18,7 @@ use std::{collections::HashSet, fs};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ViolationKind {
+    SettingDefinitionRewrite,
     MigrationClassHeader,
     MigrationClassMismatch,
     InvalidMigrationVersion,
@@ -165,6 +167,12 @@ fn check_migration_file(
     check_no_transaction_statement_count(file, content, statements.len(), result);
 
     for (statement, tokens) in &statements {
+        settings::check(
+            file,
+            content,
+            &tokenize_table_reference_sql(statement),
+            result,
+        );
         check_drop_table(file, tokens, audited_tables, result);
         check_drop_column(file, statement, audited_tables, result);
         check_concurrent_index_if_not_exists(file, tokens, result);
@@ -345,15 +353,6 @@ fn tokenize_table_reference_sql(statement: &str) -> Vec<String> {
     }
 
     tokens
-}
-
-fn normalize_identifier(identifier: &str) -> String {
-    identifier
-        .trim_matches(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_')
-        .rsplit('.')
-        .next()
-        .unwrap_or("")
-        .to_ascii_lowercase()
 }
 
 fn collect_migration_files(root: &Path) -> Result<Vec<PathBuf>, String> {

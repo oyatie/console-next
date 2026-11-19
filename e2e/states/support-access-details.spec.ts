@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
-import { AT, failure, id } from "../mock/fixtures";
+import { AT, checklist, failure, id } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
@@ -282,4 +282,31 @@ for (const width of [390, 1440]) for (const command of ["approve", "deny", "end"
   }
   expect(fixture.unexpected).toEqual([]);
   fixture.release();
+});
+
+test("a deep-linked support panel takes focus after the phase hold and closes with Escape @ui-state", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[0], "empty");
+  const held = Promise.withResolvers<void>();
+  await mockRoute(page, "get", "/api/v1/support-sessions", { status: 200, json: { can_approve: true, sessions: [session] } });
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    await held.promise;
+    return { status: 200, json: checklist };
+  });
+  const start = Date.now();
+  await page.clock.install({ time: start });
+  await page.clock.pauseAt(start + 60_000);
+  try {
+    await page.goto(`/audit/support-access?review=${session.id}`);
+    const panel = page.locator("[data-side-panel]");
+    await expect.poll(async () => { await page.clock.runFor(50); return panel.count(); }).toBe(1);
+    await expect(panel).toBeHidden();
+    await expect(page.locator("[data-phase-pending]")).toHaveAttribute("inert", "");
+    held.resolve();
+    await page.clock.resume();
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole("heading", { level: 2 })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); fixture.release(); }
 });
