@@ -3,8 +3,6 @@ import { readFileSync, readdirSync } from "node:fs";
 import { chromium, type Browser, type Page } from "@playwright/test";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import roster from "../features/people/ui/roster.module.css";
-import chart from "../features/structure/ui/chart.module.css";
 import { ApprovalCard } from "./approval-card/approval-card";
 import card from "./approval-card/approval-card.module.css";
 import { mediaQueries } from "./breakpoints";
@@ -26,6 +24,10 @@ const read = (file: string, base: URL | string = import.meta.url) => readFileSyn
 // class inside it is written bare, as the build writes it.
 const moduleCss = (file: string, classes: Record<string, string>) => read(file)
   .replace(/:global\(([^)]*)\)|\.([a-zA-Z][\w-]*)/g, (whole, global?: string, name?: string) => global ?? (name && classes[name] ? `.${classes[name]}` : whole));
+// Two feature sheets are read as text and never imported, since nothing under ui may import a feature. Each gets class
+// names of its own, as importing the module would give it, so no rule in them reaches another probe.
+const scoped = (slice: string) => new Proxy({} as Record<string, string>, { get: (_, name) => `${slice}-${String(name)}` });
+const chart = scoped("chart"), roster = scoped("roster");
 
 beforeAll(async () => {
   browser = await chromium.launch();
