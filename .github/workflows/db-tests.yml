@@ -2,6 +2,7 @@
 # Long PostgreSQL tests run on dev, nightly and gate-changing pull requests.
 # merge_group stays disabled until the database suite provides reliable proof before merge.
 name: Database tests
+# Measurement run of the inbox read path: this pull request is closed, not merged.
 on:
   pull_request:
     paths:
