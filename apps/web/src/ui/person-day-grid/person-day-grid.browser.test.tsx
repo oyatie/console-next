@@ -197,6 +197,23 @@ test("a grid that fits its box has every column where the table puts it", async 
   }
 });
 
+test("a grid that fits its box places its side columns again when what a column holds changes width with no render", async () => {
+  await page.setViewportSize({ width: 2300, height: 720 });
+  try {
+    const grid = await month("?w=2200&unscheduled");
+    const fits = { faults: [], days: 31, totals: 4, end: 0, totalsEnd: 0 };
+    await expect.poll(() => sideways(grid, 0, 3)).toEqual(fits);
+    const widths = () => page.locator("thead th").evaluateAll(cells => cells.map(cell => cell.getBoundingClientRect().width));
+    const before = await widths();
+    // As a font arriving does: the table keeps the box's width, and shares it out again between the columns.
+    await page.addStyleTag({ content: "thead th:nth-last-child(-n+4) { letter-spacing: 2px; }" });
+    await expect.poll(async () => (await widths()).slice(-4).some((width, k) => width !== before.at(k - 4))).toBe(true);
+    await expect.poll(() => sideways(grid, 0, 3)).toEqual(fits);
+  } finally {
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
+});
+
 // The box's width, and the day column that starts in view and ends under the totals before any scroll.
 test.each([[1000, 12], [640, 7]])("moving the active cell sideways keeps it in view between the sticky columns (a %s px box)", async (width, cut) => {
   const grid = await month(`?w=${width}`);

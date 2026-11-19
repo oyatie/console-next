@@ -178,8 +178,9 @@ The lead columns and the tail columns stand side by side: each is held past the 
   head row's cells and sets custom properties on the box: `--lead-1`, `--lead-2` and so on for the second lead
   column onwards, each the width of the lead columns before it, and `--tail-0`, `--tail-1` and so on for the
   tail columns counted from the last one inwards, each the width of the tail columns after it.
-- **When it measures.** After every render, and whenever the box or the table changes size without one: a
-  `ResizeObserver` watches both.
+- **When it measures.** After every render, and whenever the box or a head cell changes size without one: a
+  `ResizeObserver` watches the box and every head cell. A table that fits its box keeps the box's width when a
+  font arrives and shares it out again between its columns, so watching the table alone would miss that.
 - **What the stylesheet reads.** `--lead-1` to `--lead-3` are the `left` of the second, third and fourth cell
   of a row when that cell is a lead cell. `--tail-0` to `--tail-3` are the `right` of the last four cells when
   they are tail cells. Until the grid has set them, they have the values the stylesheet declares on the box:

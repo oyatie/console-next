@@ -71,15 +71,19 @@ export function PersonDayGrid<R>(p: Props<R>) {
     return () => window.removeEventListener("resize", read);
   }, []);
   const leads = p.lead.length, tails = p.tail.length;
-  // After every render, since the rows drawn decide how wide the columns are, and whenever the box or the table
-  // changes size without one (a font arriving, a window or a docked sheet resizing).
+  const heads = [...p.lead, ...p.days, ...p.tail].map((c) => c.key).join(" ");
+  // After every render, since the rows drawn decide how wide the columns are, and whenever a column changes width
+  // without one (a font arriving, a window or a docked sheet resizing). A table that fits its box keeps the box's
+  // width as its columns change, so the head cells are watched, not only the box and the table.
   useLayoutEffect(() => placeSides(box.current!, leads, tails));
   useLayoutEffect(() => {
     const el = box.current!, watch = new ResizeObserver(() => placeSides(el, leads, tails));
     watch.observe(el);
-    watch.observe(el.firstElementChild!);
+    for (const cell of el.querySelector("thead tr")!.children) watch.observe(cell);
     return () => watch.disconnect();
-  }, [leads, tails]);
+    // A new set of columns is new head cells to watch.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [leads, tails, heads]);
   const [drag, setDrag] = useState(false);
   const table = useRef<HTMLTableElement>(null);
   // The editor left while it held the focus (Enter, Tab, Escape): the grid takes the focus back, so the next key lands
