@@ -1,0 +1,262 @@
+{
+  "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "tenantName": "새온그룹",
+  "referenceDate": "2026-11-10",
+  "referenceDateDisplay": "2026-11-10 (화)",
+  "adminActor": {
+    "name": "문서연",
+    "unit": "인사팀",
+    "grade": "과장",
+    "topBarLabel": "문서연 · 인사팀 과장"
+  },
+  "counts": {
+    "active": 2054,
+    "leave": 37,
+    "joining": 25,
+    "exited": 362,
+    "missingInfo": 546,
+    "missingAddress": 353,
+    "probationEnding": 43,
+    "contractEndingSoon": 42
+  },
+  "grades": {
+    "STAFF": "사원",
+    "SENIOR_STAFF": "주임",
+    "ASSISTANT_MANAGER": "대리",
+    "MANAGER": "과장",
+    "DEPUTY_GM": "차장",
+    "GENERAL_MANAGER": "부장"
+  },
+  "roles": {
+    "CREW_LEAD": "조장",
+    "FOREMAN": "반장",
+    "DEPUTY_TEAM_LEAD": "부팀장",
+    "TEAM_LEAD": "팀장",
+    "DEPT_HEAD": "부서장",
+    "PLANT_DIRECTOR": "평택공장장"
+  },
+  "employmentTypes": {
+    "REGULAR": "정규직",
+    "CONTRACT": "계약직",
+    "PART_TIME": "파트타임"
+  },
+  "missingLabels": {
+    "GENDER": "성별",
+    "ADDRESS": "주소"
+  },
+  "entities": [
+    {
+      "prefix": "1",
+      "name": "(주)새온정밀",
+      "headcount": 757,
+      "workplaces": [
+        { "name": "서울 본사", "departments": ["인사팀", "영업본부", "국내영업1팀"] },
+        { "name": "평택공장", "departments": ["생산부", "생산부 › 생산1팀", "생산부 › 생산2팀", "생산부 › 생산3팀"] },
+        { "name": "아산공장", "departments": ["조립1팀", "조립2팀"] },
+        { "name": "판교연구소", "departments": ["선행개발팀"] },
+        { "name": "부산영업소", "departments": ["영남영업팀"] }
+      ]
+    },
+    {
+      "prefix": "2",
+      "name": "(주)새온물류",
+      "headcount": 353,
+      "workplaces": [
+        { "name": "인천 본사", "departments": ["영업팀", "경영지원팀"] },
+        { "name": "이천물류센터", "departments": ["출고팀", "수도권배송파트"] },
+        { "name": "대구지점", "departments": ["영남배송파트"] },
+        { "name": "광주지점", "departments": ["호남배송파트"] }
+      ]
+    },
+    {
+      "prefix": "3",
+      "name": "새온리테일(주)",
+      "headcount": 137,
+      "workplaces": [
+        { "name": "성수 본사", "departments": ["인사총무팀", "경영지원팀"] },
+        { "name": "강남매장", "departments": ["매장운영팀"] },
+        { "name": "해운대매장", "departments": ["고객서비스팀"] }
+      ]
+    },
+    {
+      "prefix": "4",
+      "name": "(주)새온푸드",
+      "headcount": 487,
+      "workplaces": [
+        { "name": "음성 본사", "departments": ["브랜드팀", "품질관리팀"] },
+        { "name": "음성공장", "departments": ["생산1팀"] },
+        { "name": "김해공장", "departments": ["생산부", "생산2팀"] },
+        { "name": "논산공장", "departments": ["출하팀"] },
+        { "name": "정읍공장", "departments": ["가공팀"] },
+        { "name": "진천물류센터", "departments": ["물류운영팀"] },
+        { "name": "칠곡물류센터", "departments": ["영남물류팀"] },
+        { "name": "식품연구소", "departments": ["연구1팀"] },
+        { "name": "서울영업소", "departments": ["수도권영업팀"] },
+        { "name": "대전영업소", "departments": ["충청영업팀"] },
+        { "name": "광주영업소", "departments": ["호남영업팀"] },
+        { "name": "대구영업소", "departments": ["경북영업팀"] },
+        { "name": "수원영업소", "departments": ["경기영업팀"] },
+        { "name": "여의도점", "departments": ["매장팀"] },
+        { "name": "판교점", "departments": ["매장팀"] },
+        { "name": "송도점", "departments": ["매장팀"] }
+      ]
+    },
+    {
+      "prefix": "5",
+      "name": "(주)새온테크",
+      "headcount": 377,
+      "workplaces": [
+        { "name": "분당 본사", "departments": ["인사팀", "경영기획팀"] },
+        { "name": "대전연구소", "departments": ["기반기술팀"] },
+        { "name": "광교연구소", "departments": ["제어시스템팀"] },
+        { "name": "송도연구소", "departments": ["선행3팀"] },
+        { "name": "구미공장", "departments": ["제조1팀"] },
+        { "name": "오창공장", "departments": ["조립팀"] },
+        { "name": "수원지점", "departments": ["기술지원팀"] },
+        { "name": "창원지점", "departments": ["현장지원팀"] },
+        { "name": "울산지점", "departments": [] },
+        { "name": "천안지점", "departments": ["유지보수팀"] },
+        { "name": "인천영업소", "departments": ["영업1팀"] },
+        { "name": "전주영업소", "departments": ["영업2팀"] }
+      ]
+    }
+  ],
+  "hero": {
+    "name": "윤하준",
+    "employeeNumber": "10587",
+    "entityIndex": 0,
+    "workplace": "평택공장",
+    "departmentPath": "평택공장 › 생산부 › 생산1팀",
+    "shortPlace": "평택공장 › 생산1팀",
+    "gradeCode": "SENIOR_STAFF",
+    "roleCode": "CREW_LEAD",
+    "employmentTypeCode": "REGULAR",
+    "hireDate": "2019-03-14",
+    "birthDate": "1994-08-21",
+    "genderDigit": 1,
+    "phoneLastFour": "4821",
+    "address": "경기 평택시 고덕동",
+    "nationality": "대한민국",
+    "workSchedule": "2교대 · 주 40시간",
+    "accessLogNote": "인사팀 문서연 님이 주민등록번호를 열람했습니다 · 4대보험 신고 · 11-03",
+    "leave": {
+      "grantedDays": 15,
+      "usedDays": 5.5,
+      "remainingDays": 9.5,
+      "draftRequestDays": 1,
+      "remainingAfterDraftDays": 8.5,
+      "draftDate": "2026-11-20"
+    }
+  },
+  "rosterWindow": [
+    { "seq": 1278, "name": "윤지아", "employeeNumber": "40455", "entityIndex": 3, "place": "김해공장 › 생산2팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2025-09-27", "missingCode": null },
+    { "seq": 1279, "name": "윤지영", "employeeNumber": "30008", "entityIndex": 2, "place": "해운대매장 › 고객서비스팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "PART_TIME", "hireDate": "2009-02-25", "missingCode": null },
+    { "seq": 1280, "name": "윤지우", "employeeNumber": "40157", "entityIndex": 3, "place": "논산공장 › 출하팀", "gradeCode": "DEPUTY_GM", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2013-07-21", "missingCode": null },
+    { "seq": 1281, "name": "윤지후", "employeeNumber": "10632", "entityIndex": 0, "place": "아산공장 › 조립2팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2024-05-06", "missingCode": null },
+    { "seq": 1282, "name": "윤진우", "employeeNumber": "30134", "entityIndex": 2, "place": "성수 본사 › 인사총무팀", "gradeCode": "GENERAL_MANAGER", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2026-09-04", "missingCode": null },
+    { "seq": 1283, "name": "윤태호", "employeeNumber": "50147", "entityIndex": 4, "place": "분당 본사 › 인사팀", "gradeCode": "MANAGER", "roleCode": "TEAM_LEAD", "employmentTypeCode": "REGULAR", "hireDate": "2014-03-06", "missingCode": null },
+    { "seq": 1284, "name": "윤하람", "employeeNumber": "40209", "entityIndex": 3, "place": "김해공장 › 생산부", "gradeCode": "GENERAL_MANAGER", "roleCode": "DEPT_HEAD", "employmentTypeCode": "REGULAR", "hireDate": "2014-11-12", "missingCode": null },
+    { "seq": 1285, "name": "윤하린", "employeeNumber": "10433", "entityIndex": 0, "place": "", "gradeCode": "ASSISTANT_MANAGER", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2018-10-05", "missingCode": "GENDER" },
+    { "seq": 1286, "name": "윤하은", "employeeNumber": "20006", "entityIndex": 1, "place": "이천물류센터 › 출고팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2009-03-26", "missingCode": null },
+    { "seq": 1287, "name": "윤하준", "employeeNumber": "10587", "entityIndex": 0, "place": "평택공장 › 생산1팀", "gradeCode": "SENIOR_STAFF", "roleCode": "CREW_LEAD", "employmentTypeCode": "REGULAR", "hireDate": "2019-03-14", "missingCode": null },
+    { "seq": 1288, "name": "윤현준", "employeeNumber": "10333", "entityIndex": 0, "place": "아산공장 › 조립2팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2016-06-09", "missingCode": null },
+    { "seq": 1289, "name": "윤형준", "employeeNumber": "50259", "entityIndex": 4, "place": "울산지점", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "CONTRACT", "hireDate": "2025-06-13", "missingCode": null },
+    { "seq": 1290, "name": "응우옌반람", "employeeNumber": "10235", "entityIndex": 0, "place": "평택공장 › 생산1팀", "gradeCode": "SENIOR_STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2014-06-14", "missingCode": null },
+    { "seq": 1291, "name": "이가람", "employeeNumber": "20241", "entityIndex": 1, "place": "인천 본사 › 영업팀", "gradeCode": "SENIOR_STAFF", "roleCode": null, "employmentTypeCode": "CONTRACT", "hireDate": "2025-08-18", "missingCode": "ADDRESS" },
+    { "seq": 1292, "name": "이건우", "employeeNumber": "50123", "entityIndex": 4, "place": "송도연구소 › 선행3팀", "gradeCode": "DEPUTY_GM", "roleCode": "TEAM_LEAD", "employmentTypeCode": "REGULAR", "hireDate": "2013-02-13", "missingCode": "ADDRESS" },
+    { "seq": 1293, "name": "이경수", "employeeNumber": "50227", "entityIndex": 4, "place": "오창공장 › 조립팀", "gradeCode": "SENIOR_STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2017-04-05", "missingCode": null },
+    { "seq": 1294, "name": "이경희", "employeeNumber": "40138", "entityIndex": 3, "place": "음성 본사 › 브랜드팀", "gradeCode": "MANAGER", "roleCode": "TEAM_LEAD", "employmentTypeCode": "REGULAR", "hireDate": "2012-10-21", "missingCode": null },
+    { "seq": 1295, "name": "이기현", "employeeNumber": "10579", "entityIndex": 0, "place": "서울 본사 › 인사팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2022-07-25", "missingCode": null },
+    { "seq": 1296, "name": "이나연", "employeeNumber": "10506", "entityIndex": 0, "place": "아산공장 › 조립1팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "CONTRACT", "hireDate": "2025-02-18", "missingCode": "ADDRESS" },
+    { "seq": 1297, "name": "이누리", "employeeNumber": "30124", "entityIndex": 2, "place": "성수 본사 › 경영지원팀", "gradeCode": "ASSISTANT_MANAGER", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2025-07-17", "missingCode": null },
+    { "seq": 1298, "name": "이다솜", "employeeNumber": "50281", "entityIndex": 4, "place": "천안지점 › 유지보수팀", "gradeCode": "MANAGER", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2020-11-25", "missingCode": null },
+    { "seq": 1299, "name": "이다온", "employeeNumber": "20151", "entityIndex": 1, "place": "이천물류센터 › 수도권배송파트", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2016-03-22", "missingCode": null }
+  ],
+  "worklist": {
+    "totalCount": 23,
+    "approvalCount": 4,
+    "todayCount": 3,
+    "overdueCount": 2,
+    "items": [
+      { "id": "exit-docs-1", "dueDate": "2026-11-07", "title": "퇴직 서류 회수 · 정하늘", "subject": "사직서 원본 미회수", "reason": "회수 기한이 지났습니다", "statutory": false, "kind": "open" },
+      { "id": "att-close-1", "dueDate": "2026-11-08", "title": "근태 마감 · 10월 평택공장", "subject": "미확인 예외 4건", "reason": "마감 기한이 지났습니다", "statutory": false, "kind": "open" },
+      { "id": "cert-req-1", "dueDate": "2026-11-10", "title": "증명서 발급 요청", "subject": "최재훈 · 재직증명서", "reason": "본인 요청", "statutory": false, "kind": "open" },
+      { "id": "OC-2026-0418", "dueDate": "2026-11-12", "title": "결재 · 조직 변경", "subject": "생산3팀을 생산2팀으로 통합 · 기안 김도현 · 적용일 11-17", "reason": "내 결재 차례입니다", "statutory": false, "kind": "approval" },
+      { "id": "exit-pay-1", "dueDate": "2026-11-14", "title": "퇴직 정산 · 박성민", "subject": "(주)새온정밀 · 퇴직일 10-31", "reason": "금품청산 기한", "statutory": true, "kind": "open" },
+      { "id": "leave-app-1", "dueDate": "2026-11-15", "title": "결재 · 육아휴직", "subject": "이송이 · 12-01 ~ 2027-11-30", "reason": "내 결재 차례입니다", "statutory": false, "kind": "approval" },
+      { "id": "probation-1", "dueDate": "2026-11-16", "title": "수습 종료 예정", "subject": "방하람 · 11-16", "reason": "본채용 여부를 정해야 합니다", "statutory": false, "kind": "open" },
+      { "id": "ins-acq-1", "dueDate": "2026-11-17", "title": "4대보험 취득 신고", "subject": "신규 입사 3명 (11-03 입사)", "reason": "신고 기한", "statutory": true, "kind": "open" },
+      { "id": "leave-notice-1", "dueDate": "2026-11-30", "title": "연차 사용 촉진 1차 통보", "subject": "대상 41명", "reason": "통보 기한", "statutory": true, "kind": "open" },
+      { "id": "missing-addr-1", "dueDate": null, "title": "누락 정보", "subject": "주소 미입력 353명", "reason": "근로자 명부 기재 사항", "statutory": false, "kind": "open" }
+    ]
+  },
+  "approval": {
+    "documentNumber": "OC-2026-0418",
+    "category": "조직 변경 품의",
+    "title": "생산3팀을 생산2팀으로 통합",
+    "draftedDate": "2026-11-06",
+    "effectiveDate": "2026-11-17",
+    "dueDate": "2026-11-12",
+    "reason": "3라인 가동 중단에 따른 인력 통합",
+    "attachmentName": "라인 운영 계획.pdf",
+    "transferredCount": 12,
+    "beforeHeadcount": 18,
+    "afterHeadcount": 30,
+    "ccActor": "김태현 · 생산3팀장",
+    "inFlightApprovalNote": "1건 (이송이 육아휴직)은 새 결재선으로 이어집니다",
+    "steps": [
+      { "step": 1, "kind": "기안", "actor": "김도현", "unit": "평택공장 생산부 부장", "status": "DONE", "completedDate": "2026-11-06" },
+      { "step": 2, "kind": "합의", "actor": "문서연", "unit": "인사팀", "status": "CURRENT", "completedDate": null },
+      { "step": 3, "kind": "결재", "actor": "한정우", "unit": "평택공장장", "status": "WAITING", "completedDate": null }
+    ]
+  },
+  "attendanceMonth": {
+    "yearMonth": "2026-10",
+    "scopeLabel": "(주)새온정밀 › 평택공장 › 생산1팀",
+    "dueDate": "2026-11-08",
+    "scheduledWorkDays": 18,
+    "weekdayHolidays": 4,
+    "holidayDays": [3, 5, 6, 7, 9],
+    "members": [
+      { "name": "송재원", "employeeNumber": "10313", "gradeCode": "MANAGER", "roleCode": "TEAM_LEAD", "employmentTypeCode": "REGULAR", "annualLeaveDays": [8], "halfLeaveDays": [], "holidayWorkDays": [], "lateDays": [], "absentDays": [], "approvedOvertime": { "14": 2, "21": 2 }, "unapprovedOvertime": {} },
+      { "name": "유슬기", "employeeNumber": "10414", "gradeCode": "DEPUTY_GM", "roleCode": null, "employmentTypeCode": "REGULAR", "annualLeaveDays": [2], "halfLeaveDays": [], "holidayWorkDays": [], "lateDays": [], "absentDays": [], "approvedOvertime": {}, "unapprovedOvertime": {} },
+      { "name": "정유준", "employeeNumber": "10110", "gradeCode": "SENIOR_STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "annualLeaveDays": [], "halfLeaveDays": [16], "holidayWorkDays": [], "lateDays": [], "absentDays": [], "approvedOvertime": { "13": 2, "20": 2, "27": 2 }, "unapprovedOvertime": {} },
+      { "name": "구단비", "employeeNumber": "10261", "gradeCode": "SENIOR_STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "annualLeaveDays": [8, 23], "halfLeaveDays": [], "holidayWorkDays": [], "lateDays": [], "absentDays": [], "approvedOvertime": { "15": 3 }, "unapprovedOvertime": {} },
+      { "name": "윤하준", "employeeNumber": "10587", "gradeCode": "SENIOR_STAFF", "roleCode": "CREW_LEAD", "employmentTypeCode": "REGULAR", "annualLeaveDays": [], "halfLeaveDays": [], "holidayWorkDays": [], "lateDays": [], "absentDays": [], "approvedOvertime": { "13": 2, "15": 2, "20": 2, "22": 2, "27": 2, "29": 2 }, "unapprovedOvertime": {} },
+      { "name": "석수빈", "employeeNumber": "10516", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "annualLeaveDays": [30], "halfLeaveDays": [], "holidayWorkDays": [], "lateDays": [19], "absentDays": [], "approvedOvertime": {}, "unapprovedOvertime": {} },
+      { "name": "조정민", "employeeNumber": "10570", "gradeCode": "SENIOR_STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "annualLeaveDays": [], "halfLeaveDays": [], "holidayWorkDays": [], "lateDays": [], "absentDays": [], "approvedOvertime": { "14": 2, "28": 2 }, "unapprovedOvertime": { "21": 3 } },
+      { "name": "조경수", "employeeNumber": "10618", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "CONTRACT", "annualLeaveDays": [12], "halfLeaveDays": [], "holidayWorkDays": [], "lateDays": [], "absentDays": [26], "approvedOvertime": {}, "unapprovedOvertime": {} },
+      { "name": "문채원", "employeeNumber": "10578", "gradeCode": "SENIOR_STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "annualLeaveDays": [8], "halfLeaveDays": [29], "holidayWorkDays": [], "lateDays": [], "absentDays": [], "approvedOvertime": { "22": 2 }, "unapprovedOvertime": {} },
+      { "name": "방하람", "employeeNumber": "10648", "gradeCode": "STAFF", "roleCode": "CREW_LEAD", "employmentTypeCode": "CONTRACT", "annualLeaveDays": [], "halfLeaveDays": [], "holidayWorkDays": [10], "lateDays": [], "absentDays": [], "approvedOvertime": { "16": 2, "23": 2, "30": 2 }, "unapprovedOvertime": { "28": 2 } },
+      { "name": "신준혁", "employeeNumber": "10185", "gradeCode": "SENIOR_STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "annualLeaveDays": [1, 2], "halfLeaveDays": [], "holidayWorkDays": [], "lateDays": [], "absentDays": [], "approvedOvertime": { "12": 2, "14": 2, "16": 2, "19": 2, "21": 2, "26": 2, "28": 2 }, "unapprovedOvertime": {} },
+      { "name": "오아름", "employeeNumber": "10247", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "annualLeaveDays": [], "halfLeaveDays": [12], "holidayWorkDays": [17], "lateDays": [], "absentDays": [], "approvedOvertime": { "20": 2 }, "unapprovedOvertime": {} }
+    ]
+  },
+  "payrollRun": {
+    "yearMonth": "2026-10",
+    "payDate": "2026-11-25",
+    "entityIndex": 0,
+    "headcount": 757,
+    "grossTotal": 2514380000,
+    "deductionTotal": 412906300,
+    "netTotal": 2101473700,
+    "missingBankAccountCount": 2,
+    "windowRows": [
+      { "name": "윤하준", "employeeNumber": "10587", "place": "평택공장 › 생산1팀", "gradeCode": "SENIOR_STAFF", "overtimeHours": 12, "bankAccountRegistered": true },
+      { "name": "염민서", "employeeNumber": "10537", "place": "서울 본사 › 영업본부", "gradeCode": "STAFF", "overtimeHours": 2, "bankAccountRegistered": true },
+      { "name": "권민재", "employeeNumber": "10062", "place": "서울 본사 › 국내영업1팀", "gradeCode": "MANAGER", "overtimeHours": 0, "bankAccountRegistered": true },
+      { "name": "한예은", "employeeNumber": "10025", "place": "서울 본사 › 국내영업1팀", "gradeCode": "SENIOR_STAFF", "overtimeHours": 4, "bankAccountRegistered": true },
+      { "name": "이정우", "employeeNumber": "10416", "place": "서울 본사 › 국내영업1팀", "gradeCode": "STAFF", "overtimeHours": 0, "bankAccountRegistered": false },
+      { "name": "장종민", "employeeNumber": "10178", "place": "서울 본사 › 국내영업1팀", "gradeCode": "SENIOR_STAFF", "overtimeHours": 6, "bankAccountRegistered": true },
+      { "name": "추민재", "employeeNumber": "10606", "place": "서울 본사 › 국내영업1팀", "gradeCode": "ASSISTANT_MANAGER", "overtimeHours": 0, "bankAccountRegistered": true },
+      { "name": "곽지원", "employeeNumber": "10263", "place": "서울 본사 › 국내영업1팀", "gradeCode": "ASSISTANT_MANAGER", "overtimeHours": 3, "bankAccountRegistered": true },
+      { "name": "김수진", "employeeNumber": "10254", "place": "서울 본사 › 국내영업1팀", "gradeCode": "ASSISTANT_MANAGER", "overtimeHours": 0, "bankAccountRegistered": true },
+      { "name": "표성민", "employeeNumber": "10373", "place": "서울 본사 › 국내영업1팀", "gradeCode": "MANAGER", "overtimeHours": 0, "bankAccountRegistered": true }
+    ]
+  },
+  "namePools": {
+    "surnamesBeforeWindow": ["강", "고", "곽", "구", "권", "김", "남", "노", "문", "박", "방", "배", "백", "서", "석", "성", "손", "송", "신", "심", "안", "양", "엄", "염", "오", "우", "원", "유"],
+    "surnamesAfterWindow": ["임", "장", "전", "정", "조", "주", "차", "천", "최", "추", "표", "하", "한", "허", "현", "홍", "황"],
+    "givenNames": ["가은", "건우", "경민", "규리", "나윤", "다은", "도윤", "도현", "동현", "민규", "민서", "민수", "민재", "민준", "민지", "서연", "서영", "서윤", "서진", "서현", "성민", "성현", "세아", "소연", "소율", "수빈", "수아", "수진", "시우", "시윤", "아린", "연우", "예린", "예슬", "예은", "예준", "유나", "유빈", "유진", "은서", "은우", "은지", "재민", "재원", "재현", "정민", "정우", "지민", "지성", "지수", "지아", "지안", "지우", "지원", "지윤", "지훈", "진우", "채원", "채윤", "태윤", "태현", "하늘", "하린", "하은", "하율", "현서", "현우", "현준"]
+  }
+}

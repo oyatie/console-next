@@ -47,10 +47,12 @@ const NAMED_COLOURS = new Set(("aliceblue antiquewhite aqua aquamarine azure bei
   + "saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle "
   + "tomato turquoise violet wheat white whitesmoke yellow yellowgreen").split(" "));
 /**
- * Whether a declared value writes a colour itself: a hex colour, a colour function or a colour name, anywhere in it
- * (a shadow counts). A value that only names other tokens does not: it follows the theme of what it names.
+ * Whether a declared value writes a colour or `color-scheme` keyword (`light`/`dark`) itself: a hex colour, a colour
+ * function, a colour name, or a bare scheme keyword anywhere in it (a shadow counts). A value that only names other
+ * tokens does not: it follows the theme of what it names.
  */
 export function literalColour(value) {
+  if (/^(?:light|dark)$/i.test(value.trim())) return true;
   let found = false;
   valueParser(normalize(value)).walk((node) => {
     const word = decodeIdent(node.value).toLowerCase();
