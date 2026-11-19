@@ -242,10 +242,11 @@ The WCAG 2.2 criteria that apply:
 
 Known gaps:
 
-- `aria-invalid` sits on an element whose role is `button`. The lint rule `jsx-a11y/role-supports-aria-props`
-  does not list the attribute for that role, and the component switches the rule off on that one line. How a
-  screen reader speaks the state on a button was not tested: the browser test reads the attribute and the
-  computed description, and runs no screen reader.
+- `aria-invalid` sits on an element whose role is `button`. WAI-ARIA 1.2 lists it among the global states and
+  marks its global use as deprecated. The lint rule `jsx-a11y/role-supports-aria-props` does not list the
+  attribute for that role, and the component switches the rule off on that one line. How a screen reader speaks
+  the state on a button was not tested: the browser test reads the attribute and the computed description, and
+  runs no screen reader.
 - Required is neither shown nor exposed. `Field` writes a marker word beside its label; `SelectField` has none,
   and the trigger carries no `aria-required`.
 - A focused option that is also the chosen one has no focus look, and every option has `outline: none`. When the

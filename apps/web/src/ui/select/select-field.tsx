@@ -24,7 +24,7 @@ export function SelectField({ label, hideLabel = false, options, value, onChange
   return (
     <Select className={s.select} value={value} onChange={(k) => k != null && onChange(String(k))} isRequired={required} isInvalid={error != null} placeholder={placeholder} data-form-value={value ?? ""}>
       <Label className={hideLabel ? "sr-only" : s.label}>{label}</Label>
-      {/* oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- WAI-ARIA 1.2 keeps aria-invalid a global state, and React Aria's Button drops it; nothing else says the pick is invalid. */}
+      {/* oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- WAI-ARIA 1.2 still lists aria-invalid as a global state (global use deprecated), and React Aria's Button drops it; nothing else says the pick is invalid. */}
       <Button className={s.trigger} render={(p) => <button {...p} aria-invalid={error != null || undefined} />}>
         {icon}
         <SelectValue className={s.value}>{({ selectedText, defaultChildren, isPlaceholder }) => (isPlaceholder ? defaultChildren : selectedText)}</SelectValue>
