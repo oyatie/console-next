@@ -3,6 +3,7 @@ import { realpathSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
+import { AxeBuilder } from "@axe-core/playwright";
 import { createServer, type ViteDevServer } from "vite";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
 
@@ -83,18 +84,33 @@ test("a box taller than 600 px is filled with rows before the first scroll", asy
   }
 });
 
-// Rows 24 px apart leave two neighbouring names exactly the spacing a pointer needs, so the rule over a group's first
-// row may not push that row's text down.
-test("in a visual style, a group's first row keeps its name level with the rows around it", async () => {
+// Rows 24 px apart leave two neighbouring names exactly the spacing a pointer needs. So in a visual style a row's rules
+// take no room in it, and a name is a target as tall as its row.
+test("in a visual style, names stay evenly spaced and each is a whole pointer target, also half under the head", async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}grid-test?groups&row=24&style=control-room`);
   const grid = page.getByRole("grid", { name: "October" });
   await element(grid.getByRole("link", { name: "Person 1", exact: true })).toBeVisible();
   const drawn = await grid.evaluate(el => {
-    const centres = [...el.querySelectorAll("tbody a")].slice(0, 9).map(a => { const b = a.getBoundingClientRect(); return b.top + b.height / 2; });
-    const ruled = (row: number) => getComputedStyle(el.querySelectorAll("tbody tr:not([aria-hidden])")[row]!.firstElementChild!).boxShadow !== "none";
-    return { gaps: centres.slice(1).map((centre, i) => centre - centres[i]!), ruled: [ruled(3), ruled(4)] };
+    const rows = [...el.querySelectorAll("tbody tr:not([aria-hidden])")].slice(0, 9);
+    const links = rows.map(row => row.querySelector("a")!.getBoundingClientRect());
+    const centres = links.map(b => b.top + b.height / 2);
+    const rules = (row: number) => getComputedStyle(rows[row]!.firstElementChild!).boxShadow.split("inset").length - 1;
+    return {
+      rows: rows.map(row => row.getBoundingClientRect().height),
+      gaps: centres.slice(1).map((centre, i) => centre - centres[i]!),
+      smallest: Math.min(...links.flatMap(b => [b.width, b.height])),
+      rules: [rules(3), rules(4)],
+    };
   });
-  expect(drawn.gaps).toEqual(Array.from({ length: 8 }, () => 24));
-  // The rule is still drawn over the fourth person, who starts a group, and over nobody inside one.
-  expect(drawn.ruled).toEqual([true, false]);
+  const nine = <T,>(value: T) => Array.from({ length: 9 }, () => value);
+  expect(drawn.rows).toEqual(nine(24));
+  expect(drawn.gaps).toEqual(nine(24).slice(1));
+  expect(drawn.smallest).toBeGreaterThanOrEqual(24);
+  // The fourth person starts a group and has its rule above the line every row has below; the fifth has the line only.
+  expect(drawn.rules).toEqual([2, 1]);
+
+  // Scrolled so that one name is half under the sticky head, the names still meet the target-size rule.
+  await grid.locator("..").evaluate(el => { el.scrollTop = 24 * 5 + 12; });
+  const { violations } = await new AxeBuilder({ page }).withRules(["target-size"]).setLegacyMode(true).analyze();
+  expect(violations.flatMap(v => v.nodes.map(n => n.target.join(" ")))).toEqual([]);
 });
