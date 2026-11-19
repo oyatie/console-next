@@ -125,6 +125,15 @@ export function PhoneBottomNav({
   const resolvedMoreLabel = moreLabel ?? t("shell.nav.more");
   const inlineItems = items.length <= 5 ? items : items.slice(0, 4);
   const overflowItems = items.length <= 5 ? [] : items.slice(4);
+  const overflowActive = overflowItems.some(item => item.id === activeId);
+  const moreTrigger = (
+    <>
+      <div className={s.iconRow}>
+        <Ellipsis size={20} aria-hidden="true" />
+      </div>
+      <bdi className={s.label}>{resolvedMoreLabel}</bdi>
+    </>
+  );
 
   const renderSlotContent = (item: PhoneNavItem) => {
     const Icon = item.icon;
@@ -178,20 +187,25 @@ export function PhoneBottomNav({
         })}
         {overflowItems.length > 0 ? (
           <li className={s.entry}>
-            <Suspense fallback={null}>
+            <Suspense
+              fallback={
+                <button
+                  type="button"
+                  className={s.slot!}
+                  aria-label={resolvedMoreLabel}
+                  aria-expanded={false}
+                  data-active={overflowActive || undefined}
+                >
+                  {moreTrigger}
+                </button>
+              }
+            >
               <BarOverflowLinks
                 label={resolvedMoreLabel}
                 triggerClassName={s.slot!}
-                triggerActive={overflowItems.some(item => item.id === activeId)}
+                triggerActive={overflowActive}
                 placement="top"
-                trigger={
-                  <>
-                    <div className={s.iconRow}>
-                      <Ellipsis size={20} aria-hidden="true" />
-                    </div>
-                    <bdi className={s.label}>{resolvedMoreLabel}</bdi>
-                  </>
-                }
+                trigger={moreTrigger}
                 entries={overflowItems.map(item => ({
                   id: item.id,
                   label: item.label,
