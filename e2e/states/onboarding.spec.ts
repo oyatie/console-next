@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { faultAttempts } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -33,7 +34,7 @@ for (const screen of onboardingScreens) for (const state of Object.keys(screen.s
         await expect(main.locator('[aria-busy="true"]').last()).toBeVisible();
         await expect(empty()).toHaveCount(0);
       } else if (state === "failed") {
-        await expect(main.getByRole("alert").first()).toContainText(t("common.loadFailed.title"), { timeout: 20_000 });
+        await expect(main.getByRole("alert").first()).toContainText(t("common.loadFailed.title"));
         await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(1);
       } else if (state === "refused") {
         await expect(main.getByRole("region", { name: t("common.denied.title.plain") })).toBeVisible();
@@ -56,6 +57,7 @@ for (const screen of onboardingScreens) for (const state of Object.keys(screen.s
       }) });
       if (state === "loading" || state === "failed") {
         const attempts = fixture.attempts();
+        if (state === "failed") expect(attempts).toBe(faultAttempts);
         fixture.recover();
         if (state === "failed") await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
         await expect(empty()).toBeVisible();

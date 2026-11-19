@@ -2,6 +2,7 @@ import { useInlineUnitValues } from "./use-inline-unit-values";
 import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { isImeKey } from "../../../lib/pure/ime";
 import { announce } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -51,7 +52,7 @@ export function DeptNameInline({ parent, unit, setup = true, onDone }: { parent:
   return (
     <span ref={box} className={css.stack} data-escape-scope onKeyDownCapture={(e) => {
       // Portalled popovers own their Escape before the inline editor does.
-      if (e.key !== "Escape" || !e.currentTarget.contains(e.target as globalThis.Node)) return;
+      if (e.key !== "Escape" || isImeKey(e) || !e.currentTarget.contains(e.target as globalThis.Node)) return;
       e.preventDefault();
       e.stopPropagation();
       onDone();

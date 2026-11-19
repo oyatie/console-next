@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
 /* features/platform: the tenant panel's sections and the force-removal checklist. Tokens only. */
 .section { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border-soft); }
 .heading { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-strong); color: var(--ink); }
@@ -5,3 +6,7 @@
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .items { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
 .availability { display: block; min-height: 1lh; }
+/* Active tenants have a code section as well as recovery; longer histories grow in the page. */
+.readSlot { display: flex; flex-direction: column; gap: var(--space-4); min-block-size: calc(4lh + var(--control-h-sm) * 2 + var(--space-4)); }
+.readSlot[data-status="ACTIVE"] { min-block-size: calc(6lh + var(--control-h-sm) * 3 + var(--space-6)); }
+.readSlot > * { flex-shrink: 0; }

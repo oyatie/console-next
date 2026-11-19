@@ -27,13 +27,15 @@ const skeletonCss = readFileSync(new URL("../../ui/skeleton/skeleton.module.css"
 const deniedCss = readFileSync(new URL("./denied.module.css", import.meta.url), "utf8");
 
 let browser: Browser;
-let pages: [Page, Page, Page, Page, Page];
+let pages: [Page, Page, Page, Page, Page, Page, Page];
 beforeAll(async () => {
   await loadCatalog("ko");
   browser = await chromium.launch();
   pages = await Promise.all([
     browser.newPage({ viewport: { width: 1440, height: 900 } }),
     browser.newPage({ viewport: { width: 390, height: 900 } }),
+    browser.newPage({ viewport: { width: 390, height: 900 } }),
+    browser.newPage({ viewport: { width: 1440, height: 900 } }),
     browser.newPage({ viewport: { width: 390, height: 900 } }),
     browser.newPage({ viewport: { width: 1440, height: 900 } }),
     browser.newPage({ viewport: { width: 390, height: 900 } }),
@@ -95,5 +97,26 @@ test("the refusal separates the held grants label from its value", async () => {
     const label = await page.getByText(t("common.denied.mine"), { exact: true }).boundingBox();
     const value = await page.getByText(t("common.denied.mine.none"), { exact: true }).boundingBox();
     expect(value!.y).toBeGreaterThan(label!.y + label!.height);
+  } finally { await page.close(); }
+});
+
+test.each([1440, 390])("a compact failed read fits retry and reference below its resource title at %spx", async width => {
+  const page = pages[width === 1440 ? 5 : 6];
+  try {
+    const heights = [];
+    for (const compact of [false, true]) {
+      const content = await markup(<div className="panel"><QueryState compact={compact} failedTitle={t("common.loadFailed.title")}
+        q={{ isPending: false, error: new ApiError(503, "unavailable", "", [], "read-reference"), data: undefined, refetch: () => {} }}>{() => null}</QueryState></div>);
+      await page.setContent(`<!doctype html><html lang="ko"><head><style>${appCss}</style></head><body>${content}</body></html>`);
+      await page.locator(".panel").evaluate(element => { element.style.maxWidth = "var(--panel-w)"; });
+      heights.push((await page.getByRole("alert").boundingBox())!.height);
+    }
+    expect(heights[1]).toBeLessThan(heights[0]!);
+    expect(await page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true }).count()).toBe(1);
+    for (const name of [t("common.retry"), t("common.supportReference.copy")]) {
+      const rect = (await page.getByRole("button", { name, exact: true }).boundingBox())!;
+      expect(rect.x).toBeGreaterThanOrEqual(0);
+      expect(rect.x + rect.width).toBeLessThanOrEqual(width);
+    }
   } finally { await page.close(); }
 });

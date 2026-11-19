@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { mockNavigate } from "../mock/navigation";
 import { loadCatalog, t } from "@console/i18n";
 import { expect, test } from "@playwright/test";
@@ -18,12 +19,13 @@ for (const state of Object.keys(exitCaseScreen.states) as ExitCaseState[]) for (
   test(`exit-case ${state} at ${width}px @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     const fixture = await mockScreen(page, screens[1], "populated");
+    if (state === "failed") await installFaultClock(page);
     await mockExitCase(page, state);
     try {
       await page.goto(exitCaseScreen.path);
       const main = page.getByRole("main");
       if (state === "missing") await expect(main.getByRole("heading", { name: t("common.read.notFound.title") })).toBeVisible();
-      else if (state === "failed") await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible({ timeout: 20_000 });
+      else if (state === "failed") await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
       else {
         const board = main.getByRole("region", { name: "단계별 업무", exact: true });
         await expect(board).toBeVisible();

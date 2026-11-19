@@ -1,8 +1,7 @@
 #![allow(clippy::panic)]
 
 use console_gate_tenant_isolation::owner_only_table_allowlist;
-use sqlx::postgres::PgPoolOptions;
-use sqlx::{PgConnection, PgPool};
+use sqlx::{Connection, PgConnection, PgPool};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -69,11 +68,11 @@ async fn settable_runtime_roles(connection: &mut PgConnection) -> Result<Vec<Str
 }
 
 async fn assert_acl_mutation_is_detected(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     label: &str,
     statements: &[&'static str],
 ) -> TestResult {
-    let mut transaction = pool.begin().await?;
+    let mut transaction = connection.begin().await?;
     for statement in statements {
         sqlx::query(*statement).execute(&mut *transaction).await?;
     }
@@ -87,17 +86,19 @@ async fn assert_acl_mutation_is_detected(
     Ok(())
 }
 
-#[tokio::test]
-#[ignore = "owner=platform-db; reason=requires PostgreSQL 18 migrated directly as console_app; expires=2026-11-29"]
-async fn owner_only_acl_is_effectively_private_on_postgres18() -> TestResult {
-    let database_url = std::env::var("DATABASE_URL")?;
-    let pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await?;
+#[sqlx::test(migrations = false)]
+async fn owner_only_acl_is_effectively_private_on_postgres18(pool: PgPool) -> TestResult {
+    let mut connection = pool.acquire().await?.detach();
+    // The migrations require console_app as database owner, session user and current user.
+    sqlx::raw_sql(
+        "DO $$ BEGIN EXECUTE format('ALTER DATABASE %I OWNER TO console_app', current_database()); END $$;
+         SET SESSION AUTHORIZATION console_app",
+    )
+    .execute(&mut connection)
+    .await?;
 
     let current_user: String = sqlx::query_scalar("SELECT current_user::text")
-        .fetch_one(&pool)
+        .fetch_one(&mut connection)
         .await?;
     assert_eq!(
         current_user, "console_app",
@@ -105,7 +106,7 @@ async fn owner_only_acl_is_effectively_private_on_postgres18() -> TestResult {
     );
 
     let server_version: String = sqlx::query_scalar("SHOW server_version_num")
-        .fetch_one(&pool)
+        .fetch_one(&mut connection)
         .await?;
     let server_version: u32 = server_version.parse()?;
     assert!(
@@ -113,7 +114,10 @@ async fn owner_only_acl_is_effectively_private_on_postgres18() -> TestResult {
         "ACL proof requires PostgreSQL 18, got server_version_num={server_version}"
     );
 
-    let mut connection = pool.acquire().await?;
+    sqlx::migrate!("../../../crates/platform/db/migrations")
+        .run(&mut connection)
+        .await?;
+
     let settable_roles = settable_runtime_roles(&mut connection).await?;
     assert!(
         settable_roles.is_empty(),
@@ -135,7 +139,6 @@ async fn owner_only_acl_is_effectively_private_on_postgres18() -> TestResult {
             "console_rt has effective access to owner-only {relation}: {privileges:?}"
         );
     }
-    drop(connection);
 
     for (label, statements) in [
         (
@@ -169,10 +172,10 @@ async fn owner_only_acl_is_effectively_private_on_postgres18() -> TestResult {
             &["GRANT SELECT ON ALL TABLES IN SCHEMA public TO console_rt"],
         ),
     ] {
-        assert_acl_mutation_is_detected(&pool, label, statements).await?;
+        assert_acl_mutation_is_detected(&mut connection, label, statements).await?;
     }
 
-    let mut default_acl = pool.begin().await?;
+    let mut default_acl = connection.begin().await?;
     sqlx::query(
         "ALTER DEFAULT PRIVILEGES FOR ROLE console_app IN SCHEMA public \
          REVOKE ALL PRIVILEGES ON TABLES FROM console_rt, PUBLIC",
@@ -201,7 +204,7 @@ async fn owner_only_acl_is_effectively_private_on_postgres18() -> TestResult {
     );
     default_acl.rollback().await?;
 
-    let mut shadow = pool.begin().await?;
+    let mut shadow = connection.begin().await?;
     sqlx::query(
         r#"CREATE VIEW public."ONT_BUILTIN_CATALOG_ALLOWLIST" AS
            SELECT catalog_version, manifest_digest
