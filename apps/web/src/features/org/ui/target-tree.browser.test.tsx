@@ -72,3 +72,23 @@ test("the add-departments dialog closes on Escape from a row and on a pick", asy
   await element(state("open")).toHaveText("closed");
   await element(state("to")).toHaveText("packing");
 });
+
+test("ArrowLeft on a department with none under it moves to its parent department", async () => {
+  await open("in=sheet");
+  await row("Field sales").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Sales")).toBeFocused();
+  await element(row("Field sales")).toBeVisible();
+});
+
+test("ArrowLeft keeps the focus where it is when the parent cannot be chosen", async () => {
+  await open("in=sheet");
+  await row("Support").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Support")).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await element(row("Field sales")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  await element(row("Field sales")).toBeFocused();
+});

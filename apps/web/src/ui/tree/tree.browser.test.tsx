@@ -71,6 +71,47 @@ test("Escape still clears the pick first where the caller takes an empty selecti
   await element(page.locator("#open")).toHaveText("closed");
 });
 
+test("ArrowLeft on a row with no children moves to its parent, though the caller lists it as expanded", async () => {
+  await open("shape=keep");
+  await row("Field sales").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Sales")).toBeFocused();
+  await element(row("Field sales")).toBeVisible();
+  // A row with children still folds first, then hands the focus up.
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Sales")).toBeFocused();
+  await element(row("Field sales")).toHaveCount(0);
+  await page.keyboard.press("ArrowLeft");
+  await element(row("North site")).toBeFocused();
+});
+
+test.each(["", "&listed=branches"])("ArrowLeft stays on a row with no children whose parent is disabled (shape=keep&off=north%s)", async (listed) => {
+  await open(`shape=keep&off=north${listed}`);
+  await row("Support").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Support")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await element(row("South site")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await element(cancel()).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await element(row("South site")).toBeFocused();
+});
+
+test.each([
+  ["shape=keep", "company field north ops south support", "company field north ops sales south support"],
+  ["shape=keep&off=north&listed=branches", "company north south", "company north sales south"],
+])("folding and unfolding one row changes only that row in the caller's expanded set (%s)", async (search, folded, unfolded) => {
+  await open(search);
+  await row("Sales").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Field sales")).toHaveCount(0);
+  await element(page.locator("#expanded")).toHaveText(folded);
+  await row("Sales").getByRole("button").click();
+  await element(row("Field sales")).toBeVisible();
+  await element(page.locator("#expanded")).toHaveText(unfolded);
+});
+
 test("an Escape the input method is composing leaves the dialog open from a row, as from the Cancel button", async () => {
   for (const from of [() => row("Field sales"), cancel]) {
     await open("shape=keep&pick=field");

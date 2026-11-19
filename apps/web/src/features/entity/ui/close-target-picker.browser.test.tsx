@@ -43,3 +43,14 @@ test("Escape from the tree closes the destination picker once a destination is c
   await element(opener()).toBeFocused();
   await element(opener()).toHaveText("Seoul office › Support");
 });
+
+test("ArrowLeft on a department with none under it moves to its parent", async () => {
+  await openPicker();
+  await row("Field sales").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Sales")).toBeFocused();
+  await row("Support").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Seoul office")).toBeFocused();
+  await element(row("Support")).toBeVisible();
+});

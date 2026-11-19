@@ -4,10 +4,10 @@ import { ChevronRight } from "lucide-react";
 import s from "./tree.module.css";
 
 /**
- * A single-select tree (React Aria treegrid): ↑↓ move, ←→ collapse and expand, Enter or a click selects,
- * Esc clears the selection unless `required`. Expansion is the caller's state. `textValue` is each row's accessible name
- * (put everything the row shows in it: name, kind, count, marker), and type-ahead matches it. `disabled` rows stay
- * visible but cannot be chosen (say why in the row).
+ * A single-select tree (React Aria treegrid): ↑↓ move, → expands, ← collapses or moves to the parent, Enter or a click
+ * selects, Esc clears the selection unless `required`. Expansion is the caller's state. `textValue` is each row's
+ * accessible name (put everything the row shows in it: name, kind, count, marker), and type-ahead matches it.
+ * `disabled` rows stay visible but cannot be chosen (say why in the row).
  */
 export function TreeView<T extends { id: string }>({
   id,
@@ -49,23 +49,32 @@ export function TreeView<T extends { id: string }>({
   /** Let Tab reach interactive content within a row. */
   keyboardNavigationBehavior?: "arrow" | "tab";
 }) {
-  const node = (item: T): ReactNode => (
-    <TreeItem key={item.id} id={item.id} textValue={textValue(item)} data-id={item.id}>
-      <TreeItemContent>
-        {({ hasChildItems }) => (
-          <div className="tree__row">
-            {hasChildItems ? (
-              <Button slot="chevron" className="tree__chevron"><ChevronRight size={14} aria-hidden /></Button>
-            ) : (
-              <span className="tree__chevron" />
-            )}
-            {row(item)}
-          </div>
-        )}
-      </TreeItemContent>
-      {childrenOf(item).map(node)}
-    </TreeItem>
-  );
+  // React Aria moves ArrowLeft to the parent only from a row it does not hold as expanded; a row it holds as expanded
+  // does nothing there when it has no children. So a row with children is passed on as the caller lists it, and a row
+  // with none is passed on only under a disabled parent, which cannot take the focus (the move would land on the tree).
+  const open = new Set<string>();
+  const node = (item: T, stay = false): ReactNode => {
+    const kids = childrenOf(item);
+    if (kids.length ? expanded.has(item.id) : stay) open.add(item.id);
+    return (
+      <TreeItem key={item.id} id={item.id} textValue={textValue(item)} data-id={item.id}>
+        <TreeItemContent>
+          {({ hasChildItems }) => (
+            <div className="tree__row">
+              {hasChildItems ? (
+                <Button slot="chevron" className="tree__chevron"><ChevronRight size={14} aria-hidden /></Button>
+              ) : (
+                <span className="tree__chevron" />
+              )}
+              {row(item)}
+            </div>
+          )}
+        </TreeItemContent>
+        {kids.map((kid) => node(kid, disabled?.has(item.id)))}
+      </TreeItem>
+    );
+  };
+  const rows = (loading || error ? [] : roots).map((root) => node(root));
   return (
     <Tree
       id={id}
@@ -81,11 +90,17 @@ export function TreeView<T extends { id: string }>({
       keyboardNavigationBehavior={keyboardNavigationBehavior}
       selectedKeys={selected ? [selected] : []}
       onSelectionChange={(keys) => onSelect(keys instanceof Set ? ([...keys][0] as string | undefined) : undefined)}
-      expandedKeys={expanded}
+      expandedKeys={open}
       disabledKeys={disabled}
-      onExpandedChange={(keys) => onExpandedChange(new Set([...keys].map(String)))}
+      onExpandedChange={(keys) => {
+        // Only the row that was folded or unfolded changes in the caller's set.
+        const next = new Set(expanded);
+        for (const key of keys) if (!open.has(String(key))) next.add(String(key));
+        for (const key of open) if (!keys.has(key)) next.delete(key);
+        onExpandedChange(next);
+      }}
     >
-      {(loading || error ? [] : roots).map(node)}
+      {rows}
     </Tree>
   );
 }
