@@ -1100,11 +1100,6 @@
    "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/settings/{key}": {
-   "lane": "K5",
-   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "POST /api/v1/workflow-tasks/{task_id}/claim": {
    "lane": "H1",
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
