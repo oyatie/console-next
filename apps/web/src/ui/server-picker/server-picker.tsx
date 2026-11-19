@@ -44,6 +44,8 @@ export function ServerPicker(p: {
   readOnly?: boolean;
   disabledReason?: string;
   error?: ReactNode;
+  /** What is wrong with the pick, such as none made: shown and read like `error`, but the list, its count and the no-match escape stay. */
+  invalid?: ReactNode;
   /** Page search controls keep one feedback line; form fields keep their natural height. */
   reserveError?: boolean;
 }) {
@@ -88,6 +90,7 @@ export function ServerPicker(p: {
   };
   // Only while nothing is chosen: a selection writes its name back into the query, which may itself find nothing.
   const none = p.value === null && !pending && p.query.trim() !== "" && !p.loading && p.error == null && p.options.length === 0;
+  const problem = p.error ?? p.invalid;
   const truncated = !p.loading && p.total != null && p.options.length > 0 && p.total > p.options.length;
 
   return (
@@ -105,7 +108,7 @@ export function ServerPicker(p: {
         isRequired={p.isRequired}
         isDisabled={Boolean(p.disabledReason)}
         isReadOnly={p.readOnly}
-        isInvalid={p.error != null || undefined}
+        isInvalid={problem != null || undefined}
         data-form-value={p.value ?? ""}
       >
         <Label className="field__label">{p.label}</Label>
@@ -114,8 +117,8 @@ export function ServerPicker(p: {
           <Input ref={input} className="field__input" onKeyDownCapture={leaveImeKey} />
         </div>
         {p.disabledReason && <Text slot="description" className={css.sub}>{p.disabledReason}</Text>}
-        {(p.reserveError || p.error != null) && <div className={css.feedback} data-reserved={p.reserveError || undefined}>
-          <FieldError className={css.error}>{p.error}</FieldError>
+        {(p.reserveError || problem != null) && <div className={css.feedback} data-reserved={p.reserveError || undefined}>
+          <FieldError className={css.error}>{problem}</FieldError>
         </div>}
         <Popover ref={popover} className={`popover ${css.pop}`}>
           <div className={css.group}>

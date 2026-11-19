@@ -11,9 +11,10 @@
 .value[data-placeholder] { color: var(--steel); font-weight: var(--fw-body); }
 .chev { margin-left: auto; }
 .error { font-size: var(--text-sm); color: var(--danger-tx); }
-.pop { width: var(--trigger-width); min-width: calc(var(--panel-w) / 1.2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: auto; }
+.pop { width: var(--trigger-width); min-width: min(calc(var(--panel-w) / 1.2), calc(100vw - var(--space-3) * 2)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: auto; }
 .list { padding: var(--space-1); outline: none; }
-.opt { display: flex; flex-direction: column; gap: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); cursor: pointer; outline: none; }
+/* A long name with no space (keep-all Korean) wraps instead of scrolling the list sideways. */
+.opt { display: flex; flex-direction: column; gap: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); cursor: pointer; outline: none; overflow-wrap: anywhere; }
 .opt[data-focused] { background: var(--muted); }
 .opt[data-selected] { background: var(--primary-soft); color: var(--primary); }
 .optLabel { font-weight: var(--fw-medium); }

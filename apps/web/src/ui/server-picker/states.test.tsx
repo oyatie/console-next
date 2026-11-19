@@ -2,6 +2,7 @@
 import { chromium, expect as expectElement, type Browser, type Page } from "@playwright/test";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { ViteDevServer } from "vite";
+import { loadCatalog, t } from "@console/i18n";
 import { pickerTestServer } from "./browser-test";
 
 let server: ViteDevServer;
@@ -10,6 +11,7 @@ let page: Page;
 let catalogCount = 15;
 
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await pickerTestServer("picker-states", `
     import { createElement as h, useEffect, useState } from 'react';
     import { createRoot } from 'react-dom/client';
@@ -34,7 +36,7 @@ beforeAll(async () => {
         h('button', { id: 'before' }, 'Before'),
         mode === 'catalog' ? h(CatalogPicker, { kind: 'TITLE', label: 'Title', currentId: '0', required: false, value, onChange: setValue }) :
         mode === 'entity' ? h(PickOne, { label: 'Entity', required: true, options: choices, value, onChange: setValue, group: 'Entities', empty: 'No entities' }) :
-        mode === 'role' ? h(RolePick, { label: 'Role', roles: choices.map(o => ({ id: o.value, name_ko: o.label, lines: [] })), value, onChange: setValue }) :
+        mode.startsWith('role') ? h(RolePick, { label: 'Role', roles: choices.map(o => ({ id: o.value, name_ko: o.label, lines: [] })), value, onChange: setValue, error: mode === 'role-missing' ? 'Choose a role' : undefined }) :
         h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query, onQueryChange: setQuery,
           options: ['empty', 'readonly-empty', 'disabled-empty', 'error-empty'].includes(mode) ? [] : options,
           value, onChange: setValue, total: mode === 'complete' ? options.length : mode === 'unknown-total' ? undefined : 2000, loading, isRequired: true,
@@ -283,3 +285,15 @@ for (const mode of ["entity", "role"]) {
     }
   });
 }
+
+test("above 15 roles a missing role marks the search invalid and is its description, and the list still counts and says when no role matches", async () => {
+  await open("role-missing", 16);
+  const input = page.getByRole("combobox", { name: "Role" });
+  await expectElement(input).toHaveAttribute("aria-invalid", "true");
+  await expectElement(input).toHaveAccessibleDescription("Choose a role");
+  await input.press("ArrowDown");
+  await expectElement(page.locator(".popover").getByRole("status")).toHaveText(t("uiServerPicker.count", { count: 16 }));
+  await input.fill("Nobody");
+  await expectElement(page.getByText(t("access.grant.role.none"), { exact: true })).toBeVisible();
+  await expectElement(input).toHaveAttribute("aria-invalid", "true");
+});
