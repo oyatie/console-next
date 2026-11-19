@@ -47,8 +47,8 @@ export function RolePick({ roles, value, onChange, error, label = t("access.gran
         group={t("access.grant.role.group")}
         empty={t("access.grant.role.none")}
         isRequired
+        invalid={error || undefined}
       />
-      {error && <span className="field__error">{error}</span>}
     </div>
   );
 }
