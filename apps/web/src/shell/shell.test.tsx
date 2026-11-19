@@ -228,7 +228,10 @@ test.each([...experiences.map(experience => experience.id), "alternate"])("the %
     const html = renderToStaticMarkup(<QueryClientProvider client={client}>{layout === "alternate"
       ? <ShellFrame layout={AlternateLayout}>{screen}</ShellFrame> : <Pack>{screen}</Pack>}</QueryClientProvider>);
     expect(html).toMatch(/<main\b[^>]*data-console-scope=""/);
-    for (const key of ["shell.jump", "shell.locale", "shell.theme.toDark", "shell.logout", "account.name.unset"] as const) expect(html).toContain(t(key));
+    const expectedLandmarks = layout === "console"
+      ? (["shell.jump", "account.name.unset", "shell.tabs.label", "shell.status.label"] as const)
+      : (["shell.jump", "shell.locale", "shell.theme.toDark", "shell.logout", "account.name.unset"] as const);
+    for (const key of expectedLandmarks) expect(html).toContain(t(key));
     expect(html.match(/<main\b/g)).toHaveLength(1);
     expect(html.match(/id="main"/g)).toHaveLength(1);
     expect(html.match(/href="#main"/g)).toHaveLength(1);

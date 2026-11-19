@@ -101,14 +101,16 @@ export function ConsoleTopBar({
 
           <div className={s.navHost}>
             {!platform && navigationState === "loading" ? (
-              <div className={s.navSkeleton} role="status" aria-busy="true" aria-label={t("common.loading")}>
-                {TENANT_NAV.slice(0, 3).map(group => (
-                  <div key={group.hub} className={s.navSkeletonItem}>
-                    <Skeleton decorative bones={["line"]} />
-                  </div>
-                ))}
-              </div>
-            ) : (
+              <nav aria-label={t("shell.nav")} className={s.navSkeleton}>
+                <div className={s.navSkeleton} role="status" aria-busy="true" aria-label={t("common.loading")}>
+                  {TENANT_NAV.slice(0, 3).map(group => (
+                    <div key={group.hub} className={s.navSkeletonItem}>
+                      <Skeleton decorative bones={["line"]} />
+                    </div>
+                  ))}
+                </div>
+              </nav>
+            ) : navItems.length > 0 ? (
               <ModuleNavBar
                 label={t("shell.nav")}
                 items={navItems}
@@ -125,6 +127,8 @@ export function ConsoleTopBar({
                   </Link>
                 )}
               />
+            ) : (
+              <nav aria-label={t("shell.nav")} />
             )}
             {navigationNotice}
           </div>
@@ -134,7 +138,7 @@ export function ConsoleTopBar({
               type="button"
               className={s.searchField}
               onClick={onSearch}
-              aria-label={t("shell.jumpLabel")}
+              aria-label={t("shell.jump")}
               aria-keyshortcuts={singleKeysOn() ? "Meta+K Control+K /" : "Meta+K Control+K"}
             >
               <Search size={14} aria-hidden="true" />

@@ -37,6 +37,8 @@ export interface ShellLayoutProps {
   children: ReactNode;
   platform: boolean;
   restoring: boolean;
+  tenantName?: string;
+  tenantPhase?: string;
   menu: readonly NavHub[] | undefined;
   navigationState: "loading" | "failed" | "ready";
   navigationNotice: ReactNode;
@@ -70,7 +72,8 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
   // Keep the rail snapshot separate, but share the identity request with the shell and page.
-  const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
+  // Allow fresh cache reuse on remount so an experience-pack swap on the same route does not duplicate /api/v1/users/me.
+  const me = useQuery({ ...navigationRead(meQuery), refetchOnMount: true, queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
   const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data), retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
@@ -145,7 +148,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const scope = platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined);
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
-    <Layout platform={platform} restoring={restoring} menu={platform || displayed ? menu : undefined}
+    <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} menu={platform || displayed ? menu : undefined}
       navigationState={platform || displayed ? "ready" : supportOwnsFailure || railError ? "failed" : "loading"} onSearch={() => setJump(true)}
       navigationNotice={!platform && !displayed ? (supportOwnsFailure
         ? <p role="status" className="muted">{t("shell.nav.failed")}</p>

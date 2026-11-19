@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { UserRound } from "lucide-react";
 import { session } from "@console/api";
 import { t } from "@console/i18n";
-import { meQuery } from "../../features/account/api";
 import { chunk } from "../../lib/chunk-guard";
 import { useKeys } from "../../lib/react/use-keys";
 import { personName } from "../../reference/person/present";
@@ -51,6 +49,8 @@ function ConsoleLayout({
   children,
   platform,
   restoring,
+  tenantName,
+  tenantPhase,
   menu,
   navigationState,
   navigationNotice,
@@ -61,9 +61,7 @@ function ConsoleLayout({
   const navigate = useNavigate();
   const isPhone = useSyncExternalStore(subscribePhoneQuery, getPhoneSnapshot, () => false);
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
-  const active = Boolean(session.token);
-  const identity = useQuery({ ...meQuery, enabled: !platform && active && !restoring });
-  const { inboxCount, inboxExact, approvalsCount } = useConsoleCounts(!platform && active && !restoring);
+  const { inboxCount, inboxExact, approvalsCount } = useConsoleCounts(!platform && Boolean(session.token) && !restoring);
 
   const allLinks: readonly NavLink[] = useMemo(() => menu?.flatMap(group => group.links) ?? [], [menu]);
   const currentModuleTo = useMemo(
@@ -136,8 +134,6 @@ function ConsoleLayout({
     },
   });
 
-  const tenantName = identity.data?.tenant?.name;
-  const tenantPhase = identity.data?.tenant?.phase;
   const displayName = personName(
     claims?.name,
     t(claims?.platform ? "account.name.unset.operator" : "account.name.unset"),
