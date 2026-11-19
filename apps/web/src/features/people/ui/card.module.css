@@ -34,6 +34,7 @@
    other end to a second line that moves the tabs and sections under the head. */
 .ends > * { min-width: 0; }
 .ends > button { justify-self: start; }
+/* The invite button fills this box, so it is as tall as a row, not a control: 4px over the buttons beside it. */
 .invite { grid-column: 3; display: inline-flex; justify-self: end; min-height: var(--row-h); }
 .hiddenInvite { visibility: hidden; }
 @media (max-width: 767px) { .ends { grid-template-columns: minmax(0, 1fr); } .invite { grid-column: 1; justify-self: start; } }

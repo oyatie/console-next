@@ -31,8 +31,13 @@
   --text-xs: 12px; --text-sm: 12px; --text-body: 13px; --text-lg: 15px; --text-xl: 20px; --text-2xl: 30px;
   --fw-body: 400; --fw-medium: 500; --fw-strong: 700; --lh-base: 1.5;
   --radius-sm: 2px; --radius: 2px; --radius-lg: 3px;
-  /* As drawn: 28px rows hold 24px controls (a button is the row less --space-1), compact rows and the smallest pointer target are 24px. */
+  /* As drawn: 28px rows hold 24px controls, compact rows and the smallest pointer target are 24px. */
   --row-h: 28px; --row-h-compact: 24px; --control-h-sm: 24px; --target: 24px; --target-touch: 44px; --chip-h: 20px; --topbar-h: 40px;
+  /* As drawn: a 40px toolbar with 4px above and below its 24px controls. A decision button is 32px wherever it stands
+     (the side pane draws 28), so the role has one value. A compact row holds a control as tall as itself. */
+  --control-h: 24px; --control-h-lg: 32px; --control-h-compact: 24px; --toolbar-h: 40px; --toolbar-py: 4px;
+  /* A field is as tall as a row; in a toolbar it is level with the 24px controls beside it. */
+  --field-h: 28px; --field-h-toolbar: 24px;
 }
 
 :root[data-experience="control-room"][data-theme="dark"] {
@@ -64,10 +69,16 @@
   --scrim: rgba(6, 12, 18, 0.6); /* Derived, not drawn. */
 }
 
-/* A phone is used by touch: rows hold 44px controls and no target is under 44px, whatever the desk draws. */
+/* A phone is used by touch: rows hold 44px controls and, outside a compact grid, no target is under 44px, whatever the
+   desk draws. */
 @media (--phone) {
   :root[data-experience="control-room"] {
     --text-xs: 13px; --text-sm: 14px; --text-body: 15px; --text-lg: 17px; --text-xl: 22px;
     --row-h: 48px; --row-h-compact: 40px; --control-h-sm: 44px; --target: 44px; --topbar-h: 52px;
+    /* A control stays 44px, not the 48px drawn for one standing free: a 48px button in a 48px table row would grow the row. */
+    /* A compact row is 40px, and what sits in it is as tall as the row: under the 44px touch size. */
+    --control-h: 44px; --control-h-lg: 48px; --control-h-compact: 40px; --toolbar-h: 52px;
+    /* A field stays as tall as a row. In a toolbar it is 44px, so the toolbar holding it is the 52px its own height says. */
+    --field-h: 48px; --field-h-toolbar: 44px;
   }
 }

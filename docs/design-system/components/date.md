@@ -92,7 +92,7 @@ There is one look and one size. No prop changes either.
 
 | Part | Look |
 |---|---|
-| Input | The control box of [`Field`](field.md): 40 px high (`--row-h`). Its width is the browser's own for a text input (`width: auto`) and at least `10.5rem`, which is 168 px at the browser's default root size. |
+| Input | The control box of [`Field`](field.md): 40 px high (`--field-h`). Its width is the browser's own for a text input (`width: auto`) and at least `10.5rem`, which is 168 px at the browser's default root size. |
 | Calendar button | At least 44 px square (`--target-touch`), a 1 px `--control-border` border, a 10 px radius (`--radius-lg`), `--surface` fill, an 18 px icon in `--ink`. |
 | Quick pick | A button at least 32 px high (`--target`), 12 px side padding, a 1 px `--control-border` border, a 10 px radius, 13 px medium text. The date it stands for is 12 px regular `--steel`. |
 | Problem line | 13 px, `--danger-tx`. |

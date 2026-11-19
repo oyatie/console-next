@@ -62,7 +62,7 @@ submitted, or `null`, so two submit buttons can mean two things.
 
 | `size` | Minimum height | Side padding | Text | Width with `icon` |
 |---|---|---|---|---|
-| `md` (default) | 36 px, `calc(var(--row-h) - var(--space-1))` | 12 px | Inherited: 14 px body text. | 36 px |
+| `md` (default) | 36 px, `--control-h` | 12 px | Inherited: 14 px body text. | 36 px |
 | `sm` | 32 px, `--target` | 8 px | 13 px, `--text-sm` | 32 px |
 
 The `link` variant does not carry the `btn` class, so the base box, the hover fill and the disabled look do not
@@ -297,6 +297,7 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | --- | --- |
 | `--border` | `border` |
 | `--control-border` | `border-color` |
+| `--control-h` | `min-height`, `width` |
 | `--danger-bg` | `background` |
 | `--danger-solid` | `background`, `border-color` |
 | `--danger-tx` | `background`, `border-color`, `color` |
@@ -311,8 +312,7 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-lg` | `border-radius` |
-| `--row-h` | `min-height`, `width` |
-| `--space-1` | `min-height`, `width` |
+| `--space-1` | `min-height` |
 | `--space-2` | `gap`, `padding`, `padding-inline` |
 | `--space-3` | `padding` |
 | `--space-6` | `min-height` |
