@@ -27,6 +27,8 @@
 .keyFind { display: flex; align-items: center; gap: var(--space-2); min-width: min(100%, calc(var(--panel-w) * 0.8)); height: calc(var(--target) + var(--space-1)); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
 .keyFind .input { font-size: var(--text-sm); }
 .keyHint { font-size: var(--text-xs); color: var(--steel); }
+/* A long hint wraps; the key chip beside it keeps its label inside its border. */
+.in > kbd { flex: none; }
 .grow { flex: 1; }
 :where([data-experience]:not([data-experience="baseline"])) {
   .keys { grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--panel-w) * 0.75)), 1fr)); }

@@ -1,0 +1,3 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* In a row beside its term: the statement's text, not the foot of the box, sits on the row's baseline. */
+.box :global(.check) > span { align-self: baseline; }
