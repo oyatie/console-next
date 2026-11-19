@@ -24,8 +24,8 @@ export function FilingRequest({ task, onClose }: { task: FilingTask; onClose: ()
       {run.isPending ? <dl className="facts"><dt>{t("statutory.requestKind")}</dt><dd>{kind && filingLabel(kind)}</dd><dt>{t("statutory.requestOn")}</dt><dd>{fmtDate(date)}</dd></dl> : <>
       <SelectField label={t("statutory.requestKind")} placeholder={t("statutory.pickResolution")} value={kind} onChange={setKind}
         options={(task.kind === "LOSE" ? ["SEPARATION_CERTIFICATE"] : ["ACQUIRE_REQUESTED", "WORK_CONFIRMATION", "MONTHLY_REMUNERATION"]).map((id) => ({ id, label: filingLabel(id) }))}
-        error={tried && !kind ? t("statutory.requestRequired") : undefined} />
-      <DateField label={t("statutory.requestOn")} required value={date} onChange={setDate} today={todayKst()} error={tried && !isDate(date) ? t("statutory.requestRequired") : undefined} />
+        error={tried && !kind ? t("statutory.requestKindRequired") : undefined} />
+      <DateField label={t("statutory.requestOn")} required value={date} onChange={setDate} today={todayKst()} error={tried && !isDate(date) ? t("statutory.requestDateRequired") : undefined} />
       </>}
       <CommandError error={run.error} recover={false} />
       {run.isChecking && <Receipt state="checking" />}

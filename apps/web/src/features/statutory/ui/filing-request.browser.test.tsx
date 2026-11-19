@@ -41,7 +41,7 @@ test("with a date and no filing kind, the kind select is the invalid control and
     await date().press("Tab");
   });
   await element(kind()).toHaveAttribute("aria-invalid", "true");
-  await element(kind()).toHaveAccessibleDescription(t("statutory.requestRequired"));
+  await element(kind()).toHaveAccessibleDescription("신고 종류를 선택하십시오.");
   await element(date()).not.toHaveAttribute("aria-invalid");
   await element(date()).toHaveAccessibleDescription("");
 });
@@ -52,15 +52,15 @@ test("with a filing kind and no date, the date field is the invalid control and 
     await page.getByRole("option").first().click();
   });
   await element(date()).toHaveAttribute("aria-invalid", "true");
-  await element(date()).toHaveAccessibleDescription(t("statutory.requestRequired"));
+  await element(date()).toHaveAccessibleDescription("요청일 또는 근로월 말일을 선택하십시오.");
   await element(kind()).not.toHaveAttribute("aria-invalid");
   await element(kind()).toHaveAccessibleDescription("");
 });
 
-test("with neither, each control is invalid and described by the message", async () => {
+test("with neither, each control is invalid and described by its own message", async () => {
   await commit(async () => {});
-  for (const control of [kind(), date()]) {
+  for (const [control, message] of [[kind(), "신고 종류를 선택하십시오."], [date(), "요청일 또는 근로월 말일을 선택하십시오."]] as const) {
     await element(control).toHaveAttribute("aria-invalid", "true");
-    await element(control).toHaveAccessibleDescription(t("statutory.requestRequired"));
+    await element(control).toHaveAccessibleDescription(message);
   }
 });
