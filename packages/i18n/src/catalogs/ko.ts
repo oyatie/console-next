@@ -131,6 +131,7 @@ import { koEmpRec } from "./ko/emp-rec";
 import { koEmpDoc } from "./ko/emp-doc";
 import { koPeopleJump } from "./ko/people-jump";
 import { koSettingsHub } from "./ko/settings-hub";
+import { koUiWorklist } from "./ko/ui-worklist";
 
 export const ko: Record<ScreenMessageId, string> = {
   ...koUiFlexibleColumns,
@@ -263,4 +264,5 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koSupport,
   ...koSupportAccess,
   ...koDirectoryViews,
+  ...koUiWorklist,
 };

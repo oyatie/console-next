@@ -158,14 +158,18 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 | [Button](components/button.md) | `Button`, `IconButton`, `ToggleButton`, `Segmented`, `Form`, `Check` | `apps/web/src/ui/button` |
 | [Card](components/card.md) | `Card`, `SectionHead` | `apps/web/src/ui/card` |
 | [Chain stepper](components/chain-stepper.md) | `ChainStepper` | `apps/web/src/ui/chain-stepper` |
+| [Change rows](components/change-rows.md) | `ChangeRows` | `apps/web/src/ui/change-rows` |
 | [Chip](components/chip.md) | `Chip` | `apps/web/src/ui/chip.tsx` |
 | [Choice](components/choice.md) | `ChoiceField`, `ChipChoice`, `Checks`, `GroupedChoice`, `ChoiceAdd` | `apps/web/src/ui/choice` |
 | [Command palette](components/command-palette.md) | `CommandPalette` | `apps/web/src/ui/command-palette` |
 | [Composer](components/composer.md) | `Composer`, `RoutingPreview`, `ReceiptReference` | `apps/web/src/ui/composer` |
 | [Date](components/date.md) | `DateField`, `DateInput`, `DateCalendar` | `apps/web/src/ui/date` |
 | [Deadline chip](components/deadline-chip.md) | `DeadlineChip` | `apps/web/src/ui/deadline-chip` |
+| [Deadline strip](components/deadline-strip.md) | `DeadlineStrip` | `apps/web/src/ui/deadline-strip` |
+| [Decision pane](components/decision-pane.md) | `DecisionPane` | `apps/web/src/ui/decision-pane` |
 | [Dialog](components/dialog.md) | `Dialog` | `apps/web/src/ui/dialog.tsx` |
 | [Disabled reason](components/disabled-reason.md) | `DisabledReason` | `apps/web/src/ui/disabled-reason` |
+| [Due cell](components/due-cell.md) | `DueCell` | `apps/web/src/ui/due-cell` |
 | [Field](components/field.md) | `Field`, `FieldSet`, `Marker`, `TextInput`, `TextArea`, `SelectInput`, `DerivedValue` | `apps/web/src/ui/field` |
 | [Item list](components/item-list.md) | `ItemList` | `apps/web/src/ui/item-list` |
 | [Key cap](components/kbd.md) | `Kbd` | `apps/web/src/ui/kbd` |
