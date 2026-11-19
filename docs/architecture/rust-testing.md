@@ -40,7 +40,7 @@ commit. Only successful pushes to dev save it; pull requests and merge groups on
 Incremental compilation is disabled to limit cache size. A warm hosted run targets ten minutes including
 restore and upload; the first run or a changed dependency key builds cold and can exceed that target.
 Hosted summaries must establish the actual timing; the local cold proof took about seventeen minutes.
-The served Home budget runs on every candidate. Backend changes use the current release artifact;
+The served Home budget runs on every candidate except docs-only pull requests. Backend changes use the current release artifact;
 web-only candidates download `d10-backend` from the latest successful same-repository dev CI push.
 Dev release artifacts are retained for 90 days; a missing trusted artifact fails the job.
 The job summary reports selected and deferred cases, naming each existing

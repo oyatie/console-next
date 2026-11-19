@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Input, ListBox, ListBoxItem, SearchField } from "react-aria-components";
 import { Check, Search } from "lucide-react";
+import { leaveImeKey } from "../../lib/pure/ime";
 import s from "./path-list.module.css";
 
 /** One place in the list: `depth` indents it; `note` sits after its name; `disabled` says why it cannot be picked; a `header` (the company) only groups. */
@@ -24,7 +25,7 @@ export function PathList({ items, value, onChange, label, searchLabel, placehold
     <div className={s.box}>
       <SearchField className={s.search} aria-label={searchLabel} value={q} onChange={setQ}>
         <Search size={16} aria-hidden className={s.icon} />
-        <Input className={s.input} placeholder={placeholder} />
+        <Input className={s.input} placeholder={placeholder} onKeyDownCapture={leaveImeKey} />
       </SearchField>
       <ListBox
         aria-label={label}

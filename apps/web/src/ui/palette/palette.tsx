@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ModalOverlay, Dialog, Input, ListBox, ListBoxItem, ListBoxSection, Header, Modal, TextField, Label } from "react-aria-components";
 import { Search } from "lucide-react";
-import { isImeKey } from "../../lib/pure/ime";
+import { isImeKey, leaveImeKey } from "../../lib/pure/ime";
 import { Kbd } from "../record/record-section";
 import s from "./palette.module.css";
 
@@ -41,6 +41,7 @@ export function Palette({ open, onClose, label, query, onQuery, placeholder, sec
               type="search"
               role="searchbox"
               placeholder={placeholder}
+              onKeyDownCapture={leaveImeKey}
               // Enter acts on the first result (an exact employee number goes straight to its person); ↓ walks into the list.
               onKeyDown={(e) => {
                 // A name typed in Hangul ends on a composing key: that key is the input method's, not a command.

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useRouter } from "@tanstack/react-router";
 import { Menu } from "lucide-react";
 import { t } from "@console/i18n";
+import { isImeKey } from "../../lib/pure/ime";
 import { SupportAccessIndicator } from "../../features/support-access/ui/support-access-status";
 import { LiveStatus } from "../../ui/live/live-status";
 import { Skeleton } from "../../ui/skeleton/skeleton";
@@ -31,7 +32,7 @@ function BaselineLayout({ children, platform, restoring, menu, navigationState, 
     if (!open) return;
     rail.current?.querySelector<HTMLElement>("a")?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || isImeKey(e)) return;
       setOpen(false);
       menuButton.current?.focus();
     };

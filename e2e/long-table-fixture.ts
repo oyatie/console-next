@@ -25,6 +25,11 @@ export async function tableTest() {
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function Fixture(){
+          if(location.search==='?find') return React.createElement(LongTable,{
+            label:'Rows',rows:[{id:'a',name:'Alpha'}],rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
+            columns:[{id:'name',header:'Name',rowHeader:true,card:'title',cell:r=>r.name}],
+            find:{label:'Find a row',onFind:q=>document.body.dataset.found=q}
+          });
           const navigation=location.search.match(/^\\?navigation-(cell|button|input)(-wrapped)?$/);
           if(navigation) return React.createElement(LongTable,{
             label:'키보드 탐색',rows:[{id:'a',name:'Alpha'},{id:'b',name:'Beta'},{id:'c',name:'Gamma'}],rowId:r=>r.id,
