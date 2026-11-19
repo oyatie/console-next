@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useRef, type ReactNode, type RefObject } f
 import { ModalOverlay, Autocomplete, Dialog, Header, Input, Keyboard, Menu, MenuItem, MenuSection, Modal, SearchField, Text } from "react-aria-components";
 import { Search } from "lucide-react";
 import { t } from "@console/i18n";
-import { leaveImeKey } from "../../lib/pure/ime";
+import { isImeKey, leaveImeKey } from "../../lib/pure/ime";
 import s from "./command-palette.module.css";
 
 export type PaletteItem = { id: string; icon?: ReactNode; label: string; detail?: string; meta?: string; onAction: () => void };
@@ -49,7 +49,8 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
             {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- A palette opened by its chord or its button must take typing at once. */}
             <SearchField className={s.field} aria-label={label} autoFocus>
               <Search size={18} aria-hidden />
-              <Input ref={box} className={s.input} placeholder={placeholder} onKeyDownCapture={leaveImeKey} />
+              {/* An Enter the input method owns ends a syllable; it is not a command, and stops here as its Escape and Tab do. */}
+              <Input ref={box} className={s.input} placeholder={placeholder} onKeyDownCapture={(e) => { leaveImeKey(e); if (e.key === "Enter" && isImeKey(e)) e.stopPropagation(); }} />
               <Keyboard className={s.kbd}>{t("uiCommandPalette.esc")}</Keyboard>
             </SearchField>
             <Menu

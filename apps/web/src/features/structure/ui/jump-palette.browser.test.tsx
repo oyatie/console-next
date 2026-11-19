@@ -116,7 +116,8 @@ test("a name typed through an input method keeps its composition, and only a pla
   }
   // Still one composition: a broken one would have kept its letters and started again after them.
   await element(box()).toHaveValue("kim");
-  await box().dispatchEvent("keydown", { key: "Enter", isComposing: true });
+  // The two ways a browser marks an Enter the input method owns: mid-composition, and the one that ends a composition.
+  for (const state of [{ isComposing: true }, { isComposing: false, keyCode: 229 }]) await box().dispatchEvent("keydown", { key: "Enter", ...state });
   await ime.send("Input.insertText", { text: "kim" });
   await element(box()).toHaveValue("kim");
   await element(at()).toHaveText("/");
