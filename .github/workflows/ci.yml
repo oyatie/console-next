@@ -404,7 +404,7 @@ jobs:
           mkdir -p "$HOME/.cargo/registry/index" "$HOME/.cargo/registry/cache" "$HOME/.cargo/git/db" "$GITHUB_WORKSPACE/backend/target"
           touch "$RUNNER_TEMP/rust-cache-start"
       - run: cargo fmt --check
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo clippy --workspace --all-targets --locked --features console-platform-storage/test-seaweedfs -- -D warnings
       - &cache-collect
         name: Collect Rust cache changes
         if: github.event_name == 'merge_group'

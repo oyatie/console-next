@@ -66,7 +66,7 @@ test("Home uses a release artifact on every candidate; every Rust check stays re
   assert.equal(ci.jobs["d10-probes"], undefined);
   for (const name of backendJobs) assert.ok(ci.jobs["ci-ok"].needs.includes(name), name);
   assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo fmt --check"));
-  assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo clippy --workspace --all-targets --locked -- -D warnings"));
+  assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo clippy --workspace --all-targets --locked --features console-platform-storage/test-seaweedfs -- -D warnings"));
   assert.ok(ci.jobs["backend-gates"].steps.some(s => s.run === "cargo test --locked -p console-gate-migration-safety"));
   assert.ok(ci.jobs["backend-release"].steps.some(s => s.run === "cargo build --release --locked -p console-app --features e2e-test-support"));
 });
