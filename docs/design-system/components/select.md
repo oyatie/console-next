@@ -72,7 +72,7 @@ There is one look and one size. No prop changes either.
 | Value | Takes the free width. One line; text that does not fit ends in an ellipsis. |
 | Icon and chevron | `--steel`. Neither shrinks. The chevron is pushed to the end. |
 | Error | 13 px (`--text-sm`), `--danger-tx`. |
-| Popover | The width of the trigger (`--trigger-width`), and at least 366.67 px (`calc(var(--panel-w) / 1.2)`). `--surface` fill, a 1 px `--border` border, a 10 px radius (`--radius-lg`), `--shadow-pop`, and `overflow: auto`. |
+| Popover | The width of the trigger (`--trigger-width`), and at least 366.67 px (`calc(var(--panel-w) / 1.2)`), or the width of the viewport less 24 px (`--space-3` twice) where that is the smaller of the two. `--surface` fill, a 1 px `--border` border, a 10 px radius (`--radius-lg`), `--shadow-pop`, and `overflow: auto`. |
 | List | 4 px of padding (`--space-1`). |
 | Option | A column. 8 px top and bottom padding (`--space-2`) and 12 px at the sides (`--space-3`), a 6 px radius (`--radius`). No minimum height: one line comes to 37 px at the body's line height of 1.5, and a label with a description to 55 px. |
 | Option label | Weight 600 (`--fw-medium`). |
@@ -230,7 +230,7 @@ The WCAG 2.2 criteria that apply:
 | 1.3.1 Info and Relationships | A `listbox` of `option`s behind a button that says it opens one, all named by the label. While an error shows, the error line is the trigger's description and the trigger carries `aria-invalid="true"`. |
 | 1.4.1 Use of Color | The placeholder state is a dashed border and a lighter weight as well as a colour. Invalid is a border colour and an error line in words. The chosen option is a fill and a text colour only on screen, and `aria-selected` in the markup. |
 | 1.4.3 Contrast (Minimum), 1.4.11 Non-text Contrast | Every colour is a token. The trigger's edge is `--control-border` on `--surface`. |
-| 1.4.10 Reflow | Not met at 320 px, the width the criterion is judged at. The list is at least 366.67 px wide with no cap against the screen, so there it is wider than the screen: see Phone behaviour. |
+| 1.4.10 Reflow | The minimum width of the list is capped at the viewport less 24 px. At 320 px, the width the criterion is judged at, the list is 296 px wide and inside the screen, and a label too long for it wraps: see Phone behaviour. |
 | 2.1.1 Keyboard | The tables above. |
 | 2.1.2 No Keyboard Trap | Escape closes the list and returns focus to the trigger. |
 | 2.4.3 Focus Order | Focus moves into the list on open and back to the trigger on close. |
@@ -252,8 +252,6 @@ Known gaps:
   list opens with a value chosen, focus is on that option, so keyboard focus is not visible until it moves. See
   States.
 - No option has a keyboard-only focus look: focus and hover look the same.
-- The list is at least 366.67 px wide, with no cap against the screen. On a screen narrower than 367 px, the
-  320 px of the Reflow criterion included, it is wider than the screen.
 - The chosen option is marked on screen by colour alone.
 - A trigger with no options does nothing when pressed and does not say why.
 - The names of the hidden dismiss buttons are React Aria's text, not messages from `packages/i18n`.
@@ -268,7 +266,11 @@ entry, and that entry renders a part of the module that has no `SelectField`.
 Tests: `ui/select` has one test file, `select-field.browser.test.tsx`, with `select-field.browser-fixture.tsx`
 beside it. It runs in Chromium on a form shaped like the statutory filing dialog, and checks that the trigger
 carries `aria-invalid="true"` and has the error line as its description while the error shows, and neither before
-the form is committed nor after a pick, once by keyboard and once by pointer. There is no jsdom unit test.
+the form is committed nor after a pick, once by keyboard and once by pointer. At 360 px and at 320 px it opens a
+list of short labels and a list of long ones, and checks that the list is the viewport less 24 px wide, that the
+list and every option lie inside the screen, and that nothing runs past its own edge. At 1440 px it checks that
+the list is as wide as a trigger wider than 366.67 px, and 366.67 px wide under a narrower one. There is no jsdom
+unit test.
 
 The component is also driven in a browser through the screens that use it. Three examples: `e2e/mock/approvals.spec.ts` opens the source filter and picks an
 option; `selectFilingFact` in `e2e/helpers/statutory.ts` finds a trigger by the label inside its name and picks an
@@ -279,15 +281,19 @@ since the gallery does not show it. The scan is described in [the guide](../READ
 
 ## Phone behaviour at 390 px
 
-`select-field.module.css` has no media query and no container query. Nothing in the component's own rules changes
-with the width of the screen.
+`select-field.module.css` has no media query and no container query. One of its rules reads the width of the
+viewport: the minimum width of the list.
 
 - The trigger is as wide as its root and at least 32 px high at every width. It does not grow to the 44 px touch
   size; the module does not read `--target-touch`.
-- The list is at least 366.67 px wide whatever the width of the trigger, so at 390 px it takes almost the whole
-  screen. The minimum is a fixed length with no cap against the viewport: on a screen narrower than 367 px the
-  list is wider than the screen.
-- Options are the same size as at 1440 px.
+- The minimum width of the list is the smaller of 366.67 px and the viewport less 24 px, whatever the width of
+  the trigger. Under a trigger narrower than that, the list is 366 px wide at 390 px, 336 px at 360 px and 296 px
+  at 320 px. From a viewport of 390.67 px up, the minimum is 366.67 px, as at 1440 px.
+- The 24 px is twice the 12 px that React Aria keeps between a popover and the edge of the screen by default in
+  the installed version, so such a list sits 12 px from each side.
+- The width itself has no cap: under a trigger wider than the minimum, the list is as wide as the trigger.
+- Options are the same size as at 1440 px, except that a label too long for the narrower list wraps onto more
+  lines. No rule sets an option's text on one line.
 - React Aria places the popover against the trigger and sets its position and its maximum height itself.
 
 How wide the trigger is at 390 px is decided by the layout around it.
@@ -350,7 +356,7 @@ How wide the trigger is at 390 px is decided by the layout around it.
 | `--shadow-pop` | `box-shadow` |
 | `--space-1` | `gap`, `padding` |
 | `--space-2` | `gap`, `padding` |
-| `--space-3` | `padding` |
+| `--space-3` | `min-width`, `padding` |
 | `--steel` | `color` |
 | `--surface` | `background` |
 | `--target` | `min-height` |

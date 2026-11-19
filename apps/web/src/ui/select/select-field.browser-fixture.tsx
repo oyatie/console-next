@@ -9,6 +9,7 @@ import { SelectField } from "./select-field";
 import "../../app.css";
 
 await loadCatalog("ko");
+const which = new URLSearchParams(location.search).get("case");
 const RESOLUTIONS = [{ id: "COMPLETE", label: t("statutory.complete") }, { id: "NOT_APPLICABLE", label: t("statutory.notApplicable") }, { id: "ASSESS", label: t("statutory.assess") }];
 // The shape of a loss-code option: a code, a long label and a hold mark in one line.
 const CODES = [
@@ -18,7 +19,7 @@ const CODES = [
 ];
 
 /** The picks of the filing completion dialog: nothing chosen, checked when the form is committed, cleared by a pick. */
-export function Fixture() {
+function Filing() {
   const [action, setAction] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
@@ -33,4 +34,13 @@ export function Fixture() {
   </Dialog>;
 }
 
+/** A filter in a toolbar row: the label is hidden and the trigger is only as wide as its text. */
+function Filter() {
+  const [value, setValue] = useState("ALL");
+  return <main><div className="row" role="group" aria-label="Filters">
+    <SelectField hideLabel label="Source" placeholder="All sources" value={value} onChange={setValue} options={[{ id: "ALL", label: "All sources" }, { id: "LEAVE", label: "Leave" }]} />
+  </div></main>;
+}
+
+export const Fixture = () => (which === "filter" ? <Filter /> : <Filing />);
 createRoot(document.getElementById("root")!).render(<Fixture />);

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { dirname } from "node:path";
-import { afterAll, beforeAll, test } from "vitest";
-import { expect as element } from "@playwright/test";
+import { afterAll, beforeAll, expect, test } from "vitest";
+import { expect as element, type Locator } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { loadCatalog, t } from "@console/i18n";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
@@ -24,13 +24,17 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
-const open = () => page.goto(`${server.resolvedUrls!.local[0]}select-test`);
+const open = async (width: number, which = "filing") => {
+  await page.setViewportSize({ width, height: 800 });
+  await page.goto(`${server.resolvedUrls!.local[0]}select-test?case=${which}`);
+};
 /** The trigger of the select with this label; its name is the shown value and then the label. */
 const trigger = (label: string) => page.getByRole("button", { name: new RegExp(` ${label}$`) });
 const list = () => page.getByRole("listbox");
+const box = async (target: Locator) => (await target.boundingBox())!;
 
 test.each(["keyboard", "pointer"])("the trigger is invalid and described by the error while the error shows, and not before or after (%s)", async how => {
-  await open();
+  await open(1440);
   const pick = trigger(t("statutory.resolution"));
   const commit = page.getByRole("button", { name: t("statutory.preview"), exact: true });
   await element(pick).toHaveAccessibleName(`${t("statutory.pickResolution")} ${t("statutory.resolution")}`);
@@ -59,4 +63,44 @@ test.each(["keyboard", "pointer"])("the trigger is invalid and described by the 
   await element(pick).not.toHaveAttribute("aria-invalid");
   await element(pick).toHaveAccessibleDescription("");
   await element(trigger(t("statutory.lossCode"))).toHaveAttribute("aria-invalid", "true");
+});
+
+test.each([360, 320])("at %i px wide the open list fits inside the screen and no option is cut off", async width => {
+  await open(width);
+  for (const label of [t("statutory.resolution"), t("statutory.lossCode")]) {
+    await trigger(label).click();
+    await element(list()).toBeVisible();
+    const pop = list().locator("xpath=..");
+    const options = await list().getByRole("option").all();
+    expect(options).toHaveLength(3);
+    // The trigger is narrower still, so the list takes its capped minimum: the screen less 12 px at each side.
+    expect((await box(pop)).width).toBeCloseTo(width - 24, 1);
+    for (const part of [pop, ...options]) {
+      const { x, width: w } = await box(part);
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x + w).toBeLessThanOrEqual(width);
+      // Nothing inside runs past its own edge: long labels wrap.
+      expect(await part.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    }
+    expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
+    await page.keyboard.press("Escape");
+    await element(list()).toHaveCount(0);
+  }
+});
+
+test("on a desk the list keeps its width: the trigger's, and never under 440 / 1.2 px", async () => {
+  await open(1440);
+  const wide = trigger(t("statutory.resolution"));
+  await wide.click();
+  await element(list()).toBeVisible();
+  const asked = (await box(wide)).width;
+  expect(asked).toBeGreaterThan(440 / 1.2);
+  expect((await box(list().locator("xpath=.."))).width).toBeCloseTo(asked, 1);
+
+  await open(1440, "filter");
+  const narrow = trigger("Source");
+  await narrow.click();
+  await element(list()).toBeVisible();
+  expect((await box(narrow)).width).toBeLessThan(440 / 1.2);
+  expect((await box(list().locator("xpath=.."))).width).toBeCloseTo(440 / 1.2, 1);
 });
