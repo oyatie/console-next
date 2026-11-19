@@ -100,14 +100,14 @@ export function checkTokens(file) {
   for (const overlay of experienceFiles(file)) {
     const id = path.basename(overlay, ".css");
     const own = experienceBlocks(readFileSync(overlay, "utf8"), id, baseDark, overlay);
-    const contrast = checkThemes(experienceThemes(base, own), `experience ${id}, `);
+    const contrast = checkThemes(experienceThemes(base, own), `experience ${id}, `, base);
     result.checked += contrast.checked;
     result.problems.push(...own.problems.map((problem) => `${overlay.split(path.sep).join("/")}: ${problem}`), ...contrast.problems);
   }
   return result;
 }
 
-function checkThemes(themes, label = "") {
+function checkThemes(themes, label = "", baseline = themes) {
   const problems = [];
   let checked = 0;
   for (const [mode, tokens] of Object.entries(themes)) {
@@ -132,7 +132,14 @@ function checkThemes(themes, label = "") {
     check("--on-danger", "--danger-solid", "text");
     check("--on-signal", "--signal", "text");
     check("--surface", "--ink", "text");
-    // Decorative -bd, --border/--border-soft and chart gridlines carry no shape-only meaning.
+    // Running-text links rely on their underline when the ink and primary hues are close.
+    checked++;
+    try {
+      const ratio = contrastRatio(resolve(tokens, "--primary-bd"), resolve(tokens, "--surface"));
+      const floor = contrastRatio(resolve(baseline[mode], "--primary-bd"), resolve(baseline[mode], "--surface"));
+      if (ratio < floor) problems.push(`${theme}: --primary-bd/--surface ${ratio.toFixed(4)}:1 below baseline ${floor.toFixed(4)}:1`);
+    } catch (error) { problems.push(`${theme}: --primary-bd/--surface: ${error.message}`); }
+    // Other -bd tokens, --border/--border-soft and chart gridlines carry no shape-only meaning.
     // Sequential steps 1–4 require value labels / a table view (visual-language §3.3).
     const marks = new Set(["--control-border", "--primary", "--chart-axis", "--chart-seq-5", "--chart-edge-entity", "--chart-edge-site", "--chart-edge-dept", "--grid-chg", "--grid-err", "--grid-rng",
       ...Object.keys(tokens).filter((name) => /-solid$|^--chart-cat-/.test(name))]);
