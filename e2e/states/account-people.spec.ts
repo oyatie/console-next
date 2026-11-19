@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { mockNavigate } from "../mock/navigation";
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
@@ -323,12 +324,13 @@ test("a missing account offers an action that closes its panel @ui-state", async
 });
 
 test("a failed person search reports the refusal without an empty-result claim @ui-state", async ({ page }) => {
+  await installFaultClock(page);
   const f = await fixture(page, unlinked);
   f.failSearch();
   await page.goto(`/people?view=accounts&sel=${linked.id}`);
   const search = page.getByRole("combobox", { name: "연결할 직원", exact: true });
   await search.fill("김직원");
-  await expect(search).toHaveAttribute("aria-invalid", "true", { timeout: 20_000 });
+  await expect(search).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByRole("option", { name: /김직원/ })).toHaveCount(0);
   await expect(page.getByRole("option", { name: "일치하는 결과가 없습니다", exact: true })).toHaveCount(0);
   await expect(page.getByText("일치하는 직원이 없습니다. 직원 기록이 없으면 먼저 직원을 등록합니다.", { exact: true })).toHaveCount(0);
@@ -343,6 +345,7 @@ test("a failed person search reports the refusal without an empty-result claim @
 });
 
 test("a failed refresh removes previously loaded people from the picker @ui-state", async ({ page }) => {
+  await installFaultClock(page);
   const f = await fixture(page, unlinked);
   await page.addInitScript(() => {
     const fetch = window.fetch;
@@ -365,7 +368,7 @@ test("a failed refresh removes previously loaded people from the picker @ui-stat
   f.failSearch();
   // Live invalidation keeps the cached query data while refreshing it.
   await page.evaluate(() => window.dispatchEvent(new Event("person-refresh")));
-  await expect(search).toHaveAttribute("aria-invalid", "true", { timeout: 20_000 });
+  await expect(search).toHaveAttribute("aria-invalid", "true");
   await search.press("ArrowDown");
   await expect(page.getByRole("option", { name: /김직원/ })).toHaveCount(0);
   expect(f.unexpected).toEqual([]);

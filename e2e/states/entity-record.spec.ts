@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { TABS } from "../../apps/web/src/features/entity/domain/tabs";
@@ -61,6 +62,7 @@ for (const navigation of ["workplace", "list and back"] as const) test(`entity-r
 });
 
 test("entity-record: the first settings failure releases the record while its retry is pending @ui-state", async ({ page }) => {
+  await installFaultClock(page);
   const fixture = await mockEntityRecord(page, "populated");
   const held = Promise.withResolvers<void>();
   const retry = Promise.withResolvers<void>();
@@ -108,7 +110,7 @@ for (const state of entityRecordStates) for (const width of state === "long" ? [
       if (state === "loading") {
         await expect(main.locator('[data-read-layout="record"]')).toBeVisible();
       } else if (state === "failed") {
-        await expect(main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toHaveCount(1, { timeout: 20_000 });
+        await expect(main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toHaveCount(1);
         await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeEnabled();
         await expect(main.getByText(fixture.operationId, { exact: true })).toBeVisible();
       } else if (state === "refused") {

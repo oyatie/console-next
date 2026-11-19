@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { mockNavigate } from "../mock/navigation";
 import { loadCatalog, t } from "@console/i18n";
 import { expect, test } from "@playwright/test";
@@ -57,6 +58,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 
   test(`unserved saved views keep a disabled slot and outages can recover ${width} ${theme} @ui-state`, async ({ page }) => {
+    await installFaultClock(page);
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[1], "populated");
@@ -72,7 +74,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expectAxe(page, `unserved views ${width} ${theme}`);
     await page.route("**/api/v1/me/employee-views", route => route.fulfill({ status: 503, json: failure("service_unavailable") }));
     await page.reload();
-    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(1, { timeout: 10_000 });
+    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(1);
     await expect(open).toBeDisabled();
     await fits(page, `saved views outage ${width} ${theme}`);
     await expectAxe(page, `saved views outage ${width} ${theme}`);
@@ -84,6 +86,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 
   for (const placement of ["", "unplaced"]) test(`settings outage keeps the ${placement || "employee"} roster ${width} ${theme} @ui-state`, async ({ page }) => {
+    await installFaultClock(page);
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[1], "populated");
@@ -106,7 +109,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       return { status: 200, json: { items: employees(3), total: 3, offset: 0, limit: 100, next_cursor: null } };
     });
     await page.goto(`/people?review=contractSoon,identity${placement ? `&placement=${placement}` : ""}`);
-    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(1, { timeout: 10_000 });
+    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(1);
     const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
     await expect(grid).toBeVisible();
     await expect(grid.getByText("UI-0001", { exact: true })).toBeVisible();
@@ -330,6 +333,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
 for (const width of [1440, 390]) {
   test(`account picker states remain accessible at ${width}px in both themes @ui-state`, async ({ page }, testInfo) => {
+    await installFaultClock(page);
     testInfo.setTimeout(90_000);
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screens[1], "populated");
@@ -373,7 +377,7 @@ for (const width of [1440, 390]) {
       const failed = page.waitForResponse(response => new URL(response.url()).searchParams.get("search") === "실패");
       await search.fill("실패");
       await failed;
-      await expect(search).toHaveAttribute("aria-invalid", "true", { timeout: 20_000 });
+      await expect(search).toHaveAttribute("aria-invalid", "true");
       await expectAxe(page, `account-search/failed/${width}`);
       await fits(page, `account-search/${width}`);
       expect(fixture.unexpected).toEqual([]);
