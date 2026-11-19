@@ -54,3 +54,16 @@ test("ArrowLeft on a department with none under it moves to its parent", async (
   await element(row("Seoul office")).toBeFocused();
   await element(row("Support")).toBeVisible();
 });
+
+test("ArrowLeft pressed again and again from a department ends on its folded workplace, not off the rows", async () => {
+  await openPicker();
+  await row("Support").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Seoul office")).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Support")).toHaveCount(0);
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Seoul office")).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await element(row("Support")).toBeVisible();
+});

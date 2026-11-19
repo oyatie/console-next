@@ -98,6 +98,25 @@ test.each(["", "&listed=branches"])("ArrowLeft stays on a row with no children w
   await element(row("South site")).toBeFocused();
 });
 
+test("ArrowLeft stays on a folded row whose parent is disabled, and the row still unfolds", async () => {
+  await open("shape=keep&off=north");
+  await row("Field sales").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Sales")).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Field sales")).toHaveCount(0);
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Sales")).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await element(row("Field sales")).toBeVisible();
+  await element(row("Sales")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await element(row("Field sales")).toBeFocused();
+  // Typing a name still finds its row.
+  await page.keyboard.type("su");
+  await element(row("Support")).toBeFocused();
+});
+
 test.each([
   ["shape=keep", "company field north ops south support", "company field north ops sales south support"],
   ["shape=keep&off=north&listed=branches", "company north south", "company north sales south"],

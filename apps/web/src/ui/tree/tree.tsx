@@ -52,10 +52,13 @@ export function TreeView<T extends { id: string }>({
   // React Aria moves ArrowLeft to the parent only from a row it does not hold as expanded; a row it holds as expanded
   // does nothing there when it has no children. So a row with children is passed on as the caller lists it, and a row
   // with none is passed on only under a disabled parent, which cannot take the focus (the move would land on the tree).
+  // A folded row with children under a disabled parent cannot be passed on that way, so its ArrowLeft is stopped instead.
   const open = new Set<string>();
+  const stays = new Set<string>();
   const node = (item: T, stay = false): ReactNode => {
     const kids = childrenOf(item);
     if (kids.length ? expanded.has(item.id) : stay) open.add(item.id);
+    else if (stay) stays.add(item.id);
     return (
       <TreeItem key={item.id} id={item.id} textValue={textValue(item)} data-id={item.id}>
         <TreeItemContent>
@@ -80,6 +83,18 @@ export function TreeView<T extends { id: string }>({
       id={id}
       aria-label={label}
       className={`tree ${s.tree}`}
+      render={(props) => (
+        <div
+          {...props}
+          onKeyDownCapture={(e) => {
+            // The tree hears the key before the row does, and the row's own handler is what moves the focus. The handler
+            // passed on below is the tree's type-ahead.
+            const at = e.target as HTMLElement;
+            if (e.key === "ArrowLeft" && at.getAttribute("role") === "row" && stays.has(at.dataset.id ?? "")) e.stopPropagation();
+            props.onKeyDownCapture?.(e);
+          }}
+        />
+      )}
       data-density={density}
       aria-busy={loading || undefined}
       data-state={error ? "error" : undefined}

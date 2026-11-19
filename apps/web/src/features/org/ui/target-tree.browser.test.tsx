@@ -97,4 +97,10 @@ test("ArrowLeft keeps the focus where it is when the parent cannot be chosen", a
   await page.keyboard.press("Tab");
   await page.keyboard.press("Shift+Tab");
   await element(row("Field sales")).toBeFocused();
+  // A department folded away under its workplace stays focused as well.
+  await row("Sales").focus();
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Field sales")).toHaveCount(0);
+  await page.keyboard.press("ArrowLeft");
+  await element(row("Sales")).toBeFocused();
 });
