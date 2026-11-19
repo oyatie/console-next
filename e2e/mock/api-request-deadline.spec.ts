@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { REALTIME } from "../../apps/web/src/lib/freshness";
 import { MAX_RETRY_AFTER_MS } from "../../apps/web/src/lib/react/query-defaults";
 import { DEFAULT_REQUEST_TIMEOUT_MS } from "../../packages/api/src/request-deadline";
 import { expect, test } from "@playwright/test";
@@ -18,25 +17,13 @@ for (const width of [1440, 390]) {
     await page.clock.install();
     const fixture = await mockScreen(page, screens[1], "loading");
     // Native AbortSignal.timeout uses active browser time, outside Playwright's JS clock.
-    await page.addInitScript(heartbeatInterval => {
+    await page.addInitScript(() => {
       AbortSignal.timeout = ms => {
         const controller = new AbortController();
         setTimeout(() => controller.abort(new DOMException("Deadline", "TimeoutError")), ms);
         return controller.signal;
       };
-      const fetch = window.fetch;
-      // Keep stream recovery from invalidating the held list when the virtual clock advances.
-      window.fetch = (input, init) => {
-        const request = input instanceof Request ? input : new Request(input, init);
-        if (new URL(request.url).pathname !== "/api/v1/events") return fetch(input, init);
-        return Promise.resolve(new Response(new ReadableStream({ start(body) {
-          const ping = () => body.enqueue(new TextEncoder().encode(": heartbeat\n\n"));
-          ping();
-          const timer = setInterval(ping, heartbeatInterval);
-          request.signal.addEventListener("abort", () => { clearInterval(timer); body.close(); }, { once: true });
-        } }), { headers: { "content-type": "text/event-stream" } }));
-      };
-    }, REALTIME.heartbeatInterval);
+    });
     let attempts = 0;
     page.on("request", request => { if (new URL(request.url()).pathname === screens[1].read) attempts++; });
     try {

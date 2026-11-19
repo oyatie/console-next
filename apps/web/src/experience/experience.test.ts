@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, vi } from "vitest";
-import { experiences, resolveExperience } from "./table";
+import { experiences, offeredExperiences, resolveExperience } from "./table";
 import { loadPack } from "./pack";
 
 vi.mock("../shell/baseline/shell", () => ({ default: () => null }));
@@ -20,4 +20,12 @@ test("the pack loader uses the boot attribute and falls back to baseline", async
     expect(await loadPack()).toBe(baseline);
   }
   vi.unstubAllGlobals();
+});
+
+test("the chooser offers the built style and the one being built, and keeps an unlisted style only for a person already on it", () => {
+  expect(experiences.map(experience => [experience.id, experience.listing])).toEqual([["baseline", "listed"], ["control-room", "preview"], ["warm-clear", "unlisted"]]);
+  expect(offeredExperiences("baseline").map(experience => experience.id)).toEqual(["baseline", "control-room"]);
+  expect(offeredExperiences("control-room").map(experience => experience.id)).toEqual(["baseline", "control-room"]);
+  // Leaving it must stay possible, and the select must show what is in force.
+  expect(offeredExperiences("warm-clear").map(experience => experience.id)).toEqual(["baseline", "control-room", "warm-clear"]);
 });

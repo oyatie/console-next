@@ -26,7 +26,7 @@ for (const screen of orgChangeScreens) for (const state of Object.keys(screen.st
         await expect(main.locator("[data-read-layout]").last()).toHaveAttribute("data-read-layout", screen.key === "org-changes" ? "list" : "record");
         await expect(main.getByText(t("orgChange.list.empty.all"), { exact: true })).toHaveCount(0);
       } else if (state === "failed") {
-        await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible({ timeout: 20_000 });
+        await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible();
         await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeEnabled();
         await expect(main.getByText(fixture.operationId, { exact: true })).toBeVisible();
       } else if (state === "refused") {

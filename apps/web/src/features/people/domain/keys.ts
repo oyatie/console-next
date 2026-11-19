@@ -34,7 +34,7 @@ export const KEY_GROUPS: { id: string; keys: KeyEntry[] }[] = [
     id: "anywhere",
     keys: [
       { id: "jump", keys: ["⌘K"] },
-      { id: "help", keys: ["?"] },
+      { id: "help", keys: ["?", "⌘/"] },
     ],
   },
 ];

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { TABS } from "../../apps/web/src/features/entity/domain/tabs";
@@ -61,6 +62,7 @@ for (const navigation of ["workplace", "list and back"] as const) test(`entity-r
 });
 
 test("entity-record: the first settings failure releases the record while its retry is pending @ui-state", async ({ page }) => {
+  await installFaultClock(page);
   const fixture = await mockEntityRecord(page, "populated");
   const held = Promise.withResolvers<void>();
   const retry = Promise.withResolvers<void>();
@@ -108,7 +110,7 @@ for (const state of entityRecordStates) for (const width of state === "long" ? [
       if (state === "loading") {
         await expect(main.locator('[data-read-layout="record"]')).toBeVisible();
       } else if (state === "failed") {
-        await expect(main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toHaveCount(1, { timeout: 20_000 });
+        await expect(main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toHaveCount(1);
         await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeEnabled();
         await expect(main.getByText(fixture.operationId, { exact: true })).toBeVisible();
       } else if (state === "refused") {
@@ -233,33 +235,8 @@ test("late document and history counts preserve the tab positions @ui-state", as
   }
 });
 
-test("entity-record: late phase facts arrive with the record fields and controls @ui-state", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 720 });
-  const fixture = await mockEntityRecord(page, "populated");
-  const held = Promise.withResolvers<void>();
-  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
-    await held.promise;
-    return { status: 200, json: checklist };
-  });
-  fixture.entity.registrations[0]!.current = {
-    version: 1, effective_from: "2026-01-01", before_first_record: false,
-    trade_name: fixture.entity.current!.name!, business_types: [], tax_type: "01", status: "CONTINUING", change_mode: "SETUP",
-  };
-  try {
-    await page.goto(entityRecordPath);
-    const main = page.getByRole("main");
-    await expect(main.locator('[data-read-layout="record"][aria-busy="true"]')).toBeVisible();
-    await expect(main.getByRole("button", { name: "과세유형 수정", exact: true })).toHaveCount(0);
-    held.resolve();
-    await expect(main.getByRole("button", { name: "과세유형 수정", exact: true })).toBeVisible();
-    await expect(main.getByRole("heading", { name: fixture.entity.current!.name!, level: 1 })).toBeVisible();
-    await expect(main.locator('[data-read-layout="record"][aria-busy="true"]')).toHaveCount(0);
-    expect(fixture.unexpected).toEqual([]);
-  } finally { held.resolve(); await page.close(); fixture.release(); }
-});
-
 for (const read of ["checklist", "settings"]) for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
-  test(`entity-record: late receipt ${read} keeps certificate controls pending at ${width}px ${theme} @ui-state`, async ({ page }) => {
+  test(`entity-record: late receipt ${read} settles through the shared phase at ${width}px ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockEntityRecord(page, "populated");
@@ -282,8 +259,13 @@ for (const read of ["checklist", "settings"]) for (const [width, theme] of [[144
       await (await entityRead).finished();
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const main = page.getByRole("main");
-      await expect(main.locator('[data-read-layout="record"][aria-busy="true"]')).toBeVisible();
-      await expect(main.getByRole("tablist")).toHaveCount(0);
+      if (read === "checklist") {
+        await expect(main.getByRole("status", { name: t("common.loading"), exact: true })).toHaveAttribute("aria-busy", "true");
+        await expect(main.locator("[data-phase-pending]")).toHaveAttribute("inert", "");
+        await expect(main.getByRole("tablist")).toHaveCount(0);
+      } else {
+        await expect(main.getByRole("heading", { name: fixture.entity.current!.name!, level: 1 })).toBeVisible();
+      }
       await fits(page, `entity-record/pending-receipt/${width}/${theme}`);
       held.resolve();
       await expect(main.getByRole("heading", { name: fixture.entity.current!.name!, level: 1 })).toBeVisible();

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, IconButton } from "../button/button";
+import { useMountFocus } from "../page/use-mount-focus";
 import { Skeleton } from "../skeleton/skeleton";
 import s from "./side-panel.module.css";
 import { SidePanelReadContext } from "./read-context";
@@ -27,17 +28,7 @@ export function SidePanel({ open, title, crumb, chips, openLink, size = "peek", 
   const id = useId();
   const box = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  const findOrigin = useEffectEvent(() => returnFocus?.() ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null));
-  useLayoutEffect(() => {
-    if (!open) return;
-    const origin = findOrigin();
-    const panel = box.current;
-    heading.current?.focus({ preventScroll: true });
-    return () => {
-      // A route or another overlay may already own focus when this peek unmounts.
-      if (origin?.isConnected && (panel?.contains(document.activeElement) || document.activeElement === document.body)) origin.focus();
-    };
-  }, [open]);
+  useMountFocus(open, () => heading.current, box, returnFocus);
   useEffect(() => {
     const panel = box.current;
     if (!open || !panel) return;

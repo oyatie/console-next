@@ -1,6 +1,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Ban } from "lucide-react";
 import { isImeKey } from "../../lib/pure/ime";
+import { singleKey } from "../../lib/pure/keys";
+import { singleKeysOn } from "../../lib/prefs";
 import { Kbd } from "../kbd/kbd";
 import s from "./action-grid.module.css";
 
@@ -11,7 +13,9 @@ export type ActionGroup = { title: string; items: readonly ActionItem[] };
 /**
  * A grid of acts in groups (spec E5-menu): each with its icon, a short description and its letter key; an act that
  * cannot be done now stays listed, dimmed, with why. Opens anchored under its trigger (top right of the record),
- * focuses the first available act, picks by click, Enter or the letter, and closes on Esc or a click outside.
+ * focuses the first available act, picks by click, Enter or the letter, and closes on Esc or a click outside. The
+ * letters act from anywhere on the page while the grid is open, so they wait, and their hints are not drawn, while this
+ * device has single keys off.
  */
 export function ActionGrid({ label, head, groups, tail, foot, onPick, onClose }: {
   label: string;
@@ -32,7 +36,7 @@ export function ActionGrid({ label, head, groups, tail, foot, onPick, onClose }:
     const key = (e: KeyboardEvent) => {
       const { all: items, onPick: pick, onClose: close } = latest.current;
       if (e.key === "Escape" && !isImeKey(e)) return close();
-      if (e.altKey || e.ctrlKey || e.isComposing) return;
+      if (e.altKey || e.ctrlKey || e.isComposing || (singleKey(e) && !singleKeysOn())) return;
       const chord = e.metaKey ? `⌘${e.key.toUpperCase()}` : e.key.toUpperCase();
       const hit = items.find((i) => i.keys === chord && !i.disabled);
       if (!hit) return;
@@ -49,7 +53,7 @@ export function ActionGrid({ label, head, groups, tail, foot, onPick, onClose }:
       <span className={s.icon} aria-hidden>{i.disabled ? <Ban size={14} /> : i.icon}</span>
       <span className={s.title}>{i.title}</span>
       <small id={`${i.id}-d`} className={s.desc}>{i.disabled ?? i.desc}</small>
-      {i.keys && !i.disabled && <Kbd keys={i.keys} />}
+      {i.keys && !i.disabled && (i.keys.length > 1 || singleKeysOn()) && <Kbd keys={i.keys} />}
     </button>
   );
   return (

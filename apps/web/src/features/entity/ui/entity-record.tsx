@@ -1,5 +1,5 @@
 import { verificationState } from "../present";
-import { useEffect, useState, type ReactNode } from "react";
+import { useContext, useEffect, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Network, PencilLine, Plus } from "lucide-react";
@@ -8,17 +8,16 @@ import { t } from "@console/i18n";
 import { BIZ_KIND, label } from "../../../lib/labels";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { QueryState } from "../../../lib/react/query-state";
-import { myAccessQuery } from "../../../reference/authz/api";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
-import { checklistRef, orgStructureAt } from "../../../reference/entity/api";
-import { settingsQuery } from "../../../reference/settings/api";
-import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
+import { orgStructureAt } from "../../../reference/entity/api";
+import { myAccessQuery } from "../../../reference/authz/api";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { EnumValue } from "../../../ui/enum-value";
 import { ENTITY_LIFECYCLE, RECORD_STATUS } from "../../../lib/labels";
 import { PageHead } from "../../../ui/page-head/page-head";
+import { PagePhase } from "../../../ui/page/page-scope";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { Tabs } from "../../../ui/tabs/tabs";
 import { entityDocumentsQuery, entityHistoryQuery, entityQuery } from "../api";
@@ -82,21 +81,16 @@ export function EntityRecord({ id, workplace }: { id: string; workplace?: string
   const docsQ = useQuery({ ...entityDocumentsQuery(id), retry: false });
   const historyRead = entityHistoryQuery(id);
   const hist = useFreshOnArrival(useQuery({ ...historyRead, retry: false }), historyRead);
-  const phaseQ = useQuery(checklistRef);
   const access = useQuery(myAccessQuery);
-  const settings = useQuery(settingsQuery);
-  const [settled, setSettled] = useState(false);
-  const ready = [phaseQ, access, settings].every(q => q.data !== undefined || q.failureCount > 0);
-  // The first receipt belongs above the certificate; background reads keep the open record in place.
-  if (ready && !settled) setSettled(true);
-  const phase = phaseQ.data?.phase;
+  const phase = access.data?.phase;
+  const { settled } = useContext(PagePhase);
   const structure = useQuery(orgStructureAt(point));
   const node = structure.data?.entities.find((n) => n.id === id);
   const tab = nts ? "certificates" : urlTab ?? (workplace ? "workplaces" : "overview");
   const setTab = (next: Tab) => void navigate({ search: search => ({ ...search, tab: next, nts: undefined }), replace: true });
   useEffect(() => {
-    if (nts && tab === "certificates" && q.isSuccess) requestAnimationFrame(() => document.getElementById(`nts-${nts}`)?.scrollIntoView({ block: "center" }));
-  }, [nts, tab, q.isSuccess]);
+    if (settled && nts && tab === "certificates" && q.isSuccess) requestAnimationFrame(() => document.getElementById(`nts-${nts}`)?.scrollIntoView({ block: "center" }));
+  }, [settled, nts, tab, q.isSuccess]);
   const [sheet, setSheet] = useState<ReactNode>(null);
   const [displayed, setDisplayed] = useState(q.data);
   // A conflict re-reads the latest values for its sheet without moving the record behind it.
@@ -135,13 +129,12 @@ export function EntityRecord({ id, workplace }: { id: string; workplace?: string
         sub={<>
           <NameProblems e={e} onCertificate={() => setTab("certificates")} review={(r) => <NameReview key={r.id} e={e} review={r} editable={e.can_manage && !lock} />} />
           <LockNotice e={e} lock={lock === "loading" ? null : lock} />
-          {e.can_manage && <QueryState q={phaseQ} inline loading={<></>}>{() => null}</QueryState>}
+          {e.can_manage && <QueryState q={access} inline loading={<></>}>{() => null}</QueryState>}
         </>}
         tabs={tabs}
       />
     );
   };
-  if (!settled && !ready && !q.error) return <ReadSkeleton layout="record" />;
   return (
     <div className={s.page}><PageReadGate q={q} title={t("entity.list.title")} back={{ to: "/org/entities", label: t("denied.entity.back") }} removed={t("denied.entity.deleted.reason")}>{band}
     <QueryState q={sheet && displayed ? { ...q, data: displayed } : q} back={{ to: "/org/entities", label: t("denied.entity.back") }} removed={t("denied.entity.deleted.reason")} layout="record">

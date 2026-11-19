@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import type { Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { mockScreen } from "../mock/screen";
@@ -24,6 +25,7 @@ export const accessScreens = [
 type AccessScreen = typeof accessScreens[number];
 
 export async function mockAccessScreen(page: Page, screen: AccessScreen, state: State, phase: "SETUP" | "OPERATING" = "OPERATING") {
+  if (state === "failed") await installFaultClock(page);
   // shortcut: reuse the registered empty shell until UI-DECOUPLE adds accessScreens to the shared Screen union.
   const shell = await mockScreen(page, screens[0], "empty");
   const count = state === "empty" ? 0 : state === "large" ? 2000 : 3;

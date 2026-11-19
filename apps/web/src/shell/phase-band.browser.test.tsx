@@ -7,6 +7,45 @@ import { navFixture } from "./nav.browser-fixture";
 
 beforeAll(() => loadCatalog("ko"));
 
+test.each(["receipt", "expired", "checklist-503"])("a slow access read paints the head once: %s", async outcome => {
+  const { server, browser, page } = await navFixture();
+  const access = Promise.withResolvers<void>();
+  const refresh = Promise.withResolvers<void>();
+  await page.route("**/api/v1/access/me", async route => {
+    await access.promise;
+    await route.fallback();
+  });
+  await page.route("**/api/v1/me/authz", route => route.fulfill({ json: authz }));
+  await page.route("**/api/v1/settings", route => route.fulfill({ json: { can_change: false, items: [{ key: "onboarding.receipt_days", value: 2 }] } }));
+  await page.route("**/api/v1/onboarding/checklist", route => route.fulfill(outcome === "checklist-503"
+    ? { status: 503, json: failure("service_unavailable") }
+    : { json: { ...checklist, go_live_at: new Date(Date.now() - (outcome === "expired" ? 3 * 86400000 : 0)).toISOString() } }));
+  try {
+    await page.goto(server.resolvedUrls!.local[0]!);
+    await element(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
+    const heading = page.getByRole("heading", { name: "Setup", exact: true });
+    await element(heading).toHaveCount(0);
+    await element(page.locator("header [data-phase-band]")).toHaveCount(0);
+    access.resolve();
+    await element(heading).toBeVisible();
+    await element(page.locator("header [data-phase-band]")).toHaveCount(outcome === "receipt" ? 1 : 0);
+    const head = heading.locator("xpath=ancestor::header");
+    const before = await head.boundingBox();
+    await page.evaluate(() => window.refetchNavDecisions());
+    expect(await head.boundingBox()).toEqual(before);
+    await element(heading).toHaveCount(1);
+    const requested = page.waitForRequest("**/api/v1/onboarding/checklist");
+    await page.route("**/api/v1/onboarding/checklist", async route => {
+      await refresh.promise;
+      await route.fulfill({ status: 503, json: failure("service_unavailable") });
+    });
+    await page.evaluate(() => { void window.__refetchChecklist(); });
+    await requested;
+    await element(heading).toBeVisible();
+    refresh.resolve();
+  } finally { access.resolve(); refresh.resolve(); await browser.close(); await server.close(); }
+}, 60_000);
+
 test("a refused access read leaves the phase slot quiet", async () => {
   const { server, browser, page } = await navFixture();
   await page.route("**/api/v1/access/me", route => route.fulfill({ status: 403, json: failure("forbidden") }));
@@ -56,4 +95,34 @@ test("the receipt stays in the page head, dismisses across reloads, and stays ou
     await page.reload();
     await assertPlacement();
   } finally { await browser.close(); await server.close(); }
+}, 60_000);
+
+test("the hold deadline releases a hung checklist once and stays settled on navigation", async () => {
+  const { server, browser, page } = await navFixture();
+  const held = Promise.withResolvers<void>();
+  await page.route("**/api/v1/me/authz", route => route.fulfill({ json: authz }));
+  await page.route("**/api/v1/onboarding/checklist", async route => {
+    await held.promise;
+    await route.fallback();
+  });
+  try {
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
+    await page.goto(server.resolvedUrls!.local[0]!);
+    const pending = page.locator("[data-phase-pending]");
+    await element(pending).toHaveAttribute("inert", "");
+    const heading = page.getByRole("heading", { name: "Setup", exact: true });
+    await page.clock.runFor(1_999);
+    await element(heading).toHaveCount(0);
+    await page.clock.runFor(1);
+    await element(heading).toBeVisible();
+    await element(pending).toHaveCount(0);
+    await element(page.locator("header [data-phase-band]")).toHaveCount(0);
+    await page.getByRole("link", { name: "Period locks", exact: true }).click();
+    await element(heading).toBeVisible();
+    await element(pending).toHaveCount(0);
+    await page.evaluate(() => { void window.__refetchChecklist(); });
+    await element(heading).toBeVisible();
+    await element(pending).toHaveCount(0);
+  } finally { held.resolve(); await browser.close(); await server.close(); }
 }, 60_000);
