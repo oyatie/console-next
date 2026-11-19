@@ -2,12 +2,19 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { apiOf, bearerOf, codeOf } from "../helpers/api";
-import { peopleWorld, registerAt } from "../helpers/people-fixes";
+import { go } from "../flows";
+import { firstWorkplace } from "../helpers/entity";
+import { openTenant } from "../helpers/tenant";
+import { registerEntity } from "../setup-flows";
+import { registerAt } from "../helpers/people-fixes";
 import { andReread } from "../record-actions/world";
 
 test("solo: emergency contact notice is enforced; evidence survives sibling deletion and undo", { tag: ["@hr", "@regression", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
-  const { admin } = await peopleWorld(browser, "emergencynotice");
+  const admin = await openTenant(browser, "emergencynotice", "사람기술");
+  await go(admin, "/org/entities/new");
+  await registerEntity(admin, "사람기술");
+  await firstWorkplace(admin, "사람기술", "본사");
   const api = apiOf(admin, bearerOf(admin));
   const worker = await registerAt(admin, "사람기술", "연락인", "EC-0001");
   const read = async () => (await (await api(`/employees/${worker.id}/personal-facts`)).json()) as {
@@ -66,7 +73,7 @@ test("solo: emergency contact notice is enforced; evidence survives sibling dele
   legacy[2]!.phone = withLegacy[2]!.phone;
   expect((await patch(legacy)).status()).toBe(200);
   expect((await read()).emergency_contacts).toEqual(withLegacy);
-  await admin.reload();
+  await andReread(admin, "/personal-facts", () => admin.reload());
   const unconfirmed = contacts.getByRole("listitem").filter({ hasText: "형제자매" });
   await expect(unconfirmed.locator(".chip--warn")).toHaveText("당사자 안내 미확인");
   await expect(contacts.locator(".chip--warn")).toHaveCount(1);
