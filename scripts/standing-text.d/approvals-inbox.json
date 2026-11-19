@@ -1,6 +1,6 @@
 {
   "baseline": {
-    "apps/web/src/features/approvals/ui/approvals-page.tsx#ApprovalsPage": 20
+    "apps/web/src/features/approvals/ui/approvals-page.tsx#ApprovalsPage": 19
   },
   "newScreens": {
     "apps/web/src/features/approvals/ui/approvals-page.tsx#ApprovalsPage": {
