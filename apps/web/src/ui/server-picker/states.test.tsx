@@ -42,7 +42,8 @@ beforeAll(async () => {
           value, onChange: setValue, total: mode === 'complete' ? options.length : mode === 'unknown-total' ? undefined : 2000, loading, isRequired: true,
           readOnly: mode === 'readonly' || mode === 'readonly-empty',
           disabledReason: mode === 'disabled' || mode === 'disabled-empty' ? 'Approval required' : undefined,
-          error: mode === 'error' || mode === 'error-empty' ? 'Choose a person' : undefined,
+          readError: mode === 'error-empty' ? 'Search failed' : undefined,
+          error: mode === 'error' ? 'Choose a person' : undefined,
           escape: { kind: 'request', label: 'Request addition', note: 'Ask the owner', onRequest: () => setValue('request') } }),
         h('input', { id: 'after', 'aria-label': 'After' }),
         h('output', { id: 'selected' }, value)));
@@ -157,7 +158,7 @@ test("narrowing and identity guidance are exposed to assistive technology", asyn
 
 test("a failed empty search reports the error without a no-match escape", async () => {
   const input = await open("error-empty");
-  await expectElement(input).toHaveAccessibleDescription("Choose a person");
+  await expectElement(input).toHaveAccessibleDescription("Search failed");
   await expectElement(page.getByText("No people", { exact: true })).toHaveCount(0);
   await expectElement(page.getByRole("button", { name: "Request addition" })).toHaveCount(0);
 });

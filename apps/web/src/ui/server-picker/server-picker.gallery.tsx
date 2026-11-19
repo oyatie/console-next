@@ -28,7 +28,7 @@ function Sample({ initial, escape, state, reserveError }: { initial: string; res
       reserveError={reserveError}
       readOnly={state === "readOnly"}
       disabledReason={state === "disabled" ? tg("picker.disabledWhy") : undefined}
-      error={state === "error" ? tg("error.message") : undefined}
+      readError={state === "error" ? tg("error.message") : undefined}
       loading={state === "loading"}
     />
   );

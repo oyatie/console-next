@@ -43,9 +43,10 @@ export function ServerPicker(p: {
   total?: number;
   readOnly?: boolean;
   disabledReason?: string;
+  /** The search failed: the message stands in for the count, and the list shows neither its empty state nor the no-match escape. */
+  readError?: ReactNode;
+  /** What is wrong with the pick, such as none made: the list, its count and the no-match escape stay. */
   error?: ReactNode;
-  /** What is wrong with the pick, such as none made: shown and read like `error`, but the list, its count and the no-match escape stay. */
-  invalid?: ReactNode;
   /** Page search controls keep one feedback line; form fields keep their natural height. */
   reserveError?: boolean;
 }) {
@@ -89,8 +90,8 @@ export function ServerPicker(p: {
     }
   };
   // Only while nothing is chosen: a selection writes its name back into the query, which may itself find nothing.
-  const none = p.value === null && !pending && p.query.trim() !== "" && !p.loading && p.error == null && p.options.length === 0;
-  const problem = p.error ?? p.invalid;
+  const none = p.value === null && !pending && p.query.trim() !== "" && !p.loading && p.readError == null && p.options.length === 0;
+  const problem = p.readError ?? p.error;
   const truncated = !p.loading && p.total != null && p.options.length > 0 && p.total > p.options.length;
 
   return (
@@ -123,9 +124,9 @@ export function ServerPicker(p: {
         <Popover ref={popover} className={`popover ${css.pop}`}>
           <div className={css.group}>
             <span aria-hidden="true">{p.group}</span>
-            <span role="status">{p.loading ? t("uiServerPicker.loading") : p.error ?? t("uiServerPicker.count", { count: p.total ?? p.options.length })}</span>
+            <span role="status">{p.loading ? t("uiServerPicker.loading") : p.readError ?? t("uiServerPicker.count", { count: p.total ?? p.options.length })}</span>
           </div>
-          <ListBox className="listbox" shouldFocusOnHover={false} renderEmptyState={p.error != null ? undefined : () => <div className={css.empty}>{p.loading ? t("uiServerPicker.loading") : t("uiServerPicker.none")}</div>}>
+          <ListBox className="listbox" shouldFocusOnHover={false} renderEmptyState={p.readError != null ? undefined : () => <div className={css.empty}>{p.loading ? t("uiServerPicker.loading") : t("uiServerPicker.none")}</div>}>
             {(o: PickerOption) => (
               <ListBoxItem id={o.id} textValue={o.name} className={`listbox__item ${css.option}`}>
                 <span className={css.name}>{o.display ?? o.name}</span>
