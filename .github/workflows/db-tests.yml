@@ -155,6 +155,21 @@ jobs:
           JS
       - name: Run duration shard
         run: node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
+      - name: Verify SeaweedFS compliance retention
+        if: matrix.shard == 1
+        working-directory: backend
+        env:
+          AWS_ACCESS_KEY_ID: ${{ github.run_id }}
+        run: |
+          AWS_SECRET_ACCESS_KEY=$(node -p 'crypto.randomUUID()')
+          export AWS_SECRET_ACCESS_KEY
+          image=$(jq -er .images.seaweed ../deploy/versions.json)
+          container=$(docker run -d --rm -p 127.0.0.1::8333 -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY "$image")
+          trap 'docker stop "$container" >/dev/null' EXIT
+          address=$(docker port "$container" 8333/tcp)
+          export CONSOLE_STORAGE_TEST_S3_ENDPOINT="http://$address"
+          curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-delay 1 --max-time 3 "$CONSOLE_STORAGE_TEST_S3_ENDPOINT/status"
+          cargo nextest run --locked -p console-platform-storage --features test-seaweedfs --test seaweedfs_worm --no-tests fail
       - name: Report disk after database tests
         if: ${{ !cancelled() }}
         run: |
