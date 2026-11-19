@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import { afterAll, expect, test } from "vitest";
+import { run } from "./check-ai-quality.mjs";
 import { clones } from "./quality/clones.mjs";
 import { patterns } from "./quality/patterns.mjs";
 import { deadCode } from "./quality/dead-code.mjs";
@@ -22,7 +23,7 @@ function fixture(files: Record<string, string>, initial: Record<string, string> 
   const root = mkdtempSync(path.join(repo, ".quality-"));
   dirs.push(root);
   for (const dir of ["apps/web/src", "packages/api/src", "packages/i18n/src", "e2e", "scripts/quality"]) mkdirSync(path.join(root, dir), { recursive: true });
-  put(root, "tsconfig.json", JSON.stringify({ compilerOptions: { noLib: true, module: "ESNext", moduleResolution: "bundler" }, include: ["apps", "packages", "e2e"] }));
+  put(root, "tsconfig.json", JSON.stringify({ compilerOptions: { noLib: true, types: [], module: "ESNext", moduleResolution: "bundler" }, include: ["apps", "packages", "e2e"] }));
   put(root, "package.json", '{"name":"fixture","workspaces":["apps/*","packages/*"]}');
   put(root, "package-lock.json", '{"packages":{}}');
   put(root, "scripts/quality/dependency-verification.json", "{}");
@@ -36,7 +37,7 @@ function fixture(files: Record<string, string>, initial: Record<string, string> 
   };
   git(["init", "--quiet", "-b", "fixture-base"]);
   git(["add", "."]);
-  git(["-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "-c", "core.hooksPath=/dev/null", "commit", "--quiet", "-m", "test: create isolated quality fixture"]);
+  git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "core.hooksPath=/dev/null", "commit", "--quiet", "-m", "test: create isolated quality fixture"]);
   Object.entries(files).forEach(([file, text]) => put(root, file, text));
   return root;
 }
@@ -44,7 +45,7 @@ function fixture(files: Record<string, string>, initial: Record<string, string> 
 function parse(files: Record<string, string>) {
   const root = fixture(files);
   const paths = Object.keys(files).map((f) => path.join(root, f));
-  const program = ts.createProgram(paths, { noLib: true, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler });
+  const program = ts.createProgram(paths, { noLib: true, types: [], module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler });
   const sources = paths.map((f) => program.getSourceFile(f)!);
   const relative = (file: string) => path.relative(root, file);
   return { sources, checker: program.getTypeChecker(), relative };
@@ -166,7 +167,7 @@ test("dependency control: notes bind added/changed requirements to exact lock ve
 
 test("CLI control: pass fixture → planted refusal → baseline laundering refusal → restored pass", () => {
   const root = fixture({});
-  const cli = (args: string[] = []) => spawnSync("node", [path.join(repo, "scripts/check-ai-quality.mjs"), "--root", root, "--base", "fixture-base", ...args], { encoding: "utf8" });
+  const cli = (args: string[] = []) => run(["--root", root, "--base", "fixture-base", ...args]);
   expect(cli().status).toBe(0);
   put(root, "apps/web/src/main.tsx", "try { write(); } catch {}\n");
   const refused = cli();

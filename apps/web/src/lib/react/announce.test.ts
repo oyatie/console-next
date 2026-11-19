@@ -1,16 +1,19 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { useEffect } from "react";
-import { focusSoon, useRoutePresentation } from "./announce";
+import { announce, bindAnnouncer, focusSoon, useRoutePresentation } from "./announce";
 
 vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useEffect: vi.fn() }));
 
 // A page with a heading, an optional open dialog, and a frame clock; `focused` records who has focus.
 function page(tagName = "H2") {
   let queue: FrameRequestCallback[] = [];
-  const state = { focused: "", dialog: false, inMain: false, keyboard: false, sourceManaged: false, targetManaged: undefined as boolean | undefined, managedCalls: 0 };
+  let changed: (() => void) | undefined;
+  let observed: MutationObserverInit | undefined;
+  const state = { held: false, modalInert: false, focused: "", dialog: false, inMain: false, keyboard: false, sourceManaged: false, targetManaged: undefined as boolean | undefined, managedCalls: 0 };
   const input = new EventTarget();
   const heading = {
     id: "history", tagName, textContent: "People",
+    closest: (selector: string) => state.held || state.modalInert && selector.includes("[inert]") ? {} : null,
     focus: () => (state.focused = "heading"),
     toggleAttribute: (_: string, force: boolean) => { state.managedCalls++; state.targetManaged = force; },
   };
@@ -19,7 +22,7 @@ function page(tagName = "H2") {
     // Node's EventTarget requires the options object to remove capture listeners like a browser.
     removeEventListener: (type: string, listener: EventListener, capture = false) => input.removeEventListener(type, listener, { capture }),
     getElementById: (id: string) => (id === "history" ? heading : null),
-    querySelectorAll: () => (state.dialog ? [{ contains: () => false }] : []),
+    querySelectorAll: (selector: string) => selector.includes("h1") ? [heading] : (selector.includes('[role="dialog"]') && state.dialog ? [{ contains: () => false }] : []),
     querySelector: (selector: string) => selector.includes("h1") ? heading : null,
     activeElement: {
       closest: (selector: string) => selector === "main" && state.inMain ? {} : null,
@@ -27,7 +30,11 @@ function page(tagName = "H2") {
       hasAttribute: (name: string) => name === "data-focus-managed" && state.sourceManaged,
     },
   });
-  vi.stubGlobal("MutationObserver", class { observe() {} disconnect() {} });
+  vi.stubGlobal("MutationObserver", class {
+    constructor(callback: () => void) { changed = callback; }
+    observe(_: unknown, options: MutationObserverInit) { observed = options; }
+    disconnect() { changed = undefined; }
+  });
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => queue.push(cb));
   const frame = () => {
@@ -35,7 +42,8 @@ function page(tagName = "H2") {
     queue = [];
     run.forEach((cb) => cb(0));
   };
-  return { state, frame, input, later: (cb: FrameRequestCallback) => queue.push(cb) };
+  return { state, frame, input, later: (cb: FrameRequestCallback) => queue.push(cb),
+    mutate: (attribute: string) => { if (observed?.attributeFilter?.includes(attribute)) changed?.(); } };
 }
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
@@ -228,3 +236,36 @@ for (const type of ["pointerdown", "keydown"]) {
     expect(state.focused).toBe("chosen-box");
   });
 }
+
+test("a held route heading waits for reveal before taking focus", () => {
+  const { state, frame, mutate } = page();
+  state.held = true;
+  const cleanup = present("/held-heading");
+  frame(); frame(); frame();
+  expect(state.focused).toBe("");
+  state.held = false;
+  mutate("data-phase-pending");
+  frame(); frame(); frame();
+  expect(state.focused).toBe("heading");
+  cleanup?.();
+});
+
+test("a modal-inert route announces its title before the save receipt", () => {
+  const { state, frame, mutate } = page();
+  state.modalInert = true;
+  state.dialog = true;
+  const messages = vi.fn();
+  const unbind = bindAnnouncer(messages);
+  const cleanup = present("/modal-inert-heading");
+  try {
+    frame();
+    expect(messages).toHaveBeenCalledOnce();
+    expect(messages.mock.calls[0]![0]).toContain("People");
+    expect(state.focused).toBe("");
+    announce("Saved");
+    state.modalInert = false;
+    mutate("inert");
+    frame();
+    expect(messages).toHaveBeenLastCalledWith("Saved");
+  } finally { cleanup?.(); unbind(); }
+});

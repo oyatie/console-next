@@ -7,6 +7,13 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+test-seaweedfs = []
+
+[[test]]
+name = "seaweedfs_worm"
+required-features = ["test-seaweedfs"]
+
 [dependencies]
 bytes = { workspace = true }
 futures = { workspace = true }
