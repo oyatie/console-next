@@ -25,11 +25,11 @@ filter = '''
   + binary(group_of_one_expand_contract)
   + test(=definitions_migrated_by_console_app_are_read_only_for_runtime)
   + test(=placement_migrations_run_as_console_app)
-  + test(=corrects_stored_phones_and_preserves_revision_history)
   + test(=console_app_may_set_its_own_lock_timeout_default)
   + test(=status_worker_age_is_queue_scoped_read_only_and_missing_is_unknown)
   + test(/status_public_evidence_answers_aggregate_age_only_beside_tenant_data$/)
   + test(/serving_pool_rejects_overrides_and_restores_role_defaults_after_release$/)
+  + test(=corrects_stored_phones_and_preserves_revision_history)
 '''
 test-group = 'cluster-global'
 # Roles are cluster-wide; role mutators and console_app migrations must run alone.

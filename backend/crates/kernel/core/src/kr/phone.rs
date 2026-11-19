@@ -44,17 +44,25 @@ impl PhoneE164 {
         let international = compact
             .strip_prefix('+')
             .or_else(|| compact.strip_prefix("00"));
-        let phone = if let Some(local) = international.unwrap_or(&compact).strip_prefix("82") {
-            format!("+82{}", local.trim_start_matches('0'))
-        } else if let Some(digits) = international {
-            format!("+{digits}")
-        } else if let Some(local) = compact.strip_prefix('0') {
-            format!("+82{local}")
-        } else if compact.len() == 8 && matches!(compact.get(..2), Some("15" | "16" | "18")) {
-            // Nationwide representative number (1588-xxxx): domestic only, stored under +82.
-            format!("+82{compact}")
+        let digits = international.unwrap_or(&compact);
+        let national = digits.strip_prefix("82").or_else(|| {
+            if international.is_some() {
+                None
+            } else if compact.len() == 8 && matches!(compact.get(..2), Some("15" | "16" | "18")) {
+                Some(digits)
+            } else {
+                digits.strip_prefix('0')
+            }
+        });
+        let phone = if let Some(national) = national {
+            // Old writers could store trunk zeros and a repeated country code after +82.
+            let mut subscriber = national.trim_start_matches('0');
+            while let Some(rest) = subscriber.strip_prefix("82") {
+                subscriber = rest.trim_start_matches('0');
+            }
+            format!("+82{subscriber}")
         } else {
-            format!("+{compact}")
+            format!("+{digits}")
         };
         let digits = &phone[1.min(phone.len())..];
         let valid = phone.starts_with('+')

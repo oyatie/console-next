@@ -1,48 +1,42 @@
 -- SPDX-License-Identifier: LicenseRef-Proprietary
 -- migration-class: contract — Correct stored phone numbers while retaining account uniqueness and revision history.
+-- migration-backfill: Correct current contacts in place or by appending revisions. An application rollback retains corrected values.
 -- contract-of: 0172
 SET LOCAL lock_timeout = '2s';
--- The non-superuser migration owner needs to enumerate tenants, including the platform organization.
-ALTER TABLE organizations NO FORCE ROW LEVEL SECURITY;
 -- Project and append from a stable snapshot while application writers finish their transactions.
 LOCK TABLE users, person_revisions, employee_employment_profiles, employee_emergency_contacts,
     data_import_row_phones, legal_entity_revisions, workplace_revisions IN SHARE ROW EXCLUSIVE MODE;
 
+CREATE FUNCTION console_is_legacy_phone(phone text) RETURNS boolean
+LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE RETURN phone ~ '^[+]82(0|82)';
+
 CREATE FUNCTION pg_temp.correct_stored_phone(phone text) RETURNS text
-LANGUAGE plpgsql IMMUTABLE STRICT AS $$
-DECLARE
-    national text := ltrim(substr(phone, 4), '0');
-BEGIN
-    IF phone !~ '^[+]820[0-9]{5,12}$' THEN RETURN phone; END IF;
-    -- Both 00<international> and +82 00<national> could produce the same stored value.
-    IF substr(phone, 5) ~ '^[1-9][0-9]{7,}$' OR length(national) < 6 THEN
-        RAISE EXCEPTION 'Stored phone requires confirmation'
-            USING HINT = 'Verify the original destination and correct the contact before rerunning the migration.';
-    END IF;
-    RETURN '+82' || national;
-END $$;
+LANGUAGE sql IMMUTABLE STRICT AS $$
+    SELECT CASE WHEN console_is_legacy_phone(phone) AND subscriber ~ '^[1-9][0-9]{5,12}$'
+        THEN '+82' || subscriber ELSE phone END
+    FROM (SELECT regexp_replace(substr(phone, 4), '^(0|82)+', '') AS subscriber) parsed
+$$;
 
 DO $$
 DECLARE
     tenant uuid;
-    previous_org text := current_setting('app.current_org', true);
+    pending record;
     person record;
     entity legal_entity_revisions%ROWTYPE;
     workplace workplace_revisions%ROWTYPE;
     source_id uuid;
     changes jsonb;
 BEGIN
-    FOR tenant IN SELECT id FROM organizations ORDER BY id LOOP
-        PERFORM set_config('app.current_org', tenant::text, true);
-        -- Account contacts have a global unique index. Any collision rolls back the migration.
-        BEGIN
-            UPDATE users SET phone = pg_temp.correct_stored_phone(phone)
-                WHERE org_id = tenant AND phone IS DISTINCT FROM pg_temp.correct_stored_phone(phone);
-        EXCEPTION WHEN unique_violation THEN
-            RAISE EXCEPTION 'Account phone correction would duplicate another sign-in phone'
-                USING ERRCODE = 'unique_violation', HINT = 'Verify account ownership before rerunning the migration.';
-        END;
+    -- Count all owners before updating, including canonical owners in other tenants.
+    WITH candidates AS (
+        SELECT id, phone, pg_temp.correct_stored_phone(phone) AS target FROM users WHERE phone LIKE '+82%'
+    ), owners AS (
+        SELECT *, count(*) OVER (PARTITION BY target) AS owner_count FROM candidates
+    )
+    UPDATE users u SET phone = o.target FROM owners o
+        WHERE u.id = o.id AND o.owner_count = 1 AND o.phone <> o.target;
 
+    FOR tenant IN SELECT id FROM organizations LOOP
         FOR person IN
             SELECT * FROM (SELECT DISTINCT ON (person_id) person_id, attributes->>'phone' AS phone
                 FROM person_revisions WHERE org_id = tenant ORDER BY person_id, version DESC) current_facts
@@ -121,7 +115,58 @@ BEGIN
             INSERT INTO workplace_revisions SELECT workplace.*;
         END LOOP;
     END LOOP;
-    PERFORM set_config('app.current_org', coalesce(previous_org, ''), true);
+    -- Only current facts and effective-date winners can need manual correction.
+    -- A staging key includes arbitrary source text. Its digest identifies the row without logging that text.
+    FOR pending IN
+        SELECT 'users' AS relation, id::text AS row_id FROM users WHERE console_is_legacy_phone(phone)
+        UNION ALL SELECT 'person_revisions', id::text FROM (
+            SELECT DISTINCT ON (org_id, person_id) id, attributes FROM person_revisions
+            ORDER BY org_id, person_id, version DESC
+        ) p WHERE console_is_legacy_phone(attributes->>'phone')
+        UNION ALL SELECT 'employee_employment_profiles', employee_id::text FROM employee_employment_profiles
+            WHERE console_is_legacy_phone(phone_e164)
+        UNION ALL SELECT 'employee_emergency_contacts', id::text FROM employee_emergency_contacts
+            WHERE console_is_legacy_phone(phone_e164)
+        UNION ALL SELECT 'data_import_row_phones', run_id::text || '/' || encode(sha256(convert_to(source_key,'UTF8')),'hex')
+            FROM data_import_row_phones WHERE console_is_legacy_phone(phone_e164)
+        UNION ALL SELECT 'legal_entity_revisions', id::text FROM (
+            SELECT DISTINCT ON (org_id, legal_entity_id, effective_from) id, main_phone FROM legal_entity_revisions
+            ORDER BY org_id, legal_entity_id, effective_from, version DESC
+        ) e WHERE console_is_legacy_phone(main_phone)
+        UNION ALL SELECT 'workplace_revisions', id::text FROM (
+            SELECT DISTINCT ON (org_id, workplace_id, effective_from) id, phone, fax, mobile FROM workplace_revisions
+            ORDER BY org_id, workplace_id, effective_from, version DESC
+        ) w WHERE console_is_legacy_phone(phone) OR console_is_legacy_phone(fax) OR console_is_legacy_phone(mobile)
+    LOOP
+        RAISE WARNING 'Stored phone needs review in % row %', pending.relation, pending.row_id;
+    END LOOP;
 END $$;
 DROP FUNCTION pg_temp.correct_stored_phone(text);
-ALTER TABLE organizations FORCE ROW LEVEL SECURITY;
+
+-- Migration precedes the canary. Reject legacy writes even when the previous image serves traffic again.
+-- Column-specific triggers let unrelated updates proceed on a row awaiting manual correction.
+CREATE FUNCTION reject_legacy_phone() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION 'Noncanonical Korean phone' USING ERRCODE = '23514';
+END $$;
+CREATE TRIGGER reject_legacy_phone BEFORE INSERT OR UPDATE OF phone ON users
+    FOR EACH ROW WHEN (console_is_legacy_phone(NEW.phone))
+    EXECUTE FUNCTION reject_legacy_phone();
+CREATE TRIGGER reject_legacy_phone BEFORE INSERT OR UPDATE OF attributes ON person_revisions
+    FOR EACH ROW WHEN (console_is_legacy_phone(NEW.attributes->>'phone'))
+    EXECUTE FUNCTION reject_legacy_phone();
+CREATE TRIGGER reject_legacy_phone BEFORE INSERT OR UPDATE OF phone_e164 ON employee_employment_profiles
+    FOR EACH ROW WHEN (console_is_legacy_phone(NEW.phone_e164))
+    EXECUTE FUNCTION reject_legacy_phone();
+CREATE TRIGGER reject_legacy_phone BEFORE INSERT OR UPDATE OF phone_e164 ON employee_emergency_contacts
+    FOR EACH ROW WHEN (console_is_legacy_phone(NEW.phone_e164))
+    EXECUTE FUNCTION reject_legacy_phone();
+CREATE TRIGGER reject_legacy_phone BEFORE INSERT OR UPDATE OF phone_e164 ON data_import_row_phones
+    FOR EACH ROW WHEN (console_is_legacy_phone(NEW.phone_e164))
+    EXECUTE FUNCTION reject_legacy_phone();
+CREATE TRIGGER reject_legacy_phone BEFORE INSERT OR UPDATE OF main_phone ON legal_entity_revisions
+    FOR EACH ROW WHEN (console_is_legacy_phone(NEW.main_phone))
+    EXECUTE FUNCTION reject_legacy_phone();
+CREATE TRIGGER reject_legacy_phone BEFORE INSERT OR UPDATE OF phone, fax, mobile ON workplace_revisions
+    FOR EACH ROW WHEN (console_is_legacy_phone(NEW.phone) OR console_is_legacy_phone(NEW.fax) OR console_is_legacy_phone(NEW.mobile))
+    EXECUTE FUNCTION reject_legacy_phone();
