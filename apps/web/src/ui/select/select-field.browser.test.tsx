@@ -5,7 +5,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element, type Locator } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { loadCatalog, t } from "@console/i18n";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
+import { browserTestOptimizeDeps, chromium, selectTrigger, type Browser, type Page } from "../../lib/browser-test";
 
 const [fixture] = Object.values(import.meta.glob<string>("./select-field.browser-fixture.tsx", { query: "?url", import: "default", eager: true }));
 let server: ViteDevServer;
@@ -28,14 +28,12 @@ const open = async (width: number, which = "filing") => {
   await page.setViewportSize({ width, height: 800 });
   await page.goto(`${server.resolvedUrls!.local[0]}select-test?case=${which}`);
 };
-/** The trigger of the select with this label; its name is the shown value and then the label. */
-const trigger = (label: string) => page.getByRole("button", { name: new RegExp(` ${label}$`) });
 const list = () => page.getByRole("listbox");
 const box = async (target: Locator) => (await target.boundingBox())!;
 
 test.each(["keyboard", "pointer"])("the trigger is invalid and described by the error while the error shows, and not before or after (%s)", async how => {
   await open(1440);
-  const pick = trigger(t("statutory.resolution"));
+  const pick = selectTrigger(page, t("statutory.resolution"));
   const commit = page.getByRole("button", { name: t("statutory.preview"), exact: true });
   await element(pick).toHaveAccessibleName(`${t("statutory.pickResolution")} ${t("statutory.resolution")}`);
   await element(pick).not.toHaveAttribute("aria-invalid");
@@ -47,7 +45,7 @@ test.each(["keyboard", "pointer"])("the trigger is invalid and described by the 
   await element(pick).toHaveAttribute("aria-invalid", "true");
   await element(pick).toHaveAccessibleDescription(t("statutory.requiredResolution"));
   // Each select answers for its own error only.
-  await element(trigger(t("statutory.lossCode"))).toHaveAccessibleDescription(t("statutory.requiredCode"));
+  await element(selectTrigger(page, t("statutory.lossCode"))).toHaveAccessibleDescription(t("statutory.requiredCode"));
 
   if (how === "keyboard") {
     await pick.press("Enter");
@@ -62,13 +60,13 @@ test.each(["keyboard", "pointer"])("the trigger is invalid and described by the 
   await element(pick).toHaveAccessibleName(`${t("statutory.complete")} ${t("statutory.resolution")}`);
   await element(pick).not.toHaveAttribute("aria-invalid");
   await element(pick).toHaveAccessibleDescription("");
-  await element(trigger(t("statutory.lossCode"))).toHaveAttribute("aria-invalid", "true");
+  await element(selectTrigger(page, t("statutory.lossCode"))).toHaveAttribute("aria-invalid", "true");
 });
 
 test.each([360, 320])("at %i px wide the open list fits inside the screen and no option is cut off", async width => {
   await open(width);
   for (const [label, count] of [[t("statutory.resolution"), 3], [t("statutory.lossCode"), 4]] as const) {
-    await trigger(label).click();
+    await selectTrigger(page, label).click();
     await element(list()).toBeVisible();
     const pop = list().locator("xpath=..");
     const options = await list().getByRole("option").all();
@@ -91,7 +89,7 @@ test.each([360, 320])("at %i px wide the open list fits inside the screen and no
 
 test("on a desk the list keeps its width: the trigger's, and never under 440 / 1.2 px", async () => {
   await open(1440);
-  const wide = trigger(t("statutory.resolution"));
+  const wide = selectTrigger(page, t("statutory.resolution"));
   await wide.click();
   await element(list()).toBeVisible();
   const asked = (await box(wide)).width;
@@ -99,7 +97,7 @@ test("on a desk the list keeps its width: the trigger's, and never under 440 / 1
   expect((await box(list().locator("xpath=.."))).width).toBeCloseTo(asked, 1);
 
   await open(1440, "filter");
-  const narrow = trigger("Source");
+  const narrow = selectTrigger(page, "Source");
   await narrow.click();
   await element(list()).toBeVisible();
   expect((await box(narrow)).width).toBeLessThan(440 / 1.2);

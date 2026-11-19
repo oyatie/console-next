@@ -5,7 +5,7 @@ import { afterAll, beforeAll, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { loadCatalog, t } from "@console/i18n";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
+import { browserTestOptimizeDeps, chromium, selectTrigger, type Browser, type Page } from "../../../lib/browser-test";
 
 const [fixture] = Object.values(import.meta.glob<string>("./filing-request.browser-fixture.tsx", { query: "?url", import: "default", eager: true }));
 let server: ViteDevServer;
@@ -24,7 +24,7 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
-const kind = () => page.getByRole("button", { name: new RegExp(` ${t("statutory.requestKind")}$`) });
+const kind = () => selectTrigger(page, t("statutory.requestKind"));
 const date = () => page.getByRole("textbox", { name: t("statutory.requestOn") });
 /** Opens the dialog afresh and commits the form after `fill`; the two are never both given, so nothing is sent. */
 const commit = async (fill: () => Promise<void>) => {
