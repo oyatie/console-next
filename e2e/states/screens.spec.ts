@@ -4,6 +4,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { failure, id, LONG_NAME } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
+import { faultAttempts } from "./fault-clock";
 import { screens, type State } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -16,6 +17,8 @@ for (const screen of screens) for (const state of Object.keys(screen.states) as 
     const fixture = await mockScreen(page, screen, state);
     let observed = false;
     try {
+      let attempts = 0;
+      page.on("request", request => { if (new URL(request.url()).pathname === screen.read) attempts++; });
       const requested = page.waitForRequest(request => new URL(request.url()).pathname === screen.read);
       await page.goto(screen.path);
       await requested;
@@ -26,9 +29,10 @@ for (const screen of screens) for (const state of Object.keys(screen.states) as 
         await expect(main.getByText(t("home.noWork.title"), { exact: true })).toHaveCount(0);
         await expect(main.locator("#first-run, #first-run-title")).toHaveCount(0);
       } else if (state === "failed") {
-        await expect(main.getByText("불러오지 못했습니다", { exact: true }).first()).toBeVisible({ timeout: 20_000 });
+        await expect(main.getByText("불러오지 못했습니다", { exact: true }).first()).toBeVisible();
         await expect(main.getByRole("button", { name: "다시 불러오기", exact: true }).first()).toBeVisible();
         await expect(main.getByText(fixture.operationId, { exact: true }).first()).toBeVisible();
+        expect(attempts).toBe(faultAttempts);
       } else if (state === "refused") {
         const refusal = main.getByRole("region", { name: "이 화면에 접근 권한이 없습니다" });
         await expect(refusal).toBeVisible();

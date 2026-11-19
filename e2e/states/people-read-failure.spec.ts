@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
@@ -10,6 +11,7 @@ import { screens } from "./registry";
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const scenario of ["shared", "distinct", "usable"] as const) test(`people read failure: ${scenario} @ui-state`, async ({ page }, info) => {
+  await installFaultClock(page);
   const rosterFailed = scenario !== "usable";
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
@@ -26,7 +28,7 @@ for (const scenario of ["shared", "distinct", "usable"] as const) test(`people r
     });
   }
   await page.goto("/people");
-  for (const path of paths.slice(rosterFailed ? 0 : 1)) await expect.poll(() => replies.get(path) ?? 0, { timeout: 20_000 }).toBeGreaterThanOrEqual(3);
+  for (const path of paths.slice(rosterFailed ? 0 : 1)) await expect.poll(() => replies.get(path) ?? 0).toBeGreaterThanOrEqual(3);
   const main = page.getByRole("main");
   await expect(main.locator('[aria-busy="true"]:visible:not([aria-hidden="true"] *, [inert] *)')).toHaveCount(0);
   const references = main.locator("[data-support-reference]");
