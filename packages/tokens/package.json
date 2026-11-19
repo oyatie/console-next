@@ -1,1 +1,1 @@
-{ "name": "@console/tokens", "private": true, "exports": { "./tokens.css": "./tokens.css" } }
+{ "name": "@console/tokens", "private": true, "exports": { "./tokens.css": "./tokens.css", "./experiences/*.css": "./experiences/*.css" } }
