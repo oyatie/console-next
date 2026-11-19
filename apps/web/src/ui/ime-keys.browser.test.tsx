@@ -142,6 +142,13 @@ test.each(Object.keys(ACTED).flatMap(which => COMPOSING.map(state => ({ which, s
     await element(ACTED[which]!()).toHaveCount(1);
   });
 
+test("the find box takes the keys as soon as it is drawn: Enter acts with no click or Tab first", async () => {
+  await open("palette");
+  await element(page.getByRole("searchbox", { name: "Find a person" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await element(page.locator("#acted")).toHaveText("1");
+});
+
 test.each(COMPOSING)("the find box stays open through an Escape pressed while composing %j, then closes on a plain Escape", async state => {
   await open("palette");
   const box = page.getByRole("searchbox", { name: "Find a person" });
