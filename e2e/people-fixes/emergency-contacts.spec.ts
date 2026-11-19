@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
-import { apiOf, bearerOf, codeOf } from "../helpers/api";
 import { go } from "../flows";
+import { apiOf, bearerOf, codeOf } from "../helpers/api";
 import { firstWorkplace } from "../helpers/entity";
-import { openTenant } from "../helpers/tenant";
-import { registerEntity } from "../setup-flows";
 import { registerAt } from "../helpers/people-fixes";
+import { openTenant } from "../helpers/tenant";
 import { andReread } from "../record-actions/world";
+import { registerEntity } from "../setup-flows";
 
 test("solo: emergency contact notice is enforced; evidence survives sibling deletion and undo", { tag: ["@hr", "@regression", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
-  const admin = await openTenant(browser, "emergencynotice", "사람기술");
+  const employee = { company: "사람기술", workplace: "본사", name: "연락인", number: "EC-0001" };
+  const admin = await openTenant(browser, "emergencynotice", employee.company);
   await go(admin, "/org/entities/new");
-  await registerEntity(admin, "사람기술");
-  await firstWorkplace(admin, "사람기술", "본사");
+  await registerEntity(admin, employee.company);
+  await firstWorkplace(admin, employee.company, employee.workplace);
   const api = apiOf(admin, bearerOf(admin));
-  const worker = await registerAt(admin, "사람기술", "연락인", "EC-0001");
+  const worker = await registerAt(admin, employee.company, employee.name, employee.number);
   const read = async () => (await (await api(`/employees/${worker.id}/personal-facts`)).json()) as {
     updated_at: string;
     emergency_contacts: { name: string; relation: string; phone: string; contact_notified: boolean; basis: string | null; recorded_by_name: string; recorded_at: string }[] | null;
