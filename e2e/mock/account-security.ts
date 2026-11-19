@@ -56,8 +56,13 @@ export async function accountSecurityPasskey(page: Page, mode: "login" | "autofi
     for (const method of ["get", "create"]) Object.defineProperty(navigator.credentials, method, { configurable: true, value: ({ signal }: CredentialRequestOptions = {}) => {
       document.documentElement.dataset.passkeySheet = method;
       return new Promise(resolve => {
-        window.addEventListener("test-passkey-select", () => resolve(new Credential()), { once: true });
-        signal?.addEventListener("abort", () => { delete document.documentElement.dataset.passkeySheet; resolve(null); }, { once: true });
+        const select = () => resolve(new Credential());
+        window.addEventListener("test-passkey-select", select, { once: true, signal });
+        signal?.addEventListener("abort", () => {
+          delete document.documentElement.dataset.passkeySheet;
+          // The outstanding credential can arrive even after the OS sheet is dismissed.
+          window.addEventListener("test-passkey-late-select", select, { once: true });
+        }, { once: true });
       });
     } });
   }, mode === "autofill");

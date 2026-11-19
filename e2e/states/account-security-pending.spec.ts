@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe } from "../a11y";
 import { accountSecurityPasskey } from "../mock/account-security";
-import { authz, user } from "../mock/fixtures";
+import { authz, token, user } from "../mock/fixtures";
+import { mockRoute } from "../mock/route";
 
 test.beforeAll(() => loadCatalog("ko"));
 for (const mode of ["login", "autofill", "enroll", "reauth"] as const) for (const width of [1440, 390]) {
@@ -78,5 +79,36 @@ test("manual sign-in stays busy when it aborts passive autofill", async ({ page 
     await expect(button).toBeDisabled();
     fixture.release();
     await expect(button).toBeEnabled();
+  } finally { await page.close(); fixture.release(); }
+});
+
+test("explicit sign-in completes while autofill is pending and discards a late selection", async ({ page }) => {
+  const fixture = await accountSecurityPasskey(page, "autofill");
+  const finish = "/api/v1/auth/passkey/login/finish";
+  await mockRoute(page, "post", finish, { status: 200, json: token() });
+  try {
+    await page.goto("/login");
+    const sheet = page.locator("html");
+    await expect(sheet).toHaveAttribute("data-passkey-sheet", "get");
+    await page.getByRole("button", { name: t("auth.login.passkey"), exact: true }).click();
+    await expect(sheet).toHaveAttribute("data-passkey-sheet", "get");
+    await page.evaluate(() => window.dispatchEvent(new Event("test-passkey-select")));
+    await expect(page.getByRole("button", { name: t("shell.logout"), exact: true })).toBeVisible();
+
+    const lateSubmissions = await page.evaluate(async path => {
+      let submissions = 0;
+      const send = window.fetch;
+      window.fetch = (...args) => {
+        const input = args[0];
+        if (new URL(input instanceof Request ? input.url : input, location.href).pathname === path) submissions++;
+        return send(...args);
+      };
+      try {
+        window.dispatchEvent(new Event("test-passkey-late-select"));
+        await new Promise(requestAnimationFrame);
+        return submissions;
+      } finally { window.fetch = send; }
+    }, finish);
+    expect(lateSubmissions).toBe(0);
   } finally { await page.close(); fixture.release(); }
 });
