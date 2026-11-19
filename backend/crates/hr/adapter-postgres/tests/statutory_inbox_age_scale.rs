@@ -4,6 +4,8 @@
 mod age_explain;
 #[path = "statutory/age_scale.rs"]
 mod age_scale;
+#[path = "statutory/age_visibility.rs"]
+mod age_visibility;
 mod support;
 #[path = "support/trail_queries.rs"]
 mod trail_queries;

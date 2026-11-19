@@ -122,17 +122,18 @@ async fn in_window_hydration_never_exceeds_the_keyset_page(pool: PgPool) {
         .await
         .unwrap();
     // Only the captured, application-built SQL is explained; fixture values remain bound.
-    let mut q = sqlx::query_scalar::<_, Value>(sqlx::AssertSqlSafe(explain)).bind(w.tenant.org);
+    let ids: Vec<_> = page.items.iter().map(|item| item.inbox_id()).collect();
+    let mut q = sqlx::query_scalar::<_, Value>(sqlx::AssertSqlSafe(explain))
+        .bind(w.tenant.org)
+        .bind(&ids);
     // The in-window fixture is after every cutoff; null bounds preserve exactly that candidate set.
     if sql.contains("earliest_event_on") {
         let bounds:Value=sqlx::query_scalar("SELECT jsonb_agg(jsonb_build_object('code',code,'effective_from',effective_from,'earliest_event_on',NULL)) FROM lifecycle_filing_rules WHERE filing_rule IS NOT NULL")
             .fetch_one(&mut *conn).await.unwrap();
         q = q.bind(bounds);
     }
-    let ids: Vec<_> = page.items.iter().map(|item| item.inbox_id()).collect();
     let plan: Value = q
         .bind(vec!["DISPATCHED_IN", "OUTSOURCED_ON_SITE", "FREELANCE"])
-        .bind(&ids)
         .bind(&ids)
         .bind(None::<time::OffsetDateTime>)
         .fetch_one(&mut *conn)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Rank the canonical assessment before hydrating the bounded visible page.
-use super::filing_query::query_rows;
+use super::filing_query::{Read, query_rows};
 use super::{FilingPage, FilingQuery, FilingTask, filing_read};
 use crate::HrError;
 use console_compliance_domain::statutory::StatutoryRegister;
@@ -22,6 +22,7 @@ pub(super) async fn load(
     query: &FilingQuery,
     register: &StatutoryRegister,
     after: Option<Position>,
+    sensitive: bool,
 ) -> Result<(FilingPage, bool), HrError> {
     sqlx::query("SET LOCAL jit = off")
         .execute(tx.as_mut())
@@ -36,28 +37,31 @@ pub(super) async fn load(
             principal,
             query,
             register,
-            true,
-            None,
+            Read::Rank,
             Some(bounds.clone()),
         )
         .await?
     };
-    if query.kind.as_deref().is_none_or(|kind| kind == "AGE60") {
+    if sensitive && query.kind.as_deref().is_none_or(|kind| kind == "AGE60") {
         let years = register
             .filing_rules()
             .iter()
             .filter(|rule| rule.insurer == "NPS" && rule.filing_kind == "AGE60")
             .filter_map(|rule| rule.age_trigger_years)
             .min();
-        let has_birth = if let Some(years) = years {
-            sqlx::query_scalar::<_, bool>("WITH clock AS MATERIALIZED (SELECT max(EXTRACT(year FROM (COALESCE($2,now()) AT TIME ZONE z.time_zone))) AS year FROM (SELECT time_zone FROM lifecycle_country_packs WHERE is_default UNION SELECT time_zone FROM workplaces WHERE org_id=$1 UNION SELECT time_zone FROM legal_entities WHERE org_id=$1) z) \
-                SELECT EXISTS (SELECT 1 FROM person_employees_current x CROSS JOIN clock WHERE x.org_id=$1 AND EXTRACT(year FROM x.birth_date)+$3<=clock.year) \
-                OR EXISTS (SELECT 1 FROM insurance_filing_records r CROSS JOIN clock WHERE r.org_id=$1 AND EXTRACT(year FROM (r.applicability_facts->>'birth_date')::date)+$3<=clock.year)")
-                .bind(principal.org_id.as_uuid()).bind(query.inbox_as_of).bind(i32::from(years)).fetch_one(tx.as_mut()).await?
+        let people = if let Some(years) = years {
+            sqlx::query_scalar::<_, uuid::Uuid>("WITH clock AS MATERIALIZED (SELECT max(EXTRACT(year FROM (COALESCE($2,now()) AT TIME ZONE z.time_zone))) AS year FROM (SELECT time_zone FROM lifecycle_country_packs WHERE is_default UNION SELECT time_zone FROM workplaces WHERE org_id=$1 UNION SELECT time_zone FROM legal_entities WHERE org_id=$1) z) \
+                SELECT x.id FROM person_employees_current_set x CROSS JOIN clock WHERE x.org_id=$1 AND EXTRACT(year FROM x.birth_date)+$3<=clock.year \
+                UNION SELECT COALESCE(e.employee_id,q.employee_id) FROM insurance_filing_records r CROSS JOIN clock \
+                 LEFT JOIN employee_lifecycle_events e ON e.org_id=r.org_id AND e.id=r.event_id \
+                 LEFT JOIN insurance_filing_requests q ON q.org_id=r.org_id AND q.id=r.request_id \
+                 WHERE r.org_id=$1 AND r.filing_kind='AGE60' AND COALESCE(e.employee_id,q.employee_id) IS NOT NULL \
+                   AND EXTRACT(year FROM (r.applicability_facts->>'birth_date')::date)+$3<=clock.year")
+                .bind(principal.org_id.as_uuid()).bind(query.inbox_as_of).bind(i32::from(years)).fetch_all(tx.as_mut()).await?
         } else {
-            false
+            Vec::new()
         };
-        if has_birth {
+        if !people.is_empty() {
             let age_query = FilingQuery {
                 kind: Some("AGE60".into()),
                 ..query.clone()
@@ -68,8 +72,7 @@ pub(super) async fn load(
                     principal,
                     &age_query,
                     register,
-                    true,
-                    None,
+                    Read::Birthdays(&people),
                     Some(bounds.clone()),
                 )
                 .await?,
@@ -120,12 +123,11 @@ pub(super) async fn load(
             principal,
             query,
             register,
-            false,
-            Some(ids),
+            Read::Selected(&ids),
             Some(bounds.clone()),
         )
         .await?;
-        let mut hydrated: HashMap<_, _> = hydrate(tx, principal, query, register, rows)
+        let mut hydrated: HashMap<_, _> = hydrate(tx, principal, query, register, rows, sensitive)
             .await?
             .into_iter()
             .map(|task| (task.inbox_id(), task))
@@ -168,6 +170,7 @@ async fn hydrate(
     query: &FilingQuery,
     register: &StatutoryRegister,
     rows: Vec<PgRow>,
+    sensitive: bool,
 ) -> Result<Vec<FilingTask>, HrError> {
     let mut pending = Vec::new();
     for row in rows {
@@ -176,7 +179,7 @@ async fn hydrate(
         }
     }
     Ok(
-        super::filings::visible_tasks(tx, principal, query, register, pending)
+        super::filings::visible_tasks(tx, principal, query, register, pending, sensitive)
             .await?
             .into_iter()
             .filter(|task| !task.resolved())
