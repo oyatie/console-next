@@ -255,6 +255,7 @@ test("every colour the base file sets for light is also set in its dark block", 
   for (const [added, token] of [
     [":root { --band: #102030; }", "--band"],
     [":root { --band-shadow: 0 1px 2px rgba(20, 26, 33, 0.08); }", "--band-shadow"],
+    [":root { --band-scheme: light; }", "--band-scheme"],
     [':root[data-theme="light"] { --band: gainsboro; }', "--band"],
   ]) {
     const r = run(`${css}\n${added}`);
