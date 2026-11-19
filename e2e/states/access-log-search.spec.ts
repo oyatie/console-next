@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { AT, failure, id } from "../mock/fixtures";
@@ -67,6 +68,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
 for (const [searchTerm, state] of [["실패", "failed"], ["거절", "refused"]] as const) {
   test(`access-log search preserves the shared ${state} state @ui-state`, async ({ page }) => {
+    if (state === "failed") await installFaultClock(page);
     const fixture = await searchFixture(page);
     try {
       await page.goto("/audit/access-log");
@@ -74,7 +76,7 @@ for (const [searchTerm, state] of [["실패", "failed"], ["거절", "refused"]] 
       await page.getByRole("searchbox", { name: "접속자·IP 주소 검색" }).fill(searchTerm);
       const main = page.getByRole("main");
       if (state === "failed") {
-        await expect(main.getByText("최신 내용을 확인하지 못했습니다", { exact: false })).toBeVisible({ timeout: 20_000 });
+        await expect(main.getByText("최신 내용을 확인하지 못했습니다", { exact: false })).toBeVisible();
         await expect(main.getByRole("grid")).toBeVisible();
       }
       else await expect(main.getByRole("region", { name: "이 화면에 접근 권한이 없습니다" })).toBeVisible();

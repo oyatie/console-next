@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { REALTIME } from "../../apps/web/src/lib/freshness";
+import { installFaultClock } from "../states/fault-clock";
 import type { Page } from "@playwright/test";
 import { attendanceBoardReads } from "./attendance-board";
 import { attendanceBoardScreens } from "../states/attendance";
@@ -13,8 +15,26 @@ import { numberingReads } from "./numbering";
 import { mockDirectorySettings } from "./directory";
 import { throttleCPU } from "../helpers/cpu-throttle";
 
+export async function mockEventStream(page: Page) {
+  // route.fulfill buffers bodies; a browser stream keeps the shell healthy without fake reconnects.
+  await page.addInitScript(heartbeatInterval => {
+    const fetch = window.fetch;
+    window.fetch = (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      if (new URL(request.url).pathname !== "/api/v1/events") return fetch(input, init);
+      return Promise.resolve(new Response(new ReadableStream({ start(controller) {
+        const ping = () => controller.enqueue(new TextEncoder().encode(": heartbeat\n\n"));
+        ping();
+        const timer = setInterval(ping, heartbeatInterval);
+        request.signal.addEventListener("abort", () => { clearInterval(timer); controller.close(); }, { once: true });
+      } }), { headers: { "content-type": "text/event-stream" } }));
+    };
+  }, REALTIME.heartbeatInterval);
+}
+
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
 export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState | PayrollState, modulesState: keyof typeof modules | "refused" = "ready") {
+  if (state === "failed") await installFaultClock(page);
   await throttleCPU(page);
   const unexpected: string[] = [];
   await page.route(url => url.pathname.startsWith("/api/"), async route => {
@@ -49,18 +69,7 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "delete", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 204 });
   await mockDirectorySettings(page);
   await page.route("**/api/v1/me/employee-views", route => route.fulfill({ status: 404, json: failure("not_found") }));
-  // route.fulfill buffers bodies; a browser stream keeps the shell healthy without fake reconnects.
-  await page.addInitScript(() => {
-    const fetch = window.fetch;
-    window.fetch = (input, init) => {
-      const request = input instanceof Request ? input : new Request(input, init);
-      if (new URL(request.url).pathname !== "/api/v1/events") return fetch(input, init);
-      return Promise.resolve(new Response(new ReadableStream({ start(controller) {
-        controller.enqueue(new TextEncoder().encode(": connected\n\n"));
-        request.signal.addEventListener("abort", () => controller.close(), { once: true });
-      } }), { headers: { "content-type": "text/event-stream" } }));
-    };
-  });
+  await mockEventStream(page);
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   const count = state === "empty" ? 0 : state === "large" ? 2000 : 3;

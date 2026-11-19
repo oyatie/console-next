@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { AT, failure, id, screenAccess } from "../mock/fixtures";
@@ -16,6 +17,7 @@ const event = (n: number) => ({
 });
 
 async function mockAccessLog(page: Page, state: State, count = state === "empty" ? 0 : 3) {
+  if (state === "failed") await installFaultClock(page);
   const shell = await mockScreen(page, screens[0], "empty");
   const rows = Array.from({ length: count }, (_, i) => event(i + 1));
   let pageCalls = 0;
@@ -43,7 +45,7 @@ for (const screen of ["access-log", "access-review"] as const) for (const state 
     try {
       await page.goto(screen === "access-log" ? "/audit/access-log" : "/access/review");
       const main = page.getByRole("main");
-      if (state === "failed") await expect(main.getByText("불러오지 못했습니다", { exact: true })).toHaveCount(1, { timeout: 20_000 });
+      if (state === "failed") await expect(main.getByText("불러오지 못했습니다", { exact: true })).toHaveCount(1);
       else if (state === "refused") await expect(main.getByRole("region", { name: "이 화면에 접근 권한이 없습니다" })).toHaveCount(1);
       else if (state === "empty") await expect(main.getByRole("heading", { name: screen === "access-log" ? "확인할 접속기록이 없습니다" : "검토할 권한 부여가 없습니다" })).toBeVisible();
       else await expect(main.getByRole("grid")).toBeVisible();

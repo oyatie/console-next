@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { AT, failure, id, user } from "../mock/fixtures";
@@ -49,6 +50,7 @@ test("missing and refused role reads retain a route back to roles @ui-state", as
 });
 
 for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) test(`a failed holder read offers one error and prevents a blind role edit at ${width}px ${colorScheme} @ui-state`, async ({ page }) => {
+  await installFaultClock(page);
   await page.setViewportSize({ width, height: 900 });
   await page.emulateMedia({ colorScheme });
   const f = await mockAccessScreen(page, accessScreens[1], "populated");
@@ -57,7 +59,7 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   await mockRoute(page, "get", "/api/v1/access/grants", { status: 503, json: failure("service_unavailable") });
   await page.goto(`/access/roles/${accessRole.id}`);
   const holders = page.getByRole("region", { name: "보유자", exact: true });
-  await expect(holders.getByRole("alert")).toContainText("불러오지 못했습니다", { timeout: 20_000 });
+  await expect(holders.getByRole("alert")).toContainText("불러오지 못했습니다");
   await expect(page.getByText("불러오지 못했습니다", { exact: true })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "다시 불러오기", exact: true })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "역할 저장", exact: true })).toBeDisabled();
