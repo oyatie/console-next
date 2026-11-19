@@ -1,5 +1,5 @@
-import { useDeferredValue, useEffect, useRef, type ReactNode, type RefObject } from "react";
-import { ModalOverlay, Autocomplete, Dialog, Header, Input, Keyboard, Menu, MenuItem, MenuSection, Modal, SearchField, Text } from "react-aria-components";
+import { useDeferredValue, useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { ModalOverlay, Autocomplete, Dialog, Header, Input, Keyboard, Menu, MenuItem, MenuSection, Modal, SearchField, Text, type Key } from "react-aria-components";
 import { Search } from "lucide-react";
 import { t } from "@console/i18n";
 import { isImeKey, leaveImeKey } from "../../lib/pure/ime";
@@ -47,6 +47,24 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
   // render has caught up with the box. Text that returns to what it was before then is still marked afresh.
   const searched = useDeferredValue(query);
   const first = searched.trim() && searched === query ? shown[0]?.items[0]?.id : undefined;
+  const act = (id: Key) => {
+    const item = shown.flatMap((x) => x.items).find((i) => i.id === id);
+    if (!item) return;
+    onClose();
+    item.onAction();
+  };
+  const keys = (e: KeyboardEvent<HTMLInputElement>) => {
+    leaveImeKey(e);
+    if (e.isTrusted && MOVES.has(e.key)) moved.current = true;
+    if (e.key !== "Enter") return;
+    // An Enter the input method owns ends a syllable; it is not a command, and stops here as its Escape and Tab do.
+    if (isImeKey(e)) return e.stopPropagation();
+    // A caret move or a click in the box drops the highlight, and React Aria's Enter then opens nothing: the first result still takes it.
+    if (!first || e.currentTarget.closest("[role=dialog]")?.querySelector("[role=menuitem][data-focused]")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    act(first);
+  };
   return (
     <ModalOverlay className={s.overlay} isOpen={open} onOpenChange={(o) => !o && onClose()} isDismissable>
       <Modal className={s.modal}>
@@ -55,20 +73,14 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
             {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- A palette opened by its chord or its button must take typing at once. */}
             <SearchField className={s.field} aria-label={label} autoFocus>
               <Search size={18} aria-hidden />
-              {/* An Enter the input method owns ends a syllable; it is not a command, and stops here as its Escape and Tab do. */}
-              <Input ref={box} className={s.input} placeholder={placeholder} onKeyDownCapture={(e) => { leaveImeKey(e); if (e.isTrusted && MOVES.has(e.key)) moved.current = true; if (e.key === "Enter" && isImeKey(e)) e.stopPropagation(); }} />
+              <Input ref={box} className={s.input} placeholder={placeholder} onKeyDownCapture={keys} />
               <Keyboard className={s.kbd}>{t("uiCommandPalette.esc")}</Keyboard>
             </SearchField>
             <Menu
               className={s.menu}
               aria-label={label}
               renderEmptyState={() => <div className={s.empty}>{empty}</div>}
-              onAction={(key) => {
-                const item = shown.flatMap((x) => x.items).find((i) => i.id === key);
-                if (!item) return;
-                onClose();
-                item.onAction();
-              }}
+              onAction={act}
             >
               {shown.map((sec) => (
                 <MenuSection key={sec.id} id={sec.id} className={s.section}>

@@ -111,6 +111,18 @@ test("a row chosen with the keys keeps the highlight when late people land above
   await element(at()).toHaveText("/org#structure-import");
 });
 
+test.each(["a caret move", "a click in the box"] as const)("Enter still opens the first result after %s", async how => {
+  await open("chord");
+  found = q => [`Kim ${q}`, `Kimura ${q}`];
+  await page.keyboard.type("kim");
+  await lit(/^Kim kim/);
+  if (how === "a caret move") await page.keyboard.press("ArrowLeft");
+  else await box().click();
+  await page.keyboard.press("Enter");
+  await element(at()).toHaveText(`/people/${id(100)}`);
+  await element(palette()).toHaveCount(0);
+});
+
 test("a click on a row below the highlighted one opens that row", async () => {
   await open("button");
   found = q => [`Kim ${q}`, `Kimura ${q}`];
