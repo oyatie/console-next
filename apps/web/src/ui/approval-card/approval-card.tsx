@@ -34,7 +34,7 @@ export function ApprovalCard(p: ReturnProps & {
   step: ReactNode;
   /** The decision as a sentence (dissolves the support team on 2 Nov). */
   title: ReactNode;
-  /** Content, preflight in words, diff, chain (TaskCard slots). */
+  /** Content, preflight in words, diff, chain. */
   children: ReactNode;
   /** What approving does and who can undo it. Required: the type forces the sentence above the decision. */
   consequence: ReactNode;
