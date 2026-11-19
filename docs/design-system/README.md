@@ -141,6 +141,11 @@ and open `/_gallery`. Add `?entry=<name>` to show the one entry in `<name>.galle
 Entries are discovered, not listed: any `*.gallery.tsx` under `apps/web/src` that default-exports a component is
 rendered, in the order of its `order` export.
 
+## Page patterns
+
+The thirteen page patterns a screen is drawn through, and how a route names its own, are in
+[Page patterns](patterns/README.md).
+
 ## Component pages
 
 | Page | Components | Source |
