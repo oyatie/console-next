@@ -349,16 +349,16 @@ test("a rule may name a visual style only through the guard every new style shar
     :where([data-experience]:not([data-experience='baseline'])) .a, ${guard} .b { gap: 0; }`)).toEqual([]);
   // A style named outright, the attribute alone, the guard without :where (it would add specificity), and a second
   // attribute test beside an accepted guard.
-  expect(offending(`[data-experience="control-room"] .btn { gap: 0; }
+  expect(offending(`[data-experience="console"] .btn { gap: 0; }
     [data-experience] .btn { gap: 0; }
     [data-experience]:not([data-experience="baseline"]) .btn { gap: 0; }
     ${guard} .a, ${guard}[data-experience="warm-clear"] .b { gap: 0; }
     .ok { gap: 0; }`)).toEqual([
-    '[data-experience="control-room"] .btn', "[data-experience] .btn", '[data-experience]:not([data-experience="baseline"]) .btn',
+    '[data-experience="console"] .btn', "[data-experience] .btn", '[data-experience]:not([data-experience="baseline"]) .btn',
     `${guard}[data-experience="warm-clear"] .b`]);
 
-  const named = gate(fixture({ "apps/web/src/features/x/ui/x.module.css": '[data-experience="control-room"] .row { gap: 0; }\n', "apps/web/src/ui/y/y.module.css": `${guard} .row { gap: 0; }\n` }, {}));
+  const named = gate(fixture({ "apps/web/src/features/x/ui/x.module.css": '[data-experience="console"] .row { gap: 0; }\n', "apps/web/src/ui/y/y.module.css": `${guard} .row { gap: 0; }\n` }, {}));
   expect(named.status).toBe(1);
-  expect(named.stderr).toContain('apps/web/src/features/x/ui/x.module.css: [data-experience="control-room"] .row names a visual style');
+  expect(named.stderr).toContain('apps/web/src/features/x/ui/x.module.css: [data-experience="console"] .row names a visual style');
   expect(named.stderr).not.toContain("y.module.css");
 });

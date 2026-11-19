@@ -30,9 +30,9 @@ const policy = (state: State, key = policyKeys[0]): components["schemas"]["Setti
   scheduled: state === "scheduled" && key === policyKeys[0] ? [{ id: id(91), scope_entity_id: null, value: "none", effective_from: "2026-12-01T00:00:00Z" }] : [],
 });
 const displayStyle = (state: State): components["schemas"]["SettingEntry"] => ({
-  key: "display.experience", kind: { type: "code", allowed: ["baseline", "control-room", "warm-clear"] }, default: "baseline",
+  key: "display.experience", kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] }, default: "baseline",
   looser_when: "neutral", governance: state === "fixed" ? "fixed" : "tenant", legal_basis: null,
-  value: state === "populated" || state === "scheduled" ? "control-room" : "baseline", version: "code_default", effective_from: null,
+  value: state === "populated" || state === "scheduled" ? "console" : "baseline", version: "code_default", effective_from: null,
   source: { layer: state === "fixed" ? "platform" : state === "fresh" ? "code_default" : "tenant", scope_entity_id: null }, chain: [],
   scheduled: state === "scheduled" ? [{ id: id(92), scope_entity_id: null, value: "baseline", effective_from: "2026-12-01T00:00:00Z" }] : [],
 });
@@ -93,7 +93,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       if (state === "scheduled") { await expect(approval).toContainText("2026. 12. 01."); await expect(approval).toContainText(t("settingsHub.code.none")); }
       if (state === "fixed") { await expect(approval.getByRole("listitem")).toHaveCount(2); await expect(approval).toContainText(t("settingsHub.governance.fixed")); await expect(approval).toContainText(t("settingsHub.readOnly")); await expect(approval).toContainText(t("settingsHub.layer.platform")); }
       const screenStyle = main.getByRole("region", { name: t("settingsHub.key.display.experience"), exact: true });
-      await expect(screenStyle).toContainText(state === "populated" || state === "scheduled" ? t("settingsHub.code.control-room") : t("settingsHub.code.baseline"));
+      await expect(screenStyle).toContainText(state === "populated" || state === "scheduled" ? t("settingsHub.code.console") : t("settingsHub.code.baseline"));
       await expect(screenStyle.getByRole("button", { name: t("settingsHub.experience.change"), exact: true })).toHaveCount(state === "fixed" ? 0 : 1);
       if (state === "scheduled") { await expect(screenStyle).toContainText("2026. 12. 01."); await expect(screenStyle).toContainText(t("settingsHub.code.baseline")); }
       if (state === "fixed") { await expect(screenStyle).toContainText(t("settingsHub.governance.fixed")); await expect(screenStyle).toContainText(t("settingsHub.readOnly")); }

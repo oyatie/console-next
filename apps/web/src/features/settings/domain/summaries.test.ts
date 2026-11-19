@@ -19,11 +19,11 @@ test("every displayed policy key has Korean and English copy; unknown keys are n
     expect((catalog as Record<string, string>)[`settingsHub.key.${key}`]).toBeTruthy();
   }
   const styleEntry: components["schemas"]["SettingEntry"] = {
-    ...entry(), key: "display.experience", kind: { type: "code", allowed: ["baseline", "control-room", "warm-clear"] },
+    ...entry(), key: "display.experience", kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
     default: "baseline", value: "baseline", looser_when: "neutral",
   };
   expect(settingValue(styleEntry, "baseline", t)).toBe(ko["account.experience.baseline"]);
-  expect(settingValue(styleEntry, "control-room", t)).toBe(ko["account.experience.controlRoom"]);
+  expect(settingValue(styleEntry, "console", t)).toBe(ko["account.experience.console"]);
   expect(settingValue(styleEntry, "warm-clear", t)).toBe(ko["account.experience.warmClear"]);
   expect(settingLabel("approval.policy.unlabelled", t)).toBe(t("settingsHub.unknown"));
 });
@@ -111,7 +111,7 @@ test("screen style summary reports the active style, editability, scheduled chan
   const styleEntry: components["schemas"]["SettingEntry"] = {
     ...entry(),
     key: "display.experience",
-    kind: { type: "code", allowed: ["baseline", "control-room", "warm-clear"] },
+    kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
     default: "baseline",
     value: "baseline",
     looser_when: "neutral",
@@ -125,12 +125,12 @@ test("screen style summary reports the active style, editability, scheduled chan
 
   const scheduled: components["schemas"]["SettingEntry"] = {
     ...styleEntry,
-    value: "control-room",
+    value: "console",
     scheduled: [{ id: "next", value: "baseline", scope_entity_id: null, effective_from: "2026-12-01" }],
   };
   expect(experienceSummary({ can_change: false, items: [scheduled] }, t, date)).toEqual({
     entry: scheduled,
-    value: ko["settingsHub.code.control-room"],
+    value: ko["settingsHub.code.console"],
     hints: [t("settingsHub.scheduled", { key: ko["settingsHub.key.display.experience"], date: "2026-12-01", value: ko["settingsHub.code.baseline"] }), ko["settingsHub.readOnly"]],
     canEdit: false,
   });
@@ -155,8 +155,8 @@ test("screen style summary reports the active style, editability, scheduled chan
   });
 
   expect(experienceEditProblem({ current: "baseline", next: "baseline", reason: "POLICY_REVIEW", needsNote: false, note: "" })).toBe("unchanged");
-  expect(experienceEditProblem({ current: "baseline", next: "control-room", reason: null, needsNote: false, note: "" })).toBe("reason");
-  expect(experienceEditProblem({ current: "baseline", next: "control-room", reason: "OTHER", needsNote: true, note: "   " })).toBe("note");
-  expect(experienceEditProblem({ current: "baseline", next: "control-room", reason: "POLICY_REVIEW", needsNote: false, note: "" })).toBeNull();
-  expect(experienceEditProblem({ current: "baseline", next: "control-room", reason: "OTHER", needsNote: true, note: "rollout" })).toBeNull();
+  expect(experienceEditProblem({ current: "baseline", next: "console", reason: null, needsNote: false, note: "" })).toBe("reason");
+  expect(experienceEditProblem({ current: "baseline", next: "console", reason: "OTHER", needsNote: true, note: "   " })).toBe("note");
+  expect(experienceEditProblem({ current: "baseline", next: "console", reason: "POLICY_REVIEW", needsNote: false, note: "" })).toBeNull();
+  expect(experienceEditProblem({ current: "baseline", next: "console", reason: "OTHER", needsNote: true, note: "rollout" })).toBeNull();
 });

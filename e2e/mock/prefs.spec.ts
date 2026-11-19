@@ -110,7 +110,7 @@ for (const from of ["a stored theme", "the system"] as const) test(`the shell ke
 // Pin the role values so the browser proves both boot registration and entry CSS delivery.
 const experiences = [
   ["warm-clear", "#f6f1e9", "#1d1914", "#17694f", "#82d6b4"],
-  ["control-room", "#e9edf1", "#101820", "#0b6672", "#6fd3df"],
+  ["console", "#e9edf1", "#101820", "#0b6672", "#6fd3df"],
 ] as const;
 
 for (const [experience, light, dark, primaryLight, primaryDark] of experiences) for (const theme of ["light", "dark"] as const) {

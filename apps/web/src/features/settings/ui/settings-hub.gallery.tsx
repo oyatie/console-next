@@ -17,7 +17,7 @@ export default function SettingsHubGallery() {
       can_change: false,
       items: [{
         key: "display.experience",
-        kind: { type: "code", allowed: ["baseline", "control-room", "warm-clear"] },
+        kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
         default: "baseline",
         looser_when: "neutral",
         governance: "tenant",

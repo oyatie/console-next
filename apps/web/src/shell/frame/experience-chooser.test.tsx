@@ -16,7 +16,7 @@ test.each(["en", "ko"] as const)("%s: the chooser offers the listed style and th
     expect(html).toMatch(/<option value="baseline" selected=""/);
     expect(html).toContain(t("account.experience.baseline"));
     // The style being built is offered, and says so; the one not started is not offered.
-    expect(html).toContain(`>${t("account.experience.preview", { style: t("account.experience.controlRoom") })}</option>`);
+    expect(html).toContain(`>${t("account.experience.preview", { style: t("account.experience.console") })}</option>`);
     expect(html).not.toContain(t("account.experience.warmClear"));
     expect(html).toContain(t("account.experience.device"));
   } finally { i18n.set("ko"); }

@@ -21,52 +21,52 @@ function memoryStorage(initial: Record<string, string> = {}) {
 
 test("personal override beats tenant default and device storage", () => {
   expect(resolveEffectiveExperience({
-    workspaceLayout: { experience: "control-room" },
+    workspaceLayout: { experience: "console" },
     settingsItems: [{ key: "display.experience", value: "baseline" }],
     storedDevice: { id: "baseline", source: "personal" },
-  })).toEqual({ id: "control-room", choice: "control-room", tenantId: "baseline", source: "personal" });
+  })).toEqual({ id: "console", choice: "console", tenantId: "baseline", source: "personal" });
 
   expect(resolveEffectiveExperience({
     workspaceLayout: { experience: "baseline" },
-    settingsItems: [{ key: "display.experience", value: "control-room" }],
-    storedDevice: { id: "control-room", source: "tenant" },
-  })).toEqual({ id: "baseline", choice: "baseline", tenantId: "control-room", source: "personal" });
+    settingsItems: [{ key: "display.experience", value: "console" }],
+    storedDevice: { id: "console", source: "tenant" },
+  })).toEqual({ id: "baseline", choice: "baseline", tenantId: "console", source: "personal" });
 });
 
 test("explicit follow-organization-default uses the tenant setting even when the device had an older personal choice", () => {
   expect(resolveEffectiveExperience({
     workspaceLayout: { experience: "tenant" },
-    settingsItems: [{ key: "display.experience", value: "control-room" }],
+    settingsItems: [{ key: "display.experience", value: "console" }],
     storedDevice: { id: "baseline", source: "personal" },
-  })).toEqual({ id: "control-room", choice: "tenant", tenantId: "control-room", source: "tenant" });
+  })).toEqual({ id: "console", choice: "tenant", tenantId: "console", source: "tenant" });
 
   expect(resolveEffectiveExperience({
     workspaceLayout: { experience: "tenant" },
     settingsItems: [],
-    storedDevice: { id: "control-room", source: "personal" },
+    storedDevice: { id: "console", source: "personal" },
   })).toEqual({ id: "baseline", choice: "tenant", tenantId: "baseline", source: "tenant" });
 });
 
 test("an unset server workspace follows the tenant default on a fresh device, and preserves an explicit device seed", () => {
   expect(resolveEffectiveExperience({
     workspaceLayout: {},
-    settingsItems: [{ key: "display.experience", value: "control-room" }],
+    settingsItems: [{ key: "display.experience", value: "console" }],
     storedDevice: { id: null, source: null },
-  })).toEqual({ id: "control-room", choice: "tenant", tenantId: "control-room", source: "tenant" });
+  })).toEqual({ id: "console", choice: "tenant", tenantId: "console", source: "tenant" });
 
   // Tenant cached on an earlier visit updates when the organization switches back to baseline.
   expect(resolveEffectiveExperience({
     workspaceLayout: {},
     settingsItems: [{ key: "display.experience", value: "baseline" }],
-    storedDevice: { id: "control-room", source: "tenant" },
+    storedDevice: { id: "console", source: "tenant" },
   })).toEqual({ id: "baseline", choice: "tenant", tenantId: "baseline", source: "tenant" });
 
   // Explicit device seed (such as E2E_EXPERIENCE or a pre-existing device choice) stays in force until changed.
   expect(resolveEffectiveExperience({
     workspaceLayout: {},
     settingsItems: [{ key: "display.experience", value: "baseline" }],
-    storedDevice: { id: "control-room", source: null },
-  })).toEqual({ id: "control-room", choice: "control-room", tenantId: "baseline", source: "personal" });
+    storedDevice: { id: "console", source: null },
+  })).toEqual({ id: "console", choice: "console", tenantId: "baseline", source: "personal" });
 });
 
 test("unknown workspace or setting codes fall back safely without prototype pollution", () => {
@@ -81,10 +81,10 @@ test("unknown workspace or setting codes fall back safely without prototype poll
 
 test("merging the experience choice preserves unrelated workspace layout keys", () => {
   const existing = { tabs: ["/people", "/attendance"], splitWidth: 440 };
-  expect(mergeWorkspaceExperience(existing, "control-room")).toEqual({
+  expect(mergeWorkspaceExperience(existing, "console")).toEqual({
     tabs: ["/people", "/attendance"],
     splitWidth: 440,
-    experience: "control-room",
+    experience: "console",
   });
   expect(mergeWorkspaceExperience(existing, "tenant")).toEqual({
     tabs: ["/people", "/attendance"],
@@ -100,13 +100,21 @@ test("device storage keeps fresh baseline clean, caches non-baseline tenant defa
   expect(writeStoredExperience("baseline", "tenant", store)).toBe(true);
   expect(store.snapshot()).toEqual({});
 
-  expect(writeStoredExperience("control-room", "tenant", store)).toBe(true);
-  expect(store.snapshot()).toEqual({ [EXPERIENCE_KEY]: "control-room", [EXPERIENCE_SOURCE_KEY]: "tenant" });
-  expect(readStoredExperience(store)).toEqual({ id: "control-room", source: "tenant" });
+  expect(writeStoredExperience("console", "tenant", store)).toBe(true);
+  expect(store.snapshot()).toEqual({ [EXPERIENCE_KEY]: "console", [EXPERIENCE_SOURCE_KEY]: "tenant" });
+  expect(readStoredExperience(store)).toEqual({ id: "console", source: "tenant" });
 
   expect(writeStoredExperience("baseline", "tenant", store)).toBe(true);
   expect(store.snapshot()).toEqual({});
 
   expect(writeStoredExperience("baseline", "personal", store)).toBe(true);
   expect(store.snapshot()).toEqual({ [EXPERIENCE_KEY]: "baseline", [EXPERIENCE_SOURCE_KEY]: "personal" });
+
+  store.setItem(EXPERIENCE_KEY, "control-room");
+  expect(readStoredExperience(store)).toEqual({ id: "console", source: "personal" });
+  expect(resolveEffectiveExperience({
+    workspaceLayout: { experience: "control-room" },
+    settingsItems: [{ key: "display.experience", value: "control-room" }],
+    storedDevice: { id: null, source: null },
+  })).toEqual({ id: "console", choice: "console", tenantId: "console", source: "personal" });
 });

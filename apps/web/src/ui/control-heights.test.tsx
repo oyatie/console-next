@@ -143,9 +143,9 @@ test("a control's height is a role of its own: a container that sets it moves th
 // As its boards draw them: a 24px control in a 40px toolbar on a desk, and touch sizes on a phone. The boards draw no
 // compact grid: what sits in one is as tall as its row, 24px on a desk and 40px on a phone, which is under the 44px
 // touch size, and a toolbar there adds its 4px above and below.
-test("Control room draws controls and toolbars at its own sizes, apart from its row height", async () => {
-  expect.soft(await sizes("control-room", "desk")).toEqual({ button: 24, icon: [24, 24], toolbar: 40, toolbarPadding: [4, 4], toolbarButton: 24, bareToolbar: 40, decision: 32, menuIcon: [24, 24], compactGrid: { button: 24, toolbar: 32, decision: 24 } });
-  expect.soft(await sizes("control-room", "phone")).toEqual({ button: 44, icon: [44, 44], toolbar: 52, toolbarPadding: [4, 4], toolbarButton: 44, bareToolbar: 52, decision: 48, menuIcon: [44, 44], compactGrid: { button: 40, toolbar: 48, decision: 40 } });
+test("Console draws controls and toolbars at its own sizes, apart from its row height", async () => {
+  expect.soft(await sizes("console", "desk")).toEqual({ button: 24, icon: [24, 24], toolbar: 40, toolbarPadding: [4, 4], toolbarButton: 24, bareToolbar: 40, decision: 32, menuIcon: [24, 24], compactGrid: { button: 24, toolbar: 32, decision: 24 } });
+  expect.soft(await sizes("console", "phone")).toEqual({ button: 44, icon: [44, 44], toolbar: 52, toolbarPadding: [4, 4], toolbarButton: 44, bareToolbar: 52, decision: 48, menuIcon: [44, 44], compactGrid: { button: 40, toolbar: 48, decision: 40 } });
 });
 
 /** Rendered heights, in px, of what a person types into or picks from, in a visual style at a width, in the light theme. */
@@ -200,7 +200,7 @@ test("a field's height is a role of its own: a container that sets it moves the 
 // As its boards draw them: a 28px field on a desk, and in a toolbar a 24px one, level with the controls beside it. On a
 // phone a field is the 48px a row is, and 44px in a toolbar, so the toolbar holding it is the 52px its own height says.
 // In a compact grid a field is as tall as the compact row, in a cell and in a toolbar: 24px on a desk, 40px on a phone.
-test("Control room draws fields at its own sizes: level with the controls in a toolbar, as tall as the row in a compact grid", async () => {
-  expect.soft(await fields("control-room", "desk")).toEqual({ input: 28, select: 28, area: 56, static: 28, toolbar: [24, 40], chartFind: 24, findSlot: 28, cell: [28, 28], compactCell: [24, 24], compactToolbar: [24, 32] });
-  expect.soft(await fields("control-room", "phone")).toEqual({ input: 48, select: 48, area: 96, static: 48, toolbar: [44, 52], chartFind: 44, findSlot: 48, cell: [48, 48], compactCell: [40, 40], compactToolbar: [40, 48] });
+test("Console draws fields at its own sizes: level with the controls in a toolbar, as tall as the row in a compact grid", async () => {
+  expect.soft(await fields("console", "desk")).toEqual({ input: 28, select: 28, area: 56, static: 28, toolbar: [24, 40], chartFind: 24, findSlot: 28, cell: [28, 28], compactCell: [24, 24], compactToolbar: [24, 32] });
+  expect.soft(await fields("console", "phone")).toEqual({ input: 48, select: 48, area: 96, static: 48, toolbar: [44, 52], chartFind: 44, findSlot: 48, cell: [48, 48], compactCell: [40, 40], compactToolbar: [40, 48] });
 });

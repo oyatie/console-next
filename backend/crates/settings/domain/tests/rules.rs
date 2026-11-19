@@ -274,8 +274,8 @@ fn display_experience_defaults_to_baseline_and_switches_neutrally_across_styles(
         (V::Code("baseline"), SettingVersionId::CodeDefault)
     );
     for (from, to) in [
-        ("baseline", "control-room"),
-        ("control-room", "warm-clear"),
+        ("baseline", "console"),
+        ("console", "warm-clear"),
         ("warm-clear", "baseline"),
     ] {
         let accepted = check_change(key, &json!(to), NOW, NOW, Some(V::Code(from)), false).unwrap();

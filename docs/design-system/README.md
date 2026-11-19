@@ -12,12 +12,12 @@ How a change is proved is in the [engineering guide](../engineering.md). This fo
 
 ## Working rules
 
-The console has one look today. A second visual style, Control room, is being built beside it. These five rules
+The console has one classic look today. Its target visual style, Console, is being built beside it. These five rules
 hold while that happens, and after.
 
 1. **One component per piece.** A button is one component, styled through role tokens. It is never copied and
    restyled for a visual style. A visual style changes token values; the component stays the same file.
-2. **Today's look does not move while Control room is built.** A new token enters `packages/tokens/tokens.css` at
+2. **Today's look does not move while Console is built.** A new token enters `packages/tokens/tokens.css` at
    the value today's look already has, so adding it changes nothing on screen.
 3. **A visual style changes how things look, and nothing else.** It never changes behaviour, copy or an accessible
    name. Where a style needs a different structure, that structure is a prop on the component, so it is tested and
