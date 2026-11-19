@@ -4,6 +4,7 @@
 .link { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); overflow-wrap: anywhere; }
 .link > svg { flex-shrink: 0; }
 .link:focus-visible { outline: 2px solid var(--primary); outline-offset: var(--space-1); }
+.row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .value { margin: 0; overflow-wrap: anywhere; }
 .hints { margin: var(--space-3) 0 0; padding-left: var(--space-4); overflow-wrap: anywhere; }
 @media (width < 48rem) { .grid { grid-template-columns: minmax(0, 1fr); } }
