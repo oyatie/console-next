@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Button, ComboBox, FieldError, Input, Label, ListBox, ListBoxItem, Popover, Text, TextField } from "react-aria-components";
 import { Plus, Search, Send } from "lucide-react";
 import { t } from "@console/i18n";
+import { leaveImeKey } from "../../lib/pure/ime";
 import { homonymOf, suffixMatches, SUFFIX } from "./homonym";
 import { useNonModalSurroundings } from "../use-non-modal-surroundings";
 import css from "./server-picker.module.css";
@@ -110,7 +111,7 @@ export function ServerPicker(p: {
         <Label className="field__label">{p.label}</Label>
         <div className={css.input}>
           <Search aria-hidden="true" className={css.icon} />
-          <Input ref={input} className="field__input" />
+          <Input ref={input} className="field__input" onKeyDownCapture={leaveImeKey} />
         </div>
         {p.disabledReason && <Text slot="description" className={css.sub}>{p.disabledReason}</Text>}
         {(p.reserveError || p.error != null) && <div className={css.feedback} data-reserved={p.reserveError || undefined}>
@@ -136,7 +137,7 @@ export function ServerPicker(p: {
       {pending && homonyms.length > 1 && (
         <TextField className={`field ${css.homonym}`} value={suffix} onChange={confirm} isRequired isReadOnly={p.readOnly} isDisabled={Boolean(p.disabledReason)}>
           <Label className="field__label">{t("uiServerPicker.homonym", { count: homonyms.length, digits: SUFFIX })}</Label>
-          <Input className={`field__input ${css.suffix}`} inputMode="numeric" maxLength={SUFFIX} autoComplete="off" />
+          <Input className={`field__input ${css.suffix}`} inputMode="numeric" maxLength={SUFFIX} autoComplete="off" onKeyDownCapture={leaveImeKey} />
           <Text slot="description" className={css.sub}>{t("uiServerPicker.homonym.echo", { name: pending.name, code: pending.code ?? "" })}</Text>
         </TextField>
       )}

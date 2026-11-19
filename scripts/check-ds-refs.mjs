@@ -64,22 +64,22 @@ export function literalColour(value) {
  * of exactly two selectors, so anything that would cascade another way is refused: a rule or statement other than
  * the two blocks, a property that is not a token, an !important. So is a colour the light block sets and the dark
  * block does not; `baseDark` names the tokens the base sets for dark, which are colours however the value is written.
+ *
+ * One more block is read: the phone block, `@media (--phone)` holding the light selector, for the sizes a phone takes.
+ * It ties the light block on specificity, so it must come after it; the dark block outranks it, so a token set for
+ * dark cannot have a phone value; and it holds no colour, so the contrast pairs never depend on the width.
  * `file` is the path a syntax error names.
  */
 export function experienceBlocks(css, id, baseDark = new Set(), file) {
   const light = `:root[data-experience="${id}"]`, dark = `${light}[data-theme="dark"]`;
-  const own = { light: {}, dark: {}, problems: [] };
+  const own = { light: {}, dark: {}, phone: {}, problems: [] };
   const refuse = (node) => {
     const where = node.selector ?? (node.name ? `@${node.name} ${node.params}`.trim() : "a declaration outside any rule");
     own.problems.push(`${where} is not one of the experience's blocks; move its declarations under ${light} or ${dark}`);
   };
-  // Every top-level node, not every declaration: an @import carries none, and brings in rules no gate reads.
-  for (const node of parseCss(css, file).nodes) {
-    if (node.type === "comment") continue;
-    const selector = node.type === "rule" ? node.selector.replaceAll("'", '"') : "";
-    const block = selector === light ? own.light : selector === dark ? own.dark : null;
-    if (!block) { refuse(node); continue; }
-    for (const child of node.nodes) {
+  const selectorOf = (node) => node.type === "rule" ? node.selector.replaceAll("'", '"') : "";
+  const declarations = (rule, block) => {
+    for (const child of rule.nodes) {
       if (child.type === "comment") continue;
       const name = child.type === "decl" ? decodeIdent(child.prop) : "";
       if (child.type !== "decl") refuse(child);
@@ -89,6 +89,27 @@ export function experienceBlocks(css, id, baseDark = new Set(), file) {
         block[name] = child.value.trim();
       }
     }
+  };
+  let seenLight = false, seenPhone = false;
+  // Every top-level node, not every declaration: an @import carries none, and brings in rules no gate reads.
+  for (const node of parseCss(css, file).nodes) {
+    if (node.type === "comment") continue;
+    if (node.type === "atrule" && node.name === "media" && node.params.trim() === "(--phone)") {
+      if (seenPhone) own.problems.push(`@media (--phone) is a second phone block; keep one, after ${light}`);
+      else if (!seenLight) own.problems.push(`the phone block comes before ${light}, which it only ties on specificity; move it after`);
+      seenPhone = true;
+      for (const child of node.nodes) {
+        if (child.type === "comment") continue;
+        if (selectorOf(child) === light) declarations(child, own.phone);
+        else own.problems.push(`${child.selector ?? `@${child.name} ${child.params}`.trim()} is not the phone block's one rule; it holds ${light} and nothing else`);
+      }
+      continue;
+    }
+    const selector = selectorOf(node);
+    const block = selector === light ? own.light : selector === dark ? own.dark : null;
+    if (!block) { refuse(node); continue; }
+    if (block === own.light) seenLight = true;
+    declarations(node, block);
   }
   // In dark the light block still applies, so a colour written there shows in dark. Where the base sets the token for
   // dark, its rule and the light block have equal specificity and stylesheet order alone would pick one: only the
@@ -96,6 +117,10 @@ export function experienceBlocks(css, id, baseDark = new Set(), file) {
   for (const [name, value] of Object.entries(own.light)) {
     if ((literalColour(value) || baseDark.has(name)) && !Object.hasOwn(own.dark, name))
       own.problems.push(`${name} is a colour set for light only, so dark would show its light value; set it in ${dark} too`);
+  }
+  for (const [name, value] of Object.entries(own.phone)) {
+    if (literalColour(value) || baseDark.has(name)) own.problems.push(`${name} is a colour in the phone block, which sets sizes only; set it in ${light} and ${dark}`);
+    else if (Object.hasOwn(own.dark, name)) own.problems.push(`${name} is set in the dark block and in the phone block; the dark block outranks the phone block, so dark would never take the phone value; drop it from ${dark}`);
   }
   return own;
 }

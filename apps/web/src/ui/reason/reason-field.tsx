@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { FieldError, Label, Radio, RadioGroup } from "react-aria-components";
 import { t } from "@console/i18n";
 import { Field, Marker } from "../field/field";
+import { TextArea } from "../field/text-area";
 import { reasonProblem, type Reason } from "./reason";
 import s from "./reason.module.css";
 
@@ -58,9 +59,8 @@ export function ReasonField({ label, codes, other, value, onChange, memoMax, sho
         error={problem === "memo" ? t("uiReason.memoRequired") : undefined}
       >
         {(p) => (
-          <textarea
+          <TextArea
             {...p}
-            className="field__input field__area"
             maxLength={memoMax}
             value={value.memo}
             onChange={(e) => onChange({ ...value, memo: e.target.value })}

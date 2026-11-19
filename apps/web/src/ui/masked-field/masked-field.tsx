@@ -1,5 +1,5 @@
 import { useLayoutEffect, useReducer, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { Field } from "../field/field";
+import { Field, TextInput } from "../field/field";
 import { caretAfter, digits } from "./caret";
 import s from "./masked-field.module.css";
 
@@ -58,10 +58,10 @@ export function MaskedField({ label, required, format, value, onChange, onBlur, 
     <Field label={label} required={required} hint={hint} example={example} error={error} warning={warning}>
       {(p) => (
         <span className={s.wrap}>
-          <input
+          <TextInput
             {...p}
             ref={ref}
-            className="field__input code"
+            className="code"
             inputMode="numeric"
             autoComplete="off"
             spellCheck={false}
@@ -69,10 +69,6 @@ export function MaskedField({ label, required, format, value, onChange, onBlur, 
             onChange={changed}
             onCompositionEnd={(e) => commit(e.currentTarget.value, e.currentTarget.selectionStart ?? e.currentTarget.value.length)}
             onBlur={onBlur}
-            onKeyDown={(e) => {
-              // Free text is not a commit gesture; an Enter that ends IME composition is the IME's.
-              if (e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229)) e.preventDefault();
-            }}
           />
           {status}
         </span>
