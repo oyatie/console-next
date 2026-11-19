@@ -17,6 +17,7 @@ import { rrnStatusQuery } from "../api/record";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
 import { unitsQuery } from "../../../reference/org/api";
 import { authzApplies, authzQuery, granted } from "../../../reference/authz/api";
+import { cardSections } from "../domain/keys";
 import { verbStates } from "../domain/lifecycle";
 import type { Done } from "./person-act";
 import { CardBar, CardBody } from "./card-body";
@@ -123,6 +124,9 @@ function Card({ d }: { d: Detail }) {
   const keys = useRef<{ next?: () => void; prev?: () => void; jump: (n: number) => void; history: () => void }>({ jump: () => {}, history: () => {} });
   useEffect(() => {
     keys.current.jump = (n) => {
+      // A digit whose section this record does not show does nothing, whichever tab is open. A reader's record shows
+      // the employment section alone.
+      if (!(c.readable ? cardSections(c.records.data?.sections, documents) : [2]).includes(n)) return;
       if (tab !== "card") onTab("card");
       jumpTo(`s${n}`);
     };
