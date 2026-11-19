@@ -33,7 +33,8 @@ export function Palette({ open, onClose, label, query, onQuery, placeholder, sec
       {/* Full height from the first frame: results that answer later fill it, never move its foot. */}
       <Modal className={s.pal} data-full>
         <Dialog className={s.dialog} aria-label={label}>
-          <TextField className={s.in} value={query} onChange={onQuery} aria-label={label}>
+          {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- A palette opened by its chord must take typing at once. */}
+          <TextField className={s.in} value={query} onChange={onQuery} aria-label={label} autoFocus>
             <Label className="sr-only">{label}</Label>
             <Search size={18} aria-hidden />
             <Input
