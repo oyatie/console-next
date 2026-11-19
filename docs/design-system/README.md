@@ -52,7 +52,7 @@ What holds each rule today:
    `npx playwright test e2e/visual.spec.ts --project=parallel --grep "pass axe"`.
    It fails on a serious or critical axe violation anywhere in the gallery, in either theme.
 
-Thirty-five pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
+Thirty-seven pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
 
 ## The outline of a component page
 
@@ -173,6 +173,7 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 | [Masked field](components/masked-field.md) | `MaskedField` | `apps/web/src/ui/masked-field` |
 | [Menu](components/menu.md) | `ActionMenu`, `MenuButton` | `apps/web/src/ui/menu` |
 | [Meter](components/meter.md) | `Meter` | `apps/web/src/ui/meter` |
+| [Module navigation](components/module-nav.md) | `ModuleNavBar` | `apps/web/src/ui/module-nav` |
 | [Month grid](components/month-grid.md) | `MonthGrid` | `apps/web/src/ui/month-grid` |
 | [Person-day grid](components/person-day-grid.md) | `PersonDayGrid` | `apps/web/src/ui/person-day-grid` |
 | [Popover](components/popover.md) | `PopoverButton` | `apps/web/src/ui/popover` |
@@ -185,3 +186,4 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 | [Sheet](components/sheet.md) | `Sheet` and its draft and read-context helpers | `apps/web/src/ui/sheet` |
 | [Step line](components/step-line.md) | `StepLine` | `apps/web/src/ui/step-line` |
 | [Tree](components/tree.md) | `TreeView` | `apps/web/src/ui/tree` |
+| [Workspace tabs](components/workspace-tabs.md) | `WorkspaceTabs` | `apps/web/src/ui/workspace-tabs` |
