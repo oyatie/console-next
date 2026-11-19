@@ -11,11 +11,14 @@ import "../../app.css";
 await loadCatalog("ko");
 const which = new URLSearchParams(location.search).get("case");
 const RESOLUTIONS = [{ id: "COMPLETE", label: t("statutory.complete") }, { id: "NOT_APPLICABLE", label: t("statutory.notApplicable") }, { id: "ASSESS", label: t("statutory.assess") }];
+// Names typed with no space and no hyphen, 60 syllables and 64 letters: neither has a point where a line may break.
+const UNBROKEN = { label: t("statutory.notApplicable").replace(/\s/g, "").repeat(20), description: "Unbroken".repeat(8) };
 // The shape of a loss-code option: a code, a long label and a hold mark in one line.
 const CODES = [
   { id: "11", label: "11 · Voluntary resignation for personal reasons such as relocation or study · Legal review pending" },
   { id: "23", label: "23 · Dismissal for managerial reasons, recommended resignation or workforce reduction" },
   { id: "32", label: "32 · End of the contract term or completion of the construction work", description: "Counted from the day after the last working day" },
+  { id: "41", ...UNBROKEN },
 ];
 
 /** The picks of the filing completion dialog: nothing chosen, checked when the form is committed, cleared by a pick. */

@@ -67,19 +67,20 @@ test.each(["keyboard", "pointer"])("the trigger is invalid and described by the 
 
 test.each([360, 320])("at %i px wide the open list fits inside the screen and no option is cut off", async width => {
   await open(width);
-  for (const label of [t("statutory.resolution"), t("statutory.lossCode")]) {
+  for (const [label, count] of [[t("statutory.resolution"), 3], [t("statutory.lossCode"), 4]] as const) {
     await trigger(label).click();
     await element(list()).toBeVisible();
     const pop = list().locator("xpath=..");
     const options = await list().getByRole("option").all();
-    expect(options).toHaveLength(3);
+    expect(options).toHaveLength(count);
     // The trigger is narrower still, so the list takes its capped minimum: the screen less 12 px at each side.
     expect((await box(pop)).width).toBeCloseTo(width - 24, 1);
-    for (const part of [pop, ...options]) {
+    // The text of an option is measured too: a line that only reaches into the option's padding is cut off as well.
+    for (const part of [pop, ...options, ...await list().locator("span").all()]) {
       const { x, width: w } = await box(part);
       expect(x).toBeGreaterThanOrEqual(0);
       expect(x + w).toBeLessThanOrEqual(width);
-      // Nothing inside runs past its own edge: long labels wrap.
+      // Nothing inside runs past its own edge: long labels wrap, with or without a space to wrap at.
       expect(await part.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     }
     expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);

@@ -74,11 +74,11 @@ There is one look and one size. No prop changes either.
 | Error | 13 px (`--text-sm`), `--danger-tx`. |
 | Popover | The width of the trigger (`--trigger-width`), and at least 366.67 px (`calc(var(--panel-w) / 1.2)`), or the width of the viewport less 24 px (`--space-3` twice) where that is the smaller of the two. `--surface` fill, a 1 px `--border` border, a 10 px radius (`--radius-lg`), `--shadow-pop`, and `overflow: auto`. |
 | List | 4 px of padding (`--space-1`). |
-| Option | A column. 8 px top and bottom padding (`--space-2`) and 12 px at the sides (`--space-3`), a 6 px radius (`--radius`). No minimum height: one line comes to 37 px at the body's line height of 1.5, and a label with a description to 55 px. |
+| Option | A column. 8 px top and bottom padding (`--space-2`) and 12 px at the sides (`--space-3`), a 6 px radius (`--radius`). `overflow-wrap: anywhere`, which the label and the description inherit. No minimum height: one line comes to 37 px at the body's line height of 1.5, and a label with a description to 55 px. |
 | Option label | Weight 600 (`--fw-medium`). |
 | Description | 12 px (`--text-xs`), `--steel`. |
 
-Three things about these rules are worth knowing:
+Four things about these rules are worth knowing:
 
 - The trigger is 32 px high. A control of the Field family is 40 px (`--row-h`), so a `SelectField` beside a
   `Field` is lower than it.
@@ -86,6 +86,10 @@ Three things about these rules are worth knowing:
   trigger.
 - React Aria sets `z-index` and `max-height` on the popover element itself when it places it. The popover's own
   `overflow: auto` is what scrolls a list taller than that height.
+- An option's text wraps at every width. `app.css` sets `word-break: keep-all` on the body, so Korean text
+  breaks at a space only. The option's `overflow-wrap: anywhere` lets a run with no space break inside itself
+  where it is longer than the line, so such a label takes more lines and its row is taller; it does not make the
+  list scroll sideways.
 
 There is no open or close animation: the module has no transition and reads neither `data-entering` nor
 `data-exiting`.
@@ -230,7 +234,7 @@ The WCAG 2.2 criteria that apply:
 | 1.3.1 Info and Relationships | A `listbox` of `option`s behind a button that says it opens one, all named by the label. While an error shows, the error line is the trigger's description and the trigger carries `aria-invalid="true"`. |
 | 1.4.1 Use of Color | The placeholder state is a dashed border and a lighter weight as well as a colour. Invalid is a border colour and an error line in words. The chosen option is a fill and a text colour only on screen, and `aria-selected` in the markup. |
 | 1.4.3 Contrast (Minimum), 1.4.11 Non-text Contrast | Every colour is a token. The trigger's edge is `--control-border` on `--surface`. |
-| 1.4.10 Reflow | The minimum width of the list is capped at the viewport less 24 px. At 320 px, the width the criterion is judged at, the list is 296 px wide and inside the screen, and a label too long for it wraps: see Phone behaviour. |
+| 1.4.10 Reflow | The minimum width of the list is capped at the viewport less 24 px. At 320 px, the width the criterion is judged at, the list is 296 px wide and inside the screen, and a label too long for it wraps, inside a run with no space where it has to: see Phone behaviour. |
 | 2.1.1 Keyboard | The tables above. |
 | 2.1.2 No Keyboard Trap | Escape closes the list and returns focus to the trigger. |
 | 2.4.3 Focus Order | Focus moves into the list on open and back to the trigger on close. |
@@ -268,10 +272,11 @@ Tests: `ui/select` has one test file, `select-field.browser.test.tsx`, with `sel
 beside it. It runs in Chromium on a form shaped like the statutory filing dialog, and checks that the trigger
 carries `aria-invalid="true"` and has the error line as its description while the error shows, and neither before
 the form is committed nor after a pick, once by keyboard and once by pointer. At 360 px and at 320 px it opens a
-list of short labels and a list of long ones, and checks that the list is the viewport less 24 px wide, that the
-list and every option lie inside the screen, and that nothing runs past its own edge. At 1440 px it checks that
-the list is as wide as a trigger wider than 366.67 px, and 366.67 px wide under a narrower one. There is no jsdom
-unit test.
+list of short labels and a list of long ones, one of them a label of 60 Korean syllables with no space over a
+description of 64 letters with no space. It checks that the list is the viewport less 24 px wide, that the list,
+every option and the label and description inside it lie inside the screen, and that nothing runs past its own edge.
+At 1440 px it checks that the list is as wide as a trigger wider than 366.67 px, and 366.67 px wide under a
+narrower one. There is no jsdom unit test.
 
 The component is also driven in a browser through the screens that use it. Three examples: `e2e/mock/approvals.spec.ts` opens the source filter and picks an
 option; `selectFilingFact` in `e2e/helpers/statutory.ts` finds a trigger by the label inside its name and picks an
@@ -294,7 +299,8 @@ viewport: the minimum width of the list.
   the installed version, so such a list sits 12 px from each side.
 - The width itself has no cap: under a trigger wider than the minimum, the list is as wide as the trigger.
 - Options are the same size as at 1440 px, except that a label too long for the narrower list wraps onto more
-  lines. No rule sets an option's text on one line.
+  lines. No rule sets an option's text on one line, and a run with no space breaks inside itself: see Looks and
+  sizes.
 - React Aria places the popover against the trigger and sets its position and its maximum height itself.
 
 How wide the trigger is at 390 px is decided by the layout around it.
