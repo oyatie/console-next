@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
-import { chooseRadio, go, koDate, kstDate, passkeyLogin, registerEmployee } from "./flows";
+import { chooseRadio, go, koDate, kstDate, registerEmployee, reloadAndWait } from "./flows";
 import { hrAct, openCard, openHistory } from "./record";
 import { answer, SETUP_DEPARTMENT, staffedTenant, startOperations, tenantInSetup } from "./setup-flows";
 import { grantAccess } from "./access-flows";
@@ -180,8 +180,7 @@ test("people: a 사업장 manager asks HR for a change, which HR applies", { tag
   await leaveScreen(admin);
 
   await manager.bringToFront();
-  await manager.reload();
-  await passkeyLogin(manager);
+  await reloadAndWait(manager);
   await go(manager, "/people");
   await expect(manager.getByRole("row", { name: /요청이/ })).toBeVisible();
   await go(manager, personPath);

@@ -17,7 +17,7 @@ import { LocaleSelect } from "./frame/locale-select";
 import type { ShellLayoutProps } from "./frame/shell-frame";
 import { meQuery } from "../features/account/api";
 import { checklistQuery, modulesQuery, SETUP_READS } from "../features/onboarding/api";
-import { modules } from "../../../../e2e/mock/fixtures";
+import { modules, screenAccess, token } from "../../../../e2e/mock/fixtures";
 import { invalidatePaths, navigationRead } from "../lib/query";
 
 const child = vi.hoisted(() => vi.fn(() => "private page"));
@@ -82,15 +82,24 @@ test.each(["blocked", "todo"])("the shell projects the server's %s employees ste
   } finally { client.clear(); }
 });
 
-test("SETUP keeps the loading rail while the checklist is pending", async () => {
-  const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+test.each([
+  { kind: "grantless", is_ops: false, entries: [], enabled: false },
+  { kind: "prepared", is_ops: false, entries: screenAccess("/people").entries.map(e => ({ ...e, enforcement: "PREPARED" })), enabled: false },
+  { kind: "enforced", is_ops: false, entries: screenAccess("/people").entries, enabled: true },
+  { kind: "request-only", is_ops: false, entries: screenAccess("/people").entries.map(e => ({ ...e, domain: "todo_request" })), enabled: false },
+  { kind: "ops", is_ops: true, entries: [], enabled: true },
+])("SETUP rail only waits for a held checklist read: $kind", async ({ is_ops, entries, enabled }) => {
+  const client = new QueryClient();
+  await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops, entries }) });
   await client.fetchQuery({ ...navigationRead(meQuery), queryFn: async () => ({ tenant: { phase: "SETUP" } }) });
-  await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
-  await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: true }) });
+  await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: false }) });
+  await client.fetchQuery({ ...modulesQuery, queryFn: async () => modules.ready });
   try {
+    session.set(token());
     const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
-    expect([...rail.matchAll(/href="([^"]+)"/g)].map(([, path]) => path).filter(path => path !== "#main")).toEqual([]);
-  } finally { client.clear(); }
+    expect(client.getQueryCache().find(checklistQuery)?.options).toMatchObject({ enabled });
+    expect(rail.includes('href="/"')).toBe(!enabled);
+  } finally { session.set(null); client.clear(); }
 });
 
 test("the shell withholds its outlet when the leaf read is refused", async () => {

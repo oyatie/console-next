@@ -96,7 +96,7 @@ for (const path of ["/", "/inbox"]) {
         await expect(page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible({ timeout: 20_000 });
         await expect(page.locator("main")).toContainText(failure("service_unavailable").error.operation_id!);
       } else if (state === "refused") await expect(page.getByRole("region", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
-      else await expect(page.locator('main [data-read-layout="list"]')).toBeVisible();
+      else await expect(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
       if (["empty", "failed", "refused", "loading"].includes(state)) await expect(pane).toHaveCount(0);
       await expectAxe(page, `columns ${path} ${state} ${width}`);
       for (const theme of ["light", "dark"]) {
@@ -186,6 +186,7 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) {
     await page.goto(path);
     const listRows = page.locator("[data-flexible-columns] [data-id]");
     const first = listRows.first();
+    await expect(first).toBeVisible();
     await first.focus();
     for (const guard of [{ isComposing: true }, { altKey: true }, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) {
       await first.dispatchEvent("keydown", { key: "ㅓ", code: "KeyJ", ...guard });

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,7 +18,8 @@ for (const [name, files, expected] of [
   ["migration and API inputs", ["migrations/change.sql", "openapi.yaml", "openapi/schema.json"], backend],
   ["web", ["apps/web/src/main.tsx", "packages/api/src/schema.d.ts", "e2e/home.spec.ts", "package.json", "package-lock.json"], web],
   ["CI and tooling", [".github/workflows/ci.yml", "scripts/check.mjs"], both],
-  ["documentation", ["README.md", "CONTRIBUTING.md", "docs/apps/x.md", "docs/security/code-scanning-triage.md", "docs/quality/dependency-owner-summary.md"], both],
+  ["documentation", ["README.md", "CONTRIBUTING.md", "docs/apps/x.md", "docs/new.md", "docs/design-system-tools/page.md"], both],
+  ["web documentation", ["docs/design-system/components/button.md", "docs/quality/dependency-owner-summary.md", "docs/security/code-scanning-triage.md", "docs/testing/e2e.md", "docs/engineering.md", "docs/adr/tooling-convention-linter.md"], web],
   ["unknown", ["new-area/source.txt", ".cargo/config.toml", "tsconfig.json", "deploy/backend/x.rs"], both],
   ["import catalogue labels", ["packages/i18n/src/catalogs/ko/import.ts", "packages/i18n/src/catalogs/en/import.ts"], both],
   ["import catalogue data", ["backend/crates/hr/domain/data/employee.json"], backend],
@@ -34,6 +35,55 @@ test("combines classes and leaves an empty diff unaffected", async () => {
   const { classifyPaths } = await import("./ci-affected.mjs");
   assert.deepEqual(classifyPaths(["backend/app.rs", "apps/web/index.ts"]), both);
   assert.deepEqual(classifyPaths([]), { backend: false, web: false });
+});
+
+test("each tracked document reaches the checks that reference it", async () => {
+  const { classifyPaths } = await import("./ci-affected.mjs");
+  const root = path.dirname(path.dirname(script));
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" });
+  const docs = git("ls-files", "-z", "--", "docs").split("\0").filter(Boolean);
+  assert.ok(docs.length);
+  const readers = git("grep", "-Ilz", "-e", "docs", "--", "backend", "scripts", "apps", "packages", "e2e", ".github",
+    ":(exclude)*.md", ":(exclude)scripts/ci-affected.mjs", ":(exclude)scripts/ci-affected.test.mjs").split("\0").filter(Boolean);
+  // Shared scripts can also run in the Rust jobs. Follow their repo paths and relative imports.
+  const workflow = readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
+  const backendScripts = new Set();
+  function followScripts(source, directory) {
+    for (const [, ref] of source.matchAll(/(?:^|[^\w-])((?:scripts\/|\.{1,2}\/)[\w./-]+\.(?:mjs|cjs|js|sh|py))\b/gm)) {
+      const file = ref.startsWith("scripts/") ? ref : path.join(directory, ref);
+      if (!file.startsWith("scripts/") || backendScripts.has(file) || !existsSync(path.join(root, file))) continue;
+      backendScripts.add(file);
+      followScripts(readFileSync(path.join(root, file), "utf8"), path.dirname(file));
+    }
+  }
+  for (const block of workflow.split(/(?=^  [\w-]+:\s*$)/m)) {
+    if (/^  (?:backend[\w-]*|home):/.test(block)) followScripts(block, ".");
+  }
+
+  const covered = new Map(docs.map(doc => [doc, new Set()]));
+  for (const file of readers) {
+    const source = readFileSync(path.join(root, file), "utf8").replace(/^\s*(?:\/\/|\*|# |-- ).*$/gm, "");
+    // Also recognize path.join("docs", ...), Rust .join chains and Python path division.
+    const joined = source.replace(/(["']docs)((?:["']\s*(?:,|\/|\)\s*\.join\()\s*["'][\w./-]+)+)/g,
+      (_, start, tail) => start + tail.replace(/["']\s*(?:,|\/|\)\s*\.join\()\s*["']/g, "/"));
+    const prefixes = new Set();
+    for (const [, prefix] of (source + "\n" + joined).matchAll(/(?<![\w/-])(?:\/?(?:\.\.\/)+|\/)?(docs\/[\w./-]*)/g)) {
+      prefixes.add(prefix.replace(/\/$/, ""));
+    }
+    if (/(?:join|resolve|read_dir|readdirSync|Path)\([^()]*["']docs["']\s*[,)]/.test(joined)) prefixes.add("docs");
+    for (const [doc, files] of covered) {
+      if ([...prefixes].some(prefix => doc === prefix || doc.startsWith(prefix + "/") || doc.startsWith(prefix + "."))) files.add(file);
+    }
+  }
+  for (const [doc, files] of covered) {
+    const route = classifyPaths([doc]);
+    assert.ok(route.web, `${doc}: repository-wide web source and secrets checks`);
+    // A live browser reader needs a backend build. Treat shared workflows conservatively.
+    const backendReader = [...files].find(file => /^(?:backend|\.github|e2e)\//.test(file) || backendScripts.has(file));
+    if (backendReader) assert.ok(route.backend, `${doc}: reader ${backendReader} requires backend`);
+    else if (files.has("scripts/ds-docs.mjs")) assert.deepEqual(route, web, doc);
+  }
+  assert.ok([...covered.values()].some(files => files.has("scripts/ds-docs.mjs")), "no design-system reader found");
 });
 
 function fixture(t) {
@@ -56,7 +106,7 @@ function fixture(t) {
   write("README.md");
   const base = commit();
   const run = (event = "pull_request", from = base, head = git("rev-parse", "HEAD")) => {
-    const output = path.join(root, "output");
+    const output = path.join(root, ".git", "output");
     writeFileSync(output, "");
     const result = spawnSync(process.execPath, [script, event, from, head], {
       cwd: root, env: { ...env, GITHUB_OUTPUT: output }, encoding: "utf8",
@@ -77,7 +127,7 @@ test("PR and merge queue classify the candidate against the merge base, excludin
   for (const event of ["pull_request", "merge_group"]) {
     const result = f.run(event, base, head);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.output, "backend=false\nweb=true\n");
+    assert.equal(result.output, "backend=false\nweb=true\ndocs=none\n");
   }
 });
 
@@ -96,7 +146,7 @@ for (const [before, after] of [
     assert.match(f.git("diff", "--name-status", "--find-renames", base, head), /^R100/);
     const result = f.run("pull_request", base, head);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.output, "backend=true\nweb=true\n");
+    assert.equal(result.output, "backend=true\nweb=true\ndocs=none\n");
   });
 }
 
@@ -108,13 +158,13 @@ test("deleted paths and filenames containing tabs and newlines stay in the diff"
   f.write("apps/web/tab\tand\nnewline.ts");
   const result = f.run("merge_group", base, f.commit());
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.output, "backend=true\nweb=true\n");
+  assert.equal(result.output, "backend=true\nweb=true\ndocs=none\n");
 });
 
 test("push always affects both classes without needing a base revision", (t) => {
   const result = fixture(t).run("push", "", "");
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.output, "backend=true\nweb=true\n");
+  assert.equal(result.output, "backend=true\nweb=true\ndocs=none\n");
 });
 
 test("unsupported events fail without publishing outputs", (t) => {
@@ -140,4 +190,14 @@ test("unavailable commits fail without publishing outputs", (t) => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Command failed: git merge-base/);
   assert.equal(result.output, "");
+});
+
+test("the PR output distinguishes docs alone from docs mixed with application changes", t => {
+  const f = fixture(t);
+  f.write("docs/design-system/components/button.md");
+  f.commit();
+  assert.equal(f.run().output, "backend=false\nweb=true\ndocs=only\n");
+  f.write("apps/web/page.tsx");
+  f.commit();
+  assert.equal(f.run().output, "backend=false\nweb=true\ndocs=mixed\n");
 });

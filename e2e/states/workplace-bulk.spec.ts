@@ -96,8 +96,9 @@ for (const state of states) for (const width of [1440, 390]) {
       const commit = main.getByRole("button", { name: /\d+곳 일괄 수정/, exact: true });
       const table = main.getByRole("table");
       if (state === "loading") {
-        await expect(main.locator('[data-read-layout="list"]')).toBeVisible();
-        await expect(main.locator('[aria-busy="true"]').last()).toBeVisible();
+        const loading = main.getByRole("status", { name: t("common.loading"), exact: true });
+        await expect(loading).toBeVisible();
+        await expect(loading).toHaveAttribute("aria-busy", "true");
         await expect(commit).toHaveCount(0);
       } else if (state === "failed") {
         await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible();

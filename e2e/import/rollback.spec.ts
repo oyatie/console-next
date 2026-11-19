@@ -6,7 +6,7 @@ import type { components } from "@console/api/schema";
 import { OWN_ECHO_MS } from "../../apps/web/src/lib/freshness";
 import { expectAccessible } from "../a11y";
 import { confirmGrantNotice, grantAccess } from "../access-flows";
-import { firstSignIn, go, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "../flows";
+import { firstSignIn, go, option, registerEmployee, reloadAndWait, stepUp, takeCode, unique } from "../flows";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "../setup-flows";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
 import { confirmImportColumns, chooseWorkbook } from "../helpers/import";
@@ -194,8 +194,7 @@ test("OPERATING rollback waits for another holder and reaches done through the l
   const exec = await firstSignIn(browser, await takeCode(admin));
   await startOperations(admin);
   await grantAccess(admin, "김검토", "full");
-  await exec.reload();
-  await passkeyLogin(exec);
+  await reloadAndWait(exec);
   await confirmGrantNotice(exec, "full");
   letGrantsAge(unique(slug), "김검토");
   routeRollbackPolicy(unique(slug));

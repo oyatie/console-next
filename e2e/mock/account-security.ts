@@ -34,7 +34,7 @@ export async function accountSecurityReads(page: Page, screen: AccountSecuritySc
 }
 
 /** Keep the OS ceremony and its server verification independently controllable. */
-export async function accountSecurityPasskey(page: Page, mode: "login" | "autofill" | "enroll" | "reauth") {
+export async function accountSecurityPasskey(page: Page, mode: "login" | "autofill" | "enroll" | "reauth", { lateAnswer = false } = {}) {
   const shell = await mockScreen(page, screens[0], "populated");
   await accountReads(page, "save-unchanged");
   const pair = token();
@@ -45,7 +45,7 @@ export async function accountSecurityPasskey(page: Page, mode: "login" | "autofi
   }
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", mode === "login" || mode === "autofill"
     ? { status: 401, json: failure("unauthorized") } : { status: 200, json: pair });
-  await page.addInitScript(autofill => {
+  await page.addInitScript(({ autofill, lateAnswer }) => {
     class Credential {
       static isConditionalMediationAvailable = async () => autofill;
       static parseRequestOptionsFromJSON = (options: unknown) => options;
@@ -56,11 +56,17 @@ export async function accountSecurityPasskey(page: Page, mode: "login" | "autofi
     for (const method of ["get", "create"]) Object.defineProperty(navigator.credentials, method, { configurable: true, value: ({ signal }: CredentialRequestOptions = {}) => {
       document.documentElement.dataset.passkeySheet = method;
       return new Promise(resolve => {
-        window.addEventListener("test-passkey-select", () => resolve(new Credential()), { once: true });
-        signal?.addEventListener("abort", () => { delete document.documentElement.dataset.passkeySheet; resolve(null); }, { once: true });
+        const select = () => resolve(new Credential());
+        window.addEventListener("test-passkey-select", select, { once: true, signal });
+        signal?.addEventListener("abort", () => {
+          delete document.documentElement.dataset.passkeySheet;
+          // Browsers reject an aborted request (the client maps that to null); lateAnswer keeps it open for a credential that arrives after the sheet is dismissed.
+          if (lateAnswer) window.addEventListener("test-passkey-late-select", select, { once: true });
+          else resolve(null);
+        }, { once: true });
       });
     } });
-  }, mode === "autofill");
+  }, { autofill: mode === "autofill", lateAnswer });
   const ceremony = { ceremony_id: "test-ceremony", challenge: { publicKey: { challenge: "Y2hhbGxlbmdl" } }, expires_at: new Date(Date.now() + 300_000).toISOString() };
   await mockRoute(page, "post", "/api/v1/auth/passkey/login/start", { status: 200, json: ceremony });
   await mockRoute(page, "post", "/api/v1/auth/passkey/register/start", { status: 200, json: ceremony });

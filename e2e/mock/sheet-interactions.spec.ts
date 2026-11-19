@@ -233,6 +233,7 @@ test("Back restores the shell scroller on a non-table screen", async ({ page }) 
   await routeReady(page, "/org");
   await page.addStyleTag({ content: "#main::after { content: ''; display: block; height: 1800px; }" });
   const main = page.locator("#main");
+  await expect(main).toBeVisible();
   await main.focus();
   await main.evaluate(element => { element.scrollTop = 700; });
   await main.dispatchEvent("scroll");
@@ -345,6 +346,7 @@ test("Escape inside a clean wide DockSheet closes it", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockNavigate(page, "/_gallery?entry=dock-sheet");
   const dock = page.getByRole("complementary", { name: tg("dockSheet.title"), exact: true });
+  await expect(dock.getByRole("heading")).toBeVisible();
   await dock.getByRole("heading").focus();
   await page.keyboard.press("Escape");
   await expect(dock).toHaveCount(0);

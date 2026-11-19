@@ -50,6 +50,16 @@ for (const experience of ["baseline", "warm-clear"]) for (const [label, path] of
   const main = await page.locator("#main").evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
   expect(scroll.scroll).toBeGreaterThan(scroll.client);
   expect(main.scroll).toBeLessThanOrEqual(main.client + 1);
+  await scroller.hover();
+  await page.mouse.wheel(0, 1600);
+  await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  // Page scrolling must not expose an empty area outside the virtualised grid.
+  await page.locator("#main").evaluate(el => { el.scrollTop = el.scrollHeight; });
+  expect(await page.locator("#main").evaluate(el => el.scrollTop)).toBeLessThanOrEqual(1);
+  expect(await grid.getByText(/^근태직원 /).evaluateAll(rows => rows.some(row => {
+    const rect = row.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < innerHeight;
+  }))).toBe(true);
   const sticky = await scroller.evaluate(el => {
     const head = el.querySelector<HTMLElement>("thead th")!;
     el.scrollTop = 160;

@@ -1,5 +1,5 @@
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useKeys } from "../../../lib/react/use-keys";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -15,6 +15,7 @@ import { Button } from "../../../ui/button/button";
 import { Kbd } from "../../../ui/kbd/kbd";
 import { parseTyped } from "../../../ui/date/days";
 import { Crumbs } from "../../../ui/page-head/crumbs";
+import { useMountFocus } from "../../../ui/page/use-mount-focus";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { PhaseLine } from "../../../ui/page-head/phase-line";
 import { duplicateCandidates } from "../api";
@@ -110,7 +111,7 @@ export function RegisterRun() {
   };
   useKeys({ "registerRun.next": () => save(false), "registerRun.finish": () => save(true) });
   // The name takes focus as the page opens.
-  useEffect(() => void requestAnimationFrame(() => body.current?.querySelector<HTMLElement>('[data-run="name"]')?.focus()), [body]);
+  useMountFocus(true, () => body.current?.querySelector<HTMLElement>('[data-run="name"]') ?? null);
 
   const undoRow = (r: RunRow) => undo.mutate({ id: r.id, updatedAt: r.updatedAt }, { onSuccess: () => (receipts.drop(r.id), setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, undone: true } : x)))) });
   // the run is undone row by row (no server batch id, EMP-UI 6); a failure stops it and names what is left.
