@@ -14,6 +14,9 @@ export const koSettingsHub: Record<keyof typeof enSettingsHub, string> = {
   "settingsHub.off": "꺼짐",
   "settingsHub.code.none": "바로 적용",
   "settingsHub.code.route": "결재",
+  "settingsHub.code.baseline": "기본",
+  "settingsHub.code.control-room": "관제실",
+  "settingsHub.code.warm-clear": "따뜻하고 선명하게",
   "settingsHub.source": "{key} · {source}",
   "settingsHub.all": "모두",
   "settingsHub.scheduled": "{date}부터 {key} · {value}",
@@ -40,4 +43,5 @@ export const koSettingsHub: Record<keyof typeof enSettingsHub, string> = {
   "settingsHub.key.approval.policy.registration_void": "등록 취소",
   "settingsHub.key.approval.policy.exit": "퇴직 확인",
   "settingsHub.key.approval.policy.import_rollback": "가져오기 되돌리기",
+  "settingsHub.key.display.experience": "화면 스타일",
 };

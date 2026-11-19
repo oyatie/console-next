@@ -13,6 +13,9 @@ export const enSettingsHub = {
   "settingsHub.off": "Off",
   "settingsHub.code.none": "Apply directly",
   "settingsHub.code.route": "Approval",
+  "settingsHub.code.baseline": "Baseline",
+  "settingsHub.code.control-room": "Control room",
+  "settingsHub.code.warm-clear": "Warm clear",
   "settingsHub.source": "{key} · {source}",
   "settingsHub.all": "All settings",
   "settingsHub.scheduled": "From {date}: {key} · {value}",
@@ -39,4 +42,5 @@ export const enSettingsHub = {
   "settingsHub.key.approval.policy.registration_void": "Registration cancellations",
   "settingsHub.key.approval.policy.exit": "Exit confirmations",
   "settingsHub.key.approval.policy.import_rollback": "Import rollbacks",
+  "settingsHub.key.display.experience": "Screen style",
 } as const;

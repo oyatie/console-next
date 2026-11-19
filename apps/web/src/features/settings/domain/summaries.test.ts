@@ -15,9 +15,16 @@ const entry = (key = keys[0]!): components["schemas"]["SettingEntry"] => ({
 });
 
 test("every displayed policy key has Korean and English copy; unknown keys are never exposed", () => {
-  for (const key of keys.map(name => entry(name).key)) for (const catalog of [ko, en]) {
+  for (const key of [...keys.map(name => entry(name).key), "display.experience"]) for (const catalog of [ko, en]) {
     expect((catalog as Record<string, string>)[`settingsHub.key.${key}`]).toBeTruthy();
   }
+  const styleEntry: components["schemas"]["SettingEntry"] = {
+    ...entry(), key: "display.experience", kind: { type: "code", allowed: ["baseline", "control-room", "warm-clear"] },
+    default: "baseline", value: "baseline", looser_when: "neutral",
+  };
+  expect(settingValue(styleEntry, "baseline", t)).toBe(ko["account.experience.baseline"]);
+  expect(settingValue(styleEntry, "control-room", t)).toBe(ko["account.experience.controlRoom"]);
+  expect(settingValue(styleEntry, "warm-clear", t)).toBe(ko["account.experience.warmClear"]);
   expect(settingLabel("approval.policy.unlabelled", t)).toBe(t("settingsHub.unknown"));
 });
 
