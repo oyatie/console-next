@@ -5,8 +5,9 @@ Every user-facing string lives in the catalogs, one file per id prefix. **Englis
 `ko/<ns>.ts` (merged by `ko.ts`) is typed `Record<keyof typeof en…, string>`, so a missing Korean id
 fails `npm run typecheck`; a future locale may be partial and falls back to English. `t()` looks up the
 current locale (Korean by default). Sign-in, shell and shared-state copy (ids `app.`, `auth.`,
-`common.`, `shell.`) lives in `src/catalogs/boot.ts` (every locale) instead: it ships in the entry,
-while each locale's screen catalog loads with the first screen.
+`common.`, `shell.`) lives in `src/catalogs/boot-en.ts` and `boot-ko.ts` instead. Only loading and
+recovery copy (`boot-bootstrap.ts`) ships in the entry. Sign-in awaits boot copy; other screens
+await both boot and screen catalogs.
 A new string: add the id with its English text to `en/<ns>.ts`, then its Korean to `ko/<ns>.ts`.
 Components never contain literal text; `npm run lint` fails on Hangul outside the catalogs.
 
@@ -22,8 +23,9 @@ other text in that dictionary remains checked. Historical alias compatibility is
 Web product source keeps its zero-debt rule; only `.test.ts` and `.test.tsx` files are exempt.
 Pre-existing escaped product text is baselined; new escaped product text is refused.
 
-Each category must stay at or below its count in `git merge-base HEAD origin/dev`.
-`QUALITY_BASE` overrides the target; local checkouts prefer `public/dev` when available.
+Each category must stay at or below its count at the merge base with the quality base.
+A nonempty `QUALITY_BASE` overrides the target; otherwise use `dev`'s configured upstream, then
+`origin/dev` if `origin` is configured, then local `dev` (see [engineering.md](../../docs/engineering.md)).
 Reductions automatically lower the ceiling on merge; no stored counts need updating.
 Run `node scripts/check-hangul.mjs --report` (or `node scripts/check-copy.mjs --report`)
 to print candidate and merge-base counts.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { i18n, loadCatalog } from "@console/i18n";
+import { i18n, loadBootCatalog, loadCatalog } from "@console/i18n";
 import { chunk } from "./chunk-guard";
 
 /** Decode a completed preload before painting; slow/failed fonts keep system metrics for this document. */
@@ -27,3 +27,7 @@ export const screen = <M,>(load: () => Promise<M>) => () => {
   const l = i18n.locale;
   return chunk(Promise.all([load(), loadCatalog(l)]).then(([m]) => m));
 };
+
+/** Sign-in and session warnings need boot copy without awaiting the full screen catalog. */
+export const bootScreen = <M,>(load: () => Promise<M>) => () =>
+  chunk(Promise.all([load(), loadBootCatalog(i18n.locale)]).then(([m]) => m));

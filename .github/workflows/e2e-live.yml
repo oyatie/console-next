@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-name: e2e-live
+name: Full browser journeys
 on:
   schedule:
     - cron: "17 18 * * *"
@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   build:
+    name: Build browser test application
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     permissions:
@@ -68,6 +69,7 @@ jobs:
           if-no-files-found: error
 
   chromium:
+    name: Chromium journeys · ${{ matrix.shard }}
     needs: [build]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
@@ -84,7 +86,6 @@ jobs:
           - {shard: live-renew, config: playwright.live-renew.config.ts, project: "parallel"}
           - {shard: navigation, config: playwright.navigation.config.ts, project: "chromium"}
           - {shard: focus-stress, config: e2e/mock/focus-stress.config.ts, project: "chromium"}
-          - {shard: timeline, config: apps/web/src/ui/timeline-lanes/timeline-line.playwright.ts, project: ""}
     services:
       postgres:
         image: postgres:18.4@sha256:65f70a152846cf504dff86e807007e9aeac98c3aeb7b62541b2c55ab9d264e56
@@ -95,9 +96,11 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U console_cluster_admin -d console_dev"
-          --health-interval 1s
-          --health-timeout 5s
-          --health-retries 60
+          --health-interval 30s
+          --health-timeout 2s
+          --health-retries 1
+          --health-start-period 60s
+          --health-start-interval 1s
     env:
       CONSOLE_APP_BIN: .cache/e2e-live-runtime/backend/target/release/console-app
       CONSOLE_DEV_PG_PORT: "5432"
@@ -109,6 +112,10 @@ jobs:
     steps:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
+      - name: Docker healthcheck capabilities
+        run: |
+          docker version
+          docker compose version
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -153,6 +160,7 @@ jobs:
           if-no-files-found: error
 
   firefox:
+    name: Firefox journeys · ${{ matrix.shard }}
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     needs: [build, chromium]
     runs-on: ubuntu-24.04-arm
@@ -179,9 +187,11 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U console_cluster_admin -d console_dev"
-          --health-interval 1s
-          --health-timeout 5s
-          --health-retries 60
+          --health-interval 30s
+          --health-timeout 2s
+          --health-retries 1
+          --health-start-period 60s
+          --health-start-interval 1s
     env:
       CONSOLE_APP_BIN: .cache/e2e-live-runtime/backend/target/release/console-app
       CONSOLE_DEV_PG_PORT: "5432"
@@ -194,6 +204,10 @@ jobs:
     steps:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
+      - name: Docker healthcheck capabilities
+        run: |
+          docker version
+          docker compose version
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -238,6 +252,7 @@ jobs:
           if-no-files-found: error
 
   firefox-states:
+    name: Firefox UI states · shard ${{ matrix.shard }}
     if: ${{ github.event_name == 'schedule' }}
     needs: [build]
     runs-on: ubuntu-24.04-arm

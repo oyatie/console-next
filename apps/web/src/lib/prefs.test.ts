@@ -2,7 +2,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { expect, test } from "vitest";
-import { THEME_KEY, THEMES } from "./prefs";
+import { EXPERIENCE_KEY, THEME_KEY, THEMES } from "./prefs";
+import { experiences } from "../experience/table";
 
 const SRC = readFileSync(new URL("../../public/prefs.js", import.meta.url), "utf8");
 type Published = Record<"theme" | "experience", { key: string; values: string[] }>;
@@ -33,8 +34,6 @@ function boot(stored: Record<string, string> | "blocked" | "unreadable", source 
   runInNewContext(source, context);
   return { attributes, published: window.consolePrefs! };
 }
-// The same script once an experience id has been added to its list.
-const withCalm = SRC.replace('experience: { key: "console.experience", values: [] }', 'experience: { key: "console.experience", values: ["calm"] }');
 
 test("a stored theme is on <html> as soon as the script has run, whatever the system prefers", () => {
   expect(boot({ "console.theme": "dark" }, SRC, "light").attributes).toEqual({ "data-theme": "dark" });
@@ -68,21 +67,26 @@ test("a browser that cannot say what the system prefers sets a stored theme and 
   }
 });
 
-test("no experience is known yet, so a stored one is never applied", () => {
-  expect(boot({}).published.experience).toEqual({ key: "console.experience", values: [] });
-  for (const value of ["calm", "baseline", "light", "dark"]) {
+for (const experience of ["baseline", "control-room", "warm-clear"]) {
+  test(`${experience} applies the stored choice before the bundle in either theme`, () => {
+    for (const theme of THEMES) {
+      expect(boot({ "console.experience": experience, "console.theme": theme }).attributes).toEqual({ "data-theme": theme, "data-experience": experience });
+    }
+  });
+}
+
+test("an unknown experience never applies", () => {
+  for (const value of ["calm", "light", "dark", "Warm-clear", "control-room "]) {
     expect(boot({ "console.experience": value, "console.theme": "dark" }).attributes, value).toEqual({ "data-theme": "dark" });
   }
 });
 
-test("adding an id to the one list is all it takes for that experience to be applied", () => {
-  expect(withCalm).not.toBe(SRC);
-  expect(boot({ "console.experience": "calm", "console.theme": "dark" }, withCalm).attributes).toEqual({ "data-theme": "dark", "data-experience": "calm" });
-  expect(boot({ "console.experience": "warm" }, withCalm).attributes).toEqual({});
-});
-
 test("the bundle uses the key and the themes the boot script applies", () => {
   expect(boot({}).published.theme).toEqual({ key: THEME_KEY, values: [...THEMES] });
+});
+
+test("only the supported experiences are registered", () => {
+  expect(boot({}).published.experience).toEqual({ key: EXPERIENCE_KEY, values: experiences.map(experience => experience.id) });
 });
 
 test("the known experiences are exactly the ones with a token file", () => {
@@ -90,7 +94,7 @@ test("the known experiences are exactly the ones with a token file", () => {
   const dir = new URL("../../../../packages/tokens/experiences/", import.meta.url);
   expect(existsSync(new URL("../tokens.css", dir)), "the folder is looked for beside the base token file").toBe(true);
   const files = existsSync(dir) ? readdirSync(dir).filter((name) => name.endsWith(".css")).map((name) => name.slice(0, -".css".length)) : [];
-  expect([...boot({}).published.experience.values].sort()).toEqual(files.sort());
+  expect(boot({}).published.experience.values.filter(id => id !== "baseline").sort()).toEqual(files.sort());
 });
 
 test("the boot script blocks the parser ahead of the entry, so it has run before anything can paint", () => {

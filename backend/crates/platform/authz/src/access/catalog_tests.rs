@@ -108,3 +108,20 @@ fn the_hr_exit_confirmation_is_an_edit_not_an_approval() {
         Some((Domain::Exit, Level::Approve))
     );
 }
+
+#[test]
+fn runtime_settings_read_never_implies_settings_view_or_cross_tenant_access() {
+    use crate::access::cedar::AccessSlice;
+    use crate::access::tests::{subject, tree};
+    let t = tree();
+    let slice = AccessSlice::compile(&subject(&t, false, vec![])).expect("compiles");
+    for path in [t.tenant(), t.le(t.le_a)] {
+        assert!(slice.allows("settings_runtime_read", &path).unwrap());
+        assert!(!slice.allows("settings::view", &path).unwrap());
+    }
+    assert!(
+        slice
+            .allows("settings_runtime_read", &tree().tenant())
+            .is_err()
+    );
+}

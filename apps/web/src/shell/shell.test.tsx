@@ -5,10 +5,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeAll, expect, test, vi } from "vitest";
 import { ApiError, session } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
+import { experiences } from "../experience/table";
+import { loadPack } from "../experience/pack";
+import { PLATFORM_NAV } from "./nav";
 import { myAccessQuery } from "../reference/authz/api";
 import { activeSupportQuery } from "../reference/support-access/api";
 import { read } from "../lib/query";
-import { Shell } from "./shell";
+import Shell from "./baseline/shell";
+import { AccountLink, LogoutButton, SearchTrigger, ThemeToggle } from "./frame/controls";
+import { LocaleSelect } from "./frame/locale-select";
+import type { ShellLayoutProps } from "./frame/shell-frame";
 import { meQuery } from "../features/account/api";
 import { checklistQuery, modulesQuery, SETUP_READS } from "../features/onboarding/api";
 import { modules } from "../../../../e2e/mock/fixtures";
@@ -127,7 +133,7 @@ test("a failed session restore keeps the navigation and device controls availabl
 });
 
 for (const secondary of ["modules", "support", "me"] as const) for (const cached of [false, true]) {
-  test(`${secondary} 403 gives a fresh rail with ${cached ? "cached" : "no previous"} secondary data`, async () => {
+  test(`${secondary} 403 resolves the rail with ${cached ? "cached" : "no previous"} secondary data`, async () => {
     const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
     try {
       await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
@@ -139,15 +145,16 @@ for (const secondary of ["modules", "support", "me"] as const) for (const cached
       const refusal = new ApiError(403, "forbidden", "", []);
       await expect(client.fetchQuery({ ...query, staleTime: 0, queryFn: async () => { throw refusal; } })).rejects.toBe(refusal);
       const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
-      expect(rail).toContain('href="/people"');
-      expect(rail.includes('href="/audit/support-access"')).toBe(secondary !== "support");
+      expect(rail.includes('href="/people"')).toBe(secondary !== "me");
+      expect(rail.includes('href="/audit/support-access"')).toBe(secondary === "modules");
+      if (secondary === "me") expect(rail).toContain(t("common.failed.permanent", { status: "403" }));
       expect(rail).not.toContain('aria-busy="true"');
     } finally { client.clear(); }
   });
 }
 
 for (const secondary of ["support", "me"] as const) for (const fault of [new ApiError(503, "unavailable", "", []), new TypeError("Failed to fetch")]) {
-  test(`${secondary} ${fault.name} fault keeps a cold rail unresolved`, async () => {
+  test(`${secondary} ${fault.name} fault shows a cold rail read error`, async () => {
     const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
     try {
       await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
@@ -157,7 +164,8 @@ for (const secondary of ["support", "me"] as const) for (const fault of [new Api
       const query = secondary === "support" ? activeSupportQuery : navigationRead(meQuery);
       await expect(client.fetchQuery({ ...query, staleTime: 0, queryFn: async () => { throw fault; } })).rejects.toBe(fault);
       const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
-      expect(rail).toContain('aria-busy="true"');
+      expect(rail).not.toContain('aria-busy="true"');
+      expect(rail).toContain(t(secondary === "support" ? "shell.nav.failed" : "common.retry"));
       expect(rail).not.toContain('href="/people"');
     } finally { client.clear(); }
   });
@@ -176,4 +184,63 @@ test.each([new ApiError(503, "unavailable", "", []), new TypeError("Failed to fe
     expect(rail).toContain(t("common.retry"));
     expect(rail).not.toContain('aria-busy="true"');
   } finally { client.clear(); }
+});
+
+test("a cold checklist fault keeps independent rail links without a rail error", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+  try {
+    await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
+    await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: false }) });
+    await client.fetchQuery({ ...navigationRead(meQuery), queryFn: async () => ({ tenant: { phase: "SETUP" } }) });
+    await client.fetchQuery({ ...modulesQuery, queryFn: async () => modules.ready });
+    await expect(client.fetchQuery({ ...checklistQuery, queryFn: async () => { throw new TypeError("Failed to fetch"); } })).rejects.toThrow("Failed to fetch");
+    const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
+    expect(rail).toContain('href="/"');
+    expect(rail).not.toContain('aria-busy="true"');
+    expect(rail).not.toContain('role="alert"');
+    expect(rail).not.toContain(t("shell.nav.failed"));
+  } finally { client.clear(); }
+});
+
+function AlternateLayout({ children, onSearch }: ShellLayoutProps) {
+  return <div><header><SearchTrigger onSearch={onSearch} /><LocaleSelect id="alternate-locale" label /><ThemeToggle /><AccountLink /><LogoutButton /></header><nav aria-label={t("shell.nav")} />{children}</div>;
+}
+
+test.each([...experiences.map(experience => experience.id), "alternate"])("the %s layout shares the frame landmarks and screen heading", async layout => {
+  const { ShellFrame } = await import("./frame/shell-frame");
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: true, entries: [] }) });
+  await expect(client.fetchQuery(read("/api/v1/auth/token/refresh", () => Promise.reject(new Error("unavailable"))))).rejects.toThrow("unavailable");
+  try {
+    const screen = <h1>{t("app.name")}</h1>;
+    vi.stubGlobal("document", { documentElement: { dataset: { experience: layout } } });
+    const Pack = (await loadPack()).default;
+    vi.unstubAllGlobals();
+    const html = renderToStaticMarkup(<QueryClientProvider client={client}>{layout === "alternate"
+      ? <ShellFrame layout={AlternateLayout}>{screen}</ShellFrame> : <Pack>{screen}</Pack>}</QueryClientProvider>);
+    expect(html).toMatch(/<main\b[^>]*data-console-scope=""/);
+    for (const key of ["shell.jump", "shell.locale", "shell.theme.toDark", "shell.logout", "account.name.unset"] as const) expect(html).toContain(t(key));
+    expect(html.match(/<main\b/g)).toHaveLength(1);
+    expect(html.match(/id="main"/g)).toHaveLength(1);
+    expect(html.match(/href="#main"/g)).toHaveLength(1);
+    expect(html).toMatch(new RegExp(`<nav\\b[^>]*aria-label="${t("shell.nav")}"`));
+    expect(html.match(/<h1>/g)).toHaveLength(1);
+    expect(html).toContain(`<h1>${t("app.name")}</h1>`);
+    expect(html.match(/<main\b[\s\S]*?<\/main>/)![0]).toContain(`<h1>${t("app.name")}</h1>`);
+  } finally { client.clear(); }
+});
+
+
+test("platform sessions place platform navigation without tenant search or inbox", () => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  session.set({ access_token: `h.${Buffer.from(JSON.stringify({ sub: "operator", platform: true })).toString("base64url")}.s`, token_type: "Bearer", refresh_expires_at: "2099-01-01T00:00:00Z", requires_passkey_setup: false });
+  try {
+    const html = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>);
+    const header = html.match(/<header[\s\S]*?<\/header>/)![0];
+    expect(header).not.toContain(t("shell.jump"));
+    expect(header).not.toContain('data-task-menu="true"');
+    const links = [...html.split("</nav>")[0]!.matchAll(/href="([^"#][^"]*)"/g)].map(([, href]) => href);
+    expect(links).toEqual(PLATFORM_NAV.flatMap(hub => hub.links.map(link => link.to)));
+    expect(html).toContain('data-console-scope="' + t("shell.hub.platform") + '"');
+  } finally { session.set(null); client.clear(); }
 });

@@ -2,7 +2,7 @@
 // screens hang off `app` in their own file here (routes compose slices; slices never import routes).
 import { createRootRoute, createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { chunk } from "../lib/chunk-guard";
-import { screen } from "../lib/fonts";
+import { bootScreen, screen } from "../lib/fonts";
 import { streamReady } from "../lib/live/session-stream";
 import { RootShell } from "./root-shell";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
@@ -39,9 +39,9 @@ export const login = createRoute({
   // `enrolled`: a passkey was just registered but the automatic sign-in with it failed (e.g. rate-limited).
   validateSearch: (s: Record<string, unknown>): { enrolled?: boolean; cancelled?: 1; code?: boolean } => ({ enrolled: flag(s.enrolled), code: flag(s.code), cancelled: s.cancelled === 1 || s.cancelled === "1" ? 1 : undefined }),
   beforeLoad: async () => (await guards()).leaveSignInWhenSignedIn(),
-  component: lazyRouteComponent(() => chunk(import("../auth/Login")), "Login"),
+  component: lazyRouteComponent(bootScreen(() => import("../auth/Login")), "Login"),
 });
-const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: async () => (await guards()).ensureEnrolling(), component: lazyRouteComponent(() => chunk(import("../auth/SetupPasskey")), "SetupPasskey") });
+const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: async () => (await guards()).ensureEnrolling(), component: lazyRouteComponent(bootScreen(() => import("../auth/SetupPasskey")), "SetupPasskey") });
 export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await ensureSession(context); await streamReady(); } });
 
 const tenants = createRoute({
@@ -70,6 +70,7 @@ const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
   : [];
 // Mock-state builds keep unserved screens testable without publishing their routes.
 const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
+  createRoute({ getParentRoute: () => app, path: "/_review/patterns/list-record", staticData: { access: "signed-in", floorplan: "P-01" }, validateSearch: (s: Record<string, unknown>): { state?: "refused" } => ({ state: s.state === "refused" ? "refused" : undefined }), component: lazyRouteComponent(screen(() => import("../review/list-record-review")), "ListRecordReview") }),
   createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") }),
   createRoute({
     getParentRoute: () => app, path: "/audit/access-log", staticData: { access: "signed-in", floorplan: "P-01" },

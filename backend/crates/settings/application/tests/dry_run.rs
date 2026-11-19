@@ -192,6 +192,9 @@ async fn loosen_reports_step_up_delayed_with_earliest() {
     let error = change_setting(
         &mut Fake::default(),
         |facts| {
+            if facts.direction == Direction::Neutral {
+                return Ok(());
+            }
             assert!(!facts.step_up);
             Err(KernelError::forbidden("step-up").with_code("step_up_required"))
         },
@@ -240,7 +243,9 @@ async fn a_write_stores_only_a_verified_step_up_id_and_a_preview_stores_none() {
         let (_, row) = plan_setting(
             &mut store,
             |facts| {
-                assert_eq!(facts.step_up, dry_run || verified);
+                if facts.direction != Direction::Neutral {
+                    assert_eq!(facts.step_up, dry_run || verified);
+                }
                 Ok(())
             },
             actor(),
@@ -287,3 +292,6 @@ async fn undeclared_facts_report_null_and_refuse_an_expected_default_version() {
         matches!(error, ChangeError::Stale { current_version: None, error } if error.code == Some("setting_version_stale"))
     );
 }
+
+#[path = "dry_run/authorization.rs"]
+mod authorization;

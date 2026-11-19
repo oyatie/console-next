@@ -1,6 +1,7 @@
 {
   "shell": {
     "budget_kb": 82,
+    "css_budget_kb": 6,
     "routes": [
       "src/auth/IdleGuard.tsx",
       "src/auth/Login.tsx",
@@ -9,13 +10,13 @@
       "src/features/structure/ui/jump-palette.tsx",
       "src/lib/react/route-error.tsx",
       "src/lib/react/session.ts",
-      "src/shell/shell.tsx",
       "src/shell/top-bar/needs-me.tsx",
       "src/shell/top-bar/needs-me-panel.tsx"
     ]
   },
   "list": {
     "budget_kb": 300,
+    "css_budget_kb": 36,
     "deferred": ["src/features/entity/ui/entity-record.tsx", "src/features/entity/ui/entity-wizard.tsx"],
     "routes": [
       "src/features/access-log/ui/access-log-page.tsx",
@@ -57,6 +58,7 @@
   },
   "record": {
     "budget_kb": 252,
+    "css_budget_kb": 32,
     "deferred": ["src/ui/external-url-host.tsx"],
     "routes": [
       "src/features/account/Account.tsx",
@@ -76,6 +78,7 @@
   },
   "wizard": {
     "budget_kb": 167,
+    "css_budget_kb": 16,
     "deferred": ["src/ui/date/date-calendar.tsx", "src/features/import/ui/resolve-controls.tsx"],
     "routes": [
       "src/features/entity/ui/entity-wizard.tsx",
@@ -95,5 +98,10 @@
       "src/features/people/ui/register-run-page.tsx",
       "src/features/people/ui/renew-page.tsx"
     ]
+  },
+  "pack": {
+    "budget_kb": 69,
+    "css_budget_kb": 8,
+    "routes": ["src/shell/baseline/shell.tsx"]
   }
 }

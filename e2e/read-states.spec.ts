@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { shell, shellSelectors } from "./shell";
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
@@ -130,31 +131,31 @@ test.describe("one state contract across console routes", () => {
     try {
       await page.goto("/attendance");
       await routeReady(page);
-      const positions = await page.locator(".top").evaluate(async top => {
+      const positions = await shell(page).banner.evaluate(async (top, accountText) => {
         await document.fonts.ready;
-        const name = top.querySelector<HTMLElement>(".top__name span")!;
+        const name = top.querySelector<HTMLElement>(accountText)!;
         const rects = () => [...top.querySelectorAll("button, a, select")].map(control => control.getBoundingClientRect().toJSON());
         name.style.fontFamily = "sans-serif";
         const fallback = rects();
         name.style.removeProperty("font-family");
         return { fallback, loaded: rects() };
-      });
+      }, shellSelectors().accountText);
       expect(positions.loaded).toEqual(positions.fallback);
       if (width === 390) {
         // On a phone the name may shorten, but it never draws over the controls beside it.
-        const overlaps = await page.locator(".top").evaluate(top => {
-          const name = top.querySelector<HTMLElement>(".top__name span")!.getBoundingClientRect();
+        const overlaps = await shell(page).banner.evaluate((top, accountText) => {
+          const name = top.querySelector<HTMLElement>(accountText)!.getBoundingClientRect();
           return [...top.querySelectorAll<HTMLElement>("button, a, select")]
-            .filter(control => !control.contains(top.querySelector(".top__name span")))
+            .filter(control => !control.contains(top.querySelector(accountText)))
             .map(control => control.getBoundingClientRect())
             .filter(r => r.width > 0 && r.left < name.right && name.left < r.right && r.top < name.bottom && name.top < r.bottom).length;
-        });
+        }, shellSelectors().accountText);
         expect(overlaps).toBe(0);
       }
       if (width === 1440) {
         // The reserved slot is a minimum, never a cap: the account name is shown whole.
-        expect(await page.locator(".top__name span").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
-        const name = page.locator(".top__name");
+        expect(await shell(page).accountText.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+        const name = shell(page).account;
         const wide = await name.boundingBox();
         await page.setViewportSize({ width: 1280, height: 900 });
         expect((await name.boundingBox())!.width).toBe(wide!.width);

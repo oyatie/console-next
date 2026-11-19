@@ -30,8 +30,8 @@ test("a missing read shows its catalog reason without a server fallback", async 
 });
 
 type Read = { isPending: boolean; error: unknown; data: string | undefined; refetch: () => unknown; fetchStatus?: "paused"; isPlaceholderData?: boolean };
-async function markup(q: Read, own?: (code: string) => string | undefined, keepOnLoss = false, panel = false, failedActions?: ReactNode) {
-  const content = <QueryState q={q} own={own} keepOnLoss={keepOnLoss} failedActions={failedActions}>{value => <span>{value}</span>}</QueryState>;
+async function markup(q: Read, own?: (code: string) => string | undefined, keepOnLoss = false, panel = false, failedActions?: ReactNode, loading?: ReactNode) {
+  const content = <QueryState q={q} own={own} keepOnLoss={keepOnLoss} failedActions={failedActions} loading={loading}>{value => <span>{value}</span>}</QueryState>;
   const root = createRootRoute({ component: () => panel ? <SidePanel open title="Record" onClose={() => {}}>{content}</SidePanel> : content });
   const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ["/"] }) });
   await router.load();
@@ -58,6 +58,11 @@ test("an embedded held read is one announced line without a page layout", async 
   expect(html.match(/data-bone=/g)).toHaveLength(1);
   expect(html).not.toContain("data-read-layout");
   expect(html).toContain(t("common.loading"));
+});
+
+test("null loading suppresses the default skeleton", async () => {
+  const html = await markup({ isPending: true, error: null, data: undefined, refetch: () => {} }, undefined, false, false, undefined, null);
+  expect(html).toBe("");
 });
 
 test("a failed read offers retry and its server support reference", async () => {

@@ -7,11 +7,11 @@ use console_platform_authz::{
     access::{NodeKind, NodeRef},
     cedar_pbac::{
         actions::{account_link_review, independent_people},
-        visible::load_facts,
+        visible::load_facts_with_access,
     },
 };
 use console_platform_db::with_org_conn;
-use console_platform_request_context::current_org;
+use console_platform_request_context::{current_access_snapshot, current_org};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -37,7 +37,7 @@ impl PgOrgStore {
     ) -> Result<Vec<PendingSelfBinding>, PgOrgError> {
         let org = current_org().map_err(KernelError::from)?;
         with_org_conn(&self.pool, org, |tx| Box::pin(async move {
-            let facts = load_facts(tx, org, *actor.as_uuid()).await?;
+            let facts = load_facts_with_access(tx, org, *actor.as_uuid(), current_access_snapshot(org, *actor.as_uuid())).await?;
             let eligible = facts.authorize(Feature::UserManage.as_str(), NodeRef { kind: NodeKind::Tenant, id: *org.as_uuid() })
                 .map_err(|error| KernelError::internal(error.to_string()))?;
             if !account_link_review::decide(&actor.to_string(), &org.to_string(), &org.to_string(), true, eligible)

@@ -106,7 +106,7 @@ impl PgSettingsStore {
         authorize: A,
     ) -> Result<SettingChangeView, PgSettingsError>
     where
-        A: FnOnce(&ChangeFacts) -> Result<(), KernelError> + Send + 'static,
+        A: FnMut(&ChangeFacts) -> Result<(), KernelError> + Send + 'static,
     {
         with_audits(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
@@ -132,7 +132,7 @@ impl PgSettingsStore {
         authorize: A,
     ) -> Result<SettingChangePlan, PgSettingsError>
     where
-        A: FnOnce(&ChangeFacts) -> Result<(), KernelError> + Send + 'static,
+        A: FnMut(&ChangeFacts) -> Result<(), KernelError> + Send + 'static,
     {
         with_org_conn(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
@@ -147,7 +147,7 @@ impl PgSettingsStore {
     }
 
     /// Every key, resolved now for `entity` (or tenant-wide), with the rows
-    /// scheduled to take effect later.
+    /// scheduled to take effect later. Historical document retention also resolves closed scopes.
     ///
     /// # Errors
     /// Internal on a query failure or a stored value that no longer parses.
@@ -156,12 +156,33 @@ impl PgSettingsStore {
         org: OrgId,
         entity: Option<Uuid>,
     ) -> Result<EffectiveSettings, PgSettingsError> {
+        self.list_effective_inner(org, entity, false).await
+    }
+
+    /// Resolve the live settings registry; inactive target scopes are refused.
+    pub async fn list_live_effective(
+        &self,
+        org: OrgId,
+        entity: Option<Uuid>,
+    ) -> Result<EffectiveSettings, PgSettingsError> {
+        self.list_effective_inner(org, entity, true).await
+    }
+
+    async fn list_effective_inner(
+        &self,
+        org: OrgId,
+        entity: Option<Uuid>,
+        live_scope: bool,
+    ) -> Result<EffectiveSettings, PgSettingsError> {
         with_org_conn(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let now: Timestamp = sqlx::query_scalar("SELECT now()")
                     .fetch_one(tx.as_mut())
                     .await
                     .map_err(DbError::Sqlx)?;
+                if live_scope {
+                    tx::require_live_scope(tx.as_mut(), org, entity).await?;
+                }
                 let (chain, rows) =
                     load_rows_in_tx(tx.as_mut(), org, SettingKey::ALL, entity).await?;
                 Ok(EffectiveSettings {

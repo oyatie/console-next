@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash, randomBytes } from "node:crypto";
 import { gzipSync } from "node:zlib";
-import { checkRouteBudgets as checkRoutes, checkInitialBudget, INITIAL_BUDGET_KB, DEFAULT_BUDGET_FILE } from "./check-bundle.mjs";
+import { checkRouteBudgets as checkRoutes, checkSignInBudget, checkInitialBudget, INITIAL_BUDGET_KB, DEFAULT_BUDGET_FILE } from "./check-bundle.mjs";
 
 describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
   const lists = ["src/routes/org-tabs.tsx", "src/features/org/ui/org-changes.tsx", "src/features/org-bulk/ui/history-page.tsx"];
@@ -53,6 +53,44 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
     return { dir, dist, assets, dynamic, manifest, writeChunk, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
   };
 
+  it("sign-in counts only the locale catalogs its loaders await, including shared imports once", () => {
+    const mock = createMockDist();
+    try {
+      for (const file of ["index-main.js", "vendor-boot.js", "login.js", "setup.js", "idle.js", "session.js", "shared.js", "boot-ko.js", "boot-en.js"]) mock.writeChunk(file, file);
+      for (const locale of ["ko", "en"]) mock.writeChunk(`${locale}.js`, randomBytes(100_000).toString("hex"));
+      mock.dynamic("src/auth/Login.tsx", "login.js", ["_shared"]);
+      mock.dynamic("src/auth/IdleGuard.tsx", "idle.js", ["_shared"]);
+      mock.dynamic("src/auth/SetupPasskey.tsx", "setup.js", ["_shared"]);
+      mock.dynamic("src/lib/react/session.ts", "session.js");
+      mock.manifest._shared = { file: "assets/shared.js" };
+      for (const locale of ["ko", "en"]) {
+        mock.dynamic(`../../packages/i18n/src/catalogs/boot-${locale}.ts`, `boot-${locale}.js`, ["_shared"]);
+        mock.dynamic(`../../packages/i18n/src/catalogs/${locale}.ts`, `${locale}.js`);
+      }
+      const sources = {
+        "src/routes/app.ts": 'component: lazyRouteComponent(bootScreen(() => import("../auth/Login")), "Login"); lazyRouteComponent(bootScreen(() => import("../auth/SetupPasskey")), "SetupPasskey")',
+        "src/main.tsx": 'const IdleGuard = lazy(() => bootScreen(() => import("./auth/IdleGuard"))())',
+      };
+      const budgets = { shell: { budget_kb: 10 } };
+      const result = checkSignInBudget(mock.dist, budgets, sources);
+      assert.strictEqual(result.ok, true);
+      assert.strictEqual(result.chunksCount, 6);
+      for (const file of Object.keys(sources)) {
+        const changed = { ...sources, [file]: sources[file].replace("bootScreen(", "screen(") };
+        const failure = checkSignInBudget(mock.dist, budgets, changed);
+        assert.strictEqual(failure.ok, false);
+        assert.match(failure.error, /sign-in critical path.*over the 10/);
+      }
+      assert.throws(() => checkSignInBudget(mock.dist, budgets, { ...sources, "src/routes/app.ts": "unrecognized loader" }), /missing catalog boundary/);
+      delete mock.manifest["../../packages/i18n/src/catalogs/ko.ts"];
+      writeFileSync(path.join(mock.dist, ".vite/manifest.json"), JSON.stringify(mock.manifest));
+      assert.throws(() => checkSignInBudget(mock.dist, budgets, { ...sources, "src/routes/app.ts": sources["src/routes/app.ts"].replace("bootScreen(", "screen(") }), /missing.*catalogs\/ko/);
+      for (const key of Object.keys(mock.manifest)) if (key.includes("/catalogs/boot-")) delete mock.manifest[key];
+      writeFileSync(path.join(mock.dist, ".vite/manifest.json"), JSON.stringify(mock.manifest));
+      assert.throws(() => checkSignInBudget(mock.dist, budgets, sources), /missing boot catalog entries/);
+    } finally { mock.cleanup(); }
+  });
+
   it("a planted route chunk set over its page-type budget fails with the route and size", () => {
     const mock = createMockDist();
     try {
@@ -81,6 +119,92 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
       assert.match(result.error, /over the 20.*budget/i);
     } finally {
       mock.cleanup();
+    }
+  });
+
+  it("a route's CSS is the stylesheets of its chunks, without what the first page already links", () => {
+    const mock = createMockDist();
+    try {
+      mock.writeChunk("index-main.js", "console.log('main');");
+      mock.writeChunk("vendor-boot.js", "console.log('vendor');");
+      writeFileSync(path.join(mock.dist, "index.html"), `<!DOCTYPE html><html><head>
+        <script type="module" src="/assets/index-main.js"></script>
+        <link rel="modulepreload" href="/assets/vendor-boot.js">
+        <link rel="stylesheet" crossorigin href="/assets/index-main.css">
+      </head><body></body></html>`);
+      const sheet = (name, bytes) => writeFileSync(path.join(mock.assets, name), `.a{content:"${randomBytes(bytes).toString("hex")}"}`);
+      sheet("index-main.css", 3000);
+      sheet("tenants.css", 2000);
+      sheet("tenants-sub.css", 1000);
+      mock.writeChunk("Tenants-list.js", "export const x = 1;", ["tenants-sub.js"]);
+      mock.writeChunk("tenants-sub.js", "export const y = 42;");
+      mock.dynamic("src/features/platform/Tenants.tsx", "Tenants-list.js", ["_sub"]);
+      // A chunk names every stylesheet it needs, the first page's among them.
+      mock.manifest["src/features/platform/Tenants.tsx"].css = ["assets/tenants.css", "assets/index-main.css"];
+      mock.manifest._sub = { file: "assets/tenants-sub.js", css: ["assets/tenants-sub.css"] };
+      writeFileSync(path.join(mock.dist, ".vite/manifest.json"), JSON.stringify(mock.manifest));
+      const gz = (name) => gzipSync(readFileSync(path.join(mock.assets, name))).length / 1024;
+
+      const first = checkInitialBudget(mock.dist);
+      assert.strictEqual(first.cssKb, gz("index-main.css"));
+      const result = checkRouteBudgets(mock.dist, { list: { budget_kb: 300, routes: ["src/features/platform/Tenants.tsx"] } });
+      assert.strictEqual(result.ok, true, "CSS is reported, not budgeted");
+      assert.strictEqual(result.measured.list.cssChunk, "src/features/platform/Tenants.tsx");
+      assert.strictEqual(result.measured.list.maxCssKb, gz("tenants.css") + gz("tenants-sub.css"));
+    } finally {
+      mock.cleanup();
+    }
+  });
+
+  it("a route over its page type's CSS budget fails with the route and size, and passes under it", () => {
+    const mock = createMockDist();
+    try {
+      mock.writeChunk("index-main.js", "console.log('main');");
+      mock.writeChunk("vendor-boot.js", "console.log('vendor');");
+      // About 3 KB gzip: hex text of random bytes halves under gzip.
+      writeFileSync(path.join(mock.assets, "tenants.css"), `.a{content:"${randomBytes(3000).toString("hex")}"}`);
+      mock.writeChunk("Tenants-list.js", "export const x = 1;");
+      mock.dynamic("src/features/platform/Tenants.tsx", "Tenants-list.js");
+      mock.manifest["src/features/platform/Tenants.tsx"].css = ["assets/tenants.css"];
+      writeFileSync(path.join(mock.dist, ".vite/manifest.json"), JSON.stringify(mock.manifest));
+      const routes = ["src/features/platform/Tenants.tsx"];
+
+      const over = checkRouteBudgets(mock.dist, { list: { budget_kb: 300, css_budget_kb: 2, routes } });
+      assert.strictEqual(over.ok, false, "expected the CSS budget to fail the route");
+      assert.strictEqual(over.route, "src/features/platform/Tenants.tsx");
+      assert.ok(over.sizeKb > 2 && over.sizeKb < 4, `expected about 3 KB of CSS, got ${over.sizeKb}`);
+      assert.match(over.error, /CSS for src\/features\/platform\/Tenants\.tsx is .* KB gz, over the 2 KB CSS budget for page type 'list'/);
+      assert.strictEqual(checkRouteBudgets(mock.dist, { list: { budget_kb: 300, css_budget_kb: 4, routes } }).ok, true);
+    } finally {
+      mock.cleanup();
+    }
+  });
+
+  it("the first page's CSS has its own budget", () => {
+    const mock = createMockDist();
+    try {
+      mock.writeChunk("index-main.js", "console.log('main');");
+      mock.writeChunk("vendor-boot.js", "console.log('vendor');");
+      writeFileSync(path.join(mock.dist, "index.html"), `<!DOCTYPE html><html><head>
+        <script type="module" src="/assets/index-main.js"></script>
+        <link rel="modulepreload" href="/assets/vendor-boot.js">
+        <link rel="stylesheet" crossorigin href="/assets/index-main.css">
+      </head><body></body></html>`);
+      writeFileSync(path.join(mock.assets, "index-main.css"), `.a{content:"${randomBytes(3000).toString("hex")}"}`);
+
+      const over = checkInitialBudget(mock.dist, INITIAL_BUDGET_KB, 2);
+      assert.strictEqual(over.ok, false, "expected the first page's CSS budget to fail");
+      assert.match(over.error, /first page's CSS is .* KB gz, over the 2 KB CSS budget/);
+      assert.strictEqual(checkInitialBudget(mock.dist, INITIAL_BUDGET_KB, 4).ok, true);
+    } finally {
+      mock.cleanup();
+    }
+  });
+
+  it("every page type in the budget file has a CSS budget", () => {
+    const budgets = JSON.parse(readFileSync(DEFAULT_BUDGET_FILE, "utf8"));
+    for (const [type, config] of Object.entries(budgets)) {
+      assert.ok(Number.isFinite(config.css_budget_kb) && config.css_budget_kb > 0, `${type} has no css_budget_kb`);
     }
   });
 

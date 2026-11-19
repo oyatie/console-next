@@ -146,9 +146,6 @@
     "packages/i18n/src/catalogs/ko/requests.ts: composer.verb: packages/i18n/src/catalogs/ko/requests.ts requests.done.DECLINED: verb.반려: 「거절」 → 반려: {kind} 요청을 거절했습니다 [17453556f8ac633c7f5c]",
     "packages/i18n/src/catalogs/ko/requests.ts: composer.verb: packages/i18n/src/catalogs/ko/requests.ts requests.done.WITHDRAWN: verb.회수: 「철회」 → 회수: {kind} 요청을 철회했습니다 [9ab2ce04702084f5c7a3]",
     "packages/i18n/src/catalogs/ko/requests.ts: composer.verb: packages/i18n/src/catalogs/ko/requests.ts requests.status.DECLINED: verb.반려: 「거절」 → 반려: 거절됨 [f2501555ed188445061b]",
-    "packages/i18n/src/catalogs/ko/requests.ts: composer.verb: packages/i18n/src/catalogs/ko/requests.ts requests.status.WITHDRAWN: verb.회수: 「철회」 → 회수: 철회됨 [4c94ebae96ede826273b]",
-    "packages/i18n/src/catalogs/ko/ui-record-verbs.ts: composer.verb: packages/i18n/src/catalogs/ko/ui-record-verbs.ts uiRecordVerbs.button.withdraw: verb.회수: 「철회」 → 회수: {object} 철회 [113cc50cba7820599c2a]",
-    "packages/i18n/src/catalogs/ko/ui-record-verbs.ts: composer.verb: packages/i18n/src/catalogs/ko/ui-record-verbs.ts uiRecordVerbs.verb.withdraw: verb.회수: 「철회」 → 회수: 철회 [4c84afb1ab91043218c1]",
-    "packages/i18n/src/catalogs/ko/ui-record-verbs.ts: composer.verb: packages/i18n/src/catalogs/ko/ui-record-verbs.ts uiRecordVerbs.why.withdraw: verb.회수: 「철회」 → 회수: 지금은 철회할 수 없습니다. [f484c7c0601231982cea]"
+    "packages/i18n/src/catalogs/ko/requests.ts: composer.verb: packages/i18n/src/catalogs/ko/requests.ts requests.status.WITHDRAWN: verb.회수: 「철회」 → 회수: 철회됨 [4c94ebae96ede826273b]"
   ]
 }

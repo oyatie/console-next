@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, expect, test } from "vitest";
 // @ts-expect-error: a plain .mjs script, no types
-import { METRICS, checkBrokenRefs, compare, controlClasses, countCss, countTsx, measure, serialize } from "./check-ds.mjs";
+import { METRICS, checkBrokenRefs, compare, controlClasses, countCss, countTsx, frozenTokens, measure, serialize, styleSelectors } from "./check-ds.mjs";
 
 const script = fileURLToPath(new URL("./check-ds.mjs", import.meta.url));
 const roots: string[] = [];
@@ -270,4 +270,88 @@ test("check-ds runs the contrast pairs, the block rule and the dark rule on ever
   const lightOnly = gate(fixture({ [tokenFile]: css, [experienceFile]: calm("--border: #d0d7e0;") }));
   expect(lightOnly.status).toBe(1);
   expect(lightOnly.stderr).toContain(`${experienceFile}: --border is a colour set for light only`);
+});
+
+test("check-ds accepts an experience file's phone block of sizes and refuses a colour in it", () => {
+  const css = readFileSync(new URL("../packages/tokens/tokens.css", import.meta.url), "utf8");
+  const phone = (declarations: string) => `${calm("--border: #d0d7e0; --row-h: 28px;", "--border: #2b3542;")}\n@media (--phone) { :root[data-experience="calm"] { ${declarations} } }\n`;
+  const sizes = gate(fixture({ [tokenFile]: css, [experienceFile]: phone("--row-h: 48px;") }, {}));
+  expect(sizes.stderr).toBe("");
+  expect(sizes.status).toBe(0);
+  const colour = gate(fixture({ [tokenFile]: css, [experienceFile]: phone("--border: #111111;") }, {}));
+  expect(colour.status).toBe(1);
+  expect(colour.stderr).toContain(`${experienceFile}: --border is a colour in the phone block`);
+});
+
+const BASE_TOKENS = ':root { --surface: #ffffff; --primary: #2247d8; --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary); --row-h: 40px; }\n:root[data-theme="dark"] { --surface: #161c24; --primary: #6d8bff; }\n';
+
+test("an existing token value may not change in either theme, and a token may not disappear", () => {
+  expect(frozenTokens(BASE_TOKENS, BASE_TOKENS)).toEqual([]);
+  const light = frozenTokens(BASE_TOKENS, BASE_TOKENS.replace("--row-h: 40px", "--row-h: 36px"));
+  expect(light).toHaveLength(2);
+  expect(light[0]).toContain("--row-h (light) was 40px, now 36px");
+  const dark = frozenTokens(BASE_TOKENS, BASE_TOKENS.replace("--primary: #6d8bff", "--primary: #6fd3df"));
+  // The dark primary also feeds the focus ring, which resolves through it.
+  expect(dark.map((p: string) => p.split(" was ")[0])).toEqual(["packages/tokens/tokens.css: --primary (dark)", "packages/tokens/tokens.css: --focus (dark)"]);
+  expect(frozenTokens(BASE_TOKENS, BASE_TOKENS.replace(" --row-h: 40px;", ""))[0]).toContain("--row-h (light) was 40px, now removed");
+});
+
+test("a new token, and an old token re-expressed through a new one at the same value, are not changes", () => {
+  const added = BASE_TOKENS.replace("--row-h: 40px;", "--row-h: 40px; --control-h: 36px; --focus-ring: var(--primary);")
+    .replace("4px var(--primary)", "4px var(--focus-ring)");
+  expect(frozenTokens(BASE_TOKENS, added)).toEqual([]);
+});
+
+test("an intended change passes only at the value recorded for it", () => {
+  const now = BASE_TOKENS.replace("--row-h: 40px", "--row-h: calc(36px + 4px)");
+  expect(frozenTokens(BASE_TOKENS, now)).toHaveLength(2);
+  const allowed = { "--row-h": { light: "calc(36px + 4px)", dark: "calc(36px + 4px)" } };
+  expect(frozenTokens(BASE_TOKENS, now, allowed)).toEqual([]);
+  expect(frozenTokens(BASE_TOKENS, now.replace("36px + 4px", "30px + 4px"), allowed)).toHaveLength(2);
+});
+
+test("the gate compares the token file with the merge base and refuses a changed baseline value", () => {
+  const real = readFileSync(fileURLToPath(new URL("../packages/tokens/tokens.css", import.meta.url)), "utf8");
+  expect(real).toContain("--row-h: 40px");
+  const root = fixture({ "packages/tokens/tokens.css": real });
+  const git = (...args: string[]) => spawnSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args], { cwd: root, encoding: "utf8" });
+  expect(git("init", "-q", "-b", "dev").status).toBe(0);
+  git("add", "-A");
+  expect(git("commit", "-q", "-m", "base").status).toBe(0);
+  git("switch", "-q", "-c", "change");
+  const run = () => spawnSync("node", [script, "--root", root], { encoding: "utf8", env: { ...process.env, QUALITY_BASE: "dev" } });
+  expect(run().stderr).toBe("");
+  writeFileSync(path.join(root, "packages/tokens/tokens.css"), real.replace("--row-h: 40px", "--row-h: 36px"));
+  const changed = run();
+  expect(changed.status).toBe(1);
+  expect(changed.stderr).toContain("--row-h (light) was 40px, now 36px");
+  expect(changed.stderr).toContain("--row-h (dark) was 40px, now 36px");
+  // A recorded change passes; the record is a file in the same diff, so a reader sees it.
+  mkdirSync(path.join(root, "scripts"), { recursive: true });
+  writeFileSync(path.join(root, "scripts/ds-token-changes.json"), JSON.stringify({ "--row-h": { light: "36px", dark: "36px" } }));
+  expect(run().stderr).toBe("");
+});
+
+test("a rule may name a visual style only through the guard every new style shares", () => {
+  const guard = ':where([data-experience]:not([data-experience="baseline"]))';
+  const offending = (css: string) => styleSelectors(css, "x.css");
+  // The accepted shape, as an ancestor, as a nesting parent, with the parent after it, and with single quotes.
+  expect(offending(`${guard} .find { min-width: 0; }
+    ${guard} { .keys { gap: 0; } @media (width < 768px) { .hint { display: none; } } }
+    .top { ${guard} & { .jump { min-width: auto; } } }
+    :where([data-experience]:not([data-experience='baseline'])) .a, ${guard} .b { gap: 0; }`)).toEqual([]);
+  // A style named outright, the attribute alone, the guard without :where (it would add specificity), and a second
+  // attribute test beside an accepted guard.
+  expect(offending(`[data-experience="control-room"] .btn { gap: 0; }
+    [data-experience] .btn { gap: 0; }
+    [data-experience]:not([data-experience="baseline"]) .btn { gap: 0; }
+    ${guard} .a, ${guard}[data-experience="warm-clear"] .b { gap: 0; }
+    .ok { gap: 0; }`)).toEqual([
+    '[data-experience="control-room"] .btn', "[data-experience] .btn", '[data-experience]:not([data-experience="baseline"]) .btn',
+    `${guard}[data-experience="warm-clear"] .b`]);
+
+  const named = gate(fixture({ "apps/web/src/features/x/ui/x.module.css": '[data-experience="control-room"] .row { gap: 0; }\n', "apps/web/src/ui/y/y.module.css": `${guard} .row { gap: 0; }\n` }, {}));
+  expect(named.status).toBe(1);
+  expect(named.stderr).toContain('apps/web/src/features/x/ui/x.module.css: [data-experience="control-room"] .row names a visual style');
+  expect(named.stderr).not.toContain("y.module.css");
 });
