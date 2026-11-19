@@ -27,11 +27,12 @@
   --shadow: 0 1px 0 rgba(20, 29, 38, 0.08);
   --shadow-pop: 0 8px 24px rgba(20, 29, 38, 0.22);
   --scrim: rgba(20, 29, 38, 0.32);
-  --text-xs: 14px; --text-sm: 14px; --text-body: 14px; --text-lg: 15px; --text-xl: 20px; --text-2xl: 30px;
+  /* As drawn: labels and rows 12, document body 13. */
+  --text-xs: 12px; --text-sm: 12px; --text-body: 13px; --text-lg: 15px; --text-xl: 20px; --text-2xl: 30px;
   --fw-body: 400; --fw-medium: 500; --fw-strong: 700; --lh-base: 1.5;
   --radius-sm: 2px; --radius: 2px; --radius-lg: 3px;
-  /* Buttons subtract --space-1 from the row height; retain their 32px floor. */
-  --row-h: 36px; --row-h-compact: 32px; --control-h-sm: 32px; --target: 32px; --target-touch: 44px;
+  /* As drawn: 28px rows hold 24px controls (a button is the row less --space-1), compact rows and the smallest pointer target are 24px. */
+  --row-h: 28px; --row-h-compact: 24px; --control-h-sm: 24px; --target: 24px; --target-touch: 44px; --chip-h: 20px; --topbar-h: 40px;
 }
 
 :root[data-experience="control-room"][data-theme="dark"] {
@@ -61,4 +62,12 @@
   --shadow: 0 1px 0 rgba(0, 0, 0, 0.4); /* Derived, not drawn. */
   --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.55); /* Derived, not drawn. */
   --scrim: rgba(6, 12, 18, 0.6); /* Derived, not drawn. */
+}
+
+/* A phone is used by touch: rows hold 44px controls and no target is under 44px, whatever the desk draws. */
+@media (--phone) {
+  :root[data-experience="control-room"] {
+    --text-xs: 13px; --text-sm: 14px; --text-body: 15px; --text-lg: 17px; --text-xl: 22px;
+    --row-h: 48px; --row-h-compact: 40px; --control-h-sm: 44px; --target: 44px; --topbar-h: 52px;
+  }
 }

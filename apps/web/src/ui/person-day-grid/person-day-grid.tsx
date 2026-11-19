@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { isImeKey, leaveImeKey } from "../../lib/pure/ime";
 import { at, indexOf, inRect, moveRange, rectIn, spanIn, type Cell, type Range } from "../sheet-grid/range";
 import s from "./person-day-grid.module.css";
@@ -28,6 +28,8 @@ type Props<R> = {
   onRange: (range: Range) => void;
   /** The open editor and the cell it belongs to: it is drawn only there, whatever has moved since. */
   editing: { value: string; cell: Cell } | null;
+  /** With no editor open: a typed character starts an edit on that character, and "" (Enter, F2, a double-click) asks
+   * for one on what the cell holds, which only the caller knows. With one open: its new text. null closes it unsaved. */
   onEdit: (value: string | null) => void;
   /** Commit the open editor; the grid then moves `then`. */
   onCommit: (then: "down" | "right" | "stay") => void;
@@ -68,7 +70,26 @@ export function PersonDayGrid<R>(p: Props<R>) {
     window.addEventListener("resize", read);
     return () => window.removeEventListener("resize", read);
   }, []);
+  const leads = p.lead.length, tails = p.tail.length;
+  // After every render, since the rows drawn decide how wide the columns are, and whenever the box or the table
+  // changes size without one (a font arriving, a window or a docked sheet resizing).
+  useLayoutEffect(() => placeSides(box.current!, leads, tails));
+  useLayoutEffect(() => {
+    const el = box.current!, watch = new ResizeObserver(() => placeSides(el, leads, tails));
+    watch.observe(el);
+    watch.observe(el.firstElementChild!);
+    return () => watch.disconnect();
+  }, [leads, tails]);
   const [drag, setDrag] = useState(false);
+  const table = useRef<HTMLTableElement>(null);
+  // The editor left while it held the focus (Enter, Tab, Escape): the grid takes the focus back, so the next key lands
+  // here. One left by a press outside the grid had already given the focus away, and a press on the grid gives the
+  // grid the focus by itself, as a press does: without the focus ring a key brings.
+  const held = useRef(false), pressed = useRef(false);
+  useEffect(() => {
+    if (!p.editing && held.current && !pressed.current) table.current?.focus({ preventScroll: true });
+    held.current = pressed.current = false;
+  }, [p.editing]);
   const axes = { rows: p.rows.map(p.rowKey), cols: p.days.map((d) => d.key) };
   const rect = rectIn(p.range, axes);
   const f = p.range && indexOf(p.range.focus, axes);
@@ -93,16 +114,35 @@ export function PersonDayGrid<R>(p: Props<R>) {
     if (top < el.scrollTop) el.scrollTop = top;
     else if (bottom > el.scrollTop + el.clientHeight) el.scrollTop = bottom - el.clientHeight;
   }, [focusRow, rowHeight]);
+  // Sideways the sticky lead columns cover the left of the box and the held totals the right: a column is in view
+  // between them. It is read from the head row, which is always drawn. It follows every range that is set, not only
+  // a new column: the box may have been scrolled away by hand since. A press on a lead cell selects its row with the
+  // focus on the last day, and the box stays where the person has it.
+  const focusCol = f?.c, editing = !!p.editing, rowPress = useRef(false);
   useEffect(() => {
-    const up = () => setDrag(false);
+    const el = box.current;
+    if (!el || focusCol === undefined || rowPress.current) return void (rowPress.current = false);
+    const head = [...el.querySelector("thead tr")!.children].map((c) => c.getBoundingClientRect()), frame = el.getBoundingClientRect();
+    const day = head[leads + focusCol]!, from = head[leads - 1]?.right ?? frame.left;
+    const until = Math.min(frame.left + el.clientWidth, ...head.slice(head.length - tails).map((c) => c.left));
+    if (day.left < from) el.scrollLeft -= from - day.left;
+    // Never so far that the column's start goes under the lead columns.
+    else if (day.right > until) el.scrollLeft += Math.min(day.right - until, day.left - from);
+    // An editor opening is not read above, but it widens its column, which is.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [p.range, focusCol, editing, leads, tails]);
+  useEffect(() => {
+    const up = () => (setDrag(false), rowPress.current = false);
     window.addEventListener("pointerup", up);
     return () => window.removeEventListener("pointerup", up);
   }, []);
 
   // A person moves the selection: what they were typing is committed first, where it was typed.
-  const select = (next: Range) => (p.editing && p.onCommit("stay"), p.onRange(next));
+  const select = (next: Range) => (p.editing && (pressed.current = true, p.onCommit("stay")), p.onRange(next));
   const keyDown = (e: KeyboardEvent<HTMLTableElement>) => {
-    if (p.editing || p.onKey(e)) return;
+    // The grid's keys are the ones pressed on the grid itself. A key on a link or a button inside a cell is that
+    // control's: Enter follows the link.
+    if (e.target !== e.currentTarget || p.editing || p.onKey(e)) return;
     const moved = moveRange(p.range, e.key, e.shiftKey, axes);
     if (moved) {
       e.preventDefault();
@@ -126,6 +166,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
   return (
     <div ref={box} className={s.box} onScroll={(e) => setScroll({ top: e.currentTarget.scrollTop, height: e.currentTarget.clientHeight })}>
       <table
+        ref={table}
         className={s.table}
         {...{
           role: "grid",
@@ -162,10 +203,16 @@ export function PersonDayGrid<R>(p: Props<R>) {
             return (
               <tr key={key} aria-rowindex={r + 2} className={s.row} data-group={newGroup ? group : undefined}>
                 {p.lead.map((c, k) => (
-                  <th key={c.key} className={s.lead} data-w={c.width} data-first={k === 0 || undefined} onPointerDown={() => select({ anchor: { row: key, col: firstCol }, focus: { row: key, col: lastCol } })}>{c.cell(row)}</th>
+                  <th key={c.key} className={s.lead} data-w={c.width} data-first={k === 0 || undefined} onPointerDown={() => (rowPress.current = true, select({ anchor: { row: key, col: firstCol }, focus: { row: key, col: lastCol } }))}>{c.cell(row)}</th>
                 ))}
                 {p.days.map((d, c) => {
                   const focused = !!f && r === f.r && c === f.c;
+                  // A press or a double-click in the cell that holds the open editor is the editor's own (the caret,
+                  // a word): the cell neither selects, which would commit and close it, nor opens it again, nor takes
+                  // the focus from the input when the press lands on the cell beside it.
+                  const open = p.editing?.cell.row === key && p.editing.cell.col === d.key;
+                  // The press that ends an edit starts no drag: the closing editor narrows its column, which moves
+                  // other cells under the held pointer, and a drag would take them for the range.
                   return (
                     <td
                       key={d.key}
@@ -177,11 +224,12 @@ export function PersonDayGrid<R>(p: Props<R>) {
                       data-tone={d.tone}
                       data-look={p.look(row, c)}
                       data-focus={focused || undefined}
-                      onPointerDown={(e) => (setDrag(true), pick(key, d.key, e.shiftKey))}
+                      onPointerDown={(e) => open || (p.editing || setDrag(true), pick(key, d.key, e.shiftKey))}
+                      onMouseDown={(e) => open && e.target === e.currentTarget && e.preventDefault()}
                       onPointerEnter={() => drag && pick(key, d.key, true)}
-                      onDoubleClick={() => p.onEdit("")}
+                      onDoubleClick={() => open || p.onEdit("")}
                     >
-                      {p.editing?.cell.row === key && p.editing.cell.col === d.key ? <Editor value={p.editing.value} label={p.describe(row, c)} onChange={p.onEdit} onCommit={p.onCommit} /> : p.cell(row, c)}
+                      {open ? <Editor value={p.editing!.value} label={p.describe(row, c)} onChange={p.onEdit} onCommit={p.onCommit} held={held} /> : p.cell(row, c)}
                     </td>
                   );
                 })}
@@ -196,14 +244,45 @@ export function PersonDayGrid<R>(p: Props<R>) {
   );
 }
 
+/**
+ * Sticky side columns stand side by side: each is held past the ones outside it, at an offset measured from the head
+ * row (a column is as wide as what it holds) and set on the box for the styles. The lead columns are always held, and
+ * so is a total with no other beside it. Of several totals the outermost is held while a day shows beside it, and the
+ * ones inside it, from the outside in, while a week of days stays in view between the two sides; in a narrower box
+ * the inner ones, then all of them, scroll with the days.
+ */
+function placeSides(box: HTMLElement, leads: number, tails: number) {
+  const widths = [...box.querySelector("thead tr")!.children].map((c) => c.getBoundingClientRect().width);
+  const set = (name: string, value: string) => box.style.getPropertyValue(name) === value || box.style.setProperty(name, value);
+  let left = 0, right = 0;
+  widths.slice(0, leads).forEach((w, k) => {
+    if (k) set(`--lead-${k}`, `${left}px`);
+    left += w;
+  });
+  // A day is as wide as the narrowest one: an open editor or a long draft widens its own column only.
+  const day = Math.min(...widths.slice(leads, widths.length - tails));
+  // The outermost total needs one day in view beside it, the ones inside it a week.
+  let room = box.clientWidth - left - day;
+  widths.slice(widths.length - tails).reverse().forEach((w, k) => {
+    if (k === 1) room -= 6 * day;
+    // Once one does not fit, none inside it is held.
+    room = room >= w ? room - w : -Infinity;
+    set(`--tail-${k}`, room >= 0 || tails === 1 ? `${right}px` : "auto");
+    right += w;
+  });
+}
+
 /** The in-cell input: Enter commits and moves down, Tab right, Esc cancels; an IME composition is never cut. */
-function Editor({ value, label, onChange, onCommit }: { value: string; label: string; onChange: (v: string | null) => void; onCommit: (then: "down" | "right" | "stay") => void }) {
+function Editor({ value, label, onChange, onCommit, held }: { value: string; label: string; onChange: (v: string | null) => void; onCommit: (then: "down" | "right" | "stay") => void; held: RefObject<boolean> }) {
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = input.current;
     el?.focus();
     el?.setSelectionRange(el.value.length, el.value.length);
-  }, []);
+    // Whether it held the focus is read as it leaves, while it is still in the page; the grid acts on it once it is
+    // gone (moving the focus off a live input would be its blur, a second commit).
+    return () => { held.current = document.activeElement === el; };
+  }, [held]);
   return (
     <input
       ref={input}
@@ -211,7 +290,9 @@ function Editor({ value, label, onChange, onCommit }: { value: string; label: st
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      onKeyDownCapture={leaveImeKey}
+      // A composing Escape or Tab is the input method's: nothing here or above acts on it. The Tab's own action is
+      // cancelled as well, so the focus stays: it would leave the editor for the next link.
+      onKeyDownCapture={(e) => (leaveImeKey(e), e.key === "Tab" && isImeKey(e) && e.preventDefault())}
       onKeyDown={(e) => {
         if (isImeKey(e)) return;
         e.stopPropagation();
