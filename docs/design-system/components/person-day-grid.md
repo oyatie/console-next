@@ -147,6 +147,7 @@ There is one look and one size. No prop changes either, apart from the width a l
 | Day header | At least `44px` wide, centred, with a pointer cursor. `sub` is on its own line at 12 px (`--text-xs`). |
 | Person row | `--row-h-compact` high, 32 px. Every cell has a 1 px `--border` line below. |
 | Group rule | A 2 px `--control-border` line above every cell of the first row of a group. |
+| In a visual style | Where a visual style is chosen (any `data-experience` but `baseline`), the line below a row and the group rule are drawn inside the cell and take no room, so a cell's content box is the whole row height. A link placed directly in a lead cell is as tall as the row and at least `--target` wide, so it is still a whole pointer target when it is scrolled half under the sticky head. Today's look keeps its borders and its text-height links. |
 | Day cell | Centred, 4 px side padding, one line, with the `cell` cursor. |
 | Editor | The width of its cell and at least `88px`. No border, `--surface` fill, `--ink` text, the cell's font, centred, `outline: none`. |
 
@@ -656,9 +657,9 @@ Two descriptions say more than the code does. `groupOf` draws a rule above the f
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `background-image`, `border-bottom`, `border-left` |
+| `--border` | `--rules`, `background-image`, `border-bottom`, `border-left` |
 | `--canvas` | `background` |
-| `--control-border` | `border-top` |
+| `--control-border` | `--rules`, `border-top` |
 | `--danger-bg` | `background` |
 | `--danger-solid` | `outline` |
 | `--danger-tx` | `color` |
@@ -671,7 +672,8 @@ Two descriptions say more than the code does. `groupOf` draws a rule above the f
 | `--lead-3` | `left` |
 | `--primary` | `outline` |
 | `--primary-soft` | `background` |
-| `--row-h-compact` | `height` |
+| `--row-h-compact` | `height`, `min-height` |
+| `--rules` | `box-shadow` |
 | `--space-1` | `padding` |
 | `--space-2` | `padding` |
 | `--steel` | `color` |
@@ -680,6 +682,7 @@ Two descriptions say more than the code does. `groupOf` draws a rule above the f
 | `--tail-1` | `right` |
 | `--tail-2` | `right` |
 | `--tail-3` | `right` |
+| `--target` | `min-width` |
 | `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |
 
