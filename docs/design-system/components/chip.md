@@ -14,7 +14,6 @@ Use a chip for the state of a record, in a table cell or beside a title: an empl
 | A filter a person turns on and off | `ToggleButton` with `look="chip"`: see [Button](button.md). |
 | One pick from a short list | `ChipChoice` (`ui/choice`). |
 | A deadline with the days left | `DeadlineChip` (`ui/deadline-chip`). Its tones follow the server's severity and live in its own module. |
-| Where a value came from | `SourceChip` (`ui/source-chip.tsx`). It renders a chip with the tone and the text for that source. |
 | A message with a reason or a remedy | `Banner` (`ui/banner`). |
 | Anything that must be announced when it changes | `Banner` with `live`. A chip has no live region. |
 

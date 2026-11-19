@@ -18,6 +18,8 @@ export const koAccount: Record<keyof typeof enAccount, string> = {
   "account.field.theme": "화면",
   "account.experience": "화면 스타일",
   "account.experience.baseline": "기본",
+  "account.experience.controlRoom": "관제실",
+  "account.experience.warmClear": "따뜻하고 선명하게",
   "account.experience.device": "이 기기에 저장합니다. 스타일을 변경하면 화면을 새로 고칩니다.",
   "account.experience.failed": "이 기기에 스타일을 저장하지 못했습니다. 사이트 저장소를 허용한 후 다시 시도하십시오.",
   "account.field.theme.where": "화면 밝기는 위쪽 막대의 버튼으로 변경합니다",
