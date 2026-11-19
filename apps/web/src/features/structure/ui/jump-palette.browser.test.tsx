@@ -111,6 +111,40 @@ test("a row chosen with the keys keeps the highlight when late people land above
   await element(at()).toHaveText("/org#structure-import");
 });
 
+test("Enter pressed before the people answer waits for them, and does not open the standing import task", async () => {
+  await open("chord");
+  found = q => [`Kim ${q}`];
+  let land = () => {};
+  landed = new Promise(done => { land = done; });
+  const asked = page.waitForRequest(request => new URL(request.url()).searchParams.get("search") === "kim");
+  await page.keyboard.type("kim");
+  await asked;
+  await element(row(t("structure.import.label"))).toBeVisible();
+  await page.keyboard.press("Enter");
+  land();
+  // Still open, at the same place, with the person the search found now taking Enter.
+  await element(row(/^Kim kim/)).toBeVisible();
+  await lit(/^Kim kim/);
+  await element(at()).toHaveText("/");
+  await page.keyboard.press("Enter");
+  await element(at()).toHaveText(`/people/${id(100)}`);
+});
+
+test("Enter opens a place the search found without waiting for the people, who land below it", async () => {
+  await open("chord");
+  let land = () => {};
+  landed = new Promise(done => { land = done; });
+  const site = structure(1).entities[0]!.children[0]!;
+  const asked = page.waitForRequest(request => new URL(request.url()).searchParams.get("search") === site.name);
+  await page.keyboard.type(site.name);
+  await asked;
+  // The place is the first row; the tasks for it, further down, carry its name too.
+  await element(box()).toHaveAttribute("aria-activedescendant", (await row(site.name).first().getAttribute("id"))!);
+  await page.keyboard.press("Enter");
+  await element(at()).toHaveText(new RegExp(`^/org\\?.*sel=${site.id}`));
+  land();
+});
+
 test.each(["a caret move", "a click in the box"] as const)("Enter still opens the first result after %s", async how => {
   await open("chord");
   found = q => [`Kim ${q}`, `Kimura ${q}`];

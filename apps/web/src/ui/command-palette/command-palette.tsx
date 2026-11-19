@@ -28,7 +28,7 @@ const MOVES = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "En
  * filters (a server search for people); arrows move through the results with the field keeping focus, Enter acts,
  * Esc closes. No single-key badges here (SC 2.1.4): the keys live only on the chart itself.
  */
-export function CommandPalette({ open, onClose, label, placeholder, query, onQuery, sections, footer, empty }: {
+export function CommandPalette({ open, onClose, label, placeholder, query, onQuery, sections, pending, footer, empty }: {
   open: boolean;
   onClose: () => void;
   label: string;
@@ -36,6 +36,8 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
   query: string;
   onQuery: (q: string) => void;
   sections: readonly PaletteSection[];
+  /** A search for the text is still out and its answer may become the first result. */
+  pending?: boolean;
   footer?: ReactNode;
   empty?: ReactNode;
 }) {
@@ -46,7 +48,9 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
   // A caller's results may trail the text by a render (a deferred search), so the first result is marked only once that
   // render has caught up with the box. Text that returns to what it was before then is still marked afresh.
   const searched = useDeferredValue(query);
-  const first = searched.trim() && searched === query ? shown[0]?.items[0]?.id : undefined;
+  // The list is the one for the text in the box, and no answer still out can put another result first.
+  const settled = !pending && searched === query;
+  const first = settled && searched.trim() ? shown[0]?.items[0]?.id : undefined;
   const act = (id: Key) => {
     const item = shown.flatMap((x) => x.items).find((i) => i.id === id);
     if (!item) return;
@@ -58,7 +62,8 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
     if (e.isTrusted && MOVES.has(e.key)) moved.current = true;
     if (e.key !== "Enter") return;
     // An Enter the input method owns ends a syllable; it is not a command, and stops here as its Escape and Tab do.
-    if (isImeKey(e)) return e.stopPropagation();
+    // Nor does Enter open a first result that may still change: it waits, unless the person chose a row with the keys.
+    if (isImeKey(e) || (!settled && !moved.current)) return e.stopPropagation();
     // A caret move or a click in the box drops the highlight, and React Aria's Enter then opens nothing: the first result still takes it.
     if (!first || e.currentTarget.closest("[role=dialog]")?.querySelector("[role=menuitem][data-focused]")) return;
     e.preventDefault();
