@@ -128,6 +128,7 @@ test("org: pending end reason appears on keyboard focus and hover @ui-state", as
     await expect(control).toHaveAttribute("aria-disabled", "true");
     const reason = page.locator(`[id='${await control.getAttribute("aria-describedby")}']`);
     await expect(reason).toBeHidden();
+    await expect(control).toBeVisible();
     await control.focus();
     await expect(reason).toBeVisible();
     await control.press("Enter");

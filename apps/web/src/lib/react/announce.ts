@@ -97,7 +97,7 @@ export function useRoutePresentation(pathname: string, ready: boolean) {
     let interacted = false;
     const stopFocus = () => { interacted = true; cancelFocus?.(); };
     const update = () => {
-      const heading = document.querySelector<HTMLElement>("main h1, h1") ?? document.querySelector<HTMLElement>("main .state__title");
+      const heading = [...document.querySelectorAll<HTMLElement>("main h1, h1"), ...document.querySelectorAll<HTMLElement>("main .state__title")].find(el => !el.closest("[data-phase-pending], [hidden]"));
       const page = heading?.textContent?.trim();
       if (!heading || !page) return;
       if (focusedPath !== pathname) {
@@ -119,7 +119,7 @@ export function useRoutePresentation(pathname: string, ready: boolean) {
     };
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(update); };
     const observer = new MutationObserver(schedule);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["data-console-scope"] });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["data-console-scope", "data-phase-pending", "hidden"] });
     document.addEventListener("pointerdown", stopFocus, true);
     document.addEventListener("keydown", stopFocus, true);
     schedule();
