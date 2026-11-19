@@ -5,7 +5,7 @@ import { safeMediaUrl } from "../../lib/media-url";
 /**
  * A person's initial or photo (kit .avatar / .mlist .av): decorative unless `alt` or `fallbackAlt` names it.
  * `sm` (20–22 px) in rows and frame bars, `md` in sheets and headers, `lg` (64 px) on a person's record.
- * Radius follows `--radius-avatar` (round on baseline, square under Control room).
+ * Radius follows `--radius-avatar` (round on classic baseline, square under Console).
  */
 export function Avatar({
   name,

@@ -50,6 +50,7 @@ const ACTION_KINDS = {
   employeeNumber: ["composer.action.employeeNumber", "people"],
   profile: ["composer.action.profile", "people"],
   registration: ["composer.action.registration", "people"],
+  screenStyle: ["settingsHub.key.display.experience", "units"],
 } as const;
 
 /** Withdraw pending approval; cancel before effect; correct an applied fact; revoke an applied act. */

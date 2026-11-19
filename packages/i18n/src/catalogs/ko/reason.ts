@@ -94,4 +94,6 @@ export const koReason: Record<keyof typeof enReason, string> = {
   "reason.sign_in_id_change.OTHER": "기타",
   "reason.sign_in_id_change.INVITE": "초대 때 지정",
   "reason.sign_in_id_change.SYSTEM_DEFAULT": "자동 부여",
+  "reason.settings_change.POLICY_REVIEW": "운영 기준 검토",
+  "reason.settings_change.OTHER": "기타",
 };

@@ -63,7 +63,7 @@ afterAll(async () => {
 });
 
 test("frame scope, Badge, Kbd, and Avatar pass WCAG 2.2 AA axe checks and resolve exact geometry per experience", async () => {
-  for (const experience of ["baseline", "control-room"] as const) {
+  for (const experience of ["baseline", "console"] as const) {
     for (const theme of ["light", "dark"] as const) {
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 900 });

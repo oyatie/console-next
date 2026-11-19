@@ -15,7 +15,7 @@ test.beforeAll(() => loadCatalog("ko"));
 const optionText = (experience: ReturnType<typeof offeredExperiences>[number]) =>
   experience.listing === "preview" ? t("account.experience.preview", { style: t(experience.label) }) : t(experience.label);
 const tenantOptionText = (styleId = "baseline") =>
-  t("account.experience.organizationDefault", { style: styleId === "control-room" ? t("account.experience.preview", { style: t("account.experience.controlRoom") }) : t("account.experience.baseline") });
+  t("account.experience.organizationDefault", { style: styleId === "console" ? t("account.experience.preview", { style: t("account.experience.console") }) : t("account.experience.baseline") });
 
 // Start on a fresh device to exercise the default before switching styles.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -47,7 +47,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await expect(page.getByRole("main")).toHaveCount(1);
       }
 
-      for (const id of ["control-room", "baseline"]) {
+      for (const id of ["console", "baseline"]) {
         let loads = 0;
         const onLoad = () => { loads++; };
         page.on("load", onLoad);
@@ -108,7 +108,7 @@ test("unsaved input on the account page refuses a style switch without losing th
     const nameInput = dialog.getByLabel(t("account.field.name"));
     await nameInput.fill("Updated Name");
     await chooser.evaluate((el: HTMLSelectElement) => {
-      el.value = "control-room";
+      el.value = "console";
       el.dispatchEvent(new Event("change", { bubbles: true }));
     });
     await expect(chooser).toHaveValue("tenant");

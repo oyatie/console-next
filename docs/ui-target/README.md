@@ -6,34 +6,34 @@ This folder is the target look of the console's web app: the boards a screen is 
 
 | Style | Status | Boards |
 |---|---|---|
-| **Control room** | The default, at every width. Built first, through every module. | [boards/d](boards/d) |
-| **Warm clear** | A complete second style, desk and phone, that a tenant or a person can switch to. Built after Control room covers every module. | [boards/c](boards/c) |
+| **Console** | The default, at every width. Built first, through every module. | [boards/console](boards/console) |
+| **Warm clear** | A complete second style, desk and phone, that a tenant or a person can switch to. Built after Console covers every module. | [boards/c](boards/c) |
 | A third style | Later, from its own boards. | none yet |
 
-- **Who chooses.** An admin sets the tenant's default style; each person can override it for themselves. With neither set, Control room applies.
-- **The existing screen-style switch stays.** Today's look stays selectable beside the new styles until Control room is signed off, then it is removed.
+- **Who chooses.** An admin sets the tenant's default style; each person can override it for themselves. With neither set, Console applies.
+- **The existing screen-style switch stays.** Today's classic look stays selectable beside the new styles until Console is signed off, then it is removed.
 - **One product, several arrangements.** Every style shows the same screens, data, commands, routes, roles and accessible names. A style changes tokens, the shell, and where a page's regions sit. It never changes what a screen does.
 
 ## Boards
 
 Each board is a light-theme picture of one screen filled with the synthetic tenant (below), drawn on 2026-11-10.
 
-| Screen | Control room | Warm clear |
+| Screen | Console | Warm clear |
 |---|---|---|
-| Home: work list | [1440](boards/d/1440/home.png) | [1440](boards/c/1440/home.png) |
-| People list with the employee record panel | [1440](boards/d/1440/people.png) | [1440](boards/c/1440/people.png) |
-| Approval document and decision | [1440](boards/d/1440/approval.png) | [1440](boards/c/1440/approval.png) |
-| Attendance month | [1440](boards/d/1440/attendance.png) | [1440](boards/c/1440/attendance.png) |
-| Payroll run | [1440](boards/d/1440/payroll.png) | [1440](boards/c/1440/payroll.png) |
-| My profile (employee, phone) | [390](boards/d/390/profile.png) | [390](boards/c/390/profile.png) |
-| Leave request (employee, phone) | [390](boards/d/390/leave.png) | [390](boards/c/390/leave.png) |
-| Payslip (employee, phone) | [390](boards/d/390/payslip.png) | [390](boards/c/390/payslip.png) |
+| Home: work list | [1440](boards/console/1440/home.png) | [1440](boards/c/1440/home.png) |
+| People list with the employee record panel | [1440](boards/console/1440/people.png) | [1440](boards/c/1440/people.png) |
+| Approval document and decision | [1440](boards/console/1440/approval.png) | [1440](boards/c/1440/approval.png) |
+| Attendance month | [1440](boards/console/1440/attendance.png) | [1440](boards/c/1440/attendance.png) |
+| Payroll run | [1440](boards/console/1440/payroll.png) | [1440](boards/c/1440/payroll.png) |
+| My profile (employee, phone) | [390](boards/console/390/profile.png) | [390](boards/c/390/profile.png) |
+| Leave request (employee, phone) | [390](boards/console/390/leave.png) | [390](boards/c/390/leave.png) |
+| Payslip (employee, phone) | [390](boards/console/390/payslip.png) | [390](boards/c/390/payslip.png) |
 
 [manifest.json](manifest.json) lists every board with its style, screen, module, width, pixel size, theme and token file.
 
 ## Tokens
 
-- [tokens/control-room.board.css](tokens/control-room.board.css) and [tokens/warm-clear.board.css](tokens/warm-clear.board.css) hold the values the boards were drawn with, light theme only, with a comment on each role.
+- [tokens/console.board.css](tokens/console.board.css) and [tokens/warm-clear.board.css](tokens/warm-clear.board.css) hold the values the boards were drawn with, light theme only, with a comment on each role.
 - The app's own token files live under `packages/tokens/`. Where a style's app tokens exist, they are the source of truth and must match these board values in light theme; a change to a board value is a deliberate design change, shown in the PR.
 - Colours are named by role (surface, text, line, accent, status), never by hue, so a style can change hue without touching a screen.
 

@@ -106,7 +106,7 @@ beforeAll(async () => {
       can_change: false,
       items: [{
         key: "display.experience",
-        kind: { type: "code", allowed: ["baseline", "control-room", "warm-clear"] },
+        kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
         default: "baseline",
         value: tenantStyle,
         looser_when: "neutral",
@@ -126,7 +126,7 @@ afterAll(async () => { await page?.close(); await browser?.close(); await server
 
 test("style choice switches in place without reloading, saves personal override, and reverts to organization default", async () => {
   workspaceLayout = { tabs: ["/people"] };
-  tenantStyle = "control-room";
+  tenantStyle = "console";
   writes = [];
   await page.addInitScript(() => localStorage.clear());
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}experience-switch-test`, page.getByRole("heading", { name: "Experience Harness" }));
@@ -134,10 +134,10 @@ test("style choice switches in place without reloading, saves personal override,
   const bootBefore = await page.evaluate(() => (window as Window & { bootToken?: string }).bootToken);
   const chooser = page.getByRole("combobox", { name: t("account.experience"), exact: true });
 
-  // Tenant default (control-room) applies automatically on a fresh device.
+  // Tenant default (console) applies automatically on a fresh device.
   await expect(chooser).toHaveValue("tenant");
-  await expect(page.locator("html")).toHaveAttribute("data-experience", "control-room");
-  expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBe("control-room");
+  await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
+  expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBe("console");
 
   // Choosing a personal override applies immediately without reloading and preserves existing workspace keys.
   await chooser.selectOption("baseline");
@@ -147,10 +147,10 @@ test("style choice switches in place without reloading, saves personal override,
   await expect.poll(() => writes).toEqual([{ tabs: ["/people"], experience: "baseline" }]);
   expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBe("baseline");
 
-  // Choosing Follow organization default reverts immediately to tenantStyle (control-room).
+  // Choosing Follow organization default reverts immediately to tenantStyle (console).
   await chooser.selectOption("tenant");
   await expect(chooser).toHaveValue("tenant");
-  await expect(page.locator("html")).toHaveAttribute("data-experience", "control-room");
+  await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
   expect(await page.evaluate(() => (window as Window & { bootToken?: string }).bootToken)).toBe(bootBefore);
   await expect.poll(() => writes.at(-1)).toEqual({ tabs: ["/people"], experience: "tenant" });
 });
@@ -168,7 +168,7 @@ test("unsaved input in either a page form or a sheet refuses a style switch unti
   // 1. Dirty page form blocks the switch and preserves the typed text.
   const pageInput = page.getByLabel("Page note");
   await pageInput.fill("unsaved draft text");
-  await chooser.selectOption("control-room");
+  await chooser.selectOption("console");
   await expect(page.getByRole("alert")).toHaveText(t("account.experience.unsaved"));
   await expect(chooser).toHaveValue("baseline");
   await expect(page.locator("html")).toHaveAttribute("data-experience", "baseline");
@@ -177,11 +177,11 @@ test("unsaved input in either a page form or a sheet refuses a style switch unti
 
   // Discarding the page form unblocks the switch.
   await page.getByRole("button", { name: "Discard page note" }).click();
-  await chooser.selectOption("control-room");
+  await chooser.selectOption("console");
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await expect(chooser).toHaveValue("control-room");
-  await expect(page.locator("html")).toHaveAttribute("data-experience", "control-room");
-  await expect.poll(() => writes).toEqual([{ tabs: ["/people"], experience: "control-room" }]);
+  await expect(chooser).toHaveValue("console");
+  await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
+  await expect.poll(() => writes).toEqual([{ tabs: ["/people"], experience: "console" }]);
 
   // 2. Dirty sheet also blocks a switch back until closed.
   await page.getByRole("button", { name: "Open sheet" }).click();
@@ -191,8 +191,8 @@ test("unsaved input in either a page form or a sheet refuses a style switch unti
     el.value = "baseline";
     el.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await expect(chooser).toHaveValue("control-room");
-  await expect(page.locator("html")).toHaveAttribute("data-experience", "control-room");
+  await expect(chooser).toHaveValue("console");
+  await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
   await expect(sheetInput).toHaveValue("sheet draft");
   expect(writes).toHaveLength(1);
 
@@ -204,15 +204,15 @@ test("unsaved input in either a page form or a sheet refuses a style switch unti
 
   // 3. Session-persisted useDraft wizard state also blocks a switch until discarded.
   await page.getByRole("button", { name: "Seed session draft" }).click();
-  await chooser.selectOption("control-room");
+  await chooser.selectOption("console");
   await expect(page.getByRole("alert")).toHaveText(t("account.experience.unsaved"));
   await expect(chooser).toHaveValue("baseline");
   await expect(page.locator("html")).toHaveAttribute("data-experience", "baseline");
   expect(writes).toHaveLength(2);
 
   await page.getByRole("button", { name: "Discard session draft" }).click();
-  await chooser.selectOption("control-room");
-  await expect(chooser).toHaveValue("control-room");
-  await expect(page.locator("html")).toHaveAttribute("data-experience", "control-room");
+  await chooser.selectOption("console");
+  await expect(chooser).toHaveValue("console");
+  await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
   await expect.poll(() => writes).toHaveLength(3);
 });

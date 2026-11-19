@@ -21,7 +21,7 @@ One element: `<data value="<count>" data-tone="<tone>">`, containing the locale-
 
 ## Looks and sizes
 
-One compact height (`--kbd-h`: 20 px on baseline, 16 px under Control room) with three tones:
+One compact height (`--kbd-h`: 20 px on classic baseline, 16 px under Console) with three tones:
 
 | `tone` | Fill and text | Typical placement |
 |---|---|---|

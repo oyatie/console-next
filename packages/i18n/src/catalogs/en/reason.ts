@@ -88,4 +88,6 @@ export const enReason = {
   "reason.sign_in_id_change.OTHER": "Other",
   "reason.sign_in_id_change.INVITE": "Set at invite",
   "reason.sign_in_id_change.SYSTEM_DEFAULT": "Assigned automatically",
+  "reason.settings_change.POLICY_REVIEW": "Policy review",
+  "reason.settings_change.OTHER": "Other",
 } as const;

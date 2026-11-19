@@ -24,7 +24,7 @@ Use it beside a person's name in a list, account control, or employee record hea
 
 | Prop | Values | Behaviour |
 |---|---|---|
-| `size` | `sm`, `md` (default), `lg` | `sm` uses `--chip-h`, `md` uses `--target`, and `lg` draws a `calc(var(--space-6) * 2)` record portrait with `--radius-lg` and a 1 px `--border`. `sm` and `md` take `--radius-avatar` (`50%` on baseline, `2px` under Control room). |
+| `size` | `sm`, `md` (default), `lg` | `sm` uses `--chip-h`, `md` uses `--target`, and `lg` draws a `calc(var(--space-6) * 2)` record portrait with `--radius-lg` and a 1 px `--border`. `sm` and `md` take `--radius-avatar` (`50%` on classic baseline, `2px` under Console). |
 | `tone` | `default`, `accent` | `default` uses `--muted` and `--steel`; `accent` uses `--primary` and `--on-primary` (resolving to `--chrome-accent` and `--chrome` inside `[data-surface="chrome"]`). |
 
 ## States

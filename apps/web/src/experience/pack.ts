@@ -13,13 +13,13 @@ const BaselineShell: LazyExoticComponent<ShellComponent> = lazy(screen(baselineL
 
 const packs = {
   baseline: baselineLoader,
-  "control-room": baselineLoader,
+  console: baselineLoader,
   "warm-clear": baselineLoader,
 } satisfies Record<ExperienceId, PackLoader>;
 
 const shells = {
   baseline: BaselineShell,
-  "control-room": BaselineShell,
+  console: BaselineShell,
   "warm-clear": BaselineShell,
 } satisfies Record<ExperienceId, LazyExoticComponent<ShellComponent>>;
 

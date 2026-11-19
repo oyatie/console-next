@@ -5,7 +5,7 @@ import { contrastRatio, experienceFiles, experienceThemes, meetsContrast, themeT
 import { decodeIdent, experienceBlocks, parseCss } from "../../../../scripts/check-ds-refs.mjs";
 
 const TOKENS_CSS = readFileSync("packages/tokens/tokens.css", "utf8");
-const CONTROL_ROOM_CSS = readFileSync("packages/tokens/experiences/control-room.css", "utf8");
+const CONSOLE_CSS = readFileSync("packages/tokens/experiences/console.css", "utf8");
 const APP_CSS = readFileSync("apps/web/src/app.css", "utf8");
 
 function flatResolve(tokens: Record<string, string>, value: string, seen = new Set<string>()): string {
@@ -43,7 +43,7 @@ function parseChromeScope(css: string) {
   return { declarations, colorScheme };
 }
 
-test("base and Control room token files define the frame roles, bar insets, kbd sizing, and avatar radius", () => {
+test("base and Console token files define the frame roles, bar insets, kbd sizing, and avatar radius", () => {
   const base = themeTokens(TOKENS_CSS);
   const required = [
     "--chrome",
@@ -74,7 +74,7 @@ test("base and Control room token files define the frame roles, bar insets, kbd 
   expect(base.dark["--chrome-scheme"]).toBe("dark");
   expect(base.light["--radius-avatar"]).toBe("50%");
 
-  const cr = experienceBlocks(CONTROL_ROOM_CSS, "control-room");
+  const cr = experienceBlocks(CONSOLE_CSS, "console");
   expect(cr.problems).toEqual([]);
   expect(cr.light["--chrome"]).toBe("#15202b");
   expect(cr.light["--chrome-raised"]).toBe("#202d3a");

@@ -65,10 +65,10 @@ for (const file of experiences) for (const theme of ["light", "dark"]) for (cons
 
 // A button's text is the page's text size (13 on a desk, 15 on a phone) until controls have a text role of their own;
 // the boards draw 12 on a desk.
-test.each(["light", "dark"])("Control room draws its buttons at the height its boards do: 24px on a desk, 44px on a phone (%s)", async theme => {
+test.each(["light", "dark"])("Console draws its buttons at the height its boards do: 24px on a desk, 44px on a phone (%s)", async theme => {
   const button = async (form: keyof typeof WIDTHS) => {
     await page.setViewportSize({ width: WIDTHS[form], height: 800 });
-    const [save, close] = await measure("control-room", theme);
+    const [save, close] = await measure("console", theme);
     return { height: save!.height, font: save!.font, icon: close!.height };
   };
   expect(await button("desk")).toEqual({ height: 24, font: 13, icon: 24 });

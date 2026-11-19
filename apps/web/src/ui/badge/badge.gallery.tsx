@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
-import { Section } from "../../gallery/Section";
 import { Avatar } from "../avatar/avatar";
 import { Button } from "../button/button";
 import { Kbd } from "../kbd/kbd";
@@ -11,7 +10,8 @@ export const order = 82;
 /** Count badges and controls rendered both on the page surface and inside the `[data-surface="chrome"]` frame scope. */
 export default function BadgeAndChromeGallery() {
   return (
-    <Section title={t("settingsHub.key.display.experience")}>
+    <section className="card gallery__section">
+      <h2 className="toolbar__title">{t("settingsHub.key.display.experience")}</h2>
       <div className="row">
         <Button>{t("shell.link.home")}<Badge count={23} /></Button>
         <Button variant="primary">{t("shell.link.approvals")}<Badge count={4} tone="inverse" /></Button>
@@ -24,6 +24,6 @@ export default function BadgeAndChromeGallery() {
         <Button size="sm">{t("shell.jumpLabel")}<Kbd keys="/" /></Button>
         <Avatar name="M" size="sm" tone="accent" />
       </div>
-    </Section>
+    </section>
   );
 }
