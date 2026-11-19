@@ -52,7 +52,7 @@ What holds each rule today:
    `npx playwright test e2e/visual.spec.ts --project=parallel --grep "pass axe"`.
    It fails on a serious or critical axe violation anywhere in the gallery, in either theme.
 
-Thirty-three pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
+Thirty-five pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
 
 ## The outline of a component page
 
@@ -152,6 +152,8 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 |---|---|---|
 | [Action bar](components/action-bar.md) | `ActionBar` | `apps/web/src/ui/action-bar` |
 | [Approval card](components/approval-card.md) | `ApprovalCard` | `apps/web/src/ui/approval-card` |
+| [Avatar](components/avatar.md) | `Avatar` | `apps/web/src/ui/avatar` |
+| [Badge](components/badge.md) | `Badge` | `apps/web/src/ui/badge` |
 | [Banner](components/banner.md) | `Banner` | `apps/web/src/ui/banner` |
 | [Button](components/button.md) | `Button`, `IconButton`, `ToggleButton`, `Segmented`, `Form`, `Check` | `apps/web/src/ui/button` |
 | [Card](components/card.md) | `Card`, `SectionHead` | `apps/web/src/ui/card` |

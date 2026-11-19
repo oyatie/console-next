@@ -173,7 +173,7 @@ function sourceContracts(file, source) {
   return { defined: [...names].map((name) => ({ name, theme: null, conditions: [] })), uses, modules };
 }
 
-const SHELL_SIZE = new Set(["--rail-w", "--topbar-h"]);
+const SHELL_SIZE = new Set(["--rail-w", "--topbar-h", "--tabbar-h", "--statusbar-h", "--navbar-h"]);
 const FRAME = /^apps\/web\/src\/(shell\/|app\.css$)/;
 /** One hard-failure list, shared by the gate and reference fixtures; no baseline can admit a name. */
 export function brokenRefs(sources, sheets, tokensFile) {
