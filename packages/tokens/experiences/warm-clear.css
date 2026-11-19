@@ -32,6 +32,8 @@
   --radius-sm: 8px; --radius: 14px; --radius-lg: 20px;
   /* Compact rows keep the shared virtual grid's 32px geometry. */
   --row-h: 56px; --row-h-compact: 32px; --control-h-sm: 36px; --target: 44px; --target-touch: 48px; --topbar-h: 72px;
+  /* What the 56px row gave them: a button is the row less 4px, a decision button the row, a toolbar the button and 12px above and below. */
+  --control-h: 52px; --control-h-lg: 56px; --toolbar-h: 76px;
 }
 
 :root[data-experience="warm-clear"][data-theme="dark"] {

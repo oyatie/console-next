@@ -54,6 +54,11 @@
   --target: 32px; --target-touch: 44px; --chip-h: 22px;
   /* Compact table rows (roster) and toolbar / page-head controls (tabs, 기준일, find box): design-language §2. */
   --row-h-compact: 32px; --control-h-sm: 36px;
+  /* Heights of their own, so a style can size its rows without moving what stands in or beside them.
+     --control-h: a button, and any control in a toolbar. --control-h-lg: the approval card's decision buttons.
+     --control-h-compact: a button inside a compact grid. --toolbar-h, --toolbar-py: a toolbar's least height and its
+     block padding. */
+  --control-h: 36px; --control-h-lg: 40px; --control-h-compact: 28px; --toolbar-h: 60px; --toolbar-py: 12px;
   --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
   color-scheme: light;
 }

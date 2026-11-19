@@ -14,7 +14,8 @@
   min-height: 0;
 }
 
-[data-density="compact"] .grid { --row-h: var(--row-h-compact); }
+/* A compact grid has rows and controls of its own heights; both are remapped here for everything inside. */
+[data-density="compact"] .grid { --row-h: var(--row-h-compact); --control-h: var(--control-h-compact); }
 .grid [role="columnheader"] { height: var(--row-h); }
 
 /* Keep the active cell's explanation in the viewport, including virtual rows. */

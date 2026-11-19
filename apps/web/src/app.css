@@ -130,7 +130,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ── controls ──────────────────────────────────────── */
-.btn { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink); text-decoration: none; min-height: calc(var(--row-h) - var(--space-1)); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-weight: var(--fw-medium); cursor: pointer; }
+.btn { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink); text-decoration: none; min-height: var(--control-h); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-weight: var(--fw-medium); cursor: pointer; }
 .btn:hover { background: var(--muted); }
 .btn--primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .btn--primary:hover { background: var(--primary-hover); }
@@ -158,7 +158,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .field__error { font-size: var(--text-sm); color: var(--danger-tx); }
 /* Button sizes (ui/button size="sm", IconButton): the kit's .btn--sm and .btn--icon. */
 .btn--sm { min-height: var(--target); padding: 0 var(--space-2); font-size: var(--text-sm); }
-.btn--icon { justify-content: center; width: calc(var(--row-h) - var(--space-1)); padding: 0; }
+.btn--icon { justify-content: center; width: var(--control-h); padding: 0; }
 .btn--sm.btn--icon { width: var(--target); }
 /* ToggleButton on (aria-pressed): the kit's .optchip / .seg pressed look, so a filter or option reads as chosen in words
    and in fill; view switches inside .tabs keep their underline instead. */
@@ -235,7 +235,7 @@ aside.panel { position: sticky; top: 0; }
 .secret { font-family: var(--font-mono); font-size: var(--text-xl); letter-spacing: var(--tracking-label); padding: var(--space-3); background: var(--muted); border-radius: var(--radius); text-align: center; user-select: all; }
 /* As tall as a button from the start: a command that renders once permissions load must not grow the row and push
    what is below it under a pointer already there. */
-.toolbar { display: flex; align-items: center; gap: var(--space-2); min-height: calc(var(--row-h) - var(--space-1) + var(--space-3) * 2); padding: var(--space-3) var(--space-4); }
+.toolbar { display: flex; align-items: center; gap: var(--space-2); min-height: var(--toolbar-h); padding: var(--toolbar-py) var(--space-4); }
 .toolbar__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); flex: 1; }
 .consent { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3); margin: 0; }
 .check { min-height: var(--target); display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--text-sm); cursor: pointer; }

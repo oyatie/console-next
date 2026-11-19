@@ -35,7 +35,7 @@
 /* One line, as tall as the hint it replaces: the bar under the chart keeps its height while a find is typed. */
 /* The toolbar find: as tall as the date control beside it, so the row keeps one height. */
 .toolbarFind { width: clamp(180px, 24vw, 340px); }
-.toolbarFind input { height: calc(var(--row-h) - var(--space-1)); }
+.toolbarFind input { height: var(--control-h); }
 .kbd { padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--kbd-bg); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--steel); }
 .findStatus { flex: 1; min-width: 0; gap: var(--space-3); color: var(--ink); white-space: nowrap; overflow: hidden; }
 .findStatus > * { flex: none; }

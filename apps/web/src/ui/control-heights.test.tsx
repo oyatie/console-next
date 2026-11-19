@@ -30,7 +30,9 @@ beforeAll(async () => {
     .replace(/\(--([\w-]+)\)/g, (query, name: string) => mediaQueries[name as keyof typeof mediaQueries] ?? query);
   const [save, close, filter, more, dots, paste, text] = ["Save", "×", "Filter", "More", "...", "Paste", "Example"];
   const nothing = () => undefined;
-  await page.setContent(`<style>${css}</style>${renderToStaticMarkup(<>
+  // A container that gives controls a height of its own, beside an element as tall as a row.
+  const own = '[data-probe="own"] { --control-h: 50px; } [data-probe="own"] > div { height: var(--row-h); }';
+  await page.setContent(`<style>${css}${own}</style>${renderToStaticMarkup(<>
     <section data-probe="button"><Button>{save}</Button></section>
     <section data-probe="icon"><IconButton label="Close">{close}</IconButton></section>
     <section data-probe="toolbar"><div className="toolbar"><Button>{filter}</Button></div></section>
@@ -40,6 +42,7 @@ beforeAll(async () => {
     </section>
     <section data-probe="menu"><MenuButton label={more} icon={<span aria-hidden>{dots}</span>} caret={false} items={[]} onAction={nothing} /></section>
     <section data-probe="compact" data-density="compact"><div className={sheet.grid}><Button>{paste}</Button></div></section>
+    <section data-probe="own"><Button>{save}</Button><div /></section>
   </>)}`);
 }, 60_000);
 afterAll(async () => { await browser?.close(); });
@@ -82,4 +85,19 @@ const TODAY = {
 
 for (const style of ["baseline", "warm-clear"] as const) test.each(["desk", "phone"] as const)(`${style} draws its controls and toolbars at today's sizes on a %s`, async form => {
   expect(await sizes(style === "baseline" ? null : style, form)).toEqual(TODAY[style]);
+});
+
+test("a control's height is a role of its own: a container that sets it moves the button and not the row", async () => {
+  await sizes(null, "desk");
+  expect(await page.evaluate(() => ({
+    button: document.querySelector('[data-probe="own"] button')!.getBoundingClientRect().height,
+    row: document.querySelector('[data-probe="own"] > div')!.getBoundingClientRect().height,
+  }))).toEqual({ button: 50, row: 40 });
+});
+
+// As its boards draw them: a 24px control in a 40px toolbar on a desk, and touch sizes on a phone. A compact grid row
+// holds a control as tall as itself, never one under the style's smallest.
+test("Control room draws controls and toolbars at its own sizes, apart from its row height", async () => {
+  expect.soft(await sizes("control-room", "desk")).toEqual({ button: 24, icon: [24, 24], toolbar: 40, toolbarPadding: [4, 4], toolbarButton: 24, decision: 32, menuIcon: [24, 24], compactGridButton: 24 });
+  expect.soft(await sizes("control-room", "phone")).toEqual({ button: 44, icon: [44, 44], toolbar: 52, toolbarPadding: [4, 4], toolbarButton: 44, decision: 48, menuIcon: [44, 44], compactGridButton: 40 });
 });
