@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "../states/fault-clock";
 import type { Page } from "@playwright/test";
 import type { GoLivePreview } from "@console/api/pending";
 import { failure, id, screenAccess, user } from "./fixtures";
@@ -67,6 +68,7 @@ export function emptyPreview(): GoLivePreview {
 }
 
 export async function mockOnboarding(page: Page, screen: OnboardingScreen, state: OnboardingState) {
+  if (state === "failed") await installFaultClock(page);
   const shell = await mockScreen(page, screens.find(s => s.key === "org")!, "empty");
   await mockRoute(page, "get", "/api/v1/entity-identifier-corrections", { status: 200, json: { items: [], next_offset: null } });
   await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: {

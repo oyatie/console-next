@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import type { components, paths } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
@@ -69,6 +70,7 @@ for (const status of [404, 403] as const) for (const width of [1440, 390]) {
 
 for (const state of states) for (const width of [1440, 390]) {
   test(`workplace bulk: ${state} at ${width}px @ui-state`, async ({ page }) => {
+    if (state === "failed") await installFaultClock(page);
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screens.find(s => s.key === "org")!, "populated");
     await orgWorkReads(page, "operating");
@@ -98,7 +100,7 @@ for (const state of states) for (const width of [1440, 390]) {
         await expect(main.locator('[aria-busy="true"]').last()).toBeVisible();
         await expect(commit).toHaveCount(0);
       } else if (state === "failed") {
-        await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible({ timeout: 20_000 });
+        await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible();
         await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
         await expect(main.getByText(fixture.operationId, { exact: true })).toBeVisible();
         await expect(commit).toHaveCount(0);

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "./fault-clock";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { AT, id } from "../mock/fixtures";
@@ -33,6 +34,7 @@ async function filtersFixture(page: Page) {
 
 for (const state of ["available", "absent", "failed", "search_invalid"] as const) {
   test(`access-log actor availability waits for loaded choices: ${state} @ui-state`, async ({ page }, testInfo) => {
+    if (state === "failed") await installFaultClock(page);
     await page.setViewportSize({ width: 390, height: 900 });
     await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
     const fixture = await filtersFixture(page);
@@ -51,7 +53,7 @@ for (const state of ["available", "absent", "failed", "search_invalid"] as const
       await expect(page.getByLabel("적용한 필터", { exact: true })).toHaveCount(0);
       release();
       if (state === "failed" || state === "search_invalid") {
-        await expect(page.getByRole("button", { name: "다시 불러오기", exact: true })).toBeVisible({ timeout: 20_000 });
+        await expect(page.getByRole("button", { name: "다시 불러오기", exact: true })).toBeVisible();
         await expect(page.getByText("선택할 수 없는 접속자", { exact: true })).toHaveCount(0);
         await expect(page.getByLabel("적용한 필터", { exact: true })).toHaveCount(0);
       } else {
@@ -67,6 +69,7 @@ for (const state of ["available", "absent", "failed", "search_invalid"] as const
 }
 
 test("access-log keeps filter selection disabled after the page read fails @ui-state", async ({ page }, testInfo) => {
+  await installFaultClock(page);
   await page.setViewportSize({ width: 390, height: 900 });
   await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
   const fixture = await filtersFixture(page);
@@ -74,7 +77,7 @@ test("access-log keeps filter selection disabled after the page read fails @ui-s
     route => route.fulfill({ status: 503, json: { error: { code: "service_unavailable", message: "unavailable" } } }));
   try {
     await page.goto("/audit/access-log?period=2026-10");
-    await expect(page.getByRole("heading", { name: "불러오지 못했습니다", exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: "불러오지 못했습니다", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "필터 선택", exact: true })).toBeDisabled();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await fits(page, "audit page read failure");
@@ -311,6 +314,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
 for (const state of ["unsupported", "failed", "refused"] as const) {
   test(`access-log filter choices handle ${state} server reads @ui-state`, async ({ page }) => {
+    if (state === "failed") await installFaultClock(page);
     const fixture = await filtersFixture(page);
     await page.route(url => url.pathname === "/api/v1/access/access-log", route => {
       const actor = new URL(route.request().url()).searchParams.get("actor");
@@ -325,7 +329,7 @@ for (const state of ["unsupported", "failed", "refused"] as const) {
       const sheet = page.getByRole("dialog", { name: "접속기록 필터" });
       await expect(sheet.getByRole("combobox")).toHaveCount(0);
       if (state === "unsupported") await expect(sheet.getByText("필터를 사용할 수 없습니다", { exact: true })).toBeVisible();
-      else if (state === "failed") await expect(sheet.getByText("불러오지 못했습니다", { exact: true })).toBeVisible({ timeout: 20_000 });
+      else if (state === "failed") await expect(sheet.getByText("불러오지 못했습니다", { exact: true })).toBeVisible();
       else await expect(sheet.getByText("이 화면에 접근 권한이 없습니다", { exact: true })).toBeVisible();
       expect(fixture.unexpected).toEqual([]);
     } finally { fixture.release(); }
