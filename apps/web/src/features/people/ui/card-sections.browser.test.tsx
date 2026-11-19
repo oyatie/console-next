@@ -107,6 +107,33 @@ test("a reader's digits open the one section their record shows and nothing else
   await element(page.locator("#s2")).toBeFocused();
 }, 90_000);
 
+test("a digit or H pressed in the print view leaves the tab and the current section where they were", async () => {
+  await open();
+  const printing = page.getByRole("heading", { level: 1, name: t("empDoc.print.title"), exact: true });
+  const print = async () => { await page.getByRole("button", { name: t("empCard.verb.print"), exact: true }).click(); await element(printing).toBeVisible(); };
+  const close = () => page.getByRole("button", { name: t("composer.dismiss"), exact: true }).click();
+  // Opened from another tab: a section's digit does not send the reader to the record behind the print view.
+  await page.keyboard.press("h");
+  await element(tab("ledger")).toHaveAttribute("aria-current", "page");
+  await print();
+  await page.keyboard.press("3");
+  await settle();
+  await close();
+  await element(tab("ledger")).toHaveAttribute("aria-current", "page");
+  // Opened from the record: a digit does not move the current mark, and H does not change the tab.
+  await tab("card").click();
+  const second = links().nth(1);
+  await second.click();
+  await element(second).toHaveAttribute("aria-current", "true");
+  await print();
+  await page.keyboard.press("5");
+  await page.keyboard.press("h");
+  await settle();
+  await close();
+  await element(tab("card")).toHaveAttribute("aria-current", "page");
+  await element(second).toHaveAttribute("aria-current", "true");
+}, 90_000);
+
 test("the digits wait while single keys are off or a key is composing, and a click or Enter on a link still opens its section", async () => {
   await open();
   const [first, fourth] = [links().first(), links().nth(3)];

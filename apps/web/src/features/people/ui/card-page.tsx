@@ -133,7 +133,8 @@ function Card({ d }: { d: Detail }) {
     // H: the record's history (change history), where every dated fact and correction of its sections is listed.
     keys.current.history = () => onTab("ledger");
   });
-  useKeys({
+  // The print view replaces the card and is no dialog, so the card's keys are not bound while it is open.
+  useKeys(act === "print" ? {} : {
     "card.section": (_, n) => keys.current.jump(Number(n)),
     "card.next": () => keys.current.next?.(),
     "card.prev": () => keys.current.prev?.(),

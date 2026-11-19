@@ -422,7 +422,8 @@ Controls a caller puts inside them keep their own keys.
 it, and passes the same digit as the item's `no`. The people card binds 1 to 8, J, K and H through `useKeys`
 (`lib/react/use-keys.ts`). That hook ignores a key the input method is composing, leaves a key typed in a field to
 the field, and matches letters and digits by the physical key, so a Korean input mode does not change which key
-matches.
+matches. The card binds none of these keys while its print view is open: that view replaces the card and is not a
+dialog, so the hook's own wait for an open dialog does not cover it.
 
 The people card numbers its sections 1 to 8 and gives each the id `s` and its number. One function,
 `cardSections` (`features/people/domain/keys.ts`), lists the numbers of the sections shown; the links and the digit
