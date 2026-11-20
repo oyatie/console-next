@@ -311,12 +311,15 @@ class, which reads no token.
 | `--ok-tx` | `color` |
 | `--on-primary` | `color` |
 | `--primary` | `background`, `border-color` |
+| `--radius` | `border-radius` |
 | `--radius-lg` | `border-radius` |
-| `--space-1` | `gap`, `margin-inline-end` |
+| `--space-1` | `gap`, `margin-inline-end`, `padding` |
+| `--space-1-5` | `padding` |
 | `--space-2` | `gap` |
 | `--space-3` | `gap` |
 | `--space-5` | `height`, `width` |
 | `--steel` | `color` |
+| `--surface-selected` | `background` |
 | `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |
 

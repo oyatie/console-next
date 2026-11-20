@@ -54,8 +54,11 @@ path: "/people",
 staticData: { access: readRequirement("/people"), floorplan: "P-01", pattern: "list-record" },
 ```
 
-The key is optional. Five routes declare one today: `/` and `/inbox` (drawn through `Worklist`), `/people` (drawn through
-`ListRecord`), and the two review routes (`/_review/patterns/worklist` and `/_review/patterns/list-record`).
+The key is optional. Twelve routes declare one today: `/` and `/inbox` (drawn through `Worklist`), `/people` (drawn through
+`ListRecord`), and the nine review routes (`/_review/patterns/worklist`, `/_review/patterns/list-record`,
+`/_review/patterns/record`, `/_review/patterns/document-decision`, `/_review/patterns/month-grid`,
+`/_review/patterns/register-totals`, `/_review/patterns/form`, `/_review/patterns/phone-hub`, and
+`/_review/patterns/phone-statement`).
 
 `apps/web/src/routes/route-pattern.test.ts` builds the router and fails when a route names a pattern that is not
 one of the thirteen, or one that is not in `BUILT_PATTERNS`. It also holds the list of routes that declare a

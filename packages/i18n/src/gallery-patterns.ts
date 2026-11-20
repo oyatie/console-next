@@ -83,7 +83,7 @@ export const patternsKo = {
   "pat.hub.secEdit": "Details I can update",
   "pat.hub.secLog": "Access log",
   "pat.hub.style": "Display style",
-  "pat.hub.styleLong": "Organization default style (high-density operational console · desktop and mobile)",
+  "pat.hub.styleLong": "Console default",
   "pat.hub.styleAlt": "Classic baseline style",
   "pat.hub.agree": "Notify me on PII reveal",
   "pat.hub.logRow": "Mun Seoyeon (HR) viewed resident registration number · 11-03",

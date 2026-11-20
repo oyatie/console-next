@@ -5,6 +5,7 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { expectAxe, fits } from "../a11y";
+import { withFullPage } from "../shots";
 import { forgetResize } from "../stability";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
@@ -43,22 +44,41 @@ for (const { id, refusedRef } of PATTERNS_UNDER_TEST) {
       const root = page.locator(`[data-pattern="${id}"]`);
       await expect(root).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
       for (const width of [1440, 390] as const) {
         const height = width === 1440 ? 900 : 844;
         await page.setViewportSize({ width, height });
         await forgetResize(page);
         await fits(page, `${id} console ${width}`);
+        let lightSurface = "";
         for (const theme of ["light", "dark"] as const) {
-          await page.locator("html").evaluate((el, mode) => {
-            el.dataset.theme = mode;
+          await page.evaluate(mode => {
+            localStorage.setItem("console.theme", mode);
+            document.documentElement.dataset.theme = mode;
           }, theme);
+          await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+          await page.waitForFunction(
+            ({ mode, prevLight }) => {
+              const rootStyle = getComputedStyle(document.documentElement);
+              const pat = document.querySelector("[data-pattern]");
+              const patBg = pat ? getComputedStyle(pat).backgroundColor : "";
+              if (rootStyle.colorScheme !== mode || !patBg) return false;
+              return mode === "light" ? true : patBg !== prevLight;
+            },
+            { mode: theme, prevLight: lightSurface },
+          );
+          if (theme === "light") {
+            lightSurface = await root.evaluate(el => getComputedStyle(el).backgroundColor);
+          }
           await expectAxe(page, `${id} console ${width} ${theme}`);
           if (SHOTS_DIR) {
-            await page.screenshot({
-              path: path.join(SHOTS_DIR, `${id}--${width}-${theme}.png`),
-              fullPage: true,
-            });
+            await withFullPage(page, () =>
+              page.screenshot({
+                path: path.join(SHOTS_DIR, `${id}--${width}-${theme}.png`),
+                fullPage: true,
+              }),
+            );
           }
         }
       }

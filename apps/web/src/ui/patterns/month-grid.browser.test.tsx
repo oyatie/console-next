@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { MountedGallery } from "../../lib/gallery-browser-test";
-import { expectPatternMatrixClean, openPatternFixture, setConsoleViewport } from "./pattern-browser-helpers";
+import { expectFitsViewport, expectPatternMatrixClean, openPatternFixture, setConsoleViewport } from "./pattern-browser-helpers";
 
 let mounted: MountedGallery;
 
@@ -13,9 +13,17 @@ afterAll(async () => {
   await mounted?.close();
 });
 
-test("MonthGrid pattern passes WCAG 2.2 AA matrix, wraps 6-tile StatRow at 390px, and manages dock pane", async () => {
+test("MonthGrid pattern passes WCAG 2.2 AA matrix, aligns sticky lead flush at 390px, wraps 6-tile StatRow, and manages dock pane", async () => {
   const { page } = mounted;
   await expectPatternMatrixClean(page);
+
+  await expectFitsViewport(page, 390);
+  const leadGap = await page.locator('[role="grid"]').first().evaluate(grid => {
+    const box = grid.parentElement!.getBoundingClientRect();
+    const firstLead = grid.querySelector("tbody th[data-first]")!.getBoundingClientRect();
+    return firstLead.left - box.left;
+  });
+  expect(leadGap).toBeLessThanOrEqual(2);
 
   const statBox = await page.locator("dl[aria-label]").evaluate(el => {
     const items = [...el.children].map(c => c.getBoundingClientRect());
@@ -33,7 +41,7 @@ test("MonthGrid pattern passes WCAG 2.2 AA matrix, wraps 6-tile StatRow at 390px
   await page.locator('[data-variant="boxed"] button').first().click();
   expect(await periodLabel.innerText()).not.toBe(before);
 
-  await page.locator('tbody tr[data-id="10587"]').click();
+  await page.locator('tbody tr[data-id="10516"]').click();
   await page.locator('[data-pane="record"]').waitFor();
   expect(await page.locator('[data-pane="record"]').count()).toBe(1);
   await page.getByRole("complementary").getByRole("button").first().focus();

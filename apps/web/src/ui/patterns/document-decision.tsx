@@ -2,8 +2,8 @@
 import type { ReactNode } from "react";
 import { PaneGrid } from "../pane-grid/pane-grid";
 import type { SidePaneSpec } from "../pane-grid/pane-grid-side";
-import { shown } from "../shown";
 import { PatternShell } from "./pattern-shell";
+import { shownSlot } from "./pattern-slot";
 import type { DocumentDecisionProps } from "./document-decision-contract";
 import s from "./document-decision.module.css";
 
@@ -32,7 +32,7 @@ export function DocumentDecision({
 }: DocumentDecisionProps) {
   const paneDecision = isSidePane(decision) ? decision : undefined;
   const dockedCandidate: ReactNode = isSidePane(decision) ? null : decision;
-  const dockedDecision = shown(dockedCandidate) ? dockedCandidate : null;
+  const dockedDecision = shownSlot(dockedCandidate) ? dockedCandidate : null;
 
   return (
     <PatternShell

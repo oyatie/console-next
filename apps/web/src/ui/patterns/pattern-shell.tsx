@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useContext, type ReactNode } from "react";
+import { useContext, useState, type ReactNode } from "react";
 import { useActiveExperienceId } from "../../experience/dom";
 import { QueryState } from "../../lib/react/query-state";
 import { queryView, type ReadState } from "../../lib/react/query-view";
@@ -85,13 +85,19 @@ export function PatternShell({
   const scope = useContext(PageScope);
   const level = useContext(PageHeadingLevel);
   const { shellOwnsH1 } = useContext(PagePhoneHeader);
+  const view = queryView(q);
+  const [latchedRefusal, setLatchedRefusal] = useState<unknown>(null);
+  const refused = view === "denied" || view === "not-found";
+  if (refused && latchedRefusal !== q.error) setLatchedRefusal(q.error);
+  if (view === "ready" && !q.isPlaceholderData && latchedRefusal) setLatchedRefusal(null);
 
   if (useBaselineFallback && baseline) return <>{baseline()}</>;
 
   const secondary = scope.embedded || level === 2;
   const Root = scope.landmark || secondary ? "div" : "main";
-  const view = queryView(q);
-  const showDetail = detailActive && Boolean(q.data) && (view === "ready" || view === "stale" || view === "offline");
+  const gateRefused = refused || Boolean(q.isPlaceholderData && latchedRefusal);
+  const showDetail =
+    detailActive && !gateRefused && Boolean(q.data) && (view === "ready" || view === "stale" || view === "offline");
 
   return (
     <PageScope value={{ landmark: true, embedded: true }}>

@@ -234,7 +234,56 @@
 }
 
 @media (--phone) {
+  .datePair {
+    gap: var(--space-2);
+  }
+
   .datePair[data-baseline-stack] {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+@media (max-width: 359px) {
+  .datePair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.turnBanner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.footBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-2);
+  border-block-start: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.legendGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
+  padding: 0 var(--space-4) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
 }

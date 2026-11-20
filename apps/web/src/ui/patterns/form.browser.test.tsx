@@ -14,7 +14,7 @@ afterAll(async () => {
   await mounted?.close();
 });
 
-test("Form pattern passes WCAG 2.2 AA matrix, fits side-by-side DateFields at 390px and 320px, and updates Meter/consequence", async () => {
+test("Form pattern passes WCAG 2.2 AA matrix, fits DateFields without clipping at 390px and 320px, and updates Meter/consequence", async () => {
   const { page } = mounted;
   await expectPatternMatrixClean(page);
 
@@ -23,12 +23,26 @@ test("Form pattern passes WCAG 2.2 AA matrix, fits side-by-side DateFields at 39
     const pairBoxes = await page.locator("input[type='text']").evaluateAll(els =>
       els.map(el => {
         const r = el.getBoundingClientRect();
-        return { left: r.left, right: r.right, top: r.top };
+        return {
+          left: r.left,
+          right: r.right,
+          top: r.top,
+          bottom: r.bottom,
+          scrollWidth: el.scrollWidth,
+          clientWidth: el.clientWidth,
+        };
       }),
     );
     expect(pairBoxes).toHaveLength(2);
-    expect(pairBoxes[0]!.right).toBeLessThanOrEqual(pairBoxes[1]!.left);
-    expect(pairBoxes[1]!.right).toBeLessThanOrEqual(width);
+    for (const box of pairBoxes) {
+      expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+      expect(box.right).toBeLessThanOrEqual(width);
+    }
+    if (width === 390) {
+      expect(pairBoxes[0]!.right).toBeLessThanOrEqual(pairBoxes[1]!.left);
+    } else {
+      expect(pairBoxes[0]!.bottom).toBeLessThanOrEqual(pairBoxes[1]!.top);
+    }
   }
 
   await page.getByText(tg("pat.form.halfAm")).click();

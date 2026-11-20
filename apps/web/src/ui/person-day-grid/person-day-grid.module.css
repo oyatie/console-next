@@ -4,8 +4,11 @@
 .table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .table thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--border); padding: var(--space-1) var(--space-2); font-weight: var(--fw-medium); color: var(--steel); }
 .lead { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; padding: 0 var(--space-2); white-space: nowrap; font-weight: var(--fw-body); }
-.lead[data-w="name"] { left: 64px; min-width: 96px; }
+.lead[data-w="name"] { min-width: 96px; }
 .lead[data-w="code"] { width: 64px; font-family: var(--font-mono); }
+.lead[data-w="code"] + .lead[data-w="name"] { left: 64px; }
+.lead[data-w="name"]:has(+ .lead[data-w="code"]) { width: 96px; box-sizing: border-box; }
+.lead[data-w="name"] + .lead[data-w="code"] { left: 96px; }
 .table thead .lead { z-index: 3; }
 .tail { position: sticky; right: 0; z-index: 1; background: var(--surface); border-left: 1px solid var(--border); padding: 0 var(--space-2); text-align: right; white-space: nowrap; min-width: 64px; }
 .table thead .tail { z-index: 3; }

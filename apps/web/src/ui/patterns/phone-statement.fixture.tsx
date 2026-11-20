@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
-import { tg } from "@console/i18n/gallery";
+import { t } from "@console/i18n";
 import type { ReadState } from "../../lib/react/query-view";
 import { Button } from "../button/button";
 import { StatRow } from "../key-value/key-value";
@@ -19,79 +19,77 @@ export default function PhoneStatementExample({ q = READY }: { q?: ReadState }) 
   return (
     <PhoneStatement
       q={q}
-      head={{ title: tg("pat.stmt.head"), titleId: "phone-statement-title" }}
+      head={{ title: t("payroll.title"), titleId: "phone-statement-title" }}
       period={<PeriodStepper unit="month" variant="plain" showCurrent={false} value={period} onChange={setPeriod} />}
-      periodMeta={tg("pat.stmt.payDate")}
+      periodMeta={`${t("payroll.create.payDate")} 11-25`}
       hero={
         <div>
-          <div className={fx.stageLabel}>{tg("pat.stmt.netLabel")}</div>
+          <div className={fx.stageLabel}>{t("payroll.employee.net")}</div>
           <div className={fx.heroFigure}>{NET_AMOUNT}</div>
         </div>
       }
       stats={
         <StatRow
-          label={tg("pat.stmt.head")}
+          label={t("payroll.title")}
           items={[
-            { key: "gross", label: tg("pat.reg.gross"), value: "3,567,000" },
-            { key: "ded", label: tg("pat.reg.deduct"), value: "425,245" },
+            { key: "gross", label: t("payroll.employee.gross"), value: "3,567,000" },
+            { key: "ded", label: `− ${t("payroll.employee.deductions")}`, value: "425,245" },
           ]}
         />
       }
       ledgers={
         <>
           <Ledger
-            title={tg("pat.stmt.earnings")}
-            unit={tg("ledger.unit")}
+            title={t("payroll.employee.earnings")}
+            unit={t("profile.won")}
             headerSurface="muted"
             detailLayout="inline"
             rows={[
-              { key: "base", label: tg("pat.stmt.basePay"), amount: "3,100,000", numericValue: 3100000 },
+              { key: "base", label: t("payroll.employee.wage"), amount: "3,100,000", numericValue: 3100000 },
               {
                 key: "ot",
-                label: tg("pat.stmt.overtime"),
-                detail: tg("ledger.overtimePhone"),
+                label: t("attendance.tab.overtime"),
+                detail: t("attendance.hours", { hours: 12 }),
                 amount: "267,000",
                 numericValue: 267000,
               },
-              {
-                key: "meal",
-                label: tg("ledger.meal"),
-                detail: tg("ledger.taxExempt"),
-                amount: "200,000",
-                numericValue: 200000,
-              },
             ]}
-            totals={[{ key: "tot", label: tg("pat.reg.gross"), amount: "3,567,000", kind: "total" }]}
+            totals={[{ key: "tot", label: t("payroll.employee.gross"), amount: "3,567,000", kind: "total" }]}
           />
           <Ledger
-            title={tg("pat.stmt.deductions")}
-            unit={tg("ledger.unit")}
+            title={t("payroll.employee.deductions")}
+            unit={t("profile.won")}
             headerSurface="muted"
             detailLayout="inline"
             rows={[
-              { key: "pen", label: tg("pat.stmt.pension"), amount: "151,515", numericValue: 151515 },
-              { key: "hlt", label: tg("pat.stmt.health"), amount: "119,360", numericValue: 119360 },
+              { key: "pen", label: t("enum.insurer.NPS"), amount: "151,515", numericValue: 151515 },
+              { key: "hlt", label: t("enum.insurer.NHIS"), amount: "119,360", numericValue: 119360 },
             ]}
-            totals={[{ key: "tot", label: tg("ledger.deductionTotal"), amount: "425,245", kind: "total" }]}
+            totals={[{ key: "tot", label: t("payroll.employee.insuranceTotal"), amount: "425,245", kind: "total" }]}
           />
         </>
       }
       contextStats={
         <StatRow
-          label={tg("pat.stmt.workDays")}
+          label={t("attendanceRecords.card.workedDays")}
           items={[
-            { key: "work", label: tg("pat.stmt.workDays"), value: "22d", meta: tg("pat.stmt.workDaysMeta") },
-            { key: "leave", label: tg("pat.stmt.leaveDays"), value: "0d" },
+            {
+              key: "work",
+              label: t("attendanceRecords.card.workedDays"),
+              value: "22",
+              meta: `${t("attendance.dayKind.WORK")} 18 · ${t("attendance.dayKind.WEEKLY_HOLIDAY")} 4`,
+            },
+            { key: "leave", label: t("people.field.leave"), value: "0" },
           ]}
         />
       }
       actions={
         <>
           <Button variant="primary" size="lg">
-            {tg("pat.stmt.pdf")}
+            {t("statutory.pdf")}
           </Button>
           <Button variant="secondary" size="lg">
-            {tg("pat.stmt.past")}
+            {t("orgChange.list.title")}
           </Button>
         </>
       }

@@ -35,7 +35,7 @@ test("DocumentDecision passes WCAG 2.2 AA matrix and enforces multiline opinion 
   expect(await page.locator("[data-outcome]").getAttribute("data-outcome")).toBe("approved");
 }, 45_000);
 
-describe("DocumentDecision phone heading under keepPreviousData 403 refusal", () => {
+describe("DocumentDecision phone heading and data-detail under keepPreviousData 403 refusal", () => {
   let phoneApp: MountedGallery;
 
   beforeAll(async () => {
@@ -63,12 +63,14 @@ describe("DocumentDecision phone heading under keepPreviousData 403 refusal", ()
           const q = useQuery({
             ...read('/api/v1/doc-keepprev', () => {
               if (mode === '403') return Promise.reject(new ApiError(403, 'access_denied', '', [], 'op-doc-403'));
+              if (mode === 'pending') return new Promise(() => {});
               return Promise.resolve({ id: 'OC-1' });
             }, mode),
             placeholderData: keepPreviousData,
           });
           return React.createElement(React.Fragment, null,
             React.createElement('button', { type: 'button', 'data-refuse': '', onClick: () => setMode('403') }, 'Refuse'),
+            React.createElement('button', { type: 'button', 'data-pending': '', onClick: () => setMode('pending') }, 'Pending'),
             React.createElement(DocumentDecision, {
               q,
               head: { title: 'Approvals', titleId: 'doc-h1' },
@@ -88,13 +90,23 @@ describe("DocumentDecision phone heading under keepPreviousData 403 refusal", ()
     await phoneApp?.close();
   });
 
-  test("restores visible h1 on phone when SidePaneSpec read turns 403", async () => {
+  test("restores visible h1 and keeps data-detail cleared across ok -> 403 -> pending", async () => {
     const { page } = phoneApp;
     await page.setViewportSize({ width: 390, height: 844 });
+    const pattern = page.locator('[data-pattern="document-decision"]');
     const h1 = page.locator("#doc-h1");
+    expect(await pattern.getAttribute("data-detail")).toBe("true");
     expect((await h1.boundingBox())?.height ?? 0).toBe(0);
+
     await page.locator("[data-refuse]").click();
     await page.getByText("op-doc-403").waitFor();
+    expect(await pattern.getAttribute("data-detail")).toBeNull();
+    expect((await h1.boundingBox())?.height ?? 0).toBeGreaterThan(0);
+
+    await page.locator("[data-pending]").click();
+    await page.waitForTimeout(50);
+    expect(await pattern.getAttribute("data-detail")).toBeNull();
+    expect(await page.locator('[data-pane="record"]').count()).toBe(0);
     expect((await h1.boundingBox())?.height ?? 0).toBeGreaterThan(0);
   });
 });

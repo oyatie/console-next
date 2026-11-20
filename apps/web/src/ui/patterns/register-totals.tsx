@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { PaneGrid } from "../pane-grid/pane-grid";
-import { shown } from "../shown";
 import { PatternShell } from "./pattern-shell";
+import { shownSlot } from "./pattern-slot";
 import type { RegisterTotalsProps } from "./register-totals-contract";
 import s from "./register-totals.module.css";
 
@@ -40,8 +40,8 @@ export function RegisterTotals({
     >
       {() => (
         <>
-          {shown(totals) ? <div className={s.totals}>{totals}</div> : null}
-          {shown(blockers) ? <div className={s.blockers}>{blockers}</div> : null}
+          {shownSlot(totals) ? <div className={s.totals}>{totals}</div> : null}
+          {shownSlot(blockers) ? <div className={s.blockers}>{blockers}</div> : null}
           <PaneGrid
             {...panes}
             main={
@@ -51,7 +51,7 @@ export function RegisterTotals({
                 {foot}
               </>
             }
-            bottom={shown(preview) ? <div className={s.preview}>{preview}</div> : undefined}
+            bottom={shownSlot(preview) ? <div className={s.preview}>{preview}</div> : undefined}
           />
         </>
       )}

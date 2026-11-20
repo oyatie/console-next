@@ -15,6 +15,7 @@
 :where([data-experience]:not([data-experience="baseline"])) .row { min-width: 0; max-width: 100%; }
 :where([data-experience]:not([data-experience="baseline"])) .inputRow { display: flex; flex: 1 1 0%; max-width: 100%; min-width: 0; }
 :where([data-experience]:not([data-experience="baseline"])) .input { flex: 1 1 0%; min-width: 0; width: 100%; }
+@media (--phone) { :where([data-experience]:not([data-experience="baseline"])) .input { padding-inline: var(--space-2); } }
 :where([data-experience]:not([data-experience="baseline"])) .calendarButton { flex: none; }
 .calendarButton { display: inline-grid; place-items: center; min-width: var(--target-touch); min-height: var(--target-touch); border: 1px solid var(--control-border); border-radius: var(--radius-lg); background: var(--surface); color: var(--ink); cursor: pointer; }
 .calendarButton:hover { background: var(--muted); }

@@ -2,7 +2,6 @@
 .column {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
   width: 100%;
   max-width: min(100%, var(--card-w));
   margin-inline: auto;
@@ -19,7 +18,6 @@
 .form {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -31,6 +29,7 @@
 
 :where([data-experience]:not([data-experience="baseline"])) .column {
   border-inline: 1px solid var(--border);
+  border-block-end: 1px solid var(--border);
 }
 
 :where([data-experience]:not([data-experience="baseline"])) .column :is(select, input, textarea) {
@@ -58,6 +57,7 @@
   :where([data-experience]:not([data-experience="baseline"])) .column {
     max-width: 100%;
     border-inline: 0;
+    border-block-end: 0;
   }
 
   .form [data-sticky] > :last-child > :is(button, a) {

@@ -53,4 +53,25 @@ test("DocumentDecision satisfies docked and SidePaneSpec contracts including kee
     />,
   );
   expect(sidePaneNotFound).not.toContain("data-detail");
+
+  const emptyFragmentDecision = await renderPatternMarkup(
+    <DocumentDecision
+      q={readyRead}
+      head={{ title: mark("head") }}
+      document={mark("document")}
+      decision={<></>}
+      decisionLabel="Decision"
+    />,
+  );
+  const emptyArrayDecision = await renderPatternMarkup(
+    <DocumentDecision
+      q={readyRead}
+      head={{ title: mark("head") }}
+      document={mark("document")}
+      decision={[]}
+      decisionLabel="Decision"
+    />,
+  );
+  expect(emptyFragmentDecision).not.toContain("<aside");
+  expect(emptyArrayDecision).not.toContain("<aside");
 });

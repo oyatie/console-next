@@ -1,12 +1,12 @@
 {
   "baseline": {
     "apps/web/src/review/document-decision-review.tsx#DocumentDecisionReview": 10,
-    "apps/web/src/review/form-review.tsx#FormReview": 20,
+    "apps/web/src/review/form-review.tsx#FormReview": 15,
     "apps/web/src/review/list-record-review.tsx#ListRecordReview": 10,
-    "apps/web/src/review/month-grid-review.tsx#MonthGridReview": 7,
+    "apps/web/src/review/month-grid-review.tsx#MonthGridReview": 8,
     "apps/web/src/review/phone-hub-review.tsx#PhoneHubReview": 7,
     "apps/web/src/review/phone-statement-review.tsx#PhoneStatementReview": 2,
-    "apps/web/src/review/record-review.tsx#RecordReview": 11,
+    "apps/web/src/review/record-review.tsx#RecordReview": 10,
     "apps/web/src/review/register-totals-review.tsx#RegisterTotalsReview": 8,
     "apps/web/src/review/worklist-review.tsx#WorklistReview": 12
   },
@@ -20,7 +20,7 @@
       "EXPLANATION": 0
     },
     "apps/web/src/review/form-review.tsx#FormReview": {
-      "FACT": 17,
+      "FACT": 12,
       "REFUSAL": 1,
       "EMPTY": 1,
       "LEGAL": 0,
@@ -36,7 +36,7 @@
       "EXPLANATION": 0
     },
     "apps/web/src/review/month-grid-review.tsx#MonthGridReview": {
-      "FACT": 4,
+      "FACT": 5,
       "REFUSAL": 1,
       "EMPTY": 1,
       "LEGAL": 0,
@@ -60,7 +60,7 @@
       "EXPLANATION": 0
     },
     "apps/web/src/review/record-review.tsx#RecordReview": {
-      "FACT": 8,
+      "FACT": 7,
       "REFUSAL": 1,
       "EMPTY": 1,
       "LEGAL": 0,

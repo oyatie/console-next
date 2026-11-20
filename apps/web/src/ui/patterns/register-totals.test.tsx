@@ -37,8 +37,16 @@ test("RegisterTotals satisfies placement, conditional blockers, refusal, and 404
   const noBlockers = await renderPatternMarkup(
     <RegisterTotals q={readyRead} head={{ title: mark("head") }} register={mark("register")} blockers={null} />,
   );
+  const emptyArrayBlockers = await renderPatternMarkup(
+    <RegisterTotals q={readyRead} head={{ title: mark("head") }} register={mark("register")} blockers={[]} />,
+  );
+  const emptyFragmentBlockers = await renderPatternMarkup(
+    <RegisterTotals q={readyRead} head={{ title: mark("head") }} register={mark("register")} blockers={<></>} />,
+  );
   expect(noBlockers).toContain('data-contract-region="register"');
   expect(noBlockers).not.toContain('data-contract-region="blockers"');
+  expect(emptyArrayBlockers).toBe(noBlockers);
+  expect(emptyFragmentBlockers).toBe(noBlockers);
 
   const notFound = await renderPatternMarkup(renderRegister(notFoundRead("missing-run")));
   expect(notFound).not.toContain("data-detail");

@@ -2,7 +2,7 @@
 .kv { display: grid; grid-template-columns: calc(var(--panel-w) / 4) minmax(0, 1fr); gap: var(--space-2) var(--space-3); align-items: baseline; margin: 0; font-size: var(--text-sm); }
 .kv[data-acts] { grid-template-columns: calc(var(--panel-w) / 4) minmax(0, 1fr) auto; }
 .row { display: contents; }
-.label { color: var(--steel); }
+.label { min-width: 0; color: var(--steel); overflow-wrap: anywhere; }
 .value { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .act { justify-self: end; margin: 0; }
 .stats { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; margin: 0; border: 1px solid var(--border); border-radius: var(--radius); }
@@ -35,6 +35,10 @@
   :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(4)) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(4)) > .stat:nth-child(odd) { border-left: 0; }
   :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(4)) > .stat:nth-child(n + 3) { border-top: 1px solid var(--border); }
+}
+@media (max-width: 359px) {
+  :where([data-experience]:not([data-experience="baseline"])) .stat { padding: var(--space-2); }
+  :where([data-experience]:not([data-experience="baseline"])) .statValue { font-size: var(--text-body); }
 }
 .row:hover > .value, .row[data-hovered] > .value { color: var(--ink); }
 .row:focus-within > .act { box-shadow: var(--focus); }
