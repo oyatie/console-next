@@ -17,6 +17,7 @@ import { rrnStatusQuery } from "../api/record";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
 import { unitsQuery } from "../../../reference/org/api";
 import { authzApplies, authzQuery, granted } from "../../../reference/authz/api";
+import { cardSections } from "../domain/keys";
 import { verbStates } from "../domain/lifecycle";
 import type { Done } from "./person-act";
 import { CardBar, CardBody } from "./card-body";
@@ -123,13 +124,17 @@ function Card({ d }: { d: Detail }) {
   const keys = useRef<{ next?: () => void; prev?: () => void; jump: (n: number) => void; history: () => void }>({ jump: () => {}, history: () => {} });
   useEffect(() => {
     keys.current.jump = (n) => {
+      // A digit whose section this record does not show does nothing, whichever tab is open. A reader's record shows
+      // the employment section alone.
+      if (!(c.readable ? cardSections(c.records.data?.sections, documents) : [2]).includes(n)) return;
       if (tab !== "card") onTab("card");
       jumpTo(`s${n}`);
     };
     // H: the record's history (change history), where every dated fact and correction of its sections is listed.
     keys.current.history = () => onTab("ledger");
   });
-  useKeys({
+  // The print view replaces the card and is no dialog, so the card's keys are not bound while it is open.
+  useKeys(act === "print" ? {} : {
     "card.section": (_, n) => keys.current.jump(Number(n)),
     "card.next": () => keys.current.next?.(),
     "card.prev": () => keys.current.prev?.(),

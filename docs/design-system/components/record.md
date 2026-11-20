@@ -209,7 +209,9 @@ The shared `Button` with `variant="ghost"`: a `<button type="button">` holding a
 The links are direct children of the `<nav>`; there is no list element. A click calls `onJump` with the item's
 `id` and cancels the link's own navigation, so the address does not change.
 
-The key cap shows the link's position in `items`, counted from 1. It is not taken from the `id`.
+The key cap shows the item's `no`: the number of the section, which is the digit the screen binds to it. It is not
+taken from the `id` or from the link's position in `items`, so a link keeps its number when an item before it is
+left out.
 
 `current` is whatever the caller passes. `SecNav` does not watch the scroll position.
 
@@ -417,9 +419,16 @@ The lock line, `Tag`, `Kbd`, `Masked`, `Saving`, `FieldRow`, `RecordRows` and `S
 Controls a caller puts inside them keep their own keys.
 
 `Kbd` shows a key and binds nothing. The digit beside a `SecNav` link is not handled by `SecNav`: the screen binds
-it. The people card binds 1 to 8, J, K and H through `useKeys` (`lib/react/use-keys.ts`). That hook ignores a key
-the input method is composing, leaves a key typed in a field to the field, and matches letters and digits by the
-physical key, so a Korean input mode does not change which key matches.
+it, and passes the same digit as the item's `no`. The people card binds 1 to 8, J, K and H through `useKeys`
+(`lib/react/use-keys.ts`). That hook ignores a key the input method is composing, leaves a key typed in a field to
+the field, and matches letters and digits by the physical key, so a Korean input mode does not change which key
+matches. The card binds none of these keys while its print view is open: that view replaces the card and is not a
+dialog, so the hook's own wait for an open dialog does not cover it.
+
+The people card numbers its sections 1 to 8 and gives each the id `s` and its number. One function,
+`cardSections` (`features/people/domain/keys.ts`), lists the numbers of the sections shown; the links and the digit
+keys both read it. A section that is not shown has no link, the links after it keep their numbers, and its digit
+does nothing. On a record that shows the employment section alone, 2 is the one digit that acts.
 
 A button takes no text, so no input method composes on a `FieldMark` button or a `StripItem`. React Aria's press
 handling, in the installed version (`react-aria-components` 1.22.1), has no composition check of its own.
@@ -461,9 +470,6 @@ Known gaps:
   people card does with a `Tag`.
 - `Spine` renders an empty `<ol>` when it has no items.
 - `Saving` is called a spinner in the code and does not move. Its appearance and its end are not announced.
-- `SecNav` numbers its links by position. The people card gives its sections the ids `s1` to `s8`, drops the ones
-  that are hidden, and jumps to `s` and the digit pressed. With an earlier section hidden, a later link shows a
-  number one lower than the digit that opens it. This is read from the code, not run in a browser.
 - In a `two` body, the rule that removes the top line of the second row is not limited to the two-column layout.
   Below 1024 px, where the body is one column, there is no line between the first row and the second.
 - With `mobileLayout`, in the card layout, the `end` cell keeps `width: 1%` and its right alignment from the kit's
@@ -698,7 +704,7 @@ catalog defines every id.
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `current` | yes | `string` |  |  |
-| `items` | yes | `{ id: string; title: string; count?: number \| undefined; }[]` |  |  |
+| `items` | yes | `{ id: string; no: number; title: string; count?: number \| undefined; }[]` |  |  |
 | `onJump` | yes | `(id: string) => void` |  |  |
 
 <!-- /ds:props -->
