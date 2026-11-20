@@ -103,6 +103,11 @@ test("Ledger renders loading, empty, and error states outside <table>", () => {
   expect(errorOut).toContain("Failed to load");
   expect(errorOut).not.toContain("<table");
   expect(errorOut).not.toContain("Should hide");
+
+  const loadingAndErrorOut = html(<Ledger title="Pay" loading error="Gateway timeout" rows={[]} />);
+  expect(loadingAndErrorOut).toContain('role="alert"');
+  expect(loadingAndErrorOut).toContain("Gateway timeout");
+  expect(loadingAndErrorOut).not.toContain('aria-busy="true"');
 });
 
 test("Ledger contributes 0 standing-text blocks", () => {

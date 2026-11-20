@@ -48,9 +48,28 @@ test("Meter segmented mode splits 30 half-day cells into exact used, pending, an
 test("Meter segmented mode handles partial-used, partial-pending, clamping, and max <= 0", () => {
   const partial = html(<Meter value={1.25} pending={1.5} max={10} cells={10} label="Partial cells" />);
   expect(partial.match(/data-state="used"/g)).toHaveLength(1);
-  expect(partial).toContain('data-state="partial-used" data-pct="25"');
+  expect(partial).toContain('data-state="partial-used" data-pct="25" data-pend-pct="100"');
   expect(partial).toContain('data-state="partial-pending" data-pct="75"');
   expect(partial.match(/data-state="rest"/g)).toHaveLength(7);
+
+  const usedOnlyPartial = html(<Meter value={12.25} pending={0} max={15} cells={30} label="Used only partial" />);
+  expect(usedOnlyPartial).toContain('data-state="partial-used" data-pct="50"');
+  expect(usedOnlyPartial).not.toContain("data-pend-pct");
+
+  const galleryCase = html(<Meter value={12.25} pending={1.5} max={15} cells={30} warn label="Warn partial" />);
+  expect(galleryCase.match(/data-state="used"/g)).toHaveLength(24);
+  expect(galleryCase).toContain('data-state="partial-used" data-pct="50" data-pend-pct="100"');
+  expect(galleryCase.match(/data-state="pending"/g)).toHaveLength(2);
+  expect(galleryCase).toContain('data-state="partial-pending" data-pct="50"');
+  expect(galleryCase.match(/data-state="rest"/g)).toHaveLength(2);
+
+  const sameCellFullRest = html(<Meter value={4.5} pending={0.5} max={25} cells={30} label="HR 25-day" />);
+  expect(sameCellFullRest.match(/data-state="used"/g)).toHaveLength(5);
+  expect(sameCellFullRest).toContain('data-state="partial-used" data-pct="40" data-pend-pct="100"');
+  expect(sameCellFullRest.match(/data-state="rest"/g)).toHaveLength(24);
+
+  const sameCellAllThree = html(<Meter value={0.25} pending={0.5} max={1} cells={1} label="Single cell mixed" />);
+  expect(sameCellAllThree).toContain('data-state="partial-used" data-pct="25" data-pend-pct="75"');
 
   const clamped = html(<Meter value={8} pending={5} max={10} cells={10} label="Clamped" warn />);
   expect(clamped).toContain('data-warn="true"');

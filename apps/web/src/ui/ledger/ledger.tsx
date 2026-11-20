@@ -117,7 +117,7 @@ export function Ledger({
       data-ledger=""
       data-header-surface={headerSurface}
       data-detail-layout={detailLayout}
-      aria-busy={loading || undefined}
+      aria-busy={(loading && !error) || undefined}
       aria-labelledby={title != null ? headId : undefined}
       aria-label={title != null ? undefined : label}
     >

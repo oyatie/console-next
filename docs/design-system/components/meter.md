@@ -25,7 +25,7 @@ Use it for a read-only reading inside a known range, paired with visible words o
 |---|---|---|
 | Track | `<span role="meter">` | `aria-label` (`label`), `aria-valuemin="0"`, `aria-valuemax` (`max`), `aria-valuenow` (`value`), optional `aria-valuetext` (`valueText`), `data-warn="true"`, and `data-segmented="true"` when `cells > 0`. |
 | Fill (continuous) | `<span />` | Self-closing element with `--pct` width (`2%..100%` when `max > 0`, `0%` otherwise). |
-| Cells (segmented) | `<span />` × `cells` | Self-closing `aria-hidden="true"` cells with `data-state` (`used`, `partial-used`, `pending`, `partial-pending`, `rest`); partial cells receive `--pct` via `ref`. |
+| Cells (segmented) | `<span />` × `cells` | Self-closing `aria-hidden="true"` cells with `data-state` (`used`, `partial-used`, `pending`, `partial-pending`, `rest`); partial cells receive `--pct` (and `--pend-pct` when used and pending share a cell) via `ref`. |
 
 ## Looks and sizes
 
@@ -33,7 +33,7 @@ Use it for a read-only reading inside a known range, paired with visible words o
 - **Segmented mode** (`cells > 0`): full-width CSS grid (`grid-auto-flow: column`, `gap: var(--space-half)`, height `--space-4` `16px`).
   - `used`: `--ink` fill and border (or `--warn-solid` when `warn` is set).
   - `pending`: `2px solid var(--primary)` border with `--primary-soft` fill.
-  - `partial-used` / `partial-pending`: single-element `linear-gradient` driven by `--pct`.
+  - `partial-used` / `partial-pending`: single-element `linear-gradient` driven by `--pct` (and `--pend-pct` when pending begins inside a `partial-used` cell).
   - `rest`: `1px solid var(--control-border)` border with `--surface` background.
 
 ## States
@@ -99,7 +99,8 @@ Continuous mode stays `72px × 8px`. Segmented mode spans `100%` of its containe
 | `--ink` | `background`, `border-color` |
 | `--muted` | `background` |
 | `--pct` | `background`, `width` |
-| `--primary` | `background`, `border` |
+| `--pend-pct` | `background` |
+| `--primary` | `border` |
 | `--primary-soft` | `background` |
 | `--radius-sm` | `border-radius` |
 | `--space-2` | `height` |
@@ -111,4 +112,4 @@ Continuous mode stays `72px × 8px`. Segmented mode spans `100%` of its containe
 
 <!-- /ds:tokens -->
 
-`--pct` is registered locally in `meter.module.css` via `@property --pct` and set per element in `meter.tsx`.
+`--pct` and `--pend-pct` are registered locally in `meter.module.css` via `@property` and set per element in `meter.tsx`.

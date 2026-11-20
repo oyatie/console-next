@@ -46,11 +46,17 @@ export function Meter({ value, max, label, warn, cells, pending, valueText }: Me
         Array.from({ length: count }, (_, i) => {
           let state: CellState = "rest";
           let cellPct: number | undefined;
+          let pendPct: number | undefined;
           if (usedEnd >= i + 1 - EPS) {
             state = "used";
           } else if (usedEnd > i + EPS) {
             state = "partial-used";
             cellPct = Math.min(99, Math.max(1, Math.round((usedEnd - i) * 100)));
+            if (pendingEnd >= i + 1 - EPS) {
+              pendPct = 100;
+            } else if (pendingEnd > usedEnd + EPS) {
+              pendPct = Math.min(100, Math.max(cellPct + 1, Math.round((pendingEnd - i) * 100)));
+            }
           } else if (pendingEnd >= i + 1 - EPS) {
             state = "pending";
           } else if (pendingEnd > i + EPS) {
@@ -64,11 +70,14 @@ export function Meter({ value, max, label, warn, cells, pending, valueText }: Me
               className={s.cell}
               data-state={state}
               data-pct={cellPct}
+              data-pend-pct={pendPct}
               aria-hidden="true"
               ref={(el) => {
                 if (!el) return;
                 if (cellPct !== undefined) el.style.setProperty("--pct", `${cellPct}%`);
                 else el.style.removeProperty("--pct");
+                if (pendPct !== undefined) el.style.setProperty("--pend-pct", `${pendPct}%`);
+                else el.style.removeProperty("--pend-pct");
               }}
             />
           );

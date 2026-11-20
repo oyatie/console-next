@@ -47,7 +47,7 @@ Supports `loading` (two skeleton bars inside `role="status"`), `empty` (rendered
 
 | Part | Role | Accessible name | Also exposed |
 |---|---|---|---|
-| Section | `region` | Heading via `aria-labelledby`, or `label`. | `aria-busy="true"` while `loading`. |
+| Section | `region` | Heading via `aria-labelledby`, or `label`. | `aria-busy="true"` while `loading` (cleared when `error` is set). |
 | Table | `table` | Same heading or `label`. | `sr-only` `<th scope="col">` headers; `<th scope="row">` per line. |
 | Error / Loading | `alert` / `status` | Content text. | Rendered as siblings of `<table>`, never inside it. |
 

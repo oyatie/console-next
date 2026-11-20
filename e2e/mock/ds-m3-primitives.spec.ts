@@ -6,7 +6,7 @@ import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { expectAxe, fits } from "../a11y";
 import { mockNavigate } from "./navigation";
 
-const SHOTS_DIR = process.env.STRUCT_SHOTS ?? "/tmp/ds-m3-shots";
+const SHOTS_DIR = process.env.STRUCT_SHOTS;
 
 const ENTRIES = [
   { entry: "period-stepper", selector: "[data-period-stepper-gallery]" },
@@ -16,7 +16,7 @@ const ENTRIES = [
 
 for (const { entry, selector } of ENTRIES) {
   test(`${entry} gallery renders in Console mode across 1440/390 light/dark with zero axe or overflow issues`, async ({ page }) => {
-    mkdirSync(SHOTS_DIR, { recursive: true });
+    if (SHOTS_DIR) mkdirSync(SHOTS_DIR, { recursive: true });
     await page.addInitScript(
       ({ expKey }) => {
         localStorage.setItem(expKey, "console");
@@ -55,10 +55,12 @@ for (const { entry, selector } of ENTRIES) {
         await page.locator("html").evaluate((el, mode) => {
           el.dataset.theme = mode;
         }, theme);
-        await page.screenshot({
-          path: path.join(SHOTS_DIR, `${entry}--${width}-${theme}.png`),
-          fullPage: true,
-        });
+        if (SHOTS_DIR) {
+          await page.screenshot({
+            path: path.join(SHOTS_DIR, `${entry}--${width}-${theme}.png`),
+            fullPage: true,
+          });
+        }
       }
     }
 
