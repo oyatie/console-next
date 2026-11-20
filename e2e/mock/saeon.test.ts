@@ -187,7 +187,13 @@ test("worklist, approval OC-2026-0418, attendance month, and Console payroll tot
   expect(inbox.items).toHaveLength(11);
   expect(inbox.items.filter(item => item.due_basis === "statutory")).toHaveLength(3);
   expect(inbox.items.find(item => item.ref === "OC-2026-0418")?.context?.command).toBe("approve");
-  expect(inbox.items.find(item => item.id === "att-close-1")?.kind).toBe("period_unlock");
+  const leaveApproval = inbox.items.find(item => item.id === "leave-app-1");
+  expect(leaveApproval?.kind).toBe("approval");
+  expect(leaveApproval?.links[0]?.kind).toBe("approval_run");
+  expect(leaveApproval?.context?.command).toBeUndefined();
+  const attClose = inbox.items.find(item => item.id === "att-close-1");
+  expect(attClose?.kind).toBe("period_unlock");
+  expect(attClose?.context?.unlock).toBeUndefined();
   expect(inbox.items.find(item => item.id === "payroll-oct-1")?.kind).toBe("payroll");
   const orgChange = saeonApprovalOrgChange();
   expect(orgChange.code).toBe("OC-2026-0418");

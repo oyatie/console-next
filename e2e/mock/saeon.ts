@@ -403,33 +403,37 @@ export function saeonWorklistInbox(): S["ActionInboxResponse"] & {
     const isSecondaryApproval = row.kind === "approval" && !isPrimaryApproval;
     const isAttendanceClose = row.id === "att-close-1";
     const kind =
-      row.kind === "approval"
+      isPrimaryApproval
         ? "org_change_approve"
-        : isAttendanceClose
-          ? "period_unlock"
-          : row.statutory && row.id.startsWith("ins-")
-            ? "insurance_filing"
-            : row.statutory && row.id.startsWith("exit-")
-              ? "hr_exit_settle"
-              : row.id.startsWith("exit-")
-                ? "hr_exit_confirm"
-                : row.id.startsWith("probation-")
-                  ? "contract_renewal"
-                  : row.id.startsWith("missing-")
-                    ? "register_review"
-                    : "hr_request";
+        : isSecondaryApproval
+          ? "approval"
+          : isAttendanceClose
+            ? "period_unlock"
+            : row.statutory && row.id.startsWith("ins-")
+              ? "insurance_filing"
+              : row.statutory && row.id.startsWith("exit-")
+                ? "hr_exit_settle"
+                : row.id.startsWith("exit-")
+                  ? "hr_exit_confirm"
+                  : row.id.startsWith("probation-")
+                    ? "contract_renewal"
+                    : row.id.startsWith("missing-")
+                      ? "register_review"
+                      : "hr_request";
     const linkKind =
-      row.kind === "approval"
+      isPrimaryApproval
         ? "org_change"
-        : isAttendanceClose
-          ? "period_lock"
-          : kind === "insurance_filing"
-            ? "statutory"
-            : kind.startsWith("hr_exit")
-              ? "exit_case"
-              : kind === "contract_renewal" || kind === "register_review"
-                ? "employee"
-                : "change_request";
+        : isSecondaryApproval
+          ? "approval_run"
+          : isAttendanceClose
+            ? "period_lock"
+            : kind === "insurance_filing"
+              ? "statutory"
+              : kind.startsWith("hr_exit")
+                ? "exit_case"
+                : kind === "contract_renewal" || kind === "register_review"
+                  ? "employee"
+                  : "change_request";
     const linkId = isPrimaryApproval
       ? SAEON_ORG_CHANGE_ID
       : `00000000-0000-4000-8600-${padDigits(index + 1, 12)}`;
@@ -449,18 +453,17 @@ export function saeonWorklistInbox(): S["ActionInboxResponse"] & {
       done: false,
       lane: "turn",
       days_remaining: daysRemaining,
-      can_decide: row.kind === "approval" ? true : undefined,
+      can_decide: isPrimaryApproval ? true : undefined,
       snooze: row.kind === "approval" ? { allowed: false, reason: "blocks_others" } : { allowed: true },
       context: {
-        ...(row.kind === "approval"
+        ...(isPrimaryApproval
           ? {
               command: "approve" as const,
-              drafter: isPrimaryApproval ? approval.steps[0]?.actor : undefined,
+              drafter: approval.steps[0]?.actor,
               reason: row.reason,
             }
           : { reason: row.reason }),
         ...(isAttendanceClose ? { worksite_name: saeonUniverse.entities[0]!.workplaces[1]!.name } : {}),
-        ...(isSecondaryApproval ? { is_ops: false } : {}),
         ...(kind === "register_review" ? { register: { missing_fields: ["address"] } } : {}),
         ...(orgUnits[0] && isPrimaryApproval ? { worksite_name: undefined } : {}),
       },

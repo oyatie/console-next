@@ -159,6 +159,7 @@ export const enHome = {
   "home.worklist.selectedMeta": "Selected item",
   "home.worklist.scheduleMeta": "{count, number} items · {range}",
   "home.worklist.opsTitle": "Monthly operations",
+  "home.worklist.attendanceClose": "Attendance close",
   "home.worklist.opsCol.scope": "Scope",
   "home.worklist.opsCol.state": "Status",
   "home.worklist.opsCol.check": "Check",

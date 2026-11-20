@@ -18,6 +18,7 @@ import { ConsoleWorklistTable } from "./worklist-table";
 const edgeState = vi.hoisted(() => ({
   mePhase: "OPERATING" as "OPERATING" | "SETUP",
   meFetched: true,
+  meError: false,
   facetsError: false,
   access: { is_ops: false, entries: [] as unknown[] },
   inboxPages: [] as AttentionInboxResponse[],
@@ -34,7 +35,12 @@ function buildQueryReply(path: string, enabled?: boolean) {
   }
   const byPath: Record<string, unknown> = {
     "/api/v1/users/me": {
-      data: { display_name: "EdgeTester", tenant: { name: "EdgeCorp", phase: edgeState.mePhase, go_live_at: null } },
+      data: edgeState.meError
+        ? undefined
+        : { display_name: "EdgeTester", tenant: { name: "EdgeCorp", phase: edgeState.mePhase, go_live_at: null } },
+      isError: edgeState.meError,
+      error: edgeState.meError ? new Error("me failed") : null,
+      isSuccess: !edgeState.meError,
       isFetchedAfterMount: edgeState.meFetched,
       dataUpdatedAt: 1,
     },
@@ -61,19 +67,23 @@ vi.mock("@tanstack/react-query", async original => ({
   ...(await original<typeof import("@tanstack/react-query")>()),
   useQuery: (options: Parameters<typeof readIdentity>[0] & { enabled?: boolean }) =>
     buildQueryReply(String(JSON.parse(readIdentity(options))[0]), options.enabled),
-  useInfiniteQuery: () => ({
-    data: { pages: edgeState.inboxPages },
-    isPending: false,
-    isFetching: false,
-    isError: false,
-    isSuccess: true,
-    isPlaceholderData: false,
-    dataUpdatedAt: 1,
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-    refetch: vi.fn(),
-  }),
+  useInfiniteQuery: (options: Parameters<typeof readIdentity>[0]) => {
+    const parsed = JSON.parse(readIdentity(options)) as [string, { query?: { filter?: string } }?];
+    const isQueue = parsed[0] === "/api/v1/me/action-inbox" && parsed[1]?.query?.filter !== "notices";
+    return {
+      data: { pages: isQueue ? edgeState.inboxPages : [{ items: [], next_cursor: null }] },
+      isPending: false,
+      isFetching: false,
+      isError: false,
+      isSuccess: true,
+      isPlaceholderData: false,
+      dataUpdatedAt: 1,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      refetch: vi.fn(),
+    };
+  },
 }));
 
 const makeItem = (extra: Partial<AttentionInboxItem> = {}): AttentionInboxItem => ({
@@ -127,6 +137,7 @@ beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   edgeState.mePhase = "OPERATING";
   edgeState.meFetched = true;
+  edgeState.meError = false;
   edgeState.facetsError = false;
   edgeState.access = { is_ops: false, entries: [] };
   edgeState.inboxPages = [makePage([makeItem()])];
@@ -196,4 +207,23 @@ test("ConsoleWorklistTable collapsed folds use fold: rowId and consistent select
   );
   expect(tableHtml).toContain('data-id="fold:fold-1"');
   expect(tableHtml).not.toMatch(new RegExp(`aria-label="${t("home.worklist.selectAll")}"[^>]*checked=""`));
+});
+
+test("Console /inbox non-queue tabs gate InboxTabs and asOf during meRead pending, error, and SETUP", () => {
+  edgeState.mePhase = "SETUP";
+  edgeState.meFetched = false;
+  const pendingDoneHtml = renderEdge("/inbox?tab=done", <InboxPage canOrgStructure={false} />);
+  expect(pendingDoneHtml).not.toContain(t("home.inbox.tab.waiting"));
+  expect(pendingDoneHtml).not.toContain("<time");
+
+  edgeState.meFetched = true;
+  const settledSetupHtml = renderEdge("/inbox?tab=reference", <InboxPage canOrgStructure={false} />);
+  expect(settledSetupHtml).not.toContain(t("home.inbox.tab.waiting"));
+  expect(settledSetupHtml).not.toContain("<time");
+
+  edgeState.mePhase = "OPERATING";
+  edgeState.meError = true;
+  const errorSnoozedHtml = renderEdge("/inbox?tab=snoozed", <InboxPage canOrgStructure={false} />);
+  expect(errorSnoozedHtml).not.toContain(t("home.inbox.tab.waiting"));
+  expect(errorSnoozedHtml).not.toContain("<time");
 });

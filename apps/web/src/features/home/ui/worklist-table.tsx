@@ -9,7 +9,21 @@ import { WorklistMoreBar, WorklistReason } from "../../../ui/patterns/worklist-p
 import { Table, type Column } from "../../../ui/table";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
 import { isStatutoryDeadline, shortMonthDay, type OptionalWorklistColumn } from "../domain/inline-decide";
-import { KIND_TEXT, reasonLines, recordAction, type RowAction } from "./grouped-queue";
+import { reasonLines, recordAction, taskTitleKey, type RowAction } from "./grouped-queue";
+
+function consoleReasonText(item: AttentionInboxItem, taskLabel: string): string {
+  const direct = item.context?.reason?.trim();
+  if (
+    direct &&
+    !item.kind.startsWith("org_change") &&
+    !item.context?.unlock?.exceptionId &&
+    direct !== item.title &&
+    direct !== taskLabel
+  ) {
+    return direct;
+  }
+  return reasonLines(item).join(" · ");
+}
 import s from "./worklist-console.module.css";
 import { CompactSubject } from "./worklist-subject";
 
@@ -119,11 +133,7 @@ export function ConsoleWorklistTable({
       card: "omit",
       cell: item => {
         const group = isCollapsedFold(item) ? foldedMap.get(item.id)! : [item];
-        const taskLabel = t(
-          item.context?.unlock?.exceptionId
-            ? "periodLocks.review.title"
-            : KIND_TEXT[item.kind] ?? "home.inbox.unknown",
-        );
+        const taskLabel = t(taskTitleKey(item));
         const rowLabel =
           group.length > 1
             ? t("home.inbox.foldCount", { kind: taskLabel, count: group.length })
@@ -167,11 +177,7 @@ export function ConsoleWorklistTable({
       cell: item => {
         const group = foldedMap.get(item.id);
         const isLeadFold = group?.[0]?.id === item.id && !expanded.has(item.id);
-        const taskTitle = t(
-          item.context?.unlock?.exceptionId
-            ? "periodLocks.review.title"
-            : KIND_TEXT[item.kind] ?? "home.inbox.unknown",
-        );
+        const taskTitle = t(taskTitleKey(item));
         if (group && group[0]?.id === item.id) {
           const isOpen = expanded.has(item.id);
           return (
@@ -212,9 +218,8 @@ export function ConsoleWorklistTable({
       header: t("home.inbox.record.reason"),
       wide: true,
       cell: item => {
-        const lines = reasonLines(item);
-        const text = lines.join(" · ");
-        return lines.length > 0 ? <WorklistReason title={text}>{text}</WorklistReason> : null;
+        const text = consoleReasonText(item, t(taskTitleKey(item)));
+        return text ? <WorklistReason title={text}>{text}</WorklistReason> : null;
       },
     });
   }

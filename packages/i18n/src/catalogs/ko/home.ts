@@ -162,6 +162,7 @@ export const koHome: Record<keyof typeof enHome, string> = {
   "home.worklist.selectedMeta": "선택한 항목",
   "home.worklist.scheduleMeta": "목록 {count, number}건 · {range}",
   "home.worklist.opsTitle": "이번 달 운영",
+  "home.worklist.attendanceClose": "근태 마감",
   "home.worklist.opsCol.scope": "범위",
   "home.worklist.opsCol.state": "상태",
   "home.worklist.opsCol.check": "확인할 것",

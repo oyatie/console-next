@@ -30,7 +30,7 @@ export const KIND_TEXT: Record<string, MessageId> = {
   privacy_request: "home.inbox.privacyRequest",
   registration_check: "nts.title",
   identifier_correction_waiting: "entityRecord.corrections.title", identifier_correction_decide: "entityRecord.corrections.title", identifier_correction_apply: "entityRecord.corrections.title", identifier_correction_review: "entityRecord.corrections.title",
-  support_access: "home.part.support", approval: "home.part.decide", org_change: "home.part.changes", org_change_waiting: "home.part.changes", org_change_scheduled: "home.part.changes", org_change_approve: "home.part.decide",
+  support_access: "home.part.support", approval: "home.attention.approvals", org_change: "home.part.changes", org_change_waiting: "home.part.changes", org_change_scheduled: "home.part.changes", org_change_approve: "home.part.decide",
   org_change_apply: "home.part.changes", org_change_draft: "home.part.changes", org_change_rejected: "home.part.changes", org_change_settle: "home.part.changes",
   hr_exit: "home.part.exits", hr_exit_confirm: "home.part.exits", hr_exit_confirm_hq: "home.part.exits", hr_exit_settle: "home.part.exits",
   hr_lifecycle: "home.part.failedActions", lifecycle_apply_failed: "home.part.failedActions", hr_request: "home.part.requests",
@@ -64,6 +64,14 @@ const RECORD_SOURCE: Record<string, MessageId> = {
   identifier_correction: "entityRecord.corrections.title", registration_check: "nts.title",
 };
 
+// oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
+export function taskTitleKey(item: InboxItem): MessageId {
+  const kind = item.kind === "home_branch_review" ? "unplaced" : item.kind;
+  if (item.context?.unlock?.exceptionId) return "periodLocks.review.title";
+  if (kind === "period_unlock" && !item.context?.unlock) return "home.worklist.attendanceClose";
+  return KIND_TEXT[kind] ?? "home.inbox.unknown";
+}
+
 /** One deadline presentation for Home and the inbox route; membership and cursor order stay server-owned. */
 // shortcut: server-paged rows; use LongTable when adding cross-page selection.
 export function GroupedQueue({ items, action, extra, selected, onSelect, onOpen }: { items: InboxItem[]; action?: RowAction; extra?: RowAction; selected?: string; onSelect?: (id: string) => void; onOpen?: () => void }) {
@@ -94,7 +102,7 @@ export function GroupedQueue({ items, action, extra, selected, onSelect, onOpen 
   const allColumns: QueueColumn[] = [
     { id: "task", header: t("home.inbox.column.task"), cell: item => {
       return <div role="presentation" onClick={e => { if (e.target instanceof Element && e.target.closest("a, button")) e.stopPropagation(); }} id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
-      {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={e => { e.stopPropagation(); toggle(item.id); }}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(item.context?.unlock?.exceptionId ? "periodLocks.review.title" : KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</strong>}
+      {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={e => { e.stopPropagation(); toggle(item.id); }}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(taskTitleKey(item))}</strong>}
       {reasonLines(item).map(line => <div className="muted" key={line}>{line}</div>)}
       {(() => {
         const labels = [...new Set((item.context?.register?.missing_fields ?? []).flatMap(key => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!.label] : []))];
@@ -202,8 +210,15 @@ export function recordAction(item: InboxItem, action?: RowAction, textId?: Messa
 
 // oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
 export function reasonLines(item: InboxItem) {
-  const reason = item.context?.unlock?.exceptionId ? "" : item.kind === "account_security" ? t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")
-    : REVIEW_FILTER[item.kind] || item.kind === "contract_renewal" && !item.due ? "" : codeText(`home.inbox.reason.${item.kind}`, "");
+  const isAttendanceClose = item.kind === "period_unlock" && !item.context?.unlock;
+  const reason =
+    item.context?.unlock?.exceptionId || (isAttendanceClose && item.context?.reason)
+      ? ""
+      : item.kind === "account_security"
+        ? t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")
+        : REVIEW_FILTER[item.kind] || (item.kind === "contract_renewal" && !item.due)
+          ? ""
+          : codeText(`home.inbox.reason.${item.kind}`, "");
   return [...new Set([reason, item.kind.startsWith("org_change") ? undefined : item.context?.reason])]
-    .filter((line): line is string => !!line && line !== item.title && line !== t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"));
+    .filter((line): line is string => !!line && line !== item.title && line !== t(taskTitleKey(item)));
 }

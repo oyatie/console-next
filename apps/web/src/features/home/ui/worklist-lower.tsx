@@ -161,7 +161,13 @@ export function WorklistLower({
                   header: t("home.worklist.col.task"),
                   cell: row => (
                     <strong>
-                      {t(row.context?.unlock?.exceptionId ? "periodLocks.review.title" : KIND_TEXT[row.kind] ?? "home.inbox.unknown")}
+                      {t(
+                        row.context?.unlock?.exceptionId
+                          ? "periodLocks.review.title"
+                          : row.kind === "period_unlock" && !row.context?.unlock
+                            ? "home.worklist.attendanceClose"
+                            : KIND_TEXT[row.kind] ?? "home.inbox.unknown",
+                      )}
                     </strong>
                   ),
                 },

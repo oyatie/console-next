@@ -178,7 +178,7 @@
 .clampReason {
   display: block;
   min-width: 0;
-  max-width: calc(var(--space-6) * 5.25);
+  max-width: calc(var(--space-6) * 6.5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

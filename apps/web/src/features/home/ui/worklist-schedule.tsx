@@ -3,7 +3,7 @@ import { i18n, t, type MessageId } from "@console/i18n";
 import { DeadlineStrip } from "../../../ui/deadline-strip/deadline-strip";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
 import { buildScheduleWindow, isStatutoryDeadline, kstDayIso, shortMonthDay } from "../domain/inline-decide";
-import { KIND_TEXT } from "./grouped-queue";
+import { taskTitleKey } from "./grouped-queue";
 
 function formatStripMonth(monthNumber: number): string {
   const locale = i18n.locale === "ko" ? "ko-KR" : "en-US";
@@ -75,7 +75,6 @@ export function WorklistSchedule({
   const firstDate = window.days[0]?.date ?? null;
   const lastDate = window.days[window.days.length - 1]?.date ?? null;
   const entries = items.map(item => {
-    const normalizedKind = item.kind === "home_branch_review" ? "unplaced" : item.kind;
     const day = kstDayIso(item.due);
     const tone =
       day === null
@@ -86,11 +85,7 @@ export function WorklistSchedule({
             ? ("today" as const)
             : ("upcoming" as const);
     const shortLabel = t(stripLabelKey(item));
-    const taskFull = t(
-      item.context?.unlock?.exceptionId
-        ? "periodLocks.review.title"
-        : KIND_TEXT[normalizedKind] ?? "home.inbox.unknown",
-    );
+    const taskFull = t(taskTitleKey(item));
     const placedDate =
       day === null
         ? null

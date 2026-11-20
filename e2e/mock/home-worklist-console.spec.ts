@@ -104,7 +104,7 @@ async function setupConsoleSaeonWorklist(page: Page, theme: "light" | "dark" = "
     }
     const items =
       attention === "approvals"
-        ? inboxData.items.filter(item => item.kind === "org_change_approve")
+        ? inboxData.items.filter(item => item.kind === "org_change_approve" || item.kind === "approval")
         : attention === "today"
           ? inboxData.items.filter(item => item.days_remaining === 0)
           : attention === "overdue"
@@ -192,11 +192,12 @@ test("Console Home filters, 0-match reset, Enter focus, and attention decoupling
     await expect(queueTable.locator("tbody tr[data-id]")).toHaveCount(10);
 
     // Switching attention filter keeps Monthly operations and DeadlineStrip decoupled from the filter.
-    await worklist.getByRole("button", { name: new RegExp(`^${t("home.attention.approvals")}`) }).click();
+    const attentionGroup = worklist.getByRole("group", { name: t("home.attention.label"), exact: true });
+    await attentionGroup.getByRole("button", { name: new RegExp(`^${t("home.attention.approvals")}`) }).click();
     await expect(queueTable.locator("tbody tr[data-id]")).toHaveCount(2);
     await expect(worklist.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true }).locator("tbody tr")).toHaveCount(2);
     await expect(page.locator("[data-deadline-strip]")).toBeVisible();
-    await worklist.getByRole("button", { name: new RegExp(`^${t("home.attention.all")}`) }).click();
+    await attentionGroup.getByRole("button", { name: new RegExp(`^${t("home.attention.all")}`) }).click();
 
     await worklist.getByRole("button", { name: t("home.worklist.columns"), exact: true }).click();
     const colDialog = page.getByRole("dialog", { name: t("home.worklist.columns"), exact: true });

@@ -18,7 +18,7 @@ import { WorklistSearchField, WorklistSegmentBar } from "../../../ui/patterns/wo
 import { SortControl } from "../../../ui/sort-control/sort-control";
 import { isAttentionFilter, SNOOZED, type AttentionInboxItem, type AttentionInboxResponse, type InboxView } from "../domain/inbox-filter";
 import { ALL_OPTIONAL_WORKLIST_COLUMNS, isStatutoryDeadline, sortWorklistItems, worklistItemHref, type OptionalWorklistColumn, type WorklistSortField } from "../domain/inline-decide";
-import { KIND_TEXT, reasonLines, type RowAction } from "./grouped-queue";
+import { reasonLines, taskTitleKey, type RowAction } from "./grouped-queue";
 import { DoneList, ReferenceList } from "./inbox-finished";
 import { UnavailableBanners } from "./inbox-queue";
 import { InboxRecord } from "./inbox-record";
@@ -133,9 +133,11 @@ export function WorklistConsole({
         baseline={baseline}
         head={{
           title, titleId,
-          asOf: !inSetup && !inbox.error && first?.as_of ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time> : undefined,
+          asOf: !mePending && !meError && !inSetup && !inbox.error && first?.as_of
+            ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time>
+            : undefined,
         }}
-        tabs={<InboxTabs view={view} />}
+        tabs={!mePending && !meError && !inSetup ? <InboxTabs view={view} /> : undefined}
         list={() => (view === "reference" ? <ReferenceList /> : view === "done" ? <DoneList /> : <SnoozedList />)}
       />
     );
@@ -146,8 +148,7 @@ export function WorklistConsole({
   const filteredItems = allItems.filter(item => {
     if (statutoryOnly && !isStatutoryDeadline(item)) return false;
     if (!normalizedQuery) return true;
-    const normalizedKind = item.kind === "home_branch_review" ? "unplaced" : item.kind;
-    const taskTitle = t(item.context?.unlock?.exceptionId ? "periodLocks.review.title" : KIND_TEXT[normalizedKind] ?? "home.inbox.unknown");
+    const taskTitle = t(taskTitleKey(item));
     return [taskTitle, item.title, item.ref, item.site, item.who, ...reasonLines(item)].filter(Boolean).join(" ").toLowerCase().includes(normalizedQuery);
   });
   const sortedItems = sortWorklistItems(filteredItems, sort.field, sort.direction);
