@@ -34,6 +34,11 @@ export default function WorklistExample({ q = READY }: { q?: ReadState }) {
   const [opinion, setOpinion] = useState("");
   const [sheet, setSheet] = useState(false);
 
+  const selectRecord = (next: string) => {
+    if (next !== selected) setOpinion("");
+    setSelected(next);
+  };
+
   const visible = ITEMS.filter(item => {
     if (view === "overdue" && item.days >= 0) return false;
     if (legalOnly && !item.statutory) return false;
@@ -89,7 +94,7 @@ export default function WorklistExample({ q = READY }: { q?: ReadState }) {
           rows={[...visible]}
           rowId={row => row.id}
           selected={selected}
-          onSelect={setSelected}
+          onSelect={selectRecord}
           columns={[
             { header: t("home.inbox.column.due"), fit: true, cell: row => <DueCell days={row.days} /> },
             { header: t("home.inbox.column.task"), cell: row => tg("sample.person", { n: row.n }) },
@@ -114,7 +119,7 @@ export default function WorklistExample({ q = READY }: { q?: ReadState }) {
             tone: item.days < 0 ? "over" : item.days === 0 ? "today" : "upcoming",
           }))}
           selectedId={selected}
-          onSelect={setSelected}
+          onSelect={selectRecord}
         />
       }
       record={
@@ -125,14 +130,15 @@ export default function WorklistExample({ q = READY }: { q?: ReadState }) {
               title: tg("sample.person", { n: activeItem.n }),
               meta: activeItem.id,
               openInTab: { href: "/inbox", label: activeItem.id },
-              onClose: () => setSelected(""),
+              onClose: () => selectRecord(""),
               footer: (
                 <DecisionPane
                   key={activeItem.id}
+                  resetKey={activeItem.id}
                   opinion={opinion}
                   onOpinionChange={setOpinion}
-                  onApprove={() => setSelected("")}
-                  onReject={() => setSelected("")}
+                  onApprove={() => selectRecord("")}
+                  onReject={() => selectRecord("")}
                 />
               ),
               children: (
@@ -153,7 +159,7 @@ export default function WorklistExample({ q = READY }: { q?: ReadState }) {
             }
           : null
       }
-      onSelect={setSelected}
+      onSelect={selectRecord}
       overlays={
         <Sheet
           open={sheet}
