@@ -16,6 +16,8 @@ const OPENAPI_YAML: &str = include_str!("../../openapi/openapi.yaml");
 const REQUIRED_CONFIGURED_SURFACES: &[&str] = &[
     "audit",
     "attendance",
+    "leave",
+    "inbox",
     "inventory",
     "dispatch",
     "benefit",
@@ -110,14 +112,6 @@ const EXTRA_REST_SOURCES: &[(&str, &str)] = &[
     (
         "production REST",
         include_str!("../../crates/production/rest/src/lib.rs"),
-    ),
-    (
-        "inbox REST",
-        include_str!("../../crates/inbox/rest/src/lib.rs"),
-    ),
-    (
-        "leave REST",
-        include_str!("../../crates/leave/rest/src/lib.rs"),
     ),
     (
         "consulting REST",

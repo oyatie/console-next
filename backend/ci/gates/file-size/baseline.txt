@@ -39,7 +39,7 @@ app/tests/object_links_api.rs	593
 app/tests/object_ontology_api.rs	537
 app/tests/object_resolve_api.rs	908
 app/tests/office_versions.rs	313
-app/tests/openapi_drift.rs	1106
+app/tests/openapi_drift.rs	1100
 app/tests/org_change_api.rs	1669
 app/tests/org_units_api.rs	603
 app/tests/platform_onboarding_e2e.rs	544
@@ -190,15 +190,14 @@ crates/ontology/rest/tests/object_type_lifecycle_over_http.rs	652
 crates/ontology/rest/tests/ont_gaps_as_runtime_role.rs	417
 crates/ontology/rest/tests/projected_dispatch_as_runtime_role.rs	563
 crates/orgchange/adapter-postgres/tests/preflight_persists_nothing.rs	408
-crates/payroll/adapter-postgres/src/lib.rs	441
-crates/payroll/adapter-postgres/src/lifecycle.rs	1144
+crates/payroll/adapter-postgres/src/lifecycle.rs	1010
 crates/payroll/adapter-postgres/src/pay_run.rs	525
 crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs	1190
 crates/payroll/adapter-postgres/tests/payroll_lifecycle_rls_as_runtime_role.rs	417
 crates/payroll/adapter-postgres/tests/payroll_rls_surfaces_as_runtime_role.rs	373
 crates/payroll/domain/src/lib.rs	1191
 crates/payroll/rest/src/lib.rs	336
-crates/payroll/rest/src/lifecycle.rs	609
+crates/payroll/rest/src/lifecycle.rs	600
 crates/payroll/rest/src/payslip_draft.rs	370
 crates/payroll/rest/tests/api.rs	759
 crates/payroll/rest/tests/payslip_draft_api.rs	1303

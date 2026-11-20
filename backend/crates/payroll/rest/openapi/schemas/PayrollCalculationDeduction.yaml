@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- code
+- label_ko
+- amount_won
+- source_url
+properties:
+  code:
+    type: string
+    x-extensible-enum:
+    - NATIONAL_PENSION
+    - HEALTH_INSURANCE
+    - LONG_TERM_CARE
+    - EMPLOYMENT_INSURANCE
+    - INCOME_TAX
+    - LOCAL_INCOME_TAX
+  label_ko:
+    type: string
+  amount_won:
+    type: integer
+    format: int64
+  source_url:
+    type: string
