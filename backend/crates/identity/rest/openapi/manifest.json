@@ -28,6 +28,16 @@
       "delete",
       "put"
     ],
+    "/api/platform/operators": [
+      "get",
+      "post"
+    ],
+    "/api/platform/operators/{id}/reissue": [
+      "post"
+    ],
+    "/api/platform/operators/{id}/revoke": [
+      "post"
+    ],
     "/api/platform/ops": [
       "get"
     ],
@@ -508,6 +518,7 @@
     "EmployeeView",
     "EnrollHandoffRequest",
     "EnrollHandoffResponse",
+    "InvitePlatformOperatorRequest",
     "LogoutRequest",
     "MeAuthzCapability",
     "MeAuthzResponse",
@@ -537,6 +548,9 @@
     "PlatformGroupAccount",
     "PlatformGroupMember",
     "PlatformGroupRole",
+    "PlatformOperatorInviteResponse",
+    "PlatformOperatorStatus",
+    "PlatformOperatorSummary",
     "PlatformOpsResponse",
     "PlatformOrg",
     "PlatformOrgAdminOtpReissueRequest",
@@ -575,7 +589,9 @@
     "PrivacyConsentStatusResponse",
     "RefreshTokenRequest",
     "RegionSummary",
+    "ReissuePlatformOperatorInviteRequest",
     "ReplacePolicyRoleAssignmentsRequest",
+    "RevokePlatformOperatorRequest",
     "RouteAdoptionMetric",
     "SelfBindingError",
     "SelfBindingPrepareRequest",

@@ -366,6 +366,7 @@ console-platform-storage = { path = "crates/platform/storage" }
 console-platform-jobs = { path = "crates/platform/jobs" }
 console-platform-push = { path = "crates/platform/push" }
 console-platform-email = { path = "crates/platform/email" }
+console-platform-crypto = { path = "crates/platform/crypto" }
 console-platform-test-support = { path = "crates/platform/test-support" }
 
 # Version taken from the already-resolved backend/Cargo.lock (syn 2.0.117), not

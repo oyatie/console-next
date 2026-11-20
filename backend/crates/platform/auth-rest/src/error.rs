@@ -215,6 +215,7 @@ impl RestError {
             }
             ProvisioningError::TenantErase(_)
             | ProvisioningError::OpsRecovery(_)
+            | ProvisioningError::PlatformOperator(_)
             | ProvisioningError::OpsRecoveryHoldActive(_)
             | ProvisioningError::Sqlx(_)
             | ProvisioningError::Db(_)

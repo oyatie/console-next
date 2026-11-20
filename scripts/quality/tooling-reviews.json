@@ -13,7 +13,8 @@
     "architectureRecord": "docs/architecture/credential-encryption.md",
     "approvedUsers": [
       "console-app",
-      "console-comms-credential-cipher"
+      "console-comms-credential-cipher",
+      "console-platform-crypto"
     ],
     "approvedUses": [
       {
@@ -23,6 +24,10 @@
       {
         "user": "console-comms-credential-cipher",
         "layer": "frameworks & drivers/platform"
+      },
+      {
+        "layer": "frameworks & drivers/platform",
+        "user": "console-platform-crypto"
       }
     ],
     "allowedLayers": [
@@ -70,14 +75,26 @@
       "source": "docs/quality/dependencies/stryker-minimatch.md"
     },
     "architectureRecord": "docs/architecture/frontend-module-map.md",
-    "approvedUsers": ["console-react"],
-    "approvedUses": [{ "user": "console-react", "layer": "build/tooling" }],
-    "allowedLayers": ["build/tooling"],
+    "approvedUsers": [
+      "console-react"
+    ],
+    "approvedUses": [
+      {
+        "user": "console-react",
+        "layer": "build/tooling"
+      }
+    ],
+    "allowedLayers": [
+      "build/tooling"
+    ],
     "layer": "build/tooling",
     "alternatives": "Wait for Stryker to update its matcher; maintain a local matcher fork",
     "reason": "Scoped remediation of GHSA-g3hv-75wg-m249 in the existing mutation-testing toolchain.",
     "license": "BlueOak-1.0.0",
-    "evidence": ["docs/quality/dependencies/stryker-minimatch.md", "https://github.com/advisories/GHSA-g3hv-75wg-m249"],
+    "evidence": [
+      "docs/quality/dependencies/stryker-minimatch.md",
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249"
+    ],
     "exitPlan": "Remove the override once Stryker depends on minimatch >=11.0.1 and lockfile and mutation checks pass without it.",
     "securityProcess": "Upstream advisory and patched registry artifact verified",
     "ruleMapping": "Preserve Stryker glob discovery and mutation-test execution."
@@ -823,6 +840,10 @@
         "user": "console-platform-auth"
       },
       {
+        "layer": "frameworks & drivers/platform",
+        "user": "console-platform-crypto"
+      },
+      {
         "layer": "interface adapters",
         "user": "console-comms-rest"
       },
@@ -856,6 +877,7 @@
       "console-hr-adapter-postgres",
       "console-notifications-adapter-postgres",
       "console-platform-auth",
+      "console-platform-crypto",
       "console-production-rest"
     ],
     "architectureRecord": "docs/architecture/backend-module-map.md",
@@ -2340,6 +2362,10 @@
       },
       {
         "layer": "frameworks & drivers/platform",
+        "user": "console-platform-crypto"
+      },
+      {
+        "layer": "frameworks & drivers/platform",
         "user": "console-platform-db"
       },
       {
@@ -2830,6 +2856,7 @@
       "console-platform-auth-rest",
       "console-platform-authz",
       "console-platform-authz-rest",
+      "console-platform-crypto",
       "console-platform-db",
       "console-platform-group",
       "console-platform-jobs",
@@ -2988,6 +3015,10 @@
       {
         "layer": "frameworks & drivers/platform",
         "user": "console-platform-authz-rest"
+      },
+      {
+        "layer": "frameworks & drivers/platform",
+        "user": "console-platform-crypto"
       },
       {
         "layer": "frameworks & drivers/platform",
@@ -3456,6 +3487,7 @@
       "console-platform-auth-rest",
       "console-platform-authz",
       "console-platform-authz-rest",
+      "console-platform-crypto",
       "console-platform-db",
       "console-platform-egress-fence",
       "console-platform-jobs",
@@ -4330,6 +4362,10 @@
       },
       {
         "layer": "test",
+        "user": "console-platform-crypto"
+      },
+      {
+        "layer": "test",
         "user": "console-platform-db"
       },
       {
@@ -4477,6 +4513,7 @@
       "console-platform-auth",
       "console-platform-auth-rest",
       "console-platform-authz-rest",
+      "console-platform-crypto",
       "console-platform-db",
       "console-platform-egress-fence",
       "console-platform-email",
@@ -5484,6 +5521,10 @@
       },
       {
         "layer": "frameworks & drivers/platform",
+        "user": "console-platform-crypto"
+      },
+      {
+        "layer": "frameworks & drivers/platform",
         "user": "console-platform-db"
       },
       {
@@ -6052,6 +6093,7 @@
       "console-platform-auth-rest",
       "console-platform-authz",
       "console-platform-authz-rest",
+      "console-platform-crypto",
       "console-platform-db",
       "console-platform-erasure-ledger",
       "console-platform-group",
@@ -6311,10 +6353,15 @@
       {
         "layer": "frameworks & drivers/platform",
         "user": "console-comms-credential-cipher"
+      },
+      {
+        "layer": "frameworks & drivers/platform",
+        "user": "console-platform-crypto"
       }
     ],
     "approvedUsers": [
-      "console-comms-credential-cipher"
+      "console-comms-credential-cipher",
+      "console-platform-crypto"
     ],
     "architectureRecord": "docs/architecture/backend-module-map.md",
     "rulingEvidence": {
@@ -7431,10 +7478,19 @@
       "source": "docs/quality/dependency-ruling-2026-11-08-runtime.md"
     },
     "architectureRecord": "docs/architecture/backend-module-map.md",
-    "approvedUsers": ["deploy", "deploy/images/console.Dockerfile"],
+    "approvedUsers": [
+      "deploy",
+      "deploy/images/console.Dockerfile"
+    ],
     "approvedUses": [
-      { "user": "deploy", "layer": "CI/supply chain" },
-      { "user": "deploy/images/console.Dockerfile", "layer": "CI/supply chain" }
+      {
+        "user": "deploy",
+        "layer": "CI/supply chain"
+      },
+      {
+        "user": "deploy/images/console.Dockerfile",
+        "layer": "CI/supply chain"
+      }
     ],
     "alternatives": "Deprecated Debian 12 retains the five fixable OpenSSL findings; Debian slim changes the runtime family; static binary on scratch requires a separate build change.",
     "reason": "Delegated maintenance decision: stays distroless/cc and moves from debian12 to maintained debian13 to clear four High and one Critical OpenSSL CVEs, as recorded by the Debian security tracker.",

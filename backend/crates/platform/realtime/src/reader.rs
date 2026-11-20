@@ -44,6 +44,7 @@ impl ChangeReader {
             Self::Platform(p) => match row.resource_type.as_str() {
                 "ops_recovery" => p.authorize(PlatformFeature::TenantCreate).is_ok(),
                 "tenant_erase" => p.authorize(PlatformFeature::TenantRemove).is_ok(),
+                "platform_operator" => p.has_feature(PlatformFeature::OperatorManage),
                 _ => false,
             },
         }
@@ -83,6 +84,7 @@ mod tests {
         for (kind, allowed) in [
             ("ops_recovery", true),
             ("tenant_erase", true),
+            ("platform_operator", true),
             ("employee", false),
             ("tenant", false),
             ("unknown", false),

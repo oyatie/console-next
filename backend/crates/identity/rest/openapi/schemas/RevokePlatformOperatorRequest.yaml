@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+properties:
+  reason:
+    type: [string, 'null']
+    maxLength: 500
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
