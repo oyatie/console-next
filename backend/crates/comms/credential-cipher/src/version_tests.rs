@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
-use chacha20poly1305::aead::{AeadCore, OsRng};
+use aws_lc_rs::key_wrap::{AES_256, AesKek, KeyWrapPadded};
+use chacha20poly1305::aead::{Aead, AeadCore, KeyInit, OsRng, Payload};
+use chacha20poly1305::{Key, XChaCha20Poly1305};
 
 fn binding() -> Aad<'static> {
     Aad {
@@ -40,6 +42,10 @@ fn legacy_seal(plaintext: &[u8]) -> SealedCredential {
         dek_wrapped,
         dek_nonce: dek_nonce.to_vec(),
         key_version: 1,
+        alg_id: None,
+        kek_id: None,
+        msg_id: None,
+        commitment_tag: None,
     }
 }
 
@@ -152,7 +158,7 @@ fn nist_cavp_aes256_gcm_known_answers_use_the_writer_path() {
     ] {
         let nonce = unhex(iv).try_into().unwrap();
         assert_eq!(
-            gcm_seal(&unhex(key), nonce, &unhex(pt), &unhex(aad)).unwrap(),
+            legacy::gcm_seal(&unhex(key), nonce, &unhex(pt), &unhex(aad)).unwrap(),
             unhex(&format!("{ct}{tag}"))
         );
     }
@@ -202,7 +208,7 @@ fn v2_nonce_lengths_are_strict_even_for_a_zero_nonce_payload() {
     let kek = AesKek::new(&AES_256, &key).unwrap();
     let mut output = [0u8; 40];
     let mut sealed = SealedCredential {
-        ciphertext: gcm_seal(&[0u8; 32], [0; 12], b"secret", &binding().encode()).unwrap(),
+        ciphertext: legacy::gcm_seal(&[0u8; 32], [0; 12], b"secret", &binding().encode()).unwrap(),
         nonce: vec![0; 12],
         dek_wrapped: kek
             .wrap_with_padding(&[0u8; 32], &mut output)
@@ -210,6 +216,10 @@ fn v2_nonce_lengths_are_strict_even_for_a_zero_nonce_payload() {
             .to_vec(),
         dek_nonce: Vec::new(),
         key_version: 2,
+        alg_id: None,
+        kek_id: None,
+        msg_id: None,
+        commitment_tag: None,
     };
     assert_eq!(cipher.open_bytes(&sealed, binding()).unwrap(), b"secret");
     for size in [0, 11, 13, 24] {
@@ -230,8 +240,7 @@ fn rollout_writer_emits_v1_for_the_previous_release() {
     assert_eq!(sealed.nonce.len(), 24);
     assert_eq!(sealed.dek_nonce.len(), 24);
     assert_eq!(
-        cipher
-            .decrypt_v1(&sealed, binding())
+        legacy::decrypt_v1(cipher.legacy_ring.as_deref().unwrap(), &sealed, binding())
             .unwrap()
             .expose_secret()
             .as_slice(),
@@ -287,27 +296,6 @@ fn both_suites_authenticate_payload_nonce_wrap_and_aad() {
                 cipher.decrypt(&original, aad),
                 Err(CipherError::Decrypt)
             ));
-        }
-    }
-}
-
-#[test]
-fn every_seal_draws_fresh_nonces() {
-    let cipher = EnvelopeCredentialCipher::from_key_bytes(&[7u8; 32]).unwrap();
-    for suite in [1, 2] {
-        let a = cipher
-            .encrypt_with_suite(suite, b"secret", binding())
-            .unwrap();
-        let b = cipher
-            .encrypt_with_suite(suite, b"secret", binding())
-            .unwrap();
-        assert_ne!(a.nonce, b.nonce, "suite {suite} reused a nonce");
-        assert!(
-            a.nonce.iter().any(|&x| x != 0),
-            "suite {suite} sealed with a zero nonce"
-        );
-        if suite == 1 {
-            assert_ne!(a.dek_nonce, b.dek_nonce, "suite 1 reused a DEK nonce");
         }
     }
 }

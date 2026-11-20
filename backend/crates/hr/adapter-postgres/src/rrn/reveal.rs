@@ -165,7 +165,7 @@ async fn read_value(
 ) -> Result<ReadValue, HrError> {
     let value = match field {
         RevealField::Rrn => {
-            let row=sqlx::query("SELECT rrn_hmac,hmac_key_version,ciphertext,nonce,dek_wrapped,dek_nonce,key_version,masked FROM employee_rrn WHERE org_id=$1 AND employee_id=$2")
+            let row=sqlx::query("SELECT rrn_hmac,hmac_key_version,ciphertext,nonce,dek_wrapped,dek_nonce,key_version,masked,alg_id,kek_id,msg_id,commitment_tag FROM employee_rrn WHERE org_id=$1 AND employee_id=$2")
                 .bind(org).bind(employee).fetch_optional(tx.as_mut()).await?.ok_or_else(missing)?;
             return Ok(ReadValue::Rrn(sealed_from_row(&row)?));
         }

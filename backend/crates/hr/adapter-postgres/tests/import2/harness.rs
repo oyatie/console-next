@@ -43,6 +43,10 @@ impl RrnVault for MirrorVault {
             dek_nonce: vec![0; 24],
             key_version: 1,
             masked: rrn.masked(),
+            alg_id: None,
+            kek_id: None,
+            msg_id: None,
+            commitment_tag: None,
         })
     }
 

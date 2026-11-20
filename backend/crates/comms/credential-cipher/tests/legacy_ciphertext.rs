@@ -36,6 +36,10 @@ fn legacy_ciphertext() -> SealedCredential {
             15, 108, 238, 89, 10,
         ],
         key_version: 1,
+        alg_id: None,
+        kek_id: None,
+        msg_id: None,
+        commitment_tag: None,
     }
 }
 

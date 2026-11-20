@@ -25,8 +25,9 @@ pub async fn stage(
         let s = &row.sealed;
         sqlx::query(
             "INSERT INTO data_import_row_identities (org_id, run_id, source_key, rrn_hmac, \
-               hmac_key_version, ciphertext, nonce, dek_wrapped, dek_nonce, key_version, masked) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+               hmac_key_version, ciphertext, nonce, dek_wrapped, dek_nonce, key_version, masked, \
+               alg_id, kek_id, msg_id, commitment_tag) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
         )
         .bind(org)
         .bind(run)
@@ -39,6 +40,10 @@ pub async fn stage(
         .bind(&s.dek_nonce)
         .bind(s.key_version)
         .bind(&s.masked)
+        .bind(s.alg_id.as_deref())
+        .bind(s.kek_id.as_deref())
+        .bind(s.msg_id.as_deref())
+        .bind(s.commitment_tag.as_deref())
         .execute(tx.as_mut())
         .await?;
     }
@@ -154,9 +159,11 @@ pub async fn record(
     let count: i64 = sqlx::query_scalar(
         "WITH recorded AS ( \
          INSERT INTO employee_rrn (org_id, employee_id, rrn_hmac, hmac_key_version, ciphertext, \
-           nonce, dek_wrapped, dek_nonce, key_version, masked, source, import_run_id, recorded_by) \
+           nonce, dek_wrapped, dek_nonce, key_version, masked, alg_id, kek_id, msg_id, \
+           commitment_tag, source, import_run_id, recorded_by) \
          SELECT s.org_id, p.employee, s.rrn_hmac, s.hmac_key_version, s.ciphertext, s.nonce, \
-                s.dek_wrapped, s.dek_nonce, s.key_version, s.masked, 'IMPORT', s.run_id, $5 \
+                s.dek_wrapped, s.dek_nonce, s.key_version, s.masked, s.alg_id, s.kek_id, \
+                s.msg_id, s.commitment_tag, 'IMPORT', s.run_id, $5 \
          FROM unnest($3::TEXT[], $4::UUID[]) WITH ORDINALITY p(source_key, employee, n) \
          JOIN data_import_row_identities s ON s.source_key = p.source_key \
          WHERE s.org_id = $1 AND s.run_id = $2 ORDER BY p.n \
@@ -220,9 +227,10 @@ pub(crate) async fn record_form(
         };
         return Err(govern::refused(http::StatusCode::CONFLICT, code, message));
     }
-    let recorded_at = sqlx::query_scalar("INSERT INTO employee_rrn(org_id,employee_id,rrn_hmac,hmac_key_version,ciphertext,nonce,dek_wrapped,dek_nonce,key_version,masked,source,recorded_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'FORM',$11) RETURNING recorded_at")
+    let recorded_at = sqlx::query_scalar("INSERT INTO employee_rrn(org_id,employee_id,rrn_hmac,hmac_key_version,ciphertext,nonce,dek_wrapped,dek_nonce,key_version,masked,alg_id,kek_id,msg_id,commitment_tag,source,recorded_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'FORM',$15) RETURNING recorded_at")
                 .bind(org).bind(employee).bind(hmac).bind(sealed.hmac_key_version).bind(sealed.ciphertext)
-                .bind(sealed.nonce).bind(sealed.dek_wrapped).bind(sealed.dek_nonce).bind(sealed.key_version).bind(sealed.masked).bind(actor)
+                .bind(sealed.nonce).bind(sealed.dek_wrapped).bind(sealed.dek_nonce).bind(sealed.key_version).bind(sealed.masked)
+                .bind(sealed.alg_id).bind(sealed.kek_id).bind(sealed.msg_id).bind(sealed.commitment_tag).bind(actor)
                 .fetch_one(tx.as_mut()).await?;
     Ok(recorded_at)
 }
@@ -266,5 +274,9 @@ pub fn sealed_from_row(row: &sqlx::postgres::PgRow) -> Result<SealedRrn, HrError
         dek_nonce: row.try_get("dek_nonce")?,
         key_version: row.try_get("key_version")?,
         masked: row.try_get("masked")?,
+        alg_id: row.try_get("alg_id")?,
+        kek_id: row.try_get("kek_id")?,
+        msg_id: row.try_get("msg_id")?,
+        commitment_tag: row.try_get("commitment_tag")?,
     })
 }
