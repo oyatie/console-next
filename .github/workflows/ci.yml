@@ -442,6 +442,14 @@ jobs:
       - *rust-cache
       - *rust-cache-report
       - *cache-mark
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: SQL migration crypto hygiene
+        working-directory: .
+        run: |
+          node --test scripts/check-migration-crypto.test.mjs
+          node scripts/check-migration-crypto.mjs
       - run: cargo test --locked -p console-gate-migration-safety
       - name: Backend code gates (release parity)
         shell: bash
