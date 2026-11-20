@@ -43,8 +43,11 @@ for (const width of [1440, 390]) {
     const register = main.getByRole("button", { name: t("people.register"), exact: true });
     await register.focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog", { name: t("people.register") })).toBeVisible();
+    const registerDialog = page.getByRole("dialog", { name: t("people.register") });
+    await expect(registerDialog).toBeVisible();
+    await expect(page.locator('[role="dialog"]:focus, [role="dialog"] :focus')).toHaveCount(1);
     await page.keyboard.press("Escape");
+    await expect(registerDialog).toBeHidden();
     await expect(register).toBeFocused();
     if (width === 390) {
       await main.getByRole("button", { name: t("common.more"), exact: true }).click();
@@ -54,8 +57,11 @@ for (const width of [1440, 390]) {
       await command.focus();
       await page.keyboard.press("Enter");
     }
-    await expect(page.getByRole("dialog", { name: t("roster.head.import") })).toBeVisible();
+    const importDialog = page.getByRole("dialog", { name: t("roster.head.import") });
+    await expect(importDialog).toBeVisible();
+    await expect(page.locator('[role="dialog"]:focus, [role="dialog"] :focus')).toHaveCount(1);
     await page.keyboard.press("Escape");
+    await expect(importDialog).toBeHidden();
     if (width === 1440) {
       await main.getByRole("grid").getByRole("row").nth(1).dblclick();
       const record = main.getByRole("complementary", { name: t("people.panel"), exact: true });

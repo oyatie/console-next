@@ -1,4 +1,9 @@
-import { inboxAction } from "./inbox-action";
+import {
+  consoleInlineRowAction,
+  consoleRecordBody,
+  consoleRecordFooter,
+  inboxAction,
+} from "./inbox-action";
 import { useContext, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Home } from "../features/home/Home";
@@ -15,6 +20,7 @@ import { readRequirement } from "./route-reads";
 
 const RECEIPT_NEED = readRequirement("/setup/go-live");
 const HISTORY_NEED = readRequirement("/org/history");
+const ORG_NEED = readRequirement("/org");
 
 /** Setup and operating work share the same server queue. */
 export function HomeScreen() {
@@ -33,5 +39,15 @@ function HomeContent() {
   if (!pending && !settled) setSettled(true);
   useLiveHold(phase.settled && !pending && !!inbox.data?.pages.some((page) => page.items.length > 0), true);
   if (pending) return <ReadSkeleton layout="list" />;
-  return <Home setup={(c) => <SetupHome c={c} />} receipt={!during ? <SetupReceipt receiptNeed={RECEIPT_NEED} historyNeed={HISTORY_NEED} /> : undefined} action={inboxAction} />;
+  return (
+    <Home
+      setup={(c) => <SetupHome c={c} />}
+      receipt={!during ? <SetupReceipt receiptNeed={RECEIPT_NEED} historyNeed={HISTORY_NEED} /> : undefined}
+      action={inboxAction}
+      inlineRowAction={consoleInlineRowAction}
+      recordBody={consoleRecordBody}
+      recordFooter={consoleRecordFooter}
+      orgNeed={ORG_NEED}
+    />
+  );
 }

@@ -2,21 +2,25 @@
 .sort {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: 0;
   min-height: var(--control-h);
   font-size: var(--text-sm);
   white-space: nowrap;
 }
 
 .prefix {
+  margin-inline-end: var(--space-1);
   color: var(--steel);
   font-size: var(--text-xs);
 }
 
 .fieldSelect {
+  appearance: none;
+  field-sizing: content;
   height: var(--control-h);
-  padding: 0 var(--space-1-5);
-  border: 1px solid transparent;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  border: 0;
   border-radius: var(--radius);
   background: transparent;
   color: var(--ink);
@@ -27,11 +31,10 @@
 
 .fieldSelect:hover {
   background: var(--surface-hover);
-  border-color: var(--control-border);
 }
 
 .dirBtn {
   gap: var(--space-1);
-  padding-inline: var(--space-1-5);
+  padding-inline: var(--space-1);
   font-weight: var(--fw-semibold);
 }

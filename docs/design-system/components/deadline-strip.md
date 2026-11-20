@@ -90,9 +90,7 @@ Built-in headings and lane labels read `uiWorklist.schedule`, `uiWorklist.overdu
 | `--primary` | `background`, `border-color` |
 | `--radius-sm` | `border-radius` |
 | `--space-1` | `min-width`, `padding` |
-| `--space-1-5` | `padding` |
 | `--space-2` | `min-width` |
-| `--space-4` | `min-width` |
 | `--space-5` | `min-width` |
 | `--space-6` | `min-width` |
 | `--space-half` | `gap`, `padding` |

@@ -125,4 +125,16 @@ test("WorkspaceTabs passes WCAG 2.2 AA axe checks, meets target sizes, handles k
   // Narrow overflow keeps the active tab inline and exposes remaining tabs via ActionMenu.
   const narrow = page.locator("[data-workspace-tabs-demo='narrow']");
   await expect.poll(async () => await narrow.locator("ul a[aria-current='page']").textContent()).toBe(t("shell.link.payroll"));
+  const narrowTailFits = await narrow.evaluate(root => {
+    const nav = root.querySelector("nav")!;
+    const measureTail = nav.querySelector<HTMLElement>("[inert] > :last-child")!;
+    const rect = measureTail.getBoundingClientRect();
+    return {
+      measureTailWidth: Math.round(rect.width),
+      measureTailScrollWidth: Math.round(measureTail.scrollWidth),
+      navFits: nav.scrollWidth <= nav.clientWidth,
+    };
+  });
+  expect(narrowTailFits.measureTailWidth).toBeGreaterThanOrEqual(narrowTailFits.measureTailScrollWidth);
+  expect(narrowTailFits.navFits).toBe(true);
 });

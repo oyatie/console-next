@@ -106,6 +106,7 @@
   "pack": {
     "budget_kb": 77,
     "css_budget_kb": 8,
+    "deferred": ["src/lib/react/denied-request-form.tsx"],
     "routes": ["src/shell/baseline/shell.tsx", "src/shell/console/shell.tsx"]
   }
 }

@@ -140,8 +140,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top__jumpLabel { display: none; }
 .top[data-task-menu] .top__jump { min-width: var(--target); }
 @media (--below-wide) {
-  .top[data-task-menu] { gap: var(--space-1); }
-  .top[data-task-menu] .btn { padding-inline: var(--space-2); }
+  .top[data-task-menu] { gap: var(--space-1); padding-inline: var(--space-2); }
+  .top[data-task-menu] .btn { gap: var(--space-1); padding-inline: var(--space-2); }
+  .top[data-task-menu] > select { padding-inline: var(--space-2); }
   .top[data-task-menu] .top__kbd, .top__jumpHint { display: none; }
   .top__jumpLabel { display: inline; }
 }
@@ -215,7 +216,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 [data-embed] .panel { position: static; }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .field__label { font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
-.field__input { height: var(--field-h); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
+.field__input { height: var(--field-h); max-width: 100%; padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
 /* In a toolbar a field has a height of its own, so a style can draw it level with the controls beside it. The toolbar
    adds no weight to the selector: every rule that outranks a field's height today outranks this one as well. */
 :where(.toolbar) .field__input { height: var(--field-h-toolbar); }
@@ -233,6 +234,39 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* ── surfaces ──────────────────────────────────────── */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+:where([data-experience]:not([data-experience="baseline"])) .page[data-account-page] {
+  max-width: none;
+  gap: 0;
+  background: var(--surface);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-account-page] > header {
+  padding: var(--toolbar-py) var(--space-4);
+  min-height: var(--toolbar-h);
+  justify-content: center;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-account-page] .card {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-account-page] .card > .toolbar {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-account-page] .card > .card__body {
+  padding-top: var(--space-3);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-account-page] .field__input {
+  min-width: 0;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-account-link-row] {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
 .card__body { padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
 /* minmax(0, …): a wide table scrolls inside its card instead of widening the page (a bare 1fr keeps its min-content). */
 .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
@@ -274,6 +308,7 @@ aside.panel { position: sticky; top: 0; }
 .chip--danger { background: var(--danger-bg); border-color: var(--danger-bd); color: var(--danger-tx); }
 .chip--info { background: var(--info-bg); border-color: var(--info-bd); color: var(--info-tx); }
 .chip--neutral { background: var(--muted); border-color: var(--border); color: var(--steel); }
+.chip--outline { background: var(--surface); border-color: var(--border-strong); color: var(--ink); font-weight: var(--fw-semibold); }
 .state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-5); }
 .state__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
 .state__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

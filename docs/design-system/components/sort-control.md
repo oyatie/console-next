@@ -73,13 +73,11 @@ Built-in labels read `uiLongTable.sort`, `uiLongTable.ascending`, and `uiLongTab
 
 | Token | Read by |
 | --- | --- |
-| `--control-border` | `border-color` |
 | `--control-h` | `height`, `min-height` |
 | `--fw-semibold` | `font-weight` |
 | `--ink` | `color` |
 | `--radius` | `border-radius` |
-| `--space-1` | `gap` |
-| `--space-1-5` | `padding`, `padding-inline` |
+| `--space-1` | `gap`, `margin-inline-end`, `padding`, `padding-inline` |
 | `--steel` | `color` |
 | `--surface-hover` | `background` |
 | `--text-sm` | `font-size` |

@@ -15,7 +15,16 @@ import { Skeleton } from "../../ui/skeleton/skeleton";
 import { TENANT_NAV } from "../nav";
 import s from "./shell.module.css";
 
-const BRAND_GLYPH = "C";
+function ConsoleBrandMark() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="1.5" y="2" width="13" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5.5 2V14" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5.5 6H14.5" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="7.5" y="8" width="5" height="4" rx="0.5" fill="currentColor" opacity="0.85" />
+    </svg>
+  );
+}
 
 const ConsoleAccountMenu = lazy(() =>
   chunk(import("./console-account-menu")).then(m => ({ default: m.ConsoleAccountMenu })),
@@ -25,12 +34,11 @@ function formatTodayShort(locale: string): string {
   const iso = todayKst();
   const parsed = new Date(`${iso}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return iso;
-  return new Intl.DateTimeFormat(locale, {
-    month: "2-digit",
-    day: "2-digit",
+  const weekday = new Intl.DateTimeFormat(locale, {
     weekday: "short",
     timeZone: "UTC",
   }).format(parsed);
+  return `${iso} (${weekday})`;
 }
 
 function ConsoleAccountSlot({
@@ -89,7 +97,7 @@ export function ConsoleTopBar({
         <>
           <Link to={defaultHref} className={s.brand}>
             <bdi className={s.brandMark} aria-hidden="true">
-              {BRAND_GLYPH}
+              <ConsoleBrandMark />
             </bdi>
             <bdi className={s.brandName}>{platform ? t("app.name") : tenantName ?? t("app.name")}</bdi>
             {!platform && tenantPhase === "SETUP" ? (
@@ -142,7 +150,7 @@ export function ConsoleTopBar({
               aria-keyshortcuts={singleKeysOn() ? "Meta+K Control+K /" : "Meta+K Control+K"}
             >
               <Search size={14} aria-hidden="true" />
-              <bdi className={s.searchText}>{t("shell.jumpLabel")}</bdi>
+              <bdi className={s.searchText}>{t("shell.searchHint")}</bdi>
               <Kbd keys="/" />
             </button>
           ) : null}

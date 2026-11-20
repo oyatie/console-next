@@ -264,12 +264,14 @@ The family's own stylesheet:
 | `--row-h` | `min-height` |
 | `--shadow` | `box-shadow` |
 | `--space-1` | `padding` |
+| `--space-1-5` | `padding` |
 | `--space-2` | `gap`, `padding` |
 | `--space-3` | `gap`, `min-height`, `padding` |
 | `--space-4` | `padding` |
 | `--space-6` | `height` |
 | `--steel` | `color` |
 | `--surface` | `background` |
+| `--surface-2` | `background` |
 | `--target` | `min-height` |
 | `--text-body` | `font-size` |
 | `--text-sm` | `font-size` |
@@ -285,12 +287,13 @@ draw the same surface for hand-written markup:
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `border` |
+| `--border` | `border`, `border-bottom` |
 | `--radius-lg` | `border-radius` |
 | `--shadow` | `box-shadow` |
-| `--space-3` | `gap` |
+| `--space-3` | `gap`, `padding-top` |
 | `--space-4` | `padding` |
 | `--surface` | `background` |
+| `--surface-2` | `background` |
 
 <!-- /ds:tokens -->
 

@@ -39,6 +39,11 @@ export interface ShellLayoutProps {
   restoring: boolean;
   tenantName?: string;
   tenantPhase?: string;
+  userProfile?: {
+    display_name?: string | null;
+    employee_org_unit?: string | null;
+    employee_position?: string | null;
+  };
   menu: readonly NavHub[] | undefined;
   navigationState: "loading" | "failed" | "ready";
   navigationNotice: ReactNode;
@@ -146,9 +151,10 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     return () => document.removeEventListener("keydown", onKey);
   }, [platform]);
   const scope = platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined);
+  const phoneHeader = pathname === "/account" ? { title: t("shell.account"), shellOwnsH1: true } : undefined;
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
-    <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} menu={platform || displayed ? menu : undefined}
+    <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}
       navigationState={platform || displayed ? "ready" : supportOwnsFailure || railError ? "failed" : "loading"} onSearch={() => setJump(true)}
       navigationNotice={!platform && !displayed ? (supportOwnsFailure
         ? <p role="status" className="muted">{t("shell.nav.failed")}</p>

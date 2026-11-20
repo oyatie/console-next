@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect, useState } from "react";
-import { OPEN_TAB_EVENT, type OpenTabPayload } from "../../ui/workspace-tabs/open-tab";
+import { OPEN_TAB_EVENT, resolveAppHref, type OpenTabPayload } from "../../ui/workspace-tabs/open-tab";
 import type { WorkspaceTab } from "../../ui/workspace-tabs/workspace-tabs";
 
 export const MAX_WORKSPACE_TABS = 8;
@@ -11,6 +11,16 @@ type StoredTab = {
   label: string;
   pinned?: boolean;
 };
+
+const hrefPath = (href: string): string => {
+  const cut = href.search(/[?#]/);
+  return (cut === -1 ? href : href.slice(0, cut)) || "/";
+};
+
+const hasQueryOrHash = (href: string): boolean => href.includes("?") || href.includes("#");
+
+const sameTabTarget = (tabHref: string, pathname: string): boolean =>
+  tabHref === pathname || (!hasQueryOrHash(pathname) && hrefPath(tabHref) === pathname);
 
 export function readStoredWorkspaceTabs(storageKey: string | null): StoredTab[] | null {
   if (!storageKey || typeof localStorage === "undefined") return null;
@@ -25,7 +35,7 @@ export function readStoredWorkspaceTabs(storageKey: string | null): StoredTab[] 
         typeof item === "object" &&
         typeof (item as StoredTab).id === "string" &&
         typeof (item as StoredTab).href === "string" &&
-        (item as StoredTab).href.startsWith("/") &&
+        resolveAppHref((item as StoredTab).href) !== null &&
         typeof (item as StoredTab).label === "string",
     );
     return valid.length > 0 ? valid.slice(0, MAX_WORKSPACE_TABS) : null;
@@ -83,22 +93,38 @@ export function reconcileWorkspaceTabs(
     label: defaultLabel,
     pinned: true,
   };
-  const rest = previous.filter((tab, idx) => idx > 0 && tab.href !== defaultHref).slice(0, MAX_WORKSPACE_TABS - 1);
+  const rest = previous.filter((tab, idx) => idx > 0 && hrefPath(tab.href) !== defaultHref).slice(0, MAX_WORKSPACE_TABS - 1);
   const base = [pinnedHome, ...rest];
 
-  if (pathname === defaultHref) {
+  if (sameTabTarget(defaultHref, pathname)) {
     return { tabs: base, activeId: pinnedHome.id };
   }
 
-  const existing = base.find(tab => tab.href === pathname);
-  if (existing) {
+  const exact = base.find(tab => tab.href === pathname);
+  if (exact) {
     return {
-      tabs: base.map(tab => (tab.id === existing.id ? { ...tab, label: pathLabel } : tab)),
-      activeId: existing.id,
+      tabs: base.map(tab => (tab.id === exact.id ? { ...tab, label: pathLabel } : tab)),
+      activeId: exact.id,
     };
   }
 
   const activeNonPinnedIdx = base.findIndex((tab, idx) => idx > 0 && tab.id === activeId && !tab.pinned);
+  const activeTab = activeNonPinnedIdx > 0 ? base[activeNonPinnedIdx] : undefined;
+  if (activeTab && sameTabTarget(activeTab.href, pathname)) {
+    return {
+      tabs: base.map((tab, idx) => (idx === activeNonPinnedIdx ? { ...tab, label: pathLabel } : tab)),
+      activeId: activeTab.id,
+    };
+  }
+
+  const existingByPath = !hasQueryOrHash(pathname) ? base.find((tab, idx) => idx > 0 && hrefPath(tab.href) === pathname) : undefined;
+  if (existingByPath) {
+    return {
+      tabs: base.map(tab => (tab.id === existingByPath.id ? { ...tab, label: pathLabel } : tab)),
+      activeId: existingByPath.id,
+    };
+  }
+
   if (activeNonPinnedIdx > 0) {
     const target = base[activeNonPinnedIdx]!;
     const updated = base.map((tab, idx) =>
@@ -169,7 +195,6 @@ export function useWorkspaceTabs({
   defaultLabel,
   pathname,
   pathLabel,
-  countsByHref,
   onNavigate,
 }: {
   principal: string | null;
@@ -177,7 +202,6 @@ export function useWorkspaceTabs({
   defaultLabel: string;
   pathname: string;
   pathLabel: string;
-  countsByHref: Readonly<Record<string, number | undefined>>;
   onNavigate: (href: string) => void;
 }) {
   const storageKey = principal ? `console.tabs.${principal}` : null;
@@ -203,7 +227,7 @@ export function useWorkspaceTabs({
     setState({ key: storageKey, ...reconciled });
   } else {
     const activeTab = state.tabs.find(tab => tab.id === state.activeId);
-    if (!activeTab || activeTab.href !== pathname || activeTab.label !== pathLabel || state.tabs[0]?.label !== defaultLabel) {
+    if (!activeTab || !sameTabTarget(activeTab.href, pathname) || activeTab.label !== pathLabel || state.tabs[0]?.label !== defaultLabel) {
       const reconciled = reconcileWorkspaceTabs(state.tabs, state.activeId, {
         defaultHref,
         defaultLabel,
@@ -227,22 +251,26 @@ export function useWorkspaceTabs({
     const onExplicitOpen = (event: Event) => {
       const detail = (event as CustomEvent<OpenTabPayload>).detail;
       if (!detail?.href) return;
+      const resolved = resolveAppHref(
+        detail.href,
+        pathname || (typeof window !== "undefined" ? window.location.pathname : "/"),
+      );
+      if (!resolved) return;
       setState(prev => ({
         key: prev.key,
-        ...appendExplicitWorkspaceTab(prev.tabs, detail),
+        ...appendExplicitWorkspaceTab(prev.tabs, { ...detail, href: resolved }),
       }));
-      onNavigate(detail.href);
+      onNavigate(resolved);
     };
     window.addEventListener(OPEN_TAB_EVENT, onExplicitOpen);
     return () => window.removeEventListener(OPEN_TAB_EVENT, onExplicitOpen);
-  }, [onNavigate]);
+  }, [onNavigate, pathname]);
 
   const tabs: WorkspaceTab[] = state.tabs.map((tab, idx) => ({
     id: tab.id,
     href: tab.href,
     label: tab.label,
     pinned: idx === 0 || tab.pinned,
-    count: countsByHref[tab.href],
   }));
 
   const selectTab = (tab: WorkspaceTab) => {

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Search } from "lucide-react";
+import { Search, UserRound } from "lucide-react";
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
 import { Avatar } from "../../ui/avatar/avatar";
 import { PhoneBottomNav, PhoneTopBar, type PhoneNavItem } from "../../ui/phone-bars/phone-bars";
+import type { NavLink } from "../nav";
 import s from "./console-phone-chrome.module.css";
 
 const ConsoleAccountMenu = lazy(() =>
@@ -63,14 +64,30 @@ export function ConsolePhoneTop({
 }
 
 export function ConsolePhoneBottom({
-  items,
+  links,
+  inboxCount,
+  approvalsCount,
+  platform,
   activeId,
   onNavigate,
 }: {
-  items: readonly PhoneNavItem[];
+  links: readonly NavLink[];
+  inboxCount?: number;
+  approvalsCount?: number;
+  platform: boolean;
   activeId?: string;
   onNavigate: (href: string) => void;
 }) {
+  const items: PhoneNavItem[] = links.map(link => ({
+    id: link.to,
+    href: link.to,
+    label: t(link.label),
+    icon: link.icon,
+    count: link.countKey === "inbox" ? inboxCount : link.countKey === "approvals" ? approvalsCount : undefined,
+  }));
+  if (!platform && !items.some(item => item.id === "/account")) {
+    items.push({ id: "/account", href: "/account", label: t("shell.account"), icon: UserRound });
+  }
   return (
     <PhoneBottomNav
       items={items}

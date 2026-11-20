@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "vitest";
+import { beforeAll, expect, test } from "vitest";
+import { loadCatalog } from "@console/i18n";
 import {
   brnChecksumValid,
   crnChecksumValid,
@@ -9,7 +10,9 @@ import {
   maskMobilePhone,
   maskRrn,
   rrnChecksumValid,
+  saeonAdminToken,
   saeonAdminUser,
+  saeonApprovalOrgChange,
   saeonAttendanceSummary,
   saeonEmployeeFacets,
   saeonHeroUser,
@@ -17,12 +20,15 @@ import {
   saeonPayrollRow,
   saeonRosterEmployees,
   saeonUniverse,
+  saeonWorklistInbox,
   syntheticBrn,
   syntheticCrn,
   syntheticInvalidRrn,
 } from "./saeon";
 
 const RRN_CANDIDATE_RE = /(?<!\d)(\d{6})-?([1-8]\d{6})(?!\d)/g;
+
+beforeAll(() => loadCatalog("ko"));
 
 function checksumValidRrns(text: string): string[] {
   const hits: string[] = [];
@@ -150,12 +156,19 @@ test("roster generator and OpenAPI mock builders expose the 2,054-row universe c
   expect(checksumValidRrns(roster.map(row => row.rrn).join("\n"))).toEqual([]);
 
   const admin = saeonAdminUser();
+  const adminToken = saeonAdminToken();
+  const adminClaims = JSON.parse(Buffer.from(adminToken.access_token.split(".")[1]!, "base64url").toString()) as {
+    sub: string;
+    name: string;
+  };
   const hero = saeonHeroUser();
   const org = saeonOrgStructure();
   const facets = saeonEmployeeFacets();
   const windowEmployees = saeonRosterEmployees();
 
   expect(admin.tenant?.name).toBe(saeonUniverse.tenantName);
+  expect(adminClaims.sub).toBe(admin.id);
+  expect(adminClaims.name).toBe(saeonUniverse.adminActor.name);
   expect(hero.employee_number).toBe("10587");
   expect(org.entities).toHaveLength(5);
   expect(org.entities.flatMap(entity => entity.children ?? [])).toHaveLength(40);
@@ -176,6 +189,23 @@ test("worklist, approval OC-2026-0418, attendance month, and Console payroll tot
   expect(saeonUniverse.approval.effectiveDate).toBe("2026-11-17");
   expect(saeonUniverse.approval.steps).toHaveLength(3);
   expect(saeonUniverse.approval.transferredCount).toBe(12);
+
+  const inbox = saeonWorklistInbox();
+  expect(inbox.total).toBe(23);
+  expect(inbox.items).toHaveLength(11);
+  expect(inbox.items.filter(item => item.due_basis === "statutory")).toHaveLength(3);
+  expect(inbox.items.find(item => item.ref === "OC-2026-0418")?.context?.command).toBe("approve");
+  const leaveApproval = inbox.items.find(item => item.id === "leave-app-1");
+  expect(leaveApproval?.kind).toBe("approval");
+  expect(leaveApproval?.links[0]?.kind).toBe("approval_run");
+  expect(leaveApproval?.context?.command).toBeUndefined();
+  const attClose = inbox.items.find(item => item.id === "att-close-1");
+  expect(attClose?.kind).toBe("period_unlock");
+  expect(attClose?.context?.unlock).toBeUndefined();
+  expect(inbox.items.find(item => item.id === "payroll-oct-1")?.kind).toBe("payroll");
+  const orgChange = saeonApprovalOrgChange();
+  expect(orgChange.code).toBe("OC-2026-0418");
+  expect(orgChange.approvalSteps).toHaveLength(3);
 
   const attendance = saeonAttendanceSummary();
   expect(attendance).toEqual({

@@ -91,7 +91,7 @@ Default labels read `shell.tabs.label`, `shell.tabs.closeOne`, `shell.tabs.new`,
 | `--fw-strong` | `font-weight` |
 | `--ink` | `color` |
 | `--muted` | `background` |
-| `--primary` | `border-block-start`, `outline` |
+| `--primary` | `border-block-start`, `color`, `outline` |
 | `--radius-sm` | `border-radius` |
 | `--space-1` | `gap`, `margin-inline-end`, `padding`, `padding-inline-end` |
 | `--space-1-5` | `gap` |

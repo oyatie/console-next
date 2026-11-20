@@ -3,6 +3,9 @@
   position: relative;
   display: inline-flex;
   align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .panel {

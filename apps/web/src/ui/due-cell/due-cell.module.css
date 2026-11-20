@@ -20,6 +20,28 @@
   border-radius: 0;
 }
 
+@container list-table (max-width: 480px) {
+  .cell[data-fill="true"] {
+    display: inline-flex;
+    width: auto;
+    min-height: var(--chip-h);
+    margin-block: 0;
+    padding: 0 var(--space-1-5);
+    border-radius: var(--radius-sm);
+  }
+}
+
+@media (--phone) {
+  .cell[data-fill="true"] {
+    display: inline-flex;
+    width: auto;
+    min-height: var(--chip-h);
+    margin-block: 0;
+    padding: 0 var(--space-1-5);
+    border-radius: var(--radius-sm);
+  }
+}
+
 .cell[data-tone="over"] {
   background: var(--over-bg);
   color: var(--over-tx);

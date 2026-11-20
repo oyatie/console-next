@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useContext } from "react";
+import { useContext, type ReactNode } from "react";
+import { useActiveExperienceId } from "../../experience/dom";
 import { QueryState } from "../../lib/react/query-state";
 import { queryView } from "../../lib/react/query-view";
 import { PageReadGate } from "../../reference/authz/ui/access-gate";
@@ -10,8 +11,12 @@ import { PageHeadActions } from "../page-head/page-head-actions";
 import { PageHeadingLevel, PageScope } from "../page/page-scope";
 import { PaneGrid } from "../pane-grid/pane-grid";
 import { shown } from "../shown";
+import { useScreenStatusBar } from "../status-bar/status-bar-store";
 import type { WorklistProps } from "./worklist-contract";
 import s from "./worklist.module.css";
+
+const resolveLazy = (region: ReactNode | (() => ReactNode)): ReactNode =>
+  typeof region === "function" ? region() : region;
 
 /**
  * Worklist (`P1`) arrangement: command strip (`PageHead` with inline `views`, `filters`, `find`, and `tools`),
@@ -31,15 +36,26 @@ export function Worklist({
   bands,
   foot,
   facts: _facts,
+  statusSegments,
+  baseline,
   overlays,
   ...panes
 }: WorklistProps) {
+  const experience = useActiveExperienceId();
+  const useBaselineFallback = Boolean(baseline && experience === "baseline");
+  useScreenStatusBar(useBaselineFallback ? null : statusSegments);
   const scope = useContext(PageScope);
   const level = useContext(PageHeadingLevel);
+
+  if (useBaselineFallback && baseline) return <>{baseline()}</>;
+
   const secondary = scope.embedded || level === 2;
   const Root = scope.landmark || secondary ? "div" : "main";
   const hasFilters = shown(views) || shown(filters) || shown(find);
-  const hasLower = shown(schedule) || shown(bands);
+  const resolvedList = resolveLazy(list);
+  const resolvedSchedule = resolveLazy(schedule);
+  const resolvedBands = resolveLazy(bands);
+  const hasLower = shown(resolvedSchedule) || shown(resolvedBands);
   const view = queryView(q);
   const showDetail = Boolean(panes.record && q.data) && (view === "ready" || view === "stale" || view === "offline");
 
@@ -103,15 +119,15 @@ export function Worklist({
                   main={
                     <>
                       {notes}
-                      {list}
+                      {resolvedList}
                       {foot}
                     </>
                   }
                   bottom={
                     hasLower ? (
                       <div className={s.lower}>
-                        {schedule}
-                        {bands}
+                        {resolvedSchedule}
+                        {resolvedBands}
                       </div>
                     ) : undefined
                   }

@@ -5,7 +5,7 @@ A page pattern is a named arrangement of regions that a screen is drawn through.
 and the screen supplies what goes in each, so every screen of one kind has the same landmarks, headings, focus
 order and read states.
 
-Every screen of the console is to be drawn through one of thirteen patterns. One is built so far.
+Every screen of the console is to be drawn through one of thirteen patterns. Two are built so far.
 
 ## The thirteen patterns
 
@@ -31,7 +31,7 @@ together.
 
 ## What a pattern is in files
 
-A pattern lives in `apps/web/src/ui/patterns/`. The one that exists, `list-record`, is five files:
+A pattern lives in `apps/web/src/ui/patterns/`. For example, `list-record` is five files:
 
 | File | What it holds |
 |---|---|
@@ -54,8 +54,8 @@ path: "/people",
 staticData: { access: readRequirement("/people"), floorplan: "P-01", pattern: "list-record" },
 ```
 
-The key is optional. Two routes declare one today: `/people`, whose roster is drawn through `ListRecord`, and the
-review route above.
+The key is optional. Five routes declare one today: `/` and `/inbox` (drawn through `Worklist`), `/people` (drawn through
+`ListRecord`), and the two review routes (`/_review/patterns/worklist` and `/_review/patterns/list-record`).
 
 `apps/web/src/routes/route-pattern.test.ts` builds the router and fails when a route names a pattern that is not
 one of the thirteen, or one that is not in `BUILT_PATTERNS`. It also holds the list of routes that declare a

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
+import { resolveAppHref } from "../../ui/workspace-tabs/open-tab";
 import {
   appendExplicitWorkspaceTab,
   closeWorkspaceTab,
@@ -63,6 +64,29 @@ test("appendExplicitWorkspaceTab caps open tabs at MAX_WORKSPACE_TABS and closeW
   const closed = closeWorkspaceTab(tabs, activeId, activeId);
   expect(closed.tabs).toHaveLength(MAX_WORKSPACE_TABS - 1);
   expect(closed.navigateTo).toBe(`/people/${MAX_WORKSPACE_TABS + 1}`);
+});
+
+test("reconcileWorkspaceTabs preserves query and hash on explicit tabs when reconciled against bare pathname", () => {
+  const initial = reconcileWorkspaceTabs([], undefined, {
+    defaultHref: "/",
+    defaultLabel: "Home",
+    pathname: "/",
+    pathLabel: "Home",
+  });
+  const opened = appendExplicitWorkspaceTab(initial.tabs, {
+    href: "/org/entities?correction=corr-1#identifier-corrections",
+    label: "Entities",
+  });
+  const afterNav = reconcileWorkspaceTabs(opened.tabs, opened.activeId, {
+    defaultHref: "/",
+    defaultLabel: "Home",
+    pathname: "/org/entities",
+    pathLabel: "Entities",
+  });
+  expect(afterNav.activeId).toBe(opened.activeId);
+  expect(afterNav.tabs.find(tab => tab.id === opened.activeId)?.href).toBe(
+    "/org/entities?correction=corr-1#identifier-corrections",
+  );
 });
 
 test("reconcileWorkspaceTabs assigns distinct tab ids after working-tab reuse and returning home", () => {
@@ -138,4 +162,41 @@ test("appendExplicitWorkspaceTab preserves pinned tab label when href matches a 
   const nonPinned = appendExplicitWorkspaceTab(res.tabs, { href: "/people", label: "People (2)" });
   expect(nonPinned.activeId).toBe("tab-/people");
   expect(nonPinned.tabs[1]?.label).toBe("People (2)");
+});
+
+test("resolveAppHref resolves query/hash against current pathname and rejects external or protocol-relative URLs", () => {
+  expect(resolveAppHref("?sel=from-inbox", "/inbox")).toBe("/inbox?sel=from-inbox");
+  expect(resolveAppHref("#details", "/people/123?tab=history")).toBe("/people/123#details");
+  expect(resolveAppHref("/people/123?tab=history", "/inbox")).toBe("/people/123?tab=history");
+  expect(resolveAppHref("https://evil.example/phish", "/inbox")).toBeNull();
+  expect(resolveAppHref("//evil.example/phish", "/inbox")).toBeNull();
+  expect(resolveAppHref("/\\evil.example/phish", "/inbox")).toBeNull();
+  expect(resolveAppHref("javascript:alert(1)", "/inbox")).toBeNull();
+  expect(resolveAppHref("   ", "/inbox")).toBeNull();
+});
+
+test("readStoredWorkspaceTabs filters out protocol-relative hrefs", () => {
+  const store = new Map<string, string>();
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => store.set(k, v),
+    },
+  });
+  try {
+    store.set(
+      "console.tabs.user1",
+      JSON.stringify([
+        { id: "pinned-home", href: "/", label: "Home", pinned: true },
+        { id: "bad", href: "//evil.example/phish", label: "Evil" },
+      ]),
+    );
+    expect(readStoredWorkspaceTabs("console.tabs.user1")).toEqual([
+      { id: "pinned-home", href: "/", label: "Home", pinned: true },
+    ]);
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, value: origLocalStorage });
+  }
 });

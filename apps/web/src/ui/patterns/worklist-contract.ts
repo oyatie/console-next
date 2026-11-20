@@ -4,9 +4,12 @@ import type { ReadState } from "../../lib/react/query-view";
 import type { MenuAction } from "../menu/action-menu";
 import type { PageHeadProps } from "../page-head/page-head";
 import type { PaneGrid } from "../pane-grid/pane-grid";
+import type { useScreenStatusBar } from "../status-bar/status-bar-store";
 
 /** Only redundant summary facts may be omitted by an arrangement without a style-specific ruling. */
 export const worklistOptionalRegions = ["facts"] as const;
+
+type LazyRegion = ReactNode | (() => ReactNode);
 
 /**
  * Worklist (`P1`) page contract: arranges an actionable queue (`list`) with command-strip `views`, `filters`, `find`,
@@ -25,10 +28,15 @@ export type WorklistProps = Pick<
     commands?: { label: string; items: readonly MenuAction[] };
   };
   /** Primary actionable worklist table, setup checklist, or empty state. */
-  list: ReactNode;
+  list: LazyRegion;
+  /** Optional schedule strip (`DeadlineStrip`), evaluated only when placed by the active experience. */
+  schedule?: LazyRegion;
+  /** Optional operational summary bands, evaluated only when placed by the active experience. */
+  bands?: LazyRegion;
+  /** Status-bar segments published while the worklist is mounted in an experience with a status bar. */
+  statusSegments?: Parameters<typeof useScreenStatusBar>[0];
+  /** Temporary Classic (`baseline`) fallback renderer kept until Phase 7 deletes `baseline`. */
+  baseline?: () => ReactNode;
 } & Partial<
-    Record<
-      "tabs" | "views" | "find" | "filters" | "tools" | "notes" | "schedule" | "bands" | "foot" | "facts" | "overlays",
-      ReactNode
-    >
+    Record<"tabs" | "views" | "find" | "filters" | "tools" | "notes" | "foot" | "facts" | "overlays", ReactNode>
   >;

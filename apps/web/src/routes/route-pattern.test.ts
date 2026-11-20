@@ -35,6 +35,8 @@ test("the screens drawn through built patterns declare them, and no other route 
   expect(Object.keys(router.routesById), "the worklist review route is registered").toContain("/app/_review/patterns/worklist");
   const declared = Object.fromEntries(routes.flatMap(route => route.options.staticData?.pattern ? [[route.fullPath, route.options.staticData.pattern]] : []));
   expect(declared).toEqual({
+    "/": "worklist",
+    "/inbox": "worklist",
     "/people": "list-record",
     "/_review/patterns/list-record": "list-record",
     "/_review/patterns/worklist": "worklist",

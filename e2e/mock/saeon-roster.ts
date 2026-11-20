@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import raw from "./saeon-universe.json";
+import raw from "./saeon-universe.json" with { type: "json" };
 import { maskRrn, padDigits, syntheticInvalidRrn } from "./saeon-ids";
 
 export type SaeonGradeCode = keyof typeof raw.grades;

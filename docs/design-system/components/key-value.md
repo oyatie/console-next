@@ -272,12 +272,13 @@ The members of `KeyValueItem` are under Anatomy.
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `border` |
+| `--border` | `border`, `border-left`, `border-left-color` |
 | `--border-soft` | `background`, `border-left` |
 | `--danger-solid` | `color` |
 | `--focus` | `box-shadow` |
 | `--fw-strong` | `font-weight` |
 | `--ink` | `color` |
+| `--lh-tight` | `line-height` |
 | `--panel-w` | `grid-template-columns` |
 | `--radius` | `border-radius` |
 | `--radius-sm` | `border-radius` |
@@ -286,6 +287,7 @@ The members of `KeyValueItem` are under Anatomy.
 | `--space-3` | `gap`, `padding` |
 | `--space-6` | `height` |
 | `--steel` | `color` |
+| `--text-2xl` | `font-size` |
 | `--text-lg` | `font-size` |
 | `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |

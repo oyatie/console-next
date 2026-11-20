@@ -67,6 +67,7 @@ Built-in copy reads `uiDeadlineChip.over`, `uiDeadlineChip.left`, `uiWorklist.to
 | Token | Read by |
 | --- | --- |
 | `--cell-px` | `padding-inline` |
+| `--chip-h` | `min-height` |
 | `--due-bg` | `background` |
 | `--due-tx` | `color` |
 | `--faint` | `color` |
