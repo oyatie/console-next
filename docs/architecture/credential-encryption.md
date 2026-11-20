@@ -170,3 +170,51 @@ an exclusive statutory algorithm list or evidence of this build's certification.
   `v1 == 0` and `v2 == 0` across all three tables and N-1 binaries are retired.
 - Drop legacy `rrn_hmac` (`v1`) only in a future contract migration after N-1
   binaries are retired and `WHERE rrn_hmac_v2 IS NULL` reaches zero.
+
+## Per-Tenant Key Hierarchy & Crypto-Shredding
+
+- **Per-tenant DEK wrapping (`tenant_encryption_keys`)**:
+  - Each organization maintains scoped data-encryption keys (`key_scope IN ('rrn', 'mail')`,
+    monotonically versioned `key_version >= 1`, `state IN ('ACTIVE', 'RETIRED', 'SHREDDED')`,
+    `UNIQUE (org_id, key_scope) WHERE (state = 'ACTIVE')`).
+  - Wrapped tenant DEKs are encrypted under the master KEK using `HKDF-SHA256`
+    domain-separated AES-256-KWP (`purpose = "tenant_dek.rrn"` / `"tenant_dek.mail"`),
+    identified on stored rows via `kek_id = "tdek:<org_uuid>:<scope>:v<ver>"`.
+  - `PgTenantKeyStore` lazily provisions `v1` in `CONSOLE_TENANT_DEK_MODE=active`
+    (the default) under an advisory transaction lock and caches unwrapped DEKs in
+    `TenantDekCache` keyed by `(org_id, scope, version, sha256(wrapped_dek))`.
+    Canary rollouts may set `CONSOLE_TENANT_DEK_MODE=dual_read` to write new
+    envelopes under the global master KEK while continuing to unwrap both direct-KEK
+    and `tdek:...` envelopes.
+  - Once any row in `tenant_encryption_keys` enters `SHREDDED`, runtime key
+    resolution refuses auto-reprovisioning and fails closed; database triggers
+    prevent deletion or un-shredding of `SHREDDED` tombstones, and `SHREDDED`
+    rows survive `DELETE FROM organizations`.
+- **Two-operator crypto-shredding & PITR survivability**:
+  - `platform_force_remove_organization_command` atomically captures S3 object keys
+    into `tenant_erase_s3_outbox`, transitions `tenant_encryption_keys` rows to
+    `state = 'SHREDDED'` with `wrapped_dek = NULL`, deletes tenant data inside
+    `platform_force_remove_organization`, and appends a zero-PII `'tenant_dek'`
+    witness entry to `erasure_ledger` alongside `tenant_erase_requests` witness
+    columns (`erasure_witness_seq`, `erasure_witness_hash`,
+    `shredded_key_fingerprint`) and `audit_events`.
+  - Even if database or storage snapshots from prior to erasure are restored,
+    erased tenant ciphertexts remain permanently unrecoverable without the shredded
+    tenant DEKs, while `erasure_ledger` hash-chain verification and out-of-process
+    witness logs (`console.erasure_ledger.witness`) attest the erasure event.
+  - `PlatformProvisioner::drain_erased_tenant_objects` drains
+    `tenant_erase_s3_outbox` post-commit without holding DB transactions across
+    HTTP object-store calls, treating `404`/`NoSuchKey` as purged and deferring
+    WORM-locked replica `403`/retention errors for 24 hours.
+
+## Unified Cryptographic Stack & Custody Transport
+
+- Workspace TLS (`rustls` / `tokio-rustls`), IMAP TLS (`console-comms-adapter-imap`),
+  audit-chain Ed25519 signing/verification (`console-platform-audit-chain`), and
+  provisioning hashing (`console-platform-provisioning`) run on `aws-lc-rs`,
+  eliminating duplicate `ring` and legacy `sha2` direct edges.
+- `HttpCustodyTransport` delegates audit-chain seal signing over `reqwest` (`rustls`
+  TLS 1.2+) on a dedicated `current_thread` runtime thread, permitting `http://`
+  only for loopback hosts, refusing redirects, enforcing a 5s timeout and 8 KiB
+  streaming response cap, and trusting optional custom CAs from
+  `CONSOLE_AUDIT_CHAIN_CUSTODY_CA_FILE`.
