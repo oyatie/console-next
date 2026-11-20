@@ -33,7 +33,7 @@ async fn me_access_log_rejects_unauthenticated_and_platform_tokens(pool: PgPool)
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn me_access_log_is_empty_without_audit_view_or_employee_link(pool: PgPool) {
     let harness = Harness::new(pool.clone()).await;
-    let user = seed_user(&pool, OrgId::one(), "신입사원").await;
+    let user = seed_user(&pool, OrgId::one(), "New Hire").await;
     let token = harness.token(OrgId::one(), user, false).await;
 
     let (status, body) = get(&harness, "/api/v1/me/access-log", Some(&token)).await;
@@ -51,16 +51,16 @@ async fn me_access_log_isolates_subjects_tenants_excludes_self_and_denied_and_re
     let org_b = OrgId::new();
     seed_org(&pool, org_b, "access-log-other").await;
 
-    let hr_actor = seed_user(&pool, org_a, "문서연").await;
-    let hr_unit = seed_org_unit(&pool, org_a, hr_actor, "인사팀").await;
-    seed_employee_link(&pool, org_a, hr_actor, "HR-001", "문서연", Some(hr_unit)).await;
+    let hr_actor = seed_user(&pool, org_a, "HR Actor").await;
+    let hr_unit = seed_org_unit(&pool, org_a, hr_actor, "HR Team").await;
+    seed_employee_link(&pool, org_a, hr_actor, "HR-001", "HR Actor", Some(hr_unit)).await;
 
-    let user_a = seed_user(&pool, org_a, "김철수").await;
-    let emp_a = seed_employee_link(&pool, org_a, user_a, "EMP-A", "김철수", None).await;
-    let user_b = seed_user(&pool, org_a, "박영희").await;
-    let emp_b = seed_employee_link(&pool, org_a, user_b, "EMP-B", "박영희", None).await;
-    let user_c = seed_user(&pool, org_b, "이타사").await;
-    let emp_c = seed_employee_link(&pool, org_b, user_c, "EMP-C", "이타사", None).await;
+    let user_a = seed_user(&pool, org_a, "Employee A").await;
+    let emp_a = seed_employee_link(&pool, org_a, user_a, "EMP-A", "Employee A", None).await;
+    let user_b = seed_user(&pool, org_a, "Employee B").await;
+    let emp_b = seed_employee_link(&pool, org_a, user_b, "EMP-B", "Employee B", None).await;
+    let user_c = seed_user(&pool, org_b, "Employee C").await;
+    let emp_c = seed_employee_link(&pool, org_b, user_c, "EMP-C", "Employee C", None).await;
 
     let base = OffsetDateTime::now_utc() - Duration::minutes(10);
     // Oldest allowed event for A (RRN reveal with raw PII/note seeded in snapshot to prove non-leak).
@@ -76,7 +76,7 @@ async fn me_access_log_isolates_subjects_tenants_excludes_self_and_denied_and_re
             "self_read": false,
             "field": "RRN",
             "reason_code": "SOCIAL_INSURANCE_FILING",
-            "note": "비밀메모 900101-1234567",
+            "note": "secret-note 900101-1234567",
             "raw_value": "900101-1234567"
         }),
     )
@@ -200,8 +200,8 @@ async fn me_access_log_isolates_subjects_tenants_excludes_self_and_denied_and_re
     let items2 = page2["items"].as_array().unwrap();
     assert_eq!(items2.len(), 1, "{page2}");
     assert_eq!(items2[0]["action"], "employee.rrn_reveal");
-    assert_eq!(items2[0]["actor_name"], "문서연");
-    assert_eq!(items2[0]["actor_team"], "인사팀");
+    assert_eq!(items2[0]["actor_name"], "HR Actor");
+    assert_eq!(items2[0]["actor_team"], "HR Team");
     assert_eq!(items2[0]["field"], "RRN");
     assert_eq!(items2[0]["reason_code"], "SOCIAL_INSURANCE_FILING");
     assert_eq!(items2[0]["target_type"], "employee");
@@ -211,7 +211,7 @@ async fn me_access_log_isolates_subjects_tenants_excludes_self_and_denied_and_re
     for forbidden in [
         "900101-1234567",
         "010-1234-5821",
-        "비밀메모",
+        "secret-note",
         &emp_b.to_string(),
         &emp_c.to_string(),
     ] {

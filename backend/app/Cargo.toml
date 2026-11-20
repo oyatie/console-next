@@ -43,8 +43,8 @@ dev-auth = ["console-platform-auth-rest/dev-auth"]
 # into `mvp` is a reviewed change that passes the promotion checklist in
 # docs/ops/mvp-build.md. Migrations are never gated: one schema for every build.
 default = ["mvp"]
-# The modules in the MVP besides the always-on Org + HR core. 근태, 휴가,
-# 급여, 개인 문서함 are enabled in the default MVP profile.
+# The modules in the MVP besides the always-on Org + HR core. Attendance, leave,
+# payroll, and inbox are enabled in the default MVP profile.
 mvp = ["attendance", "payroll", "leave", "inbox"]
 full = [
   # People

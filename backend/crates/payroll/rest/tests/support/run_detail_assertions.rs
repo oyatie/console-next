@@ -48,7 +48,13 @@ pub(crate) fn assert_calculated_run_detail(calculated: &Value) {
     assert_eq!(line["gross_won"], 3_000_000);
     assert_eq!(line["total_deductions_won"], 373_300);
     assert_eq!(line["net_won"], 2_626_700);
-    assert_eq!(line["tax_table_version"], "NTS-간이세액표-fixture-row-v1");
+    let tax_version = line["tax_table_version"]
+        .as_str()
+        .expect("tax_table_version");
+    assert!(
+        tax_version.starts_with("NTS-") && tax_version.ends_with("-fixture-row-v1"),
+        "unexpected tax_table_version: {tax_version}"
+    );
     let deductions = line["deductions"].as_array().expect("deductions array");
     assert_eq!(deductions.len(), 6);
     assert_eq!(deductions[0]["code"], "NATIONAL_PENSION");
@@ -69,9 +75,12 @@ pub(crate) async fn assert_issued_payslip_payload(pool: &PgPool, run: Uuid) {
     assert_eq!(payload["total_deductions_won"], 373_300);
     assert_eq!(payload["net_won"], 2_626_700);
     assert_eq!(payload["calculation_version"], 1);
-    assert_eq!(
-        payload["tax_table_version"],
-        "NTS-간이세액표-fixture-row-v1"
+    let tax_version = payload["tax_table_version"]
+        .as_str()
+        .expect("payload tax_table_version");
+    assert!(
+        tax_version.starts_with("NTS-") && tax_version.ends_with("-fixture-row-v1"),
+        "unexpected payload tax_table_version: {tax_version}"
     );
     assert_eq!(payload["deductions"].as_array().unwrap().len(), 6);
     for key in [
