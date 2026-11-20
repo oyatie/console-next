@@ -32,7 +32,9 @@ beforeAll(async () => {
       load: id => id === "\0console-shell-shortcut-test" ? `
         import React, { useEffect, useState } from 'react';
         import { createRoot } from 'react-dom/client';
+        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
         import { loadCatalog } from '@console/i18n';
+        import { ConsoleAccountMenu } from '/apps/web/src/shell/console/console-account-menu.tsx';
         import { singleKeysOn } from '/apps/web/src/lib/prefs.ts';
         import { isImeKey } from '/apps/web/src/lib/pure/ime.ts';
         import { singleKey } from '/apps/web/src/lib/pure/keys.ts';
@@ -60,14 +62,27 @@ beforeAll(async () => {
             document.addEventListener('keydown', onKeyDown);
             return () => document.removeEventListener('keydown', onKeyDown);
           }, []);
-          return React.createElement('main', { id: 'main', 'data-shell-harness': '' },
-            React.createElement('output', { 'data-opens': '' }, String(searchOpens)),
-            React.createElement('button', { type: 'button', onClick: () => setWithFind(v => !v) }, 'toggle'),
-            React.createElement('input', { 'aria-label': 'plain' }),
-            withFind ? React.createElement('div', { 'data-list-find': '' }, React.createElement('input', { type: 'search', 'aria-label': 'find' })) : null,
+          return React.createElement(
+            React.Fragment,
+            null,
+            React.createElement('header', null, React.createElement(ConsoleAccountMenu, { id: 'console-top-account', name: 'Console Operator' })),
+            React.createElement('main', { id: 'main', 'data-shell-harness': '' },
+              React.createElement('output', { 'data-opens': '' }, String(searchOpens)),
+              React.createElement('button', { type: 'button', onClick: () => setWithFind(v => !v) }, 'toggle'),
+              React.createElement('input', { 'aria-label': 'plain' }),
+              withFind ? React.createElement('div', { 'data-list-find': '' }, React.createElement('input', { type: 'search', 'aria-label': 'find' })) : null,
+            ),
           );
         }
-        createRoot(document.getElementById('root')).render(React.createElement(Harness));
+        const root = createRootRoute();
+        const indexRoute = createRoute({ getParentRoute: () => root, path: '/', component: Harness });
+        const accountRoute = createRoute({ getParentRoute: () => root, path: '/account', component: () => null });
+        const privacyRoute = createRoute({ getParentRoute: () => root, path: '/account/privacy', component: () => null });
+        const router = createRouter({
+          routeTree: root.addChildren([indexRoute, accountRoute, privacyRoute]),
+          history: createMemoryHistory({ initialEntries: ['/'] }),
+        });
+        createRoot(document.getElementById('root')).render(React.createElement(RouterProvider, { router }));
       ` : undefined,
     }],
   });
@@ -114,4 +129,19 @@ test("slash shortcut opens search, yields to in-page find, and respects singleKe
   await page.getByRole("button", { name: "toggle" }).focus();
   await page.keyboard.press("/");
   await expect.poll(async () => await page.locator("[data-opens]").textContent()).toBe("1");
+});
+
+test("ConsoleAccountMenu renders locale, theme, and logout controls when opened and closes on Escape", async () => {
+  const trigger = page.getByRole("button", { name: "Console Operator", exact: true });
+  await trigger.click();
+
+  const group = page.getByRole("group", { name: t("shell.account"), exact: true });
+  await group.waitFor();
+  for (const key of ["shell.locale.ko", "shell.locale.en", "shell.theme.light", "shell.theme.dark", "shell.logout"] as const) {
+    expect(await group.getByRole("button", { name: t(key), exact: true }).isVisible()).toBe(true);
+  }
+
+  await page.keyboard.press("Escape");
+  await expect.poll(async () => await group.count()).toBe(0);
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("console-top-account");
 });

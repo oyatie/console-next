@@ -47,14 +47,17 @@ export function PaneSplitter({
   container: RefObject<HTMLDivElement | null>;
   pane: RefObject<HTMLElement | null>;
 }) {
+  const maxPct = kind === "related" ? 50 : 55;
+  const minW = kind === "related" ? 260 : 280;
   const [pct, setPct] = useState(50);
   const apply = (raw: number) => {
     const root = container.current;
     if (!root) return;
     const total = root.getBoundingClientRect().width || 1200;
-    const clamped = Math.max(260, Math.min(Math.max(320, Math.floor(total * 0.6)), Math.round(raw)));
+    const maxW = Math.max(minW, Math.floor((total * maxPct) / 100));
+    const clamped = Math.max(minW, Math.min(maxW, Math.round(raw)));
     setSideWidth(root, kind, clamped);
-    setPct(Math.max(20, Math.min(80, Math.round((clamped / total) * 100))));
+    setPct(Math.max(20, Math.min(maxPct, Math.round((clamped / total) * 100))));
   };
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 || !pane.current) return;
@@ -91,7 +94,7 @@ export function PaneSplitter({
       aria-orientation="vertical"
       aria-label={t("common.resizeColumn")}
       aria-valuemin={20}
-      aria-valuemax={80}
+      aria-valuemax={maxPct}
       aria-valuenow={pct}
       className={s.splitter}
       onPointerDown={onPointerDown}

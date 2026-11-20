@@ -55,6 +55,13 @@ test("base and Console token files define the frame roles, bar insets, kbd sizin
     "--on-chrome-muted",
     "--chrome-accent",
     "--chrome-attention",
+    "--chrome-danger",
+    "--chrome-danger-bg",
+    "--chrome-danger-bd",
+    "--chrome-danger-solid",
+    "--chrome-on-danger",
+    "--chrome-warn-bg",
+    "--chrome-warn-bd",
     "--chrome-scheme",
     "--space-half",
     "--space-1-5",
@@ -99,6 +106,12 @@ test("base and Console token files define the frame roles, bar insets, kbd sizin
   expect(cr.light["--on-chrome-muted"]).toBe("#a7b3c0");
   expect(cr.light["--chrome-accent"]).toBe("#6fd3df");
   expect(cr.light["--chrome-attention"]).toBe("#f5bd4f");
+  expect(cr.light["--chrome-danger"]).toBe("#ffb4aa");
+  expect(cr.dark["--chrome-danger"]).toBe("#ffb4aa");
+  expect(cr.light["--chrome-danger-bg"]).toBe("#402321");
+  expect(cr.light["--chrome-warn-bg"]).toBe("#3a2d13");
+  expect(cr.dark["--chrome-danger-bg"]).toBeDefined();
+  expect(cr.dark["--chrome-warn-bg"]).toBeDefined();
   expect(cr.light["--chrome-scheme"]).toBe("dark");
   expect(cr.light["--radius-avatar"]).toBe("2px");
   expect(cr.light["--kbd-h"]).toBe("16px");
@@ -136,7 +149,7 @@ test("[data-surface='chrome'] repeats every derived token from tokens.css and me
   for (const { label, themes } of overlays) {
     for (const mode of ["light", "dark"] as const) {
       const merged = resolveChildScope(themes[mode], scope);
-      for (const fg of ["--ink", "--steel", "--faint", "--primary", "--warn-tx"]) {
+      for (const fg of ["--ink", "--steel", "--faint", "--primary", "--warn-tx", "--danger-tx"]) {
         for (const bg of ["--surface", "--canvas", "--muted", "--primary-soft"]) {
           const ratio = contrastRatio(merged[fg]!, merged[bg]!);
           expect(meetsContrast(ratio, "text"), `${label} ${mode} chrome scope ${fg} on ${bg}: ${ratio.toFixed(2)}:1`).toBe(true);
@@ -144,9 +157,23 @@ test("[data-surface='chrome'] repeats every derived token from tokens.css and me
       }
       const onPrimaryRatio = contrastRatio(merged["--on-primary"]!, merged["--primary"]!);
       expect(meetsContrast(onPrimaryRatio, "text"), `${label} ${mode} chrome scope --on-primary on --primary: ${onPrimaryRatio.toFixed(2)}:1`).toBe(true);
+      for (const [fg, bg] of [
+        ["--danger-tx", "--danger-bg"],
+        ["--over-tx", "--over-bg"],
+        ["--warn-tx", "--warn-bg"],
+        ["--on-danger", "--danger-solid"],
+        ["--on-danger", "--danger-tx"],
+      ] as const) {
+        const ratio = contrastRatio(merged[fg]!, merged[bg]!);
+        expect(meetsContrast(ratio, "text"), `${label} ${mode} chrome scope ${fg} on ${bg}: ${ratio.toFixed(2)}:1`).toBe(true);
+      }
       for (const bg of ["--surface", "--canvas", "--muted", "--primary-soft"]) {
         const edgeRatio = contrastRatio(merged["--control-border"]!, merged[bg]!);
         expect(meetsContrast(edgeRatio, "non-text"), `${label} ${mode} chrome scope --control-border on ${bg}: ${edgeRatio.toFixed(2)}:1`).toBe(true);
+      }
+      for (const bg of ["--surface", "--canvas", "--muted", "--danger-bg"]) {
+        const solidRatio = contrastRatio(merged["--danger-solid"]!, merged[bg]!);
+        expect(meetsContrast(solidRatio, "non-text"), `${label} ${mode} chrome scope --danger-solid on ${bg}: ${solidRatio.toFixed(2)}:1`).toBe(true);
       }
     }
   }

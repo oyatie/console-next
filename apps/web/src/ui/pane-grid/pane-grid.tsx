@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { isImeKey } from "../../lib/pure/ime";
-import { editable, FOCUS_SETTLE_MS, ROW_SELECTOR } from "../long-table/row-keys";
+import { editable, FOCUS_SETTLE_MS, ROW_SELECTOR, rowStep } from "../long-table/row-keys";
 import { PaneSplitter, SidePane, type SidePaneSpec } from "./pane-grid-side";
 import s from "./pane-grid.module.css";
 
 const rowElOf = (el: EventTarget | null) => (el instanceof Element ? el.closest<HTMLElement>(ROW_SELECTOR) : null);
 const rowKeyOf = (el: Element | null) => el?.getAttribute("data-row-id") ?? el?.getAttribute("data-id") ?? null;
+const NESTED_CONTROL =
+  'input, select, textarea, button, a[href], summary, [contenteditable]:not([contenteditable="false"]), [role="radio"], [role="radiogroup"], [role="checkbox"], [role="switch"], [role="slider"], [role="spinbutton"], [role="textbox"], [role="combobox"], [role="listbox"], [role="menu"], [role="menuitem"], [role="tab"], [role="button"], [role="link"]';
 
 /** Filled operational pane title bar (`--surface-2`, `1px` `--border` bottom rule) with title, meta, and actions. */
 export function PaneHead({
@@ -80,20 +82,35 @@ export function PaneGrid({
   const recordRef = useRef<HTMLElement>(null);
   const relatedRef = useRef<HTMLElement>(null);
   const restoreRef = useRef<(() => HTMLElement | null | undefined) | null>(null);
+  const clearRestoreFrameRef = useRef<number | undefined>(undefined);
   const settleRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const openRecord = record || undefined;
   const openRelated = openRecord && related ? related : undefined;
   const depth = openRelated ? 2 : openRecord ? 1 : 0;
-  const liveRef = useRef({ openRecord, openRelated, full, onFull, onSelect, onOpen });
+  const prevDepthRef = useRef(depth);
+  const liveRef = useRef({ openRecord, openRelated, full, onFull, onSelect, onOpen, depth });
   useLayoutEffect(() => {
-    liveRef.current = { openRecord, openRelated, full, onFull, onSelect, onOpen };
+    liveRef.current = { openRecord, openRelated, full, onFull, onSelect, onOpen, depth };
   });
 
   const closePane = useCallback((pane: SidePaneSpec) => {
     clearTimeout(settleRef.current);
+    if (clearRestoreFrameRef.current !== undefined) cancelAnimationFrame(clearRestoreFrameRef.current);
+    const fromDepth = liveRef.current.depth;
     restoreRef.current = pane.returnFocus ?? null;
     pane.onClose();
+    clearRestoreFrameRef.current = requestAnimationFrame(() => {
+      clearRestoreFrameRef.current = undefined;
+      if (liveRef.current.depth >= fromDepth) restoreRef.current = null;
+    });
   }, []);
+
+  useEffect(
+    () => () => {
+      if (clearRestoreFrameRef.current !== undefined) cancelAnimationFrame(clearRestoreFrameRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     const center = centerRef.current;
@@ -109,10 +126,47 @@ export function PaneGrid({
         if (openId && id !== openId) liveRef.current.onSelect?.(id);
       }, FOCUS_SETTLE_MS);
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || isImeKey(e) || e.altKey || e.ctrlKey || e.metaKey || editable(e.target)) return;
+      const currentRow = rowElOf(e.target);
+      const currentId = rowKeyOf(currentRow);
+      if (!currentRow || !currentId || currentRow.closest('[role="grid"], [role="tree"]')) return;
+      const { openRecord: rec, onSelect: pick, onOpen: expand } = liveRef.current;
+      const openId = rec?.id;
+      if (e.key === "Enter" && e.target === currentRow && (pick || expand)) {
+        if (currentRow.tagName === "BUTTON" && (!openId || openId !== currentId)) return;
+        e.preventDefault();
+        if (openId === currentId && expand) expand(currentId);
+        else pick?.(currentId);
+        return;
+      }
+      if (e.shiftKey) return;
+      if (
+        e.target instanceof Element &&
+        (e.target !== currentRow
+          ? e.target.closest(NESTED_CONTROL)
+          : e.target instanceof HTMLInputElement && e.target.type === "radio")
+      ) {
+        return;
+      }
+      const step = rowStep(e);
+      if (!step) return;
+      const rows = [...center.querySelectorAll<HTMLElement>(ROW_SELECTOR)].filter(
+        r => r.getClientRects().length > 0 && !r.closest('[role="grid"], [role="tree"]'),
+      );
+      const next = rows[rows.indexOf(currentRow) + step];
+      if (next) {
+        e.preventDefault();
+        next.focus();
+        next.scrollIntoView({ block: "nearest" });
+      }
+    };
     center.addEventListener("focusin", onFocusIn);
+    center.addEventListener("keydown", onKeyDown);
     return () => {
       clearTimeout(settleRef.current);
       center.removeEventListener("focusin", onFocusIn);
+      center.removeEventListener("keydown", onKeyDown);
     };
   }, []);
 
@@ -140,10 +194,17 @@ export function PaneGrid({
   }, [closePane]);
 
   useEffect(() => {
+    const prevDepth = prevDepthRef.current;
+    prevDepthRef.current = depth;
     const fn = restoreRef.current;
-    if (!fn || depth < 0) return;
-    restoreRef.current = null;
-    const frame = requestAnimationFrame(() => fn()?.focus());
+    if (!fn || depth >= prevDepth) {
+      restoreRef.current = null;
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      restoreRef.current = null;
+      fn()?.focus();
+    });
     return () => cancelAnimationFrame(frame);
   }, [depth]);
 

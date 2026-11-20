@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
 import { Button } from "../button/button";
@@ -20,10 +20,16 @@ export default function PaneGridGallery() {
   const [selected, setSelected] = useState<string>("r1");
   const [full, setFull] = useState(false);
 
-  useScreenStatusBar([
-    { id: "scope", content: tg("sample.company"), tone: "strong" },
-    { id: "count", content: tg("table.many") },
-  ]);
+  const scopeLabel = tg("sample.company");
+  const countLabel = tg("table.many");
+  const statusSegments = useMemo(
+    () => [
+      { id: "scope", content: scopeLabel, tone: "strong" as const },
+      { id: "count", content: countLabel },
+    ],
+    [scopeLabel, countLabel],
+  );
+  useScreenStatusBar(statusSegments);
 
   return (
     <section className="card gallery__section" data-pane-grid-gallery="">
