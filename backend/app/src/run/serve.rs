@@ -63,6 +63,21 @@ pub async fn assert_no_dev_auth_personas(_pool: &sqlx::PgPool) -> Result<(), App
 }
 
 async fn serve_api(config: AppConfig, state: AppState) -> Result<(), AppError> {
+    #[cfg(debug_assertions)]
+    if config.otp_hmac_key.is_none() {
+        tracing::warn!(
+            "CONSOLE_OTP_HMAC_KEY unset: using ephemeral process-wide development OTP HMAC key"
+        );
+    }
+    crate::coldstart_guard::require_otp_hmac_key(
+        state.otp_hmac_key.is_some(),
+        config.role == AppRole::Api,
+        matches!(state.database, DatabaseDependency::Postgres(_))
+            || config.auth_rest.is_some()
+            || config.coldstart_otp.is_some(),
+        crate::coldstart_guard::BuildProfile::current(),
+    )
+    .map_err(AppError::Config)?;
     install_metrics_recorder()?;
     let state_for_router = state.clone();
     seed_cold_start_otp(&config, &state).await?;
@@ -169,7 +184,12 @@ async fn seed_cold_start_otp(config: &AppConfig, state: &AppState) -> Result<(),
         return Ok(());
     };
 
-    let seeded = BootstrapCredentialStore
+    let Some(ref hmac_key) = state.otp_hmac_key else {
+        return Err(AppError::Config(
+            "CONSOLE_OTP_HMAC_KEY is required for cold-start OTP seeding".to_owned(),
+        ));
+    };
+    let seeded = BootstrapCredentialStore::new(hmac_key.clone())
         .seed_cold_start_credential(
             pool,
             otp,

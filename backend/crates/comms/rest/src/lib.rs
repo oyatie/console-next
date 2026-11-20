@@ -20,6 +20,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
+mod webhook_auth;
 pub use openapi::OPENAPI_FRAGMENT;
 
 use std::str::FromStr;
@@ -48,9 +49,8 @@ use console_comms_domain::{FolderRole, MailSecurity, MessageAddress, normalize_s
 use console_kernel_core::{ErrorKind, KernelError, OrgId, TraceContext};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::{Action, Feature, Principal, authorize_capability};
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
-use subtle::ConstantTimeEq;
 use time::OffsetDateTime;
 
 pub const MAIL_ACCOUNT_PATH: &str = "/api/v1/mail/account";
@@ -723,18 +723,18 @@ async fn mox_webhook(
 ) -> Result<Response, RestError> {
     // 1. Authenticate BEFORE touching the (untrusted) body. The secret must be
     //    configured; mox presents it verbatim as `Authorization: Bearer <secret>`.
-    let secret = state
-        .mox_webhook_secret
-        .as_ref()
-        .ok_or_else(|| RestError::unavailable("mox delivery webhook is not configured"))?;
-    let expected = format!("Bearer {}", secret.expose_secret());
-    let presented = headers
-        .get(AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or_default();
-    if !bool::from(presented.as_bytes().ct_eq(expected.as_bytes())) {
-        return Err(RestError::unauthorized("invalid mox webhook credential"));
-    }
+    webhook_auth::verify_mox_bearer_secret(
+        state.mox_webhook_secret.as_ref(),
+        headers.get(AUTHORIZATION).and_then(|v| v.to_str().ok()),
+    )
+    .map_err(|err| match err {
+        webhook_auth::MoxWebhookAuthError::Unconfigured => {
+            RestError::unavailable("mox delivery webhook is not configured")
+        }
+        webhook_auth::MoxWebhookAuthError::InvalidCredential => {
+            RestError::unauthorized("invalid mox webhook credential")
+        }
+    })?;
 
     // 2. Parse the mox Incoming payload.
     let incoming: Incoming = serde_json::from_slice(&body)
@@ -1084,39 +1084,8 @@ impl IntoResponse for RestError {
 
 #[cfg(test)]
 mod tests {
-    use super::ConstantTimeEq;
     use super::keep_existing_if_blank;
     use secrecy::ExposeSecret;
-
-    // -------------------------------------------------------------------
-    // Webhook credential comparison: the length-XOR-truncated-to-u8
-    // hand-roll this replaced would silently mask a length delta that is a
-    // multiple of 256 (`(a.len() ^ b.len()) as u8 == 0` for such deltas).
-    // The 256-length-delta vector proves the `subtle`-backed check catches
-    // exactly that case: a 256-byte-longer presented value must still be
-    // rejected.
-    // -------------------------------------------------------------------
-    #[test]
-    fn credential_eq_rejects_256_length_delta() {
-        let expected = b"Bearer test-mox-webhook-secret".to_vec();
-        let mut presented = expected.clone();
-        presented.extend(std::iter::repeat_n(b'x', 256));
-        assert!(!bool::from(presented.as_slice().ct_eq(expected.as_slice())));
-    }
-
-    #[test]
-    fn credential_eq_accepts_exact_match() {
-        let secret = b"Bearer test-mox-webhook-secret".to_vec();
-        assert!(bool::from(secret.as_slice().ct_eq(secret.as_slice())));
-    }
-
-    #[test]
-    fn credential_eq_rejects_wrong_value_same_length() {
-        let expected = b"Bearer test-mox-webhook-secret".to_vec();
-        let mut presented = expected.clone();
-        *presented.last_mut().unwrap() ^= 0x01;
-        assert!(!bool::from(presented.as_slice().ct_eq(expected.as_slice())));
-    }
 
     #[test]
     fn blank_password_keeps_existing_secret() {

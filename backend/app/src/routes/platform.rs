@@ -23,9 +23,9 @@ pub(super) fn compose(router: Router, domain_router: Router, deps: &TenantDeps<'
     #[cfg(any(debug_assertions, feature = "e2e-test-support"))]
     let router = if state.config.email_stub_mode == Some(StubEmailMode::E2e) {
         match &state.e2e_fixture_database {
-            DatabaseDependency::Postgres(fixture_pool) => {
-                router.merge(super::e2e_fixtures::router(fixture_pool.clone()))
-            }
+            DatabaseDependency::Postgres(fixture_pool) => router.merge(
+                super::e2e_fixtures::router(fixture_pool.clone(), state.otp_hmac_key.clone()),
+            ),
             DatabaseDependency::NotConfigured => router,
         }
     } else {
@@ -65,7 +65,12 @@ pub(super) fn compose(router: Router, domain_router: Router, deps: &TenantDeps<'
         PlatformRestState::new(
             pool.clone(),
             state.jwt_verifier.clone(),
-            PlatformProvisioner::new(state.config.coldstart_otp_ttl),
+            match state.otp_hmac_key.clone() {
+                Some(key) => {
+                    PlatformProvisioner::with_otp_hmac_key(state.config.coldstart_otp_ttl, key)
+                }
+                None => PlatformProvisioner::unconfigured(state.config.coldstart_otp_ttl),
+            },
         )
         .with_support_issuer(state.support_issuer.clone())
         .with_passkey_step_up(state.policy_step_up.clone())

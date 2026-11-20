@@ -37,7 +37,7 @@ export function useExperienceSync(enabled: boolean): void {
     installDirtyTracker();
   }, []);
   const workspace = useQuery({ ...workspaceQuery, enabled });
-  const settings = useQuery({ ...settingsQuery, enabled, retry: false });
+  const settings = useQuery({ ...settingsQuery, enabled });
   useEffect(() => {
     if (!enabled || (!workspace.isSuccess && !settings.isSuccess)) return;
     const layout = workspace.data?.layout && typeof workspace.data.layout === "object" && !Array.isArray(workspace.data.layout)

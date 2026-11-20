@@ -5,7 +5,7 @@ mod auth_rest_tests;
 
 #[path = "auth_fixtures/cookie_requests.rs"]
 mod cookie_requests;
-use cookie_requests::{post_cookie_mode, post_cookie_mode_with_device_id};
+use cookie_requests::{post_cookie_mode, post_cookie_mode_with_device_id, refresh_hash_v2};
 
 use axum::body::{Body, to_bytes};
 use axum::extract::ConnectInfo;
@@ -218,10 +218,9 @@ async fn otp_first_signin_then_passkey_enrollment_then_usernameless_login(pool: 
             first_tokens.refresh_token.as_ref().unwrap(),
         ),
     ] {
-        use sha2::{Digest, Sha256};
         let claims = serde_json::to_value(verifier.verify_access_token(access).unwrap()).unwrap();
         let family: Uuid = sqlx::query_scalar("SELECT family_id FROM auth_refresh_tokens WHERE token_hash=$1 AND user_id=$2 AND org_id=$3")
-            .bind(Sha256::digest(refresh.as_bytes()).to_vec()).bind(*new_user_id.as_uuid())
+            .bind(refresh_hash_v2(refresh)).bind(*new_user_id.as_uuid())
             .bind(*OrgId::one().as_uuid()).fetch_one(&pool).await.unwrap();
         assert_eq!(claims["session_family_id"], json!(family));
     }
@@ -274,8 +273,6 @@ async fn otp_first_signin_then_passkey_enrollment_then_usernameless_login(pool: 
 /// refresh token and retrying the old one revokes the family as reuse.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn refresh_signing_failure_does_not_commit_undelivered_replacement(pool: PgPool) {
-    use sha2::{Digest, Sha256};
-
     let signing_key = SigningKey::generate();
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
@@ -293,7 +290,7 @@ async fn refresh_signing_failure_does_not_commit_undelivered_replacement(pool: P
     .await;
     let service =
         build_router(app_state(pool.clone(), private_key_pem.to_string(), public_key_pem).unwrap());
-    let otp = BootstrapCredentialStore
+    let otp = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -313,7 +310,7 @@ async fn refresh_signing_failure_does_not_commit_undelivered_replacement(pool: P
     )
     .await;
     let refresh = session.refresh_token.unwrap();
-    let hash = Sha256::digest(refresh.as_bytes()).to_vec();
+    let hash = refresh_hash_v2(&refresh);
     let family: Uuid = sqlx::query_scalar(
         "SELECT family_id FROM auth_refresh_tokens WHERE token_hash=$1 AND user_id=$2",
     )
@@ -1249,7 +1246,7 @@ async fn refresh_keeps_zero_passkey_user_in_setup_mode_until_enrolled(pool: PgPo
         .unwrap(),
     );
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -1337,7 +1334,7 @@ async fn approve_session_rejects_generic_desktop_handoff_without_target(pool: Pg
         .unwrap(),
     );
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -1646,7 +1643,7 @@ async fn platform_admin_can_approve_and_consume_bound_device_handoff(pool: PgPoo
             .unwrap();
     assert_eq!(platform_status, "ARCHIVED");
     let service = build_router(app_state(pool.clone(), private_pem, public_pem.clone()).unwrap());
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -1990,7 +1987,7 @@ async fn first_passkey_registration_rejects_revoked_bootstrap_after_start(pool: 
     .await;
     let service =
         build_router(app_state(pool.clone(), private_key_pem.to_string(), public_key_pem).unwrap());
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -2096,7 +2093,7 @@ async fn first_passkey_registration_rejects_replaced_source_after_refresh(pool: 
     .await;
     let service =
         build_router(app_state(pool.clone(), private_key_pem.to_string(), public_key_pem).unwrap());
-    let original = BootstrapCredentialStore
+    let original = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -2228,7 +2225,7 @@ async fn replaced_otp_family_cannot_create_business_work(pool: PgPool) {
     seed_equipment(&pool, branch_id, "293").await;
     let service =
         build_router(app_state(pool.clone(), private_key_pem.to_string(), public_key_pem).unwrap());
-    let original = BootstrapCredentialStore
+    let original = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -2994,7 +2991,7 @@ async fn otp_family_cannot_gain_business_authority_after_passkey_registration(po
     seed_equipment(&pool, branch_id, "292").await;
     let service =
         build_router(app_state(pool.clone(), private_key_pem.to_string(), public_key_pem).unwrap());
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -3658,7 +3655,7 @@ async fn cookie_mode_redeem_sets_httponly_cookie_and_omits_body_refresh(pool: Pg
         .unwrap(),
     );
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -3729,7 +3726,7 @@ async fn cookie_mode_login_then_refresh_reads_and_rotates_cookie(pool: PgPool) {
 
     // First sign-in via OTP (cookie mode) then enroll a passkey so we can do a
     // real cookie-mode passkey login.
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -3839,7 +3836,7 @@ async fn cookie_mode_refresh_allows_rapid_navigation_burst_with_device_id(pool: 
         .unwrap(),
     );
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -3914,7 +3911,7 @@ async fn body_mode_without_header_is_unchanged_and_sets_no_cookie(pool: PgPool) 
         .unwrap(),
     );
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -4039,7 +4036,7 @@ async fn start_step_up_assertion(
 /// Sign a user in via a directly-issued OTP (used to bootstrap an authenticated
 /// session for any role in tests without a pre-existing passkey).
 async fn admin_session_via_otp(service: &axum::Router, pool: &PgPool, user_id: UserId) -> String {
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             pool,
             None,

@@ -2,7 +2,7 @@ use crate::audit::auth_audit_event;
 use crate::context::load::load_user_auth_context_tx;
 use crate::context::request::authenticated_user_context;
 use crate::context::request::bearer_token;
-use crate::device_login::token::hash_device_login_token;
+use crate::device_login::token::hash_device_login_token_candidates;
 use crate::device_login::token::normalize_device_login_token;
 use crate::device_login::tx::ensure_handoff_company_active_tx;
 use crate::device_login::tx::lock_handoff_account_tx;
@@ -44,19 +44,19 @@ pub(crate) async fn approve_device_login(
     .await?;
 
     let approve_token = normalize_device_login_token(&body.approve_token, "console_dla_")?;
-    let approve_hash = hash_device_login_token(&approve_token);
+    let approve_hashes = hash_device_login_token_candidates(&approve_token);
 
     let pending = sqlx::query(
         r#"
         SELECT id, target_user_id, target_org_id
         FROM auth_device_login_handoffs
-        WHERE approve_token_hash = $1
+        WHERE approve_token_hash = ANY($1)
           AND approved_at IS NULL
           AND consumed_at IS NULL
           AND expires_at > $2
         "#,
     )
-    .bind(&approve_hash)
+    .bind(&approve_hashes[..])
     .bind(now)
     // rls-arming: ok auth_device_login_handoffs is a global pre-auth table.
     .fetch_optional(&state.pool)
@@ -97,7 +97,7 @@ pub(crate) async fn approve_device_login(
             approved_user_id = $3,
             approved_org_id = $4,
             approved_passkey_id = $5
-        WHERE approve_token_hash = $1 AND id = $6
+        WHERE approve_token_hash = ANY($1) AND id = $6
           AND approved_at IS NULL
           AND consumed_at IS NULL
           AND expires_at > $2
@@ -106,7 +106,7 @@ pub(crate) async fn approve_device_login(
         RETURNING id
         "#,
     )
-    .bind(&approve_hash)
+    .bind(&approve_hashes[..])
     .bind(now)
     .bind(outcome.user_id)
     .bind(*outcome.org_id.as_uuid())
@@ -154,10 +154,10 @@ pub(crate) async fn approve_device_login_session(
     .await?;
 
     let approve_token = normalize_device_login_token(&body.approve_token, "console_dla_")?;
-    let approve_hash = hash_device_login_token(&approve_token);
+    let approve_hashes = hash_device_login_token_candidates(&approve_token);
     let pending: Option<(Uuid, Option<Uuid>, Option<Uuid>)> = sqlx::query_as(
-        "SELECT id, target_user_id, target_org_id FROM auth_device_login_handoffs WHERE approve_token_hash=$1")
-        .bind(&approve_hash).fetch_optional(&state.pool).await.map_err(DbError::Sqlx)?;
+        "SELECT id, target_user_id, target_org_id FROM auth_device_login_handoffs WHERE approve_token_hash = ANY($1)")
+        .bind(&approve_hashes[..]).fetch_optional(&state.pool).await.map_err(DbError::Sqlx)?;
     let Some((handoff_id, Some(target_user), Some(target_org))) = pending else {
         return Err(RestError::unauthorized("invalid or expired login handoff"));
     };
@@ -228,7 +228,7 @@ pub(crate) async fn approve_device_login_session(
             approved_user_id = $3,
             approved_org_id = $4,
             approved_passkey_id = $5
-        WHERE approve_token_hash = $1 AND id = $6
+        WHERE approve_token_hash = ANY($1) AND id = $6
           AND approved_at IS NULL
           AND consumed_at IS NULL
           AND expires_at > $2
@@ -237,7 +237,7 @@ pub(crate) async fn approve_device_login_session(
         RETURNING id, approved_passkey_id
         "#,
     )
-    .bind(&approve_hash)
+    .bind(&approve_hashes[..])
     .bind(now)
     .bind(user_id)
     .bind(*org_id.as_uuid())

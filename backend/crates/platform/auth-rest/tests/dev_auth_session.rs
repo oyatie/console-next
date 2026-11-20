@@ -313,7 +313,7 @@ async fn cookie_refresh_still_requires_passkey_for_ordinary_zero_passkey_user(po
         .await
         .unwrap();
     let app = router(test_state(rt_pool));
-    let cookie = format!("console_refresh={}", issued.token.as_str());
+    let cookie = format!("__Host-console_refresh={}", issued.token.as_str());
 
     let refreshed = post_cookie_refresh(app, &cookie).await;
     assert_eq!(refreshed.status(), StatusCode::OK);

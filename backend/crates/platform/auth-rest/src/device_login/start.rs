@@ -1,6 +1,6 @@
 use crate::audit::record_anonymous_auth_audit;
 use crate::device_login::token::generate_device_login_token;
-use crate::device_login::token::hash_device_login_token;
+use crate::device_login::token::hash_device_login_token_v2;
 use crate::dto::device::DeviceLoginStartResponse;
 use crate::error::RestError;
 use crate::limits::DEVICE_LOGIN_HANDOFF_TTL;
@@ -40,8 +40,8 @@ pub(crate) async fn start_device_login(
     .await?;
 
     let handoff_id = Uuid::new_v4();
-    let poll_token = generate_device_login_token("console_dlp_");
-    let approve_token = generate_device_login_token("console_dla_");
+    let poll_token = generate_device_login_token("console_dlp_")?;
+    let approve_token = generate_device_login_token("console_dla_")?;
     let expires_at = now + DEVICE_LOGIN_HANDOFF_TTL;
 
     sqlx::query(
@@ -52,8 +52,8 @@ pub(crate) async fn start_device_login(
         "#,
     )
     .bind(handoff_id)
-    .bind(hash_device_login_token(&poll_token))
-    .bind(hash_device_login_token(&approve_token))
+    .bind(hash_device_login_token_v2(&poll_token))
+    .bind(hash_device_login_token_v2(&approve_token))
     .bind(now)
     .bind(expires_at)
     // rls-arming: ok auth_device_login_handoffs is a global pre-auth table.

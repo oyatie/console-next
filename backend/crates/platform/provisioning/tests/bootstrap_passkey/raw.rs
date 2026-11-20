@@ -55,7 +55,7 @@ async fn renamed_platform_admin_is_reused_at_boot(pool: PgPool) {
         .execute(&pool)
         .await
         .unwrap();
-    BootstrapCredentialStore
+    BootstrapCredentialStore::default()
         .seed_cold_start_credential(
             &pool,
             "renamed-root-test",

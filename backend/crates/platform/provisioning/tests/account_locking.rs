@@ -78,12 +78,12 @@ async fn provision(
     let ttl = Duration::minutes(5);
     match mode {
         0 => {
-            BootstrapCredentialStore
+            BootstrapCredentialStore::default()
                 .issue_for_zero_credential_user(pool, None, user, OrgId::one(), now, ttl)
                 .await
         }
         1 => {
-            BootstrapCredentialStore
+            BootstrapCredentialStore::default()
                 .reset_credentials_for_user(
                     pool,
                     console_kernel_core::UserId::from_uuid(user),
@@ -95,7 +95,7 @@ async fn provision(
                 .await
         }
         2 => {
-            BootstrapCredentialStore
+            BootstrapCredentialStore::default()
                 .issue_self_enroll_handoff(pool, user, OrgId::one(), now, ttl)
                 .await
         }
@@ -248,7 +248,7 @@ async fn otp_redeem_rechecks_expiry_after_account_wait(owner: PgPool) {
     sqlx::query("UPDATE auth_bootstrap_credentials SET expires_at=clock_timestamp()+interval '2 seconds' WHERE id=$1").bind(id).execute(&owner).await.unwrap();
     let (held, pid) = account(&owner, user).await;
     let task = tokio::spawn(async move {
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(&rt, issued.token.as_str(), OffsetDateTime::now_utc())
             .await
     });
@@ -292,7 +292,7 @@ async fn bootstrap_consume_waits_before_child_and_retains_caller_rollback(owner:
             .execute(&mut *tx)
             .await
             .unwrap();
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .consume_open_credentials_tx(&mut tx, OrgId::one(), user, OffsetDateTime::now_utc())
             .await
             .unwrap();
@@ -423,7 +423,7 @@ async fn otp_redeem_denies_deactivation_during_account_wait(owner: PgPool) {
     let issued = provision(&rt, user, 0).await.unwrap();
     let (mut held, pid) = account(&owner, user).await;
     let task = tokio::spawn(async move {
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(&rt, issued.token.as_str(), OffsetDateTime::now_utc())
             .await
     });
@@ -462,7 +462,7 @@ async fn otp_locator_replacement_cannot_switch_locked_account(owner: PgPool) {
             .unwrap();
     let (held, pid) = account(&owner, a).await;
     let task = tokio::spawn(async move {
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(&rt, issued.token.as_str(), OffsetDateTime::now_utc())
             .await
     });
@@ -503,7 +503,7 @@ async fn consume_after_wait(owner: &PgPool, inactive: bool) {
             .execute(&mut *tx)
             .await
             .unwrap();
-        let result = BootstrapCredentialStore
+        let result = BootstrapCredentialStore::default()
             .consume_open_credentials_tx(&mut tx, OrgId::one(), user, OffsetDateTime::now_utc())
             .await;
         if result.is_ok() {
@@ -645,7 +645,7 @@ async fn bootstrap_consumption_rechecks_expiry_after_child_row_wait(owner: PgPoo
             .execute(&mut *tx)
             .await
             .unwrap();
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .consume_open_credentials_tx(&mut tx, OrgId::one(), user, OffsetDateTime::now_utc())
             .await
             .unwrap();

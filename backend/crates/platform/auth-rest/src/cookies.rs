@@ -19,8 +19,8 @@ pub(crate) const AUTH_TRANSPORT_COOKIE: &str = "cookie";
 pub(crate) const REFRESH_COOKIE_NAME: &str = "__Host-console_refresh";
 /// The __Host- prefix requires Secure, Path=/ and no Domain attribute.
 pub(crate) const REFRESH_COOKIE_PATH: &str = "/";
-// shortcut: N-1 migration from 2026-10-27, remove legacy acceptance/clearing after one production release.
-const LEGACY_REFRESH_COOKIE_NAME: &str = "console_refresh";
+// Legacy `console_refresh` acceptance was contracted after N-1 cutover; keep
+// clearing the old Path=/api/v1/auth cookie on Set-Cookie responses.
 const LEGACY_REFRESH_CLEAR_COOKIE: &str =
     "console_refresh=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=0; Secure";
 
@@ -54,24 +54,21 @@ pub(crate) fn select_refresh_credential(
     }
     let cookie_header = cookie_header.to_str().map_err(|_| refuse())?;
     let mut refresh = None;
-    let mut legacy = None;
     for pair in cookie_header.split(';') {
         let Some((name, value)) = pair.split_once('=') else {
-            if [REFRESH_COOKIE_NAME, LEGACY_REFRESH_COOKIE_NAME].contains(&pair.trim()) {
+            if pair.trim() == REFRESH_COOKIE_NAME {
                 return Err(refuse());
             }
             continue;
         };
-        let credential = match name.trim() {
-            REFRESH_COOKIE_NAME => &mut refresh,
-            LEGACY_REFRESH_COOKIE_NAME => &mut legacy,
-            _ => continue,
-        };
-        if credential.replace(value.trim()).is_some() {
+        if name.trim() != REFRESH_COOKIE_NAME {
+            continue;
+        }
+        if refresh.replace(value.trim()).is_some() {
             return Err(refuse());
         }
     }
-    let Some(refresh) = refresh.or(legacy) else {
+    let Some(refresh) = refresh else {
         return Ok(body_token);
     };
     if headers.contains_key(header::AUTHORIZATION)

@@ -2,8 +2,7 @@
 //! Request locks serialize decisions, notification and credential reset in one transaction.
 use super::{ops_recovery_store::*, ops_recovery_types::*};
 use crate::{
-    BootstrapCredentialStore, OpsRecoveryState, PlatformProvisioner, ProvisioningError,
-    recovery_state, require_issue,
+    OpsRecoveryState, PlatformProvisioner, ProvisioningError, recovery_state, require_issue,
 };
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext};
 use console_platform_authz::cedar_pbac::actions::ops_recovery_decide::{
@@ -233,7 +232,8 @@ impl PlatformProvisioner {
                     if target != Some(row.target_user_id) {
                         return Err(ProvisioningError::Conflict("ops holder changed".into()));
                     }
-                    let (issue, events) = BootstrapCredentialStore
+                    let (issue, events) = self
+                        .bootstrap_store()?
                         .reset_credentials_for_user_tx(
                             tx,
                             actor.user,

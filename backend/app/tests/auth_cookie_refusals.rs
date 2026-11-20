@@ -232,9 +232,9 @@ async fn session_snapshot(pool: &PgPool, family: Uuid) -> Value {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn legacy_refresh_migrates_to_host_cookie_without_losing_the_session(pool: PgPool) {
-    let branch = seed_branch(&pool, "Cookie migration", "Cookie migration").await;
-    let user = seed_user(&pool, "Cookie migration", "MECHANIC", branch).await;
+async fn legacy_console_refresh_cookie_does_not_refresh_or_logout_family(pool: PgPool) {
+    let branch = seed_branch(&pool, "Cookie contraction", "Cookie contraction").await;
+    let user = seed_user(&pool, "Cookie contraction", "MECHANIC", branch).await;
     let issued = RefreshTokenStore
         .issue_family(
             &pool,
@@ -257,20 +257,27 @@ async fn legacy_refresh_migrates_to_host_cookie_without_losing_the_session(pool:
         HeaderValue::from_str(&format!("console_refresh={}", issued.token.as_str())).unwrap(),
     );
     let before = session_snapshot(&pool, issued.family_id).await;
-    let mut foreign = headers.clone();
-    foreign.insert(
-        header::ORIGIN,
-        HeaderValue::from_static("https://foreign.example.test"),
-    );
-    foreign.insert("sec-fetch-site", HeaderValue::from_static("cross-site"));
+    let response = post(&service, REFRESH, headers.clone(), json!({})).await;
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    assert!(!response.headers().contains_key(header::SET_COOKIE));
+    assert_eq!(session_snapshot(&pool, issued.family_id).await, before);
+    // Legacy cookie also cannot revoke the session on logout, leaving the
+    // `__Host-console_refresh` credential unspent.
     assert_eq!(
-        post(&service, REFRESH, foreign, json!({})).await.status(),
-        StatusCode::FORBIDDEN
+        post(&service, LOGOUT, headers, json!({})).await.status(),
+        StatusCode::NO_CONTENT
     );
     assert_eq!(session_snapshot(&pool, issued.family_id).await, before);
-    let response = post(&service, REFRESH, headers, json!({})).await;
-    assert_eq!(response.status(), StatusCode::OK);
-    let cookies: Vec<_> = response
+
+    let host_response = post(
+        &service,
+        REFRESH,
+        cookie_headers(issued.token.as_str()),
+        json!({}),
+    )
+    .await;
+    assert_eq!(host_response.status(), StatusCode::OK);
+    let cookies: Vec<_> = host_response
         .headers()
         .get_all(header::SET_COOKIE)
         .iter()
@@ -293,10 +300,6 @@ async fn legacy_refresh_migrates_to_host_cookie_without_losing_the_session(pool:
         .strip_prefix("__Host-console_refresh=")
         .unwrap()
         .to_owned();
-    let body: Value =
-        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
-    assert!(body["refresh_token"].is_null());
-    assert!(body["access_token"].is_string());
     assert_eq!(
         post(&service, LOGOUT, cookie_headers(&rotated), json!({}))
             .await

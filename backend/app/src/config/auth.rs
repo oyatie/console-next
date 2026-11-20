@@ -108,6 +108,27 @@ pub(crate) fn policy_step_up_from_auth_config(
     .map_err(|err| AppError::Config(format!("invalid policy step-up WebAuthn config: {err}")))
 }
 
+pub(crate) fn otp_hmac_key_from_vars(
+    vars: &HashMap<String, String>,
+) -> Result<Option<console_platform_provisioning::OtpHmacKey>, AppError> {
+    let prev = non_empty(vars.get("CONSOLE_OTP_HMAC_KEY_PREV"));
+    match non_empty(vars.get("CONSOLE_OTP_HMAC_KEY")) {
+        Some(active) => {
+            console_platform_provisioning::OtpHmacKey::from_encoded(&active, prev.as_deref())
+                .map(Some)
+                .map_err(|reason| {
+                    AppError::Config(format!(
+                        "invalid CONSOLE_OTP_HMAC_KEY or CONSOLE_OTP_HMAC_KEY_PREV: {reason}"
+                    ))
+                })
+        }
+        None if prev.is_some() => Err(AppError::Config(
+            "CONSOLE_OTP_HMAC_KEY is required when CONSOLE_OTP_HMAC_KEY_PREV is set".to_owned(),
+        )),
+        None => Ok(None),
+    }
+}
+
 pub(crate) fn auth_rest_config_from_vars(
     vars: &HashMap<String, String>,
     jwt: Option<&JwtVerifierConfig>,

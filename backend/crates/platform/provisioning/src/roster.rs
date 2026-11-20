@@ -46,12 +46,44 @@ impl RosterImportReport {
 #[derive(Debug, Clone)]
 pub struct RosterProvisioner {
     bootstrap_ttl: Duration,
+    otp_hmac_key: Option<crate::OtpHmacKey>,
 }
 
 impl RosterProvisioner {
     #[must_use]
+    pub const fn with_otp_hmac_key(
+        bootstrap_ttl: Duration,
+        otp_hmac_key: crate::OtpHmacKey,
+    ) -> Self {
+        Self {
+            bootstrap_ttl,
+            otp_hmac_key: Some(otp_hmac_key),
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    #[must_use]
     pub const fn new(bootstrap_ttl: Duration) -> Self {
-        Self { bootstrap_ttl }
+        Self {
+            bootstrap_ttl,
+            otp_hmac_key: None,
+        }
+    }
+
+    fn resolve_otp_hmac_key(&self) -> Result<crate::OtpHmacKey, ProvisioningError> {
+        if let Some(ref key) = self.otp_hmac_key {
+            return Ok(key.clone());
+        }
+        #[cfg(debug_assertions)]
+        {
+            crate::OtpHmacKey::try_dev_process_key()
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            Err(ProvisioningError::Conflict(
+                "CONSOLE_OTP_HMAC_KEY is required in non-development builds".to_owned(),
+            ))
+        }
     }
 
     pub async fn import_json(
@@ -64,6 +96,7 @@ impl RosterProvisioner {
         let users = normalize_roster(roster)?;
         let user_count = users.len();
         let bootstrap_ttl = self.bootstrap_ttl;
+        let hmac_key = self.resolve_otp_hmac_key()?;
 
         let audit = AuditEvent::new(
             None,
@@ -87,7 +120,7 @@ impl RosterProvisioner {
         );
 
         with_audit::<_, RosterImportReport, ProvisioningError>(pool, audit, |tx| {
-            Box::pin(async move { apply_roster_tx(tx, users, now, bootstrap_ttl).await })
+            Box::pin(async move { apply_roster_tx(tx, &hmac_key, users, now, bootstrap_ttl).await })
         })
         .await
     }

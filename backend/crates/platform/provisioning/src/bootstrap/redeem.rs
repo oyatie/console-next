@@ -1,7 +1,7 @@
 use crate::{
-    BootstrapCredentialStore, OTP_ALPHABET, OTP_GROUP_LEN, OTP_LEN, OtpRedemption, OtpSource,
-    PLATFORM_INVITE_TOKEN_PREFIX, ProvisioningError, count_user_passkeys_tx,
-    hash_platform_invite_token, hash_token, require_active_account_tx, resolve_bootstrap_org,
+    BootstrapCredentialStore, OtpRedemption, OtpSource, PLATFORM_INVITE_TOKEN_PREFIX,
+    ProvisioningError, count_user_passkeys_tx, hash_platform_invite_token, otp_lookup_candidates,
+    require_active_account_tx, resolve_otp_candidate_org,
 };
 use aws_lc_rs::constant_time::verify_slices_are_equal;
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
@@ -66,30 +66,12 @@ impl BootstrapCredentialStore {
         now: OffsetDateTime,
     ) -> Result<OtpRedemption, ProvisioningError> {
         let is_platform_invite = token.starts_with(PLATFORM_INVITE_TOKEN_PREFIX);
-        let mut token_hash = if is_platform_invite {
-            hash_platform_invite_token(token)
+        let candidates = if is_platform_invite {
+            vec![hash_platform_invite_token(token)]
         } else {
-            hash_token(token)
+            otp_lookup_candidates(&self.resolve_hmac_key()?, token)
         };
-        let mut resolved_org = resolve_bootstrap_org(tx, &token_hash).await?;
-        // Exact legacy hashes retain precedence over new-format normalization.
-        if resolved_org.is_none() && !is_platform_invite {
-            let compact = token
-                .chars()
-                .filter(|symbol| !symbol.is_ascii_whitespace() && *symbol != '-')
-                .collect::<String>()
-                .to_ascii_uppercase();
-            if compact.len() == OTP_LEN && compact.bytes().all(|byte| OTP_ALPHABET.contains(&byte))
-            {
-                let canonical = format!(
-                    "{}-{}",
-                    &compact[..OTP_GROUP_LEN],
-                    &compact[OTP_GROUP_LEN..]
-                );
-                token_hash = hash_token(&canonical);
-                resolved_org = resolve_bootstrap_org(tx, &token_hash).await?;
-            }
-        }
+        let resolved = resolve_otp_candidate_org(tx, &candidates).await?;
 
         // Resolve the credential's tenant from the token hash FIRST, then arm the
         // GUC, THEN do the RLS-gated read. `auth_bootstrap_credentials` is FORCE
@@ -100,7 +82,7 @@ impl BootstrapCredentialStore {
         // credential's org_id, breaking that chicken-and-egg so OTP first sign-in
         // works for ANY tenant. A NULL means the token is unknown: keep the same
         // generic invalid-OTP error (no row), revealing nothing.
-        let Some(org_uuid) = resolved_org else {
+        let Some((org_uuid, token_hash)) = resolved else {
             return Err(ProvisioningError::InvalidBootstrapCredential);
         };
         sqlx::query("SELECT set_config('app.current_org', $1, true)")

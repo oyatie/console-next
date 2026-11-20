@@ -63,7 +63,7 @@ async fn consent_snapshot_tracks_acceptance_and_new_documents(owner: PgPool) {
     .execute(&owner)
     .await
     .unwrap();
-    let fresh = BootstrapCredentialStore
+    let fresh = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &owner,
             None,
