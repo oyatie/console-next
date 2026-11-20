@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect, useState } from "react";
-import { OPEN_TAB_EVENT, type OpenTabPayload } from "../../ui/workspace-tabs/open-tab";
+import { OPEN_TAB_EVENT, resolveAppHref, type OpenTabPayload } from "../../ui/workspace-tabs/open-tab";
 import type { WorkspaceTab } from "../../ui/workspace-tabs/workspace-tabs";
 
 export const MAX_WORKSPACE_TABS = 8;
@@ -35,7 +35,7 @@ export function readStoredWorkspaceTabs(storageKey: string | null): StoredTab[] 
         typeof item === "object" &&
         typeof (item as StoredTab).id === "string" &&
         typeof (item as StoredTab).href === "string" &&
-        (item as StoredTab).href.startsWith("/") &&
+        resolveAppHref((item as StoredTab).href) !== null &&
         typeof (item as StoredTab).label === "string",
     );
     return valid.length > 0 ? valid.slice(0, MAX_WORKSPACE_TABS) : null;
@@ -251,15 +251,20 @@ export function useWorkspaceTabs({
     const onExplicitOpen = (event: Event) => {
       const detail = (event as CustomEvent<OpenTabPayload>).detail;
       if (!detail?.href) return;
+      const resolved = resolveAppHref(
+        detail.href,
+        pathname || (typeof window !== "undefined" ? window.location.pathname : "/"),
+      );
+      if (!resolved) return;
       setState(prev => ({
         key: prev.key,
-        ...appendExplicitWorkspaceTab(prev.tabs, detail),
+        ...appendExplicitWorkspaceTab(prev.tabs, { ...detail, href: resolved }),
       }));
-      onNavigate(detail.href);
+      onNavigate(resolved);
     };
     window.addEventListener(OPEN_TAB_EVENT, onExplicitOpen);
     return () => window.removeEventListener(OPEN_TAB_EVENT, onExplicitOpen);
-  }, [onNavigate]);
+  }, [onNavigate, pathname]);
 
   const tabs: WorkspaceTab[] = state.tabs.map((tab, idx) => ({
     id: tab.id,

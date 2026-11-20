@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
+import { resolveAppHref } from "../../ui/workspace-tabs/open-tab";
 import {
   appendExplicitWorkspaceTab,
   closeWorkspaceTab,
@@ -161,4 +162,41 @@ test("appendExplicitWorkspaceTab preserves pinned tab label when href matches a 
   const nonPinned = appendExplicitWorkspaceTab(res.tabs, { href: "/people", label: "People (2)" });
   expect(nonPinned.activeId).toBe("tab-/people");
   expect(nonPinned.tabs[1]?.label).toBe("People (2)");
+});
+
+test("resolveAppHref resolves query/hash against current pathname and rejects external or protocol-relative URLs", () => {
+  expect(resolveAppHref("?sel=from-inbox", "/inbox")).toBe("/inbox?sel=from-inbox");
+  expect(resolveAppHref("#details", "/people/123?tab=history")).toBe("/people/123#details");
+  expect(resolveAppHref("/people/123?tab=history", "/inbox")).toBe("/people/123?tab=history");
+  expect(resolveAppHref("https://evil.example/phish", "/inbox")).toBeNull();
+  expect(resolveAppHref("//evil.example/phish", "/inbox")).toBeNull();
+  expect(resolveAppHref("/\\evil.example/phish", "/inbox")).toBeNull();
+  expect(resolveAppHref("javascript:alert(1)", "/inbox")).toBeNull();
+  expect(resolveAppHref("   ", "/inbox")).toBeNull();
+});
+
+test("readStoredWorkspaceTabs filters out protocol-relative hrefs", () => {
+  const store = new Map<string, string>();
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => store.set(k, v),
+    },
+  });
+  try {
+    store.set(
+      "console.tabs.user1",
+      JSON.stringify([
+        { id: "pinned-home", href: "/", label: "Home", pinned: true },
+        { id: "bad", href: "//evil.example/phish", label: "Evil" },
+      ]),
+    );
+    expect(readStoredWorkspaceTabs("console.tabs.user1")).toEqual([
+      { id: "pinned-home", href: "/", label: "Home", pinned: true },
+    ]);
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, value: origLocalStorage });
+  }
 });

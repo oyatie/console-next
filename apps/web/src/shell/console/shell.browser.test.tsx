@@ -32,9 +32,11 @@ beforeAll(async () => {
       load: id => id === "\0console-shell-shortcut-test" ? `
         import React, { useEffect, useState } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider, useLocation, useNavigate } from '@tanstack/react-router';
         import { loadCatalog } from '@console/i18n';
         import { ConsoleAccountMenu } from '/apps/web/src/shell/console/console-account-menu.tsx';
+        import { useWorkspaceTabs } from '/apps/web/src/shell/console/workspace-tabs-state.ts';
+        import { openWorkspaceTab, resolveAppHref } from '/apps/web/src/ui/workspace-tabs/open-tab.ts';
         import { singleKeysOn } from '/apps/web/src/lib/prefs.ts';
         import { isImeKey } from '/apps/web/src/lib/pure/ime.ts';
         import { singleKey } from '/apps/web/src/lib/pure/keys.ts';
@@ -42,8 +44,24 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function Harness() {
+          const { pathname, href } = useLocation();
+          const navigate = useNavigate();
           const [withFind, setWithFind] = useState(false);
           const [searchOpens, setSearchOpens] = useState(0);
+          const tabs = useWorkspaceTabs({
+            principal: 'test-user',
+            defaultHref: '/',
+            defaultLabel: 'Home',
+            pathname,
+            pathLabel: pathname === '/inbox' ? 'Inbox' : 'Home',
+            onNavigate: nextHref => {
+              const resolved = resolveAppHref(nextHref, pathname);
+              if (resolved) void navigate({ href: resolved });
+            },
+          });
+          useEffect(() => {
+            window.__openTab = openWorkspaceTab;
+          }, []);
           useEffect(() => {
             const onKeyDown = event => {
               if (event.defaultPrevented || isImeKey(event)) return;
@@ -68,7 +86,10 @@ beforeAll(async () => {
             React.createElement('header', null, React.createElement(ConsoleAccountMenu, { id: 'console-top-account', name: 'Console Operator' })),
             React.createElement('main', { id: 'main', 'data-shell-harness': '' },
               React.createElement('output', { 'data-opens': '' }, String(searchOpens)),
+              React.createElement('output', { 'data-href': '' }, href),
+              React.createElement('output', { 'data-tabs': '' }, JSON.stringify(tabs.tabs.map(t => t.href))),
               React.createElement('button', { type: 'button', onClick: () => setWithFind(v => !v) }, 'toggle'),
+              React.createElement('button', { type: 'button', onClick: () => void navigate({ href: '/inbox' }) }, 'go-inbox'),
               React.createElement('input', { 'aria-label': 'plain' }),
               withFind ? React.createElement('div', { 'data-list-find': '' }, React.createElement('input', { type: 'search', 'aria-label': 'find' })) : null,
             ),
@@ -76,10 +97,11 @@ beforeAll(async () => {
         }
         const root = createRootRoute();
         const indexRoute = createRoute({ getParentRoute: () => root, path: '/', component: Harness });
+        const inboxRoute = createRoute({ getParentRoute: () => root, path: '/inbox', component: Harness });
         const accountRoute = createRoute({ getParentRoute: () => root, path: '/account', component: () => null });
         const privacyRoute = createRoute({ getParentRoute: () => root, path: '/account/privacy', component: () => null });
         const router = createRouter({
-          routeTree: root.addChildren([indexRoute, accountRoute, privacyRoute]),
+          routeTree: root.addChildren([indexRoute, inboxRoute, accountRoute, privacyRoute]),
           history: createMemoryHistory({ initialEntries: ['/'] }),
         });
         createRoot(document.getElementById('root')).render(React.createElement(RouterProvider, { router }));
@@ -144,4 +166,22 @@ test("ConsoleAccountMenu renders locale, theme, and logout controls when opened 
   await page.keyboard.press("Escape");
   await expect.poll(async () => await group.count()).toBe(0);
   await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("console-top-account");
+});
+
+test("openWorkspaceTab resolves query-only href against current pathname and rejects external/protocol-relative URLs", async () => {
+  await page.getByRole("button", { name: "go-inbox", exact: true }).click();
+  await expect.poll(async () => await page.locator("[data-href]").textContent()).toBe("/inbox");
+
+  await page.evaluate(() => {
+    const open = (window as unknown as { __openTab: (p: { href: string; label: string }) => void }).__openTab;
+    open({ href: "https://evil.example/phish", label: "Evil" });
+    open({ href: "//evil.example/phish", label: "ProtoRel" });
+    open({ href: "?sel=from-inbox", label: "Selected" });
+  });
+
+  await expect.poll(async () => await page.locator("[data-href]").textContent()).toBe("/inbox?sel=from-inbox");
+  const tabHrefs = JSON.parse((await page.locator("[data-tabs]").textContent()) ?? "[]") as string[];
+  expect(tabHrefs).toContain("/inbox?sel=from-inbox");
+  expect(tabHrefs).not.toContain("https://evil.example/phish");
+  expect(tabHrefs).not.toContain("//evil.example/phish");
 });

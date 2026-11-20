@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { Settings } from "lucide-react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { session } from "@console/api";
 import { t } from "@console/i18n";
@@ -13,7 +14,7 @@ import type { ModuleNavItem } from "../../ui/module-nav/module-nav";
 import { PagePhoneHeader } from "../../ui/page/page-scope";
 import { StatusBar } from "../../ui/status-bar/status-bar";
 import { usePublishedStatusBar } from "../../ui/status-bar/status-bar-store";
-import { openWorkspaceTab } from "../../ui/workspace-tabs/open-tab";
+import { openWorkspaceTab, resolveAppHref } from "../../ui/workspace-tabs/open-tab";
 import { WorkspaceTabs } from "../../ui/workspace-tabs/workspace-tabs";
 import { ShellFrame, type ShellLayoutProps } from "../frame/shell-frame";
 import { activeLink, type NavLink } from "../nav";
@@ -46,15 +47,12 @@ const ConsolePhoneBottom = lazy(() =>
 function tabIconForHref(href: string, allLinks: readonly NavLink[]): ReactNode {
   const cut = href.search(/[?#]/);
   const path = (cut === -1 ? href : href.slice(0, cut)) || "/";
-  const matchedHref =
-    path === "/" || path === "/inbox"
-      ? "/"
-      : path === "/account" || path.startsWith("/account/")
-        ? "/settings"
-        : activeLink(path, allLinks);
+  if (path === "/account" || path.startsWith("/account/")) {
+    return <Settings size={14} aria-hidden="true" />;
+  }
+  const matchedHref = path === "/" || path === "/inbox" ? "/" : activeLink(path, allLinks);
   const Icon =
     (matchedHref ? allLinks.find(link => link.to === matchedHref)?.icon : undefined) ??
-    allLinks.find(link => link.to === "/payroll")?.icon ??
     allLinks[0]?.icon;
   return Icon ? <Icon size={14} aria-hidden="true" /> : null;
 }
@@ -108,7 +106,13 @@ function ConsoleLayout({
 
   const defaultHref = platform ? "/platform" : "/";
   const defaultLabel = platform ? t("shell.link.tenants") : t("shell.link.home");
-  const navigateToHref = useCallback((href: string) => void navigate({ href }), [navigate]);
+  const navigateToHref = useCallback(
+    (href: string) => {
+      const resolved = resolveAppHref(href, pathname);
+      if (resolved) void navigate({ href: resolved });
+    },
+    [navigate, pathname],
+  );
 
   const workspaceTabs = useWorkspaceTabs({
     principal: session.principal,
@@ -149,12 +153,15 @@ function ConsoleLayout({
     return () => document.removeEventListener("keydown", onKey);
   }, [platform, onSearch]);
 
-  const rawName = userProfile?.display_name ?? claims?.name;
+  const rawName = (userProfile?.display_name?.trim() || claims?.name?.trim()) ?? "";
   const shortName = personName(
     rawName,
     t(claims?.platform ? "account.name.unset.operator" : "account.name.unset"),
   );
-  const roleMeta = [userProfile?.employee_org_unit, userProfile?.employee_position].filter(Boolean).join(" ");
+  const roleMeta = [userProfile?.employee_org_unit, userProfile?.employee_position]
+    .map(part => part?.trim())
+    .filter(Boolean)
+    .join(" ");
   const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
   const phoneActiveId = pathname === "/account" || pathname.startsWith("/account/") ? "/account" : currentModuleTo;
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);
