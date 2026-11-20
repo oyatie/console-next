@@ -329,7 +329,7 @@ aside.panel { position: sticky; top: 0; }
 .alert { padding: var(--space-3); border-radius: var(--radius); border: 1px solid var(--danger-bd); background: var(--danger-bg); color: var(--danger-tx); font-size: var(--text-sm); }
 
 /* ── dialog ────────────────────────────────────────── */
-.overlay { position: fixed; inset: 0; z-index: var(--z-sheet); display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.overlay { position: fixed; inset: 0; z-index: var(--z-sheet); display: grid; place-items: center; overflow: hidden; padding: var(--space-4); background: color-mix(in srgb, var(--ink) 40%, transparent); }
 .dialog { width: min(100%, var(--dialog-w-md)); max-height: calc(100dvh - var(--space-6)); overflow: auto; padding: var(--space-5); color: var(--ink); }
 .dialog[data-size="sm"] { width: min(100%, var(--dialog-w-sm)); }
 .dialog__body { display: flex; flex-direction: column; gap: var(--space-4); outline: none; }
@@ -395,7 +395,7 @@ aside.panel { position: sticky; top: 0; }
 .combo { display: flex; }
 .combo__input { flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .combo__button { border: 1px solid var(--control-border); border-left: 0; background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; padding: 0 var(--space-2); cursor: pointer; color: var(--steel); }
-.popover { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); width: var(--trigger-width); overflow: auto; max-height: calc(var(--row-h) * 8); }
+.popover { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); width: var(--trigger-width); overflow: auto; overscroll-behavior: contain; max-height: calc(var(--row-h) * 8); }
 .listbox { outline: none; padding: var(--space-1); }
 .listbox__item { display: flex; gap: var(--space-2); align-items: center; padding: 0 var(--space-3); height: var(--row-h); border-radius: var(--radius-sm); cursor: pointer; outline: none; }
 .listbox__item[data-focused] { background: var(--muted); }

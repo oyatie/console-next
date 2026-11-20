@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { pick, type KeyId } from "../pure/keys";
 import { editable } from "../../ui/long-table/row-keys";
 import { singleKeysOn } from "../prefs";
@@ -18,7 +18,7 @@ export function useKeys(
   { region, capture = false }: { region?: () => Element | null | undefined; capture?: boolean } = {},
 ) {
   const latest = useRef({ handlers, region });
-  useEffect(() => void (latest.current = { handlers, region }));
+  useLayoutEffect(() => { latest.current = { handlers, region }; });
   useEffect(() => {
     const listen = (e: KeyboardEvent) => {
       if (e.isComposing || e.key === "Process") return;

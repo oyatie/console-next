@@ -16,6 +16,6 @@
 .whyLine { flex-basis: 100%; max-width: none; text-align: right; }
 .form { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) 0 0; border-top: 1px solid var(--border-soft); }
 .form > :not(.bar, .consequence) { margin: 0 var(--space-4); }
-.formHead { margin: 0 var(--space-4); font-size: var(--text-lg); font-weight: var(--fw-strong); outline: none; }
+.formHead { margin: 0 var(--space-4); font-size: var(--text-lg); font-weight: var(--fw-strong); }
 .done { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
 .next { align-self: flex-start; }

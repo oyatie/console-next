@@ -42,7 +42,7 @@ The card has three shapes: deciding, a reason form, and recorded.
 
 | Part | Element | Holds |
 |---|---|---|
-| Card | `<article class="card">` | Everything. It carries `aria-busy="true"` while `pending` is set. |
+| Card | `<article class="card">` | Everything. It carries `aria-labelledby` pointing to the title and `aria-busy="true"` while `pending` is set. |
 | Progress | `<div>` | `progress`. Left out when it is not given. |
 | Body | `<div>` | The eyebrow, the step, the title and `children`, in that order. |
 | Eyebrow | `<div>` | `eyebrow`. Always rendered. |
@@ -71,11 +71,11 @@ truth, so any falsy value is not given: `false`, `null`, `undefined`, `0` or an 
 
 | Part | Element | Holds |
 |---|---|---|
-| Card | `<article class="card">` | The two parts below. |
+| Card | `<article class="card">` | The two parts below, named by the title through `aria-labelledby`. |
 | Progress | `<div>` | `progress`. Left out when it is not given. |
-| Done | `<div>` | `next` in a `<div>` of its own, when given, then `receipt` as passed. |
+| Done | `<div>` | Title `<h2 tabindex="-1">` (`title`), `next` in a `<div>` of its own when given, then `receipt` as passed. |
 
-The recorded card renders no eyebrow, step, title, `children`, consequence or button.
+The recorded card keeps `title` as its heading and renders no eyebrow, step, `children`, consequence or button.
 
 Every button is a React Aria `Button`, a native `<button type="button">`, with the global `btn` classes. The card
 does not use the `Button` of `ui/button`.
@@ -102,8 +102,8 @@ There is one look and one size. No prop picks a variant.
 | Missing-reason text | 13 px (`--text-sm`), `--steel`, at most `calc(var(--panel-w) / 1.5)` wide, which is about 293 px. |
 | Blocked reason | The same text, on a full row of its own before the meta and the buttons, with no width limit and `text-align: right`. |
 | Form | A column, 12 px (`--space-3`) between its parts, with a 1 px `--border-soft` line and 16 px (`--space-4`) of padding on top. Every direct child other than the consequence and the bar takes 16 px (`--space-4`) side margins and no margin above or below. |
-| Form heading | 16 px (`--text-lg`), bold (`--fw-strong`), with `outline: none`. |
-| Done | A column, 12 px (`--space-3`) between its parts, with 16 px (`--space-4`) padding. `next` comes first and sits at the start of its row. |
+| Form heading | 16 px (`--text-lg`), bold (`--fw-strong`). |
+| Done | A column, 12 px (`--space-3`) between its parts, with 16 px (`--space-4`) padding. The recorded `<h2>` title comes first, then `next` (at the start of its row), then `receipt`. |
 
 The buttons take these classes:
 
@@ -122,8 +122,8 @@ differs only in its `btn--primary` colours.
 | State | What happens |
 |---|---|
 | Rest | The deciding shape. |
-| Hover | The card has no hover look. A button takes the global hover fill of its class: `--muted` for `btn`, `--primary-hover` for `btn--primary`, `--danger-tx` for `btn--danger`. |
-| Keyboard focus | A button shows the global 2 px `--primary` outline, 2 px away. The form heading takes focus when a form opens, and its rule sets `outline: none`. That rule has the same specificity as the global `:focus-visible` rule and comes after it: the card's stylesheet reaches the app only with a lazily loaded screen, after `app.css`. So the heading shows no focus indicator. This was read from the stylesheets and the routes, not checked in a browser. |
+| Hover | The card has no hover look. A button takes the global hover fill of its class: `--surface-hover` for `btn`, `--primary-hover` for `btn--primary`, `--danger-tx` for `btn--danger`. |
+| Keyboard focus | Buttons, the form heading, and the recorded heading take the global 2 px `--primary` `:focus-visible` outline, 2 px away. When focus moves programmatically on a keyboard-driven transition (opening a form or transitioning into `receipt`), the heading shows `:focus-visible`, while pointer-triggered transitions leave it without a ring. |
 | Pressed down | No look. Neither `approval-card.module.css` nor `app.css` has an `:active` rule or a `data-pressed` rule. |
 | Selected | Does not exist. An open form is not marked on the button that opened it: that button is not rendered while the form is open. |
 | Disabled | The native `disabled` attribute, drawn by the global `.btn[disabled]` rule: half opacity and a `not-allowed` cursor. Approve is disabled while `approveBlocked` is set. The commit of a form is disabled until the reason is complete. Every button is disabled while `pending` is set. In the first two cases the reason is visible text in the bar; while `pending`, nothing says why. |
@@ -140,13 +140,13 @@ differs only in its `btn--primary` colours.
 | Enter, Space | Presses the focused button. |
 | Escape | With a form open and `pending` not set: closes the form, as back does. Focus can be anywhere inside the card, `children` included. |
 
-The card moves focus twice:
+The card moves focus in three cases:
 
 - When a form opens, focus goes to the form heading.
 - When a form closes, by back or by Escape, focus returns to the button that opened it.
+- When `receipt` transitions from falsy to truthy, focus moves to the recorded card's `<h2>` heading. It never moves focus on an initial mount that already carries `receipt`, nor on subsequent re-renders while `receipt` remains truthy.
 
-Those are its only `focus()` calls, and both are in the effect that runs when the open form changes. It does not
-move focus when a commit is pressed, when `pending` is set or cleared, or when `receipt` arrives.
+The card does not move focus when `pending` is set or cleared without a receipt.
 
 Escape is a native `keydown` listener on the `<article>`, in the bubble phase, added only while a form is open
 and `pending` is not set. A key pressed anywhere inside the card reaches it: in the form, in `progress` or in
@@ -180,8 +180,8 @@ one line. The card binds no other key, and Enter and Space on a button are the l
 
 - **Role:** `article`, from the element. The form is a `<section>` with a name, which makes it a region. Each
   consequence box has `role="note"`. The buttons are native buttons.
-- **Accessible name:** the card has none: the `<article>` has no `aria-label` and no `aria-labelledby`. The form is
-  named by its heading. Each button is named by its text.
+- **Accessible name:** the `<article>` is named by its `<h2>` `title` through `aria-labelledby` in both the deciding
+  and recorded shapes. The form is named by its `<h3>` heading. Each button is named by its text.
 - **Description:** approve is described, through `aria-describedby`, by the consequence box, or by the blocked
   reason while `approveBlocked` is set. The commit of a form is described by the missing-reason text until the
   reason is complete, and by the form's consequence box after that.
@@ -201,16 +201,12 @@ Known gaps:
   blocked approve or on a commit that is not ready, and the description on the button is not read from it. The
   reason is visible text that comes before the button in the reading order. [`DisabledReason`](disabled-reason.md)
   keeps a blocked control focusable; the card does not use it.
-- The form heading takes focus and shows no focus indicator: see States.
-- When `receipt` arrives, the buttons are removed, including the one that held focus, and the card places focus
-  nowhere.
 - When a command starts, the button that was pressed gets the native `disabled` attribute while it holds focus.
   When `pending` clears with no receipt, as after a command the server refused, the card calls no `focus()`.
   Where a browser leaves focus on a button that was disabled and is enabled again was not checked.
 - The card has no slot for the error of a command that failed. The caller places it. The viewer puts
   `CommandError` (`lib/react/command-error`) first in `children`, above its opinion field.
 - A running command has no words: no status text and no spinner, only `aria-busy` and disabled buttons.
-- The recorded card has no heading and no name. The title is not rendered once `receipt` is given.
 - The Escape listener checks `isComposing` and not key code 229: see Keyboard. Whether an Escape that belongs to
   a composition closes the form is untested.
 
@@ -224,9 +220,9 @@ The WCAG 2.2 criteria that apply:
 | 1.4.3 Contrast (Minimum) | Every colour is a token; none is written in the component. A disabled button is drawn at half opacity; the criterion does not cover an inactive control. |
 | 1.4.10 Reflow | The card is never wider than its container, and the bar wraps. |
 | 2.1.1 Keyboard | Native buttons, and Escape for the form. |
-| 2.4.3 Focus Order | Focus goes to the form heading when a form opens and back to its opener when it closes. Not answered when the receipt arrives, and not checked after a refused command: see the gaps. |
+| 2.4.3 Focus Order | Focus goes to the form heading when a form opens, back to its opener when it closes, and to the recorded heading when `receipt` arrives. Not checked after a refused command: see the gaps. |
 | 2.4.6 Headings and Labels | The title and the form heading are the caller's words. The form heading repeats the commit's label. |
-| 2.4.7 Focus Visible | The global outline on the buttons. Not answered for the form heading. |
+| 2.4.7 Focus Visible | The global outline on the buttons, the form heading, and the recorded heading. |
 | 2.5.8 Target Size (Minimum) | The buttons are at least 40 px high (`--control-h-lg`), above the 24 px minimum. |
 | 3.3.4 Error Prevention (Legal, Financial, Data) | The type requires `consequence` and `rejectConsequence`, and `returnConsequence` with request changes, and each is drawn before its commit. Reject and request changes take two presses. Approve takes one. |
 | 4.1.2 Name, Role, Value | The roles, names and descriptions above. |
@@ -237,10 +233,7 @@ blocked, and recorded with a `next` link. All three pass `progress` and `meta`. 
 request changes is pressed. Pressing a commit there sets `pending`, and nothing clears it. The gallery does not
 show a card without request changes.
 
-The component has no test file of its own. Two browser specs drive it through the approval viewer against a
-mocked server. They were found by searching `e2e` and `apps/web/src` for the `uiApprovalCard` message ids, the
-viewer's exports and the names of the card's buttons. That search finds no other test that presses the card's
-buttons.
+The component has its own SSR unit test (`apps/web/src/ui/approval-card/approval-card.test.tsx`) and real-browser focus test (`apps/web/src/ui/approval-card/approval-card.browser.test.tsx`), covering `aria-labelledby` in both shapes, transition-only focus move into the recorded heading (including when a reason form was open), `:focus-visible` on keyboard-driven transitions, and no focus steal on pre-recorded mount or subsequent re-renders. Two browser specs also drive it through the approval viewer against a mocked server:
 
 `e2e/mock/approval-viewer.spec.ts`, on the viewer's own page:
 

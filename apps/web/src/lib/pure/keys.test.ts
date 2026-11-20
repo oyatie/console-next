@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
-import { KEYMAP, conflicts, matches, pick, singleKey, type KeyEventLike, type KeyId } from "./keys";
+import { KEYMAP, conflicts, matches, modChord, pick, singleKey, type KeyEventLike, type KeyId } from "./keys";
 
 const press = (key: string, code: string, mods: Partial<KeyEventLike> = {}): KeyEventLike =>
   ({ key, code, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...mods });
@@ -120,4 +120,27 @@ test("only the listed files listen for keys on the document or window", () => {
     .filter(f => /(document|window)\.addEventListener\(\s*["']keydown["']/.test(readFileSync(src + f, "utf8")))
     .sort();
   expect(found).toEqual(OWN_LISTENERS);
+});
+
+test("modChord formats Command on Apple platforms and Ctrl on Windows, Linux, and SSR", () => {
+  expect(modChord("↵")).toBe("Ctrl+↵");
+  expect(modChord("↵", undefined)).toBe("Ctrl+↵");
+
+  expect(modChord("↵", { userAgentData: { platform: "macOS" }, platform: "Win32", userAgent: "" })).toBe("⌘↵");
+  expect(modChord("S", { userAgentData: { platform: "iOS" }, platform: "", userAgent: "" })).toBe("⌘S");
+  expect(modChord("↵", { userAgentData: { platform: "Windows" }, platform: "MacIntel", userAgent: "" })).toBe("Ctrl+↵");
+  expect(modChord("↵", { userAgentData: { platform: "Linux" }, platform: "Linux x86_64", userAgent: "" })).toBe("Ctrl+↵");
+
+  for (const platform of ["MacIntel", "iPhone", "iPad", "iPod"]) {
+    expect(modChord("↵", { platform, userAgent: "" }), platform).toBe("⌘↵");
+  }
+  for (const platform of ["Win32", "Linux x86_64"]) {
+    expect(modChord("↵", { platform, userAgent: "" }), platform).toBe("Ctrl+↵");
+  }
+
+  expect(modChord("↵", { platform: "", userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" })).toBe("⌘↵");
+  expect(modChord("↵", { platform: "", userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" })).toBe("Ctrl+↵");
+
+  expect(modChord("↵", true)).toBe("⌘↵");
+  expect(modChord("↵", false)).toBe("Ctrl+↵");
 });
