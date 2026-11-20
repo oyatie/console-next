@@ -38,6 +38,8 @@
 
 | Key | What it does |
 |---|---|
+| `J` / `ArrowDown`, `K` / `ArrowUp` on non-grid, non-tree rows | Moves focus to the next or previous visible `[data-row-id]` / `[data-id]` row inside `main` (ignoring IME composition, modifier keys, and nested interactive controls). |
+| `Enter` on a focused non-grid, non-tree row | Calls `onOpen(id)` when `record` already displays that row and `onOpen` is provided; otherwise calls `onSelect(id)` (native `<button>` rows trigger click when unselected). |
 | `ArrowLeft` / `ArrowRight` on splitter | Widens or narrows the adjacent side pane by `24px`; ignores keys while `isImeKey(event)` is true. |
 | `Home` on splitter | Resets the side pane width to its default token width. |
 | `Escape` inside `PaneGrid` | Exits `full` mode or closes `related` then `record` and returns focus via `returnFocus`, unless `isImeKey(event)` is true, focus is in an editable control, or a dialog/menu is open. |

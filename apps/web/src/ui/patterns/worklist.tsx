@@ -2,6 +2,7 @@
 import { useContext, type ReactNode } from "react";
 import { useActiveExperienceId } from "../../experience/dom";
 import { QueryState } from "../../lib/react/query-state";
+import { queryView } from "../../lib/react/query-view";
 import { PageReadGate } from "../../reference/authz/ui/access-gate";
 import { Band } from "../band/band";
 import { Button } from "../button/button";
@@ -55,6 +56,8 @@ export function Worklist({
   const resolvedSchedule = resolveLazy(schedule);
   const resolvedBands = resolveLazy(bands);
   const hasLower = shown(resolvedSchedule) || shown(resolvedBands);
+  const view = queryView(q);
+  const showDetail = Boolean(panes.record && q.data) && (view === "ready" || view === "stale" || view === "offline");
 
   return (
     <PageScope value={{ landmark: true, embedded: true }}>
@@ -62,7 +65,7 @@ export function Worklist({
         className={`${s.frame}${secondary ? "" : ` ${s.standalone}`}`}
         data-pattern="worklist"
         data-floorplan="P-03"
-        data-detail={Boolean(panes.record && q.data) || undefined}
+        data-detail={showDetail || undefined}
       >
         {tabs}
         <PageReadGate

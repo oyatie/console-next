@@ -18,10 +18,10 @@
 
 | Part | Element | Purpose |
 |---|---|---|
-| Root | `<section data-deadline-strip>` | Named region (`uiWorklist.schedule`) containing `PaneHead` and the scrollable table. |
-| Scroller | `<div role="region" tabIndex={0}>` | Keyboard-scrollable horizontal container when day columns exceed viewport width. |
+| Root | `<div data-deadline-strip>` | Wrapper containing `PaneHead` and the named scrollable schedule region. |
+| Scroller | `<div role="region" tabIndex={0}>` | Named (`uiWorklist.schedule`) keyboard-scrollable horizontal container when day columns exceed viewport width. |
 | Table | `<table>` | Two header rows (bucket bands + day numbers) and two body rows (`uiWorklist.statutoryLane` and `uiWorklist.operationalLane`). |
-| Entry pill | `<button type="button">` | Focusable badge (`aria-label={entry.fullLabel}`, `aria-pressed`) that selects the corresponding item. |
+| Entry pill | `<button type="button">` | Focusable badge (`aria-label` leading with `shortLabel · fullLabel` unless `fullLabel` already starts with `shortLabel`, `aria-pressed`) that selects the corresponding item. |
 
 ## Looks and sizes
 

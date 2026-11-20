@@ -40,6 +40,13 @@
   --on-chrome-muted: #a7b3c0;
   --chrome-accent: #6fd3df;
   --chrome-attention: #f5bd4f;
+  --chrome-danger: #ffb4aa;
+  --chrome-danger-bg: #402321;
+  --chrome-danger-bd: #7f2b2b;
+  --chrome-danger-solid: #f99b90;
+  --chrome-on-danger: #0b1020;
+  --chrome-warn-bg: #3a2d13;
+  --chrome-warn-bd: #92610a;
   --chrome-scheme: dark;
   /* Shared chart marks adjusted for 3:1 on the warm and cool grounds. */
   --chart-cat-1: #0c85d5; --chart-cat-4: #858326; --chart-cat-6: #5f6b79;
@@ -104,6 +111,13 @@
   --on-chrome-muted: #a7b3c0; /* Derived, not drawn. */
   --chrome-accent: #6fd3df; /* Derived, not drawn. */
   --chrome-attention: #f5bd4f; /* Derived, not drawn. */
+  --chrome-danger: #ffb4aa; /* Derived, not drawn. */
+  --chrome-danger-bg: var(--danger-bg); /* Derived, not drawn. */
+  --chrome-danger-bd: var(--danger-bd); /* Derived, not drawn. */
+  --chrome-danger-solid: var(--danger-solid); /* Derived, not drawn. */
+  --chrome-on-danger: var(--on-danger); /* Derived, not drawn. */
+  --chrome-warn-bg: var(--warn-bg); /* Derived, not drawn. */
+  --chrome-warn-bd: var(--warn-bd); /* Derived, not drawn. */
   --chrome-scheme: dark; /* Derived, not drawn. */
   --chart-cat-1: #29c1f6; --chart-cat-4: #b1bb27; /* Derived, not drawn; shared chart palette. */
   --chart-cat-6: #8b9aab; /* Derived, not drawn. */

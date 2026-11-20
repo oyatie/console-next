@@ -21,4 +21,9 @@ test("DueCell maps negative, zero, near, far, and null days to non-colour icons 
   expect(renderToStaticMarkup(<DueCell days={4} />)).toContain('data-tone="near"');
   expect(renderToStaticMarkup(<DueCell days={15} />)).toContain('data-tone="far"');
   expect(renderToStaticMarkup(<DueCell days={null} />)).toContain('data-tone="undated"');
+
+  const nanHtml = renderToStaticMarkup(<DueCell days={Number.NaN} />);
+  expect(nanHtml).toContain('data-tone="undated"');
+  expect(nanHtml).toContain('value=""');
+  expect(nanHtml).toContain(t("uiWorklist.undated"));
 });

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
-import { failure, inbox } from "./fixtures";
+import { failure, inbox, user } from "./fixtures";
 import { fits, expectAxe } from "../a11y";
 import { screens } from "../states/registry";
 import { OPTIONAL_COLUMNS } from "../../apps/web/src/features/people/domain/columns";
@@ -124,9 +125,18 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
     const queue = { ...inbox(1), counts: { turn: { total: 9999, total_is_exact: true } } };
     await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: queue });
     await page.goto("/people");
-    await expect(page.locator("header [data-count]")).toHaveText("9999", { timeout: 20_000 });
-    const controls = await page.getByRole("banner").locator("button, a, select").evaluateAll(els => els.filter(el => el.checkVisibility()).map(el => ({ name: el.getAttribute("aria-label") || el.textContent, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
-    expect(controls.filter(control => control.left < 0 || control.right > width)).toEqual([]);
+    if (experience === "console") {
+      const phoneNav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+      await expect(phoneNav.locator('data[value="9999"]')).toHaveText(fmtNumber(9999), { timeout: 20_000 });
+      await expect(page.getByRole("banner")).toBeVisible();
+      const bannerControls = await page.getByRole("banner").locator("button, a, select").evaluateAll(els => els.filter(el => el.checkVisibility()).map(el => ({ name: el.getAttribute("aria-label") || el.textContent, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
+      const navControls = await phoneNav.locator("button, a, select").evaluateAll(els => els.filter(el => el.checkVisibility()).map(el => ({ name: el.getAttribute("aria-label") || el.textContent, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
+      expect([...bannerControls, ...navControls].filter(control => control.left < 0 || control.right > width)).toEqual([]);
+    } else {
+      await expect(page.locator("header [data-count]")).toHaveText("9999", { timeout: 20_000 });
+      const controls = await page.getByRole("banner").locator("button, a, select").evaluateAll(els => els.filter(el => el.checkVisibility()).map(el => ({ name: el.getAttribute("aria-label") || el.textContent, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
+      expect(controls.filter(control => control.left < 0 || control.right > width)).toEqual([]);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     expect(fixture.unexpected).toEqual([]);
   });
@@ -170,10 +180,26 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
       });
       expect(tokens).toEqual(theme === "light" ? [light, primaryLight] : [dark, primaryDark]);
       await expectRenderedFloors(page, floorOf(experience, width === 390 ? "phone" : "desk"));
-      const locale = await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).boundingBox();
       const banner = await page.getByRole("banner").boundingBox();
-      expect(locale!.y).toBeGreaterThanOrEqual(banner!.y);
-      expect(locale!.y + locale!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
+      if (experience === "console") {
+        const accountBtn = page.getByRole("banner").getByRole("button", { name: user.display_name, exact: true });
+        await expect(accountBtn).toBeVisible();
+        const accountBox = await accountBtn.boundingBox();
+        expect(accountBox!.y).toBeGreaterThanOrEqual(banner!.y);
+        expect(accountBox!.y + accountBox!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
+        await accountBtn.click();
+        const accountMenu = page.getByRole("group", { name: t("shell.account"), exact: true });
+        await expect(accountMenu).toBeVisible();
+        for (const key of ["shell.locale.ko", "shell.locale.en", "shell.theme.light", "shell.theme.dark", "shell.logout"] as const) {
+          await expect(accountMenu.getByRole("button", { name: t(key), exact: true })).toBeVisible();
+        }
+        await page.keyboard.press("Escape");
+        await expect(accountMenu).toBeHidden();
+      } else {
+        const locale = await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).boundingBox();
+        expect(locale!.y).toBeGreaterThanOrEqual(banner!.y);
+        expect(locale!.y + locale!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
+      }
       if (screen.key === "people") {
         const find = await main.getByRole("searchbox", { name: t("roster.find"), exact: true }).boundingBox();
         expect(find!.x).toBeGreaterThanOrEqual(0);

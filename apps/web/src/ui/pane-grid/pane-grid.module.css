@@ -171,7 +171,7 @@
 @media (--below-wide) {
   .grid[data-depth="2"] > .start,
   .grid[data-depth="2"] > .center,
-  .grid[data-depth="2"] > .splitter:first-of-type {
+  .grid[data-depth="2"] > .center + .splitter {
     display: none;
   }
 

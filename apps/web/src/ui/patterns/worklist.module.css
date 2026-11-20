@@ -39,7 +39,7 @@
 }
 
 @media (--phone) {
-  .frame[data-detail] > .head {
+  .frame[data-detail]:has([data-pane="record"]) > .head {
     display: none;
   }
 }

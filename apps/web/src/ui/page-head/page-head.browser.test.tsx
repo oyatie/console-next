@@ -27,9 +27,9 @@ test("PageHead command strip passes WCAG 2.2 AA axe checks and sizes title and b
       document.documentElement.dataset.theme = "light";
     }, experience);
     const metrics = await page.locator("[data-page-head-demo='command'] header").evaluate(header => {
-      const h1 = header.querySelector("h1")!;
+      const heading = header.querySelector("h1, h2")!;
       return {
-        titleFontSize: getComputedStyle(h1).fontSize,
+        titleFontSize: getComputedStyle(heading).fontSize,
         minHeight: getComputedStyle(header).minHeight,
       };
     });

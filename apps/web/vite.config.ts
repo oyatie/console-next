@@ -23,7 +23,7 @@ export default defineConfig({
       output: { codeSplitting: { groups: [
         { name: "initial", tags: ["$initial"] },
         // Field feedback shares the controls chunk to avoid separate gzip overhead on wizard routes.
-        { name: "controls", test: /src[\\/]ui[\\/](banner|button|chip|disabled-reason|error-summary|field|skeleton|step-line)([\\/.])/ },
+        { name: "controls", test: /src[\\/]ui[\\/](banner|button(?![\\/]segmented)|chip|disabled-reason|error-summary|field|skeleton|step-line)([\\/.])/ },
       ] } },
       // Keep shared chunks separate when splitting conditional forms.
       experimental: { chunkOptimization: { avoidRedundantChunkLoads: false } },

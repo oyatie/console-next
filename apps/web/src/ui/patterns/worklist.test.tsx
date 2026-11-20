@@ -98,6 +98,7 @@ test.each([false, true])("Worklist places every supplied region once with one ma
   expect(html.match(/<main\b/g)).toHaveLength(1);
   expect(html.match(/<h1\b/g)).toHaveLength(1);
   expect(html).toContain('data-pattern="worklist"');
+  expect(html).toContain('data-detail="true"');
   expect(html).toContain('id="worklist-title"');
   expect(html.match(/<aside\b/g)).toHaveLength(2);
 });
@@ -107,6 +108,7 @@ test("Worklist strips every data region and command on 403 refusal while keeping
   expect(html).toContain('data-contract-region="head"');
   expect(html).toContain('data-contract-region="tabs"');
   expect(html).toContain("refused-worklist");
+  expect(html).not.toContain("data-detail");
   for (const name of [
     "asOf",
     "views",
@@ -144,4 +146,11 @@ test.each(["loading", "failed"])("Worklist %s keeps commands and overlays mounte
   expect(html).not.toContain('data-contract-region="list"');
   expect(html).not.toContain('data-contract-region="schedule"');
   if (state === "failed") expect(html).toContain("worklist-failure");
+});
+
+test("Worklist omits data-detail on 404 not-found even when cached data and record pane are supplied", async () => {
+  const html = await markup(screen({ ...readyRead, error: new ApiError(404, "not_found", "", [], "missing-worklist") }));
+  expect(html).not.toContain("data-detail");
+  expect(html).toContain('data-contract-region="head"');
+  expect(html.match(/<h1\b/g)).toHaveLength(1);
 });

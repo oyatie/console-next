@@ -91,7 +91,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
   --primary-soft: var(--chrome-raised);
   --primary-bd: var(--chrome-control-border);
   --on-primary: var(--chrome);
+  --warn-bg: var(--chrome-warn-bg);
+  --warn-bd: var(--chrome-warn-bd);
   --warn-tx: var(--chrome-attention);
+  --danger-bg: var(--chrome-danger-bg);
+  --danger-bd: var(--chrome-danger-bd);
+  --danger-tx: var(--chrome-danger);
+  --danger-solid: var(--chrome-danger-solid);
+  --on-danger: var(--chrome-on-danger);
+  --over-bg: var(--danger-bg);
+  --over-bd: var(--danger-bd);
+  --over-tx: var(--danger-tx);
+  --grid-err: var(--danger-solid);
   --neutral-solid: var(--control-border);
   --chart-cat-6: var(--faint);
   --chart-axis: var(--control-border);

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 .list {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: fit-content(40%) minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
   margin: 0;
   font-size: var(--text-xs);
 }
@@ -15,6 +15,7 @@
 .before,
 .arrow,
 .after {
+  margin: 0;
   min-height: var(--row-h-compact);
   display: flex;
   align-items: center;
@@ -23,13 +24,17 @@
 }
 
 .subject {
+  min-width: 0;
   font-weight: var(--fw-semibold);
   color: var(--ink);
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .before {
+  min-width: 0;
   color: var(--steel);
+  overflow-wrap: anywhere;
 }
 
 .arrow {
@@ -38,6 +43,8 @@
 }
 
 .after {
+  min-width: 0;
   font-weight: var(--fw-semibold);
   color: var(--ink);
+  overflow-wrap: anywhere;
 }

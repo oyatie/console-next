@@ -57,6 +57,14 @@ function writeStoredWorkspaceTabs(storageKey: string | null, tabs: readonly Stor
   }
 }
 
+function uniqueTabId(existing: readonly StoredTab[], pathname: string): string {
+  const baseId = `tab-${pathname}`;
+  if (!existing.some(tab => tab.id === baseId)) return baseId;
+  let suffix = 2;
+  while (existing.some(tab => tab.id === `${baseId}-${suffix}`)) suffix += 1;
+  return `${baseId}-${suffix}`;
+}
+
 /**
  * Reconcile open workspace tabs when the router `pathname` changes during normal navigation:
  * - Index `0` is always pinned to `defaultHref`.
@@ -126,12 +134,12 @@ export function reconcileWorkspaceTabs(
   }
 
   if (base.length < MAX_WORKSPACE_TABS) {
-    const workingId = base[1] && !base[1].pinned ? base[1].id : `tab-${pathname}`;
+    const workingId = base[1] && !base[1].pinned ? base[1].id : uniqueTabId(base, pathname);
     if (base.length === 1) {
       const created: StoredTab = { id: workingId, href: pathname, label: pathLabel };
       return { tabs: [pinnedHome, created], activeId: created.id };
     }
-    const nextTab: StoredTab = { id: `tab-${Date.now().toString(36)}`, href: pathname, label: pathLabel };
+    const nextTab: StoredTab = { id: uniqueTabId(base, pathname), href: pathname, label: pathLabel };
     return { tabs: [...base, nextTab], activeId: nextTab.id };
   }
 
@@ -152,11 +160,11 @@ export function appendExplicitWorkspaceTab(
   const existing = current.find(tab => tab.href === href);
   if (existing) {
     return {
-      tabs: current.map(tab => (tab.id === existing.id ? { ...tab, label } : tab)),
+      tabs: existing.pinned ? [...current] : current.map(tab => (tab.id === existing.id ? { ...tab, label } : tab)),
       activeId: existing.id,
     };
   }
-  const id = `tab-${href}-${current.length}`;
+  const id = uniqueTabId(current, href);
   const created: StoredTab = { id, href, label };
   if (current.length < MAX_WORKSPACE_TABS) {
     return { tabs: [...current, created], activeId: id };
