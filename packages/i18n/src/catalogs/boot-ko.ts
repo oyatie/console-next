@@ -35,6 +35,7 @@ export const bootKo: Record<BootMessageId, string> = {
   "shell.tabs.closeOne": "{name} 탭 닫기",
   "shell.tabs.new": "새 탭 열기",
   "shell.tabs.more": "열린 탭 더 보기",
+  "shell.status.label": "작업 상태 표시줄",
   "shell.hub.work": "업무",
   "shell.hub.approvals": "결재",
   "shell.hub.people": "조직과 사람",

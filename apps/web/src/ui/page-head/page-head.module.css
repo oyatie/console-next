@@ -9,16 +9,29 @@
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; color: var(--steel); font-size: var(--text-sm); }
 /* A wrapped loading fact reserves the same text line as its eventual value. */
 .meta > * { min-block-size: 1lh; }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
 .grow { flex: 1; }
 .tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .primary { display: flex; flex: none; }
 .secondary { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .overflow { display: none; }
+:where([data-experience]:not([data-experience="baseline"])) .head[data-band] {
+  min-height: var(--toolbar-h);
+  padding: var(--toolbar-py) var(--space-4);
+  justify-content: center;
+}
+:where([data-experience]:not([data-experience="baseline"])) .head[data-band][data-tabs] {
+  padding-bottom: 0;
+}
+:where([data-experience]:not([data-experience="baseline"])) .title {
+  font-size: var(--text-lg);
+}
 @media (--phone) {
   .secondary { display: none; }
   .overflow { display: flex; }
   .title { flex: 1; min-width: 0; }
   .meta { flex-basis: 100%; order: 1; }
+  .filters { flex-basis: 100%; order: 2; }
   .grow { display: none; }
 }
 .sub { margin: 0; color: var(--steel); font-size: var(--text-sm); }

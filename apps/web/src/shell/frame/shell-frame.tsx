@@ -41,6 +41,12 @@ export interface ShellLayoutProps {
   navigationState: "loading" | "failed" | "ready";
   navigationNotice: ReactNode;
   onSearch: () => void;
+  phoneHeader?: {
+    title: ReactNode;
+    context?: ReactNode;
+    shellOwnsH1?: boolean;
+    back?: { label: string; href?: string; onBack?: () => void };
+  };
 }
 
 export function ShellFrame({ layout: Layout, children = <Outlet />, pending = false }: {

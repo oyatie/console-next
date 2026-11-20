@@ -34,6 +34,7 @@ export const bootEn = {
   "shell.tabs.closeOne": "Close {name} tab",
   "shell.tabs.new": "Open new tab",
   "shell.tabs.more": "More open tabs",
+  "shell.status.label": "Workspace status",
   "shell.hub.work": "Work",
   "shell.hub.approvals": "Approvals",
   "shell.hub.people": "Organization and people",
