@@ -174,6 +174,7 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 | [Item list](components/item-list.md) | `ItemList` | `apps/web/src/ui/item-list` |
 | [Key cap](components/kbd.md) | `Kbd` | `apps/web/src/ui/kbd` |
 | [Key-value](components/key-value.md) | `KeyValue`, `StatRow` | `apps/web/src/ui/key-value` |
+| [Ledger](components/ledger.md) | `Ledger` | `apps/web/src/ui/ledger` |
 | [Masked field](components/masked-field.md) | `MaskedField` | `apps/web/src/ui/masked-field` |
 | [Menu](components/menu.md) | `ActionMenu`, `MenuButton` | `apps/web/src/ui/menu` |
 | [Meter](components/meter.md) | `Meter` | `apps/web/src/ui/meter` |
@@ -181,6 +182,7 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 | [Month grid](components/month-grid.md) | `MonthGrid` | `apps/web/src/ui/month-grid` |
 | [Page head](components/page-head.md) | `PageHead`, `PageHeadActions`, `Crumbs`, `PhaseLine`, `AsOf` | `apps/web/src/ui/page-head` |
 | [Pane grid](components/pane-grid.md) | `PaneGrid`, `PaneHead` | `apps/web/src/ui/pane-grid` |
+| [Period stepper](components/period-stepper.md) | `PeriodStepper` | `apps/web/src/ui/period-stepper` |
 | [Person-day grid](components/person-day-grid.md) | `PersonDayGrid` | `apps/web/src/ui/person-day-grid` |
 | [Phone bars](components/phone-bars.md) | `PhoneTopBar`, `PhoneBottomNav` | `apps/web/src/ui/phone-bars` |
 | [Popover](components/popover.md) | `PopoverButton` | `apps/web/src/ui/popover` |

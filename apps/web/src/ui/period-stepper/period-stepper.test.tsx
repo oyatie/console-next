@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test } from "vitest";
-import { i18n, loadCatalog } from "@console/i18n";
-import { PeriodStepper } from "./period-stepper";
+import { i18n, loadCatalog, t } from "@console/i18n";
+import { PeriodStepper, type PeriodStepperProps, type PeriodUnit } from "./index";
 
 afterEach(() => i18n.set("ko"));
 
@@ -26,4 +26,22 @@ test.each(["ko", "en"] as const)("year and current-period controls use the %s ca
   expect(year).toContain(locale === "ko" ? "올해" : "This year");
   const month = renderToStaticMarkup(<PeriodStepper unit="month" value="2026-11" onChange={() => {}} />);
   expect(month).toContain(locale === "ko" ? "이번 달" : "This month");
+});
+
+test("supports boxed variant, showCurrent=false, and custom accessible group label", async () => {
+  await loadCatalog("ko");
+  const unit: PeriodUnit = "month";
+  const props: PeriodStepperProps = {
+    unit,
+    value: "2026-10",
+    onChange: () => {},
+    variant: "boxed",
+    showCurrent: false,
+    label: "Payroll period",
+  };
+  const html = renderToStaticMarkup(<PeriodStepper {...props} />);
+  expect(html).toContain('role="group"');
+  expect(html).toContain('aria-label="Payroll period"');
+  expect(html).toContain('data-variant="boxed"');
+  expect(html).not.toContain(t("attendance.period.thisMonth"));
 });
