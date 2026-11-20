@@ -77,3 +77,9 @@
   border-block-start: 1px solid var(--border);
   margin: var(--space-1) 0;
 }
+
+@media (--below-wide) {
+  .accountName {
+    max-inline-size: calc(var(--space-6) * 5);
+  }
+}

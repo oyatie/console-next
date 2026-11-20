@@ -184,6 +184,10 @@
   .searchField {
     flex: 0 1 calc(var(--space-6) * 5);
   }
+
+  .accountName {
+    max-inline-size: calc(var(--space-6) * 5);
+  }
 }
 
 @media (--phone) {
