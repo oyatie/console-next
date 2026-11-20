@@ -84,6 +84,8 @@ async fn v2_round_trips_through_both_rrn_tables_and_refuses_malformed_shapes(poo
         let stored = SealedRrn {
             hmac: row.get("rrn_hmac"),
             hmac_key_version: row.get("hmac_key_version"),
+            hmac_v2: row.get("rrn_hmac_v2"),
+            blind_index_version: row.get("blind_index_version"),
             ciphertext: row.get("ciphertext"),
             nonce: row.get("nonce"),
             dek_wrapped: row.get("dek_wrapped"),
@@ -164,20 +166,22 @@ async fn v3_round_trips_through_both_rrn_tables_and_refuses_missing_commitment(p
     for (table, suffix) in [
         (
             "employee_rrn",
-            ", employee_id, source, recorded_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'FORM',$15)",
+            ", employee_id, source, recorded_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'FORM',$17)",
         ),
         (
             "data_import_row_identities",
-            ", run_id, source_key) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)",
+            ", run_id, source_key) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
         ),
     ] {
         let statement = format!(
-            "INSERT INTO {table} (org_id,rrn_hmac,hmac_key_version,ciphertext,nonce,dek_wrapped,dek_nonce,key_version,masked,alg_id,kek_id,msg_id,commitment_tag{suffix}"
+            "INSERT INTO {table} (org_id,rrn_hmac,hmac_key_version,rrn_hmac_v2,blind_index_version,ciphertext,nonce,dek_wrapped,dek_nonce,key_version,masked,alg_id,kek_id,msg_id,commitment_tag{suffix}"
         );
         let query = sqlx::query(sqlx::AssertSqlSafe(statement))
             .bind(org)
-            .bind(vault.blind_index(&rrn))
-            .bind(HMAC_KEY_VERSION)
+            .bind(vault.blind_index_v1(&rrn))
+            .bind(LEGACY_HMAC_KEY_VERSION)
+            .bind(vault.blind_index(org, &rrn))
+            .bind(vault.active_blind_index_version())
             .bind(&v3.ciphertext)
             .bind(&v3.nonce)
             .bind(&v3.dek_wrapped)
@@ -209,6 +213,8 @@ async fn v3_round_trips_through_both_rrn_tables_and_refuses_missing_commitment(p
         let stored = SealedRrn {
             hmac: row.get("rrn_hmac"),
             hmac_key_version: row.get("hmac_key_version"),
+            hmac_v2: row.get("rrn_hmac_v2"),
+            blind_index_version: row.get("blind_index_version"),
             ciphertext: row.get("ciphertext"),
             nonce: row.get("nonce"),
             dek_wrapped: row.get("dek_wrapped"),
@@ -220,6 +226,8 @@ async fn v3_round_trips_through_both_rrn_tables_and_refuses_missing_commitment(p
             msg_id: row.get("msg_id"),
             commitment_tag: row.get("commitment_tag"),
         };
+        assert_eq!(stored.hmac_v2, Some(vault.blind_index(org, &rrn)));
+        assert_eq!(stored.blind_index_version, Some(2));
         assert_eq!(vault.open(org, &stored).unwrap(), rrn);
         assert_eq!(vault.open(Uuid::new_v4(), &stored), Err(VaultError));
 
@@ -230,6 +238,8 @@ async fn v3_round_trips_through_both_rrn_tables_and_refuses_missing_commitment(p
             "alg_id = NULL",
             "commitment_tag = decode('00', 'hex')",
             "msg_id = decode('00', 'hex')",
+            "rrn_hmac_v2 = decode('00', 'hex')",
+            "blind_index_version = 1",
         ] {
             let error = sqlx::query(sqlx::AssertSqlSafe(format!(
                 "UPDATE {table} SET {assignment} WHERE org_id = $1"

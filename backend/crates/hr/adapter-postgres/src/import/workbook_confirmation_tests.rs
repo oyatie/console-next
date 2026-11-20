@@ -11,7 +11,7 @@ impl RrnVault for UnusedVault {
     fn seal(&self, _: Uuid, _: &Rrn) -> Result<SealedRrn, VaultError> {
         panic!("an unconfirmed column must never reach the vault")
     }
-    fn blind_index(&self, _: &Rrn) -> Vec<u8> {
+    fn blind_index(&self, _: Uuid, _: &Rrn) -> Vec<u8> {
         panic!("an unconfirmed column must never reach the vault")
     }
     fn open(&self, _: Uuid, _: &SealedRrn) -> Result<Rrn, VaultError> {

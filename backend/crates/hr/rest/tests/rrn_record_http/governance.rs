@@ -149,8 +149,11 @@ impl RrnVault for PausingVault {
             .unwrap();
         self.vault.seal(org, rrn)
     }
-    fn blind_index(&self, rrn: &Rrn) -> Vec<u8> {
-        self.vault.blind_index(rrn)
+    fn blind_index(&self, org: Uuid, rrn: &Rrn) -> Vec<u8> {
+        self.vault.blind_index(org, rrn)
+    }
+    fn blind_index_v1(&self, rrn: &Rrn) -> Vec<u8> {
+        self.vault.blind_index_v1(rrn)
     }
     fn open(&self, _: Uuid, _: &SealedRrn) -> Result<Rrn, VaultError> {
         Err(VaultError)

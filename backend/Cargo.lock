@@ -938,6 +938,7 @@ dependencies = [
  "console-platform-auth-rest",
  "console-platform-authz",
  "console-platform-authz-rest",
+ "console-platform-crypto",
  "console-platform-db",
  "console-platform-email",
  "console-platform-jobs",

@@ -114,6 +114,7 @@ pub(crate) async fn run_dispatch_worker(
             DatabaseDependency::NotConfigured => None,
         },
         state.nts.clone(),
+        crate::hr::rrn_vault::from_env_logged(),
     );
     #[cfg(feature = "dispatch")]
     let dispatch_worker = DispatchWorker::new(

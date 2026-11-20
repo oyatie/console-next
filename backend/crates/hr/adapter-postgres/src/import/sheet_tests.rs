@@ -40,10 +40,12 @@ fn t(text: &str) -> Cell {
 /// Test-only: "seals" by reversing the digits. Not cryptography.
 struct Mirror;
 impl RrnVault for Mirror {
-    fn seal(&self, _org: Uuid, rrn: &Rrn) -> Result<SealedRrn, VaultError> {
+    fn seal(&self, org: Uuid, rrn: &Rrn) -> Result<SealedRrn, VaultError> {
         Ok(SealedRrn {
-            hmac: self.blind_index(rrn),
+            hmac: self.blind_index_v1(rrn),
             hmac_key_version: 1,
+            hmac_v2: Some(self.blind_index(org, rrn)),
+            blind_index_version: Some(2),
             ciphertext: rrn.digits().bytes().rev().chain([0u8; 8]).collect(),
             nonce: vec![0; 24],
             dek_wrapped: vec![0; 16],
@@ -56,7 +58,14 @@ impl RrnVault for Mirror {
             commitment_tag: None,
         })
     }
-    fn blind_index(&self, rrn: &Rrn) -> Vec<u8> {
+    fn blind_index(&self, org: Uuid, rrn: &Rrn) -> Vec<u8> {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(org.as_bytes());
+        hasher.update(rrn.digits().as_bytes());
+        hasher.finalize().to_vec()
+    }
+    fn blind_index_v1(&self, rrn: &Rrn) -> Vec<u8> {
         rrn.digits().bytes().cycle().take(32).collect()
     }
     fn open(&self, _org: Uuid, _sealed: &SealedRrn) -> Result<Rrn, VaultError> {

@@ -79,11 +79,14 @@ impl Rrn {
 
 /// A sealed resident registration number as stored (employee_rrn,
 /// data_import_row_identities).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SealedRrn {
-    /// HMAC-SHA256 under the vault's matching key: the only thing compared.
+    /// Legacy v1 HMAC-SHA256 matching key (retained during N-1 rollout).
     pub hmac: Vec<u8>,
     pub hmac_key_version: i16,
+    /// Tenant-bound HKDF-SHA256 + HMAC-SHA256 blind index (`version >= 2`).
+    pub hmac_v2: Option<Vec<u8>>,
+    pub blind_index_version: Option<i16>,
     pub ciphertext: Vec<u8>,
     pub nonce: Vec<u8>,
     pub dek_wrapped: Vec<u8>,
@@ -94,6 +97,60 @@ pub struct SealedRrn {
     pub kek_id: Option<String>,
     pub msg_id: Option<Vec<u8>>,
     pub commitment_tag: Option<Vec<u8>>,
+}
+
+impl std::fmt::Debug for SealedRrn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SealedRrn")
+            .field(
+                "hmac",
+                &format_args!("[redacted; {} bytes]", self.hmac.len()),
+            )
+            .field("hmac_key_version", &self.hmac_key_version)
+            .field(
+                "hmac_v2",
+                &self
+                    .hmac_v2
+                    .as_ref()
+                    .map(|h| format!("[redacted; {} bytes]", h.len())),
+            )
+            .field("blind_index_version", &self.blind_index_version)
+            .field(
+                "ciphertext",
+                &format_args!("[redacted; {} bytes]", self.ciphertext.len()),
+            )
+            .field(
+                "nonce",
+                &format_args!("[redacted; {} bytes]", self.nonce.len()),
+            )
+            .field(
+                "dek_wrapped",
+                &format_args!("[redacted; {} bytes]", self.dek_wrapped.len()),
+            )
+            .field(
+                "dek_nonce",
+                &format_args!("[redacted; {} bytes]", self.dek_nonce.len()),
+            )
+            .field("key_version", &self.key_version)
+            .field("masked", &"[redacted]")
+            .field("alg_id", &self.alg_id)
+            .field("kek_id", &self.kek_id)
+            .field(
+                "msg_id",
+                &self
+                    .msg_id
+                    .as_ref()
+                    .map(|m| format!("[redacted; {} bytes]", m.len())),
+            )
+            .field(
+                "commitment_tag",
+                &self
+                    .commitment_tag
+                    .as_ref()
+                    .map(|t| format!("[redacted; {} bytes]", t.len())),
+            )
+            .finish()
+    }
 }
 
 /// The vault failed (no key, wrong key, tampered row). Carries no value.
@@ -108,8 +165,60 @@ pub trait RrnVault: Send + Sync {
     /// [`VaultError`] when sealing fails.
     fn seal(&self, org: Uuid, rrn: &Rrn) -> Result<SealedRrn, VaultError>;
 
-    /// The matching key of `rrn` under the current HMAC key.
-    fn blind_index(&self, rrn: &Rrn) -> Vec<u8>;
+    /// Tenant-bound v2+ blind index of `rrn` under the active key version.
+    fn blind_index(&self, org: Uuid, rrn: &Rrn) -> Vec<u8>;
+
+    /// Legacy v1 (un-tenanted) blind index for N-1 dual-write compatibility.
+    fn blind_index_v1(&self, rrn: &Rrn) -> Vec<u8> {
+        let _ = rrn;
+        Vec::new()
+    }
+
+    /// Active tenant-bound blind-index version (`>= 2`).
+    fn active_blind_index_version(&self) -> i16 {
+        2
+    }
+
+    /// All tenant-bound v2+ blind-index candidates for `rrn` (active/newest first).
+    fn blind_index_v2_candidates(&self, org: Uuid, rrn: &Rrn) -> Vec<Vec<u8>> {
+        vec![self.blind_index(org, rrn)]
+    }
+
+    /// Derive tenant-bound v2+ candidates from an existing [`SealedRrn`],
+    /// keeping plaintext inside the vault.
+    ///
+    /// # Errors
+    /// [`VaultError`] when opening `sealed` fails.
+    fn blind_index_v2_candidates_from_sealed(
+        &self,
+        org: Uuid,
+        sealed: &SealedRrn,
+    ) -> Result<Vec<Vec<u8>>, VaultError> {
+        let rrn = self.open(org, sealed)?;
+        let mut candidates = self.blind_index_v2_candidates(org, &rrn);
+        if let Some(existing) = &sealed.hmac_v2
+            && !candidates.iter().any(|c| c == existing)
+        {
+            candidates.push(existing.clone());
+        }
+        Ok(candidates)
+    }
+
+    /// Recompute `(rrn_hmac_v2, blind_index_version)` for batched backfill.
+    ///
+    /// # Errors
+    /// [`VaultError`] when opening `sealed` fails.
+    fn rekey_blind_index_v2(
+        &self,
+        org: Uuid,
+        sealed: &SealedRrn,
+    ) -> Result<(Vec<u8>, i16), VaultError> {
+        let rrn = self.open(org, sealed)?;
+        Ok((
+            self.blind_index(org, &rrn),
+            self.active_blind_index_version(),
+        ))
+    }
 
     /// # Errors
     /// [`VaultError`] for a wrong key, another tenant's row or a tampered one.

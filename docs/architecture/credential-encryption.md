@@ -77,9 +77,47 @@ lists AES-128/192/256 among private-sector symmetric algorithm examples; ChaCha2
 is absent. LEA appears in the public-sector examples. This example table is not
 an exclusive statutory algorithm list or evidence of this build's certification.
 
-HMAC-SHA256 uses `aws_lc_rs::hmac` with the unchanged separate matching key;
-legacy index vectors remain byte-identical in this release. Keys and plaintext
-are never logged.
+## Tenant-Bound RRN Blind Index (v2+)
+
+- **HKDF-SHA256 tenant/context separation (`console-platform-crypto/src/blind_index.rs`)**:
+  - `BlindIndexKeyring` holds versioned 32-byte root keys inside `SecretBox<[u8; 32]>`
+    with redacted `Debug`, loaded from `CONSOLE_RRN_HMAC_KEYRING`
+    (`{"active": N, "keys": {"1": "<b64>", "2": "<b64>", ...}}`) and/or legacy
+    `CONSOLE_RRN_HMAC_KEY` (with `<NAME>_FILE` support via `secret_env`).
+  - When only `CONSOLE_RRN_HMAC_KEY` is configured, version `1` (legacy raw
+    `HMAC-SHA256`) and version `2` (HKDF-SHA256 root) are both registered with
+    `active_version = 2`; conflicting version `1` bytes when both env vars are
+    set fail closed via constant-time `aws_lc_rs::constant_time::verify_slices_are_equal`.
+  - For `version >= 2`, `HKDF-SHA256(salt = "console.crypto.blind_index.salt.v2", ikm = key_v, info = "console.crypto.blind_index.v2" || LP_u32(org_id) || LP_u32(table) || LP_u32(field) || u16_be(version))`
+    derives a 32-byte `Zeroizing` subkey before `HMAC-SHA256(subkey, rrn.digits())`.
+  - Both `employee_rrn` and staged `data_import_row_identities` bind
+    `table = "employee_rrn"` and `field = "rrn"` so import staging, dry-run
+    matching, promotion, and form recording remain invariant per tenant while
+    making cross-tenant blind indexes cryptographically unlinkable.
+- **Expand schema, dual-write/dual-read, and N-1 rollback safety**:
+  - Additive migration `20261120110000000_rrn_blind_index_v2_expand.sql` adds
+    nullable `rrn_hmac_v2` and `blind_index_version` to `employee_rrn` and
+    `data_import_row_identities`, plus column-scoped
+    `GRANT UPDATE (rrn_hmac_v2, blind_index_version) ON employee_rrn TO console_rt;`.
+  - Companion `-- no-transaction` migration `20261120110001000_rrn_blind_index_v2_idx.sql`
+    creates non-unique partial `employee_rrn_hmac_v2_idx` (`CONCURRENTLY`).
+  - Writers dual-write both legacy `rrn_hmac` (`v1`) and tenant-bound `rrn_hmac_v2`
+    (`v2+`) so an N-1 rollback remains lossless during rollout; readers dual-read
+    `v2+` candidates when `rrn_hmac_v2 IS NOT NULL` and fall back to `rrn_hmac`
+    only when `rrn_hmac_v2 IS NULL`.
+- **Audited batched backfill (`HrService::backfill_rrn_blind_indexes`)**:
+  - Scheduled worker loop iterates tenants via `platform_list_organizations()`,
+    probes under `with_org_conn`, claims up to `100` rows per batch via
+    `FOR UPDATE SKIP LOCKED` inside `with_audits`, recomputes `rrn_hmac_v2` /
+    `blind_index_version` inside the vault (`rekey_blind_index_v2`), leaves
+    `rrn_hmac` untouched for N-1 safety, and records one `AuditEvent`
+    (`actor = None`, `AuditSource::Scheduler`, action `employee.rrn_blind_index_backfill`)
+    containing only updated counts and target version (never RRN or HMAC bytes).
+- **Redacted `Debug` & `SecretBox` boundaries**: `SealedRrn`, `ImportRow`,
+  `OnFile`, `EnvRrnVault`, and `BlindIndexKeyring` redact RRN digits, masked
+  values, blind-index bytes, and key material in `fmt::Debug`; `EnvRrnVault::open`
+  parses inside `EnvelopeCredentialCipher::open_with` without copying plaintext
+  RRN digits into an unzeroized `Vec<u8>`. Keys and plaintext are never logged.
 
 ## Scheduled contract
 
@@ -88,3 +126,5 @@ are never logged.
   persisted SMTP/IMAP and both RRN-table compatibility tests pass.
 - After the writer flip, run idempotent, resumable, audited batched re-sealing
   and remove legacy ChaCha20 only after zero `v1` rows remain.
+- Drop legacy `rrn_hmac` (`v1`) only in a future contract migration after N-1
+  binaries are retired and `WHERE rrn_hmac_v2 IS NULL` reaches zero.
