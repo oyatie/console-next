@@ -141,6 +141,16 @@ export function WorklistOpsDue({ children }: { children: ReactNode }) {
   return <div className={s.opsDue}>{children}</div>;
 }
 
+/** Bounded action cell for operations tables so multi-word phone actions wrap cleanly without overflowing 390px. */
+export function WorklistOpsAction({ children }: { children: ReactNode }) {
+  return <div className={s.opsAction}>{children}</div>;
+}
+
+/** Constrains operations tables to 100% width at phone width so fitted action cells do not trigger max-content overflow. */
+export function WorklistOpsTableWrap({ children }: { children: ReactNode }) {
+  return <div className={s.opsTableWrap}>{children}</div>;
+}
+
 /** Proportional horizontal meter paired with a formatted numeric readout. */
 export function WorklistMeter({
   value,

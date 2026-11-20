@@ -93,10 +93,27 @@ export function WorkspaceTabs({
       const children = Array.from(measureEl.children) as HTMLElement[];
       if (children.length < tabs.length + 1) return;
       const widths = children.slice(0, tabs.length).map(el => el.getBoundingClientRect().width);
+      const tailEl = children[tabs.length];
       const controlsReserve = children
         .slice(tabs.length)
-        .reduce((sum, el) => sum + el.getBoundingClientRect().width, 0);
-      const next = partitionBarOverflow(widths, stripEl.clientWidth, controlsReserve, activeIndex);
+        .reduce((sum, el) => sum + Math.ceil(Math.max(el.getBoundingClientRect().width, el.scrollWidth)), 0);
+      const addEl = tailEl?.querySelector<HTMLElement>(`.${s.addBtn}`);
+      const tailStyle = tailEl ? getComputedStyle(tailEl) : null;
+      const persistentReserve =
+        hasAdd && addEl && tailStyle
+          ? Math.ceil(
+              addEl.getBoundingClientRect().width +
+                (parseFloat(tailStyle.paddingInlineStart || tailStyle.paddingLeft || "0") || 0) +
+                (parseFloat(tailStyle.paddingInlineEnd || tailStyle.paddingRight || "0") || 0),
+            )
+          : 0;
+      const next = partitionBarOverflow(
+        widths,
+        stripEl.clientWidth,
+        controlsReserve,
+        activeIndex,
+        persistentReserve,
+      );
       setOverflowState(prev =>
         prev &&
         prev.count === tabs.length &&
@@ -182,9 +199,15 @@ export function WorkspaceTabs({
     <nav ref={stripRef} aria-label={resolvedLabel} className={s.strip}>
       <div ref={measureRef} className={s.measure} aria-hidden="true" inert>
         {tabs.map((tab, index) => {
+          const isActive = tab.id === activeId || (activeId === undefined && index === 0);
           const closable = isClosable(tab, index);
           return (
-            <div key={tab.id} className={s.cell} data-closable={closable || undefined}>
+            <div
+              key={tab.id}
+              className={s.cell}
+              data-active={isActive || undefined}
+              data-closable={closable || undefined}
+            >
               <div className={s.tabLink}>{renderContent(tab)}</div>
               {closable ? (
                 <div className={s.close}>

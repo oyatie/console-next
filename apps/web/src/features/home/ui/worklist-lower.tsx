@@ -18,7 +18,9 @@ import {
   WorklistBandEmpty,
   WorklistBandsGrid,
   WorklistMeter,
+  WorklistOpsAction,
   WorklistOpsDue,
+  WorklistOpsTableWrap,
   WorklistOpsTaskCell,
   WorklistStatWrap,
   WorklistSubLabel,
@@ -115,70 +117,72 @@ export function WorklistLower({
         <WorklistBandBlock>
           <PaneHead title={t("home.worklist.opsTitle")} meta={opsPeriodMeta} level={3} />
           {opsItems.length > 0 ? (
-            <Table
-              density="compact"
-              mobileLayout="rows"
-              label={t("home.worklist.opsTitle")}
-              rows={opsItems}
-              rowId={row => row.id}
-              columns={[
-                {
-                  header: t("home.worklist.col.task"),
-                  cell: row => {
-                    const taskLabel = t(
-                      row.context?.unlock?.exceptionId
-                        ? "periodLocks.review.title"
-                        : row.kind === "period_unlock" && !row.context?.unlock
-                          ? "home.worklist.attendanceClose"
-                          : KIND_TEXT[row.kind] ?? "home.inbox.unknown",
-                    );
-                    const { phoneSummary } = opsRowSummary(row);
-                    return <WorklistOpsTaskCell title={taskLabel} meta={phoneSummary || undefined} />;
+            <WorklistOpsTableWrap>
+              <Table
+                density="compact"
+                mobileLayout="rows"
+                label={t("home.worklist.opsTitle")}
+                rows={opsItems}
+                rowId={row => row.id}
+                columns={[
+                  {
+                    header: t("home.worklist.col.task"),
+                    cell: row => {
+                      const taskLabel = t(
+                        row.context?.unlock?.exceptionId
+                          ? "periodLocks.review.title"
+                          : row.kind === "period_unlock" && !row.context?.unlock
+                            ? "home.worklist.attendanceClose"
+                            : KIND_TEXT[row.kind] ?? "home.inbox.unknown",
+                      );
+                      const { phoneSummary } = opsRowSummary(row);
+                      return <WorklistOpsTaskCell title={taskLabel} meta={phoneSummary || undefined} />;
+                    },
                   },
-                },
-                {
-                  header: t("home.worklist.opsCol.scope"),
-                  wide: true,
-                  cell: row => opsRowSummary(row).scope,
-                },
-                {
-                  header: t("home.worklist.opsCol.state"),
-                  wide: true,
-                  cell: row => opsRowSummary(row).state,
-                },
-                {
-                  header: t("home.inbox.column.due"),
-                  cell: row => {
-                    const { dueText } = opsRowSummary(row);
-                    if (dueText) return <bdi className="num muted">{dueText}</bdi>;
-                    const md = shortMonthDay(row.due);
-                    return (
-                      <WorklistOpsDue>
-                        {md ? <bdi className="num">{md}</bdi> : null}
-                        {row.days_remaining != null ? <DueCell days={row.days_remaining} /> : !md ? "—" : null}
-                      </WorklistOpsDue>
-                    );
+                  {
+                    header: t("home.worklist.opsCol.scope"),
+                    wide: true,
+                    cell: row => opsRowSummary(row).scope,
                   },
-                },
-                {
-                  header: t("home.worklist.opsCol.check"),
-                  wide: true,
-                  cell: row => opsRowSummary(row).checkText,
-                },
-                {
-                  header: <bdi className="sr-only">{t("home.worklist.col.action")}</bdi>,
-                  fit: true,
-                  cell: row => {
-                    const resolved =
-                      recordAction(row, action, "home.inbox.open", focusAfter) ??
-                      (row.links[0]?.kind === "period_lock"
-                        ? <Link to="/people/period-locks" search={{ review: row.links[0].id }} className={buttonClass("secondary", { size: "sm" })}>{t("home.inbox.open")}</Link>
-                        : null);
-                    return resolved ? <div className={s.dateCol}>{resolved}</div> : null;
+                  {
+                    header: t("home.worklist.opsCol.state"),
+                    wide: true,
+                    cell: row => opsRowSummary(row).state,
                   },
-                },
-              ]}
-            />
+                  {
+                    header: t("home.inbox.column.due"),
+                    cell: row => {
+                      const { dueText } = opsRowSummary(row);
+                      if (dueText) return <WorklistOpsDue><bdi className="num muted">{dueText}</bdi></WorklistOpsDue>;
+                      const md = shortMonthDay(row.due);
+                      return (
+                        <WorklistOpsDue>
+                          {md ? <bdi className="num">{md}</bdi> : null}
+                          {row.days_remaining != null ? <DueCell days={row.days_remaining} /> : !md ? "—" : null}
+                        </WorklistOpsDue>
+                      );
+                    },
+                  },
+                  {
+                    header: t("home.worklist.opsCol.check"),
+                    wide: true,
+                    cell: row => opsRowSummary(row).checkText,
+                  },
+                  {
+                    header: <bdi className="sr-only">{t("home.worklist.col.action")}</bdi>,
+                    fit: true,
+                    cell: row => {
+                      const resolved =
+                        recordAction(row, action, "home.inbox.open", focusAfter) ??
+                        (row.links[0]?.kind === "period_lock"
+                          ? <Link to="/people/period-locks" search={{ review: row.links[0].id }} className={buttonClass("secondary", { size: "sm" })}>{t("home.inbox.open")}</Link>
+                          : null);
+                      return resolved ? <WorklistOpsAction>{resolved}</WorklistOpsAction> : null;
+                    },
+                  },
+                ]}
+              />
+            </WorklistOpsTableWrap>
           ) : (
             <WorklistBandEmpty>{t("home.worklist.opsEmpty")}</WorklistBandEmpty>
           )}

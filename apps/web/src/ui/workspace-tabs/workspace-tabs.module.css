@@ -179,6 +179,7 @@
   pointer-events: none;
 }
 
-.measure > * {
-  flex-shrink: 0;
+.measure > *,
+.measure .tail {
+  flex: 0 0 auto;
 }

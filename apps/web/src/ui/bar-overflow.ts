@@ -9,12 +9,13 @@ export function partitionBarOverflow(
   containerWidth: number,
   reserveWidth: number,
   activeIndex: number,
+  persistentReserve = 0,
 ): { visibleIndices: number[]; overflowIndices: number[] } {
   if (widths.length === 0 || containerWidth <= 0) {
     return { visibleIndices: widths.map((_, idx) => idx), overflowIndices: [] };
   }
   const total = widths.reduce((sum, w) => sum + w, 0);
-  if (total <= containerWidth) {
+  if (total + persistentReserve <= containerWidth) {
     return { visibleIndices: widths.map((_, idx) => idx), overflowIndices: [] };
   }
   const budget = Math.max(0, containerWidth - reserveWidth);

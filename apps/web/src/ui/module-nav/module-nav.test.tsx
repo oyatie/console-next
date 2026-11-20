@@ -34,6 +34,12 @@ test("partitionBarOverflow preserves inline items when all fit and keeps activeI
     visibleIndices: [],
     overflowIndices: [],
   });
+
+  // Persistent trailing controls (e.g. WorkspaceTabs add button) force overflow when items + persistentReserve > width.
+  expect(partitionBarOverflow([100, 100], 220, 70, 0, 32)).toEqual({
+    visibleIndices: [0],
+    overflowIndices: [1],
+  });
 });
 
 test("ModuleNavBar renders a labelled navigation landmark, marks current page, and formats positive counts", () => {

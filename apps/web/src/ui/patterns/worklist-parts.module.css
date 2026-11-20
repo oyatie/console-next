@@ -56,6 +56,12 @@
   white-space: nowrap;
 }
 
+.opsAction {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
 .opsTaskCell {
   display: contents;
 }
@@ -203,6 +209,16 @@
   white-space: nowrap;
 }
 
+@media (max-width: 1120px) {
+  .clampSubject {
+    max-width: calc(var(--space-6) * 8);
+  }
+
+  .clampReason {
+    max-width: calc(var(--space-6) * 4);
+  }
+}
+
 @container list-table (max-width: 480px) {
   :global([data-compact-rows]) .clampSubject {
     display: flex;
@@ -232,12 +248,17 @@
     overflow: visible;
   }
 
+  .opsTableWrap :global(.table) {
+    width: 100%;
+    min-width: 0;
+  }
+
   .opsTaskCell {
     display: flex;
     flex-direction: column;
     gap: var(--space-half);
     min-width: 0;
-    max-width: calc(var(--space-6) * 5);
+    max-width: calc(var(--space-6) * 4.25);
     padding-block: var(--space-1);
   }
 
@@ -256,9 +277,34 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-half);
-    max-width: none;
+    max-width: calc(var(--space-6) * 4);
     min-width: 0;
+    white-space: normal;
     padding-block: var(--space-1);
+  }
+
+  .opsAction {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    max-width: calc(var(--space-6) * 3.5);
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .opsAction :is(a, button) {
+    height: auto;
+    min-height: var(--target);
+    width: max-content;
+    max-width: 100%;
+    padding-block: var(--space-1);
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: keep-all;
+    text-align: center;
+    justify-content: center;
+    line-height: var(--lh-tight);
   }
 }
 
