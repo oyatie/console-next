@@ -8996,6 +8996,26 @@ export interface paths {
         patch: operations["setMailThreadReadState"];
         trace?: never;
     };
+    "/api/v1/me/access-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Authenticated user's own personal-data access history
+         * @description Strictly self-scoped to events where the authenticated principal's linked employee or user record was the subject. Excludes self-reads and denied attempts, requires no tenant-wide audit::view grant, and never exposes raw personal data values or free-text notes.
+         */
+        get: operations["listMyAccessLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/action-inbox": {
         parameters: {
             query?: never;
@@ -24701,6 +24721,22 @@ export interface components {
             selected_option_ids: components["schemas"]["Uuid"][];
             step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
         };
+        MyAccessLogEvent: {
+            /** Format: uuid */
+            event_id: string;
+            /** Format: date-time */
+            occurred_at: string;
+            actor_name: string;
+            actor_team: string | null;
+            action: string;
+            field: string | null;
+            reason_code: string | null;
+            target_type: string;
+        };
+        MyAccessLogPage: {
+            items: components["schemas"]["MyAccessLogEvent"][];
+            next_cursor: string | null;
+        };
         /** @description One pending P1 offer for the signed-in mechanic: a BROADCASTING dispatch that fanned out to the caller, still inside its accept window, with no response from the caller yet. */
         MyDispatchOffer: {
             dispatch_id: components["schemas"]["Uuid"];
@@ -26087,6 +26123,13 @@ export interface components {
             /** @enum {string} */
             channel: "ATTESTATION_ONLY" | "FILE_GENERIC";
         };
+        PayrollCalculationDeduction: {
+            code: string;
+            label_ko: string;
+            /** Format: int64 */
+            amount_won: number;
+            source_url: string;
+        };
         PayrollClosePreflight: {
             checks: components["schemas"]["PayrollPreflightCheck"][];
             can_close: boolean;
@@ -26175,6 +26218,16 @@ export interface components {
             /** @enum {string} */
             calculation_status: "BLOCKED_LEGAL_GATE" | "READY_FOR_REVIEW" | "APPROVED" | "ISSUED" | "VOID";
             blockers: unknown[];
+            /** Format: int32 */
+            calculation_version?: number | null;
+            /** Format: int64 */
+            gross_won?: number | null;
+            deductions?: components["schemas"]["PayrollCalculationDeduction"][] | null;
+            /** Format: int64 */
+            total_deductions_won?: number | null;
+            /** Format: int64 */
+            net_won?: number | null;
+            tax_table_version?: string | null;
         };
         PayrollLinkedRef: {
             /** @description Object family the ref points at — payroll_line or employee today; extensible. */
@@ -26380,6 +26433,16 @@ export interface components {
             /** @description Always false until the labor attorney / tax accountant release gate flips the stored rows. */
             payable: boolean;
             kernel_rate_table: string;
+            /**
+             * Format: int64
+             * @description Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+             */
+            total_gross_won?: number | null;
+            /**
+             * Format: int64
+             * @description Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+             */
+            total_deductions_won?: number | null;
             /**
              * Format: int64
              * @description Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
@@ -50209,6 +50272,39 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             503: components["responses"]["MailUnavailable"];
+        };
+    };
+    listMyAccessLog: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Keyset page of subject-scoped access events. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAccessLogPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description limit_out_of_range or cursor_invalid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     listMyActionInbox: {
