@@ -240,3 +240,69 @@ async fn me_access_log_isolates_subjects_tenants_excludes_self_and_denied_and_re
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{err}");
     }
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn me_access_log_surfaces_user_subject_ids_for_unlinked_users_and_fences_helper(
+    pool: PgPool,
+) {
+    let harness = Harness::new(pool.clone()).await;
+    let org_a = OrgId::one();
+    let org_b = OrgId::new();
+    seed_org(&pool, org_b, "access-log-unlinked-b").await;
+
+    let hr_actor = seed_user(&pool, org_a, "HR Actor").await;
+    let unlinked_user = seed_user(&pool, org_a, "Unlinked User").await;
+    let base = OffsetDateTime::now_utc() - Duration::minutes(5);
+    record_access_audit(
+        &pool,
+        org_a,
+        hr_actor,
+        "attendance.record_read",
+        ("attendance_record", &unlinked_user.to_string()),
+        base,
+        json!({
+            "user_subject_ids": [unlinked_user],
+            "self_read": false,
+            "field": "ATTENDANCE",
+            "reason_code": "PAYROLL_CALC"
+        }),
+    )
+    .await;
+    record_access_audit(
+        &pool,
+        org_a,
+        hr_actor,
+        "account.read",
+        ("user", &unlinked_user.to_string()),
+        base + Duration::seconds(10),
+        json!({
+            "subject_ids": [unlinked_user],
+            "self_read": false
+        }),
+    )
+    .await;
+
+    let token = harness.token(org_a, unlinked_user, false).await;
+    let (status, page) = get(&harness, "/api/v1/me/access-log", Some(&token)).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    let items = page["items"].as_array().unwrap();
+    assert_eq!(items.len(), 2, "{page}");
+    assert_eq!(items[0]["action"], "account.read");
+    assert_eq!(items[1]["action"], "attendance.record_read");
+
+    let mut conn = harness.pool.acquire().await.unwrap();
+    let mut tx = sqlx::Connection::begin(&mut *conn).await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org', $1, true)")
+        .bind(org_b.as_uuid().to_string())
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let leaked: Vec<uuid::Uuid> =
+        sqlx::query_scalar("SELECT id FROM public.me_access_log_subject_event_ids($1, $2, NULL)")
+            .bind(org_a.as_uuid())
+            .bind(unlinked_user.as_uuid())
+            .fetch_all(&mut *tx)
+            .await
+            .unwrap();
+    assert!(leaked.is_empty(), "helper must fence mismatched org_id");
+}

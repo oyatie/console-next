@@ -114,7 +114,9 @@ impl PgOrgStore {
                                NULLIF(a.after_snap->>'export_purpose', ''),
                                NULLIF(a.reason_code, '')
                            ) AS reason_code
-                    FROM audit_events a
+                    FROM public.me_access_log_subject_event_ids($1, $2, $3) s
+                    JOIN audit_events a
+                      ON a.org_id = $1 AND a.id = s.id
                     LEFT JOIN person_accounts_current u
                            ON u.org_id = a.org_id AND u.id = a.actor
                     LEFT JOIN employees e
@@ -126,8 +128,7 @@ impl PgOrgStore {
                         ORDER BY r.version DESC
                         LIMIT 1
                     ) unit ON e.org_unit_id IS NOT NULL
-                    WHERE a.org_id = $1
-                      AND a.after_snap ? 'self_read'
+                    WHERE a.after_snap ? 'self_read'
                       AND CASE
                           WHEN jsonb_typeof(a.after_snap->'self_read') = 'boolean'
                           THEN (a.after_snap->>'self_read')::boolean
@@ -142,11 +143,6 @@ impl PgOrgStore {
                               ELSE 'ALLOWED'
                           END
                       ) = 'ALLOWED'
-                      AND (
-                          ($3::uuid IS NOT NULL AND a.after_snap->'subject_ids' ? $3::text)
-                          OR (a.target_type = 'user' AND a.after_snap->'subject_ids' ? $2::text)
-                          OR (a.after_snap->'user_subject_ids' ? $2::text)
-                      )
                       AND ($4::timestamptz IS NULL OR (a.created_at, a.id) < ($4, $5))
                     ORDER BY a.created_at DESC, a.id DESC
                     LIMIT $6
