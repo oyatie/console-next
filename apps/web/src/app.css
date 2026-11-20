@@ -36,6 +36,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .t-2xl { font-size: var(--text-2xl); }
 .t-regular { font-weight: var(--fw-body); }
 .t-medium { font-weight: var(--fw-medium); }
+.t-semibold { font-weight: var(--fw-semibold); }
 .t-strong { font-weight: var(--fw-strong); }
 .t-mono { font-family: var(--font-mono); }
 .t-ink { color: var(--ink); }
@@ -57,7 +58,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
    under 3:1 against --ink (2.47 light, 2.63 dark), so colour alone cannot mark it (WCAG 1.4.1, G183): a thin
    --primary-bd underline stays at rest and takes the link's colour on hover and focus. `.link` is the same look on a
    <button>. :where() keeps the element rules at zero specificity, so .btn, .rail__link and module classes win. */
-:where(a) { color: inherit; font-weight: var(--fw-medium); text-decoration: none; text-underline-offset: 0.2em; }
+:where(a) { color: inherit; font-weight: var(--fw-medium); text-decoration: none; text-decoration-line: var(--link-decoration); text-underline-offset: 0.2em; }
 :where(a:hover, a:focus-visible) { text-decoration-line: underline; }
 :where(p, .notice, .alert, .field__error, .prose) :where(a), .link { color: var(--primary); text-decoration: underline 1px var(--primary-bd); text-underline-offset: 0.2em; }
 :where(p, .notice, .alert, .field__error, .prose) :where(a:hover, a:focus-visible), .link:hover, .link:focus-visible { text-decoration-color: currentcolor; }
@@ -70,9 +71,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
   --canvas: var(--chrome);
   --surface: var(--chrome);
   --muted: var(--chrome-hover);
+  --surface-2: var(--chrome-raised);
+  --surface-rest: var(--chrome);
+  --surface-hover: var(--chrome-hover);
+  --surface-pressed: var(--chrome-hover);
+  --surface-selected: var(--chrome-raised);
   --border: var(--chrome-border);
   --border-soft: var(--chrome-border);
+  --border-strong: var(--chrome-border);
   --control-border: var(--chrome-control-border);
+  --control-selected: var(--chrome-raised);
+  --on-control-selected: var(--on-chrome);
+  --control-selected-border: var(--chrome-accent);
   --ink: var(--on-chrome);
   --steel: var(--on-chrome-muted);
   --faint: var(--on-chrome-muted);
@@ -81,7 +91,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
   --primary-soft: var(--chrome-raised);
   --primary-bd: var(--chrome-control-border);
   --on-primary: var(--chrome);
+  --warn-bg: var(--chrome-warn-bg);
+  --warn-bd: var(--chrome-warn-bd);
   --warn-tx: var(--chrome-attention);
+  --danger-bg: var(--chrome-danger-bg);
+  --danger-bd: var(--chrome-danger-bd);
+  --danger-tx: var(--chrome-danger);
+  --danger-solid: var(--chrome-danger-solid);
+  --on-danger: var(--chrome-on-danger);
+  --over-bg: var(--danger-bg);
+  --over-bd: var(--danger-bd);
+  --over-tx: var(--danger-tx);
+  --grid-err: var(--danger-solid);
   --neutral-solid: var(--control-border);
   --chart-cat-6: var(--faint);
   --chart-axis: var(--control-border);
@@ -152,7 +173,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .top__name span { min-inline-size: 0; }
 }
 .top__kbd { padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-family: var(--font-mono); font-size: var(--text-xs); }
-.page { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; }
+.page { padding: var(--page-pad); display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; }
 .page__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .page__title { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); }
 /* Phone widths: the rail becomes a disclosure opened from the top bar's menu button. */
@@ -167,8 +188,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ── controls ──────────────────────────────────────── */
-.btn { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink); text-decoration: none; min-height: var(--control-h); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-weight: var(--fw-medium); cursor: pointer; }
-.btn:hover { background: var(--muted); }
+.btn { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink); text-decoration: none; min-height: var(--control-h); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-size: var(--control-text); font-weight: var(--fw-medium); cursor: pointer; }
+:where([data-experience]:not([data-experience="baseline"])) .btn { border-color: var(--control-border); }
+.btn:hover { background: var(--surface-hover); }
 .btn--primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .btn--primary:hover { background: var(--primary-hover); }
 .btn--ghost { border-color: transparent; background: transparent; }
@@ -178,13 +200,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn--ghost.btn--danger { background: transparent; border-color: transparent; color: var(--danger-tx); }
 .btn--ghost.btn--danger:hover { background: var(--danger-bg); }
 .btn[disabled], .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.btn[data-pending="true"] { cursor: progress; }
 /* A primary whose pick is missing stays focusable and readable (spec R9, ER-14): soft fill, dashed border, full contrast. */
-.btn--primary[aria-disabled="true"] { opacity: 1; border-style: dashed; border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.btn--primary[aria-disabled="true"]:not([data-pending="true"]) { opacity: 1; border-style: dashed; border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
 /* ToggleButton look="chip": a filter as a pill (kit .optchip); pressed takes the shared pressed look above. */
 .btn--chip { min-height: calc(var(--space-6) - var(--space-1)); padding: 0 var(--space-2) 0 var(--space-3); border-color: var(--control-border); border-radius: calc(var(--radius-lg) * 10); background: var(--surface); font-size: var(--text-sm); font-weight: var(--fw-body); white-space: nowrap; }
 .btn--chip[aria-pressed="true"] { font-weight: var(--fw-medium); }
 .btn__count { display: inline-block; min-width: 3ch; font-variant-numeric: tabular-nums; color: var(--steel); font-weight: var(--fw-medium); }
 .btn__count[data-tone="warn"] { color: var(--warn-tx); }
+.btn__count[data-tone="danger"] { color: var(--danger-tx); }
 .btn[aria-pressed="true"] .btn__count { color: var(--primary); }
 /* A card mounted inside a record section (data-embed) reads as the section body, not a card in a card, and never sticks. */
 [data-embed] .card { border: 0; box-shadow: none; background: none; padding-inline: 0; position: static; }
@@ -196,10 +220,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
    adds no weight to the selector: every rule that outranks a field's height today outranks this one as well. */
 :where(.toolbar) .field__input { height: var(--field-h-toolbar); }
 .field__error { font-size: var(--text-sm); color: var(--danger-tx); }
-/* Button sizes (ui/button size="sm", IconButton): the kit's .btn--sm and .btn--icon. */
+/* Button sizes (ui/button size="sm" | "lg", block, IconButton): the kit's .btn--sm, .btn--lg, .btn--block and .btn--icon. */
 .btn--sm { min-height: var(--target); padding: 0 var(--space-2); font-size: var(--text-sm); }
+.btn--lg { min-height: var(--control-h-lg); }
+.btn--block { width: 100%; justify-content: center; }
 .btn--icon { justify-content: center; width: var(--control-h); padding: 0; }
 .btn--sm.btn--icon { width: var(--target); }
+.btn--lg.btn--icon { width: var(--control-h-lg); }
 /* ToggleButton on (aria-pressed): the kit's .optchip / .seg pressed look, so a filter or option reads as chosen in words
    and in fill; view switches inside .tabs keep their underline instead. */
 .btn[aria-pressed="true"]:where(:not(.tabs > .btn)) { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
@@ -222,11 +249,14 @@ aside.panel { position: sticky; top: 0; }
 
 /* ── table ─────────────────────────────────────────── */
 .table { width: 100%; border-collapse: collapse; }
-.table th { position: sticky; top: 0; background: var(--surface); text-align: left; font-size: var(--text-xs); letter-spacing: var(--tracking-label); color: var(--steel); font-weight: var(--fw-medium); padding: 0 var(--space-3); height: var(--row-h); border-bottom: 1px solid var(--border); }
-.table td { padding: 0 var(--space-3); height: var(--row-h); border-bottom: 1px solid var(--border-soft); }
+.table th { position: sticky; top: 0; background: var(--surface); text-align: left; font-size: var(--text-xs); letter-spacing: var(--tracking-label); color: var(--steel); font-weight: var(--fw-medium); padding: 0 var(--cell-px); height: var(--row-h); border-bottom: 1px solid var(--border); }
+:where([data-experience]:not([data-experience="baseline"])) .table th { background: var(--surface-2); font-weight: var(--fw-semibold); }
+.table td { padding: 0 var(--cell-px); height: var(--row-h); border-bottom: 1px solid var(--border-soft); }
 .table[data-selectable="true"] tbody tr { cursor: pointer; }
-.table[data-selectable="true"] tbody tr:hover { background: var(--muted); }
-.table tbody tr[aria-selected="true"] { background: var(--primary-soft); }
+.table[data-selectable="true"] tbody tr:hover { background: var(--surface-hover); }
+.table tbody tr[data-checked="true"], .table tbody tr[aria-selected="true"] { background: var(--surface-selected); }
+:where([data-experience]:not([data-experience="baseline"])) .table[data-selectable="true"] tbody tr[aria-selected="true"]:hover { background: var(--surface-selected); }
+:where([data-experience]:not([data-experience="baseline"])) .table tbody tr[aria-selected="true"] { font-weight: var(--fw-semibold); }
 .table tbody tr[aria-selected="true"] td:first-child { box-shadow: var(--selected-bar); }
 .table tbody tr[data-tone="danger"] { background: var(--danger-bg); }
 .table tbody tr[data-tone="warn"] { background: var(--warn-bg); }
@@ -280,6 +310,11 @@ aside.panel { position: sticky; top: 0; }
 .consent { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3); margin: 0; }
 .check { min-height: var(--target); display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--text-sm); cursor: pointer; }
 .check input { flex: none; width: var(--space-6); height: var(--space-6); margin-top: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .check { align-items: center; gap: var(--space-1-5); }
+:where([data-experience]:not([data-experience="baseline"])) .check input { position: relative; appearance: none; display: inline-grid; place-items: center; width: var(--target); height: var(--target); margin: 0; background: transparent; cursor: pointer; }
+:where([data-experience]:not([data-experience="baseline"])) .check input::before { content: ""; width: calc(var(--space-3) + var(--space-half)); height: calc(var(--space-3) + var(--space-half)); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); }
+:where([data-experience]:not([data-experience="baseline"])) .check input:checked::before { background: var(--primary); border-color: var(--primary); }
+:where([data-experience]:not([data-experience="baseline"])) .check input:checked::after { content: ""; position: absolute; width: var(--space-2); height: var(--space-1); border-left: 2px solid var(--on-primary); border-bottom: 2px solid var(--on-primary); transform: translateY(calc(-1 * var(--space-half) / 2)) rotate(-45deg); }
 .tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .tabs .btn[aria-pressed="true"] { box-shadow: var(--tab-selected); }
 .search { display: flex; gap: var(--space-2); min-width: 0; }

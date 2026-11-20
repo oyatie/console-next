@@ -7,6 +7,8 @@ import { ApprovalCard } from "./approval-card/approval-card";
 import card from "./approval-card/approval-card.module.css";
 import { mediaQueries } from "./breakpoints";
 import { Button, IconButton } from "./button/button";
+import { Segmented } from "./button/segmented";
+import seg from "./button/segmented.module.css";
 import { TextInput } from "./field/field";
 import { SelectInput } from "./field/select-input";
 import { TextArea } from "./field/text-area";
@@ -35,6 +37,7 @@ beforeAll(async () => {
   const experiences = readdirSync(new URL("experiences/", tokens)).filter(file => file.endsWith(".css")).map(file => read(`experiences/${file}`, tokens));
   // The build expands the named breakpoints; a browser reading the files as written would drop every such block.
   const css = [read("tokens.css", tokens), ...experiences, read("../app.css").replace(/@import[^;]+;/g, ""),
+    moduleCss("./button/segmented.module.css", seg),
     moduleCss("./approval-card/approval-card.module.css", card), moduleCss("./menu/menu.module.css", menu), moduleCss("../features/structure/ui/chart.module.css", chart),
     moduleCss("../features/people/ui/roster.module.css", roster),
     // In the order the sheet grid imports them: its window sheet takes a row's least height away again.
@@ -79,6 +82,9 @@ beforeAll(async () => {
     {cell("cell")}{cell("compact-cell", "compact")}
     <section data-probe="compact-field-toolbar" data-density="compact"><div className={sheet.grid}><div className="toolbar"><TextInput aria-label={text} /></div></div></section>
     <section data-probe="own-field"><TextInput aria-label={text} /><div /><Button>{save}</Button></section>
+    <section data-probe="seg-default"><Segmented label="View" value="a" onChange={nothing} items={[{ id: "a", label: "All", count: 3 }, { id: "b", label: "Overdue", count: 1, tone: "danger" }]} /></section>
+    <section data-probe="seg-sm"><Segmented label="View small" size="sm" value="a" onChange={nothing} items={[{ id: "a", label: "All" }, { id: "b", label: "Two" }]} /></section>
+    <section data-probe="seg-lg"><Segmented label="View large" size="lg" value="a" onChange={nothing} items={[{ id: "a", label: "All" }, { id: "b", label: "Two" }]} /></section>
   </>)}`);
 }, 60_000);
 afterAll(async () => { await browser?.close(); });
@@ -203,4 +209,90 @@ test("a field's height is a role of its own: a container that sets it moves the 
 test("Console draws fields at its own sizes: level with the controls in a toolbar, as tall as the row in a compact grid", async () => {
   expect.soft(await fields("console", "desk")).toEqual({ input: 28, select: 28, area: 56, static: 28, toolbar: [24, 40], chartFind: 24, findSlot: 28, cell: [28, 28], compactCell: [24, 24], compactToolbar: [24, 32] });
   expect.soft(await fields("console", "phone")).toEqual({ input: 48, select: 48, area: 96, static: 48, toolbar: [44, 52], chartFind: 44, findSlot: 48, cell: [48, 48], compactCell: [40, 40], compactToolbar: [40, 48] });
+});
+
+async function segSizes(experience: string | null, form: Form) {
+  await sizes(experience, form);
+  return page.evaluate(() => ({
+    default: document.querySelector('[data-probe="seg-default"] button')!.getBoundingClientRect().height,
+    sm: document.querySelector('[data-probe="seg-sm"] button')!.getBoundingClientRect().height,
+    lg: document.querySelector('[data-probe="seg-lg"] button')!.getBoundingClientRect().height,
+  }));
+}
+
+test("Segmented sizes across experiences and CSS import-order immunity", async () => {
+  expect(await segSizes(null, "desk")).toEqual({ default: 32, sm: 32, lg: 40 });
+  expect(await segSizes(null, "phone")).toEqual({ default: 32, sm: 32, lg: 40 });
+  expect(await segSizes("warm-clear", "desk")).toEqual({ default: 52, sm: 44, lg: 56 });
+  expect(await segSizes("warm-clear", "phone")).toEqual({ default: 52, sm: 44, lg: 56 });
+  expect(await segSizes("console", "desk")).toEqual({ default: 24, sm: 24, lg: 32 });
+  expect(await segSizes("console", "phone")).toEqual({ default: 44, sm: 44, lg: 48 });
+
+  // Verify reversed import order (segmented.module.css BEFORE app.css) preserves sizes and pressed Console light colors.
+  const experiences = readdirSync(new URL("experiences/", tokens)).filter(file => file.endsWith(".css")).map(file => read(`experiences/${file}`, tokens));
+  const reversedCss = [
+    read("tokens.css", tokens),
+    ...experiences,
+    moduleCss("./button/segmented.module.css", seg),
+    read("../app.css").replace(/@import[^;]+;/g, ""),
+  ].join("\n").replace(/\(--([\w-]+)\)/g, (query, name: string) => mediaQueries[name as keyof typeof mediaQueries] ?? query);
+  const nothing = () => undefined;
+  const html = renderToStaticMarkup(<>
+    <section data-probe="seg-default"><Segmented label="View" value="a" onChange={nothing} items={[{ id: "a", label: "All", count: 3 }, { id: "b", label: "Overdue", count: 1, tone: "danger" }]} /></section>
+    <section data-probe="seg-sm"><Segmented label="View sm" size="sm" value="a" onChange={nothing} items={[{ id: "a", label: "All" }, { id: "b", label: "Two" }]} /></section>
+    <section data-probe="seg-lg"><Segmented label="View lg" size="lg" value="a" onChange={nothing} items={[{ id: "a", label: "All" }, { id: "b", label: "Two" }]} /></section>
+  </>);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.evaluate(({ reversedCss: rCss, html: markup }) => {
+    const frame = document.createElement("iframe");
+    frame.id = "seg-rev-order";
+    frame.style.cssText = "width:1280px;height:600px;border:0;";
+    frame.srcdoc = `<html data-experience="console" data-theme="light"><body><style>${rCss}</style>${markup}</body></html>`;
+    document.body.appendChild(frame);
+  }, { reversedCss, html });
+  try {
+    const frameLoc = page.frameLocator("#seg-rev-order");
+    await frameLoc.locator('[data-probe="seg-default"] button').first().waitFor();
+    const pressed = frameLoc.locator('[data-probe="seg-default"] button[aria-pressed="true"]');
+    const beforeHover = await page.evaluate(() => {
+      const doc = (document.getElementById("seg-rev-order") as HTMLIFrameElement).contentDocument!;
+      const btn = doc.querySelector<HTMLElement>('[data-probe="seg-default"] button[aria-pressed="true"]')!;
+      const count = btn.querySelector<HTMLElement>(".btn__count")!;
+      return {
+        default: doc.querySelector('[data-probe="seg-default"] button')!.getBoundingClientRect().height,
+        sm: doc.querySelector('[data-probe="seg-sm"] button')!.getBoundingClientRect().height,
+        lg: doc.querySelector('[data-probe="seg-lg"] button')!.getBoundingClientRect().height,
+        bg: getComputedStyle(btn).backgroundColor,
+        color: getComputedStyle(btn).color,
+        countColor: getComputedStyle(count).color,
+      };
+    });
+    expect(beforeHover).toEqual({
+      default: 24,
+      sm: 24,
+      lg: 32,
+      bg: "rgb(21, 32, 43)",
+      color: "rgb(255, 255, 255)",
+      countColor: "rgb(255, 255, 255)",
+    });
+
+    await pressed.hover();
+    const afterHover = await page.evaluate(() => {
+      const doc = (document.getElementById("seg-rev-order") as HTMLIFrameElement).contentDocument!;
+      const btn = doc.querySelector<HTMLElement>('[data-probe="seg-default"] button[aria-pressed="true"]')!;
+      const count = btn.querySelector<HTMLElement>(".btn__count")!;
+      return {
+        bg: getComputedStyle(btn).backgroundColor,
+        color: getComputedStyle(btn).color,
+        countColor: getComputedStyle(count).color,
+      };
+    });
+    expect(afterHover).toEqual({
+      bg: "rgb(21, 32, 43)",
+      color: "rgb(255, 255, 255)",
+      countColor: "rgb(255, 255, 255)",
+    });
+  } finally {
+    await page.evaluate(() => document.getElementById("seg-rev-order")?.remove());
+  }
 });

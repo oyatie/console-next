@@ -1,5 +1,14 @@
 /* ui/button Segmented: one bordered group, segments split by a hairline, the pressed one filled (kit .seg). Tokens only. */
 .seg { display: inline-flex; flex: none; border: 1px solid var(--control-border); border-radius: var(--radius); overflow: hidden; }
-.item { min-height: var(--target); padding: 0 var(--space-3); border: 0; border-left: 1px solid var(--control-border); border-radius: 0; font-size: var(--text-sm); font-weight: var(--fw-body); }
-.item:first-child { border-left: 0; }
-.item[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary); font-weight: var(--fw-medium); --ring-in: inset 0 0 0 1px var(--primary); box-shadow: var(--ring-in); }
+.seg[data-block="true"] { display: flex; width: 100%; }
+.seg > .item { min-height: var(--target); padding: 0 var(--space-3); border: 0; border-left: 1px solid var(--control-border); border-radius: 0; font-size: var(--text-sm); font-weight: var(--fw-body); white-space: nowrap; }
+:where([data-experience]:not([data-experience="baseline"])) .seg > .item { min-height: var(--control-h); padding: 0 var(--space-2); gap: var(--space-1); }
+.seg > .item:global(.btn--sm) { min-height: var(--target); padding: 0 var(--space-2); }
+.seg > .item:global(.btn--lg) { min-height: var(--control-h-lg); }
+.seg[data-block="true"] > .item { flex: 1 1 0%; justify-content: center; }
+.seg > .item:first-child { border-left: 0; }
+.seg > .item[data-tone="danger"]:not([aria-pressed="true"]) { color: var(--danger-tx); }
+.seg > .item[data-tone="warn"]:not([aria-pressed="true"]) { color: var(--warn-tx); }
+.seg > .item[aria-pressed="true"] { border-color: var(--control-border); background: var(--control-selected); color: var(--on-control-selected); font-weight: var(--fw-medium); --ring-in: inset 0 0 0 1px var(--control-selected-border); box-shadow: var(--ring-in); }
+.seg > .item[aria-pressed="true"] :global(.btn__count) { color: var(--on-control-selected); }
+:where([data-experience]:not([data-experience="baseline"])) .seg > .item:focus-visible { outline: 2px solid currentcolor; outline-offset: -3px; }

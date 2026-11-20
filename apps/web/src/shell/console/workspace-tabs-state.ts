@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect, useState } from "react";
+import { OPEN_TAB_EVENT, type OpenTabPayload } from "../../ui/workspace-tabs/open-tab";
 import type { WorkspaceTab } from "../../ui/workspace-tabs/workspace-tabs";
 
 export const MAX_WORKSPACE_TABS = 8;
@@ -10,19 +11,6 @@ type StoredTab = {
   label: string;
   pinned?: boolean;
 };
-
-type OpenTabPayload = {
-  href: string;
-  label: string;
-};
-
-const OPEN_TAB_EVENT = "console:open-workspace-tab";
-
-/** Explicitly open a route in a separate workspace tab (capped at `MAX_WORKSPACE_TABS`). */
-export function openWorkspaceTab(payload: OpenTabPayload) {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent<OpenTabPayload>(OPEN_TAB_EVENT, { detail: payload }));
-}
 
 export function readStoredWorkspaceTabs(storageKey: string | null): StoredTab[] | null {
   if (!storageKey || typeof localStorage === "undefined") return null;
@@ -57,6 +45,14 @@ function writeStoredWorkspaceTabs(storageKey: string | null, tabs: readonly Stor
   } catch {
     return false;
   }
+}
+
+function uniqueTabId(existing: readonly StoredTab[], pathname: string): string {
+  const baseId = `tab-${pathname}`;
+  if (!existing.some(tab => tab.id === baseId)) return baseId;
+  let suffix = 2;
+  while (existing.some(tab => tab.id === `${baseId}-${suffix}`)) suffix += 1;
+  return `${baseId}-${suffix}`;
 }
 
 /**
@@ -112,12 +108,12 @@ export function reconcileWorkspaceTabs(
   }
 
   if (base.length < MAX_WORKSPACE_TABS) {
-    const workingId = base[1] && !base[1].pinned ? base[1].id : `tab-${pathname}`;
+    const workingId = base[1] && !base[1].pinned ? base[1].id : uniqueTabId(base, pathname);
     if (base.length === 1) {
       const created: StoredTab = { id: workingId, href: pathname, label: pathLabel };
       return { tabs: [pinnedHome, created], activeId: created.id };
     }
-    const nextTab: StoredTab = { id: `tab-${Date.now().toString(36)}`, href: pathname, label: pathLabel };
+    const nextTab: StoredTab = { id: uniqueTabId(base, pathname), href: pathname, label: pathLabel };
     return { tabs: [...base, nextTab], activeId: nextTab.id };
   }
 
@@ -142,7 +138,7 @@ export function appendExplicitWorkspaceTab(
       activeId: existing.id,
     };
   }
-  const id = `tab-${href}-${current.length}`;
+  const id = uniqueTabId(current, href);
   const created: StoredTab = { id, href, label };
   if (current.length < MAX_WORKSPACE_TABS) {
     return { tabs: [...current, created], activeId: id };
