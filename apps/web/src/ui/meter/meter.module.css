@@ -1,5 +1,56 @@
 @property --pct { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
-/* ui/meter: a small bar. Tokens only. */
+/* ui/meter: continuous bar or segmented cell strip. Tokens only. */
 .meter { display: inline-flex; width: calc(var(--space-6) * 2.25); height: var(--space-2); border-radius: var(--radius-sm); background: var(--muted); overflow: hidden; }
 .fill { display: block; height: 100%; width: var(--pct, 0%); background: var(--control-border); }
 .meter[data-warn] .fill { background: var(--warn-solid); }
+
+.meter[data-segmented="true"] {
+  display: grid;
+  width: 100%;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-half);
+  height: var(--space-4);
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.cell {
+  display: block;
+  box-sizing: border-box;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--control-border);
+  background: var(--surface);
+}
+
+.cell[data-state="used"] {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.cell[data-state="pending"] {
+  border: 2px solid var(--primary);
+  background: var(--primary-soft);
+}
+
+.cell[data-state="partial-used"] {
+  border-color: var(--ink);
+  background: linear-gradient(to right, var(--ink) var(--pct, 0%), var(--surface) var(--pct, 0%));
+}
+
+.cell[data-state="partial-pending"] {
+  border: 2px solid var(--primary);
+  background: linear-gradient(to right, var(--primary) var(--pct, 0%), var(--primary-soft) var(--pct, 0%));
+}
+
+.meter[data-warn] .cell[data-state="used"] {
+  border-color: var(--warn-solid);
+  background: var(--warn-solid);
+}
+
+.meter[data-warn] .cell[data-state="partial-used"] {
+  border-color: var(--warn-solid);
+  background: linear-gradient(to right, var(--warn-solid) var(--pct, 0%), var(--surface) var(--pct, 0%));
+}

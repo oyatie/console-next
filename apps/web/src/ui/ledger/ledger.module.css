@@ -1,0 +1,259 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* ui/ledger: itemized financial/payroll breakdown with unit header, basis details, and subtotal/total rules. Tokens only. */
+.ledger {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--row-h);
+  padding: var(--space-1) var(--space-3);
+  border-block-end: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.ledger[data-header-surface="muted"] .head {
+  min-height: var(--space-6);
+  padding: var(--space-1) var(--space-4);
+  border-block-start: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.headMain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--steel);
+  line-height: var(--lh-tight);
+}
+
+.ledger[data-header-surface="muted"] .title {
+  color: var(--ink);
+}
+
+.title:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.headerTag {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.unit {
+  flex: none;
+  margin-inline-start: auto;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-body);
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: var(--text-sm);
+  line-height: var(--lh-tight);
+}
+
+.itemCell,
+.detailCell,
+.amountCell {
+  height: var(--row-h-compact);
+  padding: var(--space-1) var(--space-2);
+  border-block-end: 1px solid var(--border-soft);
+  vertical-align: middle;
+  font-weight: var(--fw-body);
+  text-align: start;
+}
+
+.itemCell {
+  padding-inline-start: var(--space-3);
+  color: var(--ink);
+}
+
+.table[data-has-detail="true"] .itemCell {
+  width: 1%;
+  white-space: nowrap;
+  padding-inline-end: var(--space-3);
+}
+
+.itemWrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.itemLabel {
+  min-width: 0;
+}
+
+.inlineDetail {
+  font-size: var(--text-xs);
+  color: var(--faint);
+}
+
+.detailCell {
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--faint);
+  overflow-wrap: anywhere;
+}
+
+.detailCell a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.amountCell {
+  width: 1%;
+  padding-inline-end: var(--space-3);
+  text-align: end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.amountVal {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Row tones (always paired with explicit text/sign, never colour alone) */
+.row[data-tone="negative"] .amountCell,
+.totalRow[data-tone="negative"] .amountCell {
+  color: var(--danger-tx);
+}
+
+.row[data-tone="zero"] .amountCell,
+.totalRow[data-tone="zero"] .amountCell {
+  color: var(--faint);
+}
+
+.row[data-tone="muted"] .itemCell,
+.row[data-tone="muted"] .amountCell {
+  color: var(--steel);
+}
+
+/* Footer summary rows */
+.totalRow .itemCell,
+.totalRow .detailCell,
+.totalRow .amountCell {
+  height: var(--row-h);
+}
+
+.totalRow[data-kind="subtotal"] .itemCell,
+.totalRow[data-kind="subtotal"] .detailCell,
+.totalRow[data-kind="subtotal"] .amountCell {
+  border-block-start: 1px solid var(--border);
+  border-block-end: 1px solid var(--border);
+  font-weight: var(--fw-semibold);
+}
+
+.totalRow[data-kind="total"] .itemCell,
+.totalRow[data-kind="total"] .detailCell,
+.totalRow[data-kind="total"] .amountCell {
+  border-block-start: 1px solid var(--border-strong);
+  border-block-end: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: var(--fw-strong);
+}
+
+.totalRow[data-kind="note"] .itemCell,
+.totalRow[data-kind="note"] .detailCell,
+.totalRow[data-kind="note"] .amountCell {
+  height: var(--row-h-compact);
+  background: var(--surface);
+  color: var(--steel);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-body);
+}
+
+.footnote {
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--border-soft);
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.skeleton {
+  height: var(--row-h-compact);
+  border-radius: var(--radius-sm);
+  background: var(--border-soft);
+}
+
+.empty {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--steel);
+  text-align: center;
+}
+
+.error {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--danger-tx);
+}
+
+@media (--phone) {
+  .head {
+    padding-inline: var(--space-4);
+  }
+
+  .table {
+    font-size: var(--text-body);
+  }
+
+  .itemCell,
+  .detailCell,
+  .amountCell {
+    padding-block: var(--space-1-5);
+  }
+
+  .itemCell {
+    padding-inline-start: var(--space-4);
+  }
+
+  .amountCell {
+    padding-inline-end: var(--space-4);
+  }
+
+  .ledger[data-detail-layout="inline"] .totalRow[data-kind="total"] .itemCell,
+  .ledger[data-detail-layout="inline"] .totalRow[data-kind="total"] .amountCell {
+    background: var(--surface);
+  }
+
+  .footnote,
+  .loading,
+  .empty,
+  .error {
+    padding-inline: var(--space-4);
+  }
+}

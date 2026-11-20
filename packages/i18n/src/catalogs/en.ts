@@ -1,4 +1,5 @@
 import { enUiFlexibleColumns } from "./en/ui-flexible-columns";
+import { enUiLedger } from "./en/ui-ledger";
 import { enGovernanceRefusals } from "./en/governance";
 import { enAccountLinkRefusals } from "./en/account_link";
 import { enPeriodUnlockRefusals } from "./en/period_unlock";
@@ -266,6 +267,7 @@ export const en = {
   ...enSupportAccess,
   ...enDirectoryViews,
   ...enUiWorklist,
+  ...enUiLedger,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;
