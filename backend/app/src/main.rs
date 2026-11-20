@@ -8,6 +8,14 @@ async fn main() -> Result<(), console_app::AppError> {
     if std::env::args().nth(1).as_deref() == Some("healthcheck") {
         std::process::exit(console_app::healthcheck());
     }
+    if let Some(cmd @ ("crypto-reseal" | "crypto-census")) = std::env::args().nth(1).as_deref() {
+        let extra_args: Vec<String> = std::env::args().skip(2).collect();
+        if let Err(err) = console_app::run_crypto_cli(cmd, &extra_args).await {
+            eprintln!("{cmd} failed: {err}");
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
     // BG-3 contract: an unknown role exits 64 (EX_USAGE), so the rollback
     // rehearsal can tell "this release predates the role" from "incompatible".
     if let Ok(role) = std::env::var("CONSOLE_APP_ROLE")

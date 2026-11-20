@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Webmail credential cipher port and envelope value types.
 
-use secrecy::SecretBox;
+use secrecy::{ExposeSecret, SecretBox};
 
 /// Errors from the credential cipher. Deliberately coarse and free of any
 /// secret material — an attacker learns only "it failed", never plaintext,
@@ -85,6 +85,26 @@ pub trait CredentialCipher: Send + Sync {
         sealed: &SealedCredential,
         aad: Aad<'_>,
     ) -> Result<SecretBox<Vec<u8>>, CipherError>;
+
+    /// Canonical `alg_id` written by [`CredentialCipher::encrypt`], if crypto-agile (`v3+`).
+    fn active_alg_id(&self) -> Option<&str> {
+        None
+    }
+
+    /// Active wrapping KEK identifier written by [`CredentialCipher::encrypt`], if any.
+    fn active_kek_id(&self) -> Option<&str> {
+        None
+    }
+
+    /// Re-seal `sealed` under the active writer suite and KEK.
+    fn reseal(
+        &self,
+        sealed: &SealedCredential,
+        aad: Aad<'_>,
+    ) -> Result<SealedCredential, CipherError> {
+        let plain = self.decrypt(sealed, aad)?;
+        self.encrypt(plain.expose_secret(), aad)
+    }
 }
 
 impl<C: CredentialCipher + ?Sized> CredentialCipher for &C {
@@ -99,6 +119,22 @@ impl<C: CredentialCipher + ?Sized> CredentialCipher for &C {
     ) -> Result<SecretBox<Vec<u8>>, CipherError> {
         (**self).decrypt(sealed, aad)
     }
+
+    fn active_alg_id(&self) -> Option<&str> {
+        (**self).active_alg_id()
+    }
+
+    fn active_kek_id(&self) -> Option<&str> {
+        (**self).active_kek_id()
+    }
+
+    fn reseal(
+        &self,
+        sealed: &SealedCredential,
+        aad: Aad<'_>,
+    ) -> Result<SealedCredential, CipherError> {
+        (**self).reseal(sealed, aad)
+    }
 }
 
 impl<C: CredentialCipher + ?Sized> CredentialCipher for std::sync::Arc<C> {
@@ -112,5 +148,21 @@ impl<C: CredentialCipher + ?Sized> CredentialCipher for std::sync::Arc<C> {
         aad: Aad<'_>,
     ) -> Result<SecretBox<Vec<u8>>, CipherError> {
         (**self).decrypt(sealed, aad)
+    }
+
+    fn active_alg_id(&self) -> Option<&str> {
+        (**self).active_alg_id()
+    }
+
+    fn active_kek_id(&self) -> Option<&str> {
+        (**self).active_kek_id()
+    }
+
+    fn reseal(
+        &self,
+        sealed: &SealedCredential,
+        aad: Aad<'_>,
+    ) -> Result<SealedCredential, CipherError> {
+        (**self).reseal(sealed, aad)
     }
 }

@@ -115,6 +115,8 @@ pub(crate) async fn run_dispatch_worker(
         },
         state.nts.clone(),
         crate::hr::rrn_vault::from_env_logged(),
+        #[cfg(feature = "mail")]
+        state.mail_cipher.clone(),
     );
     #[cfg(feature = "dispatch")]
     let dispatch_worker = DispatchWorker::new(

@@ -78,7 +78,7 @@ crates/benefit/adapter-postgres/src/lib.rs	1260
 crates/benefit/domain/src/lib.rs	307
 crates/benefit/rest/src/lib.rs	484
 crates/comms/adapter-imap/src/lib.rs	383
-crates/comms/adapter-postgres/src/lib.rs	1330
+crates/comms/adapter-postgres/src/lib.rs	1311
 crates/comms/adapter-postgres/tests/mail_account_rls_surfaces_as_runtime_role.rs	528
 crates/comms/adapter-postgres/tests/mail_sync_rls_surfaces_as_runtime_role.rs	738
 crates/comms/application/src/lib.rs	1522

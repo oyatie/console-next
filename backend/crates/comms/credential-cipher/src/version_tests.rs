@@ -232,20 +232,26 @@ fn v2_nonce_lengths_are_strict_even_for_a_zero_nonce_payload() {
 }
 
 #[test]
-fn rollout_writer_emits_v1_for_the_previous_release() {
+fn default_writer_emits_v3_while_v1_and_v2_remain_readable_for_rollback() {
     let cipher = EnvelopeCredentialCipher::from_key_bytes(&[7; 32]).unwrap();
     let sealed = cipher.encrypt(b"rollback-safe", binding()).unwrap();
-    assert_eq!(CURRENT_KEY_VERSION, 1);
-    assert_eq!(sealed.key_version, 1);
-    assert_eq!(sealed.nonce.len(), 24);
-    assert_eq!(sealed.dek_nonce.len(), 24);
+    assert_eq!(CURRENT_KEY_VERSION, 3);
+    let alg = AlgId::AwsEsdkV2Aes256GcmHkdfSha256CommitKeyWrap.as_str();
+    assert_eq!(sealed.key_version, 3);
+    assert_eq!(sealed.alg_id.as_deref(), Some(alg));
+    assert_eq!(sealed.kek_id.as_deref(), Some("legacy-env-v1"));
+    assert_eq!(sealed.nonce.len(), 12);
+    assert!(sealed.dek_nonce.is_empty());
+    assert_eq!(sealed.dek_wrapped.len(), 40);
+    assert_eq!(sealed.msg_id.as_deref().map(<[u8]>::len), Some(32));
+    assert_eq!(sealed.commitment_tag.as_deref().map(<[u8]>::len), Some(32));
     assert_eq!(
-        legacy::decrypt_v1(cipher.legacy_ring.as_deref().unwrap(), &sealed, binding())
-            .unwrap()
-            .expose_secret()
-            .as_slice(),
+        cipher.open_bytes(&sealed, binding()).unwrap(),
         b"rollback-safe"
     );
+    let v1 = cipher.encrypt_with_suite(1, b"v1", binding()).unwrap();
+    assert_eq!(v1.key_version, 1);
+    assert_eq!(cipher.open_bytes(&v1, binding()).unwrap(), b"v1");
 }
 
 #[test]
