@@ -7,6 +7,7 @@ import { fmtMonth, fmtNumber } from "@console/i18n/format";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { accessRefusal, type AccessRequirement } from "../../../reference/authz/domain/access";
 import { operationAccess } from "../../../reference/authz/domain/operation-access";
+import { domainText, periodText } from "../../../reference/periods/present";
 import { buttonClass } from "../../../ui/button/button-class";
 import { DueCell } from "../../../ui/due-cell/due-cell";
 import { StatRow } from "../../../ui/key-value/key-value";
@@ -25,40 +26,25 @@ import { Table } from "../../../ui/table";
 import { homeEmployeeFacetsQuery, homeOrgStructureQuery } from "../api";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
 import { kstDayIso, shortMonthDay } from "../domain/inline-decide";
-import { buildPeopleChecks } from "../domain/worklist-lower-checks";
+import { buildPeopleChecks, splitPayrollNote, statusCount } from "../domain/worklist-lower-checks";
 import { KIND_TEXT, recordAction, type RowAction } from "./grouped-queue";
 import s from "./worklist-console.module.css";
 
-type FacetCount = components["schemas"]["EmployeeFacetCount"];
 type OrgNode = components["schemas"]["OrgStructureNode"];
-
-function statusCount(list: readonly FacetCount[] | undefined, ...values: string[]): number | undefined {
-  if (!list) return undefined;
-  const hits = values
-    .map(val => list.find(entry => entry.value === val))
-    .filter((hit): hit is FacetCount => Boolean(hit));
-  if (hits.length === 0) return undefined;
-  return hits.find(hit => hit.count > 0)?.count ?? hits[0]!.count;
-}
-
-function splitPayrollNote(row: AttentionInboxItem): { dueText?: string; checkText: string } {
-  const reason = row.context?.reason?.trim();
-  if (row.kind === "payroll" && !row.due && reason?.includes(" · ")) {
-    const idx = reason.indexOf(" · ");
-    return { dueText: reason.slice(0, idx), checkText: reason.slice(idx + 3) };
-  }
-  return {
-    checkText: row.site && row.context?.worksite_name ? row.site : reason || row.title,
-  };
-}
 
 function opsRowSummary(row: AttentionInboxItem) {
   const note = splitPayrollNote(row);
-  const scope = row.context?.worksite_name ?? row.site;
+  const unlock = row.context?.unlock;
+  const scope =
+    row.context?.worksite_name ??
+    row.site ??
+    (unlock ? `${domainText(unlock.domain)} ${periodText(unlock)}` : undefined);
   const state = t(
     row.kind === "payroll"
       ? "home.worklist.opsState.payrollCalculated"
-      : "home.worklist.opsState.beforeClose",
+      : unlock
+        ? "periodLocks.request.chip.PENDING"
+        : "home.worklist.opsState.beforeClose",
   );
   return {
     scope: scope ?? "—",
@@ -76,6 +62,7 @@ function opsRowSummary(row: AttentionInboxItem) {
 export function WorklistLower({
   items,
   asOf,
+  action,
   focusAfter,
   orgNeed,
   canOrgStructure,
@@ -107,7 +94,13 @@ export function WorklistLower({
 
   if (!canDirectory && !canOrg && opsItems.length === 0) return null;
 
-  const peopleChecks = facets.data ? buildPeopleChecks(facets.data.review, items) : [];
+  const peopleChecks = facets.data
+    ? buildPeopleChecks(facets.data.review, items).filter(
+        row =>
+          row.labelKey !== "home.worklist.peopleSubMissing" ||
+          (row.missingFieldKey != null && isMessageId(row.missingFieldKey)),
+      )
+    : [];
   const activeCount = facets.data ? (statusCount(facets.data.status, "ACTIVE") ?? facets.data.total) : 0;
   const leaveCount = facets.data ? (statusCount(facets.data.status, "ON_LEAVE", "LEAVE") ?? 0) : 0;
   const startingCount = facets.data ? (statusCount(facets.data.status, "PRE_HIRE") ?? 0) : 0;
@@ -180,7 +173,14 @@ export function WorklistLower({
                 {
                   header: <bdi className="sr-only">{t("home.worklist.col.action")}</bdi>,
                   fit: true,
-                  cell: row => <div className={s.dateCol}>{recordAction(row, undefined, "home.inbox.open", focusAfter)}</div>,
+                  cell: row => {
+                    const resolved =
+                      recordAction(row, action, "home.inbox.open", focusAfter) ??
+                      (row.links[0]?.kind === "period_lock"
+                        ? <Link to="/people/period-locks" search={{ review: row.links[0].id }} className={buttonClass("secondary", { size: "sm" })}>{t("home.inbox.open")}</Link>
+                        : null);
+                    return resolved ? <div className={s.dateCol}>{resolved}</div> : null;
+                  },
                 },
               ]}
             />
@@ -210,14 +210,12 @@ export function WorklistLower({
                     header: t("home.worklist.peopleCol.item"),
                     cell: row => {
                       const label =
-                        row.missingFieldKey && isMessageId(row.missingFieldKey)
-                          ? t(row.labelKey, { field: t(row.missingFieldKey) })
+                        row.labelKey === "home.worklist.peopleSubMissing"
+                          ? row.missingFieldKey && isMessageId(row.missingFieldKey)
+                            ? t(row.labelKey, { field: t(row.missingFieldKey) })
+                            : ""
                           : t(row.labelKey);
-                      return row.indent ? (
-                        <WorklistSubLabel>{label}</WorklistSubLabel>
-                      ) : (
-                        <strong className="t-ink">{label}</strong>
-                      );
+                      return row.indent ? <WorklistSubLabel>{label}</WorklistSubLabel> : <strong className="t-ink">{label}</strong>;
                     },
                   },
                   {
@@ -228,11 +226,7 @@ export function WorklistLower({
                   {
                     header: <bdi className="sr-only">{t("home.worklist.col.action")}</bdi>,
                     fit: true,
-                    cell: row => (
-                      <Link to={row.to} search={row.search} className={`${buttonClass("secondary", { size: "sm" })} ${s.dateCol}`}>
-                        {t("home.inbox.open")}
-                      </Link>
-                    ),
+                    cell: row => <Link to={row.to} search={row.search} className={`${buttonClass("secondary", { size: "sm" })} ${s.dateCol}`}>{t("home.inbox.open")}</Link>,
                   },
                 ]}
               />

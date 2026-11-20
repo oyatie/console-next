@@ -53,20 +53,21 @@ export function CompactSubject({ item }: { item: AttentionInboxItem }) {
     .filter(Boolean)
     .join(" · ");
 
+  const resolvedDetail = detail || (!primary ? item.who?.trim() || item.title?.trim() || "" : "");
   const dueMd = shortMonthDay(item.due);
-  const fullTitle = [primary, detail].filter(Boolean).join(" · ");
+  const fullTitle = [primary, resolvedDetail].filter(Boolean).join(" · ");
   const phoneDue = dueMd && !fullTitle.includes(dueMd) ? dueMd : undefined;
-  if (!primary && !detail) return null;
+  if (!primary && !resolvedDetail) return null;
 
   return (
     <WorklistSubject title={fullTitle}>
       {primary ? (
         <>
           <bdi className={`${s.subjectPrimary} t-ink t-medium`}>{primary}</bdi>
-          {detail ? <bdi className={`${s.subjectMeta} t-faint t-xs`}>{detail}</bdi> : null}
+          {resolvedDetail ? <bdi className={`${s.subjectMeta} t-faint t-xs`}>{resolvedDetail}</bdi> : null}
         </>
       ) : (
-        <bdi className={s.subjectPrimary}>{detail}</bdi>
+        <bdi className={s.subjectPrimary}>{resolvedDetail}</bdi>
       )}
       {phoneDue ? <bdi className={s.phoneDue}> · {phoneDue}</bdi> : null}
     </WorklistSubject>

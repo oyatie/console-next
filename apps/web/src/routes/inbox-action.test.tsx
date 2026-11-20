@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from "@tanstack/react-router";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { readIdentity } from "../lib/query";
 import { commitLabel } from "../ui/composer/actions";
 import type { AttentionInboxItem } from "../features/home/domain/inbox-filter";
+import { WorklistLower } from "../features/home/ui/worklist-lower";
 import { consoleInlineRowAction, consoleRecordBody, consoleRecordFooter, inboxAction } from "./inbox-action";
 
 vi.mock("@tanstack/react-query", async original => ({
@@ -147,4 +149,38 @@ test("inboxAction, consoleInlineRowAction, and consoleRecordBody enforce can_dec
   expect(leaveBody).toContain("Lee");
   const leaveFooterDenied = renderWithQc(consoleRecordFooter({ ...leaveItem, can_decide: false }, "home-title", vi.fn()));
   expect(leaveFooterDenied).toContain(t("approvals.viewer.unavailable"));
+
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  const unlockItem: AttentionInboxItem = {
+    id: "unlock-exc-route",
+    kind: "period_unlock",
+    lane: "turn",
+    title: "Sole unlock",
+    ref: "",
+    urg: "today",
+    dueTone: "warn",
+    done: false,
+    days_remaining: 0,
+    links: [{ kind: "period_lock", id: "00000000-0000-4000-8000-000000000901" }],
+    context: {
+      unlock: {
+        domain: "attendance",
+        periodStart: "2026-10-01",
+        periodEnd: "2026-10-31",
+        requester: "Lee",
+        reason_code: "RETRO_CORRECTION",
+        exceptionId: "00000000-0000-4000-8000-000000000902",
+      },
+    },
+  };
+  const lowerUnlockHtml = renderWithQc(
+    <RouterContextProvider router={router}>
+      <WorklistLower items={[unlockItem]} action={inboxAction} canOrgStructure={false} />
+    </RouterContextProvider>,
+  );
+  expect(lowerUnlockHtml).toContain(t("periodLocks.review.acknowledge"));
+  expect(lowerUnlockHtml).toContain(t("periodLocks.request.chip.PENDING"));
 });

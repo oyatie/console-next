@@ -2,7 +2,48 @@
 import type { components } from "@console/api/schema";
 import type { AttentionInboxItem } from "./inbox-filter";
 
-const KNOWN_REGISTER_FIELDS = new Set(["birth", "sex", "address", "job", "hire", "contractEnd", "career"]);
+type FacetCount = components["schemas"]["EmployeeFacetCount"];
+
+type RegisterFieldLabel =
+  | "empCard.reg.item.birth"
+  | "empCard.reg.item.sex"
+  | "empCard.reg.item.address"
+  | "empCard.reg.item.job"
+  | "empCard.reg.item.contract"
+  | "empCard.reg.item.history";
+
+const REGISTER_FIELD_LABEL: Record<string, RegisterFieldLabel> = {
+  birth: "empCard.reg.item.birth",
+  sex: "empCard.reg.item.sex",
+  address: "empCard.reg.item.address",
+  job: "empCard.reg.item.job",
+  hire: "empCard.reg.item.contract",
+  contractEnd: "empCard.reg.item.contract",
+  career: "empCard.reg.item.history",
+};
+
+export function statusCount(list: readonly FacetCount[] | undefined, ...values: string[]): number | undefined {
+  if (!list) return undefined;
+  const hits = values
+    .map(val => list.find(entry => entry.value === val))
+    .filter((hit): hit is FacetCount => Boolean(hit));
+  if (hits.length === 0) return undefined;
+  return hits.find(hit => hit.count > 0)?.count ?? hits[0]!.count;
+}
+
+export function splitPayrollNote(row: AttentionInboxItem): { dueText?: string; checkText: string } {
+  const reason = row.context?.reason?.trim();
+  if (row.kind === "payroll" && reason?.includes(" · ")) {
+    const idx = reason.indexOf(" · ");
+    return {
+      dueText: row.due ? undefined : reason.slice(0, idx),
+      checkText: reason.slice(idx + 3),
+    };
+  }
+  return {
+    checkText: row.site && row.context?.worksite_name ? row.site : reason || row.title,
+  };
+}
 
 type PeopleCheckRow = {
   key: string;
@@ -14,7 +55,7 @@ type PeopleCheckRow = {
     | "home.part.failedActions"
     | "home.worklist.probationEnding"
     | "home.worklist.contractEnding";
-  missingFieldKey?: string;
+  missingFieldKey?: RegisterFieldLabel;
   indent?: boolean;
   count: number;
   to: "/people" | "/people/unplaced";
@@ -43,13 +84,14 @@ export function buildPeopleChecks(
     const seenFields = new Set<string>();
     for (const item of missingItems) {
       const fieldKey = item.context?.register?.missing_fields?.[0];
-      if (!fieldKey || seenFields.has(fieldKey) || !KNOWN_REGISTER_FIELDS.has(fieldKey)) continue;
+      const missingFieldKey = fieldKey ? REGISTER_FIELD_LABEL[fieldKey] : undefined;
+      if (!fieldKey || !missingFieldKey || seenFields.has(fieldKey)) continue;
       seenFields.add(fieldKey);
       rows.push({
         key: `register-${fieldKey}`,
         indent: true,
         labelKey: "home.worklist.peopleSubMissing",
-        missingFieldKey: `empCard.reg.item.${fieldKey}`,
+        missingFieldKey,
         count: item.context!.review_count!,
         to: "/people",
         search: { review: "register" },

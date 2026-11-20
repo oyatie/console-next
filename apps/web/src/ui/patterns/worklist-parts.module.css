@@ -184,6 +184,15 @@
   white-space: nowrap;
 }
 
+@container list-table (max-width: 480px) {
+  :global([data-compact-rows]) .clampSubject {
+    display: flex;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+  }
+}
+
 @media (--phone) {
   .clampSubject {
     flex-wrap: wrap;

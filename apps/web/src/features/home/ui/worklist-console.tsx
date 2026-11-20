@@ -129,15 +129,15 @@ export function WorklistConsole({
   if (isNonQueueView) {
     return (
       <Worklist
-        q={meRead ?? inbox}
+        q={meError ? meError : loading ? { ...(meRead ?? inbox), isPending: true, data: undefined } : (meRead ?? inbox)}
         baseline={baseline}
         head={{
           title, titleId,
-          asOf: !mePending && !meError && !inSetup && !inbox.error && first?.as_of
+          asOf: !loading && !meError && !inSetup && !inbox.isPending && !inbox.error && first?.as_of
             ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time>
             : undefined,
         }}
-        tabs={!mePending && !meError && !inSetup ? <InboxTabs view={view} /> : undefined}
+        tabs={!loading && !meError && !inSetup && !inbox.isPending && !inbox.error ? <InboxTabs view={view} /> : undefined}
         list={() => (view === "reference" ? <ReferenceList /> : view === "done" ? <DoneList /> : <SnoozedList />)}
       />
     );
@@ -197,7 +197,7 @@ export function WorklistConsole({
           ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time>
           : undefined,
       }}
-      tabs={mode === "inbox" && !loading && !meError && !inSetup ? <InboxTabs view={view} /> : undefined}
+      tabs={mode === "inbox" && !loading && !meError && !inSetup && !inbox.isPending && !inbox.error ? <InboxTabs view={view} /> : undefined}
       views={showControls && mode === "home" && first?.attention_filters?.length ? (
         <WorklistSegmentBar
           label={t("home.attention.label")}

@@ -88,6 +88,12 @@
   white-space: nowrap;
 }
 
+@container list-table (max-width: 480px) {
+  .phoneDue {
+    display: inline;
+  }
+}
+
 @media (--phone) {
   .subjectCell {
     flex-wrap: wrap;

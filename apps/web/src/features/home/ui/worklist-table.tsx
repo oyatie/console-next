@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { t } from "@console/i18n";
@@ -85,6 +85,19 @@ export function ConsoleWorklistTable({
   onMore?: () => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const tableSectionRef = useRef<HTMLDivElement>(null);
+  const pendingFoldFocus = useRef<{ rowId: string; button: boolean } | null>(null);
+
+  useEffect(() => {
+    const pending = pendingFoldFocus.current;
+    if (!pending) return;
+    pendingFoldFocus.current = null;
+    const selector = pending.button
+      ? `[data-id="${CSS.escape(pending.rowId)}"] button`
+      : `[data-id="${CSS.escape(pending.rowId)}"]`;
+    tableSectionRef.current?.querySelector<HTMLElement>(selector)?.focus();
+  }, [expanded]);
+
   const folds = new Map<string, AttentionInboxItem[]>();
   for (const item of items) {
     const normalized = item.kind === "home_branch_review" ? { ...item, kind: "unplaced" } : item;
@@ -108,10 +121,15 @@ export function ConsoleWorklistTable({
     return [lead];
   });
 
-  const toggleFold = (id: string) =>
+  const toggleFold = (id: string, focusButton = false) =>
     setExpanded(prev => {
       const next = new Set(prev);
-      if (!next.delete(id)) next.add(id);
+      const willExpand = !next.delete(id);
+      if (willExpand) next.add(id);
+      pendingFoldFocus.current = {
+        rowId: willExpand ? id : `fold:${id}`,
+        button: focusButton,
+      };
       return next;
     });
 
@@ -122,13 +140,13 @@ export function ConsoleWorklistTable({
   const rowKey = (item: AttentionInboxItem) => (isCollapsedFold(item) ? `fold:${item.id}` : item.id);
   const handleSelect = onSelect
     ? (id: string) => {
-        if (id.startsWith("fold:")) toggleFold(id.slice(5));
+        if (id.startsWith("fold:")) toggleFold(id.slice(5), false);
         else onSelect(id);
       }
     : undefined;
   const handleOpen = onOpen
     ? (id: string) => {
-        if (id.startsWith("fold:")) toggleFold(id.slice(5));
+        if (id.startsWith("fold:")) toggleFold(id.slice(5), false);
         else onOpen(id);
       }
     : undefined;
@@ -144,11 +162,7 @@ export function ConsoleWorklistTable({
     {
       header: (
         <div role="presentation" onClick={e => e.stopPropagation()}>
-          <Check
-            aria-label={t("home.worklist.selectAll")}
-            checked={allChecked}
-            onChange={onToggleAll}
-          />
+          <Check aria-label={t("home.worklist.selectAll")} checked={allChecked} onChange={onToggleAll} />
         </div>
       ),
       fit: true,
@@ -156,10 +170,7 @@ export function ConsoleWorklistTable({
       cell: item => {
         const group = isCollapsedFold(item) ? foldedMap.get(item.id)! : [item];
         const taskLabel = t(taskTitleKey(item));
-        const rowLabel =
-          group.length > 1
-            ? t("home.inbox.foldCount", { kind: taskLabel, count: group.length })
-            : `${taskLabel} ${item.title}`;
+        const rowLabel = group.length > 1 ? t("home.inbox.foldCount", { kind: taskLabel, count: group.length }) : `${taskLabel} ${item.title}`;
         return (
           <div role="presentation" onClick={e => e.stopPropagation()}>
             <Check
@@ -204,28 +215,14 @@ export function ConsoleWorklistTable({
           const isOpen = expanded.has(item.id);
           return (
             <div className={s.taskCell} role="presentation" onClick={e => e.stopPropagation()}>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={s.foldBtn}
-                aria-expanded={isOpen}
-                onClick={() => toggleFold(item.id)}
-              >
+              <Button variant="ghost" size="sm" className={s.foldBtn} aria-expanded={isOpen} onClick={() => toggleFold(item.id, true)}>
                 <ChevronRight size={14} aria-hidden="true" data-expanded={isOpen || undefined} />
-                <strong>
-                  {isLeadFold
-                    ? t("home.inbox.foldCount", { kind: taskTitle, count: group.length })
-                    : taskTitle}
-                </strong>
+                <strong>{isLeadFold ? t("home.inbox.foldCount", { kind: taskTitle, count: group.length }) : taskTitle}</strong>
               </Button>
             </div>
           );
         }
-        return (
-          <div className={s.taskCell}>
-            <strong>{taskLead(item)}</strong>
-          </div>
-        );
+        return <div className={s.taskCell}><strong>{taskLead(item)}</strong></div>;
       },
     },
     {
@@ -251,10 +248,7 @@ export function ConsoleWorklistTable({
       header: t("home.worklist.col.statutory"),
       fit: true,
       wide: true,
-      cell: item =>
-        isStatutoryDeadline(item) ? (
-          <Chip tone="outline">{t("home.worklist.statutoryBadge")}</Chip>
-        ) : null,
+      cell: item => (isStatutoryDeadline(item) ? <Chip tone="outline">{t("home.worklist.statutoryBadge")}</Chip> : null),
     });
   }
 
@@ -281,7 +275,7 @@ export function ConsoleWorklistTable({
   }
 
   return (
-    <div className={s.tableSection}>
+    <div ref={tableSectionRef} className={s.tableSection}>
       <Table
         label={t("home.inbox.title")}
         density="compact"
