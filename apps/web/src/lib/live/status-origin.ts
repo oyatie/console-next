@@ -17,7 +17,16 @@ function hasUnsafeOriginChars(value: string): boolean {
   if (hasAsciiControl(value) || /\s/.test(value)) return true;
   for (let i = 0; i < value.length; i++) {
     const ch = value[i];
-    if (ch === ";" || ch === "," || ch === "*" || ch === "'" || ch === '"' || ch === "\\" || ch === "%" || ch === "@") {
+    if (
+      value.charCodeAt(i) === 0x2a ||
+      ch === ";" ||
+      ch === "," ||
+      ch === "'" ||
+      ch === '"' ||
+      ch === "\\" ||
+      ch === "%" ||
+      ch === "@"
+    ) {
       return true;
     }
   }
@@ -47,7 +56,7 @@ export function resolveStatusOrigin(raw?: string | null): string {
     if (
       parsed.origin === "null" ||
       !parsed.hostname ||
-      parsed.hostname.includes("*") ||
+      hasUnsafeOriginChars(parsed.hostname) ||
       hasUnsafeOriginChars(parsed.origin)
     ) {
       return DEFAULT_STATUS_ORIGIN;

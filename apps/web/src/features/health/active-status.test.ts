@@ -26,6 +26,7 @@ test("resolveStatusOrigin accepts https or loopback http and rejects unsafe inpu
   expect(resolveStatusOrigin("https://status.example.test/path")).toBe(DEFAULT_STATUS_ORIGIN);
   expect(resolveStatusOrigin("javascript:alert(1)")).toBe(DEFAULT_STATUS_ORIGIN);
   expect(resolveStatusOrigin("https://*.cosskorea.com")).toBe(DEFAULT_STATUS_ORIGIN);
+  expect(resolveStatusOrigin("https://sub.*.cosskorea.com")).toBe(DEFAULT_STATUS_ORIGIN);
   expect(resolveStatusOrigin("https://status.cosskorea.com;evil")).toBe(DEFAULT_STATUS_ORIGIN);
   expect(resolveStatusOrigin("https://status.\ncosskorea.com")).toBe(DEFAULT_STATUS_ORIGIN);
   expect(resolveStatusOrigin("https://status.cosskorea.com:0")).toBe(DEFAULT_STATUS_ORIGIN);
