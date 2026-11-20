@@ -18,6 +18,8 @@ import {
   WorklistBandEmpty,
   WorklistBandsGrid,
   WorklistMeter,
+  WorklistOpsDue,
+  WorklistOpsTaskCell,
   WorklistStatWrap,
   WorklistSubLabel,
 } from "../../../ui/patterns/worklist-parts";
@@ -131,14 +133,7 @@ export function WorklistLower({
                           : KIND_TEXT[row.kind] ?? "home.inbox.unknown",
                     );
                     const { phoneSummary } = opsRowSummary(row);
-                    return (
-                      <div className={s.opsTaskCell}>
-                        <strong className={s.dateCol}>{taskLabel}</strong>
-                        {phoneSummary ? (
-                          <bdi className={`${s.opsPhoneMeta} muted t-xs`}>{phoneSummary}</bdi>
-                        ) : null}
-                      </div>
-                    );
+                    return <WorklistOpsTaskCell title={taskLabel} meta={phoneSummary || undefined} />;
                   },
                 },
                 {
@@ -158,10 +153,10 @@ export function WorklistLower({
                     if (dueText) return <bdi className="num muted">{dueText}</bdi>;
                     const md = shortMonthDay(row.due);
                     return (
-                      <div className={s.opsDue}>
+                      <WorklistOpsDue>
                         {md ? <bdi className="num">{md}</bdi> : null}
                         {row.days_remaining != null ? <DueCell days={row.days_remaining} /> : !md ? "—" : null}
-                      </div>
+                      </WorklistOpsDue>
                     );
                   },
                 },
@@ -241,18 +236,16 @@ export function WorklistLower({
             <PaneHead title={t("home.worklist.headcount")} meta={asOfDay ? t("home.asOf", { time: asOfDay }) : undefined} level={3} />
             {canDirectory ? (
               facets.data ? (
-                <div className={s.statWrap}>
-                  <WorklistStatWrap>
-                    <StatRow
-                      label={t("home.worklist.headcount")}
-                      items={[
-                        { key: "active", label: t("home.worklist.stat.active"), value: fmtNumber(activeCount) },
-                        { key: "leave", label: t("home.worklist.stat.leave"), value: fmtNumber(leaveCount) },
-                        { key: "starting", label: t("home.worklist.stat.starting"), value: fmtNumber(startingCount) },
-                      ]}
-                    />
-                  </WorklistStatWrap>
-                </div>
+                <WorklistStatWrap>
+                  <StatRow
+                    label={t("home.worklist.headcount")}
+                    items={[
+                      { key: "active", label: t("home.worklist.stat.active"), value: fmtNumber(activeCount) },
+                      { key: "leave", label: t("home.worklist.stat.leave"), value: fmtNumber(leaveCount) },
+                      { key: "starting", label: t("home.worklist.stat.starting"), value: fmtNumber(startingCount) },
+                    ]}
+                  />
+                </WorklistStatWrap>
               ) : facets.isPending ? (
                 <WorklistBandEmpty><Skeleton decorative bones={["short", "short"]} /></WorklistBandEmpty>
               ) : !canOrg ? (

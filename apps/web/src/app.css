@@ -215,7 +215,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 [data-embed] .panel { position: static; }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .field__label { font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
-.field__input { height: var(--field-h); max-width: 100%; min-width: 0; padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
+.field__input { height: var(--field-h); max-width: 100%; padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
 /* In a toolbar a field has a height of its own, so a style can draw it level with the controls beside it. The toolbar
    adds no weight to the selector: every rule that outranks a field's height today outranks this one as well. */
 :where(.toolbar) .field__input { height: var(--field-h-toolbar); }
@@ -257,6 +257,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 :where([data-experience]:not([data-experience="baseline"])) [data-account-page] .card > .card__body {
   padding-top: var(--space-3);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-account-page] .field__input {
+  min-width: 0;
 }
 :where([data-experience]:not([data-experience="baseline"])) [data-account-link-row] {
   padding: var(--space-3) var(--space-4);

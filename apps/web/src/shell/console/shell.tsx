@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { Settings } from "lucide-react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { session } from "@console/api";
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
-import { singleKeysOn } from "../../lib/prefs";
-import { isImeKey } from "../../lib/pure/ime";
+import { useKeys } from "../../lib/react/use-keys";
 import { personName } from "../../reference/person/present";
 import { Kbd } from "../../ui/kbd/kbd";
-import { editable } from "../../ui/long-table/row-keys";
 import type { ModuleNavItem } from "../../ui/module-nav/module-nav";
 import { PagePhoneHeader } from "../../ui/page/page-scope";
 import { StatusBar } from "../../ui/status-bar/status-bar";
@@ -132,14 +130,9 @@ function ConsoleLayout({
     [workspaceTabs.tabs, allLinks],
   );
 
-  useEffect(() => {
-    if (platform) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || isImeKey(event)) return;
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (!singleKeysOn() || editable(event.target)) return;
-      if (document.querySelector("[role=dialog], [role=alertdialog]") !== null) return;
-      event.preventDefault();
+  useKeys({
+    "shell.search": () => {
+      if (platform) return;
       const mainEl = document.getElementById("main");
       const inPageFind = mainEl?.querySelector<HTMLInputElement>('[data-list-find] input, input[type="search"]');
       if (inPageFind && inPageFind.offsetParent !== null) {
@@ -148,10 +141,8 @@ function ConsoleLayout({
         return;
       }
       onSearch();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [platform, onSearch]);
+    },
+  });
 
   const rawName = (userProfile?.display_name?.trim() || claims?.name?.trim()) ?? "";
   const shortName = personName(

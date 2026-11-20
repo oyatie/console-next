@@ -126,6 +126,21 @@ export function WorklistSubLabel({ children }: { children: ReactNode }) {
   return <div className={s.subCheck}>{children}</div>;
 }
 
+/** Task title paired with a phone-only summary line inside compact operations rows. */
+export function WorklistOpsTaskCell({ title, meta }: { title: ReactNode; meta?: ReactNode }) {
+  return (
+    <div className={s.opsTaskCell}>
+      <strong className={s.opsTaskTitle}>{title}</strong>
+      {meta ? <bdi className={`${s.opsPhoneMeta} muted t-xs`}>{meta}</bdi> : null}
+    </div>
+  );
+}
+
+/** Inline due date and urgency badge wrapper that wraps cleanly inside narrow phone operations rows. */
+export function WorklistOpsDue({ children }: { children: ReactNode }) {
+  return <div className={s.opsDue}>{children}</div>;
+}
+
 /** Proportional horizontal meter paired with a formatted numeric readout. */
 export function WorklistMeter({
   value,

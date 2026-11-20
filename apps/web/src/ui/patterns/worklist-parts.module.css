@@ -49,6 +49,25 @@
   color: var(--steel);
 }
 
+.opsDue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  white-space: nowrap;
+}
+
+.opsTaskCell {
+  display: contents;
+}
+
+.opsTaskTitle {
+  white-space: nowrap;
+}
+
+.opsPhoneMeta {
+  display: none;
+}
+
 .statWrap {
   padding: 0;
   border-block-end: 1px solid var(--border);
@@ -211,6 +230,26 @@
     max-width: none;
     white-space: normal;
     overflow: visible;
+  }
+
+  .opsTaskCell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-half);
+    min-width: 0;
+    max-width: calc(var(--space-6) * 5);
+    padding-block: var(--space-1);
+  }
+
+  .opsPhoneMeta {
+    display: block;
+    white-space: normal;
+  }
+
+  .opsDue {
+    flex-wrap: wrap;
+    max-width: calc(var(--space-6) * 3.5);
+    padding-block: var(--space-1);
   }
 }
 

@@ -1,5 +1,5 @@
 /* ui/button Segmented: one bordered group, segments split by a hairline, the pressed one filled (kit .seg). Tokens only. */
-.seg { display: inline-flex; flex: none; border: 1px solid var(--control-border); border-radius: var(--radius); overflow: hidden; }
+.seg { display: inline-flex; flex: none; max-width: 100%; border: 1px solid var(--control-border); border-radius: var(--radius); overflow-x: auto; overflow-y: hidden; }
 .seg[data-block="true"] { display: flex; width: 100%; }
 .seg > .item { min-height: var(--target); padding: 0 var(--space-3); border: 0; border-left: 1px solid var(--control-border); border-radius: 0; font-size: var(--text-sm); font-weight: var(--fw-body); white-space: nowrap; }
 :where([data-experience]:not([data-experience="baseline"])) .seg > .item { min-height: var(--control-h); padding: 0 var(--space-2); gap: var(--space-1); }
