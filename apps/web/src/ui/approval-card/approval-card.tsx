@@ -69,7 +69,14 @@ export function ApprovalCard(p: ReturnProps & {
   const lastForm = useRef<Form>(undefined);
   const cardBox = useRef<HTMLElement>(null);
   const formHead = useRef<HTMLHeadingElement>(null);
+  const doneHead = useRef<HTMLHeadingElement>(null);
   const id = useId();
+  const recorded = Boolean(p.receipt);
+  const wasRecorded = useRef(recorded);
+  useEffect(() => {
+    if (recorded && !wasRecorded.current) doneHead.current?.focus();
+    wasRecorded.current = recorded;
+  }, [recorded]);
   useEffect(() => {
     if (form) {
       lastForm.current = form;
@@ -93,9 +100,10 @@ export function ApprovalCard(p: ReturnProps & {
 
   if (p.receipt) {
     return (
-      <article className={`card ${css.card}`}>
+      <article className={`card ${css.card}`} aria-labelledby={`${id}-title`}>
         {p.progress && <div className={css.progress}>{p.progress}</div>}
         <div className={css.done}>
+          <h2 id={`${id}-title`} ref={doneHead} tabIndex={-1} className={css.title}>{p.title}</h2>
           {p.next && <div className={css.next}>{p.next}</div>}
           {p.receipt}
         </div>
@@ -104,12 +112,12 @@ export function ApprovalCard(p: ReturnProps & {
   }
 
   return (
-    <article ref={cardBox} className={`card ${css.card}`} aria-busy={busy || undefined} data-escape-scope={form && !busy ? "" : undefined}>
+    <article ref={cardBox} className={`card ${css.card}`} aria-labelledby={`${id}-title`} aria-busy={busy || undefined} data-escape-scope={form && !busy ? "" : undefined}>
       {p.progress && <div className={css.progress}>{p.progress}</div>}
       <div className={css.body}>
         <div className={css.eyebrow}>{p.eyebrow}</div>
         <span className={css.step}>{p.step}</span>
-        <h2 className={css.title}>{p.title}</h2>
+        <h2 id={`${id}-title`} className={css.title}>{p.title}</h2>
         {p.children}
       </div>
       {form ? (

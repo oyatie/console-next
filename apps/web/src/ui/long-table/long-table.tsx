@@ -133,7 +133,7 @@ export function LongTable<R>(p: {
   const hasFind = Boolean(p.find);
   const hasRowKeys = Boolean(p.rowKeys);
   const handlers = useRef({ open, focus: p.onRowFocus });
-  useEffect(() => void (handlers.current = { open, focus: p.onRowFocus }));
+  useLayoutEffect(() => { handlers.current = { open, focus: p.onRowFocus }; });
   useEffect(() => {
     const el = region.current;
     if (!el) return;

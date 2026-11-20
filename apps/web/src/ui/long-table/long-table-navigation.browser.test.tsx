@@ -192,3 +192,11 @@ test("card row entry focuses its control without the optional browser visibility
   await cell.focus();
   await dom(button).toBeFocused();
 });
+
+test("row key handlers reflect updated callbacks synchronously after flushSync", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?sync-ref`);
+  await dom(page.getByRole("grid")).toBeVisible();
+  await page.evaluate(() => (window as unknown as { syncTableAndAct: () => void }).syncTableAndAct());
+  await dom(page.locator("body")).toHaveAttribute("data-keyboard-open", "a:v2");
+});
