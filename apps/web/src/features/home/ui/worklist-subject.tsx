@@ -6,7 +6,7 @@ import { reasonLabel } from "../../../lib/reason-codes";
 import { domainText, periodText } from "../../../reference/periods/present";
 import { WorklistSubject } from "../../../ui/patterns/worklist-parts";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
-import { hasDistinctTaskLead } from "../domain/inline-decide";
+import { hasDistinctTaskLead, shortMonthDay } from "../domain/inline-decide";
 import s from "./worklist-console.module.css";
 
 export function CompactSubject({ item }: { item: AttentionInboxItem }) {
@@ -53,7 +53,9 @@ export function CompactSubject({ item }: { item: AttentionInboxItem }) {
     .filter(Boolean)
     .join(" · ");
 
+  const dueMd = shortMonthDay(item.due);
   const fullTitle = [primary, detail].filter(Boolean).join(" · ");
+  const phoneDue = dueMd && !fullTitle.includes(dueMd) ? dueMd : undefined;
   if (!primary && !detail) return null;
 
   return (
@@ -64,8 +66,9 @@ export function CompactSubject({ item }: { item: AttentionInboxItem }) {
           {detail ? <bdi className={`${s.subjectMeta} t-faint t-xs`}>{detail}</bdi> : null}
         </>
       ) : (
-        <bdi className={`${s.subjectPrimary} t-ink`}>{detail}</bdi>
+        <bdi className={s.subjectPrimary}>{detail}</bdi>
       )}
+      {phoneDue ? <bdi className={s.phoneDue}> · {phoneDue}</bdi> : null}
     </WorklistSubject>
   );
 }

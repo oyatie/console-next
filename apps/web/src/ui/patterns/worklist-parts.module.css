@@ -50,7 +50,7 @@
 }
 
 .statWrap {
-  padding: var(--space-2) var(--space-3);
+  padding: 0;
   border-block-end: 1px solid var(--border);
 }
 
@@ -171,14 +171,14 @@
   flex-wrap: nowrap;
   gap: var(--space-1);
   min-width: 0;
-  max-width: calc(var(--space-6) * 7);
+  max-width: calc(var(--space-6) * 11);
   overflow: hidden;
 }
 
 .clampReason {
   display: block;
   min-width: 0;
-  max-width: calc(var(--space-6) * 6.5);
+  max-width: calc(var(--space-6) * 5.5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -189,6 +189,13 @@
     flex-wrap: wrap;
     max-width: none;
     overflow: visible;
+  }
+
+  :global([data-compact-rows]) .clampSubject {
+    display: flex;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .clampReason {

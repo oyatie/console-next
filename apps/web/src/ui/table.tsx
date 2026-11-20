@@ -30,8 +30,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
   detail?: (r: R) => ReactNode;
   groups?: { id: string; header: ReactNode; rows: R[] }[];
   density?: "regular" | "compact";
-  /** Override the automatic phone layout: rows preserve column alignment, cards keep inline forms in view. */
-  mobileLayout?: "cards" | "rows";
+  /** Override the automatic phone layout: rows preserve column alignment, cards keep inline forms in view, compact draws 2-line operational rows. */
+  mobileLayout?: "cards" | "rows" | "compact";
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -39,7 +39,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
   const [active, setActive] = useState<string>();
   const [hasEditor, setHasEditor] = useState(false);
   const [scrollState, setScrollState] = useState({ overflows: false, clipped: false, focusable: false });
-  const rowsOnPhone = mobileLayout === "rows" || (mobileLayout !== "cards" && hasEditor);
+  const rowsOnPhone = mobileLayout === "rows" || (mobileLayout !== "cards" && mobileLayout !== "compact" && hasEditor);
+  const compactOnPhone = mobileLayout === "compact";
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
@@ -120,7 +121,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
   });
   const table = (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Overflowing read-only tables without focusable cells need keyboard scroll access.
-    <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
+    <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : compactOnPhone ? cards.compact : cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-compact-rows={compactOnPhone || undefined} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
       <caption className="sr-only">{label}</caption>
       {columns.some(c => c.type) && <colgroup>{columns.map((c, i) => <col key={i} className={cls(c)} ref={el => { if (el) el.style.width = widths[i] ?? ""; }} />)}</colgroup>}
       <thead>

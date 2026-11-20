@@ -37,11 +37,10 @@
   flex-shrink: 0;
   width: calc(var(--space-4) + var(--space-half));
   height: calc(var(--space-4) + var(--space-half));
+  border: 1px solid var(--chrome-border);
   border-radius: var(--radius-sm);
-  background: var(--warn-tx);
-  color: var(--surface);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-strong);
+  background: var(--chrome-raised);
+  color: var(--chrome-accent);
 }
 
 .brandName,
@@ -132,6 +131,7 @@
 .dateText {
   color: var(--steel);
   font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -152,7 +152,7 @@
 }
 
 .accountName {
-  max-inline-size: calc(var(--space-6) * 4);
+  max-inline-size: calc(var(--space-6) * 10);
 }
 
 .tabsArea {

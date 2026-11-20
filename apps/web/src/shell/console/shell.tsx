@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { UserRound } from "lucide-react";
 import { session } from "@console/api";
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
-import { useKeys } from "../../lib/react/use-keys";
+import { singleKeysOn } from "../../lib/prefs";
+import { isImeKey } from "../../lib/pure/ime";
 import { personName } from "../../reference/person/present";
 import { Kbd } from "../../ui/kbd/kbd";
+import { editable } from "../../ui/long-table/row-keys";
 import type { ModuleNavItem } from "../../ui/module-nav/module-nav";
 import { PagePhoneHeader } from "../../ui/page/page-scope";
-import type { PhoneNavItem } from "../../ui/phone-bars/phone-bars";
 import { StatusBar } from "../../ui/status-bar/status-bar";
 import { usePublishedStatusBar } from "../../ui/status-bar/status-bar-store";
 import { openWorkspaceTab } from "../../ui/workspace-tabs/open-tab";
@@ -43,6 +43,22 @@ const ConsolePhoneBottom = lazy(() =>
   chunk(import("./console-phone-chrome")).then(m => ({ default: m.ConsolePhoneBottom })),
 );
 
+function tabIconForHref(href: string, allLinks: readonly NavLink[]): ReactNode {
+  const cut = href.search(/[?#]/);
+  const path = (cut === -1 ? href : href.slice(0, cut)) || "/";
+  const matchedHref =
+    path === "/" || path === "/inbox"
+      ? "/"
+      : path === "/account" || path.startsWith("/account/")
+        ? "/settings"
+        : activeLink(path, allLinks);
+  const Icon =
+    (matchedHref ? allLinks.find(link => link.to === matchedHref)?.icon : undefined) ??
+    allLinks.find(link => link.to === "/payroll")?.icon ??
+    allLinks[0]?.icon;
+  return Icon ? <Icon size={14} aria-hidden="true" /> : null;
+}
+
 export function ConsoleShell(props: { children?: ReactNode; pending?: boolean }) {
   return <ShellFrame layout={ConsoleLayout} {...props} />;
 }
@@ -53,6 +69,7 @@ function ConsoleLayout({
   restoring,
   tenantName,
   tenantPhase,
+  userProfile,
   menu,
   navigationState,
   navigationNotice,
@@ -71,11 +88,6 @@ function ConsoleLayout({
     [pathname, allLinks],
   );
 
-  const countsByHref = useMemo<Readonly<Record<string, number | undefined>>>(
-    () => ({ "/": inboxCount, "/approvals": approvalsCount }),
-    [inboxCount, approvalsCount],
-  );
-
   const navItems: readonly ModuleNavItem[] = useMemo(
     () =>
       allLinks.map(link => ({
@@ -87,20 +99,6 @@ function ConsoleLayout({
     [allLinks, inboxCount, approvalsCount],
   );
 
-  const phoneItems: readonly PhoneNavItem[] = useMemo(() => {
-    const mapped: PhoneNavItem[] = allLinks.map(link => ({
-      id: link.to,
-      href: link.to,
-      label: t(link.label),
-      icon: link.icon,
-      count: link.countKey === "inbox" ? inboxCount : link.countKey === "approvals" ? approvalsCount : undefined,
-    }));
-    if (!platform && !mapped.some(item => item.id === "/account")) {
-      mapped.push({ id: "/account", href: "/account", label: t("shell.account"), icon: UserRound });
-    }
-    return mapped;
-  }, [allLinks, inboxCount, approvalsCount, platform]);
-
   const currentTitle = useMemo(() => {
     if (pathname === "/account" || pathname.startsWith("/account/")) return t("shell.account");
     const matched = allLinks.find(link => link.to === currentModuleTo);
@@ -110,7 +108,7 @@ function ConsoleLayout({
 
   const defaultHref = platform ? "/platform" : "/";
   const defaultLabel = platform ? t("shell.link.tenants") : t("shell.link.home");
-  const navigateToHref = useCallback((href: string) => void navigate({ to: href }), [navigate]);
+  const navigateToHref = useCallback((href: string) => void navigate({ href }), [navigate]);
 
   const workspaceTabs = useWorkspaceTabs({
     principal: session.principal,
@@ -118,13 +116,26 @@ function ConsoleLayout({
     defaultLabel,
     pathname,
     pathLabel: currentTitle,
-    countsByHref,
     onNavigate: navigateToHref,
   });
 
-  useKeys({
-    "shell.search": event => {
-      if (platform || event.defaultPrevented) return;
+  const tabsWithIcons = useMemo(
+    () =>
+      workspaceTabs.tabs.map(tab => ({
+        ...tab,
+        icon: tabIconForHref(tab.href, allLinks),
+      })),
+    [workspaceTabs.tabs, allLinks],
+  );
+
+  useEffect(() => {
+    if (platform) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || isImeKey(event)) return;
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (!singleKeysOn() || editable(event.target)) return;
+      if (document.querySelector("[role=dialog], [role=alertdialog]") !== null) return;
+      event.preventDefault();
       const mainEl = document.getElementById("main");
       const inPageFind = mainEl?.querySelector<HTMLInputElement>('[data-list-find] input, input[type="search"]');
       if (inPageFind && inPageFind.offsetParent !== null) {
@@ -133,13 +144,18 @@ function ConsoleLayout({
         return;
       }
       onSearch();
-    },
-  });
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [platform, onSearch]);
 
-  const displayName = personName(
-    claims?.name,
+  const rawName = userProfile?.display_name ?? claims?.name;
+  const shortName = personName(
+    rawName,
     t(claims?.platform ? "account.name.unset.operator" : "account.name.unset"),
   );
+  const roleMeta = [userProfile?.employee_org_unit, userProfile?.employee_position].filter(Boolean).join(" ");
+  const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
   const phoneActiveId = pathname === "/account" || pathname.startsWith("/account/") ? "/account" : currentModuleTo;
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);
   const phoneHeaderValue = useMemo(() => ({ shellOwnsH1 }), [shellOwnsH1]);
@@ -166,7 +182,7 @@ function ConsoleLayout({
             {!restoring ? (
               <div className={s.tabsArea}>
                 <WorkspaceTabs
-                  tabs={workspaceTabs.tabs}
+                  tabs={tabsWithIcons}
                   activeId={workspaceTabs.activeId}
                   onSelect={workspaceTabs.selectTab}
                   onClose={workspaceTabs.closeTab}
@@ -226,7 +242,14 @@ function ConsoleLayout({
         ) : !restoring ? (
           <div className={s.phoneNav}>
             <Suspense fallback={null}>
-              <ConsolePhoneBottom items={phoneItems} activeId={phoneActiveId} onNavigate={navigateToHref} />
+              <ConsolePhoneBottom
+                links={allLinks}
+                inboxCount={inboxCount}
+                approvalsCount={approvalsCount}
+                platform={platform}
+                activeId={phoneActiveId}
+                onNavigate={navigateToHref}
+              />
             </Suspense>
           </div>
         ) : null}

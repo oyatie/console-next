@@ -11,6 +11,14 @@
   gap: var(--space-1-5);
   min-width: 0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taskCell > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .foldBtn {
@@ -32,6 +40,9 @@
 }
 
 .subjectPrimary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -39,6 +50,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.phoneDue {
+  display: none;
 }
 
 .opsDue {
@@ -78,9 +93,8 @@
     flex-wrap: wrap;
   }
 
-  .subjectPrimary,
-  .subjectMeta {
-    white-space: normal;
+  .phoneDue {
+    display: inline;
   }
 
   .opsTaskCell {
@@ -104,8 +118,8 @@
   }
 
   .actionsCell {
-    justify-content: flex-start;
-    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 }
 

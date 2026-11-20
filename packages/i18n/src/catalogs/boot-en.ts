@@ -50,6 +50,7 @@ export const bootEn = {
   "shell.link.org": "Org structure",
   "shell.jumpKey": "⌘K",
   "shell.jumpLabel": "Search and go",
+  "shell.searchHint": "Search name, ID, document no.",
   "shell.jump": "Search and go — entities, workplaces, departments, people, registration numbers, request numbers",
   "shell.link.people": "Employees",
   "shell.link.audit": "Audit records",

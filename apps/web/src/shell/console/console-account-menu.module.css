@@ -27,7 +27,7 @@
 }
 
 .accountName {
-  max-inline-size: calc(var(--space-6) * 4);
+  max-inline-size: calc(var(--space-6) * 10);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

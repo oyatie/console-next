@@ -19,6 +19,8 @@ export type WorkspaceTab = {
   label: string;
   /** Destination URL of the workspace. */
   href: string;
+  /** Optional leading icon rendered before the tab label. */
+  icon?: ReactNode;
   /** Optional positive count displayed beside the tab title. */
   count?: number;
   /** Whether the tab cannot be closed; the first tab (`index === 0`) is always pinned. */
@@ -155,6 +157,11 @@ export function WorkspaceTabs({
 
   const renderContent = (tab: WorkspaceTab) => (
     <>
+      {tab.icon ? (
+        <bdi className={s.icon} aria-hidden="true">
+          {tab.icon}
+        </bdi>
+      ) : null}
       <bdi className={s.title}>{tab.label}</bdi>
       {tab.count !== undefined && tab.count > 0 ? <Badge count={tab.count} /> : null}
     </>

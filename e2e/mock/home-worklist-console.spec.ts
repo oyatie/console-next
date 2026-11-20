@@ -171,8 +171,11 @@ for (const width of [1440, 390]) {
         await expect(worklist.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true }).locator("tbody tr")).toHaveCount(2);
 
         if (width === 1440) {
-          await expect(page.getByRole("banner")).toContainText(saeonUniverse.adminActor.name);
+          await expect(page.getByRole("banner")).toContainText(
+            `${saeonUniverse.adminActor.name} · ${saeonUniverse.adminActor.unit} ${saeonUniverse.adminActor.grade}`,
+          );
           await expect(page.getByRole("banner")).not.toContainText(user.display_name);
+          await expect(page.getByRole("navigation", { name: t("shell.tabs.label"), exact: true })).not.toContainText("23");
           await expect(page.getByRole("heading", { level: 1, name: t("home.inbox.title"), exact: true })).toBeVisible();
           await expect(worklist.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveCount(0);
           const orgRow = queueTable.locator('tbody tr[data-id="OC-2026-0418"]');
@@ -206,9 +209,22 @@ for (const width of [1440, 390]) {
           expect(stripFits).toBe(true);
           const tableFits = await queueTable.evaluate(el => el.scrollWidth <= (el.parentElement?.clientWidth ?? el.clientWidth) + 1);
           expect(tableFits).toBe(true);
+          const orgSubjectFits = await queueTable
+            .locator('tbody tr[data-id="OC-2026-0418"] [data-card="title"] bdi')
+            .first()
+            .evaluate(el => el.scrollWidth <= el.clientWidth + 1);
+          expect(orgSubjectFits).toBe(true);
         } else {
           const theadBox = await queueTable.locator("thead").boundingBox();
           expect(theadBox ? theadBox.width <= 2 && theadBox.height <= 2 : true).toBe(true);
+          const rowHeights = await queueTable.locator("tbody tr[data-id]").evaluateAll(rows =>
+            rows.map(r => {
+              const rect = r.getBoundingClientRect();
+              return { height: Math.round(rect.height), bottom: Math.round(rect.bottom) };
+            }),
+          );
+          expect(rowHeights.every(r => r.height >= 48 && r.height <= 72)).toBe(true);
+          expect(rowHeights.filter(r => r.bottom <= 900).length).toBeGreaterThanOrEqual(6);
           const opsTable = worklist.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true });
           const opsFits = await opsTable.evaluate(el => {
             const scroller = el.parentElement;

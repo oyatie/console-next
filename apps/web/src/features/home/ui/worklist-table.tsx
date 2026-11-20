@@ -253,7 +253,7 @@ export function ConsoleWorklistTable({
       wide: true,
       cell: item =>
         isStatutoryDeadline(item) ? (
-          <Chip tone="neutral">{t("home.worklist.statutoryBadge")}</Chip>
+          <Chip tone="outline">{t("home.worklist.statutoryBadge")}</Chip>
         ) : null,
     });
   }
@@ -285,6 +285,7 @@ export function ConsoleWorklistTable({
       <Table
         label={t("home.inbox.title")}
         density="compact"
+        mobileLayout="compact"
         rows={displayRows}
         rowId={rowKey}
         selected={selected}

@@ -195,7 +195,6 @@ export function useWorkspaceTabs({
   defaultLabel,
   pathname,
   pathLabel,
-  countsByHref,
   onNavigate,
 }: {
   principal: string | null;
@@ -203,7 +202,6 @@ export function useWorkspaceTabs({
   defaultLabel: string;
   pathname: string;
   pathLabel: string;
-  countsByHref: Readonly<Record<string, number | undefined>>;
   onNavigate: (href: string) => void;
 }) {
   const storageKey = principal ? `console.tabs.${principal}` : null;
@@ -268,7 +266,6 @@ export function useWorkspaceTabs({
     href: tab.href,
     label: tab.label,
     pinned: idx === 0 || tab.pinned,
-    count: countsByHref[tab.href],
   }));
 
   const selectTab = (tab: WorkspaceTab) => {
