@@ -317,7 +317,7 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-lg` | `border-radius` |
-| `--space-1` | `min-height` |
+| `--space-1` | `gap`, `min-height` |
 | `--space-2` | `gap`, `padding`, `padding-inline` |
 | `--space-3` | `padding` |
 | `--space-6` | `min-height` |
