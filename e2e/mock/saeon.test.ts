@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "vitest";
+import { beforeAll, expect, test } from "vitest";
+import { loadCatalog } from "@console/i18n";
 import {
   brnChecksumValid,
   crnChecksumValid,
@@ -25,6 +26,8 @@ import {
 } from "./saeon";
 
 const RRN_CANDIDATE_RE = /(?<!\d)(\d{6})-?([1-8]\d{6})(?!\d)/g;
+
+beforeAll(() => loadCatalog("ko"));
 
 function checksumValidRrns(text: string): string[] {
   const hits: string[] = [];
@@ -181,9 +184,11 @@ test("worklist, approval OC-2026-0418, attendance month, and Console payroll tot
 
   const inbox = saeonWorklistInbox();
   expect(inbox.total).toBe(23);
-  expect(inbox.items).toHaveLength(10);
+  expect(inbox.items).toHaveLength(11);
   expect(inbox.items.filter(item => item.due_basis === "statutory")).toHaveLength(3);
   expect(inbox.items.find(item => item.ref === "OC-2026-0418")?.context?.command).toBe("approve");
+  expect(inbox.items.find(item => item.id === "att-close-1")?.kind).toBe("period_unlock");
+  expect(inbox.items.find(item => item.id === "payroll-oct-1")?.kind).toBe("payroll");
   const orgChange = saeonApprovalOrgChange();
   expect(orgChange.code).toBe("OC-2026-0418");
   expect(orgChange.approvalSteps).toHaveLength(3);

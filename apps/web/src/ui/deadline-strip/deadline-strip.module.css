@@ -22,7 +22,7 @@
 .table td {
   border-block-end: 1px solid var(--border-soft);
   border-inline-end: 1px solid var(--border-soft);
-  padding: var(--space-half) var(--space-1);
+  padding: var(--space-half) var(--space-half);
   text-align: center;
   vertical-align: middle;
 }
@@ -38,7 +38,7 @@
 }
 
 .laneHead {
-  min-width: calc(var(--space-6) * 2 + var(--space-4));
+  min-width: calc(var(--space-6) * 2 + var(--space-2));
   padding-inline: var(--cell-px);
   text-align: start;
   font-weight: var(--fw-semibold);
@@ -66,7 +66,7 @@
 }
 
 .dayCell {
-  min-width: calc(var(--space-5) + var(--space-1));
+  min-width: var(--space-5);
   font-weight: var(--fw-medium);
   color: var(--steel);
   background: var(--surface-2);
@@ -79,7 +79,7 @@
 }
 
 .undatedCol {
-  min-width: calc(var(--space-6) * 2 + var(--space-2));
+  min-width: calc(var(--space-6) * 2 + var(--space-1));
   white-space: nowrap;
 }
 
@@ -95,7 +95,7 @@
   align-items: center;
   justify-content: center;
   min-height: var(--target);
-  padding: 0 var(--space-1-5);
+  padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
   border: 1px solid var(--control-border);
   background: var(--surface);

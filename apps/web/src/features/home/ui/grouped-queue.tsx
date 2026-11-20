@@ -21,7 +21,7 @@ import { GrantNotice } from "./grant-notices";
 import css from "./grouped-queue.module.css";
 
 type InboxItem = AttentionInboxItem;
-export type RowAction = (item: InboxItem) => ReactNode;
+export type RowAction = (item: InboxItem, focusAfter?: string) => ReactNode;
 type QueueColumn = Column<InboxItem> & { id: "task" | "subject" | "due" | "source" | "owner" | "actions" };
 // oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
 export const KIND_TEXT: Record<string, MessageId> = {
@@ -169,14 +169,15 @@ export function Subject({ item }: { item: InboxItem }) {
 
 /** Only registered record kinds become links; source text cannot provide a URL. */
 // oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
-export function recordAction(item: InboxItem, action?: RowAction, textId?: MessageId) {
+export function recordAction(item: InboxItem, action?: RowAction, textId?: MessageId, focusAfter?: string) {
   const link = item.links[0];
   if (!link) return null;
   const unlock = item.context?.unlock;
   const fields = (item.context?.register?.missing_fields ?? []).flatMap((key) => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!] : []);
-  const text = t(textId ?? VERB_TEXT[item.kind] ?? "home.inbox.open", unlock ? { domain: domainText(unlock.domain), period: periodText(unlock) } : {});
+  const defaultVerb = !unlock && item.kind === "period_unlock" ? "home.inbox.open" : VERB_TEXT[item.kind] ?? "home.inbox.open";
+  const text = t(textId ?? defaultVerb, unlock ? { domain: domainText(unlock.domain), period: periodText(unlock) } : {});
   const className = buttonClass("secondary", { size: "sm" });
-  const inline = action?.(item);
+  const inline = action?.(item, focusAfter);
   switch (link.kind) {
     case "privacy_request": return <Link to="/account/privacy/intake/$id" params={{ id: link.id }} className={className}>{text}</Link>;
     case "registration_check": {
@@ -191,6 +192,7 @@ export function recordAction(item: InboxItem, action?: RowAction, textId?: Messa
     case "change_request": return <Link to="/people/requests" search={{ sel: link.id }} className={className}>{text}</Link>;
     case "exit_case": return <Link to="/people/exits/$id" params={{ id: link.id }} search={{ act: item.kind === "hr_exit_confirm" ? "confirm_exit" : item.kind === "hr_exit_confirm_hq" ? "confirm_exit_hq" : "prepare_settlement" }} className={className}>{text}</Link>;
     case "period_lock": return unlock?.exceptionId ? inline : <Link to="/people/period-locks" search={{ review: link.id }} className={className}>{text}</Link>;
+    case "pay_run": return <Link to="/payroll/runs/$id" params={{ id: link.id }} className={className}>{text}</Link>;
     case "account": return <>{inline}<Link to="/account" className={buttonClass("ghost")}>{t(textId ?? "shell.account")}</Link></>;
     case "access": return <GrantNotice id={link.id} role={item.title} entries={item.context?.grants ?? []} />;
     case "statutory": return <Link to="/statutory" search={{ event: link.id }} className={className}>{text}</Link>;

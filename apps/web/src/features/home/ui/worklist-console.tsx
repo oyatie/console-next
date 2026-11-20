@@ -76,20 +76,34 @@ export function WorklistConsole({
   const [colsOpen, setColsOpen] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [homeRowLimit, setHomeRowLimit] = useState(HOME_CONSOLE_ROWS);
+  const [unfilteredCache, setUnfilteredCache] = useState<{ updatedAt: number; items: AttentionInboxItem[] }>();
 
   const applying = useSyncExternalStore(liveApplying.subscribe, liveApplying.get, liveApplying.get);
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
   if (!rereading && !inbox.isPending && !caughtUp) setCaughtUp(true);
-  const loading = setupPending || rereading || applying;
+  const mePending = mode === "inbox" && Boolean(meRead?.isPending);
+  const meError = mode === "inbox" && meRead?.error ? meRead : undefined;
+  const loading = setupPending || rereading || applying || mePending;
 
   const pages = (inbox.data?.pages ?? []) as AttentionInboxResponse[];
   const first = pages[0];
   const checklist = first?.setup;
   const inSetup = setupPhase || Boolean(checklist);
-  const allItems = (mode === "home" ? pages.slice(0, 1) : pages)
+  const allItems = pages
     .flatMap(page => page.items)
     .filter(item => !checklist || !item.kind.startsWith("setup_"))
     .filter(item => !(mode === "inbox" && inSetup) || item.kind === "privacy_request");
+
+  if (
+    mode === "home" &&
+    attention === "all" &&
+    inbox.isSuccess &&
+    !inbox.isPlaceholderData &&
+    unfilteredCache?.updatedAt !== inbox.dataUpdatedAt
+  ) {
+    setUnfilteredCache({ updatedAt: inbox.dataUpdatedAt, items: allItems });
+  }
+  const unfilteredItems = mode === "home" && attention !== "all" && unfilteredCache ? unfilteredCache.items : allItems;
 
   const selectedItem = allItems.find(item => item.id === sel);
   if (selectedItem && foundSelection !== sel) setFoundSelection(sel);
@@ -128,42 +142,59 @@ export function WorklistConsole({
   }
 
   const normalizedQuery = findQuery.trim().toLowerCase();
+  const hasClientFilter = Boolean(normalizedQuery || statutoryOnly);
   const filteredItems = allItems.filter(item => {
     if (statutoryOnly && !isStatutoryDeadline(item)) return false;
     if (!normalizedQuery) return true;
-    const taskTitle = t(item.context?.unlock?.exceptionId ? "periodLocks.review.title" : KIND_TEXT[item.kind] ?? "home.inbox.unknown");
+    const normalizedKind = item.kind === "home_branch_review" ? "unplaced" : item.kind;
+    const taskTitle = t(item.context?.unlock?.exceptionId ? "periodLocks.review.title" : KIND_TEXT[normalizedKind] ?? "home.inbox.unknown");
     return [taskTitle, item.title, item.ref, item.site, item.who, ...reasonLines(item)].filter(Boolean).join(" ").toLowerCase().includes(normalizedQuery);
   });
   const sortedItems = sortWorklistItems(filteredItems, sort.field, sort.direction);
   const visibleRows = mode === "home" ? sortedItems.slice(0, homeRowLimit) : sortedItems;
+  const visibleIdSet = new Set(visibleRows.map(row => row.id));
+  const activeCheckedIds = new Set([...checkedIds].filter(id => visibleIdSet.has(id)));
   const remainingCount = mode === "home"
-    ? Math.max(0, (normalizedQuery || statutoryOnly ? sortedItems.length : Math.max(first?.total ?? sortedItems.length, sortedItems.length)) - visibleRows.length)
+    ? Math.max(0, (hasClientFilter ? sortedItems.length : Math.max(first?.total ?? sortedItems.length, sortedItems.length)) - visibleRows.length)
     : inbox.hasNextPage ? Math.max(1, (first?.total ?? sortedItems.length) - sortedItems.length) : 0;
 
   const columnsEnabled = !inSetup;
-  const recordVisible = !loading && inbox.data !== undefined && ["ready", "stale", "offline"].includes(queryView(inbox));
-  const showControls = !inSetup && Boolean(first?.has_work || first?.available_filters.length);
+  const recordVisible = !loading && !meError && inbox.data !== undefined && ["ready", "stale", "offline"].includes(queryView(inbox));
+  const showControls = !inSetup && !meError && Boolean(first?.has_work || first?.available_filters.length);
   const selectItem = (id: string) => { if (allItems.some(item => item.id === id)) select(id); };
-  const focusRecord = () => surfaceRef.current?.querySelector<HTMLElement>("aside h2[tabindex]")?.focus();
+  const focusRecord = () =>
+    surfaceRef.current
+      ?.closest("[data-pane-grid]")
+      ?.querySelector<HTMLElement>('aside[data-pane="record"] h2[tabindex]')
+      ?.focus();
   const snooze: RowAction = item => item.snooze?.allowed ? <SnoozeMenu item={item} presets={first?.snooze_presets ?? []} asOf={first?.as_of} /> : null;
   const unavailable = [...new Map(pages.flatMap(page => page.unavailable).map(part => [part.source, part])).values()];
-  const isInlineApproval = selectedItem?.links[0]?.kind === "org_change" && selectedItem.context?.command === "approve";
+  const isInlineApproval = selectedItem?.links?.[0]?.kind === "org_change" && selectedItem.context?.command === "approve";
   const openHref = selectedItem ? worklistItemHref(selectedItem) : null;
+  const scheduleItems = mode === "home" ? sortWorklistItems(unfilteredItems, "due", "asc").slice(0, homeRowLimit) : unfilteredItems;
+  const checkedRows = visibleRows.filter(row => activeCheckedIds.has(row.id));
+  const statusSelectedItem =
+    checkedRows.length === 1
+      ? checkedRows[0]
+      : checkedRows.length > 1
+        ? (selectedItem && activeCheckedIds.has(selectedItem.id) ? selectedItem : checkedRows[0])
+        : selectedItem;
+  const statusSelectedCount = checkedRows.length > 0 ? checkedRows.length : selectedItem ? 1 : 0;
 
   return (
     <Worklist
-      q={loading ? { ...inbox, isPending: true, data: undefined } : inbox}
+      q={meError ? meError : loading ? { ...inbox, isPending: true, data: undefined } : inbox}
       baseline={baseline}
       head={{
         title, titleId,
-        asOf: mode === "inbox" && !inSetup && !inbox.error && first?.as_of
+        asOf: mode === "inbox" && !inSetup && !meError && !inbox.error && first?.as_of
           ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time>
           : undefined,
         actions: mode === "home" && showControls && !loading && !inbox.error
           ? <Link to="/inbox" className={buttonClass("ghost", { size: "sm" })}>{t("home.inbox.viewInbox")}</Link>
           : undefined,
       }}
-      tabs={mode === "inbox" && !inSetup ? <InboxTabs view={view} /> : undefined}
+      tabs={mode === "inbox" && !loading && !meError && !inSetup ? <InboxTabs view={view} /> : undefined}
       views={showControls && mode === "home" && first?.attention_filters?.length ? (
         <WorklistSegmentBar
           label={t("home.attention.label")}
@@ -206,12 +237,15 @@ export function WorklistConsole({
                 items={visibleRows}
                 selected={columnsEnabled ? sel : undefined}
                 onSelect={columnsEnabled ? selectItem : undefined}
-                checkedIds={checkedIds}
+                onOpen={columnsEnabled ? focusRecord : undefined}
+                checkedIds={activeCheckedIds}
                 onToggleCheck={(id, next) => setCheckedIds(prev => { const updated = new Set(prev); if (next) updated.add(id); else updated.delete(id); return updated; })}
+                onToggleIds={(ids, next) => setCheckedIds(prev => { const updated = new Set(prev); for (const id of ids) { if (next) updated.add(id); else updated.delete(id); } return updated; })}
                 onToggleAll={next => setCheckedIds(next ? new Set(visibleRows.map(row => row.id)) : new Set())}
                 shownCols={shownCols}
                 action={action}
                 inlineRowAction={inlineRowAction ? (item, onSelectReject) => inlineRowAction(item, titleId, onSelectReject) : undefined}
+                focusAfter={titleId}
                 extra={snooze}
                 moreCount={remainingCount}
                 morePending={inbox.isFetchingNextPage}
@@ -223,12 +257,18 @@ export function WorklistConsole({
                   } else void inbox.fetchNextPage();
                 }}
               />
+            ) : allItems.length > 0 && hasClientFilter ? (
+              <EmptyState
+                title={t("home.worklist.noMatch.title")}
+                reason={t("home.worklist.noMatch.reason")}
+                actions={<Button onClick={() => { setFindQuery(""); setStatutoryOnly(false); }}>{t("home.worklist.noMatch.reset")}</Button>}
+              />
             ) : !checklist && !noWork && first && <QuietQueue page={first} filter={mode === "home" && attention !== "all" ? attention : view} partial={unavailable.length > 0} />}
           </div>
         );
       }}
-      schedule={!loading && !inbox.error && !inSetup && visibleRows.length > 0 ? () => <WorklistSchedule items={visibleRows} asOf={first?.as_of} selectedId={columnsEnabled ? sel : undefined} onSelect={columnsEnabled ? selectItem : undefined} /> : undefined}
-      bands={!loading && !inbox.error && !inSetup && first?.has_work ? () => <WorklistLower items={allItems} asOf={first?.as_of} action={action} orgNeed={orgNeed} canOrgStructure={canOrgStructure} /> : undefined}
+      schedule={!loading && !meError && !inbox.error && !inSetup && scheduleItems.length > 0 ? () => <WorklistSchedule items={scheduleItems} asOf={first?.as_of} selectedId={columnsEnabled ? sel : undefined} onSelect={columnsEnabled ? selectItem : undefined} /> : undefined}
+      bands={!loading && !meError && !inbox.error && !inSetup && first?.has_work ? () => <WorklistLower items={unfilteredItems} asOf={first?.as_of} action={action} focusAfter={titleId} orgNeed={orgNeed} canOrgStructure={canOrgStructure} /> : undefined}
       onSelect={columnsEnabled ? selectItem : undefined}
       onOpen={columnsEnabled ? focusRecord : undefined}
       record={columnsEnabled && recordVisible && !removed && sel && selectedItem ? {
@@ -239,12 +279,12 @@ export function WorklistConsole({
         onClose: () => select(undefined),
         returnFocus: () => surfaceRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
         footer: isInlineApproval && recordFooter ? recordFooter(selectedItem, titleId, () => select(undefined)) : undefined,
-        children: isInlineApproval && recordBody ? recordBody(selectedItem) : <InboxRecord item={selectedItem} action={action} extra={snooze} onBack={() => select(undefined)} />,
+        children: isInlineApproval && recordBody ? recordBody(selectedItem) : <InboxRecord item={selectedItem} action={action} extra={snooze} focusAfter={titleId} onBack={() => select(undefined)} />,
       } : null}
-      statusSegments={!loading && !inbox.error && first && !inSetup ? [
+      statusSegments={!loading && !meError && !inbox.error && first && !inSetup ? [
         { id: "total", content: t("home.worklist.statusTotal", { count: first.total }) },
         { id: "shown", content: t("home.worklist.statusShown", { count: visibleRows.length }) },
-        ...(selectedItem ? [{ id: "selected", tone: "strong" as const, content: t("home.worklist.statusSelected", { count: 1, title: selectedItem.ref ? `${selectedItem.title} ${selectedItem.ref}` : selectedItem.title }) }] : []),
+        ...(statusSelectedItem && statusSelectedCount > 0 ? [{ id: "selected", tone: "strong" as const, content: t("home.worklist.statusSelected", { count: statusSelectedCount, title: statusSelectedItem.ref ? `${statusSelectedItem.title} ${statusSelectedItem.ref}` : statusSelectedItem.title }) }] : []),
       ] : null}
       overlays={
         <WorklistColumnsDialog

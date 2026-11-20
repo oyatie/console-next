@@ -109,10 +109,28 @@ export function PaneGrid({
         if (openId && id !== openId) liveRef.current.onSelect?.(id);
       }, FOCUS_SETTLE_MS);
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || isImeKey(e) || e.altKey || e.ctrlKey || e.metaKey || editable(e.target)) return;
+      const row = rowElOf(e.target);
+      const id = rowKeyOf(row);
+      if (!row || !id || row.closest('[role="grid"], [role="tree"]')) return;
+      if (e.key === "Enter" && e.target === row) {
+        const { openRecord: rec, onSelect: pick, onOpen: expand } = liveRef.current;
+        if (rec?.id === id && expand) {
+          e.preventDefault();
+          expand(id);
+        } else if (pick) {
+          e.preventDefault();
+          pick(id);
+        }
+      }
+    };
     center.addEventListener("focusin", onFocusIn);
+    center.addEventListener("keydown", onKeyDown);
     return () => {
       clearTimeout(settleRef.current);
       center.removeEventListener("focusin", onFocusIn);
+      center.removeEventListener("keydown", onKeyDown);
     };
   }, []);
 

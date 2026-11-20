@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { i18n, t } from "@console/i18n";
+import { i18n, t, type MessageId } from "@console/i18n";
 import { DeadlineStrip } from "../../../ui/deadline-strip/deadline-strip";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
-import { buildScheduleWindow, isStatutoryDeadline, kstDayIso } from "../domain/inline-decide";
+import { buildScheduleWindow, isStatutoryDeadline, kstDayIso, shortMonthDay } from "../domain/inline-decide";
 import { KIND_TEXT } from "./grouped-queue";
 
 function formatStripMonth(monthNumber: number): string {
@@ -10,6 +10,52 @@ function formatStripMonth(monthNumber: number): string {
   return new Intl.DateTimeFormat(locale, { timeZone: "UTC", month: "short" }).format(
     new Date(Date.UTC(2026, Math.max(0, monthNumber - 1), 15)),
   );
+}
+
+const STRIP_KIND_TEXT: Record<string, MessageId> = {
+  approval: "home.worklist.strip.approval",
+  org_change_approve: "home.worklist.strip.approval",
+  org_change: "home.worklist.strip.org",
+  org_change_waiting: "home.worklist.strip.org",
+  org_change_scheduled: "home.worklist.strip.org",
+  org_change_apply: "home.worklist.strip.org",
+  org_change_draft: "home.worklist.strip.org",
+  org_change_rejected: "home.worklist.strip.org",
+  org_change_settle: "home.worklist.strip.org",
+  insurance_filing: "home.worklist.strip.insurance",
+  hr_exit_settle: "home.worklist.strip.exitSettle",
+  hr_exit: "home.worklist.strip.exit",
+  hr_exit_confirm: "home.worklist.strip.exit",
+  hr_exit_confirm_hq: "home.worklist.strip.exit",
+  payroll: "home.worklist.strip.payroll",
+  contract_renewal: "home.worklist.strip.contract",
+  register_review: "home.worklist.strip.register",
+  identity_review: "home.worklist.strip.identity",
+  unplaced: "home.worklist.strip.unplaced",
+  home_branch_review: "home.worklist.strip.unplaced",
+  privacy_request: "home.worklist.strip.privacy",
+  registration_check: "home.worklist.strip.nts",
+  identifier_correction_waiting: "home.worklist.strip.correction",
+  identifier_correction_decide: "home.worklist.strip.correction",
+  identifier_correction_apply: "home.worklist.strip.correction",
+  identifier_correction_review: "home.worklist.strip.correction",
+  support_access: "home.worklist.strip.support",
+  grant_notice: "home.worklist.strip.grant",
+  account_security: "home.worklist.strip.security",
+  account_binding_review: "home.worklist.strip.binding",
+  hr_lifecycle: "home.worklist.strip.failed",
+  lifecycle_apply_failed: "home.worklist.strip.failed",
+};
+
+function stripLabelKey(item: AttentionInboxItem): MessageId {
+  const kind = item.kind === "home_branch_review" ? "unplaced" : item.kind;
+  if (kind === "period_unlock") {
+    return item.context?.unlock?.exceptionId ? "home.worklist.strip.unlock" : "home.worklist.strip.attendance";
+  }
+  if (kind === "hr_request") {
+    return isStatutoryDeadline(item) ? "home.worklist.strip.statutoryRequest" : "home.worklist.strip.request";
+  }
+  return STRIP_KIND_TEXT[kind] ?? "home.worklist.strip.default";
 }
 
 /** Schedule strip (`DeadlineStrip`) mapping dated and undated worklist rows onto statutory and operational lanes. */
@@ -26,7 +72,10 @@ export function WorklistSchedule({
 }) {
   const window = buildScheduleWindow(items, asOf);
   const visibleDates = new Set(window.days.map(day => day.date));
+  const firstDate = window.days[0]?.date ?? null;
+  const lastDate = window.days[window.days.length - 1]?.date ?? null;
   const entries = items.map(item => {
+    const normalizedKind = item.kind === "home_branch_review" ? "unplaced" : item.kind;
     const day = kstDayIso(item.due);
     const tone =
       day === null
@@ -36,19 +85,27 @@ export function WorklistSchedule({
           : item.days_remaining === 0
             ? ("today" as const)
             : ("upcoming" as const);
-    const shortLabel = t(
+    const shortLabel = t(stripLabelKey(item));
+    const taskFull = t(
       item.context?.unlock?.exceptionId
         ? "periodLocks.review.title"
-        : item.kind === "org_change_approve"
-          ? "org.change.step.IN_APPROVAL"
-          : KIND_TEXT[item.kind] ?? "home.inbox.unknown",
+        : KIND_TEXT[normalizedKind] ?? "home.inbox.unknown",
     );
+    const placedDate =
+      day === null
+        ? null
+        : visibleDates.has(day)
+          ? day
+          : firstDate && day < firstDate
+            ? firstDate
+            : lastDate;
+    const dueNote = day && !visibleDates.has(day) ? shortMonthDay(day) : null;
     return {
       id: item.id,
       shortLabel,
-      fullLabel: `${shortLabel} · ${item.title}`,
+      fullLabel: dueNote ? `${taskFull} · ${item.title} (${dueNote})` : `${taskFull} · ${item.title}`,
       lane: isStatutoryDeadline(item) ? ("statutory" as const) : ("operational" as const),
-      date: day && visibleDates.has(day) ? day : null,
+      date: placedDate,
       tone,
     };
   });

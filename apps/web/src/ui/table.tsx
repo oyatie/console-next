@@ -18,13 +18,14 @@ const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide &&
  * Bounded lists use this native table; headcount lists use LongTable's server paging and virtualization.
  * Read states belong to the surrounding QueryState boundary; it removes content after a server refusal.
  */
-export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone, detail, groups, density, mobileLayout }: {
+export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOpen, tone, detail, groups, density, mobileLayout }: {
   label: string;
   rows: R[];
   columns: Column<R>[];
   rowId: (r: R) => string;
   selected?: string;
   onSelect?: (id: string) => void;
+  onOpen?: (id: string) => void;
   tone?: (r: R) => "danger" | "warn" | undefined;
   detail?: (r: R) => ReactNode;
   groups?: { id: string; header: ReactNode; rows: R[] }[];
@@ -76,7 +77,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     if (e.target instanceof HTMLElement && e.target.closest("input, select, textarea, button, a")) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      onSelect(current);
+      if (e.key === "Enter" && current === selected && onOpen) onOpen(current);
+      else onSelect(current);
       return;
     }
     const step = rowStep(e.nativeEvent);

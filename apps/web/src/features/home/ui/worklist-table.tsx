@@ -2,77 +2,30 @@
 import { useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
-import { INSURER, LIFECYCLE_EVENT, codeText, label } from "../../../lib/labels";
-import { reasonLabel } from "../../../lib/reason-codes";
-import { domainText, periodText } from "../../../reference/periods/present";
 import { Button, Check } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { DueCell } from "../../../ui/due-cell/due-cell";
-import { WorklistMoreBar, WorklistReason, WorklistSubject } from "../../../ui/patterns/worklist-parts";
+import { WorklistMoreBar, WorklistReason } from "../../../ui/patterns/worklist-parts";
 import { Table, type Column } from "../../../ui/table";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
 import { isStatutoryDeadline, shortMonthDay, type OptionalWorklistColumn } from "../domain/inline-decide";
 import { KIND_TEXT, reasonLines, recordAction, type RowAction } from "./grouped-queue";
 import s from "./worklist-console.module.css";
-
-function CompactSubject({ item }: { item: AttentionInboxItem }) {
-  const { unlock, insurance, lifecycle, request, correction } = item.context ?? {};
-  const primary =
-    item.kind === "privacy_request"
-      ? (item.context?.privacy_kinds ?? [])
-          .map(code => codeText(`account.privacy.kind.${code}`, t("enum.unknown")))
-          .join(" · ")
-      : unlock
-        ? `${domainText(unlock.domain)} ${periodText(unlock)}`
-        : request
-          ? codeText(`requests.kind.${request.kind}`, t("requests.kind.OTHER"))
-          : item.title;
-
-  const facts = correction
-    ? [t(`entityRecord.corrections.status.${correction.status}`), item.who]
-    : unlock
-      ? [
-          unlock.requester,
-          reasonLabel("period_unlock", unlock.reason_code, unlock.reason_entry ?? undefined),
-        ]
-      : insurance
-        ? [
-            label(INSURER, insurance.insurer),
-            codeText(`statutory.${insurance.kind}`, t("home.inbox.unknown")),
-            fmtDate(insurance.effective_date),
-          ]
-        : lifecycle
-          ? [label(LIFECYCLE_EVENT, lifecycle.action_kind), fmtDate(lifecycle.effective_date)]
-          : [];
-
-  const meta = [
-    ...facts,
-    item.context?.drafter ? t("home.decide.drafter", { name: item.context.drafter }) : undefined,
-    item.site,
-    item.ref && item.ref !== primary ? item.ref : undefined,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <WorklistSubject title={meta ? `${primary} · ${meta}` : primary}>
-      <bdi className={`${s.subjectPrimary} t-ink t-medium`}>{primary}</bdi>
-      {meta ? <bdi className={`${s.subjectMeta} t-faint t-xs`}>{meta}</bdi> : null}
-    </WorklistSubject>
-  );
-}
+import { CompactSubject } from "./worklist-subject";
 
 export function ConsoleWorklistTable({
   items,
   selected,
   onSelect,
+  onOpen,
   checkedIds,
   onToggleCheck,
+  onToggleIds,
   onToggleAll,
   shownCols,
   action,
   inlineRowAction,
+  focusAfter,
   extra,
   moreCount,
   morePending,
@@ -81,12 +34,15 @@ export function ConsoleWorklistTable({
   items: readonly AttentionInboxItem[];
   selected?: string;
   onSelect?: (id: string) => void;
+  onOpen?: (id: string) => void;
   checkedIds: ReadonlySet<string>;
   onToggleCheck: (id: string, next: boolean) => void;
+  onToggleIds?: (ids: readonly string[], next: boolean) => void;
   onToggleAll: (next: boolean) => void;
   shownCols: ReadonlySet<OptionalWorklistColumn>;
   action?: RowAction;
   inlineRowAction?: (item: AttentionInboxItem, onSelectReject: () => void) => ReactNode;
+  focusAfter?: string;
   extra?: RowAction;
   moreCount?: number;
   morePending?: boolean;
@@ -123,7 +79,30 @@ export function ConsoleWorklistTable({
       return next;
     });
 
-  const allChecked = displayRows.length > 0 && displayRows.every(row => checkedIds.has(row.id));
+  const isCollapsedFold = (item: AttentionInboxItem) => {
+    const group = foldedMap.get(item.id);
+    return Boolean(group && group[0]?.id === item.id && !expanded.has(item.id));
+  };
+  const rowKey = (item: AttentionInboxItem) => (isCollapsedFold(item) ? `fold:${item.id}` : item.id);
+  const handleSelect = onSelect
+    ? (id: string) => {
+        if (id.startsWith("fold:")) toggleFold(id.slice(5));
+        else onSelect(id);
+      }
+    : undefined;
+  const handleOpen = onOpen
+    ? (id: string) => {
+        if (id.startsWith("fold:")) toggleFold(id.slice(5));
+        else onOpen(id);
+      }
+    : undefined;
+
+  const toggleGroup = (ids: readonly string[], next: boolean) => {
+    if (onToggleIds) onToggleIds(ids, next);
+    else for (const id of ids) onToggleCheck(id, next);
+  };
+
+  const allChecked = items.length > 0 && items.every(row => checkedIds.has(row.id));
 
   const columns: Column<AttentionInboxItem>[] = [
     {
@@ -139,17 +118,22 @@ export function ConsoleWorklistTable({
       fit: true,
       card: "omit",
       cell: item => {
+        const group = isCollapsedFold(item) ? foldedMap.get(item.id)! : [item];
         const taskLabel = t(
           item.context?.unlock?.exceptionId
             ? "periodLocks.review.title"
             : KIND_TEXT[item.kind] ?? "home.inbox.unknown",
         );
+        const rowLabel =
+          group.length > 1
+            ? t("home.inbox.foldCount", { kind: taskLabel, count: group.length })
+            : `${taskLabel} ${item.title}`;
         return (
           <div role="presentation" onClick={e => e.stopPropagation()}>
             <Check
-              aria-label={t("home.worklist.selectRow", { title: `${taskLabel} ${item.title}` })}
-              checked={checkedIds.has(item.id)}
-              onChange={next => onToggleCheck(item.id, next)}
+              aria-label={t("home.worklist.selectRow", { title: rowLabel })}
+              checked={group.every(entry => checkedIds.has(entry.id))}
+              onChange={next => toggleGroup(group.map(entry => entry.id), next)}
             />
           </div>
         );
@@ -256,7 +240,12 @@ export function ConsoleWorklistTable({
         const group = foldedMap.get(item.id);
         if (group && group[0]?.id === item.id && !expanded.has(item.id)) return null;
         const customInline = inlineRowAction?.(item, () => onSelect?.(item.id));
-        const fallbackAction = customInline ?? recordAction(item, action);
+        const suppressCommandFallback =
+          item.links?.[0]?.kind === "org_change" &&
+          item.context?.command === "approve" &&
+          item.can_decide === false;
+        const fallbackAction =
+          customInline ?? recordAction(item, suppressCommandFallback ? undefined : action, undefined, focusAfter);
         const snoozeControl = extra?.(item);
         if (!fallbackAction && !snoozeControl) return null;
         return (
@@ -275,9 +264,10 @@ export function ConsoleWorklistTable({
         label={t("home.inbox.title")}
         density="compact"
         rows={displayRows}
-        rowId={row => row.id}
+        rowId={rowKey}
         selected={selected}
-        onSelect={onSelect}
+        onSelect={handleSelect}
+        onOpen={handleOpen}
         tone={row => (row.dueTone === "danger" ? "danger" : undefined)}
         columns={columns}
       />

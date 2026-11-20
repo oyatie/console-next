@@ -6,7 +6,9 @@ import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { expectAxe, fits } from "../a11y";
 import { shot, withFullPage } from "../shots";
 import { screens } from "../states/registry";
-import { screenAccess } from "./fixtures";
+import { homeSetupChecklist } from "../states/home-setup";
+import { previewData } from "./onboarding";
+import { failure, inbox, screenAccess, user } from "./fixtures";
 import { mockRoute } from "./route";
 import {
   saeonAdminUser,
@@ -20,9 +22,20 @@ import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-async function setupConsoleSaeonWorklist(page: Page) {
+async function enableConsoleExperience(page: Page, theme: "light" | "dark" = "light") {
+  await page.addInitScript(
+    ({ expKey, themeValue }) => {
+      localStorage.setItem(expKey, "console");
+      localStorage.setItem("console.theme", themeValue);
+    },
+    { expKey: EXPERIENCE_KEY, themeValue: theme },
+  );
+}
+
+async function setupConsoleSaeonWorklist(page: Page, theme: "light" | "dark" = "light") {
+  await enableConsoleExperience(page, theme);
   const fixture = await mockScreen(page, screens[0], "populated");
-  const inbox = saeonWorklistInbox();
+  const inboxData = saeonWorklistInbox();
   const orgDetail = saeonApprovalOrgChange();
   const structure = saeonOrgStructure();
   const orgUnits: paths["/api/v1/org-units"]["get"]["responses"]["200"]["content"]["application/json"]["items"] =
@@ -50,7 +63,7 @@ async function setupConsoleSaeonWorklist(page: Page) {
       parentId: structure.entities[0]!.children![0]!.id,
       status: "ACTIVE",
       effectiveFrom: "2020-01-01",
-      headcount: 14,
+      headcount: saeonUniverse.approval.beforeHeadcount,
       updatedAt: "2026-11-10T09:00:00+09:00",
     },
     {
@@ -59,15 +72,14 @@ async function setupConsoleSaeonWorklist(page: Page) {
       kind: "DEPARTMENT",
       parentId: structure.entities[0]!.children![0]!.id,
       status: "ACTIVE",
-      effectiveFrom: "2020-01-01",
-      headcount: 8,
+      effectiveFrom: "2026-11-10",
+      headcount: saeonUniverse.approval.transferredCount,
       updatedAt: "2026-11-10T09:00:00+09:00",
     },
   );
 
   const orgAccess = screenAccess("/org");
   const peopleAccess = screenAccess("/people");
-  await page.addInitScript(key => localStorage.setItem(key, "console"), EXPERIENCE_KEY);
   await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: saeonAdminUser() });
   await mockRoute(page, "get", "/api/v1/access/me", {
     status: 200,
@@ -77,30 +89,39 @@ async function setupConsoleSaeonWorklist(page: Page) {
   await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: structure });
   await mockRoute(page, "get", "/api/v1/org-units", { status: 200, json: { items: orgUnits } });
   await mockRoute(page, "get", "/api/v1/org-changes/{id}", { status: 200, json: orgDetail });
+  await mockRoute(page, "get", "/api/v1/me/action-inbox/reference", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v1/me/action-inbox/done", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/me/action-inbox", request => {
     const query = new URL(request.url()).searchParams;
     const attention = query.get("attention");
+    const filter = query.get("filter");
+    const snoozed = query.get("snoozed");
+    if (filter === "notices" || snoozed === "only") {
+      return { status: 200, json: { ...inboxData, items: [] } };
+    }
+    if (filter === "waiting") {
+      return { status: 200, json: { ...inboxData, items: inboxData.items.slice(0, 2) } };
+    }
     const items =
       attention === "approvals"
-        ? inbox.items.filter(item => item.kind === "org_change_approve")
+        ? inboxData.items.filter(item => item.kind === "org_change_approve")
         : attention === "today"
-          ? inbox.items.filter(item => item.days_remaining === 0)
+          ? inboxData.items.filter(item => item.days_remaining === 0)
           : attention === "overdue"
-            ? inbox.items.filter(item => (item.days_remaining ?? 0) < 0)
-            : inbox.items;
-    return { status: 200, json: { ...inbox, items } };
+            ? inboxData.items.filter(item => (item.days_remaining ?? 0) < 0)
+            : inboxData.items;
+    return { status: 200, json: { ...inboxData, items } };
   });
-  return fixture;
+  return { fixture, orgDetail };
 }
 
 for (const width of [1440, 390]) {
-  for (const theme of ["light", "dark"]) {
+  for (const theme of ["light", "dark"] as const) {
     test(`Console Home renders Worklist (P1) with Saeon worklist, schedule, lower bands, and decision pane at ${width}px ${theme}`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
-      const fixture = await setupConsoleSaeonWorklist(page);
+      const { fixture } = await setupConsoleSaeonWorklist(page, theme);
       try {
         await page.goto(width === 1440 ? "/?sel=OC-2026-0418" : "/");
         const worklist = page.locator('[data-pattern="worklist"]');
@@ -109,10 +130,24 @@ for (const width of [1440, 390]) {
         await expect(page.locator("[data-deadline-strip]")).toBeVisible();
         await expect(queueTable.locator("tbody tr[data-id]")).toHaveCount(10);
         await expect(page.getByRole("meter")).toHaveCount(5);
+        await expect(worklist.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true }).locator("tbody tr")).toHaveCount(2);
 
         if (width === 1440) {
-          await expect(page.locator('aside[data-pane="record"]')).toBeVisible();
+          const recordPane = page.locator('aside[data-pane="record"]');
+          await expect(recordPane).toBeVisible();
           await expect(page.locator("[data-decision-pane]")).toBeVisible();
+          await expect(recordPane).toContainText(t("home.worklist.personCount", { count: 18 }));
+          await expect(recordPane).toContainText(t("home.worklist.personCount", { count: 30 }));
+          await expect(recordPane).toContainText(t("orgPropose.diff.chip.dissolved"));
+          const stripFits = await page
+            .locator('[data-deadline-strip] [role="region"]')
+            .evaluate(el => el.scrollWidth <= el.clientWidth);
+          expect(stripFits).toBe(true);
+          const tableFits = await queueTable.evaluate(el => el.scrollWidth <= (el.parentElement?.clientWidth ?? el.clientWidth) + 1);
+          expect(tableFits).toBe(true);
+        } else {
+          const theadBox = await queueTable.locator("thead").boundingBox();
+          expect(theadBox ? theadBox.width <= 2 && theadBox.height <= 2 : true).toBe(true);
         }
         await withFullPage(page, () => shot(page, `home--${width}-${theme}`));
 
@@ -134,9 +169,9 @@ for (const width of [1440, 390]) {
   }
 }
 
-test("Console Home filters, column chooser, and /inbox tabs work end-to-end", async ({ page }) => {
+test("Console Home filters, 0-match reset, Enter focus, and attention decoupling work end-to-end", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const fixture = await setupConsoleSaeonWorklist(page);
+  const { fixture } = await setupConsoleSaeonWorklist(page);
   try {
     await page.goto("/");
     const worklist = page.locator('[data-pattern="worklist"]');
@@ -150,8 +185,18 @@ test("Console Home filters, column chooser, and /inbox tabs work end-to-end", as
 
     await worklist.locator("[data-list-find] input").fill("OC-2026-0418");
     await expect(queueTable.locator("tbody tr[data-id]")).toHaveCount(1);
-    await worklist.locator("[data-list-find] input").fill("");
+
+    await worklist.locator("[data-list-find] input").fill("no-such-query-xyz");
+    await expect(worklist.getByRole("heading", { name: t("home.worklist.noMatch.title"), exact: true })).toBeVisible();
+    await worklist.getByRole("button", { name: t("home.worklist.noMatch.reset"), exact: true }).click();
     await expect(queueTable.locator("tbody tr[data-id]")).toHaveCount(10);
+
+    // Switching attention filter keeps Monthly operations and DeadlineStrip decoupled from the filter.
+    await worklist.getByRole("button", { name: new RegExp(`^${t("home.attention.approvals")}`) }).click();
+    await expect(queueTable.locator("tbody tr[data-id]")).toHaveCount(2);
+    await expect(worklist.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true }).locator("tbody tr")).toHaveCount(2);
+    await expect(page.locator("[data-deadline-strip]")).toBeVisible();
+    await worklist.getByRole("button", { name: new RegExp(`^${t("home.attention.all")}`) }).click();
 
     await worklist.getByRole("button", { name: t("home.worklist.columns"), exact: true }).click();
     const colDialog = page.getByRole("dialog", { name: t("home.worklist.columns"), exact: true });
@@ -160,12 +205,171 @@ test("Console Home filters, column chooser, and /inbox tabs work end-to-end", as
     await colDialog.getByRole("button", { name: t("composer.dismiss"), exact: true }).click();
     await expect(worklist.getByRole("columnheader", { name: t("home.worklist.col.statutory"), exact: true })).toHaveCount(0);
 
-    await page.goto("/inbox?sel=OC-2026-0418");
-    await expect(page.locator('[data-pattern="worklist"]')).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1, name: t("home.inbox.title"), exact: true })).toBeVisible();
+    const row = queueTable.locator('tbody tr[data-id="OC-2026-0418"]');
+    await row.focus();
+    await row.press("Enter");
     await expect(page.locator('aside[data-pane="record"]')).toBeVisible();
-    await fits(page, "Console Inbox 1440");
-    await expectAxe(page, "Console Inbox 1440");
+    await row.focus();
+    await row.press("Enter");
+    await expect(page.locator('aside[data-pane="record"] h2[tabindex]')).toBeFocused();
+
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
+});
+
+for (const width of [1440, 390]) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`Console /inbox renders populated selection and tabs at ${width}px ${theme}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const { fixture } = await setupConsoleSaeonWorklist(page, theme);
+      try {
+        await page.goto("/inbox?sel=OC-2026-0418");
+        await expect(page.locator('[data-pattern="worklist"]')).toBeVisible();
+        if (width === 1440) {
+          await expect(page.getByRole("heading", { level: 1, name: t("home.inbox.title"), exact: true })).toBeVisible();
+        }
+        await expect(page.locator('aside[data-pane="record"]')).toBeVisible();
+        await fits(page, `Console Inbox ${width} ${theme}`);
+        await expectAxe(page, `Console Inbox ${width} ${theme}`);
+
+        for (const tab of ["waiting", "reference", "done", "snoozed"] as const) {
+          await page.goto(`/inbox?tab=${tab}`);
+          await expect(page.locator('[data-pattern="worklist"]')).toBeVisible();
+          await expect(page.getByRole("navigation", { name: t("home.lanes"), exact: true })).toBeVisible();
+          await fits(page, `Console Inbox tab=${tab} ${width} ${theme}`);
+          await expectAxe(page, `Console Inbox tab=${tab} ${width} ${theme}`);
+        }
+        expect(fixture.unexpected).toEqual([]);
+      } finally {
+        fixture.release();
+      }
+    });
+  }
+}
+
+for (const path of ["/", "/inbox"] as const) {
+  for (const state of ["loading", "empty", "failed", "refused", "setup"] as const) {
+    test(`Console ${path} state sweep: ${state} passes layout & WCAG 2.2 AA axe`, async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await enableConsoleExperience(page, "light");
+      const screenState = state === "setup" ? "empty" : state;
+      const fixture = await mockScreen(page, screens[0], screenState);
+      if (state === "setup") {
+        const setupChecklist = { ...homeSetupChecklist("first"), phase: "SETUP" as const };
+        await mockRoute(page, "get", "/api/v1/users/me", {
+          status: 200,
+          json: { ...user, tenant: { name: user.tenant!.name, phase: "SETUP", go_live_at: null } },
+        });
+        await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: setupChecklist });
+        await mockRoute(page, "get", "/api/v1/onboarding/go-live/preview", {
+          status: 200,
+          json: { ...previewData("ready"), blockers: [] },
+        });
+        await mockRoute(page, "get", "/api/v1/me/action-inbox", {
+          status: 200,
+          json: { ...inbox(0), setup: setupChecklist },
+        });
+      }
+      try {
+        await page.goto(path);
+        const worklist = page.locator('[data-pattern="worklist"]');
+        if (state === "loading") {
+          await expect(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
+          await fits(page, `Console ${path} loading`);
+          await expectAxe(page, `Console ${path} loading`);
+          fixture.release();
+          await expect(worklist).toBeVisible();
+        } else {
+          await expect(worklist).toBeVisible();
+          if (state === "empty") {
+          await expect(worklist.getByRole("heading", { name: t("home.noWork.title"), exact: true })).toBeVisible();
+          await fits(page, `Console ${path} empty`);
+          await expectAxe(page, `Console ${path} empty`);
+        } else if (state === "failed") {
+          await expect(worklist.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible({
+            timeout: 20_000,
+          });
+          await fits(page, `Console ${path} failed`);
+          await expectAxe(page, `Console ${path} failed`);
+        } else if (state === "refused") {
+          await expect(
+            worklist.getByRole("region", { name: t("common.denied.title.plain"), exact: true }),
+          ).toBeVisible();
+          await fits(page, `Console ${path} refused`);
+          await expectAxe(page, `Console ${path} refused`);
+        } else if (state === "setup") {
+          if (path === "/") {
+            await expect(worklist.getByRole("region", { name: t("setup.title"), exact: true })).toBeVisible();
+          } else {
+            await expect(worklist.getByRole("heading", { name: t("home.inbox.setup.title"), exact: true })).toBeVisible();
+            await expect(worklist.getByRole("navigation", { name: t("home.lanes"), exact: true })).toHaveCount(0);
+          }
+          await fits(page, `Console ${path} setup`);
+          await expectAxe(page, `Console ${path} setup`);
+        }
+        }
+        expect(fixture.unexpected).toEqual([]);
+      } finally {
+        fixture.release();
+      }
+    });
+  }
+}
+
+test("Console decision refusal and step-up flow surface accessible error feedback on / and /inbox", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fixture } = await setupConsoleSaeonWorklist(page);
+  await mockRoute(page, "post", "/api/v1/org-changes/{id}/approval-steps/{stepId}/decision", {
+    status: 403,
+    json: failure("forbidden"),
+  });
+  await mockRoute(page, "post", "/api/v1/auth/passkey/login/start", {
+    status: 403,
+    json: failure("forbidden"),
+  });
+  try {
+    await page.goto("/?sel=OC-2026-0418");
+    const decisionPane = page.locator("[data-decision-pane]");
+    await expect(decisionPane).toBeVisible();
+    await decisionPane.getByRole("button", { name: t("uiWorklist.approve"), exact: true }).click();
+    await expect(page.locator('aside[data-pane="record"]').getByRole("alert")).toBeVisible();
+    await expectAxe(page, "Console decision refusal /");
+
+    await page.goto("/inbox?sel=OC-2026-0418");
+    await expect(page.locator("[data-decision-pane]")).toBeVisible();
+    await page.locator("[data-decision-pane]").getByRole("button", { name: t("uiWorklist.approve"), exact: true }).click();
+    await expect(page.locator('aside[data-pane="record"]').getByRole("alert")).toBeVisible();
+    await expectAxe(page, "Console decision refusal /inbox");
+
+    // Step-up passkey prompt on account_security item surfaces step-up failure feedback cleanly.
+    const baseInbox = saeonWorklistInbox();
+    await mockRoute(page, "get", "/api/v1/me/action-inbox", {
+      status: 200,
+      json: {
+        ...baseInbox,
+        items: [
+          {
+            id: "sec-1",
+            kind: "account_security",
+            lane: "turn",
+            title: t("account.passkey.add"),
+            ref: "",
+            urg: "wait",
+            dueTone: "neutral",
+            done: false,
+            days_remaining: null,
+            links: [{ kind: "account", id: "me" }],
+          },
+        ],
+      },
+    });
+    await page.goto("/inbox");
+    await page.getByRole("button", { name: t("account.passkey.add"), exact: true }).click();
+    const stepUpAlert = page.getByRole("main").getByRole("alert");
+    await expect(stepUpAlert).toBeVisible();
+    await expectAxe(page, "Console step-up refusal /inbox");
     expect(fixture.unexpected).toEqual([]);
   } finally {
     fixture.release();

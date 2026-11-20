@@ -41,11 +41,11 @@ type PeopleCheckRow = {
 
 function statusCount(list: readonly FacetCount[] | undefined, ...values: string[]): number | undefined {
   if (!list) return undefined;
-  for (const val of values) {
-    const hit = list.find(entry => entry.value === val);
-    if (hit) return hit.count;
-  }
-  return undefined;
+  const hits = values
+    .map(val => list.find(entry => entry.value === val))
+    .filter((hit): hit is FacetCount => Boolean(hit));
+  if (hits.length === 0) return undefined;
+  return hits.find(hit => hit.count > 0)?.count ?? hits[0]!.count;
 }
 
 function buildPeopleChecks(review: components["schemas"]["EmployeeFacets"]["review"]): PeopleCheckRow[] {
@@ -106,12 +106,14 @@ export function WorklistLower({
   items,
   asOf,
   action,
+  focusAfter,
   orgNeed,
   canOrgStructure,
 }: {
   items: readonly AttentionInboxItem[];
   asOf?: string | null;
   action?: RowAction;
+  focusAfter?: string;
   orgNeed?: AccessRequirement;
   canOrgStructure?: boolean;
 }) {
@@ -163,11 +165,11 @@ export function WorklistLower({
                     </strong>
                   ),
                 },
-                { header: t("home.worklist.opsCol.scope"), cell: row => row.site ?? row.context?.worksite_name ?? "—" },
+                { header: t("home.worklist.opsCol.scope"), cell: row => row.context?.worksite_name ?? row.site ?? "—" },
                 { header: t("home.worklist.opsCol.state"), cell: row => <DueCell days={row.days_remaining} /> },
                 { header: t("home.inbox.column.due"), wide: true, cell: row => <bdi className="num muted">{shortMonthDay(row.due) ?? "—"}</bdi> },
-                { header: t("home.worklist.opsCol.check"), wide: true, cell: row => row.context?.reason ?? row.title },
-                { header: t("home.worklist.col.action"), fit: true, cell: row => recordAction(row, action) },
+                { header: t("home.worklist.opsCol.check"), wide: true, cell: row => (row.site && row.context?.worksite_name ? row.site : row.context?.reason ?? row.title) },
+                { header: t("home.worklist.col.action"), fit: true, cell: row => <div className={s.dateCol}>{recordAction(row, action, undefined, focusAfter)}</div> },
               ]}
             />
           ) : (
@@ -226,17 +228,23 @@ export function WorklistLower({
         <WorklistBandCol>
           <WorklistBandBlock>
             <PaneHead title={t("home.worklist.headcount")} meta={asOf ? t("home.asOf", { time: fmtDateTime(asOf) }) : undefined} level={3} />
-            {canDirectory && facets.data ? (
-              <WorklistStatWrap>
-                <StatRow
-                  label={t("home.worklist.headcount")}
-                  items={[
-                    { key: "active", label: t("home.worklist.stat.active"), value: fmtNumber(activeCount) },
-                    { key: "leave", label: t("home.worklist.stat.leave"), value: fmtNumber(leaveCount) },
-                    { key: "starting", label: t("home.worklist.stat.starting"), value: fmtNumber(startingCount) },
-                  ]}
-                />
-              </WorklistStatWrap>
+            {canDirectory ? (
+              facets.data ? (
+                <WorklistStatWrap>
+                  <StatRow
+                    label={t("home.worklist.headcount")}
+                    items={[
+                      { key: "active", label: t("home.worklist.stat.active"), value: fmtNumber(activeCount) },
+                      { key: "leave", label: t("home.worklist.stat.leave"), value: fmtNumber(leaveCount) },
+                      { key: "starting", label: t("home.worklist.stat.starting"), value: fmtNumber(startingCount) },
+                    ]}
+                  />
+                </WorklistStatWrap>
+              ) : facets.isPending ? (
+                <WorklistBandEmpty><Skeleton decorative bones={["short", "short"]} /></WorklistBandEmpty>
+              ) : !canOrg ? (
+                <WorklistBandEmpty>{t("common.loadFailed.title")}</WorklistBandEmpty>
+              ) : null
             ) : null}
             {canOrg ? (
               structure.isPending ? (

@@ -16,11 +16,14 @@ import { SelfBindingReview } from "../features/people/ui/self-binding-review";
 import { UnlockReview } from "../features/periods/ui/unlock-review";
 import { DueCell } from "../ui/due-cell/due-cell";
 
-export const inboxAction: RowAction = item => {
+export const inboxAction: RowAction = (item, focusAfter = "inbox-title") => {
   if (item.kind === "account_binding_review" && item.context?.command_id) return <SelfBindingReview id={item.context.command_id} />;
-  const link = item.links[0];
-  if (link?.kind === "account") return <AddPasskey count={1} focusAfter="inbox-title" />;
-  if (link?.kind === "org_change" && item.context?.command) return <InboxCommand id={link.id} command={item.context.command} />;
+  const link = item.links?.[0];
+  if (link?.kind === "account") return <AddPasskey count={1} focusAfter={focusAfter} />;
+  if (link?.kind === "org_change" && item.context?.command) {
+    if (item.context.command === "approve" && item.can_decide === false) return null;
+    return <InboxCommand id={link.id} command={item.context.command} canDecide={item.can_decide} focusAfter={focusAfter} />;
+  }
   if (link?.kind === "period_lock" && item.context?.unlock?.exceptionId) return <UnlockReview lockId={link.id} exceptionId={item.context.unlock.exceptionId} />;
   return null;
 };

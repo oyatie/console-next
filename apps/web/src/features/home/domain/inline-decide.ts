@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { kstDayIso, shortMonthDay } from "../../../lib/pure/today";
+import { kstDayIso, shortMonthDay } from "../../../lib/pure/kst-day";
 import type { AttentionInboxItem } from "./inbox-filter";
 
 export { kstDayIso, shortMonthDay };
@@ -24,19 +24,19 @@ const INLINE_DECIDABLE_CLASSES: readonly ClassRule[] = [
   {
     id: "approval",
     matches: item =>
-      item.links[0]?.kind === "org_change" &&
+      item.links?.[0]?.kind === "org_change" &&
       item.context?.command === "approve" &&
       item.can_decide !== false,
   },
   {
     id: "effectuate",
     matches: item =>
-      item.links[0]?.kind === "org_change" && item.context?.command === "effectuate",
+      item.links?.[0]?.kind === "org_change" && item.context?.command === "effectuate",
   },
   {
     id: "unlock_ack",
     matches: item =>
-      item.links[0]?.kind === "period_lock" && Boolean(item.context?.unlock?.exceptionId),
+      item.links?.[0]?.kind === "period_lock" && Boolean(item.context?.unlock?.exceptionId),
   },
   {
     id: "binding_review",
@@ -45,7 +45,7 @@ const INLINE_DECIDABLE_CLASSES: readonly ClassRule[] = [
   },
   {
     id: "passkey",
-    matches: item => item.kind === "account_security" && item.links[0]?.kind === "account",
+    matches: item => item.kind === "account_security" && item.links?.[0]?.kind === "account",
   },
 ];
 
@@ -97,8 +97,11 @@ export function buildScheduleWindow(
 
   let start = addDaysIso(anchor, -3);
   let end = addDaysIso(anchor, 14);
+  const minStart = addDaysIso(anchor, -10);
   if (dated.length > 0) {
-    if (dated[0]! < start) start = dated[0]!;
+    if (dated[0]! < start) {
+      start = dated[0]! < minStart ? minStart : dated[0]!;
+    }
     if (dated[dated.length - 1]! > end) end = dated[dated.length - 1]!;
   }
   const maxEnd = addDaysIso(start, 27);
@@ -138,18 +141,22 @@ export function sortWorklistItems(
   const sign = direction === "asc" ? 1 : -1;
   return [...items].sort((a, b) => {
     if (field === "task") {
-      return sign * a.title.localeCompare(b.title, "ko");
+      return sign * (a.title ?? "").localeCompare(b.title ?? "", "ko");
     }
-    if (!a.due && !b.due) return 0;
-    if (!a.due) return 1;
-    if (!b.due) return -1;
-    return sign * (Date.parse(a.due) - Date.parse(b.due));
+    const da = a.due ? Date.parse(a.due) : Number.NaN;
+    const db = b.due ? Date.parse(b.due) : Number.NaN;
+    const aValid = !Number.isNaN(da);
+    const bValid = !Number.isNaN(db);
+    if (!aValid && !bValid) return 0;
+    if (!aValid) return 1;
+    if (!bValid) return -1;
+    return sign * (da - db);
   });
 }
 
 /** Canonical workspace-tab href for a worklist item's primary link. */
 export function worklistItemHref(item: AttentionInboxItem): string | null {
-  const link = item.links[0];
+  const link = item.links?.[0];
   if (!link) return null;
   switch (link.kind) {
     case "org_change":
@@ -164,6 +171,8 @@ export function worklistItemHref(item: AttentionInboxItem): string | null {
       return `/people/exits/${encodeURIComponent(link.id)}`;
     case "period_lock":
       return `/people/period-locks?review=${encodeURIComponent(link.id)}`;
+    case "pay_run":
+      return `/payroll/runs/${encodeURIComponent(link.id)}`;
     case "statutory":
       return `/statutory?event=${encodeURIComponent(link.id)}`;
     case "support_session":

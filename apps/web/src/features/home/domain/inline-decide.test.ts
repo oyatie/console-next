@@ -106,3 +106,37 @@ test("isStatutoryDeadline and schedule helpers preserve KST day boundaries and u
     "u1",
   ]);
 });
+
+test("buildScheduleWindow keeps today and near-term items in range when far-overdue or far-future items exist", () => {
+  const veryOld = sample({ id: "old-35", due: "2026-10-06T09:00:00+09:00" });
+  const dueToday = sample({ id: "due-today", due: "2026-11-10T09:00:00+09:00" });
+  const dueSoon = sample({ id: "due-soon", due: "2026-11-12T09:00:00+09:00" });
+  const farFuture = sample({ id: "far-future", due: "2026-12-25T09:00:00+09:00" });
+
+  const withOld = buildScheduleWindow([veryOld, dueToday, dueSoon], "2026-11-10T09:00:00+09:00");
+  expect(withOld.days.length).toBeLessThanOrEqual(28);
+  expect(withOld.days.find(d => d.date === "2026-11-10")?.bucket).toBe("today");
+  expect(withOld.days.some(d => d.date === "2026-11-12")).toBe(true);
+
+  const withBoth = buildScheduleWindow([veryOld, dueToday, farFuture], "2026-11-10T09:00:00+09:00");
+  expect(withBoth.days.length).toBeLessThanOrEqual(28);
+  expect(withBoth.days.find(d => d.date === "2026-11-10")?.bucket).toBe("today");
+});
+
+test("sortWorklistItems and inlineDecisionClass guard invalid dates, null titles, and missing links", () => {
+  const items = [
+    sample({ id: "b1", due: "2026-11-15T00:00:00Z" }),
+    sample({ id: "b2", due: "not-a-date" }),
+    sample({ id: "b3", due: "2026-11-10T00:00:00Z" }),
+  ];
+  expect(sortWorklistItems(items, "due", "asc").map(i => i.id)).toEqual(["b3", "b1", "b2"]);
+
+  const withNullTitle = [
+    sample({ id: "t1", title: "Alpha" }),
+    { ...sample({ id: "t2" }), title: null as unknown as string },
+  ];
+  expect(sortWorklistItems(withNullTitle, "task", "asc").map(i => i.id)).toEqual(["t2", "t1"]);
+
+  const missingLinks = { ...sample({ id: "no-links" }), links: undefined as unknown as AttentionInboxItem["links"] };
+  expect(inlineDecisionClass(missingLinks)).toBeNull();
+});

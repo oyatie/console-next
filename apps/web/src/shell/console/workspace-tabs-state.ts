@@ -12,6 +12,16 @@ type StoredTab = {
   pinned?: boolean;
 };
 
+const hrefPath = (href: string): string => {
+  const cut = href.search(/[?#]/);
+  return (cut === -1 ? href : href.slice(0, cut)) || "/";
+};
+
+const hasQueryOrHash = (href: string): boolean => href.includes("?") || href.includes("#");
+
+const sameTabTarget = (tabHref: string, pathname: string): boolean =>
+  tabHref === pathname || (!hasQueryOrHash(pathname) && hrefPath(tabHref) === pathname);
+
 export function readStoredWorkspaceTabs(storageKey: string | null): StoredTab[] | null {
   if (!storageKey || typeof localStorage === "undefined") return null;
   try {
@@ -75,22 +85,38 @@ export function reconcileWorkspaceTabs(
     label: defaultLabel,
     pinned: true,
   };
-  const rest = previous.filter((tab, idx) => idx > 0 && tab.href !== defaultHref).slice(0, MAX_WORKSPACE_TABS - 1);
+  const rest = previous.filter((tab, idx) => idx > 0 && hrefPath(tab.href) !== defaultHref).slice(0, MAX_WORKSPACE_TABS - 1);
   const base = [pinnedHome, ...rest];
 
-  if (pathname === defaultHref) {
+  if (sameTabTarget(defaultHref, pathname)) {
     return { tabs: base, activeId: pinnedHome.id };
   }
 
-  const existing = base.find(tab => tab.href === pathname);
-  if (existing) {
+  const exact = base.find(tab => tab.href === pathname);
+  if (exact) {
     return {
-      tabs: base.map(tab => (tab.id === existing.id ? { ...tab, label: pathLabel } : tab)),
-      activeId: existing.id,
+      tabs: base.map(tab => (tab.id === exact.id ? { ...tab, label: pathLabel } : tab)),
+      activeId: exact.id,
     };
   }
 
   const activeNonPinnedIdx = base.findIndex((tab, idx) => idx > 0 && tab.id === activeId && !tab.pinned);
+  const activeTab = activeNonPinnedIdx > 0 ? base[activeNonPinnedIdx] : undefined;
+  if (activeTab && sameTabTarget(activeTab.href, pathname)) {
+    return {
+      tabs: base.map((tab, idx) => (idx === activeNonPinnedIdx ? { ...tab, label: pathLabel } : tab)),
+      activeId: activeTab.id,
+    };
+  }
+
+  const existingByPath = !hasQueryOrHash(pathname) ? base.find((tab, idx) => idx > 0 && hrefPath(tab.href) === pathname) : undefined;
+  if (existingByPath) {
+    return {
+      tabs: base.map(tab => (tab.id === existingByPath.id ? { ...tab, label: pathLabel } : tab)),
+      activeId: existingByPath.id,
+    };
+  }
+
   if (activeNonPinnedIdx > 0) {
     const target = base[activeNonPinnedIdx]!;
     const updated = base.map((tab, idx) =>
@@ -195,7 +221,7 @@ export function useWorkspaceTabs({
     setState({ key: storageKey, ...reconciled });
   } else {
     const activeTab = state.tabs.find(tab => tab.id === state.activeId);
-    if (!activeTab || activeTab.href !== pathname || activeTab.label !== pathLabel || state.tabs[0]?.label !== defaultLabel) {
+    if (!activeTab || !sameTabTarget(activeTab.href, pathname) || activeTab.label !== pathLabel || state.tabs[0]?.label !== defaultLabel) {
       const reconciled = reconcileWorkspaceTabs(state.tabs, state.activeId, {
         defaultHref,
         defaultLabel,

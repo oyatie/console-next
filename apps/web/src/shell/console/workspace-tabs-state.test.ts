@@ -64,3 +64,26 @@ test("appendExplicitWorkspaceTab caps open tabs at MAX_WORKSPACE_TABS and closeW
   expect(closed.tabs).toHaveLength(MAX_WORKSPACE_TABS - 1);
   expect(closed.navigateTo).toBe(`/people/${MAX_WORKSPACE_TABS + 1}`);
 });
+
+test("reconcileWorkspaceTabs preserves query and hash on explicit tabs when reconciled against bare pathname", () => {
+  const initial = reconcileWorkspaceTabs([], undefined, {
+    defaultHref: "/",
+    defaultLabel: "Home",
+    pathname: "/",
+    pathLabel: "Home",
+  });
+  const opened = appendExplicitWorkspaceTab(initial.tabs, {
+    href: "/org/entities?correction=corr-1#identifier-corrections",
+    label: "Entities",
+  });
+  const afterNav = reconcileWorkspaceTabs(opened.tabs, opened.activeId, {
+    defaultHref: "/",
+    defaultLabel: "Home",
+    pathname: "/org/entities",
+    pathLabel: "Entities",
+  });
+  expect(afterNav.activeId).toBe(opened.activeId);
+  expect(afterNav.tabs.find(tab => tab.id === opened.activeId)?.href).toBe(
+    "/org/entities?correction=corr-1#identifier-corrections",
+  );
+});

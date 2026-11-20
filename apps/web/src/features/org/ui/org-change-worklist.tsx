@@ -26,23 +26,25 @@ import {
   WorklistSummaryHead,
   type WorklistChainStep,
 } from "../../../ui/patterns/worklist-parts";
-import { shortMonthDay } from "../../../lib/pure/today";
+import { shortMonthDay } from "../../../lib/pure/kst-day";
 import { changeCommands, changeQuery } from "../api";
 import s from "./org-change-worklist.module.css";
 
 type Detail = components["schemas"]["OrgChangeDetail"];
 type Op = components["schemas"]["OrgProposalOp"];
 
+type UnitSummary = { name: string; headcount: number };
+
 function proposalDiffRows(
   detail: Detail,
-  unitName: (id?: string | null) => string | undefined,
+  unitById: (id?: string | null) => UnitSummary | undefined,
 ) {
   const names = {
-    unit: unitName,
+    unit: (id?: string | null) => unitById(id)?.name,
     region: () => undefined,
     branch: () => undefined,
   };
-  const fallback = (id?: string | null) => unitName(id) ?? (id ? id.slice(0, 8) : "—");
+  const fallback = (id?: string | null) => unitById(id)?.name ?? (id ? id.slice(0, 8) : "—");
   return detail.proposal.map((op: Op, idx: number) => {
     switch (op.op) {
       case "RENAME_ORG_UNIT":
@@ -59,20 +61,34 @@ function proposalDiffRows(
           before: detail.target.label || "—",
           after: fallback(op.parentId),
         };
-      case "REASSIGN_ORG_UNIT":
+      case "REASSIGN_ORG_UNIT": {
+        const fromUnit = unitById(op.fromOrgUnit);
+        const toUnit = unitById(op.toOrgUnit);
+        const moved = op.employeeIds?.length ?? fromUnit?.headcount ?? detail.headcount;
+        if (toUnit && moved > 0) {
+          return {
+            id: `op-${idx}`,
+            subject: toUnit.name,
+            before: t("home.worklist.personCount", { count: toUnit.headcount }),
+            after: t("home.worklist.personCount", { count: toUnit.headcount + moved }),
+          };
+        }
         return {
           id: `op-${idx}`,
           subject: fallback(op.fromOrgUnit),
           before: fallback(op.fromOrgUnit),
           after: fallback(op.toOrgUnit),
         };
-      case "DISSOLVE_ORG_UNIT":
+      }
+      case "DISSOLVE_ORG_UNIT": {
+        const unit = unitById(op.orgUnitId);
         return {
           id: `op-${idx}`,
           subject: fallback(op.orgUnitId),
-          before: fallback(op.orgUnitId),
-          after: op.mergedInto ? fallback(op.mergedInto) : t("orgPropose.diff.chip.dissolved"),
+          before: unit ? t("home.worklist.personCount", { count: unit.headcount }) : fallback(op.orgUnitId),
+          after: t("orgPropose.diff.chip.dissolved"),
         };
+      }
       case "CREATE_ORG_UNIT":
         return {
           id: `op-${idx}`,
@@ -142,7 +158,7 @@ export function OrgChangeWorklistBody({
 }) {
   const detail = freshOnOpen(useQuery({ ...changeQuery(id), refetchOnMount: "always" }));
   const units = useQuery(unitsQuery);
-  const unitMap = new Map((units.data?.items ?? []).map(u => [u.id, u.name]));
+  const unitMap = new Map((units.data?.items ?? []).map(u => [u.id, { name: u.name, headcount: u.headcount }]));
 
   return (
     <QueryState q={detail}>

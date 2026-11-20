@@ -17,8 +17,12 @@ type OrgStructure = components["schemas"]["OrgStructure"];
 const state = vi.hoisted(() => ({
   experience: "console" as "baseline" | "console",
   access: { is_ops: false, entries: [] as unknown[] },
+  mePhase: "OPERATING" as "OPERATING" | "SETUP",
+  meFetched: true,
   facets: undefined as Facets | undefined,
+  facetsError: false,
   structure: undefined as OrgStructure | undefined,
+  orgUnits: [] as { id: string; name: string; headcount: number }[],
   orgDetail: undefined as OrgDetail | undefined,
   reads: [] as string[],
   inboxPages: [] as AttentionInboxResponse[],
@@ -34,16 +38,17 @@ vi.mock("@tanstack/react-query", async original => ({
   useQuery: (options: Parameters<typeof readIdentity>[0] & { enabled?: boolean }) => {
     const path = String(JSON.parse(readIdentity(options))[0]);
     if (options.enabled === false) {
-      return { data: undefined, isPending: true, isFetching: false, isError: false, isSuccess: false };
+      return { data: undefined, isPending: true, isFetching: false, isError: false, isSuccess: false, isFetchedAfterMount: false };
     }
     state.reads.push(path);
     if (path === "/api/v1/users/me") {
       return {
-        data: { display_name: "Tester", tenant: { name: "Corp", phase: "OPERATING", go_live_at: "2026-01-01T00:00:00Z" } },
+        data: { display_name: "Tester", tenant: { name: "Corp", phase: state.mePhase, go_live_at: "2026-01-01T00:00:00Z" } },
         isPending: false,
         isFetching: false,
         isError: false,
         isSuccess: true,
+        isFetchedAfterMount: state.meFetched,
         dataUpdatedAt: 1,
       };
     }
@@ -54,15 +59,17 @@ vi.mock("@tanstack/react-query", async original => ({
         isFetching: false,
         isError: false,
         isSuccess: true,
+        isFetchedAfterMount: true,
       };
     }
     if (path === "/api/v1/employees/facets") {
       return {
-        data: state.facets,
+        data: state.facetsError ? undefined : state.facets,
         isPending: false,
         isFetching: false,
-        isError: false,
-        isSuccess: Boolean(state.facets),
+        isError: state.facetsError,
+        error: state.facetsError ? new Error("facets failed") : null,
+        isSuccess: !state.facetsError && Boolean(state.facets),
       };
     }
     if (path === "/api/v1/org-structure") {
@@ -74,16 +81,26 @@ vi.mock("@tanstack/react-query", async original => ({
         isSuccess: Boolean(state.structure),
       };
     }
+    if (path === "/api/v1/org-units") {
+      return {
+        data: { items: state.orgUnits },
+        isPending: false,
+        isFetching: false,
+        isError: false,
+        isSuccess: true,
+      };
+    }
     if (path === "/api/v1/org-changes/{id}") {
       return {
         data: state.orgDetail,
         isPending: false,
         isFetching: false,
         isError: false,
+        isFetchedAfterMount: true,
         isSuccess: Boolean(state.orgDetail),
       };
     }
-    return { data: { items: [] }, isPending: false, isFetching: false, isError: false, isSuccess: true };
+    return { data: { items: [] }, isPending: false, isFetching: false, isError: false, isSuccess: true, isFetchedAfterMount: true };
   },
   useInfiniteQuery: () => ({
     data: { pages: state.inboxPages },
@@ -170,8 +187,12 @@ beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   state.experience = "console";
   state.access = { is_ops: false, entries: [] };
+  state.mePhase = "OPERATING";
+  state.meFetched = true;
   state.facets = undefined;
+  state.facetsError = false;
   state.structure = undefined;
+  state.orgUnits = [];
   state.orgDetail = undefined;
   state.reads = [];
   state.inboxPages = [samplePage()];

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components } from "@console/api";
+import { t } from "@console/i18n";
 import raw from "./saeon-universe.json" with { type: "json" };
 import {
   brnChecksumValid,
@@ -400,30 +401,35 @@ export function saeonWorklistInbox(): S["ActionInboxResponse"] & {
           : "neutral";
     const isPrimaryApproval = row.id === approval.documentNumber;
     const isSecondaryApproval = row.kind === "approval" && !isPrimaryApproval;
+    const isAttendanceClose = row.id === "att-close-1";
     const kind =
       row.kind === "approval"
         ? "org_change_approve"
-        : row.statutory && row.id.startsWith("ins-")
-          ? "insurance_filing"
-          : row.statutory && row.id.startsWith("exit-")
-            ? "hr_exit_settle"
-            : row.id.startsWith("exit-")
-              ? "hr_exit_confirm"
-              : row.id.startsWith("probation-")
-                ? "contract_renewal"
-                : row.id.startsWith("missing-")
-                  ? "register_review"
-                  : "hr_request";
+        : isAttendanceClose
+          ? "period_unlock"
+          : row.statutory && row.id.startsWith("ins-")
+            ? "insurance_filing"
+            : row.statutory && row.id.startsWith("exit-")
+              ? "hr_exit_settle"
+              : row.id.startsWith("exit-")
+                ? "hr_exit_confirm"
+                : row.id.startsWith("probation-")
+                  ? "contract_renewal"
+                  : row.id.startsWith("missing-")
+                    ? "register_review"
+                    : "hr_request";
     const linkKind =
       row.kind === "approval"
         ? "org_change"
-        : kind === "insurance_filing"
-          ? "statutory"
-          : kind.startsWith("hr_exit")
-            ? "exit_case"
-            : kind === "contract_renewal" || kind === "register_review"
-              ? "employee"
-              : "change_request";
+        : isAttendanceClose
+          ? "period_lock"
+          : kind === "insurance_filing"
+            ? "statutory"
+            : kind.startsWith("hr_exit")
+              ? "exit_case"
+              : kind === "contract_renewal" || kind === "register_review"
+                ? "employee"
+                : "change_request";
     const linkId = isPrimaryApproval
       ? SAEON_ORG_CHANGE_ID
       : `00000000-0000-4000-8600-${padDigits(index + 1, 12)}`;
@@ -453,11 +459,31 @@ export function saeonWorklistInbox(): S["ActionInboxResponse"] & {
               reason: row.reason,
             }
           : { reason: row.reason }),
+        ...(isAttendanceClose ? { worksite_name: saeonUniverse.entities[0]!.workplaces[1]!.name } : {}),
         ...(isSecondaryApproval ? { is_ops: false } : {}),
         ...(kind === "register_review" ? { register: { missing_fields: ["address"] } } : {}),
         ...(orgUnits[0] && isPrimaryApproval ? { worksite_name: undefined } : {}),
       },
     };
+  });
+
+  items.push({
+    id: "payroll-oct-1",
+    kind: "payroll",
+    urg: "wait",
+    ref: "",
+    title: `${saeonUniverse.payrollRun.yearMonth} ${t("accessCodes.domain.pay")}`,
+    site: `${saeonUniverse.payrollRun.entityName} · ${t("home.worklist.personCount", { count: saeonUniverse.payrollRun.headcount })}`,
+    due: undefined,
+    dueTone: "neutral",
+    links: [{ kind: "pay_run", id: "00000000-0000-4000-8600-000000000011" }],
+    done: false,
+    lane: "turn",
+    days_remaining: null,
+    snooze: { allowed: true },
+    context: {
+      reason: `${t("payroll.create.payDate")} ${saeonUniverse.payrollRun.payDate.slice(5)} · ${t("accessCodes.domain.bank")} ${t("person.field.notSet")} ${t("home.worklist.personCount", { count: saeonUniverse.payrollRun.missingBankAccountCount })}`,
+    },
   });
 
   return {
