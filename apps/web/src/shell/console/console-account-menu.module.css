@@ -1,0 +1,79 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.accountWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.accountBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-height: var(--control-h);
+  padding: 0 var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.accountBtn:hover {
+  background: var(--muted);
+  color: var(--ink);
+}
+
+.accountName {
+  max-inline-size: calc(var(--space-6) * 4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountPop {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline-end: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  flex-direction: column;
+  min-inline-size: calc(var(--space-6) * 6);
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-pop);
+}
+
+.accountItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--control-h);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.accountItem:hover {
+  background: var(--muted);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.accountRule {
+  border: 0;
+  border-block-start: 1px solid var(--border);
+  margin: var(--space-1) 0;
+}

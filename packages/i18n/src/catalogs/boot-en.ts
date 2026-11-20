@@ -35,6 +35,7 @@ export const bootEn = {
   "shell.tabs.new": "Open new tab",
   "shell.tabs.more": "More open tabs",
   "shell.status.label": "Workspace status",
+  "shell.scope.allEntities": "All entities",
   "shell.hub.work": "Work",
   "shell.hub.approvals": "Approvals",
   "shell.hub.people": "Organization and people",

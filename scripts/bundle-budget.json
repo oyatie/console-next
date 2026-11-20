@@ -10,8 +10,11 @@
       "src/features/structure/ui/jump-palette.tsx",
       "src/lib/react/route-error.tsx",
       "src/lib/react/session.ts",
+      "src/shell/console/console-account-menu.tsx",
+      "src/shell/console/console-phone-chrome.tsx",
       "src/shell/top-bar/needs-me.tsx",
-      "src/shell/top-bar/needs-me-panel.tsx"
+      "src/shell/top-bar/needs-me-panel.tsx",
+      "src/ui/bar-overflow-links.tsx"
     ]
   },
   "list": {
@@ -101,8 +104,8 @@
     ]
   },
   "pack": {
-    "budget_kb": 69,
+    "budget_kb": 77,
     "css_budget_kb": 8,
-    "routes": ["src/shell/baseline/shell.tsx"]
+    "routes": ["src/shell/baseline/shell.tsx", "src/shell/console/shell.tsx"]
   }
 }

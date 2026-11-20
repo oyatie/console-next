@@ -58,6 +58,21 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         expect(loads).toBe(0);
         page.off("load", onLoad);
 
+        if (id === "console") {
+          await expect(page.locator("[data-console-shell]")).toBeVisible();
+          if (width === 1440) {
+            await expect(page.getByRole("navigation", { name: t("shell.tabs.label") })).toBeVisible();
+            await expect(page.getByRole("contentinfo", { name: t("shell.status.label") })).toBeVisible();
+          } else {
+            await expect(page.getByRole("navigation", { name: t("shell.nav") })).toBeVisible();
+          }
+          await fits(page, `console shell ${width} ${theme}`);
+          await page.screenshot({ path: info.outputPath("console-shell.png") });
+          await expectAxe(page, `console shell ${width} ${theme}`);
+        } else {
+          await expect(page.locator("[data-console-shell]")).toHaveCount(0);
+        }
+
         await page.reload();
         expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string }).experienceAtBoot)).toBe(id);
         await expect(chooser).toHaveValue(id);

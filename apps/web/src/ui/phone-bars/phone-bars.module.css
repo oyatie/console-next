@@ -165,36 +165,3 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.menu {
-  display: flex;
-  flex-direction: column;
-  min-inline-size: calc(var(--space-6) * 5);
-  padding: var(--space-1);
-  outline: none;
-}
-
-.menuItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-height: var(--target-touch);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius);
-  color: var(--ink);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-medium);
-  cursor: pointer;
-  outline: none;
-}
-
-.menuItem[data-hovered],
-.menuItem[data-focused] {
-  background: var(--muted);
-}
-
-.menuItem[data-active] {
-  color: var(--primary);
-  font-weight: var(--fw-strong);
-}

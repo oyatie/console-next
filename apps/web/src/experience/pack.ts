@@ -9,17 +9,20 @@ type ShellComponent = ComponentType<ShellProps>;
 type PackLoader = () => Promise<{ default: ShellComponent }>;
 
 const baselineLoader: PackLoader = () => import("../shell/baseline/shell");
+const consoleLoader: PackLoader = () =>
+  import("../shell/console/shell").then(m => ({ default: m.ConsoleShell }));
 const BaselineShell: LazyExoticComponent<ShellComponent> = lazy(screen(baselineLoader));
+const ConsoleShell: LazyExoticComponent<ShellComponent> = lazy(screen(consoleLoader));
 
 const packs = {
   baseline: baselineLoader,
-  console: baselineLoader,
+  console: consoleLoader,
   "warm-clear": baselineLoader,
 } satisfies Record<ExperienceId, PackLoader>;
 
 const shells = {
   baseline: BaselineShell,
-  console: BaselineShell,
+  console: ConsoleShell,
   "warm-clear": BaselineShell,
 } satisfies Record<ExperienceId, LazyExoticComponent<ShellComponent>>;
 

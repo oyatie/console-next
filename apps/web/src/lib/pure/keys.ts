@@ -41,6 +41,7 @@ export const KEYMAP = {
   "registerRun.next": { keys: ["Mod+Enter"], scope: "page", inField: true, inDialog: true },
   "registerRun.finish": { keys: ["Mod+Shift+Enter"], scope: "page", inField: true, inDialog: true },
   "registerSheet.save": { keys: ["Mod+Shift+Enter"], scope: "region", inField: true },
+  "shell.search": { keys: ["/"], scope: "page" },
 } as const satisfies Record<string, Binding>;
 
 export type KeyId = keyof typeof KEYMAP;

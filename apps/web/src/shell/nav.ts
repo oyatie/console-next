@@ -10,7 +10,7 @@ import { APPROVALS_MODULE, moduleReady, PAYROLL_MODULE } from "../reference/onbo
 
 type Modules = AllPaths["/api/v1/onboarding/modules"]["get"]["responses"][200]["content"]["application/json"];
 type NavCountKey = "inbox" | "approvals";
-type NavLink = { to: string; label: MessageId; icon: LucideIcon; countKey?: NavCountKey; module?: Modules[number]["key"]; requireReadiness?: boolean; supportApproval?: boolean; views?: readonly { to: string }[] };
+export type NavLink = { to: string; label: MessageId; icon: LucideIcon; countKey?: NavCountKey; module?: Modules[number]["key"]; requireReadiness?: boolean; supportApproval?: boolean; views?: readonly { to: string }[] };
 export type NavHub = { hub: MessageId; links: readonly NavLink[] };
 type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
 // null preserves an unanswered modules read across reloads without treating it as ready.

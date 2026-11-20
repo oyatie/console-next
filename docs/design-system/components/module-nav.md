@@ -20,7 +20,7 @@ Use it inside the desktop application frame (`[data-surface="chrome"]`) when top
 - **Landmark:** `<nav aria-label={label}>`.
 - **Inline list:** `<ul>` of `<li>` entries, each holding an `<a>` (or caller-supplied router link) with `<bdi>` label text and an optional `Badge` (`tone="attention"`) when `count > 0`.
 - **Measurement shadow:** an off-flow `aria-hidden="true"` `inert` row observed by `ResizeObserver` so `partitionBarOverflow` keeps the active module inline whenever space allows.
-- **Overflow trigger:** an optional `ActionMenu` with an ellipsis icon when one or more items exceed the bar's inline width.
+- **Overflow trigger:** an optional `BarOverflowLinks` disclosure (`aria-expanded`) with an ellipsis icon when one or more items exceed the bar's inline width.
 
 ## Looks and sizes
 
@@ -32,14 +32,14 @@ One compact height (`min-height: var(--control-h)`, stretching to fill the enclo
 - **Hover:** `--muted` fill and `--ink` text without underline.
 - **Focus:** `2px solid var(--primary)` outline inset by `-2px`.
 - **Current page (`aria-current="page"`):** `--primary-soft` fill, `--ink` bold text, and a `2px` bottom `--primary` border.
-- **Overflow:** items that do not fit inline move into the trailing `ActionMenu`; the active item stays inline whenever its width plus the overflow trigger fits the container.
+- **Overflow:** items that do not fit inline move into the trailing `BarOverflowLinks` disclosure; the active item stays inline whenever its width plus the overflow trigger fits the container.
 - **Disabled / invalid / read-only / loading:** there is no disabled, invalid, read-only, or loading look; callers pass only destinations the signed-in account can open, and an empty `items` array renders nothing.
 
 ## Keyboard
 
 - `Tab` / `Shift+Tab` moves across visible module links and, when present, the overflow trigger button.
 - `Enter` follows the focused module link or opens the overflow menu.
-- Inside the overflow `ActionMenu`, `ArrowDown`, `ArrowUp`, `Home`, `End`, and `Escape` follow React Aria menu behaviour; Korean input method composition keys do not trigger navigation.
+- Inside the overflow disclosure, `ArrowDown`, `ArrowUp`, `Home`, `End`, and `Escape` move focus across links or close back to the trigger; Korean input method composition keys do not trigger navigation.
 
 ## Accessibility contract
 

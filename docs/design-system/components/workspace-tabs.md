@@ -20,7 +20,7 @@ Use it in the desktop application shell directly below the top bar to let operat
 - **Tab cells:** `<ul>` of `<li>` cells separated by `1px solid var(--border)` rules. Each cell holds:
   1. A route link (`<a>` or `renderLink`) containing `<bdi>` text and an optional `Badge`.
   2. For non-pinned tabs after index `0` when `onClose` is provided, a **sibling** `<button type="button">` (`--target` square: `24×24` on Console desktop) that closes the tab without nesting an interactive control inside `<a>`.
-- **Trailing rail:** `.tail` spans the remaining inline space with a `1px solid var(--border)` bottom rule, an optional `+` button (`onAdd`), and an overflow `ActionMenu` when tabs exceed the strip width.
+- **Trailing rail:** `.tail` spans the remaining inline space with a `1px solid var(--border)` bottom rule, an optional `+` button (`onAdd`), and an overflow `BarOverflowLinks` disclosure when tabs exceed the strip width.
 - **Measurement shadow:** an off-flow `aria-hidden="true"` `inert` row observed by `ResizeObserver` so `partitionBarOverflow` keeps the active tab visible inline.
 
 ## Looks and sizes

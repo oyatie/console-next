@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Ellipsis } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtNumber } from "@console/i18n/format";
+import { chunk } from "../../lib/chunk-guard";
 import { partitionBarOverflow } from "../bar-overflow";
 import { Badge } from "../badge/badge";
-import { ActionMenu } from "../menu/action-menu";
 import s from "./module-nav.module.css";
+
+const BarOverflowLinks = lazy(() =>
+  chunk(import("../bar-overflow-links")).then(m => ({ default: m.BarOverflowLinks })),
+);
 
 export type ModuleNavItem = {
   /** Stable identifier for the module destination. */
@@ -159,21 +162,30 @@ export function ModuleNavBar({
       </ul>
       {overflowIndices.length > 0 ? (
         <div className={s.more}>
-          <ActionMenu
-            label={resolvedMoreLabel}
-            trigger={<Ellipsis size={16} aria-hidden="true" />}
-            actions={overflowIndices.map(idx => {
-              const item = items[idx]!;
-              return {
-                id: item.id,
-                label: item.count !== undefined && item.count > 0 ? `${item.label} (${fmtNumber(item.count)})` : item.label,
-                onAction: () => {
-                  if (onNavigate) onNavigate(item);
-                  else window.location.assign(item.href);
-                },
-              };
-            })}
-          />
+          <Suspense fallback={null}>
+            <BarOverflowLinks
+              label={resolvedMoreLabel}
+              trigger={<Ellipsis size={16} aria-hidden="true" />}
+              entries={overflowIndices.map(idx => {
+                const item = items[idx]!;
+                return {
+                  id: item.id,
+                  label: item.label,
+                  href: item.href,
+                  count: item.count,
+                  current: item.id === activeId,
+                };
+              })}
+              onSelect={
+                onNavigate
+                  ? entry => {
+                      const matched = items.find(item => item.id === entry.id);
+                      if (matched) onNavigate(matched);
+                    }
+                  : undefined
+              }
+            />
+          </Suspense>
         </div>
       ) : null}
     </nav>

@@ -45,7 +45,7 @@ test("PhoneTopBar and PhoneBottomNav pass WCAG 2.2 AA axe checks, meet 52px/56px
   expect(geometry.bottomHeight).toBeGreaterThanOrEqual(56);
 
   await overflowDemo.getByRole("button", { name: t("shell.nav.more") }).click();
-  await page.getByRole("menuitem", { name: t("shell.link.org") }).click();
+  await overflowDemo.getByRole("link", { name: t("shell.link.org") }).click();
   await expect
     .poll(async () => await overflowDemo.getByRole("button", { name: t("shell.nav.more") }).getAttribute("data-active"))
     .toBe("true");

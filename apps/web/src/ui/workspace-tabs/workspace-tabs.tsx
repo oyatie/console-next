@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { lazy, Suspense, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Ellipsis, Plus, X } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtNumber } from "@console/i18n/format";
+import { chunk } from "../../lib/chunk-guard";
 import { isImeKey } from "../../lib/pure/ime";
 import { partitionBarOverflow } from "../bar-overflow";
 import { Badge } from "../badge/badge";
-import { ActionMenu } from "../menu/action-menu";
 import s from "./workspace-tabs.module.css";
+
+const BarOverflowLinks = lazy(() =>
+  chunk(import("../bar-overflow-links")).then(m => ({ default: m.BarOverflowLinks })),
+);
 
 export type WorkspaceTab = {
   /** Stable identifier of the open workspace tab. */
@@ -264,21 +267,30 @@ export function WorkspaceTabs({
         ) : null}
         {overflowIndices.length > 0 ? (
           <div className={s.moreWrap}>
-            <ActionMenu
-              label={resolvedMoreLabel}
-              trigger={<Ellipsis size={16} aria-hidden="true" />}
-              actions={overflowIndices.map(idx => {
-                const tab = tabs[idx]!;
-                return {
-                  id: tab.id,
-                  label: tab.count !== undefined && tab.count > 0 ? `${tab.label} (${fmtNumber(tab.count)})` : tab.label,
-                  onAction: () => {
-                    if (onSelect) onSelect(tab);
-                    else window.location.assign(tab.href);
-                  },
-                };
-              })}
-            />
+            <Suspense fallback={null}>
+              <BarOverflowLinks
+                label={resolvedMoreLabel}
+                trigger={<Ellipsis size={16} aria-hidden="true" />}
+                entries={overflowIndices.map(idx => {
+                  const tab = tabs[idx]!;
+                  return {
+                    id: tab.id,
+                    label: tab.label,
+                    href: tab.href,
+                    count: tab.count,
+                    current: tab.id === activeId,
+                  };
+                })}
+                onSelect={
+                  onSelect
+                    ? entry => {
+                        const matched = tabs.find(tab => tab.id === entry.id);
+                        if (matched) onSelect(matched);
+                      }
+                    : undefined
+                }
+              />
+            </Suspense>
           </div>
         ) : null}
       </div>
