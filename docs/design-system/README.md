@@ -176,6 +176,7 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 | [Module navigation](components/module-nav.md) | `ModuleNavBar` | `apps/web/src/ui/module-nav` |
 | [Month grid](components/month-grid.md) | `MonthGrid` | `apps/web/src/ui/month-grid` |
 | [Page head](components/page-head.md) | `PageHead`, `PageHeadActions`, `Crumbs`, `PhaseLine`, `AsOf` | `apps/web/src/ui/page-head` |
+| [Pane grid](components/pane-grid.md) | `PaneGrid`, `PaneHead` | `apps/web/src/ui/pane-grid` |
 | [Person-day grid](components/person-day-grid.md) | `PersonDayGrid` | `apps/web/src/ui/person-day-grid` |
 | [Phone bars](components/phone-bars.md) | `PhoneTopBar`, `PhoneBottomNav` | `apps/web/src/ui/phone-bars` |
 | [Popover](components/popover.md) | `PopoverButton` | `apps/web/src/ui/popover` |
@@ -186,6 +187,7 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 | [Search](components/search.md) | `SearchField` | `apps/web/src/ui/search` |
 | [Select](components/select.md) | `SelectField` | `apps/web/src/ui/select` |
 | [Sheet](components/sheet.md) | `Sheet` and its draft and read-context helpers | `apps/web/src/ui/sheet` |
+| [Sort control](components/sort-control.md) | `SortControl` | `apps/web/src/ui/sort-control` |
 | [Status bar](components/status-bar.md) | `StatusBar` | `apps/web/src/ui/status-bar` |
 | [Step line](components/step-line.md) | `StepLine` | `apps/web/src/ui/step-line` |
 | [Tree](components/tree.md) | `TreeView` | `apps/web/src/ui/tree` |

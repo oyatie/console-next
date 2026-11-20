@@ -4,8 +4,8 @@
  * inside a line of text (a reservation's cancel in a history row), the app.css `.link` look on a button.
  */
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "ghost-danger" | "link";
-/** md: the default 36 px control · sm: 32 px (`--target`), for a row's verbs, a panel's tools and a toolbar's filters. */
-export type ButtonSize = "md" | "sm";
+/** md: the default control (`--control-h`) · sm: `--target`, for a row's verbs, a panel's tools and a toolbar's filters · lg: `--control-h-lg`, for side-by-side decision actions. */
+export type ButtonSize = "md" | "sm" | "lg";
 
 const CLASS: Record<ButtonVariant, string> = {
   primary: "btn btn--primary",
@@ -20,5 +20,5 @@ const CLASS: Record<ButtonVariant, string> = {
  * The button look as a class list, for the one control that cannot be a Button: a router link that reads as a
  * command (`<Link className={buttonClass("primary")}>`). Everything else renders Button.
  */
-export const buttonClass = (variant: ButtonVariant = "secondary", o: { size?: ButtonSize; icon?: boolean; className?: string } = {}) =>
-  [CLASS[variant], o.size === "sm" && "btn--sm", o.icon && "btn--icon", o.className].filter(Boolean).join(" ");
+export const buttonClass = (variant: ButtonVariant = "secondary", o: { size?: ButtonSize; icon?: boolean; block?: boolean; className?: string } = {}) =>
+  [CLASS[variant], o.size === "sm" && "btn--sm", o.size === "lg" && "btn--lg", o.block && "btn--block", o.icon && "btn--icon", o.className].filter(Boolean).join(" ");
