@@ -141,28 +141,11 @@ function ConsoleLayout({
     t(claims?.platform ? "account.name.unset.operator" : "account.name.unset"),
   );
   const phoneActiveId = pathname === "/account" || pathname.startsWith("/account/") ? "/account" : currentModuleTo;
-
-  const publishedSegments = usePublishedStatusBar();
-  const statusSegments = useMemo(() => {
-    if (publishedSegments && publishedSegments.length > 0) {
-      return publishedSegments;
-    }
-    const segments: { id: string; content: ReactNode; tone?: "default" | "strong" | "attention" }[] = [
-      { id: "scope", content: platform ? t("shell.hub.platform") : tenantName ?? t("app.name"), tone: "strong" },
-      { id: "module", content: currentTitle },
-    ];
-    if (!platform && inboxCount !== undefined && inboxCount > 0) {
-      segments.push({
-        id: "inbox",
-        content: t(inboxExact ? "shell.needsMe.count" : "shell.needsMe.countMore", { count: inboxCount }),
-        tone: "attention",
-      });
-    }
-    return segments;
-  }, [publishedSegments, platform, tenantName, currentTitle, inboxCount, inboxExact]);
+  const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);
+  const phoneHeaderValue = useMemo(() => ({ shellOwnsH1 }), [shellOwnsH1]);
 
   return (
-    <PagePhoneHeader value={{ shellOwnsH1: isPhone && Boolean(phoneHeader?.shellOwnsH1) }}>
+    <PagePhoneHeader value={phoneHeaderValue}>
       <div className={s.shell} data-console-shell="">
         {!isPhone ? (
           <>
@@ -231,16 +214,12 @@ function ConsoleLayout({
         {!isPhone ? (
           <div className={s.statusArea}>
             {!restoring ? (
-              <StatusBar
-                segments={statusSegments}
-                trailing={
-                  !platform ? (
-                    <>
-                      <bdi>{t("shell.jumpLabel")}</bdi>
-                      <Kbd keys={t("shell.jumpKey")} />
-                    </>
-                  ) : undefined
-                }
+              <ConsoleStatusBar
+                platform={platform}
+                tenantName={tenantName}
+                currentTitle={currentTitle}
+                inboxCount={inboxCount}
+                inboxExact={inboxExact}
               />
             ) : null}
           </div>
@@ -253,5 +232,52 @@ function ConsoleLayout({
         ) : null}
       </div>
     </PagePhoneHeader>
+  );
+}
+
+function ConsoleStatusBar({
+  platform,
+  tenantName,
+  currentTitle,
+  inboxCount,
+  inboxExact,
+}: {
+  platform?: boolean;
+  tenantName?: string;
+  currentTitle: string;
+  inboxCount?: number;
+  inboxExact: boolean;
+}) {
+  const publishedSegments = usePublishedStatusBar();
+  const statusSegments = useMemo(() => {
+    if (publishedSegments && publishedSegments.length > 0) {
+      return publishedSegments;
+    }
+    const segments: { id: string; content: ReactNode; tone?: "default" | "strong" | "attention" }[] = [
+      { id: "scope", content: platform ? t("shell.hub.platform") : tenantName ?? t("app.name"), tone: "strong" },
+      { id: "module", content: currentTitle },
+    ];
+    if (!platform && inboxCount !== undefined && inboxCount > 0) {
+      segments.push({
+        id: "inbox",
+        content: t(inboxExact ? "shell.needsMe.count" : "shell.needsMe.countMore", { count: inboxCount }),
+        tone: "attention",
+      });
+    }
+    return segments;
+  }, [publishedSegments, platform, tenantName, currentTitle, inboxCount, inboxExact]);
+
+  return (
+    <StatusBar
+      segments={statusSegments}
+      trailing={
+        !platform ? (
+          <>
+            <bdi>{t("shell.jumpLabel")}</bdi>
+            <Kbd keys={t("shell.jumpKey")} />
+          </>
+        ) : undefined
+      }
+    />
   );
 }

@@ -55,6 +55,7 @@ test("base and Console token files define the frame roles, bar insets, kbd sizin
     "--on-chrome-muted",
     "--chrome-accent",
     "--chrome-attention",
+    "--chrome-danger",
     "--chrome-scheme",
     "--space-half",
     "--space-1-5",
@@ -99,6 +100,8 @@ test("base and Console token files define the frame roles, bar insets, kbd sizin
   expect(cr.light["--on-chrome-muted"]).toBe("#a7b3c0");
   expect(cr.light["--chrome-accent"]).toBe("#6fd3df");
   expect(cr.light["--chrome-attention"]).toBe("#f5bd4f");
+  expect(cr.light["--chrome-danger"]).toBe("#ffb4aa");
+  expect(cr.dark["--chrome-danger"]).toBe("#ffb4aa");
   expect(cr.light["--chrome-scheme"]).toBe("dark");
   expect(cr.light["--radius-avatar"]).toBe("2px");
   expect(cr.light["--kbd-h"]).toBe("16px");
@@ -136,7 +139,7 @@ test("[data-surface='chrome'] repeats every derived token from tokens.css and me
   for (const { label, themes } of overlays) {
     for (const mode of ["light", "dark"] as const) {
       const merged = resolveChildScope(themes[mode], scope);
-      for (const fg of ["--ink", "--steel", "--faint", "--primary", "--warn-tx"]) {
+      for (const fg of ["--ink", "--steel", "--faint", "--primary", "--warn-tx", "--danger-tx"]) {
         for (const bg of ["--surface", "--canvas", "--muted", "--primary-soft"]) {
           const ratio = contrastRatio(merged[fg]!, merged[bg]!);
           expect(meetsContrast(ratio, "text"), `${label} ${mode} chrome scope ${fg} on ${bg}: ${ratio.toFixed(2)}:1`).toBe(true);

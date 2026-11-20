@@ -7,6 +7,8 @@ import s from "./pane-grid.module.css";
 
 const rowElOf = (el: EventTarget | null) => (el instanceof Element ? el.closest<HTMLElement>(ROW_SELECTOR) : null);
 const rowKeyOf = (el: Element | null) => el?.getAttribute("data-row-id") ?? el?.getAttribute("data-id") ?? null;
+const NESTED_CONTROL =
+  'input, select, textarea, button, a[href], summary, [contenteditable]:not([contenteditable="false"]), [role="radio"], [role="radiogroup"], [role="checkbox"], [role="switch"], [role="slider"], [role="spinbutton"], [role="textbox"], [role="combobox"], [role="listbox"], [role="menu"], [role="menuitem"], [role="tab"], [role="button"], [role="link"]';
 
 /** Filled operational pane title bar (`--surface-2`, `1px` `--border` bottom rule) with title, meta, and actions. */
 export function PaneHead({
@@ -84,6 +86,7 @@ export function PaneGrid({
   const openRecord = record || undefined;
   const openRelated = openRecord && related ? related : undefined;
   const depth = openRelated ? 2 : openRecord ? 1 : 0;
+  const prevDepthRef = useRef(depth);
   const liveRef = useRef({ openRecord, openRelated, full, onFull, onSelect, onOpen });
   useLayoutEffect(() => {
     liveRef.current = { openRecord, openRelated, full, onFull, onSelect, onOpen };
@@ -124,6 +127,14 @@ export function PaneGrid({
         return;
       }
       if (e.shiftKey) return;
+      if (
+        e.target instanceof Element &&
+        (e.target !== currentRow
+          ? e.target.closest(NESTED_CONTROL)
+          : e.target instanceof HTMLInputElement && e.target.type === "radio")
+      ) {
+        return;
+      }
       const step = rowStep(e);
       if (!step) return;
       const rows = [...center.querySelectorAll<HTMLElement>(ROW_SELECTOR)].filter(
@@ -169,8 +180,13 @@ export function PaneGrid({
   }, [closePane]);
 
   useEffect(() => {
+    const prevDepth = prevDepthRef.current;
+    prevDepthRef.current = depth;
     const fn = restoreRef.current;
-    if (!fn || depth < 0) return;
+    if (!fn || depth >= prevDepth) {
+      restoreRef.current = null;
+      return;
+    }
     const frame = requestAnimationFrame(() => {
       restoreRef.current = null;
       fn()?.focus();

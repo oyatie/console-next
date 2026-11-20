@@ -105,7 +105,7 @@ export function reconcileWorkspaceTabs(
       const created: StoredTab = { id: workingId, href: pathname, label: pathLabel };
       return { tabs: [pinnedHome, created], activeId: created.id };
     }
-    const nextTab: StoredTab = { id: `tab-${Date.now().toString(36)}`, href: pathname, label: pathLabel };
+    const nextTab: StoredTab = { id: `tab-${pathname}`, href: pathname, label: pathLabel };
     return { tabs: [...base, nextTab], activeId: nextTab.id };
   }
 

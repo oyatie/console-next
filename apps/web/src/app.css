@@ -92,6 +92,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   --primary-bd: var(--chrome-control-border);
   --on-primary: var(--chrome);
   --warn-tx: var(--chrome-attention);
+  --danger-tx: var(--chrome-danger);
+  --over-tx: var(--danger-tx);
   --neutral-solid: var(--control-border);
   --chart-cat-6: var(--faint);
   --chart-axis: var(--control-border);

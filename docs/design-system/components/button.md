@@ -372,8 +372,9 @@ The `link` variant:
 
 | Token | Read by |
 | --- | --- |
-| `--control-border` | `border`, `border-left` |
+| `--control-border` | `border`, `border-color`, `border-left` |
 | `--control-h` | `min-height` |
+| `--control-h-lg` | `min-height` |
 | `--control-selected` | `background` |
 | `--control-selected-border` | `--ring-in` |
 | `--danger-tx` | `color` |

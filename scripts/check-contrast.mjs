@@ -136,7 +136,7 @@ function checkThemes(themes, label = "", baseline = themes) {
     check("--on-signal", "--signal", "text");
     check("--surface", "--ink", "text");
     for (const bg of ["--chrome", "--chrome-raised", "--chrome-hover"]) {
-      for (const fg of ["--on-chrome", "--on-chrome-muted", "--chrome-accent", "--chrome-attention"]) check(fg, bg, "text");
+      for (const fg of ["--on-chrome", "--on-chrome-muted", "--chrome-accent", "--chrome-attention", "--chrome-danger"]) check(fg, bg, "text");
       check("--chrome-control-border", bg, "non-text");
     }
     check("--chrome", "--chrome-attention", "text");
