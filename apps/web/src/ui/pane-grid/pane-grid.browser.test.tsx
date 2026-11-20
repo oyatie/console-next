@@ -101,53 +101,28 @@ describe("StrictMode PaneGrid", () => {
             return React.createElement('button', { type: 'button', 'data-rerender': '', onClick: () => setTick(n => n + 1) }, 'Rerender ' + tick);
           }
           function App() {
-            const [selected, setSelected] = useState(null);
-            const [opened, setOpened] = useState('');
-            const [relatedOpen, setRelatedOpen] = useState(false);
-            const [declineClose, setDeclineClose] = useState(false);
-            const [selectLog, setSelectLog] = useState([]);
-            const [restoreCalls, setRestoreCalls] = useState(0);
-            const rowA = useRef(null);
-            const rowB = useRef(null);
-            const rowC = useRef(null);
-            const outsideBtn = useRef(null);
-            const handleSelect = id => {
-              setSelected(id);
-              setSelectLog(prev => [...prev, id]);
-            };
-            const reset = () => {
-              setSelected(null);
-              setOpened('');
-              setRelatedOpen(false);
-              setDeclineClose(false);
-              setSelectLog([]);
-              setRestoreCalls(0);
-            };
+            const [selected, setSelected] = useState(null), [opened, setOpened] = useState(''), [relatedOpen, setRelatedOpen] = useState(false);
+            const [declineClose, setDeclineClose] = useState(false), [selectLog, setSelectLog] = useState([]), [restoreCalls, setRestoreCalls] = useState(0);
+            const rowA = useRef(null), rowB = useRef(null), rowC = useRef(null), outsideBtn = useRef(null);
+            const handleSelect = id => { setSelected(id); setSelectLog(prev => [...prev, id]); };
+            const reset = () => { setSelected(null); setOpened(''); setRelatedOpen(false); setDeclineClose(false); setSelectLog([]); setRestoreCalls(0); };
             return React.createElement('main', {
-              'data-strict-pane-grid': '',
-              'data-opened': opened,
-              'data-selected': selected ?? '',
-              'data-select-log': selectLog.join(','),
-              'data-restore-calls': String(restoreCalls),
+              'data-strict-pane-grid': '', 'data-opened': opened, 'data-selected': selected ?? '',
+              'data-select-log': selectLog.join(','), 'data-restore-calls': String(restoreCalls),
             },
-              React.createElement(StatusSubscriber),
-              React.createElement(StatusPublisher),
+              React.createElement(StatusSubscriber), React.createElement(StatusPublisher),
               React.createElement('button', { ref: outsideBtn, type: 'button', 'data-outside': '' }, 'Outside'),
               React.createElement('button', { type: 'button', 'data-reset': '', onClick: reset }, 'Reset'),
               React.createElement('button', { type: 'button', 'data-toggle-decline': '', onClick: () => setDeclineClose(v => !v) }, 'Decline ' + declineClose),
               React.createElement('button', { type: 'button', 'data-open-related': '', onClick: () => setRelatedOpen(true) }, 'Open related'),
+              React.createElement('button', { type: 'button', 'data-external-close': '', onClick: () => { setRelatedOpen(false); setSelected(null); } }, 'External close'),
               React.createElement('button', { type: 'button', 'data-rapid-reopen': '', onClick: () => {
-                const closeBtn = document.querySelector('[data-pane="record"] button[aria-label]');
-                flushSync(() => {
-                  const closeBtns = document.querySelectorAll('[data-pane="record"] header button');
-                  closeBtns[closeBtns.length - 1]?.click();
-                });
+                flushSync(() => { const btns = document.querySelectorAll('[data-pane="record"] header button'); btns[btns.length - 1]?.click(); });
                 flushSync(() => setSelected('a'));
                 outsideBtn.current?.focus();
               } }, 'Rapid reopen'),
               React.createElement(PaneGrid, {
-                onSelect: handleSelect,
-                onOpen: setOpened,
+                onSelect: handleSelect, onOpen: setOpened,
                 main: React.createElement('div', null,
                   React.createElement('button', { ref: rowA, type: 'button', 'data-row-id': 'a', onClick: () => handleSelect('a') }, 'Row A'),
                   React.createElement('div', { ref: rowB, tabIndex: 0, role: 'button', 'data-row-id': 'b' }, 'Row B'),
@@ -158,26 +133,16 @@ describe("StrictMode PaneGrid", () => {
                     React.createElement('input', { type: 'checkbox', 'data-checkbox': '' }),
                   ),
                   React.createElement('div', { tabIndex: 0, 'data-row-id': 'r2' }, 'Row R2'),
-                  React.createElement('div', { role: 'grid' },
-                    React.createElement('div', { role: 'row', tabIndex: 0, 'data-row-id': 'g1' }, 'Grid Row'),
-                  ),
+                  React.createElement('div', { role: 'grid' }, React.createElement('div', { role: 'row', tabIndex: 0, 'data-row-id': 'g1' }, 'Grid Row')),
                 ),
                 record: selected ? {
-                  id: selected,
-                  label: 'Record pane',
-                  title: 'Record ' + selected,
+                  id: selected, label: 'Record pane', title: 'Record ' + selected,
                   onClose: () => { if (!declineClose) { setRelatedOpen(false); setSelected(null); } },
-                  returnFocus: () => {
-                    setRestoreCalls(c => c + 1);
-                    return selected === 'b' ? rowB.current : rowA.current;
-                  },
+                  returnFocus: () => { setRestoreCalls(c => c + 1); return selected === 'b' ? rowB.current : rowA.current; },
                   children: React.createElement('button', { type: 'button', 'data-inside-pane': '' }, 'Inside'),
                 } : null,
                 related: relatedOpen ? {
-                  id: 'rel-1',
-                  label: 'Related pane',
-                  title: 'Related 1',
-                  onClose: () => setRelatedOpen(false),
+                  id: 'rel-1', label: 'Related pane', title: 'Related 1', onClose: () => setRelatedOpen(false),
                   children: React.createElement('button', { type: 'button', 'data-inside-related': '' }, 'Inside related'),
                 } : null,
               }),
@@ -208,6 +173,10 @@ describe("StrictMode PaneGrid", () => {
     await server?.close();
   });
 
+  const waitFrames = () => page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+  const activeAttr = (attr: string) => page.evaluate(name => document.activeElement?.getAttribute(name) ?? null, attr);
+  const hasActiveAttr = (attr: string) => page.evaluate(name => Boolean(document.activeElement?.hasAttribute(name)), attr);
+
   test("restores returnFocus in StrictMode, navigates non-grid rows with J/K/Enter, and avoids status-bar churn", async () => {
     await page.locator("[data-reset]").click();
     const rowB = page.locator('[data-row-id="b"]');
@@ -229,27 +198,27 @@ describe("StrictMode PaneGrid", () => {
     await expect.poll(() => main.getAttribute("data-opened")).toBe("b");
 
     await page.keyboard.press("k");
-    await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-row-id"))).toBe("a");
+    await expect.poll(() => activeAttr("data-row-id")).toBe("a");
     await expect.poll(() => main.getAttribute("data-selected")).toBe("a");
 
     await page.keyboard.press("Enter");
     await expect.poll(() => main.getAttribute("data-opened")).toBe("a");
 
     await page.keyboard.press("ArrowDown");
-    await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-row-id"))).toBe("b");
+    await expect.poll(() => activeAttr("data-row-id")).toBe("b");
 
     await page.keyboard.press("ArrowUp");
-    await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-row-id"))).toBe("a");
+    await expect.poll(() => activeAttr("data-row-id")).toBe("a");
     await expect.poll(() => main.getAttribute("data-selected")).toBe("a");
 
     // 3. StrictMode Escape closes pane and restores returnFocus cleanly
     await page.locator("[data-inside-pane]").focus();
     await page.keyboard.press("Escape");
     await expect.poll(() => page.locator('[data-pane="record"]').count()).toBe(0);
-    await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-row-id"))).toBe("a");
+    await expect.poll(() => activeAttr("data-row-id")).toBe("a");
   });
 
-  test("BUG-1: does not restore stale returnFocus when onClose declines or depth rapidly reopens 1 -> 0 -> 1", async () => {
+  test("does not restore stale returnFocus when onClose declines or depth rapidly reopens 1 -> 0 -> 1", async () => {
     await page.locator("[data-reset]").click();
     const main = page.locator("[data-strict-pane-grid]");
 
@@ -263,21 +232,35 @@ describe("StrictMode PaneGrid", () => {
     await page.locator("[data-outside]").focus();
     await page.locator("[data-open-related]").click();
     await expect.poll(() => page.locator('[data-pane="related"]').count()).toBe(1);
-    await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+    await waitFrames();
     expect(await main.getAttribute("data-restore-calls")).toBe("0");
-    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-row-id"))).toBeNull();
+    expect(await activeAttr("data-row-id")).toBeNull();
+
+    // Declined onClose (1 -> 1) followed by a later external programmatic close (1 -> 0)
+    await page.locator("[data-reset]").click();
+    await page.locator('[data-row-id="a"]').click();
+    await expect.poll(() => main.getAttribute("data-selected")).toBe("a");
+    await page.locator("[data-toggle-decline]").click();
+    await page.locator('[data-pane="record"] header button').last().click();
+    await waitFrames();
+    await page.locator("[data-outside]").focus();
+    await page.evaluate(() => (document.querySelector('[data-external-close]') as HTMLElement).click());
+    await expect.poll(() => page.locator('[data-pane="record"]').count()).toBe(0);
+    await waitFrames();
+    expect(await main.getAttribute("data-restore-calls")).toBe("0");
+    expect(await hasActiveAttr("data-outside")).toBe(true);
 
     // Rapid 1 -> 0 -> 1 before rAF fires
     await page.locator("[data-reset]").click();
     await page.locator('[data-row-id="a"]').click();
     await expect.poll(() => page.locator('[data-pane="record"]').count()).toBe(1);
     await page.locator("[data-rapid-reopen]").click();
-    await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+    await waitFrames();
     expect(await main.getAttribute("data-restore-calls")).toBe("0");
-    expect(await page.evaluate(() => document.activeElement?.hasAttribute("data-outside"))).toBe(true);
+    expect(await hasActiveAttr("data-outside")).toBe(true);
   });
 
-  test("BUG-3: nested radio ArrowDown and checkbox j do not hijack row navigation", async () => {
+  test("nested radio ArrowDown and checkbox j do not hijack row navigation", async () => {
     await page.locator("[data-reset]").click();
     const radio1 = page.locator("[data-radio-1]");
     await radio1.focus();
@@ -322,6 +305,10 @@ describe("StrictMode PaneGrid", () => {
       await splitter.focus();
       await page.keyboard.press("ArrowLeft");
       await expect.poll(() => relatedPane.evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(defaultWidth);
+
+      for (let i = 0; i < 10; i++) await page.keyboard.press("ArrowLeft");
+      expect(await splitter.getAttribute("aria-valuenow")).toBe("50");
+      expect(await relatedPane.evaluate(el => el.getBoundingClientRect().width)).toBe(512);
 
       await page.keyboard.press("Home");
       await expect.poll(() => relatedPane.evaluate(el => el.getBoundingClientRect().width)).toBe(defaultWidth);

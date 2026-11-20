@@ -26,17 +26,34 @@ function getSnapshot() {
   return currentSegments;
 }
 
-function sameContent(a: ReactNode, b: ReactNode, depth = 0): boolean {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function sameRecord(a: Record<string, unknown>, b: Record<string, unknown>, depth: number): boolean {
+  const keys = Object.keys(a);
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every(k => Object.hasOwn(b, k) && sameContent(a[k], b[k], depth))
+  );
+}
+
+function sameContent(a: unknown, b: unknown, depth = 0): boolean {
   if (Object.is(a, b)) return true;
-  if (depth >= 8) return false;
-  if (Array.isArray(a) && Array.isArray(b)) {
-    return a.length === b.length && a.every((v, i) => sameContent(v, b[i], depth + 1));
+  if (depth >= 32) return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameContent(v, b[i], depth + 1));
   }
-  if (!isValidElement(a) || !isValidElement(b) || a.type !== b.type || a.key !== b.key) return false;
-  const ap = a.props as Record<string, unknown>;
-  const bp = b.props as Record<string, unknown>;
-  const ak = Object.keys(ap);
-  return ak.length === Object.keys(bp).length && ak.every(k => Object.hasOwn(bp, k) && sameContent(ap[k] as ReactNode, bp[k] as ReactNode, depth + 1));
+  if (isValidElement(a) || isValidElement(b)) {
+    if (!isValidElement(a) || !isValidElement(b) || a.type !== b.type || a.key !== b.key) return false;
+    return sameRecord(a.props as Record<string, unknown>, b.props as Record<string, unknown>, depth + 1);
+  }
+  if (isPlainObject(a) && isPlainObject(b)) {
+    return sameRecord(a, b, depth + 1);
+  }
+  return false;
 }
 
 function sameSegments(a: readonly ScreenStatusSegment[] | null, b: readonly ScreenStatusSegment[] | null) {

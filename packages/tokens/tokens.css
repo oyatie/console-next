@@ -49,6 +49,8 @@
   --chrome-border: var(--border); --chrome-control-border: var(--control-border);
   --on-chrome: var(--ink); --on-chrome-muted: var(--steel);
   --chrome-accent: var(--primary); --chrome-attention: var(--warn-tx); --chrome-danger: var(--danger-tx);
+  --chrome-danger-bg: var(--danger-bg); --chrome-danger-bd: var(--danger-bd); --chrome-danger-solid: var(--danger-solid); --chrome-on-danger: var(--on-danger);
+  --chrome-warn-bg: var(--warn-bg); --chrome-warn-bd: var(--warn-bd);
   --chrome-scheme: light;
   --scrim: rgba(20, 26, 33, 0.32);
 

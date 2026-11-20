@@ -138,8 +138,14 @@ function checkThemes(themes, label = "", baseline = themes) {
     for (const bg of ["--chrome", "--chrome-raised", "--chrome-hover"]) {
       for (const fg of ["--on-chrome", "--on-chrome-muted", "--chrome-accent", "--chrome-attention", "--chrome-danger"]) check(fg, bg, "text");
       check("--chrome-control-border", bg, "non-text");
+      check("--chrome-danger-solid", bg, "non-text");
     }
     check("--chrome", "--chrome-attention", "text");
+    check("--chrome-danger", "--chrome-danger-bg", "text");
+    check("--chrome-attention", "--chrome-warn-bg", "text");
+    check("--chrome-on-danger", "--chrome-danger-solid", "text");
+    check("--chrome-on-danger", "--chrome-danger", "text");
+    check("--chrome-danger-solid", "--chrome-danger-bg", "non-text");
     // Running-text links rely on their underline when the ink and primary hues are close.
     checked++;
     try {
@@ -150,7 +156,7 @@ function checkThemes(themes, label = "", baseline = themes) {
     // Other -bd tokens, --border/--border-soft and chart gridlines carry no shape-only meaning.
     // Sequential steps 1–4 require value labels / a table view (visual-language §3.3).
     const marks = new Set(["--control-border", "--primary", "--chart-axis", "--chart-seq-5", "--chart-edge-entity", "--chart-edge-site", "--chart-edge-dept", "--grid-chg", "--grid-err", "--grid-rng",
-      ...Object.keys(tokens).filter((name) => /-solid$|^--chart-cat-/.test(name))]);
+      ...Object.keys(tokens).filter((name) => !name.startsWith("--chrome-") && /-solid$|^--chart-cat-/.test(name))]);
     for (const fg of marks) for (const bg of ["--surface", "--canvas"]) check(fg, bg, "non-text");
     for (const fg of ["--control-border", "--neutral-solid", "--primary", "--danger-solid"]) check(fg, "--muted", "non-text");
     for (const fg of ["--primary", "--danger-solid"]) for (const bg of ["--primary-soft", "--danger-bg"]) check(fg, bg, "non-text");

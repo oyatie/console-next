@@ -82,21 +82,35 @@ export function PaneGrid({
   const recordRef = useRef<HTMLElement>(null);
   const relatedRef = useRef<HTMLElement>(null);
   const restoreRef = useRef<(() => HTMLElement | null | undefined) | null>(null);
+  const clearRestoreFrameRef = useRef<number | undefined>(undefined);
   const settleRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const openRecord = record || undefined;
   const openRelated = openRecord && related ? related : undefined;
   const depth = openRelated ? 2 : openRecord ? 1 : 0;
   const prevDepthRef = useRef(depth);
-  const liveRef = useRef({ openRecord, openRelated, full, onFull, onSelect, onOpen });
+  const liveRef = useRef({ openRecord, openRelated, full, onFull, onSelect, onOpen, depth });
   useLayoutEffect(() => {
-    liveRef.current = { openRecord, openRelated, full, onFull, onSelect, onOpen };
+    liveRef.current = { openRecord, openRelated, full, onFull, onSelect, onOpen, depth };
   });
 
   const closePane = useCallback((pane: SidePaneSpec) => {
     clearTimeout(settleRef.current);
+    if (clearRestoreFrameRef.current !== undefined) cancelAnimationFrame(clearRestoreFrameRef.current);
+    const fromDepth = liveRef.current.depth;
     restoreRef.current = pane.returnFocus ?? null;
     pane.onClose();
+    clearRestoreFrameRef.current = requestAnimationFrame(() => {
+      clearRestoreFrameRef.current = undefined;
+      if (liveRef.current.depth >= fromDepth) restoreRef.current = null;
+    });
   }, []);
+
+  useEffect(
+    () => () => {
+      if (clearRestoreFrameRef.current !== undefined) cancelAnimationFrame(clearRestoreFrameRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     const center = centerRef.current;

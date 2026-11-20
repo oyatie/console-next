@@ -73,9 +73,20 @@ describe("useScreenStatusBar", () => {
           const TickCtx = createContext(0);
           const SHARED_SEG = [{ id: 'shared', content: 'Shared segment' }];
 
+          function deepNode(levels, text) {
+            let node = React.createElement('span', null, text);
+            for (let i = 0; i < levels; i += 1) {
+              node = React.createElement('div', { 'data-nest': String(i) }, node);
+            }
+            return node;
+          }
+
           function JsxPublisher() {
             const tick = useContext(TickCtx);
-            useScreenStatusBar([{ id: 'jsx', content: React.createElement('span', null, 'JSX') }]);
+            useScreenStatusBar([
+              { id: 'jsx', content: React.createElement('span', { style: { color: 'red', fontWeight: 600 } }, 'JSX') },
+              { id: 'deep', content: deepNode(10, 'Deep') },
+            ]);
             return React.createElement('div', { 'data-jsx-tick': String(tick) });
           }
 
@@ -142,9 +153,10 @@ describe("useScreenStatusBar", () => {
     await expect.poll(() => main.getAttribute("data-first-id")).toBe("jsx");
     const rendersAfterMount = Number(await main.getAttribute("data-renders"));
 
-    // Re-rendering the context-providing subscriber passes a fresh <span>JSX</span> element; renders must stay bounded (no loop).
+    // Re-rendering the context-providing subscriber passes fresh inline-style and 10-deep JSX elements; renders must stay bounded (no loop).
     await page.locator("[data-bump]").click();
     await expect.poll(() => page.locator("[data-jsx-tick]").getAttribute("data-jsx-tick")).toBe("1");
+    expect(await main.getAttribute("data-count")).toBe("2");
     const rendersAfterBump = Number(await main.getAttribute("data-renders"));
     expect(rendersAfterBump - rendersAfterMount).toBeLessThanOrEqual(2);
 
