@@ -88,7 +88,7 @@ The actions, in order:
 
 | Part | Element | Shown when |
 |---|---|---|
-| Commit | `<button type="submit" form="<form id>">`: the label from `action`, then a `Kbd` (see [Kbd](kbd.md)) with the text `⌘↵` | `onSubmit` is given and the commit is not blocked. Its id is `commitId`. |
+| Commit | `<button type="submit" form="<form id>">`: the label from `action`, then a `Kbd` (see [Kbd](kbd.md)) with the OS-aware shortcut hint (`⌘↵` on Apple platforms, `Ctrl+↵` elsewhere) | `onSubmit` is given and the commit is not blocked. Its id is `commitId`. |
 | Blocked commit | `DisabledReason` around a `<button type="button">` with the same label and no `Kbd`: see [DisabledReason](disabled-reason.md) | `blocked` is given and the server has not refused permission. It is shown with or without `onSubmit`. |
 | Missing line | `<span role="status">` with message `composer.missing` | `missing` is more than zero. |
 | Secondary | The caller's node | `secondary` is given. |
@@ -238,8 +238,9 @@ chord commits once the composition has ended.
 A plain Enter has no such check in the composer, because the composer does not handle it. Whether an Enter that
 ends a composition also submits the form is the browser's to decide.
 
-The hint in the commit always reads `⌘↵`. It is not changed for a system where the chord is Control+Enter, and
-the blocked commit has no hint although the chord still reaches it.
+The hint in the commit uses `modChord("↵")` from `apps/web/src/lib/pure/keys.ts`: it renders `⌘↵` on Apple
+platforms (Mac, iPhone, iPad, iPod, iOS) and `Ctrl+↵` on Windows, Linux, and during SSR. The blocked commit has no
+hint although the chord still reaches it.
 
 ## Accessibility contract
 
@@ -389,7 +390,7 @@ Message ids the module uses for its own text:
 Two more ids start with `composer.` and are used elsewhere: `composer.unsaved` by the sheet, and
 `composer.reason` by callers that label a reason field with a verb.
 
-The text of the key hint, `⌘↵`, is a literal in `composer.tsx`, not a message.
+The text of the key hint is formatted by `modChord("↵")` in `apps/web/src/lib/pure/keys.ts` (`⌘↵` or `Ctrl+↵`), not a catalog message.
 
 ## Props
 

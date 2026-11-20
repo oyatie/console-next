@@ -23,6 +23,7 @@ beforeAll(async () => {
         import { i18n, loadCatalog } from '@console/i18n';
         import { Dialog } from '/apps/web/src/ui/dialog.tsx';
         import { Sheet } from '/apps/web/src/ui/sheet/sheet.tsx';
+        import '/apps/web/src/app.css';
         // The harness reads in English; the surface's own close control must not share the test's button name.
         await loadCatalog('en');
         i18n.set('en');
@@ -41,9 +42,10 @@ beforeAll(async () => {
           return h('main', null,
             h('div', { inert: true, 'aria-hidden': 'false' }, h('button', { id: 'restricted' }, 'Restricted')),
             h('button', { id: 'opener', onClick: () => setOpen(true) }, 'Open'),
-            location.hash === '#sheet'
-              ? h(Sheet, { open, title: 'Action', onClose: close, consequence: 'Confirm action', actions: children.slice(1) }, children[0])
-              : h(Dialog, { open, title: 'Action', onClose: close }, children),
+            location.hash.includes('tall') && h('div', { id: 'spacer', style: { height: '2400px' } }),
+            location.hash.startsWith('#sheet')
+              ? h(Sheet, { open, title: 'Action', onClose: close, consequence: 'Confirm action', actions: children.slice(1) }, children[0], location.hash.includes('tall') && h('div', { style: { height: '1400px' } }))
+              : h(Dialog, { open, title: 'Action', onClose: close }, children, location.hash.includes('tall') && h('div', { style: { height: '1400px' } })),
             h(Dialog, { open: next, title: 'Receipt', onClose: () => setNext(false) }, h('button', { onClick: () => setNext(false) }, 'Done')),
             h(Dialog, { open: nested, title: 'Nested action', onClose: () => setNested(false) }, h('button', { onClick: () => setNested(false) }, 'Back')));
         }
@@ -125,3 +127,40 @@ test("new background content stays isolated and unmount restores its prior acces
   await expectElement(page.locator("#root")).not.toHaveAttribute("aria-hidden");
   await expectElement(page.locator("#restricted").locator("..")).toHaveAttribute("aria-hidden", "false");
 });
+
+for (const surface of ["dialog", "sheet"] as const) {
+  test(`${surface} overlay establishes contained scroll container and blocks wheel chaining to background page`, async () => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("about:blank");
+    await page.goto(`${server.resolvedUrls!.local[0]}dialog-test#${surface}-tall`);
+    await page.locator("#spacer").waitFor();
+    await page.evaluate(() => window.scrollTo(0, 300));
+    const beforeScrollY = await page.evaluate(() => window.scrollY);
+    expect(beforeScrollY).toBeGreaterThan(0);
+
+    await page.locator("#opener").evaluate((el: HTMLElement) => el.click());
+    const dialog = page.getByRole("dialog", { name: "Action", exact: true });
+    await expectElement(dialog).toBeVisible();
+
+    const styles = await dialog.evaluate((el) => {
+      const overlay = el.closest('[class*="overlay"]')!;
+      const cs = getComputedStyle(overlay);
+      return { overflow: cs.overflow, overscrollBehavior: cs.overscrollBehavior };
+    });
+    expect(styles.overflow).toBe("hidden");
+    expect(styles.overscrollBehavior).toBe("contain");
+
+    // Wheel over the overlay backdrop
+    await page.mouse.move(10, 10);
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(80);
+    expect(await page.evaluate(() => window.scrollY)).toBe(beforeScrollY);
+
+    // Wheel inside the scrollable dialog/sheet body past its bottom boundary
+    const box = await dialog.boundingBox();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(80);
+    expect(await page.evaluate(() => window.scrollY)).toBe(beforeScrollY);
+  });
+}
