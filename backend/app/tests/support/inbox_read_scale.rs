@@ -4,6 +4,9 @@ use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+#[path = "inbox_filing_ranking.rs"]
+pub(super) mod filing_ranking;
+
 pub(super) async fn explain_filing_hydration(
     pool: &PgPool,
     org: Uuid,
@@ -49,10 +52,10 @@ pub(super) async fn explain_filing_hydration(
                     .await?;
                 Ok(sqlx::query_scalar(sqlx::AssertSqlSafe(statement))
                     .bind(org)
+                    .bind(&ids)
                     .bind(bounds)
                     .bind(vec!["DISPATCHED_IN", "OUTSOURCED_ON_SITE", "FREELANCE"])
                     .bind(as_of)
-                    .bind(&ids)
                     .bind(&ids)
                     .bind(as_of)
                     .fetch_one(tx.as_mut())

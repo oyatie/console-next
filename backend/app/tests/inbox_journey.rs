@@ -2,6 +2,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! The release router serves the same queue as Home, with no workspace opt-in.
 
+#[path = "support/inbox_filing_ranking.rs"]
+mod filing_ranking;
 #[path = "support/http.rs"]
 mod http;
 mod inbox_pool;
@@ -9,6 +11,9 @@ mod inbox_pool;
 mod period_support;
 #[path = "inbox_journey/place_followups.rs"]
 mod place_followups;
+#[path = "support/reference_logs.rs"]
+#[allow(dead_code)]
+mod reference_logs;
 
 use ::http::StatusCode;
 use serde_json::{Value, json};
@@ -16,6 +21,7 @@ use sqlx::PgPool;
 use std::collections::BTreeSet;
 use std::time::{Duration as StdDuration, Instant};
 use time::Duration;
+use tracing::instrument::WithSubscriber;
 use uuid::Uuid;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -236,6 +242,24 @@ async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cu
     let exit: uuid::Uuid = sqlx::query_scalar(
         "INSERT INTO employee_exit_cases (org_id,employee_id,status,effective_exit_date,site_manager_note,reported_by) VALUES ($1,$2,'REPORTED',(clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date,'업무함 기한 검증',$3) RETURNING id"
     ).bind(org).bind(uuid::Uuid::parse_str(employee).unwrap()).bind(user.as_uuid()).fetch_one(&pool).await.unwrap();
+    let logs = reference_logs::Logs::default();
+    let writer = logs.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .json()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_writer(move || writer.clone())
+        .finish();
+    let (status, page) = ctx
+        .call("GET", &format!("{INBOX}?limit=50&filter=turn"), None)
+        .with_subscriber(subscriber)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    let raw = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
+    let events: Vec<Value> = raw
+        .lines()
+        .map(|s| serde_json::from_str(s).unwrap())
+        .collect();
+    filing_ranking::explain(&pool, org, &page, &events, 2_000).await;
     let mut elapsed = Vec::new();
     let mut peak = 0;
     probe.reset();

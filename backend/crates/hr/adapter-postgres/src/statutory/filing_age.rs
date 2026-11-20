@@ -21,7 +21,8 @@ pub(super) fn candidates(
         .push_bind(serde_json::to_value(register.filing_rules()).map_err(|e| HrError::internal(e.to_string()))?)
         .push(") AS r(filing_kind text,insurer text,effective_from date,effective_to_exclusive date,age_trigger_years int) \
           WHERE filing_kind='AGE60' AND insurer='NPS' AND age_trigger_years IS NOT NULL), \
-        age_assignments AS MATERIALIZED (SELECT a.* FROM employment_assignments a WHERE a.org_id=(SELECT org_id FROM boundary) AND a.superseded_at IS NULL), \
+        age_assignments AS MATERIALIZED (SELECT a.* FROM employment_assignments a WHERE a.org_id=(SELECT org_id FROM boundary) AND a.superseded_at IS NULL \
+          AND a.employee_id IN (SELECT employee_id FROM filtered WHERE kind='AGE60')), \
         age_placements AS MATERIALIZED (SELECT DISTINCT ON (l.id,l.recording_held) l AS candidate,COALESCE(w.time_zone,e.time_zone,p.time_zone) AS time_zone \
           FROM filtered l CROSS JOIN lifecycle_country_packs p \
           LEFT JOIN age_assignments a ON a.employee_id=l.employee_id AND a.valid_from<=l.placement_date::date \

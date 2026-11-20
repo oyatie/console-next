@@ -8,6 +8,10 @@ use console_platform_db::with_audits;
 use serde_json::json;
 use sqlx::{Postgres, Transaction};
 
+fn sensitive(principal: &Principal) -> bool {
+    authorize_hr_org_wide(principal, Feature::EmployeeDirectoryManage).is_ok()
+}
+
 pub(super) async fn load(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
@@ -15,7 +19,8 @@ pub(super) async fn load(
     register: &StatutoryRegister,
 ) -> Result<FilingPage, HrError> {
     let rows = super::filing_query::rows(tx, principal, &query, register).await?;
-    let mut items = visible_tasks(tx, principal, &query, register, rows).await?;
+    let mut items =
+        visible_tasks(tx, principal, &query, register, rows, sensitive(principal)).await?;
     let pending = i64::try_from(items.iter().filter(|t| !t.resolved()).count()).unwrap_or(i64::MAX);
     if let Some(state) = &query.state {
         match state.as_str() {
@@ -77,6 +82,7 @@ pub(super) async fn visible_tasks(
     query: &FilingQuery,
     register: &StatutoryRegister,
     rows: Vec<sqlx::postgres::PgRow>,
+    sensitive: bool,
 ) -> Result<Vec<super::types::FilingTask>, HrError> {
     let mut items = Vec::new();
     for row in rows {
@@ -91,7 +97,6 @@ pub(super) async fn visible_tasks(
     if let Some(entity) = query.legal_entity_id {
         items.retain(|t| t.legal_entity_id == Some(entity));
     }
-    let sensitive = authorize_hr_org_wide(principal, Feature::EmployeeDirectoryManage).is_ok();
     // A birthday-derived loss exposes the exact birth date even with masked facts.
     if !sensitive {
         items.retain(|t| t.kind != "AGE60");
@@ -167,8 +172,15 @@ impl HrService {
         let register = register.await?;
         with_audits::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
             Box::pin(async move {
-                let page =
-                    super::filing_deadline::load(tx, &principal, &query, &register, after).await?;
+                let page = super::filing_deadline::load(
+                    tx,
+                    &principal,
+                    &query,
+                    &register,
+                    after,
+                    sensitive(&principal),
+                )
+                .await?;
                 if !log_access {
                     return Ok((page, Vec::new()));
                 }

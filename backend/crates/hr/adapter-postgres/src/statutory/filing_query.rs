@@ -1,5 +1,9 @@
+#[path = "filing_query_joins.rs"]
+mod joins;
 #[path = "filing_query_page.rs"]
 mod page;
+#[path = "filing_sources.rs"]
+mod sources;
 use page::push_page_order;
 
 use super::FilingQuery;
@@ -27,13 +31,7 @@ pub(super) fn non_employee_types() -> Vec<&'static str> {
         .map(EmploymentType::as_str)
         .collect()
 }
-// Keep employee and void lookups indexed before tenant statistics catch up.
-// Filter and order candidates before hydrating receipts, history and case links.
-const FROM: &str = " FROM sources l \
- JOIN LATERAL (SELECT * FROM person_employees_current WHERE org_id=l.org_id AND id=l.employee_id OFFSET 0) x ON true \
- LEFT JOIN LATERAL (SELECT a.workplace_id FROM employment_assignments a WHERE a.org_id=l.org_id AND a.employee_id=l.employee_id \
-   AND a.superseded_at IS NULL AND a.valid_from<l.effective_date::date AND l.to_workplace_id IS NOT NULL ORDER BY a.valid_from DESC LIMIT 1) previous ON true \
- CROSS JOIN LATERAL (SELECT DISTINCT r.filing_kind AS k,r.insurer,r.recording_held, \
+const FROM: &str = " CROSS JOIN LATERAL (SELECT DISTINCT r.filing_kind AS k,r.insurer,r.recording_held, \
    r.earliest_event_on FROM rules r \
    WHERE ((r.effective_from<=l.effective_date::date+r.loss_days \
      AND (r.effective_to_exclusive IS NULL OR l.effective_date::date+r.loss_days<r.effective_to_exclusive)) OR r.is_age) \
@@ -45,12 +43,6 @@ const FROM: &str = " FROM sources l \
         ELSE COALESCE(l.to_org_unit_id, x.org_unit_id) END AS org_unit_id) e \
  LEFT JOIN employee_employment_profiles profile ON profile.org_id=x.org_id AND profile.employee_id=x.id \
  LEFT JOIN age_facts assessment ON assessment.source_id=l.id AND assessment.insurer=agency.insurer AND assessment.filing_kind=kind.k \
-";
-const PLACEMENT: &str = " LEFT JOIN LATERAL (SELECT a.legal_entity_id, a.workplace_id FROM employment_assignments a \
-   WHERE a.org_id = l.org_id AND a.employee_id = l.employee_id AND a.superseded_at IS NULL \
-     AND a.valid_from <= l.placement_date::date \
-     AND (l.source_type <> 'GROUP_TRANSFER' OR kind.k NOT IN ('LOSE','SEPARATION_CERTIFICATE') OR a.valid_from < l.placement_date::date) \
-   ORDER BY a.valid_from DESC LIMIT 1) ea ON TRUE \
 ";
 const FILING: &str = " LEFT JOIN filing_obligations f ON f.org_id=l.org_id AND f.event_id=l.id AND f.filing_kind=kind.k AND f.insurer=agency.insurer \
 ";
@@ -76,7 +68,14 @@ pub(super) async fn rows(
     query: &FilingQuery,
     register: &console_compliance_domain::statutory::StatutoryRegister,
 ) -> Result<Vec<PgRow>, HrError> {
-    query_rows(tx, principal, query, register, false, None, None).await
+    query_rows(tx, principal, query, register, Read::Panel, None).await
+}
+
+pub(super) enum Read<'a> {
+    Panel,
+    Rank,
+    Birthdays(&'a [uuid::Uuid]),
+    Selected(&'a [String]),
 }
 
 pub(super) async fn query_rows(
@@ -84,14 +83,15 @@ pub(super) async fn query_rows(
     principal: &Principal,
     query: &FilingQuery,
     register: &console_compliance_domain::statutory::StatutoryRegister,
-    lightweight: bool,
-    selected: Option<Vec<String>>,
+    mode: Read<'_>,
     bounds: Option<serde_json::Value>,
 ) -> Result<Vec<PgRow>, HrError> {
     let bounds = match bounds {
         Some(bounds) => bounds,
         None => super::filing_boundary::load(tx, *principal.org_id.as_uuid()).await?,
     };
+    let lightweight = matches!(mode, Read::Rank | Read::Birthdays(_));
+    let set_joins = matches!(mode, Read::Rank);
     let reach = hr_reach_in(principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
     let placement_filter = query.workplace_id.is_some()
         || query.legal_entity_id.is_some()
@@ -106,17 +106,11 @@ pub(super) async fn query_rows(
         "::uuid AS id) tenant LEFT JOIN tenant_phase phase ON phase.org_id=tenant.id \
          CROSS JOIN LATERAL (SELECT time_zone FROM lifecycle_country_packs WHERE is_default \
            UNION SELECT time_zone FROM workplaces WHERE org_id=tenant.id \
-           UNION SELECT time_zone FROM legal_entities WHERE org_id=tenant.id) zones GROUP BY tenant.id,phase.go_live_at), \
-         age_facts AS MATERIALIZED (SELECT DISTINCT ON (COALESCE(event_id,request_id),insurer,filing_kind) COALESCE(event_id,request_id) AS source_id,insurer,filing_kind,applicability_facts \
-           FROM insurance_filing_records WHERE org_id=(SELECT org_id FROM boundary) AND filing_kind='AGE60' AND applicability_facts IS NOT NULL \
-           ORDER BY COALESCE(event_id,request_id),insurer,filing_kind,version DESC), \
-         presence AS MATERIALIZED (SELECT \
-           EXISTS(SELECT 1 FROM insurance_filing_records WHERE org_id=(SELECT org_id FROM boundary)) AS receipts, \
-           EXISTS(SELECT 1 FROM insurance_filing_requests WHERE org_id=(SELECT org_id FROM boundary)) AS requests, \
-           EXISTS(SELECT 1 FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) AND event_type IN ('TERMINATE','OFFBOARD','GROUP_TRANSFER') AND state IN ('APPLIED','SCHEDULED')) AS exits), \
-         sources AS (SELECT id,org_id,employee_id,event_type,state,effective_date,created_at,from_org_unit_id,to_org_unit_id,to_workplace_id,NULL::text AS request_kind,NULL::uuid AS source_event_id,effective_date AS placement_date,event_type AS source_type,id AS voidable_event_id FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) UNION ALL \
-           SELECT r.id,r.org_id,r.employee_id,'STATUTORY_REQUEST',p.state,r.anchor_on::text,r.created_at,p.from_org_unit_id,p.to_org_unit_id,p.to_workplace_id,r.filing_kind,r.source_event_id,p.effective_date,p.event_type,r.source_event_id FROM insurance_filing_requests r JOIN employee_lifecycle_events p ON p.org_id=r.org_id AND p.id=r.source_event_id WHERE r.filing_kind<>'ACQUIRE_REQUESTED' AND r.org_id=(SELECT org_id FROM boundary)), \
-         source_bounds AS MATERIALIZED (SELECT min(effective_date::date) AS first_on,max(effective_date::date) AS last_on FROM sources), \
+           UNION SELECT time_zone FROM legal_entities WHERE org_id=tenant.id) zones GROUP BY tenant.id,phase.go_live_at), ",
+    );
+    sources::push(&mut q, &mode);
+    q.push(
+        "source_bounds AS MATERIALIZED (SELECT min(effective_date::date) AS first_on,max(effective_date::date) AS last_on FROM sources), \
          rules AS MATERIALIZED (SELECT DISTINCT CASE WHEN r.filing_rule->>'age_trigger_years' IS NULL THEN r.effective_from END AS effective_from, \
            CASE WHEN r.filing_rule->>'age_trigger_years' IS NULL THEN r.effective_to_exclusive END AS effective_to_exclusive, \
            r.recording_held,r.requires_workplace_change,r.trigger_event_kinds, \
@@ -128,8 +122,12 @@ pub(super) async fn query_rows(
     q.push_bind(bounds).push(
         ") AS cutoff(code text,effective_from date,earliest_event_on date) ON cutoff.code=r.code AND cutoff.effective_from=r.effective_from CROSS JOIN source_bounds b WHERE r.filing_rule IS NOT NULL \
              AND (r.filing_rule->>'age_trigger_years' IS NOT NULL OR (r.effective_from<=b.last_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0) \
-               AND (r.effective_to_exclusive IS NULL OR b.first_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0)<r.effective_to_exclusive)))), \
-      filtered AS (SELECT l.id,l.org_id,l.created_at AS source_created_at, \
+               AND (r.effective_to_exclusive IS NULL OR b.first_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0)<r.effective_to_exclusive))))",
+    );
+    if set_joins {
+        q.push(joins::RANKING_CTES);
+    }
+    q.push(", filtered AS (SELECT l.id,l.org_id,l.created_at AS source_created_at, \
       'insurance_filing_' || kind.k || '_' || agency.insurer || ':' || l.id AS inbox_id,l.employee_id, \
       kind.k AS kind,agency.insurer AS insurer,rule.recording_held, \
       CASE WHEN l.event_type='GROUP_TRANSFER' AND kind.k='LOSE' THEN (l.effective_date::date-1)::text ELSE l.effective_date END AS effective_date, \
@@ -140,9 +138,14 @@ pub(super) async fn query_rows(
     if placement_filter {
         q.push(",ea.legal_entity_id,ea.workplace_id");
     }
-    q.push(FROM);
+    q.push(if set_joins {
+        joins::FROM_SET
+    } else {
+        joins::FROM_INDEXED
+    })
+    .push(FROM);
     if placement_filter {
-        q.push(PLACEMENT);
+        q.push(joins::placement(set_joins));
     }
     if query.filing_id.is_some() {
         q.push(FILING);
@@ -167,12 +170,6 @@ pub(super) async fn query_rows(
     }
     if let Some(as_of) = query.inbox_as_of {
         q.push(" AND l.created_at <= ").push_bind(as_of);
-    }
-    if let Some(ids) = &selected {
-        // Restrict native event keys before the per-person lateral; the full task key is checked below.
-        q.push(" AND l.id IN (SELECT split_part(value, ':', 2)::uuid FROM unnest(")
-            .push_bind(ids.clone())
-            .push("::text[]) AS selected(value))");
     }
     for (column, value) in [
         ("ea.workplace_id", query.workplace_id),
@@ -207,11 +204,8 @@ pub(super) async fn query_rows(
         }
     }
     let needs_age = query.kind.as_deref() == Some("AGE60")
-        || (!lightweight
-            && selected.as_ref().is_none_or(|ids| {
-                ids.iter()
-                    .any(|id| id.starts_with("insurance_filing_AGE60_"))
-            }));
+        || matches!(mode, Read::Panel)
+        || matches!(mode, Read::Selected(ids) if ids.iter().any(|id| id.starts_with("insurance_filing_AGE60_")));
     let candidate_query = FilingQuery {
         inbox_scan_limit: if needs_age {
             query.inbox_scan_limit
@@ -224,7 +218,7 @@ pub(super) async fn query_rows(
     q.push("), paged AS MATERIALIZED (SELECT * FROM candidates");
     let order = if lightweight {
         ""
-    } else if let Some(selected) = selected {
+    } else if let Read::Selected(selected) = mode {
         q.push(" WHERE inbox_id = ANY(")
             .push_bind(selected)
             .push(")");
@@ -266,7 +260,7 @@ pub(super) async fn query_rows(
     if placement_filter {
         q.push(" CROSS JOIN LATERAL (SELECT l.legal_entity_id,l.workplace_id) ea ");
     } else {
-        q.push(PLACEMENT);
+        q.push(joins::placement(set_joins));
     }
     if !lightweight {
         q.push(FILING);
