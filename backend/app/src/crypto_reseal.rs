@@ -58,7 +58,8 @@ pub struct TableCensusReport {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct RrnCensusReport {
     pub active_alg_id: Option<String>,
-    pub active_kek_id: Option<String>,
+    pub master_active_kek_id: Option<String>,
+    pub target_kek_pattern: String,
     pub employee_rrn: TableCensusReport,
     pub data_import_row_identities: TableCensusReport,
 }
@@ -67,7 +68,8 @@ pub struct RrnCensusReport {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct EmailCensusReport {
     pub active_alg_id: String,
-    pub active_kek_id: String,
+    pub master_active_kek_id: String,
+    pub target_kek_pattern: String,
     pub smtp: TableCensusReport,
     pub imap: TableCensusReport,
 }
@@ -75,6 +77,7 @@ pub struct EmailCensusReport {
 /// Combined non-PII census report printed as JSON by `crypto-census`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct CryptoCensusReport {
+    pub tenant_dek_mode: String,
     pub rrn: Option<RrnCensusReport>,
     pub email: Option<EmailCensusReport>,
 }
@@ -172,6 +175,7 @@ pub async fn execute_census(
     rrn_vault: Option<&dyn RrnVault>,
     #[cfg(feature = "mail")] mail_cipher: Option<&dyn CredentialCipher>,
 ) -> Result<CryptoCensusReport, AppError> {
+    let mode = crate::crypto_reseal_rotation::tenant_dek_mode_from_env();
     let rrn = if let Some(vault) = rrn_vault
         && let (Some(alg), Some(kek)) = (vault.active_alg_id(), vault.active_kek_id())
     {
@@ -179,9 +183,14 @@ pub async fn execute_census(
             .legacy_envelope_census_with_vault(vault)
             .await
             .map_err(|err| AppError::Internal(err.message))?;
+        let target_kek_pattern = match mode {
+            console_platform_crypto::TenantDekMode::Active => "tdek:<org>:rrn:v<ver>".to_owned(),
+            console_platform_crypto::TenantDekMode::DualRead => kek.to_owned(),
+        };
         Some(RrnCensusReport {
             active_alg_id: Some(alg.to_owned()),
-            active_kek_id: Some(kek.to_owned()),
+            master_active_kek_id: Some(kek.to_owned()),
+            target_kek_pattern,
             employee_rrn: TableCensusReport {
                 v1: census.employee_rrn.v1,
                 v2: census.employee_rrn.v2,
@@ -209,9 +218,14 @@ pub async fn execute_census(
             .legacy_envelope_census_with_cipher(cipher)
             .await
             .map_err(|err| AppError::Internal(err.to_string()))?;
+        let target_kek_pattern = match mode {
+            console_platform_crypto::TenantDekMode::Active => "tdek:<org>:mail:v<ver>".to_owned(),
+            console_platform_crypto::TenantDekMode::DualRead => kek.to_owned(),
+        };
         Some(EmailCensusReport {
             active_alg_id: alg.to_owned(),
-            active_kek_id: kek.to_owned(),
+            master_active_kek_id: kek.to_owned(),
+            target_kek_pattern,
             smtp: TableCensusReport {
                 v1: census.smtp.v1,
                 v2: census.smtp.v2,
@@ -233,5 +247,9 @@ pub async fn execute_census(
     #[cfg(not(feature = "mail"))]
     let email = None;
 
-    Ok(CryptoCensusReport { rrn, email })
+    Ok(CryptoCensusReport {
+        tenant_dek_mode: mode.as_str().to_owned(),
+        rrn,
+        email,
+    })
 }

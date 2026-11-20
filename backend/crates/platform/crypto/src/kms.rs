@@ -36,6 +36,12 @@ pub trait KmsProvider: Send + Sync {
         purpose: &str,
         wrapped_dek: &[u8],
     ) -> Result<SecretBox<[u8; 32]>, CryptoError>;
+
+    /// Whether this provider represents a cryptographically shredded tenant scope
+    /// that must fail closed across all envelope versions.
+    fn is_shredded(&self) -> bool {
+        false
+    }
 }
 
 /// Asynchronous KMS provider port for future remote HSM/Vault adapters.
@@ -79,6 +85,10 @@ impl<T: KmsProvider + ?Sized> KmsProvider for Arc<T> {
         wrapped_dek: &[u8],
     ) -> Result<SecretBox<[u8; 32]>, CryptoError> {
         (**self).unwrap_dek(kek_id, purpose, wrapped_dek)
+    }
+
+    fn is_shredded(&self) -> bool {
+        (**self).is_shredded()
     }
 }
 

@@ -87,10 +87,17 @@ fn build_attestation_and_worker_signers() {
             "CONSOLE_AUDIT_CHAIN_CUSTODY_URL",
             "https://127.0.0.1:9/sign",
         ),
+        (
+            "CONSOLE_AUDIT_CHAIN_CUSTODY_TOKEN",
+            "super-secret-custody-token",
+        ),
     ]);
     let cfg = external_config_from_vars(|k| map.get(k).cloned())
         .unwrap()
         .unwrap();
+    let dbg = format!("{cfg:?}");
+    assert!(dbg.contains("[redacted]"));
+    assert!(!dbg.contains("super-secret-custody-token"));
     let signer = build_attestation_signer(Some(&cfg)).unwrap();
     let msg = b"seal-hash-under-test";
     assert!(

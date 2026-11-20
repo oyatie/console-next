@@ -7,6 +7,10 @@ mod governed_erase;
 mod helpers;
 #[path = "support/rrn_blind_index.rs"]
 mod rrn_support;
+#[path = "support/tenant_s3_ev_seed.rs"]
+mod s3_ev_seed;
+#[path = "support/tenant_shred_assertions.rs"]
+mod shred_assertions;
 #[path = "support/tenant_crypto_shred.rs"]
 mod shred_support;
 
@@ -28,12 +32,16 @@ use console_platform_request_context::CURRENT_ORG;
 use console_platform_test_support::seed_org_and_super_admin;
 use helpers::{LogSink, keyring_json, reveal_with_step_up, seed_mail_account, seed_rrn_row};
 use rrn_support::{TestEnvVault, seed_employee, seed_import_run, seed_tenant};
+use s3_ev_seed::seed_all_nine_s3_tables;
+use shred_assertions::{
+    assert_cold_pitr_fails_closed, assert_shredded_fail_closed_all_versions,
+    seal_pre_shred_legacy_envelopes,
+};
 use shred_support::{
-    assert_s3_outbox_drain, assert_shredded_triggers_and_witness, build_env_vault, force_role_pool,
-    seed_staged_rrn,
+    assert_all_nine_s3_outbox_drain, assert_console_rt_cannot_insert_shredded,
+    assert_shredded_triggers_and_witness, build_env_vault, force_role_pool, seed_staged_rrn,
 };
 use sqlx::PgPool;
-use uuid::Uuid;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn two_operator_crypto_shred_survives_pitr_and_cleans_s3(owner: PgPool) {
@@ -179,11 +187,25 @@ async fn two_operator_crypto_shred_survives_pitr_and_cleans_s3(owner: PgPool) {
         Some("P0001")
     );
 
-    // Seed tenant S3 key and execute two-operator erasure.
-    let photo_key = format!("orgs/{}/employees/{emp_a}/photo.jpg", a.org_uuid);
-    sqlx::query("INSERT INTO employee_photo_uploads (org_id, id, employee_id, object_key, content_type, byte_size, issued_by) VALUES ($1,$2,$3,$4,'image/jpeg',128,$5)") // rls-arming: ok owner fixture seeds S3 key
-        .bind(a.org_uuid).bind(Uuid::new_v4()).bind(emp_a).bind(&photo_key).bind(*a.actor.as_uuid())
-        .execute(&owner).await.unwrap();
+    // Seed legacy v1/v2/direct-v3 ciphertexts + all 9 S3 tables (incl. EV WORM/append-only) and execute two-operator erasure.
+    let unscoped_rrn = console_app::EnvRrnVault::from_owned_values(
+        Some(ring.clone()),
+        None,
+        None,
+        Some(h_b64.clone()),
+    )
+    .unwrap()
+    .unwrap();
+    let legacy_a =
+        seal_pre_shred_legacy_envelopes(&unscoped_rrn, &mail_base, a.org_uuid, *acc_a.as_uuid());
+    let expected_s3 = seed_all_nine_s3_tables(
+        &owner,
+        a.org_uuid,
+        *a.actor.as_uuid(),
+        emp_a,
+        *acc_a.as_uuid(),
+    )
+    .await;
     sqlx::query("UPDATE organizations SET status = 'ARCHIVED' WHERE id = $1") // rls-arming: ok owner archives target
         .bind(a.org_uuid)
         .execute(&owner)
@@ -214,47 +236,37 @@ async fn two_operator_crypto_shred_survives_pitr_and_cleans_s3(owner: PgPool) {
     );
     assert!(!logs.contains("900101") && !logs.contains("smtp-secret-pass"));
 
-    // Verify SHREDDED tombstones survive org deletion, triggers block restore, and erasure_ledger witnesses align.
+    // Verify SHREDDED tombstones survive org deletion, triggers block restore, console_rt cannot insert SHREDDED, and erasure_ledger witnesses align.
     assert_shredded_triggers_and_witness(&owner, &a.rt, a.org).await;
+    assert_console_rt_cannot_insert_shredded(&b.rt, b.org).await;
+    assert_shredded_fail_closed_all_versions(
+        &owner,
+        &a.rt,
+        a.org,
+        &store,
+        &vault_a,
+        &mail_base,
+        &sealed_a,
+        &stored_a.smtp_password,
+        &legacy_a,
+        *acc_a.as_uuid(),
+    )
+    .await;
 
     // PITR simulation: fresh cold cache/store + pre-erasure ciphertexts MUST fail closed.
-    let cold_store = Arc::new(PgTenantKeyStore::new(TenantDekMode::Active));
-    let cold_vault = build_env_vault(a.rt.clone(), &ring, &h_b64, cold_store);
-    let cold_mail = TenantEnvMailCipher::new(mail_base.clone(), a.rt.clone());
-    assert!(
-        cold_vault
-            .scoped_for_org(a.org_uuid)
-            .await
-            .unwrap()
-            .unwrap()
-            .open(a.org_uuid, &sealed_a)
-            .is_err()
-    );
-    assert!(
-        cold_vault
-            .scoped_for_org(a.org_uuid)
-            .await
-            .unwrap()
-            .unwrap()
-            .open(a.org_uuid, &staged_a)
-            .is_err()
-    );
-    let cold_mail_scoped = cold_mail.scoped_for_org(a.org_uuid).await.unwrap().unwrap();
-    assert!(
-        cold_mail_scoped
-            .decrypt(&stored_a.smtp_password, aad_a)
-            .is_err()
-    );
-    let imap_aad_a = Aad {
-        org_id: &a.org.to_string(),
-        account_id: &acc_a.to_string(),
-        field: "imap_password",
-    };
-    assert!(
-        cold_mail_scoped
-            .decrypt(&stored_a.imap_password, imap_aad_a)
-            .is_err()
-    );
+    assert_cold_pitr_fails_closed(
+        &a.rt,
+        a.org,
+        &ring,
+        &h_b64,
+        &mail_base,
+        &sealed_a,
+        &staged_a,
+        &stored_a.smtp_password,
+        &stored_a.imap_password,
+        *acc_a.as_uuid(),
+    )
+    .await;
 
     // Control Org B still decrypts RRN, staged RRN, and mail credentials.
     let hr_b = HrService::new(b.rt.clone()).with_rrn_vault(Some(vault_b.clone()));
@@ -303,6 +315,6 @@ async fn two_operator_crypto_shred_survives_pitr_and_cleans_s3(owner: PgPool) {
         b"smtp-secret-pass"
     );
 
-    // S3 outbox purge: primary key deletes, WORM 403 replica defers 24h.
-    assert_s3_outbox_drain(&owner, &a.rt, a.org_uuid, photo_key).await;
+    // S3 outbox purge across all 9 tables: 200 + 404 NoSuchKey + EXPLICIT delete, WORM 403 replica defers 24h.
+    assert_all_nine_s3_outbox_drain(&owner, &a.rt, a.org_uuid, &expected_s3).await;
 }

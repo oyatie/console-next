@@ -22,7 +22,7 @@ use url::{Host, Url};
 use crate::AppError;
 
 /// Env-driven external seal configuration (anchors + custody transport).
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AuditChainExternalConfig {
     /// Active signing `key_ref` written into every new seal.
     pub key_ref: String,
@@ -34,6 +34,27 @@ pub struct AuditChainExternalConfig {
     pub custody_token: Option<String>,
     /// Optional PEM-encoded CA bundle loaded from `CONSOLE_AUDIT_CHAIN_CUSTODY_CA_FILE`.
     pub custody_ca_pem: Option<Vec<u8>>,
+}
+
+impl std::fmt::Debug for AuditChainExternalConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AuditChainExternalConfig")
+            .field("key_ref", &self.key_ref)
+            .field(
+                "anchor_keys",
+                &self.anchors.keys().cloned().collect::<Vec<_>>(),
+            )
+            .field("custody_url", &self.custody_url.as_str())
+            .field(
+                "custody_token",
+                &self.custody_token.as_ref().map(|_| "[redacted]"),
+            )
+            .field(
+                "custody_ca_pem_len",
+                &self.custody_ca_pem.as_ref().map(Vec::len),
+            )
+            .finish()
+    }
 }
 
 /// Parse the optional external-seal env group (all-or-nothing fail closed).

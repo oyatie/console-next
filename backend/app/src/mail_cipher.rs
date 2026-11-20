@@ -4,7 +4,9 @@
 
 use std::sync::Arc;
 
-use console_comms_application::credential_cipher::{ScopedCredentialCipherFuture, SecretBox};
+use console_comms_application::credential_cipher::{
+    ScopedCredentialCipherFuture, SecretBox, TargetKekForOrgFuture,
+};
 use console_comms_application::{Aad, CipherError, CredentialCipher, SealedCredential};
 use console_comms_credential_cipher::EnvelopeCredentialCipher;
 use console_kernel_core::OrgId;
@@ -85,6 +87,20 @@ impl CredentialCipher for TenantEnvMailCipher {
             Ok(Some(
                 Arc::new(self.inner.with_tenant_kms(Arc::new(kms))) as Arc<dyn CredentialCipher>
             ))
+        })
+    }
+
+    fn target_kek_for_org<'a>(&'a self, org: Uuid) -> TargetKekForOrgFuture<'a> {
+        Box::pin(async move {
+            self.store
+                .active_target_kek_for_org(
+                    &self.pool,
+                    OrgId::from_uuid(org),
+                    TenantKeyScope::Mail,
+                    self.inner.kms_provider().as_ref(),
+                )
+                .await
+                .map_err(|_| CipherError::MasterKey)
         })
     }
 }

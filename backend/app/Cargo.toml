@@ -487,3 +487,7 @@ required-features = ["test-postgres", "full"]
 [[test]]
 name = "tenant_crypto_shred_pitr"
 required-features = ["test-postgres", "full"]
+
+[[test]]
+name = "tenant_dek_rotation_cli"
+required-features = ["test-postgres", "full"]

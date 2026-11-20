@@ -81,3 +81,21 @@ pub(super) async fn scoped_for_org(
         .map_err(|_| VaultError)?;
     Ok(Some(Arc::new(vault.with_tenant_kms(Arc::new(kms)))))
 }
+
+pub(super) async fn target_kek_for_org(
+    vault: &EnvRrnVault,
+    org: Uuid,
+) -> Result<Option<String>, VaultError> {
+    let Some((pool, store)) = vault.tenant_keys() else {
+        return Ok(vault.active_kek_id().map(str::to_owned));
+    };
+    store
+        .active_target_kek_for_org(
+            pool,
+            OrgId::from_uuid(org),
+            TenantKeyScope::Rrn,
+            vault.cipher_ref().kms_provider().as_ref(),
+        )
+        .await
+        .map_err(|_| VaultError)
+}

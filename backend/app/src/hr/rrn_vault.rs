@@ -326,6 +326,13 @@ impl RrnVault for EnvRrnVault {
     ) -> console_hr_domain::import::rrn_value::ScopedRrnVaultFuture<'a> {
         Box::pin(crate::rrn_vault_tenant::scoped_for_org(self, org))
     }
+
+    fn target_kek_for_org<'a>(
+        &'a self,
+        org: Uuid,
+    ) -> console_hr_domain::import::rrn_value::TargetRrnKekFuture<'a> {
+        Box::pin(crate::rrn_vault_tenant::target_kek_for_org(self, org))
+    }
 }
 
 #[cfg(test)]

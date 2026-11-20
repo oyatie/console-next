@@ -82,14 +82,13 @@ impl PgMailStore {
             // rls-arming: ok platform_list_organizations() is the SECURITY DEFINER id-only tenant discovery; every per-org count below runs under with_org_conn
             .fetch_all(&self.pool)
             .await?;
+        let target_alg_id = cipher.active_alg_id().unwrap_or("");
         let mut total = EmailEnvelopeCensus::default();
         for org_uuid in orgs {
-            let scoped = cipher.scoped_for_org(org_uuid).await.map_err(|_| {
+            let target_kek = cipher.target_kek_for_org(org_uuid).await.map_err(|_| {
                 PgMailError::Domain(KernelError::internal("credential cipher census failed"))
             })?;
-            let effective = scoped.as_deref().unwrap_or(cipher);
-            let target_alg_id = effective.active_alg_id().unwrap_or("");
-            let target_kek_id = effective.active_kek_id().unwrap_or("");
+            let target_kek_id = target_kek.as_deref().unwrap_or("");
             let org_census = self
                 .legacy_envelope_census_in_org(
                     OrgId::from_uuid(org_uuid),

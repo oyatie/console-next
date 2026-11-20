@@ -6,7 +6,9 @@ use std::sync::Arc;
 use console_kernel_core::{
     AuditAction, AuditEvent, AuditSource, OrgId, Timestamp, TraceContext, UserId,
 };
-use console_platform_crypto::{AlgId, KekId, KmsProvider, TenantKeyScope, TenantKeyState};
+use console_platform_crypto::{
+    AlgId, KekId, KmsProvider, TenantKeyScope, TenantKeyState, tenant_key_fingerprint,
+};
 use serde_json::json;
 use sqlx::{PgPool, Row};
 
@@ -111,11 +113,38 @@ impl PgTenantKeyStore {
         master_kms: Arc<dyn KmsProvider>,
         limit: i64,
     ) -> Result<usize, TenantKeyError> {
+        self.rewrap_master_kek_inner(pool, org, None, master_kms, limit)
+            .await
+    }
+
+    /// Re-wrap `tenant_encryption_keys` rows for `(org, scope)` onto
+    /// `master_kms.active_kek_id()` without touching other key scopes.
+    pub async fn rewrap_master_kek_scope_batch(
+        &self,
+        pool: &PgPool,
+        org: OrgId,
+        scope: TenantKeyScope,
+        master_kms: Arc<dyn KmsProvider>,
+        limit: i64,
+    ) -> Result<usize, TenantKeyError> {
+        self.rewrap_master_kek_inner(pool, org, Some(scope), master_kms, limit)
+            .await
+    }
+
+    async fn rewrap_master_kek_inner(
+        &self,
+        pool: &PgPool,
+        org: OrgId,
+        scope_filter: Option<TenantKeyScope>,
+        master_kms: Arc<dyn KmsProvider>,
+        limit: i64,
+    ) -> Result<usize, TenantKeyError> {
         if limit <= 0 {
             return Ok(0);
         }
         let org_uuid = *org.as_uuid();
         let target_kek = master_kms.active_kek_id().as_str().to_owned();
+        let scope_str = scope_filter.map(|s| s.as_str().to_owned());
         let cache = Arc::clone(&self.cache);
         let updated_items = with_audits::<_, _, TenantKeyError>(pool, org, move |tx| {
             Box::pin(async move {
@@ -123,6 +152,7 @@ impl PgTenantKeyStore {
                     "SELECT key_scope, key_version, kek_id, wrapped_dek \
                        FROM tenant_encryption_keys \
                       WHERE org_id = $1 AND state IN ('ACTIVE', 'RETIRED') \
+                        AND ($4::text IS NULL OR key_scope = $4) \
                         AND kek_id IS DISTINCT FROM $2 \
                       ORDER BY key_scope, key_version \
                       LIMIT $3 FOR UPDATE SKIP LOCKED",
@@ -130,6 +160,7 @@ impl PgTenantKeyStore {
                 .bind(org_uuid)
                 .bind(&target_kek)
                 .bind(limit)
+                .bind(scope_str.as_deref())
                 .fetch_all(tx.as_mut())
                 .await?;
                 if rows.is_empty() {
@@ -152,9 +183,16 @@ impl PgTenantKeyStore {
                     )?);
                     let rewrapped =
                         master_kms.wrap_dek(scope.tenant_dek_purpose(), dek.as_ref())?;
+                    let fp = tenant_key_fingerprint(
+                        org_uuid,
+                        scope,
+                        key_version,
+                        &rewrapped.kek_id,
+                        &rewrapped.ciphertext,
+                    );
                     sqlx::query(
                         "UPDATE tenant_encryption_keys \
-                            SET alg_id = $4, kek_id = $5, wrapped_dek = $6 \
+                            SET alg_id = $4, kek_id = $5, wrapped_dek = $6, key_fingerprint = $7 \
                           WHERE org_id = $1 AND key_scope = $2 AND key_version = $3",
                     )
                     .bind(org_uuid)
@@ -163,6 +201,7 @@ impl PgTenantKeyStore {
                     .bind(AlgId::AwsEsdkV2Aes256GcmHkdfSha256CommitKeyWrap.as_str())
                     .bind(rewrapped.kek_id.as_str())
                     .bind(&rewrapped.ciphertext)
+                    .bind(fp.as_slice())
                     .execute(tx.as_mut())
                     .await?;
                     from_keks.push(old_kek_raw);

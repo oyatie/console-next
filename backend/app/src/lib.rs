@@ -19,6 +19,7 @@ mod collaboration;
 mod console_telemetry;
 pub mod crypto_reseal;
 mod crypto_reseal_cli;
+pub mod crypto_reseal_rotation;
 mod entity_wiring;
 mod error_i18n;
 #[cfg(feature = "facilities")]

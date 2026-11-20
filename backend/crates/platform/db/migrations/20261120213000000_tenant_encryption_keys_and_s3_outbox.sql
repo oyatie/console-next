@@ -33,8 +33,10 @@ CREATE POLICY org_isolation ON tenant_encryption_keys
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::uuid);
 
 REVOKE ALL ON tenant_encryption_keys FROM PUBLIC, console_rt, console_platform_force_cmd;
-GRANT SELECT, INSERT ON tenant_encryption_keys TO console_rt;
-GRANT UPDATE (alg_id, kek_id, wrapped_dek, state, retired_at)
+GRANT SELECT ON tenant_encryption_keys TO console_rt;
+GRANT INSERT (org_id, key_scope, key_version, state, alg_id, kek_id, wrapped_dek, key_fingerprint, created_at, retired_at)
+    ON tenant_encryption_keys TO console_rt;
+GRANT UPDATE (alg_id, kek_id, wrapped_dek, key_fingerprint, state, retired_at)
     ON tenant_encryption_keys TO console_rt;
 
 COMMENT ON TABLE tenant_encryption_keys IS 'Per-tenant DEK hierarchy wrapped by master KmsProvider KEKs; supports cryptographic erasure.';

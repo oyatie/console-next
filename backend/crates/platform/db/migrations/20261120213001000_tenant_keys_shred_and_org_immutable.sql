@@ -39,7 +39,15 @@ BEGIN
             USING ERRCODE = '55000';
     END IF;
     IF NEW.state = 'SHREDDED'
-       AND current_setting('app.platform_force_remove_org', true) IS DISTINCT FROM 'on' THEN
+       AND (
+           current_setting('app.platform_force_remove_org', true) IS DISTINCT FROM 'on'
+           OR CURRENT_USER = 'console_rt'
+           OR CURRENT_USER = 'console_platform_force_cmd'
+           OR CURRENT_USER IS DISTINCT FROM pg_catalog.pg_get_userbyid((
+               SELECT proowner FROM pg_catalog.pg_proc
+                WHERE oid = 'public.platform_force_remove_organization_command(uuid,uuid,character,character,timestamp with time zone)'::regprocedure
+           ))
+       ) THEN
         RAISE EXCEPTION 'tenant key shredding requires platform force removal command'
             USING ERRCODE = '42501';
     END IF;
@@ -74,6 +82,105 @@ DROP TRIGGER IF EXISTS trg_employee_rrn_org_immutable ON employee_rrn;
 CREATE TRIGGER trg_employee_rrn_org_immutable
     BEFORE UPDATE ON employee_rrn
     FOR EACH ROW EXECUTE FUNCTION employee_rrn_org_id_immutable();
+
+-- Permit EV WORM/append-only DELETE exclusively inside owner-executed
+-- platform_force_remove_organization* after active legal hold clearance.
+CREATE OR REPLACE FUNCTION docs_evidence_copy_worm_guard()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        IF current_setting('app.platform_force_remove_org', true) = 'on'
+           AND CURRENT_USER <> 'console_rt'
+           AND CURRENT_USER <> 'console_platform_force_cmd'
+           AND CURRENT_USER = pg_catalog.pg_get_userbyid((
+               SELECT proowner FROM pg_catalog.pg_proc
+                WHERE oid = 'public.platform_force_remove_organization(uuid)'::regprocedure
+           ))
+        THEN
+            IF EXISTS (
+                SELECT 1 FROM public.docs_evidence_legal_holds
+                 WHERE org_id = OLD.org_id AND status = 'ACTIVE'
+            ) THEN
+                RAISE EXCEPTION 'tenant % is under active legal hold', OLD.org_id
+                    USING ERRCODE = '55000', CONSTRAINT = 'audit_legal_holds_active';
+            END IF;
+            RETURN OLD;
+        END IF;
+        RAISE EXCEPTION 'EV copies are WORM append-only and cannot be deleted id=%', OLD.id;
+    END IF;
+    IF NEW.copy_kind IS DISTINCT FROM OLD.copy_kind
+        OR NEW.derivative_kind IS DISTINCT FROM OLD.derivative_kind
+        OR NEW.parent_copy_id IS DISTINCT FROM OLD.parent_copy_id
+        OR NEW.storage_provider IS DISTINCT FROM OLD.storage_provider
+        OR NEW.storage_object_id IS DISTINCT FROM OLD.storage_object_id
+        OR NEW.storage_key_ref IS DISTINCT FROM OLD.storage_key_ref
+        OR NEW.storage_version_id IS DISTINCT FROM OLD.storage_version_id
+        OR NEW.source_evidence_media_id IS DISTINCT FROM OLD.source_evidence_media_id
+        OR NEW.digest_sha256 IS DISTINCT FROM OLD.digest_sha256
+        OR NEW.content_type IS DISTINCT FROM OLD.content_type
+        OR NEW.size_bytes IS DISTINCT FROM OLD.size_bytes
+        OR NEW.created_by IS DISTINCT FROM OLD.created_by
+        OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'immutable EV copy fields cannot be changed for id=%', OLD.id;
+    END IF;
+    IF OLD.worm_status = 'VERIFIED' AND (
+        NEW.worm_status IS DISTINCT FROM OLD.worm_status OR NEW.verified_at IS DISTINCT FROM OLD.verified_at
+    ) THEN
+        RAISE EXCEPTION 'verified EV WORM copy cannot be mutated id=%', OLD.id;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION docs_evidence_append_only_guard()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'DELETE'
+       AND current_setting('app.platform_force_remove_org', true) = 'on'
+       AND CURRENT_USER <> 'console_rt'
+       AND CURRENT_USER <> 'console_platform_force_cmd'
+       AND CURRENT_USER = pg_catalog.pg_get_userbyid((
+           SELECT proowner FROM pg_catalog.pg_proc
+            WHERE oid = 'public.platform_force_remove_organization(uuid)'::regprocedure
+       ))
+    THEN
+        IF EXISTS (
+            SELECT 1 FROM public.docs_evidence_legal_holds
+             WHERE org_id = OLD.org_id AND status = 'ACTIVE'
+        ) THEN
+            RAISE EXCEPTION 'tenant % is under active legal hold', OLD.org_id
+                USING ERRCODE = '55000', CONSTRAINT = 'audit_legal_holds_active';
+        END IF;
+        RETURN OLD;
+    END IF;
+    RAISE EXCEPTION 'append-only EV table % forbids %', TG_TABLE_NAME, TG_OP;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION docs_equipment_handover_custody_immutable()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'DELETE'
+       AND current_setting('app.platform_force_remove_org', true) = 'on'
+       AND CURRENT_USER <> 'console_rt'
+       AND CURRENT_USER <> 'console_platform_force_cmd'
+       AND CURRENT_USER = pg_catalog.pg_get_userbyid((
+           SELECT proowner FROM pg_catalog.pg_proc
+            WHERE oid = 'public.platform_force_remove_organization(uuid)'::regprocedure
+       ))
+    THEN
+        IF EXISTS (
+            SELECT 1 FROM public.docs_evidence_legal_holds
+             WHERE org_id = OLD.org_id AND status = 'ACTIVE'
+        ) THEN
+            RAISE EXCEPTION 'tenant % is under active legal hold', OLD.org_id
+                USING ERRCODE = '55000', CONSTRAINT = 'audit_legal_holds_active';
+        END IF;
+        RETURN OLD;
+    END IF;
+    RAISE EXCEPTION 'equipment handover custody is immutable' USING ERRCODE = '55000';
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION platform_force_remove_organization_command(
     p_id UUID, p_actor UUID, p_trace_id CHAR(32), p_span_id CHAR(16), p_occurred_at TIMESTAMPTZ
@@ -239,6 +346,31 @@ BEGIN
       FROM tenant_encryption_keys
      WHERE org_id = p_id
        AND state = 'SHREDDED';
+
+    -- Clear EV child tables in topological child-before-parent order (including
+    -- self-referencing ON DELETE RESTRICT chains) after S3 outbox capture and
+    -- legal-hold clearance, before platform_force_remove_organization runs.
+    DELETE FROM docs_equipment_handover_custody WHERE org_id = p_id;
+    DELETE FROM docs_evidence_exports WHERE org_id = p_id;
+    DELETE FROM docs_evidence_tsa_proofs WHERE org_id = p_id;
+    LOOP
+        DELETE FROM docs_evidence_copies c
+         WHERE c.org_id = p_id
+           AND NOT EXISTS (
+               SELECT 1 FROM docs_evidence_copies child
+                WHERE child.org_id = p_id AND child.parent_copy_id = c.id
+           );
+        EXIT WHEN NOT FOUND;
+    END LOOP;
+    LOOP
+        DELETE FROM docs_evidence_custody_events e
+         WHERE e.org_id = p_id
+           AND NOT EXISTS (
+               SELECT 1 FROM docs_evidence_custody_events child
+                WHERE child.org_id = p_id AND child.previous_event_id = e.id
+           );
+        EXIT WHEN NOT FOUND;
+    END LOOP;
     PERFORM set_config('app.platform_force_remove_org', 'off', true);
 
     v_outcome := platform_force_remove_organization(p_id);

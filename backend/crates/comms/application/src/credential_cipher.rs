@@ -112,6 +112,13 @@ pub trait CredentialCipher: Send + Sync {
     fn scoped_for_org<'a>(&'a self, _org: uuid::Uuid) -> ScopedCredentialCipherFuture<'a> {
         Box::pin(async { Ok(None) })
     }
+
+    /// Resolve the read-only target `kek_id` for `org` without provisioning or
+    /// mutating per-tenant key rows.
+    fn target_kek_for_org<'a>(&'a self, _org: uuid::Uuid) -> TargetKekForOrgFuture<'a> {
+        let kek = self.active_kek_id().map(str::to_owned);
+        Box::pin(async move { Ok(kek) })
+    }
 }
 
 /// Boxed future returned by [`CredentialCipher::scoped_for_org`].
@@ -122,6 +129,11 @@ pub type ScopedCredentialCipherFuture<'a> = std::pin::Pin<
             > + Send
             + 'a,
     >,
+>;
+
+/// Boxed future returned by [`CredentialCipher::target_kek_for_org`].
+pub type TargetKekForOrgFuture<'a> = std::pin::Pin<
+    Box<dyn core::future::Future<Output = Result<Option<String>, CipherError>> + Send + 'a>,
 >;
 
 impl<C: CredentialCipher + ?Sized> CredentialCipher for &C {
@@ -156,6 +168,10 @@ impl<C: CredentialCipher + ?Sized> CredentialCipher for &C {
     fn scoped_for_org<'a>(&'a self, org: uuid::Uuid) -> ScopedCredentialCipherFuture<'a> {
         (**self).scoped_for_org(org)
     }
+
+    fn target_kek_for_org<'a>(&'a self, org: uuid::Uuid) -> TargetKekForOrgFuture<'a> {
+        (**self).target_kek_for_org(org)
+    }
 }
 
 impl<C: CredentialCipher + ?Sized> CredentialCipher for std::sync::Arc<C> {
@@ -189,5 +205,9 @@ impl<C: CredentialCipher + ?Sized> CredentialCipher for std::sync::Arc<C> {
 
     fn scoped_for_org<'a>(&'a self, org: uuid::Uuid) -> ScopedCredentialCipherFuture<'a> {
         (**self).scoped_for_org(org)
+    }
+
+    fn target_kek_for_org<'a>(&'a self, org: uuid::Uuid) -> TargetKekForOrgFuture<'a> {
+        (**self).target_kek_for_org(org)
     }
 }

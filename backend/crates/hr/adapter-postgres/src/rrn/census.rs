@@ -85,15 +85,14 @@ impl HrService {
             // rls-arming: ok platform_list_organizations() is the SECURITY DEFINER id-only tenant discovery; every per-org count below runs under with_org_conn
             .fetch_all(&self.pool)
             .await?;
+        let target_alg_id = vault.active_alg_id().unwrap_or("");
         let mut total = RrnEnvelopeCensus::default();
         for org_uuid in orgs {
-            let scoped = vault
-                .scoped_for_org(org_uuid)
+            let target_kek = vault
+                .target_kek_for_org(org_uuid)
                 .await
                 .map_err(|_| super::unavailable())?;
-            let effective = scoped.as_deref().unwrap_or(vault);
-            let target_alg_id = effective.active_alg_id().unwrap_or("");
-            let target_kek_id = effective.active_kek_id().unwrap_or("");
+            let target_kek_id = target_kek.as_deref().unwrap_or("");
             let org_census = self
                 .legacy_envelope_census_in_org(
                     OrgId::from_uuid(org_uuid),

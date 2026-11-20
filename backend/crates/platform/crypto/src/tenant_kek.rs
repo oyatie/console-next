@@ -101,6 +101,15 @@ pub enum TenantDekMode {
 }
 
 impl TenantDekMode {
+    /// Canonical mode string.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::DualRead => "dual_read",
+        }
+    }
+
     /// Parse `CONSOLE_TENANT_DEK_MODE` (`"active"` when unset).
     pub fn from_env() -> Result<Self, CryptoError> {
         match std::env::var(TENANT_DEK_MODE_ENV) {
@@ -297,6 +306,10 @@ impl KmsProvider for TenantScopedKms {
             return unwrap_dek_kwp(tdek.as_ref(), kek_id, purpose, wrapped_dek);
         }
         self.master_kms.unwrap_dek(kek_id, purpose, wrapped_dek)
+    }
+
+    fn is_shredded(&self) -> bool {
+        self.shredded
     }
 }
 

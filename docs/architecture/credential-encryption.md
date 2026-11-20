@@ -105,10 +105,15 @@ rotation:
     report per-table `v1`, `v2`, `v3_stale_kek`, and `v3_current` counts under
     `with_org_conn`.
 - **Worker loop & one-shot CLI**: `lifecycle_schedule::spawn` invokes
-  `crypto_reseal::run_worker_tick` in `AppRole::Worker`; operators can drain or
-  inspect progress on demand via `console-app crypto-reseal [--batch-size N] [--max-batches N]`
-  and `console-app crypto-census` (connecting strictly as `console_rt` and emitting
-  non-PII JSON counts to stdout).
+  `crypto_reseal::run_worker_tick` in `AppRole::Worker`; operators can drain,
+  inspect, or rotate keys on demand via:
+  - `console-app crypto-reseal [--batch-size N] [--max-batches N]`
+  - `console-app crypto-census` (strictly read-only; resolves per-org target
+    KEKs without provisioning DEKs and reports `tenant_dek_mode`,
+    `master_active_kek_id`, and `target_kek_pattern` in non-PII JSON)
+  - `console-app rotate-tenant-dek --org <uuid> [--scope rrn|mail|all]`
+  - `console-app rewrap-master-kek [--org <uuid>] [--scope rrn|mail|all] [--batch-size N] [--max-batches N]`
+  (all connecting strictly as `console_rt` and emitting non-PII JSON to stdout).
 
 AES-KWP is the provider's [RFC 5649](https://www.rfc-editor.org/rfc/rfc5649)
 implementation, standardized by [NIST SP 800-38F](https://doi.org/10.6028/NIST.SP.800-38F).

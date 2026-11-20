@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, dead_code)]
 
+use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
 use console_app::EnvRrnVault;
@@ -21,6 +22,7 @@ use uuid::Uuid;
 pub struct FakeS3Store {
     pub deletes: Mutex<Vec<(String, String)>>,
     pub worm_replica_locked: bool,
+    pub not_found_keys: HashSet<String>,
 }
 
 impl S3ObjectStore for FakeS3Store {
@@ -50,6 +52,11 @@ impl S3ObjectStore for FakeS3Store {
             if self.worm_replica_locked && bucket == "replica-bkt" {
                 return Err(StorageError::S3(
                     "delete object failed with 403 Forbidden: AccessDenied".into(),
+                ));
+            }
+            if self.not_found_keys.contains(&key) {
+                return Err(StorageError::S3(
+                    "delete object failed with 404 Not Found: NoSuchKey".into(),
                 ));
             }
             self.deletes.lock().unwrap().push((bucket, key));
@@ -201,30 +208,62 @@ pub async fn assert_shredded_triggers_and_witness(owner: &PgPool, rt: &PgPool, o
     assert_eq!(req_fp.len(), 32);
 }
 
-pub async fn assert_s3_outbox_drain(
+/// Prove `console_rt` cannot bypass `tenant_encryption_keys_shred_guard()` via
+/// `set_config('app.platform_force_remove_org', 'on', true)` + `INSERT SHREDDED`.
+pub async fn assert_console_rt_cannot_insert_shredded(rt: &PgPool, survivor_org: OrgId) {
+    let org_uuid = *survivor_org.as_uuid();
+    let res = with_org_conn(rt, survivor_org, move |tx| {
+        Box::pin(async move {
+            sqlx::query("SELECT set_config('app.platform_force_remove_org', 'on', true)")
+                .execute(tx.as_mut())
+                .await
+                .map_err(console_platform_db::DbError::from)?;
+            sqlx::query(
+                "INSERT INTO tenant_encryption_keys \
+                 (org_id, key_scope, key_version, state, alg_id, kek_id, wrapped_dek, key_fingerprint) \
+                 VALUES ($1, 'mail', 99, 'SHREDDED', 'shredded', 'shredded', NULL, decode(repeat('88', 32), 'hex'))",
+            )
+            .bind(org_uuid)
+            .execute(tx.as_mut())
+            .await
+            .map_err(console_platform_db::DbError::from)
+        })
+    })
+    .await;
+    let err = res.unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("42501")
+            || msg.contains("tenant key shredding requires platform force removal command"),
+        "expected 42501 shred guard rejection, got {msg}"
+    );
+}
+
+pub async fn assert_all_nine_s3_outbox_drain(
     owner: &PgPool,
     rt: &PgPool,
     org_uuid: Uuid,
-    photo_key: String,
+    expected_keys: &[(String, Option<String>, String)],
 ) {
-    let req_id: Uuid =
-        sqlx::query_scalar("SELECT id FROM tenant_erase_requests WHERE target_org_id = $1") // rls-arming: ok owner fixture
-            .bind(org_uuid)
-            .fetch_one(owner)
-            .await
-            .unwrap();
-    sqlx::query( // rls-arming: ok owner fixture adds replica row
-        "INSERT INTO tenant_erase_s3_outbox (org_id, target_org_id, request_id, bucket_kind, object_key) \
-         VALUES ($1,$2,$3,'REPLICA','orgs/worm/obj.jpg')",
+    let rows: Vec<(String, Option<String>, String)> = sqlx::query_as( // rls-arming: ok owner verifies outbox rows
+        "SELECT bucket_kind, explicit_bucket, object_key FROM tenant_erase_s3_outbox WHERE target_org_id = $1",
     )
-    .bind(*OrgId::platform().as_uuid())
     .bind(org_uuid)
-    .bind(req_id)
-    .execute(owner)
+    .fetch_all(owner)
     .await
     .unwrap();
+    for expected in expected_keys {
+        assert!(rows.contains(expected), "missing outbox row: {expected:?}");
+    }
+    let not_found = expected_keys
+        .iter()
+        .find(|(kind, _, _)| kind == "EXPLICIT")
+        .map(|(_, _, k)| k.clone())
+        .into_iter()
+        .collect();
     let fake_s3 = FakeS3Store {
         worm_replica_locked: true,
+        not_found_keys: not_found,
         ..Default::default()
     };
     let stats = PlatformProvisioner::drain_erased_tenant_objects(
@@ -235,20 +274,31 @@ pub async fn assert_s3_outbox_drain(
     )
     .await
     .unwrap();
+    let expected_primary_plus_explicit = expected_keys
+        .iter()
+        .filter(|(k, _, _)| k != "REPLICA")
+        .count();
+    let expected_replica = expected_keys
+        .iter()
+        .filter(|(k, _, _)| k == "REPLICA")
+        .count();
     assert_eq!(
         (stats.deleted, stats.deferred_worm, stats.retried),
-        (1, 1, 0)
+        (expected_primary_plus_explicit, expected_replica, 0)
     );
-    assert_eq!(
-        fake_s3.deletes.lock().unwrap().as_slice(),
-        &[("primary-bkt".to_owned(), photo_key)]
-    );
-    let worm_err: String = sqlx::query_scalar( // rls-arming: ok owner verifies deferral
-        "SELECT last_error FROM tenant_erase_s3_outbox WHERE target_org_id = $1 AND bucket_kind = 'REPLICA'",
+    let deletes = fake_s3.deletes.lock().unwrap();
+    for (kind, _, key) in expected_keys {
+        if kind == "PRIMARY" {
+            assert!(deletes.contains(&("primary-bkt".to_owned(), key.clone())));
+        }
+    }
+    let remaining: i64 = sqlx::query_scalar(
+        // rls-arming: ok owner verifies outbox drain
+        "SELECT count(*) FROM tenant_erase_s3_outbox WHERE target_org_id = $1",
     )
     .bind(org_uuid)
     .fetch_one(owner)
     .await
     .unwrap();
-    assert_eq!(worm_err, "worm_retention_active");
+    assert_eq!(remaining, i64::try_from(expected_replica).unwrap());
 }
