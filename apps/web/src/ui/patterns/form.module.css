@@ -60,6 +60,10 @@
     border-block-end: 0;
   }
 
+  :where([data-experience]:not([data-experience="baseline"])) .column .form [data-sticky] {
+    position: static;
+  }
+
   .form [data-sticky] > :last-child > :is(button, a) {
     flex: 1 1 0%;
     justify-content: center;

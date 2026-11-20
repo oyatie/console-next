@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { mountBrowserModule, type MountedGallery } from "../../lib/gallery-browser-test";
 import { expectFitsViewport, expectPatternMatrixClean, openPatternFixture } from "./pattern-browser-helpers";
 
@@ -96,6 +96,23 @@ describe("PhoneHub KeyValue label track containment with unspaced labels", () =>
     });
   }, 60_000);
 
+  let priorExperience: string | undefined;
+
+  beforeEach(async () => {
+    priorExperience = await longLabelApp.page.evaluate(() => {
+      const prev = document.documentElement.dataset.experience;
+      document.documentElement.dataset.experience = "console";
+      return prev;
+    });
+  });
+
+  afterEach(async () => {
+    await longLabelApp.page.evaluate(prev => {
+      if (prev === undefined) delete document.documentElement.dataset.experience;
+      else document.documentElement.dataset.experience = prev;
+    }, priorExperience);
+  });
+
   afterAll(async () => {
     await longLabelApp?.close();
   });
@@ -118,4 +135,77 @@ describe("PhoneHub KeyValue label track containment with unspaced labels", () =>
       expect(metrics.dtRight).toBeLessThanOrEqual(metrics.chkLeft + 0.5);
     }
   });
+});
+
+describe("PhoneHub StatRow ISO date single-line fit on fresh 320x844 load and 390 -> 320 resize", () => {
+  let fresh320App: MountedGallery;
+
+  beforeAll(async () => {
+    fresh320App = await mountBrowserModule({
+      slug: "phone-hub-fresh-320",
+      lang: "ko",
+      readySelector: '[data-pattern="phone-hub"]',
+      viewport: { width: 320, height: 844 },
+      moduleCode: `
+        import React from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+        import { loadCatalog } from '@console/i18n';
+        import PhoneHubExample from '/apps/web/src/ui/patterns/phone-hub.fixture.tsx';
+        import '/apps/web/src/app.css';
+
+        await loadCatalog('ko');
+        document.documentElement.dataset.experience = 'console';
+        document.documentElement.dataset.theme = 'light';
+        const router = createRouter({
+          routeTree: createRootRoute({ component: () => React.createElement(PhoneHubExample) }),
+          history: createMemoryHistory({ initialEntries: ['/'] }),
+        });
+        await router.load();
+        createRoot(document.getElementById('root')).render(React.createElement(RouterProvider, { router }));
+      `,
+    });
+  }, 60_000);
+
+  afterAll(async () => {
+    await fresh320App?.close();
+  });
+
+  test("keeps 2019-03-14 on 1 line with zero docOverflow on direct 320x844 load and 390 -> 320 resize", async () => {
+    const { page } = fresh320App;
+    const measureHireDate = () =>
+      page.evaluate(async () => {
+        await document.fonts.ready;
+        const dl = document.querySelector("dl")!;
+        const walker = document.createTreeWalker(dl, NodeFilter.SHOW_TEXT);
+        let node: Node | null;
+        let lineRects = 0;
+        while ((node = walker.nextNode())) {
+          if (node.textContent?.includes("2019-03-14")) {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            lineRects = range.getClientRects().length;
+            break;
+          }
+        }
+        return {
+          lineRects,
+          docOverflow: document.documentElement.scrollWidth - window.innerWidth,
+        };
+      });
+
+    const direct320 = await measureHireDate();
+    expect(direct320.lineRects).toBe(1);
+    expect(direct320.docOverflow).toBe(0);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const at390 = await measureHireDate();
+    expect(at390.lineRects).toBe(1);
+    expect(at390.docOverflow).toBe(0);
+
+    await page.setViewportSize({ width: 320, height: 844 });
+    const resized320 = await measureHireDate();
+    expect(resized320.lineRects).toBe(1);
+    expect(resized320.docOverflow).toBe(0);
+  }, 45_000);
 });
