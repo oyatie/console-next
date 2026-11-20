@@ -412,6 +412,7 @@ test("cluster-wide role mutators and console_app migrations share exclusive exec
     "leave_migration_expand_contract", "key_revision_migration_upgrade",
     "attendance_console_migration_contract", "apalis_adapter", "apalis_schema_contract",
     "apalis_runtime_release", "group_of_one_expand_contract",
+    "migrated_canonical_tables_have_only_expected_writers",
     "definitions_migrated_by_console_app_are_read_only_for_runtime",
     "placement_migrations_run_as_console_app", "owner_only_acl_is_effectively_private_on_postgres18",
     "console_app_may_set_its_own_lock_timeout_default",
