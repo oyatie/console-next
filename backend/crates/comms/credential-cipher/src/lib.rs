@@ -6,6 +6,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod legacy;
+mod reseal;
 
 use core::fmt;
 use std::sync::Arc;
@@ -26,8 +27,8 @@ pub const MASTER_KEY_ENV: &str = "CONSOLE_MAIL_MASTER_KEY";
 /// The environment variable carrying the JSON multi-key rotation ring.
 pub const KEYRING_ENV: &str = "CONSOLE_MAIL_KEYRING";
 
-/// Keep v1 writes until the dual-reader release is deployed for safe rollback.
-pub const CURRENT_KEY_VERSION: i16 = 1;
+/// Default envelope writer uses AWS-ESDK-v2 (`alg_id = 3`); v1/v2 readers remain enabled for N-1 rollback.
+pub const CURRENT_KEY_VERSION: i16 = 3;
 
 const KEY_LEN: usize = legacy::KEY_LEN;
 
@@ -164,6 +165,22 @@ impl CredentialCipher for EnvelopeCredentialCipher {
             3 => self.decrypt_v3(sealed, aad),
             _ => Err(CipherError::KeyVersion),
         }
+    }
+
+    fn active_alg_id(&self) -> Option<&str> {
+        Some(EnvelopeCredentialCipher::active_alg_id(self).as_str())
+    }
+
+    fn active_kek_id(&self) -> Option<&str> {
+        Some(EnvelopeCredentialCipher::active_kek_id(self).as_str())
+    }
+
+    fn reseal(
+        &self,
+        sealed: &SealedCredential,
+        aad: Aad<'_>,
+    ) -> Result<SealedCredential, CipherError> {
+        EnvelopeCredentialCipher::reseal(self, sealed, aad)
     }
 }
 

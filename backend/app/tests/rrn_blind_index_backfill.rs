@@ -261,21 +261,27 @@ async fn t4_t5_t6_t7_batched_backfill_rollback_audit_and_zero_leakage(pool: PgPo
         .unwrap();
     assert_eq!(revealed.value, json!("900101-1234567"));
 
-    // Column-scoped privilege check: console_rt cannot update org_id or ciphertext
-    let priv_err = with_org_conn(&a.rt, a.org, move |tx| {
-        Box::pin(async move {
-            sqlx::query(
-                "UPDATE employee_rrn SET ciphertext = decode('00', 'hex') WHERE org_id = $1",
-            )
-            .bind(a.org_uuid)
-            .execute(tx.as_mut())
-            .await
-            .map_err(console_hr_adapter_postgres::HrError::from)
+    // Column-scoped privilege check: envelope columns became re-sealable by 20261120143002000_credential_reseal_grants.sql,
+    // while identity, blind-index v1, masked display, and provenance columns remain immutable to console_rt.
+    for stmt in [
+        "UPDATE employee_rrn SET rrn_hmac = decode('00', 'hex') WHERE org_id = $1",
+        "UPDATE employee_rrn SET masked = '000000-1******' WHERE org_id = $1",
+        "UPDATE employee_rrn SET org_id = $1 WHERE org_id = $1",
+        "UPDATE employee_rrn SET recorded_by = $1 WHERE org_id = $1",
+    ] {
+        let priv_err = with_org_conn(&a.rt, a.org, move |tx| {
+            Box::pin(async move {
+                sqlx::query(stmt)
+                    .bind(a.org_uuid)
+                    .execute(tx.as_mut())
+                    .await
+                    .map_err(console_hr_adapter_postgres::HrError::from)
+            })
         })
-    })
-    .await
-    .unwrap_err();
-    assert_eq!(priv_err.status.as_u16(), 500);
+        .await
+        .unwrap_err();
+        assert_eq!(priv_err.status.as_u16(), 500);
+    }
 
     // T6: captured logs never contain RRN digits or HMAC hex
     let logs = String::from_utf8_lossy(&sink.0.lock().unwrap()).into_owned();

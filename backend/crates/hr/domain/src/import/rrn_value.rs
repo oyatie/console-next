@@ -220,6 +220,48 @@ pub trait RrnVault: Send + Sync {
         ))
     }
 
+    /// Active envelope key version written by [`RrnVault::seal`] (`3` = AWS-ESDK-v2).
+    fn active_envelope_key_version(&self) -> i16 {
+        3
+    }
+
+    /// Canonical `alg_id` written by [`RrnVault::seal`], if crypto-agile (`v3+`).
+    fn active_alg_id(&self) -> Option<&str> {
+        None
+    }
+
+    /// Active wrapping KEK identifier written by [`RrnVault::seal`], if any.
+    fn active_kek_id(&self) -> Option<&str> {
+        None
+    }
+
+    /// Re-seal `sealed`'s AEAD envelope under the active writer suite and KEK,
+    /// preserving `hmac`, `hmac_key_version`, `hmac_v2`, `blind_index_version`,
+    /// and `masked` so N-1 blind-index compatibility stays intact.
+    ///
+    /// # Errors
+    /// [`VaultError`] when opening or re-sealing `sealed` fails.
+    fn reseal(&self, org: Uuid, sealed: &SealedRrn) -> Result<SealedRrn, VaultError> {
+        let rrn = self.open(org, sealed)?;
+        let fresh = self.seal(org, &rrn)?;
+        Ok(SealedRrn {
+            hmac: sealed.hmac.clone(),
+            hmac_key_version: sealed.hmac_key_version,
+            hmac_v2: sealed.hmac_v2.clone(),
+            blind_index_version: sealed.blind_index_version,
+            ciphertext: fresh.ciphertext,
+            nonce: fresh.nonce,
+            dek_wrapped: fresh.dek_wrapped,
+            dek_nonce: fresh.dek_nonce,
+            key_version: fresh.key_version,
+            masked: sealed.masked.clone(),
+            alg_id: fresh.alg_id,
+            kek_id: fresh.kek_id,
+            msg_id: fresh.msg_id,
+            commitment_tag: fresh.commitment_tag,
+        })
+    }
+
     /// # Errors
     /// [`VaultError`] for a wrong key, another tenant's row or a tampered one.
     fn open(&self, org: Uuid, sealed: &SealedRrn) -> Result<Rrn, VaultError>;

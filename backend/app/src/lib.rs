@@ -17,6 +17,8 @@ mod coldstart_guard;
 mod collaboration;
 #[cfg(feature = "full")]
 mod console_telemetry;
+pub mod crypto_reseal;
+mod crypto_reseal_cli;
 mod entity_wiring;
 mod error_i18n;
 #[cfg(feature = "facilities")]
@@ -71,6 +73,7 @@ pub use crate::config::AppConfig;
 pub use crate::config::AppLinksConfig;
 pub use crate::config::auth::JwtVerifierConfig;
 pub use crate::config::role::AppRole;
+pub use crate::crypto_reseal_cli::run_crypto_cli;
 pub use crate::error::AppError;
 pub use crate::http::metrics::install_metrics_recorder;
 pub use crate::routes::build_router;
