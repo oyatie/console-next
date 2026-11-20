@@ -30,6 +30,27 @@ impl TestEnvVault {
         let hmac_ring = BlindIndexKeyring::from_single_legacy_base64(&h_b64).unwrap();
         Arc::new(Self { cipher, hmac_ring })
     }
+
+    pub fn from_keyrings(
+        master_keyring: Option<&str>,
+        legacy_master: Option<&str>,
+        hmac_keyring: Option<&str>,
+        legacy_hmac: Option<&str>,
+    ) -> Arc<Self> {
+        let cipher = EnvelopeCredentialCipher::from_owned_env_values(
+            master_keyring.map(str::to_owned),
+            legacy_master.map(str::to_owned),
+        )
+        .unwrap()
+        .unwrap();
+        let hmac_ring = BlindIndexKeyring::from_owned_env_values(
+            hmac_keyring.map(str::to_owned),
+            legacy_hmac.map(str::to_owned),
+        )
+        .unwrap()
+        .unwrap();
+        Arc::new(Self { cipher, hmac_ring })
+    }
 }
 
 fn aad(org: &str) -> Aad<'_> {
@@ -108,6 +129,53 @@ impl RrnVault for TestEnvVault {
             .compute_v2_candidates(ctx(org), rrn.digits().as_bytes())
             .map(|v| v.into_iter().map(|(_, d)| d.to_vec()).collect())
             .unwrap_or_default()
+    }
+
+    fn active_envelope_key_version(&self) -> i16 {
+        console_comms_credential_cipher::CURRENT_KEY_VERSION
+    }
+
+    fn active_alg_id(&self) -> Option<&str> {
+        Some(self.cipher.active_alg_id().as_str())
+    }
+
+    fn active_kek_id(&self) -> Option<&str> {
+        Some(self.cipher.active_kek_id().as_str())
+    }
+
+    fn reseal(&self, org: Uuid, sealed: &SealedRrn) -> Result<SealedRrn, VaultError> {
+        let org_str = org.to_string();
+        let cred = SealedCredential {
+            ciphertext: sealed.ciphertext.clone(),
+            nonce: sealed.nonce.clone(),
+            dek_wrapped: sealed.dek_wrapped.clone(),
+            dek_nonce: sealed.dek_nonce.clone(),
+            key_version: sealed.key_version,
+            alg_id: sealed.alg_id.clone(),
+            kek_id: sealed.kek_id.clone(),
+            msg_id: sealed.msg_id.clone(),
+            commitment_tag: sealed.commitment_tag.clone(),
+        };
+        let fresh = self
+            .cipher
+            .reseal(&cred, aad(&org_str))
+            .map_err(|_| VaultError)?;
+        Ok(SealedRrn {
+            hmac: sealed.hmac.clone(),
+            hmac_key_version: sealed.hmac_key_version,
+            hmac_v2: sealed.hmac_v2.clone(),
+            blind_index_version: sealed.blind_index_version,
+            ciphertext: fresh.ciphertext,
+            nonce: fresh.nonce,
+            dek_wrapped: fresh.dek_wrapped,
+            dek_nonce: fresh.dek_nonce,
+            key_version: fresh.key_version,
+            masked: sealed.masked.clone(),
+            alg_id: fresh.alg_id,
+            kek_id: fresh.kek_id,
+            msg_id: fresh.msg_id,
+            commitment_tag: fresh.commitment_tag,
+        })
     }
 
     fn open(&self, org: Uuid, sealed: &SealedRrn) -> Result<Rrn, VaultError> {

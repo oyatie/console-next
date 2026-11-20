@@ -27,11 +27,13 @@ fn rrn_aad<'a>() -> Aad<'a> {
 }
 
 #[test]
-fn default_writer_stays_v1_while_dual_reader_handles_v1_v2_and_v3() {
-    assert_eq!(CURRENT_KEY_VERSION, 1);
+fn default_writer_emits_v3_while_dual_reader_handles_v1_v2_and_v3() {
+    assert_eq!(CURRENT_KEY_VERSION, 3);
     let cipher = EnvelopeCredentialCipher::from_key_bytes(&[0x19u8; 32]).unwrap();
 
-    let v1 = cipher.encrypt(b"smtp-secret", mail_aad()).unwrap();
+    let v1 = cipher
+        .encrypt_with_suite(1, b"smtp-secret", mail_aad())
+        .unwrap();
     assert_eq!(v1.key_version, 1);
     assert!(v1.alg_id.is_none());
     assert!(v1.kek_id.is_none());
@@ -43,9 +45,7 @@ fn default_writer_stays_v1_while_dual_reader_handles_v1_v2_and_v3() {
         .unwrap();
     assert_eq!(v2.key_version, 2);
 
-    let v3 = cipher
-        .encrypt_with_suite(3, b"smtp-secret", mail_aad())
-        .unwrap();
+    let v3 = cipher.encrypt(b"smtp-secret", mail_aad()).unwrap();
     assert_eq!(v3.key_version, 3);
     assert_eq!(
         v3.alg_id.as_deref(),
@@ -63,9 +63,7 @@ fn default_writer_stays_v1_while_dual_reader_handles_v1_v2_and_v3() {
     }
 
     // RRN context preserves table = employee_rrn, purpose = rrn_vault
-    let rrn_v3 = cipher
-        .encrypt_with_suite(3, b"9001011234567", rrn_aad())
-        .unwrap();
+    let rrn_v3 = cipher.encrypt(b"9001011234567", rrn_aad()).unwrap();
     assert_eq!(
         cipher.open_bytes(&rrn_v3, rrn_aad()).unwrap(),
         b"9001011234567"
@@ -86,8 +84,8 @@ fn v3_negative_tamper_and_rotation_ring_checks() {
     ))
     .unwrap();
     let c1 = EnvelopeCredentialCipher::from_local_keyring(ring1);
-    let sealed_k1_v1 = c1.encrypt(b"v1-pw", mail_aad()).unwrap();
-    let sealed_k1_v3 = c1.encrypt_with_suite(3, b"v3-pw", mail_aad()).unwrap();
+    let sealed_k1_v1 = c1.encrypt_with_suite(1, b"v1-pw", mail_aad()).unwrap();
+    let sealed_k1_v3 = c1.encrypt(b"v3-pw", mail_aad()).unwrap();
     assert_eq!(sealed_k1_v3.kek_id.as_deref(), Some("k1"));
 
     // Rotate active key to k2 while keeping k1 in ring

@@ -1,12 +1,12 @@
-//! IMPORT-2 (decisions #25): the shell's resident registration number vault. Sealing reuses the
-//! versioned webmail envelope AEAD (v1 writes during dual-reader rollout) under
-//! its own master key; matching uses tenant-bound HKDF-SHA256 + HMAC-SHA256
-//! blind indexes (v2+) while retaining legacy v1 compatibility during backfill.
-//! Both keys come from the environment (Vault-injected in production), never
+//! IMPORT-2 (decisions #25): the shell's resident registration number vault. Sealing uses the
+//! versioned webmail envelope AEAD (`v3` AWS-ESDK-v2 default writer, retaining `v1`/`v2`
+//! readers for N-1 rollback) under its own master key; matching uses tenant-bound
+//! HKDF-SHA256 + HMAC-SHA256 blind indexes (v2+) while retaining legacy v1 compatibility
+//! during backfill. Both keys come from the environment (Vault-injected in production), never
 //! from the database, and are never logged.
 
 use console_comms_credential_cipher::{
-    Aad, CredentialCipher, EnvelopeCredentialCipher, SealedCredential,
+    Aad, CURRENT_KEY_VERSION, CredentialCipher, EnvelopeCredentialCipher, SealedCredential,
 };
 use console_hr_adapter_postgres::HrService;
 use console_hr_domain::import::rrn_value::{Rrn, RrnVault, SealedRrn, VaultError};
@@ -113,6 +113,18 @@ impl EnvRrnVault {
         .map_err(|_| format!("{HMAC_KEY_ENV}/{HMAC_KEYRING_ENV} is invalid"))?
         .ok_or_else(|| format!("{HMAC_KEY_ENV}/{HMAC_KEYRING_ENV} unset"))?;
         Ok(Self { cipher, hmac_ring })
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub fn from_provider(
+        kms: std::sync::Arc<dyn console_platform_crypto::KmsProvider>,
+        hmac_ring: BlindIndexKeyring,
+    ) -> Self {
+        Self {
+            cipher: EnvelopeCredentialCipher::from_provider(kms),
+            hmac_ring,
+        }
     }
 
     /// `Ok(None)` when neither key is set.
@@ -259,6 +271,53 @@ impl RrnVault for EnvRrnVault {
         out
     }
 
+    fn active_envelope_key_version(&self) -> i16 {
+        CURRENT_KEY_VERSION
+    }
+
+    fn active_alg_id(&self) -> Option<&str> {
+        Some(self.cipher.active_alg_id().as_str())
+    }
+
+    fn active_kek_id(&self) -> Option<&str> {
+        Some(self.cipher.active_kek_id().as_str())
+    }
+
+    fn reseal(&self, org: Uuid, sealed: &SealedRrn) -> Result<SealedRrn, VaultError> {
+        let org_str = org.to_string();
+        let credential = SealedCredential {
+            ciphertext: sealed.ciphertext.clone(),
+            nonce: sealed.nonce.clone(),
+            dek_wrapped: sealed.dek_wrapped.clone(),
+            dek_nonce: sealed.dek_nonce.clone(),
+            key_version: sealed.key_version,
+            alg_id: sealed.alg_id.clone(),
+            kek_id: sealed.kek_id.clone(),
+            msg_id: sealed.msg_id.clone(),
+            commitment_tag: sealed.commitment_tag.clone(),
+        };
+        let fresh = self
+            .cipher
+            .reseal(&credential, aad(&org_str))
+            .map_err(|_| VaultError)?;
+        Ok(SealedRrn {
+            hmac: sealed.hmac.clone(),
+            hmac_key_version: sealed.hmac_key_version,
+            hmac_v2: sealed.hmac_v2.clone(),
+            blind_index_version: sealed.blind_index_version,
+            ciphertext: fresh.ciphertext,
+            nonce: fresh.nonce,
+            dek_wrapped: fresh.dek_wrapped,
+            dek_nonce: fresh.dek_nonce,
+            key_version: fresh.key_version,
+            masked: sealed.masked.clone(),
+            alg_id: fresh.alg_id,
+            kek_id: fresh.kek_id,
+            msg_id: fresh.msg_id,
+            commitment_tag: fresh.commitment_tag,
+        })
+    }
+
     fn open(&self, org: Uuid, sealed: &SealedRrn) -> Result<Rrn, VaultError> {
         let org_str = org.to_string();
         let credential = SealedCredential {
@@ -385,6 +444,25 @@ mod tests {
         assert_eq!(vault.open(org, &sealed).unwrap(), rrn);
         assert_eq!(vault.open(other, &sealed), Err(VaultError));
         assert!(EnvRrnVault::from_keys("bad", key).is_err());
+
+        let provider = std::sync::Arc::new(
+            console_platform_crypto::LocalKeyringProvider::from_single_base64(
+                console_platform_crypto::KekId::legacy_default(),
+                key,
+            )
+            .unwrap(),
+        );
+        let hmac_ring = BlindIndexKeyring::from_single_legacy_base64(key).unwrap();
+        let pv = EnvRrnVault::from_provider(provider, hmac_ring);
+        let pv_sealed = pv.seal(org, &rrn).unwrap();
+        assert_eq!(pv.open(org, &pv_sealed).unwrap(), rrn);
+        assert_eq!(pv.active_kek_id(), Some("legacy-env-v1"));
+        assert_eq!(
+            pv.active_alg_id(),
+            Some("aws-esdk-v2-aes256-gcm-hkdf-sha256-kwp")
+        );
+        let pv_resealed = pv.reseal(org, &pv_sealed).unwrap();
+        assert_eq!(pv.open(org, &pv_resealed).unwrap(), rrn);
     }
 }
 

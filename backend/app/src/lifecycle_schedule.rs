@@ -48,6 +48,9 @@ pub fn spawn(
     force_pool: Option<sqlx::PgPool>,
     nts: std::sync::Arc<console_entity_adapter_nts::NtsClient>,
     rrn_vault: Option<std::sync::Arc<dyn console_hr_domain::import::rrn_value::RrnVault>>,
+    #[cfg(feature = "mail")] mail_cipher: Option<
+        std::sync::Arc<console_comms_credential_cipher::EnvelopeCredentialCipher>,
+    >,
 ) -> LifecycleScheduleHandle {
     let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
     let today_file = dev_today_file();
@@ -162,6 +165,13 @@ pub fn spawn(
                                 Err(error) => tracing::warn!(error = %error.message, "employee RRN blind-index backfill failed"),
                             }
                         }
+                        crate::crypto_reseal::run_worker_tick(
+                            &pool,
+                            rrn_vault.clone(),
+                            #[cfg(feature = "mail")]
+                            mail_cipher.clone(),
+                        )
+                        .await;
                     }
                 }
             }

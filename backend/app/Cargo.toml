@@ -477,3 +477,7 @@ required-features = ["workorder"]
 
 [[test]]
 name = "inbox_source_timing"
+
+[[test]]
+name = "credential_reseal"
+required-features = ["test-postgres", "full"]

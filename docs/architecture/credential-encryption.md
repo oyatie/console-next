@@ -50,21 +50,65 @@ rotation:
 
 ## Schema & N-1 Rollback Contract
 
-- This release keeps `CURRENT_KEY_VERSION = 1`: all runtime writers emit `v1` so
-  a canary rollback to the previous `v1`-only binary can read every new row.
-- Readers accept `v1`, `v2`, and `v3`, dispatch strictly by `key_version` /
-  `alg_id`, never fall back after an authentication failure, and reject unknown
-  or reserved (`0x0101`) suites.
-- Additive expand migration (`20261120090000000_credential_crypto_agility_expand.sql`)
-  adds nullable `alg_id`, `kek_id`, `smtp_msg_id` / `imap_msg_id` / `msg_id`,
-  and `smtp_commitment_tag` / `imap_commitment_tag` / `commitment_tag` columns on
-  `email_accounts`, `employee_rrn`, and `data_import_row_identities`, while
-  companion contract migration `20261120090001000_credential_envelope_v3_shape.sql`
-  widens the RRN shape checks to admit `key_version = 3`.
+- **Default writer (`CURRENT_KEY_VERSION = 3`)**: All runtime writers (`AccountService`
+  for `email_accounts` SMTP/IMAP and `EnvRrnVault` for `employee_rrn` /
+  `data_import_row_identities`) emit `key_version = 3` (`alg_id = "aws-esdk-v2-aes256-gcm-hkdf-sha256-kwp"`),
+  tagging each row with the active `kek_id` from `CONSOLE_*_KEYRING` (or `"legacy-env-v1"`
+  when only `CONSOLE_*_MASTER_KEY` is configured).
+- **Dual-read & N-1 rollback safety**: Readers continue to accept `v1` (`XChaCha20-Poly1305`),
+  `v2` (`AES-256-GCM + AES-256-KWP`), and `v3` (`AWS-ESDK-v2`), dispatching strictly
+  by `key_version` / `alg_id`, never falling back after an authentication failure,
+  and rejecting unknown or reserved (`0x0101`) suites. Because the previous release
+  already ships `v3` readers, rows written as `v3` remain decryptable on N-1
+  rollback, and any `v1` rows written during rollback are readable and re-sealed
+  on roll-forward.
+- **Schema expand & contract constraints**:
+  - `20261120090000000_credential_crypto_agility_expand.sql` adds nullable
+    `alg_id`, `kek_id`, `*_msg_id`, and `*_commitment_tag` columns on
+    `email_accounts`, `employee_rrn`, and `data_import_row_identities`.
+  - `20261120143000000_credential_envelope_v3_shape_fix.sql` (`-- contract-of: 20261120090000000`)
+    fixes SQL three-valued logic (`3VL`) by wrapping `employee_rrn_envelope_shape`
+    and `data_import_row_identities_envelope_shape` in `(...) IS TRUE` with explicit
+    `msg_id IS NOT NULL AND commitment_tag IS NOT NULL` and `alg_id = 'aws-esdk-v2-aes256-gcm-hkdf-sha256-kwp'`,
+    and adds `email_accounts_smtp_envelope_shape` and `email_accounts_imap_envelope_shape`
+    with `NOT VALID` + `VALIDATE CONSTRAINT` (`v1`/`v2` permissive for legacy fixtures,
+    strict `v3` invariants enforced).
+  - `20261120143001000_data_import_row_identities_org_immutable.sql` and
+    `20261120143002000_credential_reseal_grants.sql` enforce `org_id` immutability
+    on `data_import_row_identities` and grant `console_rt` column-scoped `UPDATE`
+    strictly on the 9 envelope columns (`ciphertext`, `nonce`, `dek_wrapped`,
+    `dek_nonce`, `key_version`, `alg_id`, `kek_id`, `msg_id`, `commitment_tag`) of
+    `employee_rrn` and `data_import_row_identities`, keeping identity, blind-index `v1`,
+    masked display, and provenance columns immutable.
 - RRN envelopes preserve `account_id = "employee_rrn"` / `field = "rrn"`
-  (`table = "employee_rrn"`, `purpose = "rrn_vault"` in v3 outer AAD) so SQL
-  staging promotion `INSERT INTO employee_rrn SELECT ... FROM data_import_row_identities`
-  remains zero-copy compatible across `v1`, `v2`, and `v3`.
+  (`table = "employee_rrn"`, `purpose = "rrn_vault"` in v3 outer AAD) across both
+  `employee_rrn` and `data_import_row_identities` so SQL staging promotion
+  `INSERT INTO employee_rrn SELECT ... FROM data_import_row_identities` and
+  staged-identity re-sealing remain decryptable across rotations.
+
+## Audited Batched Re-Seal & Census
+
+- **Zero-copy re-sealing**: `EnvelopeCredentialCipher::reseal` (via `open_with`)
+  and `EnvRrnVault::reseal` decrypt inside `SecretBox` and re-seal under `v3` and
+  `active_kek_id()`, preserving RRN blind indexes (`rrn_hmac`, `rrn_hmac_v2`) and
+  `masked`.
+- **RLS-armed worker & store methods**:
+  - `HrService::reseal_rrn_envelopes` re-seals `employee_rrn` and
+    `data_import_row_identities` in `FOR UPDATE SKIP LOCKED` batches inside
+    `with_audits`, recording `AuditSource::Scheduler` events (`employee.rrn_envelope_reseal`,
+    `import.staged_identity_envelope_reseal`) with non-PII counts and `(alg_id, kek_id)`
+    transitions only.
+  - `PgMailStore::reseal_email_accounts` independently re-seals stale SMTP and IMAP
+    envelopes on `email_accounts` (`updated_at = now()`) with `AuditSource::Scheduler`
+    events (`email.account_credential_reseal`).
+  - `HrService::legacy_envelope_census` and `PgMailStore::legacy_envelope_census`
+    report per-table `v1`, `v2`, `v3_stale_kek`, and `v3_current` counts under
+    `with_org_conn`.
+- **Worker loop & one-shot CLI**: `lifecycle_schedule::spawn` invokes
+  `crypto_reseal::run_worker_tick` in `AppRole::Worker`; operators can drain or
+  inspect progress on demand via `console-app crypto-reseal [--batch-size N] [--max-batches N]`
+  and `console-app crypto-census` (connecting strictly as `console_rt` and emitting
+  non-PII JSON counts to stdout).
 
 AES-KWP is the provider's [RFC 5649](https://www.rfc-editor.org/rfc/rfc5649)
 implementation, standardized by [NIST SP 800-38F](https://doi.org/10.6028/NIST.SP.800-38F).
@@ -121,10 +165,8 @@ an exclusive statutory algorithm list or evidence of this build's certification.
 
 ## Scheduled contract
 
-- After the dual-reader (`v1`/`v2`/`v3`) release is deployed across every
-  environment, flip `CURRENT_KEY_VERSION` to `3` in a follow-on release once
-  persisted SMTP/IMAP and both RRN-table compatibility tests pass.
-- After the writer flip, run idempotent, resumable, audited batched re-sealing
-  and remove legacy ChaCha20 only after zero `v1` rows remain.
+- Remove legacy ChaCha20 (`chacha20poly1305`) and `v1`/`v2` reader arms only in
+  a subsequent contract release after `console-app crypto-census` confirms
+  `v1 == 0` and `v2 == 0` across all three tables and N-1 binaries are retired.
 - Drop legacy `rrn_hmac` (`v1`) only in a future contract migration after N-1
   binaries are retired and `WHERE rrn_hmac_v2 IS NULL` reaches zero.

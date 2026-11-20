@@ -86,6 +86,8 @@ async fn serve_api(config: AppConfig, state: AppState) -> Result<(), AppError> {
             None,
             state.nts.clone(),
             crate::hr::rrn_vault::from_env_logged(),
+            #[cfg(feature = "mail")]
+            state.mail_cipher.clone(),
         )),
         DatabaseDependency::NotConfigured => None,
     };

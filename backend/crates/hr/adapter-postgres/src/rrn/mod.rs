@@ -5,8 +5,11 @@
 //! 503, never a fallback.
 
 pub mod backfill;
+pub mod census;
 pub(crate) mod govern;
 mod record;
+pub mod reseal;
+mod reseal_staged;
 mod reveal;
 use console_hr_domain::{import::rrn_value::RrnVault, profile::mask};
 use console_kernel_core::KernelError;

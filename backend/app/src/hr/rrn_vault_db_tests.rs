@@ -30,7 +30,11 @@ async fn v2_round_trips_through_both_rrn_tables_and_refuses_malformed_shapes(poo
     let vault = EnvRrnVault::from_keys(&key, &key).unwrap();
     let rrn = Rrn::parse("900101-1234567").unwrap();
     let mut sealed = vault.seal(org, &rrn).unwrap();
-    assert_eq!(sealed.key_version, 1);
+    assert_eq!(sealed.key_version, 3);
+    assert_eq!(
+        sealed.alg_id.as_deref(),
+        Some("aws-esdk-v2-aes256-gcm-hkdf-sha256-kwp")
+    );
     let v2 = vault
         .cipher
         .encrypt_with_suite(2, rrn.digits().as_bytes(), aad(&org.to_string()))
@@ -40,6 +44,10 @@ async fn v2_round_trips_through_both_rrn_tables_and_refuses_malformed_shapes(poo
     sealed.dek_wrapped = v2.dek_wrapped;
     sealed.dek_nonce = v2.dek_nonce;
     sealed.key_version = v2.key_version;
+    sealed.alg_id = v2.alg_id;
+    sealed.kek_id = v2.kek_id;
+    sealed.msg_id = v2.msg_id;
+    sealed.commitment_tag = v2.commitment_tag;
     assert_eq!(sealed.key_version, 2);
     for (table, suffix) in [
         (
@@ -170,7 +178,7 @@ async fn v3_round_trips_through_both_rrn_tables_and_refuses_missing_commitment(p
         ),
         (
             "data_import_row_identities",
-            ", run_id, source_key) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
+            ", run_id, source_key) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)",
         ),
     ] {
         let statement = format!(
@@ -236,6 +244,9 @@ async fn v3_round_trips_through_both_rrn_tables_and_refuses_missing_commitment(p
             "msg_id = NULL",
             "kek_id = NULL",
             "alg_id = NULL",
+            "alg_id = 'reserved-mlkem768-aes256-gcm'",
+            "dek_wrapped = decode('00', 'hex')",
+            "key_version = 4",
             "commitment_tag = decode('00', 'hex')",
             "msg_id = decode('00', 'hex')",
             "rrn_hmac_v2 = decode('00', 'hex')",
