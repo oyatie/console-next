@@ -241,14 +241,23 @@
     padding-block: var(--space-1);
   }
 
+  .opsTaskTitle {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .opsPhoneMeta {
     display: block;
     white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .opsDue {
-    flex-wrap: wrap;
-    max-width: calc(var(--space-6) * 3.5);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-half);
+    max-width: none;
+    min-width: 0;
     padding-block: var(--space-1);
   }
 }

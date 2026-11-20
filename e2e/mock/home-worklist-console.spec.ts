@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import type { paths } from "@console/api/schema";
-import { loadCatalog, t } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { expectAxe, fits } from "../a11y";
+import { test } from "../locale-fixture";
 import { shot, withFullPage } from "../shots";
 import { screens } from "../states/registry";
 import { homeSetupChecklist } from "../states/home-setup";
 import { previewData } from "./onboarding";
-import { failure, inbox, screenAccess, user } from "./fixtures";
+import { failure, id, inbox, screenAccess, user } from "./fixtures";
 import { mockRoute } from "./route";
 import {
   saeonAdminToken,
@@ -23,20 +24,27 @@ import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-async function enableConsoleExperience(page: Page, theme: "light" | "dark" = "light") {
+async function enableConsoleExperience(page: Page, theme: "light" | "dark" = "light", locale: "ko" | "en" = "ko") {
   await page.addInitScript(
-    ({ expKey, themeValue }) => {
+    ({ expKey, themeValue, localeValue }) => {
       localStorage.setItem(expKey, "console");
       localStorage.setItem("console.theme", themeValue);
+      localStorage.setItem("console.locale", localeValue);
     },
-    { expKey: EXPERIENCE_KEY, themeValue: theme },
+    { expKey: EXPERIENCE_KEY, themeValue: theme, localeValue: locale },
   );
 }
 
-async function setupConsoleSaeonWorklist(page: Page, theme: "light" | "dark" = "light") {
-  await enableConsoleExperience(page, theme);
+async function setupConsoleSaeonWorklist(
+  page: Page,
+  theme: "light" | "dark" = "light",
+  locale: "ko" | "en" = "ko",
+  extraItems: ReturnType<typeof saeonWorklistInbox>["items"] = [],
+) {
+  await enableConsoleExperience(page, theme, locale);
   const fixture = await mockScreen(page, screens[0], "populated");
-  const inboxData = saeonWorklistInbox();
+  const baseInbox = saeonWorklistInbox();
+  const inboxData = extraItems.length > 0 ? { ...baseInbox, items: [...baseInbox.items, ...extraItems] } : baseInbox;
   const orgDetail = saeonApprovalOrgChange();
   const structure = saeonOrgStructure();
   const orgUnits: paths["/api/v1/org-units"]["get"]["responses"]["200"]["content"]["application/json"]["items"] =
@@ -477,6 +485,103 @@ test("Console decision refusal and step-up flow surface accessible error feedbac
     const stepUpAlert = page.getByRole("main").getByRole("alert");
     await expect(stepUpAlert).toBeVisible();
     await expectAxe(page, "Console step-up refusal /inbox");
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
+});
+
+test("Console Home English phone (390px) fits PhoneBottomNav overflow and Monthly operations cells cleanly", async ({ page }) => {
+  await loadCatalog("en");
+  i18n.set("en");
+  await page.setViewportSize({ width: 390, height: 900 });
+  const unlockExceptionItem: ReturnType<typeof saeonWorklistInbox>["items"][number] = {
+    id: `period_unlock:${id(902)}`,
+    kind: "period_unlock",
+    urg: "now",
+    ref: "",
+    title: "Kim Doyeon",
+    site: "HQ · Payroll",
+    due: "2026-11-08T09:00:00+09:00",
+    dueTone: "danger",
+    days_remaining: -2,
+    links: [{ kind: "period_lock", id: id(900) }],
+    done: false,
+    lane: "turn",
+    context: {
+      unlock: {
+        domain: "payroll",
+        periodStart: "2026-10-01",
+        periodEnd: "2026-10-31",
+        requester: "Kim Doyeon",
+        reason_code: "RETRO_CORRECTION",
+        exceptionId: id(902),
+      },
+    },
+  };
+  const { fixture } = await setupConsoleSaeonWorklist(page, "light", "en", [unlockExceptionItem]);
+  try {
+    await page.goto("/");
+    const worklist = page.locator('[data-pattern="worklist"]');
+    await expect(worklist).toBeVisible();
+
+    const phoneNav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+    await expect(phoneNav).toBeVisible();
+    // Wait for lazy BarOverflowLinks hydration inside the 5th bottom-nav slot.
+    await expect(phoneNav.locator("li > div > button")).toBeVisible();
+
+    const opsTable = worklist.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true });
+    await expect(opsTable.locator("tbody tr")).toHaveCount(3);
+    await expect(opsTable).toContainText(t("periodLocks.review.title"));
+    await expect(opsTable).toContainText(t("uiDeadlineChip.over", { days: 2 }));
+
+    const layout = await page.evaluate(() => {
+      const docOverflow = document.documentElement.scrollWidth <= 390;
+      const main = document.getElementById("main");
+      const mainFits = !!main && main.scrollWidth <= main.clientWidth;
+      return { docOverflow, mainFits, docScrollWidth: document.documentElement.scrollWidth };
+    });
+    expect(layout).toEqual({ docOverflow: true, mainFits: true, docScrollWidth: 390 });
+
+    const opsMetrics = await opsTable.evaluate(table => {
+      const rows = [...table.querySelectorAll("tbody tr")];
+      return rows.map(row => {
+        const tds = [...row.querySelectorAll("td")].filter(td => getComputedStyle(td).display !== "none");
+        const tdOverflows = tds.map(td => ({
+          scrollWidth: Math.round(td.scrollWidth),
+          clientWidth: Math.round(td.clientWidth),
+        }));
+        const titleEl = row.querySelector<HTMLElement>("strong");
+        const titleRect = titleEl?.getBoundingClientRect();
+        const titleTdRect = titleEl?.closest("td")?.getBoundingClientRect();
+        const dueEl = row.querySelector<HTMLElement>("td:nth-child(4) > div");
+        const dueRect = dueEl?.getBoundingClientRect();
+        const dueTdRect = dueEl?.closest("td")?.getBoundingClientRect();
+        return {
+          tdOverflows,
+          titleFitsTd:
+            !titleEl ||
+            !titleRect ||
+            !titleTdRect ||
+            (titleEl.scrollWidth <= titleEl.clientWidth + 1 && titleRect.right <= titleTdRect.right + 1),
+          dueFitsTd:
+            !dueEl ||
+            !dueRect ||
+            !dueTdRect ||
+            (dueEl.scrollWidth <= dueEl.clientWidth + 1 && dueRect.right <= dueTdRect.right + 1),
+        };
+      });
+    });
+    for (const row of opsMetrics) {
+      expect(row.titleFitsTd).toBe(true);
+      expect(row.dueFitsTd).toBe(true);
+      for (const td of row.tdOverflows) {
+        expect(td.scrollWidth).toBeLessThanOrEqual(td.clientWidth + 1);
+      }
+    }
+
+    await fits(page, "Console Home en 390 light");
+    await expectAxe(page, "Console Home en 390 light");
     expect(fixture.unexpected).toEqual([]);
   } finally {
     fixture.release();

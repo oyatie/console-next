@@ -130,19 +130,22 @@ function ConsoleLayout({
     [workspaceTabs.tabs, allLinks],
   );
 
-  useKeys({
-    "shell.search": () => {
-      if (platform) return;
-      const mainEl = document.getElementById("main");
-      const inPageFind = mainEl?.querySelector<HTMLInputElement>('[data-list-find] input, input[type="search"]');
-      if (inPageFind && inPageFind.offsetParent !== null) {
-        inPageFind.focus();
-        inPageFind.select();
-        return;
-      }
-      onSearch();
-    },
-  });
+  useKeys(
+    platform
+      ? {}
+      : {
+          "shell.search": () => {
+            const mainEl = document.getElementById("main");
+            const inPageFind = mainEl?.querySelector<HTMLInputElement>('[data-list-find] input, input[type="search"]');
+            if (inPageFind && inPageFind.offsetParent !== null) {
+              inPageFind.focus();
+              inPageFind.select();
+              return;
+            }
+            onSearch();
+          },
+        },
+  );
 
   const rawName = (userProfile?.display_name?.trim() || claims?.name?.trim()) ?? "";
   const shortName = personName(
