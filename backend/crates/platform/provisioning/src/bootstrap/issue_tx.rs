@@ -142,7 +142,7 @@ pub(crate) async fn issue_bootstrap_if_needed_tx(
     }
 
     let credential_id = Uuid::new_v4();
-    let token = generate_bootstrap_token();
+    let token = generate_bootstrap_token()?;
     let token_hash = hash_token(token.as_str());
     let expires_at = now + ttl;
 

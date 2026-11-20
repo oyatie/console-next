@@ -1,26 +1,8 @@
-use super::{
-    PLATFORM_ROUTE_OPERATIONS, PlatformRouteOperation, RouteSource,
-    SUPPORT_REFERENCE_ROUTE_OPERATIONS,
-};
+#[path = "platform_ops.rs"]
+mod platform_ops;
+pub(super) use platform_ops::platform_route_operations;
 
-// Identity mounts the operator profile outside the platform REST crate.
-const IDENTITY_PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
-    PlatformRouteOperation {
-        method: "GET",
-        path: console_identity_rest::PLATFORM_ME_PATH,
-    },
-    PlatformRouteOperation {
-        method: "PATCH",
-        path: console_identity_rest::PLATFORM_ME_PATH,
-    },
-];
-
-pub(super) fn platform_route_operations() -> impl Iterator<Item = &'static PlatformRouteOperation> {
-    PLATFORM_ROUTE_OPERATIONS
-        .iter()
-        .chain(SUPPORT_REFERENCE_ROUTE_OPERATIONS)
-        .chain(IDENTITY_PLATFORM_ROUTE_OPERATIONS)
-}
+use super::RouteSource;
 
 pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
     RouteSource {
@@ -197,6 +179,12 @@ pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
         name: "platform support router",
         surface: "platform",
         source: include_str!("../../../crates/platform/platform-rest/src/support.rs"),
+        ignored_route_refs: &[],
+    },
+    RouteSource {
+        name: "platform operators router",
+        surface: "platform",
+        source: include_str!("../../../crates/platform/platform-rest/src/operators.rs"),
         ignored_route_refs: &[],
     },
     RouteSource {
