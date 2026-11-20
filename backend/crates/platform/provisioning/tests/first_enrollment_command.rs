@@ -458,7 +458,7 @@ async fn direct_v1_consumption_cannot_commit_without_completed_admission(owner: 
     let (_, source, otp, _) = first_source(&owner, company).await;
     let restricted = command_pool(&owner).await;
     let mut tx = restricted.begin().await.unwrap();
-    let proof = BootstrapCredentialStore
+    let proof = BootstrapCredentialStore::default()
         .redeem_otp_in_tx(&mut tx, &otp, OffsetDateTime::now_utc())
         .await
         .unwrap();

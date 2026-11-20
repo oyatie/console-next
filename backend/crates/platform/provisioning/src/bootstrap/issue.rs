@@ -20,9 +20,10 @@ impl BootstrapCredentialStore {
         now: OffsetDateTime,
         ttl: Duration,
     ) -> Result<BootstrapCredentialIssue, ProvisioningError> {
-        with_audits::<_, BootstrapCredentialIssue, ProvisioningError>(pool, org, |tx| {
+        let store = self.clone();
+        with_audits::<_, BootstrapCredentialIssue, ProvisioningError>(pool, org, move |tx| {
             Box::pin(async move {
-                BootstrapCredentialStore
+                store
                     .issue_for_zero_credential_user_tx(tx, actor, user_id, org, now, ttl)
                     .await
             })
@@ -40,12 +41,14 @@ impl BootstrapCredentialStore {
         now: OffsetDateTime,
         ttl: Duration,
     ) -> Result<(BootstrapCredentialIssue, Vec<AuditEvent>), ProvisioningError> {
+        let hmac_key = self.resolve_hmac_key()?;
         // Admin-issued OTP path: the request's tenant `org` is threaded in
         // from the authenticated admin's verified token. The caller arms
         // `app.current_org`, so FORCE-RLS stamps and accepts the real org.
-        let issue = issue_bootstrap_if_needed_tx(tx, user_id, org, now, ttl, IssueMode::Reissue)
-            .await?
-            .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
+        let issue =
+            issue_bootstrap_if_needed_tx(tx, &hmac_key, user_id, org, now, ttl, IssueMode::Reissue)
+                .await?
+                .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
         let event = AuditEvent::new(
             actor,
             AuditAction::new("auth.bootstrap.issue")?,
@@ -95,8 +98,9 @@ impl BootstrapCredentialStore {
             ));
         }
         let org = OrgId::one();
+        let hmac_key = self.resolve_hmac_key()?;
 
-        with_audits::<_, BootstrapCredentialIssue, ProvisioningError>(pool, org, |tx| {
+        with_audits::<_, BootstrapCredentialIssue, ProvisioningError>(pool, org, move |tx| {
             Box::pin(async move {
                 // (1) Create the MEMBER user in tenant #1. The GUC armed by `with_audits`
                 // scopes the insert to tenant #1 so it passes the FORCE-RLS WITH CHECK.
@@ -117,6 +121,7 @@ impl BootstrapCredentialStore {
                 // open code, so RejectIfPresent always issues a fresh one.
                 let issue = issue_bootstrap_if_needed_tx(
                     tx,
+                    &hmac_key,
                     user_id,
                     org,
                     now,

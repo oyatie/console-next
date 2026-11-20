@@ -2,6 +2,7 @@
 //! SEC-02: tokens carry `kid` = RFC 7638 thumbprint; verifiers pick the key by
 //! `kid` from a set, so a signing-key rotation never cuts live sessions.
 
+use aws_lc_rs::digest::{SHA256, digest};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use console_kernel_core::{OrgId, UserId};
@@ -10,7 +11,6 @@ use jsonwebtoken::{Algorithm, EncodingKey, Header, decode_header, encode};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
-use sha2::{Digest, Sha256};
 use time::{Duration, OffsetDateTime};
 
 struct Key {
@@ -85,7 +85,7 @@ fn rfc7638(key: &Key) -> String {
         URL_SAFE_NO_PAD.encode(point.x().unwrap()),
         URL_SAFE_NO_PAD.encode(point.y().unwrap()),
     );
-    URL_SAFE_NO_PAD.encode(Sha256::digest(json.as_bytes()))
+    URL_SAFE_NO_PAD.encode(digest(&SHA256, json.as_bytes()).as_ref())
 }
 
 /// Re-sign `token`'s claims under `header` with `signer` (a forged or legacy token).

@@ -146,7 +146,7 @@ async fn invite_reissue_redeem_consume_and_revoke_lifecycle(owner: PgPool) {
     tx.commit().await.unwrap();
     assert_ne!(reissued.invite_token, invited.invite_token);
 
-    let err = BootstrapCredentialStore
+    let err = BootstrapCredentialStore::default()
         .redeem_otp(&rt, invited.invite_token.as_str(), now)
         .await
         .unwrap_err();
@@ -156,7 +156,7 @@ async fn invite_reissue_redeem_consume_and_revoke_lifecycle(owner: PgPool) {
     let mut tampered = reissued.invite_token.as_str().to_owned();
     let last = tampered.pop().unwrap();
     tampered.push(if last == 'A' { 'B' } else { 'A' });
-    let err = BootstrapCredentialStore
+    let err = BootstrapCredentialStore::default()
         .redeem_otp(&rt, &tampered, now)
         .await
         .unwrap_err();
@@ -164,13 +164,13 @@ async fn invite_reissue_redeem_consume_and_revoke_lifecycle(owner: PgPool) {
 
     // Valid token redeems once and sets redeemed_at on platform_operator_invites.
     let mut tx = rt.begin().await.unwrap();
-    let redeemed = BootstrapCredentialStore
+    let redeemed = BootstrapCredentialStore::default()
         .redeem_otp_in_tx(&mut tx, reissued.invite_token.as_str(), now)
         .await
         .unwrap();
     assert_eq!(redeemed.user_id, b_id);
     assert_eq!(redeemed.org_id, OrgId::platform());
-    BootstrapCredentialStore
+    BootstrapCredentialStore::default()
         .consume_bound_credential_tx(
             &mut tx,
             OrgId::platform(),
@@ -267,7 +267,7 @@ async fn cold_start_skips_when_any_active_super_admin_has_passkey_even_with_smal
         .unwrap();
 
     let rt = runtime_role_pool(&owner).await;
-    let seeded = BootstrapCredentialStore
+    let seeded = BootstrapCredentialStore::default()
         .seed_cold_start_credential(
             &rt,
             "coldstart-should-skip",

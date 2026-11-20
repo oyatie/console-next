@@ -1,13 +1,32 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
+import { ApiError } from "@console/api";
+import { afterEach, expect, test, vi } from "vitest";
 import { EXPERIENCE_KEY } from "../lib/prefs";
+import { queryDefaults } from "../lib/react/query-defaults";
+import { settingsQuery } from "../reference/settings/api";
 import {
   EXPERIENCE_SOURCE_KEY,
   mergeWorkspaceExperience,
   readStoredExperience,
   resolveEffectiveExperience,
+  useExperienceSync,
+  workspaceQuery,
   writeStoredExperience,
 } from "./store";
+
+afterEach(() => vi.restoreAllMocks());
+
+function SyncProbe({ enabled }: { enabled: boolean }) {
+  useExperienceSync(enabled);
+  return null;
+}
+
+function renderSync(client: QueryClient, enabled: boolean) {
+  renderToStaticMarkup(createElement(QueryClientProvider, { client }, createElement(SyncProbe, { enabled })));
+}
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -117,4 +136,55 @@ test("device storage keeps fresh baseline clean, caches non-baseline tenant defa
     settingsItems: [{ key: "display.experience", value: "control-room" }],
     storedDevice: { id: null, source: null },
   })).toEqual({ id: "console", choice: "console", tenantId: "console", source: "personal" });
+});
+
+test("useExperienceSync preserves the shared settings retry policy on 503 faults without restarting exhausted retries", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { ...queryDefaults, retryDelay: 0 } } });
+  const queryFn = vi.spyOn(settingsQuery, "queryFn").mockRejectedValue(new ApiError(503, "service_unavailable", "busy"));
+  const first = new QueryObserver(client, settingsQuery);
+  const second = new QueryObserver(client, settingsQuery);
+  let stopFirst: (() => void) | undefined;
+  let stopSecond: (() => void) | undefined;
+  try {
+    renderSync(client, false);
+    expect(client.getQueryCache().find(settingsQuery)?.options.retry).toBe(queryDefaults.retry);
+    expect(client.getQueryCache().find(workspaceQuery)?.options.retry).toBe(false);
+
+    renderSync(client, true);
+    expect(client.getQueryCache().find(settingsQuery)?.options.retry).toBe(queryDefaults.retry);
+
+    stopFirst = first.subscribe(() => {});
+    renderSync(client, true);
+    await vi.waitFor(() => expect(first.getCurrentResult().isError).toBe(true));
+    expect(queryFn).toHaveBeenCalledTimes(3);
+
+    stopSecond = second.subscribe(() => {});
+    await Promise.resolve();
+    expect(second.getCurrentResult().isError).toBe(true);
+    expect(queryFn).toHaveBeenCalledTimes(3);
+  } finally {
+    stopFirst?.();
+    stopSecond?.();
+    client.clear();
+  }
+});
+
+test.each([
+  { status: 401, code: "unauthorized" },
+  { status: 403, code: "forbidden" },
+])("shared settings reads fail fast in one attempt on $status responses", async ({ status, code }) => {
+  const client = new QueryClient({ defaultOptions: { queries: { ...queryDefaults, retryDelay: 0 } } });
+  const queryFn = vi.spyOn(settingsQuery, "queryFn").mockRejectedValue(new ApiError(status, code, "refused"));
+  const observer = new QueryObserver(client, settingsQuery);
+  let stop: (() => void) | undefined;
+  try {
+    renderSync(client, false);
+    renderSync(client, true);
+    stop = observer.subscribe(() => {});
+    await vi.waitFor(() => expect(observer.getCurrentResult().isError).toBe(true));
+    expect(queryFn).toHaveBeenCalledTimes(1);
+  } finally {
+    stop?.();
+    client.clear();
+  }
 });

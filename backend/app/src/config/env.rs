@@ -170,6 +170,7 @@ impl AppConfig {
             DEFAULT_COLDSTART_OTP_TTL_SECS,
             "CONSOLE_COLDSTART_OTP_TTL_SECS",
         )?;
+        let otp_hmac_key = crate::config::auth::otp_hmac_key_from_vars(&vars)?;
         let trusted_proxy_count =
             parse_trusted_proxy_count(vars.get("CONSOLE_TRUSTED_PROXY_COUNT"))?;
         let trusted_proxy_cidrs = parse_trusted_proxy_cidrs(
@@ -246,6 +247,14 @@ impl AppConfig {
         )
         .map_err(AppError::Config)?;
 
+        crate::coldstart_guard::require_otp_hmac_key(
+            otp_hmac_key.is_some(),
+            role == crate::config::role::AppRole::Api,
+            database_url.is_some() || auth_rest.is_some() || coldstart_otp.is_some(),
+            crate::coldstart_guard::BuildProfile::current(),
+        )
+        .map_err(AppError::Config)?;
+
         Ok(Self {
             realtime: crate::config::realtime::from_vars(&vars)?,
             role,
@@ -281,6 +290,7 @@ impl AppConfig {
             db_pool,
             coldstart_otp,
             coldstart_otp_ttl,
+            otp_hmac_key,
             trusted_proxy_count,
             trusted_proxy_cidrs,
             app_links,
@@ -321,6 +331,44 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn from_pairs_rejects_malformed_otp_hmac_key_in_all_profiles() {
+        for role in ["api", "worker"] {
+            for bad in ["not-hex-or-b64", "00".repeat(32).as_str(), "abcd"] {
+                let err = AppConfig::from_pairs([
+                    ("CONSOLE_APP_ROLE", role),
+                    ("CONSOLE_OTP_HMAC_KEY", bad),
+                ])
+                .expect_err("malformed CONSOLE_OTP_HMAC_KEY must fail");
+                assert!(err.to_string().contains("CONSOLE_OTP_HMAC_KEY"), "{err}");
+                assert!(!err.to_string().contains(bad), "error must not echo key");
+            }
+            let err = AppConfig::from_pairs([
+                ("CONSOLE_APP_ROLE", role),
+                ("CONSOLE_OTP_HMAC_KEY_PREV", &"11".repeat(32)),
+            ])
+            .expect_err("prev without active key must fail");
+            assert!(err.to_string().contains("CONSOLE_OTP_HMAC_KEY"), "{err}");
+        }
+    }
+
+    #[test]
+    fn from_pairs_allows_worker_with_postgres_and_without_otp_hmac_key() {
+        let config = AppConfig::from_pairs([
+            ("CONSOLE_APP_ROLE", "worker"),
+            (
+                "DATABASE_URL",
+                "postgresql://console_rt:runtime-secret@db/console",
+            ),
+            (
+                "PLATFORM_FORCE_COMMAND_DATABASE_URL",
+                "postgresql://console_platform_force_cmd:force-secret@db/console",
+            ),
+        ])
+        .expect("worker role does not require CONSOLE_OTP_HMAC_KEY");
+        assert!(config.otp_hmac_key.is_none());
     }
 
     #[test]

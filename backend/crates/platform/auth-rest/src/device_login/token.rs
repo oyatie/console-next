@@ -4,14 +4,21 @@ use crate::cookies::with_refresh_cookie;
 use crate::dto::device::DeviceLoginPollResponse;
 use crate::error::RestError;
 use crate::token::issue::IssuedTokenPair;
+use aws_lc_rs::digest::{Context as DigestContext, SHA256, digest};
+use aws_lc_rs::rand::{SecureRandom, SystemRandom};
 use axum::Json;
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
 use axum::response::Response;
-use sha2::Digest;
-use sha2::Sha256;
+use base64::Engine as _;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use time::OffsetDateTime;
-use uuid::Uuid;
+use zeroize::Zeroizing;
+
+const DEVICE_LOGIN_HASH_DOMAIN: &[u8] = b"console.device_login.v2\0";
+const DEVICE_LOGIN_RANDOM_BYTES: usize = 32;
+const DEVICE_LOGIN_V2_SUFFIX_LEN: usize = 43;
+const DEVICE_LOGIN_V1_SUFFIX_LEN: usize = 64;
 
 pub(crate) fn device_login_status(status: &'static str) -> DeviceLoginPollResponse {
     DeviceLoginPollResponse {
@@ -63,29 +70,95 @@ pub(crate) fn normalize_device_login_token(raw: &str, prefix: &str) -> Result<St
     let suffix = token
         .strip_prefix(prefix)
         .ok_or_else(|| RestError::unauthorized("invalid or expired login handoff"))?;
-    if suffix.len() != 64 || !suffix.chars().all(|char| char.is_ascii_hexdigit()) {
+    let is_v2 = suffix.len() == DEVICE_LOGIN_V2_SUFFIX_LEN
+        && URL_SAFE_NO_PAD
+            .decode(suffix)
+            .is_ok_and(|decoded| decoded.len() == DEVICE_LOGIN_RANDOM_BYTES);
+    let is_v1 = suffix.len() == DEVICE_LOGIN_V1_SUFFIX_LEN
+        && suffix.bytes().all(|byte| byte.is_ascii_hexdigit());
+    if !is_v2 && !is_v1 {
         return Err(RestError::unauthorized("invalid or expired login handoff"));
     }
     Ok(token.to_owned())
 }
 
-pub(crate) fn generate_device_login_token(prefix: &str) -> String {
-    let mut bytes = [0u8; 32];
-    bytes[..16].copy_from_slice(Uuid::new_v4().as_bytes());
-    bytes[16..].copy_from_slice(Uuid::new_v4().as_bytes());
-    format!("{prefix}{}", hex_encode(&bytes))
+pub(crate) fn generate_device_login_token(prefix: &str) -> Result<String, RestError> {
+    let rng = SystemRandom::new();
+    let mut bytes = Zeroizing::new([0u8; DEVICE_LOGIN_RANDOM_BYTES]);
+    rng.fill(&mut *bytes)
+        .map_err(|_| RestError::internal("csprng unavailable"))?;
+    let encoded = Zeroizing::new(URL_SAFE_NO_PAD.encode(*bytes));
+    let mut out = String::with_capacity(prefix.len() + encoded.len());
+    out.push_str(prefix);
+    out.push_str(&encoded);
+    Ok(out)
 }
 
-pub(crate) fn hash_device_login_token(token: &str) -> Vec<u8> {
-    Sha256::digest(token.as_bytes()).to_vec()
+pub(crate) fn hash_device_login_token_v2(token: &str) -> Vec<u8> {
+    let mut ctx = DigestContext::new(&SHA256);
+    ctx.update(DEVICE_LOGIN_HASH_DOMAIN);
+    ctx.update(token.as_bytes());
+    ctx.finish().as_ref().to_vec()
 }
 
-pub(crate) fn hex_encode(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut out = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        out.push(HEX[(byte >> 4) as usize] as char);
-        out.push(HEX[(byte & 0x0f) as usize] as char);
+pub(crate) fn hash_device_login_token_v1(token: &str) -> Vec<u8> {
+    digest(&SHA256, token.as_bytes()).as_ref().to_vec()
+}
+
+pub(crate) fn hash_device_login_token_candidates(token: &str) -> [Vec<u8>; 2] {
+    [
+        hash_device_login_token_v2(token),
+        hash_device_login_token_v1(token),
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_device_login_token_accepts_v2_and_v1_rejects_malformed() {
+        let v2_poll = generate_device_login_token("console_dlp_").unwrap();
+        assert_eq!(
+            v2_poll.strip_prefix("console_dlp_").unwrap().len(),
+            DEVICE_LOGIN_V2_SUFFIX_LEN
+        );
+        assert_eq!(
+            normalize_device_login_token(&format!("  {v2_poll}\n"), "console_dlp_").unwrap(),
+            v2_poll
+        );
+
+        let v1_approve = format!("console_dla_{}", "a".repeat(64));
+        assert_eq!(
+            normalize_device_login_token(&v1_approve, "console_dla_").unwrap(),
+            v1_approve
+        );
+
+        for bad in [
+            "console_rt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "console_dla_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            &format!("console_dlp_{}", "a".repeat(42)),
+            &format!("console_dlp_{}", "a".repeat(44)),
+            &format!("console_dlp_{}=", "a".repeat(42)),
+            &format!("console_dlp_{}", "a".repeat(63)),
+            &format!("console_dlp_{}", "a".repeat(65)),
+            &format!("console_dlp_{}g", "a".repeat(63)),
+        ] {
+            let err = normalize_device_login_token(bad, "console_dlp_").unwrap_err();
+            assert_eq!(err.status, axum::http::StatusCode::UNAUTHORIZED);
+        }
     }
-    out
+
+    #[test]
+    fn device_login_token_v2_hash_is_domain_separated_from_v1_and_refresh() {
+        let token = generate_device_login_token("console_dlp_").unwrap();
+        let v2 = hash_device_login_token_v2(&token);
+        let v1 = hash_device_login_token_v1(&token);
+        assert_ne!(v2, v1);
+
+        let mut refresh_ctx = DigestContext::new(&SHA256);
+        refresh_ctx.update(b"console.refresh_token.v2\0");
+        refresh_ctx.update(token.as_bytes());
+        assert_ne!(v2, refresh_ctx.finish().as_ref());
+    }
 }

@@ -1,4 +1,6 @@
-use crate::{BootstrapCredentialIssue, ProvisioningError, generate_bootstrap_token, hash_token};
+use crate::{
+    BootstrapCredentialIssue, OtpHmacKey, ProvisioningError, generate_bootstrap_token, hash_otp_v2,
+};
 use console_kernel_core::OrgId;
 use console_platform_auth::{authentication_time_tx, lock_account_tx};
 use sqlx::{Postgres, Transaction};
@@ -49,6 +51,7 @@ pub(crate) async fn lock_open_bootstrap_tx(
 
 pub(crate) async fn issue_bootstrap_if_needed_tx(
     tx: &mut Transaction<'_, Postgres>,
+    hmac_key: &OtpHmacKey,
     user_id: Uuid,
     org: OrgId,
     now: OffsetDateTime,
@@ -143,7 +146,7 @@ pub(crate) async fn issue_bootstrap_if_needed_tx(
 
     let credential_id = Uuid::new_v4();
     let token = generate_bootstrap_token()?;
-    let token_hash = hash_token(token.as_str());
+    let token_hash = hash_otp_v2(hmac_key, token.as_str());
     let expires_at = now + ttl;
 
     // Stamp the credential with the caller-supplied tenant `org`. The caller

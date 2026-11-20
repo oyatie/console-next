@@ -11,7 +11,7 @@ app/src/workflow_studio.rs	7162
 app/tests/action_inbox_api.rs	877
 app/tests/attendance_persona_api.rs	415
 app/tests/audit_api.rs	754
-app/tests/auth_rest.rs	4471
+app/tests/auth_rest.rs	4469
 app/tests/benefit_catalog_api.rs	317
 app/tests/board_ack_api.rs	358
 app/tests/cedar_freshness_mint.rs	375
@@ -118,7 +118,7 @@ crates/financial/adapter-postgres/tests/lifecycle_rls_surfaces_as_runtime_role.r
 crates/financial/adapter-postgres/tests/use_cases.rs	1430
 crates/financial/application/src/lib.rs	406
 crates/financial/domain/src/lib.rs	352
-crates/financial/rest/src/lib.rs	1518
+crates/financial/rest/src/lib.rs	1515
 crates/governance/adapter-postgres/src/lib.rs	762
 crates/governance/adapter-postgres/tests/approvals_create_as_runtime_role.rs	535
 crates/governance/adapter-postgres/tests/governance_rls_as_runtime_role.rs	781
@@ -206,7 +206,7 @@ crates/platform/audit-chain/src/lib.rs	632
 crates/platform/audit-chain/tests/audit_chain_rls.rs	1153
 crates/platform/auth-rest/tests/dev_auth_session.rs	335
 crates/platform/auth/src/jwt.rs	483
-crates/platform/auth/src/refresh.rs	635
+crates/platform/auth/src/refresh.rs	612
 crates/platform/auth/src/webauthn.rs	607
 crates/platform/auth/tests/credential_identity.rs	425
 crates/platform/auth/tests/jwt_es256.rs	485

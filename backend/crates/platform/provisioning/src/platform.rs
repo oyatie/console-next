@@ -26,7 +26,7 @@ pub use operators_types::*;
 pub use rename::TenantRename;
 pub(crate) use rows::*;
 
-use crate::BootstrapToken;
+use crate::{BootstrapCredentialStore, BootstrapToken, OtpHmacKey, ProvisioningError};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -193,14 +193,55 @@ pub enum TenantRemovalOutcome {
 /// Every method here is a privileged, AUDITED, cross-tenant action. The REST
 /// layer only reaches it behind the platform extractor (a tenant token is
 /// rejected), so these can never be driven by a tenant admin.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct PlatformProvisioner {
     pub(crate) onboarding_otp_ttl: Duration,
+    pub(crate) otp_hmac_key: Option<OtpHmacKey>,
 }
 
 impl PlatformProvisioner {
     #[must_use]
+    pub const fn with_otp_hmac_key(onboarding_otp_ttl: Duration, otp_hmac_key: OtpHmacKey) -> Self {
+        Self {
+            onboarding_otp_ttl,
+            otp_hmac_key: Some(otp_hmac_key),
+        }
+    }
+
+    #[must_use]
+    pub const fn unconfigured(onboarding_otp_ttl: Duration) -> Self {
+        Self {
+            onboarding_otp_ttl,
+            otp_hmac_key: None,
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    #[must_use]
     pub const fn new(onboarding_otp_ttl: Duration) -> Self {
-        Self { onboarding_otp_ttl }
+        Self {
+            onboarding_otp_ttl,
+            otp_hmac_key: None,
+        }
+    }
+
+    pub(crate) fn resolve_otp_hmac_key(&self) -> Result<OtpHmacKey, ProvisioningError> {
+        if let Some(ref key) = self.otp_hmac_key {
+            return Ok(key.clone());
+        }
+        #[cfg(debug_assertions)]
+        {
+            OtpHmacKey::try_dev_process_key()
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            Err(ProvisioningError::Conflict(
+                "CONSOLE_OTP_HMAC_KEY is required in non-development builds".to_owned(),
+            ))
+        }
+    }
+
+    pub(crate) fn bootstrap_store(&self) -> Result<BootstrapCredentialStore, ProvisioningError> {
+        Ok(BootstrapCredentialStore::new(self.resolve_otp_hmac_key()?))
     }
 }

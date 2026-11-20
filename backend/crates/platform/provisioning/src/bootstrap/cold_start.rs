@@ -1,5 +1,5 @@
 use crate::{
-    BootstrapCredentialStore, ProvisioningError, hash_token,
+    BootstrapCredentialStore, ProvisioningError, hash_otp_v2,
     revoke_legacy_otp_families_for_sources_tx,
 };
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
@@ -39,7 +39,7 @@ impl BootstrapCredentialStore {
         ttl: Duration,
         now: OffsetDateTime,
     ) -> Result<bool, ProvisioningError> {
-        let token_hash = hash_token(otp);
+        let token_hash = hash_otp_v2(&self.resolve_hmac_key()?, otp);
 
         with_audits::<_, bool, ProvisioningError>(pool, OrgId::platform(), |tx| {
             Box::pin(async move {

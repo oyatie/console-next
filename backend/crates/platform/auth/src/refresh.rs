@@ -1,6 +1,5 @@
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
 use console_platform_db::with_audits;
-use sha2::{Digest, Sha256};
 use sqlx::{PgPool, Postgres, Row, Transaction};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -9,16 +8,10 @@ use crate::AuthError;
 use crate::refresh_audit::{insert_audit_in_tx, insert_refusal_audit_in_tx};
 
 mod revocation;
+mod token;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RefreshToken(String);
-
-impl RefreshToken {
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
+pub use token::RefreshToken;
+use token::{generate_refresh_token, hash_token_v2, resolve_presented_token};
 
 #[derive(Debug, Clone)]
 pub struct RefreshTokenIssue {
@@ -101,8 +94,8 @@ impl RefreshTokenStore {
         let now = crate::authentication_time_tx(tx, now).await?;
         let family_id = Uuid::new_v4();
         let token_id = Uuid::new_v4();
-        let token = generate_refresh_token();
-        let token_hash = hash_token(token.as_str());
+        let token = generate_refresh_token()?;
+        let token_hash = hash_token_v2(token.as_str());
         let expires_at = now + ttl;
         let org_uuid = *org_id.as_uuid();
 
@@ -157,7 +150,7 @@ impl RefreshTokenStore {
 
         Ok((
             RefreshTokenIssue {
-                token: RefreshToken(token),
+                token,
                 family_id,
                 token_id,
                 user_id,
@@ -212,7 +205,7 @@ impl RefreshTokenStore {
 
         let family_id = Uuid::new_v4();
         let token_id = Uuid::new_v4();
-        let token = generate_refresh_token();
+        let token = generate_refresh_token()?;
         sqlx::query(
             "INSERT INTO auth_refresh_token_families \
              (id,user_id,created_at,org_id,provenance_version,auth_generation,session_purpose,source_kind,source_operation_id) \
@@ -234,14 +227,14 @@ impl RefreshTokenStore {
         .bind(token_id)
         .bind(family_id)
         .bind(user_id)
-        .bind(hash_token(&token))
+        .bind(hash_token_v2(token.as_str()))
         .bind(now)
         .bind(enrollment_deadline)
         .bind(org_uuid)
         .execute(tx.as_mut())
         .await?;
         Ok(RefreshTokenIssue {
-            token: RefreshToken(token),
+            token,
             family_id,
             token_id,
             user_id,
@@ -290,8 +283,6 @@ impl RefreshTokenStore {
         ttl: Duration,
         absolute_ttl: Duration,
     ) -> Result<RefreshRotation, AuthError> {
-        let token_hash = hash_token(presented_token);
-
         // Resolve the family's tenant from the token hash FIRST, then arm the
         // GUC, THEN do the RLS-gated read. `auth_refresh_tokens` is FORCE RLS
         // (migration 0035), so as the non-owner `console_rt` role a lookup-by-hash
@@ -299,7 +290,8 @@ impl RefreshTokenStore {
         // we need to set it. The narrow SECURITY DEFINER resolver
         // `platform_resolve_token_org` returns only the family's org_id, breaking
         // that chicken-and-egg so refresh works for ANY tenant (not just tenant #1).
-        let Some(org_uuid) = resolve_token_org(tx, &token_hash).await? else {
+        let Some((org_uuid, token_hash)) = resolve_presented_token(tx, presented_token).await?
+        else {
             return Err(RefreshTokenUseError::InvalidToken.into());
         };
         sqlx::query("SELECT set_config('app.current_org', $1, true)")
@@ -467,8 +459,8 @@ impl RefreshTokenStore {
         }
 
         let replacement_id = Uuid::new_v4();
-        let replacement = generate_refresh_token();
-        let replacement_hash = hash_token(replacement.as_str());
+        let replacement = generate_refresh_token()?;
+        let replacement_hash = hash_token_v2(replacement.as_str());
         let replacement_expires_at = now + ttl;
 
         sqlx::query(
@@ -518,7 +510,7 @@ impl RefreshTokenStore {
         .await?;
 
         Ok(RefreshRotation::Issued(RefreshTokenIssue {
-            token: RefreshToken(replacement),
+            token: replacement,
             family_id,
             token_id: replacement_id,
             user_id,
@@ -548,13 +540,14 @@ impl RefreshTokenStore {
         presented_token: &str,
         now: OffsetDateTime,
     ) -> Result<(), AuthError> {
-        let token_hash = hash_token(presented_token);
         let mut tx = pool.begin().await?;
 
         // Resolve the family's tenant from the token hash and arm the GUC BEFORE
         // the RLS-gated read, so logout works under `console_rt` for any tenant.
         // See `rotate_inner` for the chicken-and-egg rationale.
-        let Some(org_uuid) = resolve_token_org(&mut tx, &token_hash).await? else {
+        let Some((org_uuid, token_hash)) =
+            resolve_presented_token(&mut tx, presented_token).await?
+        else {
             tx.rollback().await?;
             return Err(RefreshTokenUseError::InvalidToken.into());
         };
@@ -705,25 +698,4 @@ async fn revoke_family_for_reuse(
     .await?;
 
     Ok(())
-}
-
-fn generate_refresh_token() -> String {
-    let mut bytes = [0u8; 32];
-    bytes[..16].copy_from_slice(Uuid::new_v4().as_bytes());
-    bytes[16..].copy_from_slice(Uuid::new_v4().as_bytes());
-    format!("console_rt_{}", hex_encode(&bytes))
-}
-
-fn hash_token(token: &str) -> Vec<u8> {
-    Sha256::digest(token.as_bytes()).to_vec()
-}
-
-fn hex_encode(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut out = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        out.push(HEX[(byte >> 4) as usize] as char);
-        out.push(HEX[(byte & 0x0f) as usize] as char);
-    }
-    out
 }

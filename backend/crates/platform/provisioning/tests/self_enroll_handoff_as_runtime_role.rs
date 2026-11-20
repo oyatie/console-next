@@ -147,7 +147,7 @@ async fn consume_open_code_as_runtime(rt_pool: &PgPool, org: OrgId, user_id: Uui
         .execute(&mut *tx)
         .await
         .unwrap();
-    BootstrapCredentialStore
+    BootstrapCredentialStore::default()
         .consume_open_credentials_tx(&mut tx, org, user_id, OffsetDateTime::now_utc())
         .await
         .expect("consume must succeed as console_rt");
@@ -157,8 +157,8 @@ async fn consume_open_code_as_runtime(rt_pool: &PgPool, org: OrgId, user_id: Uui
 /// Read a bootstrap credential's owning user + org by its OTP, as `console_rt` with
 /// the GUC armed to `org`.
 async fn handoff_owner_as_runtime(rt_pool: &PgPool, org: OrgId, otp: &str) -> Option<(Uuid, Uuid)> {
-    use sha2::{Digest, Sha256};
-    let token_hash = Sha256::digest(otp.as_bytes()).to_vec();
+    use console_platform_provisioning::BootstrapCredentialStore as S;
+    let hash = S::default().hash_otp_for_test(otp).unwrap();
     let mut tx = rt_pool.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org', $1, true)")
         .bind(org.as_uuid().to_string())
@@ -168,7 +168,7 @@ async fn handoff_owner_as_runtime(rt_pool: &PgPool, org: OrgId, otp: &str) -> Op
     let row: Option<(Uuid, Uuid)> = sqlx::query_as(
         "SELECT user_id, org_id FROM auth_bootstrap_credentials WHERE token_hash = $1",
     )
-    .bind(&token_hash)
+    .bind(&hash)
     .fetch_optional(&mut *tx)
     .await
     .unwrap();
@@ -188,7 +188,7 @@ async fn handoff_is_scoped_to_the_issuing_user_only(owner_pool: PgPool) {
     // A second tenant exists so we can prove cross-tenant invisibility.
     let _other = seed_org_and_user(&owner_pool, ORG_T2, "T2").await;
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_self_enroll_handoff(
             &rt_pool,
             user_id,
@@ -226,7 +226,7 @@ async fn handoff_redeems_then_enroll_consumes_it_single_use(owner_pool: PgPool) 
     let sae = OrgId::one();
     let user_id = seed_org_and_user(&owner_pool, *sae.as_uuid(), "SAE").await;
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_self_enroll_handoff(
             &rt_pool,
             user_id,
@@ -239,7 +239,7 @@ async fn handoff_redeems_then_enroll_consumes_it_single_use(owner_pool: PgPool) 
     let otp = issue.token.as_str().to_owned();
 
     // The phone redeems the handoff (first sign-in path) and gets a session.
-    let redemption = BootstrapCredentialStore
+    let redemption = BootstrapCredentialStore::default()
         .redeem_otp(&rt_pool, &otp, OffsetDateTime::now_utc())
         .await
         .expect("handoff redeem must find the credential as console_rt");
@@ -268,7 +268,7 @@ async fn handoff_redeems_then_enroll_consumes_it_single_use(owner_pool: PgPool) 
     consume_open_code_as_runtime(&rt_pool, sae, user_id).await;
 
     // SINGLE-USE: the same handoff code can never mint another session.
-    let replay = BootstrapCredentialStore
+    let replay = BootstrapCredentialStore::default()
         .redeem_otp(&rt_pool, &otp, OffsetDateTime::now_utc())
         .await;
     assert!(
@@ -293,7 +293,7 @@ async fn consume_audit_row_is_tenant_scoped_and_visible_as_runtime_role(owner_po
     let user_id = seed_org_and_user(&owner_pool, *sae.as_uuid(), "SAE").await;
 
     // Issue an open code, then consume it (the single-use burn) as `console_rt`.
-    BootstrapCredentialStore
+    BootstrapCredentialStore::default()
         .issue_self_enroll_handoff(
             &rt_pool,
             user_id,
@@ -340,12 +340,12 @@ async fn expired_handoff_does_not_redeem(owner_pool: PgPool) {
     // Issuance uses the post-lock database clock, so a stale request timestamp
     // cannot shorten or extend the handoff. Test expiry at its actual deadline.
     let issued_at = OffsetDateTime::now_utc();
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_self_enroll_handoff(&rt_pool, user_id, sae, issued_at, HANDOFF_TTL)
         .await
         .expect("self-handoff issuance must succeed as console_rt");
 
-    let result = BootstrapCredentialStore
+    let result = BootstrapCredentialStore::default()
         .redeem_otp(
             &rt_pool,
             issue.token.as_str(),
@@ -371,7 +371,7 @@ async fn handoff_supersedes_a_users_existing_open_code(owner_pool: PgPool) {
     let user_id = seed_org_and_user(&owner_pool, *sae.as_uuid(), "SAE").await;
 
     // First handoff: the user's initial open code.
-    let first = BootstrapCredentialStore
+    let first = BootstrapCredentialStore::default()
         .issue_self_enroll_handoff(
             &rt_pool,
             user_id,
@@ -384,7 +384,7 @@ async fn handoff_supersedes_a_users_existing_open_code(owner_pool: PgPool) {
 
     // Second handoff (e.g. the desktop re-requests a QR): must revoke the first
     // and mint a fresh one — without erroring on the one-open-per-user index.
-    let second = BootstrapCredentialStore
+    let second = BootstrapCredentialStore::default()
         .issue_self_enroll_handoff(
             &rt_pool,
             user_id,
@@ -401,7 +401,7 @@ async fn handoff_supersedes_a_users_existing_open_code(owner_pool: PgPool) {
     );
 
     // The OLD code is now dead; the FRESH code redeems.
-    let stale = BootstrapCredentialStore
+    let stale = BootstrapCredentialStore::default()
         .redeem_otp(&rt_pool, first.token.as_str(), OffsetDateTime::now_utc())
         .await;
     assert!(
@@ -409,7 +409,7 @@ async fn handoff_supersedes_a_users_existing_open_code(owner_pool: PgPool) {
         "the superseded handoff must no longer redeem, got {stale:?}"
     );
 
-    let fresh = BootstrapCredentialStore
+    let fresh = BootstrapCredentialStore::default()
         .redeem_otp(&rt_pool, second.token.as_str(), OffsetDateTime::now_utc())
         .await
         .expect("the fresh handoff must redeem as console_rt");
