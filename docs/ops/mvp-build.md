@@ -1,8 +1,9 @@
 # Backend build profiles
 
 `backend/app/Cargo.toml` owns the feature lists. The default `mvp` profile includes
-the always-on organisation and HR core plus attendance and payroll. `full` enables the other
-modules. A module compiled out of a profile exposes no routes or periodic loops.
+the always-on organisation and HR core plus attendance, leave, payroll and inbox.
+`full` enables the other modules. A module compiled out of a profile exposes no
+routes or periodic loops.
 Migrations always apply to the shared schema, regardless of enabled features.
 Privacy rights filing and own-history APIs are always-on self-service capabilities;
 other compliance routes remain gated by the `compliance` feature.
@@ -30,3 +31,20 @@ OpenAPI fragments and payroll integration tests remain part of the payroll REST
 crate; the full OpenAPI drift suite checks the generated contract. Default-build
 surface tests cover payroll availability and unrelated-module isolation; the
 same tests without default features prove compiled-out payroll stays hidden.
+
+Leave and inbox promotion review (2026-11-20): `leave` enables only the
+`console-leave-rest` dependency (`console-leave-adapter-postgres` and
+`console-leave-domain` were already non-optional for the HR core and
+`LEAVE_COMMAND_DATABASE_URL`), and `inbox` enables only the `console-inbox-rest`
+dependency (`console-inbox-adapter-postgres` and `console-action-inbox-application`
+were already non-optional). `routes/people.rs` (`mount_leave`), `routes/comms.rs`
+(`mount_inbox`), `routes/surfaces.rs` (`CONFIGURED_ROUTE_SURFACES`), and
+`tests/openapi_drift/route_sources.rs` (`CONFIGURED_ROUTE_SOURCES`) gate both
+surfaces under `cfg(feature = "leave")` and `cfg(feature = "inbox")`. Shared state
+(`PgLeaveStore`, `PgInboxStore`, `LEAVE_COMMAND_DATABASE_URL`, and `policy_step_up`
+for passkey receipt confirmation) is initialized at the route mounts and `TenantDeps`,
+and neither module introduces any periodic loop in `run/worker.rs` or `run/serve.rs`.
+`dev-auth` remains excluded from `default`, `mvp`, and `full` (verified by
+`console-gate-dev-auth-absence`), and `mvp_build_surface` verifies `leave` and
+`inbox` route availability in `mvp` alongside unrelated-module 404s and
+`--no-default-features` compiled-out isolation.

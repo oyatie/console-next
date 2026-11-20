@@ -42,6 +42,18 @@ pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
         ignored_route_refs: &[],
     },
     RouteSource {
+        name: "leave REST router",
+        surface: "leave",
+        source: include_str!("../../../crates/leave/rest/src/lib.rs"),
+        ignored_route_refs: &[],
+    },
+    RouteSource {
+        name: "inbox REST router",
+        surface: "inbox",
+        source: include_str!("../../../crates/inbox/rest/src/lib.rs"),
+        ignored_route_refs: &[],
+    },
+    RouteSource {
         name: "inventory REST router",
         surface: "inventory",
         source: include_str!("../../../crates/inventory/rest/src/lib.rs"),

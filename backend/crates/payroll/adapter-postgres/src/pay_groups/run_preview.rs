@@ -176,7 +176,7 @@ impl PgPayrollStore {
                     }
                     return Err(error.into());
                 }
-                let row = crate::fetch_run_row(tx, id)
+                let row = crate::run_detail::fetch_run_row(tx, id)
                     .await?
                     .ok_or_else(|| KernelError::internal("created payroll run was not readable"))?;
                 Ok((crate::run_summary_from_row(&row)?, vec![audit]))

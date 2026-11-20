@@ -6398,6 +6398,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/access-log",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__access-log.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/action-inbox",
         operations: &[Operation {
             method: "get",
@@ -7337,6 +7346,14 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!(
             "../../identity/rest/openapi/schemas/MobilePasskeyStepUpStartResponse.yaml"
         ),
+    },
+    NamedYaml {
+        name: "MyAccessLogEvent",
+        body: include_str!("../../identity/rest/openapi/schemas/MyAccessLogEvent.yaml"),
+    },
+    NamedYaml {
+        name: "MyAccessLogPage",
+        body: include_str!("../../identity/rest/openapi/schemas/MyAccessLogPage.yaml"),
     },
     NamedYaml {
         name: "MyWorkbenchResponse",
@@ -12207,6 +12224,10 @@ const PAYROLL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PayGroupRules",
         body: include_str!("../../payroll/rest/openapi/schemas/PayGroupRules.yaml"),
+    },
+    NamedYaml {
+        name: "PayrollCalculationDeduction",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayrollCalculationDeduction.yaml"),
     },
     NamedYaml {
         name: "PayrollClosePreflight",

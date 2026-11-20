@@ -15,5 +15,7 @@ pub struct RunCalcSummary {
     pub kernel_rate_table: String,
     /// `None` unless EVERY line of the run calculated — never a partial sum
     /// presented as a total.
+    pub total_gross_won: Option<i64>,
+    pub total_deductions_won: Option<i64>,
     pub total_net_won: Option<i64>,
 }

@@ -19359,6 +19359,46 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/MailUnavailable'
+  /api/v1/me/access-log:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: listMyAccessLog
+      summary: Authenticated user's own personal-data access history
+      description: >
+        Strictly self-scoped to events where the authenticated principal's linked
+        employee or user record was the subject. Excludes self-reads and denied
+        attempts, requires no tenant-wide audit::view grant, and never exposes raw
+        personal data values or free-text notes.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Keyset page of subject-scoped access events.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyAccessLogPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: limit_out_of_range or cursor_invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/me/action-inbox:
     get:
       tags:
@@ -52163,6 +52203,50 @@ components:
             $ref: '#/components/schemas/Uuid'
         step_up:
           $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    MyAccessLogEvent:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - event_id
+      - occurred_at
+      - actor_name
+      - actor_team
+      - action
+      - field
+      - reason_code
+      - target_type
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        occurred_at:
+          type: string
+          format: date-time
+        actor_name:
+          type: string
+        actor_team:
+          type: [string, 'null']
+        action:
+          type: string
+        field:
+          type: [string, 'null']
+        reason_code:
+          type: [string, 'null']
+        target_type:
+          type: string
+    MyAccessLogPage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyAccessLogEvent'
+        next_cursor:
+          type: [string, 'null']
     MyDispatchOffer:
       type: object
       description: >-
@@ -55129,6 +55213,31 @@ components:
         variable_period: {$ref: '#/components/schemas/PayGroupPeriodRule'}
         proration: {type: string, enum: [CALENDAR_DAYS, SCHEDULED_WORKDAYS]}
         channel: {type: string, enum: [ATTESTATION_ONLY, FILE_GENERIC]}
+    PayrollCalculationDeduction:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - code
+      - label_ko
+      - amount_won
+      - source_url
+      properties:
+        code:
+          type: string
+          x-extensible-enum:
+          - NATIONAL_PENSION
+          - HEALTH_INSURANCE
+          - LONG_TERM_CARE
+          - EMPLOYMENT_INSURANCE
+          - INCOME_TAX
+          - LOCAL_INCOME_TAX
+        label_ko:
+          type: string
+        amount_won:
+          type: integer
+          format: int64
+        source_url:
+          type: string
     PayrollClosePreflight:
       type: object
       required:
@@ -55356,6 +55465,36 @@ components:
         blockers:
           type: array
           items: {}
+        calculation_version:
+          type:
+          - integer
+          - 'null'
+          format: int32
+        gross_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        deductions:
+          type:
+          - array
+          - 'null'
+          items:
+            $ref: '#/components/schemas/PayrollCalculationDeduction'
+        total_deductions_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        net_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        tax_table_version:
+          type:
+          - string
+          - 'null'
     PayrollLinkedRef:
       type: object
       required:
@@ -55711,6 +55850,18 @@ components:
           description: Always false until the labor attorney / tax accountant release gate flips the stored rows.
         kernel_rate_table:
           type: string
+        total_gross_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          description: Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+        total_deductions_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          description: Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
         total_net_won:
           type:
           - integer
