@@ -108,7 +108,14 @@ pub async fn get_run_in_tx(
         LEFT JOIN LATERAL (
             SELECT version, gross_won, deductions, total_deductions_won, net_won, tax_table_version
             FROM payroll_line_calculations
-            WHERE org_id = l.org_id AND run_id = l.run_id AND line_id = l.id
+            WHERE org_id = l.org_id
+              AND run_id = l.run_id
+              AND line_id = l.id
+              AND version = (
+                  SELECT MAX(version)
+                  FROM payroll_line_calculations
+                  WHERE org_id = l.org_id AND run_id = l.run_id
+              )
             ORDER BY version DESC
             LIMIT 1
         ) c ON TRUE
