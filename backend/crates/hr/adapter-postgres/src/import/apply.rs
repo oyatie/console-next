@@ -7,6 +7,7 @@
 //! (`apply_drive`).
 
 use console_hr_domain::import::plan::{Decisions, PlannedRow};
+use console_hr_domain::import::rrn_value::RrnVault;
 use console_kernel_core::{KernelError, TraceContext};
 use console_leave_adapter_postgres::PgLeaveError;
 use console_platform_db::DbError;
@@ -145,6 +146,7 @@ pub(crate) async fn check_and_build(
     org_uuid: Uuid,
     run_id: Uuid,
     digest: &str,
+    vault: Option<&dyn RrnVault>,
 ) -> Result<Checked, HrError> {
     let run = import_run_for_update(tx, org_uuid, run_id).await?;
     if run.entity_type != "employee_hr" {
@@ -222,7 +224,7 @@ pub(crate) async fn check_and_build(
     }
     let decisions: Decisions = serde_json::from_value(decisions)
         .map_err(|_| HrError::internal("stored import decisions are unreadable"))?;
-    let (stored, _, plan) = plan_run(tx, org_uuid, run_id, &decisions).await?;
+    let (stored, _, plan) = plan_run(tx, org_uuid, run_id, &decisions, vault).await?;
     if plan_digest(&plan)? != digest {
         return Err(conflict(
             "rows_changed_since_preview",

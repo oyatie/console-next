@@ -27,6 +27,7 @@ use console_hr_domain::import::plan::{Decisions, GROUP_ANSWERS, ImportRow, PlanF
 use console_hr_domain::import::plan_group::group_key_ok;
 use console_hr_domain::import::plan_rows::plan_rows;
 use console_hr_domain::import::review::ReviewQueue;
+use console_hr_domain::import::rrn_value::RrnVault;
 use console_hr_domain::import::summary::{
     auto_mapped, employment_type_empty_rows, phone_unstored_rows, unplaced,
 };
@@ -46,6 +47,7 @@ pub async fn plan_run(
     org_uuid: Uuid,
     run_id: Uuid,
     decisions: &Decisions,
+    vault: Option<&dyn RrnVault>,
 ) -> Result<
     (
         Vec<StoredEmployeeImportRow>,
@@ -55,7 +57,7 @@ pub async fn plan_run(
     HrError,
 > {
     let stored = load_candidate_import_rows(tx, org_uuid, run_id).await?;
-    let hashes = identities::run_hashes(tx, org_uuid, run_id).await?;
+    let hashes = identities::run_hash_candidates(tx, org_uuid, run_id, vault).await?;
     let phones = crate::import::phones::run_keys(tx, org_uuid, run_id).await?;
     let rows: Vec<_> = stored
         .iter()
@@ -229,6 +231,7 @@ impl HrService {
     ) -> Result<EmployeeImportDryRunSummary, HrError> {
         let org = principal.org_id;
         let org_uuid = *org.as_uuid();
+        let rrn_vault = self.rrn_vault.clone();
         let after = json!({ "run_id": run_id, "entity_type": "employee_hr" });
         let event = import_rows_event(&principal, "data_import.dry_run", run_id, after)?;
         let summary = with_audit::<_, _, HrError>(&self.pool, event, |tx| {
@@ -253,7 +256,7 @@ impl HrService {
                 let (decisions, remembered) =
                     remembered_for_run(tx, org_uuid, &stored, &operator).await?;
                 let (stored, import_rows, rows) =
-                    plan_run(tx, org_uuid, run_id, &decisions).await?;
+                    plan_run(tx, org_uuid, run_id, &decisions, rrn_vault.as_deref()).await?;
                 let digest = plan_digest(&rows)?;
                 let review = review_of(
                     tx,

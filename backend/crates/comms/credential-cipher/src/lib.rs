@@ -129,6 +129,17 @@ impl EnvelopeCredentialCipher {
     ) -> Result<Vec<u8>, CipherError> {
         Ok(self.decrypt(sealed, aad)?.expose_secret().clone())
     }
+
+    /// Decrypt and pass plaintext bytes to `f` without copying out of [`SecretBox`].
+    pub fn open_with<T>(
+        &self,
+        sealed: &SealedCredential,
+        aad: Aad<'_>,
+        f: impl FnOnce(&[u8]) -> T,
+    ) -> Result<T, CipherError> {
+        let plain = self.decrypt(sealed, aad)?;
+        Ok(f(plain.expose_secret()))
+    }
 }
 
 impl CredentialCipher for EnvelopeCredentialCipher {

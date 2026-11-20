@@ -33,10 +33,12 @@ mod confirmation;
 pub struct MirrorVault;
 
 impl RrnVault for MirrorVault {
-    fn seal(&self, _org: Uuid, rrn: &Rrn) -> Result<SealedRrn, VaultError> {
+    fn seal(&self, org: Uuid, rrn: &Rrn) -> Result<SealedRrn, VaultError> {
         Ok(SealedRrn {
-            hmac: self.blind_index(rrn),
+            hmac: self.blind_index_v1(rrn),
             hmac_key_version: 1,
+            hmac_v2: Some(self.blind_index(org, rrn)),
+            blind_index_version: Some(2),
             ciphertext: rrn.digits().bytes().rev().chain([b'#'; 8]).collect(),
             nonce: vec![0; 24],
             dek_wrapped: vec![0; 16],
@@ -50,7 +52,15 @@ impl RrnVault for MirrorVault {
         })
     }
 
-    fn blind_index(&self, rrn: &Rrn) -> Vec<u8> {
+    fn blind_index(&self, org: Uuid, rrn: &Rrn) -> Vec<u8> {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(org.as_bytes());
+        hasher.update(rrn.digits().as_bytes());
+        hasher.finalize().to_vec()
+    }
+
+    fn blind_index_v1(&self, rrn: &Rrn) -> Vec<u8> {
         rrn.digits().bytes().cycle().take(32).collect()
     }
 
@@ -121,7 +131,8 @@ pub async fn importer(pool: PgPool) -> Importer {
         .connect_with(options)
         .await
         .unwrap();
-    let f = fixture(pool.clone()).await;
+    let mut f = fixture(pool.clone()).await;
+    f.hr = f.hr.with_rrn_vault(Some(Arc::new(MirrorVault)));
     let store = PgLeaveStore::new(f.rt.clone(), Arc::new(PgInboxStore::new(f.rt.clone())))
         .with_leave_command_pool(command);
     Importer {

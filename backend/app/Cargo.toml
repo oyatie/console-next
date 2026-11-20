@@ -184,6 +184,7 @@ console-platform-access = { workspace = true }
 console-platform-access-rest = { workspace = true }
 console-platform-authz = { path = "../crates/platform/authz" }
 console-platform-authz-rest = { workspace = true }
+console-platform-crypto = { workspace = true }
 console-ontology-adapter-postgres = { workspace = true }
 # The four canonical ports this crate is the composition root for. No
 # [workspace.dependencies] entry exists for it (same as its two sibling owners),

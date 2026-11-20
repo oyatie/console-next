@@ -1,21 +1,47 @@
 //! IMPORT-2 (decisions #25): the shell's resident registration number vault. Sealing reuses the
 //! versioned webmail envelope AEAD (v1 writes during dual-reader rollout) under
-//! its own master key; matching is HMAC-SHA256 under a separate
-//! key. Both keys come from the environment (Vault-injected in production),
-//! never from the database, and are never logged. Without both keys the
-//! import drops resident registration number cells and the reveal answers 503.
+//! its own master key; matching uses tenant-bound HKDF-SHA256 + HMAC-SHA256
+//! blind indexes (v2+) while retaining legacy v1 compatibility during backfill.
+//! Both keys come from the environment (Vault-injected in production), never
+//! from the database, and are never logged.
 
-use aws_lc_rs::hmac;
 use console_comms_credential_cipher::{
     Aad, CredentialCipher, EnvelopeCredentialCipher, SealedCredential,
 };
+use console_hr_adapter_postgres::HrService;
 use console_hr_domain::import::rrn_value::{Rrn, RrnVault, SealedRrn, VaultError};
+use console_platform_auth::JwtVerifier;
+use console_platform_crypto::{BlindIndexContext, BlindIndexKeyring, LEGACY_HMAC_KEY_VERSION};
+use sqlx::PgPool;
 use uuid::Uuid;
+
+pub(super) fn new_hr_state(pool: PgPool, jwt_verifier: Option<JwtVerifier>) -> super::HrState {
+    let rrn_vault = from_env_logged();
+    super::HrState {
+        hr: HrService::new(pool.clone()).with_rrn_vault(rrn_vault.clone()),
+        pool,
+        leave_command_store: None,
+        jwt_verifier,
+        passkey_step_up: None,
+        rrn_vault,
+    }
+}
+
+impl super::HrState {
+    #[must_use]
+    pub fn with_rrn_vault(mut self, rrn_vault: Option<std::sync::Arc<dyn RrnVault>>) -> Self {
+        self.hr = self.hr.with_rrn_vault(rrn_vault.clone());
+        self.rrn_vault = rrn_vault;
+        self
+    }
+}
 
 pub const MASTER_KEY_ENV: &str = "CONSOLE_RRN_MASTER_KEY";
 pub const KEYRING_ENV: &str = "CONSOLE_RRN_KEYRING";
 pub const HMAC_KEY_ENV: &str = "CONSOLE_RRN_HMAC_KEY";
-const HMAC_KEY_VERSION: i16 = 1;
+pub const HMAC_KEYRING_ENV: &str = "CONSOLE_RRN_HMAC_KEYRING";
+const BLIND_INDEX_TABLE: &str = "employee_rrn";
+const BLIND_INDEX_FIELD: &str = "rrn";
 
 /// The vault for the HR router, or none (logged once per router build; the
 /// message names the variables, never a value).
@@ -37,7 +63,16 @@ pub fn from_env_logged() -> Option<std::sync::Arc<dyn RrnVault>> {
 
 pub struct EnvRrnVault {
     cipher: EnvelopeCredentialCipher,
-    hmac_key: Vec<u8>,
+    hmac_ring: BlindIndexKeyring,
+}
+
+impl std::fmt::Debug for EnvRrnVault {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EnvRrnVault")
+            .field("cipher", &self.cipher)
+            .field("hmac_ring", &self.hmac_ring)
+            .finish()
+    }
 }
 
 impl EnvRrnVault {
@@ -49,17 +84,35 @@ impl EnvRrnVault {
     pub fn from_keys(master: &str, hmac: &str) -> Result<Self, String> {
         let cipher = EnvelopeCredentialCipher::from_base64_key(master)
             .map_err(|_| format!("{MASTER_KEY_ENV} is not a base64 32-byte key"))?;
-        Self::from_cipher(cipher, hmac)
+        let hmac_ring = BlindIndexKeyring::from_single_legacy_base64(hmac)
+            .map_err(|_| format!("{HMAC_KEY_ENV} is not a base64 32-byte key"))?;
+        Ok(Self { cipher, hmac_ring })
     }
 
-    fn from_cipher(cipher: EnvelopeCredentialCipher, hmac: &str) -> Result<Self, String> {
-        use base64::Engine as _;
-        let hmac_key = base64::engine::general_purpose::STANDARD
-            .decode(hmac.trim())
-            .ok()
-            .filter(|key| key.len() == 32)
-            .ok_or_else(|| format!("{HMAC_KEY_ENV} is not a base64 32-byte key"))?;
-        Ok(Self { cipher, hmac_key })
+    /// Build a vault from optional keyring JSON and legacy base64 secrets.
+    ///
+    /// # Errors
+    /// A message naming the variable (never its value) when one is malformed.
+    #[cfg(test)]
+    pub fn from_keyrings(
+        master_keyring: Option<&str>,
+        legacy_master: Option<&str>,
+        hmac_keyring: Option<&str>,
+        legacy_hmac: Option<&str>,
+    ) -> Result<Self, String> {
+        let cipher = EnvelopeCredentialCipher::from_owned_env_values(
+            master_keyring.map(str::to_owned),
+            legacy_master.map(str::to_owned),
+        )
+        .map_err(|_| format!("{MASTER_KEY_ENV}/{KEYRING_ENV} is invalid"))?
+        .ok_or_else(|| format!("{MASTER_KEY_ENV}/{KEYRING_ENV} unset"))?;
+        let hmac_ring = BlindIndexKeyring::from_owned_env_values(
+            hmac_keyring.map(str::to_owned),
+            legacy_hmac.map(str::to_owned),
+        )
+        .map_err(|_| format!("{HMAC_KEY_ENV}/{HMAC_KEYRING_ENV} is invalid"))?
+        .ok_or_else(|| format!("{HMAC_KEY_ENV}/{HMAC_KEYRING_ENV} unset"))?;
+        Ok(Self { cipher, hmac_ring })
     }
 
     /// `Ok(None)` when neither key is set.
@@ -70,14 +123,17 @@ impl EnvRrnVault {
         use crate::config::secret_files::secret_env;
         let keyring = secret_env(KEYRING_ENV).map_err(|err| err.to_string())?;
         let master = secret_env(MASTER_KEY_ENV).map_err(|err| err.to_string())?;
+        let hmac_keyring = secret_env(HMAC_KEYRING_ENV).map_err(|err| err.to_string())?;
         let hmac = secret_env(HMAC_KEY_ENV).map_err(|err| err.to_string())?;
         let cipher = EnvelopeCredentialCipher::from_owned_env_values(keyring, master)
             .map_err(|_| format!("{MASTER_KEY_ENV}/{KEYRING_ENV} is invalid"))?;
-        match (cipher, hmac) {
+        let hmac_ring = BlindIndexKeyring::from_owned_env_values(hmac_keyring, hmac)
+            .map_err(|_| format!("{HMAC_KEY_ENV}/{HMAC_KEYRING_ENV} is invalid"))?;
+        match (cipher, hmac_ring) {
             (None, None) => Ok(None),
-            (Some(cipher), Some(hmac)) => Self::from_cipher(cipher, &hmac).map(Some),
+            (Some(cipher), Some(hmac_ring)) => Ok(Some(Self { cipher, hmac_ring })),
             _ => Err(format!(
-                "set both {MASTER_KEY_ENV}/{KEYRING_ENV} and {HMAC_KEY_ENV}, or neither"
+                "set both {MASTER_KEY_ENV}/{KEYRING_ENV} and {HMAC_KEY_ENV}/{HMAC_KEYRING_ENV}, or neither"
             )),
         }
     }
@@ -86,21 +142,51 @@ impl EnvRrnVault {
 fn aad(org: &str) -> Aad<'_> {
     Aad {
         org_id: org,
-        account_id: "employee_rrn",
-        field: "rrn",
+        account_id: BLIND_INDEX_TABLE,
+        field: BLIND_INDEX_FIELD,
+    }
+}
+
+fn blind_ctx(org: Uuid) -> BlindIndexContext<'static> {
+    BlindIndexContext {
+        org_id: org,
+        table: BLIND_INDEX_TABLE,
+        field: BLIND_INDEX_FIELD,
     }
 }
 
 impl RrnVault for EnvRrnVault {
     fn seal(&self, org: Uuid, rrn: &Rrn) -> Result<SealedRrn, VaultError> {
-        let org = org.to_string();
+        let org_str = org.to_string();
         let sealed = self
             .cipher
-            .encrypt(rrn.digits().as_bytes(), aad(&org))
+            .encrypt(rrn.digits().as_bytes(), aad(&org_str))
             .map_err(|_| VaultError)?;
+        let ctx = blind_ctx(org);
+        let digits = rrn.digits().as_bytes();
+        let (active_ver, active_digest) = self
+            .hmac_ring
+            .compute_active(ctx, digits)
+            .map_err(|_| VaultError)?;
+        let (hmac, hmac_key_version) = if self.hmac_ring.has_version(LEGACY_HMAC_KEY_VERSION) {
+            let v1 = self
+                .hmac_ring
+                .compute_for_version(LEGACY_HMAC_KEY_VERSION, ctx, digits)
+                .map_err(|_| VaultError)?;
+            (v1.to_vec(), LEGACY_HMAC_KEY_VERSION)
+        } else {
+            (active_digest.to_vec(), active_ver)
+        };
+        let (hmac_v2, blind_index_version) = if active_ver >= 2 {
+            (Some(active_digest.to_vec()), Some(active_ver))
+        } else {
+            (None, None)
+        };
         Ok(SealedRrn {
-            hmac: self.blind_index(rrn),
-            hmac_key_version: HMAC_KEY_VERSION,
+            hmac,
+            hmac_key_version,
+            hmac_v2,
+            blind_index_version,
             ciphertext: sealed.ciphertext,
             nonce: sealed.nonce,
             dek_wrapped: sealed.dek_wrapped,
@@ -114,17 +200,67 @@ impl RrnVault for EnvRrnVault {
         })
     }
 
-    fn blind_index(&self, rrn: &Rrn) -> Vec<u8> {
-        hmac::sign(
-            &hmac::Key::new(hmac::HMAC_SHA256, &self.hmac_key),
-            rrn.digits().as_bytes(),
-        )
-        .as_ref()
-        .to_vec()
+    fn blind_index(&self, org: Uuid, rrn: &Rrn) -> Vec<u8> {
+        let ctx = blind_ctx(org);
+        let digits = rrn.digits().as_bytes();
+        if self.hmac_ring.active_version() >= 2
+            && let Ok((_, digest)) = self.hmac_ring.compute_active(ctx, digits)
+        {
+            return digest.to_vec();
+        }
+        if let Ok(candidates) = self.hmac_ring.compute_v2_candidates(ctx, digits)
+            && let Some((_, digest)) = candidates.first()
+        {
+            return digest.to_vec();
+        }
+        self.hmac_ring
+            .compute_active(ctx, digits)
+            .map(|(_, d)| d.to_vec())
+            .unwrap_or_default()
+    }
+
+    fn blind_index_v1(&self, rrn: &Rrn) -> Vec<u8> {
+        if !self.hmac_ring.has_version(LEGACY_HMAC_KEY_VERSION) {
+            return Vec::new();
+        }
+        self.hmac_ring
+            .compute_for_version(
+                LEGACY_HMAC_KEY_VERSION,
+                blind_ctx(Uuid::nil()),
+                rrn.digits().as_bytes(),
+            )
+            .map(|d| d.to_vec())
+            .unwrap_or_default()
+    }
+
+    fn active_blind_index_version(&self) -> i16 {
+        self.hmac_ring.active_version()
+    }
+
+    fn blind_index_v2_candidates(&self, org: Uuid, rrn: &Rrn) -> Vec<Vec<u8>> {
+        let Ok(candidates) = self
+            .hmac_ring
+            .compute_v2_candidates(blind_ctx(org), rrn.digits().as_bytes())
+        else {
+            return Vec::new();
+        };
+        let active = self.hmac_ring.active_version();
+        let mut out = Vec::with_capacity(candidates.len());
+        if active >= 2
+            && let Some((_, digest)) = candidates.iter().find(|(v, _)| *v == active)
+        {
+            out.push(digest.to_vec());
+        }
+        for (ver, digest) in candidates {
+            if ver != active {
+                out.push(digest.to_vec());
+            }
+        }
+        out
     }
 
     fn open(&self, org: Uuid, sealed: &SealedRrn) -> Result<Rrn, VaultError> {
-        let org = org.to_string();
+        let org_str = org.to_string();
         let credential = SealedCredential {
             ciphertext: sealed.ciphertext.clone(),
             nonce: sealed.nonce.clone(),
@@ -136,12 +272,12 @@ impl RrnVault for EnvRrnVault {
             msg_id: sealed.msg_id.clone(),
             commitment_tag: sealed.commitment_tag.clone(),
         };
-        let plain = self
-            .cipher
-            .open_bytes(&credential, aad(&org))
-            .map_err(|_| VaultError)?;
-        let text = std::str::from_utf8(&plain).map_err(|_| VaultError)?;
-        Rrn::parse(text).map_err(|_| VaultError)
+        self.cipher
+            .open_with(&credential, aad(&org_str), |plain| {
+                let text = std::str::from_utf8(plain).map_err(|_| VaultError)?;
+                Rrn::parse(text).map_err(|_| VaultError)
+            })
+            .map_err(|_| VaultError)?
     }
 }
 
@@ -149,6 +285,7 @@ impl RrnVault for EnvRrnVault {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    use aws_lc_rs::hmac;
 
     fn hmac_sha256(key: &[u8], message: &[u8]) -> Vec<u8> {
         hmac::sign(&hmac::Key::new(hmac::HMAC_SHA256, key), message)
@@ -162,7 +299,6 @@ mod tests {
 
     #[test]
     fn hmac_preserves_existing_32_byte_key_indexes() {
-        // Captured from the original SHA-256 ipad/opad implementation.
         for (key, message, expected) in [
             (
                 [0u8; 32],
@@ -194,7 +330,6 @@ mod tests {
         let vault = EnvRrnVault::from_keys(&key, &key).unwrap();
         let org = Uuid::new_v4();
         let rrn = Rrn::parse("900101-1234567").unwrap();
-        // Literal historical binding, independent of the current vault's aad().
         let credential = vault
             .cipher
             .encrypt_with_suite(
@@ -208,8 +343,10 @@ mod tests {
             )
             .unwrap();
         let sealed = SealedRrn {
-            hmac: vault.blind_index(&rrn),
+            hmac: vault.blind_index_v1(&rrn),
             hmac_key_version: 1,
+            hmac_v2: None,
+            blind_index_version: None,
             ciphertext: credential.ciphertext,
             nonce: credential.nonce,
             dek_wrapped: credential.dek_wrapped,
@@ -234,20 +371,26 @@ mod tests {
         let rrn = Rrn::parse("900101-1234567").unwrap();
         let sealed = vault.seal(org, &rrn).unwrap();
         assert_eq!(sealed.masked, "900101-1******");
+        assert_eq!(sealed.hmac_key_version, 1);
         assert_eq!(
             hex(&sealed.hmac),
             "50ac32b2efe7b34cedaa4452d5048195e05b40e40d5129644fb1dd8ab12bc2bc"
         );
-        assert_eq!(
-            sealed.hmac,
-            vault.blind_index(&Rrn::parse("9001011234567").unwrap())
-        );
+        assert_eq!(sealed.blind_index_version, Some(2));
+        let normalized = Rrn::parse("9001011234567").unwrap();
+        assert_eq!(sealed.hmac_v2, Some(vault.blind_index(org, &normalized)));
+        assert_ne!(vault.blind_index(org, &rrn), vault.blind_index(other, &rrn));
+        assert_ne!(sealed.hmac_v2.as_deref(), Some(sealed.hmac.as_slice()));
         assert!(!sealed.ciphertext.windows(7).any(|w| w == b"1234567"));
         assert_eq!(vault.open(org, &sealed).unwrap(), rrn);
         assert_eq!(vault.open(other, &sealed), Err(VaultError));
         assert!(EnvRrnVault::from_keys("bad", key).is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "rrn_vault_v2_tests.rs"]
+mod v2_tests;
 
 #[cfg(all(test, feature = "test-postgres"))]
 #[path = "rrn_vault_db_tests.rs"]

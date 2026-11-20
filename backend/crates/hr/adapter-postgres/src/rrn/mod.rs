@@ -4,6 +4,7 @@
 //! Opening the sealed value takes the shell's vault; without one the reveal is
 //! 503, never a fallback.
 
+pub mod backfill;
 pub(crate) mod govern;
 mod record;
 mod reveal;
@@ -82,7 +83,7 @@ async fn require_employee(
     }
 }
 
-fn unavailable() -> HrError {
+pub(crate) fn unavailable() -> HrError {
     HrError {
         errors: None,
         status: http::StatusCode::SERVICE_UNAVAILABLE,

@@ -9,6 +9,7 @@
 use std::collections::BTreeMap;
 
 use console_hr_domain::import::plan::Decisions;
+use console_hr_domain::import::rrn_value::RrnVault;
 use console_ontology_canonical_adapter_postgres::employment::{
     EmploymentChange, apply_employment_change,
 };
@@ -98,6 +99,7 @@ pub async fn record_setup_facts(
     actor: Uuid,
     run: Uuid,
     (keys, last): (&[String], bool),
+    vault: Option<&dyn RrnVault>,
 ) -> Result<SetupRecorded, HrError> {
     let (plan, decisions): (Value, Value) = sqlx::query_as(
         "SELECT dry_run_summary->'rows', dry_run_decisions FROM data_import_runs \
@@ -140,7 +142,7 @@ pub async fn record_setup_facts(
             recorded.leaves += 1;
         }
     }
-    recorded.identities = identities::record(tx, org, actor, run, &people).await?;
+    recorded.identities = identities::record(tx, org, actor, run, &people, vault).await?;
     if last {
         identities::drop_staged(tx, org, run).await?;
         crate::import::phones::drop_staged(tx, org, Some(run), 0).await?;
