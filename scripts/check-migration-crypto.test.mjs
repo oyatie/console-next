@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -31,7 +31,7 @@ test("repository migrations pass at cutover and scanAll finds only the 3 histori
   assert.deepEqual(checkMigrationCrypto(REPO_ROOT), []);
 
   const allProblems = checkMigrationCrypto(REPO_ROOT, { scanAll: true });
-  assert.ok(allProblems.length > 0, "expected historical md5 calls when scanAll is enabled");
+  assert.equal(allProblems.length, 4);
   const matchedFiles = new Set(allProblems.map((p) => path.basename(p.split(":")[0])));
   assert.deepEqual(
     [...matchedFiles].sort(),
@@ -72,7 +72,7 @@ test("version parsing and cutover boundaries handle 4, 14, 17-digit, and unversi
   );
 });
 
-test("detects banned legacy calls, weak digest/hmac algorithms, and PL/pgSQL dollar-quoted bodies", () => {
+test("detects banned legacy calls including bytea variants, weak digest/hmac, and PL/pgSQL blocks", () => {
   const badSql = `
     SELECT md5(col), MD5 (col), MD5 /* inline comment */ (col), pg_catalog.md5(col), "md5"(col);
     SELECT sha1(col), public.sha1(col);
@@ -92,7 +92,13 @@ test("detects banned legacy calls, weak digest/hmac algorithms, and PL/pgSQL dol
       PERFORM digest(x, 'ripemd160');
     END;
     $body$;
+    DO LANGUAGE plpgsql $$
+    BEGIN
+      PERFORM md5(x);
+    END;
+    $$;
     SELECT pgp_sym_encrypt(x, k), pgp_sym_decrypt(y, k), pgp_pub_encrypt(x, k), pgp_pub_decrypt(y, k);
+    SELECT pgp_sym_encrypt_bytea(x, k), pgp_sym_decrypt_bytea(y, k), pgp_pub_encrypt_bytea(x, k), pgp_pub_decrypt_bytea(y, k);
     SELECT encrypt(x, k, 'aes'), decrypt(y, k, 'aes'), encrypt_iv(x, k, iv, 'aes'), decrypt_iv(y, k, iv, 'aes');
     SELECT crypt(x, gen_salt('bf'));
   `;
@@ -100,35 +106,116 @@ test("detects banned legacy calls, weak digest/hmac algorithms, and PL/pgSQL dol
   const violations = scanMigrationSql("20261121000000000_bad.sql", badSql);
   const rules = violations.map((v) => v.rule);
 
-  assert.equal(rules.filter((r) => r === "banned-md5").length, 6);
+  assert.equal(rules.filter((r) => r === "banned-md5").length, 7);
   assert.equal(rules.filter((r) => r === "banned-sha1").length, 2);
   assert.equal(rules.filter((r) => r === "weak-digest-algorithm").length, 5);
   assert.equal(rules.filter((r) => r === "weak-hmac-algorithm").length, 2);
-  assert.ok(rules.includes("banned-pgp_sym_encrypt"));
-  assert.ok(rules.includes("banned-pgp_sym_decrypt"));
-  assert.ok(rules.includes("banned-pgp_pub_encrypt"));
-  assert.ok(rules.includes("banned-pgp_pub_decrypt"));
-  assert.ok(rules.includes("banned-encrypt"));
-  assert.ok(rules.includes("banned-decrypt"));
-  assert.ok(rules.includes("banned-encrypt_iv"));
-  assert.ok(rules.includes("banned-decrypt_iv"));
-  assert.ok(rules.includes("banned-crypt"));
-  assert.ok(rules.includes("banned-gen_salt"));
+  for (const fn of [
+    "pgp_sym_encrypt",
+    "pgp_sym_decrypt",
+    "pgp_pub_encrypt",
+    "pgp_pub_decrypt",
+    "pgp_sym_encrypt_bytea",
+    "pgp_sym_decrypt_bytea",
+    "pgp_pub_encrypt_bytea",
+    "pgp_pub_decrypt_bytea",
+    "encrypt",
+    "decrypt",
+    "encrypt_iv",
+    "decrypt_iv",
+    "crypt",
+    "gen_salt",
+  ]) {
+    assert.ok(rules.includes(`banned-${fn}`), `expected banned-${fn}`);
+  }
 });
 
-test("ignores comments, string prose literals, safe sha256/sha512 calls, and safe identifiers", () => {
+test("isolates dollar-quoted quotes/comments and catches dollar-tag, escape, concat, and named algorithm bypasses", () => {
+  const apostropheBypass = "INSERT INTO notes(body) VALUES ($$It's fine$$);\nSELECT md5(secret) FROM users;";
+  assert.deepEqual(
+    scanMigrationSql("20261121000000000_apos.sql", apostropheBypass).map((v) => `${v.line}:${v.rule}`),
+    ["2:banned-md5"],
+  );
+
+  const nestedDollarMsg = [
+    "CREATE FUNCTION f(x text) RETURNS text AS $outer$",
+    "DECLARE",
+    "  v_note text := $msg$it's safe$msg$;",
+    "BEGIN",
+    "  RETURN md5(x);",
+    "END;",
+    "$outer$ LANGUAGE plpgsql;",
+  ].join("\n");
+  assert.deepEqual(
+    scanMigrationSql("20261121000000000_nested.sql", nestedDollarMsg).map((v) => `${v.line}:${v.rule}`),
+    ["5:banned-md5"],
+  );
+
+  const commentDollar = [
+    "INSERT INTO t VALUES ($$/*$$);",
+    "SELECT md5(secret) FROM users;",
+    "INSERT INTO t VALUES ($$*/$$);",
+    "SELECT $$--$$, md5(secret) FROM users;",
+  ].join("\n");
+  assert.deepEqual(
+    scanMigrationSql("20261121000000000_cmtdollar.sql", commentDollar).map((v) => `${v.line}:${v.rule}`),
+    ["2:banned-md5", "4:banned-md5"],
+  );
+
+  const obfuscatedAlgs = [
+    "SELECT digest(x, $$md5$$);",
+    "SELECT digest(x, $alg$sha1$alg$);",
+    "SELECT hmac(x, k, $$md5$$);",
+    "SELECT digest(x, ('sha' || '1'));",
+    "SELECT digest(x, concat('md', '5'));",
+    "SELECT digest(x, E'\\x6d\\x64\\x35');",
+    "SELECT digest(x, E'\\155\\144\\065');",
+    "SELECT digest(x, E'\\u006d\\u0064\\u0035');",
+    "SELECT digest(x, U&'\\006d\\0064\\0035');",
+    "SELECT digest(x, U&'!006d!0064!0035' UESCAPE '!');",
+    "SELECT digest(type => 'md5', data => x);",
+    "SELECT hmac(data => x, key => k, alg => 'sha1');",
+  ].join("\n");
+  const algViolations = scanMigrationSql("20261121000000000_algs.sql", obfuscatedAlgs);
+  assert.equal(algViolations.length, 12);
+  assert.deepEqual(
+    algViolations.map((v) => `${v.line}:${v.rule}`),
+    [
+      "1:weak-digest-algorithm",
+      "2:weak-digest-algorithm",
+      "3:weak-hmac-algorithm",
+      "4:weak-digest-algorithm",
+      "5:weak-digest-algorithm",
+      "6:weak-digest-algorithm",
+      "7:weak-digest-algorithm",
+      "8:weak-digest-algorithm",
+      "9:weak-digest-algorithm",
+      "10:weak-digest-algorithm",
+      "11:weak-digest-algorithm",
+      "12:weak-hmac-algorithm",
+    ],
+  );
+});
+
+test("ignores comments, string/dollar prose literals, safe sha256/sha512 calls, and safe identifiers", () => {
   const safeSql = `
     -- md5(col) and digest(x, 'sha1') in line comment
     /* nested /* md5(col) */ hmac(a, b, 'md5') */
     COMMENT ON COLUMN t.c IS 'Migrated from md5(x) and sha1';
-    DO $$
+    INSERT INTO t VALUES ($$not sql md5(x)$$);
+    CREATE FUNCTION f(x text) RETURNS text AS $fn$
     BEGIN
       RAISE EXCEPTION 'sha1 and md5(x) are not allowed';
       PERFORM E'escaped \\' md5(x)';
+      RETURN $$not sql md5(x)$$;
     END;
-    $$;
+    $fn$ LANGUAGE plpgsql;
     SELECT
       digest(convert_to(x, 'UTF8'), 'sha256'),
+      digest(x, ('sha' || '256')),
+      digest(x, concat('sha', '256')),
+      digest(type => 'sha256', data => x),
+      digest(x, U&'\\0073\\0068\\0061\\0032\\0035\\0036'),
       hmac(x, k, 'sha256'),
       sha256(convert_to(x, 'UTF8')),
       digest(x, 'sha512'),
@@ -141,19 +228,25 @@ test("ignores comments, string prose literals, safe sha256/sha512 calls, and saf
   assert.deepEqual(scanMigrationSql("20261121000000000_safe.sql", safeSql), []);
 });
 
-test("CLI exits 0 on clean migrations and 1 when a violation is present", (t) => {
+test("CLI works through symlinked entrypoint and exits 0 on clean or 1 on violations", (t) => {
   const script = path.join(REPO_ROOT, "scripts/check-migration-crypto.mjs");
+  const symlinkDir = mkdtempSync(path.join(tmpdir(), "migration-crypto-link-"));
+  t.after(() => rmSync(symlinkDir, { recursive: true, force: true }));
+  const linkedScript = path.join(symlinkDir, "check-migration-crypto-link.mjs");
+  symlinkSync(script, linkedScript);
+
   const cleanRoot = withTempMigrations(t, {
     "20261121000000000_clean.sql": "SELECT encode(digest(convert_to(v, 'UTF8'), 'sha256'), 'hex');\n",
   });
-  const cleanRun = spawnSync(process.execPath, [script, "--root", cleanRoot], { encoding: "utf8" });
+  const cleanRun = spawnSync(process.execPath, [linkedScript, "--root", cleanRoot], { encoding: "utf8" });
   assert.equal(cleanRun.status, 0, cleanRun.stderr);
   assert.match(cleanRun.stdout, /1 migration\(s\) checked.*0 problem\(s\)/);
 
   const dirtyRoot = withTempMigrations(t, {
     "20261121000000000_dirty.sql": "SELECT md5(v);\n",
   });
-  const dirtyRun = spawnSync(process.execPath, [script, "--root", dirtyRoot], { encoding: "utf8" });
+  const dirtyRun = spawnSync(process.execPath, [linkedScript, "--root", dirtyRoot], { encoding: "utf8" });
   assert.equal(dirtyRun.status, 1);
+  assert.match(dirtyRun.stdout, /1 migration\(s\) checked.*1 problem\(s\)/);
   assert.match(dirtyRun.stderr, /20261121000000000_dirty\.sql:1:/);
 });
