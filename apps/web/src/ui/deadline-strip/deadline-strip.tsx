@@ -27,6 +27,15 @@ type StripEntry = {
   tone?: "over" | "today" | "upcoming" | "undated";
 };
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function stripAccessibleName(shortLabel: string, fullLabel: string) {
+  const short = shortLabel.trim();
+  if (!short) return fullLabel;
+  const startsWithToken = new RegExp(`^${escapeRegExp(short)}(?:$|[^\\p{L}\\p{N}])`, "iu");
+  return startsWithToken.test(fullLabel.trimStart()) ? fullLabel : `${shortLabel} · ${fullLabel}`;
+}
+
 /**
  * Horizontal day-by-lane deadline schedule strip: maps dated and undated worklist items across overdue, today,
  * upcoming, and undated columns in statutory and operational lanes.
@@ -63,9 +72,7 @@ export function DeadlineStrip({
     return (
       <div className={s.pills}>
         {matching.map(entry => {
-          const accessibleName = entry.fullLabel.toLowerCase().includes(entry.shortLabel.toLowerCase())
-            ? entry.fullLabel
-            : `${entry.shortLabel} · ${entry.fullLabel}`;
+          const accessibleName = stripAccessibleName(entry.shortLabel, entry.fullLabel);
           return (
             <button
               key={entry.id}
@@ -87,7 +94,7 @@ export function DeadlineStrip({
   };
 
   return (
-    <section className={s.strip} aria-label={titleText} data-deadline-strip="">
+    <div className={s.strip} data-deadline-strip="">
       <PaneHead title={titleText} meta={meta} level={3} />
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Wide day-column schedule must remain keyboard-scrollable (WCAG 2.1.1). */}
       <div className={s.scroller} tabIndex={0} role="region" aria-label={titleText}>
@@ -150,6 +157,6 @@ export function DeadlineStrip({
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
   );
 }

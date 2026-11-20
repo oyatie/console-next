@@ -115,16 +115,26 @@ export function PaneGrid({
   useEffect(() => {
     const center = centerRef.current;
     if (!center) return;
+    const clearSettle = () => {
+      clearTimeout(settleRef.current);
+      settleRef.current = undefined;
+    };
     const onFocusIn = (e: FocusEvent) => {
+      clearSettle();
       const row = rowElOf(e.target);
       if (row?.closest('[role="tree"]')) return;
       const id = rowKeyOf(row);
       if (!id) return;
-      clearTimeout(settleRef.current);
       settleRef.current = setTimeout(() => {
+        settleRef.current = undefined;
         const openId = liveRef.current.openRecord?.id;
         if (openId && id !== openId) liveRef.current.onSelect?.(id);
       }, FOCUS_SETTLE_MS);
+    };
+    const onFocusOut = (e: FocusEvent) => {
+      if (!(e.relatedTarget instanceof Node) || !center.contains(e.relatedTarget)) {
+        clearSettle();
+      }
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isImeKey(e) || e.altKey || e.ctrlKey || e.metaKey || editable(e.target)) return;
@@ -162,10 +172,12 @@ export function PaneGrid({
       }
     };
     center.addEventListener("focusin", onFocusIn);
+    center.addEventListener("focusout", onFocusOut);
     center.addEventListener("keydown", onKeyDown);
     return () => {
-      clearTimeout(settleRef.current);
+      clearSettle();
       center.removeEventListener("focusin", onFocusIn);
+      center.removeEventListener("focusout", onFocusOut);
       center.removeEventListener("keydown", onKeyDown);
     };
   }, []);

@@ -134,7 +134,7 @@ export function appendExplicitWorkspaceTab(
   const existing = current.find(tab => tab.href === href);
   if (existing) {
     return {
-      tabs: current.map(tab => (tab.id === existing.id ? { ...tab, label } : tab)),
+      tabs: existing.pinned ? [...current] : current.map(tab => (tab.id === existing.id ? { ...tab, label } : tab)),
       activeId: existing.id,
     };
   }

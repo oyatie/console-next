@@ -18,6 +18,7 @@ export function DecisionPane({
   rejectLabel,
   returnLabel,
   pending,
+  resetKey,
 }: {
   /** Controlled comment string preserved across attempts and server errors. */
   opinion: string;
@@ -37,12 +38,20 @@ export function DecisionPane({
   returnLabel?: string;
   /** In-flight action (`"approve"`, `"reject"`, or `"return"`). */
   pending?: "approve" | "reject" | "return";
+  /** Optional record key; changing it clears stale missing-reason validation alerts. */
+  resetKey?: string | number;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [missingReason, setMissingReason] = useState(false);
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
+    if (missingReason) setMissingReason(false);
+  }
   const busy = pending !== undefined;
   const trimmed = opinion.trim();
+  if (trimmed.length > 0 && missingReason) setMissingReason(false);
   const invalid = missingReason && trimmed.length === 0;
   const errorId = `${id}-error`;
 

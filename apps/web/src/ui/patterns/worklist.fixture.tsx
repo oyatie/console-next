@@ -128,6 +128,7 @@ export default function WorklistExample({ q = READY }: { q?: ReadState }) {
               onClose: () => setSelected(""),
               footer: (
                 <DecisionPane
+                  key={activeItem.id}
                   opinion={opinion}
                   onOpinionChange={setOpinion}
                   onApprove={() => setSelected("")}

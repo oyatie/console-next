@@ -68,6 +68,7 @@ Default labels read `uiWorklist.opinionOptional`, `uiWorklist.opinionRequired`, 
 | `onReturn` | no | `(opinion: string) => void` |  | Optional request-changes callback; rendered only when the record kind supports returning. |
 | `pending` | no | `"approve" \| "reject" \| "return"` |  | In-flight action (`"approve"`, `"reject"`, or `"return"`). |
 | `rejectLabel` | no | `string` |  | Custom reject button label; defaults to `uiWorklist.reject`. |
+| `resetKey` | no | `number \| string` |  | Optional record key; changing it clears stale missing-reason validation alerts. |
 | `returnLabel` | no | `string` |  | Custom request-changes button label; defaults to `uiWorklist.return`. |
 
 <!-- /ds:props -->

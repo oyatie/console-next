@@ -124,6 +124,7 @@ describe("StrictMode PaneGrid", () => {
               React.createElement(PaneGrid, {
                 onSelect: handleSelect, onOpen: setOpened,
                 main: React.createElement('div', null,
+                  React.createElement('button', { type: 'button', 'data-center-other': '' }, 'Center Other'),
                   React.createElement('button', { ref: rowA, type: 'button', 'data-row-id': 'a', onClick: () => handleSelect('a') }, 'Row A'),
                   React.createElement('div', { ref: rowB, tabIndex: 0, role: 'button', 'data-row-id': 'b' }, 'Row B'),
                   React.createElement('div', { ref: rowC, tabIndex: 0, role: 'button', 'data-row-id': 'c' }, 'Row C'),
@@ -284,6 +285,27 @@ describe("StrictMode PaneGrid", () => {
     await page.keyboard.press("j");
     await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-row-id"))).toBe("c");
     await expect.poll(() => main.getAttribute("data-select-log")).toBe("a,c");
+  });
+
+  test("FOCUS_SETTLE_MS cancels pending settle timer when focus moves to a non-row inside center or leaves center", async () => {
+    await page.locator("[data-reset]").click();
+    const main = page.locator("[data-strict-pane-grid]");
+    await page.locator('[data-row-id="a"]').click();
+    await expect.poll(() => main.getAttribute("data-select-log")).toBe("a");
+
+    // Move focus to row B then immediately to a non-row element inside centerRef before FOCUS_SETTLE_MS.
+    await page.locator('[data-row-id="b"]').focus();
+    await page.locator("[data-center-other]").focus();
+    await new Promise(done => setTimeout(done, 250));
+    expect(await main.getAttribute("data-selected")).toBe("a");
+    expect(await main.getAttribute("data-select-log")).toBe("a");
+
+    // Move focus to row B then immediately outside centerRef before FOCUS_SETTLE_MS.
+    await page.locator('[data-row-id="b"]').focus();
+    await page.locator("[data-outside]").focus();
+    await new Promise(done => setTimeout(done, 250));
+    expect(await main.getAttribute("data-selected")).toBe("a");
+    expect(await main.getAttribute("data-select-log")).toBe("a");
   });
 
   test("1024px depth=2 hides the record splitter while keeping the related splitter visible and resizable", async () => {

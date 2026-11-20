@@ -19,28 +19,29 @@ export function DueCell({
   /** Days threshold within which upcoming items take semibold `near` emphasis (`7` by default). */
   nearWindow?: number;
 }) {
+  const validDays = days != null && Number.isFinite(days) ? days : null;
   const tone =
-    days == null
+    validDays == null
       ? "undated"
-      : days < 0
+      : validDays < 0
         ? "over"
-        : days === 0
+        : validDays === 0
           ? "today"
-          : days <= nearWindow
+          : validDays <= nearWindow
             ? "near"
             : "far";
 
   const text =
-    days == null
+    validDays == null
       ? t("uiWorklist.undated")
-      : days < 0
-        ? t("uiDeadlineChip.over", { days: -days })
-        : days === 0
+      : validDays < 0
+        ? t("uiDeadlineChip.over", { days: -validDays })
+        : validDays === 0
           ? t("uiWorklist.today")
-          : t("uiDeadlineChip.left", { days });
+          : t("uiDeadlineChip.left", { days: validDays });
 
   return (
-    <data className={s.cell} data-tone={tone} data-fill={fill || undefined} value={days == null ? "" : String(days)}>
+    <data className={s.cell} data-tone={tone} data-fill={fill || undefined} value={validDays == null ? "" : String(validDays)}>
       {tone === "over" ? <AlertTriangle size={12} aria-hidden="true" /> : null}
       {tone === "today" ? <Clock size={12} aria-hidden="true" /> : null}
       <bdi>{text}</bdi>
