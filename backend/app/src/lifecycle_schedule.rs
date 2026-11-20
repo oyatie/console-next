@@ -47,6 +47,7 @@ pub fn spawn(
     worker: bool,
     force_pool: Option<sqlx::PgPool>,
     nts: std::sync::Arc<console_entity_adapter_nts::NtsClient>,
+    rrn_vault: Option<std::sync::Arc<dyn console_hr_domain::import::rrn_value::RrnVault>>,
 ) -> LifecycleScheduleHandle {
     let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
     let today_file = dev_today_file();
@@ -95,6 +96,7 @@ pub fn spawn(
                     // W11: an import apply job whose driver died (both roles; the
                     // claim is SKIP LOCKED, so replicas never drive one twice).
                     match console_hr_adapter_postgres::HrService::new(pool.clone())
+                        .with_rrn_vault(rrn_vault.clone())
                         .resume_stale_applies()
                         .await
                     {
@@ -149,6 +151,16 @@ pub fn spawn(
                             Ok(0) => {},
                             Ok(pruned) => tracing::debug!(pruned, "auth rate-limit windows pruned"),
                             Err(error) => tracing::warn!(%error, "auth rate-limit prune failed"),
+                        }
+                        if let Some(vault) = rrn_vault.clone() {
+                            match console_hr_adapter_postgres::HrService::new(pool.clone())
+                                .backfill_rrn_blind_indexes(vault)
+                                .await
+                            {
+                                Ok(0) => {}
+                                Ok(updated) => tracing::info!(updated, "employee RRN blind indexes backfilled"),
+                                Err(error) => tracing::warn!(error = %error.message, "employee RRN blind-index backfill failed"),
+                            }
                         }
                     }
                 }

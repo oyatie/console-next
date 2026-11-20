@@ -89,24 +89,43 @@ async fn seed_cold_start_if_needed_tx(
     now: OffsetDateTime,
     ttl: Duration,
 ) -> Result<Option<(Uuid, Uuid, OffsetDateTime)>, ProvisioningError> {
-    let admin_id: Option<Uuid> = sqlx::query_scalar(
+    let admin_ids: Vec<Uuid> = sqlx::query_scalar(
         r#"
         SELECT id
         FROM users
         WHERE org_id = $1
           AND roles @> ARRAY['SUPER_ADMIN']::TEXT[]
-        ORDER BY id
-        LIMIT 1
+        ORDER BY created_at ASC, id ASC
         FOR UPDATE
         "#,
     )
     .bind(OrgId::platform().as_uuid())
-    .fetch_optional(tx.as_mut())
+    .fetch_all(tx.as_mut())
     .await?;
+
+    let any_active_enrolled: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM users u
+            JOIN auth_webauthn_credentials c ON c.user_id = u.id
+            WHERE u.org_id = $1
+              AND u.is_active
+              AND 'SUPER_ADMIN' = ANY(u.roles)
+        )
+        "#,
+    )
+    .bind(OrgId::platform().as_uuid())
+    .fetch_one(tx.as_mut())
+    .await?;
+    if any_active_enrolled {
+        return Ok(None);
+    }
+
     // An empty database (squashed baseline, no 0021/0036 rows) has no admin yet. This path
     // only runs when the operator configured a cold-start OTP, so create the platform root
     // here rather than leaving a fresh install with no way to sign in (migration 0241).
-    let admin_id = match admin_id {
+    let admin_id = match admin_ids.first().copied() {
         Some(id) => id,
         None => {
             sqlx::query_scalar("SELECT platform_ensure_cold_start_admin()")

@@ -60,7 +60,7 @@ const tenants = createRoute({
 });
 const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-access", staticData: { access: "signed-in", floorplan: "P-01" },validateSearch:(s: Record<string, unknown>): { review?: string } => ({ review: str(s.review) }),component:lazyRouteComponent(screen(()=>import("../features/support-access/ui/support-access")),"SupportAccess")});
 // Home with the setup checklist composed in (routes compose slices).
-const home = createRoute({ getParentRoute: () => app, path: "/", validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }), staticData: { access: "signed-in", floorplan: "P-03" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
+const home = createRoute({ getParentRoute: () => app, path: "/", validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }), staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
 const loadAccount = () => import("../features/account/Account");
 const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05" }, component: lazyRouteComponent(screen(loadAccount), "Account") });
 const privacyIntake = createRoute({ getParentRoute: () => app, path: "/account/privacy/intake/$id", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(loadAccount), "PrivacyIntake") });
@@ -72,6 +72,7 @@ const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
   : [];
 // Mock-state builds keep unserved screens testable without publishing their routes.
 const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
+  createRoute({ getParentRoute: () => app, path: "/_review/patterns/worklist", staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" }, validateSearch: (s: Record<string, unknown>): { state?: "refused" } => ({ state: s.state === "refused" ? "refused" : undefined }), component: lazyRouteComponent(screen(() => import("../review/worklist-review")), "WorklistReview") }),
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/list-record", staticData: { access: "signed-in", floorplan: "P-01", pattern: "list-record" }, validateSearch: (s: Record<string, unknown>): { state?: "refused" } => ({ state: s.state === "refused" ? "refused" : undefined }), component: lazyRouteComponent(screen(() => import("../review/list-record-review")), "ListRecordReview") }),
   createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") }),
   createRoute({

@@ -11,6 +11,7 @@ publish.workspace = true
 aws-lc-rs = { workspace = true }
 console-comms-application = { workspace = true }
 console-kernel-core = { workspace = true }
+console-platform-crypto = { workspace = true }
 chacha20poly1305 = { workspace = true }
 secrecy = { workspace = true }
 zeroize = { workspace = true }

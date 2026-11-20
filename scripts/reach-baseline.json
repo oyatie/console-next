@@ -540,6 +540,16 @@
    "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
+  "GET /api/v1/leave/balances": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "GET /api/v1/leave/requests": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
   "GET /api/v1/legal-entities/{entityId}/workplaces": {
    "lane": "E3a",
    "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -594,11 +604,6 @@
    "lane": "H2",
    "reason": "H2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
-  },
-  "GET /api/v1/me/workspace": {
-   "lane": "MAT-PARITY",
-   "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
-   "when": "excluded"
   },
   "GET /api/v1/ops/summary": {
    "lane": "MAT-PARITY",
@@ -718,6 +723,16 @@
   "GET /api/v1/workplaces/{workplaceId}": {
    "lane": "E3a",
    "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v2/leave/requests": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "GET /api/v2/me/leave": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
   },
   "GET /healthz": {
@@ -955,6 +970,21 @@
    "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
+  "POST /api/v1/leave/promotions": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "POST /api/v1/leave/refusal-notices": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "POST /api/v1/leave/requests/{id}/decide": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
   "POST /api/v1/lifecycles/{objectType}/{objectId}/hold": {
    "lane": "P5a",
    "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -1100,11 +1130,6 @@
    "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/settings/{key}": {
-   "lane": "K5",
-   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "POST /api/v1/workflow-tasks/{task_id}/claim": {
    "lane": "H1",
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -1118,6 +1143,26 @@
   "POST /api/v1/workflow-tasks/{task_id}/finalize": {
    "lane": "H1",
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v2/leave/requests": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "POST /api/v2/leave/requests/{id}/alternate-dates": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "POST /api/v2/leave/requests/{id}/charge-resolution": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "POST /api/v2/leave/requests/{id}/decide": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
   },
   "PUT /api/platform/groups/{id}/organizations/{org_id}": {
@@ -1139,11 +1184,6 @@
    "lane": "MAT-PARITY",
    "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
    "when": "ideal"
-  },
-  "PUT /api/v1/me/workspace": {
-   "lane": "MAT-PARITY",
-   "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
-   "when": "excluded"
   },
   "PUT /api/v1/policy/drafts/{draft_id}": {
    "lane": "K2",

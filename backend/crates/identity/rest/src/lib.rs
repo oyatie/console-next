@@ -103,6 +103,7 @@ pub const CONSOLE_ROLLOUT_ORG_FLAG_PATH: &str = "/api/v1/console/rollout/org-fla
 pub const CONSOLE_LEGACY_KILL_SWITCH_PATH: &str = "/api/v1/console/kill-switch";
 /// Per-(org,user) Oyatie Console workspace layout (UI-M1b). GET returns the
 /// caller's saved layout (empty `{}` default), PUT upserts it. Opaque jsonb.
+pub const ME_ACCESS_LOG_PATH: &str = "/api/v1/me/access-log";
 pub const ME_WORKSPACE_PATH: &str = "/api/v1/me/workspace";
 pub const ME_EMPLOYEE_VIEWS_PATH: &str = "/api/v1/me/employee-views";
 /// Caller's authorization projection (Identity Console UI-M13 / charter G-a):
@@ -148,6 +149,7 @@ pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
     CONSOLE_ROLLOUT_OPT_IN_PATH,
     CONSOLE_ROLLOUT_ORG_FLAG_PATH,
     CONSOLE_LEGACY_KILL_SWITCH_PATH,
+    ME_ACCESS_LOG_PATH,
     ME_WORKSPACE_PATH,
     ME_EMPLOYEE_VIEWS_PATH,
     ME_AUTHZ_PATH,
@@ -209,6 +211,7 @@ pub fn router(state: IdentityRestState) -> Router {
             CONSOLE_LEGACY_KILL_SWITCH_PATH,
             post(update_console_legacy_kill_switch),
         )
+        .route(ME_ACCESS_LOG_PATH, get(me::access_log::list))
         .route(ME_WORKSPACE_PATH, get(get_workspace).put(put_workspace))
         .route(
             ME_EMPLOYEE_VIEWS_PATH,

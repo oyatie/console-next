@@ -4,7 +4,7 @@ use super::{canonical_serde, refusal};
 use crate::KernelError;
 
 /// An E.164 phone number (`+8210…`). Parsing accepts Korean domestic input
-/// (`010-1234-5678`, `02-123-4567`, `1588-1234`) and international `+…`.
+/// (`010-1234-5678`, `02-123-4567`, `1588-1234`) and international `+…` or `00…`.
 ///
 /// The one phone rule: the HR register's `normalize_phone_e164`
 /// (hr adapter `directory/normalize.rs`) delegates here.
@@ -41,19 +41,28 @@ impl PhoneE164 {
                 _ => return Err(refusal(Self::CODE_INVALID)),
             }
         }
-        let phone = if let Some(local) = compact.strip_prefix("+82") {
-            format!("+82{}", local.strip_prefix('0').unwrap_or(local))
-        } else if let Some(intl) = compact.strip_prefix("82") {
-            format!("+82{}", intl.strip_prefix('0').unwrap_or(intl))
-        } else if let Some(local) = compact.strip_prefix('0') {
-            format!("+82{local}")
-        } else if compact.starts_with('+') {
-            compact
-        } else if compact.len() == 8 && matches!(compact.get(..2), Some("15" | "16" | "18")) {
-            // Nationwide representative number (1588-xxxx): domestic only, stored under +82.
-            format!("+82{compact}")
+        let international = compact
+            .strip_prefix('+')
+            .or_else(|| compact.strip_prefix("00"));
+        let digits = international.unwrap_or(&compact);
+        let national = digits.strip_prefix("82").or_else(|| {
+            if international.is_some() {
+                None
+            } else if compact.len() == 8 && matches!(compact.get(..2), Some("15" | "16" | "18")) {
+                Some(digits)
+            } else {
+                digits.strip_prefix('0')
+            }
+        });
+        let phone = if let Some(national) = national {
+            // Old writers could store trunk zeros and a repeated country code after +82.
+            let mut subscriber = national.trim_start_matches('0');
+            while let Some(rest) = subscriber.strip_prefix("82") {
+                subscriber = rest.trim_start_matches('0');
+            }
+            format!("+82{subscriber}")
         } else {
-            format!("+{compact}")
+            format!("+{digits}")
         };
         let digits = &phone[1.min(phone.len())..];
         let valid = phone.starts_with('+')

@@ -86,7 +86,7 @@ use uuid::Uuid;
 
 #[cfg(test)]
 mod error_wire_pins;
-mod rrn_vault;
+pub(crate) mod rrn_vault;
 mod workbook_read;
 // BE-MIG: the employee import handlers (backlog §4.2 foundation commit).
 mod employee_import;
@@ -201,14 +201,7 @@ impl axum::extract::FromRef<HrState> for HrService {
 impl HrState {
     #[must_use]
     pub fn new(pool: PgPool, jwt_verifier: Option<JwtVerifier>) -> Self {
-        Self {
-            hr: HrService::new(pool.clone()),
-            pool,
-            leave_command_store: None,
-            jwt_verifier,
-            passkey_step_up: None,
-            rrn_vault: rrn_vault::from_env_logged(),
-        }
+        rrn_vault::new_hr_state(pool, jwt_verifier)
     }
 
     #[must_use]

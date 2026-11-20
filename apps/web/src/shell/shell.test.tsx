@@ -228,7 +228,10 @@ test.each([...experiences.map(experience => experience.id), "alternate"])("the %
     const html = renderToStaticMarkup(<QueryClientProvider client={client}>{layout === "alternate"
       ? <ShellFrame layout={AlternateLayout}>{screen}</ShellFrame> : <Pack>{screen}</Pack>}</QueryClientProvider>);
     expect(html).toMatch(/<main\b[^>]*data-console-scope=""/);
-    for (const key of ["shell.jump", "shell.locale", "shell.theme.toDark", "shell.logout", "account.name.unset"] as const) expect(html).toContain(t(key));
+    const expectedLandmarks = layout === "console"
+      ? (["shell.jump", "account.name.unset", "shell.tabs.label", "shell.status.label"] as const)
+      : (["shell.jump", "shell.locale", "shell.theme.toDark", "shell.logout", "account.name.unset"] as const);
+    for (const key of expectedLandmarks) expect(html).toContain(t(key));
     expect(html.match(/<main\b/g)).toHaveLength(1);
     expect(html.match(/id="main"/g)).toHaveLength(1);
     expect(html.match(/href="#main"/g)).toHaveLength(1);
@@ -252,4 +255,58 @@ test("platform sessions place platform navigation without tenant search or inbox
     expect(links).toEqual(PLATFORM_NAV.flatMap(hub => hub.links.map(link => link.to)));
     expect(html).toContain('data-console-scope="' + t("shell.hub.platform") + '"');
   } finally { session.set(null); client.clear(); }
+});
+
+test("ConsoleShell trims whitespace-only profile fields before composing displayName and uses Settings icon for /account without /settings nav link", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  const origDocument = globalThis.document;
+  try {
+    session.set({ access_token: `h.${Buffer.from(JSON.stringify({ sub: "member", org: "tenant" })).toString("base64url")}.s`, token_type: "Bearer", refresh_expires_at: "2099-01-01T00:00:00Z", requires_passkey_setup: false });
+    await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ is_ops: false, entries: [] }) });
+    await client.fetchQuery({ ...modulesQuery, queryFn: async () => modules.ready });
+    await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: false }) });
+    await client.fetchQuery({ ...checklistQuery, queryFn: async () => ({ steps: [] }) });
+    await client.fetchQuery({
+      ...meQuery,
+      queryFn: async () => ({
+        display_name: "   ",
+        employee_org_unit: "HR Team",
+        employee_position: "Manager",
+        tenant: { name: "Corp", phase: "OPERATING" },
+      }),
+    });
+    vi.stubGlobal("document", { documentElement: { dataset: { experience: "console" } } });
+    const ConsolePack = (await loadPack()).default;
+    vi.unstubAllGlobals();
+
+    const whitespaceNameHtml = renderToStaticMarkup(
+      <QueryClientProvider client={client}>
+        <ConsolePack><h1>{t("app.name")}</h1></ConsolePack>
+      </QueryClientProvider>,
+    );
+    expect(whitespaceNameHtml).toContain(t("account.name.unset"));
+    expect(whitespaceNameHtml).not.toContain(`${t("account.name.unset")} · HR Team`);
+
+    await client.fetchQuery({
+      ...meQuery,
+      staleTime: 0,
+      queryFn: async () => ({
+        display_name: "Seoyeon Moon",
+        employee_org_unit: "   ",
+        employee_position: "  ",
+        tenant: { name: "Corp", phase: "OPERATING" },
+      }),
+    });
+    const whitespaceRoleHtml = renderToStaticMarkup(
+      <QueryClientProvider client={client}>
+        <ConsolePack><h1>{t("app.name")}</h1></ConsolePack>
+      </QueryClientProvider>,
+    );
+    expect(whitespaceRoleHtml).toContain(">Seoyeon Moon</bdi>");
+    expect(whitespaceRoleHtml).not.toContain("Seoyeon Moon ·");
+  } finally {
+    vi.stubGlobal("document", origDocument);
+    session.set(null);
+    client.clear();
+  }
 });

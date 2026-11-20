@@ -157,10 +157,11 @@ no keyboard. Hiding it there is the caller's choice, and the component has no pr
 | `--border` | `border` |
 | `--font-mono` | `font-family` |
 | `--fw-body` | `font-weight` |
-| `--muted` | `background` |
+| `--kbd-bg` | `background` |
+| `--kbd-h` | `height` |
+| `--kbd-min-w` | `min-width` |
 | `--radius-sm` | `border-radius` |
-| `--space-1` | `height`, `margin-left`, `padding` |
-| `--space-5` | `height`, `min-width` |
+| `--space-1` | `margin-left`, `padding` |
 | `--steel` | `color` |
 | `--text-xs` | `font-size` |
 

@@ -97,7 +97,7 @@ There is one look and one size. No prop picks a variant.
 | Title | 20 px (`--text-xl`), bold (`--fw-strong`), no margin. |
 | Consequence | A box 16 px (`--space-4`) in from the card's sides: a `--surface` fill, a 1 px `--ink` border, a 6 px radius (`--radius`), 12 px (`--space-3`) padding and 14 px (`--text-body`) text. Its children are a column, 4 px (`--space-1`) apart. A `<p>` inside has no margin, and a `<p>` that follows another `<p>` is 13 px (`--text-sm`) and `--steel`. |
 | Bar | A row that wraps, 8 px (`--space-2`) between items, centred on the cross axis. Padding: 12 px (`--space-3`) on top, 16 px (`--space-4`) at the sides and the bottom. The spacer takes the spare width of its row, so the buttons sit at the end. |
-| Buttons | The global `btn` look, at least 40 px high (`--row-h`). A plain `btn` is at least 36 px (`calc(var(--row-h) - var(--space-1))`); the card's stylesheet raises the ones that are direct children of the bar. |
+| Buttons | The global `btn` look, at least 40 px high (`--control-h-lg`). A plain `btn` is at least 36 px (`--control-h`); the card's stylesheet raises the ones that are direct children of the bar. |
 | Meta | 12 px (`--text-xs`), `--steel`. |
 | Missing-reason text | 13 px (`--text-sm`), `--steel`, at most `calc(var(--panel-w) / 1.5)` wide, which is about 293 px. |
 | Blocked reason | The same text, on a full row of its own before the meta and the buttons, with no width limit and `text-align: right`. |
@@ -227,7 +227,7 @@ The WCAG 2.2 criteria that apply:
 | 2.4.3 Focus Order | Focus goes to the form heading when a form opens and back to its opener when it closes. Not answered when the receipt arrives, and not checked after a refused command: see the gaps. |
 | 2.4.6 Headings and Labels | The title and the form heading are the caller's words. The form heading repeats the commit's label. |
 | 2.4.7 Focus Visible | The global outline on the buttons. Not answered for the form heading. |
-| 2.5.8 Target Size (Minimum) | The buttons are at least 40 px high (`--row-h`), above the 24 px minimum. |
+| 2.5.8 Target Size (Minimum) | The buttons are at least 40 px high (`--control-h-lg`), above the 24 px minimum. |
 | 3.3.4 Error Prevention (Legal, Financial, Data) | The type requires `consequence` and `rejectConsequence`, and `returnConsequence` with request changes, and each is drawn before its commit. Reject and request changes take two presses. Approve takes one. |
 | 4.1.2 Name, Role, Value | The roles, names and descriptions above. |
 | 4.1.3 Status Messages | Left to the caller, through `receipt`. A running command has no status message. |
@@ -281,7 +281,7 @@ query. The component's own comment calls it a desktop card; the approval viewer 
 - The card is as wide as its container below 640 px (`--card-w`).
 - The bar wraps. The spacer pushes only the row it is in, so a button that drops to a new row starts at the start
   of that row, not at the end.
-- The buttons are at least 40 px high (`--row-h`) at every width. They do not grow to the 44 px touch size; the
+- The buttons are at least 40 px high (`--control-h-lg`) at every width. They do not grow to the 44 px touch size; the
   component does not read `--target-touch`.
 - The missing-reason text keeps its width limit of `calc(var(--panel-w) / 1.5)`.
 
@@ -390,6 +390,7 @@ global `btn` classes. Both are in `app.css` and are not listed here: see the tok
 | --- | --- |
 | `--border-soft` | `border-bottom`, `border-top` |
 | `--card-w` | `width` |
+| `--control-h-lg` | `min-height` |
 | `--fw-medium` | `font-weight` |
 | `--fw-strong` | `font-weight` |
 | `--ink` | `border` |
@@ -398,7 +399,6 @@ global `btn` classes. Both are in `app.css` and are not listed here: see the tok
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-sm` | `border-radius` |
-| `--row-h` | `min-height` |
 | `--space-1` | `gap` |
 | `--space-2` | `gap`, `padding` |
 | `--space-3` | `gap`, `padding` |

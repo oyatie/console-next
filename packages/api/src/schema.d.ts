@@ -552,6 +552,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform/operators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List platform operators (platform vendor tier)
+         * @description Lists all platform-tier SUPER_ADMIN operators with passkey and invitation status. Audited as platform.operator.list.
+         */
+        get: operations["listPlatformOperators"];
+        put?: never;
+        /**
+         * Invite a second platform operator (platform vendor tier)
+         * @description Provisions a new platform-tier SUPER_ADMIN account and mints a single-use enrolment token returned once. Requires OPERATOR_RECOVERY step-up bound to the request.
+         */
+        post: operations["invitePlatformOperator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/operators/{id}/reissue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reissue a platform operator invite token (platform vendor tier)
+         * @description Revokes any open invite for an unkeyed active platform operator and mints a fresh one-time enrolment token. Requires OPERATOR_RECOVERY step-up bound to the operator id.
+         */
+        post: operations["reissuePlatformOperatorInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/operators/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a platform operator (platform vendor tier)
+         * @description Deactivates a platform operator, revokes open invites and refresh families, and bumps session generation. Refuses self-revocation and revoking the last active enrolled operator. Requires OPERATOR_RECOVERY step-up.
+         */
+        post: operations["revokePlatformOperator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/platform/ops": {
         parameters: {
             query?: never;
@@ -8994,6 +9058,26 @@ export interface paths {
          * @description Sets every inbound message in the visible thread to read or unread and recomputes thread/folder unread aggregates. The action is RLS-armed to the caller's org and audited without duplicating message content. Requires the MailUse feature.
          */
         patch: operations["setMailThreadReadState"];
+        trace?: never;
+    };
+    "/api/v1/me/access-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Authenticated user's own personal-data access history
+         * @description Strictly self-scoped to events where the authenticated principal's linked employee or user record was the subject. Excludes self-reads and denied attempts, requires no tenant-wide audit::view grant, and never exposes raw personal data values or free-text notes.
+         */
+        get: operations["listMyAccessLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/me/action-inbox": {
@@ -23369,6 +23453,12 @@ export interface components {
             id: components["schemas"]["Uuid"];
             label: string;
         };
+        InvitePlatformOperatorRequest: {
+            id: components["schemas"]["Uuid"];
+            display_name: string;
+            login?: string | null;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
         IssueAppointmentNoticeRequest: {
             title: string;
             /**
@@ -24700,6 +24790,22 @@ export interface components {
         MobileVotePollRequest: {
             selected_option_ids: components["schemas"]["Uuid"][];
             step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        MyAccessLogEvent: {
+            /** Format: uuid */
+            event_id: string;
+            /** Format: date-time */
+            occurred_at: string;
+            actor_name: string;
+            actor_team: string | null;
+            action: string;
+            field: string | null;
+            reason_code: string | null;
+            target_type: string;
+        };
+        MyAccessLogPage: {
+            items: components["schemas"]["MyAccessLogEvent"][];
+            next_cursor: string | null;
         };
         /** @description One pending P1 offer for the signed-in mechanic: a BROADCASTING dispatch that fanned out to the caller, still inside its accept window, with no response from the caller yet. */
         MyDispatchOffer: {
@@ -26087,6 +26193,13 @@ export interface components {
             /** @enum {string} */
             channel: "ATTESTATION_ONLY" | "FILE_GENERIC";
         };
+        PayrollCalculationDeduction: {
+            code: string;
+            label_ko: string;
+            /** Format: int64 */
+            amount_won: number;
+            source_url: string;
+        };
         PayrollClosePreflight: {
             checks: components["schemas"]["PayrollPreflightCheck"][];
             can_close: boolean;
@@ -26175,6 +26288,16 @@ export interface components {
             /** @enum {string} */
             calculation_status: "BLOCKED_LEGAL_GATE" | "READY_FOR_REVIEW" | "APPROVED" | "ISSUED" | "VOID";
             blockers: unknown[];
+            /** Format: int32 */
+            calculation_version?: number | null;
+            /** Format: int64 */
+            gross_won?: number | null;
+            deductions?: components["schemas"]["PayrollCalculationDeduction"][] | null;
+            /** Format: int64 */
+            total_deductions_won?: number | null;
+            /** Format: int64 */
+            net_won?: number | null;
+            tax_table_version?: string | null;
         };
         PayrollLinkedRef: {
             /** @description Object family the ref points at — payroll_line or employee today; extensible. */
@@ -26380,6 +26503,16 @@ export interface components {
             /** @description Always false until the labor attorney / tax accountant release gate flips the stored rows. */
             payable: boolean;
             kernel_rate_table: string;
+            /**
+             * Format: int64
+             * @description Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+             */
+            total_gross_won?: number | null;
+            /**
+             * Format: int64
+             * @description Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+             */
+            total_deductions_won?: number | null;
             /**
              * Format: int64
              * @description Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
@@ -26916,6 +27049,27 @@ export interface components {
         };
         /** @enum {string} */
         PlatformGroupRole: "GROUP_ADMIN" | "GROUP_VIEWER" | "GROUP_FINANCE";
+        PlatformOperatorInviteResponse: {
+            operator: components["schemas"]["PlatformOperatorSummary"];
+            /** @description One-time enrolment token returned once; deliver out-of-band and never log it. */
+            invite_token: string;
+            expires_at: components["schemas"]["Timestamp"];
+        };
+        PlatformOperatorStatus: string;
+        PlatformOperatorSummary: {
+            user_id: components["schemas"]["Uuid"];
+            display_name: string;
+            sign_in_id?: string | null;
+            is_active: boolean;
+            has_passkey: boolean;
+            device_bound_passkey: boolean;
+            status: components["schemas"]["PlatformOperatorStatus"];
+            /** Format: uuid */
+            invited_by?: string | null;
+            /** Format: date-time */
+            invite_expires_at?: string | null;
+            created_at: components["schemas"]["Timestamp"];
+        };
         PlatformOpsResponse: {
             tenants: components["schemas"]["PlatformTenantHealth"][];
             /** @description Operator notices for the vendor only (never a tenant surface), e.g. a juso key from D-14 before it expires, after it expired, or once juso rejected it. */
@@ -28447,6 +28601,9 @@ export interface components {
             pay_unit?: "MONTHLY" | "HOURLY" | "DAILY" | "ANNUAL";
             idempotency_key: string;
         };
+        ReissuePlatformOperatorInviteRequest: {
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
         RejectPeriodUnlockRequest: {
             /** Format: uuid */
             requestId: string;
@@ -28632,6 +28789,10 @@ export interface components {
             reason?: string | null;
             prev_hash: string;
             row_hash: string;
+        };
+        RevokePlatformOperatorRequest: {
+            reason?: string | null;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
         };
         RollbackWorkflowDefinitionRequest: {
             /** Format: int32 */
@@ -32447,6 +32608,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformOrg"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    listPlatformOperators: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform operators visible to the platform tier. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOperatorSummary"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    invitePlatformOperator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitePlatformOperatorRequest"];
+            };
+        };
+        responses: {
+            /** @description Invited platform operator summary and one-time enrolment token. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOperatorInviteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    reissuePlatformOperatorInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReissuePlatformOperatorInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated operator summary and replacement one-time enrolment token. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOperatorInviteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    revokePlatformOperator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokePlatformOperatorRequest"];
+            };
+        };
+        responses: {
+            /** @description Revoked platform operator summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOperatorSummary"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -50209,6 +50485,39 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             503: components["responses"]["MailUnavailable"];
+        };
+    };
+    listMyAccessLog: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Keyset page of subject-scoped access events. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAccessLogPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description limit_out_of_range or cursor_invalid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     listMyActionInbox: {

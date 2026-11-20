@@ -27,6 +27,7 @@ import { useMainScrollRestoration } from "../scroll-restoration";
 import { checklistQuery, modulesQuery } from "../../features/onboarding/api";
 import { canReadSetupChecklist } from "../../features/onboarding/domain/phase";
 import { fixFor } from "../../features/onboarding/domain/rail";
+import { useExperienceSync } from "../../experience/store";
 import type { NavHub } from "../nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
@@ -36,10 +37,23 @@ export interface ShellLayoutProps {
   children: ReactNode;
   platform: boolean;
   restoring: boolean;
+  tenantName?: string;
+  tenantPhase?: string;
+  userProfile?: {
+    display_name?: string | null;
+    employee_org_unit?: string | null;
+    employee_position?: string | null;
+  };
   menu: readonly NavHub[] | undefined;
   navigationState: "loading" | "failed" | "ready";
   navigationNotice: ReactNode;
   onSearch: () => void;
+  phoneHeader?: {
+    title: ReactNode;
+    context?: ReactNode;
+    shellOwnsH1?: boolean;
+    back?: { label: string; href?: string; onBack?: () => void };
+  };
 }
 
 export function ShellFrame({ layout: Layout, children = <Outlet />, pending = false }: {
@@ -56,13 +70,15 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const [savedRail, setSavedRail] = useState(() => ({ key: railKey, answer: rememberedRail(railKey) }));
   if (savedRail.key !== railKey) setSavedRail({ key: railKey, answer: rememberedRail(railKey) });
   const platform = !!claims?.platform;
+  useExperienceSync(!platform && active && !pending);
   const identity = useQuery({ ...meQuery, enabled: !platform && active && !pending });
   const router = useRouter();
   useMainScrollRestoration(router);
   const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
   // Keep the rail snapshot separate, but share the identity request with the shell and page.
-  const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
+  // Allow fresh cache reuse on remount so an experience-pack swap on the same route does not duplicate /api/v1/users/me.
+  const me = useQuery({ ...navigationRead(meQuery), refetchOnMount: true, queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
   const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data), retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
@@ -135,9 +151,10 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     return () => document.removeEventListener("keydown", onKey);
   }, [platform]);
   const scope = platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined);
+  const phoneHeader = pathname === "/account" ? { title: t("shell.account"), shellOwnsH1: true } : undefined;
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
-    <Layout platform={platform} restoring={restoring} menu={platform || displayed ? menu : undefined}
+    <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}
       navigationState={platform || displayed ? "ready" : supportOwnsFailure || railError ? "failed" : "loading"} onSearch={() => setJump(true)}
       navigationNotice={!platform && !displayed ? (supportOwnsFailure
         ? <p role="status" className="muted">{t("shell.nav.failed")}</p>

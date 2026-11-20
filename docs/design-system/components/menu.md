@@ -93,7 +93,7 @@ There are no sizes. The looks are fixed, apart from `primary` and the icon-only 
 
 | Part | `ActionMenu` | `MenuButton` |
 |---|---|---|
-| Trigger | The `ghost` button look: transparent until hovered, at least 36 px high, 12 px side padding. | The `secondary` button look, or `primary` with `primary`. With an icon, no caret and no `primary`: a 36 px square (`calc(var(--row-h) - var(--space-1))`) with no padding. |
+| Trigger | The `ghost` button look: transparent until hovered, at least 36 px high, 12 px side padding. | The `secondary` button look, or `primary` with `primary`. With an icon, no caret and no `primary`: a 36 px square (`--control-h`) with no padding. |
 | Popover box | From the global `popover` class: `--surface` fill, a 1 px `--border` border, a 6 px radius (`--radius`), `--shadow-pop`, and `overflow: auto`. | The same fill, border, radius and shadow, written in its own module. No `overflow` rule. |
 | Popover width | At least 220 px, written as a literal. | Between 275 px (`calc(var(--panel-w) / 1.6)`) and 440 px (`--panel-w`). |
 | Menu | A column with 4 px of padding (`--space-1`). | The same. |
@@ -351,15 +351,15 @@ secondary buttons and shows the same actions in an `ActionMenu`. That rule is in
 | Token | Read by |
 | --- | --- |
 | `--border` | `border` |
+| `--control-h` | `width` |
 | `--fw-medium` | `font-weight` |
 | `--panel-w` | `max-width`, `min-width` |
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-sm` | `border-radius` |
-| `--row-h` | `width` |
 | `--selected-bar` | `box-shadow` |
 | `--shadow-pop` | `box-shadow` |
-| `--space-1` | `padding`, `width` |
+| `--space-1` | `padding` |
 | `--space-2` | `padding` |
 | `--space-3` | `gap`, `padding` |
 | `--space-5` | `min-height`, `width` |

@@ -5,7 +5,7 @@
 .native[data-typed] { table-layout: fixed; }
 .native[data-typed] thead th { white-space: normal; overflow-wrap: anywhere; }
 .native[data-typed] td[data-type] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.native[data-density="compact"] :is(th, td) { height: var(--row-h-compact); }
+:where(.native)[data-density="compact"] :is(th, td) { height: var(--row-h-compact); }
 .native[data-typed] td { font-size: var(--text-sm); }
 @container list-table (max-width: 480px) {
   .native colgroup { display: none; }

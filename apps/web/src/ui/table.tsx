@@ -18,19 +18,20 @@ const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide &&
  * Bounded lists use this native table; headcount lists use LongTable's server paging and virtualization.
  * Read states belong to the surrounding QueryState boundary; it removes content after a server refusal.
  */
-export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone, detail, groups, density, mobileLayout }: {
+export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOpen, tone, detail, groups, density, mobileLayout }: {
   label: string;
   rows: R[];
   columns: Column<R>[];
   rowId: (r: R) => string;
   selected?: string;
   onSelect?: (id: string) => void;
+  onOpen?: (id: string) => void;
   tone?: (r: R) => "danger" | "warn" | undefined;
   detail?: (r: R) => ReactNode;
   groups?: { id: string; header: ReactNode; rows: R[] }[];
   density?: "regular" | "compact";
-  /** Override the automatic phone layout: rows preserve column alignment, cards keep inline forms in view. */
-  mobileLayout?: "cards" | "rows";
+  /** Override the automatic phone layout: rows preserve column alignment, cards keep inline forms in view, compact draws 2-line operational rows. */
+  mobileLayout?: "cards" | "rows" | "compact";
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -38,7 +39,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   const [active, setActive] = useState<string>();
   const [hasEditor, setHasEditor] = useState(false);
   const [scrollState, setScrollState] = useState({ overflows: false, clipped: false, focusable: false });
-  const rowsOnPhone = mobileLayout === "rows" || (mobileLayout !== "cards" && hasEditor);
+  const rowsOnPhone = mobileLayout === "rows" || (mobileLayout !== "cards" && mobileLayout !== "compact" && hasEditor);
+  const compactOnPhone = mobileLayout === "compact";
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
@@ -76,7 +78,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     if (e.target instanceof HTMLElement && e.target.closest("input, select, textarea, button, a")) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      onSelect(current);
+      if (e.key === "Enter" && current === selected && onOpen) onOpen(current);
+      else onSelect(current);
       return;
     }
     const step = rowStep(e.nativeEvent);
@@ -86,7 +89,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     setActive(next);
     tableRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(next)}"]`)?.focus();
   };
-  const scrollableReadOnly = rowsOnPhone && scrollState.overflows && !onSelect && !scrollState.focusable;
+  const scrollableReadOnly = scrollState.overflows && !onSelect && !scrollState.focusable;
   const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : {};
   const roles = cardRoles(columns);
   const widths = columnWidths(columns);
@@ -118,7 +121,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   });
   const table = (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Overflowing read-only tables without focusable cells need keyboard scroll access.
-    <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
+    <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : compactOnPhone ? cards.compact : cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-compact-rows={compactOnPhone || undefined} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
       <caption className="sr-only">{label}</caption>
       {columns.some(c => c.type) && <colgroup>{columns.map((c, i) => <col key={i} className={cls(c)} ref={el => { if (el) el.style.width = widths[i] ?? ""; }} />)}</colgroup>}
       <thead>
@@ -134,8 +137,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   );
   return (
     <div ref={containerRef} className={cards.container}>
-      <div ref={scrollerRef} className={rowsOnPhone ? cards.scroll : undefined}>{table}</div>
-      {rowsOnPhone && scrollState.clipped && <span className={cards.scrollCue} data-scroll-cue aria-hidden="true" />}
+      <div ref={scrollerRef} className={rowsOnPhone || scrollState.overflows ? cards.scroll : undefined}>{table}</div>
+      {scrollState.clipped && <span className={cards.scrollCue} data-scroll-cue aria-hidden="true" />}
     </div>
   );
 }

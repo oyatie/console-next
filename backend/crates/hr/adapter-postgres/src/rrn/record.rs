@@ -160,6 +160,7 @@ impl HrService {
         let sealed = vault
             .seal(*org.as_uuid(), &rrn)
             .map_err(|_| unavailable())?;
+        let v2_candidates = vault.blind_index_v2_candidates(*org.as_uuid(), &rrn);
         let result = with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 if !directory(tx, &principal).await? {
@@ -175,6 +176,7 @@ impl HrService {
                     actor,
                     employee,
                     sealed,
+                    &v2_candidates,
                 )
                 .await?;
                 Ok(RrnStatus {

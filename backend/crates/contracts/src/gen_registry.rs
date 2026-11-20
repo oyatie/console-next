@@ -5692,6 +5692,41 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/platform/operators",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__platform__operators.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__platform__operators.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/platform/operators/{id}/reissue",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__operators__id__reissue.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/operators/{id}/revoke",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__operators__id__revoke.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/platform/ops",
         operations: &[Operation {
             method: "get",
@@ -6394,6 +6429,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../../identity/rest/openapi/paths/api__v1__group-admin__tenant-context__exit.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/access-log",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__access-log.get.yaml"
             ),
         }],
     },
@@ -7315,6 +7359,12 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../identity/rest/openapi/schemas/EnrollHandoffResponse.yaml"),
     },
     NamedYaml {
+        name: "InvitePlatformOperatorRequest",
+        body: include_str!(
+            "../../identity/rest/openapi/schemas/InvitePlatformOperatorRequest.yaml"
+        ),
+    },
+    NamedYaml {
         name: "LogoutRequest",
         body: include_str!("../../identity/rest/openapi/schemas/LogoutRequest.yaml"),
     },
@@ -7337,6 +7387,14 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!(
             "../../identity/rest/openapi/schemas/MobilePasskeyStepUpStartResponse.yaml"
         ),
+    },
+    NamedYaml {
+        name: "MyAccessLogEvent",
+        body: include_str!("../../identity/rest/openapi/schemas/MyAccessLogEvent.yaml"),
+    },
+    NamedYaml {
+        name: "MyAccessLogPage",
+        body: include_str!("../../identity/rest/openapi/schemas/MyAccessLogPage.yaml"),
     },
     NamedYaml {
         name: "MyWorkbenchResponse",
@@ -7435,6 +7493,20 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PlatformGroupRole",
         body: include_str!("../../identity/rest/openapi/schemas/PlatformGroupRole.yaml"),
+    },
+    NamedYaml {
+        name: "PlatformOperatorInviteResponse",
+        body: include_str!(
+            "../../identity/rest/openapi/schemas/PlatformOperatorInviteResponse.yaml"
+        ),
+    },
+    NamedYaml {
+        name: "PlatformOperatorStatus",
+        body: include_str!("../../identity/rest/openapi/schemas/PlatformOperatorStatus.yaml"),
+    },
+    NamedYaml {
+        name: "PlatformOperatorSummary",
+        body: include_str!("../../identity/rest/openapi/schemas/PlatformOperatorSummary.yaml"),
     },
     NamedYaml {
         name: "PlatformOpsResponse",
@@ -7607,9 +7679,21 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../identity/rest/openapi/schemas/RegionSummary.yaml"),
     },
     NamedYaml {
+        name: "ReissuePlatformOperatorInviteRequest",
+        body: include_str!(
+            "../../identity/rest/openapi/schemas/ReissuePlatformOperatorInviteRequest.yaml"
+        ),
+    },
+    NamedYaml {
         name: "ReplacePolicyRoleAssignmentsRequest",
         body: include_str!(
             "../../identity/rest/openapi/schemas/ReplacePolicyRoleAssignmentsRequest.yaml"
+        ),
+    },
+    NamedYaml {
+        name: "RevokePlatformOperatorRequest",
+        body: include_str!(
+            "../../identity/rest/openapi/schemas/RevokePlatformOperatorRequest.yaml"
         ),
     },
     NamedYaml {
@@ -12207,6 +12291,10 @@ const PAYROLL_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PayGroupRules",
         body: include_str!("../../payroll/rest/openapi/schemas/PayGroupRules.yaml"),
+    },
+    NamedYaml {
+        name: "PayrollCalculationDeduction",
+        body: include_str!("../../payroll/rest/openapi/schemas/PayrollCalculationDeduction.yaml"),
     },
     NamedYaml {
         name: "PayrollClosePreflight",

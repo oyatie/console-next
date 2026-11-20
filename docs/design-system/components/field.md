@@ -76,8 +76,8 @@ There is one look and one size. No prop changes either.
 |---|---|
 | Label | 13 px medium, `--ink`. It wraps. |
 | Marker | 12 px regular, `--steel`. |
-| Control | 40 px high (`--row-h`), 12 px side padding, a 1 px `--control-border` border, a 6 px radius, `--surface` fill. It fills the row. |
-| `TextArea` | The same box, at least 80 px high (`calc(var(--row-h) * 2)`), 8 px top and bottom padding. It can be resized vertically. |
+| Control | 40 px high (`--field-h`; inside a `toolbar`, `--field-h-toolbar`, the same 40 px), 12 px side padding, a 1 px `--control-border` border, a 6 px radius, `--surface` fill. It fills the row. |
+| `TextArea` | The same box, at least 80 px high (`calc(var(--field-h) * 2)`), 8 px top and bottom padding. It can be resized vertically. |
 | Unit | 13 px, `--steel`, on one line after the control. |
 | Hint | 12 px, `--steel`. |
 | Error | 13 px, `--danger-tx`. |
@@ -301,8 +301,9 @@ The control box, `field__input` in `app.css`:
 | Token | Read by |
 | --- | --- |
 | `--control-border` | `border` |
+| `--field-h` | `height` |
+| `--field-h-toolbar` | `height` |
 | `--radius` | `border-radius` |
-| `--row-h` | `height` |
 | `--space-3` | `padding` |
 | `--surface` | `background` |
 
@@ -314,7 +315,7 @@ The extra rule for `TextArea`, `field__area` in `app.css`:
 
 | Token | Read by |
 | --- | --- |
-| `--row-h` | `min-height` |
+| `--field-h` | `min-height` |
 | `--space-2` | `padding` |
 | `--space-3` | `padding` |
 

@@ -2,7 +2,7 @@
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
 app/src/collaboration.rs	1499
-app/src/hr.rs	3485
+app/src/hr.rs	3478
 app/src/objects.rs	2007
 app/src/office.rs	891
 app/src/workbench.rs	650
@@ -39,7 +39,7 @@ app/tests/object_links_api.rs	593
 app/tests/object_ontology_api.rs	537
 app/tests/object_resolve_api.rs	908
 app/tests/office_versions.rs	313
-app/tests/openapi_drift.rs	1106
+app/tests/openapi_drift.rs	1100
 app/tests/org_change_api.rs	1669
 app/tests/org_units_api.rs	603
 app/tests/platform_onboarding_e2e.rs	544
@@ -78,10 +78,10 @@ crates/benefit/adapter-postgres/src/lib.rs	1260
 crates/benefit/domain/src/lib.rs	307
 crates/benefit/rest/src/lib.rs	484
 crates/comms/adapter-imap/src/lib.rs	383
-crates/comms/adapter-postgres/src/lib.rs	1512
+crates/comms/adapter-postgres/src/lib.rs	1330
 crates/comms/adapter-postgres/tests/mail_account_rls_surfaces_as_runtime_role.rs	528
 crates/comms/adapter-postgres/tests/mail_sync_rls_surfaces_as_runtime_role.rs	738
-crates/comms/application/src/lib.rs	1593
+crates/comms/application/src/lib.rs	1522
 crates/comms/mailbox/src/lib.rs	493
 crates/comms/rest/src/lib.rs	873
 crates/comms/rest/tests/mox_webhook.rs	331
@@ -190,15 +190,14 @@ crates/ontology/rest/tests/object_type_lifecycle_over_http.rs	652
 crates/ontology/rest/tests/ont_gaps_as_runtime_role.rs	417
 crates/ontology/rest/tests/projected_dispatch_as_runtime_role.rs	563
 crates/orgchange/adapter-postgres/tests/preflight_persists_nothing.rs	408
-crates/payroll/adapter-postgres/src/lib.rs	441
-crates/payroll/adapter-postgres/src/lifecycle.rs	1144
+crates/payroll/adapter-postgres/src/lifecycle.rs	1010
 crates/payroll/adapter-postgres/src/pay_run.rs	525
 crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs	1190
 crates/payroll/adapter-postgres/tests/payroll_lifecycle_rls_as_runtime_role.rs	417
 crates/payroll/adapter-postgres/tests/payroll_rls_surfaces_as_runtime_role.rs	373
 crates/payroll/domain/src/lib.rs	1191
 crates/payroll/rest/src/lib.rs	336
-crates/payroll/rest/src/lifecycle.rs	609
+crates/payroll/rest/src/lifecycle.rs	600
 crates/payroll/rest/src/payslip_draft.rs	370
 crates/payroll/rest/tests/api.rs	759
 crates/payroll/rest/tests/payslip_draft_api.rs	1303
@@ -246,7 +245,7 @@ crates/platform/provisioning/tests/rls_auth_chain_as_runtime_role.rs	596
 crates/platform/provisioning/tests/self_enroll_handoff_as_runtime_role.rs	313
 crates/platform/push/src/lib.rs	339
 crates/platform/realtime/tests/postgres_bridge.rs	715
-crates/platform/storage/src/lib.rs	2330
+crates/platform/storage/src/lib.rs	2281
 crates/platform/storage/tests/evidence_processing_rls_surfaces_as_runtime_role.rs	365
 crates/policy/adapter-postgres/src/lib.rs	323
 crates/policy/application/src/lib.rs	344
@@ -289,5 +288,5 @@ crates/workorder/application/src/lib.rs	548
 crates/workorder/domain/src/lib.rs	1179
 crates/workorder/rest/src/lib.rs	4810
 crates/workorder/rest/src/m2_strangler.rs	342
-crates/workorder/rest/tests/mobile_evidence.rs	732
+crates/workorder/rest/tests/mobile_evidence.rs	729
 crates/workorder/rest/tests/mobile_sync.rs	480

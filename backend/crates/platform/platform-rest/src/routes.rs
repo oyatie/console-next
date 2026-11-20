@@ -1,5 +1,6 @@
 //! Public route and method inventory for platform contract checks.
 use crate::{
+    PLATFORM_OPERATOR_REISSUE_PATH, PLATFORM_OPERATOR_REVOKE_PATH, PLATFORM_OPERATORS_PATH,
     PLATFORM_SUPPORT_APPROVE_PATH, PLATFORM_SUPPORT_END_PATH, PLATFORM_SUPPORT_SESSIONS_PATH,
     PLATFORM_SUPPORT_START_PATH, TENANT_DOMAIN_REQUEST_PATH,
 };
@@ -62,6 +63,9 @@ pub const PLATFORM_ROUTE_PATHS: &[&str] = &[
     PLATFORM_SUPPORT_END_PATH,
     PLATFORM_SUPPORT_SESSIONS_PATH,
     PLATFORM_SUPPORT_APPROVE_PATH,
+    PLATFORM_OPERATORS_PATH,
+    PLATFORM_OPERATOR_REISSUE_PATH,
+    PLATFORM_OPERATOR_REVOKE_PATH,
 ];
 
 /// Path+method inventory for the platform contract drift gate.
@@ -202,5 +206,21 @@ pub const PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
     PlatformRouteOperation {
         method: "POST",
         path: PLATFORM_SUPPORT_APPROVE_PATH,
+    },
+    PlatformRouteOperation {
+        method: "GET",
+        path: PLATFORM_OPERATORS_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_OPERATORS_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_OPERATOR_REISSUE_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_OPERATOR_REVOKE_PATH,
     },
 ];

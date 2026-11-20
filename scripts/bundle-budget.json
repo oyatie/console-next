@@ -10,8 +10,11 @@
       "src/features/structure/ui/jump-palette.tsx",
       "src/lib/react/route-error.tsx",
       "src/lib/react/session.ts",
+      "src/shell/console/console-account-menu.tsx",
+      "src/shell/console/console-phone-chrome.tsx",
       "src/shell/top-bar/needs-me.tsx",
-      "src/shell/top-bar/needs-me-panel.tsx"
+      "src/shell/top-bar/needs-me-panel.tsx",
+      "src/ui/bar-overflow-links.tsx"
     ]
   },
   "list": {
@@ -47,6 +50,7 @@
       "src/features/people/ui/unplaced-page.tsx",
       "src/features/periods/ui/period-lock-page.tsx",
       "src/features/platform/Tenants.tsx",
+      "src/features/settings/ui/screen-style-sheet.tsx",
       "src/features/settings/ui/settings-hub.tsx",
       "src/features/statutory/ui/statutory-page.tsx",
       "src/features/support-access/ui/support-access.tsx",
@@ -100,8 +104,9 @@
     ]
   },
   "pack": {
-    "budget_kb": 69,
+    "budget_kb": 77,
     "css_budget_kb": 8,
-    "routes": ["src/shell/baseline/shell.tsx"]
+    "deferred": ["src/lib/react/denied-request-form.tsx"],
+    "routes": ["src/shell/baseline/shell.tsx", "src/shell/console/shell.tsx"]
   }
 }

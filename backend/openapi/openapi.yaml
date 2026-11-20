@@ -1118,6 +1118,143 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/operators:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: listPlatformOperators
+      summary: List platform operators (platform vendor tier)
+      description: Lists all platform-tier SUPER_ADMIN operators with passkey and invitation status. Audited as platform.operator.list.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Platform operators visible to the platform tier.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlatformOperatorSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: invitePlatformOperator
+      summary: Invite a second platform operator (platform vendor tier)
+      description: Provisions a new platform-tier SUPER_ADMIN account and mints a single-use enrolment token returned once. Requires OPERATOR_RECOVERY step-up bound to the request.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitePlatformOperatorRequest'
+      responses:
+        '201':
+          description: Invited platform operator summary and one-time enrolment token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOperatorInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/operators/{id}/reissue:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: reissuePlatformOperatorInvite
+      summary: Reissue a platform operator invite token (platform vendor tier)
+      description: Revokes any open invite for an unkeyed active platform operator and mints a fresh one-time enrolment token. Requires OPERATOR_RECOVERY step-up bound to the operator id.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReissuePlatformOperatorInviteRequest'
+      responses:
+        '200':
+          description: Updated operator summary and replacement one-time enrolment token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOperatorInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/operators/{id}/revoke:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: revokePlatformOperator
+      summary: Revoke a platform operator (platform vendor tier)
+      description: Deactivates a platform operator, revokes open invites and refresh families, and bumps session generation. Refuses self-revocation and revoking the last active enrolled operator. Requires OPERATOR_RECOVERY step-up.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokePlatformOperatorRequest'
+      responses:
+        '200':
+          description: Revoked platform operator summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOperatorSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/platform/ops:
     get:
       tags:
@@ -19359,6 +19496,46 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/MailUnavailable'
+  /api/v1/me/access-log:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: listMyAccessLog
+      summary: Authenticated user's own personal-data access history
+      description: >
+        Strictly self-scoped to events where the authenticated principal's linked
+        employee or user record was the subject. Excludes self-reads and denied
+        attempts, requires no tenant-wide audit::view grant, and never exposes raw
+        personal data values or free-text notes.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Keyset page of subject-scoped access events.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyAccessLogPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: limit_out_of_range or cursor_invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/me/action-inbox:
     get:
       tags:
@@ -49214,6 +49391,23 @@ components:
       type: object
       required: [id, label]
       properties: { id: { $ref: '#/components/schemas/Uuid' }, label: { type: string } }
+    InvitePlatformOperatorRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - display_name
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        login:
+          type: [string, 'null']
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     IssueAppointmentNoticeRequest:
       type: object
       additionalProperties: false
@@ -52163,6 +52357,50 @@ components:
             $ref: '#/components/schemas/Uuid'
         step_up:
           $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    MyAccessLogEvent:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - event_id
+      - occurred_at
+      - actor_name
+      - actor_team
+      - action
+      - field
+      - reason_code
+      - target_type
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        occurred_at:
+          type: string
+          format: date-time
+        actor_name:
+          type: string
+        actor_team:
+          type: [string, 'null']
+        action:
+          type: string
+        field:
+          type: [string, 'null']
+        reason_code:
+          type: [string, 'null']
+        target_type:
+          type: string
+    MyAccessLogPage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyAccessLogEvent'
+        next_cursor:
+          type: [string, 'null']
     MyDispatchOffer:
       type: object
       description: >-
@@ -55129,6 +55367,31 @@ components:
         variable_period: {$ref: '#/components/schemas/PayGroupPeriodRule'}
         proration: {type: string, enum: [CALENDAR_DAYS, SCHEDULED_WORKDAYS]}
         channel: {type: string, enum: [ATTESTATION_ONLY, FILE_GENERIC]}
+    PayrollCalculationDeduction:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - code
+      - label_ko
+      - amount_won
+      - source_url
+      properties:
+        code:
+          type: string
+          x-extensible-enum:
+          - NATIONAL_PENSION
+          - HEALTH_INSURANCE
+          - LONG_TERM_CARE
+          - EMPLOYMENT_INSURANCE
+          - INCOME_TAX
+          - LOCAL_INCOME_TAX
+        label_ko:
+          type: string
+        amount_won:
+          type: integer
+          format: int64
+        source_url:
+          type: string
     PayrollClosePreflight:
       type: object
       required:
@@ -55356,6 +55619,36 @@ components:
         blockers:
           type: array
           items: {}
+        calculation_version:
+          type:
+          - integer
+          - 'null'
+          format: int32
+        gross_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        deductions:
+          type:
+          - array
+          - 'null'
+          items:
+            $ref: '#/components/schemas/PayrollCalculationDeduction'
+        total_deductions_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        net_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        tax_table_version:
+          type:
+          - string
+          - 'null'
     PayrollLinkedRef:
       type: object
       required:
@@ -55711,6 +56004,18 @@ components:
           description: Always false until the labor attorney / tax accountant release gate flips the stored rows.
         kernel_rate_table:
           type: string
+        total_gross_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          description: Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+        total_deductions_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          description: Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
         total_net_won:
           type:
           - integer
@@ -56742,6 +57047,63 @@ components:
       - GROUP_ADMIN
       - GROUP_VIEWER
       - GROUP_FINANCE
+    PlatformOperatorInviteResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - operator
+      - invite_token
+      - expires_at
+      properties:
+        operator:
+          $ref: '#/components/schemas/PlatformOperatorSummary'
+        invite_token:
+          type: string
+          minLength: 1
+          description: One-time enrolment token returned once; deliver out-of-band and never log it.
+        expires_at:
+          $ref: '#/components/schemas/Timestamp'
+    PlatformOperatorStatus:
+      type: string
+      x-extensible-enum:
+      - PENDING_ENROLMENT
+      - ACTIVE
+      - REVOKED
+      - EXPIRED
+    PlatformOperatorSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - user_id
+      - display_name
+      - is_active
+      - has_passkey
+      - device_bound_passkey
+      - status
+      - created_at
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+        sign_in_id:
+          type: [string, 'null']
+        is_active:
+          type: boolean
+        has_passkey:
+          type: boolean
+        device_bound_passkey:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/PlatformOperatorStatus'
+        invited_by:
+          type: [string, 'null']
+          format: uuid
+        invite_expires_at:
+          type: [string, 'null']
+          format: date-time
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
     PlatformOpsResponse:
       type: object
       required:
@@ -60216,6 +60578,12 @@ components:
         idempotency_key:
           type: string
           maxLength: 128
+    ReissuePlatformOperatorInviteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     RejectPeriodUnlockRequest:
       type: object
       additionalProperties: false
@@ -60587,6 +60955,15 @@ components:
         reason: { type: string, nullable: true }
         prev_hash: { type: string }
         row_hash: { type: string }
+    RevokePlatformOperatorRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: [string, 'null']
+          maxLength: 500
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     RollbackWorkflowDefinitionRequest:
       type: object
       required:

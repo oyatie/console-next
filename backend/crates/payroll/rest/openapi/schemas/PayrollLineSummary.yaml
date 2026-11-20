@@ -61,3 +61,33 @@ properties:
   blockers:
     type: array
     items: {}
+  calculation_version:
+    type:
+    - integer
+    - 'null'
+    format: int32
+  gross_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  deductions:
+    type:
+    - array
+    - 'null'
+    items:
+      $ref: '#/components/schemas/PayrollCalculationDeduction'
+  total_deductions_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  net_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  tax_table_version:
+    type:
+    - string
+    - 'null'

@@ -27,7 +27,7 @@
 use console_payroll_domain::{
     DeductionCode, GoldenPayrollCase, LineCalculationInput, PayrollReleaseGateInput,
     ProfessionalReviewerKind, ProfessionalValidation, VerifiedNtsTaxRow, build_line_calculation,
-    payroll_sources_verified_on, validate_release_gate,
+    validate_release_gate,
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -64,6 +64,9 @@ pub struct ClosePreflight {
 
 mod dto;
 pub use dto::RunCalcSummary;
+mod issuance;
+pub use issuance::{IssuanceLine, RunHead, latest_calc_summary_in_tx, load_payslip_issuance_in_tx};
+use issuance::{invalid_state, run_head};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PayrollException {
@@ -140,33 +143,6 @@ pub struct PayslipDeliverySummary {
     pub offset: i64,
 }
 
-/// One deliverable line for payslip issuance: the latest stored calculation
-/// joined to the employee's linked user account.
-#[derive(Debug, Clone)]
-pub struct IssuanceLine {
-    pub line_id: Uuid,
-    pub employee_id: Uuid,
-    pub employee_display_name: String,
-    pub recipient_user_id: Uuid,
-    pub version: i32,
-    pub gross_won: i64,
-    pub deductions: Value,
-    pub total_deductions_won: i64,
-    pub net_won: i64,
-    pub tax_table_version: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct RunHead {
-    pub id: Uuid,
-    pub period_start: Date,
-    pub period_end: Date,
-    pub source_label: String,
-    pub status: String,
-    pub submitted_by: Option<Uuid>,
-    pub legal_basis: Value,
-}
-
 #[derive(Debug, Clone)]
 pub struct CalculationOutcome {
     pub version: i32,
@@ -178,41 +154,6 @@ pub struct CalculationOutcome {
 #[path = "lifecycle_error.rs"]
 mod error;
 pub use error::LifecycleError;
-
-// ---------------------------------------------------------------------------
-// Run head loading
-// ---------------------------------------------------------------------------
-
-async fn run_head(
-    tx: &mut Transaction<'_, Postgres>,
-    run_id: Uuid,
-    for_update: bool,
-) -> Result<Option<RunHead>, LifecycleError> {
-    let sql_locked = "SELECT id, period_start, period_end, source_label, status, submitted_by, \
-         legal_basis FROM payroll_draft_runs WHERE id = $1 FOR UPDATE";
-    let sql_plain = "SELECT id, period_start, period_end, source_label, status, submitted_by, \
-         legal_basis FROM payroll_draft_runs WHERE id = $1";
-    let row = sqlx::query(if for_update { sql_locked } else { sql_plain })
-        .bind(run_id)
-        .fetch_optional(tx.as_mut())
-        .await?;
-    row.map(|row| {
-        Ok(RunHead {
-            id: row.try_get("id")?,
-            period_start: row.try_get("period_start")?,
-            period_end: row.try_get("period_end")?,
-            source_label: row.try_get("source_label")?,
-            status: row.try_get("status")?,
-            submitted_by: row.try_get("submitted_by")?,
-            legal_basis: row.try_get("legal_basis")?,
-        })
-    })
-    .transpose()
-}
-
-fn invalid_state(action: &str, status: &str) -> LifecycleError {
-    LifecycleError::InvalidState(format!("cannot {action} a run in status {status}"))
-}
 
 // ---------------------------------------------------------------------------
 // Close preflight + close
@@ -656,44 +597,6 @@ async fn write_line_blockers(
     .execute(tx.as_mut())
     .await?;
     Ok(())
-}
-
-/// Aggregate of the latest calculation version for a run, or `None` if the
-/// run was never calculated.
-pub async fn latest_calc_summary_in_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    run_id: Uuid,
-    lines_total: i64,
-) -> Result<Option<RunCalcSummary>, LifecycleError> {
-    let row = sqlx::query(
-        "SELECT version, MAX(created_at) AS calculated_at, COUNT(*)::BIGINT AS calculated_lines, \
-                BOOL_AND(payable) AS payable, SUM(net_won)::BIGINT AS net_sum \
-         FROM payroll_line_calculations \
-         WHERE run_id = $1 \
-           AND version = (SELECT MAX(version) FROM payroll_line_calculations WHERE run_id = $1) \
-         GROUP BY version",
-    )
-    .bind(run_id)
-    .fetch_optional(tx.as_mut())
-    .await?;
-    row.map(|row| {
-        let calculated_lines: i64 = row.try_get("calculated_lines")?;
-        let net_sum: Option<i64> = row.try_get("net_sum")?;
-        Ok(RunCalcSummary {
-            version: row.try_get("version")?,
-            calculated_at: row.try_get("calculated_at")?,
-            calculated_lines,
-            blocked_lines: (lines_total - calculated_lines).max(0),
-            payable: row.try_get("payable")?,
-            kernel_rate_table: format!("statutory-rates-{}", payroll_sources_verified_on()),
-            total_net_won: if calculated_lines == lines_total {
-                net_sum
-            } else {
-                None
-            },
-        })
-    })
-    .transpose()
 }
 
 // ---------------------------------------------------------------------------
@@ -1208,60 +1111,6 @@ fn parse_release_gate(gate: &Value) -> Result<PayrollReleaseGateInput, Lifecycle
         golden_cases,
         professional_validation,
     })
-}
-
-/// Load the run + deliverable lines for payslip issuance. Guards status =
-/// PAID and the release gate; a run with no deliverable calculated line is a
-/// truthful invalid state (issuing nothing is not issuance).
-pub async fn load_payslip_issuance_in_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    run_id: Uuid,
-) -> Result<(RunHead, Vec<IssuanceLine>), LifecycleError> {
-    let Some(run) = run_head(tx, run_id, false).await? else {
-        return Err(LifecycleError::NotFound);
-    };
-    if run.status != "PAID" {
-        return Err(invalid_state("issue payslips for", &run.status));
-    }
-    validate_run_release_gate(&run.legal_basis)?;
-    let rows = sqlx::query(
-        "SELECT DISTINCT ON (c.line_id) c.line_id, c.version, c.gross_won, c.deductions, \
-                c.total_deductions_won, c.net_won, c.tax_table_version, \
-                l.employee_id, l.employee_display_name, u.id AS recipient_user_id \
-         FROM payroll_line_calculations c \
-         JOIN payroll_draft_lines l ON l.id = c.line_id \
-         JOIN users u ON u.employee_id = l.employee_id \
-         WHERE c.run_id = $1 AND l.employee_id IS NOT NULL \
-         ORDER BY c.line_id, c.version DESC",
-    )
-    .bind(run_id)
-    .fetch_all(tx.as_mut())
-    .await?;
-    let lines =
-        rows.iter()
-            .map(|row| {
-                Ok(IssuanceLine {
-                    line_id: row.try_get("line_id")?,
-                    employee_id: row.try_get::<Option<Uuid>, _>("employee_id")?.ok_or_else(
-                        || LifecycleError::Validation("issuance line lost its employee".to_owned()),
-                    )?,
-                    employee_display_name: row.try_get("employee_display_name")?,
-                    recipient_user_id: row.try_get("recipient_user_id")?,
-                    version: row.try_get("version")?,
-                    gross_won: row.try_get("gross_won")?,
-                    deductions: row.try_get("deductions")?,
-                    total_deductions_won: row.try_get("total_deductions_won")?,
-                    net_won: row.try_get("net_won")?,
-                    tax_table_version: row.try_get("tax_table_version")?,
-                })
-            })
-            .collect::<Result<Vec<_>, LifecycleError>>()?;
-    if lines.is_empty() {
-        return Err(LifecycleError::InvalidState(
-            "no calculated line with a linked user account exists to issue payslips for".to_owned(),
-        ));
-    }
-    Ok((run, lines))
 }
 
 /// Record the delivered inbox docs and flip the run to ISSUED. Idempotent:

@@ -87,7 +87,7 @@ test("a box taller than 600 px is filled with rows before the first scroll", asy
 // Rows 24 px apart leave two neighbouring names exactly the spacing a pointer needs. So in a visual style a row's rules
 // take no room in it, and a name is a target as tall as its row.
 test("in a visual style, names stay evenly spaced and each is a whole pointer target, also half under the head", async () => {
-  await page.goto(`${server.resolvedUrls!.local[0]}grid-test?groups&row=24&style=control-room`);
+  await page.goto(`${server.resolvedUrls!.local[0]}grid-test?groups&row=24&style=console`);
   const grid = page.getByRole("grid", { name: "October" });
   await element(grid.getByRole("link", { name: "Person 1", exact: true })).toBeVisible();
   const drawn = await grid.evaluate(el => {

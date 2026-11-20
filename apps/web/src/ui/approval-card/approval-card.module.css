@@ -8,7 +8,7 @@
 .consequence p { margin: 0; }
 .consequence p + p { color: var(--steel); font-size: var(--text-sm); }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-4); }
-.bar > :global(.btn) { min-height: var(--row-h); }
+.bar > :global(.btn) { min-height: var(--control-h-lg); }
 .spacer { flex: 1; }
 .meta { font-size: var(--text-xs); color: var(--steel); }
 .why { font-size: var(--text-sm); color: var(--steel); max-width: calc(var(--panel-w) / 1.5); }

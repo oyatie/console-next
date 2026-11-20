@@ -85,6 +85,7 @@ async fn serve_api(config: AppConfig, state: AppState) -> Result<(), AppError> {
             false,
             None,
             state.nts.clone(),
+            crate::hr::rrn_vault::from_env_logged(),
         )),
         DatabaseDependency::NotConfigured => None,
     };

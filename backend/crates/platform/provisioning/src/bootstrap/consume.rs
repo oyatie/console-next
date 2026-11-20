@@ -41,8 +41,31 @@ impl BootstrapCredentialStore {
         .fetch_all(tx.as_mut())
         .await?;
 
+        let has_invites_table = if org == OrgId::platform() && !consumed.is_empty() {
+            sqlx::query_scalar::<_, bool>(
+                "SELECT to_regclass('public.platform_operator_invites') IS NOT NULL",
+            )
+            .fetch_one(tx.as_mut())
+            .await?
+        } else {
+            false
+        };
+
         for row in consumed {
             let credential_id: Uuid = row.try_get("id")?;
+            if has_invites_table {
+                sqlx::query(
+                    "UPDATE platform_operator_invites SET accepted_at = COALESCE(accepted_at, $2) \
+                     WHERE credential_id = $1 AND user_id = $3 AND org_id = $4 \
+                       AND accepted_at IS NULL AND revoked_at IS NULL",
+                )
+                .bind(credential_id)
+                .bind(now)
+                .bind(user_id)
+                .bind(*org.as_uuid())
+                .execute(tx.as_mut())
+                .await?;
+            }
             let audit = AuditEvent::new(
                 Some(UserId::from_uuid(user_id)),
                 AuditAction::new("auth.otp.consume")?,
@@ -100,6 +123,26 @@ impl BootstrapCredentialStore {
         .await?;
         if consumed.rows_affected() != 1 {
             return Err(ProvisioningError::InvalidBootstrapCredential);
+        }
+        if org == OrgId::platform() {
+            let has_invites_table: bool = sqlx::query_scalar(
+                "SELECT to_regclass('public.platform_operator_invites') IS NOT NULL",
+            )
+            .fetch_one(tx.as_mut())
+            .await?;
+            if has_invites_table {
+                sqlx::query(
+                    "UPDATE platform_operator_invites SET accepted_at = COALESCE(accepted_at, $2) \
+                     WHERE credential_id = $1 AND user_id = $3 AND org_id = $4 \
+                       AND accepted_at IS NULL AND revoked_at IS NULL",
+                )
+                .bind(credential_id)
+                .bind(now)
+                .bind(user_id)
+                .bind(*org.as_uuid())
+                .execute(tx.as_mut())
+                .await?;
+            }
         }
         let audit = AuditEvent::new(
             Some(UserId::from_uuid(user_id)),

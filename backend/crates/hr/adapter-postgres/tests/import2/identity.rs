@@ -55,6 +55,7 @@ async fn import_writer_rechecks_blind_index_claims_after_planning(pool: PgPool) 
                     actor,
                     run,
                     &people,
+                    Some(&crate::harness::MirrorVault),
                 )
                 .await
             })

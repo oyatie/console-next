@@ -62,9 +62,7 @@ pub(super) fn existing(
     }) {
         return refused(base, "identity_mismatch", "hire_date");
     }
-    if let (Some(a), Some(b)) = (&row.rrn_hmac, &person.rrn_hmac)
-        && a != b
-    {
+    if row.matches_person_rrn(person) == Some(false) {
         return refused(base, "identity_mismatch", "rrn");
     }
     let mut diff = Vec::new();

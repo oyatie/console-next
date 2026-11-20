@@ -14,6 +14,7 @@ use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 use crate::HrError;
+use crate::import::identities::StagedRowHashes;
 use crate::import::types::StoredEmployeeImportRow;
 use crate::lifecycle::title_reason::coded;
 
@@ -22,7 +23,7 @@ use crate::lifecycle::title_reason::coded;
 /// the rows with a staged mobile phone.
 pub fn import_row(
     stored: &StoredEmployeeImportRow,
-    (hashes, phones): (&BTreeMap<String, Vec<u8>>, &BTreeSet<String>),
+    (hashes, phones): (&BTreeMap<String, StagedRowHashes>, &BTreeSet<String>),
 ) -> ImportRow {
     let fields = &stored.canonical;
     let text = |value: &Option<String>| {
@@ -32,6 +33,7 @@ pub fn import_row(
             .filter(|v| !v.is_empty())
             .map(str::to_owned)
     };
+    let staged = hashes.get(&stored.source_key);
     ImportRow {
         source_key: stored.source_key.clone(),
         sheet: stored.source_sheet.clone(),
@@ -54,7 +56,9 @@ pub fn import_row(
         leave_start_date: text(&fields.leave_start_date),
         leave_type: text(&fields.leave_type),
         leave_return_date: text(&fields.leave_return_date),
-        rrn_hmac: hashes.get(&stored.source_key).cloned(),
+        rrn_hmac: staged.map(|h| h.v1.clone()),
+        rrn_hmac_v2: staged.and_then(|h| h.v2.clone()),
+        rrn_hmac_v2_candidates: staged.map(|h| h.v2_candidates.clone()).unwrap_or_default(),
         has_phone: phones.contains(&stored.source_key),
         sex: text(&fields.sex),
         contract_end_date: text(&fields.contract_end_date),
@@ -82,6 +86,7 @@ struct PersonRow {
     starts: Vec<String>,
     employment_type: Option<String>,
     rrn_hmac: Option<Vec<u8>>,
+    rrn_hmac_v2: Option<Vec<u8>>,
     aliases: Vec<String>,
 }
 
@@ -99,10 +104,22 @@ pub async fn people_for_rows(
         .filter_map(|row| row.employee_number.as_deref())
         .collect();
     let names: Vec<String> = rows.iter().map(|row| name_key(&row.name)).collect();
-    let hashes: Vec<&[u8]> = rows
+    let mut hashes_v2: Vec<&[u8]> = rows.iter().flat_map(ImportRow::v2_hashes).collect();
+    hashes_v2.sort_unstable();
+    hashes_v2.dedup();
+    let mut hashes_v1: Vec<&[u8]> = rows
         .iter()
         .filter_map(|row| row.rrn_hmac.as_deref())
         .collect();
+    hashes_v1.sort_unstable();
+    hashes_v1.dedup();
+    let mut hashes_v1_no_v2: Vec<&[u8]> = rows
+        .iter()
+        .filter(|row| row.rrn_hmac_v2.is_none() && row.rrn_hmac_v2_candidates.is_empty())
+        .filter_map(|row| row.rrn_hmac.as_deref())
+        .collect();
+    hashes_v1_no_v2.sort_unstable();
+    hashes_v1_no_v2.dedup();
     let found: Vec<PersonRow> = sqlx::query_as(concat!(
         "SELECT e.id, e.employee_number, e.name, e.employment_status, e.company, e.birth_date, \
                 e.hire_date::TEXT AS hire_date, e.exit_date::TEXT AS exit_date, e.org_unit, e.job, \
@@ -111,7 +128,7 @@ pub async fn people_for_rows(
                       WHERE l.org_id = e.org_id AND l.employee_id = e.id \
                         AND l.event_type IN ('ONBOARD', 'REHIRE') \
                         AND l.state IN ('APPLIED', 'SCHEDULED')) AS starts, \
-                p.employment_type, r.rrn_hmac, ea.workplace_id, \
+                p.employment_type, r.rrn_hmac, r.rrn_hmac_v2, ea.workplace_id, \
                 ARRAY(SELECT c.from_number FROM employee_number_changes c \
                       WHERE c.org_id = e.org_id AND c.employee_id = e.id \
                         AND c.undone_at IS NULL AND c.from_number IS NOT NULL) AS aliases \
@@ -123,7 +140,9 @@ pub async fn people_for_rows(
         "         WHERE e.org_id = $1 AND e.merged_into_employee_id IS NULL \
            AND (e.employee_number = ANY($2) \
                 OR regexp_replace(e.name, '\\s', '', 'g') = ANY($3) \
-                OR r.rrn_hmac = ANY($4) \
+                OR (r.rrn_hmac_v2 IS NOT NULL AND r.rrn_hmac_v2 = ANY($4)) \
+                OR (r.rrn_hmac_v2 IS NULL AND r.rrn_hmac = ANY($5)) \
+                OR r.rrn_hmac = ANY($6) \
                 OR EXISTS (SELECT 1 FROM employee_number_changes c \
                            WHERE c.org_id = e.org_id AND c.employee_id = e.id \
                              AND c.undone_at IS NULL AND c.from_number = ANY($2))) \
@@ -132,7 +151,9 @@ pub async fn people_for_rows(
     .bind(org_uuid)
     .bind(&numbers)
     .bind(&names)
-    .bind(&hashes)
+    .bind(&hashes_v2)
+    .bind(&hashes_v1)
+    .bind(&hashes_v1_no_v2)
     .fetch_all(tx.as_mut())
     .await?;
     found
@@ -167,6 +188,7 @@ pub async fn people_for_rows(
                     .format(&Rfc3339)
                     .map_err(|_| HrError::internal("employee updated_at is not formattable"))?,
                 rrn_hmac: p.rrn_hmac,
+                rrn_hmac_v2: p.rrn_hmac_v2,
                 aliases: p.aliases,
             })
         })
