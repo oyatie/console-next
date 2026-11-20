@@ -11,7 +11,7 @@ Every screen of the console is to be drawn through one of thirteen patterns. One
 
 | Id | The screen it is for | Built |
 |---|---|---|
-| `worklist` | A worklist of items that need action, with a record pane. | No |
+| [`worklist`](worklist.md) | A worklist of items that need action, with a record pane. | Yes |
 | `list-record` | A list with a record pane beside it. | Yes |
 | `record` | One record, in sections. | No |
 | `document-decision` | A document with a decision pane. | No |

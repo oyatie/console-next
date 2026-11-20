@@ -30,8 +30,13 @@ test("an unknown or unbuilt pattern fails", () => {
   expect(() => assertPattern(route())).not.toThrow();
 });
 
-test("the screens drawn through list-record declare it, and no other route declares a pattern", () => {
+test("the screens drawn through built patterns declare them, and no other route declares a pattern", () => {
   expect(Object.keys(router.routesById), "the review routes are registered").toContain("/app/_review/patterns/list-record");
+  expect(Object.keys(router.routesById), "the worklist review route is registered").toContain("/app/_review/patterns/worklist");
   const declared = Object.fromEntries(routes.flatMap(route => route.options.staticData?.pattern ? [[route.fullPath, route.options.staticData.pattern]] : []));
-  expect(declared).toEqual({ "/people": "list-record", "/_review/patterns/list-record": "list-record" });
+  expect(declared).toEqual({
+    "/people": "list-record",
+    "/_review/patterns/list-record": "list-record",
+    "/_review/patterns/worklist": "worklist",
+  });
 });

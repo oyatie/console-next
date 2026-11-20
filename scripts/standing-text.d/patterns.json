@@ -1,10 +1,19 @@
 {
   "baseline": {
-    "apps/web/src/review/list-record-review.tsx#ListRecordReview": 10
+    "apps/web/src/review/list-record-review.tsx#ListRecordReview": 10,
+    "apps/web/src/review/worklist-review.tsx#WorklistReview": 12
   },
   "newScreens": {
     "apps/web/src/review/list-record-review.tsx#ListRecordReview": {
       "FACT": 6,
+      "REFUSAL": 1,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/worklist-review.tsx#WorklistReview": {
+      "FACT": 8,
       "REFUSAL": 1,
       "EMPTY": 2,
       "LEGAL": 0,

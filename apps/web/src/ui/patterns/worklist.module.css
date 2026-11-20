@@ -1,0 +1,45 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.frame {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100%;
+  background: var(--surface);
+}
+
+.standalone {
+  padding: var(--page-pad);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--page-pad) 0;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .head {
+  padding: 0;
+  border-block-end: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.inlineFilters {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lower {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (--phone) {
+  .frame[data-detail]:has([data-pane="record"]) > .head {
+    display: none;
+  }
+}

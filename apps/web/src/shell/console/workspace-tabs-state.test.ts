@@ -123,3 +123,19 @@ test("appendExplicitWorkspaceTab assigns distinct tab ids after tab reuse and cl
   expect(new Set(ids).size).toBe(ids.length);
   expect(reopened.tabs.map(t => t.href)).toEqual(["/", "/approvals", "/people"]);
 });
+
+test("appendExplicitWorkspaceTab preserves pinned tab label when href matches a pinned tab", () => {
+  const res = appendExplicitWorkspaceTab(
+    [
+      { id: "pinned-home", href: "/inbox", label: "Inbox", pinned: true },
+      { id: "tab-/people", href: "/people", label: "People" },
+    ],
+    { href: "/inbox", label: "W-3" },
+  );
+  expect(res.activeId).toBe("pinned-home");
+  expect(res.tabs[0]).toEqual({ id: "pinned-home", href: "/inbox", label: "Inbox", pinned: true });
+
+  const nonPinned = appendExplicitWorkspaceTab(res.tabs, { href: "/people", label: "People (2)" });
+  expect(nonPinned.activeId).toBe("tab-/people");
+  expect(nonPinned.tabs[1]?.label).toBe("People (2)");
+});

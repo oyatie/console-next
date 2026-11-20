@@ -11,17 +11,19 @@ export type MountedGallery = {
   close: () => Promise<void>;
 };
 
-export async function mountGalleryEntry({
-  name,
-  entryPath,
+export async function mountBrowserModule({
+  slug,
+  moduleCode,
   readySelector,
+  lang = "ko",
+  viewport,
 }: {
-  name: string;
-  entryPath: string;
+  slug: string;
+  moduleCode: string;
   readySelector: string;
+  lang?: string;
+  viewport?: { width: number; height: number };
 }): Promise<MountedGallery> {
-  await loadCatalog("ko");
-  const slug = `${name}-gallery-test`;
   const server: ViteDevServer = await createServer({
     configFile: false,
     cacheDir: `.cache/${slug}`,
@@ -37,26 +39,17 @@ export async function mountGalleryEntry({
     },
     plugins: [{
       name: slug,
-      resolveId: id => id === `/${slug}.js` ? `\0${slug}` : undefined,
-      load: id => id === `\0${slug}` ? `
-        import React from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { loadCatalog } from '@console/i18n';
-        import '/apps/web/src/app.css';
-        import '/apps/web/src/gallery/gallery.css';
-        await loadCatalog('ko');
-        const { default: Gallery } = await import(${JSON.stringify(entryPath)});
-        createRoot(document.getElementById('root')).render(React.createElement('main', null, React.createElement(Gallery)));
-      ` : undefined,
+      resolveId: id => (id === `/${slug}.js` ? `\0${slug}` : undefined),
+      load: id => (id === `\0${slug}` ? moduleCode : undefined),
     }],
   });
   await server.listen();
   const browser: Browser = await browserEngine().launch();
-  const context: BrowserContext = await browser.newContext();
+  const context: BrowserContext = await browser.newContext(viewport ? { viewport } : undefined);
   const page: Page = await context.newPage();
   await page.route(`**/${slug}`, route => route.fulfill({
     contentType: "text/html",
-    body: `<html lang="ko"><title>${name}</title><div id="root"></div><script type="module" src="/${slug}.js"></script></html>`,
+    body: `<html lang="${lang}"><title>${slug}</title><div id="root"></div><script type="module" src="/${slug}.js"></script></html>`,
   }));
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}${slug}`, page.locator(readySelector));
   return {
@@ -68,6 +61,32 @@ export async function mountGalleryEntry({
       await server.close();
     },
   };
+}
+
+export async function mountGalleryEntry({
+  name,
+  entryPath,
+  readySelector,
+}: {
+  name: string;
+  entryPath: string;
+  readySelector: string;
+}): Promise<MountedGallery> {
+  await loadCatalog("ko");
+  return mountBrowserModule({
+    slug: `${name}-gallery-test`,
+    readySelector,
+    moduleCode: `
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { loadCatalog } from '@console/i18n';
+      import '/apps/web/src/app.css';
+      import '/apps/web/src/gallery/gallery.css';
+      await loadCatalog('ko');
+      const { default: Gallery } = await import(${JSON.stringify(entryPath)});
+      createRoot(document.getElementById('root')).render(React.createElement('main', null, React.createElement(Gallery)));
+    `,
+  });
 }
 
 export async function scanWcag22Matrix(
