@@ -14,6 +14,7 @@ pub(crate) mod proxy;
 pub(crate) mod realtime;
 pub(crate) mod role;
 pub(crate) mod secret_files;
+pub(crate) mod status;
 pub(crate) mod storage;
 
 use crate::audit_chain_signer;
@@ -96,6 +97,11 @@ pub struct AppConfig {
     pub support_log_query_url: Option<String>,
     pub jwt: Option<JwtVerifierConfig>,
     pub auth_rest: Option<AuthRestConfig>,
+    /// HTTPS deployment flag (`CONSOLE_COOKIE_SECURE`, default `true`).
+    pub cookie_secure: bool,
+    /// Public status-page origin allowed in `SPA_CSP` `connect-src`
+    /// (`CONSOLE_STATUS_ORIGIN`, default `https://status.cosskorea.com`, `"none"` to omit).
+    pub status_origin: Option<String>,
     pub storage: Option<S3StorageConfig>,
     /// Road-name address / detailed address search keys and knobs (STREET_JUSO_API_KEY, …).
     pub juso: console_entity_adapter_juso::JusoConfig,
