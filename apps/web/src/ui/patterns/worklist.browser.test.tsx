@@ -70,6 +70,7 @@ describe("Worklist phone heading under latched keepPreviousData refusal", () => 
         import { ApiError } from '@console/api';
         import { loadCatalog } from '@console/i18n';
         import { Worklist } from '/apps/web/src/ui/patterns/worklist.tsx';
+        import { read } from '/apps/web/src/lib/query.ts';
         import '/apps/web/src/app.css';
 
         await loadCatalog('en');
@@ -78,28 +79,31 @@ describe("Worklist phone heading under latched keepPreviousData refusal", () => 
         function Harness() {
           const [mode, setMode] = useState('ok');
           const q = useQuery({
-            queryKey: ['worklist-keepprev', mode],
-            placeholderData: keepPreviousData,
-            queryFn: () => {
+            ...read('/api/v1/worklist-keepprev', () => {
               if (mode === '403') {
+                document.documentElement.dataset.pendingMode = '403';
                 return Promise.reject(new ApiError(403, 'access_denied', '', [], 'op-keepprev-403'));
               }
               if (mode === 'slow-ok') {
                 return new Promise(resolve => {
                   window.resolveSlowOkWorklist = () => resolve([{ id: 'W-1b', name: 'Row 1b' }]);
+                  document.documentElement.dataset.pendingMode = 'slow-ok';
                 });
               }
               if (mode === 'slow') {
                 return new Promise(resolve => {
                   window.resolveSlowWorklist = () => resolve([{ id: 'W-2', name: 'Row 2' }]);
+                  document.documentElement.dataset.pendingMode = 'slow';
                 });
               }
+              document.documentElement.dataset.pendingMode = 'ok';
               return Promise.resolve([{ id: 'W-1', name: 'Row 1' }]);
-            },
+            }, mode),
+            placeholderData: keepPreviousData,
           });
 
           return React.createElement(React.Fragment, null,
-            React.createElement('div', { 'data-controls': '' },
+            React.createElement('div', { 'data-controls': '', 'data-mode-state': mode + ':' + (q.isFetching ? 'fetching' : q.status) },
               React.createElement('button', { type: 'button', 'data-mode': 'ok', onClick: () => setMode('ok') }, 'OK'),
               React.createElement('button', { type: 'button', 'data-mode': 'slow-ok', onClick: () => setMode('slow-ok') }, 'SlowOK'),
               React.createElement('button', { type: 'button', 'data-mode': '403', onClick: () => setMode('403') }, '403'),
@@ -159,7 +163,8 @@ describe("Worklist phone heading under latched keepPreviousData refusal", () => 
 
     // Non-refused keepPreviousData refetch: record remains mounted and .head stays hidden
     await page.locator('[data-mode="slow-ok"]').click();
-    await page.waitForTimeout(50);
+    await page.locator('[data-controls][data-mode-state="slow-ok:fetching"]').waitFor();
+    await page.waitForFunction(() => document.documentElement.dataset.pendingMode === "slow-ok");
     const nonRefusedPending = await measure();
     expect(nonRefusedPending.recordCount).toBe(1);
     expect(nonRefusedPending.headDisplay).toBe("none");
@@ -178,7 +183,8 @@ describe("Worklist phone heading under latched keepPreviousData refusal", () => 
 
     // Pending keepPreviousData refetch after 403: PageReadGate latches refusal, h1 stays visible
     await page.locator('[data-mode="slow"]').click();
-    await page.waitForTimeout(50);
+    await page.locator('[data-controls][data-mode-state="slow:fetching"]').waitFor();
+    await page.waitForFunction(() => document.documentElement.dataset.pendingMode === "slow");
     const latched = await measure();
     expect(latched.recordCount).toBe(0);
     expect(latched.hasSupportRef).toBe(true);
