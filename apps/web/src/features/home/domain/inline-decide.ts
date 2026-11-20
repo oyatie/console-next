@@ -137,11 +137,15 @@ export function sortWorklistItems(
   items: readonly AttentionInboxItem[],
   field: WorklistSortField,
   direction: "asc" | "desc",
+  taskLabel?: (item: AttentionInboxItem) => string,
 ): AttentionInboxItem[] {
   const sign = direction === "asc" ? 1 : -1;
   return [...items].sort((a, b) => {
     if (field === "task") {
-      return sign * (a.title ?? "").localeCompare(b.title ?? "", "ko");
+      const la = (taskLabel ? taskLabel(a) : a.title) ?? "";
+      const lb = (taskLabel ? taskLabel(b) : b.title) ?? "";
+      const byTask = la.localeCompare(lb, "ko");
+      return sign * (byTask !== 0 || !taskLabel ? byTask : (a.title ?? "").localeCompare(b.title ?? "", "ko"));
     }
     const da = a.due ? Date.parse(a.due) : Number.NaN;
     const db = b.due ? Date.parse(b.due) : Number.NaN;

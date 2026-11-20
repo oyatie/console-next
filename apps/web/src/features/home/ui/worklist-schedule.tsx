@@ -50,7 +50,7 @@ const STRIP_KIND_TEXT: Record<string, MessageId> = {
 function stripLabelKey(item: AttentionInboxItem): MessageId {
   const kind = item.kind === "home_branch_review" ? "unplaced" : item.kind;
   if (kind === "period_unlock") {
-    return item.context?.unlock?.exceptionId ? "home.worklist.strip.unlock" : "home.worklist.strip.attendance";
+    return item.context?.unlock ? "home.worklist.strip.unlock" : "home.worklist.strip.attendance";
   }
   if (kind === "hr_request") {
     return isStatutoryDeadline(item) ? "home.worklist.strip.statutoryRequest" : "home.worklist.strip.request";

@@ -174,7 +174,7 @@ export function WorklistLower({
                 { header: t("home.worklist.opsCol.scope"), cell: row => row.context?.worksite_name ?? row.site ?? "—" },
                 { header: t("home.worklist.opsCol.state"), cell: row => <DueCell days={row.days_remaining} /> },
                 { header: t("home.inbox.column.due"), wide: true, cell: row => <bdi className="num muted">{shortMonthDay(row.due) ?? "—"}</bdi> },
-                { header: t("home.worklist.opsCol.check"), wide: true, cell: row => (row.site && row.context?.worksite_name ? row.site : row.context?.reason ?? row.title) },
+                { header: t("home.worklist.opsCol.check"), wide: true, cell: row => (row.site && row.context?.worksite_name ? row.site : row.context?.reason?.trim() || row.title) },
                 { header: t("home.worklist.col.action"), fit: true, cell: row => <div className={s.dateCol}>{recordAction(row, action, undefined, focusAfter)}</div> },
               ]}
             />

@@ -227,3 +227,19 @@ test("Console /inbox non-queue tabs gate InboxTabs and asOf during meRead pendin
   expect(errorSnoozedHtml).not.toContain(t("home.inbox.tab.waiting"));
   expect(errorSnoozedHtml).not.toContain("<time");
 });
+
+test("Console /inbox, invalid ?tab=, /inbox?tab=waiting during meFetched=false and / during setupPending=true gate asOf and controls", () => {
+  edgeState.mePhase = "SETUP";
+  edgeState.meFetched = false;
+  for (const url of ["/inbox", "/inbox?tab=bogus", "/inbox?tab=waiting"]) {
+    const html = renderEdge(url, <InboxPage canOrgStructure={false} />);
+    expect(html, url).not.toContain("<time");
+    expect(html, url).not.toContain(t("home.worklist.statutoryOnly"));
+  }
+
+  edgeState.mePhase = "OPERATING";
+  edgeState.meFetched = true;
+  const homePendingHtml = renderEdge("/", <Home canOrgStructure={false} setupPending />);
+  expect(homePendingHtml).not.toContain("<time");
+  expect(homePendingHtml).not.toContain(t("home.worklist.statutoryOnly"));
+});

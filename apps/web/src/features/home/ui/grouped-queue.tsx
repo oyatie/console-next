@@ -102,7 +102,7 @@ export function GroupedQueue({ items, action, extra, selected, onSelect, onOpen 
   const allColumns: QueueColumn[] = [
     { id: "task", header: t("home.inbox.column.task"), cell: item => {
       return <div role="presentation" onClick={e => { if (e.target instanceof Element && e.target.closest("a, button")) e.stopPropagation(); }} id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
-      {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={e => { e.stopPropagation(); toggle(item.id); }}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(KIND_TEXT[item.kind] ?? "home.inbox.unknown"), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(taskTitleKey(item))}</strong>}
+      {isFold(item) ? <Button variant="ghost" aria-expanded={expanded.has(item.id)} onClick={e => { e.stopPropagation(); toggle(item.id); }}><ChevronRight size={16} aria-hidden data-expanded={expanded.has(item.id)} /><strong>{t("home.inbox.foldCount", { kind: t(taskTitleKey(item)), count: folded.get(item.id)!.length })}</strong></Button> : <strong>{t(taskTitleKey(item))}</strong>}
       {reasonLines(item).map(line => <div className="muted" key={line}>{line}</div>)}
       {(() => {
         const labels = [...new Set((item.context?.register?.missing_fields ?? []).flatMap(key => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!.label] : []))];
@@ -128,7 +128,7 @@ export function GroupedQueue({ items, action, extra, selected, onSelect, onOpen 
       return control ? <div role="presentation" className={css.actions} onClick={e => e.stopPropagation()}>{control}</div> : null;
     } },
   ];
-  const detail = (item: InboxItem) => isFold(item) && expanded.has(item.id) ? renderRows(folded.get(item.id)!.map(child => ({ ...child })), t(KIND_TEXT[item.kind] ?? "home.inbox.unknown")) : null;
+  const detail = (item: InboxItem) => isFold(item) && expanded.has(item.id) ? renderRows(folded.get(item.id)!.map(child => ({ ...child })), t(taskTitleKey(item))) : null;
   const renderRows = (rows: InboxItem[], name: string): ReactNode => {
     const columns = allColumns.filter(column => column.id === "due" ? rows.some(item => item.due || item.age_days != null) : column.id === "owner" ? rows.some(item => item.who) : column.id === "actions" ? rows.some(item => !isFold(item) && controls.get(item.id)) : true);
     return compact ? <div role={pick ? "grid" : "table"} aria-label={name} aria-colcount={columns.length}>
@@ -211,14 +211,15 @@ export function recordAction(item: InboxItem, action?: RowAction, textId?: Messa
 // oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
 export function reasonLines(item: InboxItem) {
   const isAttendanceClose = item.kind === "period_unlock" && !item.context?.unlock;
+  const contextReason = item.kind.startsWith("org_change") ? undefined : item.context?.reason?.trim();
   const reason =
-    item.context?.unlock?.exceptionId || (isAttendanceClose && item.context?.reason)
+    item.context?.unlock?.exceptionId || isAttendanceClose
       ? ""
       : item.kind === "account_security"
         ? t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why")
         : REVIEW_FILTER[item.kind] || (item.kind === "contract_renewal" && !item.due)
           ? ""
           : codeText(`home.inbox.reason.${item.kind}`, "");
-  return [...new Set([reason, item.kind.startsWith("org_change") ? undefined : item.context?.reason])]
+  return [...new Set([reason, contextReason])]
     .filter((line): line is string => !!line && line !== item.title && line !== t(taskTitleKey(item)));
 }

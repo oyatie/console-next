@@ -151,7 +151,7 @@ export function WorklistConsole({
     const taskTitle = t(taskTitleKey(item));
     return [taskTitle, item.title, item.ref, item.site, item.who, ...reasonLines(item)].filter(Boolean).join(" ").toLowerCase().includes(normalizedQuery);
   });
-  const sortedItems = sortWorklistItems(filteredItems, sort.field, sort.direction);
+  const sortedItems = sortWorklistItems(filteredItems, sort.field, sort.direction, item => t(taskTitleKey(item)));
   const visibleRows = mode === "home" ? sortedItems.slice(0, homeRowLimit) : sortedItems;
   const visibleIdSet = new Set(visibleRows.map(row => row.id));
   const activeCheckedIds = new Set([...checkedIds].filter(id => visibleIdSet.has(id)));
@@ -161,7 +161,7 @@ export function WorklistConsole({
 
   const columnsEnabled = !inSetup;
   const recordVisible = !loading && !meError && inbox.data !== undefined && ["ready", "stale", "offline"].includes(queryView(inbox));
-  const showControls = !inSetup && !meError && Boolean(first?.has_work || first?.available_filters.length);
+  const showControls = !loading && !inSetup && !meError && !inbox.error && Boolean(first?.has_work || first?.available_filters.length);
   const selectItem = (id: string) => { if (allItems.some(item => item.id === id)) select(id); };
   const focusRecord = () =>
     surfaceRef.current
@@ -188,7 +188,7 @@ export function WorklistConsole({
       baseline={baseline}
       head={{
         title, titleId,
-        asOf: mode === "inbox" && !inSetup && !meError && !inbox.error && first?.as_of
+        asOf: mode === "inbox" && !loading && !inSetup && !meError && !inbox.error && first?.as_of
           ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time>
           : undefined,
         actions: mode === "home" && showControls && !loading && !inbox.error

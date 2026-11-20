@@ -137,6 +137,14 @@ test("sortWorklistItems and inlineDecisionClass guard invalid dates, null titles
   ];
   expect(sortWorklistItems(withNullTitle, "task", "asc").map(i => i.id)).toEqual(["t2", "t1"]);
 
+  const withTaskLabel = [
+    sample({ id: "k1", kind: "payroll", title: "2026-10 Payroll" }),
+    sample({ id: "k2", kind: "insurance_filing", title: "Statutory filing" }),
+    sample({ id: "k3", kind: "payroll", title: "2026-09 Payroll" }),
+  ];
+  const labelOf = (item: AttentionInboxItem) => (item.kind === "payroll" ? "Payroll" : "Insurance");
+  expect(sortWorklistItems(withTaskLabel, "task", "asc", labelOf).map(i => i.id)).toEqual(["k2", "k3", "k1"]);
+
   const missingLinks = { ...sample({ id: "no-links" }), links: undefined as unknown as AttentionInboxItem["links"] };
   expect(inlineDecisionClass(missingLinks)).toBeNull();
 });

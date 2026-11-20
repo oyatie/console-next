@@ -10,6 +10,8 @@ import { Table, type Column } from "../../../ui/table";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
 import { isStatutoryDeadline, shortMonthDay, type OptionalWorklistColumn } from "../domain/inline-decide";
 import { reasonLines, recordAction, taskTitleKey, type RowAction } from "./grouped-queue";
+import s from "./worklist-console.module.css";
+import { CompactSubject } from "./worklist-subject";
 
 function consoleReasonText(item: AttentionInboxItem, taskLabel: string): string {
   const direct = item.context?.reason?.trim();
@@ -24,8 +26,6 @@ function consoleReasonText(item: AttentionInboxItem, taskLabel: string): string 
   }
   return reasonLines(item).join(" · ");
 }
-import s from "./worklist-console.module.css";
-import { CompactSubject } from "./worklist-subject";
 
 export function ConsoleWorklistTable({
   items,
