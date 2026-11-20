@@ -335,15 +335,40 @@ mod tests {
 
     #[test]
     fn from_pairs_rejects_malformed_otp_hmac_key_in_all_profiles() {
-        for bad in ["not-hex-or-b64", "00".repeat(32).as_str(), "abcd"] {
-            let err = AppConfig::from_pairs([("CONSOLE_OTP_HMAC_KEY", bad)])
+        for role in ["api", "worker"] {
+            for bad in ["not-hex-or-b64", "00".repeat(32).as_str(), "abcd"] {
+                let err = AppConfig::from_pairs([
+                    ("CONSOLE_APP_ROLE", role),
+                    ("CONSOLE_OTP_HMAC_KEY", bad),
+                ])
                 .expect_err("malformed CONSOLE_OTP_HMAC_KEY must fail");
-            assert!(err.to_string().contains("CONSOLE_OTP_HMAC_KEY"), "{err}");
-            assert!(!err.to_string().contains(bad), "error must not echo key");
-        }
-        let err = AppConfig::from_pairs([("CONSOLE_OTP_HMAC_KEY_PREV", &"11".repeat(32))])
+                assert!(err.to_string().contains("CONSOLE_OTP_HMAC_KEY"), "{err}");
+                assert!(!err.to_string().contains(bad), "error must not echo key");
+            }
+            let err = AppConfig::from_pairs([
+                ("CONSOLE_APP_ROLE", role),
+                ("CONSOLE_OTP_HMAC_KEY_PREV", &"11".repeat(32)),
+            ])
             .expect_err("prev without active key must fail");
-        assert!(err.to_string().contains("CONSOLE_OTP_HMAC_KEY"), "{err}");
+            assert!(err.to_string().contains("CONSOLE_OTP_HMAC_KEY"), "{err}");
+        }
+    }
+
+    #[test]
+    fn from_pairs_allows_worker_with_postgres_and_without_otp_hmac_key() {
+        let config = AppConfig::from_pairs([
+            ("CONSOLE_APP_ROLE", "worker"),
+            (
+                "DATABASE_URL",
+                "postgresql://console_rt:runtime-secret@db/console",
+            ),
+            (
+                "PLATFORM_FORCE_COMMAND_DATABASE_URL",
+                "postgresql://console_platform_force_cmd:force-secret@db/console",
+            ),
+        ])
+        .expect("worker role does not require CONSOLE_OTP_HMAC_KEY");
+        assert!(config.otp_hmac_key.is_none());
     }
 
     #[test]

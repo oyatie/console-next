@@ -69,13 +69,15 @@ async fn serve_api(config: AppConfig, state: AppState) -> Result<(), AppError> {
             "CONSOLE_OTP_HMAC_KEY unset: using ephemeral process-wide development OTP HMAC key"
         );
     }
-    #[cfg(not(debug_assertions))]
-    if state.otp_hmac_key.is_none() {
-        return Err(AppError::Config(
-            "CONSOLE_OTP_HMAC_KEY is required for the api role in non-development builds"
-                .to_owned(),
-        ));
-    }
+    crate::coldstart_guard::require_otp_hmac_key(
+        state.otp_hmac_key.is_some(),
+        config.role == AppRole::Api,
+        matches!(state.database, DatabaseDependency::Postgres(_))
+            || config.auth_rest.is_some()
+            || config.coldstart_otp.is_some(),
+        crate::coldstart_guard::BuildProfile::current(),
+    )
+    .map_err(AppError::Config)?;
     install_metrics_recorder()?;
     let state_for_router = state.clone();
     seed_cold_start_otp(&config, &state).await?;
