@@ -88,6 +88,7 @@
 .itemCell {
   padding-inline-start: var(--space-3);
   color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
 .table[data-has-detail="true"] .itemCell {
@@ -107,9 +108,12 @@
 
 .itemLabel {
   min-width: 0;
+  max-width: 100%;
 }
 
 .inlineDetail {
+  min-width: 0;
+  max-width: 100%;
   font-size: var(--text-xs);
   color: var(--faint);
 }
@@ -247,7 +251,6 @@
   .table[data-has-detail="true"] .itemCell {
     width: auto;
     white-space: normal;
-    overflow-wrap: anywhere;
   }
 
   .amountCell {

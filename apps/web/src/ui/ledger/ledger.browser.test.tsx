@@ -134,3 +134,82 @@ test("Ledger wraps long column labels at 390px, styles muted totals and negative
     await edgeMount.close();
   }
 });
+
+test("Ledger wraps unbreakable tokens at 390px in inline and detail-less column layouts", async () => {
+  const reflowMount = await mountBrowserModule({
+    slug: "ledger-unbreakable-reflow-test",
+    readySelector: "[data-ledger-unbreakable]",
+    viewport: { width: 390, height: 844 },
+    moduleCode: `
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { loadCatalog } from '@console/i18n';
+      import '/apps/web/src/app.css';
+      import { Ledger } from '/apps/web/src/ui/ledger/index';
+      await loadCatalog('ko');
+      document.documentElement.dataset.experience = 'console';
+      document.documentElement.dataset.theme = 'light';
+      const unbreakable = 'UNBREAKABLE_' + 'X'.repeat(80);
+      createRoot(document.getElementById('root')).render(
+        React.createElement('main', { 'data-ledger-unbreakable': '' },
+          React.createElement(Ledger, {
+            title: 'Inline unbreakable label',
+            detailLayout: 'inline',
+            rows: [
+              { key: 'u1', label: unbreakable, detail: 'Inline basis', amount: '1,234,567' },
+            ],
+            totals: [
+              { key: 't1', label: 'Total', amount: '1,234,567', kind: 'total' },
+            ],
+          }),
+          React.createElement(Ledger, {
+            title: 'Inline unbreakable detail',
+            detailLayout: 'inline',
+            rows: [
+              { key: 'u2', label: 'Item', detail: unbreakable, amount: '1,234,567' },
+            ],
+            totals: [
+              { key: 't2', label: 'Total', amount: '1,234,567', kind: 'total' },
+            ],
+          }),
+          React.createElement(Ledger, {
+            title: 'Column unbreakable without detail',
+            detailLayout: 'column',
+            rows: [
+              { key: 'u3', label: unbreakable, amount: '1,234,567' },
+            ],
+            totals: [
+              { key: 't3', label: 'Total', amount: '1,234,567', kind: 'total' },
+            ],
+          })
+        )
+      );
+    `,
+  });
+
+  try {
+    const res = await reflowMount.page.evaluate(() => {
+      const ledgers = [...document.querySelectorAll("[data-ledger]")];
+      return {
+        docOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        ledgers: ledgers.map(el => {
+          const table = el.querySelector("table")!;
+          return {
+            layout: el.getAttribute("data-detail-layout"),
+            hasDetailAttr: table.hasAttribute("data-has-detail"),
+            tableOverflow: table.scrollWidth - table.clientWidth,
+          };
+        }),
+      };
+    });
+
+    expect(res.docOverflow).toBe(0);
+    expect(res.ledgers).toEqual([
+      { layout: "inline", hasDetailAttr: false, tableOverflow: 0 },
+      { layout: "inline", hasDetailAttr: false, tableOverflow: 0 },
+      { layout: "column", hasDetailAttr: false, tableOverflow: 0 },
+    ]);
+  } finally {
+    await reflowMount.close();
+  }
+});
