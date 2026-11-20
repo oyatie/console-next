@@ -21,6 +21,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         "attendance",
         console_attendance_rest::ATTENDANCE_ROUTE_PATHS,
     ),
+    #[cfg(feature = "leave")]
+    surface("leave", console_leave_rest::LEAVE_ROUTE_PATHS),
+    #[cfg(feature = "inbox")]
+    surface("inbox", console_inbox_rest::INBOX_ROUTE_PATHS),
     #[cfg(feature = "inventory")]
     surface("inventory", console_inventory_rest::INVENTORY_ROUTE_PATHS),
     #[cfg(feature = "dispatch")]

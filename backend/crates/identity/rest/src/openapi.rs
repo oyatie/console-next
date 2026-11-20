@@ -745,6 +745,13 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/access-log",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__me__access-log.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/action-inbox",
         operations: &[Operation {
             method: "get",
@@ -1584,6 +1591,14 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "MobilePasskeyStepUpStartResponse",
         body: include_str!("../openapi/schemas/MobilePasskeyStepUpStartResponse.yaml"),
+    },
+    NamedYaml {
+        name: "MyAccessLogEvent",
+        body: include_str!("../openapi/schemas/MyAccessLogEvent.yaml"),
+    },
+    NamedYaml {
+        name: "MyAccessLogPage",
+        body: include_str!("../openapi/schemas/MyAccessLogPage.yaml"),
     },
     NamedYaml {
         name: "MyWorkbenchResponse",
