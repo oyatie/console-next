@@ -249,8 +249,13 @@ for (const width of [1440, 390]) {
             `${t("accessCodes.domain.bank")} ${t("person.field.notSet")} ${t("home.worklist.personCount", { count: saeonUniverse.payrollRun.missingBankAccountCount })}`,
           );
           for (const openLink of await opsTable.getByRole("link", { name: t("home.inbox.open"), exact: true }).all()) {
+            const tdBox = await openLink.locator("xpath=ancestor::td[1]").boundingBox();
             const box = await openLink.boundingBox();
-            expect(box && box.x + box.width <= 390).toBe(true);
+            expect(tdBox).not.toBeNull();
+            expect(box).not.toBeNull();
+            expect(box!.x).toBeGreaterThanOrEqual(tdBox!.x - 1);
+            expect(box!.x + box!.width).toBeLessThanOrEqual(tdBox!.x + tdBox!.width + 1);
+            expect(box!.x + box!.width).toBeLessThanOrEqual(390);
           }
         }
         await withFullPage(page, () => shot(page, `home--${width}-${theme}`));
@@ -549,6 +554,9 @@ for (const locale of ["en", "ko"] as const) {
       });
       expect(layout).toEqual({ docOverflow: true, mainFits: true, docScrollWidth: 390 });
 
+      const opsMinWidth = await opsTable.evaluate(el => getComputedStyle(el).minWidth);
+      expect(opsMinWidth).toBe("0px");
+
       const opsFits = await opsTable.evaluate(el => {
         const scroller = el.parentElement;
         return (
@@ -560,9 +568,61 @@ for (const locale of ["en", "ko"] as const) {
       await expect(opsTable.locator("..").locator("..").locator("[data-scroll-cue]")).toHaveCount(0);
 
       for (const control of await opsTable.locator("tbody a[href], tbody button").all()) {
+        const tdBox = await control.locator("xpath=ancestor::td[1]").boundingBox();
         const box = await control.boundingBox();
-        expect(box && box.x >= 0 && box.x + box.width <= 390).toBe(true);
+        expect(tdBox).not.toBeNull();
+        expect(box).not.toBeNull();
+        expect(box!.x).toBeGreaterThanOrEqual(tdBox!.x - 1);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(tdBox!.x + tdBox!.width + 1);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(390);
       }
+
+      const openControlChecks = await opsTable.evaluate(
+        (table, openLabel) =>
+          [...table.querySelectorAll<HTMLElement>("tbody a[href], tbody button")]
+            .filter(el => el.textContent?.trim() === openLabel)
+            .map(el => {
+              const td = el.closest("td")!;
+              const rect = el.getBoundingClientRect();
+              const tdRect = td.getBoundingClientRect();
+              const padRight = Number.parseFloat(getComputedStyle(td).paddingRight) || 0;
+              const range = document.createRange();
+              range.selectNodeContents(el);
+              return {
+                singleLine: range.getClientRects().length <= 1,
+                flushRight: Math.abs(rect.right - (tdRect.right - padRight)) <= 2,
+              };
+            }),
+        t("home.inbox.open"),
+      );
+      expect(openControlChecks.length).toBeGreaterThan(0);
+      for (const check of openControlChecks) {
+        expect(check).toEqual({ singleLine: true, flushRight: true });
+      }
+
+      // Also verify 320px stress width for Monthly operations unlock-review cell containment.
+      await page.setViewportSize({ width: 320, height: 900 });
+      const opsMinWidth320 = await opsTable.evaluate(el => getComputedStyle(el).minWidth);
+      expect(opsMinWidth320).toBe("0px");
+      const opsFits320 = await opsTable.evaluate(el => {
+        const scroller = el.parentElement;
+        return (
+          el.scrollWidth <= (scroller?.clientWidth ?? el.clientWidth) + 1 &&
+          (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1)
+        );
+      });
+      expect(opsFits320).toBe(true);
+      await expect(opsTable.locator("..").locator("..").locator("[data-scroll-cue]")).toHaveCount(0);
+      for (const control of await opsTable.locator("tbody a[href], tbody button").all()) {
+        const tdBox = await control.locator("xpath=ancestor::td[1]").boundingBox();
+        const box = await control.boundingBox();
+        expect(tdBox).not.toBeNull();
+        expect(box).not.toBeNull();
+        expect(box!.x).toBeGreaterThanOrEqual(tdBox!.x - 1);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(tdBox!.x + tdBox!.width + 1);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+      }
+      await page.setViewportSize({ width: 390, height: 900 });
 
       const opsMetrics = await opsTable.evaluate(table => {
         const rows = [...table.querySelectorAll("tbody tr")];
@@ -665,4 +725,78 @@ for (const locale of ["ko", "en"] as const) {
       }
     });
   }
+}
+
+for (const locale of ["en", "ko"] as const) {
+  test(`Console Home ${locale} worklist table stays horizontally contained at 900px / and 1024/1120/1440px split-pane`, async ({
+    page,
+  }) => {
+    await loadCatalog(locale);
+    i18n.set(locale);
+    const { fixture } = await setupConsoleSaeonWorklist(page, "light", locale);
+    try {
+      await page.setViewportSize({ width: 900, height: 900 });
+      await page.goto("/");
+      const worklist900 = page.locator('[data-pattern="worklist"]');
+      const queue900 = worklist900.getByRole("grid", { name: t("home.inbox.title"), exact: true });
+      await expect(queue900).toBeVisible();
+      await fits(page, `Console Home ${locale} 900 /`);
+      const fit900 = await queue900.evaluate(el => {
+        const main = document.getElementById("main")!;
+        const scroller = el.parentElement!;
+        return {
+          scrollerFitsMain: scroller.clientWidth <= main.clientWidth,
+          tableFitsScroller: el.scrollWidth <= scroller.clientWidth + 1,
+          overflowX: getComputedStyle(scroller).overflowX,
+        };
+      });
+      expect(fit900.scrollerFitsMain).toBe(true);
+      expect(fit900.tableFitsScroller).toBe(true);
+
+      for (const width of [1024, 1120, 1440] as const) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("/?sel=OC-2026-0418");
+        const worklist = page.locator('[data-pattern="worklist"]');
+        const queueTable = worklist.getByRole("grid", { name: t("home.inbox.title"), exact: true });
+        const recordPane = page.locator('aside[data-pane="record"]');
+        await expect(queueTable).toBeVisible();
+        await expect(recordPane).toBeVisible();
+        await fits(page, `Console Home ${locale} ${width} /?sel=OC-2026-0418`);
+
+        const scroller = queueTable.locator("xpath=..");
+        const [scrollerBox, recordBox] = await Promise.all([scroller.boundingBox(), recordPane.boundingBox()]);
+        expect(scrollerBox).not.toBeNull();
+        expect(recordBox).not.toBeNull();
+        expect(scrollerBox!.x + scrollerBox!.width).toBeLessThanOrEqual(recordBox!.x + 1);
+
+        const fitSplit = await queueTable.evaluate(el => {
+          const s = el.parentElement!;
+          return {
+            tableFits: el.scrollWidth <= s.clientWidth + 1,
+            overflowX: getComputedStyle(s).overflowX,
+          };
+        });
+        if (locale === "ko" && width === 1440) {
+          expect(fitSplit.tableFits).toBe(true);
+        } else {
+          expect(fitSplit.tableFits || fitSplit.overflowX === "auto").toBe(true);
+        }
+
+        const orgRow = queueTable.locator('tbody tr[data-id="OC-2026-0418"]');
+        const approveBtn = orgRow.getByRole("button", { name: t("uiWorklist.approve"), exact: true });
+        if (!fitSplit.tableFits) {
+          await scroller.evaluate(el => {
+            el.scrollLeft = el.scrollWidth;
+          });
+        }
+        const btnBox = await approveBtn.boundingBox();
+        expect(btnBox).not.toBeNull();
+        expect(btnBox!.x + btnBox!.width).toBeLessThanOrEqual(recordBox!.x + 1);
+        await approveBtn.click({ trial: true });
+      }
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      fixture.release();
+    }
+  });
 }

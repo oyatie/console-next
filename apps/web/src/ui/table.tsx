@@ -89,7 +89,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
     setActive(next);
     tableRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(next)}"]`)?.focus();
   };
-  const scrollableReadOnly = rowsOnPhone && scrollState.overflows && !onSelect && !scrollState.focusable;
+  const scrollableReadOnly = scrollState.overflows && !onSelect && !scrollState.focusable;
   const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : {};
   const roles = cardRoles(columns);
   const widths = columnWidths(columns);
@@ -137,8 +137,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
   );
   return (
     <div ref={containerRef} className={cards.container}>
-      <div ref={scrollerRef} className={rowsOnPhone ? cards.scroll : undefined}>{table}</div>
-      {rowsOnPhone && scrollState.clipped && <span className={cards.scrollCue} data-scroll-cue aria-hidden="true" />}
+      <div ref={scrollerRef} className={rowsOnPhone || scrollState.overflows ? cards.scroll : undefined}>{table}</div>
+      {scrollState.clipped && <span className={cards.scrollCue} data-scroll-cue aria-hidden="true" />}
     </div>
   );
 }
