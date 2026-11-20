@@ -99,10 +99,17 @@ async fn serve_api(config: AppConfig, state: AppState) -> Result<(), AppError> {
             pool.clone(),
             false,
             None,
+            None,
             state.nts.clone(),
-            crate::hr::rrn_vault::from_env_logged(),
+            crate::rrn_vault_tenant::from_env_logged_for_pool(pool.clone()),
             #[cfg(feature = "mail")]
-            state.mail_cipher.clone(),
+            state.mail_cipher.clone().map(|cipher| {
+                std::sync::Arc::new(crate::mail_cipher::TenantEnvMailCipher::new(
+                    cipher,
+                    pool.clone(),
+                ))
+                    as std::sync::Arc<dyn console_comms_application::CredentialCipher>
+            }),
         )),
         DatabaseDependency::NotConfigured => None,
     };

@@ -15,13 +15,14 @@ console-kernel-core = { workspace = true }
 console-platform-authz = { workspace = true }
 console-platform-auth = { path = "../auth" }
 console-platform-db = { path = "../db" }
+console-platform-storage = { path = "../storage" }
 secrecy = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-sha2 = "0.11.0"
 sqlx = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }
+tracing = { workspace = true }
 uuid = { workspace = true }
 zeroize = { workspace = true }
 

@@ -1,5 +1,7 @@
 mod tenant_erase;
+mod tenant_erase_outbox;
 mod tenant_erase_types;
+pub use tenant_erase_outbox::*;
 pub use tenant_erase_types::*;
 mod company_domain;
 mod ops_recovery;

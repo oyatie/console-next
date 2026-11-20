@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Webmail credential cipher port and envelope value types.
 
-use secrecy::{ExposeSecret, SecretBox};
+use secrecy::ExposeSecret;
+pub use secrecy::SecretBox;
 
 /// Errors from the credential cipher. Deliberately coarse and free of any
 /// secret material — an attacker learns only "it failed", never plaintext,
@@ -105,7 +106,23 @@ pub trait CredentialCipher: Send + Sync {
         let plain = self.decrypt(sealed, aad)?;
         self.encrypt(plain.expose_secret(), aad)
     }
+
+    /// Resolve a tenant-scoped cipher for `org` at an async boundary, or
+    /// `Ok(None)` when the cipher has no per-tenant key store.
+    fn scoped_for_org<'a>(&'a self, _org: uuid::Uuid) -> ScopedCredentialCipherFuture<'a> {
+        Box::pin(async { Ok(None) })
+    }
 }
+
+/// Boxed future returned by [`CredentialCipher::scoped_for_org`].
+pub type ScopedCredentialCipherFuture<'a> = std::pin::Pin<
+    Box<
+        dyn core::future::Future<
+                Output = Result<Option<std::sync::Arc<dyn CredentialCipher>>, CipherError>,
+            > + Send
+            + 'a,
+    >,
+>;
 
 impl<C: CredentialCipher + ?Sized> CredentialCipher for &C {
     fn encrypt(&self, plaintext: &[u8], aad: Aad<'_>) -> Result<SealedCredential, CipherError> {
@@ -134,6 +151,10 @@ impl<C: CredentialCipher + ?Sized> CredentialCipher for &C {
         aad: Aad<'_>,
     ) -> Result<SealedCredential, CipherError> {
         (**self).reseal(sealed, aad)
+    }
+
+    fn scoped_for_org<'a>(&'a self, org: uuid::Uuid) -> ScopedCredentialCipherFuture<'a> {
+        (**self).scoped_for_org(org)
     }
 }
 
@@ -164,5 +185,9 @@ impl<C: CredentialCipher + ?Sized> CredentialCipher for std::sync::Arc<C> {
         aad: Aad<'_>,
     ) -> Result<SealedCredential, CipherError> {
         (**self).reseal(sealed, aad)
+    }
+
+    fn scoped_for_org<'a>(&'a self, org: uuid::Uuid) -> ScopedCredentialCipherFuture<'a> {
+        (**self).scoped_for_org(org)
     }
 }

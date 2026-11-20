@@ -23,6 +23,7 @@ console-comms-domain = { workspace = true }
 console-kernel-core = { workspace = true }
 console-platform-auth = { path = "../../platform/auth" }
 console-platform-authz = { path = "../../platform/authz" }
+console-platform-crypto = { workspace = true }
 console-platform-db = { workspace = true }
 console-platform-request-context = { workspace = true }
 secrecy = { workspace = true }

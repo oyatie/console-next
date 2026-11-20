@@ -7,7 +7,7 @@ use std::sync::Arc;
 #[cfg(feature = "mail")]
 use console_comms_adapter_postgres::{EmailEnvelopeCensus, EmailResealStats, PgMailStore};
 #[cfg(feature = "mail")]
-use console_comms_credential_cipher::EnvelopeCredentialCipher;
+use console_comms_application::CredentialCipher;
 use console_hr_adapter_postgres::HrService;
 use console_hr_adapter_postgres::rrn::census::RrnEnvelopeCensus;
 use console_hr_adapter_postgres::rrn::reseal::RrnResealStats;
@@ -83,7 +83,7 @@ pub struct CryptoCensusReport {
 pub(crate) async fn run_worker_tick(
     pool: &PgPool,
     rrn_vault: Option<Arc<dyn RrnVault>>,
-    #[cfg(feature = "mail")] mail_cipher: Option<Arc<EnvelopeCredentialCipher>>,
+    #[cfg(feature = "mail")] mail_cipher: Option<Arc<dyn CredentialCipher>>,
 ) {
     if let Some(vault) = rrn_vault {
         match HrService::new(pool.clone())
@@ -127,7 +127,7 @@ pub(crate) async fn run_worker_tick(
 pub async fn execute_reseal(
     pool: &PgPool,
     rrn_vault: Option<Arc<dyn RrnVault>>,
-    #[cfg(feature = "mail")] mail_cipher: Option<Arc<EnvelopeCredentialCipher>>,
+    #[cfg(feature = "mail")] mail_cipher: Option<Arc<dyn CredentialCipher>>,
     batch_size: i64,
     max_batches: usize,
 ) -> Result<CryptoResealReport, AppError> {
@@ -170,13 +170,13 @@ pub async fn execute_reseal(
 pub async fn execute_census(
     pool: &PgPool,
     rrn_vault: Option<&dyn RrnVault>,
-    #[cfg(feature = "mail")] mail_cipher: Option<&EnvelopeCredentialCipher>,
+    #[cfg(feature = "mail")] mail_cipher: Option<&dyn CredentialCipher>,
 ) -> Result<CryptoCensusReport, AppError> {
     let rrn = if let Some(vault) = rrn_vault
         && let (Some(alg), Some(kek)) = (vault.active_alg_id(), vault.active_kek_id())
     {
         let census: RrnEnvelopeCensus = HrService::new(pool.clone())
-            .legacy_envelope_census(alg, kek)
+            .legacy_envelope_census_with_vault(vault)
             .await
             .map_err(|err| AppError::Internal(err.message))?;
         Some(RrnCensusReport {
@@ -203,10 +203,10 @@ pub async fn execute_census(
 
     #[cfg(feature = "mail")]
     let email = if let Some(cipher) = mail_cipher {
-        let alg = cipher.active_alg_id().as_str();
-        let kek = cipher.active_kek_id().as_str();
+        let alg = cipher.active_alg_id().unwrap_or_default();
+        let kek = cipher.active_kek_id().unwrap_or_default();
         let census: EmailEnvelopeCensus = PgMailStore::new(pool.clone())
-            .legacy_envelope_census(alg, kek)
+            .legacy_envelope_census_with_cipher(cipher)
             .await
             .map_err(|err| AppError::Internal(err.to_string()))?;
         Some(EmailCensusReport {

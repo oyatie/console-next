@@ -5,6 +5,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 #[cfg(feature = "mail")]
+use console_comms_application::CredentialCipher;
+#[cfg(feature = "mail")]
 use console_comms_credential_cipher::EnvelopeCredentialCipher;
 use console_hr_domain::import::rrn_value::RrnVault;
 use sqlx::PgPool;
@@ -34,17 +36,26 @@ pub async fn run_crypto_cli(command: &str, args: &[String]) -> Result<(), AppErr
     let url = secret_env("DATABASE_URL")?
         .ok_or_else(|| AppError::Config(format!("{command} requires DATABASE_URL")))?;
     let pool = connect_runtime_maintenance_pool(&url).await?;
-    let rrn_vault: Option<Arc<dyn RrnVault>> = EnvRrnVault::from_env()
-        .map_err(AppError::Config)?
-        .map(|v| Arc::new(v) as Arc<dyn RrnVault>);
+    let rrn_vault: Option<Arc<dyn RrnVault>> =
+        EnvRrnVault::from_env().map_err(AppError::Config)?.map(|v| {
+            Arc::new(v.with_tenant_keys(
+                pool.clone(),
+                crate::rrn_vault_tenant::new_tenant_keys_from_env(),
+            )) as Arc<dyn RrnVault>
+        });
 
     #[cfg(feature = "mail")]
-    let mail_cipher: Option<Arc<EnvelopeCredentialCipher>> = {
+    let mail_cipher: Option<Arc<dyn CredentialCipher>> = {
         let keyring = secret_env(console_comms_credential_cipher::KEYRING_ENV)?;
         let master = secret_env(console_comms_credential_cipher::MASTER_KEY_ENV)?;
         EnvelopeCredentialCipher::from_owned_env_values(keyring, master)
             .map_err(|_| AppError::Config("invalid CONSOLE_MAIL_KEYRING/MASTER_KEY".to_owned()))?
-            .map(Arc::new)
+            .map(|c| {
+                Arc::new(crate::mail_cipher::TenantEnvMailCipher::new(
+                    Arc::new(c),
+                    pool.clone(),
+                )) as Arc<dyn CredentialCipher>
+            })
     };
 
     let output = match parsed {

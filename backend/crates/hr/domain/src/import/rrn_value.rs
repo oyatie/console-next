@@ -265,7 +265,22 @@ pub trait RrnVault: Send + Sync {
     /// # Errors
     /// [`VaultError`] for a wrong key, another tenant's row or a tampered one.
     fn open(&self, org: Uuid, sealed: &SealedRrn) -> Result<Rrn, VaultError>;
+
+    /// Resolve a tenant-scoped vault for `org` at an async boundary, or
+    /// `Ok(None)` when the implementation has no per-tenant key store.
+    fn scoped_for_org<'a>(&'a self, _org: Uuid) -> ScopedRrnVaultFuture<'a> {
+        Box::pin(async { Ok(None) })
+    }
 }
+
+/// Boxed future returned by [`RrnVault::scoped_for_org`].
+pub type ScopedRrnVaultFuture<'a> = std::pin::Pin<
+    Box<
+        dyn core::future::Future<Output = Result<Option<std::sync::Arc<dyn RrnVault>>, VaultError>>
+            + Send
+            + 'a,
+    >,
+>;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]

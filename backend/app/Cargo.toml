@@ -109,7 +109,7 @@ http = { workspace = true }
 hex = { workspace = true }
 ipnet = { workspace = true }
 jsonwebtoken = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["rustls"] }
 console-comms-adapter-imap = { workspace = true, optional = true }
 console-comms-adapter-postgres = { workspace = true, optional = true }
 console-comms-application = { workspace = true, optional = true }
@@ -267,7 +267,9 @@ console-governance-application = { workspace = true }
 console-notifications-domain = { workspace = true }
 console-settings-domain = { path = "../crates/settings/domain" }
 p256 = { workspace = true, features = ["ecdsa", "pkcs8", "pem"] }
+rustls = { workspace = true }
 tokio = { workspace = true, features = ["io-util", "net", "macros", "rt-multi-thread", "test-util"] }
+tokio-rustls = { workspace = true }
 tower = { workspace = true, features = ["util"] }
 # Builds the .xlsx fixtures for the import privacy tests (hr.rs).
 umya-spreadsheet = "3.0.0"
@@ -480,4 +482,8 @@ name = "inbox_source_timing"
 
 [[test]]
 name = "credential_reseal"
+required-features = ["test-postgres", "full"]
+
+[[test]]
+name = "tenant_crypto_shred_pitr"
 required-features = ["test-postgres", "full"]

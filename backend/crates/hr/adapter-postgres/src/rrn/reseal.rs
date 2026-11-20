@@ -107,6 +107,11 @@ impl HrService {
         batch_size: i64,
         max_batches: usize,
     ) -> Result<RrnResealStats, HrError> {
+        let vault = match vault.scoped_for_org(*org.as_uuid()).await {
+            Ok(Some(scoped)) => scoped,
+            Ok(None) => vault,
+            Err(_) => return Err(unavailable()),
+        };
         if vault.active_alg_id().is_none()
             || vault.active_kek_id().is_none()
             || batch_size <= 0

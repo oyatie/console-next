@@ -99,6 +99,22 @@ impl EnvelopeCredentialCipher {
         }
     }
 
+    /// Borrow the active [`KmsProvider`].
+    #[must_use]
+    pub fn kms_provider(&self) -> &Arc<dyn KmsProvider> {
+        &self.kms
+    }
+
+    /// Return a tenant-scoped copy that delegates `v3` sealing/unwrapping to
+    /// `kms` while preserving `legacy_ring` for `v1`/`v2` dual-read.
+    #[must_use]
+    pub fn with_tenant_kms(&self, kms: Arc<dyn KmsProvider>) -> Self {
+        Self {
+            kms,
+            legacy_ring: self.legacy_ring.clone(),
+        }
+    }
+
     /// Consume an encoded key and zeroize it after decoding, including errors.
     pub fn from_owned_base64_key(encoded: String) -> Result<Self, CipherError> {
         Self::from_base64_key(&Zeroizing::new(encoded))
