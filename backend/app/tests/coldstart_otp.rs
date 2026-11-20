@@ -76,6 +76,7 @@ fn dev_coldstart_otp_is_refused_on_plain_http_dev_too() {
             "http://localhost:5173".to_owned(),
         ),
         ("CONSOLE_COOKIE_SECURE", "false".to_owned()),
+        ("CONSOLE_OTP_HMAC_KEY", "11".repeat(32)),
     ]);
     // A per-checkout code boots with insecure cookies (local HTTP development).
     let mut fresh = pairs.clone();

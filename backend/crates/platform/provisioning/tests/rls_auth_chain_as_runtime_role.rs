@@ -221,7 +221,7 @@ async fn credential_org_as_runtime(
 /// Issue an admin OTP for `user_id` in `org` via the provisioning store
 /// (the admin path that hardcoded SAE + armed no GUC before the fix).
 async fn issue_admin_otp_as_runtime(rt_pool: &PgPool, org: OrgId, user_id: Uuid) -> String {
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             rt_pool,
             None,
@@ -248,7 +248,7 @@ async fn sae_auth_chain_works_as_runtime_role(owner_pool: PgPool) {
     let otp = issue_admin_otp_as_runtime(&rt_pool, sae, user_id).await;
 
     // OTP first sign-in: redeem must FIND the bootstrap credential as console_rt.
-    let redemption = BootstrapCredentialStore
+    let redemption = BootstrapCredentialStore::default()
         .redeem_otp(&rt_pool, &otp, OffsetDateTime::now_utc())
         .await
         .expect("OTP redeem must find the seeded credential as console_rt");
@@ -316,7 +316,7 @@ async fn non_sae_admin_otp_and_redeem_work_as_runtime_role(owner_pool: PgPool) {
     );
 
     // That tenant's user redeems it and gets a session, all as console_rt.
-    let redemption = BootstrapCredentialStore
+    let redemption = BootstrapCredentialStore::default()
         .redeem_otp(&rt_pool, &otp, OffsetDateTime::now_utc())
         .await
         .expect("non-SAE tenant OTP redeem must succeed as console_rt");
@@ -338,8 +338,8 @@ async fn non_sae_admin_otp_and_redeem_work_as_runtime_role(owner_pool: PgPool) {
 /// Read a bootstrap credential's org_id by its OTP, as `console_rt` with the GUC
 /// armed to `org` (so the read is allowed and we can confirm the stamp).
 async fn bootstrap_org_as_runtime(rt_pool: &PgPool, org: OrgId, otp: &str) -> Option<Uuid> {
-    use sha2::{Digest, Sha256};
-    let token_hash = Sha256::digest(otp.as_bytes()).to_vec();
+    use console_platform_provisioning::BootstrapCredentialStore as S;
+    let hash = S::default().hash_otp_for_test(otp).unwrap();
     let mut tx = rt_pool.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org', $1, true)")
         .bind(org.as_uuid().to_string())
@@ -348,7 +348,7 @@ async fn bootstrap_org_as_runtime(rt_pool: &PgPool, org: OrgId, otp: &str) -> Op
         .unwrap();
     let org_id: Option<Uuid> =
         sqlx::query_scalar("SELECT org_id FROM auth_bootstrap_credentials WHERE token_hash = $1")
-            .bind(&token_hash)
+            .bind(&hash)
             .fetch_optional(&mut *tx)
             .await
             .unwrap();
@@ -493,7 +493,7 @@ async fn admin_credential_reset_revokes_passkey_and_issues_otp_as_runtime_role(o
 
     // The normal admin-OTP path REFUSES a user who already has a passkey — proving
     // the lockout: an admin cannot recover this user via the ordinary path.
-    let blocked = BootstrapCredentialStore
+    let blocked = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &rt_pool,
             None,
@@ -509,7 +509,7 @@ async fn admin_credential_reset_revokes_passkey_and_issues_otp_as_runtime_role(o
     );
 
     // The RESET escape hatch: revoke ALL passkeys + mint a fresh OTP atomically.
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .reset_credentials_for_user(
             &rt_pool,
             console_kernel_core::UserId::from_uuid(user_id),
@@ -544,7 +544,7 @@ async fn admin_credential_reset_revokes_passkey_and_issues_otp_as_runtime_role(o
     );
 
     // The NEW OTP redeems for a first sign-in.
-    let redemption = BootstrapCredentialStore
+    let redemption = BootstrapCredentialStore::default()
         .redeem_otp(&rt_pool, issue.token.as_str(), OffsetDateTime::now_utc())
         .await
         .expect("the freshly minted reset OTP must redeem as console_rt");
@@ -694,7 +694,7 @@ async fn admin_credential_reset_is_tenant_scoped_as_runtime_role(owner_pool: PgP
     // under SAE's GUC the T2 passkey row is invisible (RLS), so the DELETE matches
     // zero rows. The reset would still mint a SAE-stamped OTP for the (SAE-invisible)
     // user id, but the cross-tenant DELETE is the security-critical assertion.
-    let _ = BootstrapCredentialStore
+    let _ = BootstrapCredentialStore::default()
         .reset_credentials_for_user(
             &rt_pool,
             console_kernel_core::UserId::from_uuid(t2_user),
@@ -732,7 +732,7 @@ async fn open_signup_creates_member_and_redeems_as_runtime_role(owner_pool: PgPo
     let sae = OrgId::one();
 
     // Self-service signup: create the MEMBER user in SAE + mint its OTP as console_rt.
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .signup_open_member(
             &rt_pool,
             "newcomer",
@@ -757,7 +757,7 @@ async fn open_signup_creates_member_and_redeems_as_runtime_role(owner_pool: PgPo
     assert_eq!(stamped, Some(*sae.as_uuid()));
 
     // First sign-in: the new MEMBER redeems its own emailed code as console_rt.
-    let redemption = BootstrapCredentialStore
+    let redemption = BootstrapCredentialStore::default()
         .redeem_otp(&rt_pool, issue.token.as_str(), OffsetDateTime::now_utc())
         .await
         .expect("the open-signup OTP must redeem as console_rt");

@@ -1270,13 +1270,7 @@ async fn verify_financial_step_up(
 fn financial_step_up_denial_reason(error: &AuthError) -> Option<&'static str> {
     match error {
         AuthError::Webauthn(_) | AuthError::InvalidStoredData(_) => Some("invalid_or_expired"),
-        AuthError::Sqlx(_)
-        | AuthError::Db(_)
-        | AuthError::Serde(_)
-        | AuthError::Jwt(_)
-        | AuthError::UnknownSigningKey
-        | AuthError::Kernel(_)
-        | AuthError::Refresh(_) => None,
+        _ => None,
     }
 }
 
@@ -1289,7 +1283,10 @@ fn rest_error_from_step_up_dependency(error: AuthError) -> RestError {
             tracing::error!(error = %err, "passkey step-up verification state is invalid");
             RestError::internal("passkey step-up verification failed")
         }
-        err @ (AuthError::Jwt(_) | AuthError::UnknownSigningKey | AuthError::Refresh(_)) => {
+        err @ (AuthError::Jwt(_)
+        | AuthError::UnknownSigningKey
+        | AuthError::Refresh(_)
+        | AuthError::Csprng) => {
             tracing::error!(error = %err, "unexpected token error during passkey step-up verification");
             RestError::internal("passkey step-up verification failed")
         }

@@ -23,6 +23,7 @@ use console_dispatch_domain::DispatchTimerConfig;
 use console_kernel_core::OrgId;
 use console_platform_auth_rest::AuthRestConfig;
 use console_platform_email::{SmtpEmailConfig, StubEmailMode};
+use console_platform_provisioning::OtpHmacKey;
 use console_platform_push::{FcmConfig, SolapiConfig};
 use console_platform_storage::S3StorageConfig;
 use ipnet::IpNet;
@@ -136,6 +137,9 @@ pub struct AppConfig {
     /// Lifetime of a boot-seeded cold-start OTP (`CONSOLE_COLDSTART_OTP_TTL_SECS`,
     /// default 3600s).
     pub coldstart_otp_ttl: time::Duration,
+    /// Keyed HMAC-SHA256 pepper for bootstrap OTP storage (`CONSOLE_OTP_HMAC_KEY`,
+    /// optional `CONSOLE_OTP_HMAC_KEY_PREV` for zero-downtime key rotation).
+    pub otp_hmac_key: Option<OtpHmacKey>,
     /// Number of configured reverse-proxy hops in front of the service,
     /// including the direct transport peer (`CONSOLE_TRUSTED_PROXY_COUNT`, default
     /// 0). Forwarding headers are ignored unless every configured hop is in

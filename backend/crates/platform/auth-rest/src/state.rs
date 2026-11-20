@@ -83,6 +83,10 @@ impl AuthRestState {
         )?;
         let jwt_verifier =
             JwtVerifier::from_es256_public_pem(jwt_settings, config.jwt_public_key_pem.as_bytes())?;
+        #[cfg(debug_assertions)]
+        let bootstrap_credentials = BootstrapCredentialStore::default();
+        #[cfg(not(debug_assertions))]
+        let bootstrap_credentials = BootstrapCredentialStore::unconfigured();
 
         Ok(Self {
             pool,
@@ -91,7 +95,7 @@ impl AuthRestState {
                 jwt_issuer,
                 jwt_verifier,
                 refresh_tokens: RefreshTokenStore,
-                bootstrap_credentials: BootstrapCredentialStore,
+                bootstrap_credentials,
                 rp_origin: handoff_origin,
                 refresh_token_ttl: config.refresh_token_ttl,
                 refresh_family_absolute_ttl: config.refresh_family_absolute_ttl,
@@ -100,6 +104,18 @@ impl AuthRestState {
                 email_sender: Arc::new(DisabledEmailSender),
             }),
         })
+    }
+
+    /// Install the bootstrap credential store carrying the deployment OTP HMAC key.
+    #[must_use]
+    pub fn with_bootstrap_credentials(
+        mut self,
+        bootstrap_credentials: BootstrapCredentialStore,
+    ) -> Self {
+        if let Some(services) = self.services.as_mut() {
+            services.bootstrap_credentials = bootstrap_credentials;
+        }
+        self
     }
 
     /// Install the outbound OTP email sender used by the open-signup endpoint.
