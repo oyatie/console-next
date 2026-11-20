@@ -2,8 +2,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
-import { t } from "@console/i18n";
-import { fmtDateTime, fmtMonth, fmtNumber } from "@console/i18n/format";
+import { isMessageId, t } from "@console/i18n";
+import { fmtMonth, fmtNumber } from "@console/i18n/format";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { accessRefusal, type AccessRequirement } from "../../../reference/authz/domain/access";
 import { operationAccess } from "../../../reference/authz/domain/operation-access";
@@ -25,19 +25,12 @@ import { Table } from "../../../ui/table";
 import { homeEmployeeFacetsQuery, homeOrgStructureQuery } from "../api";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
 import { kstDayIso, shortMonthDay } from "../domain/inline-decide";
+import { buildPeopleChecks } from "../domain/worklist-lower-checks";
 import { KIND_TEXT, recordAction, type RowAction } from "./grouped-queue";
 import s from "./worklist-console.module.css";
 
 type FacetCount = components["schemas"]["EmployeeFacetCount"];
 type OrgNode = components["schemas"]["OrgStructureNode"];
-type PeopleCheckRow = {
-  key: string;
-  label: string;
-  subLabel?: string;
-  count: number;
-  to: "/people" | "/people/unplaced";
-  search?: Record<string, string>;
-};
 
 function statusCount(list: readonly FacetCount[] | undefined, ...values: string[]): number | undefined {
   if (!list) return undefined;
@@ -48,54 +41,15 @@ function statusCount(list: readonly FacetCount[] | undefined, ...values: string[
   return hits.find(hit => hit.count > 0)?.count ?? hits[0]!.count;
 }
 
-function buildPeopleChecks(review: components["schemas"]["EmployeeFacets"]["review"]): PeopleCheckRow[] {
-  const rows: PeopleCheckRow[] = [];
-  if (review.register_review_required > 0) {
-    rows.push({
-      key: "register",
-      label: t("home.review.register"),
-      subLabel:
-        review.department_missing && review.department_missing > 0
-          ? t("home.worklist.peopleSubMissing", { field: t("home.review.unplaced") })
-          : undefined,
-      count: review.register_review_required,
-      to: "/people",
-      search: { review: "register" },
-    });
+function splitPayrollNote(row: AttentionInboxItem): { dueText?: string; checkText: string } {
+  const reason = row.context?.reason?.trim();
+  if (row.kind === "payroll" && !row.due && reason?.includes(" · ")) {
+    const idx = reason.indexOf(" · ");
+    return { dueText: reason.slice(0, idx), checkText: reason.slice(idx + 3) };
   }
-  const unplacedCount = review.department_missing ?? review.home_branch_review_required;
-  if (unplacedCount > 0) {
-    rows.push({ key: "unplaced", label: t("home.review.unplaced"), count: unplacedCount, to: "/people/unplaced" });
-  }
-  if (review.identity_review_required > 0) {
-    rows.push({
-      key: "identity",
-      label: t("home.review.identity"),
-      count: review.identity_review_required,
-      to: "/people",
-      search: { review: "identity" },
-    });
-  }
-  if (review.lifecycle_apply_failed > 0) {
-    rows.push({
-      key: "failed",
-      label: t("home.part.failedActions"),
-      count: review.lifecycle_apply_failed,
-      to: "/people",
-      search: { review: "failed", status: "all" },
-    });
-  }
-  const contractCount = (review.contract_ended ?? 0) + (review.contract_ending_before ?? 0);
-  if (contractCount > 0) {
-    rows.push({
-      key: "contract",
-      label: t("people.lifecycle.action.CONTRACT_RENEWAL"),
-      count: contractCount,
-      to: "/people",
-      search: { review: review.contract_ended > 0 ? "contractPast" : "contractSoon" },
-    });
-  }
-  return rows;
+  return {
+    checkText: row.site && row.context?.worksite_name ? row.site : reason || row.title,
+  };
 }
 
 /**
@@ -105,7 +59,6 @@ function buildPeopleChecks(review: components["schemas"]["EmployeeFacets"]["revi
 export function WorklistLower({
   items,
   asOf,
-  action,
   focusAfter,
   orgNeed,
   canOrgStructure,
@@ -137,7 +90,7 @@ export function WorklistLower({
 
   if (!canDirectory && !canOrg && opsItems.length === 0) return null;
 
-  const peopleChecks = facets.data ? buildPeopleChecks(facets.data.review) : [];
+  const peopleChecks = facets.data ? buildPeopleChecks(facets.data.review, items) : [];
   const activeCount = facets.data ? (statusCount(facets.data.status, "ACTIVE") ?? facets.data.total) : 0;
   const leaveCount = facets.data ? (statusCount(facets.data.status, "ON_LEAVE", "LEAVE") ?? 0) : 0;
   const startingCount = facets.data ? (statusCount(facets.data.status, "PRE_HIRE") ?? 0) : 0;
@@ -160,7 +113,7 @@ export function WorklistLower({
                 {
                   header: t("home.worklist.col.task"),
                   cell: row => (
-                    <strong>
+                    <strong className={s.dateCol}>
                       {t(
                         row.context?.unlock?.exceptionId
                           ? "periodLocks.review.title"
@@ -172,10 +125,39 @@ export function WorklistLower({
                   ),
                 },
                 { header: t("home.worklist.opsCol.scope"), cell: row => row.context?.worksite_name ?? row.site ?? "—" },
-                { header: t("home.worklist.opsCol.state"), cell: row => <DueCell days={row.days_remaining} /> },
-                { header: t("home.inbox.column.due"), wide: true, cell: row => <bdi className="num muted">{shortMonthDay(row.due) ?? "—"}</bdi> },
-                { header: t("home.worklist.opsCol.check"), wide: true, cell: row => (row.site && row.context?.worksite_name ? row.site : row.context?.reason?.trim() || row.title) },
-                { header: t("home.worklist.col.action"), fit: true, cell: row => <div className={s.dateCol}>{recordAction(row, action, undefined, focusAfter)}</div> },
+                {
+                  header: t("home.worklist.opsCol.state"),
+                  cell: row =>
+                    t(
+                      row.kind === "payroll"
+                        ? "home.worklist.opsState.payrollCalculated"
+                        : "home.worklist.opsState.beforeClose",
+                    ),
+                },
+                {
+                  header: t("home.inbox.column.due"),
+                  cell: row => {
+                    const note = splitPayrollNote(row);
+                    if (note.dueText) return <bdi className="num muted">{note.dueText}</bdi>;
+                    const md = shortMonthDay(row.due);
+                    return (
+                      <div className={s.opsDue}>
+                        {md ? <bdi className="num">{md}</bdi> : null}
+                        {row.days_remaining != null ? <DueCell days={row.days_remaining} /> : !md ? "—" : null}
+                      </div>
+                    );
+                  },
+                },
+                {
+                  header: t("home.worklist.opsCol.check"),
+                  wide: true,
+                  cell: row => splitPayrollNote(row).checkText,
+                },
+                {
+                  header: <bdi className="sr-only">{t("home.worklist.col.action")}</bdi>,
+                  fit: true,
+                  cell: row => <div className={s.dateCol}>{recordAction(row, undefined, "home.inbox.open", focusAfter)}</div>,
+                },
               ]}
             />
           ) : (
@@ -202,12 +184,17 @@ export function WorklistLower({
                 columns={[
                   {
                     header: t("home.worklist.peopleCol.item"),
-                    cell: row => (
-                      <div>
-                        <strong className="t-ink">{row.label}</strong>
-                        {row.subLabel ? <WorklistSubLabel>{row.subLabel}</WorklistSubLabel> : null}
-                      </div>
-                    ),
+                    cell: row => {
+                      const label =
+                        row.missingFieldKey && isMessageId(row.missingFieldKey)
+                          ? t(row.labelKey, { field: t(row.missingFieldKey) })
+                          : t(row.labelKey);
+                      return row.indent ? (
+                        <WorklistSubLabel>{label}</WorklistSubLabel>
+                      ) : (
+                        <strong className="t-ink">{label}</strong>
+                      );
+                    },
                   },
                   {
                     header: t("home.worklist.peopleCol.count"),
@@ -215,7 +202,7 @@ export function WorklistLower({
                     cell: row => <bdi className={`${s.dateCol} num t-semibold`}>{t("home.worklist.personCount", { count: row.count })}</bdi>,
                   },
                   {
-                    header: t("home.worklist.col.action"),
+                    header: <bdi className="sr-only">{t("home.worklist.col.action")}</bdi>,
                     fit: true,
                     cell: row => (
                       <Link to={row.to} search={row.search} className={`${buttonClass("secondary", { size: "sm" })} ${s.dateCol}`}>
@@ -233,7 +220,7 @@ export function WorklistLower({
       {canDirectory || canOrg ? (
         <WorklistBandCol>
           <WorklistBandBlock>
-            <PaneHead title={t("home.worklist.headcount")} meta={asOf ? t("home.asOf", { time: fmtDateTime(asOf) }) : undefined} level={3} />
+            <PaneHead title={t("home.worklist.headcount")} meta={asOfDay ? t("home.asOf", { time: asOfDay }) : undefined} level={3} />
             {canDirectory ? (
               facets.data ? (
                 <WorklistStatWrap>

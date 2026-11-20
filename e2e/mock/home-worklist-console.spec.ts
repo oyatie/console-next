@@ -89,6 +89,42 @@ async function setupConsoleSaeonWorklist(page: Page, theme: "light" | "dark" = "
   await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: structure });
   await mockRoute(page, "get", "/api/v1/org-units", { status: 200, json: { items: orgUnits } });
   await mockRoute(page, "get", "/api/v1/org-changes/{id}", { status: 200, json: orgDetail });
+  const leaveMock = saeonUniverse.worklist.items.find(item => item.id === "leave-app-1")!;
+  await mockRoute(page, "get", "/api/v1/approvals/{id}", {
+    status: 200,
+    json: {
+      id: "00000000-0000-4000-8600-000000000006",
+      box: "pending",
+      title: leaveMock.title,
+      summary: leaveMock.subject,
+      document_no: "AP-2026-0192",
+      decision_refusal: null,
+      source: { key: "leave", label: t("home.attention.approvals") },
+      status: { key: "IN_APPROVAL" },
+      requester: { id: "00000000-0000-4000-8000-000000000021", name: leaveMock.subject.split(" · ")[0]! },
+      effective_date: "2026-12-01",
+      requested_at: "2026-11-09T09:00:00+09:00",
+      facts: [{ key: "period", label: t("approvals.field.effectiveDate"), value: "2026-12-01 ~ 2027-11-30" }],
+      route: [
+        {
+          id: "00000000-0000-4000-8700-000000000101",
+          role_key: "hr",
+          assignee: `${saeonUniverse.adminActor.name} · ${saeonUniverse.adminActor.unit}`,
+          state: "current",
+        },
+      ],
+      viewer: { kind: "org_change", id: "00000000-0000-4000-8600-000000000006" },
+      body: [],
+      revision: 1,
+      fingerprint: "leave-fp-1",
+      consequence: "final",
+      opinion_max: 500,
+      my_actions: {
+        kind: "approve",
+        reject: { consequence: "request_ends", reason_domain: "org_change_reject" },
+      },
+    },
+  });
   await mockRoute(page, "get", "/api/v1/me/action-inbox/reference", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/me/action-inbox/done", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/me/action-inbox", request => {
@@ -133,12 +169,33 @@ for (const width of [1440, 390]) {
         await expect(worklist.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true }).locator("tbody tr")).toHaveCount(2);
 
         if (width === 1440) {
+          await expect(page.getByRole("heading", { level: 1, name: t("home.inbox.title"), exact: true })).toBeVisible();
+          await expect(worklist.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveCount(0);
+          const orgRow = queueTable.locator('tbody tr[data-id="OC-2026-0418"]');
+          const leaveRow = queueTable.locator('tbody tr[data-id="leave-app-1"]');
+          await expect(orgRow.getByRole("button", { name: t("uiWorklist.reject"), exact: true })).toBeVisible();
+          await expect(orgRow.getByRole("button", { name: t("uiWorklist.approve"), exact: true })).toBeVisible();
+          await expect(leaveRow.getByRole("button", { name: t("uiWorklist.reject"), exact: true })).toBeVisible();
+          await expect(leaveRow.getByRole("button", { name: t("uiWorklist.approve"), exact: true })).toBeVisible();
+          await expect(queueTable.getByRole("button", { name: t("home.inbox.snooze") })).toHaveCount(0);
+
+          const peopleTable = worklist.getByRole("table", { name: t("home.worklist.peopleCheck"), exact: true });
+          await expect(peopleTable).toContainText(
+            t("home.worklist.peopleSubMissing", { field: t("empCard.reg.item.address") }),
+          );
+          await expect(peopleTable).toContainText(t("home.worklist.personCount", { count: 353 }));
+          await expect(peopleTable).toContainText(t("home.worklist.probationEnding"));
+          await expect(peopleTable).toContainText(t("home.worklist.personCount", { count: 43 }));
+
           const recordPane = page.locator('aside[data-pane="record"]');
           await expect(recordPane).toBeVisible();
           await expect(page.locator("[data-decision-pane]")).toBeVisible();
           await expect(recordPane).toContainText(t("home.worklist.personCount", { count: 18 }));
           await expect(recordPane).toContainText(t("home.worklist.personCount", { count: 30 }));
           await expect(recordPane).toContainText(t("orgPropose.diff.chip.dissolved"));
+          await expect(recordPane).toContainText(t("home.worklist.impact.title"));
+          await expect(recordPane).toContainText(t("home.worklist.personCount", { count: 12 }));
+          await expect(recordPane).not.toContainText(t("home.inbox.activity.empty"));
           const stripFits = await page
             .locator('[data-deadline-strip] [role="region"]')
             .evaluate(el => el.scrollWidth <= el.clientWidth);
@@ -326,6 +383,10 @@ test("Console decision refusal and step-up flow surface accessible error feedbac
     status: 403,
     json: failure("forbidden"),
   });
+  await mockRoute(page, "post", "/api/v1/approvals/{id}/decision", {
+    status: 403,
+    json: failure("forbidden"),
+  });
   await mockRoute(page, "post", "/api/v1/auth/passkey/login/start", {
     status: 403,
     json: failure("forbidden"),
@@ -337,6 +398,12 @@ test("Console decision refusal and step-up flow surface accessible error feedbac
     await decisionPane.getByRole("button", { name: t("uiWorklist.approve"), exact: true }).click();
     await expect(page.locator('aside[data-pane="record"]').getByRole("alert")).toBeVisible();
     await expectAxe(page, "Console decision refusal /");
+
+    await page.goto("/?sel=leave-app-1");
+    await expect(decisionPane).toBeVisible();
+    await decisionPane.getByRole("button", { name: t("uiWorklist.approve"), exact: true }).click();
+    await expect(page.locator('aside[data-pane="record"]').getByRole("alert")).toBeVisible();
+    await expectAxe(page, "Console approval_run decision refusal /");
 
     await page.goto("/inbox?sel=OC-2026-0418");
     await expect(page.locator("[data-decision-pane]")).toBeVisible();

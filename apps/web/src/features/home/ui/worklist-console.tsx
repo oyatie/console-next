@@ -17,7 +17,7 @@ import { Worklist } from "../../../ui/patterns/worklist";
 import { WorklistSearchField, WorklistSegmentBar } from "../../../ui/patterns/worklist-parts";
 import { SortControl } from "../../../ui/sort-control/sort-control";
 import { isAttentionFilter, SNOOZED, type AttentionInboxItem, type AttentionInboxResponse, type InboxView } from "../domain/inbox-filter";
-import { ALL_OPTIONAL_WORKLIST_COLUMNS, isStatutoryDeadline, sortWorklistItems, worklistItemHref, type OptionalWorklistColumn, type WorklistSortField } from "../domain/inline-decide";
+import { ALL_OPTIONAL_WORKLIST_COLUMNS, hasDistinctTaskLead, isStatutoryDeadline, sortWorklistItems, worklistItemHref, type OptionalWorklistColumn, type WorklistSortField } from "../domain/inline-decide";
 import { reasonLines, taskTitleKey, type RowAction } from "./grouped-queue";
 import { DoneList, ReferenceList } from "./inbox-finished";
 import { UnavailableBanners } from "./inbox-queue";
@@ -151,7 +151,9 @@ export function WorklistConsole({
     const taskTitle = t(taskTitleKey(item));
     return [taskTitle, item.title, item.ref, item.site, item.who, ...reasonLines(item)].filter(Boolean).join(" ").toLowerCase().includes(normalizedQuery);
   });
-  const sortedItems = sortWorklistItems(filteredItems, sort.field, sort.direction, item => t(taskTitleKey(item)));
+  const sortedItems = sortWorklistItems(filteredItems, sort.field, sort.direction, item =>
+    hasDistinctTaskLead(item) ? item.title.trim() : t(taskTitleKey(item)),
+  );
   const visibleRows = mode === "home" ? sortedItems.slice(0, homeRowLimit) : sortedItems;
   const visibleIdSet = new Set(visibleRows.map(row => row.id));
   const activeCheckedIds = new Set([...checkedIds].filter(id => visibleIdSet.has(id)));
@@ -170,7 +172,10 @@ export function WorklistConsole({
       ?.focus();
   const snooze: RowAction = item => item.snooze?.allowed ? <SnoozeMenu item={item} presets={first?.snooze_presets ?? []} asOf={first?.as_of} /> : null;
   const unavailable = [...new Map(pages.flatMap(page => page.unavailable).map(part => [part.source, part])).values()];
-  const isInlineApproval = selectedItem?.links?.[0]?.kind === "org_change" && selectedItem.context?.command === "approve";
+  const isInlineApproval =
+    selectedItem !== undefined &&
+    ((selectedItem.links?.[0]?.kind === "org_change" && selectedItem.context?.command === "approve") ||
+      (selectedItem.kind === "approval" && selectedItem.links?.[0]?.kind === "approval_run"));
   const openHref = selectedItem ? worklistItemHref(selectedItem) : null;
   const scheduleItems = mode === "home" ? sortWorklistItems(unfilteredItems, "due", "asc").slice(0, homeRowLimit) : unfilteredItems;
   const checkedRows = visibleRows.filter(row => activeCheckedIds.has(row.id));
@@ -190,9 +195,6 @@ export function WorklistConsole({
         title, titleId,
         asOf: mode === "inbox" && !loading && !inSetup && !meError && !inbox.error && first?.as_of
           ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time>
-          : undefined,
-        actions: mode === "home" && showControls && !loading && !inbox.error
-          ? <Link to="/inbox" className={buttonClass("ghost", { size: "sm" })}>{t("home.inbox.viewInbox")}</Link>
           : undefined,
       }}
       tabs={mode === "inbox" && !loading && !meError && !inSetup ? <InboxTabs view={view} /> : undefined}
@@ -247,7 +249,6 @@ export function WorklistConsole({
                 action={action}
                 inlineRowAction={inlineRowAction ? (item, onSelectReject) => inlineRowAction(item, titleId, onSelectReject) : undefined}
                 focusAfter={titleId}
-                extra={snooze}
                 moreCount={remainingCount}
                 morePending={inbox.isFetchingNextPage}
                 onMore={() => {

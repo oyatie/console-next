@@ -1,17 +1,53 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, Check } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
 import { DueCell } from "../../../ui/due-cell/due-cell";
 import { WorklistMoreBar, WorklistReason } from "../../../ui/patterns/worklist-parts";
 import { Table, type Column } from "../../../ui/table";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
-import { isStatutoryDeadline, shortMonthDay, type OptionalWorklistColumn } from "../domain/inline-decide";
+import {
+  hasDistinctTaskLead,
+  inlineDecisionClass,
+  isInlineApprovalDecidable,
+  isStatutoryDeadline,
+  shortMonthDay,
+  type OptionalWorklistColumn,
+} from "../domain/inline-decide";
 import { reasonLines, recordAction, taskTitleKey, type RowAction } from "./grouped-queue";
 import s from "./worklist-console.module.css";
 import { CompactSubject } from "./worklist-subject";
+
+function taskLead(item: AttentionInboxItem): string {
+  return hasDistinctTaskLead(item) ? item.title.trim() : t(taskTitleKey(item));
+}
+
+function resolveRowAction(
+  item: AttentionInboxItem,
+  customInline: ReactNode,
+  action: RowAction | undefined,
+  focusAfter: string | undefined,
+): ReactNode {
+  if (customInline) return customInline;
+  const link = item.links?.[0];
+  if (link?.kind === "approval_run") {
+    return (
+      <Link to="/approvals/$approvalId" params={{ approvalId: link.id }} className={buttonClass("secondary", { size: "sm" })}>
+        {t("home.inbox.open")}
+      </Link>
+    );
+  }
+  const suppressCommand =
+    item.can_decide === false && item.links?.[0]?.kind === "org_change" && item.context?.command === "approve";
+  if (suppressCommand) return recordAction(item, undefined, undefined, focusAfter);
+  const decisionClass = inlineDecisionClass(item);
+  if (decisionClass !== null && !isInlineApprovalDecidable(item)) return recordAction(item, action, undefined, focusAfter);
+  return recordAction(item, undefined, "home.inbox.open", focusAfter);
+}
 
 function consoleReasonText(item: AttentionInboxItem, taskLabel: string): string {
   const direct = item.context?.reason?.trim();
@@ -28,22 +64,8 @@ function consoleReasonText(item: AttentionInboxItem, taskLabel: string): string 
 }
 
 export function ConsoleWorklistTable({
-  items,
-  selected,
-  onSelect,
-  onOpen,
-  checkedIds,
-  onToggleCheck,
-  onToggleIds,
-  onToggleAll,
-  shownCols,
-  action,
-  inlineRowAction,
-  focusAfter,
-  extra,
-  moreCount,
-  morePending,
-  onMore,
+  items, selected, onSelect, onOpen, checkedIds, onToggleCheck, onToggleIds, onToggleAll,
+  shownCols, action, inlineRowAction, focusAfter, extra, moreCount, morePending, onMore,
 }: {
   items: readonly AttentionInboxItem[];
   selected?: string;
@@ -153,7 +175,7 @@ export function ConsoleWorklistTable({
       header: t("home.worklist.col.remaining"),
       fit: true,
       card: "status",
-      cell: item => <DueCell days={item.days_remaining} />,
+      cell: item => <DueCell days={item.days_remaining} fill />,
     },
   ];
 
@@ -201,7 +223,7 @@ export function ConsoleWorklistTable({
         }
         return (
           <div className={s.taskCell}>
-            <strong>{taskTitle}</strong>
+            <strong>{taskLead(item)}</strong>
           </div>
         );
       },
@@ -245,12 +267,7 @@ export function ConsoleWorklistTable({
         const group = foldedMap.get(item.id);
         if (group && group[0]?.id === item.id && !expanded.has(item.id)) return null;
         const customInline = inlineRowAction?.(item, () => onSelect?.(item.id));
-        const suppressCommandFallback =
-          item.links?.[0]?.kind === "org_change" &&
-          item.context?.command === "approve" &&
-          item.can_decide === false;
-        const fallbackAction =
-          customInline ?? recordAction(item, suppressCommandFallback ? undefined : action, undefined, focusAfter);
+        const fallbackAction = resolveRowAction(item, customInline, action, focusAfter);
         const snoozeControl = extra?.(item);
         if (!fallbackAction && !snoozeControl) return null;
         return (
@@ -273,7 +290,6 @@ export function ConsoleWorklistTable({
         selected={selected}
         onSelect={handleSelect}
         onOpen={handleOpen}
-        tone={row => (row.dueTone === "danger" ? "danger" : undefined)}
         columns={columns}
       />
       {moreCount && moreCount > 0 && onMore ? (

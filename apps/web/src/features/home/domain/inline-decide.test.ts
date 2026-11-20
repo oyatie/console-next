@@ -8,6 +8,7 @@ import {
   isStatutoryDeadline,
   shortMonthDay,
   sortWorklistItems,
+  worklistItemHref,
 } from "./inline-decide";
 
 const sample = (extra: Partial<AttentionInboxItem> = {}): AttentionInboxItem => ({
@@ -147,4 +148,15 @@ test("sortWorklistItems and inlineDecisionClass guard invalid dates, null titles
 
   const missingLinks = { ...sample({ id: "no-links" }), links: undefined as unknown as AttentionInboxItem["links"] };
   expect(inlineDecisionClass(missingLinks)).toBeNull();
+});
+
+test("approval_run items participate in inline approval decisions and canonical hrefs while respecting can_decide", () => {
+  const leaveApproval = sample({
+    id: "leave-app-1",
+    kind: "approval",
+    links: [{ kind: "approval_run", id: "run-123" }],
+  });
+  expect(isInlineApprovalDecidable(leaveApproval)).toBe(true);
+  expect(isInlineApprovalDecidable({ ...leaveApproval, can_decide: false })).toBe(false);
+  expect(worklistItemHref(leaveApproval)).toBe("/approvals/run-123");
 });

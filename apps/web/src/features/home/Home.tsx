@@ -26,11 +26,11 @@ export function Home({
 }: HomeProps = {}) {
   const me = useQuery(meQuery);
   const read = useContext(InboxReadContext);
-  const title = me.data ? t("home.greeting", { name: me.data.display_name }) : t("home.title");
+  const baselineTitle = me.data ? t("home.greeting", { name: me.data.display_name }) : t("home.title");
   const content = (
     <WorklistConsole
       mode="home"
-      title={title}
+      title={t("home.inbox.title")}
       titleId="home-title"
       setup={props.setup}
       setupPending={props.setupPending}
@@ -42,7 +42,7 @@ export function Home({
       orgNeed={orgNeed}
       canOrgStructure={canOrgStructure}
       baseline={() => (
-        <Page floorplan="P-03" head={{ title, titleId: "home-title" }}>
+        <Page floorplan="P-03" head={{ title: baselineTitle, titleId: "home-title" }}>
           {receipt}
           <InboxQueue {...props} preview />
         </Page>

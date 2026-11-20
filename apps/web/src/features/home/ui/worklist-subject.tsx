@@ -6,10 +6,12 @@ import { reasonLabel } from "../../../lib/reason-codes";
 import { domainText, periodText } from "../../../reference/periods/present";
 import { WorklistSubject } from "../../../ui/patterns/worklist-parts";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
+import { hasDistinctTaskLead } from "../domain/inline-decide";
 import s from "./worklist-console.module.css";
 
 export function CompactSubject({ item }: { item: AttentionInboxItem }) {
   const { unlock, insurance, lifecycle, request, correction } = item.context ?? {};
+  const leadShownInTask = hasDistinctTaskLead(item);
   const primary =
     item.kind === "privacy_request"
       ? (item.context?.privacy_kinds ?? [])
@@ -19,7 +21,9 @@ export function CompactSubject({ item }: { item: AttentionInboxItem }) {
         ? `${domainText(unlock.domain)} ${periodText(unlock)}`
         : request
           ? codeText(`requests.kind.${request.kind}`, t("requests.kind.OTHER"))
-          : item.title;
+          : leadShownInTask
+            ? ""
+            : item.title;
 
   const facts = correction
     ? [t(`entityRecord.corrections.status.${correction.status}`), item.who]
@@ -38,19 +42,30 @@ export function CompactSubject({ item }: { item: AttentionInboxItem }) {
           ? [label(LIFECYCLE_EVENT, lifecycle.action_kind), fmtDate(lifecycle.effective_date)]
           : [];
 
-  const meta = [
+  const drafterName = item.context?.drafter?.trim();
+  const drafterIncluded = Boolean(drafterName && item.site?.includes(drafterName));
+  const detail = [
     ...facts,
-    item.context?.drafter ? t("home.decide.drafter", { name: item.context.drafter }) : undefined,
+    drafterName && !drafterIncluded ? t("home.decide.drafter", { name: drafterName }) : undefined,
     item.site,
-    item.ref && item.ref !== primary ? item.ref : undefined,
+    item.ref && item.ref !== primary && !item.site ? item.ref : undefined,
   ]
     .filter(Boolean)
     .join(" · ");
 
+  const fullTitle = [primary, detail].filter(Boolean).join(" · ");
+  if (!primary && !detail) return null;
+
   return (
-    <WorklistSubject title={meta ? `${primary} · ${meta}` : primary}>
-      <bdi className={`${s.subjectPrimary} t-ink t-medium`}>{primary}</bdi>
-      {meta ? <bdi className={`${s.subjectMeta} t-faint t-xs`}>{meta}</bdi> : null}
+    <WorklistSubject title={fullTitle}>
+      {primary ? (
+        <>
+          <bdi className={`${s.subjectPrimary} t-ink t-medium`}>{primary}</bdi>
+          {detail ? <bdi className={`${s.subjectMeta} t-faint t-xs`}>{detail}</bdi> : null}
+        </>
+      ) : (
+        <bdi className={`${s.subjectPrimary} t-ink`}>{detail}</bdi>
+      )}
     </WorklistSubject>
   );
 }

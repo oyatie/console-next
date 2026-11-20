@@ -237,62 +237,30 @@ test("Console Worklist gates lower band reads for unpermitted users", () => {
 test("Console WorklistLower renders headcount (ON_LEAVE/LEAVE fallback and PRE_HIRE), people checks, and entity meters when permitted", () => {
   state.access = {
     is_ops: false,
-    entries: [
-      {
-        domain: "hr_basic",
-        level: "view",
-        enforcement: "ENFORCED",
-        scope: { kind: "TENANT", include_descendants: true },
-        grant_id: "g-1",
-        role_id: "r-1",
-        role_name_ko: "HR",
-        valid_from: "2026-01-01T00:00:00Z",
-        caveats: [],
-      },
-    ],
+    entries: [{ domain: "hr_basic", level: "view", enforcement: "ENFORCED", scope: { kind: "TENANT", include_descendants: true }, grant_id: "g-1", role_id: "r-1", role_name_ko: "HR", valid_from: "2026-01-01T00:00:00Z", caveats: [] }],
   };
   state.facets = {
     total: 2054,
-    status: [
-      { value: "ACTIVE", count: 2054 },
-      { value: "LEAVE", count: 37 },
-      { value: "PRE_HIRE", count: 25 },
-    ],
-    employment_type: [],
-    legal_entity: [],
-    workplace: [],
-    review: {
-      identity_review_required: 0,
-      register_review_required: 546,
-      home_branch_review_required: 0,
-      lifecycle_apply_failed: 0,
-      contract_ended: 0,
-      contract_ending_before: 42,
-    },
+    status: [{ value: "ACTIVE", count: 2054 }, { value: "LEAVE", count: 37 }, { value: "PRE_HIRE", count: 25 }],
+    employment_type: [], legal_entity: [], workplace: [],
+    review: { identity_review_required: 0, register_review_required: 546, home_branch_review_required: 0, lifecycle_apply_failed: 0, contract_ended: 0, contract_ending_before: 42 },
   };
   state.structure = {
-    tenant_name: "Saeon",
-    phase: "OPERATING",
-    unplaced: [],
-    entities: [
-      {
-        id: "ent-1",
-        kind: "LEGAL_ENTITY",
-        name: "Saeon Precision",
-        version: 1,
-        headcount: 757,
-        direct_headcount: 0,
-        dispatched_headcount: 0,
-        chips: [],
-        children: [{ id: "wp-1", kind: "WORKPLACE", name: "Plant 1", version: 1, headcount: 757, direct_headcount: 0, dispatched_headcount: 0, chips: [], children: [] }],
-      },
-    ],
+    tenant_name: "Saeon", phase: "OPERATING", unplaced: [],
+    entities: [{
+      id: "ent-1", kind: "LEGAL_ENTITY", name: "Saeon Precision", version: 1, headcount: 757, direct_headcount: 0, dispatched_headcount: 0, chips: [],
+      children: [{ id: "wp-1", kind: "WORKPLACE", name: "Plant 1", version: 1, headcount: 757, direct_headcount: 0, dispatched_headcount: 0, chips: [], children: [] }],
+    }],
   };
 
   const markup = renderNode("/", <Home canOrgStructure />);
   expect(state.reads).toContain("/api/v1/employees/facets");
   expect(state.reads).toContain("/api/v1/org-structure");
+  expect(markup).toMatch(new RegExp(`<h1\\b[^>]*id="home-title"[^>]*>${t("home.inbox.title")}</h1>`));
+  expect(markup).not.toContain(t("home.inbox.viewInbox"));
   expect(markup).toContain(t("home.worklist.headcount"));
+  expect(markup).toContain(t("home.asOf", { time: "2026-11-10" }));
+  expect(markup).toContain(t("home.worklist.contractEnding"));
   expect(markup).toContain("2,054");
   expect(markup).toContain("37");
   expect(markup).toContain("25");

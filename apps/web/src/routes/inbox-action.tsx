@@ -12,6 +12,11 @@ import {
   OrgChangeWorklistBody,
   OrgChangeWorklistDecisionFooter,
 } from "../features/org/ui/org-change-worklist";
+import {
+  ApprovalRunInlineRowActions,
+  ApprovalRunWorklistBody,
+  ApprovalRunWorklistDecisionFooter,
+} from "./inbox-action-approval";
 import { SelfBindingReview } from "../features/people/ui/self-binding-review";
 import { UnlockReview } from "../features/periods/ui/unlock-review";
 import { DueCell } from "../ui/due-cell/due-cell";
@@ -34,34 +39,58 @@ export function consoleInlineRowAction(
   onSelectForReject: () => void,
 ) {
   const link = item.links[0];
-  if (!isInlineApprovalDecidable(item) || link?.kind !== "org_change") return null;
-  return (
-    <OrgChangeInlineRowActions
-      id={link.id}
-      focusAfter={focusAfter}
-      onSelectForReject={onSelectForReject}
-    />
-  );
+  if (!isInlineApprovalDecidable(item)) return null;
+  if (link?.kind === "org_change") {
+    return (
+      <OrgChangeInlineRowActions
+        id={link.id}
+        focusAfter={focusAfter}
+        onSelectForReject={onSelectForReject}
+      />
+    );
+  }
+  if (link?.kind === "approval_run") {
+    return (
+      <ApprovalRunInlineRowActions
+        id={link.id}
+        focusAfter={focusAfter}
+        onSelectForReject={onSelectForReject}
+      />
+    );
+  }
+  return null;
 }
 
 export function consoleRecordBody(item: AttentionInboxItem) {
   const link = item.links[0];
-  if (link?.kind !== "org_change") return null;
   const md = shortMonthDay(item.due);
-  return (
-    <OrgChangeWorklistBody
-      id={link.id}
-      dueLabel={
-        item.days_remaining != null || md ? (
-          <>
-            {item.due ? <bdi className="num">{t("home.inbox.column.due")} {md ?? fmtDate(item.due)}</bdi> : null}
-            {item.days_remaining != null ? <DueCell days={item.days_remaining} /> : null}
-          </>
-        ) : undefined
-      }
-      trailing={<InboxActivity id={item.id} />}
-    />
-  );
+  const dueLabel =
+    item.days_remaining != null || md ? (
+      <>
+        {item.due ? <bdi className="num">{t("home.inbox.column.due")} {md ?? fmtDate(item.due)}</bdi> : null}
+        {item.days_remaining != null ? <DueCell days={item.days_remaining} /> : null}
+      </>
+    ) : undefined;
+
+  if (link?.kind === "org_change") {
+    return (
+      <OrgChangeWorklistBody
+        id={link.id}
+        dueLabel={dueLabel}
+        trailing={<InboxActivity id={item.id} padded hideEmpty />}
+      />
+    );
+  }
+  if (link?.kind === "approval_run") {
+    return (
+      <ApprovalRunWorklistBody
+        id={link.id}
+        dueLabel={dueLabel}
+        trailing={<InboxActivity id={item.id} padded hideEmpty />}
+      />
+    );
+  }
+  return null;
 }
 
 export function consoleRecordFooter(
@@ -70,14 +99,27 @@ export function consoleRecordFooter(
   onDecided: () => void,
 ) {
   const link = item.links[0];
-  if (link?.kind !== "org_change") return null;
-  return (
-    <OrgChangeWorklistDecisionFooter
-      id={link.id}
-      canDecide={item.can_decide}
-      cannotReason={item.cannot_reason}
-      focusAfter={focusAfter}
-      onDecided={onDecided}
-    />
-  );
+  if (link?.kind === "org_change") {
+    return (
+      <OrgChangeWorklistDecisionFooter
+        id={link.id}
+        canDecide={item.can_decide}
+        cannotReason={item.cannot_reason}
+        focusAfter={focusAfter}
+        onDecided={onDecided}
+      />
+    );
+  }
+  if (link?.kind === "approval_run") {
+    return (
+      <ApprovalRunWorklistDecisionFooter
+        id={link.id}
+        canDecide={item.can_decide}
+        cannotReason={item.cannot_reason}
+        focusAfter={focusAfter}
+        onDecided={onDecided}
+      />
+    );
+  }
+  return null;
 }

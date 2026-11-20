@@ -1,22 +1,17 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { APPROVAL_ROLE, ORG_CHANGE_KIND, label } from "../../../lib/labels";
 import { freshOnOpen } from "../../../lib/query";
-import { focusSoon } from "../../../lib/react/announce";
-import { useCommand } from "../../../lib/react/command";
-import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
-import { ORG_READS, unitsQuery } from "../../../reference/org/api";
+import { shortMonthDay } from "../../../lib/pure/kst-day";
+import { unitsQuery } from "../../../reference/org/api";
 import { describeOp } from "../../../reference/org/present";
-import { Button } from "../../../ui/button/button";
 import { ChangeRows } from "../../../ui/change-rows/change-rows";
 import { Chip } from "../../../ui/chip";
-import { commitLabel } from "../../../ui/composer/actions";
-import { DecisionPane } from "../../../ui/decision-pane/decision-pane";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { PaneHead } from "../../../ui/pane-grid/pane-grid";
 import {
@@ -26,9 +21,8 @@ import {
   WorklistSummaryHead,
   type WorklistChainStep,
 } from "../../../ui/patterns/worklist-parts";
-import { shortMonthDay } from "../../../lib/pure/kst-day";
-import { changeCommands, changeQuery } from "../api";
-import s from "./org-change-worklist.module.css";
+import { changeQuery } from "../api";
+export { OrgChangeInlineRowActions, OrgChangeWorklistDecisionFooter } from "./org-change-worklist-actions";
 
 type Detail = components["schemas"]["OrgChangeDetail"];
 type Op = components["schemas"]["OrgProposalOp"];
@@ -107,46 +101,7 @@ function proposalDiffRows(
   });
 }
 
-/** Inline Console row actions (reject opens the decision pane; approve decides the pending step directly). */
-export function OrgChangeInlineRowActions({
-  id,
-  focusAfter = "inbox-title",
-  onSelectForReject,
-}: {
-  id: string;
-  focusAfter?: string;
-  onSelectForReject: () => void;
-}) {
-  const detail = freshOnOpen(useQuery({ ...changeQuery(id), refetchOnMount: "always" }));
-  const step = detail.data?.approvalSteps.find(st => st.decision === "PENDING");
-  const role = step ? label(APPROVAL_ROLE, step.roleKey) : "";
-  const approve = useCommand({
-    run: () => changeCommands(id).decide(step!.id, "APPROVED"),
-    invalidates: ["/api/v1/me/action-inbox", ...ORG_READS],
-    onSuccess: () => focusSoon(focusAfter),
-    announce: () => t("org.change.decided.APPROVED", { role }),
-  });
-  const disabled = !detail.isSuccess || detail.isPending || detail.isFetching || approve.isPending || !step;
-  return (
-    <div className={s.rowActions}>
-      <Button size="sm" disabled={disabled} onClick={onSelectForReject}>
-        {t("uiWorklist.reject")}
-      </Button>
-      <Button
-        variant="primary"
-        size="sm"
-        pending={approve.isPending}
-        disabled={disabled}
-        onClick={() => approve.mutate(undefined)}
-      >
-        {commitLabel({ kind: "orgChange", mode: "approve" })}
-      </Button>
-      <CommandError error={approve.error} />
-    </div>
-  );
-}
-
-/** Console side-pane body for an organization-change inbox item (`KeyValue`, `ChangeRows`, and approval chain). */
+/** Console side-pane body for an organization-change inbox item (`KeyValue`, `ChangeRows`, impact, and approval chain). */
 export function OrgChangeWorklistBody({
   id,
   dueLabel,
@@ -232,71 +187,35 @@ export function OrgChangeWorklistBody({
                 />
               </WorklistSection>
             ) : null}
-            {trailing ? <WorklistPadded>{trailing}</WorklistPadded> : null}
+            {d.headcount > 0 || d.preflight ? (
+              <WorklistSection>
+                <PaneHead title={t("home.worklist.impact.title")} level={3} />
+                <WorklistPadded>
+                  <KeyValue
+                    items={[
+                      {
+                        key: "headcount",
+                        label: t("home.worklist.impact.transfer"),
+                        value: t("home.worklist.personCount", { count: d.headcount }),
+                      },
+                      ...(d.preflight && d.preflight.dependentsTotal > 0
+                        ? [
+                            {
+                              key: "dependents",
+                              label: t("home.worklist.impact.dependents"),
+                              value: t("home.worklist.impact.dependentCount", { count: d.preflight.dependentsTotal }),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
+                </WorklistPadded>
+              </WorklistSection>
+            ) : null}
+            {trailing}
           </div>
         );
       }}
     </QueryState>
-  );
-}
-
-/** Pinned side-pane decision footer for an organization-change approval item. */
-export function OrgChangeWorklistDecisionFooter({
-  id,
-  canDecide = true,
-  cannotReason,
-  focusAfter = "inbox-title",
-  onDecided,
-}: {
-  id: string;
-  canDecide?: boolean;
-  cannotReason?: string | null;
-  focusAfter?: string;
-  onDecided?: () => void;
-}) {
-  const [opinion, setOpinion] = useState("");
-  const detail = freshOnOpen(useQuery({ ...changeQuery(id), refetchOnMount: "always" }));
-  const step = detail.data?.approvalSteps.find(st => st.decision === "PENDING");
-  const role = step ? label(APPROVAL_ROLE, step.roleKey) : "";
-
-  const decide = useCommand({
-    run: (decision: "APPROVED" | "REJECTED") =>
-      changeCommands(id).decide(step!.id, decision, opinion.trim() || undefined),
-    invalidates: ["/api/v1/me/action-inbox", ...ORG_READS],
-    onSuccess: () => {
-      setOpinion("");
-      onDecided?.();
-      focusSoon(focusAfter);
-    },
-    announce: (_out, decision) =>
-      t(decision === "APPROVED" ? "orgChange.decided.APPROVED" : "orgChange.decided.REJECTED", {
-        role,
-        code: detail.data?.code ?? id,
-      }),
-  });
-
-  if (canDecide === false) {
-    return (
-      <div className="muted t-sm">
-        {cannotReason ?? t("org.change.approvals.drafterCannot")}
-      </div>
-    );
-  }
-
-  if (detail.isError || detail.isPending || !step) {
-    return null;
-  }
-
-  return (
-    <div className={s.footerWrap}>
-      <CommandError error={decide.error} />
-      <DecisionPane
-        opinion={opinion}
-        onOpinionChange={setOpinion}
-        pending={decide.isPending ? (decide.variables === "REJECTED" ? "reject" : "approve") : undefined}
-        onApprove={() => decide.mutate("APPROVED")}
-        onReject={() => decide.mutate("REJECTED")}
-      />
-    </div>
   );
 }

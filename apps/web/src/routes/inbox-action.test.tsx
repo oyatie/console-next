@@ -6,7 +6,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { readIdentity } from "../lib/query";
 import { commitLabel } from "../ui/composer/actions";
 import type { AttentionInboxItem } from "../features/home/domain/inbox-filter";
-import { consoleInlineRowAction, consoleRecordBody, inboxAction } from "./inbox-action";
+import { consoleInlineRowAction, consoleRecordBody, consoleRecordFooter, inboxAction } from "./inbox-action";
 
 vi.mock("@tanstack/react-query", async original => ({
   ...(await original<typeof import("@tanstack/react-query")>()),
@@ -45,6 +45,36 @@ vi.mock("@tanstack/react-query", async original => ({
           approvalSteps: [{ id: "s-1", stepOrder: 1, roleKey: "executive", decision: "PENDING", decidedByName: null }],
           settlementItems: [],
           events: [],
+        },
+        isPending: false,
+        isFetching: false,
+        isError: false,
+        isFetchedAfterMount: true,
+        isSuccess: true,
+      };
+    }
+    if (path === "/api/v1/approvals/{id}") {
+      return {
+        data: {
+          id: "run-action-test",
+          box: "pending",
+          title: "Leave approval",
+          summary: "Lee · 12-01 ~ 2027-11-30",
+          document_no: "AP-2026-0192",
+          decision_refusal: null,
+          source: { key: "leave", label: "Leave" },
+          status: { key: "IN_APPROVAL" },
+          requester: { id: "u-1", name: "Lee" },
+          requested_at: "2026-11-09T09:00:00+09:00",
+          facts: [],
+          route: [{ id: "st-1", role_key: "hr", assignee: "Moon", state: "current" }],
+          viewer: { kind: "org_change", id: "run-action-test" },
+          body: [],
+          revision: 1,
+          fingerprint: "fp-1",
+          consequence: "final",
+          opinion_max: 500,
+          my_actions: { kind: "approve", reject: { consequence: "request_ends", reason_domain: "org_change_reject" } },
         },
         isPending: false,
         isFetching: false,
@@ -92,4 +122,29 @@ test("inboxAction, consoleInlineRowAction, and consoleRecordBody enforce can_dec
   expect(bodyMarkup).toContain("Unit Three");
   expect(bodyMarkup).toContain(t("home.worklist.personCount", { count: 12 }));
   expect(bodyMarkup).toContain(t("orgPropose.diff.chip.dissolved"));
+
+  const leaveItem: AttentionInboxItem = {
+    id: "leave-app-1",
+    kind: "approval",
+    lane: "turn",
+    title: "Leave approval",
+    ref: "",
+    urg: "wait",
+    due: "2026-11-15T09:00:00+09:00",
+    dueTone: "warn",
+    done: false,
+    days_remaining: 5,
+    can_decide: true,
+    links: [{ kind: "approval_run", id: "run-action-test" }],
+  };
+  const leaveInline = renderWithQc(consoleInlineRowAction(leaveItem, "home-title", vi.fn()));
+  expect(leaveInline).toContain(t("uiWorklist.reject"));
+  expect(leaveInline).toContain(t("uiWorklist.approve"));
+  expect(consoleInlineRowAction({ ...leaveItem, can_decide: false }, "home-title", vi.fn())).toBeNull();
+
+  const leaveBody = renderWithQc(consoleRecordBody(leaveItem));
+  expect(leaveBody).toContain("AP-2026-0192");
+  expect(leaveBody).toContain("Lee");
+  const leaveFooterDenied = renderWithQc(consoleRecordFooter({ ...leaveItem, can_decide: false }, "home-title", vi.fn()));
+  expect(leaveFooterDenied).toContain(t("approvals.viewer.unavailable"));
 });

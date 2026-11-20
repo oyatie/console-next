@@ -24,9 +24,9 @@ const INLINE_DECIDABLE_CLASSES: readonly ClassRule[] = [
   {
     id: "approval",
     matches: item =>
-      item.links?.[0]?.kind === "org_change" &&
-      item.context?.command === "approve" &&
-      item.can_decide !== false,
+      item.can_decide !== false &&
+      ((item.links?.[0]?.kind === "org_change" && item.context?.command === "approve") ||
+        (item.kind === "approval" && item.links?.[0]?.kind === "approval_run")),
   },
   {
     id: "effectuate",
@@ -62,6 +62,14 @@ export function isInlineApprovalDecidable(item: AttentionInboxItem): boolean {
 
 export function isStatutoryDeadline(item: AttentionInboxItem): boolean {
   return item.due_basis === "statutory";
+}
+
+/** True when `item.title` carries the specific task/subject lead rather than a generic ref or structured label. */
+export function hasDistinctTaskLead(item: AttentionInboxItem): boolean {
+  const title = item.title?.trim();
+  if (!title || title === item.ref) return false;
+  if (item.kind === "privacy_request" || item.context?.unlock || item.context?.request) return false;
+  return true;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -165,6 +173,8 @@ export function worklistItemHref(item: AttentionInboxItem): string | null {
   switch (link.kind) {
     case "org_change":
       return `/org/changes/${encodeURIComponent(link.id)}`;
+    case "approval_run":
+      return `/approvals/${encodeURIComponent(link.id)}`;
     case "employee":
       return `/people/${encodeURIComponent(link.id)}`;
     case "privacy_request":

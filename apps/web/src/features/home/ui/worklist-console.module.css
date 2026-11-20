@@ -23,6 +23,14 @@
   transform: rotate(90deg);
 }
 
+.subjectCell {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 .subjectPrimary {
   white-space: nowrap;
 }
@@ -30,6 +38,13 @@
 .subjectMeta {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opsDue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
   white-space: nowrap;
 }
 
@@ -46,6 +61,10 @@
 }
 
 @media (--phone) {
+  .subjectCell {
+    flex-wrap: wrap;
+  }
+
   .subjectPrimary,
   .subjectMeta {
     white-space: normal;

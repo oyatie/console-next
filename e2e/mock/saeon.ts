@@ -453,7 +453,7 @@ export function saeonWorklistInbox(): S["ActionInboxResponse"] & {
       done: false,
       lane: "turn",
       days_remaining: daysRemaining,
-      can_decide: isPrimaryApproval ? true : undefined,
+      can_decide: isPrimaryApproval || isSecondaryApproval ? true : undefined,
       snooze: row.kind === "approval" ? { allowed: false, reason: "blocks_others" } : { allowed: true },
       context: {
         ...(isPrimaryApproval
@@ -464,7 +464,13 @@ export function saeonWorklistInbox(): S["ActionInboxResponse"] & {
             }
           : { reason: row.reason }),
         ...(isAttendanceClose ? { worksite_name: saeonUniverse.entities[0]!.workplaces[1]!.name } : {}),
-        ...(kind === "register_review" ? { register: { missing_fields: ["address"] } } : {}),
+        ...(kind === "register_review"
+          ? {
+              register: { missing_fields: ["address"] },
+              review_count: saeonUniverse.counts.missingAddress,
+            }
+          : {}),
+        ...(row.id.startsWith("probation-") ? { review_count: saeonUniverse.counts.probationEnding } : {}),
         ...(orgUnits[0] && isPrimaryApproval ? { worksite_name: undefined } : {}),
       },
     };
