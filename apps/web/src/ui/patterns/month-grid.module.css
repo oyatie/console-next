@@ -1,0 +1,18 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.summary {
+  min-width: 0;
+  border-block-end: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+.gridWrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+}
+
+.bottom {
+  min-width: 0;
+  background: var(--surface);
+}

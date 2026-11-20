@@ -1,0 +1,68 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.column {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: min(100%, var(--card-w));
+  margin-inline: auto;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.periodBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--border);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.periodMeta {
+  color: var(--steel);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero {
+  padding: var(--space-4);
+  border-block-end: 1px solid var(--border);
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+
+.stats,
+.contextStats {
+  min-width: 0;
+  border-block-end: 1px solid var(--border);
+}
+
+.ledgers {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .column {
+  border-inline: 1px solid var(--border);
+}
+
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) .column {
+    max-width: 100%;
+    border-inline: 0;
+  }
+}

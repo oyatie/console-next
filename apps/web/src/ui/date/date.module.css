@@ -11,6 +11,11 @@
 /* Outside the bounds: still visible, so the user learns the date exists, but inert and neutral (the bounds line says why). */
 .preset[aria-disabled="true"], .preset[aria-disabled="true"]:hover { background: var(--muted); color: var(--steel); cursor: not-allowed; }
 .input { width: auto; min-width: 10.5rem; }
+:where([data-experience]:not([data-experience="baseline"])) .date,
+:where([data-experience]:not([data-experience="baseline"])) .row { min-width: 0; max-width: 100%; }
+:where([data-experience]:not([data-experience="baseline"])) .inputRow { display: flex; flex: 1 1 0%; max-width: 100%; min-width: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .input { flex: 1 1 0%; min-width: 0; width: 100%; }
+:where([data-experience]:not([data-experience="baseline"])) .calendarButton { flex: none; }
 .calendarButton { display: inline-grid; place-items: center; min-width: var(--target-touch); min-height: var(--target-touch); border: 1px solid var(--control-border); border-radius: var(--radius-lg); background: var(--surface); color: var(--ink); cursor: pointer; }
 .calendarButton:hover { background: var(--muted); }
 .calendarButton:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

@@ -1,0 +1,167 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { useContext, type ReactNode } from "react";
+import { useActiveExperienceId } from "../../experience/dom";
+import { QueryState } from "../../lib/react/query-state";
+import { queryView, type ReadState } from "../../lib/react/query-view";
+import { PageReadGate } from "../../reference/authz/ui/access-gate";
+import { Band } from "../band/band";
+import { Button } from "../button/button";
+import type { MenuAction } from "../menu/action-menu";
+import { PageHead, type PageHeadProps } from "../page-head/page-head";
+import { PageHeadActions } from "../page-head/page-head-actions";
+import type { Floorplan } from "../page/floorplan";
+import { PageHeadingLevel, PagePhoneHeader, PageScope } from "../page/page-scope";
+import { shown } from "../shown";
+import type { ReadLayout } from "../skeleton/skeleton";
+import { useScreenStatusBar } from "../status-bar/status-bar-store";
+import type { PatternId } from "./patterns";
+import s from "./pattern-shell.module.css";
+
+/** Shared page-head slot contract used across Page Patterns `P3`–`P7` and `P12`–`P13`. */
+export type PatternHead = Pick<
+  PageHeadProps,
+  "title" | "titleId" | "crumbs" | "meta" | "filters" | "tools" | "asOf" | "actions"
+> & {
+  primary?: MenuAction;
+  commands?: { label: string; items: readonly MenuAction[] };
+};
+
+/** Shared base fields inherited by every pattern contract in `P3`–`P7`, `P12`–`P13`. */
+export type PatternBaseProps = {
+  /** Primary read state governing `PageReadGate` refusal and `QueryState` loading/error recovery. */
+  q: ReadState;
+  /** Command-strip or header specification (`title`, optional `crumbs`/`meta`/`filters`/`tools`/`actions`). */
+  head: PatternHead;
+  /** Optional view/route tabs placed above `PageReadGate` so navigation remains reachable on `403` refusal. */
+  tabs?: ReactNode;
+  /** Optional transient notices or command receipts inside `QueryState`. */
+  notes?: ReactNode;
+  /** Optional trailing footer region beneath the primary body. */
+  foot?: ReactNode;
+  /** Optional redundant summary facts omitted by this arrangement (`*OptionalRegions`). */
+  facts?: ReactNode;
+  /** Sheets or dialogs mounted inside `PageReadGate` and outside `QueryState`. */
+  overlays?: ReactNode;
+  /** Status-bar segments published while mounted in an experience with a status bar. */
+  statusSegments?: Parameters<typeof useScreenStatusBar>[0];
+  /** Temporary Classic (`baseline`) fallback renderer kept until Phase 7. */
+  baseline?: () => ReactNode;
+};
+
+/**
+ * Shared frame orchestrating `PageScope`, `PageHeadingLevel`, `PagePhoneHeader`, `PageReadGate`, `QueryState`,
+ * `data-detail` gating via `queryView(q)`, `useScreenStatusBar`, and `baseline` fallback across `P3`–`P7`, `P12`–`P13`.
+ */
+export function PatternShell({
+  pattern,
+  floorplan,
+  q,
+  head,
+  tabs,
+  overlays,
+  queryLayout,
+  detailActive = false,
+  phoneHeadAware = false,
+  statusSegments,
+  baseline,
+  children,
+}: {
+  pattern: PatternId;
+  floorplan: Floorplan;
+  q: ReadState;
+  head: PatternHead;
+  tabs?: ReactNode;
+  overlays?: ReactNode;
+  queryLayout: ReadLayout;
+  detailActive?: boolean;
+  phoneHeadAware?: boolean;
+  statusSegments?: Parameters<typeof useScreenStatusBar>[0];
+  baseline?: () => ReactNode;
+  children: () => ReactNode;
+}) {
+  const experience = useActiveExperienceId();
+  const useBaselineFallback = Boolean(baseline && experience === "baseline");
+  useScreenStatusBar(useBaselineFallback ? null : statusSegments);
+  const scope = useContext(PageScope);
+  const level = useContext(PageHeadingLevel);
+  const { shellOwnsH1 } = useContext(PagePhoneHeader);
+
+  if (useBaselineFallback && baseline) return <>{baseline()}</>;
+
+  const secondary = scope.embedded || level === 2;
+  const Root = scope.landmark || secondary ? "div" : "main";
+  const view = queryView(q);
+  const showDetail = detailActive && Boolean(q.data) && (view === "ready" || view === "stale" || view === "offline");
+
+  return (
+    <PageScope value={{ landmark: true, embedded: true }}>
+      <Root
+        className={`${s.frame}${secondary ? "" : ` ${s.standalone}`}`}
+        data-pattern={pattern}
+        data-floorplan={floorplan}
+        data-detail={showDetail || undefined}
+      >
+        {tabs}
+        <PageReadGate
+          q={q}
+          head={available => {
+            const hasExtra =
+              available &&
+              Boolean(
+                head.crumbs ||
+                  head.meta ||
+                  head.filters ||
+                  head.tools ||
+                  head.asOf ||
+                  head.primary ||
+                  head.actions ||
+                  head.commands,
+              );
+            if (phoneHeadAware && shellOwnsH1 && !hasExtra) return null;
+            if (!available && secondary) return null;
+            const headingLevel = phoneHeadAware && shellOwnsH1 ? 2 : secondary ? 2 : 1;
+            return (
+              <Band className={s.head}>
+                <PageHeadingLevel value={headingLevel}>
+                  <PageHead
+                    band
+                    title={head.title}
+                    titleId={head.titleId}
+                    crumbs={available ? head.crumbs : undefined}
+                    meta={available ? head.meta : undefined}
+                    asOf={available ? head.asOf : undefined}
+                    filters={available && shown(head.filters) ? <div className={s.inlineFilters}>{head.filters}</div> : undefined}
+                    tools={available && shown(head.tools) ? head.tools : undefined}
+                    primary={
+                      available &&
+                      head.primary && (
+                        <Button variant="primary" onClick={head.primary.onAction}>
+                          {head.primary.label}
+                        </Button>
+                      )
+                    }
+                    actions={
+                      available && (head.actions || head.commands) ? (
+                        <>
+                          {head.actions}
+                          {head.commands && <PageHeadActions {...head.commands} />}
+                        </>
+                      ) : undefined
+                    }
+                  />
+                </PageHeadingLevel>
+              </Band>
+            );
+          }}
+        >
+          {overlays}
+          <PageHeadingLevel value={2}>
+            <QueryState q={q} layout={queryLayout}>
+              {children}
+            </QueryState>
+          </PageHeadingLevel>
+        </PageReadGate>
+      </Root>
+    </PageScope>
+  );
+}

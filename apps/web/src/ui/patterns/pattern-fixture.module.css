@@ -1,0 +1,240 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.bandPad {
+  padding: var(--space-3) var(--space-4);
+}
+
+.railSection {
+  border-block-end: 1px solid var(--border);
+}
+
+.railBody {
+  padding: var(--space-2) var(--space-3);
+}
+
+.docKicker {
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.docTitle {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--fw-strong);
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+.docMeta {
+  font-size: var(--text-xs);
+  color: var(--steel);
+  font-variant-numeric: tabular-nums;
+}
+
+.docSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.docSectionHead {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-strong);
+  color: var(--ink);
+}
+
+.docBodyText {
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.decisionPad {
+  padding: var(--space-3);
+  border-block-end: 1px solid var(--border);
+}
+
+.linkList {
+  display: flex;
+  flex-direction: column;
+}
+
+.linkItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--row-h);
+  padding: var(--space-1-5) var(--space-3);
+  border-block-end: 1px solid var(--border-soft);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.linkItem:hover {
+  background: var(--surface-hover);
+}
+
+.bottomSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  min-width: 0;
+}
+
+.bottomCol {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bottomCol + .bottomCol {
+  border-inline-start: 1px solid var(--border-strong);
+}
+
+.totalsGrid {
+  display: grid;
+  grid-template-columns: minmax(calc(var(--space-6) * 6), 1.3fr) minmax(0, 4fr);
+  align-items: stretch;
+  min-width: 0;
+}
+
+.stageCell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-inline-end: 1px solid var(--border);
+  min-width: 0;
+}
+
+.stageLabel {
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.previewCols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.previewCol {
+  min-width: 0;
+}
+
+.previewCol + .previewCol {
+  border-inline-start: 1px solid var(--border);
+}
+
+.netBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.heroFigure {
+  font-size: var(--text-2xl);
+  font-weight: var(--fw-strong);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: var(--lh-tight);
+}
+
+.meterBand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-block-start: 1px solid var(--border);
+}
+
+.meterLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.formSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-block-end: 1px solid var(--border);
+}
+
+.dateHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.datePair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.identityHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.identityName {
+  font-size: var(--text-xl);
+  font-weight: var(--fw-strong);
+  color: var(--ink);
+}
+
+.identitySub {
+  font-size: var(--text-sm);
+  color: var(--steel);
+}
+
+.hubRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--row-h);
+  padding: var(--space-2) var(--space-4);
+  border-block-start: 1px solid var(--border-soft);
+  font-size: var(--text-sm);
+}
+
+.hubRow:first-child {
+  border-block-start: 0;
+}
+
+@media (--below-wide) {
+  .bottomSplit,
+  .totalsGrid,
+  .previewCols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bottomCol + .bottomCol,
+  .previewCol + .previewCol {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--border);
+  }
+
+  .stageCell {
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--border);
+  }
+}
+
+@media (--phone) {
+  .datePair[data-baseline-stack] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

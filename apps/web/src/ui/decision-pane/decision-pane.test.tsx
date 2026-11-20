@@ -22,7 +22,11 @@ test("DecisionPane renders side-by-side reject, optional return, and primary app
       onApprove={() => undefined}
       onReject={() => undefined}
       onReturn={() => undefined}
+      multiline
+      consequence="Next approver will be notified."
     />,
   );
   expect(threeWay).toContain(t("uiWorklist.return"));
+  expect(threeWay).toContain("<textarea");
+  expect(threeWay).toContain("Next approver will be notified.");
 });

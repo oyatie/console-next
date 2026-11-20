@@ -13,15 +13,19 @@
 
 .input {
   width: 100%;
-  height: var(--field-h);
-  padding: 0 var(--space-2);
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  font-size: var(--text-sm);
+  min-width: 0;
 }
 
-.input[aria-invalid="true"] {
+.area {
+  width: 100%;
+  min-width: 0;
+  min-height: calc(var(--space-6) * 2.5);
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+}
+
+.input[aria-invalid="true"],
+.area[aria-invalid="true"] {
   border-color: var(--danger-solid);
 }
 
@@ -35,6 +39,13 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+
+.consequence {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--steel);
+  line-height: var(--lh-base);
 }
 
 .secondaryBtn {

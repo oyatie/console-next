@@ -31,8 +31,19 @@ test("an unknown or unbuilt pattern fails", () => {
 });
 
 test("the screens drawn through built patterns declare them, and no other route declares a pattern", () => {
-  expect(Object.keys(router.routesById), "the review routes are registered").toContain("/app/_review/patterns/list-record");
-  expect(Object.keys(router.routesById), "the worklist review route is registered").toContain("/app/_review/patterns/worklist");
+  for (const id of [
+    "list-record",
+    "worklist",
+    "record",
+    "document-decision",
+    "month-grid",
+    "register-totals",
+    "form",
+    "phone-hub",
+    "phone-statement",
+  ]) {
+    expect(Object.keys(router.routesById), `the ${id} review route is registered`).toContain(`/app/_review/patterns/${id}`);
+  }
   const declared = Object.fromEntries(routes.flatMap(route => route.options.staticData?.pattern ? [[route.fullPath, route.options.staticData.pattern]] : []));
   expect(declared).toEqual({
     "/": "worklist",
@@ -40,5 +51,12 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/people": "list-record",
     "/_review/patterns/list-record": "list-record",
     "/_review/patterns/worklist": "worklist",
+    "/_review/patterns/record": "record",
+    "/_review/patterns/document-decision": "document-decision",
+    "/_review/patterns/month-grid": "month-grid",
+    "/_review/patterns/register-totals": "register-totals",
+    "/_review/patterns/form": "form",
+    "/_review/patterns/phone-hub": "phone-hub",
+    "/_review/patterns/phone-statement": "phone-statement",
   });
 });
