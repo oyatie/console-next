@@ -13,6 +13,7 @@ use console_hr_domain::import::rrn_value::{Rrn, RrnVault, SealedRrn, VaultError}
 use uuid::Uuid;
 
 pub const MASTER_KEY_ENV: &str = "CONSOLE_RRN_MASTER_KEY";
+pub const KEYRING_ENV: &str = "CONSOLE_RRN_KEYRING";
 pub const HMAC_KEY_ENV: &str = "CONSOLE_RRN_HMAC_KEY";
 const HMAC_KEY_VERSION: i16 = 1;
 
@@ -67,19 +68,16 @@ impl EnvRrnVault {
     /// When only one is set, or one is malformed.
     pub fn from_env() -> Result<Option<Self>, String> {
         use crate::config::secret_files::secret_env;
-        let master = secret_env(MASTER_KEY_ENV)
-            .map_err(|err| err.to_string())?
-            .map(EnvelopeCredentialCipher::from_owned_base64_key);
+        let keyring = secret_env(KEYRING_ENV).map_err(|err| err.to_string())?;
+        let master = secret_env(MASTER_KEY_ENV).map_err(|err| err.to_string())?;
         let hmac = secret_env(HMAC_KEY_ENV).map_err(|err| err.to_string())?;
-        match (master, hmac) {
+        let cipher = EnvelopeCredentialCipher::from_owned_env_values(keyring, master)
+            .map_err(|_| format!("{MASTER_KEY_ENV}/{KEYRING_ENV} is invalid"))?;
+        match (cipher, hmac) {
             (None, None) => Ok(None),
-            (Some(master), Some(hmac)) => Self::from_cipher(
-                master.map_err(|_| format!("{MASTER_KEY_ENV} is not a base64 32-byte key"))?,
-                &hmac,
-            )
-            .map(Some),
+            (Some(cipher), Some(hmac)) => Self::from_cipher(cipher, &hmac).map(Some),
             _ => Err(format!(
-                "set both {MASTER_KEY_ENV} and {HMAC_KEY_ENV}, or neither"
+                "set both {MASTER_KEY_ENV}/{KEYRING_ENV} and {HMAC_KEY_ENV}, or neither"
             )),
         }
     }
@@ -109,6 +107,10 @@ impl RrnVault for EnvRrnVault {
             dek_nonce: sealed.dek_nonce,
             key_version: sealed.key_version,
             masked: rrn.masked(),
+            alg_id: sealed.alg_id,
+            kek_id: sealed.kek_id,
+            msg_id: sealed.msg_id,
+            commitment_tag: sealed.commitment_tag,
         })
     }
 
@@ -129,6 +131,10 @@ impl RrnVault for EnvRrnVault {
             dek_wrapped: sealed.dek_wrapped.clone(),
             dek_nonce: sealed.dek_nonce.clone(),
             key_version: sealed.key_version,
+            alg_id: sealed.alg_id.clone(),
+            kek_id: sealed.kek_id.clone(),
+            msg_id: sealed.msg_id.clone(),
+            commitment_tag: sealed.commitment_tag.clone(),
         };
         let plain = self
             .cipher
@@ -210,6 +216,10 @@ mod tests {
             dek_nonce: credential.dek_nonce,
             key_version: credential.key_version,
             masked: rrn.masked(),
+            alg_id: credential.alg_id,
+            kek_id: credential.kek_id,
+            msg_id: credential.msg_id,
+            commitment_tag: credential.commitment_tag,
         };
         assert_eq!(sealed.key_version, 1);
         assert_eq!(vault.open(org, &sealed).unwrap(), rrn);

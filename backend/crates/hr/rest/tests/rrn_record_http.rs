@@ -47,6 +47,10 @@ impl RrnVault for Vault {
             dek_nonce: vec![0; 24],
             key_version: 1,
             masked: r.masked(),
+            alg_id: None,
+            kek_id: None,
+            msg_id: None,
+            commitment_tag: None,
         })
     }
     fn blind_index(&self, r: &Rrn) -> Vec<u8> {

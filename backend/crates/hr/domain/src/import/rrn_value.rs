@@ -90,6 +90,10 @@ pub struct SealedRrn {
     pub dek_nonce: Vec<u8>,
     pub key_version: i16,
     pub masked: String,
+    pub alg_id: Option<String>,
+    pub kek_id: Option<String>,
+    pub msg_id: Option<Vec<u8>>,
+    pub commitment_tag: Option<Vec<u8>>,
 }
 
 /// The vault failed (no key, wrong key, tampered row). Carries no value.

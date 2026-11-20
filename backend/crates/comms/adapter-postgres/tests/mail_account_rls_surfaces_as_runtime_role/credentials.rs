@@ -12,9 +12,13 @@ async fn password_versions_survive_independent_replacements(owner_pool: PgPool) 
     let cipher = test_cipher();
     let account_id = EmailAccountId::new();
     let store = PgMailStore::new(rt_pool);
-    for (smtp_version, imap_version, replace_smtp, replace_imap) in
-        [(1, 1, true, true), (2, 1, true, false), (2, 2, false, true)]
-    {
+    for (smtp_version, imap_version, replace_smtp, replace_imap) in [
+        (1, 1, true, true),
+        (2, 1, true, false),
+        (2, 2, false, true),
+        (3, 2, true, false),
+        (3, 3, false, true),
+    ] {
         let mut upsert = upsert_for(org, account_id, actor, &cipher);
         for (secret, suite, field, plaintext) in [
             (
@@ -69,26 +73,24 @@ async fn password_versions_survive_independent_replacements(owner_pool: PgPool) 
             .unwrap();
         assert_eq!(stored.smtp_password.key_version, smtp_version);
         assert_eq!(stored.imap_password.key_version, imap_version);
-        // Once both are current, persisted envelopes authenticate on both paths.
-        if smtp_version == 2 && imap_version == 2 {
-            for (secret, field, expected) in [
-                (&stored.smtp_password, "smtp_password", b"smtp-secret"),
-                (&stored.imap_password, "imap_password", b"imap-secret"),
-            ] {
-                assert_eq!(
-                    cipher
-                        .open_bytes(
-                            secret,
-                            Aad {
-                                org_id: &org.to_string(),
-                                account_id: &account_id.to_string(),
-                                field
-                            }
-                        )
-                        .unwrap(),
-                    expected
-                );
-            }
+        // Every step (including mixed-version partial updates) authenticates both persisted envelopes.
+        for (secret, field, expected) in [
+            (&stored.smtp_password, "smtp_password", b"smtp-secret"),
+            (&stored.imap_password, "imap_password", b"imap-secret"),
+        ] {
+            assert_eq!(
+                cipher
+                    .open_bytes(
+                        secret,
+                        Aad {
+                            org_id: &org.to_string(),
+                            account_id: &account_id.to_string(),
+                            field
+                        }
+                    )
+                    .unwrap(),
+                expected
+            );
         }
     }
 }
