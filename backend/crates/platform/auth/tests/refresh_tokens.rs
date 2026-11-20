@@ -239,5 +239,8 @@ async fn rotation_past_family_absolute_ttl_revokes_the_family(pool: PgPool) {
     assert_eq!(live_tokens, 0);
 }
 
+#[path = "refresh_tokens/v2_security.rs"]
+mod v2_security;
+
 /// One migrator for every `#[sqlx::test]` in this file (expanded once, not per test).
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../db/migrations");

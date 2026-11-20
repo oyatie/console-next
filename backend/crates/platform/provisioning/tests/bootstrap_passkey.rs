@@ -34,7 +34,7 @@ async fn seed_user(pool: &PgPool) -> uuid::Uuid {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn redemption_can_be_rolled_back_with_its_source_lock(pool: PgPool) {
     let user_id = seed_user(&pool).await;
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
     let issued = store
         .issue_for_zero_credential_user(&pool, None, user_id, OrgId::one(), now, Duration::hours(1))
@@ -109,7 +109,7 @@ async fn redemption_can_be_rolled_back_with_its_source_lock(pool: PgPool) {
 /// state must reject the same still-open OTP without recording accepted proof.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn versioned_first_enrollment_redeem_rejects_stale_or_prior_enrollment(pool: PgPool) {
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
     let user_id = seed_user(&pool).await;
     let source_id = Uuid::new_v4();
@@ -258,7 +258,7 @@ async fn issued_otp_uses_post_lock_database_time(pool: PgPool) {
         .unwrap();
     let stale_request_time = db_before - Duration::hours(2);
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(&pool, None, user_id, OrgId::one(), stale_request_time, ttl)
         .await
         .unwrap();
@@ -291,7 +291,7 @@ async fn issued_otp_uses_post_lock_database_time(pool: PgPool) {
         (stored.0, serde_json::json!(stored.1))
     );
     assert!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(&pool, issue.token.as_str(), db_after)
             .await
             .is_ok()
@@ -302,7 +302,7 @@ async fn issued_otp_uses_post_lock_database_time(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn redeem_claims_once_then_registration_consumes_source(pool: PgPool) {
     let user_id = seed_user(&pool).await;
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
 
     let issue = store
@@ -375,7 +375,7 @@ async fn redeem_claims_once_then_registration_consumes_source(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn wrong_guess_does_not_consume_the_otp(pool: PgPool) {
     let user_id = seed_user(&pool).await;
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
 
     let issue = store
@@ -419,7 +419,7 @@ async fn wrong_guess_does_not_consume_the_otp(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn otp_expiry_is_enforced_on_redeem(pool: PgPool) {
     let user_id = seed_user(&pool).await;
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
 
     let issue = store
@@ -491,7 +491,7 @@ async fn otp_expiry_is_enforced_on_redeem(pool: PgPool) {
 /// registers a passkey.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn cold_start_otp_seeded_at_boot_signs_in_then_dies_on_passkey_registration(pool: PgPool) {
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
 
     // The migration keeps the Cold Start Admin (SUPER_ADMIN) user row...
@@ -541,7 +541,7 @@ async fn cold_start_otp_seeded_at_boot_signs_in_then_dies_on_passkey_registratio
 /// passkey exists.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn seed_cold_start_credential_is_gated_and_idempotent(pool: PgPool) {
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
 
     let admin_id = platform_admin(&pool).await;
@@ -628,7 +628,7 @@ async fn cold_start_seed_uses_post_lock_database_time(pool: PgPool) {
     let stale_request_time = db_before - Duration::hours(2);
 
     assert!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .seed_cold_start_credential(&pool, "clock-bound-coldstart", ttl, stale_request_time)
             .await
             .unwrap()
@@ -657,7 +657,7 @@ async fn cold_start_seed_uses_post_lock_database_time(pool: PgPool) {
     .unwrap();
     assert_eq!(audit_time, stored.1);
     assert!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(&pool, "clock-bound-coldstart", db_after)
             .await
             .is_ok()
@@ -669,24 +669,24 @@ async fn cold_start_seed_uses_post_lock_database_time(pool: PgPool) {
 /// window. Regression for the seeder's expiry-blind "open credential" gate.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn seed_cold_start_credential_reseeds_after_expiry(pool: PgPool) {
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
 
     // Seed a short-lived credential.
     let first = store
         .seed_cold_start_credential(&pool, "expiring-otp", Duration::hours(1), now)
-        .await
-        .unwrap();
-    assert!(first, "first seed must insert");
-    let admin_id = platform_admin(&pool).await;
+        .await;
+    assert!(first.unwrap(), "first seed must insert");
+    let (old_family, admin_id) = (uuid::Uuid::new_v4(), platform_admin(&pool).await);
+    let hash = store.hash_otp_for_test("expiring-otp").unwrap();
     let source_id: uuid::Uuid = sqlx::query_scalar(
-        "SELECT id FROM auth_bootstrap_credentials WHERE user_id=$1 AND token_hash=digest('expiring-otp','sha256')",
+        "SELECT id FROM auth_bootstrap_credentials WHERE user_id=$1 AND token_hash=$2",
     )
     .bind(admin_id)
+    .bind(hash)
     .fetch_one(&pool)
     .await
     .unwrap();
-    let old_family = uuid::Uuid::new_v4();
     sqlx::query(
         "INSERT INTO auth_refresh_token_families(id,user_id,created_at,org_id) VALUES($1,$2,$3,$4)",
     )
@@ -751,7 +751,7 @@ async fn seed_cold_start_credential_reseeds_after_expiry(pool: PgPool) {
 /// function, as the runtime role, and the OTP must redeem for that new admin.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn seed_cold_start_creates_the_platform_admin_on_an_empty_database(pool: PgPool) {
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
     // Recreate the baseline state: no cold-start admin, no bootstrap credentials.
     sqlx::raw_sql(

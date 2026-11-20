@@ -135,7 +135,7 @@ async fn enrollment_session(owner: &PgPool) -> (axum::Router, String, Uuid) {
     .await
     .unwrap();
     let rt = runtime_role_pool(owner).await;
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &rt,
             None,

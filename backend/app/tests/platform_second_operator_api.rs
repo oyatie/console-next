@@ -27,7 +27,7 @@ async fn api_only_second_operator_enrolment_enables_erase_and_ops_recovery_and_r
     let service = build_app_router(rt.clone());
     let cold_otp = "cold-start-op-a-secret-2026";
     assert!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .seed_cold_start_credential(
                 &rt,
                 cold_otp,
