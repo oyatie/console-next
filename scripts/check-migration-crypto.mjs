@@ -127,6 +127,51 @@ function decodeUnicodeLiteral(raw, escChar) {
   return out;
 }
 
+function skipWsAndComments(sql, i, line) {
+  const len = sql.length;
+  while (i < len) {
+    const ch = sql[i];
+    if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n" || ch === "\f" || ch === "\v") {
+      if (ch === "\n") line++;
+      i++;
+    } else if (ch === "-" && sql[i + 1] === "-") {
+      i += 2;
+      while (i < len && sql[i] !== "\n") i++;
+    } else if (ch === "/" && sql[i + 1] === "*") {
+      i += 2;
+      let depth = 1;
+      while (i < len && depth > 0) {
+        if (sql[i] === "/" && sql[i + 1] === "*") { depth++; i += 2; }
+        else if (sql[i] === "*" && sql[i + 1] === "/") { depth--; i += 2; }
+        else { if (sql[i] === "\n") line++; i++; }
+      }
+    } else {
+      break;
+    }
+  }
+  return { i, line };
+}
+
+function pushStringToken(tokens, value, line, endLine, extra = null) {
+  const prev = tokens[tokens.length - 1];
+  const beforePrev = tokens[tokens.length - 2];
+  const prevIsLangName =
+    beforePrev?.type === "ident" && !beforePrev.quoted && beforePrev.value === "language";
+  if (
+    !extra?.dollarTag &&
+    prev?.type === "string" &&
+    !prev.dollarTag &&
+    !prev.unicodeLiteral &&
+    !prevIsLangName &&
+    line > prev.endLine
+  ) {
+    prev.value += value;
+    prev.endLine = endLine;
+    return;
+  }
+  tokens.push(extra ? { type: "string", value, line, endLine, ...extra } : { type: "string", value, line, endLine });
+}
+
 /** Character-level SQL lexer tracking 1-based line numbers and isolating `$tag$...$tag$` literals. */
 export function tokenizeSql(sql, lineOffset = 0) {
   const tokens = [];
@@ -135,44 +180,52 @@ export function tokenizeSql(sql, lineOffset = 0) {
   const len = sql.length;
 
   while (i < len) {
+    const skipped = skipWsAndComments(sql, i, line);
+    if (skipped.i !== i) {
+      i = skipped.i;
+      line = skipped.line;
+      continue;
+    }
     const ch = sql[i];
-    if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n" || ch === "\f" || ch === "\v") {
-      if (ch === "\n") line++;
-      i++;
-      continue;
-    }
-    if (ch === "-" && sql[i + 1] === "-") {
-      i += 2;
-      while (i < len && sql[i] !== "\n") i++;
-      continue;
-    }
-    if (ch === "/" && sql[i + 1] === "*") {
-      i += 2;
-      let depth = 1;
-      while (i < len && depth > 0) {
-        if (sql[i] === "/" && sql[i + 1] === "*") { depth++; i += 2; }
-        else if (sql[i] === "*" && sql[i + 1] === "/") { depth--; i += 2; }
-        else { if (sql[i] === "\n") line++; i++; }
-      }
-      continue;
-    }
     if ((ch === "E" || ch === "e") && sql[i + 1] === "'") {
       const startLine = line;
       const res = readEscapeString(sql, i);
       line += res.lines;
       i = res.next;
-      tokens.push({ type: "string", value: res.value, line: startLine });
+      pushStringToken(tokens, res.value, startLine, line);
       continue;
     }
     if ((ch === "U" || ch === "u") && sql[i + 1] === "&" && sql[i + 2] === "'") {
       const startLine = line;
       const res = readDelimited(sql, i + 2, "'");
       line += res.lines;
+      let endLine = line;
       i = res.next;
+      let raw = res.value;
+      while (true) {
+        const afterWs = skipWsAndComments(sql, i, line);
+        if (afterWs.line > endLine && sql[afterWs.i] === "'") {
+          const cont = readDelimited(sql, afterWs.i, "'");
+          raw += cont.value;
+          line = afterWs.line + cont.lines;
+          endLine = line;
+          i = cont.next;
+        } else {
+          break;
+        }
+      }
       let escChar = "\\";
-      const uesc = sql.slice(i).match(/^(\s+UESCAPE\s+)'([^'])'/i);
-      if (uesc) { escChar = uesc[2]; line += countNewlines(uesc[1]); i += uesc[0].length; }
-      tokens.push({ type: "string", value: decodeUnicodeLiteral(res.value, escChar), line: startLine });
+      const afterWs = skipWsAndComments(sql, i, line);
+      if (sql.slice(afterWs.i, afterWs.i + 7).toLowerCase() === "uescape") {
+        const afterUesc = skipWsAndComments(sql, afterWs.i + 7, afterWs.line);
+        if (sql[afterUesc.i] === "'" && afterUesc.i + 2 < len && sql[afterUesc.i + 1] !== "'" && sql[afterUesc.i + 2] === "'") {
+          escChar = sql[afterUesc.i + 1];
+          i = afterUesc.i + 3;
+          line = afterUesc.line;
+          endLine = line;
+        }
+      }
+      pushStringToken(tokens, decodeUnicodeLiteral(raw, escChar), startLine, endLine, { unicodeLiteral: true });
       continue;
     }
     if (ch === "'" || ch === '"') {
@@ -180,11 +233,11 @@ export function tokenizeSql(sql, lineOffset = 0) {
       const res = readDelimited(sql, i, ch);
       line += res.lines;
       i = res.next;
-      tokens.push(
-        ch === "'"
-          ? { type: "string", value: res.value, line: startLine }
-          : { type: "ident", value: res.value.toLowerCase(), quoted: true, line: startLine },
-      );
+      if (ch === "'") {
+        pushStringToken(tokens, res.value, startLine, line);
+      } else {
+        tokens.push({ type: "ident", value: res.value.toLowerCase(), quoted: true, line: startLine });
+      }
       continue;
     }
     if (ch === "$") {
@@ -196,7 +249,7 @@ export function tokenizeSql(sql, lineOffset = 0) {
         const closeIdx = sql.indexOf(tag, bodyStart);
         const body = closeIdx === -1 ? sql.slice(bodyStart) : sql.slice(bodyStart, closeIdx);
         line += countNewlines(body);
-        tokens.push({ type: "string", value: body, dollarTag: tag, line: startLine });
+        pushStringToken(tokens, body, startLine, line, { dollarTag: tag });
         i = closeIdx === -1 ? len : closeIdx + tag.length;
         continue;
       }
@@ -213,7 +266,7 @@ export function tokenizeSql(sql, lineOffset = 0) {
       continue;
     }
     const two = sql.slice(i, i + 2);
-    if (two === "||" || two === "=>" || two === "::") {
+    if (two === "||" || two === "=>" || two === "::" || two === ":=") {
       tokens.push({ type: "op", value: two, line });
       i += 2;
       continue;
@@ -286,6 +339,27 @@ function evalStringExpr(tokens, start = 0, end = tokens.length) {
 
   if (end - start === 1 && tokens[start].type === "string") return { value: tokens[start].value, line: tokens[start].line };
 
+  if (
+    tokens[start].type === "ident" &&
+    !tokens[start].quoted &&
+    tokens[start].value === "cast" &&
+    start + 3 < end &&
+    tokens[start + 1].type === "punct" &&
+    tokens[start + 1].value === "(" &&
+    findMatchingCloseParen(tokens, start + 1, end) === end - 1
+  ) {
+    let castDepth = 0;
+    for (let i = start + 2; i < end - 1; i++) {
+      const t = tokens[i];
+      if (t.type === "punct" && t.value === "(") castDepth++;
+      else if (t.type === "punct" && t.value === ")") castDepth--;
+      else if (castDepth === 0 && t.type === "ident" && !t.quoted && t.value === "as") {
+        return evalStringExpr(tokens, start + 2, i);
+      }
+    }
+    return null;
+  }
+
   const fnIdx =
     start + 2 < end && tokens[start].type === "ident" && tokens[start + 1].type === "punct" && tokens[start + 1].value === "." && tokens[start + 2].type === "ident"
       ? start + 2
@@ -316,14 +390,18 @@ function evalStringExpr(tokens, start = 0, end = tokens.length) {
   return null;
 }
 
+function isNamedArgOp(tok) {
+  return tok?.type === "op" && (tok.value === "=>" || tok.value === ":=");
+}
+
 function resolveAlgTokens(args, positionalIndex) {
   for (const arg of args) {
-    if (arg.length >= 3 && arg[0].type === "ident" && NAMED_ALG_PARAMS.has(arg[0].value) && arg[1].type === "op" && arg[1].value === "=>") {
+    if (arg.length >= 3 && arg[0].type === "ident" && NAMED_ALG_PARAMS.has(arg[0].value) && isNamedArgOp(arg[1])) {
       return arg.slice(2);
     }
   }
   const positional = args[positionalIndex] ?? [];
-  return positional.some((t) => t.type === "op" && t.value === "=>") ? [] : positional;
+  return positional.some((t) => isNamedArgOp(t)) ? [] : positional;
 }
 
 /** Scan a single SQL migration file for banned or weak cryptographic calls. */
@@ -336,13 +414,25 @@ export function scanMigrationSql(file, sql, lineOffset = 0, depth = 0) {
     const tok = tokens[i];
     const prev = i > 0 ? tokens[i - 1] : null;
 
-    if (tok.type === "string" && tok.dollarTag) {
+    if (tok.type === "string") {
+      if (inDoHeader && !tok.dollarTag && prev?.type === "ident" && !prev.quoted && prev.value === "language") {
+        continue;
+      }
       const isExecBody =
         inDoHeader ||
         (prev?.type === "ident" && !prev.quoted && (prev.value === "as" || prev.value === "do" || prev.value === "execute"));
       inDoHeader = false;
-      if (isExecBody && depth < MAX_DOLLAR_NEST_DEPTH) {
-        violations.push(...scanMigrationSql(file, tok.value, tok.line - 1, depth + 1));
+      if (isExecBody) {
+        if (depth >= MAX_DOLLAR_NEST_DEPTH) {
+          violations.push({
+            file,
+            line: tok.line,
+            rule: "excessive-dollar-nesting",
+            detail: `Exceeded max nested routine/block scan depth (${MAX_DOLLAR_NEST_DEPTH})`,
+          });
+        } else {
+          violations.push(...scanMigrationSql(file, tok.value, tok.line - 1, depth + 1));
+        }
       }
       continue;
     }

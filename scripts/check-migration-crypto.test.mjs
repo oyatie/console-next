@@ -175,9 +175,15 @@ test("isolates dollar-quoted quotes/comments and catches dollar-tag, escape, con
     "SELECT digest(x, U&'!006d!0064!0035' UESCAPE '!');",
     "SELECT digest(type => 'md5', data => x);",
     "SELECT hmac(data => x, key => k, alg => 'sha1');",
+    "SELECT digest(x, CAST('md' || '5' AS text));",
+    "SELECT digest(type := 'md5', data := x);",
+    "SELECT hmac(data := x, key := k, alg := 'sha1');",
+    "SELECT digest(x, 'md'\n'5');",
+    "SELECT digest(x, 's'\n/* c */\n'ha1');",
+    "SELECT digest(x, U&'!006d!0064!0035'UESCAPE'!');",
   ].join("\n");
   const algViolations = scanMigrationSql("20261121000000000_algs.sql", obfuscatedAlgs);
-  assert.equal(algViolations.length, 12);
+  assert.equal(algViolations.length, 18);
   assert.deepEqual(
     algViolations.map((v) => `${v.line}:${v.rule}`),
     [
@@ -193,8 +199,46 @@ test("isolates dollar-quoted quotes/comments and catches dollar-tag, escape, con
       "10:weak-digest-algorithm",
       "11:weak-digest-algorithm",
       "12:weak-hmac-algorithm",
+      "13:weak-digest-algorithm",
+      "14:weak-digest-algorithm",
+      "15:weak-hmac-algorithm",
+      "16:weak-digest-algorithm",
+      "18:weak-digest-algorithm",
+      "21:weak-digest-algorithm",
     ],
   );
+});
+
+test("scans single-quoted executable bodies and fails closed on excessive nesting depth", () => {
+  const singleQuotedBodies = [
+    "CREATE FUNCTION f(x text) RETURNS text AS 'BEGIN RETURN md5(x); END;' LANGUAGE plpgsql;",
+    "CREATE PROCEDURE p() LANGUAGE plpgsql AS 'BEGIN PERFORM md5(x); END;';",
+    "DO 'BEGIN PERFORM md5(x); END;';",
+    "DO LANGUAGE plpgsql 'BEGIN PERFORM md5(x); END;';",
+    "DO LANGUAGE 'plpgsql' 'BEGIN PERFORM md5(x); END;';",
+    "DO $$ BEGIN EXECUTE 'SELECT md5(x)'; END; $$;",
+  ].join("\n");
+
+  const bodyViolations = scanMigrationSql("20261121000000000_sq.sql", singleQuotedBodies);
+  assert.deepEqual(
+    bodyViolations.map((v) => `${v.line}:${v.rule}`),
+    [
+      "1:banned-md5",
+      "2:banned-md5",
+      "3:banned-md5",
+      "4:banned-md5",
+      "5:banned-md5",
+      "6:banned-md5",
+    ],
+  );
+
+  let deeplyNested = "PERFORM md5(x);";
+  for (let d = 17; d >= 1; d--) {
+    deeplyNested = `DO $t${d}$ BEGIN ${deeplyNested} END; $t${d}$;`;
+  }
+  const depthViolations = scanMigrationSql("20261121000000000_deep.sql", deeplyNested);
+  assert.equal(depthViolations.length, 1);
+  assert.equal(depthViolations[0].rule, "excessive-dollar-nesting");
 });
 
 test("ignores comments, string/dollar prose literals, safe sha256/sha512 calls, and safe identifiers", () => {
@@ -203,6 +247,9 @@ test("ignores comments, string/dollar prose literals, safe sha256/sha512 calls, 
     /* nested /* md5(col) */ hmac(a, b, 'md5') */
     COMMENT ON COLUMN t.c IS 'Migrated from md5(x) and sha1';
     INSERT INTO t VALUES ($$not sql md5(x)$$);
+    SELECT CAST(x AS text), 'md5(x)' AS label FROM t;
+    SELECT 'md' '5', 'sha256' AS label FROM t;
+    CREATE FUNCTION f(x text) RETURNS text AS 'BEGIN RETURN ''md5(x)''; END;' LANGUAGE plpgsql;
     CREATE FUNCTION f(x text) RETURNS text AS $fn$
     BEGIN
       RAISE EXCEPTION 'sha1 and md5(x) are not allowed';
@@ -214,8 +261,11 @@ test("ignores comments, string/dollar prose literals, safe sha256/sha512 calls, 
       digest(convert_to(x, 'UTF8'), 'sha256'),
       digest(x, ('sha' || '256')),
       digest(x, concat('sha', '256')),
+      digest(x, CAST('sha' || '256' AS text)),
       digest(type => 'sha256', data => x),
+      digest(type := 'sha256', data := x),
       digest(x, U&'\\0073\\0068\\0061\\0032\\0035\\0036'),
+      digest(x, U&'!0073!0068!0061!0032!0035!0036'UESCAPE'!'),
       hmac(x, k, 'sha256'),
       sha256(convert_to(x, 'UTF8')),
       digest(x, 'sha512'),
