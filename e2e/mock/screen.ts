@@ -77,6 +77,21 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockDirectorySettings(page);
   await page.route("**/api/v1/me/employee-views", route => route.fulfill({ status: 404, json: failure("not_found") }));
   await mockEventStream(page);
+  await page.route("https://status.cosskorea.com/active.json", route =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        schema: 1,
+        rev: 1,
+        generated_at: "2026-11-20T00:00:00Z",
+        evidence_at: "2026-11-20T00:00:00Z",
+        evidence_expires_at: "2099-01-01T00:00:00Z",
+        components: { web: { name: { ko: "Console", en: "Web Console" }, status: "ok", vantage_count: 1 } },
+        incidents: [],
+      }),
+    }),
+  );
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   const count = state === "empty" ? 0 : state === "large" ? 2000 : 3;

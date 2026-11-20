@@ -6,6 +6,15 @@ export const koLive: Record<keyof typeof enLive, string> = {
   // Connection (shell) and freshness (per screen)
   "live.status.reconnecting": "실시간 연결 끊김 · 재연결 중",
   "live.status.offline": "오프라인 · 화면이 자동으로 갱신되지 않음",
+  "live.status.stale": "최신 정보가 아닐 수 있습니다",
+  "live.status.staleAt": "최신 정보가 아닐 수 있습니다 · 마지막 갱신 {time}",
+  "live.noticesLabel": "서비스 안내",
+  "live.retry": "다시 시도",
+  "live.outage.major.title": "서비스 장애가 발생했습니다",
+  "live.outage.partial.title": "일부 서비스에 장애가 발생했습니다",
+  "live.outage.degraded.title": "서비스 응답이 지연되고 있습니다",
+  "live.outage.body": "영향 범위: {affected}",
+  "live.outage.generic": "일부 기능이 정상적으로 동작하지 않을 수 있습니다. 상태 페이지에서 복구 현황을 확인하십시오.",
   "live.updated_ago": "{ago} 갱신",
   // Change notices on records and decision cards
   "live.notice.updated_by": "{actor}님이 {time}에 변경했습니다",

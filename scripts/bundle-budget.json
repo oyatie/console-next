@@ -2,6 +2,7 @@
   "shell": {
     "budget_kb": 82,
     "css_budget_kb": 6,
+    "deferred": ["src/lib/react/crash-console-extras.tsx"],
     "routes": [
       "src/auth/IdleGuard.tsx",
       "src/auth/Login.tsx",
@@ -106,7 +107,11 @@
   "pack": {
     "budget_kb": 77,
     "css_budget_kb": 8,
-    "deferred": ["src/lib/react/denied-request-form.tsx"],
+    "deferred": [
+      "src/lib/react/denied-request-form.tsx",
+      "src/ui/live/outage-banner.tsx",
+      "src/ui/live/staleness-bar.tsx"
+    ],
     "routes": ["src/shell/baseline/shell.tsx", "src/shell/console/shell.tsx"]
   }
 }

@@ -151,5 +151,7 @@ export const bootEn = {
   "common.denied.reason.COVER": "Covering for someone",
   "common.denied.reason.NEEDED_NOW": "Work to do now",
   "common.denied.reason.OTHER": "Other",
+  "live.statusPage": "View status page",
+  "live.crashed.inputKept": "Unsaved input stays in this tab until you close it.",
   ...bootIdleEn,
 };

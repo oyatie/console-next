@@ -114,6 +114,9 @@ impl AppConfig {
                 })
             })
             .transpose()?;
+        let cookie_secure =
+            crate::config::auth::parse_cookie_secure(vars.get("CONSOLE_COOKIE_SECURE"))?;
+        let status_origin = crate::config::status::status_origin_from_vars(&vars, cookie_secure)?;
         let auth_rest = auth_rest_config_from_vars(&vars, jwt.as_ref())?;
         let storage = storage_config_from_vars(&vars)?;
         let dispatch_timers = dispatch_timer_config_from_vars(&vars)?;
@@ -263,6 +266,8 @@ impl AppConfig {
             support_log_query_url: non_empty(vars.get("CONSOLE_SUPPORT_LOG_QUERY_URL")),
             jwt,
             auth_rest,
+            cookie_secure,
+            status_origin,
             storage,
             juso: console_entity_adapter_juso::JusoConfig::from_lookup(|k| vars.get(k).cloned()),
             nts: console_entity_adapter_nts::NtsConfig::from_lookup(|k| vars.get(k).cloned()),

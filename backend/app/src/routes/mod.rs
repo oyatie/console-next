@@ -273,14 +273,13 @@ pub fn build_router(state: AppState) -> Router {
     // production); browsers ignore HSTS over plain http anyway.
     let router = match state.config.web_dist.clone() {
         Some(dist) => {
-            let hsts = state
-                .config
-                .auth_rest
-                .as_ref()
-                .is_none_or(|auth| auth.cookie_secure);
+            let hsts = state.config.cookie_secure;
             let dist: Arc<std::path::Path> = dist.into();
             let etag = crate::spa::dist_etag(&dist);
-            let csp = crate::spa::spa_csp(state.config.storage.as_ref());
+            let csp = crate::spa::spa_csp(
+                state.config.storage.as_ref(),
+                state.config.status_origin.as_deref(),
+            );
             router.fallback(move |request: Request<Body>| {
                 serve_spa(dist.clone(), etag.clone(), hsts, csp.clone(), request)
             })
