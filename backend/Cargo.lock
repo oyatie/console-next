@@ -3406,12 +3406,15 @@ dependencies = [
 name = "console-platform-provisioning"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
+ "base64 0.23.1",
  "console-kernel-core",
  "console-platform-auth",
  "console-platform-authz",
  "console-platform-db",
  "console-platform-test-support",
  "console-settings-domain",
+ "secrecy",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -3422,6 +3425,7 @@ dependencies = [
  "url",
  "uuid",
  "webauthn-authenticator-rs",
+ "zeroize",
 ]
 
 [[package]]

@@ -1,0 +1,33 @@
+type: object
+additionalProperties: false
+required:
+- user_id
+- display_name
+- is_active
+- has_passkey
+- device_bound_passkey
+- status
+- created_at
+properties:
+  user_id:
+    $ref: '#/components/schemas/Uuid'
+  display_name:
+    type: string
+  sign_in_id:
+    type: [string, 'null']
+  is_active:
+    type: boolean
+  has_passkey:
+    type: boolean
+  device_bound_passkey:
+    type: boolean
+  status:
+    $ref: '#/components/schemas/PlatformOperatorStatus'
+  invited_by:
+    type: [string, 'null']
+    format: uuid
+  invite_expires_at:
+    type: [string, 'null']
+    format: date-time
+  created_at:
+    $ref: '#/components/schemas/Timestamp'

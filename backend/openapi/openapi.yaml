@@ -1118,6 +1118,143 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/operators:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: listPlatformOperators
+      summary: List platform operators (platform vendor tier)
+      description: Lists all platform-tier SUPER_ADMIN operators with passkey and invitation status. Audited as platform.operator.list.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Platform operators visible to the platform tier.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlatformOperatorSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: invitePlatformOperator
+      summary: Invite a second platform operator (platform vendor tier)
+      description: Provisions a new platform-tier SUPER_ADMIN account and mints a single-use enrolment token returned once. Requires OPERATOR_RECOVERY step-up bound to the request.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitePlatformOperatorRequest'
+      responses:
+        '201':
+          description: Invited platform operator summary and one-time enrolment token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOperatorInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/operators/{id}/reissue:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: reissuePlatformOperatorInvite
+      summary: Reissue a platform operator invite token (platform vendor tier)
+      description: Revokes any open invite for an unkeyed active platform operator and mints a fresh one-time enrolment token. Requires OPERATOR_RECOVERY step-up bound to the operator id.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReissuePlatformOperatorInviteRequest'
+      responses:
+        '200':
+          description: Updated operator summary and replacement one-time enrolment token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOperatorInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/operators/{id}/revoke:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: revokePlatformOperator
+      summary: Revoke a platform operator (platform vendor tier)
+      description: Deactivates a platform operator, revokes open invites and refresh families, and bumps session generation. Refuses self-revocation and revoking the last active enrolled operator. Requires OPERATOR_RECOVERY step-up.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokePlatformOperatorRequest'
+      responses:
+        '200':
+          description: Revoked platform operator summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOperatorSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/platform/ops:
     get:
       tags:
@@ -49254,6 +49391,23 @@ components:
       type: object
       required: [id, label]
       properties: { id: { $ref: '#/components/schemas/Uuid' }, label: { type: string } }
+    InvitePlatformOperatorRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - display_name
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        login:
+          type: [string, 'null']
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     IssueAppointmentNoticeRequest:
       type: object
       additionalProperties: false
@@ -56893,6 +57047,63 @@ components:
       - GROUP_ADMIN
       - GROUP_VIEWER
       - GROUP_FINANCE
+    PlatformOperatorInviteResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - operator
+      - invite_token
+      - expires_at
+      properties:
+        operator:
+          $ref: '#/components/schemas/PlatformOperatorSummary'
+        invite_token:
+          type: string
+          minLength: 1
+          description: One-time enrolment token returned once; deliver out-of-band and never log it.
+        expires_at:
+          $ref: '#/components/schemas/Timestamp'
+    PlatformOperatorStatus:
+      type: string
+      x-extensible-enum:
+      - PENDING_ENROLMENT
+      - ACTIVE
+      - REVOKED
+      - EXPIRED
+    PlatformOperatorSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - user_id
+      - display_name
+      - is_active
+      - has_passkey
+      - device_bound_passkey
+      - status
+      - created_at
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+        sign_in_id:
+          type: [string, 'null']
+        is_active:
+          type: boolean
+        has_passkey:
+          type: boolean
+        device_bound_passkey:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/PlatformOperatorStatus'
+        invited_by:
+          type: [string, 'null']
+          format: uuid
+        invite_expires_at:
+          type: [string, 'null']
+          format: date-time
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
     PlatformOpsResponse:
       type: object
       required:
@@ -60367,6 +60578,12 @@ components:
         idempotency_key:
           type: string
           maxLength: 128
+    ReissuePlatformOperatorInviteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     RejectPeriodUnlockRequest:
       type: object
       additionalProperties: false
@@ -60738,6 +60955,15 @@ components:
         reason: { type: string, nullable: true }
         prev_hash: { type: string }
         row_hash: { type: string }
+    RevokePlatformOperatorRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: [string, 'null']
+          maxLength: 500
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     RollbackWorkflowDefinitionRequest:
       type: object
       required:

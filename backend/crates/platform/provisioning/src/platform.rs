@@ -12,11 +12,17 @@ pub use ops_recovery_types::*;
 mod group_accounts;
 mod groups;
 mod listings;
+mod operators;
+mod operators_reissue;
+mod operators_revoke;
+mod operators_store;
+mod operators_types;
 mod removal;
 mod rename;
 mod rows;
 mod tenants;
 
+pub use operators_types::*;
 pub use rename::TenantRename;
 pub(crate) use rows::*;
 

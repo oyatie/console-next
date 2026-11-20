@@ -63,6 +63,7 @@ pub mod own_record;
 // --- lane: CX-upstream-ports ---
 pub mod independent_people;
 pub mod platform_listing;
+pub mod platform_operator;
 // --- lane: CL-second-person ---
 pub mod grant_notice;
 pub mod period_unlock;

@@ -37,12 +37,14 @@ pub enum PlatformFeature {
     TenantManage,
     /// Manage platform group identities and subsidiary membership.
     GroupManage,
+    /// Invite, list, reissue, and revoke platform-tier operators.
+    OperatorManage,
     /// Read the platform-tier audit trail.
     PlatformAuditRead,
 }
 
 impl PlatformFeature {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::TenantCreate,
         Self::TenantList,
         Self::TenantSuspend,
@@ -50,6 +52,7 @@ impl PlatformFeature {
         Self::TenantHealthRead,
         Self::TenantManage,
         Self::GroupManage,
+        Self::OperatorManage,
         Self::PlatformAuditRead,
     ];
 }
@@ -86,16 +89,43 @@ impl PlatformPrincipal {
         }
     }
 
-    /// An explicit subset is authoritative; an omitted set preserves existing platform sessions.
-    pub fn authorize(&self, feature: PlatformFeature) -> Result<(), KernelError> {
-        if self
-            .features
+    /// Whether an explicit subset (or full platform session) includes `feature`.
+    #[must_use]
+    pub fn has_feature(&self, feature: PlatformFeature) -> bool {
+        self.features
             .as_ref()
             .is_none_or(|features| features.contains(&feature))
-        {
+    }
+
+    /// An explicit subset is authoritative; an omitted set preserves existing platform sessions.
+    pub fn authorize(&self, feature: PlatformFeature) -> Result<(), KernelError> {
+        if self.has_feature(feature) {
             Ok(())
         } else {
             Err(KernelError::forbidden("Platform capability is required"))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn operator_manage_respects_restricted_platform_features() {
+        let full = PlatformPrincipal::new(UserId::new());
+        assert!(full.authorize(PlatformFeature::OperatorManage).is_ok());
+
+        let restricted: PlatformPrincipal = serde_json::from_value(serde_json::json!({
+            "user_id": UserId::new(),
+            "features": ["tenant_list"]
+        }))
+        .expect("deserialize restricted principal");
+        assert!(
+            restricted
+                .authorize(PlatformFeature::OperatorManage)
+                .is_err()
+        );
+        assert!(restricted.authorize(PlatformFeature::TenantList).is_ok());
     }
 }

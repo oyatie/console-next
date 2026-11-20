@@ -11,16 +11,35 @@ pub(crate) use token::*;
 pub use token::{OTP_ALPHABET, OTP_GROUP_LEN, OTP_LEN, bootstrap_otp_pattern};
 
 use console_kernel_core::OrgId;
+use secrecy::{ExposeSecret, SecretString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BootstrapToken(String);
+#[derive(Clone)]
+pub struct BootstrapToken(SecretString);
+
+impl std::fmt::Debug for BootstrapToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("BootstrapToken([REDACTED])")
+    }
+}
+
+impl PartialEq for BootstrapToken {
+    fn eq(&self, other: &Self) -> bool {
+        aws_lc_rs::constant_time::verify_slices_are_equal(
+            self.0.expose_secret().as_bytes(),
+            other.0.expose_secret().as_bytes(),
+        )
+        .is_ok()
+    }
+}
+
+impl Eq for BootstrapToken {}
 
 impl BootstrapToken {
     #[must_use]
     pub fn as_str(&self) -> &str {
-        &self.0
+        self.0.expose_secret()
     }
 }
 

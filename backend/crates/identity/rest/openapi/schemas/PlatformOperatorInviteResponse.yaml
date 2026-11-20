@@ -1,0 +1,15 @@
+type: object
+additionalProperties: false
+required:
+- operator
+- invite_token
+- expires_at
+properties:
+  operator:
+    $ref: '#/components/schemas/PlatformOperatorSummary'
+  invite_token:
+    type: string
+    minLength: 1
+    description: One-time enrolment token returned once; deliver out-of-band and never log it.
+  expires_at:
+    $ref: '#/components/schemas/Timestamp'
