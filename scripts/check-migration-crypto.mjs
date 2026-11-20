@@ -299,6 +299,86 @@ function findMatchingCloseParen(tokens, openIdx, end) {
   return -1;
 }
 
+function stripTrailingCollate(tokens, start, end) {
+  if (
+    start <= end - 5 &&
+    tokens[end - 4].type === "ident" &&
+    !tokens[end - 4].quoted &&
+    tokens[end - 4].value === "collate" &&
+    tokens[end - 3].type === "ident" &&
+    tokens[end - 2].type === "punct" &&
+    tokens[end - 2].value === "." &&
+    tokens[end - 1].type === "ident"
+  ) {
+    return end - 4;
+  }
+  if (
+    start <= end - 3 &&
+    tokens[end - 2].type === "ident" &&
+    !tokens[end - 2].quoted &&
+    tokens[end - 2].value === "collate" &&
+    tokens[end - 1].type === "ident"
+  ) {
+    return end - 2;
+  }
+  return end;
+}
+
+function isNullLiteralExpr(tokens, start = 0, end = tokens.length) {
+  while (start + 1 < end && tokens[start].type === "punct" && tokens[start].value === "(" && findMatchingCloseParen(tokens, start, end) === end - 1) {
+    start++;
+    end--;
+  }
+  if (start >= end) return false;
+  let depth = 0;
+  for (let i = start; i < end; i++) {
+    const t = tokens[i];
+    if (t.type === "punct" && t.value === "(") depth++;
+    else if (t.type === "punct" && t.value === ")") depth--;
+    else if (depth === 0 && t.type === "op" && t.value === "::" && i > start) return isNullLiteralExpr(tokens, start, i);
+  }
+  const withoutCollate = stripTrailingCollate(tokens, start, end);
+  if (withoutCollate !== end) return isNullLiteralExpr(tokens, start, withoutCollate);
+  if (end - start === 1 && tokens[start].type === "ident" && !tokens[start].quoted && tokens[start].value === "null") {
+    return true;
+  }
+  if (
+    tokens[start].type === "ident" &&
+    !tokens[start].quoted &&
+    tokens[start].value === "cast" &&
+    start + 3 < end &&
+    tokens[start + 1].type === "punct" &&
+    tokens[start + 1].value === "(" &&
+    findMatchingCloseParen(tokens, start + 1, end) === end - 1
+  ) {
+    let castDepth = 0;
+    for (let i = start + 2; i < end - 1; i++) {
+      const t = tokens[i];
+      if (t.type === "punct" && t.value === "(") castDepth++;
+      else if (t.type === "punct" && t.value === ")") castDepth--;
+      else if (castDepth === 0 && t.type === "ident" && !t.quoted && t.value === "as") {
+        return isNullLiteralExpr(tokens, start + 2, i);
+      }
+    }
+  }
+  return false;
+}
+
+function trimSqlChars(str, chars, mode = "both") {
+  if (chars.length === 0) return str;
+  const charSet = new Set([...chars]);
+  const codePoints = [...str];
+  let start = 0;
+  let end = codePoints.length;
+  if (mode === "both" || mode === "leading") {
+    while (start < end && charSet.has(codePoints[start])) start++;
+  }
+  if (mode === "both" || mode === "trailing") {
+    while (end > start && charSet.has(codePoints[end - 1])) end--;
+  }
+  return codePoints.slice(start, end).join("");
+}
+
 function evalStringExpr(tokens, start = 0, end = tokens.length) {
   while (start + 1 < end && tokens[start].type === "punct" && tokens[start].value === "(" && findMatchingCloseParen(tokens, start, end) === end - 1) {
     start++;
@@ -336,6 +416,9 @@ function evalStringExpr(tokens, start = 0, end = tokens.length) {
     else if (t.type === "punct" && t.value === ")") depth--;
     else if (depth === 0 && t.type === "op" && t.value === "::" && i > start) return evalStringExpr(tokens, start, i);
   }
+
+  const withoutCollate = stripTrailingCollate(tokens, start, end);
+  if (withoutCollate !== end) return evalStringExpr(tokens, start, withoutCollate);
 
   if (end - start === 1 && tokens[start].type === "string") return { value: tokens[start].value, line: tokens[start].line };
 
@@ -379,15 +462,147 @@ function evalStringExpr(tokens, start = 0, end = tokens.length) {
       }
       return { value: joined, line: firstLine };
     }
+    if (fnTok.value === "concat_ws" && callArgs.length >= 1) {
+      const sep = evalStringExpr(callArgs[0]);
+      if (!sep) return null;
+      const joinedParts = [];
+      let firstLine = null;
+      for (let a = 1; a < callArgs.length; a++) {
+        const arg = callArgs[a];
+        if (isNullLiteralExpr(arg)) continue;
+        const evaluated = evalStringExpr(arg);
+        if (!evaluated) return null;
+        if (firstLine === null) firstLine = evaluated.line;
+        joinedParts.push(evaluated.value);
+      }
+      return { value: joinedParts.join(sep.value), line: firstLine ?? sep.line };
+    }
     if ((fnTok.value === "lower" || fnTok.value === "upper" || fnTok.value === "trim" || fnTok.value === "btrim") && callArgs.length >= 1) {
+      if (fnTok.value === "trim" && callArgs.length === 1) {
+        const arg = callArgs[0];
+        let fromIdx = -1;
+        let argDepth = 0;
+        for (let k = 0; k < arg.length; k++) {
+          const t = arg[k];
+          if (t.type === "punct" && t.value === "(") argDepth++;
+          else if (t.type === "punct" && t.value === ")") argDepth--;
+          else if (argDepth === 0 && t.type === "ident" && !t.quoted && t.value === "from") {
+            fromIdx = k;
+            break;
+          }
+        }
+        if (fromIdx !== -1) {
+          let mode = "both";
+          let charsStart = 0;
+          if (
+            fromIdx > 0 &&
+            arg[0].type === "ident" &&
+            !arg[0].quoted &&
+            (arg[0].value === "leading" || arg[0].value === "trailing" || arg[0].value === "both")
+          ) {
+            mode = arg[0].value;
+            charsStart = 1;
+          }
+          let chars = " ";
+          if (charsStart < fromIdx) {
+            const charsEval = evalStringExpr(arg, charsStart, fromIdx);
+            if (!charsEval) return null;
+            chars = charsEval.value;
+          }
+          const targetEval = evalStringExpr(arg, fromIdx + 1, arg.length);
+          if (!targetEval) return null;
+          return { value: trimSqlChars(targetEval.value, chars, mode), line: targetEval.line };
+        }
+      }
       const inner = evalStringExpr(callArgs[0]);
       if (!inner) return null;
       if (fnTok.value === "lower") return { value: inner.value.toLowerCase(), line: inner.line };
       if (fnTok.value === "upper") return { value: inner.value.toUpperCase(), line: inner.line };
       if (callArgs.length === 1) return { value: inner.value.trim(), line: inner.line };
+      if (callArgs.length === 2) {
+        const charsEval = evalStringExpr(callArgs[1]);
+        if (!charsEval) return null;
+        return { value: trimSqlChars(inner.value, charsEval.value, "both"), line: inner.line };
+      }
     }
   }
   return null;
+}
+
+function collectExecuteExprTokens(tokens, startIdx) {
+  const exprTokens = [];
+  let parenDepth = 0;
+  for (let j = startIdx; j < tokens.length; j++) {
+    const t = tokens[j];
+    if (t.type === "punct" && t.value === "(") {
+      parenDepth++;
+    } else if (t.type === "punct" && t.value === ")") {
+      if (parenDepth === 0) break;
+      parenDepth--;
+    } else if (parenDepth === 0) {
+      if (t.type === "punct" && t.value === ";") break;
+      if (t.type === "ident" && !t.quoted && (t.value === "into" || t.value === "using")) break;
+    }
+    exprTokens.push(t);
+  }
+  return exprTokens;
+}
+
+function evalExecuteSqlExpr(tokens, start = 0, end = tokens.length) {
+  while (start + 1 < end && tokens[start].type === "punct" && tokens[start].value === "(" && findMatchingCloseParen(tokens, start, end) === end - 1) {
+    start++;
+    end--;
+  }
+  if (start >= end) return null;
+
+  let depth = 0;
+  let hasConcat = false;
+  for (let i = start; i < end; i++) {
+    const t = tokens[i];
+    if (t.type === "punct" && t.value === "(") depth++;
+    else if (t.type === "punct" && t.value === ")") depth--;
+    else if (depth === 0 && t.type === "op" && t.value === "||") { hasConcat = true; break; }
+  }
+  if (!hasConcat) {
+    depth = 0;
+    for (let i = start; i < end; i++) {
+      const t = tokens[i];
+      if (t.type === "punct" && t.value === "(") depth++;
+      else if (t.type === "punct" && t.value === ")") depth--;
+      else if (depth === 0 && t.type === "op" && t.value === "::" && i > start) {
+        return evalExecuteSqlExpr(tokens, start, i);
+      }
+    }
+    const withoutCollate = stripTrailingCollate(tokens, start, end);
+    if (withoutCollate !== end) return evalExecuteSqlExpr(tokens, start, withoutCollate);
+  }
+
+  let fnIdx = start;
+  if (
+    start + 2 < end &&
+    tokens[start].type === "ident" &&
+    !tokens[start].quoted &&
+    tokens[start].value === "pg_catalog" &&
+    tokens[start + 1].type === "punct" &&
+    tokens[start + 1].value === "." &&
+    tokens[start + 2].type === "ident"
+  ) {
+    fnIdx = start + 2;
+  }
+  const fnTok = tokens[fnIdx];
+  const openTok = tokens[fnIdx + 1];
+  if (
+    fnTok?.type === "ident" &&
+    !fnTok.quoted &&
+    fnTok.value === "format" &&
+    openTok?.type === "punct" &&
+    openTok.value === "(" &&
+    findMatchingCloseParen(tokens, fnIdx + 1, end) === end - 1
+  ) {
+    const callArgs = collectCallArgs(tokens, fnIdx + 1);
+    return callArgs[0]?.length ? evalStringExpr(callArgs[0]) : null;
+  }
+  return evalStringExpr(tokens, start, end);
 }
 
 function isNamedArgOp(tok) {
@@ -420,7 +635,7 @@ export function scanMigrationSql(file, sql, lineOffset = 0, depth = 0) {
       }
       const isExecBody =
         inDoHeader ||
-        (prev?.type === "ident" && !prev.quoted && (prev.value === "as" || prev.value === "do" || prev.value === "execute"));
+        (prev?.type === "ident" && !prev.quoted && (prev.value === "as" || prev.value === "do"));
       inDoHeader = false;
       if (isExecBody) {
         if (depth >= MAX_DOLLAR_NEST_DEPTH) {
@@ -447,6 +662,31 @@ export function scanMigrationSql(file, sql, lineOffset = 0, depth = 0) {
 
     if (tok.type !== "ident") continue;
     const next = tokens[i + 1];
+
+    if (
+      !tok.quoted &&
+      tok.value === "execute" &&
+      !(prev?.type === "punct" && prev.value === ".") &&
+      !(prev?.type === "ident" && !prev.quoted && (prev.value === "grant" || prev.value === "revoke" || prev.value === "for" || prev.value === "on")) &&
+      !(next?.type === "ident" && !next.quoted && (next.value === "function" || next.value === "procedure"))
+    ) {
+      const exprTokens = collectExecuteExprTokens(tokens, i + 1);
+      const evaluated = evalExecuteSqlExpr(exprTokens);
+      if (evaluated) {
+        if (depth >= MAX_DOLLAR_NEST_DEPTH) {
+          violations.push({
+            file,
+            line: evaluated.line,
+            rule: "excessive-dollar-nesting",
+            detail: `Exceeded max nested routine/block scan depth (${MAX_DOLLAR_NEST_DEPTH})`,
+          });
+        } else {
+          violations.push(...scanMigrationSql(file, evaluated.value, evaluated.line - 1, depth + 1));
+        }
+      }
+      continue;
+    }
+
     if (!next || next.type !== "punct" || next.value !== "(") continue;
 
     if (BANNED_DIRECT_CALLS.has(tok.value)) {

@@ -241,6 +241,78 @@ test("scans single-quoted executable bodies and fails closed on excessive nestin
   assert.equal(depthViolations[0].rule, "excessive-dollar-nesting");
 });
 
+test("scans EXECUTE expressions/format, strips trailing COLLATE, and folds concat_ws and trim(... from ...)", () => {
+  const execSql = [
+    "DO $$ BEGIN EXECUTE 'SELECT ' || 'md5(x)'; END; $$;",
+    "DO $$ BEGIN EXECUTE ('SELECT md5(x)'); END; $$;",
+    "DO $outer$ BEGIN EXECUTE ($inner$SELECT md5(x)$inner$); END; $outer$;",
+    "DO $$ BEGIN EXECUTE CAST('SELECT md5(x)' AS text); END; $$;",
+    "DO $$ BEGIN EXECUTE format('SELECT md5(%I)', 'col'); END; $$;",
+    "DO $$ BEGIN EXECUTE pg_catalog.format('SELECT ' || 'md5(%I)', 'col'); END; $$;",
+    "DO $$ DECLARE r text; BEGIN EXECUTE 'SELECT ' || 'md5($1)' INTO r USING x; END; $$;",
+    "DO $$ BEGIN EXECUTE format('SELECT %L', md5(x)); END; $$;",
+    "DO LANGUAGE 'plpgsql'\n'BEGIN PERFORM md5(x); END;';",
+  ].join("\n");
+
+  const execViolations = scanMigrationSql("20261121000000000_exec.sql", execSql);
+  assert.deepEqual(
+    execViolations.map((v) => `${v.line}:${v.rule}`),
+    [
+      "1:banned-md5",
+      "2:banned-md5",
+      "3:banned-md5",
+      "4:banned-md5",
+      "5:banned-md5",
+      "6:banned-md5",
+      "7:banned-md5",
+      "8:banned-md5",
+      "10:banned-md5",
+    ],
+  );
+
+  let deepExec = "SELECT md5(x);";
+  for (let d = 17; d >= 1; d--) {
+    deepExec = `DO $e${d}$ BEGIN EXECUTE $q${d}$${deepExec}$q${d}$; END; $e${d}$;`;
+  }
+  const deepExecViolations = scanMigrationSql("20261121000000000_deep_exec.sql", deepExec);
+  assert.equal(deepExecViolations.length, 1);
+  assert.equal(deepExecViolations[0].rule, "excessive-dollar-nesting");
+
+  const exprSql = [
+    "SELECT digest(x, ('md' || '5') COLLATE \"C\");",
+    "SELECT digest(x, CAST('md' || '5' AS text) COLLATE \"C\");",
+    "SELECT digest(x, ('sha' || '1') COLLATE pg_catalog.\"C\");",
+    "SELECT hmac(x, k, ('md' || '5') COLLATE default);",
+    "SELECT digest(x, concat_ws('', 'md', '5'));",
+    "SELECT digest(x, concat_ws('-', 'sha', NULL, '1'));",
+    "SELECT digest(x, concat_ws('', 'md', CAST(NULL AS text), '5'));",
+    "SELECT digest(x, trim(both 'x' from 'xmd5x'));",
+    "SELECT digest(x, trim(from ' md5 '));",
+    "SELECT digest(x, trim(leading 'x' from 'xxmd5'));",
+    "SELECT digest(x, trim(trailing 'x' from 'md5xx'));",
+    "SELECT digest(x, trim('x' from 'xmd5x'));",
+  ].join("\n");
+
+  const exprViolations = scanMigrationSql("20261121000000000_exprs.sql", exprSql);
+  assert.deepEqual(
+    exprViolations.map((v) => `${v.line}:${v.rule}`),
+    [
+      "1:weak-digest-algorithm",
+      "2:weak-digest-algorithm",
+      "3:weak-digest-algorithm",
+      "4:weak-hmac-algorithm",
+      "5:weak-digest-algorithm",
+      "6:weak-digest-algorithm",
+      "7:weak-digest-algorithm",
+      "8:weak-digest-algorithm",
+      "9:weak-digest-algorithm",
+      "10:weak-digest-algorithm",
+      "11:weak-digest-algorithm",
+      "12:weak-digest-algorithm",
+    ],
+  );
+});
+
 test("ignores comments, string/dollar prose literals, safe sha256/sha512 calls, and safe identifiers", () => {
   const safeSql = `
     -- md5(col) and digest(x, 'sha1') in line comment
@@ -254,13 +326,27 @@ test("ignores comments, string/dollar prose literals, safe sha256/sha512 calls, 
     BEGIN
       RAISE EXCEPTION 'sha1 and md5(x) are not allowed';
       PERFORM E'escaped \\' md5(x)';
+      EXECUTE 'SELECT 1';
+      EXECUTE ('SELECT sha256(x)');
+      EXECUTE format('INSERT INTO t VALUES (%L)', 'md5(x)');
+      EXECUTE format('SELECT digest(col, %L)', 'sha256');
+      EXECUTE my_prepared_plan('md5(x)');
       RETURN $$not sql md5(x)$$;
     END;
     $fn$ LANGUAGE plpgsql;
+    GRANT EXECUTE ON FUNCTION f(text) TO app_user;
+    REVOKE GRANT OPTION FOR EXECUTE ON FUNCTION f(text) FROM app_user;
+    CREATE TRIGGER tr_safe AFTER INSERT ON t FOR EACH ROW EXECUTE FUNCTION fn();
+    CREATE TRIGGER tr_safe_proc AFTER INSERT ON t FOR EACH ROW EXECUTE PROCEDURE fn();
     SELECT
       digest(convert_to(x, 'UTF8'), 'sha256'),
       digest(x, ('sha' || '256')),
+      digest(x, ('sha' || '256') COLLATE "C"),
       digest(x, concat('sha', '256')),
+      digest(x, concat_ws('', 'sha', '256')),
+      digest(x, concat_ws('', 'md', col)),
+      digest(x, trim(both 'x' from 'xsha256x')),
+      digest(x, trim(trailing 'x' from 'xmd5x')),
       digest(x, CAST('sha' || '256' AS text)),
       digest(type => 'sha256', data => x),
       digest(type := 'sha256', data := x),
