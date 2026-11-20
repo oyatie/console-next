@@ -261,7 +261,7 @@ async fn t4_t5_t6_t7_batched_backfill_rollback_audit_and_zero_leakage(pool: PgPo
         .unwrap();
     assert_eq!(revealed.value, json!("900101-1234567"));
 
-    // Column-scoped privilege check: envelope columns became re-sealable in PR-CRYPTO-3,
+    // Column-scoped privilege check: envelope columns became re-sealable by 20261120143002000_credential_reseal_grants.sql,
     // while identity, blind-index v1, masked display, and provenance columns remain immutable to console_rt.
     for stmt in [
         "UPDATE employee_rrn SET rrn_hmac = decode('00', 'hex') WHERE org_id = $1",

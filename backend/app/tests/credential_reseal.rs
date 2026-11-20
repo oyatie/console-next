@@ -277,6 +277,18 @@ async fn batched_reseal_rotation_census_audit_isolation_and_n_minus_1_rollback(p
         .await
         .is_err()
     );
+    // Owner/bypass-RLS update must fire the table-specific trigger with P0001 (not 42703).
+    // rls-arming: ok owner UPDATE verifies org_id immutability trigger
+    let owner_err =
+        sqlx::query("UPDATE data_import_row_identities SET org_id = $1 WHERE org_id = $2")
+            .bind(b.org_uuid)
+            .bind(a.org_uuid)
+            .execute(&pool)
+            .await
+            .unwrap_err();
+    let db_err = owner_err.as_database_error().unwrap();
+    assert_eq!(db_err.code().as_deref(), Some("P0001"));
+    assert!(db_err.message().contains("org_id is immutable"));
 
     let emp_rb = seed_employee(&pool, b.org_uuid, "RB-1", "Rollback").await;
     let s_rb = seal_rrn_with_suite(&vault_k1, b.org_uuid, "870707-1234567", 1);
