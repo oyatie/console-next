@@ -237,6 +237,24 @@ export function saeonAdminUser(): S["CurrentUser"] {
   };
 }
 
+/** OpenAPI-typed refresh token pair carrying the Saeon HR administrator claims. */
+export function saeonAdminToken(orgId = "00000000-0000-4000-8000-000000000002"): S["TokenPairResponse"] {
+  const admin = saeonAdminUser();
+  const claims = {
+    sub: admin.id,
+    org: orgId,
+    name: admin.display_name,
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  };
+  return {
+    access_token: `${Buffer.from('{"alg":"none"}').toString("base64url")}.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.mock`,
+    token_type: "Bearer",
+    refresh_expires_at: "2099-01-01T00:00:00Z",
+    requires_passkey_setup: false,
+    privacy_consent_accepted: true,
+  };
+}
+
 /** OpenAPI-typed self-service employee profile (employee 10587) for phone screen specs. */
 export function saeonHeroUser(): S["CurrentUser"] {
   const heroRow = generateSaeonRoster()[1286]!;

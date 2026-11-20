@@ -10,6 +10,7 @@ import {
   maskMobilePhone,
   maskRrn,
   rrnChecksumValid,
+  saeonAdminToken,
   saeonAdminUser,
   saeonApprovalOrgChange,
   saeonAttendanceSummary,
@@ -155,12 +156,19 @@ test("roster generator and OpenAPI mock builders expose the 2,054-row universe c
   expect(checksumValidRrns(roster.map(row => row.rrn).join("\n"))).toEqual([]);
 
   const admin = saeonAdminUser();
+  const adminToken = saeonAdminToken();
+  const adminClaims = JSON.parse(Buffer.from(adminToken.access_token.split(".")[1]!, "base64url").toString()) as {
+    sub: string;
+    name: string;
+  };
   const hero = saeonHeroUser();
   const org = saeonOrgStructure();
   const facets = saeonEmployeeFacets();
   const windowEmployees = saeonRosterEmployees();
 
   expect(admin.tenant?.name).toBe(saeonUniverse.tenantName);
+  expect(adminClaims.sub).toBe(admin.id);
+  expect(adminClaims.name).toBe(saeonUniverse.adminActor.name);
   expect(hero.employee_number).toBe("10587");
   expect(org.entities).toHaveLength(5);
   expect(org.entities.flatMap(entity => entity.children ?? [])).toHaveLength(40);

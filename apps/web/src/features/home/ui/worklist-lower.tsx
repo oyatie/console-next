@@ -52,6 +52,23 @@ function splitPayrollNote(row: AttentionInboxItem): { dueText?: string; checkTex
   };
 }
 
+function opsRowSummary(row: AttentionInboxItem) {
+  const note = splitPayrollNote(row);
+  const scope = row.context?.worksite_name ?? row.site;
+  const state = t(
+    row.kind === "payroll"
+      ? "home.worklist.opsState.payrollCalculated"
+      : "home.worklist.opsState.beforeClose",
+  );
+  return {
+    scope: scope ?? "—",
+    state,
+    dueText: note.dueText,
+    checkText: note.checkText,
+    phoneSummary: [scope, state, note.checkText].filter(Boolean).join(" · "),
+  };
+}
+
 /**
  * Lower two-column operational bands beneath the deadline strip: monthly operations, capability-gated people checks,
  * headcount stats, and legal-entity headcount breakdown.
@@ -112,33 +129,40 @@ export function WorklistLower({
               columns={[
                 {
                   header: t("home.worklist.col.task"),
-                  cell: row => (
-                    <strong className={s.dateCol}>
-                      {t(
-                        row.context?.unlock?.exceptionId
-                          ? "periodLocks.review.title"
-                          : row.kind === "period_unlock" && !row.context?.unlock
-                            ? "home.worklist.attendanceClose"
-                            : KIND_TEXT[row.kind] ?? "home.inbox.unknown",
-                      )}
-                    </strong>
-                  ),
+                  cell: row => {
+                    const taskLabel = t(
+                      row.context?.unlock?.exceptionId
+                        ? "periodLocks.review.title"
+                        : row.kind === "period_unlock" && !row.context?.unlock
+                          ? "home.worklist.attendanceClose"
+                          : KIND_TEXT[row.kind] ?? "home.inbox.unknown",
+                    );
+                    const { phoneSummary } = opsRowSummary(row);
+                    return (
+                      <div className={s.opsTaskCell}>
+                        <strong className={s.dateCol}>{taskLabel}</strong>
+                        {phoneSummary ? (
+                          <bdi className={`${s.opsPhoneMeta} muted t-xs`}>{phoneSummary}</bdi>
+                        ) : null}
+                      </div>
+                    );
+                  },
                 },
-                { header: t("home.worklist.opsCol.scope"), cell: row => row.context?.worksite_name ?? row.site ?? "—" },
+                {
+                  header: t("home.worklist.opsCol.scope"),
+                  wide: true,
+                  cell: row => opsRowSummary(row).scope,
+                },
                 {
                   header: t("home.worklist.opsCol.state"),
-                  cell: row =>
-                    t(
-                      row.kind === "payroll"
-                        ? "home.worklist.opsState.payrollCalculated"
-                        : "home.worklist.opsState.beforeClose",
-                    ),
+                  wide: true,
+                  cell: row => opsRowSummary(row).state,
                 },
                 {
                   header: t("home.inbox.column.due"),
                   cell: row => {
-                    const note = splitPayrollNote(row);
-                    if (note.dueText) return <bdi className="num muted">{note.dueText}</bdi>;
+                    const { dueText } = opsRowSummary(row);
+                    if (dueText) return <bdi className="num muted">{dueText}</bdi>;
                     const md = shortMonthDay(row.due);
                     return (
                       <div className={s.opsDue}>
@@ -151,7 +175,7 @@ export function WorklistLower({
                 {
                   header: t("home.worklist.opsCol.check"),
                   wide: true,
-                  cell: row => splitPayrollNote(row).checkText,
+                  cell: row => opsRowSummary(row).checkText,
                 },
                 {
                   header: <bdi className="sr-only">{t("home.worklist.col.action")}</bdi>,
@@ -223,16 +247,18 @@ export function WorklistLower({
             <PaneHead title={t("home.worklist.headcount")} meta={asOfDay ? t("home.asOf", { time: asOfDay }) : undefined} level={3} />
             {canDirectory ? (
               facets.data ? (
-                <WorklistStatWrap>
-                  <StatRow
-                    label={t("home.worklist.headcount")}
-                    items={[
-                      { key: "active", label: t("home.worklist.stat.active"), value: fmtNumber(activeCount) },
-                      { key: "leave", label: t("home.worklist.stat.leave"), value: fmtNumber(leaveCount) },
-                      { key: "starting", label: t("home.worklist.stat.starting"), value: fmtNumber(startingCount) },
-                    ]}
-                  />
-                </WorklistStatWrap>
+                <div className={s.statWrap}>
+                  <WorklistStatWrap>
+                    <StatRow
+                      label={t("home.worklist.headcount")}
+                      items={[
+                        { key: "active", label: t("home.worklist.stat.active"), value: fmtNumber(activeCount) },
+                        { key: "leave", label: t("home.worklist.stat.leave"), value: fmtNumber(leaveCount) },
+                        { key: "starting", label: t("home.worklist.stat.starting"), value: fmtNumber(startingCount) },
+                      ]}
+                    />
+                  </WorklistStatWrap>
+                </div>
               ) : facets.isPending ? (
                 <WorklistBandEmpty><Skeleton decorative bones={["short", "short"]} /></WorklistBandEmpty>
               ) : !canOrg ? (

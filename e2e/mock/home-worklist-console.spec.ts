@@ -11,6 +11,7 @@ import { previewData } from "./onboarding";
 import { failure, inbox, screenAccess, user } from "./fixtures";
 import { mockRoute } from "./route";
 import {
+  saeonAdminToken,
   saeonAdminUser,
   saeonApprovalOrgChange,
   saeonEmployeeFacets,
@@ -80,6 +81,7 @@ async function setupConsoleSaeonWorklist(page: Page, theme: "light" | "dark" = "
 
   const orgAccess = screenAccess("/org");
   const peopleAccess = screenAccess("/people");
+  await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: saeonAdminToken() });
   await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: saeonAdminUser() });
   await mockRoute(page, "get", "/api/v1/access/me", {
     status: 200,
@@ -169,6 +171,8 @@ for (const width of [1440, 390]) {
         await expect(worklist.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true }).locator("tbody tr")).toHaveCount(2);
 
         if (width === 1440) {
+          await expect(page.getByRole("banner")).toContainText(saeonUniverse.adminActor.name);
+          await expect(page.getByRole("banner")).not.toContainText(user.display_name);
           await expect(page.getByRole("heading", { level: 1, name: t("home.inbox.title"), exact: true })).toBeVisible();
           await expect(worklist.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveCount(0);
           const orgRow = queueTable.locator('tbody tr[data-id="OC-2026-0418"]');
@@ -205,6 +209,25 @@ for (const width of [1440, 390]) {
         } else {
           const theadBox = await queueTable.locator("thead").boundingBox();
           expect(theadBox ? theadBox.width <= 2 && theadBox.height <= 2 : true).toBe(true);
+          const opsTable = worklist.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true });
+          const opsFits = await opsTable.evaluate(el => {
+            const scroller = el.parentElement;
+            return el.scrollWidth <= (scroller?.clientWidth ?? el.clientWidth) + 1 &&
+              (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1);
+          });
+          expect(opsFits).toBe(true);
+          await expect(opsTable.locator("..").locator("..").locator("[data-scroll-cue]")).toHaveCount(0);
+          await expect(opsTable).toContainText(saeonUniverse.entities[0]!.workplaces[1]!.name);
+          await expect(opsTable).toContainText(
+            saeonUniverse.worklist.items.find(item => item.id === "att-close-1")!.subject,
+          );
+          await expect(opsTable).toContainText(
+            `${t("accessCodes.domain.bank")} ${t("person.field.notSet")} ${t("home.worklist.personCount", { count: saeonUniverse.payrollRun.missingBankAccountCount })}`,
+          );
+          for (const openLink of await opsTable.getByRole("link", { name: t("home.inbox.open"), exact: true }).all()) {
+            const box = await openLink.boundingBox();
+            expect(box && box.x + box.width <= 390).toBe(true);
+          }
         }
         await withFullPage(page, () => shot(page, `home--${width}-${theme}`));
 
