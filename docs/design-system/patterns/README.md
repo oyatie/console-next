@@ -5,7 +5,7 @@ A page pattern is a named arrangement of regions that a screen is drawn through.
 and the screen supplies what goes in each, so every screen of one kind has the same landmarks, headings, focus
 order and read states.
 
-Every screen of the console is to be drawn through one of thirteen patterns. Nine are built so far.
+Every screen of the console is to be drawn through one of thirteen patterns. All thirteen are built.
 
 ## The thirteen patterns
 
@@ -18,10 +18,10 @@ Every screen of the console is to be drawn through one of thirteen patterns. Nin
 | [`month-grid`](month-grid.md) | A month grid. | Yes |
 | [`register-totals`](register-totals.md) | A register with totals. | Yes |
 | [`form`](form.md) | A form. | Yes |
-| `wizard` | A multi-step wizard. | No |
-| `settings` | A list of settings views with a panel. | No |
-| `canvas` | A canvas with a toolbar and an inspector. | No |
-| `sign-in` | Sign-in, outside the shell. | No |
+| [`wizard`](wizard.md) | A multi-step wizard. | Yes |
+| [`settings`](settings.md) | A list of settings views with a panel. | Yes |
+| [`canvas`](canvas.md) | A canvas with a toolbar and an inspector. | Yes |
+| [`sign-in`](sign-in.md) | Sign-in, outside the shell. | Yes |
 | [`phone-hub`](phone-hub.md) | A phone hub of fact strips and links. | Yes |
 | [`phone-statement`](phone-statement.md) | A phone statement with a period bar and a ledger. | Yes |
 
@@ -54,11 +54,7 @@ path: "/people",
 staticData: { access: readRequirement("/people"), floorplan: "P-01", pattern: "list-record" },
 ```
 
-The key is optional. Thirteen routes declare one today: `/` and `/inbox` (drawn through `Worklist`), `/people` (drawn through
-`ListRecord`), `/people/$id` (drawn through `RecordPattern`), and the nine review routes (`/_review/patterns/worklist`, `/_review/patterns/list-record`,
-`/_review/patterns/record`, `/_review/patterns/document-decision`, `/_review/patterns/month-grid`,
-`/_review/patterns/register-totals`, `/_review/patterns/form`, `/_review/patterns/phone-hub`, and
-`/_review/patterns/phone-statement`).
+The key is optional. Twenty-two routes declare one today: `/`, `/inbox`, and `/approvals` (drawn through `Worklist`), `/people` (drawn through `ListRecord`), `/people/$id` (drawn through `RecordPattern`), `/approvals/$approvalId` (drawn through `DocumentDecision`), `/attendance` (drawn through `MonthGrid`), `/leave` (drawn through `FormPattern`), `/account` (drawn through `PhoneHub`), and the thirteen review routes (`/_review/patterns/worklist`, `/_review/patterns/list-record`, `/_review/patterns/record`, `/_review/patterns/document-decision`, `/_review/patterns/month-grid`, `/_review/patterns/register-totals`, `/_review/patterns/form`, `/_review/patterns/wizard`, `/_review/patterns/settings`, `/_review/patterns/canvas`, `/_review/patterns/sign-in`, `/_review/patterns/phone-hub`, and `/_review/patterns/phone-statement`).
 
 `apps/web/src/routes/route-pattern.test.ts` builds the router and fails when a route names a pattern that is not
 one of the thirteen, or one that is not in `BUILT_PATTERNS`. It also holds the list of routes that declare a

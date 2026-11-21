@@ -252,7 +252,7 @@ export function LongTable<R>(p: {
           <TableHeader className={css.head} columns={cols}>
             {(c) => (
               <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={`${css.th} ${cardLayout ? (c.id === SELECT ? css.selectHead : cards.visuallyHidden) : ""}`}>
-                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}><Box />{cardLayout && toggleLabel}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
+                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}>{({ isSelected, isIndeterminate }) => <><Box selected={isSelected} indeterminate={isIndeterminate} />{cardLayout && toggleLabel}</>}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}
           </TableHeader>
@@ -268,7 +268,7 @@ export function LongTable<R>(p: {
                 return (
                   <Row id={rowKey(id)} columns={cols} className={css.row} render={props => <div {...props} data-row-id={id} data-active-row={p.activeRowId === id || undefined} aria-rowindex={indices.get(id)! + 1} />} onHoverStart={p.onRowHover && (() => hover.start(id))} onHoverEnd={hover.cancel}>
                     {(c) => {
-                      const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
+                      const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}>{({ isSelected, isIndeterminate }) => <Box selected={isSelected} indeterminate={isIndeterminate} />}</Checkbox> : c.cell(r);
                       // Collection metadata needs row names; offscreen form controls can wait for a visible cell.
                       const value = p.editable && !c.rowHeader ? render : render();
                       return <Cell data-type={c.type} focusMode={c.focusMode} allowsArrowNavigation className={css.td} render={(props, { id: cellKey }) => {

@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { Check, Minus } from "lucide-react";
 import { t } from "@console/i18n";
 import css from "./long-table.module.css";
 
-export const Box = () => <span className={css.box} aria-hidden="true" />;
+export const Box = ({ selected, indeterminate }: { selected?: boolean; indeterminate?: boolean }) => (
+  <bdi className={css.box} aria-hidden="true">
+    {indeterminate ? <Minus size={12} strokeWidth={3} /> : selected ? <Check size={12} strokeWidth={3} /> : null}
+  </bdi>
+);
 
 /**
  * The first page's placeholder: the table's columns and rows as grey bars, announced once as loading. CSS shows

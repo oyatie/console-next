@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { Ban } from "lucide-react";
 import { isImeKey } from "../../lib/pure/ime";
 import { singleKey } from "../../lib/pure/keys";
@@ -30,7 +30,7 @@ export function ActionGrid({ label, head, groups, tail, foot, onPick, onClose }:
   const box = useRef<HTMLDivElement>(null);
   const all = [...groups.flatMap((g) => g.items), ...(tail ? [tail] : [])];
   const latest = useRef({ all, onPick, onClose });
-  useEffect(() => void (latest.current = { all, onPick, onClose }));
+  useLayoutEffect(() => void (latest.current = { all, onPick, onClose }));
   useEffect(() => {
     box.current?.querySelector<HTMLElement>("button:not([aria-disabled])")?.focus();
     const key = (e: KeyboardEvent) => {

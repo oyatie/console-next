@@ -220,6 +220,10 @@ export function PaneGrid({
     }
     const frame = requestAnimationFrame(() => {
       restoreRef.current = null;
+      const active = document.activeElement;
+      if (active instanceof Element && active.isConnected && active !== document.body && active !== document.documentElement) {
+        return;
+      }
       fn()?.focus();
     });
     return () => cancelAnimationFrame(frame);
