@@ -1005,6 +1005,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/access-log/reviews/{period}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the monthly tenant access-log review state without exposing frozen chunks
+         * @description Requires tenant-wide Cedar audit::view. Records access_log.review_read before returning.
+         */
+        get: operations["getAccessLogReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a monthly tenant access-log review after all findings and follow-ups resolve
+         * @description Requires tenant-wide Cedar audit::approve and a fresh passkey step-up assertion once all frozen targets are resolved.
+         */
+        post: operations["completeAccessLogReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record or supersede a finding on a frozen flagged event or daily summary
+         * @description Requires tenant-wide Cedar audit::approve. Appends an immutable finding audit record for the started review period.
+         */
+        post: operations["recordAccessLogFinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start and freeze a monthly tenant access-log review
+         * @description Requires tenant-wide Cedar audit::approve. Freezes flagged events and daily summaries once per closed period.
+         */
+        post: operations["startAccessLogReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/accounts/{accountId}/effective": {
         parameters: {
             query?: never;
@@ -12076,7 +12156,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List tenant privacy rights intake requests under live Cedar placement */
+        get: operations["listPrivacyRightsIntake"];
         put?: never;
         /**
          * File a self-service request with register-backed per-kind deadlines
@@ -12123,6 +12204,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/rights-requests/received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an off-app privacy rights receipt on behalf of a tenant subject */
+        post: operations["receiveOffAppPrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/privacy/rights-requests/{id}": {
         parameters: {
             query?: never;
@@ -12134,6 +12232,63 @@ export interface paths {
         get: operations["readPrivacyRightsIntake"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide one requested privacy right with bound passkey step-up and SoD enforcement
+         * @description Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID and SHA-256 of the serialized decision payload (kind, outcome, reason, note, decided_on). Enforces Cedar permission, natural-person SoD against the subject, off-app filer, and prior decision maker on objections.
+         */
+        post: operations["decidePrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}/objection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** File an objection against a prior privacy rights request decision */
+        post: operations["objectPrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}/postpone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Postpone one requested privacy right with bound passkey step-up and SoD enforcement
+         * @description Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID and SHA-256 of the serialized postponement payload (kind, reason, note, decided_on).
+         */
+        post: operations["postponePrivacyRightsRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15609,6 +15764,39 @@ export interface components {
                     label_key: string;
                 }[];
             };
+        };
+        AccessLogReview: {
+            /** Format: uuid */
+            id?: string;
+            /** @description Review period metadata or YYYY-MM label before start. */
+            period: string | {
+                /** Format: date-time */
+                from?: string;
+                /** Format: date-time */
+                to?: string;
+                time_zone?: string;
+            };
+            scope: string;
+            /** Format: uuid */
+            reviewer: string | null;
+            /** Format: date-time */
+            started_at: string | null;
+            /** Format: date-time */
+            reviewed_at: string | null;
+            /** Format: date-time */
+            due: string;
+            flags_seen: {
+                [key: string]: unknown;
+            } | null;
+            findings: {
+                [key: string]: unknown;
+            }[];
+            follow_up: {
+                open: number;
+                total: number;
+            };
+            /** @enum {string} */
+            state: "not_started" | "open" | "overdue" | "complete";
         };
         /** @description Access-screen account labels and state. Contact details and unrelated HR facts are excluded. */
         AccessPerson: {
@@ -30231,6 +30419,13 @@ export interface components {
             requested_at: string;
             /** Format: date-time */
             expires_at: string | null;
+            /** Format: date-time */
+            request_expires_at?: string;
+            requested_duration_seconds?: number;
+            scope?: string[];
+            /** Format: uuid */
+            operator_approver_ref?: string | null;
+            tenant_approved?: boolean;
         };
         SupportSessions: {
             sessions: components["schemas"]["SupportSession"][];
@@ -34378,6 +34573,191 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    getAccessLogReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current monthly review projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    completeAccessLogReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["PasskeyLoginFinishRequest"];
+                };
+            };
+        };
+        responses: {
+            /** @description Completed monthly review projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            /** @description step_up_required — passkey step-up assertion required to sign off. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    recordAccessLogFinding: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    event_id?: string | null;
+                    summary?: {
+                        /** Format: uuid */
+                        actor: string;
+                        /** Format: date */
+                        day: string;
+                        flag: string;
+                    } | null;
+                    /** @enum {string} */
+                    disposition: "confirmed" | "action_required";
+                    outcome?: string | null;
+                    note?: string | null;
+                    follow_up?: {
+                        kind: string;
+                        ref?: string | null;
+                        closed?: boolean | null;
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated monthly review projection including the recorded finding. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    startAccessLogReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Started or existing review projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     getAccountEffectiveAccess: {
@@ -57626,6 +58006,41 @@ export interface operations {
             };
         };
     };
+    listPrivacyRightsIntake: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                status?: "RECEIVED" | "DECIDED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant intake page filtered by live Cedar placement. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            request: components["schemas"]["PrivacyRightsReceipt"];
+                            subject_name: string;
+                        }[];
+                        next_cursor: string | null;
+                        /** Format: date */
+                        as_of: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
     filePrivacyRightsRequest: {
         parameters: {
             query?: never;
@@ -57744,6 +58159,56 @@ export interface operations {
             503: components["responses"]["ServiceUnavailable"];
         };
     };
+    receiveOffAppPrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    subject_user_id: string;
+                    /** @enum {string} */
+                    controller: "TENANT";
+                    /** @enum {string} */
+                    channel: "PHONE" | "LETTER" | "EMAIL" | "IN_PERSON";
+                    /** @enum {string} */
+                    agent: "SUBJECT" | "LEGAL_REPRESENTATIVE" | "AUTHORIZED";
+                    /** @default false */
+                    mandate_received?: boolean;
+                    /** @enum {string} */
+                    identity_method: "SIGNED_IN" | "PASSKEY" | "ID_DOCUMENT_SEEN" | "KNOWN_CONTACT" | "AGENT_MANDATE";
+                    /** Format: date */
+                    received_on: string;
+                    kinds: ("ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL")[];
+                    /** @default  */
+                    detail?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded off-app receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
     readPrivacyRightsIntake: {
         parameters: {
             query?: never;
@@ -57771,6 +58236,140 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    decidePrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL";
+                    /** @enum {string} */
+                    outcome: "GRANTED" | "PARTIAL" | "REFUSED";
+                    reason?: string | null;
+                    note?: string | null;
+                    /** Format: date */
+                    decided_on?: string | null;
+                    step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Updated privacy rights receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    objectPrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    kinds: ("ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL")[];
+                    /** @default  */
+                    detail?: string;
+                    /** @enum {string} */
+                    channel?: "IN_APP" | "PHONE" | "LETTER" | "EMAIL" | "IN_PERSON";
+                    /** @enum {string} */
+                    agent?: "SUBJECT" | "LEGAL_REPRESENTATIVE" | "AUTHORIZED";
+                    /** @default false */
+                    mandate_received?: boolean;
+                    /** @enum {string} */
+                    identity_method?: "SIGNED_IN" | "PASSKEY" | "ID_DOCUMENT_SEEN" | "KNOWN_CONTACT" | "AGENT_MANDATE";
+                    /** Format: date */
+                    received_on?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Objection receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    postponePrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL";
+                    reason: string;
+                    note: string;
+                    /** Format: date */
+                    decided_on?: string | null;
+                    step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Updated privacy rights receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
         };
     };
