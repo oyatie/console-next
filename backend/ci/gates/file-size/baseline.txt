@@ -48,7 +48,6 @@ app/tests/realtime_authority.rs	649
 app/tests/recruiting_pipeline_api.rs	767
 app/tests/registry_api.rs	577
 app/tests/search_api.rs	505
-app/tests/self_service_profile_api.rs	335
 app/tests/submittable_definitions_api.rs	385
 app/tests/workbench_native_api.rs	588
 app/tests/workflow_four_eyes_publish.rs	967

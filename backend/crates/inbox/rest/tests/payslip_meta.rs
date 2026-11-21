@@ -96,6 +96,32 @@ async fn payslip_meta_is_projected_for_payslips_with_dates_and_withheld_for_noti
                 recipient: user,
                 actor: Some(actor),
                 doc: NewInboxDoc {
+                    kind: InboxDocKind::Payslip,
+                    notice_type: None,
+                    title: "Float Payslip".to_owned(),
+                    payload: json!({
+                        "attribution_month": "2026-07",
+                        "period_start": "2026-07-01",
+                        "period_end": "2026-07-31",
+                        "gross_won": 1234.56,
+                        "net_won": 1000.5,
+                    }),
+                    legal_basis: None,
+                    source_kind: None,
+                    source_id: None,
+                },
+                dedup_key: Some("meta-float".to_owned()),
+                trace: TraceContext::generate(),
+                occurred_at: OffsetDateTime::now_utc(),
+            })
+            .await
+            .unwrap();
+
+        store
+            .emit_inbox_doc(EmitInboxDocCommand {
+                recipient: user,
+                actor: Some(actor),
+                doc: NewInboxDoc {
                     kind: InboxDocKind::LegalNotice,
                     notice_type: Some("annual_leave_promotion".to_owned()),
                     title: "Leave Promotion".to_owned(),
@@ -183,7 +209,7 @@ async fn payslip_meta_is_projected_for_payslips_with_dates_and_withheld_for_noti
     let items = body["items"].as_array().unwrap();
     assert_eq!(
         items.len(),
-        2,
+        3,
         "filter=pay must exclude legal_notice: {body}"
     );
     let full = items
@@ -196,6 +222,21 @@ async fn payslip_meta_is_projected_for_payslips_with_dates_and_withheld_for_noti
     assert_eq!(full["payslip_meta"]["pay_date"], "2026-06-25");
     assert_eq!(full["payslip_meta"]["gross_won"], 3_200_000);
     assert_eq!(full["payslip_meta"]["net_won"], 2_900_000);
+
+    let floated = items
+        .iter()
+        .find(|i| i["title"] == "Float Payslip")
+        .unwrap();
+    assert_eq!(floated["payslip_meta"]["period_start"], "2026-07-01");
+    assert_eq!(floated["payslip_meta"]["period_end"], "2026-07-31");
+    assert!(
+        floated["payslip_meta"].get("gross_won").is_none()
+            || floated["payslip_meta"]["gross_won"].is_null()
+    );
+    assert!(
+        floated["payslip_meta"].get("net_won").is_none()
+            || floated["payslip_meta"]["net_won"].is_null()
+    );
 
     let missing = items
         .iter()

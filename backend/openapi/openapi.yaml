@@ -62407,7 +62407,7 @@ components:
         phone:
           type: string
         contact_notified:
-          type: boolean
+          type: [boolean, "null"]
     SelfEmergencyContactSummary:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object

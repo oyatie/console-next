@@ -9,9 +9,11 @@ use uuid::Uuid;
 
 pub(crate) struct SeededProfileFixture {
     pub(crate) org_a: OrgId,
+    pub(crate) org_b: OrgId,
     pub(crate) entity_a: Uuid,
     pub(crate) emp_a: Uuid,
     pub(crate) user_a: UserId,
+    pub(crate) user_b: UserId,
     pub(crate) key: SoftKey,
     pub(crate) tok_a: String,
     pub(crate) tok_unlinked: String,
@@ -98,9 +100,11 @@ pub(crate) async fn seed_profile_fixture(
     let key = SoftKey::enroll(pool, org_a, user_a).await;
     SeededProfileFixture {
         org_a,
+        org_b,
         entity_a,
         emp_a,
         user_a,
+        user_b,
         key,
         tok_a: token_for(
             pool,

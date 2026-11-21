@@ -86,13 +86,10 @@ async fn require_self_reveal_value(
                      LEFT JOIN users u ON u.org_id = e.org_id AND u.id = $3 \
                      LEFT JOIN employee_employment_profiles p ON p.org_id = e.org_id AND p.employee_id = e.id \
                      WHERE e.org_id = $1 AND e.id = $2 \
-                       AND COALESCE( \
-                           CASE WHEN console_employee_facts(e.org_id, e.id) ? 'phone' \
+                       AND CASE WHEN console_employee_facts(e.org_id, e.id) ? 'phone' \
                                 THEN NULLIF(btrim(console_employee_facts(e.org_id, e.id)->>'phone'), '') \
-                                ELSE NULLIF(btrim(p.phone_e164), '') \
-                           END, \
-                           NULLIF(btrim(u.phone), '') \
-                       ) IS NOT NULL \
+                                ELSE COALESCE(NULLIF(btrim(p.phone_e164), ''), NULLIF(btrim(u.phone), '')) \
+                           END IS NOT NULL \
                  )",
             )
             .bind(org)
@@ -140,13 +137,10 @@ async fn read_self_reveal_value(
     let value = match field {
         SelfRevealField::Phone => {
             let phone: Option<String> = sqlx::query_scalar(
-                "SELECT COALESCE( \
-                     CASE WHEN console_employee_facts(e.org_id, e.id) ? 'phone' \
-                          THEN NULLIF(btrim(console_employee_facts(e.org_id, e.id)->>'phone'), '') \
-                          ELSE NULLIF(btrim(p.phone_e164), '') \
-                     END, \
-                     NULLIF(btrim(u.phone), '') \
-                 ) \
+                "SELECT CASE WHEN console_employee_facts(e.org_id, e.id) ? 'phone' \
+                             THEN NULLIF(btrim(console_employee_facts(e.org_id, e.id)->>'phone'), '') \
+                             ELSE COALESCE(NULLIF(btrim(p.phone_e164), ''), NULLIF(btrim(u.phone), '')) \
+                        END \
                  FROM person_employees_current e \
                  LEFT JOIN users u ON u.org_id = e.org_id AND u.id = $3 \
                  LEFT JOIN employee_employment_profiles p ON p.org_id = e.org_id AND p.employee_id = e.id \

@@ -8,8 +8,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    Certificate, CertificatePage, CertificateSummary, commands::audit,
-    deserialize_certificate_kind, not_found, read::from_row, refused,
+    Certificate, CertificatePage, CertificateSummary, commands::audit, not_found, read::from_row,
+    refused,
 };
 use crate::lifecycle::events_page::{LifecycleEventsQuery, encode_events_cursor};
 use crate::{HrError, HrService};
@@ -18,11 +18,29 @@ use console_platform_authz::cedar_pbac::visible::{DecisionFacts, load_facts};
 use console_platform_db::{settings_read::resolve_in_tx, with_audits};
 use console_settings_domain::{SettingKey, SettingValue};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SelfCertificateKind {
+    Employment,
+    Career,
+    Exit,
+}
+
+impl SelfCertificateKind {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Employment => "EMPLOYMENT",
+            Self::Career => "CAREER",
+            Self::Exit => "EXIT",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SelfIssueCertificateRequest {
-    #[serde(deserialize_with = "deserialize_certificate_kind")]
-    pub kind: String,
+    pub kind: SelfCertificateKind,
     pub items: Vec<String>,
     pub purpose: String,
 }

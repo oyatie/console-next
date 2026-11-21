@@ -74,23 +74,33 @@ impl HrService {
 
                 if let Some(phone_val) = next_phone {
                     let old_phone = head.current("phone").map(|s| json!(s));
-                    sqlx::query("UPDATE users SET phone = $3 WHERE org_id = $1 AND id = $2")
-                        .bind(org_uuid)
-                        .bind(user_uuid)
-                        .bind(phone_val.as_deref())
-                        .execute(tx.as_mut())
-                        .await?;
-                    if head.profile.is_some() {
-                        sqlx::query(
-                            "UPDATE employee_employment_profiles SET phone_e164 = $3 \
-                             WHERE org_id = $1 AND employee_id = $2",
-                        )
-                        .bind(org_uuid)
-                        .bind(employee_id)
-                        .bind(phone_val.as_deref())
-                        .execute(tx.as_mut())
-                        .await?;
-                    }
+                    let person_id: uuid::Uuid = match sqlx::query_scalar::<_, Option<uuid::Uuid>>(
+                        "SELECT console_employee_person($1, $2)",
+                    )
+                    .bind(org_uuid)
+                    .bind(employee_id)
+                    .fetch_one(tx.as_mut())
+                    .await?
+                    {
+                        Some(id) => id,
+                        None => {
+                            sqlx::query_scalar("SELECT console_bind_employee_person($1, $2, $3)")
+                                .bind(org_uuid)
+                                .bind(employee_id)
+                                .bind(user_uuid)
+                                .fetch_one(tx.as_mut())
+                                .await?
+                        }
+                    };
+                    sqlx::query(
+                        "SELECT console_revise_person_facts($1, $2, jsonb_build_object('phone', $3::text), $4)",
+                    )
+                    .bind(org_uuid)
+                    .bind(person_id)
+                    .bind(phone_val.as_deref())
+                    .bind(user_uuid)
+                    .execute(tx.as_mut())
+                    .await?;
                     sqlx::query(
                         "INSERT INTO employee_corrections \
                          (org_id, employee_id, field, old_value, new_value, reason_code, corrected_by) \

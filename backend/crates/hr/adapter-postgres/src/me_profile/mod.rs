@@ -122,13 +122,10 @@ pub(super) async fn load_profile_in_tx(
                COALESCE(NULLIF(btrim(jt_pos.label), ''), NULLIF(btrim(e.position), '')) AS position,
                COALESCE(to_char(e.hire_on, 'YYYY-MM-DD'), NULLIF(btrim(e.hire_date), '')) AS hire_date,
                entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employment_status,
-               COALESCE(
-                   CASE WHEN console_employee_facts(e.org_id, e.id) ? 'phone'
-                        THEN NULLIF(btrim(console_employee_facts(e.org_id, e.id)->>'phone'), '')
-                        ELSE NULLIF(btrim(p.phone_e164), '')
-                   END,
-                   NULLIF(btrim(u.phone), '')
-               ) AS raw_phone,
+               CASE WHEN console_employee_facts(e.org_id, e.id) ? 'phone'
+                    THEN NULLIF(btrim(console_employee_facts(e.org_id, e.id)->>'phone'), '')
+                    ELSE COALESCE(NULLIF(btrim(p.phone_e164), ''), NULLIF(btrim(u.phone), ''))
+               END AS raw_phone,
                COALESCE(epf.bank_account_registered, FALSE) AS bank_account_registered,
                a.si_nm,
                a.sgg_nm,

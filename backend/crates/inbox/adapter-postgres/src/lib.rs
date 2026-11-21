@@ -40,8 +40,8 @@ macro_rules! inbox_columns {
                   'period_start', payload->>'period_start', \
                   'period_end', payload->>'period_end', \
                   'pay_date', NULLIF(payload->>'pay_date', ''), \
-                  'gross_won', CASE WHEN jsonb_typeof(payload->'gross_won') = 'number' THEN payload->'gross_won' ELSE NULL END, \
-                  'net_won', CASE WHEN jsonb_typeof(payload->'net_won') = 'number' THEN payload->'net_won' ELSE NULL END \
+                  'gross_won', CASE WHEN jsonb_typeof(payload->'gross_won') = 'number' AND (payload->>'gross_won') ~ '^-?[0-9]+$' THEN payload->'gross_won' ELSE NULL END, \
+                  'net_won', CASE WHEN jsonb_typeof(payload->'net_won') = 'number' AND (payload->>'net_won') ~ '^-?[0-9]+$' THEN payload->'net_won' ELSE NULL END \
               ) \
               ELSE NULL END AS payslip_meta"
     };

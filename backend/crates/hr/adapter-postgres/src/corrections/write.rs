@@ -249,6 +249,28 @@ pub(crate) async fn apply_fields_in_tx(
         None
     };
     for (field, value) in fields {
+        if field == "bank_account_registered" {
+            let old_value = ledger_old(head, field).and_then(|v| v.as_bool());
+            let new_value = value.as_deref() == Some("true");
+            sqlx::query(
+                "INSERT INTO employee_bank_account_attestations \
+                 (org_id, employee_id, old_value, new_value, reason_code, note, \
+                  attested_by, change_request_id, review_required) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            )
+            .bind(org)
+            .bind(employee_id)
+            .bind(old_value)
+            .bind(new_value)
+            .bind(meta.reason_code)
+            .bind(meta.note)
+            .bind(meta.corrected_by)
+            .bind(meta.change_request_id)
+            .bind(meta.review_required)
+            .execute(tx.as_mut())
+            .await?;
+            continue;
+        }
         let value = if field == "emergency_contacts" {
             stored_contacts.as_deref()
         } else {

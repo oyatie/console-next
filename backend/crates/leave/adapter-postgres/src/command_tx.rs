@@ -164,10 +164,12 @@ pub(super) fn map_leave_command_sqlx(error: sqlx::Error) -> PgLeaveError {
         | "employee_create.active_branch_required" => {
             PgLeaveError::Domain(KernelError::not_found(message.to_owned()))
         }
+        "leave_create.idempotency_conflict" => PgLeaveError::Domain(
+            KernelError::conflict(message.to_owned()).with_code("leave_create.idempotency_conflict"),
+        ),
         "leave_resolve.not_pending"
         | "leave_decide.not_pending"
         | "employee_import_batch.run_not_dry_run"
-        | "leave_create.idempotency_conflict"
         | "employee_create.idempotency_conflict"
         | "employee_create.employee_number_conflict"
         | "leave_balance_import.idempotency_conflict"

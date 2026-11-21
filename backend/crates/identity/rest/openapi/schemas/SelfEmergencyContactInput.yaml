@@ -15,4 +15,4 @@ properties:
   phone:
     type: string
   contact_notified:
-    type: boolean
+    type: [boolean, "null"]

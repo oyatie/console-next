@@ -4,7 +4,9 @@ use sqlx::{Postgres, Row, Transaction};
 use time::{Date, Month, OffsetDateTime};
 use uuid::Uuid;
 
-use super::self_service::{SelfIssueCertificateRequest, require_self_employee};
+use super::self_service::{
+    SelfCertificateKind, SelfIssueCertificateRequest, require_self_employee,
+};
 use super::{commands::audit, not_found, read::from_row, refused, settings, validation};
 use crate::{HrError, HrService};
 use console_platform_authz::Principal;
@@ -89,8 +91,8 @@ async fn snapshot_for_self(
     if voided.is_some()
         || hire > today
         || !matches!(status.as_str(), "ACTIVE" | "ON_LEAVE" | "EXITED")
-        || (b.kind == "EMPLOYMENT" && status == "EXITED")
-        || (b.kind == "EXIT" && status != "EXITED")
+        || (b.kind == SelfCertificateKind::Employment && status == "EXITED")
+        || (b.kind == SelfCertificateKind::Exit && status != "EXITED")
     {
         return Err(refused(
             http::StatusCode::CONFLICT,
@@ -164,7 +166,7 @@ impl HrService {
                 "support sessions cannot issue self-service certificates",
             ));
         }
-        validation::issue_fields(&body.kind, &body.items, &body.purpose)?;
+        validation::issue_fields(body.kind.as_str(), &body.items, &body.purpose)?;
         let key = validate_idempotency_key(key.as_deref()).map_err(HrError::validation)?;
         with_audits::<_, _, HrError>(&self.pool, p.org_id, move |tx| {
             Box::pin(async move {
@@ -228,7 +230,7 @@ impl HrService {
                 .bind(year)
                 .bind(seq)
                 .bind(number)
-                .bind(&body.kind)
+                .bind(body.kind.as_str())
                 .bind(&body.items)
                 .bind(body.purpose.trim())
                 .bind(snapshot)
