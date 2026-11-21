@@ -1,4 +1,4 @@
-import { ApiError } from "@console/api";
+import { ApiError, isDeadlineTimeout } from "@console/api";
 
 /**
  * A refusal (4xx: not signed in, no permission, not found, refused by a rule) is the server's answer, not a fault:
@@ -17,8 +17,10 @@ export const isAnswer = (e: unknown) => e instanceof ApiError && e.status >= 400
 export const MAX_RETRY_AFTER_MS = 30_000;
 /** A 429 or 503 that says when to come back: retried no sooner (RFC 9110 §10.2.3). */
 const comeBack = (e: unknown) => e instanceof ApiError && (e.status === 429 || e.status === 503) && e.retryAfterMs !== undefined;
-const retryable = (e: unknown) =>
-  comeBack(e) ? (e as ApiError).retryAfterMs! <= MAX_RETRY_AFTER_MS : !isAnswer(e);
+const retryable = (e: unknown) => {
+  if (isDeadlineTimeout(e)) return false;
+  return comeBack(e) ? (e as ApiError).retryAfterMs! <= MAX_RETRY_AFTER_MS : !isAnswer(e);
+};
 
 export const queryDefaults = {
   retry: (n: number, e: unknown) => retryable(e) && n < 2,
