@@ -197,11 +197,17 @@ export function saeonAttendanceMonthGrid(): S["AttendanceMonthGrid"] {
       };
     });
 
+    const gradeLabel = saeonUniverse.grades[member.gradeCode as keyof typeof saeonUniverse.grades];
+    const roleLabel = member.roleCode
+      ? saeonUniverse.roles[member.roleCode as keyof typeof saeonUniverse.roles]
+      : null;
+
     return {
       employee_id: id,
       employee_number: member.employeeNumber,
       name: member.name,
       unit_name: team1Name,
+      position: roleLabel ? `${gradeLabel} · ${roleLabel}` : gradeLabel,
       own: false,
       month_state: { state: "OPEN" },
       totals: {
@@ -217,10 +223,30 @@ export function saeonAttendanceMonthGrid(): S["AttendanceMonthGrid"] {
     };
   });
 
+  const firstCells = rows[0]?.cells ?? [];
+  const scheduledDays = firstCells.filter(c => c.plan_kind === "WORK").length;
+  const weekdayHolidays = firstCells.filter(c => {
+    const dow = new Date(`${c.date}T00:00:00Z`).getUTCDay();
+    return dow >= 1 && dow <= 5 && (c.plan_kind === "PUBLIC_HOLIDAY" || c.plan_kind === "SUBSTITUTE_HOLIDAY");
+  }).length;
+  const summary: S["AttendanceMonthGridSummary"] = {
+    scheduled_days: scheduledDays,
+    weekday_holidays: weekdayHolidays,
+    recognised_minutes: rows.reduce((sum, r) => sum + r.totals.recognised, 0),
+    outside_minutes: rows.reduce((sum, r) => sum + (r.totals.outside_scheduled ?? r.totals.approved + r.totals.unrecognised), 0),
+    unapproved_minutes: rows.reduce((sum, r) => sum + r.totals.unrecognised, 0),
+    blocking_count: rows.reduce((sum, r) => sum + r.totals.blocking, 0),
+    decision_count: rows.reduce((sum, r) => sum + r.totals.decision, 0),
+    issue_people_count: rows.filter(r => r.totals.blocking + r.totals.decision > 0).length,
+    overtime_people_count: rows.filter(r => (r.totals.outside_scheduled ?? r.totals.approved + r.totals.unrecognised) > 0).length,
+  };
+
   return {
     month: MONTH,
     people_total: rows.length,
     next_cursor: null,
+    work_pattern_summary: saeonUniverse.hero.workSchedule.split(" · ")[0] ?? null,
+    summary,
     rows,
   };
 }

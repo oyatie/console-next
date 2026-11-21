@@ -40,6 +40,7 @@ type Props = {
   filter: MonthFilter;
   onFilter: (f: MonthFilter) => void;
   summary: ReturnType<typeof summarizeMonth>;
+  workPatternSummary?: string | null;
   openIssues: readonly OpenIssueRow[];
   draftCount: number;
   refusedDraftCount: number;
@@ -76,6 +77,7 @@ export function MonthConsoleView({
   filter,
   onFilter,
   summary,
+  workPatternSummary,
   openIssues,
   draftCount,
   refusedDraftCount,
@@ -212,7 +214,12 @@ export function MonthConsoleView({
           <StatRow
             label={t("attendance.title")}
             items={[
-              { key: "scope", label: t("attendance.monthConsole.summary.scope"), value: t("attendance.people", { count: summary.total }) },
+              {
+                key: "scope",
+                label: t("attendance.monthConsole.summary.scope"),
+                value: t("attendance.people", { count: summary.total }),
+                meta: workPatternSummary ?? undefined,
+              },
               { key: "scheduled", label: t("attendanceRecords.card.scheduledDays"), value: t("attendanceRecords.card.days", { count: summary.scheduledDays }) },
               { key: "holidays", label: t("attendance.monthConsole.summary.weekdayHolidays"), value: t("attendanceRecords.card.days", { count: summary.weekdayHolidays }) },
               { key: "recognised", label: t("attendanceRecords.total.recognised"), value: summary.recognisedMinutes ? duration(summary.recognisedMinutes) : "–" },

@@ -17,10 +17,21 @@ export function leaveOptionLabel(kind: LeaveOptionKind): string {
 }
 
 export type LeaveRequestView = components["schemas"]["LeaveRequestV2View"];
+export type TeamOverlapView = components["schemas"]["SelfLeaveTeamOverlap"];
+export type ApprovalPreviewStep = components["schemas"]["LeaveApprovalPreviewStep"];
 type LeaveCreateBody = components["schemas"]["LeaveCreateRequest"];
 
 /** Self-service leave balance and recent request history. */
 export const myLeaveQuery = get("/api/v2/me/leave");
+
+/** Self-service team overlap for the selected leave date range. */
+export const myLeaveTeamOverlapQuery = (startDate: string, endDate: string) =>
+  get("/api/v2/me/leave/team-overlap", {
+    params: { query: { start_date: startDate, end_date: endDate } },
+  });
+
+/** Self-service approval chain preview for leave filing. */
+export const myLeaveApprovalPreviewQuery = get("/api/v2/me/leave/approval-preview");
 
 /** Self-service monthly schedule used to exclude non-working holidays when estimating multi-day leave. */
 export const myScheduleQuery = (month: string) =>
@@ -36,6 +47,12 @@ export function leaveSubmitError(code: string): string | undefined {
   switch (code) {
     case "leave_home_branch_review_required":
       return t("leave.failed.homeBranchRequired");
+    case "leave_overlapping_request":
+    case "leave_create.overlapping_request":
+      return t("common.failed.code.leave_overlapping_request");
+    case "leave_period_closed":
+    case "leave_create.period_closed":
+      return t("common.failed.code.leave_period_closed");
     case "leave_create.idempotency_conflict":
     case "idempotency_key_reused":
       return t("leave.failed.idempotencyConflict");

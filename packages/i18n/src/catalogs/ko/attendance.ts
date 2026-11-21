@@ -137,6 +137,7 @@ export const koAttendance: Record<keyof typeof enAttendance, string> = {
   "attendance.monthConsole.summary.openIssues": "확인 필요",
   "attendance.monthConsole.summary.issueMeta": "마감 불가 {blocking, number} · 결정 필요 {decision, number}",
   "attendance.monthConsole.grid.unit": "소속",
+  "attendance.monthConsole.grid.position": "직급 · 직책",
   "attendance.monthConsole.grid.tailGroup": "개인별 합계",
   "attendance.monthConsole.grid.badge.annual": "연",
   "attendance.monthConsole.grid.badge.half": "반",

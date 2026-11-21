@@ -271,6 +271,9 @@ export function saeonHeroUser(): S["CurrentUser"] {
     employee_company: saeonUniverse.hero.entityName,
     employee_org_unit: heroRow.place.split(" › ").at(-1) ?? null,
     employee_position: `${saeonUniverse.hero.gradeLabel} · ${saeonUniverse.hero.roleLabel}`,
+    employee_grade: saeonUniverse.hero.gradeLabel,
+    employee_hire_date: saeonUniverse.hero.hireDate,
+    employee_employment_status: "ACTIVE",
     employee_identity_review_required: false,
     employee_identity_resolution_confidence: "high",
     employee_link_status: "LINKED",
@@ -285,6 +288,71 @@ export function saeonHeroUser(): S["CurrentUser"] {
     created_at: SAEON_AT,
     tenant: { name: saeonUniverse.tenantName, phase: "OPERATING", go_live_at: "2026-01-01T00:00:00Z" },
   };
+}
+
+/** OpenAPI-typed `MeProfileResponse` for the Saeon self-service hero employee (10587). */
+export function saeonHeroProfile(overrides?: Partial<S["MeProfileResponse"]>): S["MeProfileResponse"] {
+  const hero = saeonHeroUser();
+  return {
+    employee_id: hero.employee_id!,
+    employee_number: hero.employee_number ?? null,
+    org_unit: hero.employee_org_unit ?? null,
+    grade: hero.employee_grade ?? null,
+    position: hero.employee_position ?? null,
+    hire_date: hero.employee_hire_date ?? null,
+    employment_status: "ACTIVE",
+    phone_masked: saeonUniverse.hero.mobilePhoneMasked,
+    emergency_contacts_registered: true,
+    emergency_contacts_count: 1,
+    emergency_contacts: [
+      {
+        name: saeonUniverse.heroDetails.emergencyContactName,
+        relation: "SPOUSE",
+        phone_masked: "010-••••-9012",
+      },
+    ],
+    address_masked: saeonUniverse.hero.address,
+    bank_account_registered: true,
+    open_change_requests: [
+      {
+        id: "00000000-0000-4000-8800-000000000401",
+        field: "address",
+        status: "OPEN",
+        masked_summary: saeonUniverse.hero.address,
+        created_at: "2026-11-02T01:00:00Z",
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/** OpenAPI-typed self-service `Certificate` fixtures for Saeon hero employee (10587). */
+export function saeonHeroCertificates(): S["Certificate"][] {
+  const hero = saeonHeroUser();
+  return saeonUniverse.heroDetails.certificates.map((cert, index) => ({
+    id: `00000000-0000-4000-8850-${padDigits(index + 1, 12)}`,
+    employee_id: hero.employee_id!,
+    certificate_no: cert.certificateNo,
+    kind: cert.kind as S["Certificate"]["kind"],
+    items: ["period", "position"],
+    purpose: cert.purpose,
+    snapshot: {
+      name: hero.employee_name!,
+      birth: saeonUniverse.hero.birthDate,
+      period: { from: saeonUniverse.hero.hireDate, to: saeonUniverse.referenceDate },
+      duty: hero.employee_org_unit ?? undefined,
+      position: hero.employee_position ?? undefined,
+      wage: undefined,
+      issuer: saeonUniverse.hero.entityName,
+      seal_text: saeonUniverse.hero.entityName,
+      seal_png: null,
+    },
+    replaces_id: null,
+    issued_by: hero.id,
+    issued_at: cert.issuedAt,
+    voided_at: null,
+    void_reason: null,
+  }));
 }
 
 /** OpenAPI-typed refresh token pair carrying the Saeon self-service employee claims. */
@@ -388,6 +456,7 @@ export function saeonMyLeaveOverview(overrides?: {
     balance: {
       employee_id: hero.employee_id!,
       name: hero.employee_name!,
+      org_unit: hero.employee_org_unit ?? null,
       accrued_units: toUnits(accrued),
       used_units: toUnits(used),
       remaining_units: toUnits(remaining),
@@ -403,6 +472,55 @@ export function saeonMyLeaveOverview(overrides?: {
       items: overrides?.items ?? defaultHeroLeaveRequests(hero),
       next_cursor: null,
     },
+  };
+}
+
+/** OpenAPI-typed `SelfLeaveTeamOverlap` fixture for the Saeon hero's team. */
+export function saeonMyLeaveTeamOverlap(overrides?: Partial<S["SelfLeaveTeamOverlap"]>): S["SelfLeaveTeamOverlap"] {
+  const hero = saeonHeroUser();
+  const teammate = saeonUniverse.attendanceMonth.members[7]!;
+  return {
+    org_unit: hero.employee_org_unit ?? null,
+    active_count: saeonUniverse.attendanceMonth.members.length,
+    out_count: 1,
+    members_out: [
+      {
+        employee_id: `00000000-0000-4000-8500-${padDigits(Number(teammate.employeeNumber), 12)}`,
+        name: teammate.name,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/** OpenAPI-typed `SelfLeaveApprovalPreview` fixture for the Saeon hero employee. */
+export function saeonMyLeaveApprovalPreview(
+  overrides?: Partial<S["SelfLeaveApprovalPreview"]>,
+): S["SelfLeaveApprovalPreview"] {
+  const hero = saeonHeroUser();
+  const lead = saeonUniverse.attendanceMonth.members[0]!;
+  return {
+    filing_state: "ready",
+    home_branch_id: hero.branch_ids[0]!,
+    branch_name: saeonUniverse.hero.workplace,
+    org_unit: hero.employee_org_unit ?? null,
+    steps: [
+      {
+        order: 1,
+        step_kind: "unit_lead",
+        role_label: "TEAM_LEAD",
+        approver_name: lead.name,
+        approver_position: saeonUniverse.roles.TEAM_LEAD,
+      },
+      {
+        order: 2,
+        step_kind: "branch_hr",
+        role_label: `${saeonUniverse.hero.workplace} Approver`,
+        approver_name: null,
+        approver_position: null,
+      },
+    ],
+    ...overrides,
   };
 }
 
