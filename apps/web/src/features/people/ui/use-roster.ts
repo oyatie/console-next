@@ -79,6 +79,8 @@ export function useRoster(f: OrderedRoster, soonDays: number | undefined, enable
     changed,
     status: { totals: statusTotals(statusCounts(enabled ? probe.data?.status : undefined)), failed: statusCounts().map(() => enabled && probe.isError) },
     review: { totals: reviewTotals(reviewCounts(enabled ? review.data?.review : undefined)), failed: reviewCounts().map(() => enabled && review.isError) },
+    facets: enabled ? probe.data : undefined,
+    reviewFacets: enabled ? review.data : undefined,
     query,
   };
 }

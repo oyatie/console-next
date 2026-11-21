@@ -4,6 +4,7 @@ import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../lib/react/query-state";
 import { ToggleButton } from "../../ui/button/button";
+import { ExperienceSwitch } from "../../ui/patterns/pattern-shell";
 import { ApiError, authzQuery, granted, myAccessQuery } from "../../reference/authz/api";
 import { Accounts } from "./Accounts";
 import { PeopleHead, type PeopleView } from "./ui/people-head";
@@ -32,18 +33,35 @@ const route = getRouteApi("/app/people");
 
 export function People() {
   const tabs = useTabSearch(PEOPLE_TABS);
-  const { exitStatus } = route.useSearch();
+  const { exitStatus, view } = route.useSearch();
   const { peopleAccess } = route.useRouteContext();
   const navigate = route.useNavigate();
-  return <Page floorplan="P-01" head={{ title: t("roster.head.title"), titleId: "people-title" }}>
-    <PageTabs {...tabs} label={t("roster.head.title")} items={PEOPLE_TABS.map(({ id }) => ({ id, label: t(`roster.page.${id}`) }))}>
-      {selected => <Suspense fallback={<ReadSkeleton layout="list" />}>
-        {selected === "roster" && <AccessGate {...peopleAccess.roster} layout="list"><PeopleDirectory /></AccessGate>}
-        {selected === "appointments" && <AppointmentsContent />}
-        {selected === "exits" && <AccessGate {...peopleAccess.exits} layout="list"><ExitCaseListContent status={exitStatus} onStatus={status => void navigate({ search: previous => ({ ...previous, exitStatus: status }), replace: true })} /></AccessGate>}
-      </Suspense>}
-    </PageTabs>
-  </Page>;
+  const baselinePage = (
+    <Page floorplan="P-01" head={{ title: t("roster.head.title"), titleId: "people-title" }}>
+      <PageTabs {...tabs} label={t("roster.head.title")} items={PEOPLE_TABS.map(({ id }) => ({ id, label: t(`roster.page.${id}`) }))}>
+        {selected => (
+          <Suspense fallback={<ReadSkeleton layout="list" />}>
+            {selected === "roster" && <AccessGate {...peopleAccess.roster} layout="list"><PeopleDirectory /></AccessGate>}
+            {selected === "appointments" && <AppointmentsContent />}
+            {selected === "exits" && <AccessGate {...peopleAccess.exits} layout="list"><ExitCaseListContent status={exitStatus} onStatus={status => void navigate({ search: previous => ({ ...previous, exitStatus: status }), replace: true })} /></AccessGate>}
+          </Suspense>
+        )}
+      </PageTabs>
+    </Page>
+  );
+  return (
+    <ExperienceSwitch baseline={() => baselinePage}>
+      {() =>
+        (!tabs.selected || tabs.selected === "roster") && view !== "accounts" ? (
+          <Suspense fallback={<ReadSkeleton layout="list" />}>
+            <AccessGate {...peopleAccess.roster} layout="list"><PeopleDirectory /></AccessGate>
+          </Suspense>
+        ) : (
+          baselinePage
+        )
+      }
+    </ExperienceSwitch>
+  );
 }
 
 /** Employees (the roster) or accounts, with their existing server capability decisions. */

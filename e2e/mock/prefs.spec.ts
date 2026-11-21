@@ -7,7 +7,6 @@ import { mockScreen } from "./screen";
 import { failure, inbox, user } from "./fixtures";
 import { fits, expectAxe } from "../a11y";
 import { screens } from "../states/registry";
-import { OPTIONAL_COLUMNS } from "../../apps/web/src/features/people/domain/columns";
 import { floorOf } from "../../apps/web/src/ui/experience-floors";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -201,7 +200,7 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
         expect(locale!.y + locale!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
       }
       if (screen.key === "people") {
-        const find = await main.getByRole("searchbox", { name: t("roster.find"), exact: true }).boundingBox();
+        const find = await main.getByRole("searchbox", { name: t("people.find.placeholder"), exact: true }).boundingBox();
         expect(find!.x).toBeGreaterThanOrEqual(0);
         expect(find!.x + find!.width).toBeLessThanOrEqual(width);
       }
@@ -209,7 +208,7 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
       await expectAxe(page, `${experience}/${theme}/${screen.key}/${width}`);
       await info.attach(`${experience}-${theme}-${screen.key}-${width}`, { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
       if (screen.key === "people") {
-        await page.getByRole("button", { name: t("roster.columns.open", { count: OPTIONAL_COLUMNS.length + 2 }), exact: true }).click();
+        await page.getByRole("button", { name: t("people.tools.columns"), exact: true }).click();
         await expect(page.getByRole("dialog", { name: t("roster.columns.title"), exact: true }).locator(".check input").first()).toBeVisible();
         await expectRenderedFloors(page, floorOf(experience, width === 390 ? "phone" : "desk"));
       }

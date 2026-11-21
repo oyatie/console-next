@@ -8,7 +8,14 @@
 .stats { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; margin: 0; border: 1px solid var(--border); border-radius: var(--radius); }
 .stat { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; padding: var(--space-2) var(--space-3); border-left: 1px solid var(--border-soft); }
 .stat:first-child { border-left: 0; }
-.statLabel { color: var(--steel); font-size: var(--text-xs); }
+.stat[data-interactive] { position: relative; cursor: pointer; }
+.stat[data-interactive]:hover:not([data-active]):not([data-tone]) { background: var(--surface-hover); }
+.statLabel { min-width: 0; color: var(--steel); font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.statBtn { appearance: none; border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; display: inline-flex; align-items: center; gap: var(--space-1); max-width: 100%; min-width: 0; text-align: start; cursor: pointer; outline: none; white-space: nowrap; }
+.statBtn > svg { flex: none; }
+.statBtn > bdi { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.statBtn::after { content: ""; position: absolute; inset: 0; }
+.statBtn:focus-visible::after { outline: 2px solid var(--primary); outline-offset: -2px; }
 .statValue { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 /* Phone widths: the counts stack two by two instead of squeezing. */
 @media (max-width: 767px) { .stats { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat:nth-child(odd) { border-left: 0; } }
@@ -37,6 +44,13 @@
   :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(4)) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(4)) > .stat:nth-child(odd) { border-left: 0; }
   :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(4)) > .stat:nth-child(n + 3) { border-top: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat { padding: var(--space-1-5) var(--space-2); min-width: 0; border-top: 0; border-left: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(1),
+  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(4) { border-left: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(n + 4) { border-top: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(5) { grid-column: span 2; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat > .statValue { font-size: var(--text-body); }
 }
 @media (max-width: 359px) {
   :where([data-experience]:not([data-experience="baseline"])) .stat { padding: var(--space-2) var(--space-1-5); }

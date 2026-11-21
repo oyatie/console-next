@@ -56,6 +56,7 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/inbox": "worklist",
     "/leave": "form",
     "/people": "list-record",
+    "/people/$id": "record",
     "/approvals": "worklist",
     "/approvals/$approvalId": "document-decision",
     "/attendance": "month-grid",
