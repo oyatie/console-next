@@ -270,6 +270,9 @@ test("PayslipPage rejects mismatched or placeholder detail payloads and PayslipB
     detailPending: true,
   });
   expect(baselineLoadingHtml).toContain('aria-busy="true"');
+  expect(baselineLoadingHtml).toContain('data-bone="short"');
+  expect(baselineLoadingHtml).toContain('data-bone="title"');
+  expect(baselineLoadingHtml).not.toContain('data-read-layout="record"');
   expect(baselineLoadingHtml).not.toContain(t("payslip.detail.unavailable"));
 
   const baselineDeniedHtml = renderPage({
@@ -278,6 +281,8 @@ test("PayslipPage rejects mismatched or placeholder detail payloads and PayslipB
     detailError: new ApiError(403, "forbidden", ""),
   });
   expect(baselineDeniedHtml).toContain(t("common.denied.panel"));
+  expect(baselineDeniedHtml).not.toContain('data-read-layout="record"');
+  expect(baselineDeniedHtml).toMatch(/<section[^>]*class="[^"]*card[^"]*"[^>]*>[\s\S]*common\.denied|class="[^"]*card[^"]*"[\s\S]*?<h2[^>]*>.*<\/h2>/);
   expect(baselineDeniedHtml).not.toContain(t("payslip.detail.unavailable"));
 
   const baselineFailedHtml = renderPage({
@@ -287,5 +292,33 @@ test("PayslipPage rejects mismatched or placeholder detail payloads and PayslipB
   });
   expect(baselineFailedHtml).toContain(t("common.loadFailed.title"));
   expect(baselineFailedHtml).toContain(t("common.retry"));
+  expect(baselineFailedHtml).not.toContain('data-read-layout="record"');
   expect(baselineFailedHtml).not.toContain(t("payslip.detail.unavailable"));
+
+  const baselineNotFoundHtml = renderPage({
+    experience: "baseline",
+    listData: { items: [sampleDoc], next_cursor: null },
+    detailError: new ApiError(404, "not_found", ""),
+  });
+  expect(baselineNotFoundHtml).toContain(t("common.read.notFound.title"));
+  expect(baselineNotFoundHtml).not.toContain('data-read-layout="record"');
+  expect(baselineNotFoundHtml.match(/<section[^>]*class="[^"]*card[^"]*"/g)?.length).toBe(2);
+});
+
+test("PayslipPage Console detail loading and 503 states use compact hero layout without record ReadSkeleton", () => {
+  const consoleLoadingHtml = renderPage({
+    listData: { items: [sampleDoc], next_cursor: null },
+    detailPending: true,
+  });
+  expect(consoleLoadingHtml).toContain('data-bone="short"');
+  expect(consoleLoadingHtml).toContain('data-bone="title"');
+  expect(consoleLoadingHtml).not.toContain('data-read-layout="record"');
+
+  const consoleFailedHtml = renderPage({
+    listData: { items: [sampleDoc], next_cursor: null },
+    detailError: new ApiError(503, "service_unavailable", ""),
+  });
+  expect(consoleFailedHtml).toContain(t("common.loadFailed.title"));
+  expect(consoleFailedHtml).toContain(t("common.retry"));
+  expect(consoleFailedHtml).not.toContain('data-read-layout="record"');
 });

@@ -424,115 +424,221 @@ test("Baseline /payslips renders Classic layout without Console shell chrome", a
   }
 });
 
-test("Console /payslips preserves active period pay_date, disables PDF export, and prevents cross-period net pay leakage on pending and 503 failure", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  const ctx = await setupPayslipMock(page, { experience: "console", theme: "light", faultClock: true });
-  const sepId = "00000000-0000-4000-8950-000000002009";
-  const sepRow = saeonPayrollRow(saeonUniverse.hero.employeeNumber, saeonUniverse.hero.gradeCode, 6, true);
-  let releaseSep!: () => void;
-  let holdFirstSep = true;
-  const heldSep = new Promise<void>(resolve => {
-    releaseSep = resolve;
-  });
-  let sepMode: "failed" | "populated" = "failed";
+for (const width of [390, 1440] as const) {
+  test(`Console /payslips preserves active period pay_date, disables PDF export, and keeps compact hero & visible actions on pending and 503 failure at ${width}px`, async ({
+    page,
+  }) => {
+    const height = width === 1440 ? 900 : 844;
+    await page.setViewportSize({ width, height });
+    const ctx = await setupPayslipMock(page, { experience: "console", theme: "light", faultClock: true });
+    const sepId = "00000000-0000-4000-8950-000000002009";
+    const sepRow = saeonPayrollRow(saeonUniverse.hero.employeeNumber, saeonUniverse.hero.gradeCode, 6, true);
+    let releaseSep!: () => void;
+    let holdFirstSep = true;
+    const heldSep = new Promise<void>(resolve => {
+      releaseSep = resolve;
+    });
+    let sepMode: "failed" | "populated" = "failed";
 
-  await mockRoute(page, "get", "/api/v1/me/inbox-docs/{id}", async request => {
-    const id = new URL(request.url()).pathname.split("/").at(-1);
-    if (id === sepId) {
-      if (holdFirstSep) {
-        holdFirstSep = false;
-        await heldSep;
-      }
-      if (sepMode === "failed") return { status: 503, json: failure("service_unavailable") };
-    }
-    const detail = saeonHeroPayslipDetail(id);
-    return detail ? { status: 200, json: detail } : { status: 404, json: failure("not_found") };
-  });
-
-  try {
-    await page.goto("/payslips");
-    const stmt = page.locator('[data-pattern="phone-statement"]');
-    const savePdf = stmt.getByRole("button", { name: t("payslip.action.savePdf"), exact: true });
-    const prevBtn = stmt.getByRole("button", { name: t("attendanceRecords.toolbar.prevMonth"), exact: true });
-
-    await expect(stmt).toContainText(fmtMonth("2026-10"));
-    await expect(stmt).toContainText(`${t("payslip.payDateLabel")} 11-25`);
-    await expect(stmt).toContainText(fmtNumber(3_141_755));
-    await expect(savePdf).toBeEnabled();
-
-    await prevBtn.click();
-
-    await expect(stmt).toContainText(fmtMonth("2026-09"));
-    await expect(stmt).toContainText(`${t("payslip.payDateLabel")} 10-23`);
-    await expect(stmt).not.toContainText("11-25");
-    await expect(stmt).not.toContainText(fmtNumber(3_141_755));
-    await expect(savePdf).toBeDisabled();
-
-    releaseSep();
-    await expect(stmt.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible();
-    await expect(stmt.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
-    await expect(stmt).toContainText(`${t("payslip.payDateLabel")} 10-23`);
-    await expect(stmt).not.toContainText("11-25");
-    await expect(stmt).not.toContainText(fmtNumber(3_141_755));
-    await expect(savePdf).toBeDisabled();
-
-    sepMode = "populated";
-    await stmt.getByRole("button", { name: t("common.retry"), exact: true }).click();
-    await expect(stmt).toContainText(fmtNumber(sepRow.netPay));
-    await expect(savePdf).toBeEnabled();
-    expect(ctx.fixture.unexpected).toEqual([]);
-  } finally {
-    releaseSep?.();
-    ctx.fixture.release();
-  }
-});
-
-test("Baseline /payslips handles detail 403 refusal and 503 failure with retry cleanly", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-
-  {
-    const ctx403 = await setupPayslipMock(page, { experience: "baseline", detailMode: "refused" });
-    try {
-      await page.goto("/payslips");
-      const main = page.locator("main");
-      await expect(main.getByRole("heading", { name: t("common.denied.panel"), exact: true })).toBeVisible();
-      await expect(main).not.toContainText(t("payslip.detail.unavailable"));
-      await expect(main.getByRole("button", { name: t("payslip.action.savePdf"), exact: true })).toBeDisabled();
-      await expect(main.getByRole("button", { name: t("payslip.action.past"), exact: true })).toBeEnabled();
-      await fits(page, "Baseline Payslip 390 403");
-      await expectAxe(page, "Baseline Payslip 390 403");
-      expect(ctx403.fixture.unexpected).toEqual([]);
-    } finally {
-      ctx403.fixture.release();
-    }
-  }
-
-  {
-    const ctx503 = await setupPayslipMock(page, { experience: "baseline", detailMode: "failed" });
-    let recover = false;
-    await mockRoute(page, "get", "/api/v1/me/inbox-docs/{id}", request => {
-      if (!recover) return { status: 503, json: failure("service_unavailable") };
+    await mockRoute(page, "get", "/api/v1/me/inbox-docs/{id}", async request => {
       const id = new URL(request.url()).pathname.split("/").at(-1);
+      if (id === sepId) {
+        if (holdFirstSep) {
+          holdFirstSep = false;
+          await heldSep;
+        }
+        if (sepMode === "failed") return { status: 503, json: failure("service_unavailable") };
+      }
       const detail = saeonHeroPayslipDetail(id);
       return detail ? { status: 200, json: detail } : { status: 404, json: failure("not_found") };
     });
+
     try {
       await page.goto("/payslips");
-      const main = page.locator("main");
-      await expect(main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible();
-      await expect(main).not.toContainText(t("payslip.detail.unavailable"));
-      await expect(main.getByRole("button", { name: t("payslip.action.savePdf"), exact: true })).toBeDisabled();
-      await fits(page, "Baseline Payslip 390 503");
-      await expectAxe(page, "Baseline Payslip 390 503");
-      recover = true;
-      await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
-      await expect(main).toContainText(fmtNumber(3_141_755));
-      await expect(main.getByRole("button", { name: t("payslip.action.savePdf"), exact: true })).toBeEnabled();
-      expect(ctx503.fixture.unexpected).toEqual([]);
+      const stmt = page.locator('[data-pattern="phone-statement"]');
+      const hero = stmt.locator('[class*="hero"]').first();
+      const savePdf = stmt.getByRole("button", { name: t("payslip.action.savePdf"), exact: true });
+      const pastBtn = stmt.getByRole("button", { name: t("payslip.action.past"), exact: true });
+      const prevBtn = stmt.getByRole("button", { name: t("attendanceRecords.toolbar.prevMonth"), exact: true });
+
+      await expect(stmt).toContainText(fmtMonth("2026-10"));
+      await expect(stmt).toContainText(`${t("payslip.payDateLabel")} 11-25`);
+      await expect(stmt).toContainText(fmtNumber(3_141_755));
+      await expect(savePdf).toBeEnabled();
+
+      await prevBtn.click();
+
+      await expect(stmt).toContainText(fmtMonth("2026-09"));
+      await expect(stmt).toContainText(`${t("payslip.payDateLabel")} 10-23`);
+      await expect(stmt).not.toContainText("11-25");
+      await expect(stmt).not.toContainText(fmtNumber(3_141_755));
+      await expect(savePdf).toBeDisabled();
+
+      // Wait >200ms so Skeleton's 200ms fade-in completes and verify compact hero + visible action buttons.
+      const skeleton = hero.locator('[role="status"]');
+      await expect(skeleton).toBeVisible();
+      await expect(hero.locator('[data-bone="short"]')).toBeVisible();
+      await expect(hero.locator('[data-bone="title"]')).toBeVisible();
+      await expect(stmt.locator('[data-read-layout="record"]')).toHaveCount(0);
+
+      const bottomBoundary =
+        width === 390
+          ? await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).boundingBox()
+          : await page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true }).boundingBox();
+      expect(bottomBoundary).not.toBeNull();
+
+      const loadingHeroBox = await hero.boundingBox();
+      const loadingSaveBox = await savePdf.boundingBox();
+      const loadingPastBox = await pastBtn.boundingBox();
+      expect(loadingHeroBox).not.toBeNull();
+      expect(loadingSaveBox).not.toBeNull();
+      expect(loadingPastBox).not.toBeNull();
+      expect(loadingHeroBox!.height).toBeLessThan(160);
+      expect(loadingSaveBox!.y).toBeGreaterThanOrEqual(0);
+      expect(loadingPastBox!.y).toBeGreaterThanOrEqual(0);
+      expect(loadingSaveBox!.y + loadingSaveBox!.height).toBeLessThanOrEqual(bottomBoundary!.y);
+      expect(loadingPastBox!.y + loadingPastBox!.height).toBeLessThanOrEqual(bottomBoundary!.y);
+      if (width === 1440) {
+        expect(loadingSaveBox!.y - (loadingHeroBox!.y + loadingHeroBox!.height)).toBeLessThan(48);
+      }
+
+      releaseSep();
+      await expect(stmt.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible();
+      await expect(stmt.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
+      await expect(stmt.locator('[data-read-layout="record"]')).toHaveCount(0);
+      await expect(stmt).toContainText(`${t("payslip.payDateLabel")} 10-23`);
+      await expect(stmt).not.toContainText("11-25");
+      await expect(stmt).not.toContainText(fmtNumber(3_141_755));
+      await expect(savePdf).toBeDisabled();
+
+      const failedHeroBox = await hero.boundingBox();
+      const failedSaveBox = await savePdf.boundingBox();
+      const failedPastBox = await pastBtn.boundingBox();
+      expect(failedHeroBox).not.toBeNull();
+      expect(failedSaveBox).not.toBeNull();
+      expect(failedPastBox).not.toBeNull();
+      expect(failedHeroBox!.height).toBeLessThan(width === 1440 ? 240 : 340);
+      expect(failedSaveBox!.y + failedSaveBox!.height).toBeLessThanOrEqual(bottomBoundary!.y);
+      expect(failedPastBox!.y + failedPastBox!.height).toBeLessThanOrEqual(bottomBoundary!.y);
+      if (width === 1440) {
+        expect(failedSaveBox!.y - (failedHeroBox!.y + failedHeroBox!.height)).toBeLessThan(48);
+      }
+
+      sepMode = "populated";
+      await stmt.getByRole("button", { name: t("common.retry"), exact: true }).click();
+      await expect(stmt).toContainText(fmtNumber(sepRow.netPay));
+      await expect(savePdf).toBeEnabled();
+      expect(ctx.fixture.unexpected).toEqual([]);
     } finally {
-      ctx503.fixture.release();
+      releaseSep?.();
+      ctx.fixture.release();
     }
-  }
-});
+  });
+}
+
+for (const width of [390, 1440] as const) {
+  test(`Baseline /payslips handles detail 403 refusal and 503 failure inside card with visible actions at ${width}px`, async ({
+    page,
+  }) => {
+    const height = width === 1440 ? 900 : 844;
+    await page.setViewportSize({ width, height });
+
+    {
+      const ctx403 = await setupPayslipMock(page, { experience: "baseline", detailMode: "refused" });
+      try {
+        await page.goto("/payslips");
+        const main = page.locator("main");
+        const deniedHeading = main.getByRole("heading", { name: t("common.denied.panel"), exact: true });
+        await expect(deniedHeading).toBeVisible();
+        const deniedCard = main
+          .locator('[class*="card"]')
+          .filter({ has: page.getByRole("heading", { name: t("common.denied.panel"), exact: true }) });
+        await expect(deniedCard).toBeVisible();
+        expect(
+          await deniedCard.evaluate(el => {
+            const cs = getComputedStyle(el);
+            return cs.borderTopStyle === "solid" && cs.backgroundColor !== "rgba(0, 0, 0, 0)";
+          }),
+        ).toBe(true);
+        await expect(main.locator('[data-read-layout="record"]')).toHaveCount(0);
+        await expect(main).not.toContainText(t("payslip.detail.unavailable"));
+
+        const saveBtn = main.getByRole("button", { name: t("payslip.action.savePdf"), exact: true });
+        const pastBtn = main.getByRole("button", { name: t("payslip.action.past"), exact: true });
+        await expect(saveBtn).toBeDisabled();
+        await expect(pastBtn).toBeEnabled();
+
+        const deniedCardBox = await deniedCard.boundingBox();
+        const saveBox = await saveBtn.boundingBox();
+        const pastBox = await pastBtn.boundingBox();
+        expect(deniedCardBox).not.toBeNull();
+        expect(saveBox).not.toBeNull();
+        expect(pastBox).not.toBeNull();
+        expect(deniedCardBox!.height).toBeLessThan(320);
+        expect(saveBox!.y + saveBox!.height).toBeLessThanOrEqual(height);
+        expect(pastBox!.y + pastBox!.height).toBeLessThanOrEqual(height);
+
+        await fits(page, `Baseline Payslip ${width} 403`);
+        await expectAxe(page, `Baseline Payslip ${width} 403`);
+        expect(ctx403.fixture.unexpected).toEqual([]);
+      } finally {
+        ctx403.fixture.release();
+      }
+    }
+
+    {
+      const ctx503 = await setupPayslipMock(page, { experience: "baseline", detailMode: "failed" });
+      let recover = false;
+      await mockRoute(page, "get", "/api/v1/me/inbox-docs/{id}", request => {
+        if (!recover) return { status: 503, json: failure("service_unavailable") };
+        const id = new URL(request.url()).pathname.split("/").at(-1);
+        const detail = saeonHeroPayslipDetail(id);
+        return detail ? { status: 200, json: detail } : { status: 404, json: failure("not_found") };
+      });
+      try {
+        await page.goto("/payslips");
+        const main = page.locator("main");
+        const failedHeading = main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true });
+        await expect(failedHeading).toBeVisible();
+        const failedCard = main
+          .locator('[class*="card"]')
+          .filter({ has: page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true }) });
+        await expect(failedCard).toBeVisible();
+        expect(
+          await failedCard.evaluate(el => {
+            const cs = getComputedStyle(el);
+            return cs.borderTopStyle === "solid" && cs.backgroundColor !== "rgba(0, 0, 0, 0)";
+          }),
+        ).toBe(true);
+        await expect(main.locator('[data-read-layout="record"]')).toHaveCount(0);
+        await expect(main).not.toContainText(t("payslip.detail.unavailable"));
+
+        const saveBtn = main.getByRole("button", { name: t("payslip.action.savePdf"), exact: true });
+        const pastBtn = main.getByRole("button", { name: t("payslip.action.past"), exact: true });
+        await expect(saveBtn).toBeDisabled();
+        await expect(pastBtn).toBeEnabled();
+
+        const failedCardBox = await failedCard.boundingBox();
+        const saveBox = await saveBtn.boundingBox();
+        const pastBox = await pastBtn.boundingBox();
+        expect(failedCardBox).not.toBeNull();
+        expect(saveBox).not.toBeNull();
+        expect(pastBox).not.toBeNull();
+        expect(failedCardBox!.height).toBeLessThan(320);
+        expect(saveBox!.y + saveBox!.height).toBeLessThanOrEqual(height);
+        expect(pastBox!.y + pastBox!.height).toBeLessThanOrEqual(height);
+        expect(saveBox!.y - (failedCardBox!.y + failedCardBox!.height)).toBeLessThan(60);
+
+        await fits(page, `Baseline Payslip ${width} 503`);
+        await expectAxe(page, `Baseline Payslip ${width} 503`);
+        recover = true;
+        await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
+        await expect(main).toContainText(fmtNumber(3_141_755));
+        await expect(saveBtn).toBeEnabled();
+        expect(ctx503.fixture.unexpected).toEqual([]);
+      } finally {
+        ctx503.fixture.release();
+      }
+    }
+  });
+}

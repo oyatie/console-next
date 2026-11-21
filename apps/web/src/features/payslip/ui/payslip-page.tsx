@@ -14,6 +14,7 @@ import { StatRow } from "../../../ui/key-value/key-value";
 import { Ledger } from "../../../ui/ledger/ledger";
 import { PhoneStatement } from "../../../ui/patterns/phone-statement";
 import { PeriodStepper } from "../../../ui/period-stepper/period-stepper";
+import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { myPayslipDetailQuery, myPayslipsListQuery, type InboxDocSummary } from "../api";
 import {
   findDocForMonth,
@@ -135,7 +136,7 @@ export function PayslipPage() {
     ) : (
       <QueryState
         q={detailQuery}
-        layout="record"
+        loading={<Skeleton bones={["short", "title"]} label={t("common.loading")} />}
         denied={
           <EmptyState
             title={t("common.denied.panel")}
