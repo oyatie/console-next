@@ -555,16 +555,6 @@
    "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/me/inbox-docs": {
-   "lane": "H1",
-   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/me/inbox-docs/{id}": {
-   "lane": "H1",
-   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/me/notification-policies": {
    "lane": "MAT-PARITY",
    "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",

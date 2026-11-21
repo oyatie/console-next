@@ -28,6 +28,7 @@ import { checklistQuery, modulesQuery } from "../../features/onboarding/api";
 import { canReadSetupChecklist } from "../../features/onboarding/domain/phase";
 import { fixFor } from "../../features/onboarding/domain/rail";
 import { useExperienceSync } from "../../experience/store";
+import { useActiveExperienceId } from "../../experience/dom";
 import type { NavHub } from "../nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
@@ -152,6 +153,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [platform]);
+  const experience = useActiveExperienceId();
   const scope = platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined);
   const employeeName = identity.data?.employee_name?.trim() || identity.data?.display_name?.trim();
   const employeeUnit = identity.data?.employee_org_unit?.trim();
@@ -159,7 +161,11 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     ? [employeeName, employeeUnit].filter(Boolean).join(" · ")
     : identity.data?.tenant?.name;
   const phoneHeader = pathname === "/account"
-    ? { title: t("shell.account"), shellOwnsH1: true }
+    ? {
+        title: t(experience === "baseline" ? "shell.account" : "shell.profile"),
+        context: experience !== "baseline" && !platform ? identity.data?.employee_company ?? undefined : undefined,
+        shellOwnsH1: true,
+      }
     : pathname === "/leave"
       ? { title: t("shell.title.leave"), context: employeeContext, shellOwnsH1: true, hideActions: true, phoneNav: "self-service" as const }
       : undefined;

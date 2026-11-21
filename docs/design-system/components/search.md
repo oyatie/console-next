@@ -256,7 +256,9 @@ The input's box, `field__input` in `app.css`:
 | `--field-h` | `height` |
 | `--field-h-toolbar` | `height` |
 | `--radius` | `border-radius` |
+| `--space-2` | `background-position` |
 | `--space-3` | `padding` |
+| `--space-6` | `padding-inline-end` |
 | `--surface` | `background` |
 
 <!-- /ds:tokens -->
