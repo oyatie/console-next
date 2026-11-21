@@ -3,8 +3,19 @@ import createClient from "openapi-fetch";
 import type { AllPaths as paths } from "./pending/entity";
 import { ApiError, interactionHeaders, languageHeader, noteServerDate, reauthenticated, refresh, session } from "./session";
 import { setPlatform, type Platform } from "./platform";
-import { DEFAULT_REQUEST_TIMEOUT_MS, LONG_REQUEST_TIMEOUT_MS, requestDeadline } from "./request-deadline";
-export { DEFAULT_REQUEST_TIMEOUT_MS, LONG_REQUEST_TIMEOUT_MS, requestDeadline } from "./request-deadline";
+import {
+  DEFAULT_REQUEST_TIMEOUT_MS,
+  LONG_REQUEST_TIMEOUT_MS,
+  requestDeadline,
+} from "./request-deadline";
+export {
+  DEFAULT_REQUEST_TIMEOUT_MS,
+  LONG_REQUEST_TIMEOUT_MS,
+  SERVER_REQUEST_TIMEOUT_MS,
+  TRANSPORT_SLACK_MS,
+  isDeadlineTimeout,
+  requestDeadline,
+} from "./request-deadline";
 
 const withBearer = (req: Request) => {
   const r = new Request(req);

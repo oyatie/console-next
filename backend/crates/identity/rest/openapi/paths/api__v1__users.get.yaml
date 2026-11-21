@@ -27,6 +27,12 @@ parameters:
     format: int64
     minimum: 0
     default: 0
+- name: search
+  in: query
+  required: false
+  schema:
+    type: string
+    maxLength: 200
 responses:
   '200':
     description: A page of users in the principal's branch scope.

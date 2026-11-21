@@ -2865,52 +2865,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/signup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Open self-service signup
-         * @description Public, unauthenticated open signup. Creates a new lowest-privilege MEMBER account in the default organization and emails it a single-use one-time sign-in code; the caller then redeems that code via `POST /api/v1/auth/otp/redeem` and enrolls a passkey. The response reveals nothing about whether the email was newly registered (no account-existence oracle) and never mints a token. The new account sees the minimal role-gated surface until an admin elevates it. Rate-limited per client (IP and optional device).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["SignupRequest"];
-                };
-            };
-            responses: {
-                /** @description The signup was accepted and a one-time code was sent. */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SignupResponse"];
-                    };
-                };
-                400: components["responses"]["ValidationError"];
-                429: components["responses"]["TooManyRequests"];
-                502: components["responses"]["BadGateway"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/auth/token/refresh": {
         parameters: {
             query?: never;
@@ -3256,6 +3210,26 @@ export interface paths {
          * @description BW-17. An employee or branch subject outside the caller's branch scope reads as 404. PROFILE_CORRECTION carries `payload.changes` with fields from name, phone, hire_date, employment_type, position_id, base_pay (applied through BW-18). OTHER requires a note and is flagged for review. ACCESS_EXPLANATION (governance S7 explanation request) needs org-wide audit_log_read, a USER_ACCOUNT subject and `assignee_user_id` equal to it; POLICY_QUESTION (S5) names the ORGANIZATION.
          */
         post: operations["createChangeRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/change-requests/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Counts of open change requests visible to the caller
+         * @description Single-scan counts of OPEN change requests across all visible requests (`all`), requests assigned directly to the caller (`me`), and unassigned HR role requests (`role`).
+         */
+        get: operations["getChangeRequestCounts"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4089,7 +4063,7 @@ export interface paths {
         put?: never;
         /**
          * Create an employee and governed employment profile
-         * @description HR directory managers only. Creates the stable employee identity, employment profile, ONBOARD lifecycle event, and audit record atomically. Reusing an idempotency key replays the same payload; a different payload conflicts. hire_date is required and the ONBOARD event takes effect on it; a CONTRACT employment also requires contract_end_date (422 validation otherwise). Without employee_number the server assigns one (E-000001, …). When other employees (not EXITED) in the same org unit have exactly this name, the response carries warnings [{code: same_name_in_unit, employee_ids}]; the employee is created regardless. BW-19: a person already on file (any status) with the same name (spaces ignored) and the same phone or date of birth is 409 duplicate_candidate listing them in error.refusals [{employee_id, status, employee_number, basis, remedy}] (remedy rehire for an EXITED one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override naming every candidate to record the governed exception DUPLICATE_NAME_CONFIRMED and create the employee. An employee number already held is 409 employee_number_taken with error.refusals [{holder: {id, status}}]; a reused idempotency key with another payload is 409 idempotency_key_reused. A namesake hired the same day is only the warning same_name_same_hire_date. A future hire_date creates the employee as a pending hire (status PRE_HIRE) with a SCHEDULED ONBOARD the lifecycle runner applies on that day. MR-22: the legal entity · workplace assignment is written in the same transaction from hire_date: the workplace_id asked for (its legal entity follows), else the workplace the org unit sits in (its own placement or its nearest ancestor's); neither is unplaced (no assignment). Cause SETUP_BIND while the tenant is in SETUP, HIRE after. 422 workplace_required (a legal_entity_id without workplace_id), org_unit_at_other_workplace, workplace_of_other_entity, workplace_not_open; nothing is written then.
+         * @description HR directory managers only. Creates the stable employee identity, employment profile, ONBOARD lifecycle event, and audit record atomically. Reusing an idempotency key replays the same payload; a different payload conflicts. hire_date is required and the ONBOARD event takes effect on it; a CONTRACT employment also requires contract_end_date (422 validation otherwise). Without employee_number the server assigns one (E-000001, …). When other employees (not EXITED) in the same org unit have exactly this name, the response carries warnings [{code: same_name_in_unit, employee_ids}]; the employee is created regardless. BW-19: a person already on file (any status) with the same name (spaces ignored) and the same phone or date of birth is 409 duplicate_candidate listing them in error.refusals [{employee_id, name, org_unit, hire_date, status, employee_number, basis, remedy}] (remedy rehire for an EXITED one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override naming every candidate to record the governed exception DUPLICATE_NAME_CONFIRMED and create the employee. An employee number already held is 409 employee_number_taken with error.refusals [{holder: {id, status}}]; a reused idempotency key with another payload is 409 idempotency_key_reused. A namesake hired the same day is only the warning same_name_same_hire_date. A future hire_date creates the employee as a pending hire (status PRE_HIRE) with a SCHEDULED ONBOARD the lifecycle runner applies on that day. MR-22: the legal entity · workplace assignment is written in the same transaction from hire_date: the workplace_id asked for (its legal entity follows), else the workplace the org unit sits in (its own placement or its nearest ancestor's); neither is unplaced (no assignment). Cause SETUP_BIND while the tenant is in SETUP, HIRE after. 422 workplace_required (a legal_entity_id without workplace_id), org_unit_at_other_workplace, workplace_of_other_entity, workplace_not_open; nothing is written then.
          */
         post: operations["createEmployee"];
         delete?: never;
@@ -4499,6 +4473,26 @@ export interface paths {
          * @description MR-23. Org-wide employee_directory_manage. The browser parses the sheet (no file and no resident registration number reaches the server) and sends one row per employee, by `employee_id` or a `employee_number` that names exactly one record, carrying `sex`, `address`, `careers` and `register_note` and the personal details profile's `name_hanja`, `name_en`, `nationality`, `personal_email` and `emergency_contacts` (MR-34), plus a first `exit_reason` or `group_service_start_date` (changing a recorded one is per person, PATCH /employees/{id}; a `photo` is uploaded per person). `dry_run` returns what each row would change and why a row cannot be taken. The apply is all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and writes one correction ledger row per changed item; an unchanged value writes nothing, except a recorded `address` or `personal_email`, which is written and listed as changed whether or not it equals the record, so neither the plan nor the apply confirms a recorded value. At most 500 rows.
          */
         post: operations["bulkCorrectRegisterFacts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/register-facts/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch read worker register facts for up to 500 employees
+         * @description MR-23. Org-wide employee_directory_manage. Returns worker register facts plus masked birth_date for either explicit employee `ids` (up to 500) or a cursor-paged slice filtered by `register_review_required`. Records a single audited DirectoryAccess::List event.
+         */
+        post: operations["queryEmployeeRegisterFacts"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5196,6 +5190,26 @@ export interface paths {
          * @description Decisions #25. reason_code from the rrn_reveal domain (PAYROLL_WITHHOLDING, SOCIAL_INSURANCE_FILING, IDENTITY_VERIFICATION, DATA_SUBJECT_ACCESS, OTHER + note); the access log row (action employee.rrn_reveal) names the code, never the number. 404 when none is recorded; 503 rrn_vault_unavailable when the server has no vault keys. Never cached (Cache-Control no-store).
          */
         post: operations["revealEmployeeRrn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/{id}/unit-position": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Server position of an employee within their org unit
+         * @description Returns the 1-based position, total unit member count, adjacent employee IDs (`prev_id`, `next_id`), and `pre_hire_count` matching the employee list ordering and caller reach, supporting keyboard navigation past 200 unit members.
+         */
+        get: operations["getEmployeeUnitPosition"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7502,6 +7516,43 @@ export interface paths {
          * @description Creates an audited employee exit case that HR can confirm and prepare for settlement/approval workflows. 409 invalid_transition when the employee is already EXITED or already has a scheduled exit (a SCHEDULED TERMINATE of another case, withdrawn by rejecting or cancelling that case). 409 exit_case_open when the employee already has an open case; error.refusals[0] names it as { case_id, reported_by, reported_at }. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
          */
         post: operations["reportEmployeeExitCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/exit-cases/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report exit cases in bulk (up to 500 items)
+         * @description Creates audited employee exit cases in a single idempotent transaction for up to 500 employees using set-based preloading, per-item scope + own-record + guard evaluation, and non-aborting per-item results.
+         */
+        post: operations["bulkReportEmployeeExitCases"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/exit-cases/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Single-scan status counts of employee exit cases in scope */
+        get: operations["getEmployeeExitCaseCounts"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -17615,6 +17666,18 @@ export interface components {
             /** @description One recorded event per employee, in employee_ids or lines order (a selection in employee id order); each carries batch_id. */
             items: components["schemas"]["EmployeeLifecycleEvent"][];
         };
+        BulkExitCaseItemInput: {
+            employee_id: components["schemas"]["Uuid"];
+            branch_id?: components["schemas"]["Uuid"] | null;
+            absence_alert_id?: components["schemas"]["Uuid"] | null;
+        };
+        BulkExitCaseItemResult: {
+            employee_id: components["schemas"]["Uuid"];
+            ok: boolean;
+            case_id?: components["schemas"]["Uuid"];
+            code?: string;
+            message?: string;
+        };
         BulkLifecyclePreview: {
             event_type: string;
             /** Format: date */
@@ -17671,6 +17734,16 @@ export interface components {
                 /** @description sex, address, careers, register_note, name_hanja, name_en, nationality, personal_email, emergency_contacts (and a first exit_reason or group_service_start_date) as in CorrectEmployeeRequest.changes. */
                 changes: Record<string, never>;
             }[];
+        };
+        BulkReportExitCasesRequest: {
+            /** @description YYYY-MM-DD */
+            effective_exit_date: string;
+            site_manager_note: string;
+            exit_reason_code?: string | null;
+            items: components["schemas"]["BulkExitCaseItemInput"][];
+        };
+        BulkReportExitCasesResponse: {
+            results: components["schemas"]["BulkExitCaseItemResult"][];
         };
         /** @description The "select all {n} people matching the filter" choice — every employee the list filters admit under the caller's scope, minus exclude_employee_ids, resolved by the server in the batch transaction (recorded in employee id order). */
         BulkSelection: {
@@ -17844,6 +17917,8 @@ export interface components {
             kind: string;
             subject_type: string;
             subject_id: components["schemas"]["Uuid"];
+            subject_name?: string | null;
+            subject_number?: string | null;
             /** @description The request's details. In `changes`, a birth date, address, phone or personal email is the reveal mask, never the value; only POST /api/v1/employees/{id}/reveal returns a recorded one. */
             payload: {
                 [key: string]: unknown;
@@ -17863,6 +17938,14 @@ export interface components {
             decision_note?: string | null;
             created_at: components["schemas"]["Timestamp"];
             decided_at?: components["schemas"]["Timestamp"] | null;
+        };
+        ChangeRequestCountsResponse: {
+            /** Format: int64 */
+            all: number;
+            /** Format: int64 */
+            me: number;
+            /** Format: int64 */
+            role: number;
         };
         ChangeSetDetail: components["schemas"]["ChangeSetSummary"] & {
             lines: components["schemas"]["ChangeSetLine"][];
@@ -19967,6 +20050,13 @@ export interface components {
             code: "same_name_in_unit" | "same_name_same_hire_date" | "pay_below_minimum_wage";
             /** @description The namesakes for same_name_in_unit; empty for pay_below_minimum_wage. */
             employee_ids: components["schemas"]["Uuid"][];
+            /** @description Capped namesake match details (up to 20 entries). */
+            matches?: components["schemas"]["EmployeeWarningMatch"][];
+            /**
+             * Format: int64
+             * @description Total number of matching namesakes before capping.
+             */
+            total_count?: number;
             /**
              * Format: int64
              * @description pay_below_minimum_wage only.
@@ -21199,6 +21289,17 @@ export interface components {
             /** Format: date-time */
             recorded_at?: string | null;
         };
+        EmployeeUnitPosition: {
+            org_unit_id: components["schemas"]["Uuid"] | null;
+            /** Format: int64 */
+            index: number;
+            /** Format: int64 */
+            total: number;
+            prev_id: components["schemas"]["Uuid"] | null;
+            next_id: components["schemas"]["Uuid"] | null;
+            /** Format: int64 */
+            pre_hire_count: number;
+        };
         EmployeeView: {
             /** Format: uuid */
             id: string;
@@ -21220,6 +21321,11 @@ export interface components {
             /** @description A sole holder voided; reviewed after the fact. */
             review_required: boolean;
             pending_request?: components["schemas"]["ChangeRequest"] | null;
+        };
+        EmployeeWarningMatch: {
+            id: components["schemas"]["Uuid"];
+            name: string;
+            employee_number?: string;
         };
         EmploymentAssignment: {
             /** Format: uuid */
@@ -22252,6 +22358,30 @@ export interface components {
             idempotency_key?: string | null;
             step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
+        ExitCaseCountsResponse: {
+            /** Format: int64 */
+            all: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            reported: number;
+            /** Format: int64 */
+            hr_confirmed: number;
+            /** Format: int64 */
+            hq_confirmed: number;
+            /** Format: int64 */
+            settlement_ready: number;
+            /** Format: int64 */
+            approval_drafted: number;
+            /** Format: int64 */
+            submitted: number;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            cancelled: number;
+        };
         /** @description An action the case's current state admits, as a key; the client owns its label and route (the caller's capability is still checked by the action). */
         ExitCaseNextAction: {
             /** @enum {string} */
@@ -22911,6 +23041,9 @@ export interface components {
         };
         HrOrgChartResponse: {
             companies: components["schemas"]["HrOrgChartCompany"][];
+            truncated: boolean;
+            /** Format: int64 */
+            total: number;
         };
         HrOrgChartUnit: {
             /** @description The canonical OrgUnit this group is (grouped by binding, named by the unit's current name); null for legacy free-text groups. */
@@ -28275,6 +28408,30 @@ export interface components {
             deactivated_at: string | null;
             created_at: components["schemas"]["Timestamp"];
         };
+        RegisterFactsQueryItem: {
+            employee_id: components["schemas"]["Uuid"];
+            /** Format: date-time */
+            updated_at: string;
+            /** @enum {string|null} */
+            sex: "MALE" | "FEMALE" | null;
+            address: string | null;
+            careers: components["schemas"]["EmployeeCareer"][] | null;
+            exit_reason_code: string | null;
+            exit_reason_label: string | null;
+            register_note: string | null;
+            birth_date: string | null;
+        };
+        RegisterFactsQueryRequest: {
+            ids?: components["schemas"]["Uuid"][] | null;
+            register_review_required?: boolean | null;
+            cursor?: components["schemas"]["Uuid"] | null;
+            /** Format: int64 */
+            limit?: number | null;
+        };
+        RegisterFactsQueryResponse: {
+            items: components["schemas"]["RegisterFactsQueryItem"][];
+            next_cursor: components["schemas"]["Uuid"] | null;
+        };
         RegisterProductionSourceSystem: {
             branch_id: components["schemas"]["Uuid"];
             source_system: string;
@@ -29452,17 +29609,6 @@ export interface components {
             /** @default false */
             acknowledge_open: boolean;
             note?: string | null;
-        };
-        SignupRequest: {
-            /**
-             * Format: email
-             * @description The email address to register and deliver the one-time code to.
-             */
-            email: string;
-        };
-        SignupResponse: {
-            /** @description Always true. The signup was accepted and a one-time code was sent; the response intentionally carries no account-existence or token information. */
-            accepted: boolean;
         };
         SimulateWorkflowDefinitionRequest: {
             definition?: {
@@ -37405,6 +37551,28 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    getChangeRequestCounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Counts of OPEN change requests per lane. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeRequestCountsResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     decideChangeRequest: {
         parameters: {
             query?: never;
@@ -39278,6 +39446,8 @@ export interface operations {
                 status?: ("PRE_HIRE" | "ACTIVE" | "ON_LEAVE" | "EXITED" | "UNKNOWN")[];
                 /** @description Exact employee numbers, comma-separated (`employee_number=A-1,A-2`), at most 500 (422 above). Resolves a pasted column in one read. */
                 employee_number?: string[];
+                /** @description Exact employee IDs, comma-separated (`ids=<uuid>,<uuid>`), at most 500 (422 above). */
+                ids?: components["schemas"]["Uuid"][];
                 /** @description YYYY-MM-DD. Only employees whose current contract ends strictly before this date (e.g. tomorrow with status=ACTIVE finds expired contracts of still-active employees). `total` counts the filtered set. */
                 contract_ending_before?: string;
                 /** @description true lists only employees with a failed_event (a scheduled action that could not apply on its date and was not redone); false only those without. `total` counts the filtered set. */
@@ -39656,7 +39826,7 @@ export interface operations {
                      * @description Last day (YYYY-MM-DD) of the pay period, not before pay_period_start. With pay_period_start, or not at all.
                      */
                     pay_period_end?: string;
-                    /** @description IMPORT-2, optional JSON: {"sheets": {"<sheet name>": {"header_row": 1-based, "columns": {"<column letter>": "<target>" | null}, "skip": bool | null}}}. skip true is remembered for the sheet name; false, or mapping the sheet (header_row or columns), imports a remembered skip. Columns need header_row; the sheet needs a name column. 422 mapping_invalid, mapping_unknown_sheet, mapping_unknown_target, mapping_bad_column, mapping_header_row_required, mapping_header_row_out_of_range, mapping_name_required, mapping_duplicate_target. */
+                    /** @description IMPORT-2, optional JSON: {"sheets": {"<sheet name>": {"header_row": 1-based, "columns": {"<column letter>": "<target>" | null}, "skip": bool | null}}}. skip true is remembered for the sheet name; false, or mapping the sheet (header_row or columns), imports a remembered skip. Columns need header_row; the sheet needs a name column. 422 mapping_invalid, mapping_unknown_sheet, mapping_unknown_target, mapping_bad_column, mapping_header_row_required, mapping_header_row_out_of_range, mapping_name_required, mapping_duplicate_target, mapping_restricted_column. */
                     mapping?: string;
                 };
             };
@@ -40229,6 +40399,33 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    queryEmployeeRegisterFacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterFactsQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description Register facts items and optional next cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterFactsQueryResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
         };
     };
     applyEmployeeRenumber: {
@@ -41964,6 +42161,31 @@ export interface operations {
                 content?: never;
             };
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getEmployeeUnitPosition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Employee position within the org unit. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeUnitPosition"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     voidEmployee: {
@@ -46937,6 +47159,63 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    bulkReportEmployeeExitCases: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16..200 characters. An exact replay returns 200 with the original body; the same key with a different body is 409 conflict. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkReportExitCasesRequest"];
+            };
+        };
+        responses: {
+            /** @description Per-item exit-case reporting results (or exact Idempotency-Key replay). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkReportExitCasesResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    getEmployeeExitCaseCounts: {
+        parameters: {
+            query?: {
+                /** @description Part of the employee's name or employee number (case-insensitive). */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exit-case status counts in the caller's branch scope. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExitCaseCountsResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -55205,6 +55484,8 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                pay_group_id?: string;
+                legal_entity_id?: string;
             };
             header?: never;
             path?: never;
@@ -60499,6 +60780,7 @@ export interface operations {
                 include_inactive?: boolean;
                 limit?: number;
                 offset?: number;
+                search?: string;
             };
             header?: never;
             path?: never;

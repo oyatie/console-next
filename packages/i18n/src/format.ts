@@ -85,6 +85,15 @@ export function fmtDateInput(v: unknown) {
   return i18n.locale === "ko" ? `${year}. ${month}. ${day}.` : `${month}/${day}/${year}`;
 }
 
+/** A compact month-day and short weekday display (e.g. `MM-DD (weekday)` in Korean), or `""` when invalid. */
+export function fmtDateShortWeekday(v: unknown) {
+  const d = typeof v === "string" ? dateOnly(v) : null;
+  if (!d) return "";
+  const [, month, day] = (v as string).split("-");
+  const weekday = fmt().weekdayShort.format(d);
+  return i18n.locale === "ko" ? `${month}-${day} (${weekday})` : `${weekday}, ${month}/${day}`;
+}
+
 /** A timestamp in Korean business time; every display includes the KST zone label. */
 export function fmtDateTime(v: unknown) {
   const d = parseTimestamp(v);

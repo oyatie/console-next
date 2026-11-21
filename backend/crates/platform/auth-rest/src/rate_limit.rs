@@ -14,7 +14,6 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum RateLimitEndpoint {
-    Signup,
     OtpRedeem,
     LoginStart,
     LoginStartIdentifier,
@@ -31,7 +30,6 @@ pub(crate) enum RateLimitEndpoint {
 impl RateLimitEndpoint {
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
-            Self::Signup => "signup",
             Self::OtpRedeem => "otp_redeem",
             Self::LoginStart => "login_start",
             Self::LoginStartIdentifier => "login_start_identifier",
@@ -66,10 +64,10 @@ impl RateLimitEndpoint {
             Self::DeviceLoginPoll => (1_200, 60, 20_000),
             _ => (RATE_LIMIT_PER_IP, RATE_LIMIT_PER_DEVICE, RATE_LIMIT_GLOBAL),
         };
-        // A guessable secret (OTP) or a write (sign-up): key IPv6 per /56, so
+        // A guessable secret (OTP): key IPv6 per /56, so
         // one /48 holder gets 256 buckets instead of 65 536.
         let ipv6_prefix = match self {
-            Self::Signup | Self::OtpRedeem => 56,
+            Self::OtpRedeem => 56,
             _ => 64,
         };
         Caps {
@@ -321,7 +319,6 @@ mod tests {
             (RATE_LIMIT_PER_IP, 10, 100)
         );
         assert_eq!(otp.ipv6_prefix, 56);
-        assert_eq!(RateLimitEndpoint::Signup.caps().ipv6_prefix, 56);
         assert_eq!(RateLimitEndpoint::LoginStart.caps().ipv6_prefix, 64);
     }
 

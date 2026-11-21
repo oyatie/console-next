@@ -301,7 +301,9 @@ and no container query.
 | `today` | yes | `string` |  |  |
 | `value` | yes | `string` |  | `YYYY-MM-DD`, or "" while empty. |
 | `basis` | no | `ReactNode` |  |  |
+| `disabled` | no | `boolean` |  |  |
 | `disabledDates` | no | `readonly string[]` |  |  |
+| `displayFormat` | no | `"default" \| "short-weekday"` | `"default"` |  |
 | `echo` | no | `ReactNode` |  |  |
 | `error` | no | `ReactNode` |  |  |
 | `inputRef` | no | `Ref<HTMLInputElement>` |  |  |
@@ -328,6 +330,7 @@ and no container query.
 | `className` | no | `string` |  |  |
 | `disabled` | no | `boolean` |  |  |
 | `disabledDates` | no | `readonly string[]` | `[]` |  |
+| `displayFormat` | no | `"default" \| "short-weekday"` | `"default"` |  |
 | `id` | no | `string` |  |  |
 | `inputRef` | no | `Ref<HTMLInputElement>` |  |  |
 | `label` | no | `string` |  |  |
@@ -372,9 +375,12 @@ and no container query.
 | --- | --- |
 | `--border` | `border` |
 | `--control-border` | `border` |
+| `--danger-solid` | `border-color` |
 | `--danger-tx` | `color` |
+| `--field-h` | `height`, `min-height`, `min-width` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
+| `--fw-semibold` | `font-weight` |
 | `--info-bd` | `border` |
 | `--info-bg` | `background` |
 | `--info-tx` | `color` |
@@ -385,9 +391,9 @@ and no container query.
 | `--radius` | `border-radius` |
 | `--radius-lg` | `border-radius` |
 | `--shadow-pop` | `box-shadow` |
-| `--space-1` | `gap` |
-| `--space-2` | `gap`, `margin-left`, `padding`, `padding-inline` |
-| `--space-3` | `gap`, `max-width`, `padding`, `width` |
+| `--space-1` | `gap`, `padding-inline` |
+| `--space-2` | `gap`, `margin-left`, `padding` |
+| `--space-3` | `gap`, `max-width`, `padding`, `padding-inline`, `width` |
 | `--steel` | `color` |
 | `--surface` | `background` |
 | `--target` | `min-height` |

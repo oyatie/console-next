@@ -163,3 +163,15 @@ impl From<UserPage> for DirectoryPage {
         }
     }
 }
+
+/// Branch-scoped user listing query.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UserListQuery {
+    pub include_inactive: bool,
+    /// Page size; the adapter clamps to `1..=200` and defaults a missing value.
+    pub limit: Option<i64>,
+    /// Zero-based row offset into the scope-ordered roster (`None` starts at 0).
+    pub offset: Option<i64>,
+    #[serde(default)]
+    pub search: Option<String>,
+}

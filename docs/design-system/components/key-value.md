@@ -296,6 +296,7 @@ The members of `KeyValueItem` are under Anatomy.
 | `--space-3` | `gap`, `padding` |
 | `--space-6` | `height` |
 | `--steel` | `color` |
+| `--surface-2` | `background` |
 | `--surface-hover` | `background` |
 | `--text-2xl` | `font-size` |
 | `--text-body` | `font-size` |

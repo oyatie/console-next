@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+properties:
+  ids:
+    oneOf:
+    - type: array
+      maxItems: 500
+      items:
+        $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  register_review_required:
+    type: [boolean, 'null']
+  cursor:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  limit:
+    type: [integer, 'null']
+    format: int64
+    minimum: 1
+    maximum: 200

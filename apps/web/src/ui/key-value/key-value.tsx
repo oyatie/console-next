@@ -59,7 +59,7 @@ export type StatRowItem = {
   label: ReactNode;
   value: ReactNode;
   meta?: ReactNode;
-  tone?: "warn" | "danger" | "ok" | "primary";
+  tone?: "warn" | "danger" | "ok" | "primary" | "muted";
   active?: boolean;
   onPress?: () => void;
 };

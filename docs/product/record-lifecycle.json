@@ -4696,7 +4696,6 @@
      "st": "partial",
      "be": [
       "POST /api/v1/auth/admin/otp/issue",
-      "POST /api/v1/auth/signup",
       "POST /api/v1/auth/passkey/enroll-handoff"
      ]
     },
@@ -4731,13 +4730,6 @@
      "layer": "gov",
      "title": "Sign-in code issue decided by legacy matrix, no reason code",
      "lane": "existing: SA-20 + SA-21 (docs/plans/security-admin-work-items.md:81-82)"
-    },
-    {
-     "op": "create",
-     "sev": "P2",
-     "layer": "BE",
-     "title": "Open signup mounted in MVP contrary to decision",
-     "lane": "existing: account-kyc-design (docs/decisions/decisions.md:1774)"
     },
     {
      "op": "read",

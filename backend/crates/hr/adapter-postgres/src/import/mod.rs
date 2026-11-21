@@ -50,3 +50,6 @@ pub mod unplaced;
 // --- lane: UX-R3 IMPORT ---
 pub mod apply_report;
 pub mod company;
+
+#[cfg(test)]
+mod sheet_restricted_tests;
