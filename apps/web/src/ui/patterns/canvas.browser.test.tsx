@@ -38,6 +38,27 @@ test("Canvas pattern passes WCAG 2.2 AA matrix, fits 390px and 320px, zooms OrgC
   await page.waitForFunction(() => !document.querySelector('[data-pane="record"]'));
   expect(await page.evaluate(() => document.activeElement?.id)).toBe("node-entity");
 
+  // Deterministic regression: pressing End before the post-Escape rAF fires must keep focus on #node-dept.
+  await page.locator("#node-entity").focus();
+  await page.keyboard.press("Enter");
+  await page.locator('[data-pane="record"]').waitFor();
+  const activeAfterImmediateEnd = await page.evaluate(
+    () =>
+      new Promise<string | null>(resolve => {
+        const entity = document.getElementById("node-entity");
+        const obs = new MutationObserver(() => {
+          if (!document.querySelector('[data-pane="record"]')) {
+            obs.disconnect();
+            entity?.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true, cancelable: true }));
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve(document.activeElement?.id ?? null)));
+          }
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+        entity?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      }),
+  );
+  expect(activeAfterImmediateEnd).toBe("node-dept");
+
   // Regression: toggling depth ("Sites only") while focused on #node-dept preserves a roving tabIndex="0" stop.
   await page.locator("#node-entity").focus();
   await expect.poll(() => page.evaluate(() => document.activeElement?.id), { timeout: 5000 }).toBe("node-entity");
