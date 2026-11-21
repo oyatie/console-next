@@ -156,6 +156,8 @@ export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFin
       if (e.key !== "Escape" || (!openRelated && !openRecord) || editable(target)) return;
       if (target instanceof Element && target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [data-escape-scope], [aria-expanded="true"]')) return;
       if (document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"], dialog[open]')) return;
+      const activePane = openRelated ? relatedRef.current : recordRef.current;
+      if (activePane?.querySelector('[data-escape-scope][aria-busy="true"]')) return;
       e.preventDefault();
       e.stopPropagation();
       if (full && onFull && !window.matchMedia("(max-width: 639px)").matches) onFull(false);

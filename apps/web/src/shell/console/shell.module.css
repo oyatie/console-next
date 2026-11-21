@@ -14,6 +14,9 @@
   flex-direction: column;
 }
 
+.shell > :global(.main) > :global(.page) {
+  flex: 1 0 auto;
+}
 .top {
   grid-area: top;
   display: flex;

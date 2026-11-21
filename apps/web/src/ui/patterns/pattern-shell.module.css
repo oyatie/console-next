@@ -32,6 +32,10 @@
   max-width: 100%;
 }
 
+:where([data-experience]:not([data-experience="baseline"])) .frame {
+  flex: 1 0 auto;
+}
+
 :where([data-experience]:not([data-experience="baseline"])) .head {
   padding: 0;
   background: var(--surface);
