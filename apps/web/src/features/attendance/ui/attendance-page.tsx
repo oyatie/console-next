@@ -40,7 +40,11 @@ export function AttendancePage() {
 }
 
 export function MonthPage() {
-  return <AttendanceLayout>{head => <MonthTab head={head} />}</AttendanceLayout>;
+  return (
+    <div className={`page ${styles.boardPage}`}>
+      <MonthTab head={<AttendanceHead tab="month" />} />
+    </div>
+  );
 }
 
 export function DayPage() {

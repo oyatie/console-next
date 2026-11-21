@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { ATTENDANCE_EVIDENCE, label } from "../../../lib/labels";
+import { useLiveHold } from "../../../lib/live/hold";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -11,6 +12,7 @@ import { ItemList } from "../../../ui/item-list/item-list";
 import { Chip } from "../../../ui/chip";
 import { Table } from "../../../ui/table";
 import { KeyValue } from "../../../ui/key-value/key-value";
+import { MonthGridPaneBody } from "../../../ui/patterns/month-grid-parts";
 import { Tabs } from "../../../ui/tabs/tabs";
 import { personMonthQuery, type Day, type Entry } from "../api";
 import { duration } from "../domain/minutes";
@@ -21,7 +23,7 @@ import { EntryForm } from "./entry-form";
 import { MarkChip } from "./mark-chip";
 import s from "./records.module.css";
 
-type Mode = "view" | "correct" | "void";
+export type DayDockMode = "view" | "correct" | "void";
 
 /**
  * One person-day (A3 day sheet), docked beside the grid: day (plan, record, recognition and what it means), source (the
@@ -29,27 +31,74 @@ type Mode = "view" | "correct" | "void";
  * Its verbs: correction (a new value with a reason), void (back to empty, kept as history),
  * and record again after a void (type in the grid again). The own row and a closed month are read-only.
  */
-export function DayDock({ employeeId, date, own, onClose, onRewrite, onDone }: {
+export function DayDock({ employeeId, date, own, variant = "dock", mode: controlledMode, onModeChange, onClose, onRewrite, onDone }: {
   employeeId: string;
   date: string;
   own: boolean;
+  variant?: "dock" | "pane";
+  mode?: DayDockMode;
+  onModeChange?: (mode: DayDockMode) => void;
   onClose: () => void;
   onRewrite: () => void;
   onDone: (message: string) => void;
 }) {
+  useLiveHold(variant === "pane");
   const month = useQuery(personMonthQuery(employeeId, date.slice(0, 7)));
   const [tab, setTab] = useState("day");
-  const [mode, setMode] = useState<Mode>("view");
+  const [uncontrolledMode, setUncontrolledMode] = useState<DayDockMode>("view");
+  const mode = controlledMode ?? uncontrolledMode;
+  const setMode = (next: DayDockMode) => {
+    if (onModeChange) onModeChange(next);
+    else setUncontrolledMode(next);
+  };
   const day = month.data?.days.find((d) => d.date === date);
   const history = (month.data?.history ?? []).filter((h) => h.date === date);
   const entry = day?.entry ?? null;
   const sources = entry && !entry.undone && entry.kind !== "VOID" ? [entry] : [];
   if (mode !== "view" && entry) {
-    return <EntryForm employeeId={employeeId} mode={mode} entry={entry} name={month.data?.name ?? ""} date={date} planKind={day?.plan.kind} onClose={() => setMode("view")} onDone={(m) => (setMode("view"), onDone(m))} />;
+    return <EntryForm employeeId={employeeId} mode={mode} entry={entry} name={month.data?.name ?? ""} date={date} planKind={day?.plan.kind} variant={variant} onClose={() => setMode("view")} onDone={(m) => (setMode("view"), onDone(m))} />;
   }
   const locked = own ? t("attendanceRecords.grid.ownRow") : closed(month.data?.month_state) ? t("attendanceRecords.grid.closedRow") : null;
   const verb = (label: string, go: () => void) =>
     locked ? <DisabledReason reason={locked} control={(p) => <Button {...p}>{label}</Button>} /> : <Button onClick={go}>{label}</Button>;
+  const actions = (
+    <div className={s.dayActions}>
+      <Button onClick={onClose}>{t("attendance.close")}</Button>
+      <div className="row">
+        {entry && entry.kind !== "VOID" && verb(t("attendanceRecords.day.correct"), () => setMode("correct"))}
+        {entry && entry.kind !== "VOID" && verb(t("attendanceRecords.day.void"), () => setMode("void"))}
+        {month.data && (!entry || entry.kind === "VOID") && verb(t("attendanceRecords.day.rewrite"), onRewrite)}
+      </div>
+    </div>
+  );
+  const body = (
+    <QueryState q={month} own={refusalText}>
+      {() => (
+        <Tabs
+          label={t("attendanceRecords.day.tabs")}
+          selected={tab}
+          onSelect={setTab}
+          items={(["day", "source", "history"] as const).map((id) => ({ id, label: t(`attendanceRecords.day.tab.${id}`) }))}
+        >
+          {(id) => (id === "day" && day ? <DayPanel day={day} /> : id === "source" || id === "history" ? <History rows={id === "source" ? sources : history.map((h) => h.entry)} /> : null)}
+        </Tabs>
+      )}
+    </QueryState>
+  );
+  if (variant === "pane") {
+    return (
+      <MonthGridPaneBody
+        footer={
+          <>
+            <div className="t-xs muted">{t("attendanceRecords.recognition.basis")}</div>
+            {actions}
+          </>
+        }
+      >
+        {body}
+      </MonthGridPaneBody>
+    );
+  }
   return (
     <DockSheet
       open
@@ -57,29 +106,9 @@ export function DayDock({ employeeId, date, own, onClose, onRewrite, onDone }: {
       title={t("attendanceRecords.day.title", { date: dateText(date) })}
       onClose={onClose}
       consequence={t("attendanceRecords.recognition.basis")}
-      actions={
-        <div className={s.dayActions}>
-          <Button onClick={onClose}>{t("attendance.close")}</Button>
-          <div className="row">
-          {entry && entry.kind !== "VOID" && verb(t("attendanceRecords.day.correct"), () => setMode("correct"))}
-          {entry && entry.kind !== "VOID" && verb(t("attendanceRecords.day.void"), () => setMode("void"))}
-          {month.data && (!entry || entry.kind === "VOID") && verb(t("attendanceRecords.day.rewrite"), onRewrite)}
-          </div>
-        </div>
-      }
+      actions={actions}
     >
-      <QueryState q={month} own={refusalText}>
-        {() => (
-          <Tabs
-            label={t("attendanceRecords.day.tabs")}
-            selected={tab}
-            onSelect={setTab}
-            items={(["day", "source", "history"] as const).map((id) => ({ id, label: t(`attendanceRecords.day.tab.${id}`) }))}
-          >
-            {(id) => (id === "day" && day ? <DayPanel day={day} /> : id === "source" || id === "history" ? <History rows={id === "source" ? sources : history.map((h) => h.entry)} /> : null)}
-          </Tabs>
-        )}
-      </QueryState>
+      {body}
     </DockSheet>
   );
 }

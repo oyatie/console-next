@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { PersonDayGrid, type DayColumn } from "../../../ui/person-day-grid/person-day-grid";
+import { PersonDayGrid, type DayColumn, type GridFooterRow } from "../../../ui/person-day-grid/person-day-grid";
 import { Button } from "../../../ui/button/button";
 import { at, indexOf, rectIn, type Range } from "../../../ui/sheet-grid/range";
 import type { GridRow } from "../api";
@@ -12,6 +12,7 @@ import { baseOf, cellKey, draftState, fill, fillSchedule, readPaste, splitKey, t
 import { duration } from "../domain/minutes";
 import { weekdayText } from "../present";
 import { MarkGlyph } from "./mark-chip";
+import { consoleCellContent } from "./month-console-cells";
 import { PastePreviewSheet, type PastePerson } from "./paste-preview";
 import type { useDrafts } from "./use-drafts";
 
@@ -38,7 +39,7 @@ type PendingPaste = { scope: string; month: string; people: PastePerson[]; plan:
  * Delete clears drafts or asks to void a saved cell, P the day sheet, ⌘S the save sheet, [ ] the month. The own row
  * and a closed month's rows are read-only. All four totals stay, a docked sheet or not (FE-2 restored).
  */
-export function MonthGridView({ rows, total, days, store, range, onRange, act }: {
+export function MonthGridView({ rows, total, days, store, range, onRange, act, consoleOrder, activeRowId, tailGroupHeader, footerRows }: {
   rows: readonly GridRow[];
   total: number;
   days: readonly string[];
@@ -46,6 +47,10 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
   range: Range | null;
   onRange: (r: Range) => void;
   act: (a: GridAct) => void;
+  consoleOrder?: boolean;
+  activeRowId?: string;
+  tailGroupHeader?: ReactNode;
+  footerRows?: readonly GridFooterRow[];
 }) {
   // The open editor carries its own person-day and the version on screen when typing began (the save's If-Match base):
   // a re-sort, filter or live insert while typing never commits it into another row or against a newer record.
@@ -219,6 +224,26 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
     return () => window.removeEventListener("paste", paste);
   }, [days, store]);
 
+  const codeLead = { key: "no", header: t("attendanceRecords.grid.number"), cell: (r: GridRow) => r.employee_number ?? "", width: "code" as const };
+  const nameLead = { key: "name", header: t("attendanceRecords.grid.name"), width: "name" as const, cell: (r: GridRow) => (
+    <>
+      <Link from="/attendance" to="." search={(s) => ({ ...s, person: r.employee_id })}>{r.name}</Link>
+      {r.own && <bdi className="muted"> {t("attendanceRecords.grid.ownTag")}</bdi>}
+    </>
+  ) };
+  const hasUnscheduled = rows.some((r) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE"));
+  const hasUnit = rows.some((r) => Boolean(r.unit_name));
+  const scheduleLead = {
+    key: "schedule", header: t("attendanceRecords.day.plan"), width: "name" as const,
+    cell: (r: GridRow) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE") ? <>
+      {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
+    </> : null,
+  };
+  const unitLead = { key: "unit", header: t("attendance.monthConsole.grid.unit"), width: "name" as const, hideOnPhone: true, cell: (r: GridRow) => r.unit_name ?? "–" };
+  const leadColumns = consoleOrder
+    ? [nameLead, codeLead, ...(hasUnscheduled ? [scheduleLead] : hasUnit ? [unitLead] : [])]
+    : [codeLead, nameLead, ...(hasUnscheduled ? [scheduleLead] : [])];
+
   return (
     <>
     <PersonDayGrid<GridRow>
@@ -226,21 +251,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
       total={total}
       rows={rows}
       rowKey={(r) => r.employee_id}
-      lead={[
-        { key: "no", header: t("attendanceRecords.grid.number"), cell: (r) => r.employee_number ?? "", width: "code" },
-        { key: "name", header: t("attendanceRecords.grid.name"), width: "name", cell: (r) => (
-          <>
-            <Link from="/attendance" to="." search={(s) => ({ ...s, person: r.employee_id })}>{r.name}</Link>
-            {r.own && <span className="muted"> {t("attendanceRecords.grid.ownTag")}</span>}
-          </>
-        ) },
-        ...(rows.some((r) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE")) ? [{
-          key: "schedule", header: t("attendanceRecords.day.plan"), width: "name" as const,
-          cell: (r: GridRow) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE") ? <>
-            {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
-          </> : null,
-        }] : []),
-      ]}
+      lead={leadColumns}
       days={columns}
       tail={[
         { key: "rec", header: t("attendanceRecords.total.recognised"), width: "total", cell: (r) => (r.totals.recognised ? duration(r.totals.recognised) : "–") },
@@ -251,11 +262,18 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
         { key: "unrec", header: t("attendanceRecords.total.unrecognised"), width: "total", cell: (r) => (r.totals.unrecognised ? duration(r.totals.unrecognised) : "–") },
         { key: "open", header: t("attendanceRecords.total.open"), width: "total", cell: (r) => (r.totals.blocking || r.totals.decision ? t("attendanceRecords.total.openValue", { blocking: r.totals.blocking, decision: r.totals.decision }) : "–") },
       ]}
+      tailGroupHeader={tailGroupHeader}
+      activeRowId={activeRowId}
+      footerRows={footerRows}
       cell={(r, c) => {
         const d = drafts[cellKey(r.employee_id, days[c]!)];
         if (d) return d.value;
         const cell = r.cells[c];
         if (!cell) return null;
+        if (consoleOrder) {
+          const hasEntries = r.cells.some((x) => Boolean(x.entry_kind));
+          return consoleCellContent(cell, hasEntries);
+        }
         const shape = cellShape(cell);
         const marks = cell.marks ?? [];
         return (
