@@ -21,7 +21,7 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 // the URL so a link reopens the same view.
 const attendance = createRoute({
   getParentRoute: () => app,
-  path: "/attendance", staticData: { access: readRequirement("/attendance") },
+  path: "/attendance", staticData: { access: readRequirement("/attendance"), floorplan: "P-03", pattern: "month-grid" },
   validateSearch: (s: Record<string, unknown>): AttendanceSearch => ({
     view: VIEWS.find((v) => v === s.view),
     kind: KINDS.find((k) => k === s.kind),

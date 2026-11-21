@@ -13,6 +13,16 @@ import type { Tab } from "./attendance-page";
  * product cannot open yet is absent, not a dead link); the TR-73 groups (records | approvals, leave, close | schedules, import, reports, settings)
  * fill in as the slices land.
  */
+export function AttendanceTabNav({ tab }: { tab: Tab }) {
+  return (
+    <TabNav label={t("attendance.tabs")} overflow="scroll">
+      {(["day", "month", "overtime", "schedule", "issues", "close"] as const).map((k) => (
+        <Link key={k} from="/attendance" to="/attendance" search={search => ({ ...search, tab: k, person: undefined })} className={tabClass} aria-current={(tab === "week" ? "overtime" : tab) === k ? "page" : undefined}>{t(`attendance.tab.${k}`)}</Link>
+      ))}
+    </TabNav>
+  );
+}
+
 export function AttendanceHead({ tab }: { tab: Tab }) {
   const me = useQuery(get("/api/v1/users/me"));
   const phase = me.data?.tenant?.phase;
@@ -20,13 +30,7 @@ export function AttendanceHead({ tab }: { tab: Tab }) {
     <PageHead
       title={t("attendance.title")}
       meta={phase && <PhaseLine phase={phase === "OPERATING" ? "operating" : "setup"}>{t(phase === "OPERATING" ? "attendance.phase.operating" : "attendance.phase.setup")}</PhaseLine>}
-      tabs={
-        <TabNav label={t("attendance.tabs")} overflow="scroll">
-          {(["day", "month", "overtime", "schedule", "issues", "close"] as const).map((k) => (
-            <Link key={k} from="/attendance" to="/attendance" search={search => ({ ...search, tab: k, person: undefined })} className={tabClass} aria-current={(tab === "week" ? "overtime" : tab) === k ? "page" : undefined}>{t(`attendance.tab.${k}`)}</Link>
-          ))}
-        </TabNav>
-      }
+      tabs={<AttendanceTabNav tab={tab} />}
     />
   );
 }

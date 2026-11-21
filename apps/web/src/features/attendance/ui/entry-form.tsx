@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { t } from "@console/i18n";
+import { useLiveHold } from "../../../lib/live/hold";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Checks } from "../../../ui/choice/checks";
@@ -8,28 +9,32 @@ import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { DockSheet } from "../../../ui/dock-sheet/dock-sheet";
 import { Field, TextInput } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
+import { MonthGridPaneBody } from "../../../ui/patterns/month-grid-parts";
 import { correctEntry, previewEntries, voidEntry, type Entry } from "../api";
 import { parseDraft, recordedMinutes } from "../domain/grammar";
 import { dateText, entryText, refusalText } from "../present";
 import { EMPTY_EVIDENCE, evidenceOf } from "../domain/evidence";
 import { usePreview } from "./use-preview";
 import { EvidenceField } from "./evidence-field";
+import s from "./records.module.css";
 
 /**
  * correction (A3-correct) or void (A3-void) of one saved entry, docked where the day sheet was. reason and evidence start
  * empty; a correction that lowers what was recorded needs its evidence (the server says so too). Both keep the old value in
  * the history; a void is undone by recording the day again (record again).
  */
-export function EntryForm({ mode, entry, employeeId, name, date, planKind, onClose, onDone }: {
+export function EntryForm({ mode, entry, employeeId, name, date, planKind, variant = "dock", onClose, onDone }: {
   mode: "correct" | "void";
   entry: Entry;
   employeeId: string;
   name: string;
   date: string;
   planKind: string | undefined;
+  variant?: "dock" | "pane";
   onClose: () => void;
   onDone: (message: string) => void;
 }) {
+  useLiveHold(variant === "pane");
   const [confirmed, setConfirmed] = useState(false);
   const [value, setValue] = useState("");
   const [reason, setReason] = useState("");
@@ -60,22 +65,16 @@ export function EntryForm({ mode, entry, employeeId, name, date, planKind, onClo
     : !ev ? t("attendanceRecords.save.needsEvidence")
     : null;
   const label = t(mode === "correct" ? "attendanceRecords.correct.commit" : "attendanceRecords.void.commit");
-  return (
-    <DockSheet
-      open
-      kicker={`${name} · ${dateText(date)}`}
-      title={t(mode === "correct" ? "attendanceRecords.correct.title" : "attendanceRecords.void.title")}
-      onClose={onClose}
-      pending={run.isPending}
-      notice={<CommandError error={preview.error ?? run.error} own={refusalText} />}
-      consequence={t(mode === "correct" ? "attendanceRecords.correct.consequence" : "attendanceRecords.void.consequence")}
-      actions={
-        <>
-          <Button onClick={onClose}>{t("attendanceRecords.back")}</Button>
-          {why ? <DisabledReason reason={why} control={(p) => <Button {...p} variant="primary">{label}</Button>} /> : <Button variant={mode === "void" ? "danger" : "primary"} disabled={run.isPending} onClick={() => run.mutate()}>{label}</Button>}
-        </>
-      }
-    >
+  const notice = <CommandError error={preview.error ?? run.error} own={refusalText} />;
+  const consequence = t(mode === "correct" ? "attendanceRecords.correct.consequence" : "attendanceRecords.void.consequence");
+  const actions = (
+    <>
+      <Button onClick={onClose}>{t("attendanceRecords.back")}</Button>
+      {why ? <DisabledReason reason={why} control={(p) => <Button {...p} variant="primary">{label}</Button>} /> : <Button variant={mode === "void" ? "danger" : "primary"} disabled={run.isPending} onClick={() => run.mutate()}>{label}</Button>}
+    </>
+  );
+  const body = (
+    <>
       <p>{t("attendanceRecords.correct.before", { value: before })}</p>
       {mode === "correct" && (
         <Field label={t("attendanceRecords.correct.after")} required hint={t("attendanceRecords.grammar.hint")} error={parsed && !parsed.ok ? refusalText(parsed.code) : undefined}>
@@ -90,6 +89,36 @@ export function EntryForm({ mode, entry, employeeId, name, date, planKind, onClo
         {(p) => <TextArea {...p} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />}
       </Field>
       <EvidenceField value={evidence} onChange={setEvidence} disabled={run.isPending} />
+    </>
+  );
+  if (variant === "pane") {
+    return (
+      <MonthGridPaneBody
+        pending={run.isPending}
+        footer={
+          <>
+            {notice}
+            <div className="t-xs muted">{consequence}</div>
+            <div className={s.dayActions} inert={run.isPending || undefined}>{actions}</div>
+          </>
+        }
+      >
+        {body}
+      </MonthGridPaneBody>
+    );
+  }
+  return (
+    <DockSheet
+      open
+      kicker={`${name} · ${dateText(date)}`}
+      title={t(mode === "correct" ? "attendanceRecords.correct.title" : "attendanceRecords.void.title")}
+      onClose={onClose}
+      pending={run.isPending}
+      notice={notice}
+      consequence={consequence}
+      actions={actions}
+    >
+      {body}
     </DockSheet>
   );
 }

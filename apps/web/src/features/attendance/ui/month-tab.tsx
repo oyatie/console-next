@@ -18,8 +18,10 @@ import { shiftMonth } from "../domain/month";
 import { cellKey, draftState, splitKey } from "../domain/grid";
 import { suggestFix } from "../domain/grammar";
 import { pageState } from "../domain/month-state";
-import { refusalText } from "../present";
-import { DayDock } from "./day-dock";
+import { dateText, monthText, refusalText } from "../present";
+import { DayDock, type DayDockMode } from "./day-dock";
+import { MonthConsoleView } from "./month-console-view";
+import { extractOpenIssues, filterMonthRows, summarizeMonth, type MonthFilter, type OpenIssueRow } from "../domain/month-console-summary";
 import { MonthGridView, type GridAct } from "./month-grid-view";
 import { MonthStateBanner } from "./month-state-banner";
 import { SaveDock } from "./save-dock";
@@ -55,6 +57,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const monthState = useMemo(() => pageState(rows.map((r) => r.month_state)), [rows]);
   const store = useDrafts(`${month}:${search.wp ?? ""}:${search.unit ?? ""}`, rows);
   const online = useOnline();
+  // Keep hook indices 0..5 stable for unit-test mocks.
   const [range, setRange] = useState<Range | null>(null);
   const [dock, setDock] = useState<Dock>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -62,6 +65,8 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const [receipt, setReceipt] = useState<SaveReceipt | null>(null);
   const [undo, setUndo] = useState(false);
   const [assign, setAssign] = useState<AssignTarget | null>(null);
+  const [filter, setFilter] = useState<MonthFilter>("all");
+  const [dayMode, setDayMode] = useState<DayDockMode>("view");
   const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
 
   const drafts = Object.entries(store.drafts);
@@ -72,12 +77,20 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const focusDraft = focusKey ? store.drafts[focusKey] : undefined;
   const focusState = focusDraft ? draftState(focusDraft, kindOf(focusKey!)) : null;
   const fix = focusDraft && focusState && !focusState.ok ? suggestFix(focusDraft.value) : null;
+  const openDayDock = (employeeId: string, date: string, own: boolean) => {
+    setDayMode("view");
+    setDock({ kind: "day", employeeId, date, own });
+  };
+  const closeDock = () => {
+    setDayMode("view");
+    setDock(null);
+  };
   const act = (a: GridAct) => {
     if (a.kind === "save") setDock({ kind: "save" });
     else if (a.kind === "month") go({ month: shiftMonth(month, a.step) });
     else if (a.kind === "note") setNote(a.message);
     else if (a.kind === "assign") setAssign({ kind: "PERSON", id: a.row.employee_id, name: a.row.name });
-    else setDock({ kind: "day", employeeId: a.row.employee_id, date: days[a.day]!, own: a.row.own });
+    else openDayDock(a.row.employee_id, days[a.day]!, a.row.own);
   };
   const focusCell = (key: string) => {
     const { employee_id, work_date } = splitKey(key);
@@ -91,19 +104,16 @@ export function MonthTab({ head }: { head?: ReactNode }) {
     </Button>
   );
 
-  return (
-    <div className={s.monthPage}>
-      {head}
-      <PageReadGate q={grid} own={refusalText} recovery={search.wp ? <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} /> : undefined}>
-      {!empty && <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
-        <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} />
-        <PeriodStepper unit="month" value={month} onChange={month => go({ month })} />
-        {drafts.length > 0 && !grid.error && <>
-          <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts.length, refused: bad.length })}</span>
-          {saveWhy ? <DisabledReason reason={saveWhy} control={() => saveButton} /> : saveButton}
-        </>}
-      </div>}
-      <QueryState q={grid} own={refusalText} layout="grid">{() => <>
+  const summary = useMemo(() => summarizeMonth(rows, total, days), [rows, total, days]);
+  const filteredRows = useMemo(() => filterMonthRows(rows, filter), [rows, filter]);
+  const openIssues = useMemo(() => extractOpenIssues(rows), [rows]);
+  const openIssue = (item: OpenIssueRow) => {
+    setRange(at(item.employeeId, item.date));
+    openDayDock(item.employeeId, item.date, item.own);
+  };
+
+  const notes = (
+    <>
       {!online && <Banner tone="warn">{t("attendanceRecords.offline")}</Banner>}
       <MonthStateBanner state={monthState} month={month} />
       {focusDraft && focusState && !focusState.ok && (
@@ -124,35 +134,123 @@ export function MonthTab({ head }: { head?: ReactNode }) {
           actions={<Button size="sm" variant="ghost" onClick={() => setUndo(true)}>{t("attendanceRecords.receipt.undo")}</Button>}
         />
       )}
-      <div className={s.monthLayout} data-docked={dock ? "" : undefined}>
-        <div className={s.gridCol}>
-          {!rows.length ? (
-            search.wp || search.unit ? (
-              <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.empty.filteredReason")} actions={<Button onClick={() => go({ wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
-            ) : (
-              <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }} className={buttonClass("primary")}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
-            )
-          ) : (
-            <>
-              <MonthGridView rows={rows} total={total} days={days} store={store} range={range} onRange={(r) => (setNote(null), setRange(r))} act={act} />
-              {rows.every((r) => r.cells.every((c) => c.plan_kind === "NO_SCHEDULE")) && (
-                <Banner tone="warn" actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>}>{t("attendanceRecords.noSchedule")}</Banner>
-              )}
-              {grid.hasNextPage && <Button onClick={() => void grid.fetchNextPage()} disabled={grid.isFetchingNextPage}>{t("attendanceRecords.more", { shown: rows.length, total })}</Button>}
-            </>
-          )}
-        </div>
-        {dock?.kind === "save" && drafts.length > 0 && (
-          <SaveDock drafts={store.drafts} rows={rows} kindOf={kindOf} month={month} onClose={() => setDock(null)} onFocusCell={focusCell} onSaved={(r, keys) => (store.saved(keys), setDock(null), setReceipt(r))} />
-        )}
-        {dock?.kind === "day" && (
-          <DayDock employeeId={dock.employeeId} date={dock.date} own={dock.own} onClose={() => setDock(null)} onRewrite={() => setDock(null)} onDone={(m) => (setDock(null), setNote(m))} />
-        )}
-      </div>
+    </>
+  );
+
+  const emptyBlock = search.wp || search.unit ? (
+    <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.empty.filteredReason")} actions={<Button onClick={() => go({ wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
+  ) : (
+    <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }} className={buttonClass("primary")}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
+  );
+  const noScheduleBanner = rows.length > 0 && rows.every((r) => r.cells.every((c) => c.plan_kind === "NO_SCHEDULE")) ? (
+    <Banner tone="warn" actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>}>{t("attendanceRecords.noSchedule")}</Banner>
+  ) : null;
+  const moreButton = grid.hasNextPage ? (
+    <Button onClick={() => void grid.fetchNextPage()} disabled={grid.isFetchingNextPage}>{t("attendanceRecords.more", { shown: rows.length, total })}</Button>
+  ) : null;
+  const overlays = (
+    <>
       {undo && receipt && <UndoBatchSheet batchId={receipt.batch_id} saved={receipt.saved} month={month} onClose={() => setUndo(false)} onDone={(m) => (setUndo(false), setReceipt(null), setNote(m))} />}
       {assign && <PersonScheduleSheet target={assign} onClose={() => setAssign(null)} onAssigned={(message) => (setAssign(null), setNote(message))} />}
-    </>}</QueryState>
-    </PageReadGate>
-    </div>
+    </>
+  );
+
+  const dockRow = dock?.kind === "day" ? rows.find((r) => r.employee_id === dock.employeeId) : undefined;
+  const dayDockTitle = dock?.kind === "day"
+    ? dayMode === "correct" ? t("attendanceRecords.correct.title") : dayMode === "void" ? t("attendanceRecords.void.title") : t("attendanceRecords.day.title", { date: dateText(dock.date) })
+    : "";
+  const dayDockMeta = dock?.kind === "day" && dockRow
+    ? dayMode === "view" ? `${dockRow.name} ${dockRow.employee_number ?? ""}`.trim() : `${dockRow.name} · ${dateText(dock.date)}`
+    : undefined;
+  const record = dock?.kind === "save" && drafts.length > 0
+    ? {
+        id: "save",
+        label: t("attendanceRecords.save.title", { count: drafts.length }),
+        title: t("attendanceRecords.save.title", { count: drafts.length }),
+        meta: monthText(month),
+        onClose: closeDock,
+        children: <SaveDock variant="pane" drafts={store.drafts} rows={rows} kindOf={kindOf} month={month} onClose={closeDock} onFocusCell={focusCell} onSaved={(r, keys) => (store.saved(keys), closeDock(), setReceipt(r))} />,
+      }
+    : dock?.kind === "day"
+      ? {
+          id: `day:${dock.employeeId}:${dock.date}`,
+          label: dayDockTitle,
+          title: dayDockTitle,
+          meta: dayDockMeta,
+          onClose: closeDock,
+          children: <DayDock variant="pane" employeeId={dock.employeeId} date={dock.date} own={dock.own} mode={dayMode} onModeChange={setDayMode} onClose={closeDock} onRewrite={closeDock} onDone={(m) => (closeDock(), setNote(m))} />,
+        }
+      : null;
+
+  return (
+    <MonthConsoleView
+      grid={grid}
+      month={month}
+      wp={search.wp}
+      empty={empty}
+      rows={rows}
+      filteredRows={filteredRows}
+      total={total}
+      days={days}
+      monthState={monthState}
+      filter={filter}
+      onFilter={setFilter}
+      summary={summary}
+      openIssues={openIssues}
+      draftCount={drafts.length}
+      refusedDraftCount={bad.length}
+      saveWhy={saveWhy}
+      saveOpen={dock?.kind === "save"}
+      onOpenSave={() => setDock({ kind: "save" })}
+      onGo={go}
+      onInspectIssue={openIssue}
+      store={store}
+      range={range}
+      onRange={(r) => (setNote(null), setRange(r))}
+      act={act}
+      notes={notes}
+      emptyBlock={emptyBlock}
+      noScheduleBanner={noScheduleBanner}
+      moreButton={moreButton}
+      selectedDayKey={dock?.kind === "day" ? `${dock.employeeId}|${dock.date}` : undefined}
+      record={record}
+      overlays={overlays}
+      baseline={() => (
+        <div className={s.monthPage}>
+          {head}
+          <PageReadGate q={grid} own={refusalText} recovery={search.wp ? <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} /> : undefined}>
+          {!empty && <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
+            <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} />
+            <PeriodStepper unit="month" value={month} onChange={month => go({ month })} />
+            {drafts.length > 0 && !grid.error && <>
+              <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts.length, refused: bad.length })}</span>
+              {saveWhy ? <DisabledReason reason={saveWhy} control={() => saveButton} /> : saveButton}
+            </>}
+          </div>}
+          <QueryState q={grid} own={refusalText} layout="grid">{() => <>
+          {notes}
+          <div className={s.monthLayout} data-docked={dock ? "" : undefined}>
+            <div className={s.gridCol}>
+              {!rows.length ? emptyBlock : (
+                <>
+                  <MonthGridView rows={rows} total={total} days={days} store={store} range={range} onRange={(r) => (setNote(null), setRange(r))} act={act} />
+                  {noScheduleBanner}
+                  {moreButton}
+                </>
+              )}
+            </div>
+            {dock?.kind === "save" && drafts.length > 0 && (
+              <SaveDock drafts={store.drafts} rows={rows} kindOf={kindOf} month={month} onClose={closeDock} onFocusCell={focusCell} onSaved={(r, keys) => (store.saved(keys), closeDock(), setReceipt(r))} />
+            )}
+            {dock?.kind === "day" && (
+              <DayDock employeeId={dock.employeeId} date={dock.date} own={dock.own} onClose={closeDock} onRewrite={closeDock} onDone={(m) => (closeDock(), setNote(m))} />
+            )}
+          </div>
+          {overlays}
+        </>}</QueryState>
+        </PageReadGate>
+        </div>
+      )}
+    />
   );
 }
