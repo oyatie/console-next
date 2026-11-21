@@ -69,4 +69,8 @@ const SCHEMAS: &[NamedYaml] = &[
         name: "InboxDocSummary",
         body: include_str!("../openapi/schemas/InboxDocSummary.yaml"),
     },
+    NamedYaml {
+        name: "InboxPayslipMeta",
+        body: include_str!("../openapi/schemas/InboxPayslipMeta.yaml"),
+    },
 ];

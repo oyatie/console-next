@@ -4,7 +4,7 @@ use console_attendance_application::CallerScope;
 use console_attendance_application::schedule::{
     LayerSummary, ScheduleCalendar, ScheduleDay, ShiftRead, StackEntry,
 };
-use console_attendance_domain::schedule::{LayerRef, Level, winner};
+use console_attendance_domain::schedule::{DayKind, LayerRef, Level, winner};
 use console_kernel_core::OrgId;
 use console_platform_db::with_org_conn;
 use sqlx::{Postgres, Transaction};
@@ -166,7 +166,75 @@ async fn calendar_for(
     })
 }
 
+#[derive(Debug, Clone)]
+pub struct ScheduleDaySummary {
+    pub date: Date,
+    pub kind: DayKind,
+    pub minutes: u16,
+    pub layer_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone)]
+pub struct EmployeeScheduleSpan {
+    pub holidays_loaded: bool,
+    pub days: Vec<ScheduleDaySummary>,
+}
+
 impl PgAttendanceStore {
+    /// Resolve per-day schedule obligations and holiday flags for one employee
+    /// over `[start_date, end_date]` (used by leave charge resolution).
+    pub async fn resolve_employee_schedule_span(
+        &self,
+        org_id: Uuid,
+        employee_id: Uuid,
+        start_date: Date,
+        end_date: Date,
+    ) -> Result<Option<EmployeeScheduleSpan>, ScheduleStoreError> {
+        if end_date < start_date {
+            return Ok(None);
+        }
+        with_org_conn::<_, _, ScheduleStoreError>(&self.pool, OrgId::from_uuid(org_id), move |tx| {
+            Box::pin(async move {
+                let org = load_org(tx).await?;
+                let u = Universe::load(tx, org, (start_date.year(), end_date.year())).await?;
+                let mut holidays_loaded = true;
+                for year in start_date.year()..=end_date.year() {
+                    if !u.holidays_loaded(year) {
+                        holidays_loaded = false;
+                        break;
+                    }
+                }
+                let mut days = Vec::new();
+                let mut any_placed = false;
+                let mut d = start_date;
+                while d <= end_date {
+                    let Some(person) = load_roster(tx, d, Some(employee_id)).await?.pop() else {
+                        return Ok(None);
+                    };
+                    any_placed = true;
+                    let refs = u.layers_for(&person);
+                    let (w, plan) = u.day(&person, &refs, d);
+                    let minutes = plan.shift.as_ref().map_or(0, |s| s.minutes());
+                    days.push(ScheduleDaySummary {
+                        date: d,
+                        kind: plan.kind,
+                        minutes,
+                        layer_id: w.map(|w| w.id),
+                    });
+                    d += Duration::days(1);
+                }
+                if !any_placed {
+                    return Ok(None);
+                }
+                Ok(Some(EmployeeScheduleSpan {
+                    holidays_loaded,
+                    days,
+                }))
+            })
+        })
+        .await
+    }
+
     pub async fn schedule_calendar(
         &self,
         caller: &CallerScope,

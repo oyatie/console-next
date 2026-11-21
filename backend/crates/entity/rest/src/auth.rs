@@ -104,6 +104,13 @@ impl Gate {
     }
 }
 
+/// Any authenticated active tenant user (for tenant-scoped reference reads
+/// such as address lookup during self-service profile updates).
+pub(crate) async fn tenant_actor(s: &EntityRestState, headers: &HeaderMap) -> Result<Actor> {
+    let principal = principal(s, headers).await?;
+    Ok(actor_of(&principal))
+}
+
 /// A reader, and whether it may see restricted personal fields of `target`.
 pub(crate) async fn actor(
     s: &EntityRestState,

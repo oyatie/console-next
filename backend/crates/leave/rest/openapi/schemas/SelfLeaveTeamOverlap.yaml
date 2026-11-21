@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- active_count
+- out_count
+- members_out
+properties:
+  org_unit:
+    type:
+    - string
+    - 'null'
+  active_count:
+    type: integer
+    format: int64
+  out_count:
+    type: integer
+    format: int64
+  members_out:
+    type: array
+    items:
+      $ref: '#/components/schemas/TeamOverlapMember'

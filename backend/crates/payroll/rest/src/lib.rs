@@ -38,25 +38,22 @@ mod lifecycle;
 mod pay_groups;
 mod payslip_draft;
 mod reference;
+mod run_detail;
 mod runs_query;
 mod self_service;
 
 pub(crate) use access::principal_from_headers;
-use axum::extract::{Path, Query, State};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
-use console_payroll_adapter_postgres::{
-    PayrollRunDetail, PgPayrollError, PgPayrollStore, get_run_in_tx,
-};
+use console_kernel_core::KernelError;
+use console_payroll_adapter_postgres::{PgPayrollError, PgPayrollStore};
 use console_platform_auth::JwtVerifier;
-use console_platform_db::{DbError, with_audits};
+use console_platform_db::DbError;
 use console_platform_request_context::RequestContextError;
 pub(crate) use runs_query::list_runs_page;
 use serde::Serialize;
-use uuid::Uuid;
 
 pub const PAYROLL_REFERENCE_RATES_PATH: &str = "/api/v1/payroll/reference/rates";
 pub const PAYROLL_RUNS_PATH: &str = "/api/v1/payroll/runs";
@@ -132,7 +129,7 @@ pub fn router(state: PayrollRestState) -> Router {
         .merge(pay_groups::router())
         .route(PAYROLL_REFERENCE_RATES_PATH, get(reference::list))
         .route(PAYROLL_RUNS_PATH, get(runs_query::list_runs))
-        .route(PAYROLL_RUN_PATH_TEMPLATE, get(get_run))
+        .route(PAYROLL_RUN_PATH_TEMPLATE, get(run_detail::get_run))
         .route(PAYROLL_MY_PAYSLIPS_PATH, get(self_service::list_my_lines))
         .route(
             PAYROLL_RUN_CLOSE_PREFLIGHT_PATH_TEMPLATE,
@@ -193,50 +190,6 @@ pub fn router(state: PayrollRestState) -> Router {
 }
 
 pub(crate) use self_service::PageParams;
-
-async fn get_run(
-    State(state): State<PayrollRestState>,
-    headers: HeaderMap,
-    Path(run_id): Path<Uuid>,
-    Query(params): Query<PageParams>,
-) -> Result<Response, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-
-    let (org, actor) = (principal.org_id, principal.user_id);
-    let pool = state.store.pool().clone();
-    let detail = with_audits::<_, Option<PayrollRunDetail>, RestError>(&pool, org, move |tx| {
-        Box::pin(async move {
-            access::require_run_read_in_tx(tx, org, actor).await?;
-            let detail = get_run_in_tx(tx, run_id, params.limit, params.offset)
-                .await
-                .map_err(RestError::from_store)?;
-            // Audit only on an actual read of a real run — a miss carries
-            // no sensitive payload and would otherwise pollute the trail
-            // with probe noise.
-            let events = if detail.is_some() {
-                vec![
-                    AuditEvent::new(
-                        Some(actor),
-                        AuditAction::new("payroll_run.read").map_err(RestError::from_kernel)?,
-                        "payroll_draft_run",
-                        run_id.to_string(),
-                        TraceContext::generate(),
-                        time::OffsetDateTime::now_utc(),
-                    )
-                    .with_org(org),
-                ]
-            } else {
-                Vec::new()
-            };
-            Ok((detail, events))
-        })
-    })
-    .await?;
-
-    let detail = detail
-        .ok_or_else(|| RestError::new(StatusCode::NOT_FOUND, "not_found", "run not found"))?;
-    Ok(Json(detail).into_response())
-}
 
 #[derive(Debug, Serialize)]
 struct ErrorBody {

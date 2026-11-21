@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- employee_id
+- field
+- value
+- display_seconds
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  field:
+    type: string
+    enum: [PHONE, ADDRESS, EMERGENCY_CONTACTS]
+  value: {}
+  display_seconds:
+    type: integer
+    format: int64

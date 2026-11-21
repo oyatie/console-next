@@ -531,6 +531,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/AttendanceMonthGrid.yaml"),
     },
     NamedYaml {
+        name: "AttendanceMonthGridSummary",
+        body: include_str!("../openapi/schemas/AttendanceMonthGridSummary.yaml"),
+    },
+    NamedYaml {
         name: "AttendanceMonthState",
         body: include_str!("../openapi/schemas/AttendanceMonthState.yaml"),
     },

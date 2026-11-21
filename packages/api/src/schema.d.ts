@@ -9275,6 +9275,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List certificates issued for the authenticated employee */
+        get: operations["listMyCertificates"];
+        put?: never;
+        /** Issue a self-service certificate for the authenticated employee */
+        post: operations["issueMyCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one self-service certificate belonging to the authenticated employee */
+        get: operations["getMyCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/dispatch-offers": {
         parameters: {
             query?: never;
@@ -9527,6 +9562,70 @@ export interface paths {
         put?: never;
         /** Mark one of the authenticated user's notifications unread again (read toggle) */
         post: operations["markMyNotificationUnread"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Authenticated employee's masked self-service profile
+         * @description Returns the caller's own masked personal details, employment metadata, address administrative summary, boolean bank-account registration flag, and open profile-correction requests. Requires Cedar employee_self_read on the caller's linked employee record.
+         */
+        get: operations["getMyProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update immediate self-service profile fields (phone, emergency_contacts)
+         * @description Updates the caller's immediate-apply self-service fields (phone and/or emergency_contacts) on their own linked employee record. Address and bank account status require approval via POST /api/v1/me/profile/change-requests.
+         */
+        patch: operations["updateMyProfile"];
+        trace?: never;
+    };
+    "/api/v1/me/profile/change-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * File an approval-gated self-service change request (address or bank_account_registered)
+         * @description Submits a PROFILE_CORRECTION change request for the caller's linked employee for fields requiring HR approval (address or boolean bank_account_registered attestation). Rejects raw bank account identifiers.
+         */
+        post: operations["createMyProfileChangeRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/profile/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Step-up passkey reveal of one self-service personal field
+         * @description Verifies a fresh MobileStepUpActionKind::PiiReveal passkey assertion bound to the caller's linked employee, commits an immutable audit event before reading, and returns the plaintext phone, address, or emergency contacts with Cache-Control: private, no-store.
+         */
+        post: operations["revealMyProfileField"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15030,6 +15129,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/me/leave/approval-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview the approval chain for a self-service leave request
+         * @description Returns the caller's leave filing readiness, active home branch, org unit, and SoD-filtered approval steps (optional unambiguous unit lead plus branch HR/approver step). Requires Cedar employee_self_read on the caller's linked employee.
+         */
+        get: operations["getMyLeaveApprovalPreviewV2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/me/leave/team-overlap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List teammates in the caller's own org unit on overlapping leave
+         * @description Returns minimal overlap info (org_unit, active_count, out_count, and { employee_id, name } of overlapping teammates) strictly within the caller's own org unit for the requested date range. Requires Cedar employee_self_read on the caller's linked employee. Never exposes leave reasons, types, or exact leave dates.
+         */
+        get: operations["getMyLeaveTeamOverlapV2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/work-orders": {
         parameters: {
             query?: never;
@@ -16594,6 +16733,7 @@ export interface components {
             employee_number?: string | null;
             name: string;
             unit_name?: string | null;
+            position?: string | null;
             own: boolean;
             cells: components["schemas"]["AttendanceGridCell"][];
             totals: components["schemas"]["AttendanceGridTotals"];
@@ -16841,6 +16981,28 @@ export interface components {
             rows: components["schemas"]["AttendanceGridRow"][];
             people_total: number;
             next_cursor?: string | null;
+            work_pattern_summary?: string | null;
+            summary?: components["schemas"]["AttendanceMonthGridSummary"];
+        };
+        AttendanceMonthGridSummary: {
+            /** Format: int64 */
+            scheduled_days: number;
+            /** Format: int64 */
+            weekday_holidays: number;
+            /** Format: int64 */
+            recognised_minutes: number;
+            /** Format: int64 */
+            outside_minutes: number;
+            /** Format: int64 */
+            unapproved_minutes: number;
+            /** Format: int64 */
+            blocking_count: number;
+            /** Format: int64 */
+            decision_count: number;
+            /** Format: int64 */
+            issue_people_count: number;
+            /** Format: int64 */
+            overtime_people_count: number;
         };
         /** @description Whether a person's attendance month takes writes. CLOSED refuses them (lock_id is the payroll period lock to request an unlock of, null when none covers the month); REOPENED takes them while an approved period unlock is open, until relock_at (null only for an unlock without a time box). */
         AttendanceMonthState: {
@@ -19297,6 +19459,13 @@ export interface components {
             branch_id: components["schemas"]["Uuid"];
             equipment_id: components["schemas"]["Uuid"];
             config: components["schemas"]["FinancialConfigSnapshot"];
+        };
+        CreateSelfChangeRequest: {
+            /** @enum {string} */
+            field: "address" | "bank_account_registered";
+            address?: components["schemas"]["KrAddress"] | null;
+            bank_account_registered?: boolean | null;
+            note?: string | null;
         };
         /** @description Create a series and attach its first instance. */
         CreateSeriesRequest: {
@@ -23170,6 +23339,22 @@ export interface components {
              */
             confirmed_at?: string | null;
             created_at: components["schemas"]["Timestamp"];
+            payslip_meta?: components["schemas"]["InboxPayslipMeta"] | null;
+        };
+        /** @description Structured period and total summary for an issued payslip row in the inbox list, avoiding N+1 detail fetches when stepping across periods. */
+        InboxPayslipMeta: {
+            /** @description Attribution month in YYYY-MM format. */
+            attribution_month?: string | null;
+            /** Format: date */
+            period_start: string;
+            /** Format: date */
+            period_end: string;
+            /** Format: date */
+            pay_date?: string | null;
+            /** Format: int64 */
+            gross_won?: number | null;
+            /** Format: int64 */
+            net_won?: number | null;
         };
         IncidentLocation: {
             /** Format: double */
@@ -23698,6 +23883,14 @@ export interface components {
             detail?: string | null;
             /** @description Address exactly as printed on the certificate. */
             as_printed?: string | null;
+        };
+        LeaveApprovalPreviewStep: {
+            /** Format: int32 */
+            order: number;
+            step_kind: string;
+            role_label: string;
+            approver_name?: string | null;
+            approver_position?: string | null;
         };
         /**
          * @description Exact signed fixed-scale ledger days; historical imports may legitimately be negative.
@@ -24743,6 +24936,24 @@ export interface components {
             branch_scope: components["schemas"]["BranchScope"];
             /** @description Capability grants the caller holds (deny-by-omission — a feature the caller cannot use is omitted, never present at `deny`). */
             capabilities: components["schemas"]["MeAuthzCapability"][];
+        };
+        MeProfileResponse: {
+            employee_id: components["schemas"]["Uuid"];
+            employee_number?: string | null;
+            org_unit?: string | null;
+            grade?: string | null;
+            position?: string | null;
+            /** Format: date */
+            hire_date?: string | null;
+            employment_status: string;
+            phone_masked?: string | null;
+            emergency_contacts_registered: boolean;
+            /** Format: int64 */
+            emergency_contacts_count: number;
+            emergency_contacts: components["schemas"]["SelfEmergencyContactSummary"][];
+            address_masked?: string | null;
+            bank_account_registered: boolean;
+            open_change_requests: components["schemas"]["SelfChangeRequestSummary"][];
         };
         /** @enum {string} */
         MediaKind: "IMAGE" | "VIDEO";
@@ -26405,9 +26616,13 @@ export interface components {
             id: components["schemas"]["Uuid"];
             /** Format: uuid */
             employee_id?: string | null;
+            employee_number?: string | null;
             employee_display_name: string;
             employee_company: string;
+            org_unit?: string | null;
+            position?: string | null;
             work_days?: number | null;
+            paid_holiday_days?: number | null;
             regular_hours?: number | null;
             overtime_hours?: number | null;
             night_hours?: number | null;
@@ -26416,6 +26631,7 @@ export interface components {
             leave_remaining?: number | null;
             gross_pay_source_present: boolean;
             net_pay_source_present: boolean;
+            bank_account_registered: boolean;
             /** @enum {string} */
             nts_tax_row_status: "REQUIRED_NOT_SUPPLIED" | "SUPPLIED_UNVERIFIED" | "VERIFIED_SOURCE_ROW";
             /** @enum {string} */
@@ -26423,6 +26639,14 @@ export interface components {
             blockers: unknown[];
             /** Format: int32 */
             calculation_version?: number | null;
+            /** Format: int64 */
+            base_pay_won?: number | null;
+            /** Format: int64 */
+            overtime_pay_won?: number | null;
+            /** Format: int64 */
+            meal_allowance_won?: number | null;
+            /** Format: int64 */
+            taxable_won?: number | null;
             /** Format: int64 */
             gross_won?: number | null;
             deductions?: components["schemas"]["PayrollCalculationDeduction"][] | null;
@@ -26663,6 +26887,8 @@ export interface components {
             lines_limit: number;
             /** Format: int64 */
             lines_offset: number;
+            /** Format: int64 */
+            missing_bank_account_count: number;
             /** Format: int64 */
             exceptions_open: number;
             /** Format: int64 */
@@ -29115,9 +29341,53 @@ export interface components {
             attestation_id: components["schemas"]["Uuid"];
             step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
+        SelfChangeRequestSummary: {
+            id: components["schemas"]["Uuid"];
+            field: string;
+            status: string;
+            masked_summary?: string | null;
+            created_at: components["schemas"]["Timestamp"];
+        };
+        SelfEmergencyContactInput: {
+            name: string;
+            /** @enum {string} */
+            relation: "SPOUSE" | "PARENT" | "CHILD" | "SIBLING" | "RELATIVE" | "OTHER";
+            phone: string;
+            contact_notified?: boolean | null;
+        };
+        SelfEmergencyContactSummary: {
+            name: string;
+            /** @enum {string} */
+            relation: "SPOUSE" | "PARENT" | "CHILD" | "SIBLING" | "RELATIVE" | "OTHER";
+            phone_masked: string;
+        };
+        SelfFieldRevealed: {
+            employee_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            field: "PHONE" | "ADDRESS" | "EMERGENCY_CONTACTS";
+            value: unknown;
+            /** Format: int64 */
+            display_seconds: number;
+        };
+        SelfIssueCertificateRequest: {
+            /** @enum {string} */
+            kind: "EMPLOYMENT" | "CAREER" | "EXIT";
+            items: ("period" | "duty" | "position" | "wage" | "birth")[];
+            purpose: string;
+        };
+        SelfLeaveApprovalPreview: {
+            /** @enum {string} */
+            filing_state: "ready" | "home_branch_required";
+            /** Format: uuid */
+            home_branch_id?: string | null;
+            branch_name?: string | null;
+            org_unit?: string | null;
+            steps: components["schemas"]["LeaveApprovalPreviewStep"][];
+        };
         SelfLeaveBalance: {
             employee_id: components["schemas"]["Uuid"];
             name: string;
+            org_unit?: string | null;
             accrued_units: components["schemas"]["LeaveBalanceAmount"] | null;
             used_units: components["schemas"]["LeaveBalanceAmount"] | null;
             remaining_units: components["schemas"]["LeaveBalanceAmount"] | null;
@@ -29131,6 +29401,19 @@ export interface components {
              * @description Active authoritative routing branch; null exactly when filing_state is home_branch_required.
              */
             home_branch_id: string | null;
+        };
+        SelfLeaveTeamOverlap: {
+            org_unit?: string | null;
+            /** Format: int64 */
+            active_count: number;
+            /** Format: int64 */
+            out_count: number;
+            members_out: components["schemas"]["TeamOverlapMember"][];
+        };
+        SelfRevealRequest: {
+            /** @enum {string} */
+            field: "PHONE" | "ADDRESS" | "EMERGENCY_CONTACTS";
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"] | null;
         };
         /** @description Compose a message. For reply/forward, in_reply_to is required and references carries the accumulated chain. The From is constrained to the configured account address (it cannot be set here). */
         SendMailRequest: {
@@ -30111,6 +30394,10 @@ export interface components {
         };
         /** @enum {string} */
         Team: "MAINTENANCE" | "PREVENTION" | "MANAGEMENT" | "RECEPTION";
+        TeamOverlapMember: {
+            employee_id: components["schemas"]["Uuid"];
+            name: string;
+        };
         TenantEraseRead: {
             request: components["schemas"]["TenantEraseRequest"] | null;
             second_operator_available: boolean;
@@ -30523,6 +30810,10 @@ export interface components {
             sort_weight?: number;
             equipment_id?: components["schemas"]["Uuid"] | null;
         };
+        UpdateMeProfileRequest: {
+            phone?: string | null;
+            emergency_contacts?: components["schemas"]["SelfEmergencyContactInput"][];
+        };
         UpdateNoticeDraftRequest: {
             title?: string;
             body?: string;
@@ -30709,6 +31000,10 @@ export interface components {
             employee_company: string | null;
             employee_org_unit: string | null;
             employee_position: string | null;
+            /** Format: date */
+            employee_hire_date?: string | null;
+            employee_employment_status?: string | null;
+            employee_grade?: string | null;
             employee_identity_review_required: boolean | null;
             employee_identity_resolution_confidence: string | null;
             /** @enum {string} */
@@ -51107,6 +51402,126 @@ export interface operations {
             };
         };
     };
+    listMyCertificates: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Keyset page of the employee's certificates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificatePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    issueMyCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["Uuid"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfIssueCertificateRequest"];
+            };
+        };
+        responses: {
+            /** @description Issued certificate snapshot. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users or support sessions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Employee ineligible, facts missing, or settings unconfigured. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    getMyCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Issued certificate detail with seal image when configured. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     listMyDispatchOffers: {
         parameters: {
             query?: never;
@@ -51681,6 +52096,184 @@ export interface operations {
             404: components["responses"]["NotFound"];
             /** @description JWT verification is not configured. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    getMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Masked self-service profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeProfileResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Caller has no linked employee or employee_self_read is denied. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated masked self-service profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeProfileResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users or read-only support sessions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation error or non-immediate field rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    createMyProfileChangeRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSelfChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Change request created and routed to HR. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeRequest"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users or support sessions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description An open change request already exists for this field. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation error or unknown/restricted field rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    revealMyProfileField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfRevealRequest"];
+            };
+        };
+        responses: {
+            /** @description Revealed personal field with display timer. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfFieldRevealed"];
+                };
+            };
+            /** @description Missing, invalid, or stale passkey step-up assertion. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden for unlinked users or support sessions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description Hourly reveal rate limit exceeded. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -55612,6 +56205,8 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                missing_bank_only?: boolean;
+                q?: string;
             };
             header?: never;
             path: {
@@ -63660,7 +64255,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description The linked active employee has no explicit home branch (`leave_home_branch_review_required`), or the supplied `idempotency_key` is already bound to different client intent (`leave_create.idempotency_conflict`). */
+            /** @description The linked active employee has no explicit home branch (`leave_home_branch_review_required`), the requested dates overlap an existing pending or approved request (`leave_overlapping_request`), the requested dates fall inside a closed attendance or payroll period (`leave_period_closed`), or the supplied `idempotency_key` is already bound to different client intent (`leave_create.idempotency_conflict`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -63865,6 +64460,62 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getMyLeaveApprovalPreviewV2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Leave approval preview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfLeaveApprovalPreview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getMyLeaveTeamOverlapV2: {
+        parameters: {
+            query: {
+                start_date: string;
+                end_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Same-unit overlap summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfLeaveTeamOverlap"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid or inverted date range. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     createWorkOrder: {

@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- field
+properties:
+  field:
+    type: string
+    enum: [PHONE, ADDRESS, EMERGENCY_CONTACTS]
+  step_up:
+    anyOf:
+    - $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    - type: 'null'

@@ -159,7 +159,10 @@ impl HrError {
                 "employee changed since it was read; reload before retrying the protected leave change",
             )),
             PgLeaveError::Db(error) => Self::from(error),
-            PgLeaveError::MissingHomeBranch | PgLeaveError::ChargeReviewRequired(_) => {
+            PgLeaveError::MissingHomeBranch
+            | PgLeaveError::ChargeReviewRequired(_)
+            | PgLeaveError::OverlappingRequest
+            | PgLeaveError::PeriodClosed => {
                 tracing::error!(error = ?error, "unexpected protected employee leave command result");
                 Self::internal("protected employee leave change failed")
             }

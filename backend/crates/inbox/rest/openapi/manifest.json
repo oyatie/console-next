@@ -15,7 +15,8 @@
     "InboxDocConfirmReceiptRequest",
     "InboxDocDetail",
     "InboxDocPage",
-    "InboxDocSummary"
+    "InboxDocSummary",
+    "InboxPayslipMeta"
   ],
   "external_schemas": [
     "ActorKind",

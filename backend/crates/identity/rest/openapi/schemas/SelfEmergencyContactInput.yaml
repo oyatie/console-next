@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- name
+- relation
+- phone
+properties:
+  name:
+    type: string
+    maxLength: 50
+  relation:
+    type: string
+    enum: [SPOUSE, PARENT, CHILD, SIBLING, RELATIVE, OTHER]
+  phone:
+    type: string
+  contact_notified:
+    type: [boolean, "null"]
