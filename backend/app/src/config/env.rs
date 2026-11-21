@@ -19,6 +19,9 @@ use crate::config::links::app_links_config_from_vars;
 use crate::config::notify::fcm_config_from_vars;
 use crate::config::notify::solapi_config_from_vars;
 use crate::config::office;
+use crate::config::ops_cockpit::{
+    DEFAULT_OPS_CONFIG_DIR, DEFAULT_OPS_SERVICE_NAME, load_and_validate,
+};
 use crate::config::parse::non_empty;
 use crate::config::parse::parse_base64_key_32;
 use crate::config::parse::parse_bool;
@@ -54,7 +57,7 @@ impl AppConfig {
             .collect();
         crate::config::secret_files::resolve_file_vars(&mut vars)?;
 
-        let role = vars
+        let role: crate::config::role::AppRole = vars
             .get("CONSOLE_APP_ROLE")
             .map(String::as_str)
             .unwrap_or("api")
@@ -63,7 +66,13 @@ impl AppConfig {
             .get("OTEL_SERVICE_NAME")
             .or_else(|| vars.get("CONSOLE_SERVICE_NAME"))
             .cloned()
-            .unwrap_or_else(|| DEFAULT_SERVICE_NAME.to_owned());
+            .unwrap_or_else(|| {
+                if role == crate::config::role::AppRole::Ops {
+                    DEFAULT_OPS_SERVICE_NAME.to_owned()
+                } else {
+                    DEFAULT_SERVICE_NAME.to_owned()
+                }
+            });
         let http_addr = vars
             .get("CONSOLE_HTTP_ADDR")
             .map(String::as_str)
@@ -86,6 +95,18 @@ impl AppConfig {
             ontology_command_database_url.as_deref(),
             platform_force_command_database_url.as_deref(),
         )?;
+        let ops_cockpit = if role == crate::config::role::AppRole::Ops {
+            let config_dir = non_empty(vars.get("CONSOLE_OPS_CONFIG_DIR"))
+                .unwrap_or_else(|| DEFAULT_OPS_CONFIG_DIR.to_owned());
+            let records_dir =
+                non_empty(vars.get("CONSOLE_OPS_RECORDS_DIR")).map(std::path::PathBuf::from);
+            Some(load_and_validate(
+                std::path::Path::new(&config_dir),
+                records_dir,
+            )?)
+        } else {
+            None
+        };
         let otlp_endpoint = non_empty(vars.get("OTEL_EXPORTER_OTLP_ENDPOINT"));
         let jwt = jwt_verifier_from_vars(&vars)?;
         let cookie_secure =
@@ -260,6 +281,7 @@ impl AppConfig {
             office,
             production_service_principal_hmac_key,
             web_dist: non_empty(vars.get("CONSOLE_WEB_DIST")).map(std::path::PathBuf::from),
+            ops_cockpit,
         })
     }
 }

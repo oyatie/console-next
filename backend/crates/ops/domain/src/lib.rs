@@ -4,6 +4,7 @@ use std::num::NonZeroU64;
 use serde::Serialize;
 use time::{OffsetDateTime, UtcOffset};
 
+pub mod bundle;
 pub mod ladders;
 pub mod obligation;
 pub use ladders::{EvidenceState, Health, WorkKind};
@@ -12,6 +13,48 @@ pub const COMPONENTS_SCHEMA: &str = include_str!("../schemas/components.schema.j
 pub const OPERATORS_SCHEMA: &str = include_str!("../schemas/operators.schema.json");
 pub const SETTINGS_SCHEMA: &str = include_str!("../schemas/ops-settings.schema.json");
 pub const OBLIGATION_RECORD_SCHEMA: &str = include_str!("../schemas/obligation-record.schema.json");
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct UtcTimestamp(pub OffsetDateTime);
+
+impl UtcTimestamp {
+    pub fn new(ts: OffsetDateTime) -> Self {
+        Self(ts.to_offset(UtcOffset::UTC))
+    }
+
+    pub fn into_inner(self) -> OffsetDateTime {
+        self.0
+    }
+}
+
+impl From<OffsetDateTime> for UtcTimestamp {
+    fn from(ts: OffsetDateTime) -> Self {
+        Self::new(ts)
+    }
+}
+
+impl From<UtcTimestamp> for OffsetDateTime {
+    fn from(ts: UtcTimestamp) -> Self {
+        ts.0
+    }
+}
+
+impl std::ops::Deref for UtcTimestamp {
+    type Target = OffsetDateTime;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Serialize for UtcTimestamp {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let utc = self.0.to_offset(UtcOffset::UTC);
+        time::serde::rfc3339::serialize(&utc, serializer)
+    }
+}
+
+pub type ObservedTimestamp = Observed<UtcTimestamp>;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Observed<T> {
@@ -36,6 +79,34 @@ impl<T> Observed<T> {
 
     pub fn reason(&self) -> Option<&str> {
         self.reason.as_deref()
+    }
+
+    pub fn unit(&self) -> Option<&str> {
+        self.unit.as_deref()
+    }
+
+    pub fn source(&self) -> &str {
+        &self.source
+    }
+
+    pub fn observed_at(&self) -> Option<OffsetDateTime> {
+        self.observed_at
+    }
+
+    pub fn age_s(&self) -> u64 {
+        self.age_s
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Observed<U> {
+        Observed {
+            state: self.state,
+            value: self.value.map(f),
+            unit: self.unit,
+            source: self.source,
+            observed_at: self.observed_at,
+            age_s: self.age_s,
+            reason: self.reason,
+        }
     }
 
     pub fn unknown(source: String, reason: String) -> Self {
@@ -83,7 +154,7 @@ impl<T> Observed<T> {
     }
 }
 
-fn duration_text(seconds: u64) -> String {
+pub fn duration_text(seconds: u64) -> String {
     match (seconds / 3600, seconds / 60 % 60) {
         (0, 0) => format!("{seconds}s"),
         (0, minutes) => format!("{minutes}m"),

@@ -9,7 +9,11 @@ use reqwest::{Client, Url};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
+mod jwks;
+mod victoriametrics;
 mod vmalert;
+pub use jwks::HttpJwksFetcher;
+pub use victoriametrics::HttpVictoriaMetrics;
 pub use vmalert::HttpVmalert;
 
 #[derive(Clone, Copy, Deserialize)]
@@ -59,14 +63,26 @@ impl Alertmanager for HttpAlertmanager {
     }
 }
 
-struct HttpSource {
+pub(crate) struct HttpSource {
     base: Url,
     client: Client,
     max_response_bytes: usize,
 }
 
 impl HttpSource {
-    fn new(
+    pub(crate) fn new(
+        base_url: &str,
+        interval_s: NonZeroU64,
+        limits: HttpReadLimits,
+    ) -> Result<Self, SourceError> {
+        let mut source = Self::new_exact(base_url, interval_s, limits)?;
+        source
+            .base
+            .set_path(&format!("{}/", source.base.path().trim_end_matches('/')));
+        Ok(source)
+    }
+
+    pub(crate) fn new_exact(
         base_url: &str,
         interval_s: NonZeroU64,
         limits: HttpReadLimits,
@@ -75,7 +91,7 @@ impl HttpSource {
         if timeout >= Duration::from_secs(interval_s.get()) {
             return Err(SourceError::Configuration);
         }
-        let mut base = Url::parse(base_url).map_err(|_| SourceError::Configuration)?;
+        let base = Url::parse(base_url).map_err(|_| SourceError::Configuration)?;
         if !matches!(base.scheme(), "http" | "https")
             || base.host_str().is_none()
             || base.query().is_some()
@@ -85,7 +101,6 @@ impl HttpSource {
         {
             return Err(SourceError::Configuration);
         }
-        base.set_path(&format!("{}/", base.path().trim_end_matches('/')));
         let client = Client::builder()
             .timeout(timeout)
             .redirect(reqwest::redirect::Policy::none())
@@ -98,11 +113,39 @@ impl HttpSource {
         })
     }
 
-    async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, SourceError> {
+    pub(crate) async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, SourceError> {
         let url = self
             .base
             .join(path)
             .map_err(|_| SourceError::Configuration)?;
+        let body = self.get_url_bytes(url).await?;
+        serde_json::from_slice(&body).map_err(|_| SourceError::Invalid)
+    }
+
+    pub(crate) async fn get_with_query<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &[(&str, &str)],
+    ) -> Result<T, SourceError> {
+        let mut url = self
+            .base
+            .join(path)
+            .map_err(|_| SourceError::Configuration)?;
+        {
+            let mut pairs = url.query_pairs_mut();
+            for (k, v) in query {
+                pairs.append_pair(k, v);
+            }
+        }
+        let body = self.get_url_bytes(url).await?;
+        serde_json::from_slice(&body).map_err(|_| SourceError::Invalid)
+    }
+
+    pub(crate) async fn get_exact_bytes(&self) -> Result<Vec<u8>, SourceError> {
+        self.get_url_bytes(self.base.clone()).await
+    }
+
+    async fn get_url_bytes(&self, url: Url) -> Result<Vec<u8>, SourceError> {
         let mut response = self
             .client
             .get(url)
@@ -125,6 +168,6 @@ impl HttpSource {
             }
             body.extend_from_slice(&chunk);
         }
-        serde_json::from_slice(&body).map_err(|_| SourceError::Invalid)
+        Ok(body)
     }
 }
