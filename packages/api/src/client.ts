@@ -6,9 +6,6 @@ import { setPlatform, type Platform } from "./platform";
 import {
   DEFAULT_REQUEST_TIMEOUT_MS,
   LONG_REQUEST_TIMEOUT_MS,
-  SERVER_REQUEST_TIMEOUT_MS,
-  TRANSPORT_SLACK_MS,
-  isDeadlineTimeout,
   requestDeadline,
 } from "./request-deadline";
 export {
