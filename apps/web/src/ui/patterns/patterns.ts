@@ -10,6 +10,10 @@ export const BUILT_PATTERNS = [
   "month-grid",
   "register-totals",
   "form",
+  "wizard",
+  "settings",
+  "canvas",
+  "sign-in",
   "phone-hub",
   "phone-statement",
 ] as const satisfies readonly PatternId[];

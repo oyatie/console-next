@@ -105,7 +105,7 @@ function ConsoleLayout({
 
   const currentTitle = useMemo(() => {
     if (pathname === "/leave") return t("leave.title");
-    if (pathname === "/account" || pathname.startsWith("/account/")) return t("shell.account");
+    if (pathname === "/account" || pathname.startsWith("/account/")) return t("shell.profile");
     const matched = allLinks.find(link => link.to === currentModuleTo);
     if (matched) return t(matched.label);
     return platform ? t("shell.link.tenants") : t("shell.link.home");

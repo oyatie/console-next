@@ -43,7 +43,7 @@ function SettingsCard({ row }: { row: SettingsView }) {
 }
 
 function ApprovalSettingsCard() {
-  const q = useQuery({ ...settingsQuery, select: data => approvalSummary(data, settingsCopy, fmtDate), retry: false });
+  const q = useQuery({ ...settingsQuery, select: data => approvalSummary(data, settingsCopy, fmtDate) });
   return <Card title={t("settingsHub.approval")}>
     <QueryState q={q} inline own={() => t("settingsHub.unknown")}>
       {summary => <>
@@ -56,7 +56,7 @@ function ApprovalSettingsCard() {
 
 function ScreenStyleSettingsCard() {
   const [open, setOpen] = useState(false);
-  const q = useQuery({ ...settingsQuery, select: data => experienceSummary(data, settingsCopy, fmtDate), retry: false });
+  const q = useQuery({ ...settingsQuery, select: data => experienceSummary(data, settingsCopy, fmtDate) });
   return <Card title={t("settingsHub.key.display.experience")}>
     <QueryState q={q} inline own={() => t("settingsHub.unknown")}>
       {summary => <>
