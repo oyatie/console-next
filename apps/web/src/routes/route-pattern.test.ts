@@ -48,6 +48,7 @@ test("the screens drawn through built patterns declare them, and no other route 
   expect(declared).toEqual({
     "/": "worklist",
     "/inbox": "worklist",
+    "/leave": "form",
     "/people": "list-record",
     "/approvals": "worklist",
     "/approvals/$approvalId": "document-decision",

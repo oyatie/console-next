@@ -53,6 +53,8 @@ export interface ShellLayoutProps {
     title: ReactNode;
     context?: ReactNode;
     shellOwnsH1?: boolean;
+    hideActions?: boolean;
+    phoneNav?: "self-service";
     back?: { label: string; href?: string; onBack?: () => void };
   };
 }
@@ -153,13 +155,20 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   }, [platform]);
   const experience = useActiveExperienceId();
   const scope = platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined);
+  const employeeName = identity.data?.employee_name?.trim() || identity.data?.display_name?.trim();
+  const employeeUnit = identity.data?.employee_org_unit?.trim();
+  const employeeContext = identity.data?.employee_link_status === "LINKED" && employeeName
+    ? [employeeName, employeeUnit].filter(Boolean).join(" · ")
+    : identity.data?.tenant?.name;
   const phoneHeader = pathname === "/account"
     ? {
         title: t(experience === "baseline" ? "shell.account" : "shell.profile"),
         context: experience !== "baseline" && !platform ? identity.data?.employee_company ?? undefined : undefined,
         shellOwnsH1: true,
       }
-    : undefined;
+    : pathname === "/leave"
+      ? { title: t("shell.title.leave"), context: employeeContext, shellOwnsH1: true, hideActions: true, phoneNav: "self-service" as const }
+      : undefined;
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
     <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}
