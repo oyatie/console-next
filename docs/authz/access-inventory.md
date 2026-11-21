@@ -173,7 +173,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/app/src/action_inbox/sources/entity_corrections.rs | reference | 4 |
 | matrix | backend/app/src/action_inbox/sources/hr_lifecycle.rs | reference | 2 |
 | matrix | backend/app/src/action_inbox/sources/org_change.rs | reference | 2 |
-| matrix | backend/app/src/audit_api.rs | reference | 4 |
+| matrix | backend/app/src/audit_api.rs | reference | 3 |
 | matrix | backend/app/src/cedar_parity.rs | reference | 1 |
 | matrix | backend/app/src/entity_wiring/correction_register.rs | reference | 2 |
 | matrix | backend/app/src/entity_wiring/exceptions.rs | reference | 2 |
@@ -223,7 +223,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/platform/authz/src/cedar_pbac/enforce.rs | reference | 1 |
 | matrix | backend/crates/platform/authz/src/cedar_pbac/mode_contract.rs | reference | 1 |
 | matrix | backend/crates/platform/authz/src/cedar_pbac/mode_contract/fail_closed.rs | reference | 3 |
-| matrix | backend/crates/platform/platform-rest/src/groups.rs | reference | 4 |
+| matrix | backend/crates/platform/platform-rest/src/groups.rs | reference | 1 |
 | matrix | backend/crates/platform/platform-rest/src/lib.rs | reference | 2 |
 | matrix | backend/crates/platform/platform-rest/src/onboard.rs | reference | 2 |
 | matrix | backend/crates/platform/platform-rest/src/ops_recovery.rs | reference | 1 |

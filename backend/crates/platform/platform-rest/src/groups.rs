@@ -10,15 +10,19 @@ use crate::dto::{GroupAccountResponse, GroupResponse, OrgResponse};
 use crate::step_up::{PlatformStepUpRequest, require_platform_step_up};
 use crate::{PlatformError, PlatformRestState};
 
+fn require_group_manage(principal: &PlatformPrincipal, message: &str) -> Result<(), PlatformError> {
+    principal
+        .authorize(PlatformFeature::GroupManage)
+        .map_err(|_| PlatformError::forbidden(message))
+}
+
 /// GET /api/platform/groups — list all top-level groups and their member org identities.
 pub(crate) async fn list_groups(
     State(state): State<PlatformRestState>,
     Extension(principal): Extension<PlatformPrincipal>,
     Extension(claims): Extension<console_platform_auth::AccessClaims>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot list groups"))?;
+    require_group_manage(&principal, "platform principal cannot list groups")?;
     let mut tx = crate::listing_authority::begin(
         &state,
         &principal,
@@ -47,9 +51,7 @@ pub(crate) async fn list_group_accounts(
     Extension(principal): Extension<PlatformPrincipal>,
     Path(id): Path<Uuid>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot list group accounts"))?;
+    require_group_manage(&principal, "platform principal cannot list group accounts")?;
 
     let accounts = state
         .provisioner
@@ -75,9 +77,7 @@ pub(crate) async fn revoke_group_role(
     Extension(principal): Extension<PlatformPrincipal>,
     Path((id, user_id, group_role)): Path<(Uuid, Uuid, String)>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot revoke group roles"))?;
+    require_group_manage(&principal, "platform principal cannot revoke group roles")?;
 
     state
         .provisioner
@@ -102,9 +102,7 @@ pub(crate) async fn assign_org_to_group(
     Path((id, org_id)): Path<(Uuid, Uuid)>,
     body: Option<Json<PlatformStepUpRequest>>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot assign group members"))?;
+    require_group_manage(&principal, "platform principal cannot assign group members")?;
     // Group accounts reach every org in their group: adding an org extends
     // that reach, so it takes the same step-up as creating an account.
     require_platform_step_up(
@@ -137,9 +135,7 @@ pub(crate) async fn remove_org_from_group(
     Extension(principal): Extension<PlatformPrincipal>,
     Path((id, org_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot remove group members"))?;
+    require_group_manage(&principal, "platform principal cannot remove group members")?;
 
     let org = state
         .provisioner

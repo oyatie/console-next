@@ -86,8 +86,8 @@ pub(crate) async fn audit_log(
     };
     authorize_audit_read(&principal)?;
     let query = normalize_audit_query(query)?;
-    let audit_event = audit_read_event(&principal)?;
     let branch_scope = principal.branch_scope.clone();
+    let audit_event = audit_read_event(&principal, audit_event_branch(&branch_scope))?;
     let limit = query.limit;
     let offset = query.offset;
 
@@ -235,7 +235,10 @@ fn normalize_audit_query(query: AuditQuery) -> Result<NormalizedAuditQuery, ApiE
     })
 }
 
-fn audit_read_event(principal: &Principal) -> Result<AuditEvent, ApiError> {
+fn audit_read_event(
+    principal: &Principal,
+    branch_id: Option<BranchId>,
+) -> Result<AuditEvent, ApiError> {
     let event = AuditEvent::new(
         Some(principal.user_id),
         AuditAction::new("audit.read").map_err(ApiError::from_kernel)?,
@@ -249,7 +252,7 @@ fn audit_read_event(principal: &Principal) -> Result<AuditEvent, ApiError> {
     // an unset GUC and RLS fails closed (zero rows) as the `console_rt` role. Also
     // stamps the `audit.read` row with the caller's org instead of NULL.
     .with_org(principal.org_id);
-    Ok(match audit_event_branch(&principal.branch_scope) {
+    Ok(match branch_id {
         Some(branch_id) => event.with_branch(branch_id),
         None => event,
     })
