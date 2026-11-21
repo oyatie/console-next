@@ -14,7 +14,7 @@ CI plans duration-balanced shards before running this suite with Chromium headle
 shell. `timings.json` owns the ten-minute target, six-shard cap, startup allowance,
 worker count and per-test bootstrap floor. It contains no per-spec measurements.
 The planner stretches the target only within the execution limit:
-`min(timeoutSeconds, floor(runLimitSeconds / RUN_HEADROOM))` (currently 937 seconds).
+`min(timeoutSeconds, floor(runLimitSeconds / RUN_HEADROOM))` (currently 1500 seconds).
 `RUN_HEADROOM` is 1.6; each run step gets `ceil(planned budget × 1.6 / 60)`
 minutes and Playwright uses the same unrounded timeout in seconds. The job adds
 `ceil(setupAllowanceSeconds / 60)` minutes for checkout, npm, browser setup and artifacts.
