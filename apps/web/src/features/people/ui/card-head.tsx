@@ -18,12 +18,12 @@ import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { MenuButton, type MenuEntry } from "../../../ui/menu/menu-button";
 import { FieldMark } from "../../../ui/record/field-row";
 import { Kbd } from "../../../ui/record/record-section";
-import { listPosition, serviceSpan } from "../domain/card";
+import { serviceSpan } from "../domain/card";
 import { verbStates } from "../domain/lifecycle";
 import { retirementDate } from "../domain/employment";
 import { whyText, plannedWhat } from "../present";
 import { useOwnRecord } from "./use-case-actions";
-import { unitListQuery } from "../api/record";
+import { unitPositionQuery } from "../api/record";
 import { useLinkedAccount } from "./use-linked-account";
 import { EndActions } from "./end-actions";
 import { BindingReviewChip } from "./binding-evidence";
@@ -44,15 +44,14 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
   const { e, d } = c;
   const documents = useDocumentsServed();
   const today = todayKst();
-  const list = useQuery({ ...unitListQuery(e.org_unit_id ?? ""), enabled: Boolean(e.org_unit_id) });
-  const rows = list.data?.items ?? [];
-  const pos = listPosition(rows.map((r) => r.id), e.id);
-  const nextId = pos?.next;
-  const prevId = pos?.prev;
+  const unitPos = useQuery({ ...unitPositionQuery(e.id), enabled: Boolean(e.org_unit_id) });
+  const pos = unitPos.data && unitPos.data.index > 0 ? unitPos.data : null;
+  const nextId = pos?.next_id ?? null;
+  const prevId = pos?.prev_id ?? null;
   useEffect(() => {
     onKeys(nextId ? () => onGo(nextId) : undefined, prevId ? () => onGo(prevId) : undefined);
   }, [nextId, prevId, onKeys, onGo]);
-  const preHire = rows.filter((r) => r.status === "PRE_HIRE").length;
+  const preHire = pos?.pre_hire_count ?? 0;
   const status = labeled(EMPLOYEE_STATUS, e.status ?? "UNKNOWN");
   const span = e.hire_date ? serviceSpan(e.hire_date, today) : null;
   const photo = c.personal.data?.photo?.url;
@@ -97,8 +96,8 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
             {preHire > 0 && <> {t("empCard.pos.preHire", { count: preHire })}</>}
           </span>
         )}
-        <Button variant="ghost" aria-label={t("empCard.prev")} disabled={!pos?.prev} onClick={() => pos?.prev && onGo(pos.prev)}><ChevronLeft size={16} aria-hidden /></Button>
-        <Button variant="ghost" aria-label={t("empCard.next")} disabled={!pos?.next} onClick={() => pos?.next && onGo(pos.next)}><ChevronRight size={16} aria-hidden /></Button>
+        <Button variant="ghost" aria-label={t("empCard.prev")} disabled={!prevId} onClick={() => prevId && onGo(prevId)}><ChevronLeft size={16} aria-hidden /></Button>
+        <Button variant="ghost" aria-label={t("empCard.next")} disabled={!nextId} onClick={() => nextId && onGo(nextId)}><ChevronRight size={16} aria-hidden /></Button>
         <span className={s.pos}><Kbd k="J" /><Kbd k="K" /> {t("empCard.walk")}</span>
       </div>
       <div className={s.hdr}>

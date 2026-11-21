@@ -146,6 +146,10 @@ export async function setupConsoleSaeonPeople(page: Page, options: SetupSaeonPeo
     status: 200,
     json: saeonEmployeeDetail(employeeIdFromPath(req.url())),
   }));
+  await mockRoute(page, "get", "/api/v1/employees/{id}/unit-position", req => {
+    const emp = saeonEmployeeDetail(employeeIdFromPath(req.url(), 1)).employee;
+    return { status: 200, json: { org_unit_id: emp.org_unit_id ?? null, index: 0, total: 0, prev_id: null, next_id: null, pre_hire_count: 0 } };
+  });
   await mockRoute(page, "get", "/api/v1/employees/facets", { status: 200, json: saeonEmployeeFacets() });
   await mockRoute(page, "get", "/api/v1/employees", req => ({
     status: 200,

@@ -151,9 +151,17 @@ type Employee = components["schemas"]["Employee"];
 export const kindText = (k: ChangeRequest["kind"]) => codeText(`requests.kind.${k}`, k);
 /** A request status in words and its tone. */
 export const statusOf = (s: ChangeRequest["status"]) => labeled(CHANGE_REQUEST_STATUS, s);
-/** Who the request is about: the employee's name and number once read (the request carries the id only). */
-export const subjectText = (r: ChangeRequest, e?: Employee) =>
-  r.subject_type === "EMPLOYEE" ? (e ? `${e.name} (${e.employee_number ?? "—"})` : t("requests.subject.loading")) : codeText(`requests.subject.${r.subject_type}`, r.subject_type);
+/** Who the request is about: server-joined subject name/number with safe fallback for legacy callers or unknown types. */
+export const subjectText = (r: ChangeRequest, e?: Employee) => {
+  if (r.subject_type === "EMPLOYEE") {
+    const name = r.subject_name?.trim() || e?.name;
+    const number = r.subject_number?.trim() || e?.employee_number;
+    return name ? `${name} (${number || "—"})` : t("requests.subject.loading");
+  }
+  const typeLabel = codeText(`requests.subject.${r.subject_type}`, r.subject_type);
+  const name = r.subject_name?.trim();
+  return name ? `${typeLabel} · ${name}` : typeLabel;
+};
 
 /** A corrected value as people read it. */
 export const valueText = (f: Field, v: unknown) =>

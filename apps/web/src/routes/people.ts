@@ -58,7 +58,7 @@ const REQUEST_STATUSES = ["OPEN", "APPLIED", "DECLINED", "WITHDRAWN", "ALL"] as 
 const changeRequests = createRoute({
   getParentRoute: () => app,
   // Named handlers can read their own requests without a directory grant.
-  path: "/people/requests", staticData: { access: "signed-in", floorplan: "P-03" },
+  path: "/people/requests", staticData: { access: "signed-in", floorplan: "P-01", pattern: "list-record" },
   // BW-17: HR's lane, the status view, the open request and the page live in the URL (Home links to a lane).
   validateSearch: (s: Record<string, unknown>): { lane?: (typeof REQUEST_LANES)[number]; status?: (typeof REQUEST_STATUSES)[number]; sel?: string; page?: number } => ({
     lane: REQUEST_LANES.find((l) => l === s.lane),
@@ -68,8 +68,8 @@ const changeRequests = createRoute({
   }),
   component: lazyRouteComponent(screen(() => import("../features/people/ui/requests-page")), "RequestsPage"),
 });
-const rosterFields = createRoute({ getParentRoute: () => app, path: "/people/roster-fields", staticData: { access: readRequirement("/people/roster-fields"), floorplan: "P-05" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/roster-fields-page")), "RosterFieldsPage") });
-const jobTitles = createRoute({ getParentRoute: () => app, path: "/people/job-titles", staticData: { access: readRequirement("/people/job-titles"), floorplan: "P-05" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/job-titles-page")), "JobTitlesPage") });
+const rosterFields = createRoute({ getParentRoute: () => app, path: "/people/roster-fields", staticData: { access: readRequirement("/people/roster-fields"), floorplan: "P-05", pattern: "settings" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/roster-fields-page")), "RosterFieldsPage") });
+const jobTitles = createRoute({ getParentRoute: () => app, path: "/people/job-titles", staticData: { access: readRequirement("/people/job-titles"), floorplan: "P-05", pattern: "settings" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/job-titles-page")), "JobTitlesPage") });
 const exitCases = createRoute({
   getParentRoute: () => app,
   path: "/people/exits", staticData: { access: readRequirement("/people/exits"), floorplan: "P-01" },

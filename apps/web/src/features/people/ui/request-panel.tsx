@@ -9,6 +9,8 @@ import { Button, Form } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Field, TextInput } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
+import { KeyValue, type KeyValueItem } from "../../../ui/key-value/key-value";
+import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { X } from "lucide-react";
 import { mySub } from "../api";
 import { decideRequest, type ChangeRequest } from "../api";
@@ -19,6 +21,53 @@ type Employee = components["schemas"]["Employee"];
 type Decision = "APPLY" | "DECLINE" | "WITHDRAW";
 const REASON_MAX = 100;
 const NOTE_MAX = 1000;
+
+function subjectNode(r: ChangeRequest, subject?: Employee) {
+  if (r.kind === "IMPORT_ROLLBACK") {
+    return <Link to="/people/import" search={{ run: r.subject_id }}>{t("importRollback.reviewRun")}</Link>;
+  }
+  if (r.subject_type === "EMPLOYEE" && (r.subject_name?.trim() || subject)) {
+    return <Link to="/people/$id" params={{ id: r.subject_id }} search={{}}>{subjectText(r, subject)}</Link>;
+  }
+  return subjectText(r, subject);
+}
+
+function decidedNode(r: ChangeRequest) {
+  if (!r.decided_at) return null;
+  return (
+    <>
+      <time className="num" dateTime={r.decided_at}>{fmtDateTime(r.decided_at)}</time> · {r.decision_reason_code ?? "—"}
+      {r.decision_note ? ` · ${r.decision_note}` : ""}
+    </>
+  );
+}
+
+function DecisionBlock({
+  r,
+  choices,
+  open,
+  hr,
+  mine,
+  onDecided,
+}: {
+  r: ChangeRequest;
+  choices: Decision[];
+  open: boolean;
+  hr: boolean;
+  mine: boolean;
+  onDecided: (out: ChangeRequest) => void;
+}) {
+  return (
+    <>
+      {r.review_required ? <p className="muted">{t("requests.review")}</p> : null}
+      {choices.length > 0 ? (
+        <Decide key={r.id} r={r} choices={choices} onDecided={onDecided} />
+      ) : open && !hr && !mine ? null : open ? (
+        <p className="muted">{t(mine ? "requests.waiting" : "requests.notYours")}</p>
+      ) : null}
+    </>
+  );
+}
 
 /**
  * One request beside the list: what it asks (each field's requested value), why, who filed it and when, and how it
@@ -40,7 +89,7 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
       </div>
       <dl className="kv">
         <dt>{t("requests.col.subject")}</dt>
-        <dd>{r.kind === "IMPORT_ROLLBACK" ? <Link to="/people/import" search={{ run: r.subject_id }}>{t("importRollback.reviewRun")}</Link> : subject ? <Link to="/people/$id" params={{ id: subject.id }} search={{}}>{subjectText(r, subject)}</Link> : subjectText(r, subject)}</dd>
+        <dd>{subjectNode(r, subject)}</dd>
         <dt>{t("requests.col.at")}</dt>
         <dd className="num">{fmtDateTime(r.created_at)}{mine ? ` · ${t("requests.mine")}` : ""}</dd>
         <dt>{t("requests.col.reason")}</dt>
@@ -54,10 +103,7 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
         {r.decided_at && (
           <>
             <dt>{t("requests.decided")}</dt>
-            <dd>
-              <span className="num">{fmtDateTime(r.decided_at)}</span> · {r.decision_reason_code ?? "—"}
-              {r.decision_note ? ` · ${r.decision_note}` : ""}
-            </dd>
+            <dd>{decidedNode(r)}</dd>
           </>
         )}
       </dl>
@@ -69,9 +115,54 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
           </ul>
         </section>
       )}
-      {r.review_required && <p className="muted">{t("requests.review")}</p>}
-      {choices.length > 0 ? <Decide key={r.id} r={r} choices={choices} onDecided={onDecided} /> : open && !hr && !mine ? null : open && <p className="muted">{t(mine ? "requests.waiting" : "requests.notYours")}</p>}
+      <DecisionBlock r={r} choices={choices} open={open} hr={hr} mine={mine} onDecided={onDecided} />
     </aside>
+  );
+}
+
+/** Console `PaneGrid.record` body for `/people/requests` (SidePane owns `<aside>` and `.paneHead`). */
+export function RequestPanelBody({ r, hr, onDecided }: { r: ChangeRequest; hr: boolean; onDecided: (out: ChangeRequest) => void }) {
+  const mine = r.requested_by === mySub();
+  const open = r.status === "OPEN";
+  const choices: Decision[] = !open ? [] : mine ? ["WITHDRAW"] : hr ? ["APPLY", "DECLINE"] : [];
+  const changes = requestedChanges(r);
+  const items: KeyValueItem[] = [
+    { key: "subject", label: t("requests.col.subject"), value: subjectNode(r) },
+    {
+      key: "at",
+      label: t("requests.col.at"),
+      value: (
+        <>
+          <time className="num" dateTime={r.created_at}>{fmtDateTime(r.created_at)}</time>
+          {mine ? ` · ${t("requests.mine")}` : ""}
+        </>
+      ),
+    },
+    { key: "reason", label: t("requests.col.reason"), value: r.reason_code },
+    ...(r.note ? [{ key: "note", label: t("requests.note"), value: r.note }] : []),
+    ...(r.decided_at ? [{ key: "decided", label: t("requests.decided"), value: decidedNode(r) }] : []),
+  ];
+  const hasDecisionSection = Boolean(r.review_required || choices.length > 0 || (open && (hr || mine)));
+  return (
+    <>
+      <RecordPaneSection title={t("requests.panel")} padded={false}>
+        <KeyValue density="dense" items={items} />
+      </RecordPaneSection>
+      {changes.length > 0 ? (
+        <RecordPaneSection title={t("requests.changes")}>
+          <ul className={s.changes}>
+            {changes.map(c => (
+              <li key={c.field}>{t("requests.change", { field: t(`profile.field.${c.field}`), value: valueText(c.field, c.value) })}</li>
+            ))}
+          </ul>
+        </RecordPaneSection>
+      ) : null}
+      {hasDecisionSection ? (
+        <RecordPaneSection title={t("requests.decision")}>
+          <DecisionBlock r={r} choices={choices} open={open} hr={hr} mine={mine} onDecided={onDecided} />
+        </RecordPaneSection>
+      ) : null}
+    </>
   );
 }
 

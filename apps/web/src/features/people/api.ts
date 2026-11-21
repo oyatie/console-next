@@ -1,6 +1,6 @@
 // Employee records, lifecycle events and exit cases: query descriptors.
-import { api, ApiError, assertBoundPasskey, assertPasskey, session, unwrap } from "@console/api";
-import { get } from "../../lib/query";
+import { api, ApiError, assertBoundPasskey, assertPasskey, hrWaterfallApi, session, unwrap } from "@console/api";
+import { get, read } from "../../lib/query";
 import type { components, paths } from "@console/api/schema";
 import { unknownOutcome } from "./domain/accounts";
 import { canonical } from "./domain/canonical";
@@ -228,8 +228,11 @@ export const requestsQuery = (q: { lane: Lane; mine?: boolean; status?: RequestS
     params: { query: { assignee: q.lane === "all" ? undefined : q.lane, requester: q.mine ? "me" : undefined, status: q.status, limit: REQUEST_PAGE, offset: q.offset } },
   });
 /** The organization's open requests for Home's queue (HR only; the server lists a requester's own otherwise). */
-/** How many open requests wait in a lane (one row read; the server counts). */
-export const openCountQuery = (lane: Lane) => get("/api/v1/change-requests", { params: { query: { assignee: lane === "all" ? undefined : lane, status: "OPEN", limit: 1 } } });
+/** Single-scan OPEN counts per HR lane (`all`, `me`, `role`). */
+export const changeRequestCountsQuery = read(
+  "/api/v1/change-requests/counts",
+  () => hrWaterfallApi(api).getChangeRequestCounts(),
+);
 
 /** Files a request to HR about an employee (a branch reader's way to ask for a correction or anything else). */
 export const fileRequest = (b: { kind: "PROFILE_CORRECTION" | "OTHER"; employeeId: string; changes?: CorrectionChanges; reason: string; note?: string }) =>

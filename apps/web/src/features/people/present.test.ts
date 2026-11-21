@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
-import { i18n, loadCatalog } from "@console/i18n";
-import type { LifecycleEvent } from "./api";
-import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, nextEventText, pasteSkippedText, placeText, valueText } from "./present";
+import { i18n, loadCatalog, t } from "@console/i18n";
+import type { ChangeRequest, LifecycleEvent } from "./api";
+import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, nextEventText, pasteSkippedText, placeText, subjectText, valueText } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -109,4 +109,14 @@ test("pasteSkippedText names only non-zero skipped counts and matches the paste 
 test("a requested phone the server sends as its mask reads as the mask", () => {
   expect(valueText("phone", "010-••••-0001")).toBe("010-••••-0001");
   expect(valueText("phone", "+821055550001")).toBe("010-5555-0001");
+});
+
+test("subjectText prefers server-joined subject fields with safe fallbacks", () => {
+  const req = (over: Partial<ChangeRequest>) => ({ kind: "PROFILE_CORRECTION", subject_type: "EMPLOYEE", subject_id: "s1", payload: {}, ...over }) as ChangeRequest;
+  expect(subjectText(req({ subject_name: "Alice", subject_number: "10587" }))).toBe("Alice (10587)");
+  expect(subjectText(req({ subject_name: "Alice", subject_number: null }))).toBe("Alice (—)");
+  expect(subjectText(req({ subject_name: "Alice", subject_number: "" }))).toBe("Alice (—)");
+  expect(subjectText(req({ subject_name: null, subject_number: null }))).toBe(t("requests.subject.loading"));
+  expect(subjectText(req({ subject_type: "USER_ACCOUNT", subject_name: "Bob" }))).toBe(`${t("requests.subject.USER_ACCOUNT")} · Bob`);
+  expect(subjectText(req({ subject_type: "ORGANIZATION", subject_name: null }))).toBe(t("requests.subject.ORGANIZATION"));
 });

@@ -75,6 +75,7 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v2/me/leave", { status: 200, json: { balance: { employee_id: id(1), name: user.display_name, accrued_units: "15", used_units: "5.5", remaining_units: "9.5", filing_state: "ready", home_branch_id: id(4) }, requests: { items: [], next_cursor: null } } });
   await mockRoute(page, "get", "/api/v1/me/inbox-docs", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/change-requests", { status: 200, json: { items: [], total: 0, limit: 10, offset: 0 } });
+  await mockRoute(page, "get", "/api/v1/change-requests/counts", { status: 200, json: { all: 0, me: 0, role: 0 } });
   // Postponing an item and bringing it back answer no body; a spec that cares overrides them.
   await mockRoute(page, "post", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 204 });
   await mockRoute(page, "delete", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 204 });
@@ -104,6 +105,10 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   const tree = structure(count, state === "long");
   // Register hover/focus detail prefetch before facets: Playwright tries later routes first.
   await mockRoute(page, "get", "/api/v1/employees/{id}", { status: 404, json: failure("not_found") });
+  await mockRoute(page, "get", "/api/v1/employees/{id}/unit-position", {
+    status: 200,
+    json: { org_unit_id: null, index: 0, total: 0, prev_id: null, next_id: null, pre_hire_count: 0 },
+  });
   await mockRoute(page, "get", "/api/v1/employees/facets", { status: 200, json: facets(count) });
   const error = state === "failed" ? { status: 503 as const, json: failure("service_unavailable") } : state === "refused" ? { status: 403 as const, json: failure("forbidden") } : null;
   const beforeReply = async (path: Screen["read"]) => {

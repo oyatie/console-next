@@ -1,6 +1,6 @@
-import { assertBoundPasskeyHash, sha256Hex, api, ApiError, unwrap, requestDeadline, LONG_REQUEST_TIMEOUT_MS } from "@console/api";
+import { assertBoundPasskeyHash, sha256Hex, api, ApiError, hrWaterfallApi, unwrap, requestDeadline, LONG_REQUEST_TIMEOUT_MS } from "@console/api";
 import type { components, paths } from "@console/api/schema";
-import { get } from "../../../lib/query";
+import { get, read } from "../../../lib/query";
 import { employeeRecord, pinned } from "../../../lib/record-versions";
 import { correctEmployee } from "../api";
 
@@ -21,8 +21,9 @@ export const recordsQuery = (id: string) => get("/api/v1/employees/{id}/records"
 /** A restricted section (discipline, disability, veteran), read with a purpose the server logs. */
 export const restrictedQuery = (id: string, section: "discipline" | "disability" | "veteran", purpose: string) =>
   get("/api/v1/employees/{id}/records", { params: { path: { id }, query: { section, purpose } } });
-/** The people of one unit, the list the record's "n / m" and J/K walk. */
-export const unitListQuery = (unitId: string) => get("/api/v1/employees", { params: { query: { org_unit_id: unitId, status: ["ACTIVE", "ON_LEAVE", "PRE_HIRE"], limit: 200 } } });
+/** Server-computed position of one employee inside their org unit, for "n / m" and J/K walk. */
+export const unitPositionQuery = (id: string) =>
+  read("/api/v1/employees/{id}/unit-position", () => hrWaterfallApi(api).getEmployeeUnitPosition(id), { path: { id } });
 
 type Fields = components["schemas"]["PersonRecordFields"];
 /** A new entry in a section (version 1). */

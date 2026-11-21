@@ -12,6 +12,8 @@ type Employee = components["schemas"]["Employee"];
 type FacetQuery = NonNullable<paths["/api/v1/employees/facets"]["get"]["parameters"]["query"]>;
 /** `display.page_size` (data-display §9). */
 export const PAGE = 100;
+/** Cap cached cursor pages so live invalidation does not trigger unbounded refetches. */
+export const MAX_PAGES = 10;
 /** `bulk.max_lines`: the bulk lifecycle command takes up to this many employees. */
 export const BULK_MAX = MAX_LINES;
 
@@ -29,6 +31,7 @@ export function useRoster(f: OrderedRoster, soonDays: number | undefined, enable
   const query = enabled ? orderedQuery(f, today, soonDays) : {};
   const list = useInfiniteQuery({
     ...cursorPages("/api/v1/employees", { ...query, limit: PAGE }),
+    maxPages: MAX_PAGES,
     enabled,
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,

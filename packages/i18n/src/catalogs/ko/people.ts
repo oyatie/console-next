@@ -39,6 +39,7 @@ export const koPeople: Record<keyof typeof enPeople, string> = {
   "people.sameName.reason": "같은 조직에 이름이 같은 직원이 있습니다. 같은 사람을 두 번 등록하지 않았는지 확인하십시오.",
   "people.sameName.other": "{name} ({number})",
   "people.sameName.loading": "다른 직원",
+  "people.sameName.more": "외 {count, plural, other {#명}}",
   "people.duplicate.chip": "이미 있는 사람일 수 있음",
   "people.duplicate.title": "{name}님은 이미 등록된 사람일 수 있습니다",
   "people.duplicate.body": "이름이 같고 휴대전화나 생년월일도 같은 기록이 있습니다. 같은 사람이면 새로 등록하지 말고 그 기록을 여십시오.",
