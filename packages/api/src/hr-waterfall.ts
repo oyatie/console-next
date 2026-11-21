@@ -3,7 +3,7 @@ import type { Client } from "openapi-fetch";
 import type { components, paths } from "./schema";
 import { unwrap } from "./client";
 
-export type HrWaterfallPaths = Pick<
+type HrWaterfallPaths = Pick<
   paths,
   | "/api/v1/employees/register-facts/query"
   | "/api/v1/employees/{id}/unit-position"
