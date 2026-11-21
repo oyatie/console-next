@@ -9,6 +9,7 @@ pub(crate) mod env;
 pub(crate) mod links;
 pub(crate) mod notify;
 pub(crate) mod office;
+pub(crate) mod ops_cockpit;
 pub(crate) mod parse;
 pub(crate) mod proxy;
 pub(crate) mod realtime;
@@ -211,6 +212,8 @@ pub struct AppConfig {
     /// the backend serves it as the router FALLBACK so production is one
     /// same-origin deployable; unset means no SPA route at all.
     pub web_dist: Option<std::path::PathBuf>,
+    /// Validated operator cockpit config bundle (`AppRole::Ops` only).
+    pub ops_cockpit: Option<ops_cockpit::OpsCockpitConfig>,
 }
 
 /// Native app-link association config for the `/.well-known/*` endpoints.

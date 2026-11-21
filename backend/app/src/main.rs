@@ -1,5 +1,6 @@
 use console_app::{
-    AppConfig, AppRole, AppState, init_tracing, run_migrations, run_schema_check, serve,
+    AppConfig, AppError, AppRole, AppState, init_tracing, run_migrations, run_ops_cockpit,
+    run_schema_check, serve,
 };
 
 #[tokio::main]
@@ -27,7 +28,14 @@ async fn main() -> Result<(), console_app::AppError> {
         eprintln!("unknown CONSOLE_APP_ROLE {role:?}");
         std::process::exit(64);
     }
-    let config = AppConfig::from_env()?;
+    let config = match AppConfig::from_env() {
+        Ok(config) => config,
+        Err(AppError::OpsConfig(msg)) => {
+            eprintln!("{msg}");
+            std::process::exit(78);
+        }
+        Err(err) => return Err(err),
+    };
     let telemetry = init_tracing(&config)?;
 
     // Migrate and schema-check are one-shot runs: they need only DATABASE_URL
@@ -36,11 +44,18 @@ async fn main() -> Result<(), console_app::AppError> {
     let result = match config.role {
         AppRole::Migrate => run_migrations(&config).await,
         AppRole::SchemaCheck => run_schema_check(&config).await,
+        AppRole::Ops => run_ops_cockpit(config).await,
         AppRole::Api | AppRole::Worker => {
             let state = AppState::from_config(config.clone()).await?;
             serve(config, state).await
         }
     };
     telemetry.shutdown();
-    result
+    match result {
+        Err(AppError::OpsConfig(msg)) => {
+            eprintln!("{msg}");
+            std::process::exit(78);
+        }
+        other => other,
+    }
 }

@@ -51,7 +51,6 @@ mod route_sources;
 use route_sources::{CONFIGURED_ROUTE_SOURCES, platform_route_operations};
 
 const APP_CARGO_TOML: &str = include_str!("../Cargo.toml");
-const APP_LIB_RS: &str = include_str!("../src/lib.rs");
 const APP_WIRING_DISPATCH_RS: &str = include_str!("../src/wiring/dispatch.rs");
 
 /// `("app src/<path>", <the source of app/src/<path>>)`.
@@ -73,7 +72,7 @@ const APP_PRODUCTION_SOURCES: &[(&str, &str)] = &[
     app_src!("console_telemetry.rs"),
     app_src!("facilities_schedule.rs"),
     app_src!("hr.rs"),
-    ("app src/lib.rs", APP_LIB_RS),
+    app_src!("lib.rs"),
     app_src!("http/metrics.rs"),
     app_src!("routes/comms.rs"),
     app_src!("routes/field.rs"),
@@ -85,6 +84,7 @@ const APP_PRODUCTION_SOURCES: &[(&str, &str)] = &[
     app_src!("routes/people.rs"),
     app_src!("routes/platform.rs"),
     app_src!("routes/workflow.rs"),
+    app_src!("run/ops_cockpit_http.rs"),
     app_src!("run/worker.rs"),
     app_src!("lifecycle.rs"),
     app_src!("mail_sync.rs"),
@@ -840,7 +840,7 @@ fn landable_http_census_sources() -> Vec<CensusSource> {
         });
     }
     for walked in walk::walked_router_sources() {
-        if !walked.embedded {
+        if !walked.embedded || walk::is_ops_rest(walked.name) {
             sources.push(CensusSource {
                 name: walked.name,
                 source: walked.source,
