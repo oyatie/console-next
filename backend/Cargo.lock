@@ -925,6 +925,10 @@ dependencies = [
  "console-ontology-canonical-adapter-postgres",
  "console-ontology-canonical-domain",
  "console-ontology-rest",
+ "console-ops-adapter-http",
+ "console-ops-application",
+ "console-ops-domain",
+ "console-ops-rest",
  "console-orgchange-adapter-postgres",
  "console-orgchange-domain",
  "console-orgchange-rest",
@@ -2972,6 +2976,7 @@ dependencies = [
  "serde_json",
  "time",
  "tokio",
+ "url",
 ]
 
 [[package]]
@@ -2980,6 +2985,7 @@ version = "0.1.0"
 dependencies = [
  "console-ops-domain",
  "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "time",
 ]
@@ -2999,12 +3005,27 @@ name = "console-ops-rest"
 version = "0.1.0"
 dependencies = [
  "aws-lc-rs",
+ "axum",
  "console-kernel-core",
+ "console-ops-adapter-http",
+ "console-ops-application",
+ "console-ops-domain",
  "console-platform-authz",
+ "futures",
  "hex",
+ "http",
+ "jsonwebtoken",
+ "metrics",
+ "p256",
+ "reqwest",
  "serde",
  "serde_json",
  "time",
+ "tokio",
+ "tower",
+ "tower-http 0.7.1",
+ "tracing",
+ "url",
  "uuid",
 ]
 

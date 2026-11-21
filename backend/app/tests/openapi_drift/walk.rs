@@ -10,11 +10,18 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
+#[path = "ops_routes.rs"]
+mod ops_routes;
+
 use super::{
     APP_PRODUCTION_SOURCES, CONFIGURED_ROUTE_SOURCES, CONFIGURED_ROUTE_SURFACES,
     EXTRA_REST_SOURCES, PAYROLL_REST_INNER_SOURCES, normalize_path_parameters, route_calls,
     route_path_constants, strip_cfg_test,
 };
+
+pub(super) fn is_ops_rest(name: &str) -> bool {
+    name == "crates/ops/rest/src/lib.rs"
+}
 
 // E2E-only routes are mounted only in dev and the test-support binary.
 const TEST_SUPPORT_ROUTER_SOURCES: &[&str] = &["app/src/routes/e2e_fixtures.rs"];
@@ -44,6 +51,7 @@ pub(super) fn walked_router_sources() -> Vec<WalkedSource> {
             APP_PRODUCTION_SOURCES
                 .iter()
                 .chain(EXTRA_REST_SOURCES)
+                .chain(ops_routes::OPS_REST_SOURCES)
                 .chain(PAYROLL_REST_INNER_SOURCES)
                 .map(|(_, source)| *source),
         )

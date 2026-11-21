@@ -19,6 +19,10 @@ path = "src/main.rs"
 name = "console-cedar-parity-report"
 path = "src/bin/console_cedar_parity_report.rs"
 
+[[bin]]
+name = "console_ops_config_check"
+path = "src/bin/console_ops_config_check.rs"
+
 [lib]
 name = "console_app"
 path = "src/lib.rs"
@@ -142,6 +146,10 @@ console-settings-adapter-postgres = { path = "../crates/settings/adapter-postgre
 console-settings-rest = { path = "../crates/settings/rest" }
 console-settings-domain = { path = "../crates/settings/domain" }
 console-kernel-core = { workspace = true }
+console-ops-adapter-http = { workspace = true }
+console-ops-application = { workspace = true }
+console-ops-domain = { workspace = true }
+console-ops-rest = { workspace = true }
 console-messenger-adapter-postgres = { workspace = true }
 console-messenger-rest = { workspace = true, optional = true }
 console-notifications-adapter-postgres = { workspace = true }

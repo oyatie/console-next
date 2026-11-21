@@ -165,6 +165,40 @@ async fn render_metrics(State(state): State<AppState>) -> Response<Body> {
     }
 }
 
+pub(crate) fn render_metrics_body() -> Response<Body> {
+    match METRICS_HANDLE.get() {
+        Some(handle) => (
+            [(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+            handle.render(),
+        )
+            .into_response(),
+        None => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "metrics recorder not installed",
+        )
+            .into_response(),
+    }
+}
+
+pub(crate) fn record_http_duration(
+    service_name: &str,
+    method: &str,
+    http_route: &str,
+    status: u16,
+    error_type: &str,
+    elapsed: std::time::Duration,
+) {
+    metrics::histogram!(
+        HTTP_DURATION_METRIC,
+        "service_name" => service_name.to_owned(),
+        "http_request_method" => method.to_owned(),
+        "http_route" => http_route.to_owned(),
+        "http_response_status_code" => status.to_string(),
+        "error_type" => error_type.to_owned(),
+    )
+    .record(elapsed.as_secs_f64());
+}
+
 /// Wrap a fully-merged router with request metrics and expose `/metrics`. Applied
 /// last so every route (base + all domain routers) is measured; `/metrics` is
 /// added afterwards so it does not measure itself. Use `Router::layer` rather
