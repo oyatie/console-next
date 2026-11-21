@@ -95,12 +95,3 @@ export function RecordSummaryList({
     </dl>
   );
 }
-
-/** Console sub-header strip under `PageHead` on `/people/$id` (org path, tenure, next event, actions, retention). */
-export function RecordBannerBand({ tone = "neutral", children }: { tone?: "neutral" | "warn"; children: ReactNode }) {
-  return (
-    <div className={s.bannerBand} data-tone={tone}>
-      {children}
-    </div>
-  );
-}

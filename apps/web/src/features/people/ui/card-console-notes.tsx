@@ -8,7 +8,7 @@ import { focusSoon } from "../../../lib/react/announce";
 import { EmployeePayLink } from "../../../reference/payroll/ui/employee-pay-link";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
-import { RecordBannerBand } from "../../../ui/patterns/list-record-parts";
+import { RecordBannerBand } from "../../../ui/patterns/record-banner-band";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { retirementDate } from "../domain/employment";
