@@ -304,6 +304,8 @@ test("Step-up RRN reveal succeeds with passkey, keeps PII out of URL/storage, an
 
   // 2) 401 step_up_required and 403 forbidden refusal feedback
   for (const mode of ["step_up_required", "refused"] as const) {
+    await page.goto("about:blank");
+    await page.unrouteAll({ behavior: "ignoreErrors" });
     const refusedFixture = await setupConsoleSaeonPeople(page, { passkeyStepUpMode: mode });
     try {
       await page.goto(`/people/${SAEON_HERO_ID}`);
@@ -379,10 +381,9 @@ test("Baseline experience preserves legacy /people and /people/$id DOM unaltered
   }
 });
 
-test("Console /people state sweeps (loading, empty, failed, refused) stay accessible", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-
-  for (const state of ["loading", "empty", "failed", "refused"] as const) {
+for (const state of ["loading", "empty", "failed", "refused"] as const) {
+  test(`Console /people state sweep (${state}) stays accessible`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.addInitScript(() => localStorage.setItem("console.experience", "console"));
     const fixture = await mockScreen(page, screens[1], state);
     if (state === "empty") {
@@ -425,8 +426,8 @@ test("Console /people state sweeps (loading, empty, failed, refused) stay access
     } finally {
       fixture.release();
     }
-  }
-});
+  });
+}
 
 for (const theme of ["light", "dark"] as const) {
   test(`Console /people/$id #s5 multi-date spans wrap cleanly inside 320x844 mobile cards (${theme})`, async ({
