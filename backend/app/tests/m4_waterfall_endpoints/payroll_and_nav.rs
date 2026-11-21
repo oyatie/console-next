@@ -210,7 +210,25 @@ async fn org_chart_hierarchy_ordering_and_tied_unit_position_parity(pool: PgPool
     };
 
     let (branch, unit_zeta) = seed_unit_and_branch(&pool, org, "Zeta Unit").await;
-    let (_, unit_alpha) = seed_unit_and_branch(&pool, org, "Alpha Unit").await;
+    let unit_alpha = Uuid::new_v4();
+    sqlx::query("INSERT INTO org_units (org_id, id) VALUES ($1, $2)")
+        .bind(org)
+        .bind(unit_alpha)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO org_unit_revisions \
+         (org_id, org_unit_id, version, command_id, actor_id, payload_digest, attributes, receipt) \
+         SELECT $1, $2, 1, gen_random_uuid(), u.id, decode(repeat('00', 32), 'hex'), \
+                jsonb_build_object('name', 'Alpha Unit', 'kind', 'department', 'status', 'ACTIVE'), '{}'::jsonb \
+         FROM users u WHERE u.org_id = $1 LIMIT 1",
+    )
+    .bind(org)
+    .bind(unit_alpha)
+    .execute(&pool)
+    .await
+    .unwrap();
 
     // Seed employees with explicit companies, units, positions, and names that do not match UUID order.
     let mut ids = Vec::new();
