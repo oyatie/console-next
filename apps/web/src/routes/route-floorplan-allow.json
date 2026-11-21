@@ -7,7 +7,6 @@
   "/access/roles",
   "/access/roles/$roleId",
   "/access/roles/new",
-  "/attendance",
   "/org",
   "/org/changes",
   "/org/changes/$id",

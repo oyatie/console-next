@@ -2,8 +2,8 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
-import { AttendanceHead } from "./attendance-head";
+import { loadCatalog, t } from "@console/i18n";
+import { AttendanceHead, AttendanceTabNav } from "./attendance-head";
 
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({}) }));
 vi.mock("@tanstack/react-router", () => ({
@@ -32,4 +32,11 @@ test("a saved week URL selects the single overtime concept", () => {
   const html = renderToStaticMarkup(<AttendanceHead tab="week" />);
   expect(html).toMatch(/aria-current="page"[^>]*>연장근로</);
   expect(html).not.toContain('data-href="?tab=week"');
+});
+
+test("AttendanceTabNav renders standalone route tabs without a page heading", () => {
+  const html = renderToStaticMarkup(<AttendanceTabNav tab="month" />);
+  expect(html).toContain("<nav");
+  expect(html).not.toContain("<h1");
+  expect(html).toContain(`aria-current="page" data-href="?tab=month">${t("attendance.tab.month")}<`);
 });
