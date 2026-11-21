@@ -990,6 +990,7 @@ dependencies = [
  "opentelemetry_sdk",
  "p256",
  "reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -997,6 +998,7 @@ dependencies = [
  "thiserror 2.0.21",
  "time",
  "tokio",
+ "tokio-rustls",
  "tower",
  "tower-http 0.7.1",
  "tracing",
@@ -1276,6 +1278,7 @@ dependencies = [
  "console-kernel-core",
  "console-platform-auth",
  "console-platform-authz",
+ "console-platform-crypto",
  "console-platform-db",
  "console-platform-request-context",
  "console-platform-storage",
@@ -3170,13 +3173,13 @@ dependencies = [
 name = "console-platform-audit-chain"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
  "console-kernel-core",
  "console-platform-db",
  "console-platform-request-context",
  "console-platform-test-support",
  "futures",
  "hex",
- "ring",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -3314,11 +3317,14 @@ dependencies = [
 name = "console-platform-db"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
  "console-compliance-domain",
  "console-kernel-core",
  "console-platform-authz",
+ "console-platform-crypto",
  "console-settings-domain",
  "hex",
+ "secrecy",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -3328,6 +3334,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]
@@ -3434,16 +3441,17 @@ dependencies = [
  "console-platform-auth",
  "console-platform-authz",
  "console-platform-db",
+ "console-platform-storage",
  "console-platform-test-support",
  "console-settings-domain",
  "secrecy",
  "serde",
  "serde_json",
- "sha2 0.11.1",
  "sqlx 0.9.0",
  "thiserror 2.0.21",
  "time",
  "tokio",
+ "tracing",
  "url",
  "uuid",
  "webauthn-authenticator-rs",

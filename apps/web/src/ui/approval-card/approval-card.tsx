@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { t } from "@console/i18n";
 import { isImeKey } from "../../lib/pure/ime";
+import { PaneHead } from "../pane-grid/pane-grid";
 import css from "./approval-card.module.css";
 
 type Form = "reject" | "return";
@@ -54,6 +55,12 @@ export function ApprovalCard(p: ReturnProps & {
   pending?: ApprovalPending;
   /** Why approve cannot be pressed now (e.g. the content changed while reviewing); shown next to it. */
   approveBlocked?: ReactNode;
+  /** Why no decision commit (approve, reject, or return) may run until the stale read refreshes. */
+  staleBlocked?: ReactNode;
+  /** Streamlined docked pane layout with PaneHead (`title` + `meta`), single turn row, and compact spacing. */
+  docked?: boolean;
+  /** Optional due-date summary shown beside the turn badge in docked mode. */
+  due?: ReactNode;
   /** Queue position (1st of 3 left) and its bar. */
   progress?: ReactNode;
   /** Left of the decisions: when the card was opened and its content fingerprint. */
@@ -84,6 +91,7 @@ export function ApprovalCard(p: ReturnProps & {
     } else if (lastForm.current) (lastForm.current === "return" ? returnButton : rejectButton).current?.focus();
   }, [form]);
   const busy = p.pending !== undefined;
+  const blocked = p.staleBlocked ?? p.approveBlocked;
   const complete = typeof p.reasonComplete === "function" ? Boolean(form && p.reasonComplete(form)) : p.reasonComplete;
   useEffect(() => {
     const box = cardBox.current;
@@ -102,8 +110,9 @@ export function ApprovalCard(p: ReturnProps & {
     return (
       <article className={`card ${css.card}`} aria-labelledby={`${id}-title`}>
         {p.progress && <div className={css.progress}>{p.progress}</div>}
+        {p.docked && <PaneHead title={p.title} meta={p.meta} titleId={`${id}-title`} titleRef={doneHead} />}
         <div className={css.done}>
-          <h2 id={`${id}-title`} ref={doneHead} tabIndex={-1} className={css.title}>{p.title}</h2>
+          {!p.docked && <h2 id={`${id}-title`} ref={doneHead} tabIndex={-1} className={css.title}>{p.title}</h2>}
           {p.next && <div className={css.next}>{p.next}</div>}
           {p.receipt}
         </div>
@@ -112,14 +121,29 @@ export function ApprovalCard(p: ReturnProps & {
   }
 
   return (
-    <article ref={cardBox} className={`card ${css.card}`} aria-labelledby={`${id}-title`} aria-busy={busy || undefined} data-escape-scope={form && !busy ? "" : undefined}>
+    <article ref={cardBox} className={`card ${css.card}`} aria-labelledby={`${id}-title`} aria-busy={busy || undefined} data-escape-scope={form || busy ? "" : undefined}>
       {p.progress && <div className={css.progress}>{p.progress}</div>}
-      <div className={css.body}>
-        <div className={css.eyebrow}>{p.eyebrow}</div>
-        <span className={css.step}>{p.step}</span>
-        <h2 id={`${id}-title`} className={css.title}>{p.title}</h2>
-        {p.children}
-      </div>
+      {p.docked ? (
+        <>
+          <PaneHead title={p.title} meta={p.meta} titleId={`${id}-title`} />
+          <div className={css.body}>
+            {(p.step || p.due) && (
+              <div className={css.turnRow}>
+                {p.step && <bdi className={css.step}>{p.step}</bdi>}
+                {p.due && <bdi className={css.due}>{p.due}</bdi>}
+              </div>
+            )}
+            {p.children}
+          </div>
+        </>
+      ) : (
+        <div className={css.body}>
+          <div className={css.eyebrow}>{p.eyebrow}</div>
+          <span className={css.step}>{p.step}</span>
+          <h2 id={`${id}-title`} className={css.title}>{p.title}</h2>
+          {p.children}
+        </div>
+      )}
       {form ? (
         <section className={css.form} aria-labelledby={`${id}-form`}>
           <h3 id={`${id}-form`} ref={formHead} tabIndex={-1} className={css.formHead}>
@@ -130,11 +154,15 @@ export function ApprovalCard(p: ReturnProps & {
           <div className={css.bar}>
             <Button className="btn" isDisabled={busy} onPress={() => setForm(undefined)}>{t("uiApprovalCard.back")}</Button>
             <span className={css.spacer} />
-            {!complete && <span id={`${id}-why`} className={css.why}>{p.reasonMissing ?? t("uiApprovalCard.reasonMissing")}</span>}
+            {p.staleBlocked ? (
+              <bdi id={`${id}-blocked`} className={`${css.why} ${css.whyLine}`}>{p.staleBlocked}</bdi>
+            ) : (
+              !complete && <span id={`${id}-why`} className={css.why}>{p.reasonMissing ?? t("uiApprovalCard.reasonMissing")}</span>
+            )}
             <Button
               className={`btn ${form === "reject" ? "btn--danger" : "btn--primary"}`}
-              isDisabled={!complete || busy}
-              aria-describedby={complete ? `${id}-then` : `${id}-why`}
+              isDisabled={!complete || Boolean(p.staleBlocked) || busy}
+              aria-describedby={p.staleBlocked ? `${id}-blocked` : complete ? `${id}-then` : `${id}-why`}
               onPress={form === "reject" ? p.onReject : p.onReturn}
             >
               {form === "reject" ? p.rejectLabel : p.returnLabel}
@@ -145,15 +173,15 @@ export function ApprovalCard(p: ReturnProps & {
         <>
           <div id={`${id}-then`} className={css.consequence} role="note">{p.consequence}</div>
           <div className={css.bar}>
-            {p.approveBlocked && <span id={`${id}-blocked`} className={`${css.why} ${css.whyLine}`}>{p.approveBlocked}</span>}
-            {p.meta && <span className={css.meta}>{p.meta}</span>}
+            {blocked && <span id={`${id}-blocked`} className={`${css.why} ${css.whyLine}`}>{blocked}</span>}
+            {!p.docked && p.meta && <span className={css.meta}>{p.meta}</span>}
             <span className={css.spacer} />
             <Button ref={rejectButton} className="btn" isDisabled={busy} onPress={() => setForm("reject")}>{t("uiApprovalCard.reject")}</Button>
             {p.onReturn && <Button ref={returnButton} className="btn" isDisabled={busy} onPress={() => setForm("return")}>{t("uiApprovalCard.return")}</Button>}
             <Button
               className="btn btn--primary"
-              isDisabled={Boolean(p.approveBlocked) || busy}
-              aria-describedby={p.approveBlocked ? `${id}-blocked` : `${id}-then`}
+              isDisabled={Boolean(blocked) || busy}
+              aria-describedby={blocked ? `${id}-blocked` : `${id}-then`}
               onPress={p.onApprove}
             >
               {p.approveLabel}

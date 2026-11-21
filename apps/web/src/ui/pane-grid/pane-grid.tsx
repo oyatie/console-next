@@ -16,6 +16,7 @@ export function PaneHead({
   meta,
   actions,
   level = 2,
+  titleId,
   titleRef,
 }: {
   /** Heading label of the pane. */
@@ -26,6 +27,8 @@ export function PaneHead({
   actions?: ReactNode;
   /** Heading level (`2` for top-level panes, `3` inside nested sections). */
   level?: 2 | 3;
+  /** Optional id attached to the heading element for aria-labelledby wiring. */
+  titleId?: string;
   /** Optional ref attached to the heading element for programmatic focus. */
   titleRef?: RefObject<HTMLHeadingElement | null>;
 }) {
@@ -33,7 +36,7 @@ export function PaneHead({
   return (
     <header className={s.paneHead}>
       <div className={s.paneTitleGroup}>
-        <Heading ref={titleRef} tabIndex={titleRef ? -1 : undefined} className={s.paneTitle}>
+        <Heading id={titleId} ref={titleRef} tabIndex={titleRef ? -1 : undefined} className={s.paneTitle}>
           {title}
         </Heading>
         {meta != null ? <bdi className={s.paneMeta}>{meta}</bdi> : null}
@@ -196,6 +199,8 @@ export function PaneGrid({
         return;
       }
       if (document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"], dialog[open]')) return;
+      const activePane = rel ? relatedRef.current : recordRef.current;
+      if (activePane?.querySelector('[data-escape-scope][aria-busy="true"]')) return;
       e.preventDefault();
       e.stopPropagation();
       if (isFull && setFull && !window.matchMedia("(max-width: 767px)").matches) setFull(false);

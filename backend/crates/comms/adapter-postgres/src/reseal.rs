@@ -152,6 +152,11 @@ impl PgMailStore {
         batch_size: i64,
         max_batches: usize,
     ) -> Result<EmailResealStats, PgMailError> {
+        let cipher = match cipher.scoped_for_org(*org.as_uuid()).await {
+            Ok(Some(scoped)) => scoped,
+            Ok(None) => cipher,
+            Err(_) => return Err(cipher_err_to_mail()),
+        };
         let Some(target_alg) = cipher.active_alg_id().map(str::to_owned) else {
             return Ok(EmailResealStats::default());
         };

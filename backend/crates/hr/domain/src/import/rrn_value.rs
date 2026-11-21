@@ -265,7 +265,34 @@ pub trait RrnVault: Send + Sync {
     /// # Errors
     /// [`VaultError`] for a wrong key, another tenant's row or a tampered one.
     fn open(&self, org: Uuid, sealed: &SealedRrn) -> Result<Rrn, VaultError>;
+
+    /// Resolve a tenant-scoped vault for `org` at an async boundary, or
+    /// `Ok(None)` when the implementation has no per-tenant key store.
+    fn scoped_for_org<'a>(&'a self, _org: Uuid) -> ScopedRrnVaultFuture<'a> {
+        Box::pin(async { Ok(None) })
+    }
+
+    /// Resolve the read-only target `kek_id` for `org` without provisioning or
+    /// mutating per-tenant key rows.
+    fn target_kek_for_org<'a>(&'a self, _org: Uuid) -> TargetRrnKekFuture<'a> {
+        let kek = self.active_kek_id().map(str::to_owned);
+        Box::pin(async move { Ok(kek) })
+    }
 }
+
+/// Boxed future returned by [`RrnVault::scoped_for_org`].
+pub type ScopedRrnVaultFuture<'a> = std::pin::Pin<
+    Box<
+        dyn core::future::Future<Output = Result<Option<std::sync::Arc<dyn RrnVault>>, VaultError>>
+            + Send
+            + 'a,
+    >,
+>;
+
+/// Boxed future returned by [`RrnVault::target_kek_for_org`].
+pub type TargetRrnKekFuture<'a> = std::pin::Pin<
+    Box<dyn core::future::Future<Output = Result<Option<String>, VaultError>> + Send + 'a>,
+>;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]

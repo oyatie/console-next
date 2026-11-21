@@ -8,7 +8,10 @@ async fn main() -> Result<(), console_app::AppError> {
     if std::env::args().nth(1).as_deref() == Some("healthcheck") {
         std::process::exit(console_app::healthcheck());
     }
-    if let Some(cmd @ ("crypto-reseal" | "crypto-census")) = std::env::args().nth(1).as_deref() {
+    if let Some(
+        cmd @ ("crypto-reseal" | "crypto-census" | "rotate-tenant-dek" | "rewrap-master-kek"),
+    ) = std::env::args().nth(1).as_deref()
+    {
         let extra_args: Vec<String> = std::env::args().skip(2).collect();
         if let Err(err) = console_app::run_crypto_cli(cmd, &extra_args).await {
             eprintln!("{cmd} failed: {err}");

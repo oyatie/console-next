@@ -2,6 +2,7 @@
 //! RLS-armed envelope version and KEK-rotation census queries for `employee_rrn`
 //! and `data_import_row_identities`.
 
+use console_hr_domain::import::rrn_value::RrnVault;
 use console_kernel_core::OrgId;
 use console_platform_db::with_org_conn;
 use sqlx::Row;
@@ -59,6 +60,39 @@ impl HrService {
             .await?;
         let mut total = RrnEnvelopeCensus::default();
         for org_uuid in orgs {
+            let org_census = self
+                .legacy_envelope_census_in_org(
+                    OrgId::from_uuid(org_uuid),
+                    target_alg_id,
+                    target_kek_id,
+                )
+                .await?;
+            total.employee_rrn.add_assign(org_census.employee_rrn);
+            total
+                .data_import_row_identities
+                .add_assign(org_census.data_import_row_identities);
+        }
+        Ok(total)
+    }
+
+    /// Aggregate legacy and stale-KEK envelope counts across all organizations,
+    /// resolving per-tenant target KEKs when supported by `vault`.
+    pub async fn legacy_envelope_census_with_vault(
+        &self,
+        vault: &dyn RrnVault,
+    ) -> Result<RrnEnvelopeCensus, HrError> {
+        let orgs: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM platform_list_organizations()")
+            // rls-arming: ok platform_list_organizations() is the SECURITY DEFINER id-only tenant discovery; every per-org count below runs under with_org_conn
+            .fetch_all(&self.pool)
+            .await?;
+        let target_alg_id = vault.active_alg_id().unwrap_or("");
+        let mut total = RrnEnvelopeCensus::default();
+        for org_uuid in orgs {
+            let target_kek = vault
+                .target_kek_for_org(org_uuid)
+                .await
+                .map_err(|_| super::unavailable())?;
+            let target_kek_id = target_kek.as_deref().unwrap_or("");
             let org_census = self
                 .legacy_envelope_census_in_org(
                     OrgId::from_uuid(org_uuid),

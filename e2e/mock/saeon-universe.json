@@ -165,6 +165,85 @@
       { "step": 1, "kind": "기안", "actor": "김도현", "unit": "평택공장 생산부 부장", "status": "DONE", "completedDate": "2026-11-06" },
       { "step": 2, "kind": "합의", "actor": "문서연", "unit": "인사팀", "status": "CURRENT", "completedDate": null },
       { "step": 3, "kind": "결재", "actor": "한정우", "unit": "평택공장장", "status": "WAITING", "completedDate": null }
+    ],
+    "queue": [
+      {
+        "id": "AP-2026-0419",
+        "documentNumber": "AP-2026-0419",
+        "title": "육아휴직 신청 · 이송이",
+        "summary": "이송이 · 2026-12-01 ~ 2027-11-30",
+        "sourceKey": "leave",
+        "sourceLabel": "휴가",
+        "requester": "이송이",
+        "requestedDate": "2026-11-09",
+        "effectiveDate": "2026-12-01",
+        "steps": [
+          { "roleKey": "executive", "actor": "송재원", "unit": "생산1팀장", "status": "DONE" },
+          { "roleKey": "hr", "actor": "문서연", "unit": "인사팀", "status": "CURRENT" }
+        ]
+      },
+      {
+        "id": "AP-2026-0420",
+        "documentNumber": "AP-2026-0420",
+        "title": "10월 연장근무 정산 · 평택공장",
+        "summary": "평택공장 생산부 연장·야간근무 53시간 정산",
+        "sourceKey": "attendance",
+        "sourceLabel": "근태",
+        "requester": "박성준",
+        "requestedDate": "2026-11-08",
+        "effectiveDate": "2026-11-15",
+        "steps": [
+          { "roleKey": "executive", "actor": "김도현", "unit": "평택공장 생산부 부장", "status": "DONE" },
+          { "roleKey": "hr", "actor": "문서연", "unit": "인사팀", "status": "CURRENT" }
+        ]
+      },
+      {
+        "id": "AP-2026-0421",
+        "documentNumber": "AP-2026-0421",
+        "title": "수습 본채용 전환 · 방하람",
+        "summary": "방하람 수습 평가 완료 및 정규직 전환 승인",
+        "sourceKey": "personnel",
+        "sourceLabel": "인사",
+        "requester": "윤태호",
+        "requestedDate": "2026-11-08",
+        "effectiveDate": "2026-11-16",
+        "steps": [
+          { "roleKey": "executive", "actor": "윤태호", "unit": "인사팀장", "status": "DONE" },
+          { "roleKey": "hr", "actor": "문서연", "unit": "인사팀", "status": "CURRENT" },
+          { "roleKey": "executive", "actor": "이경희", "unit": "경영지원실장", "status": "WAITING" }
+        ]
+      },
+      {
+        "id": "AP-2026-0422",
+        "documentNumber": "AP-2026-0422",
+        "title": "재직증명서 일괄 발급 요청 · 최재훈 외 4명",
+        "summary": "관공서 제출용 재직증명서 5건 발급",
+        "sourceKey": "certificate",
+        "sourceLabel": "증명서",
+        "requester": "최재훈",
+        "requestedDate": "2026-11-07",
+        "effectiveDate": "2026-11-12",
+        "steps": [
+          { "roleKey": "executive", "actor": "최재훈", "unit": "영업1팀", "status": "DONE" },
+          { "roleKey": "hr", "actor": "문서연", "unit": "인사팀", "status": "CURRENT" }
+        ]
+      },
+      {
+        "id": "AP-2026-0423",
+        "documentNumber": "AP-2026-0423",
+        "title": "음성공장 생산1팀 명칭 정정",
+        "summary": "생산1팀 표준 조직 명칭 정비",
+        "sourceKey": "org_change",
+        "sourceLabel": "조직 변경 품의",
+        "requester": "윤하람",
+        "requestedDate": "2026-11-06",
+        "effectiveDate": "2026-12-01",
+        "steps": [
+          { "roleKey": "executive", "actor": "윤하람", "unit": "음성공장 생산부", "status": "DONE" },
+          { "roleKey": "hr", "actor": "문서연", "unit": "인사팀", "status": "CURRENT" },
+          { "roleKey": "executive", "actor": "한정우", "unit": "평택공장장", "status": "WAITING" }
+        ]
+      }
     ]
   },
   "attendanceMonth": {

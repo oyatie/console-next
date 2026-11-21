@@ -2,10 +2,10 @@
 //! SQLx migration owner's BYPASSRLS connection.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use aws_lc_rs::digest::{SHA256, digest};
 use console_platform_provisioning::{
     BootstrapCredentialStore, FirstEnrollmentCommandPool, FirstEnrollmentOutcome, ProvisioningError,
 };
-use sha2::{Digest, Sha256};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Acquire, PgPool, Row};
 use time::{Duration, OffsetDateTime};
@@ -54,8 +54,7 @@ async fn first_source(owner: &PgPool, company: Uuid) -> (Uuid, Uuid, String, Uui
     .fetch_one(owner)
     .await
     .unwrap();
-    let source = Uuid::new_v4();
-    let issuance = Uuid::new_v4();
+    let (source, issuance) = (Uuid::new_v4(), Uuid::new_v4());
     let otp = format!("test-first-{}", Uuid::new_v4());
     let now = OffsetDateTime::now_utc();
     sqlx::query(
@@ -65,7 +64,7 @@ async fn first_source(owner: &PgPool, company: Uuid) -> (Uuid, Uuid, String, Uui
     )
     .bind(source)
     .bind(account)
-    .bind(Sha256::digest(otp.as_bytes()).to_vec())
+    .bind(digest(&SHA256, otp.as_bytes()).as_ref().to_vec())
     .bind(now)
     .bind(now + Duration::hours(1))
     .bind(company)
@@ -87,7 +86,8 @@ async fn command_admits_exact_source_family_and_receipt_once(owner: PgPool) {
     let (account, source, otp, issuance) = first_source(&owner, company).await;
     let command = FirstEnrollmentCommandPool::new(command_pool(&owner).await);
     let operation = Uuid::new_v4();
-    let status_hash: [u8; 32] = Sha256::digest(Uuid::new_v4().as_bytes()).into();
+    let h = digest(&SHA256, Uuid::new_v4().as_bytes());
+    let status_hash: [u8; 32] = h.as_ref().try_into().unwrap();
     let issued = command
         .admit(&otp, operation, status_hash, OffsetDateTime::now_utc())
         .await
@@ -365,7 +365,7 @@ async fn mismatched_committed_evidence_cannot_be_audited_or_partially_kept(owner
          VALUES($1,$2,$3,$4,1,'enrollment',$5)",
     )
     .bind(operation)
-    .bind(Sha256::digest(b"test-mismatch-status").to_vec())
+    .bind(digest(&SHA256, b"test-mismatch-status").as_ref().to_vec())
     .bind(account)
     .bind(company)
     .bind(now + Duration::minutes(15))
@@ -393,7 +393,7 @@ async fn mismatched_committed_evidence_cannot_be_audited_or_partially_kept(owner
     .bind(Uuid::new_v4())
     .bind(family)
     .bind(account)
-    .bind(Sha256::digest(b"test-mismatch-token").to_vec())
+    .bind(digest(&SHA256, b"test-mismatch-token").as_ref().to_vec())
     .bind(now)
     .bind(now + Duration::minutes(15))
     .bind(company)

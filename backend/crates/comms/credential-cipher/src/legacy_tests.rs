@@ -200,3 +200,48 @@ fn wrong_nonce_length_is_rejected() {
         Err(CipherError::Decrypt)
     ));
 }
+
+#[test]
+fn shredded_tenant_kms_fails_closed_across_v1_v2_and_v3() {
+    use console_platform_crypto::{TenantKeyScope, TenantScopedKms};
+    use std::collections::BTreeMap;
+
+    let base = cipher();
+    let v1 = base.encrypt_with_suite(1, b"v1-secret", aad()).unwrap();
+    let v2 = base.encrypt_with_suite(2, b"v2-secret", aad()).unwrap();
+    let v3 = base.encrypt_with_suite(3, b"v3-secret", aad()).unwrap();
+
+    let org = *console_kernel_core::OrgId::new().as_uuid();
+    let shredded_kms = Arc::new(TenantScopedKms::from_resolved(
+        org,
+        TenantKeyScope::Mail,
+        None,
+        true,
+        BTreeMap::new(),
+        Arc::clone(base.kms_provider()),
+    ));
+    let scoped = base.with_tenant_kms(shredded_kms);
+    assert!(scoped.legacy_ring.is_none());
+
+    for (suite, sealed) in [(1, &v1), (2, &v2), (3, &v3)] {
+        assert!(
+            matches!(scoped.decrypt(sealed, aad()), Err(CipherError::Decrypt)),
+            "suite {suite} decrypt must fail closed when shredded"
+        );
+        assert!(
+            matches!(scoped.open_bytes(sealed, aad()), Err(CipherError::Decrypt)),
+            "suite {suite} open_bytes must fail closed when shredded"
+        );
+        assert!(
+            matches!(
+                scoped.encrypt_with_suite(suite, b"new", aad()),
+                Err(CipherError::Encrypt)
+            ),
+            "suite {suite} encrypt must fail closed when shredded"
+        );
+    }
+    assert!(matches!(
+        scoped.encrypt(b"new", aad()),
+        Err(CipherError::Encrypt)
+    ));
+}
