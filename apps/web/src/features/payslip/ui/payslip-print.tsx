@@ -112,24 +112,37 @@ export function buildPayslipPrintHtml(payload: PayslipPayload, fallbackMonth: st
   return `<!doctype html>${doc}`;
 }
 
-/** Opens a hidden sandboxed print frame so mobile/desktop chrome never leaks onto the saved PDF. */
-export function printPayslip(payload: PayslipPayload, fallbackMonth: string | null) {
+const PRINT_CLEANUP_FALLBACK_MS = 60_000;
+
+/**
+ * Opens a hidden print frame (without `sandbox` so `'self'` styles and `print()` remain permitted)
+ * so mobile/desktop chrome never leaks onto the saved PDF.
+ */
+export function printPayslip(payload: PayslipPayload, fallbackMonth: string | null): () => void {
   const frame = document.createElement("iframe");
   frame.className = "sr-only";
   frame.setAttribute("aria-hidden", "true");
   let cleaned = false;
+  let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
+    if (fallbackTimer !== null) {
+      clearTimeout(fallbackTimer);
+      fallbackTimer = null;
+    }
+    window.removeEventListener("pagehide", cleanup);
     frame.remove();
   };
+  window.addEventListener("pagehide", cleanup, { once: true });
   frame.onload = () => {
     const win = frame.contentWindow;
     win?.addEventListener("afterprint", cleanup, { once: true });
     win?.focus();
     win?.print();
-    setTimeout(cleanup, 1500);
+    fallbackTimer = setTimeout(cleanup, PRINT_CLEANUP_FALLBACK_MS);
   };
   frame.srcdoc = buildPayslipPrintHtml(payload, fallbackMonth);
   document.body.append(frame);
+  return cleanup;
 }

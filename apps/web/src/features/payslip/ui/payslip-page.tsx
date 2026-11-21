@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Download, History } from "lucide-react";
 import { t } from "@console/i18n";
@@ -34,6 +34,15 @@ export function PayslipPage() {
   const search = useSearch({ strict: false }) as { doc?: string; month?: string };
   const navigate = useNavigate();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const printCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(
+    () => () => {
+      printCleanupRef.current?.();
+      printCleanupRef.current = null;
+    },
+    [],
+  );
 
   const listQuery = useQuery(myPayslipsListQuery);
   const items = listQuery.data?.items ?? [];
@@ -43,11 +52,13 @@ export function PayslipPage() {
   const detailQuery = useQuery({
     ...myPayslipDetailQuery(active?.id ?? ""),
     enabled: Boolean(active?.id),
-    placeholderData: keepPreviousData,
   });
 
-  const payload = active ? parsePayslipPayload(detailQuery.data?.payload) : null;
-  const activePayDate = formatShortMonthDay(payload?.payDate ?? active?.payslip_meta?.pay_date);
+  const detailMatchesActive = Boolean(
+    active?.id && !detailQuery.isPlaceholderData && detailQuery.data?.id === active.id,
+  );
+  const payload = detailMatchesActive ? parsePayslipPayload(detailQuery.data?.payload) : null;
+  const activePayDate = formatShortMonthDay(active?.payslip_meta?.pay_date ?? payload?.payDate);
 
   const selectDoc = (doc: InboxDocSummary) => {
     const docMonth = payslipMonth(doc);
@@ -66,9 +77,12 @@ export function PayslipPage() {
     });
   };
 
+  const readyPayload = detailMatchesActive && !detailQuery.isError ? payload : null;
+
   const handleSavePdf = () => {
-    if (!payload) return;
-    printPayslip(payload, month);
+    if (!readyPayload) return;
+    printCleanupRef.current?.();
+    printCleanupRef.current = printPayslip(readyPayload, month);
   };
 
   const periodControl =
@@ -145,7 +159,6 @@ export function PayslipPage() {
       </QueryState>
     );
 
-  const readyPayload = active && detailQuery.data && !detailQuery.isError ? payload : null;
   const contextItems = readyPayload ? presentContextStats(readyPayload) : [];
 
   const actionButtons =
@@ -242,6 +255,8 @@ export function PayslipPage() {
       baseline={() => (
         <PayslipBaseline
           listQuery={listQuery}
+          detailQuery={detailQuery}
+          hasActiveDoc={Boolean(active)}
           period={periodControl}
           periodMeta={periodMeta}
           payload={readyPayload}

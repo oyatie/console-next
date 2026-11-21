@@ -16,6 +16,8 @@ type MockPayslipState = {
   listError?: unknown;
   detailData?: unknown;
   detailError?: unknown;
+  detailPending?: boolean;
+  detailIsPlaceholderData?: boolean;
 };
 
 const mockState = vi.hoisted((): MockPayslipState => ({
@@ -64,6 +66,19 @@ function resolveMockQuery(options: Parameters<typeof readIdentity>[0] & { enable
     };
   }
   if (path === "/api/v1/me/inbox-docs/{id}") {
+    if (mockState.detailPending) {
+      return {
+        data: mockState.detailData,
+        isPending: !mockState.detailData,
+        isFetching: true,
+        isError: false,
+        isSuccess: false,
+        isPlaceholderData: Boolean(mockState.detailIsPlaceholderData),
+        error: null,
+        dataUpdatedAt: 0,
+        refetch: () => Promise.resolve(),
+      };
+    }
     if (mockState.detailError) {
       return {
         data: undefined,
@@ -82,6 +97,7 @@ function resolveMockQuery(options: Parameters<typeof readIdentity>[0] & { enable
       isFetching: false,
       isError: false,
       isSuccess: true,
+      isPlaceholderData: Boolean(mockState.detailIsPlaceholderData),
       error: null,
       dataUpdatedAt: 1,
       refetch: () => Promise.resolve(),
@@ -120,6 +136,8 @@ function renderPage(next: Partial<MockPayslipState>) {
     listError: undefined,
     detailData: undefined,
     detailError: undefined,
+    detailPending: false,
+    detailIsPlaceholderData: false,
     ...next,
   });
   const client = new QueryClient();
@@ -212,4 +230,62 @@ test("PayslipPage renders empty, monthEmpty, 403 refusal, and 404 detail failure
   });
   expect(detailNotFoundHtml).toContain(t("common.read.notFound.title"));
   expect(detailNotFoundHtml).toContain(t("payslip.action.past"));
+});
+
+test("PayslipPage rejects mismatched or placeholder detail payloads and PayslipBaseline renders detail loading/403/503 states", () => {
+  const septemberDoc = {
+    ...sampleDoc,
+    id: "00000000-0000-4000-8950-000000002009",
+    title: "Statement 2026-09",
+    payslip_meta: {
+      ...sampleDoc.payslip_meta,
+      attribution_month: "2026-09",
+      pay_date: "2026-10-23",
+      net_won: 2_908_474,
+    },
+  };
+
+  const placeholderGuardHtml = renderPage({
+    search: { doc: septemberDoc.id, month: "2026-09" },
+    listData: { items: [sampleDoc, septemberDoc], next_cursor: null },
+    detailData: sampleDetail,
+    detailIsPlaceholderData: true,
+  });
+  expect(placeholderGuardHtml).toContain("10-23");
+  expect(placeholderGuardHtml).not.toContain("3,141,755");
+  expect(placeholderGuardHtml).not.toContain("11-25");
+
+  const mismatchedIdHtml = renderPage({
+    search: { doc: septemberDoc.id, month: "2026-09" },
+    listData: { items: [sampleDoc, septemberDoc], next_cursor: null },
+    detailData: sampleDetail,
+  });
+  expect(mismatchedIdHtml).toContain("10-23");
+  expect(mismatchedIdHtml).not.toContain("3,141,755");
+  expect(mismatchedIdHtml).toContain(t("payslip.detail.unavailable"));
+
+  const baselineLoadingHtml = renderPage({
+    experience: "baseline",
+    listData: { items: [sampleDoc], next_cursor: null },
+    detailPending: true,
+  });
+  expect(baselineLoadingHtml).toContain('aria-busy="true"');
+  expect(baselineLoadingHtml).not.toContain(t("payslip.detail.unavailable"));
+
+  const baselineDeniedHtml = renderPage({
+    experience: "baseline",
+    listData: { items: [sampleDoc], next_cursor: null },
+    detailError: new ApiError(403, "forbidden", ""),
+  });
+  expect(baselineDeniedHtml).toContain(t("common.denied.panel"));
+  expect(baselineDeniedHtml).not.toContain(t("payslip.detail.unavailable"));
+
+  const baselineFailedHtml = renderPage({
+    experience: "baseline",
+    listData: { items: [sampleDoc], next_cursor: null },
+    detailError: new ApiError(503, "service_unavailable", ""),
+  });
+  expect(baselineFailedHtml).toContain(t("common.loadFailed.title"));
+  expect(baselineFailedHtml).toContain(t("common.retry"));
+  expect(baselineFailedHtml).not.toContain(t("payslip.detail.unavailable"));
 });

@@ -6,6 +6,7 @@ import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { expectAxe, fits } from "../a11y";
 import { test } from "../locale-fixture";
 import { shot, withFullPage } from "../shots";
+import { installFaultClock } from "../states/fault-clock";
 import { screens } from "../states/registry";
 import { failure, screenAccess } from "./fixtures";
 import { mockRoute } from "./route";
@@ -39,14 +40,19 @@ async function setupPayslipMock(
     theme = "light",
     listMode = "populated",
     detailMode = "populated",
+    faultClock = false,
   }: {
     experience?: "console" | "baseline";
     theme?: "light" | "dark";
     listMode?: "populated" | "empty" | "loading" | "failed" | "refused";
     detailMode?: "populated" | "failed" | "refused" | "not_found";
+    faultClock?: boolean;
   } = {},
 ) {
   await setExperience(page, experience, theme);
+  if (listMode !== "failed" && (detailMode === "failed" || faultClock)) {
+    await installFaultClock(page);
+  }
   const fixture = await mockScreen(page, screens[0], listMode === "failed" ? "failed" : "populated");
   const hero = saeonHeroUser();
   const docs = saeonHeroPayslipDocs();
@@ -415,5 +421,118 @@ test("Baseline /payslips renders Classic layout without Console shell chrome", a
     expect(fixture.unexpected).toEqual([]);
   } finally {
     fixture.release();
+  }
+});
+
+test("Console /payslips preserves active period pay_date, disables PDF export, and prevents cross-period net pay leakage on pending and 503 failure", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const ctx = await setupPayslipMock(page, { experience: "console", theme: "light", faultClock: true });
+  const sepId = "00000000-0000-4000-8950-000000002009";
+  const sepRow = saeonPayrollRow(saeonUniverse.hero.employeeNumber, saeonUniverse.hero.gradeCode, 6, true);
+  let releaseSep!: () => void;
+  let holdFirstSep = true;
+  const heldSep = new Promise<void>(resolve => {
+    releaseSep = resolve;
+  });
+  let sepMode: "failed" | "populated" = "failed";
+
+  await mockRoute(page, "get", "/api/v1/me/inbox-docs/{id}", async request => {
+    const id = new URL(request.url()).pathname.split("/").at(-1);
+    if (id === sepId) {
+      if (holdFirstSep) {
+        holdFirstSep = false;
+        await heldSep;
+      }
+      if (sepMode === "failed") return { status: 503, json: failure("service_unavailable") };
+    }
+    const detail = saeonHeroPayslipDetail(id);
+    return detail ? { status: 200, json: detail } : { status: 404, json: failure("not_found") };
+  });
+
+  try {
+    await page.goto("/payslips");
+    const stmt = page.locator('[data-pattern="phone-statement"]');
+    const savePdf = stmt.getByRole("button", { name: t("payslip.action.savePdf"), exact: true });
+    const prevBtn = stmt.getByRole("button", { name: t("attendanceRecords.toolbar.prevMonth"), exact: true });
+
+    await expect(stmt).toContainText(fmtMonth("2026-10"));
+    await expect(stmt).toContainText(`${t("payslip.payDateLabel")} 11-25`);
+    await expect(stmt).toContainText(fmtNumber(3_141_755));
+    await expect(savePdf).toBeEnabled();
+
+    await prevBtn.click();
+
+    await expect(stmt).toContainText(fmtMonth("2026-09"));
+    await expect(stmt).toContainText(`${t("payslip.payDateLabel")} 10-23`);
+    await expect(stmt).not.toContainText("11-25");
+    await expect(stmt).not.toContainText(fmtNumber(3_141_755));
+    await expect(savePdf).toBeDisabled();
+
+    releaseSep();
+    await expect(stmt.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible();
+    await expect(stmt.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
+    await expect(stmt).toContainText(`${t("payslip.payDateLabel")} 10-23`);
+    await expect(stmt).not.toContainText("11-25");
+    await expect(stmt).not.toContainText(fmtNumber(3_141_755));
+    await expect(savePdf).toBeDisabled();
+
+    sepMode = "populated";
+    await stmt.getByRole("button", { name: t("common.retry"), exact: true }).click();
+    await expect(stmt).toContainText(fmtNumber(sepRow.netPay));
+    await expect(savePdf).toBeEnabled();
+    expect(ctx.fixture.unexpected).toEqual([]);
+  } finally {
+    releaseSep?.();
+    ctx.fixture.release();
+  }
+});
+
+test("Baseline /payslips handles detail 403 refusal and 503 failure with retry cleanly", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  {
+    const ctx403 = await setupPayslipMock(page, { experience: "baseline", detailMode: "refused" });
+    try {
+      await page.goto("/payslips");
+      const main = page.locator("main");
+      await expect(main.getByRole("heading", { name: t("common.denied.panel"), exact: true })).toBeVisible();
+      await expect(main).not.toContainText(t("payslip.detail.unavailable"));
+      await expect(main.getByRole("button", { name: t("payslip.action.savePdf"), exact: true })).toBeDisabled();
+      await expect(main.getByRole("button", { name: t("payslip.action.past"), exact: true })).toBeEnabled();
+      await fits(page, "Baseline Payslip 390 403");
+      await expectAxe(page, "Baseline Payslip 390 403");
+      expect(ctx403.fixture.unexpected).toEqual([]);
+    } finally {
+      ctx403.fixture.release();
+    }
+  }
+
+  {
+    const ctx503 = await setupPayslipMock(page, { experience: "baseline", detailMode: "failed" });
+    let recover = false;
+    await mockRoute(page, "get", "/api/v1/me/inbox-docs/{id}", request => {
+      if (!recover) return { status: 503, json: failure("service_unavailable") };
+      const id = new URL(request.url()).pathname.split("/").at(-1);
+      const detail = saeonHeroPayslipDetail(id);
+      return detail ? { status: 200, json: detail } : { status: 404, json: failure("not_found") };
+    });
+    try {
+      await page.goto("/payslips");
+      const main = page.locator("main");
+      await expect(main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible();
+      await expect(main).not.toContainText(t("payslip.detail.unavailable"));
+      await expect(main.getByRole("button", { name: t("payslip.action.savePdf"), exact: true })).toBeDisabled();
+      await fits(page, "Baseline Payslip 390 503");
+      await expectAxe(page, "Baseline Payslip 390 503");
+      recover = true;
+      await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
+      await expect(main).toContainText(fmtNumber(3_141_755));
+      await expect(main.getByRole("button", { name: t("payslip.action.savePdf"), exact: true })).toBeEnabled();
+      expect(ctx503.fixture.unexpected).toEqual([]);
+    } finally {
+      ctx503.fixture.release();
+    }
   }
 });

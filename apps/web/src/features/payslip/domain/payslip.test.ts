@@ -143,4 +143,37 @@ describe("payslip domain", () => {
     });
     expect(buildWorkSummary(null, 4)).toBeNull();
   });
+
+  test("parsePayslipPayload rejects negative non-negative monetary fields", () => {
+    expect(parsePayslipPayload({ gross_won: -1, total_deductions_won: 0, net_won: 0 })).toBeNull();
+    expect(parsePayslipPayload({ gross_won: -100, total_deductions_won: 0, net_won: -100 })).toBeNull();
+    expect(parsePayslipPayload({ gross_won: 100_000, total_deductions_won: -1, net_won: 100_000 })).toBeNull();
+    expect(parsePayslipPayload({ gross_won: 100_000, total_deductions_won: -100, net_won: 100_000 })).toBeNull();
+
+    const withNegOptionals = parsePayslipPayload({
+      gross_won: 3_000_000,
+      total_deductions_won: 200_000,
+      net_won: 2_800_000,
+      base_pay_won: -1,
+      overtime_pay_won: -100,
+      meal_allowance_won: -1,
+      taxable_won: -100,
+      deductions: [
+        { code: "NATIONAL_PENSION", amount_won: -1 },
+        { code: "INCOME_TAX", amount_won: -100 },
+        { code: "HEALTH_INSURANCE", amount_won: 100_000 },
+      ],
+    });
+    expect(withNegOptionals).not.toBeNull();
+    expect(withNegOptionals!.basePayWon).toBeNull();
+    expect(withNegOptionals!.overtimePayWon).toBeNull();
+    expect(withNegOptionals!.mealAllowanceWon).toBeNull();
+    expect(withNegOptionals!.taxableWon).toBeNull();
+    expect(withNegOptionals!.deductions).toEqual([
+      { code: "HEALTH_INSURANCE", labelKo: null, amountWon: 100_000 },
+    ]);
+    expect(buildEarningLines(withNegOptionals!)).toEqual([
+      { kind: "gross_fallback", amountWon: 3_000_000 },
+    ]);
+  });
 });

@@ -130,6 +130,10 @@ function asInt(value: unknown): number | null {
   return typeof value === "number" && Number.isSafeInteger(value) ? value : null;
 }
 
+function asNonNegativeInt(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
 function asNonNegativeNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
@@ -143,8 +147,8 @@ function asText(value: unknown): string | null {
 export function parsePayslipPayload(raw: unknown): PayslipPayload | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const obj = raw as Record<string, unknown>;
-  const grossWon = asInt(obj.gross_won);
-  const totalDeductionsWon = asInt(obj.total_deductions_won);
+  const grossWon = asNonNegativeInt(obj.gross_won);
+  const totalDeductionsWon = asNonNegativeInt(obj.total_deductions_won);
   const netWon = asInt(obj.net_won);
   if (grossWon === null || totalDeductionsWon === null || netWon === null) return null;
 
@@ -154,7 +158,7 @@ export function parsePayslipPayload(raw: unknown): PayslipPayload | null {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
     const item = entry as Record<string, unknown>;
     const code = asText(item.code);
-    const amountWon = asInt(item.amount_won);
+    const amountWon = asNonNegativeInt(item.amount_won);
     if (!code || amountWon === null) continue;
     deductions.push({ code, labelKo: asText(item.label_ko), amountWon });
   }
@@ -173,10 +177,10 @@ export function parsePayslipPayload(raw: unknown): PayslipPayload | null {
     paidHolidayDays: asNonNegativeNumber(obj.paid_holiday_days),
     overtimeHours: asNonNegativeNumber(obj.overtime_hours),
     leaveUsed: asNonNegativeNumber(obj.leave_used),
-    basePayWon: asInt(obj.base_pay_won),
-    overtimePayWon: asInt(obj.overtime_pay_won),
-    mealAllowanceWon: asInt(obj.meal_allowance_won),
-    taxableWon: asInt(obj.taxable_won),
+    basePayWon: asNonNegativeInt(obj.base_pay_won),
+    overtimePayWon: asNonNegativeInt(obj.overtime_pay_won),
+    mealAllowanceWon: asNonNegativeInt(obj.meal_allowance_won),
+    taxableWon: asNonNegativeInt(obj.taxable_won),
     grossWon,
     deductions,
     totalDeductionsWon,
