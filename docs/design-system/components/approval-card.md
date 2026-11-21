@@ -381,12 +381,16 @@ global `btn` classes. Both are in `app.css` and are not listed here: see the tok
 
 | Token | Read by |
 | --- | --- |
+| `--border` | `border-top-color` |
 | `--border-soft` | `border-bottom`, `border-top` |
 | `--card-w` | `width` |
 | `--control-h-lg` | `min-height` |
 | `--fw-medium` | `font-weight` |
+| `--fw-semibold` | `font-weight` |
 | `--fw-strong` | `font-weight` |
 | `--ink` | `border` |
+| `--lh-base` | `line-height` |
+| `--lh-tight` | `line-height` |
 | `--panel-w` | `max-width` |
 | `--primary` | `color` |
 | `--primary-soft` | `background` |
@@ -396,6 +400,7 @@ global `btn` classes. Both are in `app.css` and are not listed here: see the tok
 | `--space-2` | `gap`, `padding` |
 | `--space-3` | `gap`, `padding` |
 | `--space-4` | `margin`, `padding` |
+| `--space-half` | `padding` |
 | `--steel` | `color` |
 | `--surface` | `background` |
 | `--text-body` | `font-size` |

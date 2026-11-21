@@ -14,6 +14,8 @@ import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
 import { Page } from "../../../ui/page/page";
+import { Worklist } from "../../../ui/patterns/worklist";
+import { WorklistSearchField } from "../../../ui/patterns/worklist-parts";
 import { SearchField } from "../../../ui/search/search-field";
 import { SelectField } from "../../../ui/select/select-field";
 import { Table } from "../../../ui/table";
@@ -22,6 +24,7 @@ import { tabClass } from "../../../ui/tabs/tab-class";
 import { approvalDocumentQuery, approvalPages, type ApprovalItem } from "../api";
 import { APPROVAL_BOXES, type ApprovalBox } from "../domain/inbox";
 import { ApprovalDocumentView } from "./approval-viewer";
+import { ConsoleApprovalSideView, ConsoleApprovalsTable } from "./approvals-console";
 import { SourceViewerLink } from "./source-viewer-link";
 import s from "./approvals-page.module.css";
 
@@ -115,17 +118,59 @@ export function ApprovalsPage() {
   >{t(`approvals.box.${id}`)}<TabCount>{first?.counts[id]}</TabCount></Link>)}</TabNav>;
   const sourceOptions = [{ id: ALL_SOURCES, label: t("approvals.filters.allSources") }, ...(first?.sources ?? []).map(item => ({ id: item.key, label: t("approvals.source.count", { label: item.label, count: item.count }) }))];
   const reset = () => { setQuery(""); set({ q: undefined, source: undefined, ...CLOSED }); };
-  return <Page floorplan="P-03" head={{ title: t("approvals.title"), tabs }} toolbar={<div ref={filters} className={s.filters} role="group" aria-label={t("approvals.filters.label")}>
-    <SearchField label={t("approvals.filters.search")} value={query} onChange={setQuery} />
-    <SelectField hideLabel label={t("approvals.filters.source")} placeholder={t("approvals.filters.allSources")} options={sourceOptions} value={source ?? ALL_SOURCES} onChange={id => set({ source: id === ALL_SOURCES ? undefined : id, ...CLOSED })} />
-    {filtered && <Button variant="ghost" onClick={reset}>{t("approvals.filters.reset")}</Button>}
-  </div>}>
-    <QueryState q={inbox} layout="list">{() => <ApprovalInboxView
-      items={items} sel={sel} selected={selected ?? undefined} record={sel && <QueryState key={sel} q={opened} layout="record">{document => <ApprovalDocumentView document={document} />}</QueryState>}
-      onSelect={select} onClose={() => select(undefined)} onFind={() => filters.current?.querySelector("input")?.focus()}
-      full={full} onFull={on => on ? expand() : restore()}
-      hasNext={inbox.hasNextPage} loadingMore={inbox.isFetchingNextPage} onMore={() => void inbox.fetchNextPage()}
-      emptyTitle={t(`approvals.empty.${box}`)}
-    />}</QueryState>
-  </Page>;
+
+  return (
+    <Worklist
+      q={inbox}
+      baseline={() => <Page floorplan="P-03" head={{ title: t("approvals.title"), tabs }} toolbar={<div ref={filters} className={s.filters} role="group" aria-label={t("approvals.filters.label")}>
+        <SearchField label={t("approvals.filters.search")} value={query} onChange={setQuery} />
+        <SelectField hideLabel label={t("approvals.filters.source")} placeholder={t("approvals.filters.allSources")} options={sourceOptions} value={source ?? ALL_SOURCES} onChange={id => set({ source: id === ALL_SOURCES ? undefined : id, ...CLOSED })} />
+        {filtered && <Button variant="ghost" onClick={reset}>{t("approvals.filters.reset")}</Button>}
+      </div>}>
+        <QueryState q={inbox} layout="list">{() => <ApprovalInboxView
+          items={items} sel={sel} selected={selected ?? undefined} record={sel && <QueryState key={sel} q={opened} layout="record">{document => <ApprovalDocumentView document={document} />}</QueryState>}
+          onSelect={select} onClose={() => select(undefined)} onFind={() => filters.current?.querySelector("input")?.focus()}
+          full={full} onFull={on => on ? expand() : restore()}
+          hasNext={inbox.hasNextPage} loadingMore={inbox.isFetchingNextPage} onMore={() => void inbox.fetchNextPage()}
+          emptyTitle={t(`approvals.empty.${box}`)}
+        />}</QueryState>
+      </Page>}
+      tabs={tabs}
+      head={{ title: t("approvals.title"), titleId: "approvals-title" }}
+      find={<div data-list-find=""><WorklistSearchField label={t("approvals.filters.search")} value={query} onChange={setQuery} /></div>}
+      filters={<div ref={filters} className={s.consoleFilters} role="group" aria-label={t("approvals.filters.label")}>
+        <SelectField hideLabel label={t("approvals.filters.source")} placeholder={t("approvals.filters.allSources")} options={sourceOptions} value={source ?? ALL_SOURCES} onChange={id => set({ source: id === ALL_SOURCES ? undefined : id, ...CLOSED })} />
+        {filtered && <Button variant="ghost" size="sm" onClick={reset}>{t("approvals.filters.reset")}</Button>}
+      </div>}
+      list={() => (
+        <ConsoleApprovalsTable
+          items={items}
+          sel={sel}
+          onSelect={select}
+          hasNext={inbox.hasNextPage}
+          loadingMore={inbox.isFetchingNextPage}
+          onMore={() => void inbox.fetchNextPage()}
+          emptyTitle={t(`approvals.empty.${box}`)}
+        />
+      )}
+      onSelect={select}
+      full={full}
+      onFull={on => on ? expand() : restore()}
+      record={sel ? {
+        id: sel,
+        label: t("approvals.document.title"),
+        title: selected?.title ?? t("approvals.document.title"),
+        meta: selected?.document_no,
+        openInTab: { href: `/approvals/${encodeURIComponent(sel)}`, label: selected?.title ?? sel },
+        actions: selected?.viewer ? <SourceViewerLink viewer={selected.viewer} /> : undefined,
+        onClose: () => select(undefined),
+        returnFocus: () => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
+        children: <QueryState key={sel} q={opened} layout="record">{document => <ConsoleApprovalSideView document={document} />}</QueryState>,
+      } : null}
+      statusSegments={first ? [
+        { id: "total", content: t("approvals.console.statusTotal", { count: first.counts[box] }) },
+        ...(selected ? [{ id: "selected", tone: "strong" as const, content: t("approvals.console.statusSelected", { doc: selected.document_no ?? selected.title }) }] : []),
+      ] : null}
+    />
+  );
 }

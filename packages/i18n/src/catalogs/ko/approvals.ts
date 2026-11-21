@@ -60,4 +60,9 @@ export const koApprovals: Record<keyof typeof enApprovals, string> = {
   "approvals.source.orgChange": sourceLabels.ko,
   "approvals.field.effectiveDate": "시행일",
   "approvals.field.proposal": "변경 내용",
+  "approvals.console.title": "결재",
+  "approvals.console.stepProgress": "{status} · {total, number}단계 중 {n, number}단계",
+  "approvals.console.due": "기한 {date}",
+  "approvals.console.statusTotal": "결재 {count, number}건",
+  "approvals.console.statusSelected": "선택 · {doc}",
 };

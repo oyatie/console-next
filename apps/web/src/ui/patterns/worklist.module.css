@@ -19,7 +19,7 @@
 }
 
 :where([data-experience]:not([data-experience="baseline"])) .head {
-  padding: 0;
+  padding: var(--toolbar-py) var(--space-4);
   border-block-end: 1px solid var(--border);
   background: var(--surface);
 }

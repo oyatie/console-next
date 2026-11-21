@@ -59,4 +59,9 @@ export const enApprovals = {
   "approvals.source.orgChange": sourceLabels.en,
   "approvals.field.effectiveDate": "Effective date",
   "approvals.field.proposal": "Proposed change",
+  "approvals.console.title": "Approvals",
+  "approvals.console.stepProgress": "{status} · {n, number} of {total, number}",
+  "approvals.console.due": "Due {date}",
+  "approvals.console.statusTotal": "{count, number} approvals",
+  "approvals.console.statusSelected": "Selected · {doc}",
 } as const;

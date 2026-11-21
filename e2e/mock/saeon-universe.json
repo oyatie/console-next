@@ -208,6 +208,13 @@
       { "step": 1, "kind": "기안", "actor": "김도현", "unit": "평택공장 생산부 부장", "status": "DONE", "completedDate": "2026-11-06" },
       { "step": 2, "kind": "합의", "actor": "문서연", "unit": "인사팀", "status": "CURRENT", "completedDate": null },
       { "step": 3, "kind": "결재", "actor": "한정우", "unit": "평택공장장", "status": "WAITING", "completedDate": null }
+    ],
+    "queue": [
+      { "id": "AP-2026-0419", "documentNumber": "AP-2026-0419", "title": "육아휴직 신청 · 이송이", "summary": "이송이 · 2026-12-01 ~ 2027-11-30", "requester": "이송이", "requestedDate": "2026-11-09", "effectiveDate": "2026-12-01" },
+      { "id": "AP-2026-0420", "documentNumber": "AP-2026-0420", "title": "평택공장 출고파트 신설", "summary": "평택공장 물류 대응 전담 파트 신설", "requester": "김도현", "requestedDate": "2026-11-08", "effectiveDate": "2026-11-24" },
+      { "id": "AP-2026-0421", "documentNumber": "AP-2026-0421", "title": "아산공장 조립1팀 교대 개편", "summary": "조립1팀 2교대 인력 배치 조정", "requester": "이경희", "requestedDate": "2026-11-08", "effectiveDate": "2026-11-25" },
+      { "id": "AP-2026-0422", "documentNumber": "AP-2026-0422", "title": "판교연구소 선행개발팀 직책 부여", "summary": "선행개발팀 파트장 직책 신설 및 겸임 해제", "requester": "윤태호", "requestedDate": "2026-11-07", "effectiveDate": "2026-11-28" },
+      { "id": "AP-2026-0423", "documentNumber": "AP-2026-0423", "title": "음성공장 생산1팀 명칭 정정", "summary": "생산1팀 표준 조직 명칭 정비", "requester": "윤하람", "requestedDate": "2026-11-06", "effectiveDate": "2026-12-01" }
     ]
   },
   "attendanceMonth": {
