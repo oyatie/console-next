@@ -48,14 +48,18 @@ impl HrService {
                 )
                 .await?;
 
-                let org_unit_id: Option<Uuid> = sqlx::query_scalar(
+                let org_unit_id: Option<Uuid> = sqlx::query_scalar::<_, Option<Uuid>>(
                     "SELECT org_unit_id FROM person_employees_current WHERE org_id = $1 AND id = $2",
                 )
                 .bind(org_uuid)
                 .bind(employee_id)
                 .fetch_optional(tx.as_mut())
                 .await?
-                .flatten();
+                .ok_or_else(|| {
+                    HrError::from_kernel(console_kernel_core::KernelError::not_found(
+                        "employee was not found in this organization",
+                    ))
+                })?;
 
                 let position = if let Some(unit_id) = org_unit_id {
                     let vis = visibility(tx, &reader, Feature::EmployeeDirectoryRead).await?;

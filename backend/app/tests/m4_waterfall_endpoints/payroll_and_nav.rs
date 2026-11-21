@@ -31,12 +31,6 @@ async fn org_chart_change_request_names_unit_position_and_payroll_run_filters_wo
     let (branch_a, unit_a) = seed_unit_and_branch(&pool, org_a, "Engineering").await;
     let (branch_b, unit_b) = seed_unit_and_branch(&pool, org_b, "Other Unit").await;
 
-    // #5 Org chart exposes total & truncated flags.
-    let (status, chart) = ops_a.call("GET", "/api/v1/hr/org-chart", None).await;
-    assert_eq!(status, StatusCode::OK, "{chart}");
-    assert_eq!(chart["truncated"], json!(false), "{chart}");
-    assert!(chart["total"].as_i64().unwrap() >= 1, "{chart}");
-
     // #7 Unit position past 200 members (seed 210 in unit_a + 1 in org_b).
     let mut seeded_ids = Vec::with_capacity(210);
     for i in 0..210 {
@@ -53,6 +47,12 @@ async fn org_chart_change_request_names_unit_position_and_payroll_run_filters_wo
         seeded_ids.push(id);
     }
     let foreign_emp = seed_employee(&pool, org_b, branch_b, unit_b, "Foreign Emp", "F-1", 1).await;
+
+    // #5 Org chart exposes total & truncated flags.
+    let (status, chart) = ops_a.call("GET", "/api/v1/hr/org-chart", None).await;
+    assert_eq!(status, StatusCode::OK, "{chart}");
+    assert_eq!(chart["truncated"], json!(false), "{chart}");
+    assert_eq!(chart["total"], json!(210), "{chart}");
 
     // Fetch authoritative order via GET /employees?org_unit_id=...&limit=250.
     let (status, list) = ops_a
@@ -106,8 +106,8 @@ async fn org_chart_change_request_names_unit_position_and_payroll_run_filters_wo
                 "subject_type": "EMPLOYEE",
                 "subject_id": target_emp,
                 "reason_code": "OTHER",
-                "note": "fix name",
-                "payload": { "changes": { "company": "Co2" } }
+                "note": "fix work email",
+                "payload": { "changes": { "work_email": "member005@example.com" } }
             })),
         )
         .await;
@@ -168,8 +168,8 @@ async fn org_chart_change_request_names_unit_position_and_payroll_run_filters_wo
     for (run_id, pg_id, label) in [(run_1, pg_1, "Run 1"), (run_2, pg_2, "Run 2")] {
         sqlx::query(
             "INSERT INTO payroll_draft_runs \
-             (id, org_id, pay_group_id, kind, attribution_month, period_start, period_end, source_label, status, calculation_enabled, created_by) \
-             VALUES ($1, $2, $3, 'REGULAR', '2026-08-01', '2026-08-01', '2026-08-31', $4, 'DRAFT', true, $5)",
+             (id, org_id, pay_group_id, kind, attribution_month, pay_date, period_start, period_end, variable_period_start, variable_period_end, source_label, status, calculation_enabled, created_by) \
+             VALUES ($1, $2, $3, 'REGULAR', '2026-08-01', '2026-08-25', '2026-08-01', '2026-08-31', '2026-07-16', '2026-08-15', $4, 'STAGED', false, $5)",
         )
         .bind(run_id).bind(org_a).bind(pg_id).bind(label).bind(*ops_a_id.as_uuid())
         .execute(&pool).await.unwrap();

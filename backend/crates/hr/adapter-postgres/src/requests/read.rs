@@ -57,6 +57,49 @@ pub fn change_request_from_row(row: &PgRow) -> Result<ChangeRequestResponse, HrE
     })
 }
 
+pub(super) async fn hydrate_subject_meta(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org_id: Uuid,
+    cr: &mut ChangeRequestResponse,
+) -> Result<(), HrError> {
+    let row: Option<(Option<String>, Option<String>)> = match cr.subject_type.as_str() {
+        "EMPLOYEE" => {
+            sqlx::query_as(
+                "SELECT COALESCE(console_employee_facts(org_id, id)->>'legal_name', name), \
+                        employee_number \
+                 FROM person_employees_current WHERE org_id = $1 AND id = $2",
+            )
+            .bind(org_id)
+            .bind(cr.subject_id)
+            .fetch_optional(tx.as_mut())
+            .await?
+        }
+        "USER_ACCOUNT" => {
+            sqlx::query_as(
+                "SELECT display_name, NULL::text FROM person_accounts_current \
+                 WHERE org_id = $1 AND id = $2",
+            )
+            .bind(org_id)
+            .bind(cr.subject_id)
+            .fetch_optional(tx.as_mut())
+            .await?
+        }
+        "BRANCH" => {
+            sqlx::query_as("SELECT name, NULL::text FROM branches WHERE org_id = $1 AND id = $2")
+                .bind(org_id)
+                .bind(cr.subject_id)
+                .fetch_optional(tx.as_mut())
+                .await?
+        }
+        _ => None,
+    };
+    if let Some((name, number)) = row {
+        cr.subject_name = name;
+        cr.subject_number = number;
+    }
+    Ok(())
+}
+
 impl HrService {
     pub async fn list_change_requests(
         &self,

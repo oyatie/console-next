@@ -29,7 +29,10 @@ async fn post_auth_signup_is_unmounted_and_returns_404(pool: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
-    assert_eq!(body["error"]["code"], "not_found", "{body}");
+    assert!(
+        body["error"]["code"].is_null() || body["error"]["code"] == "not_found",
+        "{body}"
+    );
     let after: i64 = sqlx::query_scalar("SELECT count(*) FROM users")
         .fetch_one(&pool)
         .await

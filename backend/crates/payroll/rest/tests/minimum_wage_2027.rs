@@ -213,72 +213,106 @@ async fn payslip_draft_applies_2026_vs_2027_minimum_wage_floors_dynamically(owne
         Some(json!({
             "effective_from": "2026-01-01",
             "wage_kind": "MONTHLY",
-            "amount_won": 2_200_000,
+            "amount_won": 2_100_000,
             "monthly_standard_hours": 209,
         })),
     )
     .await;
     assert_eq!(wage_status, StatusCode::CREATED, "{wage_body}");
 
-    // 2026-12-10: 2,200,000 / 209 = 10,526 >= 10,320 -> passes under 2025-47
-    let (s26, d26) = call(
+    // 2026-12-10: 2,100,000 / 209 = 10,047 < 10,320 -> emits MINIMUM_WAGE_BELOW_FLOOR under 2025-47
+    let (s26_low, d26_low) = call(
         app(pool.clone(), &keys),
         "GET",
         &format!(
             "/api/v1/payroll/employees/{employee}/payslip-draft\
-             ?period_start=2026-12-01&period_end=2026-12-31&pay_date=2026-12-10"
+             ?period=2026-12&pay_date=2026-12-10"
         ),
         &token,
         None,
     )
     .await;
-    assert_eq!(s26, StatusCode::OK, "{d26}");
-    assert_eq!(d26["minimum_wage_check"]["hourly_floor_won"], 10_320);
-    assert_eq!(d26["minimum_wage_check"]["passes"], true);
+    assert_eq!(s26_low, StatusCode::OK, "{d26_low}");
+    assert_eq!(d26_low["minimum_wage_check"]["hourly_floor_won"], 10_320);
+    assert_eq!(d26_low["minimum_wage_check"]["passes"], false);
     assert!(
-        d26["minimum_wage_check"]["instrument"]["promulgation_ko"]
+        d26_low["minimum_wage_check"]["instrument"]["promulgation_ko"]
             .as_str()
             .unwrap()
             .contains("2025-47"),
-        "{d26}"
+        "{d26_low}"
     );
     assert!(
-        !d26["blockers"]
+        d26_low["blockers"]
             .as_array()
             .unwrap()
             .iter()
             .any(|b| b == "MINIMUM_WAGE_BELOW_FLOOR"),
-        "{d26}"
+        "{d26_low}"
     );
 
-    // 2027-01-15: 2,200,000 / 209 = 10,526 < 10,700 -> emits MINIMUM_WAGE_BELOW_FLOOR under 2026-60
+    // Raise effective wage to 2,200,000 / 209 = 10,526: passes 2026 floor (10,320) but fails 2027 floor (10,700).
+    let (wage2_status, wage2_body) = call(
+        app(pool.clone(), &keys),
+        "POST",
+        &format!("/api/v1/payroll/employees/{employee}/contract-wages"),
+        &token,
+        Some(json!({
+            "effective_from": "2026-12-15",
+            "wage_kind": "MONTHLY",
+            "amount_won": 2_200_000,
+            "monthly_standard_hours": 209,
+        })),
+    )
+    .await;
+    assert_eq!(wage2_status, StatusCode::CREATED, "{wage2_body}");
+
+    let (s26_ok, d26_ok) = call(
+        app(pool.clone(), &keys),
+        "GET",
+        &format!(
+            "/api/v1/payroll/employees/{employee}/payslip-draft\
+             ?period=2026-12&pay_date=2026-12-20"
+        ),
+        &token,
+        None,
+    )
+    .await;
+    assert_eq!(s26_ok, StatusCode::OK, "{d26_ok}");
+    assert_eq!(d26_ok["minimum_wage_check"]["hourly_floor_won"], 10_320);
+    assert_eq!(d26_ok["minimum_wage_check"]["passes"], true);
+    assert!(
+        !d26_ok["blockers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|b| b == "MINIMUM_WAGE_BELOW_FLOOR"),
+        "{d26_ok}"
+    );
+
+    // 2027-01-15: payslip-draft fails closed while 2027 LTC is unpromulgated, and check_minimum_wage
+    // applies the 2027 10,700 floor + 2026-60 notice dynamically with MINIMUM_WAGE_BELOW_FLOOR.
     let (s27, d27) = call(
         app(pool, &keys),
         "GET",
         &format!(
             "/api/v1/payroll/employees/{employee}/payslip-draft\
-             ?period_start=2027-01-01&period_end=2027-01-31&pay_date=2027-01-15"
+             ?period=2027-01&pay_date=2027-01-15"
         ),
         &token,
         None,
     )
     .await;
-    assert_eq!(s27, StatusCode::OK, "{d27}");
-    assert_eq!(d27["minimum_wage_check"]["hourly_floor_won"], 10_700);
-    assert_eq!(d27["minimum_wage_check"]["passes"], false);
-    assert!(
-        d27["minimum_wage_check"]["instrument"]["promulgation_ko"]
-            .as_str()
-            .unwrap()
-            .contains("2026-60"),
-        "{d27}"
-    );
-    assert!(
-        d27["blockers"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|b| b == "MINIMUM_WAGE_BELOW_FLOOR"),
-        "{d27}"
-    );
+    assert_eq!(s27, StatusCode::UNPROCESSABLE_ENTITY, "{d27}");
+
+    let check_2027 = console_payroll_domain::check_minimum_wage(
+        2_200_000,
+        Some(209),
+        time::macros::date!(2027 - 01 - 15),
+    )
+    .unwrap();
+    assert_eq!(check_2027.hourly_floor_won, 10_700);
+    assert_eq!(check_2027.passes, Some(false));
+    assert_eq!(check_2027.blocker_code(), Some("MINIMUM_WAGE_BELOW_FLOOR"));
+    assert!(check_2027.instrument.promulgation_ko.contains("2026-60"));
 }

@@ -53,16 +53,17 @@ async fn warnings_batch_register_facts_bulk_exit_counts_and_users_search(pool: P
             "POST",
             "/api/v1/employees",
             Some(json!({
+                "idempotency_key": Uuid::new_v4().to_string(),
                 "name": "Same Name",
                 "org_unit_id": unit_a,
                 "hire_date": "2026-06-01",
-                "employment_type": "FULL_TIME",
+                "employment_type": "REGULAR",
                 "phone": "+821055551111"
             })),
         )
         .await;
     assert_eq!(status, StatusCode::CREATED, "{created}");
-    let created_id = Uuid::parse_str(created["id"].as_str().unwrap()).unwrap();
+    let created_id = Uuid::parse_str(created["employee"]["id"].as_str().unwrap()).unwrap();
     let warn = created["warnings"]
         .as_array()
         .unwrap()
@@ -80,10 +81,11 @@ async fn warnings_batch_register_facts_bulk_exit_counts_and_users_search(pool: P
             "POST",
             "/api/v1/employees",
             Some(json!({
+                "idempotency_key": Uuid::new_v4().to_string(),
                 "name": "Same Name",
                 "org_unit_id": unit_a,
                 "hire_date": "2026-06-01",
-                "employment_type": "FULL_TIME",
+                "employment_type": "REGULAR",
                 "phone": "+821055551111"
             })),
         )

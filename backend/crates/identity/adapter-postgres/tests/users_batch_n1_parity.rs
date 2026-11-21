@@ -53,13 +53,12 @@ async fn seed_user(
     let emp_id = if let Some(num) = emp_number {
         let id: Uuid = sqlx::query_scalar(
             "INSERT INTO employees \
-             (org_id, company, name, employee_number, home_branch_id, source_filename, source_sheet, source_row, source_key) \
-             VALUES ($1, 'Co', $2, $3, $4, 'seed', 'seed', 1, $5) RETURNING id",
+             (org_id, company, name, employee_number, source_filename, source_sheet, source_row, source_key) \
+             VALUES ($1, 'Co', $2, $3, 'seed', 'seed', 1, $4) RETURNING id",
         )
         .bind(org)
         .bind(display_name)
         .bind(num)
-        .bind(branch)
         .bind(Uuid::new_v4().to_string())
         .fetch_one(pool)
         .await
@@ -69,36 +68,45 @@ async fn seed_user(
         None
     };
 
+    static PHONE_SEQ: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+    let phone = format!(
+        "+8210{:08}",
+        PHONE_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    );
+    let mut tx = pool.begin().await.unwrap();
     let user_id: Uuid = sqlx::query_scalar(
         "INSERT INTO users (display_name, roles, org_id, is_active, employee_id, phone) \
-         VALUES ($1, ARRAY['ADMIN'], $2, true, $3, '+821012345678') RETURNING id",
+         VALUES ($1, ARRAY['ADMIN'], $2, true, $3, $4) RETURNING id",
     )
     .bind(display_name)
     .bind(org)
     .bind(emp_id)
-    .fetch_one(pool)
+    .bind(phone)
+    .fetch_one(tx.as_mut())
     .await
     .unwrap();
 
-    sqlx::query("INSERT INTO user_branches (user_id, branch_id) VALUES ($1, $2)")
+    sqlx::query("INSERT INTO user_branches (user_id, branch_id, org_id) VALUES ($1, $2, $3)")
         .bind(user_id)
         .bind(branch)
-        .execute(pool)
+        .bind(org)
+        .execute(tx.as_mut())
         .await
         .unwrap();
 
     if let Some(login_part) = login {
         sqlx::query(
-            "INSERT INTO user_sign_in_ids (org_id, user_id, login, is_current) \
-             VALUES ($1, $2, $3, true)",
+            "INSERT INTO user_sign_in_ids (org_id, user_id, login, effective_date, reason_code) \
+             VALUES ($1, $2, $3, CURRENT_DATE, 'SEED')",
         )
         .bind(org)
         .bind(user_id)
         .bind(login_part)
-        .execute(pool)
+        .execute(tx.as_mut())
         .await
         .unwrap();
     }
+    tx.commit().await.unwrap();
     UserId::from_uuid(user_id)
 }
 

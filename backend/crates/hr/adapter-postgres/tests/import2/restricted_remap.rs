@@ -118,15 +118,17 @@ async fn restricted_column_remap_refused_and_dry_run_apply_block_poisoned_profil
             .unwrap_err();
     assert_eq!(dry_err.code, "mapping_restricted_column");
 
+    let digest = "c".repeat(64);
     sqlx::query(
-        "UPDATE data_import_runs SET status = 'DRY_RUN', dry_run_digest = 'd', \
+        "UPDATE data_import_runs SET status = 'DRY_RUN', dry_run_digest = $2, \
          dry_run_decisions = '{}'::jsonb, dry_run_summary = '{\"rows\":[]}'::jsonb WHERE id = $1",
     )
     .bind(ok_preview.run_id)
+    .bind(&digest)
     .execute(&pool)
     .await
     .unwrap();
-    let apply_err = i.apply(ok_preview.run_id, "d").await.unwrap_err();
+    let apply_err = i.apply(ok_preview.run_id, &digest).await.unwrap_err();
     assert_eq!(apply_err.code, "mapping_restricted_column");
 
     // Poisoned memory row in DB is ignored when loading tenant memory.

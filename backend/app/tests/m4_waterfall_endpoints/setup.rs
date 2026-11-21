@@ -76,7 +76,17 @@ pub async fn seed_employee(
     number: &str,
     row_num: i32,
 ) -> Uuid {
-    sqlx::query_scalar(
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL ROLE console_leave_definer")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("SELECT set_config('app.current_org', $1, true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let id: Uuid = sqlx::query_scalar(
         "INSERT INTO employees \
          (org_id, company, name, employee_number, home_branch_id, org_unit_id, hire_date, \
           employment_status, source_filename, source_sheet, source_row, source_key) \
@@ -90,19 +100,22 @@ pub async fn seed_employee(
     .bind(unit)
     .bind(row_num)
     .bind(Uuid::new_v4().to_string())
-    .fetch_one(pool)
+    .fetch_one(tx.as_mut())
     .await
-    .unwrap()
+    .unwrap();
+    tx.commit().await.unwrap();
+    id
 }
 
 pub async fn grant_tenant_pay_view(pool: &PgPool, org: Uuid, actor: UserId) {
+    let granter = harness::user(pool, org, "SUPER_ADMIN").await;
     let role = Uuid::new_v4();
     sqlx::query("INSERT INTO access_roles (org_id, id, name_ko, status, version, created_by) VALUES ($1, $2, 'PayView', 'ACTIVE', 1, $3)")
-        .bind(org).bind(role).bind(actor.as_uuid()).execute(pool).await.unwrap();
+        .bind(org).bind(role).bind(granter.as_uuid()).execute(pool).await.unwrap();
     sqlx::query("INSERT INTO access_role_versions (org_id, role_id, version, name_ko, status, change_mode, created_by) VALUES ($1, $2, 1, 'PayView', 'ACTIVE', 'SETUP', $3)")
-        .bind(org).bind(role).bind(actor.as_uuid()).execute(pool).await.unwrap();
+        .bind(org).bind(role).bind(granter.as_uuid()).execute(pool).await.unwrap();
     sqlx::query("INSERT INTO access_role_lines (org_id, role_id, version, domain, levels) VALUES ($1, $2, 1, 'pay', ARRAY['view'])")
         .bind(org).bind(role).execute(pool).await.unwrap();
     sqlx::query("INSERT INTO access_grants (org_id, account_id, role_id, scope_kind, valid_from, effective_in_setup, change_mode, reason_code, granted_by) VALUES ($1, $2, $3, 'TENANT', now() - interval '1 day', true, 'SETUP', 'TEST', $4)")
-        .bind(org).bind(actor.as_uuid()).bind(role).bind(actor.as_uuid()).execute(pool).await.unwrap();
+        .bind(org).bind(actor.as_uuid()).bind(role).bind(granter.as_uuid()).execute(pool).await.unwrap();
 }
