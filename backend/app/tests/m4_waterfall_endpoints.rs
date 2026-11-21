@@ -254,4 +254,29 @@ async fn warnings_batch_register_facts_bulk_exit_counts_and_users_search(pool: P
     let (status, users_res) = ops_a.call("GET", "/api/v1/users?search=SN-002", None).await;
     assert_eq!(status, StatusCode::OK, "{users_res}");
     assert_eq!(users_res["total"], json!(1), "{users_res}");
+
+    // ILIKE escaping on /api/v1/employees and /api/v1/hr/exit-cases/counts.
+    let lit_emp = seed_employee(
+        &pool,
+        org_a,
+        branch_a,
+        unit_a,
+        "Lit 50%_Name\\X",
+        "SN-50%_",
+        99,
+    )
+    .await;
+    for (term, expected) in [("%25", 1), ("_", 1), ("%5C", 1)] {
+        let (status, res) = ops_a
+            .call("GET", &format!("/api/v1/employees?search={term}"), None)
+            .await;
+        assert_eq!(status, StatusCode::OK, "{res}");
+        assert_eq!(res["total"], json!(expected), "employees search={term}");
+    }
+    let (status, ec_pct) = ops_a
+        .call("GET", "/api/v1/hr/exit-cases/counts?search=%25", None)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{ec_pct}");
+    assert_eq!(ec_pct["open"], json!(0), "wildcard % must not match exit");
+    let _ = lit_emp;
 }

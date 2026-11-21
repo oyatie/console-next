@@ -148,13 +148,18 @@ impl PgOrgStore {
                            AND LOWER(e.employee_number) LIKE '%' || ",
                     )
                     .push_bind(escaped)
-                    .push(
-                        " || '%' ESCAPE '\\') OR EXISTS (SELECT 1 FROM user_sign_in_ids s \
-                         WHERE s.org_id = u.org_id AND s.user_id = u.id \
-                           AND s.login LIKE '%' || ",
-                    )
-                    .push_bind(login_part)
-                    .push(" || '%' ESCAPE '\\'))");
+                    .push(" || '%' ESCAPE '\\')");
+                if !login_part.is_empty() {
+                    builder
+                        .push(
+                            " OR EXISTS (SELECT 1 FROM user_sign_in_ids s \
+                             WHERE s.org_id = u.org_id AND s.user_id = u.id \
+                               AND s.login LIKE '%' || ",
+                        )
+                        .push_bind(login_part)
+                        .push(" || '%' ESCAPE '\\')");
+                }
+                builder.push(")");
             }
         };
 
@@ -197,7 +202,7 @@ impl PgOrgStore {
     }
 }
 
-fn escape_like(value: &str) -> String {
+pub(crate) fn escape_like(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     for ch in value.chars() {
         if matches!(ch, '\\' | '%' | '_') {

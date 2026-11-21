@@ -131,6 +131,45 @@ async fn restricted_column_remap_refused_and_dry_run_apply_block_poisoned_profil
     let apply_err = i.apply(ok_preview.run_id, &digest).await.unwrap_err();
     assert_eq!(apply_err.code, "mapping_restricted_column");
 
+    // Empty source_header must not short-circuit normalized_header validation in dry-run or apply.
+    let empty_source_profile = json!({
+        "columns": [
+            { "source_header": "", "normalized_header": account, "target": "position" }
+        ]
+    });
+    sqlx::query(
+        "UPDATE data_import_runs SET status = 'PREVIEWED', mapping_profile = $2 WHERE id = $1",
+    )
+    .bind(ok_preview.run_id)
+    .bind(&empty_source_profile)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let dry_empty_err =
+        i.f.hr
+            .dry_run_import(
+                i.f.principal.clone(),
+                ok_preview.run_id,
+                console_hr_adapter_postgres::import::types::ImportDryRunRequest {
+                    decisions: decisions(),
+                },
+            )
+            .await
+            .unwrap_err();
+    assert_eq!(dry_empty_err.code, "mapping_restricted_column");
+
+    sqlx::query(
+        "UPDATE data_import_runs SET status = 'DRY_RUN', dry_run_digest = $2, \
+         dry_run_decisions = '{}'::jsonb, dry_run_summary = '{\"rows\":[]}'::jsonb WHERE id = $1",
+    )
+    .bind(ok_preview.run_id)
+    .bind(&digest)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let apply_empty_err = i.apply(ok_preview.run_id, &digest).await.unwrap_err();
+    assert_eq!(apply_empty_err.code, "mapping_restricted_column");
+
     // Poisoned memory row in DB is ignored when loading tenant memory.
     sqlx::query(
         "INSERT INTO import_column_memory (org_id, header_key, target, updated_by) \

@@ -3,6 +3,8 @@
 
 #[path = "account_link_solo/query_count.rs"]
 mod query_count;
+#[path = "users_batch_n1_parity/search.rs"]
+mod search;
 
 use std::collections::BTreeSet;
 
@@ -139,6 +141,7 @@ async fn list_users_and_directory_people_have_flat_statement_count_and_safe_sear
                 Some("EMP-50"),
                 Some("lit50"),
             ),
+            2 => ("Back\\Slash".to_owned(), Some("EMP-BS"), Some("bs\\login")),
             _ => (format!("Staff Member {i:03}"), None, None),
         };
         seed_user(&pool, *org_a.as_uuid(), branch_a, &name, num, login).await;
@@ -289,4 +292,7 @@ async fn list_users_and_directory_people_have_flat_statement_count_and_safe_sear
         .unwrap();
     assert_eq!(by_lit.total, 1);
     assert_eq!(by_lit.items[0].display_name, "Literal 50%_Match");
+
+    // 4. Leading-@ search must not match all sign-in IDs; directory search escapes %, _, \.
+    search::assert_search_edge_cases(&store, org_a, &scope).await;
 }

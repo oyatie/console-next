@@ -6,25 +6,7 @@ use super::fields::{
     Classification, EMPLOYEE_IMPORT_FIELD_DEFINITIONS, EmployeeImportFieldDefinition,
 };
 use super::pii as import_pii;
-
-pub fn normalize_header_label(raw: &str) -> String {
-    raw.chars()
-        .filter(|ch| !ch.is_whitespace())
-        .collect::<String>()
-}
-
-pub fn import_header_match_key(header: &str) -> String {
-    normalize_header_label(header)
-        .chars()
-        .filter(|ch| {
-            !matches!(
-                ch,
-                '(' | ')' | '[' | ']' | '{' | '}' | '_' | '-' | '/' | '\\' | '.' | '·' | ':'
-            )
-        })
-        .collect::<String>()
-        .to_ascii_lowercase()
-}
+pub use super::pii::{import_header_match_key, normalize_header_label};
 
 pub fn employee_import_target_for_header(header: &str) -> Option<&'static str> {
     employee_import_field_for_header(header).map(|field| field.target)
@@ -96,6 +78,7 @@ pub fn is_dropped_employee_import_header(header: &str) -> bool {
 }
 
 pub fn is_restricted_employee_import_header(header: &str) -> bool {
+    let match_key = import_header_match_key(header);
     let restricted_fragments = [
         "주민",
         "급여",
@@ -122,7 +105,7 @@ pub fn is_restricted_employee_import_header(header: &str) -> bool {
     ];
     restricted_fragments
         .iter()
-        .any(|fragment| header.contains(fragment))
+        .any(|fragment| header.contains(fragment) || match_key.contains(fragment))
         || import_pii::is_pii2_restricted_header(header)
 }
 

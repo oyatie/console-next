@@ -100,3 +100,61 @@ fn restricted_headers_cannot_remap_and_poisoned_memory_is_ignored() {
     assert_eq!(cols[1], ("B".into(), None));
     assert_eq!(cols[3], ("D".into(), Some("phone")));
 }
+
+#[test]
+fn punctuation_split_restricted_headers_reject_remap_while_worksite_address_succeeds() {
+    use crate::import::classification::employee_import_field_for_target;
+    let ko = |cps: &[u32]| -> String {
+        cps.iter()
+            .map(|&c| char::from_u32(c).unwrap())
+            .collect::<String>()
+    };
+    let name = employee_import_field_for_target("name").unwrap().aliases[0];
+    let worksite_addr = employee_import_field_for_target("worksite_address")
+        .unwrap()
+        .aliases[1];
+    assert_eq!(worksite_addr, ko(&[0xADFC, 0xBB34, 0xC9C0, 0xC8FC, 0xC18C]));
+
+    let restricted_cases = [
+        (ko(&[0xAC1C, 0xC778, 0x5F, 0xC8FC, 0xC18C]), "worksite_name"),
+        (ko(&[0xAC70, 0xC8FC, 0x5F, 0xC8FC, 0xC18C]), "worksite_name"),
+        (ko(&[0xAC1C, 0xC778, 0x2D, 0xC8FC, 0xC18C]), "position"),
+        (ko(&[0x5B, 0xC8FC, 0xC18C, 0x5D]), "worksite_name"),
+        (
+            ko(&[0xC8FC, 0xC18C, 0x28, 0xAC1C, 0xC778, 0x29]),
+            "worksite_name",
+        ),
+        (
+            ko(&[0xD578, 0xB4DC, 0x5F, 0xD3F0, 0x28, 0xBE44, 0xC0C1, 0x29]),
+            "position",
+        ),
+        (
+            ko(&[0xC5F0, 0xB77D, 0x5F, 0xCC98, 0x28, 0xAC1C, 0xC778, 0x29]),
+            "job",
+        ),
+    ];
+
+    for (header, target) in restricted_cases {
+        let s = sheet("s", &[&[name, &header], &["A", "SECRET_PII_CELL"]]);
+        let req = SheetMappingRequest {
+            header_row: Some(1),
+            columns: BTreeMap::from([("B".into(), Some(target.into()))]),
+            skip: Some(false),
+        };
+        let err = detect(&s, &none(), Some(&req)).unwrap_err();
+        assert_eq!(err.code(), "mapping_restricted_column", "{header}");
+        assert!(!format!("{err:?}").contains("SECRET_PII_CELL"));
+    }
+
+    let ok_sheet = sheet("s", &[&[name, worksite_addr], &["A", "Plant 1 Road"]]);
+    let ok_req = SheetMappingRequest {
+        header_row: Some(1),
+        columns: BTreeMap::from([
+            ("A".into(), Some("name".into())),
+            ("B".into(), Some("worksite_address".into())),
+        ]),
+        skip: Some(false),
+    };
+    let (_, cols) = mapped(detect(&ok_sheet, &none(), Some(&ok_req)).unwrap());
+    assert_eq!(cols[1], ("B".into(), Some("worksite_address")));
+}
