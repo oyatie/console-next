@@ -1619,3 +1619,133 @@ export function saeonApprovalsPage(
     next_cursor: null,
   };
 }
+
+const HERO_PAYSLIP_SPECS = [
+  {
+    id: "00000000-0000-4000-8950-000000002010",
+    runId: "00000000-0000-4000-8940-000000002010",
+    lineId: "00000000-0000-4000-8941-000000002010",
+    month: "2026-10",
+    periodStart: "2026-10-01",
+    periodEnd: "2026-10-31",
+    payDate: "2026-11-25",
+    createdAt: "2026-11-25T00:00:00Z",
+    workDays: 18,
+    paidHolidayDays: 4,
+    overtimeHours: 12,
+    leaveUsed: 0,
+    leaveRemaining: 9.5,
+  },
+  {
+    id: "00000000-0000-4000-8950-000000002009",
+    runId: "00000000-0000-4000-8940-000000002009",
+    lineId: "00000000-0000-4000-8941-000000002009",
+    month: "2026-09",
+    periodStart: "2026-09-01",
+    periodEnd: "2026-09-30",
+    payDate: "2026-10-23",
+    createdAt: "2026-10-23T00:00:00Z",
+    workDays: 20,
+    paidHolidayDays: 2,
+    overtimeHours: 6,
+    leaveUsed: 0.5,
+    leaveRemaining: 9.5,
+  },
+  {
+    id: "00000000-0000-4000-8950-000000002008",
+    runId: "00000000-0000-4000-8940-000000002008",
+    lineId: "00000000-0000-4000-8941-000000002008",
+    month: "2026-08",
+    periodStart: "2026-08-01",
+    periodEnd: "2026-08-31",
+    payDate: "2026-09-25",
+    createdAt: "2026-09-25T00:00:00Z",
+    workDays: 21,
+    paidHolidayDays: 1,
+    overtimeHours: 0,
+    leaveUsed: 1,
+    leaveRemaining: 10,
+  },
+] as const;
+
+function buildHeroPayslipEntry(spec: (typeof HERO_PAYSLIP_SPECS)[number]) {
+  const hero = saeonHeroUser();
+  const row = saeonPayrollRow(saeonUniverse.hero.employeeNumber, saeonUniverse.hero.gradeCode, spec.overtimeHours, true);
+  const summary: S["InboxDocSummary"] = {
+    id: spec.id,
+    recipient_user_id: hero.id,
+    kind: "payslip",
+    title: `${t("payslip.title")} ${spec.periodStart} ~ ${spec.periodEnd} · ${hero.employee_name}`,
+    source_kind: "payroll_run",
+    source_id: spec.runId,
+    locked: false,
+    confirmed_by: null,
+    confirmed_at: null,
+    created_at: spec.createdAt,
+    payslip_meta: {
+      attribution_month: spec.month,
+      period_start: spec.periodStart,
+      period_end: spec.periodEnd,
+      pay_date: spec.payDate,
+      gross_won: row.grossPay,
+      net_won: row.netPay,
+    },
+  };
+  const detail: S["InboxDocDetail"] = {
+    ...summary,
+    payload: {
+      run_id: spec.runId,
+      line_id: spec.lineId,
+      attribution_month: spec.month,
+      period_start: spec.periodStart,
+      period_end: spec.periodEnd,
+      pay_date: spec.payDate,
+      employee_number: saeonUniverse.hero.employeeNumber,
+      employee_display_name: saeonUniverse.hero.name,
+      employee_company: saeonUniverse.hero.entityName,
+      org_unit: saeonUniverse.hero.shortPlace,
+      position: `${saeonUniverse.hero.gradeLabel} · ${saeonUniverse.hero.roleLabel}`,
+      work_days: spec.workDays,
+      paid_holiday_days: spec.paidHolidayDays,
+      regular_hours: spec.workDays * 8,
+      overtime_hours: spec.overtimeHours,
+      night_hours: 0,
+      holiday_hours: 0,
+      leave_used: spec.leaveUsed,
+      leave_remaining: spec.leaveRemaining,
+      bank_account_registered: row.bankAccountRegistered,
+      base_pay_won: row.basePay,
+      overtime_pay_won: row.overtimePay,
+      meal_allowance_won: row.mealAllowance,
+      taxable_won: row.taxablePay,
+      gross_won: row.grossPay,
+      deductions: [
+        { code: "NATIONAL_PENSION", label_ko: t("payslip.deduction.NATIONAL_PENSION"), amount_won: row.nationalPension, source_url: "https://www.nps.or.kr/" },
+        { code: "HEALTH_INSURANCE", label_ko: t("payslip.deduction.HEALTH_INSURANCE"), amount_won: row.healthInsurance, source_url: "https://www.nhis.or.kr/" },
+        { code: "LONG_TERM_CARE", label_ko: t("payslip.deduction.LONG_TERM_CARE"), amount_won: row.longTermCare, source_url: "https://www.nhis.or.kr/" },
+        { code: "EMPLOYMENT_INSURANCE", label_ko: t("payslip.deduction.EMPLOYMENT_INSURANCE"), amount_won: row.employmentInsurance, source_url: "https://www.ei.go.kr/" },
+        { code: "INCOME_TAX", label_ko: t("payslip.deduction.INCOME_TAX"), amount_won: row.incomeTax, source_url: "https://www.nts.go.kr/" },
+        { code: "LOCAL_INCOME_TAX", label_ko: t("payslip.deduction.LOCAL_INCOME_TAX"), amount_won: row.localIncomeTax, source_url: "https://www.wetax.go.kr/" },
+      ],
+      total_deductions_won: row.totalDeductions,
+      net_won: row.netPay,
+      tax_table_version: "2026",
+      calculation_version: 1,
+    },
+  };
+  return { summary, detail };
+}
+
+/** OpenAPI-typed `InboxDocPage` of issued Saeon hero payslips (`2026-10`, `2026-09`, `2026-08`). */
+export function saeonHeroPayslipDocs(): S["InboxDocPage"] {
+  return {
+    items: HERO_PAYSLIP_SPECS.map(spec => buildHeroPayslipEntry(spec).summary),
+    next_cursor: null,
+  };
+}
+
+/** OpenAPI-typed `InboxDocDetail` for a Saeon hero issued payslip (`2026-10` by default). */
+export function saeonHeroPayslipDetail(docId?: string): S["InboxDocDetail"] | null {
+  const spec = docId ? HERO_PAYSLIP_SPECS.find(item => item.id === docId) : HERO_PAYSLIP_SPECS[0];
+  return spec ? buildHeroPayslipEntry(spec).detail : null;
+}

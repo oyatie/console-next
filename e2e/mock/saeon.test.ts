@@ -17,6 +17,8 @@ import {
   saeonApprovalsPage,
   saeonAttendanceSummary,
   saeonEmployeeFacets,
+  saeonHeroPayslipDetail,
+  saeonHeroPayslipDocs,
   saeonHeroScheduleMonth,
   saeonHeroToken,
   saeonHeroUser,
@@ -289,4 +291,27 @@ test("worklist, approval OC-2026-0418, attendance month, and Console payroll tot
   });
   expect(created.days).toBe(0.5);
   expect(created.partial_day_period).toBe("am");
+
+  const payslipDocs = saeonHeroPayslipDocs();
+  expect(payslipDocs.items).toHaveLength(3);
+  expect(payslipDocs.items.map(d => d.payslip_meta?.attribution_month)).toEqual(["2026-10", "2026-09", "2026-08"]);
+  expect(payslipDocs.items[0]?.payslip_meta).toMatchObject({
+    pay_date: "2026-11-25",
+    gross_won: 3_567_000,
+    net_won: 3_141_755,
+  });
+  const detailOct = saeonHeroPayslipDetail(payslipDocs.items[0]!.id);
+  expect(detailOct).not.toBeNull();
+  expect(detailOct!.payload).toMatchObject({
+    base_pay_won: 3_100_000,
+    overtime_pay_won: 267_000,
+    meal_allowance_won: 200_000,
+    gross_won: 3_567_000,
+    total_deductions_won: 425_245,
+    net_won: 3_141_755,
+    work_days: 18,
+    paid_holiday_days: 4,
+    leave_used: 0,
+  });
+  expect(saeonHeroPayslipDetail("00000000-0000-4000-8950-999999999999")).toBeNull();
 });

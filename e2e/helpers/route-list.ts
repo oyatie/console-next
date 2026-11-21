@@ -72,6 +72,7 @@ const paths = [
   "/payroll/runs/$id",
   "/payroll/runs/new",
   "/payroll/setup",
+  "/payslips",
   "/platform",
   "/requests",
   "/requests/$id",
