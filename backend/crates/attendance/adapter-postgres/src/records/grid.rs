@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use super::day::{add, day_read, evaluate_day, grid_cell};
 use super::entries::{current, history};
+use super::grid_summary::{load_positions, summarize_month_grid, summarize_work_patterns};
 use super::roster::{load_members, own_employee};
 use super::thresholds::RecordSettings;
 use super::{BoardAccessFuture, BoardReadTarget, RECORDS_PAGE_LIMIT};
@@ -120,6 +121,9 @@ impl PgAttendanceStore {
                     let ids: Vec<Uuid> = page.iter().map(|m| m.id).collect();
                     let mut entries = current(tx, first, last, Some(&ids)).await?;
                     let closes = Closes::load(tx).await?;
+                    let positions = load_positions(tx, &ids).await?;
+                    let work_pattern_summary =
+                        summarize_work_patterns(&u, page, today.clamp(first, last));
                     let rows = page
                         .iter()
                         .map(|m| {
@@ -156,6 +160,7 @@ impl PgAttendanceStore {
                                     .unit
                                     .and_then(|x| u.org.units.get(&x))
                                     .map(|x| x.name.clone()),
+                                position: positions.get(&m.id).cloned(),
                                 own: own == Some(m.id),
                                 cells,
                                 totals,
@@ -163,11 +168,14 @@ impl PgAttendanceStore {
                             })
                         })
                         .collect::<Result<Vec<_>, ScheduleStoreError>>()?;
+                    let summary = summarize_month_grid(&u, &days, &rows);
                     Ok(MonthGrid {
                         month: q.month,
                         rows,
                         people_total: total,
                         next_cursor,
+                        work_pattern_summary,
+                        summary: Some(summary),
                     })
                 })
             },

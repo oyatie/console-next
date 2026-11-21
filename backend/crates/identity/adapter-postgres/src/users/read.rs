@@ -10,7 +10,7 @@ use console_platform_authz::access::{
 };
 use console_platform_db::with_org_conn;
 use console_platform_request_context::current_org;
-use sqlx::{Postgres, QueryBuilder};
+use sqlx::{Postgres, QueryBuilder, Row, Transaction};
 
 pub(crate) const DEFAULT_USER_LIMIT: i64 = 50;
 const MAX_USER_LIMIT: i64 = 200;
@@ -62,6 +62,26 @@ impl PgOrgStore {
             return Err(PgOrgError::Domain(KernelError::not_found("user not found")));
         }
         fetch_user(&self.pool, user_id).await
+    }
+
+    /// Fetch the caller's own [`UserSummary`] enriched with self-service
+    /// employee employment metadata (`hire_date`, `employment_status`, `grade`).
+    pub async fn get_me_summary(&self, user_id: UserId) -> Result<UserSummary, PgOrgError> {
+        let org = current_org().map_err(KernelError::from)?;
+        with_org_conn::<_, _, PgOrgError>(&self.pool, org, move |tx| {
+            Box::pin(async move {
+                let mut summary = fetch_user_tx(tx, user_id).await?;
+                if let Some(employee_id) = summary.employee_id {
+                    let (hire_date, employment_status, grade) =
+                        fetch_employee_summary_extras_tx(tx, *org.as_uuid(), employee_id).await?;
+                    summary.employee_hire_date = hire_date;
+                    summary.employee_employment_status = employment_status;
+                    summary.employee_grade = grade;
+                }
+                Ok(summary)
+            })
+        })
+        .await
     }
 
     /// Employee `id`'s live home branch; `None` when it has none, or no such employee.
@@ -211,4 +231,32 @@ pub(crate) fn escape_like(value: &str) -> String {
         out.push(ch);
     }
     out
+}
+
+async fn fetch_employee_summary_extras_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    org_id: uuid::Uuid,
+    employee_id: uuid::Uuid,
+) -> Result<(Option<String>, Option<String>, Option<String>), PgOrgError> {
+    let row = sqlx::query(
+        "SELECT COALESCE(to_char(e.hire_on, 'YYYY-MM-DD'), NULLIF(btrim(e.hire_date), '')) AS hire_date, \
+                entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employment_status, \
+                jt.label AS grade \
+         FROM employees e \
+         LEFT JOIN job_titles jt \
+           ON jt.org_id = e.org_id AND jt.id = e.grade_id AND jt.kind = 'GRADE' \
+         WHERE e.org_id = $1 AND e.id = $2",
+    )
+    .bind(org_id)
+    .bind(employee_id)
+    .fetch_optional(tx.as_mut())
+    .await?;
+    let Some(row) = row else {
+        return Ok((None, None, None));
+    };
+    Ok((
+        row.try_get("hire_date")?,
+        row.try_get("employment_status")?,
+        row.try_get("grade")?,
+    ))
 }

@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- id
+- field
+- status
+- created_at
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  field:
+    type: string
+  status:
+    type: string
+  masked_summary:
+    type:
+    - string
+    - 'null'
+  created_at:
+    $ref: '#/components/schemas/Timestamp'

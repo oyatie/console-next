@@ -197,6 +197,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         "hr-unit-position",
         console_hr_rest::unit_position::UNIT_POSITION_ROUTE_PATHS,
     ),
+    surface(
+        "hr-me-profile",
+        console_hr_rest::me_profile::ME_PROFILE_ROUTE_PATHS,
+    ),
     #[cfg(feature = "workspace")]
     surface(
         "workflow-studio",

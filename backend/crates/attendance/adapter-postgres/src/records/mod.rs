@@ -10,6 +10,7 @@ pub(crate) mod day;
 mod edits;
 pub(crate) mod entries;
 mod grid;
+mod grid_summary;
 pub(crate) mod roster;
 mod save;
 pub(crate) mod thresholds;

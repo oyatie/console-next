@@ -65,7 +65,7 @@ pub struct MonthlyStandardHours {
     pub denominator: i64,
 }
 
-/// 근로기준법 시행령 §6②3·4: (weekly scheduled + paid minutes) × 365 / (7 × 12 × 60).
+/// Labor Standards Act Enforcement Decree Art. 6(2)(3)-(4): (weekly scheduled + paid minutes) * 365 / (7 * 12 * 60).
 /// https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1031431415
 /// Missing schedule facts never imply full-time hours or a paid holiday.
 #[must_use]

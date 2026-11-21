@@ -375,12 +375,6 @@
     },
     {
       "model": "BranchScope",
-      "file": "backend/crates/identity/rest/src/me/routes.rs",
-      "kind": "reference",
-      "count": 2
-    },
-    {
-      "model": "BranchScope",
       "file": "backend/crates/identity/rest/src/metrics.rs",
       "kind": "reference",
       "count": 6

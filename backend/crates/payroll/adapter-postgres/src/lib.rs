@@ -21,7 +21,10 @@ pub mod payslip_draft;
 pub mod reference;
 pub mod roster;
 mod run_detail;
-pub use run_detail::{PayrollLineDeduction, PayrollLineSummary, PayrollRunDetail, get_run_in_tx};
+pub use run_detail::{
+    PayrollLineDeduction, PayrollLineSummary, PayrollRunDetail, get_run_filtered_in_tx,
+    get_run_in_tx,
+};
 mod runs_read;
 pub use runs_read::{list_runs_filtered_in_tx, list_runs_in_tx};
 

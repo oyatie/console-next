@@ -182,6 +182,9 @@ const CODES: &[(&str, &str)] = &[
     ),
 ];
 
+#[rustfmt::skip]
+const LEAVE_CODES: &[(&str, &str)] = &[("leave_home_branch_review_required", "소속 사업장이 확정되지 않아 휴가를 신청할 수 없습니다. 인사 담당자에게 배치 확인을 요청하십시오."), ("leave_calendar_review_required", "근무 일정 및 휴가 차감 기준 확인이 완료된 뒤 승인할 수 있습니다."), ("leave_concurrent_modification", "다른 담당자가 먼저 처리해 휴가 신청 상태가 변경되었습니다. 화면을 새로 고친 뒤 다시 시도하십시오."), ("leave_command_unavailable", "휴가 처리 기능을 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도하십시오."), ("leave_overlapping_request", "선택한 기간에 이미 신청되었거나 승인된 휴가가 있습니다."), ("leave_period_closed", "근태 또는 급여가 마감된 기간에는 휴가를 신청할 수 없습니다."), ("leave_no_scheduled_workdays", "선택한 기간에 소정 근로일이 포함되어 있지 않습니다."), ("leave_create.idempotency_conflict", "이미 다른 내용으로 접수된 요청입니다. 입력 내용을 확인한 뒤 다시 시도하십시오."), ("leave.refuse.identity_unbound", "요청자 또는 결정자의 본인 정보를 확인할 수 없어 처리할 수 없습니다.")];
+
 /// Server-authored org-change `reason` strings (legacy org-setup drafts).
 const STATUS_LABELS: &[(&str, &str)] = &[
     ("ACTIVE", "재직"),
@@ -261,6 +264,7 @@ pub fn korean_message(code: &str, message: &str) -> String {
         return format!("알 수 없는 역할입니다: {role}");
     }
     lookup(CODES, code)
+        .or_else(|| lookup(LEAVE_CODES, code))
         .unwrap_or("요청을 처리하지 못했습니다.")
         .to_owned()
 }
