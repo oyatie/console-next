@@ -45,13 +45,24 @@ pub async fn seed_all_nine_s3_tables(
     .unwrap();
     sqlx::query("INSERT INTO registry_sites (id, org_id, branch_id, customer_id, name) VALUES ($1,$2,$3,$4,'S1')") // rls-arming: ok owner fixture
         .bind(site_id).bind(org_uuid).bind(branch_id).bind(customer_id).execute(owner).await.unwrap();
+    let standby_status: String = [0xC608_u32, 0xBE44]
+        .into_iter()
+        .filter_map(char::from_u32)
+        .collect();
     sqlx::query( // rls-arming: ok owner fixture
         "INSERT INTO registry_equipment (id, org_id, branch_id, customer_id, site_id, equipment_no, \
          manufacturer_code, kind_code, power_code, status, specification, ton_text, source_sheet, source_row) \
-         VALUES ($1,$2,$3,$4,$5,'ABC01-0001','M','K','P','예비','SPEC','2t','S',1)",
+         VALUES ($1,$2,$3,$4,$5,'ABC01-0001','M','K','P',$6,'SPEC','2t','S',1)",
     )
-    .bind(equip_id).bind(org_uuid).bind(branch_id).bind(customer_id).bind(site_id)
-    .execute(owner).await.unwrap();
+    .bind(equip_id)
+    .bind(org_uuid)
+    .bind(branch_id)
+    .bind(customer_id)
+    .bind(site_id)
+    .bind(standby_status)
+    .execute(owner)
+    .await
+    .unwrap();
     sqlx::query( // rls-arming: ok owner fixture
         "INSERT INTO work_orders (id, org_id, request_no, branch_id, equipment_id, customer_id, site_id, requested_by, status, symptom) \
          VALUES ($1,$2,'20261120-001',$3,$4,$5,$6,$7,'RECEIVED','noise')",
