@@ -17,7 +17,7 @@
   background: var(--surface);
 }
 
-:where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]:has(.gridWrap)) {
+:where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]):has(.gridWrap) {
   flex: 1 1 0%;
   min-height: 0;
   height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
