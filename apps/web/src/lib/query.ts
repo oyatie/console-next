@@ -111,3 +111,10 @@ export const isInvalidated = (qc: QueryClient, q: { queryKey: readonly unknown[]
 
 /** Stable identity for a read when one mounted screen changes its path or coordinates. */
 export const readIdentity = (q: { queryKey: readonly unknown[] }) => hashKey(q.queryKey);
+
+/** Cached queries whose derived path matches `prefix` without issuing network reads. */
+export const cachedQueriesWithPrefix = (qc: QueryClient, prefix: string) =>
+  qc.getQueryCache().findAll({ predicate: (q) => q.queryKey[0] === prefix });
+
+/** True when a cached query belongs to `prefix`. */
+export const isQueryForPrefix = (q: Query, prefix: string) => q.queryKey[0] === prefix;

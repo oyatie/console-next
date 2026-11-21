@@ -43,6 +43,7 @@
 .row:hover > .value, .row[data-hovered] > .value { color: var(--ink); }
 .row:focus-within > .act { box-shadow: var(--focus); }
 .kv[data-density="dense"] { font-size: var(--text-xs); gap: var(--space-1) var(--space-2); }
+:where([data-experience]:not([data-experience="baseline"])) .kv[data-density="dense"] { grid-template-columns: max-content minmax(0, 1fr); }
 .loading { padding: var(--space-3); }
 .skeleton { height: var(--space-6); background: var(--border-soft); border-radius: var(--radius-sm); }
 .empty { padding: var(--space-3); color: var(--steel); font-size: var(--text-sm); text-align: center; }
