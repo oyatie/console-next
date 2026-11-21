@@ -178,9 +178,7 @@ pub(super) async fn visible_warnings(
         warning.employee_ids.retain(|id| visible.contains(id));
         warning.matches.retain(|m| visible.contains(&m.id));
         let kept = warning.employee_ids.len();
-        if kept < fetched {
-            warning.total_count = Some(i64::try_from(kept).unwrap_or(i64::MAX));
-        } else if warning.total_count.is_none() {
+        if kept < fetched || warning.total_count.is_none() {
             warning.total_count = Some(i64::try_from(kept).unwrap_or(i64::MAX));
         }
     }

@@ -6,7 +6,6 @@ use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-#[allow(dead_code)]
 #[path = "../support/go_live.rs"]
 pub mod go_live;
 #[allow(dead_code)]

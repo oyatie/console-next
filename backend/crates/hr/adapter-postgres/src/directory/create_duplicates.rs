@@ -47,6 +47,16 @@ pub struct DuplicateCandidate {
 }
 
 /// Every person with the same name (spaces ignored) and the same phone or the
+type DuplicateRow = (
+    Uuid,
+    String,
+    Option<String>,
+    String,
+    Option<String>,
+    Option<String>,
+    bool,
+);
+
 /// same birth date, EXITED included; merged-away rows are not people.
 pub async fn duplicate_candidates(
     tx: &mut sqlx::Transaction<'_, Postgres>,
@@ -54,7 +64,7 @@ pub async fn duplicate_candidates(
     request: &NormalizedCreateEmployeeRequest,
 ) -> Result<Vec<DuplicateCandidate>, HrError> {
     // Resolve canonical names before looking up contact facts for candidate records.
-    let rows: Vec<(Uuid, String, Option<String>, String, Option<String>, Option<String>, bool)> = sqlx::query_as(
+    let rows: Vec<DuplicateRow> = sqlx::query_as(
         "WITH named AS MATERIALIZED ( \
            SELECT e.id,e.org_id,e.name,e.org_unit,e.org_unit_id,e.hire_on,e.employment_status,e.employee_number,e.birth_date,e.created_at \
            FROM person_employees_current e WHERE e.org_id=$1 AND e.merged_into_employee_id IS NULL \
