@@ -17,7 +17,11 @@ import {
   saeonEmployeeFacets,
   saeonHeroUser,
   saeonOrgStructure,
+  saeonPayGroups,
+  saeonPayrollEmployees,
+  saeonPayrollRates,
   saeonPayrollRow,
+  saeonPayrollRunDetail,
   saeonRosterEmployees,
   saeonUniverse,
   saeonWorklistInbox,
@@ -233,4 +237,31 @@ test("worklist, approval OC-2026-0418, attendance month, and Console payroll tot
   expect(registerRows.reduce((sum, row) => sum + row.grossPay, 0)).toBe(36_705_800);
   expect(registerRows.reduce((sum, row) => sum + row.totalDeductions, 0)).toBe(4_383_272);
   expect(registerRows.reduce((sum, row) => sum + row.netPay, 0)).toBe(32_322_528);
+
+  const groups = saeonPayGroups();
+  expect(groups.legal_entities).toHaveLength(5);
+  expect(groups.items).toHaveLength(5);
+
+  const runDetail = saeonPayrollRunDetail();
+  expect(runDetail.lines).toHaveLength(10);
+  expect(runDetail.lines_total).toBe(757);
+  expect(runDetail.calculation?.total_net_won).toBe(2_101_473_700);
+  expect(runDetail.lines.filter(line => line.blockers.length > 0)).toHaveLength(1);
+
+  const payrollEmployees = saeonPayrollEmployees();
+  expect(payrollEmployees).toHaveLength(10);
+  expect(payrollEmployees.map(emp => emp.id)).toEqual(runDetail.lines.map(line => line.employee_id));
+  expect(payrollEmployees[0]?.employee_number).toBe("10587");
+  expect(payrollEmployees[0]?.org_unit).toBe(saeonUniverse.payrollRun.windowRows[0]?.place);
+  expect(payrollEmployees[0]?.position).toBe(`${saeonUniverse.hero.gradeLabel} \u00B7 ${saeonUniverse.hero.roleLabel}`);
+
+  const payrollRates = saeonPayrollRates();
+  expect(payrollRates.adopted).toBe(true);
+  expect(payrollRates.items.map(item => item.code)).toEqual([
+    "NATIONAL_PENSION_EMPLOYEE",
+    "HEALTH_INSURANCE_TOTAL",
+    "LONG_TERM_CARE_TOTAL",
+    "EMPLOYMENT_INSURANCE_EMPLOYEE",
+    "SIMPLIFIED_WITHHOLDING_TABLE",
+  ]);
 });

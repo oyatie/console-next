@@ -3,6 +3,7 @@ import { get } from "../../lib/query";
 import { api, unwrap, type components } from "@console/api";
 export { payGroupSchemas } from "@console/api";
 export type { PayGroup, PayrollRate, PayrollRates, PayrollRun } from "@console/api/pending";
+export type PayrollDirectoryEmployee = components["schemas"]["Employee"];
 export type CreatePayGroup = components["schemas"]["CreatePayGroup"];
 export type CreatePayrollRun = components["schemas"]["CreatePayrollRun"];
 export const createPayGroup = (body: CreatePayGroup, key: string) => unwrap(api.POST("/api/v1/payroll/pay-groups", { body, headers: { "idempotency-key": key } }));
@@ -10,8 +11,11 @@ export const createPayrollRun = (body: CreatePayrollRun, key: string) => unwrap(
 export const payGroupsQuery = get("/api/v1/payroll/pay-groups");
 export const payrollRunsQuery = get("/api/v1/payroll/runs");
 export const payrollRunPreviewQuery = (input: CreatePayrollRun) => get("/api/v1/payroll/runs/preview", { params: { query: input } });
-export const payrollRunQuery = (id: string) => get("/api/v1/payroll/runs/{id}", { params: { path: { id } } });
+export const payrollRunQuery = (id: string, page?: { limit?: number; offset?: number }) =>
+  get("/api/v1/payroll/runs/{id}", { params: { path: { id }, ...(page ? { query: page } : {}) } });
 export const payrollRatesQuery = (id: string) => get("/api/v1/payroll/reference/rates", { params: { query: { legal_entity_id: id } } });
+export const payrollDirectoryQuery = (legalEntityId: string) =>
+  get("/api/v1/employees", { params: { query: { legal_entity_id: legalEntityId, limit: 1000 } } });
 
 export type ContractWage = import("@console/api/schema").operations["createEmployeeContractWage"]["requestBody"]["content"]["application/json"];
 export const recordContractWage = ({ employeeId, body }: { employeeId: string; body: ContractWage }, key: string) => unwrap(api.POST("/api/v1/payroll/employees/{employeeId}/contract-wages", { params: { path: { employeeId } }, body, headers: { "idempotency-key": key } }));

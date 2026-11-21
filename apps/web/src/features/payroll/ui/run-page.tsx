@@ -10,9 +10,14 @@ import { KeyValue } from "../../../ui/key-value/key-value";
 import { StepLine } from "../../../ui/step-line/step-line";
 import { payGroupsQuery, payrollRunQuery, type PayGroup, type PayrollRun } from "../api";
 import { runStatus, runStages, runName } from "../present";
+import { RunConsole } from "./run-console";
 
 export function PayrollRunPage() {
   const { id } = useParams({ from: "/app/payroll/runs/$id" });
+  return <RunConsole id={id} baseline={() => <BaselinePayrollRun id={id} />} />;
+}
+
+function BaselinePayrollRun({ id }: { id: string }) {
   const detail = useQuery(payrollRunQuery(id));
   const groups = useQuery(payGroupsQuery);
   return <Page floorplan="P-02" head={{ title: !detail.isError && detail.data && runName(detail.data.run, groups.data?.items.find(group => group.id === detail.data.run.pay_group_id)) || t("payroll.runName"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>

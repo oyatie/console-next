@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components } from "@console/api";
+import type { PayGroups } from "@console/api/pending";
 import { t } from "@console/i18n";
 import raw from "./saeon-universe.json" with { type: "json" };
 import {
@@ -598,5 +599,238 @@ export function saeonApprovalOrgChange(): S["OrgChangeDetail"] {
     })),
     settlementItems: [],
     events: [],
+  };
+}
+
+const SAEON_PAYROLL_RUN_ID = "00000000-0000-4000-8600-000000000011";
+
+/** OpenAPI-typed `PayGroups` across all five Saeon legal entities. */
+export function saeonPayGroups(): PayGroups {
+  return {
+    legal_entities: saeonUniverse.entities.map(entity => ({ id: entity.id, name: entity.name })),
+    items: saeonUniverse.entities.map((entity, index) => ({
+      id: `00000000-0000-4000-8500-${padDigits(index + 1, 12)}`,
+      legal_entity_id: entity.id,
+      name: `${entity.prefix} ${t("payroll.group")}`,
+      pay_date_rule: { day: 25 as const, month_offset: 1 as const, non_business_day: "PREVIOUS" as const },
+      base_period: { start_day: "FIRST" as const, month_offset: 0 as const },
+      variable_period: { start_day: 16 as const, month_offset: -1 as const },
+      proration: "CALENDAR_DAYS" as const,
+      channel: "FILE_GENERIC" as const,
+      sensitive: false,
+      pay_basis_allowed: ["MONTHLY" as const],
+    })),
+  };
+}
+
+function toLineSummary(
+  lineId: string,
+  employeeId: string,
+  displayName: string,
+  company: string,
+  calc: ReturnType<typeof saeonPayrollRow>,
+): S["PayrollLineSummary"] {
+  return {
+    id: lineId,
+    employee_id: employeeId,
+    employee_display_name: displayName,
+    employee_company: company,
+    work_days: 22,
+    overtime_hours: calc.overtimeHours,
+    leave_used: 0,
+    gross_pay_source_present: true,
+    net_pay_source_present: calc.bankAccountRegistered,
+    nts_tax_row_status: "VERIFIED_SOURCE_ROW",
+    calculation_status: calc.bankAccountRegistered ? "READY_FOR_REVIEW" : "BLOCKED_LEGAL_GATE",
+    blockers: calc.bankAccountRegistered ? [] : ["ACCOUNT_VERIFICATION"],
+    gross_won: calc.grossPay,
+    deductions: [
+      { code: "NATIONAL_PENSION", label_ko: t("enum.insurer.NPS"), amount_won: calc.nationalPension, source_url: "https://www.nps.or.kr" },
+      { code: "HEALTH_INSURANCE", label_ko: t("enum.insurer.NHIS"), amount_won: calc.healthInsurance, source_url: "https://www.nhis.or.kr" },
+      { code: "LONG_TERM_CARE", label_ko: t("payroll.run.col.longTermCare"), amount_won: calc.longTermCare, source_url: "https://www.nhis.or.kr" },
+      { code: "EMPLOYMENT_INSURANCE", label_ko: t("enum.insurer.EI"), amount_won: calc.employmentInsurance, source_url: "https://www.ei.go.kr" },
+      { code: "INCOME_TAX", label_ko: t("payroll.run.col.incomeTax"), amount_won: calc.incomeTax, source_url: "https://www.nts.go.kr" },
+      { code: "LOCAL_INCOME_TAX", label_ko: t("payroll.run.col.localIncomeTax"), amount_won: calc.localIncomeTax, source_url: "https://www.nts.go.kr" },
+    ],
+    total_deductions_won: calc.totalDeductions,
+    net_won: calc.netPay,
+    tax_table_version: saeonUniverse.payrollRun.yearMonth,
+  };
+}
+
+/** OpenAPI-typed `PayrollRunDetail` matching the boarded 2026-10 Saeon payroll run and window rows. */
+export function saeonPayrollRunDetail(options: { offset?: number; limit?: number } = {}): S["PayrollRunDetail"] {
+  const { payrollRun } = saeonUniverse;
+  const entity = saeonUniverse.entities[payrollRun.entityIndex]!;
+  const offset = Math.max(0, options.offset ?? 0);
+  const limit = Math.max(1, options.limit ?? 50);
+  const roster = generateSaeonRoster();
+  const rosterByNumber = new Map(roster.map(row => [row.employeeNumber, row]));
+
+  const lines: S["PayrollLineSummary"][] =
+    offset === 0
+      ? payrollRun.windowRows.map((row, index) => {
+          const calc = saeonPayrollRow(row.employeeNumber, row.gradeCode, row.overtimeHours, row.bankAccountRegistered);
+          const employeeId = rosterByNumber.get(row.employeeNumber)?.id ?? `00000000-0000-4000-8300-${padDigits(index + 1, 12)}`;
+          return toLineSummary(`00000000-0000-4000-8800-${padDigits(index + 1, 12)}`, employeeId, row.name, entity.name, calc);
+        })
+      : roster.slice(offset, Math.min(payrollRun.headcount, offset + limit)).map((row, index) => {
+          const calc = saeonPayrollRow(row.employeeNumber, row.gradeCode, index % 4 === 0 ? 4 : 0, true);
+          return toLineSummary(`00000000-0000-4000-8800-${padDigits(offset + index + 1, 12)}`, row.id, row.name, entity.name, calc);
+        });
+
+  return {
+    run: {
+      id: SAEON_PAYROLL_RUN_ID,
+      legal_entity_id: entity.id,
+      pay_group_id: "00000000-0000-4000-8500-000000000001",
+      kind: "REGULAR",
+      attribution_month: payrollRun.yearMonth,
+      pay_date: payrollRun.payDate,
+      period_start: "2026-10-01",
+      period_end: "2026-10-31",
+      variable_period_start: "2026-09-16",
+      variable_period_end: "2026-10-15",
+      source_label: `${payrollRun.yearMonth} ${t("payroll.title")}`,
+      status: "CALCULATED",
+      calculation_enabled: true,
+      created_at: SAEON_AT,
+      updated_at: SAEON_AT,
+    },
+    legal_basis: {},
+    source_summary: {},
+    lines,
+    lines_total: payrollRun.headcount,
+    lines_limit: limit,
+    lines_offset: offset,
+    exceptions_open: payrollRun.missingBankAccountCount,
+    exceptions_total: payrollRun.missingBankAccountCount,
+    calculation: {
+      version: 1,
+      calculated_at: SAEON_AT,
+      calculated_lines: payrollRun.headcount - payrollRun.missingBankAccountCount,
+      blocked_lines: payrollRun.missingBankAccountCount,
+      payable: false,
+      kernel_rate_table: "2026-KR",
+      total_gross_won: payrollRun.grossTotal,
+      total_deductions_won: payrollRun.deductionTotal,
+      total_net_won: payrollRun.netTotal,
+    },
+    disbursement: null,
+    payslip_delivery: null,
+  };
+}
+
+/** OpenAPI-typed `Employee[]` matching every row in `saeonUniverse.payrollRun.windowRows`. */
+export function saeonPayrollEmployees(): S["Employee"][] {
+  const { payrollRun } = saeonUniverse;
+  const entity = saeonUniverse.entities[payrollRun.entityIndex]!;
+  const rosterByNumber = new Map(generateSaeonRoster().map(row => [row.employeeNumber, row]));
+
+  return payrollRun.windowRows.map((row, index) => {
+    const match = rosterByNumber.get(row.employeeNumber);
+    const siteName = row.place.split(" \u203A ")[0]!;
+    const site = entity.workplaces.find(w => w.name === siteName) ?? entity.workplaces[0]!;
+    return {
+      id: match?.id ?? `00000000-0000-4000-8300-${padDigits(index + 1, 12)}`,
+      company: entity.name,
+      name: row.name,
+      employee_number: row.employeeNumber,
+      org_unit_id: null,
+      legal_entity_id: entity.id,
+      workplace_id: site.id,
+      org_unit: row.place,
+      position: match?.roleLabel ? `${row.gradeLabel} \u00B7 ${match.roleLabel}` : row.gradeLabel,
+      status: "ACTIVE",
+      hire_date: match?.hireDate ?? "2020-01-01",
+      employment_type: match?.employmentTypeCode ?? "REGULAR",
+      home_branch_review_required: false,
+      identity_resolution_strategy: "employee_number",
+      identity_resolution_confidence: "high",
+      identity_review_required: false,
+      identity_name_only_merge: false,
+      next_event: null,
+      failed_event: null,
+      created_at: SAEON_AT,
+      updated_at: SAEON_AT,
+    };
+  });
+}
+
+/** OpenAPI-typed `PayrollRates` matching the statutory rates used by `saeonPayrollRow()`. */
+export function saeonPayrollRates(): S["PayrollRates"] {
+  const baseCitation = {
+    effective_from: "2026-01-01",
+    effective_to_exclusive: "2027-01-01",
+    floor_won: null,
+    cap_won: null,
+    instrument_ko: t("payroll.reference.title"),
+    article_ko: "Art. 1",
+    promulgation_ko: "No. 1",
+    enforced_on: "2026-01-01",
+    retrieved_on: "2026-10-29",
+    provenance_ko: t("payroll.reference.ACTIVE"),
+    status: "ACTIVE" as const,
+  };
+  return {
+    country_code: "KR",
+    adopted: true,
+    items: [
+      {
+        ...baseCitation,
+        code: "NATIONAL_PENSION_EMPLOYEE",
+        name: t("enum.insurer.NPS"),
+        value: "45/1000",
+        rate_num: 45,
+        rate_den: 1000,
+        basis: "PENSION_STANDARD_INCOME",
+        bearer: "EMPLOYEE_WHOLE",
+        source_url: "https://www.nps.or.kr",
+      },
+      {
+        ...baseCitation,
+        code: "HEALTH_INSURANCE_TOTAL",
+        name: t("enum.insurer.NHIS"),
+        value: "7090/100000",
+        rate_num: 7090,
+        rate_den: 100_000,
+        basis: "MONTHLY_REMUNERATION",
+        bearer: "HALF_EACH",
+        source_url: "https://www.nhis.or.kr",
+      },
+      {
+        ...baseCitation,
+        code: "LONG_TERM_CARE_TOTAL",
+        name: t("payroll.run.col.longTermCare"),
+        value: "1295/10000",
+        rate_num: 1295,
+        rate_den: 10_000,
+        basis: "HEALTH_INSURANCE_PREMIUM",
+        bearer: "HALF_EACH",
+        source_url: "https://www.nhis.or.kr",
+      },
+      {
+        ...baseCitation,
+        code: "EMPLOYMENT_INSURANCE_EMPLOYEE",
+        name: t("enum.insurer.EI"),
+        value: "9/1000",
+        rate_num: 9,
+        rate_den: 1000,
+        basis: "MONTHLY_REMUNERATION",
+        bearer: "EMPLOYEE_WHOLE",
+        source_url: "https://www.ei.go.kr",
+      },
+      {
+        ...baseCitation,
+        code: "SIMPLIFIED_WITHHOLDING_TABLE",
+        name: t("payroll.run.rateNote.simplifiedTax"),
+        value: null,
+        rate_num: null,
+        rate_den: null,
+        basis: "NOT_APPLICABLE",
+        bearer: "NOT_APPLICABLE",
+        source_url: "https://www.nts.go.kr",
+      },
+    ],
   };
 }
