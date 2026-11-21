@@ -259,7 +259,7 @@ Neither component has a target of its own. The size of an action is that control
 
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `items` | yes | `readonly { key: string; label: ReactNode; value: ReactNode; }[]` |  |  |
+| `items` | yes | `readonly StatRowItem[]` |  |  |
 | `label` | no | `string` |  |  |
 
 <!-- /ds:props -->
@@ -272,17 +272,26 @@ The members of `KeyValueItem` are under Anatomy.
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `border`, `border-left`, `border-left-color` |
+| `--active-bar` | `box-shadow` |
+| `--border` | `border`, `border-left`, `border-left-color`, `border-top` |
 | `--border-soft` | `background`, `border-left` |
+| `--danger-bg` | `background` |
 | `--danger-solid` | `color` |
+| `--danger-tx` | `color` |
 | `--focus` | `box-shadow` |
+| `--fw-semibold` | `font-weight` |
 | `--fw-strong` | `font-weight` |
 | `--ink` | `color` |
 | `--lh-tight` | `line-height` |
+| `--ok-bg` | `background` |
+| `--ok-tx` | `color` |
 | `--panel-w` | `grid-template-columns` |
+| `--primary` | `--active-bar`, `color` |
+| `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-sm` | `border-radius` |
 | `--space-1` | `gap` |
+| `--space-1-5` | `padding` |
 | `--space-2` | `gap`, `padding` |
 | `--space-3` | `gap`, `padding` |
 | `--space-6` | `height` |
@@ -291,6 +300,8 @@ The members of `KeyValueItem` are under Anatomy.
 | `--text-lg` | `font-size` |
 | `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |
+| `--warn-bg` | `background` |
+| `--warn-tx` | `color` |
 
 <!-- /ds:tokens -->
 

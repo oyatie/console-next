@@ -773,7 +773,7 @@ Also accepts the attributes of `InputHTMLAttributes` (`@types/react`), except `c
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `background`, `border`, `border-bottom` |
+| `--border` | `background`, `border`, `border-block-end`, `border-bottom` |
 | `--border-soft` | `background`, `border-left`, `border-top` |
 | `--canvas` | `background` |
 | `--control-border` | `border` |

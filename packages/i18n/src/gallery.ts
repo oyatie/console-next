@@ -6,8 +6,9 @@ import { dsEn, dsKo } from "./gallery-ds";
 import { pickerEn, pickerKo } from "./gallery-picker";
 import { panelsEn, panelsKo } from "./gallery-panels";
 import { tableEn, tableKo } from "./gallery-table";
+import { patternsEn, patternsKo } from "./gallery-patterns";
 
-const ko = { ...kitKo, ...dsKo, ...pickerKo, ...panelsKo, ...tableKo,
+const ko = { ...kitKo, ...dsKo, ...pickerKo, ...panelsKo, ...tableKo, ...patternsKo,
   "title": "컴포넌트 갤러리",
   "hint": "공용 UI 구성요소를 대표 상태별로 보여 줍니다. 개발 환경에서만 열립니다.",
   "section.chips": "상태 칩",
@@ -156,8 +157,7 @@ const ko = { ...kitKo, ...dsKo, ...pickerKo, ...panelsKo, ...tableKo,
   "tree.label": "조직도 예시",
 } as const;
 
-const en: Record<keyof typeof ko, string> = {
-  ...kitEn, ...dsEn, ...pickerEn, ...panelsEn, ...tableEn,
+const en: Record<keyof typeof ko, string> = { ...kitEn, ...dsEn, ...pickerEn, ...panelsEn, ...tableEn, ...patternsEn,
   "title": "Component gallery",
   "hint": "Shows the shared UI components in representative states. Opens in development only.",
   "section.chips": "Status chips",

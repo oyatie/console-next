@@ -65,11 +65,14 @@ Default labels read `uiWorklist.opinionOptional`, `uiWorklist.opinionRequired`, 
 | `onReject` | yes | `(opinion: string) => void` |  | Invoked when reject is pressed with a non-empty `opinion`. |
 | `opinion` | yes | `string` |  | Controlled comment string preserved across attempts and server errors. |
 | `approveLabel` | no | `string` |  | Custom approve button label; defaults to `uiWorklist.approve`. |
+| `consequence` | no | `ReactNode` |  | Optional consequence note rendered below the action buttons. |
+| `multiline` | no | `boolean` | `false` | Render a multi-line `TextArea` instead of a single-line `TextInput` for full-document decision panes. |
 | `onReturn` | no | `(opinion: string) => void` |  | Optional request-changes callback; rendered only when the record kind supports returning. |
 | `pending` | no | `"approve" \| "reject" \| "return"` |  | In-flight action (`"approve"`, `"reject"`, or `"return"`). |
 | `rejectLabel` | no | `string` |  | Custom reject button label; defaults to `uiWorklist.reject`. |
 | `resetKey` | no | `number \| string` |  | Optional record key; changing it clears stale missing-reason validation alerts. |
 | `returnLabel` | no | `string` |  | Custom request-changes button label; defaults to `uiWorklist.return`. |
+| `rows` | no | `number` | `4` | Visible row count when `multiline` is true. |
 
 <!-- /ds:props -->
 
@@ -79,16 +82,14 @@ Default labels read `uiWorklist.opinionOptional`, `uiWorklist.opinionRequired`, 
 
 | Token | Read by |
 | --- | --- |
-| `--control-border` | `border` |
 | `--danger-solid` | `border-color` |
 | `--danger-tx` | `color` |
-| `--field-h` | `height` |
 | `--fw-medium` | `font-weight` |
-| `--radius` | `border-radius` |
+| `--lh-base` | `line-height` |
 | `--space-2` | `gap`, `padding` |
+| `--space-3` | `padding` |
+| `--space-6` | `min-height` |
 | `--steel` | `color` |
-| `--surface` | `background` |
-| `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |
 
 <!-- /ds:tokens -->

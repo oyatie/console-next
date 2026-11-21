@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { t } from "@console/i18n";
 import { Button } from "../button/button";
+import { TextArea } from "../field/text-area";
+import { TextInput } from "../field/text-input";
 import s from "./decision-pane.module.css";
 
 /**
@@ -19,6 +21,9 @@ export function DecisionPane({
   returnLabel,
   pending,
   resetKey,
+  multiline = false,
+  rows = 4,
+  consequence,
 }: {
   /** Controlled comment string preserved across attempts and server errors. */
   opinion: string;
@@ -40,9 +45,16 @@ export function DecisionPane({
   pending?: "approve" | "reject" | "return";
   /** Optional record key; changing it clears stale missing-reason validation alerts. */
   resetKey?: string | number;
+  /** Render a multi-line `TextArea` instead of a single-line `TextInput` for full-document decision panes. */
+  multiline?: boolean;
+  /** Visible row count when `multiline` is true. */
+  rows?: number;
+  /** Optional consequence note rendered below the action buttons. */
+  consequence?: ReactNode;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const areaRef = useRef<HTMLTextAreaElement>(null);
   const [missingReason, setMissingReason] = useState(false);
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   if (prevResetKey !== resetKey) {
@@ -58,11 +70,16 @@ export function DecisionPane({
   const requireReasonThen = (act: (memo: string) => void) => {
     if (trimmed.length === 0) {
       setMissingReason(true);
-      inputRef.current?.focus();
+      (multiline ? areaRef.current : inputRef.current)?.focus();
       return;
     }
     setMissingReason(false);
     act(trimmed);
+  };
+
+  const handleOpinionChange = (next: string) => {
+    onOpinionChange(next);
+    if (next.trim().length > 0) setMissingReason(false);
   };
 
   return (
@@ -70,19 +87,29 @@ export function DecisionPane({
       <label htmlFor={id} className={s.label}>
         {t("uiWorklist.opinionOptional")}
       </label>
-      <input
-        ref={inputRef}
-        id={id}
-        type="text"
-        className={s.input}
-        value={opinion}
-        aria-invalid={invalid || undefined}
-        aria-describedby={invalid ? errorId : undefined}
-        onChange={event => {
-          onOpinionChange(event.target.value);
-          if (event.target.value.trim().length > 0) setMissingReason(false);
-        }}
-      />
+      {multiline ? (
+        <TextArea
+          ref={areaRef}
+          id={id}
+          rows={rows}
+          className={s.area}
+          value={opinion}
+          aria-invalid={invalid || undefined}
+          aria-describedby={invalid ? errorId : undefined}
+          onChange={event => handleOpinionChange(event.target.value)}
+        />
+      ) : (
+        <TextInput
+          ref={inputRef}
+          id={id}
+          type="text"
+          className={s.input}
+          value={opinion}
+          aria-invalid={invalid || undefined}
+          aria-describedby={invalid ? errorId : undefined}
+          onChange={event => handleOpinionChange(event.target.value)}
+        />
+      )}
       {invalid ? (
         <div id={errorId} role="alert" className={s.error}>
           {t("uiWorklist.opinionRequired")}
@@ -123,6 +150,7 @@ export function DecisionPane({
           {approveLabel ?? t("uiWorklist.approve")}
         </Button>
       </div>
+      {consequence != null ? <div className={s.consequence}>{consequence}</div> : null}
     </div>
   );
 }

@@ -1,0 +1,90 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.secNavBar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: var(--space-1-5) var(--space-4);
+  border-block-end: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.body[data-has-spine] {
+  grid-template-columns: minmax(0, 1fr) var(--panel-w);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.strip {
+  min-width: 0;
+  border-block-end: 1px solid var(--border);
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.spineCol {
+  position: sticky;
+  top: 0;
+  max-height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-width: 0;
+  border-inline-start: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .sections > section,
+:where([data-experience]:not([data-experience="baseline"])) .spineCol > aside {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .sections > section {
+  border-block-end: 1px solid var(--border);
+}
+
+@media (--below-wide) {
+  .body[data-has-spine] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .spineCol {
+    position: static;
+    max-height: none;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--border-strong);
+  }
+}
+
+@media (--phone) {
+  .secNavBar {
+    padding: var(--space-1-5) var(--space-3);
+  }
+
+  .secNavBar :is(a, button) {
+    min-height: var(--target-touch);
+  }
+}

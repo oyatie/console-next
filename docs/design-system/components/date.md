@@ -386,7 +386,7 @@ and no container query.
 | `--radius-lg` | `border-radius` |
 | `--shadow-pop` | `box-shadow` |
 | `--space-1` | `gap` |
-| `--space-2` | `gap`, `margin-left`, `padding` |
+| `--space-2` | `gap`, `margin-left`, `padding`, `padding-inline` |
 | `--space-3` | `gap`, `max-width`, `padding`, `width` |
 | `--steel` | `color` |
 | `--surface` | `background` |
