@@ -95,6 +95,14 @@ async fn has_record_conflict(
     if staged_rows.is_empty() {
         return Ok(false);
     }
+    let scoped = match vault {
+        Some(v) => v
+            .scoped_for_org(org)
+            .await
+            .map_err(|_| crate::rrn::unavailable())?,
+        None => None,
+    };
+    let vault = scoped.as_deref().or(vault);
 
     let mut v2_employees: Vec<Uuid> = Vec::new();
     let mut v2_hashes: Vec<Vec<u8>> = Vec::new();

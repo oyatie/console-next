@@ -191,15 +191,14 @@ ipnet = "2.12.0"
 # R1 SINGLE-STACK GATE: `async-imap` is TLS-AGNOSTIC — it speaks IMAP over any
 # `tokio::io::AsyncRead + AsyncWrite` (feature `runtime-tokio`, default off so
 # `async-std` is never pulled). We supply the TLS layer ourselves with
-# `tokio-rustls` 0.26 on `rustls` 0.23 + the `ring` provider — the EXACT rustls
-# major/minor + ring that `lettre 0.11.22`'s `tokio1-rustls-tls` already pulls,
-# so `cargo tree -d` stays single-stack (one rustls, one ring, no native-tls /
-# openssl). `mail-parser` is the inbound MIME parser; both appear ONLY in
-# `console-comms-adapter-imap`.
+# `tokio-rustls` 0.26 on `rustls` 0.23 + the `aws-lc-rs` provider — the unified
+# workspace crypto backend so `cargo tree -d` stays single-stack (no ring or
+# native-tls / openssl). `mail-parser` is the inbound MIME parser; both appear
+# ONLY in `console-comms-adapter-imap`.
 async-imap = { version = "0.12.0", default-features = false, features = ["runtime-tokio"] }
 mail-parser = "0.11.4"
-tokio-rustls = { version = "0.26.4", default-features = false, features = ["ring", "tls12"] }
-rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "0.26.4", default-features = false, features = ["aws-lc-rs", "tls12"] }
+rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs", "std", "tls12"] }
 webpki-roots = "1.0.8"
 futures = { version = "0.3.32", default-features = false, features = ["std"] }
 

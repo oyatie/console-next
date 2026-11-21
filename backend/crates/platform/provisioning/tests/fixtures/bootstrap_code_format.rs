@@ -64,7 +64,7 @@ async fn legacy_codes_and_new_codes_accept_their_formats_once(pool: PgPool) {
             sqlx::query(
                 "UPDATE auth_bootstrap_credentials SET token_hash=$1,redeemed_at=NULL WHERE id=$2",
             )
-            .bind(Sha256::digest(stored.as_bytes()).to_vec())
+            .bind(digest(&SHA256, stored.as_bytes()).as_ref().to_vec())
             .bind(issue.credential_id)
             .execute(&pool)
             .await

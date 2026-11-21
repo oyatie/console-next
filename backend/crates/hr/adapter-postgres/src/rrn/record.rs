@@ -156,7 +156,14 @@ impl HrService {
         })
         .await?;
         // No number enters the vault or storage before the access record commits.
-        let vault = vault.ok_or_else(unavailable)?;
+        let scoped = match vault {
+            Some(v) => v
+                .scoped_for_org(*org.as_uuid())
+                .await
+                .map_err(|_| unavailable())?,
+            None => None,
+        };
+        let vault = scoped.as_deref().or(vault).ok_or_else(unavailable)?;
         let sealed = vault
             .seal(*org.as_uuid(), &rrn)
             .map_err(|_| unavailable())?;

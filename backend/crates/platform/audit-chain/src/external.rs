@@ -30,7 +30,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use ring::signature::{ED25519, UnparsedPublicKey};
+use aws_lc_rs::signature::{ED25519, UnparsedPublicKey};
 
 use crate::{SealSignError, SealSigner};
 

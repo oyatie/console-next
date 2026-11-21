@@ -65,6 +65,11 @@ impl HrService {
         batch_size: i64,
         max_batches: usize,
     ) -> Result<usize, HrError> {
+        let vault = match vault.scoped_for_org(*org.as_uuid()).await {
+            Ok(Some(scoped)) => scoped,
+            Ok(None) => vault,
+            Err(_) => return Err(super::unavailable()),
+        };
         let target_version = vault.active_blind_index_version();
         if target_version < 2 || batch_size <= 0 || max_batches == 0 {
             return Ok(0);

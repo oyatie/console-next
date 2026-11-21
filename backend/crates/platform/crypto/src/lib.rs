@@ -14,6 +14,8 @@ pub mod kms;
 pub mod kwp;
 pub mod providers;
 pub mod suite;
+pub mod tenant_cache;
+pub mod tenant_kek;
 
 pub use aad::{EnvelopeContext, encode_outer_aad};
 pub use blind_index::{
@@ -31,3 +33,8 @@ pub use providers::{
     OciVaultKmsProvider,
 };
 pub use suite::AlgId;
+pub use tenant_cache::{TenantDekCache, tenant_key_fingerprint, wrapped_dek_sha256};
+pub use tenant_kek::{
+    TENANT_DEK_MODE_ENV, TenantDekMode, TenantKekId, TenantKeyScope, TenantKeyState,
+    TenantScopedKms,
+};

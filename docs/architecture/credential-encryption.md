@@ -105,10 +105,15 @@ rotation:
     report per-table `v1`, `v2`, `v3_stale_kek`, and `v3_current` counts under
     `with_org_conn`.
 - **Worker loop & one-shot CLI**: `lifecycle_schedule::spawn` invokes
-  `crypto_reseal::run_worker_tick` in `AppRole::Worker`; operators can drain or
-  inspect progress on demand via `console-app crypto-reseal [--batch-size N] [--max-batches N]`
-  and `console-app crypto-census` (connecting strictly as `console_rt` and emitting
-  non-PII JSON counts to stdout).
+  `crypto_reseal::run_worker_tick` in `AppRole::Worker`; operators can drain,
+  inspect, or rotate keys on demand via:
+  - `console-app crypto-reseal [--batch-size N] [--max-batches N]`
+  - `console-app crypto-census` (strictly read-only; resolves per-org target
+    KEKs without provisioning DEKs and reports `tenant_dek_mode`,
+    `master_active_kek_id`, and `target_kek_pattern` in non-PII JSON)
+  - `console-app rotate-tenant-dek --org <uuid> [--scope rrn|mail|all]`
+  - `console-app rewrap-master-kek [--org <uuid>] [--scope rrn|mail|all] [--batch-size N] [--max-batches N]`
+  (all connecting strictly as `console_rt` and emitting non-PII JSON to stdout).
 
 AES-KWP is the provider's [RFC 5649](https://www.rfc-editor.org/rfc/rfc5649)
 implementation, standardized by [NIST SP 800-38F](https://doi.org/10.6028/NIST.SP.800-38F).
@@ -170,3 +175,51 @@ an exclusive statutory algorithm list or evidence of this build's certification.
   `v1 == 0` and `v2 == 0` across all three tables and N-1 binaries are retired.
 - Drop legacy `rrn_hmac` (`v1`) only in a future contract migration after N-1
   binaries are retired and `WHERE rrn_hmac_v2 IS NULL` reaches zero.
+
+## Per-Tenant Key Hierarchy & Crypto-Shredding
+
+- **Per-tenant DEK wrapping (`tenant_encryption_keys`)**:
+  - Each organization maintains scoped data-encryption keys (`key_scope IN ('rrn', 'mail')`,
+    monotonically versioned `key_version >= 1`, `state IN ('ACTIVE', 'RETIRED', 'SHREDDED')`,
+    `UNIQUE (org_id, key_scope) WHERE (state = 'ACTIVE')`).
+  - Wrapped tenant DEKs are encrypted under the master KEK using `HKDF-SHA256`
+    domain-separated AES-256-KWP (`purpose = "tenant_dek.rrn"` / `"tenant_dek.mail"`),
+    identified on stored rows via `kek_id = "tdek:<org_uuid>:<scope>:v<ver>"`.
+  - `PgTenantKeyStore` lazily provisions `v1` in `CONSOLE_TENANT_DEK_MODE=active`
+    (the default) under an advisory transaction lock and caches unwrapped DEKs in
+    `TenantDekCache` keyed by `(org_id, scope, version, sha256(wrapped_dek))`.
+    Canary rollouts may set `CONSOLE_TENANT_DEK_MODE=dual_read` to write new
+    envelopes under the global master KEK while continuing to unwrap both direct-KEK
+    and `tdek:...` envelopes.
+  - Once any row in `tenant_encryption_keys` enters `SHREDDED`, runtime key
+    resolution refuses auto-reprovisioning and fails closed; database triggers
+    prevent deletion or un-shredding of `SHREDDED` tombstones, and `SHREDDED`
+    rows survive `DELETE FROM organizations`.
+- **Two-operator crypto-shredding & PITR survivability**:
+  - `platform_force_remove_organization_command` atomically captures S3 object keys
+    into `tenant_erase_s3_outbox`, transitions `tenant_encryption_keys` rows to
+    `state = 'SHREDDED'` with `wrapped_dek = NULL`, deletes tenant data inside
+    `platform_force_remove_organization`, and appends a zero-PII `'tenant_dek'`
+    witness entry to `erasure_ledger` alongside `tenant_erase_requests` witness
+    columns (`erasure_witness_seq`, `erasure_witness_hash`,
+    `shredded_key_fingerprint`) and `audit_events`.
+  - Even if database or storage snapshots from prior to erasure are restored,
+    erased tenant ciphertexts remain permanently unrecoverable without the shredded
+    tenant DEKs, while `erasure_ledger` hash-chain verification and out-of-process
+    witness logs (`console.erasure_ledger.witness`) attest the erasure event.
+  - `PlatformProvisioner::drain_erased_tenant_objects` drains
+    `tenant_erase_s3_outbox` post-commit without holding DB transactions across
+    HTTP object-store calls, treating `404`/`NoSuchKey` as purged and deferring
+    WORM-locked replica `403`/retention errors for 24 hours.
+
+## Unified Cryptographic Stack & Custody Transport
+
+- Workspace TLS (`rustls` / `tokio-rustls`), IMAP TLS (`console-comms-adapter-imap`),
+  audit-chain Ed25519 signing/verification (`console-platform-audit-chain`), and
+  provisioning hashing (`console-platform-provisioning`) run on `aws-lc-rs`,
+  eliminating duplicate `ring` and legacy `sha2` direct edges.
+- `HttpCustodyTransport` delegates audit-chain seal signing over `reqwest` (`rustls`
+  TLS 1.2+) on a dedicated `current_thread` runtime thread, permitting `http://`
+  only for loopback hosts, refusing redirects, enforcing a 5s timeout and 8 KiB
+  streaming response cap, and trusting optional custom CAs from
+  `CONSOLE_AUDIT_CHAIN_CUSTODY_CA_FILE`.

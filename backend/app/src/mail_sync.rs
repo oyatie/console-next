@@ -30,6 +30,8 @@ use console_comms_application::{
 };
 use console_comms_credential_cipher::EnvelopeCredentialCipher;
 use console_kernel_core::Timestamp;
+use console_platform_crypto::{TenantDekMode, TenantKeyScope};
+use console_platform_db::tenant_keys::PgTenantKeyStore;
 use console_platform_request_context::scope_org;
 use console_platform_storage::{PresignGetRequest, S3ObjectStore, SeaweedS3Storage};
 use tokio::sync::{Semaphore, watch};
@@ -152,6 +154,11 @@ pub fn spawn(
     let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
     let attachments = S3MailAttachmentStore::new(object_store, bucket);
     let store = PgMailStore::new(pool);
+    let mode = TenantDekMode::from_env().unwrap_or_else(|_| {
+        tracing::warn!("invalid CONSOLE_TENANT_DEK_MODE value; defaulting to active");
+        TenantDekMode::Active
+    });
+    let tenant_keys = Arc::new(PgTenantKeyStore::new(mode));
 
     tokio::spawn(async move {
         let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_SYNCS));
@@ -172,7 +179,7 @@ pub fn spawn(
                     }
                 }
                 _ = ticker.tick() => {
-                    run_tick(&store, &attachments, &cipher, &semaphore).await;
+                    run_tick(&store, &attachments, &cipher, &tenant_keys, &semaphore).await;
                 }
             }
         }
@@ -197,6 +204,7 @@ async fn run_tick(
     store: &PgMailStore,
     attachments: &S3MailAttachmentStore,
     cipher: &Arc<EnvelopeCredentialCipher>,
+    tenant_keys: &Arc<PgTenantKeyStore>,
     semaphore: &Arc<Semaphore>,
 ) {
     let mut permits = Vec::new();
@@ -232,10 +240,11 @@ async fn run_tick(
         let store = store.clone();
         let attachments = attachments.clone();
         let cipher = Arc::clone(cipher);
+        let tenant_keys = Arc::clone(tenant_keys);
         handles.push(tokio::spawn(async move {
             // Hold the permit for the whole pass; dropped on completion.
             let _permit = permit;
-            sync_one_account(store, attachments, cipher, account).await;
+            sync_one_account(store, attachments, cipher, tenant_keys, account).await;
         }));
     }
     for handle in handles {
@@ -252,6 +261,7 @@ async fn sync_one_account(
     store: PgMailStore,
     attachments: S3MailAttachmentStore,
     cipher: Arc<EnvelopeCredentialCipher>,
+    tenant_keys: Arc<PgTenantKeyStore>,
     account: console_comms_application::DueAccount,
 ) {
     let org = account.org_id;
@@ -275,6 +285,24 @@ async fn sync_one_account(
             let _ = store.release_claim(org, account.account_id, token).await;
             return Ok(None);
         }
+        let kms = match tenant_keys
+            .load_scope_for_org(
+                store.pool(),
+                org,
+                TenantKeyScope::Mail,
+                Arc::clone(cipher.kms_provider()),
+            )
+            .await
+        {
+            Ok(kms) => kms,
+            Err(_) => {
+                let _ = store.release_claim(org, account.account_id, token).await;
+                return Err(MailServiceError::Transport {
+                    code: "tenant_key_unavailable",
+                });
+            }
+        };
+        let cipher = Arc::new(cipher.with_tenant_kms(Arc::new(kms)));
         // Keep a handle to release the claim if the pass is aborted by the timeout
         // below (the pass owns `store`, so we clone before moving it in).
         let release_store = store.clone();
