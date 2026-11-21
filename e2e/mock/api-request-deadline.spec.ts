@@ -30,16 +30,15 @@ for (const width of [1440, 390]) {
       await page.goto(screens[1].path);
       const main = page.getByRole("main");
       await expect(main.locator('[role="status"][aria-busy="true"]').first()).toBeVisible();
-      // Exhaust the existing three-attempt read budget; this test adds no retries or real waits.
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        await expect.poll(() => attempts).toBe(attempt);
-        await page.clock.runFor(DEFAULT_REQUEST_TIMEOUT_MS);
-        await page.clock.runFor(MAX_RETRY_AFTER_MS);
-      }
+      // A client deadline timeout already exhausted the 30s server budget plus transport slack; do not auto-retry.
+      await expect.poll(() => attempts).toBe(1);
+      await page.clock.runFor(DEFAULT_REQUEST_TIMEOUT_MS);
       const retry = main.getByRole("button", { name: t("common.retry"), exact: true });
       await expect(main.getByRole("alert")).toContainText(t("common.loadFailed.title"));
       await expect(retry).toHaveCount(1);
       await expect(retry).toBeVisible();
+      await page.clock.runFor(MAX_RETRY_AFTER_MS);
+      expect(attempts).toBe(1);
       for (const theme of ["light", "dark"]) {
         await page.locator("html").evaluate((element, value) => { element.dataset.theme = value; }, theme);
         await fits(page, `roster-deadline-${width}-${theme}`);
@@ -50,7 +49,7 @@ for (const width of [1440, 390]) {
       await retry.click();
       await expect(main.getByRole("grid").locator("[data-row-id]")).toHaveCount(3);
       await expect(retry).toHaveCount(0);
-      expect(attempts).toBe(4);
+      expect(attempts).toBe(2);
       expect(fixture.unexpected).toEqual([]);
     } finally {
       fixture.release();
