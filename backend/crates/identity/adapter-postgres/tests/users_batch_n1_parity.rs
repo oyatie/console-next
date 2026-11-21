@@ -141,7 +141,7 @@ async fn list_users_and_directory_people_have_flat_statement_count_and_safe_sear
                 Some("EMP-50"),
                 Some("lit50"),
             ),
-            2 => ("Back\\Slash".to_owned(), Some("EMP-BS"), Some("bs\\login")),
+            2 => ("Back\\Slash".to_owned(), Some("EMP-BS"), Some("bslogin")),
             _ => (format!("Staff Member {i:03}"), None, None),
         };
         seed_user(&pool, *org_a.as_uuid(), branch_a, &name, num, login).await;
