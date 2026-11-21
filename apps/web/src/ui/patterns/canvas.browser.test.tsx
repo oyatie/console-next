@@ -40,8 +40,9 @@ test("Canvas pattern passes WCAG 2.2 AA matrix, fits 390px and 320px, zooms OrgC
 
   // Regression: toggling depth ("Sites only") while focused on #node-dept preserves a roving tabIndex="0" stop.
   await page.locator("#node-entity").focus();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id), { timeout: 5000 }).toBe("node-entity");
   await page.keyboard.press("End");
-  await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("node-dept");
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id), { timeout: 5000 }).toBe("node-dept");
   await page.getByRole("button", { name: tg("pat.canvas.depthSites"), exact: true }).click();
   expect(await page.locator('[role="treeitem"][tabindex="0"]').count()).toBe(1);
   expect(await page.locator('#node-root[tabindex="0"]').count()).toBe(1);
