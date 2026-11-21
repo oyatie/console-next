@@ -12,7 +12,9 @@ import {
   rrnChecksumValid,
   saeonAdminToken,
   saeonAdminUser,
+  saeonApprovalDocument,
   saeonApprovalOrgChange,
+  saeonApprovalsPage,
   saeonAttendanceSummary,
   saeonEmployeeFacets,
   saeonHeroUser,
@@ -206,6 +208,16 @@ test("worklist, approval OC-2026-0418, attendance month, and Console payroll tot
   const orgChange = saeonApprovalOrgChange();
   expect(orgChange.code).toBe("OC-2026-0418");
   expect(orgChange.approvalSteps).toHaveLength(3);
+
+  const approvalPage = saeonApprovalsPage("pending");
+  expect(approvalPage.items).toHaveLength(6);
+  expect(approvalPage.counts.pending).toBe(6);
+  expect(approvalPage.items[0]?.document_no).toBe("OC-2026-0418");
+  const approvalDoc = saeonApprovalDocument("OC-2026-0418");
+  expect(approvalDoc.document_no).toBe("OC-2026-0418");
+  expect(approvalDoc.proposal).toHaveLength(2);
+  expect(Object.values(approvalDoc.proposal_names ?? {})).toHaveLength(2);
+  expect(approvalDoc.my_actions.kind).toBe("approve");
 
   const attendance = saeonAttendanceSummary();
   expect(attendance).toEqual({
