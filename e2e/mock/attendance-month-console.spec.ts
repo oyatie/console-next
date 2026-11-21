@@ -83,6 +83,7 @@ for (const width of [1440, 390]) {
         // Corrected October 2026 stats: 12 people, 20 scheduled days, 2 weekday holidays, blocking > 0 disables Month Close.
         const statRow = pattern.locator("dl[aria-label]");
         await expect(statRow).toContainText(t("attendance.people", { count: 12 }));
+        await expect(statRow).toContainText(saeonUniverse.hero.workSchedule.split(" · ")[0]!);
         await expect(statRow).toContainText(t("attendanceRecords.card.days", { count: 20 }));
         await expect(statRow).toContainText(t("attendanceRecords.card.days", { count: 2 }));
 
@@ -93,6 +94,10 @@ for (const width of [1440, 390]) {
         await expect(grid).toBeVisible();
         await expect(grid.getByText("0:00", { exact: true })).toHaveCount(0);
         await expect(grid.getByRole("link", { name: saeonUniverse.hero.name, exact: true })).toBeVisible();
+        if (width === 1440) {
+          await expect(grid).toContainText(t("attendance.monthConsole.grid.position"));
+          await expect(grid).toContainText(`${saeonUniverse.hero.gradeLabel} · ${saeonUniverse.hero.roleLabel}`);
+        }
 
         // Unapproved excess (3h + 2h) is counted in recognised totals, and Oct 2026 holidays are accurate (no Oct 6-7 holiday).
         expect(saeonOctoberDayKind(3)).toBe("PUBLIC_HOLIDAY");

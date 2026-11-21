@@ -19,8 +19,8 @@ import { PhoneHub } from "../../../ui/patterns/phone-hub";
 import type { PhoneHubLinkItem, PhoneHubSection } from "../../../ui/patterns/phone-hub-contract";
 import {
   claims,
+  meProfileQuery,
   myAccessLogQuery,
-  myChangeRequestsQuery,
   myLeaveSummaryQuery,
   myPayslipDocsQuery,
   signOutHere,
@@ -35,6 +35,8 @@ import { OpsRecoveryBody } from "./ops-recovery-notice";
 import { usePasskeysContent } from "./use-passkeys-content";
 import { ProfileName } from "./profile-name";
 import { MyAccessLogBody } from "./me-access-log";
+import { MeCertificatesSheet } from "./me-certificates-sheet";
+import { HubIdentity } from "./me-identity";
 import { MePayslipSheet } from "./me-payslip-sheet";
 import { SelfEditableBody } from "./me-self-edit";
 import s from "./account.module.css";
@@ -44,30 +46,6 @@ function formatPayslipMeta(doc: InboxDocSummary): string {
   const period = monthSource ? fmtMonth(monthSource) : doc.title;
   const payDate = doc.payslip_meta?.pay_date;
   return payDate ? t("account.hub.payslipPayDate", { period, date: payDate.slice(5) }) : period;
-}
-
-function HubIdentity({ vendor, isLinked, u, fallbackName }: { vendor: boolean; isLinked: boolean; u?: Me; fallbackName?: string | null }) {
-  if (!u) return undefined;
-  return (
-    <div>
-      <div className={s.identityHead}>
-        <strong className="t-xl t-strong">
-          {isLinked
-            ? (u.employee_name ?? personName(u.display_name, t("account.name.unset")))
-            : personName(u.display_name ?? fallbackName, t(vendor ? "account.name.unset.operator" : "account.name.unset"))}
-        </strong>
-        {isLinked && u.employee_position && (
-          <div className="t-sm muted">{u.employee_position}</div>
-        )}
-        {!vendor && !isLinked && <Chip tone="neutral" className={s.actionBtn}>{t("account.status.unlinked")}</Chip>}
-        {vendor && <Chip tone="outline" className={s.actionBtn}>{t("account.field.platform")}</Chip>}
-        {u.is_tenant_ops && <Chip tone="info" className={s.actionBtn}>{t("account.field.ops")}</Chip>}
-      </div>
-      {!isLinked && !vendor && u.tenant?.name ? (
-        <div className="t-sm muted">{u.tenant.name}</div>
-      ) : null}
-    </div>
-  );
 }
 
 export function MeConsole({
@@ -94,19 +72,23 @@ export function MeConsole({
   const isLinked = !vendor && u?.employee_link_status === "LINKED";
 
   const [payslipId, setPayslipId] = useState<string | null>(null);
+  const [certificatesOpen, setCertificatesOpen] = useState(false);
   const access = useQuery({ ...myAccessQuery, enabled: !vendor });
+  const meProfile = useQuery({ ...meProfileQuery, enabled: isLinked, retry: false });
   const leave = useQuery({ ...myLeaveSummaryQuery, enabled: isLinked, retry: false });
   const payslips = useQuery({ ...myPayslipDocsQuery, enabled: isLinked, retry: false });
-  const changeRequests = useQuery({ ...myChangeRequestsQuery, enabled: isLinked, retry: false });
   const accessLog = useQuery({ ...myAccessLogQuery, enabled: isLinked, retry: false });
   const recovery = useQuery({ ...tenantRecoveryQuery, enabled: !vendor });
-  const passkeysUI = usePasskeysContent({ ops: vendor ? false : u?.is_tenant_ops, passkeys: keys, compact: true });
+  const passkeysUI = usePasskeysContent({
+    ops: vendor ? false : u?.is_tenant_ops,
+    passkeys: keys,
+    compact: true,
+  });
 
   const hasAccess = (op: keyof typeof operationAccess) =>
     Boolean(access.data && accessRefusal(access.data, operationAccess[op]) === null);
   const canAttendance = hasAccess("GET /api/v1/attendance/month");
   const canPayroll = hasAccess("GET /api/v1/payroll/runs");
-  const canCertificates = hasAccess("GET /api/v1/hr/certificates");
 
   const latestPayslip = payslips.data?.items[0];
   const remainingLeave = leave.data?.balance?.remaining_units;
@@ -117,39 +99,42 @@ export function MeConsole({
           icon: <CalendarDays size={20} aria-hidden="true" />,
           label: t("account.hub.leave"),
           meta: remainingLeave != null ? t("account.hub.leaveRemaining", { days: Number(remainingLeave) }) : undefined,
-          href: canAttendance ? "/attendance" : "/people/requests",
+          href: canAttendance ? "/attendance" : "/leave",
         },
         ...(latestPayslip || canPayroll
-          ? [{
-              key: "payslip",
-              icon: <Banknote size={20} aria-hidden="true" />,
-              label: t("account.hub.payslip"),
-              meta: latestPayslip ? formatPayslipMeta(latestPayslip) : t("account.hub.payslipIssued"),
-              href: latestPayslip ? undefined : "/payroll",
-              onPress: latestPayslip ? () => setPayslipId(latestPayslip.id) : undefined,
-            } satisfies PhoneHubLinkItem]
+          ? [
+              {
+                key: "payslip",
+                icon: <Banknote size={20} aria-hidden="true" />,
+                label: t("account.hub.payslip"),
+                meta: latestPayslip ? formatPayslipMeta(latestPayslip) : t("account.hub.payslipIssued"),
+                href: latestPayslip ? undefined : "/payroll",
+                onPress: latestPayslip ? () => setPayslipId(latestPayslip.id) : undefined,
+              } satisfies PhoneHubLinkItem,
+            ]
           : []),
-        ...(canCertificates
-          ? [{
-              key: "certificates",
-              icon: <FileText size={20} aria-hidden="true" />,
-              label: t("account.hub.certificates"),
-              meta: t("account.hub.certificatesMeta"),
-              href: "/people/certificates",
-            } satisfies PhoneHubLinkItem]
-          : []),
+        {
+          key: "certificates",
+          icon: <FileText size={20} aria-hidden="true" />,
+          label: t("account.hub.certificates"),
+          meta: t("account.hub.certificatesMeta"),
+          onPress: () => setCertificatesOpen(true),
+        },
       ]
     : [];
 
-  const stats = isLinked && u ? (
-    <StatRow
-      label={t("shell.profile")}
-      items={[
-        { key: "empNo", label: t("account.stat.employeeNumber"), value: u.employee_number ?? t("person.field.notSet") },
-        { key: "unit", label: t("account.field.unit"), value: u.employee_org_unit ?? t("person.field.notSet") },
-      ]}
-    />
-  ) : undefined;
+  const hireDate = u?.employee_hire_date ?? meProfile.data?.hire_date;
+  const stats =
+    isLinked && u ? (
+      <StatRow
+        label={t("shell.profile")}
+        items={[
+          { key: "empNo", label: t("account.stat.employeeNumber"), value: u.employee_number ?? t("person.field.notSet") },
+          { key: "unit", label: t("account.field.unit"), value: u.employee_org_unit ?? t("person.field.notSet") },
+          { key: "hireDate", label: t("account.stat.hireDate"), value: hireDate ?? t("person.field.notSet") },
+        ]}
+      />
+    ) : undefined;
 
   const accountItems = [
     {
@@ -174,12 +159,12 @@ export function MeConsole({
   ];
 
   const sections: PhoneHubSection[] = [
-    ...(isLinked && u
+    ...(isLinked && u && u.employee_id
       ? [
           {
             key: "self-edit",
             title: t("account.selfEdit.title"),
-            children: <SelfEditableBody me={u} changeRequests={changeRequests.data?.items} />,
+            children: <SelfEditableBody employeeId={u.employee_id} profileQuery={meProfile} />,
           },
           {
             key: "access-log",
@@ -220,16 +205,14 @@ export function MeConsole({
       ? [{ key: "ops-recovery", title: t("opsRecovery.title"), titleId: "account-ops-recovery", children: <div className={s.pad}><OpsRecoveryBody /></div> }]
       : []),
     ...(!vendor ? [{ key: "access", title: t("account.access.title"), titleId: "acct-access", children: <div className={s.pad}><MyAccessGrants /></div> }] : []),
-    ...(vendor || u?.is_tenant_ops
-      ? [{ key: "support", title: t("tenants.supportLookup.title"), children: <div className={s.pad}><SupportLookup /></div> }]
-      : []),
+    ...(vendor || u?.is_tenant_ops ? [{ key: "support", title: t("tenants.supportLookup.title"), children: <div className={s.pad}><SupportLookup /></div> }] : []),
   ];
 
   return (
     <PhoneHub
       q={reads}
       head={{ title: t("shell.profile"), titleId: "account-title" }}
-      identity={<HubIdentity vendor={vendor} isLinked={isLinked} u={u} fallbackName={c?.name} />}
+      identity={<HubIdentity vendor={vendor} isLinked={isLinked} u={u} profile={meProfile.data} fallbackName={c?.name} />}
       stats={stats}
       links={links}
       renderLink={(item, content, className) =>
@@ -237,7 +220,18 @@ export function MeConsole({
           : <Button variant="ghost" className={className} onClick={item.onPress}>{content}</Button>
       }
       sections={sections}
-      overlays={<MePayslipSheet docId={payslipId} onClose={() => setPayslipId(null)} />}
+      overlays={
+        <>
+          <MePayslipSheet docId={payslipId} onClose={() => setPayslipId(null)} />
+          {isLinked && (
+            <MeCertificatesSheet
+              open={certificatesOpen}
+              employmentStatus={u?.employee_employment_status ?? meProfile.data?.employment_status}
+              onClose={() => setCertificatesOpen(false)}
+            />
+          )}
+        </>
+      }
       baseline={baseline}
     />
   );

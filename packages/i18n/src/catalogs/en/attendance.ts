@@ -127,6 +127,7 @@ export const enAttendance = {
   "attendance.monthConsole.summary.openIssues": "Needs review",
   "attendance.monthConsole.summary.issueMeta": "Blocking {blocking, number} · Decide {decision, number}",
   "attendance.monthConsole.grid.unit": "Unit",
+  "attendance.monthConsole.grid.position": "Grade · role",
   "attendance.monthConsole.grid.tailGroup": "Totals",
   "attendance.monthConsole.grid.badge.annual": "AL",
   "attendance.monthConsole.grid.badge.half": "HL",

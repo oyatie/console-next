@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { legacyPayrollBlockers } from "@console/i18n/payroll-blockers";
 import type { PayGroup, PayrollRate, PayrollRates, PayrollRun } from "./api";
+import {
+  buildCompactRunStages,
+  shortMonthDay,
+  type PayrollLineSummary,
+  type PayrollRunDetail,
+} from "./domain/run-register";
 const dayText = (day: number | "LAST_DAY" | "FIRST") => day === "LAST_DAY" ? t("payroll.rule.lastDay") : t("payroll.rule.day", { day: day === "FIRST" ? 1 : day });
 export const payDateRule = (rule: PayGroup["pay_date_rule"]) => t("payroll.rule.payDate", { month: t(`payroll.rule.payMonth.${rule.month_offset}`), day: dayText(rule.day), business: t(`payroll.rule.${rule.non_business_day}`) });
 export const periodRule = (rule: PayGroup["base_period"]) => t("payroll.rule.period", { month: t(`payroll.rule.periodMonth.${rule.month_offset}`), day: dayText(rule.start_day) });
@@ -55,4 +62,94 @@ const blockerLabels = { MINIMUM_WAGE_BELOW_FLOOR: "payroll.employee.minimumBelow
 export function blockerText(code: string) {
   const key = code.split(":")[0]!;
   return Object.hasOwn(blockerLabels, key) ? t(blockerLabels[key as keyof typeof blockerLabels]) : t("payroll.employee.blocker", { code });
+}
+
+const RUN_CSV_HEADERS = [
+  "payroll.run.col.name",
+  "payroll.run.col.unit",
+  "payroll.run.col.grossTotal",
+  "enum.insurer.NPS",
+  "enum.insurer.NHIS",
+  "payroll.run.col.longTermCare",
+  "enum.insurer.EI",
+  "payroll.run.col.incomeTax",
+  "payroll.run.col.localIncomeTax",
+  "payroll.run.col.deductionsTotal",
+  "payroll.run.col.netPay",
+  "payroll.run.col.workDays",
+  "payroll.run.col.leaveUsed",
+] as const satisfies readonly Parameters<typeof t>[0][];
+
+export function buildRunCsvHeader(): string[] {
+  return RUN_CSV_HEADERS.map(key => t(key));
+}
+
+export function buildRunStageSteps(run: PayrollRunDetail["run"]) {
+  return buildCompactRunStages(run.status).map(step => ({
+    ...step,
+    label:
+      step.key === "calc"
+        ? t("payroll.run.CALCULATED")
+        : step.key === "approval"
+          ? run.status === "SUBMITTED"
+            ? t("payroll.run.SUBMITTED")
+            : t("payroll.run.stagePendingApproval")
+          : t("payroll.run.stagePayDate", { date: shortMonthDay(run.pay_date) }),
+  }));
+}
+
+export function buildRunStatusSegments({
+  runHeadcount,
+  rangeFrom,
+  rangeTo,
+  checkedLines,
+  selectedStatusLine,
+  selectedStatusCount,
+  selectedStatusName,
+  attentionCount,
+  hasBankIssues,
+}: {
+  runHeadcount: number;
+  rangeFrom: number;
+  rangeTo: number;
+  checkedLines: readonly PayrollLineSummary[];
+  selectedStatusLine?: PayrollLineSummary;
+  selectedStatusCount: number;
+  selectedStatusName: string;
+  attentionCount: number;
+  hasBankIssues: boolean;
+}) {
+  const selectedNetWon =
+    checkedLines.length > 1
+      ? checkedLines.every(line => typeof line.net_won === "number" && Number.isFinite(line.net_won))
+        ? checkedLines.reduce((sum, line) => sum + line.net_won!, 0)
+        : null
+      : (selectedStatusLine?.net_won ?? null);
+
+  return [
+    { id: "target", tone: "strong" as const, content: t("payroll.run.statusTarget", { count: runHeadcount }) },
+    ...(rangeTo > 0 ? [{ id: "shown", content: t("payroll.run.statusShown", { from: rangeFrom, to: rangeTo }) }] : []),
+    ...(selectedStatusLine && selectedStatusCount > 0
+      ? [
+          {
+            id: "selected",
+            content: t("payroll.run.statusSelected", { count: selectedStatusCount, name: selectedStatusName }),
+          },
+          ...(selectedNetWon != null
+            ? [{ id: "selected-net", content: t("payroll.run.statusSelectedNet", { amount: fmtNumber(selectedNetWon) }) }]
+            : []),
+        ]
+      : []),
+    ...(attentionCount > 0
+      ? [
+          {
+            id: "attention",
+            tone: "attention" as const,
+            content: hasBankIssues
+              ? t("payroll.run.statusBankHold", { count: attentionCount })
+              : t("payroll.run.statusAttention", { count: attentionCount }),
+          },
+        ]
+      : []),
+  ];
 }

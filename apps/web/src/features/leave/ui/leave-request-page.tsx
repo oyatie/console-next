@@ -17,7 +17,9 @@ import { FormSection } from "../../../ui/patterns/form-section";
 import {
   createLeaveRequest,
   leaveSubmitError,
+  myLeaveApprovalPreviewQuery,
   myLeaveQuery,
+  myLeaveTeamOverlapQuery,
   myScheduleQuery,
 } from "../api";
 import {
@@ -30,7 +32,11 @@ import {
   type LeaveOptionKind,
   type LeaveSpanMode,
 } from "../domain/leave-form";
-import { buildLeaveBalanceView } from "../present";
+import {
+  buildLeaveBalanceView,
+  formatTeamOverlapSummary,
+} from "../present";
+import { LeaveContextRows } from "./leave-context-rows";
 import {
   LeaveBalanceSummary,
   LeaveHistorySection,
@@ -138,14 +144,29 @@ export function LeaveRequestPage() {
 
   const requestedDays = computeRequestedDays({ kind, startDate, endDate, scheduleByDate, loadedMonths });
   const remainingAfter = remaining != null ? Math.round((remaining - requestedDays) * 100) / 100 : null;
+  const datesValid = isDate(startDate) && isDate(endDate) && dateProblem === null;
+  const effectiveEndDate = kind === "annual" ? endDate : startDate;
+  const overlapQ = useQuery({
+    ...myLeaveTeamOverlapQuery(startDate, effectiveEndDate),
+    enabled: Boolean(balance) && datesValid,
+    retry: false,
+  });
+  const previewQ = useQuery({
+    ...myLeaveApprovalPreviewQuery,
+    enabled: Boolean(balance),
+    retry: false,
+  });
+  const overlapSummary = formatTeamOverlapSummary(overlapQ.data, balance?.org_unit);
+  const approvalSteps =
+    previewQ.data && previewQ.data.filing_state !== "home_branch_required"
+      ? previewQ.data.steps
+      : [];
   const canSubmit =
     Boolean(balance) &&
     filingReady &&
     !startInvalid &&
     !endInvalid &&
-    isDate(startDate) &&
-    isDate(endDate) &&
-    dateProblem === null &&
+    datesValid &&
     requestedDays > 0;
 
   const { balanceStatItems, legendItems, meterData, consequenceItems } = buildLeaveBalanceView({
@@ -250,6 +271,12 @@ export function LeaveRequestPage() {
               />
             </div>
           </FormSection>
+          <LeaveContextRows
+            overlapError={overlapQ.isError}
+            overlapSummary={overlapSummary}
+            previewError={previewQ.isError}
+            approvalSteps={approvalSteps}
+          />
           {historySection}
         </>
       }
