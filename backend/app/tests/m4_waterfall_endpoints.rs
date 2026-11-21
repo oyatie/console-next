@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+#[path = "m4_waterfall_endpoints/ordering.rs"]
+mod ordering;
 #[path = "m4_waterfall_endpoints/payroll_and_nav.rs"]
 mod payroll_and_nav;
 #[path = "m4_waterfall_endpoints/setup.rs"]
