@@ -19,7 +19,6 @@ import {
   deductionRateBasis,
   hasBankBlocker,
   type DeductionCode,
-  type PayrollDirectoryEmployee,
   type PayrollLineSummary,
   type PayrollRates,
   type PayrollRunDetail,
@@ -37,20 +36,56 @@ const DEDUCTION_LABEL_KEY = {
 export function RunPayslipPreview({
   detail,
   line,
-  employee,
   rates,
 }: {
   detail: PayrollRunDetail;
   line: PayrollLineSummary;
-  employee?: PayrollDirectoryEmployee;
   rates?: PayrollRates;
 }) {
   const unreviewed = detail.calculation ? !detail.calculation.payable : false;
   const monthNum = Number(detail.run.attribution_month?.slice(5, 7) ?? 0);
   const monthText = monthNum > 0 ? t("attendanceHolidays.monthN", { n: monthNum }) : detail.run.attribution_month;
   const effectiveOn = detail.run.pay_date || detail.run.period_end;
-  const earningsRows: LedgerRow[] =
-    line.gross_won != null
+  const hasBreakdown = line.base_pay_won != null || line.overtime_pay_won != null || line.meal_allowance_won != null;
+  const earningsRows: LedgerRow[] = hasBreakdown
+    ? [
+        ...(line.base_pay_won != null
+          ? [
+              {
+                key: "base-pay",
+                label: t("payroll.run.col.basePay"),
+                amount: fmtNumber(line.base_pay_won),
+                numericValue: line.base_pay_won,
+              },
+            ]
+          : []),
+        ...(line.overtime_pay_won != null
+          ? [
+              {
+                key: "overtime-pay",
+                label: t("payroll.run.col.overtimePay"),
+                detail:
+                  line.overtime_hours != null && line.overtime_hours > 0
+                    ? t("payroll.run.overtimeDetail", { hours: line.overtime_hours, month: monthText })
+                    : undefined,
+                amount: fmtNumber(line.overtime_pay_won),
+                numericValue: line.overtime_pay_won,
+              },
+            ]
+          : []),
+        ...(line.meal_allowance_won != null
+          ? [
+              {
+                key: "meal-allowance",
+                label: t("payroll.run.col.mealAllowance"),
+                detail: t("payroll.run.taxExempt"),
+                amount: fmtNumber(line.meal_allowance_won),
+                numericValue: line.meal_allowance_won,
+              },
+            ]
+          : []),
+      ]
+    : line.gross_won != null
       ? [
           {
             key: "gross-line",
@@ -64,18 +99,28 @@ export function RunPayslipPreview({
           },
         ]
       : [];
-  const earningsTotals: LedgerTotalRow[] | undefined =
-    line.gross_won != null
-      ? [
-          {
-            key: "gross-total",
-            label: t("payroll.run.col.grossTotal"),
-            amount: fmtNumber(line.gross_won),
-            numericValue: line.gross_won,
-            kind: "total",
-          },
-        ]
-      : undefined;
+  const earningsTotalsList: LedgerTotalRow[] = [];
+  if (line.gross_won != null) {
+    earningsTotalsList.push({
+      key: "gross-total",
+      label: t("payroll.run.col.grossTotal"),
+      amount: fmtNumber(line.gross_won),
+      numericValue: line.gross_won,
+      kind: "total",
+    });
+  }
+  if (hasBreakdown && line.taxable_won != null) {
+    earningsTotalsList.push({
+      key: "taxable-total",
+      label: t("payroll.run.taxablePay"),
+      detail: t("payroll.run.taxableDetail"),
+      amount: fmtNumber(line.taxable_won),
+      numericValue: line.taxable_won,
+      kind: "note",
+      tone: "muted",
+    });
+  }
+  const earningsTotals: LedgerTotalRow[] | undefined = earningsTotalsList.length > 0 ? earningsTotalsList : undefined;
 
   const deductionRows: LedgerRow[] = DEDUCTION_CODES.flatMap(code => {
     const amt = deductionAmount(line, code);
@@ -114,15 +159,15 @@ export function RunPayslipPreview({
         ]
       : undefined;
 
-  const bankMissing = hasBankBlocker(line);
+  const bankMissing = !line.bank_account_registered || hasBankBlocker(line);
   const netFormula =
     line.gross_won != null && line.total_deductions_won != null
       ? `${fmtNumber(line.gross_won)} − ${fmtNumber(line.total_deductions_won)}`
       : undefined;
   const headerMeta = [
-    [line.employee_display_name, employee?.employee_number].filter(Boolean).join(" "),
-    employee?.org_unit || line.employee_company || "—",
-    employee?.position || null,
+    [line.employee_display_name, line.employee_number].filter(Boolean).join(" "),
+    line.org_unit || line.employee_company || "—",
+    line.position || null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -175,7 +220,9 @@ export function RunPayslipPreview({
                     key: "payDate",
                     label: t("payroll.create.payDate"),
                     value: detail.run.pay_date && /^\d{4}-\d{2}-\d{2}$/.test(detail.run.pay_date) ? (
-                      <time dateTime={detail.run.pay_date}>{detail.run.pay_date}</time>
+                      <RegisterNowrap>
+                        <time dateTime={detail.run.pay_date}>{detail.run.pay_date}</time>
+                      </RegisterNowrap>
                     ) : (
                       fmtDate(detail.run.pay_date)
                     ),
@@ -189,9 +236,24 @@ export function RunPayslipPreview({
                     key: "work",
                     label: t("payroll.run.attendanceLeave"),
                     value:
-                      line.work_days != null || line.leave_used != null
-                        ? t("payroll.run.attendanceLeaveVal", { work: line.work_days ?? 0, leave: line.leave_used ?? 0 })
-                        : "—",
+                      line.work_days != null || line.leave_used != null ? (
+                        <>
+                          {t("payroll.run.attendanceLeaveVal", { work: line.work_days ?? 0, leave: line.leave_used ?? 0 })}
+                          {line.paid_holiday_days != null && line.paid_holiday_days > 0 && (
+                            <>
+                              {" "}
+                              <bdi className="muted">
+                                {t("payroll.run.attendanceHolidaySplit", {
+                                  worked: Math.max(0, (line.work_days ?? 0) - line.paid_holiday_days),
+                                  holiday: line.paid_holiday_days,
+                                })}
+                              </bdi>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      ),
                   },
                 ]}
               />

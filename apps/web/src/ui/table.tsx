@@ -36,7 +36,7 @@ const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide &&
  * Bounded lists use this native table; headcount lists use LongTable's server paging and virtualization.
  * Read states belong to the surrounding QueryState boundary; it removes content after a server refusal.
  */
-export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOpen, tone, detail, groups, columnGroups, footerRow, scrollLayout, density, mobileLayout }: {
+export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOpen, tone, detail, groups, columnGroups, footerRow, scrollLayout, density, mobileLayout, tableClassName, groupedStyles }: {
   label: string;
   rows: R[];
   columns: Column<R>[];
@@ -53,6 +53,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
   density?: "regular" | "compact";
   /** Override the automatic phone layout: rows preserve column alignment, cards keep inline forms in view, compact draws 2-line operational rows. */
   mobileLayout?: "cards" | "rows" | "compact";
+  tableClassName?: string;
+  groupedStyles?: { groupRow?: string; groupCell?: string; groupBlank?: string; footerRow?: string };
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -146,16 +148,16 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
   const fixedTyped = columns.some(c => c.type) && scrollLayout !== "auto";
   const table = (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Overflowing read-only tables without focusable cells need keyboard scroll access.
-    <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : compactOnPhone ? cards.compact : cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-scroll-layout={scrollLayout} data-density={density} data-compact-rows={compactOnPhone || undefined} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
+    <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : compactOnPhone ? cards.compact : cards.short} ${cards.surface} ${types.surface} ${types.native}${tableClassName ? ` ${tableClassName}` : ""}`} data-typed={columns.some(c => c.type) || undefined} data-scroll-layout={scrollLayout} data-density={density} data-compact-rows={compactOnPhone || undefined} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
       <caption className="sr-only">{label}</caption>
       {fixedTyped && <colgroup>{columns.map((c, i) => <col key={i} className={cls(c)} ref={el => { if (el) el.style.width = widths[i] ?? ""; }} />)}</colgroup>}
       <thead>
         {columnGroups?.length ? (
-          <tr className={types.groupRow}>
+          <tr className={groupedStyles?.groupRow}>
             {columnGroups.map(g => (
               g.label != null
-                ? <th key={g.key} scope="colgroup" colSpan={g.span} className={types.groupCell}>{g.label}</th>
-                : <td key={g.key} colSpan={g.span} className={types.groupBlank} aria-hidden="true" />
+                ? <th key={g.key} scope="colgroup" colSpan={g.span} className={groupedStyles?.groupCell}>{g.label}</th>
+                : <td key={g.key} colSpan={g.span} className={groupedStyles?.groupBlank} aria-hidden="true" />
             ))}
           </tr>
         ) : null}
@@ -169,7 +171,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
       )) : <tbody>{renderRows(rows)}</tbody>}
       {footerRow && footerRow.cells.length > 0 && (
         <tfoot>
-          <tr key={footerRow.key ?? "footer"} className={types.footerRow}>
+          <tr key={footerRow.key ?? "footer"} className={groupedStyles?.footerRow}>
             {footerRow.cells.map((cell, i) => (
               i === 0
                 ? <th key={cell.key} scope="row" colSpan={cell.span} data-type={cell.type} data-emphasis={cell.emphasis} data-card={cell.card}>{cell.content}</th>

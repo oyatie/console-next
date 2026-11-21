@@ -819,14 +819,24 @@ function toLineSummary(
   employeeId: string,
   displayName: string,
   company: string,
+  meta: {
+    employeeNumber: string;
+    orgUnit: string;
+    position: string;
+    paidHolidayDays: number;
+  },
   calc: ReturnType<typeof saeonPayrollRow>,
 ): S["PayrollLineSummary"] {
   return {
     id: lineId,
     employee_id: employeeId,
+    employee_number: meta.employeeNumber,
     employee_display_name: displayName,
     employee_company: company,
-    work_days: 22,
+    org_unit: meta.orgUnit,
+    position: meta.position,
+    work_days: saeonUniverse.attendanceMonth.scheduledWorkDays + meta.paidHolidayDays,
+    paid_holiday_days: meta.paidHolidayDays,
     overtime_hours: calc.overtimeHours,
     leave_used: 0,
     gross_pay_source_present: true,
@@ -835,6 +845,10 @@ function toLineSummary(
     nts_tax_row_status: "VERIFIED_SOURCE_ROW",
     calculation_status: calc.bankAccountRegistered ? "READY_FOR_REVIEW" : "BLOCKED_LEGAL_GATE",
     blockers: calc.bankAccountRegistered ? [] : ["ACCOUNT_VERIFICATION"],
+    base_pay_won: calc.basePay,
+    overtime_pay_won: calc.overtimePay,
+    meal_allowance_won: calc.mealAllowance,
+    taxable_won: calc.taxablePay,
     gross_won: calc.grossPay,
     deductions: [
       { code: "NATIONAL_PENSION", label_ko: t("enum.insurer.NPS"), amount_won: calc.nationalPension, source_url: "https://www.nps.or.kr" },
@@ -851,25 +865,78 @@ function toLineSummary(
 }
 
 /** OpenAPI-typed `PayrollRunDetail` matching the boarded 2026-10 Saeon payroll run and window rows. */
-export function saeonPayrollRunDetail(options: { offset?: number; limit?: number } = {}): S["PayrollRunDetail"] {
-  const { payrollRun } = saeonUniverse;
+export function saeonPayrollRunDetail(
+  options: { offset?: number; limit?: number; missing_bank_only?: boolean; q?: string } = {},
+): S["PayrollRunDetail"] {
+  const { payrollRun, attendanceMonth } = saeonUniverse;
   const entity = saeonUniverse.entities[payrollRun.entityIndex]!;
   const offset = Math.max(0, options.offset ?? 0);
   const limit = Math.max(1, options.limit ?? 50);
+  const missingBankOnly = Boolean(options.missing_bank_only);
+  const needle = options.q?.trim().toLowerCase() ?? "";
+  const paidHolidayDays = attendanceMonth.weekdayHolidays;
   const roster = generateSaeonRoster();
   const rosterByNumber = new Map(roster.map(row => [row.employeeNumber, row]));
+  const windowNumbers = new Set(payrollRun.windowRows.map(row => row.employeeNumber));
 
-  const lines: S["PayrollLineSummary"][] =
-    offset === 0
-      ? payrollRun.windowRows.map((row, index) => {
-          const calc = saeonPayrollRow(row.employeeNumber, row.gradeCode, row.overtimeHours, row.bankAccountRegistered);
-          const employeeId = rosterByNumber.get(row.employeeNumber)?.id ?? `00000000-0000-4000-8300-${padDigits(index + 1, 12)}`;
-          return toLineSummary(`00000000-0000-4000-8800-${padDigits(index + 1, 12)}`, employeeId, row.name, entity.name, calc);
-        })
-      : roster.slice(offset, Math.min(payrollRun.headcount, offset + limit)).map((row, index) => {
-          const calc = saeonPayrollRow(row.employeeNumber, row.gradeCode, index % 4 === 0 ? 4 : 0, true);
-          return toLineSummary(`00000000-0000-4000-8800-${padDigits(offset + index + 1, 12)}`, row.id, row.name, entity.name, calc);
-        });
+  const headLines: S["PayrollLineSummary"][] = payrollRun.windowRows.map((row, index) => {
+    const match = rosterByNumber.get(row.employeeNumber);
+    const calc = saeonPayrollRow(row.employeeNumber, row.gradeCode, row.overtimeHours, row.bankAccountRegistered);
+    const employeeId = match?.id ?? `00000000-0000-4000-8300-${padDigits(index + 1, 12)}`;
+    const position = match?.roleLabel ? `${row.gradeLabel} \u00B7 ${match.roleLabel}` : row.gradeLabel;
+    return toLineSummary(
+      `00000000-0000-4000-8800-${padDigits(index + 1, 12)}`,
+      employeeId,
+      row.name,
+      entity.name,
+      {
+        employeeNumber: row.employeeNumber,
+        orgUnit: row.place,
+        position,
+        paidHolidayDays,
+      },
+      calc,
+    );
+  });
+
+  const tailLines: S["PayrollLineSummary"][] = roster
+    .filter(row => !windowNumbers.has(row.employeeNumber))
+    .slice(0, Math.max(0, payrollRun.headcount - headLines.length))
+    .map((row, index) => {
+      const bankRegistered = index !== 0;
+      const calc = saeonPayrollRow(row.employeeNumber, row.gradeCode, index % 4 === 0 ? 4 : 0, bankRegistered);
+      const position = row.roleLabel ? `${row.gradeLabel} \u00B7 ${row.roleLabel}` : row.gradeLabel;
+      return toLineSummary(
+        `00000000-0000-4000-8800-${padDigits(headLines.length + index + 1, 12)}`,
+        row.id,
+        row.name,
+        entity.name,
+        {
+          employeeNumber: row.employeeNumber,
+          orgUnit: row.place,
+          position,
+          paidHolidayDays,
+        },
+        calc,
+      );
+    });
+
+  const allLines = [...headLines, ...tailLines];
+  const filtered = allLines.filter(line => {
+    if (missingBankOnly && line.bank_account_registered) return false;
+    if (!needle) return true;
+    return (
+      line.employee_display_name.toLowerCase().includes(needle) ||
+      (line.employee_number?.toLowerCase().includes(needle) ?? false) ||
+      (line.org_unit?.toLowerCase().includes(needle) ?? false) ||
+      (line.position?.toLowerCase().includes(needle) ?? false)
+    );
+  });
+
+  const isInitialBoardWindow = !missingBankOnly && !needle && offset === 0;
+  const lines = isInitialBoardWindow
+    ? filtered.slice(0, Math.min(headLines.length, limit))
+    : filtered.slice(offset, offset + limit);
 
   return {
     run: {
@@ -892,7 +959,7 @@ export function saeonPayrollRunDetail(options: { offset?: number; limit?: number
     legal_basis: {},
     source_summary: {},
     lines,
-    lines_total: payrollRun.headcount,
+    lines_total: filtered.length,
     lines_limit: limit,
     lines_offset: offset,
     exceptions_open: payrollRun.missingBankAccountCount,

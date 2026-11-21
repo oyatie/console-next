@@ -7,7 +7,6 @@ type PayrollCalculationDeduction = components["schemas"]["PayrollCalculationDedu
 export type DeductionCode = PayrollCalculationDeduction["code"];
 type PayrollRunSummary = components["schemas"]["PayrollRunSummary"];
 type PayrollRunStatus = PayrollRunSummary["status"];
-export type PayrollDirectoryEmployee = components["schemas"]["Employee"];
 type PayrollRate = components["schemas"]["PayrollRate"];
 export type PayrollRates = components["schemas"]["PayrollRates"];
 
@@ -34,6 +33,9 @@ type CompactRunStage = {
 };
 
 type PageSubtotals = {
+  basePayWon: number | null;
+  overtimePayWon: number | null;
+  mealAllowanceWon: number | null;
   grossWon: number | null;
   totalDeductionsWon: number | null;
   netWon: number | null;
@@ -57,10 +59,13 @@ function blockerCode(entry: unknown): string {
 }
 
 export function hasBankBlocker(line: PayrollLineSummary): boolean {
-  return line.blockers.some(entry => {
-    const code = blockerCode(entry).toUpperCase();
-    return code === "ACCOUNT_VERIFICATION" || code.includes("BANK") || code.includes("ACCOUNT");
-  });
+  return (
+    !line.bank_account_registered ||
+    line.blockers.some(entry => {
+      const code = blockerCode(entry).toUpperCase();
+      return code === "ACCOUNT_VERIFICATION" || code.includes("BANK") || code.includes("ACCOUNT");
+    })
+  );
 }
 
 export function isLineAttention(line: PayrollLineSummary): boolean {
@@ -71,18 +76,18 @@ export function filterRegisterLines(
   lines: readonly PayrollLineSummary[],
   filter: RegisterFilterMode,
   query: string,
-  directoryById?: ReadonlyMap<string, Pick<PayrollDirectoryEmployee, "employee_number">>,
 ): PayrollLineSummary[] {
   const needle = query.trim().toLowerCase();
   return lines.filter(line => {
     if (filter === "attention" && !isLineAttention(line)) return false;
     if (!needle) return true;
-    const emp = line.employee_id ? directoryById?.get(line.employee_id) : undefined;
     return (
       line.employee_display_name.toLowerCase().includes(needle) ||
       line.employee_company.toLowerCase().includes(needle) ||
       (line.employee_id?.toLowerCase().includes(needle) ?? false) ||
-      (emp?.employee_number?.toLowerCase().includes(needle) ?? false)
+      (line.employee_number?.toLowerCase().includes(needle) ?? false) ||
+      (line.org_unit?.toLowerCase().includes(needle) ?? false) ||
+      (line.position?.toLowerCase().includes(needle) ?? false)
     );
   });
 }
@@ -227,6 +232,9 @@ export function computePageSubtotals(lines: readonly PayrollLineSummary[]): Page
   ) as Record<DeductionCode, number | null>;
 
   return {
+    basePayWon: sumNullable(lines.map(line => line.base_pay_won)),
+    overtimePayWon: sumNullable(lines.map(line => line.overtime_pay_won)),
+    mealAllowanceWon: sumNullable(lines.map(line => line.meal_allowance_won)),
     grossWon: sumNullable(lines.map(line => line.gross_won)),
     totalDeductionsWon: sumNullable(lines.map(line => line.total_deductions_won)),
     netWon: sumNullable(lines.map(line => line.net_won)),
@@ -234,10 +242,12 @@ export function computePageSubtotals(lines: readonly PayrollLineSummary[]): Page
   };
 }
 
+export const RUN_CSV_COLUMN_COUNT = 13;
+
 export function buildRunCsvMatrix(lines: readonly PayrollLineSummary[]): (string | number)[][] {
   return lines.map(line => [
     line.employee_display_name,
-    line.employee_company,
+    line.org_unit || line.employee_company,
     line.gross_won ?? "",
     deductionAmount(line, "NATIONAL_PENSION") ?? "",
     deductionAmount(line, "HEALTH_INSURANCE") ?? "",

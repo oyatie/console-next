@@ -28,12 +28,12 @@ beforeAll(async () => {
           import { createElement as h, useState } from 'react';
           import { createRoot } from 'react-dom/client';
           import { Check } from '/apps/web/src/ui/button/button.tsx';
-          import { Table } from '/apps/web/src/ui/table.tsx';
+          import { GroupedTable } from '/apps/web/src/ui/table-grouped.tsx';
           import '/apps/web/src/app.css';
           function App() {
             const [selected, setSelected] = useState('r1');
             const [checked, setChecked] = useState(false);
-            return h('main', null, h(Table, {
+            return h('main', null, h(GroupedTable, {
               label: 'Grouped auto',
               rows: [
                 { id: 'r1', name: 'Row 1', amount: '1,000', flag: 'Held' },

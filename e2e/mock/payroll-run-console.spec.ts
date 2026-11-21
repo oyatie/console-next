@@ -13,7 +13,6 @@ import {
   saeonAdminToken,
   saeonAdminUser,
   saeonPayGroups,
-  saeonPayrollEmployees,
   saeonPayrollRates,
   saeonPayrollRunDetail,
   saeonUniverse,
@@ -68,16 +67,6 @@ async function setupSaeonPayrollRun(page: Page, theme: "light" | "dark" = "light
     },
   });
   await mockRoute(page, "get", "/api/v1/payroll/pay-groups", { status: 200, json: groups });
-  await mockRoute(page, "get", "/api/v1/employees", {
-    status: 200,
-    json: {
-      items: saeonPayrollEmployees(),
-      total: saeonUniverse.payrollRun.headcount,
-      offset: 0,
-      limit: 1000,
-      next_cursor: null,
-    },
-  });
   await mockRoute(page, "get", "/api/v1/payroll/reference/rates", {
     status: 200,
     json: saeonPayrollRates(),
@@ -86,7 +75,9 @@ async function setupSaeonPayrollRun(page: Page, theme: "light" | "dark" = "light
     const query = new URL(request.url()).searchParams;
     const offset = Number(query.get("offset") ?? 0);
     const limit = Number(query.get("limit") ?? 50);
-    return { status: 200, json: saeonPayrollRunDetail({ offset, limit }) };
+    const missing_bank_only = query.get("missing_bank_only") === "true";
+    const q = query.get("q") ?? undefined;
+    return { status: 200, json: saeonPayrollRunDetail({ offset, limit, missing_bank_only, q }) };
   });
 
   return { fixture, runId, initialDetail, groups };
@@ -117,6 +108,11 @@ for (const width of [1440, 390]) {
         await expect(root).toContainText(saeonUniverse.hero.employeeNumber);
         await expect(root).toContainText(saeonUniverse.payrollRun.windowRows[0]!.place);
         await expect(root).toContainText(`${saeonUniverse.hero.gradeLabel} \u00B7 ${saeonUniverse.hero.roleLabel}`);
+        await expect(root).toContainText(t("payroll.run.taxExempt"));
+        await expect(root).toContainText(t("payroll.run.taxablePay"));
+        await expect(root).toContainText(t("payroll.run.taxableDetail"));
+        await expect(root).toContainText("3,367,000");
+        await expect(root).toContainText(t("payroll.run.attendanceHolidaySplit", { worked: 18, holiday: 4 }));
         await expect(root).toContainText(t("payroll.run.rateNote.taxable", { rate: "4.5" }));
         await expect(root).toContainText(t("payroll.run.rateNote.taxable", { rate: "3.545" }));
         await expect(root).toContainText(t("payroll.run.rateNote.healthInsurance", { rate: "12.95" }));
@@ -128,13 +124,24 @@ for (const width of [1440, 390]) {
         const table = root.getByRole("grid", { name: t("payroll.run.registerLabel"), exact: true });
         await expect(table.locator("tbody tr[data-id]")).toHaveCount(10);
         await expect(table.locator("tfoot tr")).toHaveCount(1);
+        await expect(table.locator("tfoot")).toContainText("34,100,000");
+        await expect(table.locator("tfoot")).toContainText("605,800");
+        await expect(table.locator("tfoot")).toContainText("2,000,000");
         await expect(table).toContainText("32,322,528");
 
         const missingBankRow = table.locator("tbody tr[data-id]").nth(4);
         await expect(missingBankRow).not.toHaveAttribute("data-tone", /.+/);
         await expect(missingBankRow.locator('td[data-cell-tone="danger"]')).toHaveCount(1);
 
+        if (width === 1440) {
+          await table.locator("tbody tr[data-id]").first().locator("label.check").click();
+        }
+
         if (width === 390) {
+          const previewHeading = root.getByRole("heading", { name: t("payroll.run.previewTitle"), exact: true });
+          const previewClipped = await previewHeading.evaluate(el => el.scrollWidth > el.clientWidth + 1);
+          expect(previewClipped).toBe(false);
+
           const heights = await table.locator("tbody tr[data-id]").evaluateAll(rows =>
             rows.map(row => Math.round(row.getBoundingClientRect().height)),
           );
@@ -199,8 +206,19 @@ test("Console /payroll/runs/$id supports row selection, attention filter, search
     await table.locator("tbody tr[data-id]").nth(4).click();
     await expect(root).toContainText("2,559,000");
 
+    await table.locator("tbody tr[data-id]").nth(0).locator("label.check").click();
+    await table.locator("tbody tr[data-id]").nth(1).locator("label.check").click();
+    await expect(page.getByText(t("payroll.run.statusSelectedNet", { amount: fmtNumber(3_141_755 + 2_592_892) }))).toBeVisible();
+
     await root.getByRole("button", { name: t("payroll.run.viewCount", { count: 2 }), exact: true }).click();
-    await expect(table.locator("tbody tr[data-id]")).toHaveCount(1);
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(2);
+    await expect(root).toContainText(t("payroll.run.personCount", { count: 757 }));
+    await expect(page.getByText(t("payroll.run.statusTarget", { count: 757 }))).toBeVisible();
+    await expect(
+      root
+        .getByRole("group", { name: t("payroll.run.filterLabel"), exact: true })
+        .getByRole("button", { name: new RegExp(t("home.inbox.filter.all")) }),
+    ).toContainText("757");
 
     await root
       .getByRole("group", { name: t("payroll.run.filterLabel"), exact: true })
@@ -212,7 +230,10 @@ test("Console /payroll/runs/$id supports row selection, attention filter, search
     await expect(table.locator("tbody tr[data-id]")).toHaveCount(1);
     await root.getByRole("searchbox", { name: t("payroll.run.findPlaceholder"), exact: true }).fill(saeonUniverse.hero.employeeNumber);
     await expect(table.locator("tbody tr[data-id]")).toHaveCount(1);
-    await root.getByRole("searchbox", { name: t("payroll.run.findPlaceholder"), exact: true }).fill("");
+    await root.getByRole("searchbox", { name: t("payroll.run.findPlaceholder"), exact: true }).fill("NO_SUCH_EMPLOYEE_99999");
+    await expect(root).toContainText(t("payroll.run.noMatch"));
+    await expect(root.getByRole("button", { name: t("payroll.run.nextPage", { count: 50 }), exact: true })).toHaveCount(0);
+    await root.getByRole("button", { name: t("payroll.run.resetFilter"), exact: true }).click();
     await expect(table.locator("tbody tr[data-id]")).toHaveCount(10);
 
     await root.getByRole("button", { name: t("payroll.run.nextPage", { count: 50 }), exact: true }).click();
@@ -305,6 +326,205 @@ test("Console /payroll/runs/$id latches 403 refusal across keepPreviousData pagi
     await root.getByRole("button", { name: t("payroll.run.nextPage", { count: 50 }), exact: true }).click();
     await expect(root.getByRole("region", { name: t("common.denied.title.plain") })).toBeVisible({ timeout: 15_000 });
     await expect(root.getByRole("heading", { name: t("payroll.run.previewTitle"), exact: true })).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    await page.close();
+    fixture.release();
+  }
+});
+
+test("Baseline /payroll/runs/$id never calls payroll reference rates when lines are non-empty", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(expKey => {
+    localStorage.setItem(expKey, "baseline");
+    localStorage.setItem("console.locale", "ko");
+  }, EXPERIENCE_KEY);
+  const fixture = await mockScreen(page, payrollScreens[0], "populated");
+  const groups = saeonPayGroups();
+  const detail = saeonPayrollRunDetail({ offset: 0, limit: 50 });
+  const runId = detail.run.id;
+  const rateRequests: string[] = [];
+  page.on("request", request => {
+    if (new URL(request.url()).pathname.includes("/api/v1/payroll/reference/rates")) {
+      rateRequests.push(request.url());
+    }
+  });
+  await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: saeonAdminToken() });
+  await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: saeonAdminUser() });
+  await mockRoute(page, "get", "/api/v1/onboarding/modules", {
+    status: 200,
+    json: [...modules.ready, { key: "payroll", ready: true, unblock: null }],
+  });
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess(`/payroll/runs/${runId}`) });
+  await mockRoute(page, "get", "/api/v1/payroll/pay-groups", { status: 200, json: groups });
+  await mockRoute(page, "get", "/api/v1/payroll/runs/{id}", { status: 200, json: detail });
+
+  try {
+    expect(detail.lines.length).toBeGreaterThan(0);
+    await page.goto(`/payroll/runs/${runId}`);
+    const main = page.getByRole("main");
+    await expect(main.getByRole("list", { name: t("payroll.stages.title") })).toBeVisible();
+    await expect(page.locator('[data-pattern="register-totals"]')).toHaveCount(0);
+    expect(rateRequests).toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    await page.close();
+    fixture.release();
+  }
+});
+
+test("Console /payroll/runs/$id handles attention filter without loop when missing_bank_account_count is 0 and line has ACCOUNT_VERIFICATION", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fixture, runId } = await setupSaeonPayrollRun(page, "light");
+  const pageErrors: string[] = [];
+  page.on("pageerror", err => pageErrors.push(err.message));
+
+  const base = saeonPayrollRunDetail({ offset: 0, limit: 50 });
+  const modifiedLines = base.lines.map((line, index) =>
+    index === 0
+      ? {
+          ...line,
+          bank_account_registered: true,
+          calculation_status: "BLOCKED_LEGAL_GATE" as const,
+          blockers: ["ACCOUNT_VERIFICATION"],
+        }
+      : {
+          ...line,
+          bank_account_registered: true,
+          calculation_status: "READY_FOR_REVIEW" as const,
+          blockers: [],
+        },
+  );
+  const runRequests: string[] = [];
+  await page.route(`**/api/v1/payroll/runs/${runId}*`, route => {
+    runRequests.push(route.request().url());
+    return route.fulfill({
+      json: {
+        ...base,
+        lines: modifiedLines,
+        lines_total: modifiedLines.length,
+        missing_bank_account_count: 0,
+        exceptions_open: 1,
+        exceptions_total: 1,
+      },
+    });
+  });
+
+  try {
+    await page.goto(`/payroll/runs/${runId}`);
+    const root = page.locator('[data-pattern="register-totals"]');
+    const table = root.getByRole("grid", { name: t("payroll.run.registerLabel"), exact: true });
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(10);
+    expect(runRequests).toHaveLength(1);
+
+    const filterGroup = root.getByRole("group", { name: t("payroll.run.filterLabel"), exact: true });
+    const attentionTab = filterGroup.getByRole("button", { name: new RegExp(t("payroll.run.attentionFilter")) });
+    await expect(attentionTab).toContainText("1");
+    await attentionTab.click();
+
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(1);
+    await expect(table.locator("tbody tr[data-id]").first()).toContainText(modifiedLines[0]!.employee_display_name);
+    await page.waitForTimeout(250);
+    expect(runRequests).toHaveLength(1);
+    expect(pageErrors).toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    await page.close();
+    fixture.release();
+  }
+});
+
+test("Console /payroll/runs/$id avoids noMatch flicker and keeps preview visible during IME composition, delayed search, and delayed missing_bank_only from page 3", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fixture, runId, initialDetail } = await setupSaeonPayrollRun(page, "light");
+  const page1Ids = new Set(initialDetail.lines.map(l => l.id));
+  const page2Detail = saeonPayrollRunDetail({ offset: 10, limit: 50 });
+  const page2OnlyEmployee = page2Detail.lines.find(l => !page1Ids.has(l.id))!;
+
+  let delayNextFilter = false;
+  await page.route(`**/api/v1/payroll/runs/${runId}*`, async route => {
+    const query = new URL(route.request().url()).searchParams;
+    const offset = Number(query.get("offset") ?? 0);
+    const limit = Number(query.get("limit") ?? 50);
+    const missing_bank_only = query.get("missing_bank_only") === "true";
+    const q = query.get("q") ?? undefined;
+    if (delayNextFilter && (q || missing_bank_only)) {
+      await new Promise(resolve => setTimeout(resolve, 180));
+    }
+    if (page.isClosed()) return;
+    return route.fulfill({ json: saeonPayrollRunDetail({ offset, limit, missing_bank_only, q }) });
+  });
+
+  try {
+    await page.goto(`/payroll/runs/${runId}`);
+    const root = page.locator('[data-pattern="register-totals"]');
+    const table = root.getByRole("grid", { name: t("payroll.run.registerLabel"), exact: true });
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(10);
+
+    await page.evaluate(
+      ({ noMatchText, previewTitleText }) => {
+        const target = document.querySelector('[data-pattern="register-totals"]');
+        if (!target) throw new Error("missing register-totals root");
+        const events: string[] = [];
+        const recordIfBad = () => {
+          const text = target.textContent ?? "";
+          if (text.includes(noMatchText)) events.push("NO_MATCH_FLASH");
+          const hasPreview = [...target.querySelectorAll("h2, h3")].some(el => el.textContent?.trim() === previewTitleText);
+          if (!hasPreview) events.push("PREVIEW_DISAPPEARED");
+        };
+        const obs = new MutationObserver(recordIfBad);
+        obs.observe(target, { childList: true, subtree: true, characterData: true });
+        (window as unknown as { __flickerEvents: string[]; __stopFlickerObs: () => void }).__flickerEvents = events;
+        (window as unknown as { __stopFlickerObs: () => void }).__stopFlickerObs = () => obs.disconnect();
+      },
+      { noMatchText: t("payroll.run.noMatch"), previewTitleText: t("payroll.run.previewTitle") },
+    );
+
+    const jamo = saeonUniverse.hero.name.normalize("NFD").slice(0, 1);
+    const searchbox = root.getByRole("searchbox", { name: t("payroll.run.findPlaceholder"), exact: true });
+    await searchbox.evaluate((el, val) => {
+      const input = el as HTMLInputElement;
+      input.focus();
+      input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      setter.call(input, val);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, jamo);
+    await page.waitForTimeout(150);
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(10);
+    await searchbox.evaluate(el => {
+      const input = el as HTMLInputElement;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      setter.call(input, "");
+      input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "" }));
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    delayNextFilter = true;
+    await searchbox.fill(page2OnlyEmployee.employee_display_name);
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(1);
+    await expect(table.locator("tbody tr[data-id]").first()).toContainText(page2OnlyEmployee.employee_display_name);
+    await searchbox.fill("");
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(10);
+
+    await root.getByRole("button", { name: t("payroll.run.nextPage", { count: 50 }), exact: true }).click();
+    await expect(root).toContainText(t("payroll.run.range", { from: 11, to: 60, total: 757 }));
+    await root.getByRole("button", { name: t("payroll.run.nextPage", { count: 50 }), exact: true }).click();
+    await expect(root).toContainText(t("payroll.run.range", { from: 61, to: 110, total: 757 }));
+
+    await root.getByRole("button", { name: t("payroll.run.viewCount", { count: 2 }), exact: true }).click();
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(2);
+
+    const flickerEvents = await page.evaluate(() => {
+      const w = window as unknown as { __flickerEvents: string[]; __stopFlickerObs: () => void };
+      w.__stopFlickerObs();
+      return w.__flickerEvents;
+    });
+    expect(flickerEvents).toEqual([]);
     expect(fixture.unexpected).toEqual([]);
   } finally {
     await page.close();

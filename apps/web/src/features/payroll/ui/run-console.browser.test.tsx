@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test } from "vitest";
+import { buildRunCsvHeader, buildRunStatusSegments } from "../present";
+import { buildRunCsvMatrix, type PayrollLineSummary, type PayrollRunDetail } from "../domain/run-register";
 import { RunPayslipPreview } from "./run-console-preview";
-import type { PayrollRunDetail } from "../domain/run-register";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -93,7 +95,7 @@ test("RunPayslipPreview renders Earnings and Deductions Ledgers without employee
   expect(markup).not.toContain(t("payroll.run.openCard"));
 });
 
-test("RunPayslipPreview renders directory header metadata and statutory deduction rate notes when available", () => {
+test("RunPayslipPreview renders line metadata, itemized earnings breakdown, holiday split, and rate notes", () => {
   const detail = makeDetail();
 
   const qc = new QueryClient();
@@ -104,9 +106,13 @@ test("RunPayslipPreview renders directory header metadata and statutory deductio
         line={{
           id: "00000000-0000-4000-8800-000000000001",
           employee_id: null,
+          employee_number: "10587",
           employee_display_name: "Test Employee",
           employee_company: "Saeon Precision",
+          org_unit: "Plant 1 / Team 1",
+          position: "Senior Staff",
           work_days: 22,
+          paid_holiday_days: 4,
           overtime_hours: 12,
           leave_used: 0,
           gross_pay_source_present: true,
@@ -115,6 +121,10 @@ test("RunPayslipPreview renders directory header metadata and statutory deductio
           nts_tax_row_status: "VERIFIED_SOURCE_ROW",
           calculation_status: "READY_FOR_REVIEW",
           blockers: [],
+          base_pay_won: 3_100_000,
+          overtime_pay_won: 267_000,
+          meal_allowance_won: 200_000,
+          taxable_won: 3_367_000,
           gross_won: 3_567_000,
           tax_table_version: "2026-10",
           deductions: [
@@ -124,26 +134,6 @@ test("RunPayslipPreview renders directory header metadata and statutory deductio
           ],
           total_deductions_won: 425_245,
           net_won: 3_141_755,
-        }}
-        employee={{
-          id: "00000000-0000-4000-8300-000000001287",
-          company: "Saeon Precision",
-          name: "Test Employee",
-          employee_number: "10587",
-          org_unit: "Plant 1 / Team 1",
-          org_unit_id: null,
-          legal_entity_id: "00000000-0000-4000-8100-000000000001",
-          workplace_id: null,
-          position: "Senior Staff",
-          home_branch_review_required: false,
-          identity_resolution_strategy: "employee_number",
-          identity_resolution_confidence: "high",
-          identity_review_required: false,
-          identity_name_only_merge: false,
-          next_event: null,
-          failed_event: null,
-          created_at: "2026-11-10T09:00:00Z",
-          updated_at: "2026-11-10T09:00:00Z",
         }}
         rates={{
           country_code: "KR",
@@ -179,7 +169,87 @@ test("RunPayslipPreview renders directory header metadata and statutory deductio
   expect(markup).toContain("Test Employee 10587");
   expect(markup).toContain("Plant 1 / Team 1");
   expect(markup).toContain("Senior Staff");
+  expect(markup).toContain("3,100,000");
+  expect(markup).toContain("267,000");
+  expect(markup).toContain("200,000");
+  expect(markup).toContain("3,367,000");
+  expect(markup).toContain(t("payroll.run.taxExempt"));
+  expect(markup).toContain(t("payroll.run.taxablePay"));
+  expect(markup).toContain(t("payroll.run.taxableDetail"));
+  expect(markup).toContain(t("payroll.run.attendanceHolidaySplit", { worked: 18, holiday: 4 }));
   expect(markup).toContain(t("payroll.run.rateNote.taxable", { rate: "4.5" }));
   expect(markup).toContain(t("payroll.run.rateNote.simplifiedTax"));
   expect(markup).toContain(t("payroll.run.rateNote.localIncomeTax", { rate: "10" }));
+});
+
+test("buildRunStatusSegments preserves runHeadcount and sums net_won when multiple rows are checked", () => {
+  const lineA: PayrollLineSummary = {
+    id: "00000000-0000-4000-8800-000000000001",
+    employee_id: null,
+    employee_number: "10587",
+    employee_display_name: "Alpha",
+    employee_company: "Saeon",
+    work_days: 22,
+    leave_used: 0,
+    gross_pay_source_present: true,
+    net_pay_source_present: true,
+    bank_account_registered: true,
+    nts_tax_row_status: "VERIFIED_SOURCE_ROW",
+    calculation_status: "READY_FOR_REVIEW",
+    blockers: [],
+    net_won: 3_141_755,
+  };
+  const lineB: PayrollLineSummary = {
+    ...lineA,
+    id: "00000000-0000-4000-8800-000000000002",
+    employee_number: "10537",
+    employee_display_name: "Beta",
+    net_won: 2_592_892,
+  };
+
+  const segments = buildRunStatusSegments({
+    runHeadcount: 757,
+    rangeFrom: 1,
+    rangeTo: 2,
+    checkedLines: [lineA, lineB],
+    selectedStatusLine: lineA,
+    selectedStatusCount: 2,
+    selectedStatusName: "Alpha 10587",
+    attentionCount: 2,
+    hasBankIssues: true,
+  });
+
+  expect(segments.find(s => s.id === "target")?.content).toBe(t("payroll.run.statusTarget", { count: 757 }));
+  expect(segments.find(s => s.id === "selected-net")?.content).toBe(
+    t("payroll.run.statusSelectedNet", { amount: fmtNumber(3_141_755 + 2_592_892) }),
+  );
+});
+
+test("buildRunCsvHeader matches buildRunCsvMatrix column length 1:1", () => {
+  const header = buildRunCsvHeader();
+  const matrix = buildRunCsvMatrix([
+    {
+      id: "00000000-0000-4000-8800-000000000001",
+      employee_id: null,
+      employee_number: "10587",
+      employee_display_name: "Alpha",
+      employee_company: "Saeon",
+      org_unit: "Plant 1 / Team 1",
+      work_days: 22,
+      leave_used: 0,
+      gross_pay_source_present: true,
+      net_pay_source_present: true,
+      bank_account_registered: true,
+      nts_tax_row_status: "VERIFIED_SOURCE_ROW",
+      calculation_status: "READY_FOR_REVIEW",
+      blockers: [],
+      gross_won: 3_567_000,
+      total_deductions_won: 425_245,
+      net_won: 3_141_755,
+    },
+  ]);
+
+  expect(matrix[0]).toHaveLength(header.length);
+  expect(header.every(col => col.trim().length > 0)).toBe(true);
+  expect(matrix[0]![1]).toBe("Plant 1 / Team 1");
 });

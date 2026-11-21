@@ -9,6 +9,7 @@ import {
   filterRegisterLines,
   hasBankBlocker,
   isLineAttention,
+  RUN_CSV_COLUMN_COUNT,
   shortMonthDay,
   type PayrollLineSummary,
   type PayrollRates,
@@ -18,9 +19,13 @@ function makeLine(overrides: Partial<PayrollLineSummary> = {}): PayrollLineSumma
   return {
     id: "00000000-0000-4000-8000-000000000101",
     employee_id: "00000000-0000-4000-8000-000000000201",
+    employee_number: "10587",
     employee_display_name: "Employee One",
     employee_company: "Saeon Precision",
+    org_unit: "Plant 1 / Team 1",
+    position: "Senior Staff",
     work_days: 22,
+    paid_holiday_days: 4,
     overtime_hours: 12,
     leave_used: 0,
     gross_pay_source_present: true,
@@ -29,6 +34,10 @@ function makeLine(overrides: Partial<PayrollLineSummary> = {}): PayrollLineSumma
     nts_tax_row_status: "VERIFIED_SOURCE_ROW",
     calculation_status: "READY_FOR_REVIEW",
     blockers: [],
+    base_pay_won: 3_100_000,
+    overtime_pay_won: 267_000,
+    meal_allowance_won: 200_000,
+    taxable_won: 3_367_000,
     gross_won: 3_567_000,
     deductions: [
       { code: "NATIONAL_PENSION", label_ko: "NPS", amount_won: 151_515, source_url: "https://example.com" },
@@ -58,6 +67,9 @@ describe("run-register domain helpers", () => {
     const a = makeLine();
     const b = makeLine({
       id: "00000000-0000-4000-8000-000000000102",
+      base_pay_won: 2_700_000,
+      overtime_pay_won: 0,
+      meal_allowance_won: 200_000,
       gross_won: 2_900_000,
       total_deductions_won: 341_000,
       net_won: 2_559_000,
@@ -66,6 +78,9 @@ describe("run-register domain helpers", () => {
       ],
     });
     const subtotals = computePageSubtotals([a, b]);
+    expect(subtotals.basePayWon).toBe(5_800_000);
+    expect(subtotals.overtimePayWon).toBe(267_000);
+    expect(subtotals.mealAllowanceWon).toBe(400_000);
     expect(subtotals.grossWon).toBe(6_467_000);
     expect(subtotals.totalDeductionsWon).toBe(766_245);
     expect(subtotals.netWon).toBe(5_700_755);
@@ -73,8 +88,19 @@ describe("run-register domain helpers", () => {
     expect(subtotals.deductions.HEALTH_INSURANCE).toBe(119_360);
 
     const empty = computePageSubtotals([
-      makeLine({ gross_won: null, total_deductions_won: null, net_won: null, deductions: null }),
+      makeLine({
+        base_pay_won: null,
+        overtime_pay_won: null,
+        meal_allowance_won: null,
+        gross_won: null,
+        total_deductions_won: null,
+        net_won: null,
+        deductions: null,
+      }),
     ]);
+    expect(empty.basePayWon).toBeNull();
+    expect(empty.overtimePayWon).toBeNull();
+    expect(empty.mealAllowanceWon).toBeNull();
     expect(empty.grossWon).toBeNull();
     expect(empty.totalDeductionsWon).toBeNull();
     expect(empty.netWon).toBeNull();
@@ -82,13 +108,17 @@ describe("run-register domain helpers", () => {
   });
 
   test("bank blockers, attention filter, and text query work cleanly", () => {
-    const clean = makeLine({ employee_display_name: "Alpha Person" });
+    const clean = makeLine({ employee_display_name: "Alpha Person", employee_number: "10587", org_unit: "Plant 1", position: "Lead" });
     const missingBank = makeLine({
       id: "00000000-0000-4000-8000-000000000103",
       employee_id: "00000000-0000-4000-8000-000000000202",
+      employee_number: "10416",
       employee_display_name: "Beta Person",
+      org_unit: "Sales 1",
+      position: "Staff",
+      bank_account_registered: false,
       calculation_status: "BLOCKED_LEGAL_GATE",
-      blockers: ["ACCOUNT_VERIFICATION"],
+      blockers: [],
     });
     expect(hasBankBlocker(clean)).toBe(false);
     expect(hasBankBlocker(missingBank)).toBe(true);
@@ -97,9 +127,9 @@ describe("run-register domain helpers", () => {
     expect(filterRegisterLines([clean, missingBank], "attention", "")).toEqual([missingBank]);
     expect(filterRegisterLines([clean, missingBank], "all", "alpha")).toEqual([clean]);
     expect(filterRegisterLines([clean, missingBank], "attention", "alpha")).toEqual([]);
-
-    const directory = new Map([[clean.employee_id!, { employee_number: "10587" }]]);
-    expect(filterRegisterLines([clean, missingBank], "all", "10587", directory)).toEqual([clean]);
+    expect(filterRegisterLines([clean, missingBank], "all", "10587")).toEqual([clean]);
+    expect(filterRegisterLines([clean, missingBank], "all", "sales 1")).toEqual([missingBank]);
+    expect(filterRegisterLines([clean, missingBank], "all", "lead")).toEqual([clean]);
   });
 
   test("deductionRateBasis resolves effective statutory rates, half-shares, tax table, and local income tax", () => {
@@ -170,12 +200,17 @@ describe("run-register domain helpers", () => {
     expect(shortMonthDay(null)).toBe("—");
   });
 
-  test("buildRunCsvMatrix preserves numeric values and nulls without fabrication", () => {
-    const matrix = buildRunCsvMatrix([makeLine()]);
-    expect(matrix).toHaveLength(1);
+  test("buildRunCsvMatrix matches column count, prefers org_unit, and preserves numeric values", () => {
+    const withOrgUnit = makeLine({ org_unit: "Plant 1 / Team 1", employee_company: "Saeon Precision" });
+    const withoutOrgUnit = makeLine({ org_unit: null, employee_company: "Saeon Precision" });
+    const matrix = buildRunCsvMatrix([withOrgUnit, withoutOrgUnit]);
+
+    expect(matrix).toHaveLength(2);
+    expect(matrix[0]).toHaveLength(RUN_CSV_COLUMN_COUNT);
+    expect(matrix[1]).toHaveLength(RUN_CSV_COLUMN_COUNT);
     expect(matrix[0]).toEqual([
       "Employee One",
-      "Saeon Precision",
+      "Plant 1 / Team 1",
       3_567_000,
       151_515,
       119_360,
@@ -188,5 +223,6 @@ describe("run-register domain helpers", () => {
       22,
       0,
     ]);
+    expect(matrix[1]![1]).toBe("Saeon Precision");
   });
 });

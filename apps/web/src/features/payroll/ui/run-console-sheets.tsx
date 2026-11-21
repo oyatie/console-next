@@ -13,7 +13,7 @@ import {
   type PayrollRunDetail,
   type RegisterFilterMode,
 } from "../domain/run-register";
-import { runStatus } from "../present";
+import { buildRunCsvHeader, runStatus } from "../present";
 
 export function RunPrecheckBlockers({
   attentionCount,
@@ -56,6 +56,7 @@ export function RunPrecheckBlockers({
 
 export function RunActionSheets({
   detail,
+  runHeadcount,
   entityLabel,
   visibleLines,
   bankHoldCount,
@@ -65,6 +66,7 @@ export function RunActionSheets({
   onCloseSubmit,
 }: {
   detail?: PayrollRunDetail;
+  runHeadcount: number;
   entityLabel: string;
   visibleLines: readonly PayrollLineSummary[];
   bankHoldCount: number;
@@ -74,20 +76,7 @@ export function RunActionSheets({
   onCloseSubmit: () => void;
 }) {
   const downloadCsv = () => {
-    const header = [
-      t("payroll.run.col.name"),
-      t("payroll.run.col.unit"),
-      t("payroll.run.col.grossTotal"),
-      t("enum.insurer.NPS"),
-      t("enum.insurer.NHIS"),
-      t("payroll.run.col.longTermCare"),
-      t("enum.insurer.EI"),
-      t("payroll.run.col.incomeTax"),
-      t("payroll.run.col.localIncomeTax"),
-      t("payroll.run.col.deductionsTotal"),
-      t("payroll.run.col.netPay"),
-      t("payroll.run.attendanceLeave"),
-    ];
+    const header = buildRunCsvHeader();
     const rows = [header, ...buildRunCsvMatrix(visibleLines)].map(row => row.map(csvCell).join(","));
     const blob = new Blob([`\uFEFF${rows.join("\n")}`], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -145,7 +134,7 @@ export function RunActionSheets({
               {
                 key: "target",
                 label: t("payroll.run.statTarget"),
-                value: detail ? t("payroll.run.personCount", { count: detail.lines_total }) : "—",
+                value: detail ? t("payroll.run.personCount", { count: runHeadcount }) : "—",
               },
               {
                 key: "net",
