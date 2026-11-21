@@ -191,6 +191,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ── controls ──────────────────────────────────────── */
 .btn { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink); text-decoration: none; min-height: var(--control-h); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-size: var(--control-text); font-weight: var(--fw-medium); cursor: pointer; }
 :where([data-experience]:not([data-experience="baseline"])) .btn { border-color: var(--control-border); white-space: nowrap; flex-shrink: 0; }
+:where([data-experience]:not([data-experience="baseline"])) :where(.btn:not(.btn--block)) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 :where([data-experience]:not([data-experience="baseline"])) .btn.btn--block { flex-shrink: 1; }
 .btn:hover { background: var(--surface-hover); }
 .btn--primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }

@@ -159,6 +159,15 @@ test("pattern sign-in renders standalone outside the shell across 1440/390 light
   await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveCount(1);
   await fits(page, "sign-in refused 390");
   await expectAxe(page, "sign-in refused 390");
+
+  await page.goto("/_review/patterns/sign-in?state=loading");
+  await expect(page.locator("[data-console-shell]")).toHaveCount(0);
+  const loadingRegion = page.getByRole("status", { name: tg("pat.signIn.loading") });
+  await expect(loadingRegion).toBeVisible();
+  await expect(loadingRegion).toHaveAttribute("aria-busy", "true");
+  await expect(page.locator('[data-pattern="sign-in"] :is(button, input, a[href], summary)')).toHaveCount(0);
+  await fits(page, "sign-in loading 390");
+  await expectAxe(page, "sign-in loading 390");
 });
 
 test("patterns P8-P11 support keyboard journeys and preserve baseline parity", async ({ page }) => {

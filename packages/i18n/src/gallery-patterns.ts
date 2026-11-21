@@ -132,7 +132,7 @@ export const patternsEn = {
   "pat.settings.catDisplay": "Display style",
   "pat.settings.catLocks": "Period locks",
   "pat.settings.sumActive": "Active policies",
-  "pat.settings.sumScheduled": "Scheduled changes",
+  "pat.settings.sumScheduled": "Scheduled",
   "pat.settings.sumLocks": "Locked periods",
   "pat.settings.policyLabel": "Org change approval mode",
   "pat.settings.policyRoute": "Multi-step approval route",

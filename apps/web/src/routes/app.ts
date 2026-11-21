@@ -71,6 +71,9 @@ const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
   ? [createRoute({ getParentRoute: () => root, path: "/_gallery", component: lazyRouteComponent(screen(() => import("../gallery/gallery")), "Gallery") })]
   : [];
 const reviewSearch = (s: Record<string, unknown>): { state?: "refused" } => ({ state: s.state === "refused" ? "refused" : undefined });
+const signInReviewSearch = (s: Record<string, unknown>): { state?: "refused" | "loading" } => ({
+  state: s.state === "refused" || s.state === "loading" ? s.state : undefined,
+});
 // Mock-state builds keep unserved screens testable without publishing their routes.
 const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/worklist", staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/worklist-review")), "WorklistReview") }),
@@ -93,7 +96,7 @@ const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
   }),
 ] : [];
 const reviewSignIn = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
-  createRoute({ getParentRoute: () => root, path: "/_review/patterns/sign-in", staticData: { pattern: "sign-in" }, validateSearch: reviewSearch, component: lazyRouteComponent(bootScreen(() => import("../review/sign-in-review")), "SignInReview") }),
+  createRoute({ getParentRoute: () => root, path: "/_review/patterns/sign-in", staticData: { pattern: "sign-in" }, validateSearch: signInReviewSearch, component: lazyRouteComponent(bootScreen(() => import("../review/sign-in-review")), "SignInReview") }),
 ] : [];
 
 export const frame = { signIn: [login, setupPasskey, ...reviewSignIn, ...dev], screens: [tenants, home, account, privacy, privacyIntake, supportAccess, ...reviewStates] };

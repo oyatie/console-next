@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { KeyRound, Trash2 } from "lucide-react";
@@ -71,12 +71,32 @@ export function usePasskeysContent({
     setRemoving(null);
     remove.reset();
   };
+  const dismissRef = useRef<HTMLButtonElement>(null);
   const closeNaming = () => {
     if (add.isSending || rename.isSending) return;
     setNaming(null);
     add.reset();
     rename.reset();
   };
+  const activeCommand = editing ? rename : add;
+  const activeSending = editing ? rename.isSending : add.isSending;
+  const activeUnknown = activeCommand.isPending && !activeSending;
+
+  useLayoutEffect(() => {
+    if (naming === null || activeSending || (!activeUnknown && !activeCommand.error)) return;
+    const focusInside = () => {
+      const target = dismissRef.current;
+      const dialog = target?.closest('[role="dialog"]');
+      const active = document.activeElement;
+      const disabledActive = active instanceof HTMLButtonElement && active.disabled;
+      if (target && !target.disabled && (!dialog || !dialog.contains(active) || disabledActive)) {
+        target.focus();
+      }
+    };
+    focusInside();
+    const raf = requestAnimationFrame(focusInside);
+    return () => cancelAnimationFrame(raf);
+  }, [naming, activeSending, activeUnknown, activeCommand.error]);
 
   const addButton = (
     <Button
@@ -151,8 +171,8 @@ export function usePasskeysContent({
           </Field>}
         </QueryState>
         <ActionBar notice={<PasskeyError error={editing ? rename.error : add.error} />} actions={<>
-          <Button disabled={add.isSending || rename.isSending} onClick={closeNaming}>{t("composer.dismiss")}</Button>
-          <Button variant="primary" disabled={add.isPending || rename.isPending || policy.isError || max === undefined || invalidLabel || (!!editing && !label.trim())} onClick={() => {
+          <Button ref={dismissRef} disabled={activeSending} onClick={closeNaming}>{t("composer.dismiss")}</Button>
+          <Button variant="primary" pending={activeSending} disabled={activeUnknown || policy.isError || max === undefined || invalidLabel || (!!editing && !label.trim())} onClick={() => {
             if (policy.isError || max === undefined || invalidLabel) return;
             if (editing) rename.mutate({ id: editing.id, label: label.trim() });
             else add.mutate({ before: passkeys.data!.length, label: label.trim() || t("account.passkey.name", { n: passkeys.data!.length + 1 }) });

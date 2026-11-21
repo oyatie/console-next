@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
+import { tg } from "@console/i18n/gallery";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expectFitsViewport, expectPatternMatrixClean, openPatternFixture, setConsoleViewport } from "./pattern-browser-helpers";
 import type { MountedGallery } from "../../lib/gallery-browser-test";
@@ -36,4 +37,45 @@ test("Canvas pattern passes WCAG 2.2 AA matrix, fits 390px and 320px, zooms OrgC
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => !document.querySelector('[data-pane="record"]'));
   expect(await page.evaluate(() => document.activeElement?.id)).toBe("node-entity");
+
+  // Regression: toggling depth ("Sites only") while focused on #node-dept preserves a roving tabIndex="0" stop.
+  await page.locator("#node-entity").focus();
+  await page.keyboard.press("End");
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("node-dept");
+  await page.getByRole("button", { name: tg("pat.canvas.depthSites"), exact: true }).click();
+  expect(await page.locator('[role="treeitem"][tabindex="0"]').count()).toBe(1);
+  expect(await page.locator('#node-root[tabindex="0"]').count()).toBe(1);
+
+  // Regression: fresh 390x844 load and 1440 -> 390 resize keep all visible nodes inside .viewport without overlapping .zoom.
+  await page.getByRole("button", { name: tg("pat.canvas.depthAll"), exact: true }).click();
+  await setConsoleViewport(page, 390, 844);
+  const check390Geometry = async () => {
+    await expect.poll(async () => {
+      const geom = await page.evaluate(() => {
+        const vp = document.querySelector('[data-pattern="canvas"] section > div')!.getBoundingClientRect();
+        const zoom = document.querySelector('[data-pattern="canvas"] [role="group"]')!.getBoundingClientRect();
+        const nodes = [...document.querySelectorAll<HTMLElement>('[id^="node-"]')].map(el => {
+          const r = el.getBoundingClientRect();
+          return {
+            id: el.id,
+            insideVp: r.left >= vp.left - 0.5 && r.right <= vp.right + 0.5 && r.top >= vp.top - 0.5 && r.bottom <= vp.bottom + 0.5,
+            overlapsZoom: r.left < zoom.right && r.right > zoom.left && r.top < zoom.bottom && r.bottom > zoom.top,
+            topOffset: Math.round(r.top - vp.top),
+          };
+        });
+        return {
+          count: nodes.length,
+          allInside: nodes.every(n => n.insideVp),
+          noneOverlapsZoom: nodes.every(n => !n.overlapsZoom),
+          firstTopOffset: nodes[0]?.topOffset ?? 999,
+        };
+      });
+      return geom.count === 4 && geom.allInside && geom.noneOverlapsZoom && geom.firstTopOffset < 60;
+    }, { timeout: 5000 }).toBe(true);
+  };
+  await check390Geometry();
+  await page.reload();
+  await page.locator('[data-pattern="canvas"]').waitFor();
+  await setConsoleViewport(page, 390, 844);
+  await check390Geometry();
 }, 45_000);

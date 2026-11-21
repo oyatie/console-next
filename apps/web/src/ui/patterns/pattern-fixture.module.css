@@ -365,17 +365,13 @@
   max-width: var(--panel-w);
 }
 
-.canvasGutter {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-1) var(--space-2);
-  background: var(--surface);
+.canvasFoot {
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   font-size: var(--text-xs);
   color: var(--steel);
-  max-width: 100%;
 }
 
 .signInForm {

@@ -218,6 +218,36 @@ test("naming dialog stays dismissible via Cancel when rename hits an uncertain 5
   expect(await commit.isDisabled()).toBe(true);
   const cancel = dialog.getByRole("button", { name: t("composer.dismiss"), exact: true });
   expect(await cancel.isDisabled()).toBe(false);
-  await cancel.click();
+  await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]')))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect.poll(() => page.getByRole("dialog").count()).toBe(0);
+
+  // Dismissing an uncertain rename failure must NOT lock out passkey registration (add).
+  await page.getByRole("button", { name: t("account.passkey.add"), exact: true }).click();
+  const addDialog = page.getByRole("dialog");
+  const addCommit = addDialog.getByRole("button", { name: t("account.passkey.addCommit"), exact: true });
+  await addCommit.waitFor();
+  expect(await addCommit.isDisabled()).toBe(false);
+  await addDialog.getByRole("button", { name: t("composer.dismiss"), exact: true }).click();
+  await expect.poll(() => page.getByRole("dialog").count()).toBe(0);
+}, 30_000);
+
+test("naming dialog closes immediately on Escape after add abort without manual re-focus", async () => {
+  await page.route("**/api/v1/auth/passkeys/policy", route => route.fulfill({ json: { label_max_length: 12 } }));
+  await page.route("**/api/v1/auth/passkeys", route => route.fulfill({ json: [key] }));
+  await page.route("**/api/v1/auth/passkey/register/start", route =>
+    route.fulfill({ json: { ceremony_id: key.id, challenge: { publicKey: {} } } }),
+  );
+  await page.route("**/api/v1/auth/passkey/register/finish", route => route.abort("failed"));
+
+  await page.goto(`${server.resolvedUrls!.local[0]}passkeys-test`);
+  await page.getByRole("table").waitFor();
+  await page.getByRole("button", { name: t("account.passkey.add"), exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  const commit = dialog.getByRole("button", { name: t("account.passkey.addCommit"), exact: true });
+  await commit.click();
+  await dialog.getByRole("status").waitFor();
+  expect(await commit.isDisabled()).toBe(true);
+  await page.keyboard.press("Escape");
   await expect.poll(() => page.getByRole("dialog").count()).toBe(0);
 }, 30_000);

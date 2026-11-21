@@ -62,6 +62,11 @@
   min-width: 0;
 }
 
+:where([data-experience]:not([data-experience="baseline"])) .body {
+  max-width: none;
+  margin-inline: 0;
+}
+
 :where([data-experience]:not([data-experience="baseline"])) .body :is(select, input, textarea) {
   min-width: 0;
   max-width: 100%;
@@ -72,6 +77,10 @@
   border-radius: 0;
   box-shadow: none;
   border-block-end: 1px solid var(--border);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .body > section > * {
+  max-width: min(100%, calc(var(--card-w) * 1.25));
 }
 
 :where([data-experience]:not([data-experience="baseline"])) .actionWrap [data-sticky] {

@@ -8,7 +8,7 @@ import type { CanvasPatternProps } from "./canvas-contract";
 import s from "./canvas.module.css";
 
 const isSidePane = (value: SidePaneSpec | ReactNode | false | null | undefined): value is SidePaneSpec =>
-  typeof value === "object" && value !== null && "id" in value && "onClose" in value && "label" in value;
+  typeof value === "object" && value !== null && !("$$typeof" in value) && "id" in value && "onClose" in value && "label" in value;
 
 /**
  * Canvas (`P10`) arrangement: optional `toolbar` strip, viewport-locked `canvas` stage inside `PaneGrid`, and

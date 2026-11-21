@@ -13,7 +13,7 @@
 /* Phone widths: the counts stack two by two instead of squeezing. */
 @media (max-width: 767px) { .stats { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat:nth-child(odd) { border-left: 0; } }
 :where([data-experience]:not([data-experience="baseline"])) .stats { border: 0; border-radius: 0; }
-:where([data-experience]:not([data-experience="baseline"])) .stat { border-left-color: var(--border); }
+:where([data-experience]:not([data-experience="baseline"])) .stat { border-left-color: var(--border); justify-content: space-between; }
 :where([data-experience]:not([data-experience="baseline"])) .statValue { font-size: var(--text-2xl); line-height: var(--lh-tight); }
 .statMeta { margin: 0; font-size: var(--text-xs); color: var(--steel); }
 :where([data-experience]:not([data-experience="baseline"])) .stat[data-tone="warn"] { background: var(--warn-bg); }

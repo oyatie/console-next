@@ -80,7 +80,7 @@ export default function SignInExample({ state }: { state?: "refused" | "loading"
         </details>
       }
       foot={
-        <Button variant="ghost" onClick={() => setHelpOpen(true)}>
+        <Button variant="link" onClick={() => setHelpOpen(true)}>
           {tg("pat.signIn.cancelLink")}
         </Button>
       }
