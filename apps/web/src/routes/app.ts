@@ -62,7 +62,7 @@ const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-a
 // Home with the setup checklist composed in (routes compose slices).
 const home = createRoute({ getParentRoute: () => app, path: "/", validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }), staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
 const loadAccount = () => import("../features/account/Account");
-const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05" }, component: lazyRouteComponent(screen(loadAccount), "Account") });
+const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05", pattern: "phone-hub" }, component: lazyRouteComponent(screen(loadAccount), "Account") });
 const privacyIntake = createRoute({ getParentRoute: () => app, path: "/account/privacy/intake/$id", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(loadAccount), "PrivacyIntake") });
 const privacy = createRoute({ getParentRoute: () => app, path: "/account/privacy", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(loadAccount), "PrivacyRequests") });
 
@@ -71,6 +71,9 @@ const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
   ? [createRoute({ getParentRoute: () => root, path: "/_gallery", component: lazyRouteComponent(screen(() => import("../gallery/gallery")), "Gallery") })]
   : [];
 const reviewSearch = (s: Record<string, unknown>): { state?: "refused" } => ({ state: s.state === "refused" ? "refused" : undefined });
+const signInReviewSearch = (s: Record<string, unknown>): { state?: "refused" | "loading" } => ({
+  state: s.state === "refused" || s.state === "loading" ? s.state : undefined,
+});
 // Mock-state builds keep unserved screens testable without publishing their routes.
 const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/worklist", staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/worklist-review")), "WorklistReview") }),
@@ -80,6 +83,9 @@ const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/month-grid", staticData: { access: "signed-in", floorplan: "P-03", pattern: "month-grid" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/month-grid-review")), "MonthGridReview") }),
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/register-totals", staticData: { access: "signed-in", floorplan: "P-02", pattern: "register-totals" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/register-totals-review")), "RegisterTotalsReview") }),
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/form", staticData: { access: "signed-in", floorplan: "P-04", pattern: "form" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/form-review")), "FormReview") }),
+  createRoute({ getParentRoute: () => app, path: "/_review/patterns/wizard", staticData: { access: "signed-in", floorplan: "P-04", pattern: "wizard" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/wizard-review")), "WizardReview") }),
+  createRoute({ getParentRoute: () => app, path: "/_review/patterns/settings", staticData: { access: "signed-in", floorplan: "P-05", pattern: "settings" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/settings-review")), "SettingsReview") }),
+  createRoute({ getParentRoute: () => app, path: "/_review/patterns/canvas", staticData: { access: "signed-in", floorplan: "canvas", pattern: "canvas" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/canvas-review")), "CanvasReview") }),
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/phone-hub", staticData: { access: "signed-in", floorplan: "P-05", pattern: "phone-hub" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/phone-hub-review")), "PhoneHubReview") }),
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/phone-statement", staticData: { access: "signed-in", floorplan: "P-02", pattern: "phone-statement" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/phone-statement-review")), "PhoneStatementReview") }),
   createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") }),
@@ -89,5 +95,8 @@ const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
     component: lazyRouteComponent(screen(() => import("../features/access-log/ui/access-log-page")), "AccessLogPage"),
   }),
 ] : [];
+const reviewSignIn = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
+  createRoute({ getParentRoute: () => root, path: "/_review/patterns/sign-in", staticData: { pattern: "sign-in" }, validateSearch: signInReviewSearch, component: lazyRouteComponent(bootScreen(() => import("../review/sign-in-review")), "SignInReview") }),
+] : [];
 
-export const frame = { signIn: [login, setupPasskey, ...dev], screens: [tenants, home, account, privacy, privacyIntake, supportAccess, ...reviewStates] };
+export const frame = { signIn: [login, setupPasskey, ...reviewSignIn, ...dev], screens: [tenants, home, account, privacy, privacyIntake, supportAccess, ...reviewStates] };

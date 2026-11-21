@@ -65,6 +65,19 @@ properties:
     type:
     - string
     - 'null'
+  employee_hire_date:
+    type:
+    - string
+    - 'null'
+    format: date
+  employee_employment_status:
+    type:
+    - string
+    - 'null'
+  employee_grade:
+    type:
+    - string
+    - 'null'
   employee_identity_review_required:
     type:
     - boolean

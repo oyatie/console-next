@@ -39,17 +39,29 @@ test("the screens drawn through built patterns declare them, and no other route 
     "month-grid",
     "register-totals",
     "form",
+    "wizard",
+    "settings",
+    "canvas",
     "phone-hub",
     "phone-statement",
   ]) {
     expect(Object.keys(router.routesById), `the ${id} review route is registered`).toContain(`/app/_review/patterns/${id}`);
   }
+  expect(Object.keys(router.routesById), "the sign-in review route is registered outside the app shell").toContain(
+    "/_review/patterns/sign-in",
+  );
   const declared = Object.fromEntries(routes.flatMap(route => route.options.staticData?.pattern ? [[route.fullPath, route.options.staticData.pattern]] : []));
   expect(declared).toEqual({
     "/": "worklist",
     "/inbox": "worklist",
+    "/leave": "form",
     "/people": "list-record",
+    "/people/$id": "record",
+    "/approvals": "worklist",
+    "/approvals/$approvalId": "document-decision",
+    "/attendance": "month-grid",
     "/payroll/runs/$id": "register-totals",
+    "/account": "phone-hub",
     "/_review/patterns/list-record": "list-record",
     "/_review/patterns/worklist": "worklist",
     "/_review/patterns/record": "record",
@@ -57,6 +69,10 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/_review/patterns/month-grid": "month-grid",
     "/_review/patterns/register-totals": "register-totals",
     "/_review/patterns/form": "form",
+    "/_review/patterns/wizard": "wizard",
+    "/_review/patterns/settings": "settings",
+    "/_review/patterns/canvas": "canvas",
+    "/_review/patterns/sign-in": "sign-in",
     "/_review/patterns/phone-hub": "phone-hub",
     "/_review/patterns/phone-statement": "phone-statement",
   });

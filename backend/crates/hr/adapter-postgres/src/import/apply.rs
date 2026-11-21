@@ -176,6 +176,7 @@ pub(crate) async fn check_and_build(
     }
     crate::import::identities::require_fresh_run(tx, org_uuid, run_id).await?;
     require_row_limit(tx, org_uuid, run_id).await?;
+    crate::import::header::validate_run_mapping_profile(tx, org_uuid, run_id).await?;
     if stored_digest.as_deref() != Some(digest) {
         return Err(conflict(
             "dry_run_digest_mismatch",

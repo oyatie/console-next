@@ -211,9 +211,6 @@
     "/api/v1/auth/privacy-consent/status": [
       "post"
     ],
-    "/api/v1/auth/signup": [
-      "post"
-    ],
     "/api/v1/auth/token/refresh": [
       "post"
     ],
@@ -275,11 +272,31 @@
     "/api/v1/me/action-inbox/reference/{id}/read": [
       "post"
     ],
+    "/api/v1/me/access-log": [
+      "get"
+    ],
     "/api/v1/me/authz": [
+      "get"
+    ],
+    "/api/v1/me/certificates": [
+      "get",
+      "post"
+    ],
+    "/api/v1/me/certificates/{id}": [
       "get"
     ],
     "/api/v1/me/employee-views": [
       "get",
+      "post"
+    ],
+    "/api/v1/me/profile": [
+      "get",
+      "patch"
+    ],
+    "/api/v1/me/profile/change-requests": [
+      "post"
+    ],
+    "/api/v1/me/profile/reveal": [
       "post"
     ],
     "/api/v1/me/workbench": [
@@ -504,6 +521,7 @@
     "CreatePlatformOrgRequest",
     "CreatePolicyRoleRequest",
     "CreateRegionRequest",
+    "CreateSelfChangeRequest",
     "CreateUserRequest",
     "CurrentUser",
     "DecisionLogRow",
@@ -522,8 +540,11 @@
     "LogoutRequest",
     "MeAuthzCapability",
     "MeAuthzResponse",
+    "MeProfileResponse",
     "MobilePasskeyStepUpStartRequest",
     "MobilePasskeyStepUpStartResponse",
+    "MyAccessLogEvent",
+    "MyAccessLogPage",
     "MyWorkbenchResponse",
     "OpsAccount",
     "OpsRecoveryCancelRequest",
@@ -598,11 +619,15 @@
     "SelfBindingRequest",
     "SelfBindingReviewRequest",
     "SelfBindingWithdrawRequest",
+    "SelfChangeRequestSummary",
+    "SelfEmergencyContactInput",
+    "SelfEmergencyContactSummary",
+    "SelfFieldRevealed",
+    "SelfIssueCertificateRequest",
+    "SelfRevealRequest",
     "SetAccessRoleStatusRequest",
     "SignInIdHistory",
     "SignInIdRecord",
-    "SignupRequest",
-    "SignupResponse",
     "SimulationOutcome",
     "StepUpRequest",
     "SupportAccessRecord",
@@ -626,6 +651,7 @@
     "UpdatePolicyRoleRequest",
     "UpdatePolicyRoleStatusRequest",
     "UpdateRegionRequest",
+    "UpdateMeProfileRequest",
     "UpdateSelfProfileRequest",
     "UpdateUserRequest",
     "UserPage",
@@ -655,9 +681,13 @@
   "external_schemas": [
     "ActorKind",
     "AuditLastChange",
+    "Certificate",
+    "CertificatePage",
+    "ChangeRequest",
     "Date",
     "ErrorBody",
     "FieldError",
+    "KrAddress",
     "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",

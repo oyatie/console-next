@@ -59,12 +59,8 @@ impl AppState {
             },
         };
         let otp_hmac_key = super::otp_key::resolve_otp_hmac_key(&config, &database)?;
-        let auth_rest = super::otp_key::build_auth_rest_state(
-            &config,
-            &database,
-            &email_sender,
-            otp_hmac_key.as_ref(),
-        )?;
+        let auth_rest =
+            super::otp_key::build_auth_rest_state(&config, &database, otp_hmac_key.as_ref())?;
         let audit_attestation_signer =
             audit_chain_signer::build_attestation_signer(config.audit_chain_external.as_ref())?;
         let realtime_hub = realtime_hub_from_database(&database, config.realtime.clone());
@@ -248,13 +244,6 @@ impl AppState {
             tracing::warn!(
                 "CONSOLE_EMAIL_* unset and CONSOLE_EMAIL_STUB_MODE disabled: outbound OTP email fails closed without logging OTPs"
             );
-        }
-        // Hand the resolved OTP email sender to the auth REST layer so its
-        // open-signup endpoint (#38) can deliver the code. Done here (not in
-        // `AppState::new`) because the live SMTP sender is only known once
-        // `config.email` is resolved above.
-        if let Some(auth_rest) = state.auth_rest.take() {
-            state.auth_rest = Some(auth_rest.with_email_sender(state.email_sender.clone()));
         }
         #[cfg(feature = "mail")]
         modules::attach_mail_cipher(&mut state)?;

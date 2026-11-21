@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- filing_state
+- steps
+properties:
+  filing_state:
+    type: string
+    enum: [ready, home_branch_required]
+  home_branch_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  branch_name:
+    type:
+    - string
+    - 'null'
+  org_unit:
+    type:
+    - string
+    - 'null'
+  steps:
+    type: array
+    items:
+      $ref: '#/components/schemas/LeaveApprovalPreviewStep'

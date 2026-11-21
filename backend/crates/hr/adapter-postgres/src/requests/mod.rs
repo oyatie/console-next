@@ -2,6 +2,7 @@
 //! action-inbox page. Lane PEOPLE-A.
 
 pub mod cedar;
+pub mod counts;
 pub mod create;
 pub mod decide;
 pub mod done;
@@ -77,6 +78,8 @@ pub struct ChangeRequestResponse {
     pub kind: String,
     pub subject_type: String,
     pub subject_id: Uuid,
+    pub subject_name: Option<String>,
+    pub subject_number: Option<String>,
     /// The stored payload, which an apply reads; it is served with `changes` masked.
     #[serde(serialize_with = "served_payload")]
     pub payload: Value,

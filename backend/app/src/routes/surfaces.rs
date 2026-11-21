@@ -189,6 +189,18 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         "hr-import-reconcile",
         console_hr_rest::reconcile::RECONCILE_ROUTE_PATHS,
     ),
+    surface(
+        "hr-exit-cases",
+        console_hr_rest::exit_cases::EXIT_CASES_ROUTE_PATHS,
+    ),
+    surface(
+        "hr-unit-position",
+        console_hr_rest::unit_position::UNIT_POSITION_ROUTE_PATHS,
+    ),
+    surface(
+        "hr-me-profile",
+        console_hr_rest::me_profile::ME_PROFILE_ROUTE_PATHS,
+    ),
     #[cfg(feature = "workspace")]
     surface(
         "workflow-studio",

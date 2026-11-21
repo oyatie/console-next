@@ -24,6 +24,7 @@
 .next > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .nextWhat { composes: t-info from global; }
 .verbs { display: flex; gap: var(--space-2); align-self: start; flex-wrap: wrap; justify-content: flex-end; }
+.verbs :is(button, a) { white-space: nowrap; flex-shrink: 0; }
 .formerVerbs { grid-column: 1 / -1; justify-content: flex-start; }
 .retention { composes: t-sm muted from global; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .leavePeriod { font-variant-numeric: tabular-nums; white-space: normal; overflow-wrap: anywhere; }
@@ -50,6 +51,9 @@
 .steel { composes: muted from global; }
 .s12 { composes: t-xs muted from global; }
 .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+@container list-table (max-width: 480px) {
+  :where([data-experience]:not([data-experience="baseline"])) .num { white-space: normal; overflow-wrap: anywhere; }
+}
 .legend { display: inline-flex; align-items: center; gap: var(--space-2); }
 .keys { display: inline-flex; align-items: center; gap: var(--space-1); }
 /* Reserve the timer and action in both states so revealing cannot move neighbouring content. */

@@ -1124,6 +1124,10 @@ const ATTENDANCE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../attendance/rest/openapi/schemas/AttendanceMonthGrid.yaml"),
     },
     NamedYaml {
+        name: "AttendanceMonthGridSummary",
+        body: include_str!("../../attendance/rest/openapi/schemas/AttendanceMonthGridSummary.yaml"),
+    },
+    NamedYaml {
         name: "AttendanceMonthState",
         body: include_str!("../../attendance/rest/openapi/schemas/AttendanceMonthState.yaml"),
     },
@@ -5546,9 +5550,13 @@ pub const IDENTITY_FRAGMENT: Fragment = Fragment {
 const IDENTITY_FRAGMENT_EXTERNAL: &[&str] = &[
     "ActorKind",
     "AuditLastChange",
+    "Certificate",
+    "CertificatePage",
+    "ChangeRequest",
     "Date",
     "ErrorBody",
     "FieldError",
+    "KrAddress",
     "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",
@@ -6291,13 +6299,6 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
-        path: "/api/v1/auth/signup",
-        operations: &[Operation {
-            method: "post",
-            body: include_str!("../../identity/rest/openapi/paths/api__v1__auth__signup.post.yaml"),
-        }],
-    },
-    PathItem {
         path: "/api/v1/auth/token/refresh",
         operations: &[Operation {
             method: "post",
@@ -6433,15 +6434,6 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
-        path: "/api/v1/me/access-log",
-        operations: &[Operation {
-            method: "get",
-            body: include_str!(
-                "../../identity/rest/openapi/paths/api__v1__me__access-log.get.yaml"
-            ),
-        }],
-    },
-    PathItem {
         path: "/api/v1/me/action-inbox",
         operations: &[Operation {
             method: "get",
@@ -6504,10 +6496,45 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/access-log",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__access-log.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/authz",
         operations: &[Operation {
             method: "get",
             body: include_str!("../../identity/rest/openapi/paths/api__v1__me__authz.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/certificates",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__me__certificates.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__me__certificates.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/me/certificates/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__certificates__id.get.yaml"
+            ),
         }],
     },
     PathItem {
@@ -6526,6 +6553,41 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
                 ),
             },
         ],
+    },
+    PathItem {
+        path: "/api/v1/me/profile",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__me__profile.get.yaml"
+                ),
+            },
+            Operation {
+                method: "patch",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__me__profile.patch.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/me/profile/change-requests",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__profile__change-requests.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/profile/reveal",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__me__profile__reveal.post.yaml"
+            ),
+        }],
     },
     PathItem {
         path: "/api/v1/me/workbench",
@@ -7301,6 +7363,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../identity/rest/openapi/schemas/CreateRegionRequest.yaml"),
     },
     NamedYaml {
+        name: "CreateSelfChangeRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/CreateSelfChangeRequest.yaml"),
+    },
+    NamedYaml {
         name: "CreateUserRequest",
         body: include_str!("../../identity/rest/openapi/schemas/CreateUserRequest.yaml"),
     },
@@ -7375,6 +7441,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "MeAuthzResponse",
         body: include_str!("../../identity/rest/openapi/schemas/MeAuthzResponse.yaml"),
+    },
+    NamedYaml {
+        name: "MeProfileResponse",
+        body: include_str!("../../identity/rest/openapi/schemas/MeProfileResponse.yaml"),
     },
     NamedYaml {
         name: "MobilePasskeyStepUpStartRequest",
@@ -7721,6 +7791,30 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../identity/rest/openapi/schemas/SelfBindingWithdrawRequest.yaml"),
     },
     NamedYaml {
+        name: "SelfChangeRequestSummary",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfChangeRequestSummary.yaml"),
+    },
+    NamedYaml {
+        name: "SelfEmergencyContactInput",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfEmergencyContactInput.yaml"),
+    },
+    NamedYaml {
+        name: "SelfEmergencyContactSummary",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfEmergencyContactSummary.yaml"),
+    },
+    NamedYaml {
+        name: "SelfFieldRevealed",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfFieldRevealed.yaml"),
+    },
+    NamedYaml {
+        name: "SelfIssueCertificateRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfIssueCertificateRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfRevealRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/SelfRevealRequest.yaml"),
+    },
+    NamedYaml {
         name: "SetAccessRoleStatusRequest",
         body: include_str!("../../identity/rest/openapi/schemas/SetAccessRoleStatusRequest.yaml"),
     },
@@ -7731,14 +7825,6 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SignInIdRecord",
         body: include_str!("../../identity/rest/openapi/schemas/SignInIdRecord.yaml"),
-    },
-    NamedYaml {
-        name: "SignupRequest",
-        body: include_str!("../../identity/rest/openapi/schemas/SignupRequest.yaml"),
-    },
-    NamedYaml {
-        name: "SignupResponse",
-        body: include_str!("../../identity/rest/openapi/schemas/SignupResponse.yaml"),
     },
     NamedYaml {
         name: "SimulationOutcome",
@@ -7833,6 +7919,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "UpdateRegionRequest",
         body: include_str!("../../identity/rest/openapi/schemas/UpdateRegionRequest.yaml"),
+    },
+    NamedYaml {
+        name: "UpdateMeProfileRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/UpdateMeProfileRequest.yaml"),
     },
     NamedYaml {
         name: "UpdateSelfProfileRequest",
@@ -8008,6 +8098,10 @@ const INBOX_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "InboxDocSummary",
         body: include_str!("../../inbox/rest/openapi/schemas/InboxDocSummary.yaml"),
+    },
+    NamedYaml {
+        name: "InboxPayslipMeta",
+        body: include_str!("../../inbox/rest/openapi/schemas/InboxPayslipMeta.yaml"),
     },
 ];
 
@@ -8470,9 +8564,31 @@ const LEAVE_FRAGMENT_PATHS: &[PathItem] = &[
             body: include_str!("../../leave/rest/openapi/paths/api__v2__me__leave.get.yaml"),
         }],
     },
+    PathItem {
+        path: "/api/v2/me/leave/approval-preview",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../leave/rest/openapi/paths/api__v2__me__leave__approval-preview.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v2/me/leave/team-overlap",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../leave/rest/openapi/paths/api__v2__me__leave__team-overlap.get.yaml"
+            ),
+        }],
+    },
 ];
 
 const LEAVE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
+    NamedYaml {
+        name: "LeaveApprovalPreviewStep",
+        body: include_str!("../../leave/rest/openapi/schemas/LeaveApprovalPreviewStep.yaml"),
+    },
     NamedYaml {
         name: "LeaveBalanceAmount",
         body: include_str!("../../leave/rest/openapi/schemas/LeaveBalanceAmount.yaml"),
@@ -8560,8 +8676,20 @@ const LEAVE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../leave/rest/openapi/schemas/MyLeaveV2Overview.yaml"),
     },
     NamedYaml {
+        name: "SelfLeaveApprovalPreview",
+        body: include_str!("../../leave/rest/openapi/schemas/SelfLeaveApprovalPreview.yaml"),
+    },
+    NamedYaml {
         name: "SelfLeaveBalance",
         body: include_str!("../../leave/rest/openapi/schemas/SelfLeaveBalance.yaml"),
+    },
+    NamedYaml {
+        name: "SelfLeaveTeamOverlap",
+        body: include_str!("../../leave/rest/openapi/schemas/SelfLeaveTeamOverlap.yaml"),
+    },
+    NamedYaml {
+        name: "TeamOverlapMember",
+        body: include_str!("../../leave/rest/openapi/schemas/TeamOverlapMember.yaml"),
     },
     NamedYaml {
         name: "TimeChangeCoverageEvidence",
@@ -9913,6 +10041,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/change-requests/counts",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__change-requests__counts.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/change-requests/{id}/decide",
         operations: &[Operation {
             method: "post",
@@ -10274,6 +10411,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/register-facts/query",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__employees__register-facts__query.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/renumber/apply",
         operations: &[Operation {
             method: "post",
@@ -10626,6 +10772,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/{id}/unit-position",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__employees__id__unit-position.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/{id}/void",
         operations: &[Operation {
             method: "post",
@@ -10800,6 +10955,24 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
                 ),
             },
         ],
+    },
+    PathItem {
+        path: "/api/v1/hr/exit-cases/bulk",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__hr__exit-cases__bulk.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/hr/exit-cases/counts",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__hr__exit-cases__counts.get.yaml"
+            ),
+        }],
     },
     PathItem {
         path: "/api/v1/hr/exit-cases/{id}",
@@ -11269,6 +11442,14 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         ),
     },
     NamedYaml {
+        name: "BulkExitCaseItemInput",
+        body: include_str!("../../orgchange/rest/openapi/schemas/BulkExitCaseItemInput.yaml"),
+    },
+    NamedYaml {
+        name: "BulkExitCaseItemResult",
+        body: include_str!("../../orgchange/rest/openapi/schemas/BulkExitCaseItemResult.yaml"),
+    },
+    NamedYaml {
         name: "BulkLifecyclePreview",
         body: include_str!("../../orgchange/rest/openapi/schemas/BulkLifecyclePreview.yaml"),
     },
@@ -11283,6 +11464,14 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "BulkRegisterFactsRequest",
         body: include_str!("../../orgchange/rest/openapi/schemas/BulkRegisterFactsRequest.yaml"),
+    },
+    NamedYaml {
+        name: "BulkReportExitCasesRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/BulkReportExitCasesRequest.yaml"),
+    },
+    NamedYaml {
+        name: "BulkReportExitCasesResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/BulkReportExitCasesResponse.yaml"),
     },
     NamedYaml {
         name: "BulkSelection",
@@ -11337,6 +11526,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ChangeRequest",
         body: include_str!("../../orgchange/rest/openapi/schemas/ChangeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ChangeRequestCountsResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ChangeRequestCountsResponse.yaml"),
     },
     NamedYaml {
         name: "ChangeSetDetail",
@@ -11715,12 +11908,24 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../orgchange/rest/openapi/schemas/EmployeeRrnStatus.yaml"),
     },
     NamedYaml {
+        name: "EmployeeUnitPosition",
+        body: include_str!("../../orgchange/rest/openapi/schemas/EmployeeUnitPosition.yaml"),
+    },
+    NamedYaml {
         name: "EmployeeVoidOutcome",
         body: include_str!("../../orgchange/rest/openapi/schemas/EmployeeVoidOutcome.yaml"),
     },
     NamedYaml {
+        name: "EmployeeWarningMatch",
+        body: include_str!("../../orgchange/rest/openapi/schemas/EmployeeWarningMatch.yaml"),
+    },
+    NamedYaml {
         name: "EmploymentType",
         body: include_str!("../../orgchange/rest/openapi/schemas/EmploymentType.yaml"),
+    },
+    NamedYaml {
+        name: "ExitCaseCountsResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ExitCaseCountsResponse.yaml"),
     },
     NamedYaml {
         name: "ExitCaseNextAction",
@@ -11949,6 +12154,18 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ProtectedExitPeriod",
         body: include_str!("../../orgchange/rest/openapi/schemas/ProtectedExitPeriod.yaml"),
+    },
+    NamedYaml {
+        name: "RegisterFactsQueryItem",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RegisterFactsQueryItem.yaml"),
+    },
+    NamedYaml {
+        name: "RegisterFactsQueryRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RegisterFactsQueryRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RegisterFactsQueryResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RegisterFactsQueryResponse.yaml"),
     },
     NamedYaml {
         name: "RehireEmployeeRequest",

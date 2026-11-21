@@ -395,11 +395,6 @@
    "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/attendance/me/schedule": {
-   "lane": "A1",
-   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/attendance/me/week52": {
    "lane": "MAT-PARITY",
    "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
@@ -558,16 +553,6 @@
   "GET /api/v1/lifecycles/{objectType}/{objectId}": {
    "lane": "P5a",
    "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/me/inbox-docs": {
-   "lane": "H1",
-   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/me/inbox-docs/{id}": {
-   "lane": "H1",
-   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "GET /api/v1/me/notification-policies": {
@@ -730,11 +715,6 @@
    "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
   },
-  "GET /api/v2/me/leave": {
-   "lane": "leave",
-   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
-   "when": "mvp"
-  },
   "GET /healthz": {
    "lane": "MAT-PARITY",
    "reason": "internal: process health probe for the orchestrator",
@@ -849,11 +829,6 @@
    "lane": "K3",
    "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
-  },
-  "POST /api/v1/auth/signup": {
-   "lane": "MAT-PARITY",
-   "reason": "Self-signup is outside MVP bootstrap and invitation flows; units/maturity/plan.md §3.",
-   "when": "post-mvp"
   },
   "POST /api/v1/console/kill-switch": {
    "lane": "MAT-PARITY",
@@ -1143,11 +1118,6 @@
   "POST /api/v1/workflow-tasks/{task_id}/finalize": {
    "lane": "H1",
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v2/leave/requests": {
-   "lane": "leave",
-   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
   },
   "POST /api/v2/leave/requests/{id}/alternate-dates": {

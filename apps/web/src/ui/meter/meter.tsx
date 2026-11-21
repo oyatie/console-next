@@ -24,11 +24,13 @@ const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
 /** A small continuous bar or segmented cell strip with its reading exposed via ARIA meter attributes. */
 export function Meter({ value, max, label, warn, cells, pending, valueText }: MeterProps) {
+  const safeMax = Number.isFinite(max) ? Math.max(0, max) : 0;
+  const safeNow = Number.isFinite(value) ? Math.min(safeMax, Math.max(0, value)) : 0;
   const count = cells != null && Number.isFinite(cells) ? Math.floor(cells) : 0;
   const segmented = count > 0;
-  const usedEnd = segmented && max > 0 ? clamp01(value / max) * count : 0;
-  const pendingEnd = segmented && max > 0 ? clamp01((Math.max(0, value) + Math.max(0, pending ?? 0)) / max) * count : 0;
-  const pct = !segmented && max > 0 ? Math.min(100, Math.max(2, Math.round((value / max) * 100))) : 0;
+  const usedEnd = segmented && safeMax > 0 ? clamp01(value / safeMax) * count : 0;
+  const pendingEnd = segmented && safeMax > 0 ? clamp01((Math.max(0, value) + Math.max(0, pending ?? 0)) / safeMax) * count : 0;
+  const pct = !segmented && safeMax > 0 ? Math.min(100, Math.max(2, Math.round((safeNow / safeMax) * 100))) : 0;
 
   return (
     <span
@@ -36,8 +38,8 @@ export function Meter({ value, max, label, warn, cells, pending, valueText }: Me
       role="meter"
       aria-label={label}
       aria-valuemin={0}
-      aria-valuemax={max}
-      aria-valuenow={value}
+      aria-valuemax={safeMax}
+      aria-valuenow={safeNow}
       aria-valuetext={valueText}
       data-segmented={segmented ? "true" : undefined}
       data-warn={warn || undefined}

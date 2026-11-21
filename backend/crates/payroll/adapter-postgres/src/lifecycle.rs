@@ -29,6 +29,9 @@ use console_payroll_domain::{
     ProfessionalReviewerKind, ProfessionalValidation, VerifiedNtsTaxRow, build_line_calculation,
     validate_release_gate,
 };
+#[path = "lifecycle_amounts.rs"]
+mod amounts;
+use amounts::{SourceAmounts, insert_line_calculation_in_tx, select_source_amounts};
 use serde::Serialize;
 use serde_json::{Value, json};
 use sqlx::{Postgres, Row, Transaction};
@@ -323,50 +326,6 @@ fn json_internal(err: serde_json::Error) -> LifecycleError {
 // Calculation
 // ---------------------------------------------------------------------------
 
-#[derive(PartialEq, Eq)]
-struct SourceAmounts {
-    gross_won: i64,
-    pension_standard_monthly_income_won: Option<i64>,
-    tax_row: VerifiedNtsTaxRow,
-}
-
-/// Extract the payroll figures from an imported source ledger row's
-/// `canonical_row`. The canonical key contract (documented in the module
-/// evidence): `payroll.monthly_gross_pay_won`,
-/// `payroll.pension_standard_monthly_income_won` (optional),
-/// `payroll.nts_tax_row.{table_version, monthly_income_tax_won,
-/// local_income_tax_won}` — all figures verbatim from the verified source.
-/// Deterministically choose the payroll figures among a line's linked
-/// canonical rows. Byte-identical duplicates (re-imports of the same source)
-/// are fine; two DIFFERENT figure sets for one line mean the figure to pay is
-/// ambiguous — a truthful blocker, never an arbitrary row-order pick.
-fn select_source_amounts(canonical_rows: &[Value]) -> Result<SourceAmounts, &'static str> {
-    let mut found = canonical_rows.iter().filter_map(extract_source_amounts);
-    let Some(first) = found.next() else {
-        return Err("SOURCE_AMOUNTS_NOT_MATERIALIZED");
-    };
-    if found.any(|other| other != first) {
-        return Err("SOURCE_AMOUNTS_CONFLICTING");
-    }
-    Ok(first)
-}
-
-fn extract_source_amounts(canonical_row: &Value) -> Option<SourceAmounts> {
-    let payroll = canonical_row.get("payroll")?;
-    let tax = payroll.get("nts_tax_row")?;
-    Some(SourceAmounts {
-        gross_won: payroll.get("monthly_gross_pay_won")?.as_i64()?,
-        pension_standard_monthly_income_won: payroll
-            .get("pension_standard_monthly_income_won")
-            .and_then(Value::as_i64),
-        tax_row: VerifiedNtsTaxRow {
-            table_version: tax.get("table_version")?.as_str()?.to_owned(),
-            monthly_income_tax_won: tax.get("monthly_income_tax_won")?.as_i64()?,
-            local_income_tax_won: tax.get("local_income_tax_won")?.as_i64()?,
-        },
-    })
-}
-
 const fn deduction_code_str(code: DeductionCode) -> &'static str {
     match code {
         DeductionCode::NationalPension => "NATIONAL_PENSION",
@@ -457,6 +416,12 @@ pub async fn calculate_run_in_tx(
         }
 
         if let Some(amounts) = amounts {
+            let breakdown = [
+                amounts.base_pay_won,
+                amounts.overtime_pay_won,
+                amounts.meal_allowance_won,
+                amounts.taxable_won,
+            ];
             match build_line_calculation(LineCalculationInput {
                 pay_date: run.period_end,
                 gross_won: amounts.gross_won,
@@ -476,21 +441,17 @@ pub async fn calculate_run_in_tx(
                             })
                         })
                         .collect();
-                    sqlx::query(
-                        "INSERT INTO payroll_line_calculations \
-                         (org_id, run_id, line_id, version, gross_won, deductions, \
-                          total_deductions_won, net_won, tax_table_version) \
-                         SELECT l.org_id, l.run_id, l.id, $2, $3, $4, $5, $6, $7 \
-                         FROM payroll_draft_lines l WHERE l.id = $1",
+                    insert_line_calculation_in_tx(
+                        tx,
+                        line_id,
+                        version,
+                        calc.gross_won,
+                        &deductions,
+                        calc.total_employee_deductions_won,
+                        calc.net_won,
+                        &calc.tax_table_version,
+                        breakdown,
                     )
-                    .bind(line_id)
-                    .bind(version)
-                    .bind(calc.gross_won)
-                    .bind(Value::Array(deductions))
-                    .bind(calc.total_employee_deductions_won)
-                    .bind(calc.net_won)
-                    .bind(&calc.tax_table_version)
-                    .execute(tx.as_mut())
                     .await?;
                     calculated += 1;
                     sqlx::query(

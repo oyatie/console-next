@@ -14,6 +14,13 @@
 .field dd { margin: 0; }
 .term { color: var(--steel); font-size: var(--text-xs); }
 .actions { grid-column: 1 / -1; }
+.compactRow { display: flex; flex-direction: column; justify-content: center; gap: var(--space-half); width: 100%; min-width: 0; min-height: calc(var(--space-6) + var(--space-5)); padding-block: var(--space-1-5); box-sizing: border-box; }
+.compactLine1 { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
+.compactLead { display: flex; align-items: baseline; gap: var(--space-1-5); min-width: 0; flex: 1 1 auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.compactTitle { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--ink); white-space: nowrap; }
+.compactSub { font-size: var(--text-xs); color: var(--steel); white-space: nowrap; }
+.compactTail { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
+.compactLine2 { font-size: var(--text-xs); color: var(--steel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 /* The container query is the single phone threshold, also read by the virtual table's layout observer. */
 @container list-table (max-width: 480px) {
   .surface { --table-cards: 1; }
@@ -30,6 +37,10 @@
   .short:global(.table) td { position: static; display: flex; flex-direction: column; align-items: start; min-width: 0; height: auto; padding: var(--space-2); border: 0; white-space: normal; overflow-wrap: anywhere; }
   .short [data-card="title"] { grid-column: 1 / -1; font-weight: var(--fw-medium); }
   .short [data-card="status"], .short [data-card="action"] { grid-column: 1 / -1; }
+  :where([data-experience]:not([data-experience="baseline"])) .short:global(.table) [data-card="action"] { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-2); width: auto; }
+  :where([data-experience]:not([data-experience="baseline"])) .short:global(.table) [data-card="action"] :is(button, a) { white-space: nowrap; flex-shrink: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .short tbody > tr { border: 0; border-bottom: 1px solid var(--border-soft); border-radius: 0; margin-bottom: 0; padding: var(--space-2) 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .short:global(.table) td { padding: var(--space-half) var(--space-1); }
   .short:global(.table) [data-card="omit"] { display: none; }
   .short [data-card="fact"]::before { content: attr(data-label); color: var(--steel); font-size: var(--text-xs); }
   .short :global(.table__detail) { grid-template-columns: minmax(0, 1fr); }
@@ -63,6 +74,10 @@
   .compact [data-card="fact"] { grid-column: 2; grid-row: 1; font-weight: var(--fw-semibold); color: var(--ink); }
   .compact [data-card="title"] { grid-column: 1 / 3; grid-row: 2; color: var(--steel); font-size: var(--text-xs); }
   .compact [data-card="action"] { grid-column: 3; grid-row: 1 / 3; align-self: center; justify-self: end; overflow: visible; }
+  .compact tbody > tr:not(:has(> [data-card="status"])) { grid-template-columns: minmax(0, 1fr) auto; }
+  .compact tbody > tr:not(:has(> [data-card="status"])) [data-card="fact"],
+  .compact tbody > tr:not(:has(> [data-card="status"])) [data-card="title"] { grid-column: 1; }
+  .compact tbody > tr:not(:has(> [data-card="status"])) [data-card="action"] { grid-column: 2; }
   .compact :global(.table__detail) { grid-template-columns: minmax(0, 1fr); }
   .compact:global(.table) td[data-cell-tone="danger"],
   .compact:global(.table) td[data-cell-tone="warn"] { padding: 0 var(--space-1-5); border-radius: var(--radius-sm); }

@@ -35,6 +35,7 @@ function makeDetail(): PayrollRunDetail {
     lines_offset: 0,
     exceptions_open: 0,
     exceptions_total: 0,
+    missing_bank_account_count: 0,
     calculation: {
       version: 1,
       calculated_at: "2026-11-10T09:00:00Z",
@@ -69,6 +70,7 @@ test("RunPayslipPreview renders Earnings and Deductions Ledgers without employee
           leave_used: 0,
           gross_pay_source_present: true,
           net_pay_source_present: true,
+          bank_account_registered: true,
           nts_tax_row_status: "VERIFIED_SOURCE_ROW",
           calculation_status: "READY_FOR_REVIEW",
           blockers: [],
@@ -109,6 +111,7 @@ test("RunPayslipPreview renders directory header metadata and statutory deductio
           leave_used: 0,
           gross_pay_source_present: true,
           net_pay_source_present: true,
+          bank_account_registered: true,
           nts_tax_row_status: "VERIFIED_SOURCE_ROW",
           calculation_status: "READY_FOR_REVIEW",
           blockers: [],

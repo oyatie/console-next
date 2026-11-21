@@ -17,6 +17,7 @@ pub mod profile;
 pub mod bulk_corrections;
 pub mod change_sets;
 pub mod corrections;
+pub mod exit_cases;
 pub mod exit_guards;
 pub mod fixed_term;
 pub mod job_title;
@@ -53,9 +54,11 @@ pub mod lifecycle_bulk_job;
 
 // --- lane: CX-statutory ---
 pub mod statutory;
+pub mod unit_position;
 
 // --- lane: F5 ---
 pub mod certificates;
+pub mod me_profile;
 
 // --- lane: ECO-G5 ---
 pub mod person_binding;

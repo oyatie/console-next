@@ -82,6 +82,7 @@ Built-in labels read `common.back`, `common.closePanel`, `common.closeRelated`, 
 | `actions` | no | `ReactNode` |  | Trailing action controls aligned to the inline end of the bar. |
 | `level` | no | `2 \| 3` | `2` | Heading level (`2` for top-level panes, `3` inside nested sections). |
 | `meta` | no | `ReactNode` |  | Secondary contextual fact shown inline after `title` (for example period or item reference). |
+| `titleId` | no | `string` |  | Optional id attached to the heading element for aria-labelledby wiring. |
 | `titleRef` | no | `RefObject<HTMLHeadingElement \| null>` |  | Optional ref attached to the heading element for programmatic focus. |
 
 <!-- /ds:props -->
@@ -110,7 +111,7 @@ Built-in labels read `common.back`, `common.closePanel`, `common.closeRelated`, 
 | `--queue-w` | `--pane-record-w`, `--pane-related-w`, `min-width` |
 | `--row-h` | `min-height` |
 | `--space-1` | `gap`, `margin-inline-end`, `padding` |
-| `--space-1-5` | `flex` |
+| `--space-1-5` | `flex`, `padding-block` |
 | `--space-2` | `gap`, `padding` |
 | `--space-3` | `padding` |
 | `--space-6` | `--pane-start-w` |

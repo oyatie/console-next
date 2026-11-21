@@ -16,6 +16,7 @@
   font-variant-numeric: tabular-nums;
   line-height: 1;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .badge[data-tone="attention"] {

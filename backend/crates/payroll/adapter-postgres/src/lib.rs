@@ -21,7 +21,12 @@ pub mod payslip_draft;
 pub mod reference;
 pub mod roster;
 mod run_detail;
-pub use run_detail::{PayrollLineDeduction, PayrollLineSummary, PayrollRunDetail, get_run_in_tx};
+pub use run_detail::{
+    PayrollLineDeduction, PayrollLineSummary, PayrollRunDetail, get_run_filtered_in_tx,
+    get_run_in_tx,
+};
+mod runs_read;
+pub use runs_read::{list_runs_filtered_in_tx, list_runs_in_tx};
 
 use console_kernel_core::{KernelError, UserId};
 use console_platform_db::with_org_conn;
@@ -269,54 +274,6 @@ impl PgPayrollStore {
         })
         .await
     }
-}
-
-/// Query logic behind [`PgPayrollStore::list_runs`], factored out so a
-/// caller that must combine this read with an audited write in one
-/// transaction (e.g. `console_platform_db::with_audits`) can run it against an
-/// already-armed `tx` instead of opening a second, non-atomic transaction.
-pub async fn list_runs_in_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    limit: Option<i64>,
-    offset: Option<i64>,
-) -> Result<PayrollRunPage, PgPayrollError> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
-    let offset = offset.unwrap_or(0).max(0);
-
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM payroll_draft_runs")
-        .fetch_one(tx.as_mut())
-        .await?;
-    let rows = sqlx::query(
-        r#"
-        SELECT r.id, g.legal_entity_id, r.pay_group_id, r.kind,
-               to_char(r.attribution_month, 'YYYY-MM') AS attribution_month,
-               r.pay_date, r.period_start, r.period_end,
-               r.variable_period_start, r.variable_period_end,
-               r.source_label, r.status, r.calculation_enabled, r.created_by,
-               r.approved_by, r.approved_at, r.close_receipt, r.submitted_by,
-               r.submitted_at, r.decided_by, r.decided_at, r.decision_reason,
-               r.approval_ref, r.created_at, r.updated_at
-        FROM payroll_draft_runs r
-        LEFT JOIN pay_groups g ON g.org_id=r.org_id AND g.id=r.pay_group_id
-        ORDER BY r.period_start DESC, r.period_end DESC, r.id DESC
-        LIMIT $1 OFFSET $2
-        "#,
-    )
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(tx.as_mut())
-    .await?;
-    let items = rows
-        .iter()
-        .map(run_summary_from_row)
-        .collect::<Result<Vec<_>, PgPayrollError>>()?;
-
-    Ok(PayrollRunPage {
-        items,
-        total,
-        limit,
-        offset,
-    })
 }
 
 pub(crate) fn run_summary_from_row(

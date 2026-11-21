@@ -38,3 +38,6 @@ pub mod summary;
 
 // --- lane: UX-R3 IMPORT ---
 pub mod sex;
+
+#[cfg(test)]
+mod detect_restricted_tests;

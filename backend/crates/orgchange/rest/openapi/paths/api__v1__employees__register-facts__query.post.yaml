@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "tenant"}
+tags:
+  - employees
+operationId: queryEmployeeRegisterFacts
+summary: Batch read worker register facts for up to 500 employees
+description: >-
+  MR-23. Org-wide employee_directory_manage. Returns worker register facts plus
+  masked birth_date for either explicit employee `ids` (up to 500) or a
+  cursor-paged slice filtered by `register_review_required`. Records a single
+  audited DirectoryAccess::List event.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/RegisterFactsQueryRequest'
+responses:
+  '200':
+    description: Register facts items and optional next cursor.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RegisterFactsQueryResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

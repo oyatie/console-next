@@ -291,4 +291,10 @@ pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
         source: include_str!("../../../crates/hr/rest/src/cases.rs"),
         ignored_route_refs: &[],
     },
+    RouteSource {
+        name: "HR self-service profile REST router",
+        surface: "hr-me-profile",
+        source: include_str!("../../../crates/hr/rest/src/me_profile.rs"),
+        ignored_route_refs: &[],
+    },
 ];

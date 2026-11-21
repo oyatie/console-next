@@ -21,7 +21,12 @@
   "list": {
     "budget_kb": 300,
     "css_budget_kb": 36,
-    "deferred": ["src/features/entity/ui/entity-record.tsx", "src/features/entity/ui/entity-wizard.tsx"],
+    "deferred": [
+      "src/features/entity/ui/entity-record.tsx",
+      "src/features/entity/ui/entity-wizard.tsx",
+      "src/features/people/ui/register-export.tsx",
+      "src/features/people/ui/roster-console-panel.tsx"
+    ],
     "routes": [
       "src/features/access-log/ui/access-log-page.tsx",
       "src/features/access/ui/access-routes.tsx",
@@ -89,6 +94,7 @@
       "src/features/entity/ui/entity-wizard.tsx",
       "src/features/import/ui/dryrun-step.tsx",
       "src/features/import/ui/import-page.tsx",
+      "src/features/leave/ui/leave-request-page.tsx",
       "src/features/onboarding/ui/go-live.tsx",
       "src/features/org-bulk/ui/bulk-edit-page.tsx",
       "src/features/org-bulk/ui/import-page.tsx",

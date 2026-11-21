@@ -266,3 +266,42 @@ for (const state of [{ isComposing: true }, { isComposing: false, keyCode: 229 }
   await box.press("Escape");
   await dom(box).toHaveValue("");
 });
+
+test("selected and indeterminate row checkboxes render visible SVG glyphs in --on-primary contrast across light and dark", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?collision`);
+  const rows = page.getByRole("row").filter({ has: page.getByRole("rowheader") });
+  await rows.first().waitFor();
+  const headerCheckbox = page.getByRole("checkbox").first();
+  const rowCheckbox = rows.first().getByRole("checkbox");
+
+  // Initially unselected: no SVG glyph in box.
+  expect(await rowCheckbox.locator("xpath=ancestor::label[1]").locator("svg").count()).toBe(0);
+
+  // Select one row -> row checkbox shows Check SVG, header checkbox is indeterminate with Minus SVG.
+  await rows.first().focus();
+  await rows.first().press("Space");
+  await dom(rowCheckbox).toBeChecked();
+  await dom(headerCheckbox.locator("xpath=ancestor::label[1]")).toHaveAttribute("data-indeterminate", "true");
+
+  for (const theme of ["light", "dark"] as const) {
+    await page.locator("html").evaluate((el, value) => {
+      el.dataset.experience = "console";
+      el.dataset.theme = value;
+    }, theme);
+    for (const cb of [headerCheckbox, rowCheckbox]) {
+      const label = cb.locator("xpath=ancestor::label[1]");
+      await dom(label.locator("svg")).toHaveCount(1);
+      const colors = await label.evaluate(el => {
+        const box = el.querySelector<HTMLElement>('[aria-hidden="true"]')!;
+        const root = getComputedStyle(document.documentElement);
+        return {
+          boxColor: getComputedStyle(box).color,
+          boxBg: getComputedStyle(box).backgroundColor,
+          onPrimary: root.getPropertyValue("--on-primary").trim(),
+        };
+      });
+      expect(colors.boxColor).not.toBe(colors.boxBg);
+    }
+  }
+});

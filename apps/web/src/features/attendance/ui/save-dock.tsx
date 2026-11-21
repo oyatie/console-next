@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { ATTENDANCE_EVIDENCE, label as enumLabel } from "../../../lib/labels";
+import { useLiveHold } from "../../../lib/live/hold";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Checks } from "../../../ui/choice/checks";
@@ -10,6 +11,7 @@ import { ConflictPanel, type ConflictChoice } from "../../../ui/conflict/field-c
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { DockSheet } from "../../../ui/dock-sheet/dock-sheet";
 import { ItemList } from "../../../ui/item-list/item-list";
+import { MonthGridPaneBody } from "../../../ui/patterns/month-grid-parts";
 import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { conflictsOf, previewEntries, refusedOf, saveEntries, type CellInput, type Conflict, type SaveReceipt } from "../api";
 import { confirmationKey } from "../domain/confirmation";
@@ -20,6 +22,7 @@ import { EMPTY_EVIDENCE, evidenceOf } from "../domain/evidence";
 import { EvidenceField } from "./evidence-field";
 import { useOnline } from "../../../lib/react/use-online";
 import { usePreview } from "./use-preview";
+import styles from "./records.module.css";
 
 /**
  * The save sheet (A3-save), docked beside the grid. evidence starts empty (G7). The server previews every cell: what it
@@ -33,6 +36,7 @@ type Props = {
   rows: readonly { employee_id: string; name: string }[];
   kindOf: (key: string) => string | undefined;
   month: string;
+  variant?: "dock" | "pane";
   onClose: () => void;
   onSaved: (receipt: SaveReceipt, keys: string[]) => void;
   onFocusCell: (key: string) => void;
@@ -42,7 +46,8 @@ export function SaveDock(p: Props) {
   return Object.keys(p.drafts).length ? <SaveDockOpen {...p} /> : null;
 }
 
-function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCell }: Props) {
+function SaveDockOpen({ drafts, rows, kindOf, month, variant = "dock", onClose, onSaved, onFocusCell }: Props) {
+  useLiveHold(variant === "pane");
   const online = useOnline();
   const [confirmed, setConfirmed] = useState<string[]>([]);
   const [evidence, setEvidence] = useState(EMPTY_EVIDENCE);
@@ -101,27 +106,20 @@ function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCe
     return t("attendanceRecords.save.cellOf", { name: names.get(employee_id) ?? "", date: dateText(work_date) });
   };
 
-  return (
-    <DockSheet
-      open
-      kicker={monthText(month)}
-      title={t("attendanceRecords.save.title", { count: entries.length })}
-      onClose={onClose}
-      pending={run.isPending}
-      notice={<CommandError error={preview.error ?? (conflictsOf(run.error).length ? null : run.error)} own={refusalText} />}
-      consequence={t("attendanceRecords.save.consequence", { month: monthText(month) })}
-      actions={!loading && (
-        <>
-          <Button onClick={onClose} disabled={run.isPending}>{t("attendance.close")}</Button>
-          {why ? (
-            <DisabledReason reason={why} control={(dp) => <Button {...dp} variant="primary">{run.isPending ? t("attendanceRecords.save.saving") : label}</Button>} />
-          ) : (
-            <Button variant="primary" disabled={run.isPending} onClick={() => run.mutate()}>{run.isPending ? t("attendanceRecords.save.saving") : label}</Button>
-          )}
-        </>
+  const notice = <CommandError error={preview.error ?? (conflictsOf(run.error).length ? null : run.error)} own={refusalText} />;
+  const consequence = t("attendanceRecords.save.consequence", { month: monthText(month) });
+  const actions = !loading && (
+    <>
+      <Button onClick={onClose} disabled={run.isPending}>{t("attendance.close")}</Button>
+      {why ? (
+        <DisabledReason reason={why} control={(dp) => <Button {...dp} variant="primary">{run.isPending ? t("attendanceRecords.save.saving") : label}</Button>} />
+      ) : (
+        <Button variant="primary" disabled={run.isPending} onClick={() => run.mutate()}>{run.isPending ? t("attendanceRecords.save.saving") : label}</Button>
       )}
-    >
-      {loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("attendanceRecords.save.previewing")} /> : <>
+    </>
+  );
+  const body = loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("attendanceRecords.save.previewing")} /> : (
+    <>
       {conflicts.length > 0 && (
         <ConflictPanel
           kind="field_conflict"
@@ -171,7 +169,38 @@ function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCe
           ]}
         />
       )}
-      </>}
+    </>
+  );
+
+  if (variant === "pane") {
+    return (
+      <MonthGridPaneBody
+        pending={run.isPending}
+        footer={
+          <>
+            {notice}
+            <div className="t-xs muted">{consequence}</div>
+            <div className={styles.dayActions} inert={run.isPending || undefined}>{actions}</div>
+          </>
+        }
+      >
+        {body}
+      </MonthGridPaneBody>
+    );
+  }
+
+  return (
+    <DockSheet
+      open
+      kicker={monthText(month)}
+      title={t("attendanceRecords.save.title", { count: entries.length })}
+      onClose={onClose}
+      pending={run.isPending}
+      notice={notice}
+      consequence={consequence}
+      actions={actions}
+    >
+      {body}
     </DockSheet>
   );
 }

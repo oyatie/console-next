@@ -25,6 +25,7 @@ function makeLine(overrides: Partial<PayrollLineSummary> = {}): PayrollLineSumma
     leave_used: 0,
     gross_pay_source_present: true,
     net_pay_source_present: true,
+    bank_account_registered: true,
     nts_tax_row_status: "VERIFIED_SOURCE_ROW",
     calculation_status: "READY_FOR_REVIEW",
     blockers: [],

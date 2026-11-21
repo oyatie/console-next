@@ -1,0 +1,64 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.root {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.frame {
+  width: min(100%, calc(var(--panel-w) - var(--space-6)));
+  min-width: 0;
+}
+
+.card {
+  width: min(100%, calc(var(--panel-w) - var(--space-6)));
+  min-width: 0;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.head,
+.notices,
+.body,
+.secondary,
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.secondary,
+.foot {
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--border-soft);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .card {
+  border-color: var(--border-strong);
+  border-radius: var(--radius);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .card :is(select, input, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (--phone) {
+  .root {
+    padding: var(--space-3);
+  }
+
+  .card {
+    padding: var(--space-4);
+  }
+}

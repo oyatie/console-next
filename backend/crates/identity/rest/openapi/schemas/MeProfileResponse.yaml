@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- employee_id
+- employment_status
+- emergency_contacts_registered
+- emergency_contacts_count
+- emergency_contacts
+- bank_account_registered
+- open_change_requests
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  employee_number:
+    type:
+    - string
+    - 'null'
+  org_unit:
+    type:
+    - string
+    - 'null'
+  grade:
+    type:
+    - string
+    - 'null'
+  position:
+    type:
+    - string
+    - 'null'
+  hire_date:
+    type:
+    - string
+    - 'null'
+    format: date
+  employment_status:
+    type: string
+  phone_masked:
+    type:
+    - string
+    - 'null'
+  emergency_contacts_registered:
+    type: boolean
+  emergency_contacts_count:
+    type: integer
+    format: int64
+  emergency_contacts:
+    type: array
+    items:
+      $ref: '#/components/schemas/SelfEmergencyContactSummary'
+  address_masked:
+    type:
+    - string
+    - 'null'
+  bank_account_registered:
+    type: boolean
+  open_change_requests:
+    type: array
+    items:
+      $ref: '#/components/schemas/SelfChangeRequestSummary'

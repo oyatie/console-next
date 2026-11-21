@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useKeys } from "../../../lib/react/use-keys";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -114,7 +114,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
   };
   // Cmd/Ctrl+Enter registers and opens the next person; with Shift it registers and closes (spec section 3).
   const latest = useRef(submit);
-  useEffect(() => void (latest.current = submit));
+  useLayoutEffect(() => void (latest.current = submit));
   useEffect(() => {
     if (queued.current === null || !placesRead) return;
     const next = queued.current;

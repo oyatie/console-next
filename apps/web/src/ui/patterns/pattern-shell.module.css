@@ -2,6 +2,7 @@
 .frame {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-width: 0;
   min-height: 100%;
   background: var(--surface);
@@ -31,12 +32,24 @@
   max-width: 100%;
 }
 
+:where([data-experience]:not([data-experience="baseline"])) .frame {
+  flex: 1 0 auto;
+}
+
 :where([data-experience]:not([data-experience="baseline"])) .head {
   padding: 0;
   background: var(--surface);
 }
 
+:where([data-experience]:not([data-experience="baseline"])) .frame[data-pattern="form"] {
+  background: var(--canvas);
+}
+
 @media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) .frame[data-pattern="form"] {
+    background: var(--surface);
+  }
+
   .frame[data-detail]:has([data-pane="record"]) > .head {
     display: none;
   }

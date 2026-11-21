@@ -8,7 +8,6 @@ use axum::extract::State;
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
 use console_identity_application::{CurrentUser, UpdateSelfProfileCommand};
-use console_kernel_core::BranchScope;
 use console_kernel_core::TraceContext;
 use time::OffsetDateTime;
 
@@ -24,7 +23,7 @@ pub(crate) async fn get_me(
     // A user can always read their own record regardless of branch scope.
     let summary = state
         .store
-        .get_user(principal.user_id, &BranchScope::All)
+        .get_me_summary(principal.user_id)
         .await
         .map_err(RestError::from_store)?;
     let tenant = state

@@ -1,10 +1,6 @@
 use time::Duration;
 
 pub(crate) const GROUP_ADMIN_TENANT_CONTEXT_TTL: Duration = Duration::minutes(15);
-/// Default lifetime for an open-signup OTP. A self-service code is a bearer
-/// secret delivered by email; 1h comfortably spans an enroll-now session while
-/// keeping the leaked-code window short.
-pub(crate) const DEFAULT_SIGNUP_OTP_TTL: Duration = Duration::hours(1);
 
 /// Default admin-issued OTP lifetime when the issuer omits a TTL. Tightened to
 /// 4h (from 24h): a bootstrap OTP is a bearer secret relayed out-of-band, so a

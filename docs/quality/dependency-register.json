@@ -29305,8 +29305,6 @@
         "backend/crates/identity/rest/openapi/schemas/ReplacePolicyRoleAssignmentsRequest.yaml:6",
         "backend/crates/identity/rest/openapi/schemas/RouteAdoptionMetric.yaml:28",
         "backend/crates/identity/rest/openapi/schemas/SignInIdRecord.yaml:45",
-        "backend/crates/identity/rest/openapi/schemas/SignupRequest.yaml:8",
-        "backend/crates/identity/rest/openapi/schemas/SignupResponse.yaml:7",
         "backend/crates/identity/rest/openapi/schemas/SupportAccessRecord.yaml:13",
         "backend/crates/identity/rest/openapi/schemas/SupportSession.yaml:41",
         "backend/crates/identity/rest/openapi/schemas/SupportSessionDecision.yaml:18",

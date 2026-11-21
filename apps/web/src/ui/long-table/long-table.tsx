@@ -3,14 +3,16 @@ import { createPortal } from "react-dom";
 import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type CellProps, type ColumnProps, type SortDescriptor } from "react-aria-components";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { t } from "@console/i18n";
-import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type Selection } from "./selection";
-import { DisabledReason } from "../disabled-reason/disabled-reason";
+import { applyKeys, shownKeys, type Selection } from "./selection";
+import { SelectionBar } from "./selection-bar";
+import { Box, Skeleton } from "./long-table-parts";
+import { LAYOUT, rowId, rowKey, SELECT, SELECT_WIDTH, SKELETON_ROWS } from "./long-table-constants";
 import { editable, leaveImeKey, listenRowKeys, rowIdOf } from "./row-keys";
 import css from "./long-table.module.css";
 import { useSettledHover } from "./use-settled-hover";
 import cards from "./table-cards.module.css";
 import type { CardColumn } from "./card-columns";
-import { CardContent } from "./card-content";
+import { CardContent, CompactCardContent } from "./card-content";
 import { useCardLayout } from "./use-card-layout";
 import { SelectInput } from "../field/select-input";
 import { columnWidths, minimumColumnWidth, type ColumnType } from "./column-types";
@@ -24,19 +26,6 @@ const NONE = new Set<string>();
 
 /** `width` is a React Aria column size: "1fr" (default), "2fr", a percentage, or px for codes and dates. */
 export type LongColumn<R> = CardColumn & { id: string; header: ReactNode; cell: (r: R) => ReactNode; type?: ColumnType; focusMode?: CellProps["focusMode"]; allowsSorting?: boolean; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
-
-const SELECT = "__select";
-// React Aria shares one collection key space between rows and columns.
-const rowKey = (id: string) => `row:${id}`;
-const rowId = (key: string | number) => String(key).slice("row:".length);
-// TableLayout needs pixel estimates; CSS measures each row so cards can wrap and desktop densities stay fixed.
-const LAYOUT = {
-  regular: { estimatedRowHeight: 40, headingHeight: 40, loaderHeight: 40 },
-  compact: { estimatedRowHeight: 32, headingHeight: 36, loaderHeight: 32 },
-};
-const SELECT_WIDTH = 48;
-/** Placeholder rows while the first page loads (long-table.module.css sizes the table to fit them). */
-const SKELETON_ROWS = 8;
 
 /**
  * A long server list (3,000+ rows): React Aria Table + Virtualizer + TableLayout, so only visible rows are in the
@@ -73,6 +62,12 @@ export function LongTable<R>(p: {
   loading?: boolean;
   empty: ReactNode;
   density?: "regular" | "compact";
+  /** Phone layout when below container card threshold: `"cards"` (default) or `"compact"` 2-line `52–68px` rows. */
+  mobileLayout?: "cards" | "compact";
+  /** Hide the built-in phone card sort bar when the surrounding pattern renders an external SortControl. */
+  hideCardSort?: boolean;
+  /** Active/open record row id highlighted independently of checkbox selection. */
+  activeRowId?: string;
   /** Editing rows grow with validation messages. */
   editable?: boolean;
   onRowAction?: (id: string) => void;
@@ -106,16 +101,18 @@ export function LongTable<R>(p: {
   const cardLayout = useCardLayout(region, grid, minimumColumnWidth(p.columns) + (p.selection ? SELECT_WIDTH : 0));
   const { sortDescriptor: sort, onSortChange } = p;
   const sortable = p.columns.filter(column => column.allowsSorting);
+  const mobileLayout = p.mobileLayout ?? "cards";
   const [cardHeight, setCardHeight] = useState<number>();
   useLayoutEffect(() => {
     const table = grid.current;
     if (!cardLayout || !table) return;
+    const targetClass = mobileLayout === "compact" ? cards.compactRow : cards.content;
     const resize = new ResizeObserver(([entry]) => {
       const height = entry?.target.scrollHeight;
       if (height) setCardHeight(height);
     });
     const measure = () => {
-      const card = table.querySelector<HTMLElement>(`.${cards.content}`);
+      const card = table.querySelector<HTMLElement>(`.${targetClass}`);
       resize.disconnect();
       if (!card) return;
       resize.observe(card);
@@ -127,7 +124,7 @@ export function LongTable<R>(p: {
     rows.observe(table, { childList: true, subtree: true });
     measure();
     return () => { resize.disconnect(); rows.disconnect(); };
-  }, [cardLayout]);
+  }, [cardLayout, mobileLayout]);
   const captionId = useId();
   const open = p.rowKeys?.onOpen ?? p.onRowAction;
   const hasFind = Boolean(p.find);
@@ -156,8 +153,10 @@ export function LongTable<R>(p: {
   const layout = useMemo(() => ({
     ...LAYOUT[density],
     headingHeight: cardLayout && !p.selection ? 0 : LAYOUT[density].headingHeight,
-    estimatedRowHeight: cardLayout && cardHeight ? cardHeight : p.editable ? LAYOUT[density].estimatedRowHeight * 2 : LAYOUT[density].estimatedRowHeight,
-  }), [cardLayout, cardHeight, density, p.editable, p.selection]);
+    estimatedRowHeight: cardLayout
+      ? (cardHeight ?? (mobileLayout === "compact" ? 56 : LAYOUT[density].estimatedRowHeight))
+      : p.editable ? LAYOUT[density].estimatedRowHeight * 2 : LAYOUT[density].estimatedRowHeight,
+  }), [cardLayout, cardHeight, density, mobileLayout, p.editable, p.selection]);
   const loaded = p.rows.map(p.rowId);
   const indices = new Map(p.rows.map((r, i) => [p.rowId(r), p.rowIndex?.(r) ?? i + 1]));
   const sel = p.selection;
@@ -166,7 +165,7 @@ export function LongTable<R>(p: {
   const titleId = (r: R) => `${captionId}-${encodeURIComponent(p.rowId(r))}-title`;
   // Action cells delegate focus to their controls, including when collapsed into a card.
   const columns = p.columns.map(c => ({ ...c, focusMode: c.focusMode ?? (c.type === "action" ? "child" as const : undefined) }));
-  const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, focusMode: columns.find(c => c.focusMode === "child")?.focusMode, cell: (r) => <CardContent row={r} columns={columns} titleId={titleId(r)} /> }] : columns;
+  const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, focusMode: columns.find(c => c.focusMode === "child")?.focusMode, cell: (r) => mobileLayout === "compact" ? <CompactCardContent row={r} columns={columns} titleId={titleId(r)} /> : <CardContent row={r} columns={columns} titleId={titleId(r)} /> }] : columns;
   const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...content] : content;
   const widths = columnWidths(cols);
   const slotted = p.findSlot !== undefined;
@@ -189,7 +188,7 @@ export function LongTable<R>(p: {
         e.stopPropagation();
         p.onRowAction(id);
       }}>
-      {(!slotted || p.caption != null) && (
+      {((!slotted && Boolean(finder)) || p.caption != null) && (
         <div className={css.bar}>
           {/* Held while the count loads: the hints and the search beside it must not slide over when it lands. */}
           <span id={captionId} className={css.caption}>{p.caption}</span>
@@ -197,7 +196,7 @@ export function LongTable<R>(p: {
         </div>
       )}
       {slotted && p.findSlot && finder && createPortal(finder, p.findSlot)}
-      {cardLayout && sort && onSortChange && sortable.length > 0 && (
+      {cardLayout && !p.hideCardSort && sort && onSortChange && sortable.length > 0 && (
         <div className={css.bar}>
           <label className={css.sort}>{t("uiLongTable.sort")}
             <SelectInput value={sort.column} onChange={e => onSortChange({ column: e.target.value, direction: sort.direction })}>
@@ -231,6 +230,7 @@ export function LongTable<R>(p: {
           aria-describedby={p.caption ? captionId : undefined}
           className={`${css.table} ${cards.surface} ${types.surface}`}
           data-layout={cardLayout ? "cards" : "rows"}
+          data-mobile-layout={mobileLayout}
           data-editable={p.editable || undefined}
           data-total={p.total}
           // RAC's tab mode keeps typing and caret keys in cell controls, including tables without editable row sizing.
@@ -252,7 +252,7 @@ export function LongTable<R>(p: {
           <TableHeader className={css.head} columns={cols}>
             {(c) => (
               <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={`${css.th} ${cardLayout ? (c.id === SELECT ? css.selectHead : cards.visuallyHidden) : ""}`}>
-                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}><Box />{cardLayout && toggleLabel}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
+                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}>{({ isSelected, isIndeterminate }) => <><Box selected={isSelected} indeterminate={isIndeterminate} />{cardLayout && toggleLabel}</>}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}
           </TableHeader>
@@ -262,13 +262,13 @@ export function LongTable<R>(p: {
               p.loading ? <Skeleton columns={cols.length} rows={SKELETON_ROWS} /> : <div className={css.empty}>{p.empty}</div>
             }
           >
-            <Collection items={p.rows} dependencies={[cols]}>
+            <Collection items={p.rows} dependencies={[cols, p.activeRowId]}>
               {(r) => {
                 const id = p.rowId(r);
                 return (
-                  <Row id={rowKey(id)} columns={cols} className={css.row} render={props => <div {...props} data-row-id={id} aria-rowindex={indices.get(id)! + 1} />} onHoverStart={p.onRowHover && (() => hover.start(id))} onHoverEnd={hover.cancel}>
+                  <Row id={rowKey(id)} columns={cols} className={css.row} render={props => <div {...props} data-row-id={id} data-active-row={p.activeRowId === id || undefined} aria-rowindex={indices.get(id)! + 1} />} onHoverStart={p.onRowHover && (() => hover.start(id))} onHoverEnd={hover.cancel}>
                     {(c) => {
-                      const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
+                      const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}>{({ isSelected, isIndeterminate }) => <Box selected={isSelected} indeterminate={isIndeterminate} />}</Checkbox> : c.cell(r);
                       // Collection metadata needs row names; offscreen form controls can wait for a visible cell.
                       const value = p.editable && !c.rowHeader ? render : render();
                       return <Cell data-type={c.type} focusMode={c.focusMode} allowsArrowNavigation className={css.td} render={(props, { id: cellKey }) => {
@@ -303,61 +303,5 @@ export function LongTable<R>(p: {
       </Virtualizer>
       </ResizableTableContainer>
     </section>
-  );
-}
-
-const Box = () => <span className={css.box} aria-hidden="true" />;
-
-/**
- * The first page's placeholder: the table's columns and rows as grey bars, announced once as loading. CSS shows
- * the bars only after `display.skeleton_delay` (200 ms, the animation delay), so a fast load never flashes.
- */
-function Skeleton({ columns, rows }: { columns: number; rows: number }) {
-  return (
-    <div className={css.skeleton} role="status">
-      <span className="sr-only">{t("uiLongTable.loading")}</span>
-      {Array.from({ length: rows }, (_r, i) => (
-        <div key={i} className={css.skeletonRow} aria-hidden="true">
-          {Array.from({ length: columns }, (_c, j) => <span key={j} className={css.skeletonCell} />)}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** The selected count, the explicit select-all-matching action (or why not), the caller's actions, and how to clear. */
-function SelectionBar({ sel, loaded, total, hasMore, limit, actions, unit, onChange }: {
-  sel: Selection;
-  loaded: number;
-  total?: number;
-  hasMore: boolean;
-  limit?: { max: number; reason?: ReactNode; remedy?: ReactNode };
-  actions?: ReactNode;
-  unit: string;
-  onChange: (s: Selection) => void;
-}) {
-  const count = selectionCount(sel, total ?? loaded);
-  if (count === 0) return null;
-  const offerAll = sel.kind === "ids" && hasMore && total !== undefined && sel.ids.size === loaded && total > loaded;
-  const tooMany = offerAll && limit !== undefined && total! > limit.max;
-  return (
-    <div className={css.selection}>
-      <span role="status">
-        {sel.kind === "all"
-          ? t("uiLongTable.selection.all", { count, excluded: sel.excluded.size, unit })
-          : t("uiLongTable.selection.ids", { count, unit })}
-      </span>
-      {offerAll && !tooMany && <Button className="btn btn--ghost" onPress={() => onChange(ALL_MATCHING)}>{t("uiLongTable.selection.selectAll", { total, unit })}</Button>}
-      {tooMany && (
-        <DisabledReason
-          layout="inline"
-          reason={limit.reason ?? t("uiLongTable.selection.tooMany", { total, max: limit.max })}
-          remedy={limit.remedy}
-          control={(d) => <button {...d} className={`btn btn--ghost ${d.className ?? ""}`}>{t("uiLongTable.selection.selectAll", { total, unit })}</button>}
-        />
-      )}
-      {actions}
-      <Button className="btn btn--ghost" onPress={() => onChange(NO_SELECTION)}>{t("uiLongTable.selection.clear")}</Button>
-    </div>
   );
 }

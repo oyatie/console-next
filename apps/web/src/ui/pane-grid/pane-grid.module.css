@@ -28,6 +28,7 @@
 .center {
   flex: 1 1 0%;
   min-width: 0;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -36,6 +37,7 @@
 .main {
   flex: 1 1 auto;
   min-width: 0;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -51,6 +53,7 @@
 .related {
   position: sticky;
   top: 0;
+  z-index: 2;
   max-height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
   display: flex;
   flex-direction: column;
@@ -202,6 +205,27 @@
 @media (--phone) {
   .grid {
     flex-direction: column;
+  }
+
+  .paneHead {
+    flex-wrap: wrap;
+    padding-block: var(--space-1-5);
+  }
+
+  .paneTitleGroup {
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+
+  .paneActions {
+    flex-wrap: wrap;
+    max-width: 100%;
+    margin-inline-start: auto;
+  }
+
+  .paneActions > :global(.btn) {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .start {
