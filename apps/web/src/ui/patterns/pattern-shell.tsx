@@ -171,3 +171,9 @@ export function PatternShell({
     </PageScope>
   );
 }
+
+/** Branches a route or feature screen on the active experience without letting feature modules import `experience/dom`. */
+export function ExperienceSwitch({ baseline, children }: { baseline: () => ReactNode; children: () => ReactNode }) {
+  const experience = useActiveExperienceId();
+  return <>{experience === "baseline" ? baseline() : children()}</>;
+}
