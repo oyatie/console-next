@@ -134,8 +134,11 @@ async fn assert_intake(pool: PgPool) {
             .any(|row| row["kind"] == "privacy_request"),
         "completed requests leave the intake: {closed}"
     );
-    sqlx::query("UPDATE privacy_rights_requests SET body=jsonb_set(body,'{status}','\"RECEIVED\"') WHERE org_id=$1")
-        .bind(org.as_uuid()).execute(&pool).await.unwrap();
+    let mut tx = rights::begin(&rt, org).await.unwrap();
+    rights::file(&mut tx, org, subject, Some(employee), &input, &register)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
     let entity = seed_legal_entity(&pool, *org.as_uuid(), subject).await;
     let scoped_handler = seed_user(&pool, *org.as_uuid(), "MEMBER").await;
     sqlx::query("INSERT INTO access_grants(org_id,id,account_id,role_id,scope_kind,legal_entity_id,valid_from,effective_in_setup,change_mode,reason_code,granted_by) SELECT org_id,gen_random_uuid(),$2,role_id,'LEGAL_ENTITY',$3,valid_from,true,'SETUP','TEST',granted_by FROM access_grants WHERE id=$1")

@@ -2,9 +2,11 @@
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
 app/src/collaboration.rs	1499
-app/src/hr.rs	3478
+app/src/hr.rs	3157
+app/src/hr/attendance_import_resolve.rs	328
 app/src/objects.rs	2007
 app/src/office.rs	891
+app/src/privacy/decide.rs	328
 app/src/workbench.rs	650
 app/src/workflow_object_context.rs	460
 app/src/workflow_studio.rs	7162
@@ -67,7 +69,6 @@ ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1364
 ci/gates/pii-no-logs/src/lib.rs	399
 ci/gates/tenant-isolation/src/lib.rs	779
 ci/gates/writer-ownership/src/lib.rs	748
-ci/gates/writer-ownership/tests/census_executes_against_postgres.rs	1753
 ci/gates/writer-ownership/tests/gate_detects_violation.rs	2104
 crates/attendance/adapter-postgres/src/lib.rs	1014
 crates/attendance/adapter-postgres/tests/cancel_substitution.rs	895
@@ -213,6 +214,7 @@ crates/platform/auth/tests/session_locking.rs	411
 crates/platform/auth/tests/webauthn_contention.rs	953
 crates/platform/authz-rest/src/lib.rs	465
 crates/platform/authz-rest/src/store.rs	741
+crates/platform/authz/src/cedar_pbac/visible.rs	319
 crates/platform/authz/tests/cedar_pbac_readiness_cases.rs	499
 crates/platform/authz/tests/policy.rs	1449
 crates/platform/db/src/durability.rs	579
@@ -244,6 +246,7 @@ crates/platform/provisioning/tests/rls_auth_chain_as_runtime_role.rs	542
 crates/platform/provisioning/tests/self_enroll_handoff_as_runtime_role.rs	313
 crates/platform/push/src/lib.rs	339
 crates/platform/realtime/tests/postgres_bridge.rs	715
+crates/platform/request-context/src/error_i18n.rs	329
 crates/platform/storage/src/lib.rs	2281
 crates/platform/storage/tests/evidence_processing_rls_surfaces_as_runtime_role.rs	365
 crates/policy/adapter-postgres/src/lib.rs	323

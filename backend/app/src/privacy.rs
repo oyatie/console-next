@@ -9,6 +9,7 @@ use axum::{
 };
 use console_compliance_adapter_postgres::rights;
 use console_compliance_adapter_postgres::rights::{Controller, Filing, Kind, due};
+use console_kernel_core::ErrorKind;
 use console_platform_auth::{
     MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind,
 };
@@ -17,18 +18,25 @@ use console_platform_authz::cedar_pbac::visible::load_facts;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+mod decide;
 mod intake;
 
 pub const INTAKE: &str = "/api/v1/privacy/rights-requests/{id}";
+pub const DECIDE: &str = "/api/v1/privacy/rights-requests/{id}/decide";
+pub const POSTPONE: &str = "/api/v1/privacy/rights-requests/{id}/postpone";
+pub const OBJECTION: &str = "/api/v1/privacy/rights-requests/{id}/objection";
+pub const RECEIVED: &str = "/api/v1/privacy/rights-requests/received";
 pub const PATH: &str = "/api/v1/privacy/rights-requests";
 pub const MINE: &str = "/api/v1/privacy/rights-requests/mine";
 pub const OPTIONS: &str = "/api/v1/privacy/rights-requests/options";
-pub const ROUTE_PATHS: &[&str] = &[PATH, MINE, OPTIONS, INTAKE];
+pub const ROUTE_PATHS: &[&str] = &[
+    PATH, MINE, OPTIONS, RECEIVED, INTAKE, DECIDE, POSTPONE, OBJECTION,
+];
 
 #[derive(Clone)]
-struct PrivacyState {
-    store: console_compliance_adapter_postgres::PgComplianceStore,
-    passkey_step_up: Option<console_platform_auth::PasskeyService>,
+pub(super) struct PrivacyState {
+    pub(super) store: console_compliance_adapter_postgres::PgComplianceStore,
+    pub(super) passkey_step_up: Option<console_platform_auth::PasskeyService>,
 }
 
 pub(crate) fn router(
@@ -44,8 +52,12 @@ pub(crate) fn router(
         Router::new()
             .route(MINE, get(mine))
             .route(OPTIONS, get(options))
-            .route(PATH, post(file))
+            .route(RECEIVED, post(intake::receive_off_app))
+            .route(PATH, get(intake::list).post(file))
             .route(INTAKE, get(intake::read))
+            .route(DECIDE, post(decide::decide))
+            .route(POSTPONE, post(decide::postpone))
+            .route(OBJECTION, post(decide::objection))
             .with_state(state),
         jwt_verifier,
         pool,
@@ -74,11 +86,28 @@ fn unavailable(_: impl std::fmt::Display) -> ApiError {
 fn store_error(error: console_compliance_adapter_postgres::PgComplianceError) -> ApiError {
     use console_compliance_adapter_postgres::PgComplianceError;
     match error {
-        PgComplianceError::Domain(e) => ApiError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            e.code.unwrap_or("request_invalid"),
-            e.message,
-        ),
+        PgComplianceError::Domain(e) => {
+            let status = match e.kind {
+                ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                ErrorKind::Forbidden => StatusCode::FORBIDDEN,
+                ErrorKind::Conflict => StatusCode::CONFLICT,
+                _ => StatusCode::UNPROCESSABLE_ENTITY,
+            };
+            let code = e.code.unwrap_or_else(|| match e.message.as_str() {
+                "received_on_invalid" => "received_on_invalid",
+                "mandate_required" => "mandate_required",
+                "objection_before_result" => "objection_before_result",
+                "request_kind_required" => "request_kind_required",
+                "request_kind_unavailable" => "request_kind_unavailable",
+                "request_already_decided" => "request_already_decided",
+                "decision_date_invalid" => "decision_date_invalid",
+                "postpone_not_allowed" => "postpone_not_allowed",
+                "reason_code_invalid" => "reason_code_invalid",
+                "reason_note_required" => "reason_note_required",
+                _ => "request_invalid",
+            });
+            ApiError::new(status, code, e.message)
+        }
         _ => unavailable(error),
     }
 }

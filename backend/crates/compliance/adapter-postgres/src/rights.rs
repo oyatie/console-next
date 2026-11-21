@@ -1,17 +1,28 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Self-service request persistence; callers admit through Cedar in this transaction.
+#[path = "rights_decide.rs"]
+mod decide;
+#[path = "rights_objection.rs"]
+mod objection;
+
+pub use decide::{apply_decide, apply_postpone, decide_hash, postpone_hash};
+pub use objection::{file_objection, receive_off_app};
+
 use crate::{PgComplianceError, statutory::StatutoryRegister};
 use console_compliance_domain::rights::{
     AgentKind, Channel, IdentityMethod, Receipt, RightsRequest,
 };
-pub use console_compliance_domain::rights::{Controller, Filing, Kind, due};
+pub use console_compliance_domain::rights::{
+    Controller, DecideInput, Filing, Kind, ObjectionInput, OffAppReceipt, Outcome, PostponeInput,
+    Status, due, wire_date,
+};
 use console_kernel_core::{
     AuditAction, AuditEvent, KernelError, OrgId, Timestamp, TraceContext, UserId,
 };
 use console_platform_db::insert_audit_event;
 use serde_json::{Value, json};
 use sqlx::{PgPool, Postgres, Transaction};
-use time::{OffsetDateTime, UtcOffset};
+use time::{Date, OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
 pub async fn begin(
@@ -45,15 +56,7 @@ pub async fn file(
     if input.kinds.iter().any(|kind| !Kind::FILING.contains(kind)) {
         return Err(refuse("request_kind_unavailable"));
     }
-    let now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
-        .fetch_one(tx.as_mut())
-        .await?;
-    let today = now
-        .to_offset(
-            UtcOffset::from_hms(9, 0, 0)
-                .map_err(|_| KernelError::internal("KST offset invalid"))?,
-        )
-        .date();
+    let (now, today) = kst_now_and_today(tx).await?;
     let id = Uuid::new_v4();
     let request = RightsRequest::receive(
         Receipt {
@@ -125,6 +128,13 @@ pub async fn mine(
 /// Canonical filing payload hash for the existing bound passkey verifier.
 pub async fn filing_hash(pool: &PgPool, input: &Filing) -> Result<String, PgComplianceError> {
     let payload = serde_json::to_string(input).map_err(|e| KernelError::internal(e.to_string()))?;
+    payload_hash(pool, payload).await
+}
+
+pub(crate) async fn payload_hash(
+    pool: &PgPool,
+    payload: String,
+) -> Result<String, PgComplianceError> {
     Ok(
         sqlx::query_scalar("SELECT encode(sha256(convert_to($1,'UTF8')),'hex')")
             .bind(payload)
@@ -132,6 +142,21 @@ pub async fn filing_hash(pool: &PgPool, input: &Filing) -> Result<String, PgComp
             .fetch_one(pool)
             .await?,
     )
+}
+
+pub(crate) async fn kst_now_and_today(
+    tx: &mut Transaction<'_, Postgres>,
+) -> Result<(OffsetDateTime, Date), PgComplianceError> {
+    let now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+        .fetch_one(tx.as_mut())
+        .await?;
+    let today = now
+        .to_offset(
+            UtcOffset::from_hms(9, 0, 0)
+                .map_err(|_| KernelError::internal("KST offset invalid"))?,
+        )
+        .date();
+    Ok((now, today))
 }
 
 /// Shared registry limit for both the preview and authoritative filing validation.

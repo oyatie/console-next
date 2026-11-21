@@ -1973,12 +1973,20 @@ const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
     },
     PathItem {
         path: "/api/v1/privacy/rights-requests",
-        operations: &[Operation {
-            method: "post",
-            body: include_str!(
-                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests.post.yaml"
-            ),
-        }],
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests.post.yaml"
+                ),
+            },
+        ],
     },
     PathItem {
         path: "/api/v1/privacy/rights-requests/mine",
@@ -1999,11 +2007,47 @@ const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/privacy/rights-requests/received",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests__received.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/privacy/rights-requests/{id}",
         operations: &[Operation {
             method: "get",
             body: include_str!(
                 "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests__id.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/{id}/decide",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests__id__decide.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/{id}/objection",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests__id__objection.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/{id}/postpone",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__privacy__rights-requests__id__postpone.post.yaml"
             ),
         }],
     },
@@ -5943,6 +5987,42 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__access-log__reviews__period.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}/complete",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__access-log__reviews__period__complete.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}/findings",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__access-log__reviews__period__findings.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}/start",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__access-log__reviews__period__start.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/access/accounts/{accountId}/effective",
         operations: &[Operation {
             method: "get",
@@ -7177,6 +7257,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AccessLogPage",
         body: include_str!("../../identity/rest/openapi/schemas/AccessLogPage.yaml"),
+    },
+    NamedYaml {
+        name: "AccessLogReview",
+        body: include_str!("../../identity/rest/openapi/schemas/AccessLogReview.yaml"),
     },
     NamedYaml {
         name: "AccessPerson",

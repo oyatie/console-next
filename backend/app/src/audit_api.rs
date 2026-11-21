@@ -9,10 +9,11 @@ use crate::state::DatabaseDependency;
 use crate::telemetry::current_trace_context;
 use axum::Json;
 use axum::extract::{Extension, Query, State};
-use console_kernel_core::{AuditAction, AuditEvent, BranchId, BranchScope};
+use console_kernel_core::{AuditAction, AuditEvent, BranchId, BranchScope, KernelError};
 use console_platform_audit_chain::{ChainReport, SealConfig, verify_org_chain};
 use console_platform_authz::{
-    Action, Feature, Principal, authorize_capability, authorize_org_wide,
+    Action, AuthorizationRequest, AuthorizationResource, CedarEvaluation, Feature, Principal,
+    RlsScopeProof, authorize_org_wide, cedar_pbac,
 };
 use console_platform_db::with_audit;
 use serde::{Deserialize, Serialize};
@@ -161,14 +162,47 @@ pub(crate) async fn audit_attestation(
     Ok(Json(report))
 }
 
-/// `GET /api/audit` is a QUERY over the caller's whole branch scope, not a read of
-/// one branch's row — `fetch_audit_records` is already handed `branch_scope` and
-/// confines the rows. There is no single resource branch to authorize against, so
-/// this is a capability check. (Its sibling `authorize_audit_attestation` is
-/// deliberately org-wide; see its doc comment.)
+/// `GET /api/audit` evaluates Cedar for `Feature::AuditLogRead` while `fetch_audit_records`
+/// confines returned rows to the caller's live `branch_scope`. (Its sibling
+/// `authorize_audit_attestation` remains strictly org-wide; see its doc comment.)
 fn authorize_audit_read(principal: &Principal) -> Result<(), ApiError> {
-    authorize_capability(principal, Action::new(Feature::AuditLogRead))
-        .map_err(ApiError::from_kernel)
+    let denied = || ApiError::from_kernel(KernelError::forbidden("audit_log_read is not allowed"));
+    let bundle = cedar_pbac::engine::compile_bundle_for_feature(
+        principal.org_id,
+        principal.authz_freshness.policy_version,
+        Feature::AuditLogRead,
+    )
+    .map_err(|_| denied())?;
+    let eval = |resource: AuthorizationResource| {
+        let request = AuthorizationRequest::new(
+            principal.clone(),
+            Action::new(Feature::AuditLogRead),
+            resource,
+        )
+        .with_subject_freshness(principal.authz_freshness)
+        .with_rls_scope_proof(RlsScopeProof::runtime_role_guc(principal.org_id));
+        matches!(
+            cedar_pbac::engine::evaluate(&request, &bundle),
+            CedarEvaluation::Allow { .. }
+        )
+    };
+    let allowed = match &principal.branch_scope {
+        BranchScope::All => eval(AuthorizationResource::branchless(
+            principal.org_id,
+            "audit_log",
+        )),
+        BranchScope::Branches(branches) => {
+            !branches.is_empty()
+                && branches.iter().any(|branch| {
+                    eval(AuthorizationResource::branch(
+                        principal.org_id,
+                        *branch,
+                        "audit_log",
+                    ))
+                })
+        }
+    };
+    if allowed { Ok(()) } else { Err(denied()) }
 }
 
 fn authorize_audit_attestation(principal: &Principal) -> Result<(), ApiError> {
@@ -326,7 +360,7 @@ mod audit_attestation_auth_tests {
     use console_kernel_core::{BranchId, BranchScope, OrgId, UserId};
     use console_platform_authz::{Principal, Role};
 
-    use super::authorize_audit_attestation;
+    use super::{authorize_audit_attestation, authorize_audit_read};
 
     fn principal(role: Role, branch_scope: BranchScope) -> Principal {
         Principal::new(
@@ -358,5 +392,28 @@ mod audit_attestation_auth_tests {
             authorize_audit_attestation(&principal(Role::Executive, BranchScope::All)).is_err(),
             "EXECUTIVE has org-wide scope semantics, but not AuditLogRead matrix permission"
         );
+    }
+
+    #[test]
+    fn audit_read_cedar_gate_allows_admin_and_super_admin_and_denies_others() {
+        assert!(authorize_audit_read(&principal(Role::SuperAdmin, BranchScope::All)).is_ok());
+        assert!(
+            authorize_audit_read(&principal(
+                Role::Admin,
+                BranchScope::single(BranchId::new())
+            ))
+            .is_ok()
+        );
+        assert!(
+            authorize_audit_read(&principal(
+                Role::Admin,
+                BranchScope::Branches(BTreeSet::new())
+            ))
+            .is_err(),
+            "revoked branch membership with empty selection must be denied"
+        );
+        assert!(authorize_audit_read(&principal(Role::Member, BranchScope::All)).is_err());
+        assert!(authorize_audit_read(&principal(Role::Mechanic, BranchScope::All)).is_err());
+        assert!(authorize_audit_read(&principal(Role::Executive, BranchScope::All)).is_err());
     }
 }

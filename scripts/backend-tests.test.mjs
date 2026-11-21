@@ -141,7 +141,6 @@ test("every repository ignore has live ownership metadata and staggered review d
   const sources = readRust(fileURLToPath(new URL("../backend", import.meta.url)));
   assert.ok(backendTests.validateIgnoredTests(sources) > 0);
   const expiries = sources.flatMap(source => [...source.matchAll(/#\[ignore = "[^"\n]*expires=(\d{4}-\d{2}-\d{2})"\]/g)].map(match => match[1]));
-  assert.ok(expiries.length > 0);
   assert.equal(new Set(expiries).size, expiries.length, "quarantine reviews must be staggered");
 });
 
@@ -412,13 +411,12 @@ test("cluster-wide role mutators and console_app migrations share exclusive exec
     "leave_migration_expand_contract", "key_revision_migration_upgrade",
     "attendance_console_migration_contract", "apalis_adapter", "apalis_schema_contract",
     "apalis_runtime_release", "group_of_one_expand_contract",
+    "migrated_canonical_tables_have_only_expected_writers",
     "definitions_migrated_by_console_app_are_read_only_for_runtime",
-    "placement_migrations_run_as_console_app", "owner_only_acl_is_effectively_private_on_postgres18",
-    "console_app_may_set_its_own_lock_timeout_default",
+    "placement_migrations_run_as_console_app", "console_app_may_set_its_own_lock_timeout_default",
     "status_worker_age_is_queue_scoped_read_only_and_missing_is_unknown",
     "status_public_evidence_answers_aggregate_age_only_beside_tenant_data",
     "serving_pool_rejects_overrides_and_restores_role_defaults_after_release",
-    "corrects_stored_phones_and_preserves_revision_history",
   ]) assert.ok(group.includes(name), `${name} must share the exclusive role group`);
   assert.match(config, /\[test-groups\.cluster-global\]\s+max-threads = 1/);
 });

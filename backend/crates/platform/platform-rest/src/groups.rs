@@ -16,6 +16,9 @@ pub(crate) async fn list_groups(
     Extension(principal): Extension<PlatformPrincipal>,
     Extension(claims): Extension<console_platform_auth::AccessClaims>,
 ) -> Result<Response, PlatformError> {
+    principal
+        .authorize(PlatformFeature::GroupManage)
+        .map_err(|_| PlatformError::forbidden("platform principal cannot list groups"))?;
     let mut tx = crate::listing_authority::begin(
         &state,
         &principal,
@@ -151,4 +154,47 @@ pub(crate) async fn remove_org_from_group(
         .map_err(PlatformError::from_provisioning)?;
 
     Ok(Json(OrgResponse::from(org)).into_response())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn list_groups_rejects_restricted_platform_principal() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://console_rt@127.0.0.1:5432/console_contract")
+            .unwrap();
+        let state = PlatformRestState::new(
+            pool,
+            None,
+            console_platform_provisioning::PlatformProvisioner::new(time::Duration::minutes(15)),
+        );
+        let user_id = console_kernel_core::UserId::new();
+        let restricted: PlatformPrincipal = serde_json::from_value(serde_json::json!({
+            "user_id": user_id,
+            "features": ["tenant_list"]
+        }))
+        .unwrap();
+        let claims: console_platform_auth::AccessClaims =
+            serde_json::from_value(serde_json::json!({
+                "sub": user_id.as_uuid().to_string(),
+                "org": console_kernel_core::OrgId::platform().as_uuid().to_string(),
+                "roles": ["SUPER_ADMIN"],
+                "branches": [],
+                "platform": true,
+                "iss": "",
+                "aud": "",
+                "iat": 0,
+                "nbf": 0,
+                "exp": 9_999_999_999_i64,
+                "jti": Uuid::new_v4().to_string(),
+                "alg": "ES256"
+            }))
+            .unwrap();
+        let err = list_groups(State(state), Extension(restricted), Extension(claims))
+            .await
+            .unwrap_err();
+        assert_eq!(err.into_response().status(), StatusCode::FORBIDDEN);
+    }
 }
