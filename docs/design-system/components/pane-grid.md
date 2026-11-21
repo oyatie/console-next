@@ -115,7 +115,7 @@ Built-in labels read `common.back`, `common.closePanel`, `common.closeRelated`, 
 | `--space-2` | `gap`, `padding` |
 | `--space-3` | `padding` |
 | `--space-6` | `--pane-start-w` |
-| `--space-half` | `inset-inline-start`, `margin-inline-start` |
+| `--space-half` | `inset-inline-start`, `margin-inline-start`, `row-gap` |
 | `--surface` | `background` |
 | `--surface-2` | `background` |
 | `--text-xs` | `font-size` |

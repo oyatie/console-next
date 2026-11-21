@@ -71,7 +71,7 @@ export default function RegisterTotalsExample({ q = READY }: { q?: ReadState }) 
             />
           </>
         ),
-        primary: { id: "submit", label: t("payroll.run.SUBMITTED"), onAction: () => setSubmitOpen(true) },
+        primary: { id: "submit", label: t("payroll.run.requestApproval"), onAction: () => setSubmitOpen(true) },
       }}
       totals={
         <div className={fx.totalsGrid}>
@@ -167,7 +167,7 @@ export default function RegisterTotalsExample({ q = READY }: { q?: ReadState }) 
       overlays={
         <Sheet
           open={submitOpen}
-          title={t("payroll.run.SUBMITTED")}
+          title={t("payroll.run.requestApproval")}
           onClose={() => setSubmitOpen(false)}
           consequence={null}
           actions={<Button onClick={() => setSubmitOpen(false)}>{t("common.cancel")}</Button>}

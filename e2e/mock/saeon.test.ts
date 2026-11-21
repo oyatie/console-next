@@ -23,7 +23,11 @@ import {
   saeonLeaveRequestView,
   saeonMyLeaveOverview,
   saeonOrgStructure,
+  saeonPayGroups,
+  saeonPayrollEmployees,
+  saeonPayrollRates,
   saeonPayrollRow,
+  saeonPayrollRunDetail,
   saeonRosterEmployees,
   saeonUniverse,
   saeonWorklistInbox,
@@ -249,6 +253,51 @@ test("worklist, approval OC-2026-0418, attendance month, and Console payroll tot
   expect(registerRows.reduce((sum, row) => sum + row.grossPay, 0)).toBe(36_705_800);
   expect(registerRows.reduce((sum, row) => sum + row.totalDeductions, 0)).toBe(4_383_272);
   expect(registerRows.reduce((sum, row) => sum + row.netPay, 0)).toBe(32_322_528);
+
+  const groups = saeonPayGroups();
+  expect(groups.legal_entities).toHaveLength(5);
+  expect(groups.items).toHaveLength(5);
+
+  const runDetail = saeonPayrollRunDetail();
+  expect(runDetail.lines).toHaveLength(10);
+  expect(runDetail.lines_total).toBe(757);
+  expect(runDetail.missing_bank_account_count).toBe(2);
+  expect(runDetail.calculation?.total_net_won).toBe(2_101_473_700);
+  expect(runDetail.lines.filter(line => line.blockers.length > 0)).toHaveLength(1);
+  expect(runDetail.lines[0]?.employee_number).toBe("10587");
+  expect(runDetail.lines[0]?.base_pay_won).toBe(3_100_000);
+  expect(runDetail.lines[0]?.overtime_pay_won).toBe(267_000);
+  expect(runDetail.lines[0]?.meal_allowance_won).toBe(200_000);
+  expect(runDetail.lines[0]?.taxable_won).toBe(3_367_000);
+  expect(runDetail.lines[0]?.paid_holiday_days).toBe(4);
+
+  const missingBankOnly = saeonPayrollRunDetail({ missing_bank_only: true });
+  expect(missingBankOnly.lines).toHaveLength(2);
+  expect(missingBankOnly.lines_total).toBe(2);
+  expect(missingBankOnly.missing_bank_account_count).toBe(2);
+  expect(missingBankOnly.lines.every(line => !line.bank_account_registered)).toBe(true);
+
+  const searchedHero = saeonPayrollRunDetail({ q: "10587" });
+  expect(searchedHero.lines).toHaveLength(1);
+  expect(searchedHero.lines_total).toBe(1);
+  expect(searchedHero.lines[0]?.employee_number).toBe("10587");
+
+  const payrollEmployees = saeonPayrollEmployees();
+  expect(payrollEmployees).toHaveLength(10);
+  expect(payrollEmployees.map(emp => emp.id)).toEqual(runDetail.lines.map(line => line.employee_id));
+  expect(payrollEmployees[0]?.employee_number).toBe("10587");
+  expect(payrollEmployees[0]?.org_unit).toBe(saeonUniverse.payrollRun.windowRows[0]?.place);
+  expect(payrollEmployees[0]?.position).toBe(`${saeonUniverse.hero.gradeLabel} \u00B7 ${saeonUniverse.hero.roleLabel}`);
+
+  const payrollRates = saeonPayrollRates();
+  expect(payrollRates.adopted).toBe(true);
+  expect(payrollRates.items.map(item => item.code)).toEqual([
+    "NATIONAL_PENSION_EMPLOYEE",
+    "HEALTH_INSURANCE_TOTAL",
+    "LONG_TERM_CARE_TOTAL",
+    "EMPLOYMENT_INSURANCE_EMPLOYEE",
+    "SIMPLIFIED_WITHHOLDING_TABLE",
+  ]);
 
   const hero = saeonHeroUser();
   const heroToken = saeonHeroToken();
