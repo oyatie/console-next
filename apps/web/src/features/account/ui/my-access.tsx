@@ -4,11 +4,12 @@ import { QueryState } from "../../../lib/react/query-state";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { grantLines } from "../../../reference/authz/present";
 import { orgStructureRef } from "../../../reference/entity/api";
+import { Card } from "../../../ui/card/card";
 
 type Node = { id: string; name: string; children?: readonly Node[] };
 
 /** What the server decides this account may do (one source with the ops view and every refused screen). */
-function Grants() {
+export function MyAccessGrants() {
   const me = useQuery(myAccessQuery);
   const tree = useQuery(orgStructureRef);
   return <QueryState q={me}>{data => {
@@ -37,11 +38,8 @@ function Grants() {
  */
 export function MyAccessCard() {
   return (
-    <section className="card" aria-labelledby="acct-access">
-      <div className="toolbar">
-        <h2 id="acct-access" className="toolbar__title">{t("account.access.title")}</h2>
-      </div>
-      <div className="card__body"><Grants /></div>
-    </section>
+    <Card title={t("account.access.title")} titleId="acct-access">
+      <MyAccessGrants />
+    </Card>
   );
 }

@@ -16,6 +16,10 @@ export async function accountReads(page: Page, state: AccountState) {
   await mockRoute(page, "post", "/api/v1/auth/privacy-consent/status", { status: 200, json: { policy_version: document.version, accepted: true, accepted_at: AT, privacy: document, terms: document } });
   await mockRoute(page, "get", "/api/v1/onboarding/terms", { status: 200, json: { ...document, body: "이용 약관", privacy: { ...document, title: "개인정보 처리 안내", body: "개인정보 처리 안내 전문", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false } } });
   await mockRoute(page, "get", "/api/v1/tenant/ops-recovery", { status: 200, json: { request: null, state: null, recovery_available: false, ops_has_passkey: true, ops_enrolled: true, second_operator_available: false, active_accounts: 1, hold_hours: 24, code_ttl_minutes: 10 } });
+  await mockRoute(page, "get", "/api/v1/me/access-log", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v2/me/leave", { status: 200, json: { balance: { employee_id: id(1), name: user.display_name, accrued_units: "15", used_units: "5.5", remaining_units: "9.5", filing_state: "ready", home_branch_id: id(4) }, requests: { items: [], next_cursor: null } } });
+  await mockRoute(page, "get", "/api/v1/me/inbox-docs", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v1/change-requests", { status: 200, json: { items: [], total: 0, limit: 10, offset: 0 } });
   await mockRoute(page, "patch", "/api/v1/users/me", request => {
     writes.push(request.postDataJSON());
     return { status: 403, json: problem };
