@@ -70,7 +70,7 @@ async fn access_log_review_http_lifecycle_enforces_authz_step_up_and_tenant_isol
 
     let scoped_role = w
         .role(
-            "감사 조회",
+            "Audit View",
             json!([{"domain":"audit","levels":["approve"]}]),
         )
         .await;

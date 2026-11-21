@@ -93,7 +93,7 @@ fn store_error(error: console_compliance_adapter_postgres::PgComplianceError) ->
                 ErrorKind::Conflict => StatusCode::CONFLICT,
                 _ => StatusCode::UNPROCESSABLE_ENTITY,
             };
-            let code = e.code.unwrap_or_else(|| match e.message.as_str() {
+            let code = e.code.unwrap_or(match e.message.as_str() {
                 "received_on_invalid" => "received_on_invalid",
                 "mandate_required" => "mandate_required",
                 "objection_before_result" => "objection_before_result",

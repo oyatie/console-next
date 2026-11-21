@@ -330,9 +330,11 @@ pub(super) async fn objection(
         &mut tx,
         actor.org_id,
         actor.user_id,
-        row.subject_user_id,
-        row.subject_employee_id,
-        filed_by,
+        rights::ObjectionSubject {
+            user_id: row.subject_user_id,
+            employee_id: row.subject_employee_id,
+            filed_by,
+        },
         &row.body,
         &input,
     )

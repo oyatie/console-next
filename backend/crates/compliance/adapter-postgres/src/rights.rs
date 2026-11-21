@@ -6,7 +6,7 @@ mod decide;
 mod objection;
 
 pub use decide::{apply_decide, apply_postpone, decide_hash, postpone_hash};
-pub use objection::{file_objection, receive_off_app};
+pub use objection::{ObjectionSubject, file_objection, receive_off_app};
 
 use crate::{PgComplianceError, statutory::StatutoryRegister};
 use console_compliance_domain::rights::{

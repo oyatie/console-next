@@ -3,6 +3,7 @@ import { enUiLedger } from "./en/ui-ledger";
 import { enGovernanceRefusals } from "./en/governance";
 import { enAccountLinkRefusals } from "./en/account_link";
 import { enPeriodUnlockRefusals } from "./en/period_unlock";
+import { enPrivacyRefusals } from "./en/privacy";
 import { enLeave } from "./en/leave";
 import { enOrgChangeRefusals } from "./en/org_change";
 import { enPayroll } from "./en/payroll";
@@ -265,6 +266,7 @@ export const en = {
   ...enCommon,
   ...enSupport,
   ...enSupportAccess,
+  ...enPrivacyRefusals,
   ...enDirectoryViews,
   ...enUiWorklist,
   ...enUiLedger,

@@ -116,14 +116,19 @@ pub async fn receive_off_app(
     Ok(body)
 }
 
+/// Subject and optional filer attribution for an objection filing.
+pub struct ObjectionSubject {
+    pub user_id: Uuid,
+    pub employee_id: Option<Uuid>,
+    pub filed_by: Option<Uuid>,
+}
+
 /// File a follow-up objection request referencing `original_id`.
 pub async fn file_objection(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
     actor: UserId,
-    subject_user_id: Uuid,
-    subject_employee_id: Option<Uuid>,
-    filed_by: Option<Uuid>,
+    subject: ObjectionSubject,
     original_body: &Value,
     input: &ObjectionInput,
 ) -> Result<Value, PgComplianceError> {
@@ -163,14 +168,14 @@ pub async fn file_objection(
     body["receipt_no"] = json!(format!("RR-{}", id.simple()));
     body["detail"] = json!(input.detail);
     body["status"] = json!(request.status());
-    if let Some(filer) = filed_by {
+    if let Some(filer) = subject.filed_by {
         body["filed_by"] = json!(filer);
     }
     sqlx::query("INSERT INTO privacy_rights_requests (org_id,id,subject_user_id,subject_employee_id,body) VALUES ($1,$2,$3,$4,$5)")
         .bind(org.as_uuid())
         .bind(id)
-        .bind(subject_user_id)
-        .bind(subject_employee_id)
+        .bind(subject.user_id)
+        .bind(subject.employee_id)
         .bind(&body)
         .execute(tx.as_mut())
         .await?;

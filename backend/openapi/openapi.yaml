@@ -53547,6 +53547,7 @@ components:
             - passkey_step_up_pii_reveal
             - passkey_step_up_pii_record
             - passkey_step_up_privacy_request
+            - passkey_step_up_privacy_request_decide
         replay_attempt:
           type:
             - integer

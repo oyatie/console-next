@@ -167,42 +167,27 @@ pub(crate) async fn audit_attestation(
 /// `authorize_audit_attestation` remains strictly org-wide; see its doc comment.)
 fn authorize_audit_read(principal: &Principal) -> Result<(), ApiError> {
     let denied = || ApiError::from_kernel(KernelError::forbidden("audit_log_read is not allowed"));
+    if principal.branch_scope.is_empty() {
+        return Err(denied());
+    }
     let bundle = cedar_pbac::engine::compile_bundle_for_feature(
         principal.org_id,
         principal.authz_freshness.policy_version,
         Feature::AuditLogRead,
     )
     .map_err(|_| denied())?;
-    let eval = |resource: AuthorizationResource| {
-        let request = AuthorizationRequest::new(
-            principal.clone(),
-            Action::new(Feature::AuditLogRead),
-            resource,
-        )
-        .with_subject_freshness(principal.authz_freshness)
-        .with_rls_scope_proof(RlsScopeProof::runtime_role_guc(principal.org_id));
-        matches!(
-            cedar_pbac::engine::evaluate(&request, &bundle),
-            CedarEvaluation::Allow { .. }
-        )
-    };
-    let allowed = match &principal.branch_scope {
-        BranchScope::All => eval(AuthorizationResource::branchless(
-            principal.org_id,
-            "audit_log",
-        )),
-        BranchScope::Branches(branches) => {
-            !branches.is_empty()
-                && branches.iter().any(|branch| {
-                    eval(AuthorizationResource::branch(
-                        principal.org_id,
-                        *branch,
-                        "audit_log",
-                    ))
-                })
-        }
-    };
-    if allowed { Ok(()) } else { Err(denied()) }
+    let resource = AuthorizationResource::branchless(principal.org_id, "audit_log");
+    let request = AuthorizationRequest::new(
+        principal.clone(),
+        Action::new(Feature::AuditLogRead),
+        resource,
+    )
+    .with_subject_freshness(principal.authz_freshness)
+    .with_rls_scope_proof(RlsScopeProof::runtime_role_guc(principal.org_id));
+    match cedar_pbac::engine::evaluate(&request, &bundle) {
+        CedarEvaluation::Allow { .. } => Ok(()),
+        _ => Err(denied()),
+    }
 }
 
 fn authorize_audit_attestation(principal: &Principal) -> Result<(), ApiError> {

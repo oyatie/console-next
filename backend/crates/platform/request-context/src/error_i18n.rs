@@ -180,76 +180,6 @@ const CODES: &[(&str, &str)] = &[
         "ops_recovery_evidence_identifier",
         "확인 기록에 주민등록번호를 넣지 마십시오.",
     ),
-    (
-        "own_request_forbidden",
-        "본인이 청구하거나 접수에 관여한 권리 행사 요청은 직접 결정할 수 없습니다.",
-    ),
-    (
-        "objection_same_decider",
-        "원 결정에 참여한 담당자는 이의제기를 심사·결정할 수 없습니다.",
-    ),
-    (
-        "postpone_not_allowed",
-        "해당 요청은 처리 기간을 연장할 수 없습니다.",
-    ),
-    (
-        "request_already_decided",
-        "이미 결정이 완료된 요청 항목입니다.",
-    ),
-    (
-        "mandate_required",
-        "대리인 청구에는 위임장 또는 법정대리인 확인이 필요합니다.",
-    ),
-    (
-        "privacy.refuse.identity_unbound",
-        "당사자와 결정자의 직원 계정이 연결되어 있어야 독립적인 결정이 가능합니다.",
-    ),
-    (
-        "objection_before_result",
-        "원 결정이 통지된 요청에 대해서만 이의제기를 접수할 수 있습니다.",
-    ),
-    (
-        "request_kind_unavailable",
-        "선택한 권리 행사 유형은 접수할 수 없습니다.",
-    ),
-    (
-        "request_kind_required",
-        "권리 행사 유형을 하나 이상 선택하십시오.",
-    ),
-    (
-        "reason_code_invalid",
-        "선택한 사유 코드가 결정 결과와 맞지 않습니다.",
-    ),
-    (
-        "reason_note_required",
-        "결정 또는 연장 사유 설명을 입력하십시오.",
-    ),
-    (
-        "decision_date_invalid",
-        "결정일자가 접수일 이전이거나 오늘 이후일 수 없습니다.",
-    ),
-    ("received_on_invalid", "접수일자가 오늘 이후일 수 없습니다."),
-    (
-        "detail_too_long",
-        "요청 상세 내용이 허용 길이를 초과했습니다.",
-    ),
-    (
-        "no_employee_record",
-        "연결된 직원 정보가 없어 기관 담당자 앞으로 청구할 수 없습니다.",
-    ),
-    (
-        "request_controller_unavailable",
-        "선택한 개인정보처리자에게는 청구할 수 없습니다.",
-    ),
-    ("privacy_subject_not_found", "대상 계정을 찾을 수 없습니다."),
-    (
-        "privacy_request_not_decided",
-        "결정된 요청이 아니어서 이의제기를 접수할 수 없습니다.",
-    ),
-    (
-        "privacy_controller_invalid",
-        "오프라인 접수는 사업주 관리 청구만 지원합니다.",
-    ),
 ];
 
 /// Server-authored org-change `reason` strings (legacy org-setup drafts).
@@ -331,8 +261,23 @@ pub fn korean_message(code: &str, message: &str) -> String {
         return format!("알 수 없는 역할입니다: {role}");
     }
     lookup(CODES, code)
+        .or_else(|| lookup_privacy_error(code))
         .unwrap_or("요청을 처리하지 못했습니다.")
         .to_owned()
+}
+
+fn lookup_privacy_error(code: &str) -> Option<&'static str> {
+    static PRIVACY_CODES: std::sync::OnceLock<std::collections::BTreeMap<String, String>> =
+        std::sync::OnceLock::new();
+    PRIVACY_CODES
+        .get_or_init(|| {
+            serde_json::from_str(include_str!(
+                "../../../../../packages/i18n/src/catalogs/privacy-errors.ko.json"
+            ))
+            .unwrap_or_default()
+        })
+        .get(code)
+        .map(String::as_str)
 }
 
 /// Whether `Accept-Language` ranks Korean strictly above every other listed

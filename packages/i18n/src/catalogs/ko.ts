@@ -3,6 +3,7 @@ import { koGovernanceRefusals } from "./ko/governance";
 import { koDirectoryViews } from "./ko/directory-views";
 import { koAccountLinkRefusals } from "./ko/account_link";
 import { koPeriodUnlockRefusals } from "./ko/period_unlock";
+import { koPrivacyRefusals } from "./ko/privacy";
 import { koLeave } from "./ko/leave";
 import { koOrgChangeRefusals } from "./ko/org_change";
 import { koPayroll } from "./ko/payroll";
@@ -264,6 +265,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koCommon,
   ...koSupport,
   ...koSupportAccess,
+  ...koPrivacyRefusals,
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,

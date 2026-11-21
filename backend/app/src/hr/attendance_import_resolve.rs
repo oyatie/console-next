@@ -26,7 +26,7 @@ enum LookupResult<T> {
 enum PassOneOutcome {
     Ready {
         row_index: usize,
-        resolved: ResolvedAttendanceImportRow,
+        resolved: Box<ResolvedAttendanceImportRow>,
     },
     Failed {
         duplicate: bool,
@@ -223,7 +223,7 @@ pub(super) async fn resolve_attendance_import_rows(
         candidate_fact_keys.push(fact_key.clone());
         outcomes.push(PassOneOutcome::Ready {
             row_index,
-            resolved: ResolvedAttendanceImportRow {
+            resolved: Box::new(ResolvedAttendanceImportRow {
                 import_row_id: row.import_row_id,
                 employee_id: employee.id,
                 branch_id: branch.id,
@@ -238,7 +238,7 @@ pub(super) async fn resolve_attendance_import_rows(
                 check_out_at: row.canonical.check_out_at.clone(),
                 minutes_worked: row.canonical.minutes_worked,
                 fact_key,
-            },
+            }),
         });
     }
 
@@ -301,7 +301,7 @@ pub(super) async fn resolve_attendance_import_rows(
                         "attendance fact was already imported",
                     ));
                 } else {
-                    summary.ready_rows_for_apply.push(resolved);
+                    summary.ready_rows_for_apply.push(*resolved);
                 }
             }
         }

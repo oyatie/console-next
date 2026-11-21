@@ -74,9 +74,9 @@ pub(super) async fn list(
         })?;
     let status_filter = query
         .status
-        .and_then(|s| match s {
-            Status::Received => Some("RECEIVED"),
-            Status::Decided => Some("DECIDED"),
+        .map(|s| match s {
+            Status::Received => "RECEIVED",
+            Status::Decided => "DECIDED",
         })
         .map(str::to_owned);
 
