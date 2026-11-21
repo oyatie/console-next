@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { tg } from "@console/i18n/gallery";
 import type { ReadState } from "../../lib/react/query-view";
 import { Button } from "../button/button";
@@ -39,6 +39,7 @@ const LINES = [
 /** Synthetic no-network showcase for Canvas (`P10`). */
 export default function CanvasExample({ q = READY }: { q?: ReadState }) {
   const canvasRef = useRef<CanvasHandle>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const [depth, setDepth] = useState<"all" | "sites">("all");
   const [find, setFind] = useState("");
   const [cursorId, setCursorId] = useState("root");
@@ -48,12 +49,17 @@ export default function CanvasExample({ q = READY }: { q?: ReadState }) {
   const visibleNodes = depth === "sites" ? NODES.filter(n => n.level !== "dept") : NODES;
   const inspected = NODES.find(n => n.id === selectedId) ?? null;
 
+  useLayoutEffect(() => {
+    if (document.activeElement?.getAttribute("role") === "treeitem" && stageRef.current?.contains(document.activeElement)) {
+      document.getElementById(`node-${cursorId}`)?.focus({ preventScroll: true });
+    }
+  }, [cursorId]);
+
   const moveCursor = (nextIndex: number) => {
     const target = visibleNodes[Math.max(0, Math.min(visibleNodes.length - 1, nextIndex))];
     if (!target) return;
     setCursorId(target.id);
     canvasRef.current?.reveal(target.box);
-    document.getElementById(`node-${target.id}`)?.focus({ preventScroll: true });
   };
 
   return (
@@ -88,6 +94,9 @@ export default function CanvasExample({ q = READY }: { q?: ReadState }) {
       canvas={
         <OrgCanvas
           ref={canvasRef}
+          stageRef={el => {
+            stageRef.current = el;
+          }}
           label={tg("pat.canvas.treeLabel")}
           resetKey={depth}
           size={{ w: 720, h: 360 }}

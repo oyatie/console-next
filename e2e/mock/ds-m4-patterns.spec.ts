@@ -6,6 +6,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { expectAxe, fits } from "../a11y";
+import { routeReady } from "../flows";
 import { withFullPage } from "../shots";
 import { forgetResize } from "../stability";
 import { screens } from "../states/registry";
@@ -193,7 +194,10 @@ test("patterns P8-P11 support keyboard journeys and preserve baseline parity", a
 
     // Canvas arrow-key navigation + Enter + Escape focus restore
     await page.goto("/_review/patterns/canvas");
+    await routeReady(page);
+    await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeFocused();
     await page.locator("#node-root").focus();
+    await expect(page.locator("#node-root")).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(page.locator("#node-entity")).toBeFocused();
     await page.keyboard.press("Enter");
