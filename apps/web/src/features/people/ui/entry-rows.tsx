@@ -38,7 +38,7 @@ export function useEntryRows(c: Card) {
   const rows = (sec: Segment, cols: RowColumn<RecordEntry>[], name: (x: RecordEntry) => string) => {
     const list = of(sec);
     return list.length ? (
-      <RecordRows label={t(`empRec.${sec}`)} rows={list} rowId={(x) => x.id} isVoid={(x) => x.voided} columns={[...cols, { end: true, cell: (x) => <>{x.voided && <Tag kind="void">{t("empRec.voided")}</Tag>}{actions(x, name(x))}</> }]} />
+      <RecordRows mobileLayout="console-cards" label={t(`empRec.${sec}`)} rows={list} rowId={(x) => x.id} isVoid={(x) => x.voided} columns={[...cols, { end: true, card: "action", cell: (x) => <>{x.voided && <Tag kind="void">{t("empRec.voided")}</Tag>}{actions(x, name(x))}</> }]} />
     ) : null;
   };
   const editor = (sec: Segment) => {

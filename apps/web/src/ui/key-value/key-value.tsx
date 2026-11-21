@@ -53,7 +53,7 @@ export function KeyValue({
   );
 }
 
-/** One summary count tile in a `StatRow`: label over tabular value, with optional contextual meta and urgency tone. */
+/** One summary count tile in a `StatRow`: label over tabular value, with optional contextual meta, urgency tone, and press handler. */
 export type StatRowItem = {
   key: string;
   label: ReactNode;
@@ -61,6 +61,7 @@ export type StatRowItem = {
   meta?: ReactNode;
   tone?: "warn" | "danger" | "ok" | "primary";
   active?: boolean;
+  onPress?: () => void;
 };
 
 /** Counts side by side in one bordered row (kit .statrow): the label over the number. Never a vanity KPI: each is a count the view acts on. */
@@ -68,8 +69,22 @@ export function StatRow({ items, label }: { items: readonly StatRowItem[]; label
   return (
     <dl className={s.stats} aria-label={label}>
       {items.map((i) => (
-        <div key={i.key} className={s.stat} data-tone={i.tone} data-active={i.active || undefined}>
-          <dt className={s.statLabel}>{i.label}</dt>
+        <div
+          key={i.key}
+          className={s.stat}
+          data-tone={i.tone}
+          data-active={i.active || undefined}
+          data-interactive={i.onPress ? true : undefined}
+        >
+          <dt className={s.statLabel}>
+            {i.onPress ? (
+              <button type="button" className={s.statBtn} aria-pressed={Boolean(i.active)} onClick={i.onPress}>
+                {i.label}
+              </button>
+            ) : (
+              i.label
+            )}
+          </dt>
           <dd className={s.statValue}>{i.value}</dd>
           {i.meta != null && <dd className={s.statMeta}>{i.meta}</dd>}
         </div>

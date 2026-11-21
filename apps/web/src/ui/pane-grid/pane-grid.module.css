@@ -28,6 +28,7 @@
 .center {
   flex: 1 1 0%;
   min-width: 0;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -36,6 +37,7 @@
 .main {
   flex: 1 1 auto;
   min-width: 0;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -51,6 +53,7 @@
 .related {
   position: sticky;
   top: 0;
+  z-index: 2;
   max-height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
   display: flex;
   flex-direction: column;

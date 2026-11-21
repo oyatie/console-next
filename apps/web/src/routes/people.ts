@@ -40,7 +40,7 @@ const registerEmployee = createRoute({
 });
 const employee = createRoute({
   getParentRoute: () => app,
-  path: "/people/$id", staticData: { access: "signed-in", floorplan: "P-02" },
+  path: "/people/$id", staticData: { access: "signed-in", floorplan: "P-02", pattern: "record" },
   remountDeps: ({ params }) => params.id,
   loader: ({ params: { id }, context, preload }) => {
     if (preload) return;

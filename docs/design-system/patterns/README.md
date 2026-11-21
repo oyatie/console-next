@@ -54,8 +54,8 @@ path: "/people",
 staticData: { access: readRequirement("/people"), floorplan: "P-01", pattern: "list-record" },
 ```
 
-The key is optional. Twelve routes declare one today: `/` and `/inbox` (drawn through `Worklist`), `/people` (drawn through
-`ListRecord`), and the nine review routes (`/_review/patterns/worklist`, `/_review/patterns/list-record`,
+The key is optional. Thirteen routes declare one today: `/` and `/inbox` (drawn through `Worklist`), `/people` (drawn through
+`ListRecord`), `/people/$id` (drawn through `RecordPattern`), and the nine review routes (`/_review/patterns/worklist`, `/_review/patterns/list-record`,
 `/_review/patterns/record`, `/_review/patterns/document-decision`, `/_review/patterns/month-grid`,
 `/_review/patterns/register-totals`, `/_review/patterns/form`, `/_review/patterns/phone-hub`, and
 `/_review/patterns/phone-statement`).

@@ -3,12 +3,7 @@
   "tenantName": "새온그룹",
   "referenceDate": "2026-11-10",
   "referenceDateDisplay": "2026-11-10 (화)",
-  "adminActor": {
-    "name": "문서연",
-    "unit": "인사팀",
-    "grade": "과장",
-    "topBarLabel": "문서연 · 인사팀 과장"
-  },
+  "adminActor": { "name": "문서연", "unit": "인사팀", "grade": "과장", "topBarLabel": "문서연 · 인사팀 과장" },
   "counts": {
     "active": 2054,
     "leave": 37,
@@ -19,31 +14,10 @@
     "probationEnding": 43,
     "contractEndingSoon": 42
   },
-  "grades": {
-    "STAFF": "사원",
-    "SENIOR_STAFF": "주임",
-    "ASSISTANT_MANAGER": "대리",
-    "MANAGER": "과장",
-    "DEPUTY_GM": "차장",
-    "GENERAL_MANAGER": "부장"
-  },
-  "roles": {
-    "CREW_LEAD": "조장",
-    "FOREMAN": "반장",
-    "DEPUTY_TEAM_LEAD": "부팀장",
-    "TEAM_LEAD": "팀장",
-    "DEPT_HEAD": "부서장",
-    "PLANT_DIRECTOR": "평택공장장"
-  },
-  "employmentTypes": {
-    "REGULAR": "정규직",
-    "CONTRACT": "계약직",
-    "PART_TIME": "파트타임"
-  },
-  "missingLabels": {
-    "GENDER": "성별",
-    "ADDRESS": "주소"
-  },
+  "grades": { "STAFF": "사원", "SENIOR_STAFF": "주임", "ASSISTANT_MANAGER": "대리", "MANAGER": "과장", "DEPUTY_GM": "차장", "GENERAL_MANAGER": "부장" },
+  "roles": { "CREW_LEAD": "조장", "FOREMAN": "반장", "DEPUTY_TEAM_LEAD": "부팀장", "TEAM_LEAD": "팀장", "DEPT_HEAD": "부서장", "PLANT_DIRECTOR": "평택공장장" },
+  "employmentTypes": { "REGULAR": "정규직", "CONTRACT": "계약직", "PART_TIME": "파트타임" },
+  "missingLabels": { "GENDER": "성별", "ADDRESS": "주소" },
   "entities": [
     {
       "prefix": "1",
@@ -121,24 +95,7 @@
       ]
     }
   ],
-  "hero": {
-    "name": "윤하준",
-    "employeeNumber": "10587",
-    "entityIndex": 0,
-    "workplace": "평택공장",
-    "departmentPath": "평택공장 › 생산부 › 생산1팀",
-    "shortPlace": "평택공장 › 생산1팀",
-    "gradeCode": "SENIOR_STAFF",
-    "roleCode": "CREW_LEAD",
-    "employmentTypeCode": "REGULAR",
-    "hireDate": "2019-03-14",
-    "birthDate": "1994-08-21",
-    "genderDigit": 1,
-    "phoneLastFour": "4821",
-    "address": "경기 평택시 고덕동",
-    "nationality": "대한민국",
-    "workSchedule": "2교대 · 주 40시간",
-    "accessLogNote": "인사팀 문서연 님이 주민등록번호를 열람했습니다 · 4대보험 신고 · 11-03",
+  "hero": { "name": "윤하준", "employeeNumber": "10587", "entityIndex": 0, "workplace": "평택공장", "departmentPath": "평택공장 › 생산부 › 생산1팀", "shortPlace": "평택공장 › 생산1팀", "gradeCode": "SENIOR_STAFF", "roleCode": "CREW_LEAD", "employmentTypeCode": "REGULAR", "hireDate": "2019-03-14", "birthDate": "1994-08-21", "genderDigit": 1, "phoneLastFour": "4821", "address": "경기 평택시 고덕동", "nationality": "대한민국", "workSchedule": "2교대 · 주 40시간", "accessLogNote": "인사팀 문서연 님이 주민등록번호를 열람했습니다 · 4대보험 신고 · 11-03",
     "leave": {
       "grantedDays": 15,
       "usedDays": 5.5,
@@ -254,6 +211,18 @@
       { "name": "표성민", "employeeNumber": "10373", "place": "서울 본사 › 국내영업1팀", "gradeCode": "MANAGER", "overtimeHours": 0, "bankAccountRegistered": true }
     ]
   },
+  "heroDetails": { "nameHanja": "尹河俊", "nameEn": "Yoon Ha-jun", "fullAddress": "경기도 평택시 고덕국제대로 145, 102동 804호", "maskedAddress": "경기도 평택시 고덕동 ***", "maskedEmail": "ha***@saeon.test", "emergencyContactName": "윤서영", "emergencyContactRelation": "배우자", "careerCompany": "(주)동서기계", "careerRole": "설비보전 기사",
+    "lifecycleEvents": [{ "seq": 1, "eventType": "ONBOARD", "effectiveDate": "2019-03-14", "toCompany": "(주)새온정밀", "toOrgUnit": "평택공장 › 생산1팀", "toPosition": "사원", "reason": "정규직 공개 채용" }, { "seq": 2, "eventType": "PROMOTE", "effectiveDate": "2022-03-01", "fromPosition": "사원", "toPosition": "주임", "reason": "정기 승진" }, { "seq": 3, "eventType": "APPOINT", "effectiveDate": "2025-01-02", "fromPosition": "주임", "toPosition": "주임 · 조장", "reason": "현장 라인 보직 발령" }],
+    "scheduledEvent": { "seq": 4, "eventType": "TRANSFER", "effectiveDate": "2026-12-01", "fromOrgUnit": "평택공장 › 생산1팀", "toOrgUnit": "평택공장 › 생산2팀", "reason": "3라인 통합 배속" },
+    "certificates": [{ "seq": 1, "certificateNo": "HR-2026-0114", "kind": "EMPLOYMENT", "purpose": "금융기관 제출", "issuedAt": "2026-10-15T02:00:00Z" }, { "seq": 2, "certificateNo": "HR-2026-0082", "kind": "CAREER", "purpose": "자격 갱신 확인", "issuedAt": "2026-06-03T04:10:00Z" }],
+    "qualifications": [{ "seq": 1, "name": "기계정비산업기사", "issuer": "한국산업인력공단", "acquiredOn": "2020-07-18" }, { "seq": 2, "name": "산업안전기사", "issuer": "한국산업인력공단", "acquiredOn": "2023-11-10" }]
+  },
+  "statusSamples": {
+    "onLeave": { "seq": 9001, "name": "이송이", "employeeNumber": "10489", "entityIndex": 0, "place": "평택공장 › 생산2팀", "gradeCode": "SENIOR_STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2020-04-01", "statusSince": "2026-09-01", "expectedReturnDate": "2027-08-31" },
+    "preHire": { "seq": 9002, "name": "한지호", "employeeNumber": "10701", "entityIndex": 0, "place": "서울 본사 › 인사팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2026-12-01" },
+    "exited": { "seq": 9003, "name": "박성민", "employeeNumber": "10198", "entityIndex": 0, "place": "평택공장 › 생산3팀", "gradeCode": "MANAGER", "roleCode": "TEAM_LEAD", "employmentTypeCode": "REGULAR", "hireDate": "2017-05-08", "exitDate": "2026-10-31", "keptUntil": "2029-10-31", "retentionInstrument": "근로기준법", "retentionArticle": "제42조", "retentionDisposition": "파기" }
+  },
+  "reasonCodes": { "rrn_reveal": [{ "code": "INSURANCE_FILING", "labelKo": "4대보험 신고", "requiresNote": false }, { "code": "TAX_FILING", "labelKo": "원천세·연말정산 확인", "requiresNote": false }, { "code": "CERT_ISSUE", "labelKo": "증명서 발급", "requiresNote": false }] },
   "namePools": {
     "surnamesBeforeWindow": ["강", "고", "곽", "구", "권", "김", "남", "노", "문", "박", "방", "배", "백", "서", "석", "성", "손", "송", "신", "심", "안", "양", "엄", "염", "오", "우", "원", "유"],
     "surnamesAfterWindow": ["임", "장", "전", "정", "조", "주", "차", "천", "최", "추", "표", "하", "한", "허", "현", "홍", "황"],

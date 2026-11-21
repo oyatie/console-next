@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link, useElementScrollRestoration, useLocation, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { chunk } from "../../../lib/chunk-guard";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
 import { ListRecord } from "../../../ui/patterns/list-record";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { rowById } from "../../../ui/long-table/row-keys";
 import { NO_SELECTION } from "../../../ui/long-table/selection";
@@ -23,8 +25,10 @@ import { RosterPanel } from "./roster-panel";
 import { RosterUnitPanel } from "./roster-unit-panel";
 import { BULK_MAX } from "./use-roster";
 import { PeopleJump } from "./people-jump";
-import { RegisterExport } from "./register-export";
 import { RosterFirstRun } from "./roster-first-run";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
+
+const RegisterExport = lazy(() => chunk(import("./register-export")).then(m => ({ default: m.RegisterExport })));
 import { QueryState } from "../../../lib/react/query-state";
 import { RosterEmpty } from "./roster-empty";
 import { RosterColumns } from "./roster-columns";
@@ -36,6 +40,7 @@ import type { useRosterScreen } from "./use-roster-screen";
 import { RosterFoot } from "./roster-foot";
 import { useRosterHead } from "./roster-head";
 import { ExitTabs, VoidedList } from "./exit-tabs";
+import { RosterConsole } from "./roster-console";
 import { RosterSavedViews } from "./roster-saved-views";
 
 type RosterScreenProps = { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; actions?: ReactNode; screen: ReturnType<typeof useRosterScreen> };
@@ -60,7 +65,15 @@ function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTML
 }
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
-export function RosterScreen({ manage, scoped = false, switcher, notice, screen, actions }: RosterScreenProps) {
+export function RosterScreen(props: RosterScreenProps) {
+  return (
+    <ExperienceSwitch baseline={() => <BaselineRosterScreen {...props} />}>
+      {() => <RosterConsole manage={props.manage} scoped={props.scoped} notice={props.notice} actions={props.actions} screen={props.screen} />}
+    </ExperienceSwitch>
+  );
+}
+
+function BaselineRosterScreen({ manage, scoped = false, switcher, notice, screen, actions }: RosterScreenProps) {
   const {
     contractWindow, soonDays, search, navigate, today, status, review, unit,
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
@@ -80,7 +93,7 @@ export function RosterScreen({ manage, scoped = false, switcher, notice, screen,
   const firstRun = !r.loading && !r.list.error && !filtered && (r.status.totals.all ?? total) === 0 && !r.changed;
   // The first-run ways in are for a company with nobody at all (the starting and the exited counted, once their totals are
   // read); a current view that is empty while others exist is the table's own empty state, with its way to them.
-  if (search.export === "register") return <RegisterExport onClose={() => void navigate({ search: (prev) => ({ ...prev, export: undefined }), replace: true })} />;
+  if (search.export === "register") return <Suspense fallback={<ReadSkeleton layout="form" />}><RegisterExport onClose={() => void navigate({ search: (prev) => ({ ...prev, export: undefined }), replace: true })} /></Suspense>;
   return (
     <ListRecord q={r.list} head={head} views={views}
       filters={<>
