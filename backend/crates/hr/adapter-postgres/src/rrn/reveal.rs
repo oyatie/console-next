@@ -96,7 +96,16 @@ impl HrService {
         .await?;
         let value = match value {
             ReadValue::Rrn(sealed) => {
-                let rrn = vault
+                let scoped = match vault {
+                    Some(v) => v
+                        .scoped_for_org(*org.as_uuid())
+                        .await
+                        .map_err(|_| unavailable())?,
+                    None => None,
+                };
+                let rrn = scoped
+                    .as_deref()
+                    .or(vault)
                     .ok_or_else(unavailable)?
                     .open(*org.as_uuid(), &sealed)
                     .map_err(|_| unavailable())?;

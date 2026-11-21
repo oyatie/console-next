@@ -202,7 +202,7 @@ crates/payroll/rest/src/payslip_draft.rs	370
 crates/payroll/rest/tests/api.rs	759
 crates/payroll/rest/tests/payslip_draft_api.rs	1303
 crates/payroll/rest/tests/run_lifecycle_api.rs	842
-crates/platform/audit-chain/src/lib.rs	632
+crates/platform/audit-chain/src/lib.rs	631
 crates/platform/audit-chain/tests/audit_chain_rls.rs	1153
 crates/platform/auth-rest/tests/dev_auth_session.rs	335
 crates/platform/auth/src/jwt.rs	483

@@ -49,10 +49,19 @@ pub(super) async fn preview_employee_import(
     let sheets = workbook_read::read_workbook_blocking(bytes, caps).await?;
     let mapping = mapping_request(upload.mapping.as_deref())?;
     let memory = state.hr.import_column_memory(principal.org_id).await?;
+    let scoped_vault = match state.rrn_vault.as_deref() {
+        Some(v) => v
+            .scoped_for_org(*principal.org_id.as_uuid())
+            .await
+            .map_err(|_| {
+                HrApiError::from(HrError::internal("RRN encryption vault is unavailable"))
+            })?,
+        None => None,
+    };
     let context = SheetContext {
         filename: &upload.filename,
         org: *principal.org_id.as_uuid(),
-        vault: state.rrn_vault.as_deref(),
+        vault: scoped_vault.as_deref().or(state.rrn_vault.as_deref()),
     };
     let parsed = parse_workbook(&context, &sheets, &memory, &mapping)?;
     Ok(Json(

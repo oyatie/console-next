@@ -139,6 +139,18 @@ pub async fn run_hash_candidates(
     .bind(run)
     .fetch_all(tx.as_mut())
     .await?;
+    let scoped = if rows.is_empty() {
+        None
+    } else {
+        match vault {
+            Some(v) => v
+                .scoped_for_org(org)
+                .await
+                .map_err(|_| crate::rrn::unavailable())?,
+            None => None,
+        }
+    };
+    let vault = scoped.as_deref().or(vault);
     let mut out = BTreeMap::new();
     for row in &rows {
         let source_key: String = row.try_get("source_key")?;

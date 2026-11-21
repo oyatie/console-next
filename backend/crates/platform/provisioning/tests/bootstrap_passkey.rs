@@ -8,9 +8,9 @@
 //! guessing.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use aws_lc_rs::digest::{SHA256, digest};
 use console_kernel_core::OrgId;
 use console_platform_provisioning::{BootstrapCredentialStore, ProvisioningError};
-use sha2::{Digest, Sha256};
 use sqlx::{PgPool, Row};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -122,7 +122,7 @@ async fn versioned_first_enrollment_redeem_rejects_stale_or_prior_enrollment(poo
     )
     .bind(source_id)
     .bind(user_id)
-    .bind(Sha256::digest(otp.as_bytes()).to_vec())
+    .bind(digest(&SHA256, otp.as_bytes()).as_ref().to_vec())
     .bind(now)
     .bind(now + Duration::hours(1))
     .bind(*OrgId::one().as_uuid())
@@ -218,7 +218,7 @@ async fn versioned_first_enrollment_redeem_rejects_stale_or_prior_enrollment(poo
     )
     .bind(prior_source)
     .bind(prior_user)
-    .bind(Sha256::digest(prior_otp.as_bytes()).to_vec())
+    .bind(digest(&SHA256, prior_otp.as_bytes()).as_ref().to_vec())
     .bind(now)
     .bind(now + Duration::hours(1))
     .bind(*OrgId::one().as_uuid())

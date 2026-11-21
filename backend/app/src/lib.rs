@@ -19,6 +19,7 @@ mod collaboration;
 mod console_telemetry;
 pub mod crypto_reseal;
 mod crypto_reseal_cli;
+pub mod crypto_reseal_rotation;
 mod entity_wiring;
 mod error_i18n;
 #[cfg(feature = "facilities")]
@@ -28,12 +29,17 @@ pub mod lifecycle;
 mod lifecycle_schedule;
 /// Scheduled org changes, `pub` for the clock-injected tests (org-02).
 pub mod org_change_schedule;
+#[path = "hr/rrn_vault_tenant.rs"]
+pub(crate) mod rrn_vault_tenant;
 /// Scheduled lifecycle events runner, `pub` for the clock-injected tests.
 pub use hr::apply_due_lifecycle_events;
+pub use hr::rrn_vault::EnvRrnVault;
 mod audit_api;
 mod config;
 mod error;
 mod http;
+#[cfg(feature = "mail")]
+pub mod mail_cipher;
 #[cfg(feature = "mail")]
 mod mail_sync;
 #[cfg(feature = "workspace")]

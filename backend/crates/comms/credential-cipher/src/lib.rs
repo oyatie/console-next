@@ -99,6 +99,24 @@ impl EnvelopeCredentialCipher {
         }
     }
 
+    /// Borrow the active [`KmsProvider`].
+    #[must_use]
+    pub fn kms_provider(&self) -> &Arc<dyn KmsProvider> {
+        &self.kms
+    }
+
+    /// Return a tenant-scoped copy that delegates `v3` sealing/unwrapping to
+    /// `kms` while preserving `legacy_ring` for `v1`/`v2` dual-read when unshredded.
+    #[must_use]
+    pub fn with_tenant_kms(&self, kms: Arc<dyn KmsProvider>) -> Self {
+        let legacy_ring = if kms.is_shredded() {
+            None
+        } else {
+            self.legacy_ring.clone()
+        };
+        Self { kms, legacy_ring }
+    }
+
     /// Consume an encoded key and zeroize it after decoding, including errors.
     pub fn from_owned_base64_key(encoded: String) -> Result<Self, CipherError> {
         Self::from_base64_key(&Zeroizing::new(encoded))
@@ -153,6 +171,9 @@ impl CredentialCipher for EnvelopeCredentialCipher {
         sealed: &SealedCredential,
         aad: Aad<'_>,
     ) -> Result<SecretBox<Vec<u8>>, CipherError> {
+        if self.kms.is_shredded() {
+            return Err(CipherError::Decrypt);
+        }
         match sealed.key_version {
             1 => {
                 let ring = self.legacy_ring.as_deref().ok_or(CipherError::KeyVersion)?;
@@ -192,6 +213,9 @@ impl EnvelopeCredentialCipher {
         plaintext: &[u8],
         aad: Aad<'_>,
     ) -> Result<SealedCredential, CipherError> {
+        if self.kms.is_shredded() {
+            return Err(CipherError::Encrypt);
+        }
         match suite {
             1 => {
                 let ring = self.legacy_ring.as_deref().ok_or(CipherError::MasterKey)?;

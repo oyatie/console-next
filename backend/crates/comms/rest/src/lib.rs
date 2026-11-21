@@ -20,6 +20,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
+mod tenant_cipher;
 mod webhook_auth;
 pub use openapi::OPENAPI_FRAGMENT;
 
@@ -142,6 +143,7 @@ pub struct CommsRestState {
     /// The master-key cipher. `None` when `CONSOLE_MAIL_MASTER_KEY` is absent —
     /// credential-using endpoints are then unavailable (503) but the app still boots.
     cipher: Option<Arc<EnvelopeCredentialCipher>>,
+    tenant_keys: Arc<console_platform_db::tenant_keys::PgTenantKeyStore>,
     /// The object store for inbound attachment presigned GETs. `None` when
     /// storage is unconfigured — the attachment-download endpoint then 503s.
     attachments: Option<SharedAttachmentStore>,
@@ -164,6 +166,7 @@ impl CommsRestState {
             sender: MailSender::Smtp(LettreMailSender::new()),
             imap: AsyncImapClient::new(),
             cipher,
+            tenant_keys: tenant_cipher::new_tenant_keys_from_env(),
             attachments: None,
             mox_webhook_secret: None,
             jwt_verifier,
@@ -328,7 +331,7 @@ async fn put_account(
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     authorize_feature(&principal, Feature::MailAccountManage)?;
-    let cipher = state.cipher_ref()?;
+    let cipher = tenant_cipher::resolve_tenant_cipher(&state, principal.org_id).await?;
     let service = AccountService::new(state.store.clone(), state.sender.clone(), cipher);
 
     let command = ConfigureAccountCommand {
@@ -366,10 +369,14 @@ async fn test_account(
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     authorize_feature(&principal, Feature::MailAccountManage)?;
-    let cipher = state.cipher_ref()?;
+    let cipher = tenant_cipher::resolve_tenant_cipher(&state, principal.org_id).await?;
     // Probe SMTP first (rate-limited + decrypted inside the service). A failure
     // short-circuits with the SMTP error code.
-    let smtp_service = AccountService::new(state.store.clone(), state.sender.clone(), cipher);
+    let smtp_service = AccountService::new(
+        state.store.clone(),
+        state.sender.clone(),
+        Arc::clone(&cipher),
+    );
     let smtp: TestConnectionResult = smtp_service
         .test_connection(principal.user_id, OffsetDateTime::now_utc())
         .await
@@ -434,7 +441,7 @@ async fn send_impl(
     let operation_id = body
         .operation_id
         .ok_or_else(|| RestError::validation("operation_id is required for mail reconciliation"))?;
-    let cipher = state.cipher_ref()?;
+    let cipher = tenant_cipher::resolve_tenant_cipher(&state, principal.org_id).await?;
     let service = SendService::new(
         state.store.clone(),
         state.sender.clone(),
@@ -879,15 +886,6 @@ fn decode_attachment(
 // ---------------------------------------------------------------------------
 // AuthZ + auth extraction
 // ---------------------------------------------------------------------------
-
-impl CommsRestState {
-    /// Borrow the cipher or fail with a 503 when the master key is unconfigured.
-    fn cipher_ref(&self) -> Result<&EnvelopeCredentialCipher, RestError> {
-        self.cipher
-            .as_deref()
-            .ok_or_else(RestError::email_not_configured)
-    }
-}
 
 /// Mail handlers are org-wide and do not load a branch, so authorization stays capability-based.
 fn authorize_feature(principal: &Principal, feature: Feature) -> Result<(), RestError> {
