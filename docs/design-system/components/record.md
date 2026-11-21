@@ -185,7 +185,7 @@ A column, `RowColumn<R>`, has:
 There are no row headers: every body cell is a `<td>`. With no rows the component still renders the table, with an
 empty body. Callers leave it out when a list is empty.
 
-With `mobileLayout="cards"` each cell also carries `data-card`, set to the column's `card`, and `data-label`, set
+With `mobileLayout="cards"` (every experience) or `mobileLayout="console-cards"` (non-`baseline` experiences) each cell also carries `data-card`, set to the column's `card`, and `data-label`, set
 to the column's `header` when that is a string. A column with no `card` gets no `data-card`. `Table` works a part
 out for such a column and writes a `role` on every cell; `RecordRows` does neither.
 
@@ -531,7 +531,7 @@ shared breakpoints of `ui/breakpoints.ts`. Both are queries on the screen, not o
 | `SecNav` | No rule. The links wrap onto more rows. |
 | `Spine` | No rule. It is still `position: sticky`; what that does in a one-column page depends on the caller's layout. |
 | `RecordRows` | No rule. The table keeps its columns, and head cells and the `end` cell do not wrap. The worker register and the filing table of the statutory views put the table in a scroller of their own (`overflow-x: auto`). The leave section and the records section of the people card do not: the table is a direct child of the section body. |
-| `RecordRows` with `mobileLayout="cards"` | Card layout, when the container is 480 px wide or less. See below. |
+| `RecordRows` with `mobileLayout="cards"` or `"console-cards"` | Card layout, when the container is 480 px wide or less (`"console-cards"` applies outside `baseline`). See below. |
 | `RowInput` | As wide as its cell, up to 330 px. |
 
 The card layout comes from `ui/long-table/table-cards.module.css`, which the kit composes. It is a container query,
@@ -673,7 +673,7 @@ catalog defines every id.
 | `rowId` | yes | `(r: R) => string` |  |  |
 | `rows` | yes | `R[]` |  |  |
 | `isVoid` | no | `(r: R) => boolean` |  |  |
-| `mobileLayout` | no | `"cards"` |  |  |
+| `mobileLayout` | no | `"cards" \| "console-cards"` |  |  |
 
 <!-- /ds:props -->
 
@@ -801,7 +801,7 @@ Also accepts the attributes of `InputHTMLAttributes` (`@types/react`), except `c
 | `--shadow` | `box-shadow` |
 | `--space-1` | `column-gap`, `gap`, `height`, `margin-left`, `margin-top`, `min-height`, `padding`, `padding-top` |
 | `--space-2` | `gap`, `margin`, `margin-top`, `padding`, `padding-top` |
-| `--space-3` | `gap`, `grid-template-columns`, `height`, `margin`, `margin-top`, `padding`, `padding-bottom`, `width` |
+| `--space-3` | `gap`, `grid-template-columns`, `height`, `margin`, `margin-top`, `padding`, `padding-bottom`, `padding-left`, `padding-right`, `width` |
 | `--space-4` | `height`, `margin`, `min-width`, `padding`, `padding-left`, `padding-right`, `scroll-margin-top`, `top` |
 | `--space-5` | `height`, `min-height`, `min-width` |
 | `--space-6` | `column-gap`, `grid-template-columns`, `height`, `min-height` |

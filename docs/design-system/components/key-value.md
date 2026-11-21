@@ -286,7 +286,7 @@ The members of `KeyValueItem` are under Anatomy.
 | `--ok-bg` | `background` |
 | `--ok-tx` | `color` |
 | `--panel-w` | `grid-template-columns` |
-| `--primary` | `--active-bar`, `color` |
+| `--primary` | `--active-bar`, `color`, `outline` |
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-sm` | `border-radius` |
@@ -297,6 +297,7 @@ The members of `KeyValueItem` are under Anatomy.
 | `--space-6` | `height` |
 | `--steel` | `color` |
 | `--surface-2` | `background` |
+| `--surface-hover` | `background` |
 | `--text-2xl` | `font-size` |
 | `--text-body` | `font-size` |
 | `--text-lg` | `font-size` |

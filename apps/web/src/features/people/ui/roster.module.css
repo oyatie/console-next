@@ -15,6 +15,13 @@
 .sum { composes: t-xs muted from global; display: inline-block; min-width: 12ch; white-space: nowrap; }
 /* At least the loading placeholder's height: a short first page does not pull the foot up under the pointer. */
 .tableWrap, .firstRun { min-width: 0; min-height: calc(var(--row-h) * 9); }
+@media (min-width: 1024px) {
+  :where([data-experience]:not([data-experience="baseline"])) .tableWrap { flex: 1 1 0%; min-width: 0; min-height: 0; max-width: 100%; display: flex; flex-direction: column; overflow: hidden; }
+  :where([data-experience]:not([data-experience="baseline"])) .tableWrap > section { flex: 1 1 0%; min-height: 0; overflow: hidden; }
+  :where([data-experience]:not([data-experience="baseline"])) .tableWrap > section > :last-child { flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  :where([data-experience]:not([data-experience="baseline"])) .tableWrap [role="grid"],
+  :where([data-experience]:not([data-experience="baseline"])) .tableWrap [role="treegrid"] { flex: 1 1 0%; min-height: 0; max-height: none; }
+}
 .foot { composes: t-xs muted from global; display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-5); min-height: calc(var(--space-6) + var(--space-1)); flex-wrap: wrap; }
 .footCount { display: inline-block; min-width: calc(var(--space-6) * 3); }
 .footRange { composes: t-ink num from global; }
@@ -66,3 +73,11 @@
 .exitTabs { display: flex; gap: var(--space-1); }
 .voided { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-5); }
 .listError { margin: var(--space-2) var(--space-4); }
+.consoleTools { display: inline-flex; align-items: center; gap: var(--space-1-5); flex-wrap: nowrap; }
+.consoleTools > * { white-space: nowrap; flex-shrink: 0; }
+.consoleDesktopSort { display: inline-flex; align-items: center; flex-shrink: 0; }
+.consoleFind { flex: 1 1 auto; min-width: 0; max-width: 100%; }
+@media (max-width: 767px) { .consoleDesktopSort { display: none; } }
+.peekConsole { display: flex; flex-direction: column; min-width: 0; }
+.peekTabsWrap { display: flex; flex-direction: column; min-width: 0; }
+.peekInlineRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); }

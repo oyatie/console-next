@@ -69,13 +69,21 @@
 .subhead { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); letter-spacing: var(--tracking-label); color: var(--steel); font-weight: var(--fw-medium); margin-top: var(--space-3); }
 .subhead::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); order: 1; }
 .subhead > :not(span:first-child) { order: 2; }
+:where([data-experience]:not([data-experience="baseline"])) .subhead { flex-wrap: wrap; }
+:where([data-experience]:not([data-experience="baseline"])) .subhead > span:first-child { white-space: nowrap; }
 .cardContainer { composes: container from "../long-table/table-cards.module.css"; }
 .cards { composes: short surface from "../long-table/table-cards.module.css"; }
+.rowsScroll { max-width: 100%; overflow-x: auto; }
 .rows { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .rows td, .rows th { padding: calc(var(--space-1) + 2px) var(--space-2) calc(var(--space-1) + 2px) 0; border-top: 1px solid var(--border-soft); text-align: left; vertical-align: top; }
 .rows th { font-size: var(--text-xs); color: var(--steel); font-weight: var(--fw-medium); border-top: 0; white-space: nowrap; }
 .rows td[data-end] { width: 1%; white-space: nowrap; text-align: right; padding-right: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .cards :is(button, a),
+:where([data-experience]:not([data-experience="baseline"])) :is(.sectionHead, .subhead, .act) :is(button, a) { white-space: nowrap; flex-shrink: 0; }
 .rows tr[data-void] td { color: var(--steel); text-decoration: line-through; }
+@container list-table (max-width: 480px) {
+  :where([data-experience]:not([data-experience="baseline"])) .rows.cards td[data-end] { width: auto; white-space: nowrap; flex-direction: row; justify-content: flex-end; align-items: center; gap: var(--space-2); }
+}
 /* Strip (the employee register items 1-9). */
 .strip { display: grid; grid-template-columns: 0.75fr 0.55fr 0.95fr 0.95fr 1.05fr 1.35fr 1.5fr 0.85fr 0.75fr; }
 @media (max-width: 1023px) { .strip { grid-template-columns: repeat(3, 1fr); } }
@@ -90,3 +98,13 @@
 .markRow { display: inline-flex; align-items: center; gap: var(--space-1); }
 .markHint { font-size: var(--text-xs); color: var(--steel); white-space: nowrap; }
 :where([data-experience]:not([data-experience="baseline"])) .now { border: 0; border-block-end: 1px solid var(--border); border-radius: 0; margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1) var(--space-3); padding: var(--space-2) var(--space-4); }
+:where([data-experience]:not([data-experience="baseline"])) .sectionBody :is(:global(.card), :global(.panel)) { border: 0; border-top: 1px solid var(--border-soft); border-radius: 0; box-shadow: none; background: transparent; padding-inline: 0; }
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) .sectionHead { padding: var(--space-2) var(--space-3); }
+  :where([data-experience]:not([data-experience="baseline"])) .sectionBody { padding: calc(var(--space-1) / 2) var(--space-3) var(--space-3); }
+  :where([data-experience]:not([data-experience="baseline"])) .row { grid-template-columns: minmax(0, 1fr) auto; }
+  :where([data-experience]:not([data-experience="baseline"])) .row .label { grid-column: 1 / -1; padding-top: 0; white-space: normal; }
+  :where([data-experience]:not([data-experience="baseline"])) .row .value { grid-column: 1; }
+  :where([data-experience]:not([data-experience="baseline"])) .row .act { grid-column: 2; padding-top: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .row[data-edit] { margin: 0 calc(var(--space-3) * -1); padding-left: var(--space-3); padding-right: var(--space-3); }
+}

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useActiveExperienceId } from "../../experience/dom";
 import type { CardColumn } from "../long-table/card-columns";
 import s from "./record.module.css";
 
@@ -9,9 +10,11 @@ export type RowColumn<R> = Pick<CardColumn, "card"> & { header?: ReactNode; cell
  * The rows of one record section (career, education, contract, leave): dense, no selection; a voided row stays struck in place.
  * Without any header the head row is left out.
  */
-export function RecordRows<R>({ label, rows, columns, rowId, isVoid, mobileLayout }: { label: string; rows: R[]; columns: RowColumn<R>[]; rowId: (r: R) => string; isVoid?: (r: R) => boolean; mobileLayout?: "cards" }) {
+export function RecordRows<R>({ label, rows, columns, rowId, isVoid, mobileLayout }: { label: string; rows: R[]; columns: RowColumn<R>[]; rowId: (r: R) => string; isVoid?: (r: R) => boolean; mobileLayout?: "cards" | "console-cards" }) {
+  const experience = useActiveExperienceId();
+  const activeLayout = mobileLayout === "cards" ? "cards" : mobileLayout === "console-cards" && experience !== "baseline" ? "cards" : undefined;
   const table = (
-    <table className={mobileLayout ? `${s.rows} table ${s.cards}` : s.rows} aria-label={label}>
+    <table className={activeLayout ? `${s.rows} table ${s.cards}` : s.rows} aria-label={label}>
       {columns.some((c) => c.header) && (
         <thead>
           <tr>{columns.map((c, i) => <th key={i} scope="col">{c.header}</th>)}</tr>
@@ -20,11 +23,11 @@ export function RecordRows<R>({ label, rows, columns, rowId, isVoid, mobileLayou
       <tbody>
         {rows.map((r) => (
           <tr key={rowId(r)} data-void={isVoid?.(r) || undefined}>
-            {columns.map((c, i) => <td key={i} data-card={mobileLayout ? c.card : undefined} data-label={mobileLayout && typeof c.header === "string" ? c.header : undefined} data-end={c.end || undefined}>{c.cell(r)}</td>)}
+            {columns.map((c, i) => <td key={i} data-card={activeLayout ? c.card : undefined} data-label={activeLayout && typeof c.header === "string" ? c.header : undefined} data-end={c.end || undefined}>{c.cell(r)}</td>)}
           </tr>
         ))}
       </tbody>
     </table>
   );
-  return mobileLayout ? <div className={s.cardContainer}>{table}</div> : table;
+  return activeLayout ? <div className={s.cardContainer}>{table}</div> : <div className={s.rowsScroll}>{table}</div>;
 }
