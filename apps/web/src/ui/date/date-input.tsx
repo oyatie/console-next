@@ -119,11 +119,14 @@ export function DateInput({ id, value, onChange, onDraftChange, onInvalid, requi
     if (ok) {
       setText(fmtDateInput(result.date));
       emitValue(result.date);
-    } else if (!onDraftChange) emitValue("");
+    } else {
+      if (text.trim() !== "") setEditing(false);
+      if (!onDraftChange) emitValue("");
+    }
     onInvalid?.(!ok && text.trim() !== "");
   };
 
-  const shownText = !editing && displayFormat === "short-weekday" && isDate(value) ? fmtDateShortWeekday(value) : text;
+  const shownText = !editing && displayFormat === "short-weekday" && isDate(value) && !problem ? fmtDateShortWeekday(value) : text;
 
   return (
     <div className={s.inputRow}>

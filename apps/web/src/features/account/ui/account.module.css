@@ -21,4 +21,7 @@
 @media (max-width: 767px) { .nowrap.nowrap.nowrap { white-space: normal; } }
 
 .notice { white-space: pre-wrap; overflow-wrap: anywhere; }
-.form { display: flex; flex-direction: column; gap: var(--space-4); }
+.form { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.contactGroup { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.contactRowHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
+.checkList { display: flex; flex-direction: column; gap: var(--space-1-5); }

@@ -27,6 +27,33 @@
   gap: var(--space-2);
 }
 
+.metaRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.metaLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.metaValue,
+.metaChain {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+  text-align: end;
+}
+
 .baselineWrap {
   display: flex;
   flex-direction: column;

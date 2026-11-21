@@ -1,5 +1,5 @@
 export { ApiError } from "@console/api";
-import { api, assertBoundPasskey, assertPasskey, consentDocuments, consentStatus, logout, registerPasskey, session, unwrap } from "@console/api";
+import { api, assertBoundPasskey, assertPasskey, consentDocuments, consentStatus, logout, meProfileApi, registerPasskey, session, unwrap } from "@console/api";
 import { isMessageId, t } from "@console/i18n";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import type { components } from "@console/api/schema";
@@ -9,23 +9,24 @@ import { forgetDomains } from "../../auth/sign-in-id";
 import { toDomestic } from "../../lib/pure/formats";
 
 export type Me = components["schemas"]["CurrentUser"];
+export type MeProfile = components["schemas"]["MeProfileResponse"];
+export type SelfEmergencyContactInput = components["schemas"]["SelfEmergencyContactInput"];
+export type SelfEmergencyContactSummary = components["schemas"]["SelfEmergencyContactSummary"];
+export type SelfRevealField = components["schemas"]["SelfRevealRequest"]["field"];
+type SelfFieldRevealed = components["schemas"]["SelfFieldRevealed"];
+export type SelfIssueCertificateRequest = components["schemas"]["SelfIssueCertificateRequest"];
+type CreateSelfChangeRequest = components["schemas"]["CreateSelfChangeRequest"];
+export type Certificate = components["schemas"]["Certificate"];
 export type MyAccessLogEvent = components["schemas"]["MyAccessLogEvent"];
-export type InboxDocSummary = components["schemas"]["InboxDocSummary"] & {
-  payslip_meta?: {
-    attribution_month?: string | null;
-    period_start?: string | null;
-    period_end?: string | null;
-    pay_date?: string | null;
-    gross_won?: number | null;
-    net_won?: number | null;
-  } | null;
-};
-export type ChangeRequest = components["schemas"]["ChangeRequest"];
+export type InboxDocSummary = components["schemas"]["InboxDocSummary"];
 
 export const passkeysQuery = get("/api/v1/auth/passkeys");
 export const passkeyLabelPolicyQuery = get("/api/v1/auth/passkeys/policy");
 /** Tenant accounts only: a platform token is another world, where this read answers 404. */
 export const meQuery = get("/api/v1/users/me");
+export const meProfileQuery = get("/api/v1/me/profile");
+export const myCertificatesQuery = (cursor?: string) => get("/api/v1/me/certificates", { params: { query: { cursor } } });
+export const myCertificateQuery = (id: string) => get("/api/v1/me/certificates/{id}", { params: { path: { id } } });
 export const myAccessLogQuery = get("/api/v1/me/access-log", { params: { query: { limit: 5 } } });
 export const myLeaveSummaryQuery = get("/api/v2/me/leave", { params: { query: { limit: 1 } } });
 export const myPayslipDocsQuery = get("/api/v1/me/inbox-docs", { params: { query: { filter: "pay", limit: 1 } } });
@@ -133,14 +134,55 @@ function phoneLanded(profilePhone: string | null | undefined, normalized: string
   return toDomestic(profilePhone) === target;
 }
 
-/** Self-editable mobile number on the tenant account; a lost response is verified against `/users/me`. */
+/** Self-editable mobile number on the linked employee profile; a lost response is verified against `/me/profile`. */
 export function updatePhone(phone: string | null, previous?: string | null) {
   const normalized = phone?.trim() ? phone.trim() : null;
   return landed(
-    () => unwrap(api.PATCH("/api/v1/users/me", { body: { phone: normalized } })),
-    async () => ({ data: await meQuery.queryFn() }),
-    (profile) => phoneLanded(profile.phone, normalized, previous),
+    () => meProfileApi(api).updateProfile({ phone: normalized }),
+    async () => ({ data: await meProfileQuery.queryFn() }),
+    (profile) => phoneLanded(profile.phone_masked, normalized, previous),
   );
+}
+
+/** Replaces the linked employee's emergency contacts immediately (up to 3; notice confirmation required when non-empty). */
+export function updateEmergencyContacts(emergency_contacts: SelfEmergencyContactInput[]) {
+  return meProfileApi(api).updateProfile({ emergency_contacts });
+}
+
+/** Step-up passkey reveal of one self-service profile field, bound to `PII_REVEAL` on `employeeId`. */
+export async function revealMyProfileField(employeeId: string, field: SelfRevealField): Promise<SelfFieldRevealed> {
+  const step_up = await assertBoundPasskey("PII_REVEAL", employeeId, `SELF_REVEAL:${field}`);
+  return meProfileApi(api).revealField({ field, step_up });
+}
+
+/** Files an approval-gated correction request (`address` or boolean `bank_account_registered`). */
+export function createMyProfileChangeRequest(body: CreateSelfChangeRequest) {
+  return meProfileApi(api).createChangeRequest(body);
+}
+
+/** Issues a self-service employment/career/exit certificate with an explicit idempotency key. */
+export function issueMyCertificate(body: SelfIssueCertificateRequest, key: string) {
+  return meProfileApi(api).issueCertificate(body, key);
+}
+
+/** Domain-specific error messages for self-service profile edits, reveals, and certificates. */
+export function selfEditError(code: string): string | undefined {
+  switch (code) {
+    case "change_request_already_open":
+      return t("account.selfEdit.error.change_request_already_open");
+    case "support_session_read_only":
+      return t("account.selfEdit.error.support_session_read_only");
+    case "employee_unlinked":
+      return t("account.selfEdit.error.employee_unlinked");
+    case "emergency_contact_notice_unconfirmed":
+      return t("account.selfEdit.error.emergency_contact_notice_unconfirmed");
+    case "reveal_rate_limited":
+      return t("account.selfEdit.error.reveal_rate_limited");
+    default: {
+      const certKey = `empDoc.certificate.error.${code}`;
+      return isMessageId(certKey) ? t(certKey) : undefined;
+    }
+  }
 }
 
 export const privacyFilingOptionsQuery = get("/api/v1/privacy/rights-requests/options");

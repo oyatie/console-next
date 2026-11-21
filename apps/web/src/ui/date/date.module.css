@@ -13,7 +13,7 @@
 .input { width: auto; min-width: 10.5rem; }
 :where([data-experience]:not([data-experience="baseline"])) .date,
 :where([data-experience]:not([data-experience="baseline"])) .row { min-width: 0; max-width: 100%; }
-:where([data-experience]:not([data-experience="baseline"])) .inputRow { display: flex; align-items: center; flex: 1 1 0%; gap: 0; max-width: 100%; min-width: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .inputRow { display: flex; align-items: center; flex: 1 1 0%; gap: var(--space-1) 0; max-width: 100%; min-width: 0; }
 :where([data-experience]:not([data-experience="baseline"])) .input { flex: 1 1 0%; min-width: 0; width: 100%; border-inline-end: 0; border-start-end-radius: 0; border-end-end-radius: 0; font-weight: var(--fw-semibold); white-space: nowrap; }
 :where([data-experience]:not([data-experience="baseline"])) .input:disabled { color: var(--steel); opacity: 1; }
 @media (--phone) { :where([data-experience]:not([data-experience="baseline"])) .input { padding-inline: var(--space-3) var(--space-1); } }
