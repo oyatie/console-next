@@ -10,9 +10,9 @@
 use axum::{Router, routing::post};
 use console_hr_adapter_postgres::HrService;
 use console_hr_rest::{
-    bulk_corrections, bulk_lifecycle, change_sets, checklist, contract, corrections, fixed_term,
-    identity, intake, job_title, lifecycle_bulk_job, lifecycle_void, notices, profile, reconcile,
-    register_facts, registration, requests,
+    bulk_corrections, bulk_lifecycle, change_sets, checklist, contract, corrections, exit_cases,
+    fixed_term, identity, intake, job_title, lifecycle_bulk_job, lifecycle_void, notices, profile,
+    reconcile, register_facts, registration, requests, unit_position,
 };
 use console_platform_auth::{JwtVerifier, PasskeyService};
 use sqlx::PgPool;
@@ -69,7 +69,9 @@ pub(super) fn merge(router: Router, state: &HrState) -> Router {
         // migration reconciliation.
         .merge(bulk_lifecycle::router(hr.clone()))
         .merge(notices::router(hr.clone()))
-        .merge(reconcile::router(hr.clone()));
+        .merge(reconcile::router(hr.clone()))
+        .merge(exit_cases::router(hr.clone()))
+        .merge(unit_position::router(hr.clone()));
     match state.passkey_step_up.clone() {
         Some(passkeys) => router
             .merge(corrections::router(hr.clone(), passkeys.clone()))

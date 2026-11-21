@@ -38,6 +38,7 @@ mod lifecycle;
 mod pay_groups;
 mod payslip_draft;
 mod reference;
+mod runs_query;
 mod self_service;
 
 pub(crate) use access::principal_from_headers;
@@ -48,12 +49,12 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
 use console_payroll_adapter_postgres::{
-    PayrollRunDetail, PayrollRunPage, PgPayrollError, PgPayrollStore, get_run_in_tx,
-    list_runs_in_tx,
+    PayrollRunDetail, PgPayrollError, PgPayrollStore, get_run_in_tx,
 };
 use console_platform_auth::JwtVerifier;
 use console_platform_db::{DbError, with_audits};
 use console_platform_request_context::RequestContextError;
+pub(crate) use runs_query::list_runs_page;
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -130,7 +131,7 @@ pub fn router(state: PayrollRestState) -> Router {
     let router = Router::new()
         .merge(pay_groups::router())
         .route(PAYROLL_REFERENCE_RATES_PATH, get(reference::list))
-        .route(PAYROLL_RUNS_PATH, get(list_runs))
+        .route(PAYROLL_RUNS_PATH, get(runs_query::list_runs))
         .route(PAYROLL_RUN_PATH_TEMPLATE, get(get_run))
         .route(PAYROLL_MY_PAYSLIPS_PATH, get(self_service::list_my_lines))
         .route(
@@ -192,45 +193,6 @@ pub fn router(state: PayrollRestState) -> Router {
 }
 
 pub(crate) use self_service::PageParams;
-
-async fn list_runs_page(
-    state: &PayrollRestState,
-    headers: &HeaderMap,
-    params: PageParams,
-) -> Result<PayrollRunPage, RestError> {
-    let principal = principal_from_headers(state, headers).await?;
-
-    let (org, actor) = (principal.org_id, principal.user_id);
-    let pool = state.store.pool().clone();
-    with_audits::<_, PayrollRunPage, RestError>(&pool, org, move |tx| {
-        Box::pin(async move {
-            access::require_run_read_in_tx(tx, org, actor).await?;
-            let page = list_runs_in_tx(tx, params.limit, params.offset)
-                .await
-                .map_err(RestError::from_store)?;
-            let event = AuditEvent::new(
-                Some(actor),
-                AuditAction::new("payroll_run.list_read").map_err(RestError::from_kernel)?,
-                "payroll_draft_run",
-                "query",
-                TraceContext::generate(),
-                time::OffsetDateTime::now_utc(),
-            )
-            .with_org(org);
-            Ok((page, vec![event]))
-        })
-    })
-    .await
-}
-
-async fn list_runs(
-    State(state): State<PayrollRestState>,
-    headers: HeaderMap,
-    Query(params): Query<PageParams>,
-) -> Result<Response, RestError> {
-    let page = list_runs_page(&state, &headers, params).await?;
-    Ok(Json(page).into_response())
-}
 
 async fn get_run(
     State(state): State<PayrollRestState>,

@@ -89,6 +89,7 @@
       "src/features/entity/ui/entity-wizard.tsx",
       "src/features/import/ui/dryrun-step.tsx",
       "src/features/import/ui/import-page.tsx",
+      "src/features/leave/ui/leave-request-page.tsx",
       "src/features/onboarding/ui/go-live.tsx",
       "src/features/org-bulk/ui/bulk-edit-page.tsx",
       "src/features/org-bulk/ui/import-page.tsx",

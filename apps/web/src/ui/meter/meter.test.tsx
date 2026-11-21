@@ -80,6 +80,23 @@ test("Meter segmented mode handles partial-used, partial-pending, clamping, and 
   expect(empty.match(/data-state="rest"/g)).toHaveLength(5);
 });
 
+test("Meter clamps ARIA valuenow and valuemax to valid [0, safeMax] bounds while keeping raw valueText", () => {
+  const negVal = html(<Meter value={-1.5} max={15} cells={30} label="Negative used" valueText="Used -1.5d" />);
+  expect(negVal).toContain('aria-valuemin="0"');
+  expect(negVal).toContain('aria-valuemax="15"');
+  expect(negVal).toContain('aria-valuenow="0"');
+  expect(negVal).toContain('aria-valuetext="Used -1.5d"');
+
+  const overMax = html(<Meter value={20} max={15} cells={30} label="Over max" valueText="Used 20d" />);
+  expect(overMax).toContain('aria-valuemax="15"');
+  expect(overMax).toContain('aria-valuenow="15"');
+  expect(overMax).toContain('aria-valuetext="Used 20d"');
+
+  const negMax = html(<Meter value={-1} max={-1.5} label="Negative max" />);
+  expect(negMax).toContain('aria-valuemax="0"');
+  expect(negMax).toContain('aria-valuenow="0"');
+});
+
 test("Meter maintains exactly 1 standing-text block so PeopleRoute pin stays unchanged", () => {
   const meterPath = resolve("apps/web/src/ui/meter/meter.tsx");
   const source = readFileSync(meterPath, "utf8");

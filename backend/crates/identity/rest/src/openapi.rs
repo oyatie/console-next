@@ -656,13 +656,6 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
-        path: "/api/v1/auth/signup",
-        operations: &[Operation {
-            method: "post",
-            body: include_str!("../openapi/paths/api__v1__auth__signup.post.yaml"),
-        }],
-    },
-    PathItem {
         path: "/api/v1/auth/token/refresh",
         operations: &[Operation {
             method: "post",
@@ -1938,14 +1931,6 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SignInIdRecord",
         body: include_str!("../openapi/schemas/SignInIdRecord.yaml"),
-    },
-    NamedYaml {
-        name: "SignupRequest",
-        body: include_str!("../openapi/schemas/SignupRequest.yaml"),
-    },
-    NamedYaml {
-        name: "SignupResponse",
-        body: include_str!("../openapi/schemas/SignupResponse.yaml"),
     },
     NamedYaml {
         name: "SimulationOutcome",

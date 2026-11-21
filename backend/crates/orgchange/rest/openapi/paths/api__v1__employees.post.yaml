@@ -14,7 +14,7 @@ description: >-
   response carries warnings [{code: same_name_in_unit, employee_ids}]; the
   employee is created regardless. BW-19: a person already on file (any
   status) with the same name (spaces ignored) and the same phone or date of birth
-  is 409 duplicate_candidate listing them in error.refusals [{employee_id,
+  is 409 duplicate_candidate listing them in error.refusals [{employee_id, name, org_unit, hire_date,
   status, employee_number, basis, remedy}] (remedy rehire for an EXITED
   one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override
   naming every candidate to record the governed exception

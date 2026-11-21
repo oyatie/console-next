@@ -301,6 +301,8 @@ pub(super) fn wage_warning(
     below_minimum_wage(employment_type, wage, hint.floor_won).then(|| EmployeeCreateWarning {
         code: "pay_below_minimum_wage",
         employee_ids: Vec::new(),
+        matches: Vec::new(),
+        total_count: None,
         floor_won: hint.floor_won,
     })
 }

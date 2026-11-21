@@ -11,7 +11,7 @@ export { DateInput } from "./date-input";
 export type DatePreset = { label: string; date: string; disabledReason?: string };
 
 /** A business date (components.html §5): keyboard entry and an accessible calendar, with one shared set of bounds and presets. */
-export function DateField({ label, required, value, onChange, onInvalid, today, min: floor, minFrom, minReason, max, maxReason, disabledDates, basis, note, echo, presets, suggestWeekday = false, error, remedy, inputRef, showErrors = true }: {
+export function DateField({ label, required, value, onChange, onInvalid, today, min: floor, minFrom, minReason, max, maxReason, disabledDates, basis, note, echo, presets, suggestWeekday = false, error, remedy, inputRef, showErrors = true, displayFormat = "default", disabled: fieldDisabled }: {
   label: string;
   required: boolean | null;
   /** Whether the typed text was refused (see DateInput): an optional field's form holds its save on it. */
@@ -37,6 +37,8 @@ export function DateField({ label, required, value, onChange, onInvalid, today, 
   remedy?: ReactNode;
   inputRef?: Ref<HTMLInputElement>;
   showErrors?: boolean;
+  displayFormat?: "default" | "short-weekday";
+  disabled?: boolean;
 }) {
   const min = minFrom && (!floor || minFrom.date > floor) ? minFrom.date : floor;
   const why = minFrom && min === minFrom.date ? minFrom.reason : undefined;
@@ -93,6 +95,8 @@ export function DateField({ label, required, value, onChange, onInvalid, today, 
               max={max}
               maxReason={maxReason}
               disabledDates={disabledDates}
+              disabled={fieldDisabled}
+              displayFormat={displayFormat}
               aria-describedby={p["aria-describedby"]}
               aria-invalid={p["aria-invalid"]}
               inputRef={inputRef}

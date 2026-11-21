@@ -237,6 +237,7 @@ export const enImport = {
   "import.error.mapping_header_row_out_of_range": "The chosen header row is not in the sheet.",
   "import.error.mapping_name_required": "Select one name column.",
   "import.error.mapping_duplicate_target": "The same employee field is chosen for two columns.",
+  "import.error.mapping_restricted_column": "A restricted column (such as salary, bank account, or resident registration number) cannot be mapped to an ordinary employee field.",
   "import.timedOut": "The import exceeded the server time limit before the batch committed. Nothing was written. Go back to the dry run, review it, and apply again.",
   "import.crumb": "Import",
   "import.steps": "Import steps",

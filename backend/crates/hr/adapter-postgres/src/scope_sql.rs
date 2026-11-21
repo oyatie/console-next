@@ -27,3 +27,14 @@ pub fn push_branch_scope_column(
         }
     };
 }
+
+pub(crate) fn escape_like(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for ch in value.chars() {
+        if matches!(ch, '\\' | '%' | '_') {
+            out.push('\\');
+        }
+        out.push(ch);
+    }
+    out
+}

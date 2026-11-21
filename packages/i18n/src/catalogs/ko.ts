@@ -3,7 +3,7 @@ import { koGovernanceRefusals } from "./ko/governance";
 import { koDirectoryViews } from "./ko/directory-views";
 import { koAccountLinkRefusals } from "./ko/account_link";
 import { koPeriodUnlockRefusals } from "./ko/period_unlock";
-import { koLeaveRefusals } from "./ko/leave";
+import { koLeave } from "./ko/leave";
 import { koOrgChangeRefusals } from "./ko/org_change";
 import { koPayroll } from "./ko/payroll";
 import { koUiShiftBar } from "./ko/ui-shift-bar";
@@ -140,7 +140,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koGovernanceRefusals,
   ...koAccountLinkRefusals,
   ...koPeriodUnlockRefusals,
-  ...koLeaveRefusals,
+  ...koLeave,
   ...koOrgChangeRefusals,
   ...koUiShiftBar,
   ...koStatutory,

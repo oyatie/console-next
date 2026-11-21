@@ -45,7 +45,6 @@ Partially exposed operations keep their current route and component; their refus
 | `POST /api/v1/auth/device-login/poll` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/auth/device-login/start` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/auth/passkey/enroll-handoff` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/auth/signup` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/branches` | hidden | allow-list | Organization structure: Only legacy region and branch closures remain supported. These pre-workplace cleanup commands stay outside the primary organization editor until place-model compatibility retirement. Release gate: place-model compatibility retirement. |
 | `GET /api/v1/branches/{id}` | hidden | allow-list | Organization structure: Only legacy region and branch closures remain supported. These pre-workplace cleanup commands stay outside the primary organization editor until place-model compatibility retirement. Release gate: place-model compatibility retirement. |
 | `PATCH /api/v1/branches/{id}` | hidden | allow-list | Organization structure: Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement. Release gate: place-model compatibility retirement. |
@@ -154,7 +153,7 @@ Partially exposed operations keep their current route and component; their refus
 | `GET /api/v1/attendance/exceptions/{exception_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/attendance/exceptions/{exception_id}/resolve` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/attendance/me/exceptions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/attendance/me/schedule` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/attendance/me/schedule` | exposed | expose | `/leave` · `LeaveRequestPage` reads the signed-in employee's work schedule to count scheduled workdays across multi-day leave ranges. |
 | `GET /api/v1/attendance/me/week52` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/attendance/substitution-candidates` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/attendance/substitutions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |

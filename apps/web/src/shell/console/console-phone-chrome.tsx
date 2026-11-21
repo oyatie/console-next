@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Search, UserRound } from "lucide-react";
+import { Banknote, CalendarDays, FileText, Home, Search, UserRound } from "lucide-react";
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
 import { Avatar } from "../../ui/avatar/avatar";
@@ -18,6 +18,7 @@ export function ConsolePhoneTop({
   shellOwnsH1,
   context,
   back,
+  hideActions,
   platform,
   displayName,
   onSearch,
@@ -26,6 +27,7 @@ export function ConsolePhoneTop({
   shellOwnsH1?: boolean;
   context?: ReactNode;
   back?: { label: string; href?: string; onBack?: () => void };
+  hideActions?: boolean;
   platform: boolean;
   displayName: string;
   onSearch: () => void;
@@ -37,27 +39,29 @@ export function ConsolePhoneTop({
       context={context}
       back={back}
       trailing={
-        <div className={s.phoneActions}>
-          {!platform ? (
-            <button
-              type="button"
-              className={s.phoneIconBtn}
-              aria-label={t("shell.jumpLabel")}
-              onClick={onSearch}
+        hideActions ? undefined : (
+          <div className={s.phoneActions}>
+            {!platform ? (
+              <button
+                type="button"
+                className={s.phoneIconBtn}
+                aria-label={t("shell.jumpLabel")}
+                onClick={onSearch}
+              >
+                <Search size={18} aria-hidden="true" />
+              </button>
+            ) : null}
+            <Suspense
+              fallback={
+                <Link to="/account" className={s.accountFallback} aria-label={displayName}>
+                  <Avatar name={displayName} size="sm" tone="accent" />
+                </Link>
+              }
             >
-              <Search size={18} aria-hidden="true" />
-            </button>
-          ) : null}
-          <Suspense
-            fallback={
-              <Link to="/account" className={s.accountFallback} aria-label={displayName}>
-                <Avatar name={displayName} size="sm" tone="accent" />
-              </Link>
-            }
-          >
-            <ConsoleAccountMenu id="console-phone-account" name={displayName} compact />
-          </Suspense>
-        </div>
+              <ConsoleAccountMenu id="console-phone-account" name={displayName} compact />
+            </Suspense>
+          </div>
+        )
       }
     />
   );
@@ -68,6 +72,7 @@ export function ConsolePhoneBottom({
   inboxCount,
   approvalsCount,
   platform,
+  mode,
   activeId,
   onNavigate,
 }: {
@@ -75,17 +80,27 @@ export function ConsolePhoneBottom({
   inboxCount?: number;
   approvalsCount?: number;
   platform: boolean;
+  mode?: "self-service";
   activeId?: string;
   onNavigate: (href: string) => void;
 }) {
-  const items: PhoneNavItem[] = links.map(link => ({
-    id: link.to,
-    href: link.to,
-    label: t(link.label),
-    icon: link.icon,
-    count: link.countKey === "inbox" ? inboxCount : link.countKey === "approvals" ? approvalsCount : undefined,
-  }));
-  if (!platform && !items.some(item => item.id === "/account")) {
+  const items: PhoneNavItem[] =
+    !platform && mode === "self-service"
+      ? [
+          { id: "/", href: "/", label: t("shell.link.home"), icon: Home, count: inboxCount },
+          { id: "/leave", href: "/leave", label: t("shell.link.leave"), icon: CalendarDays },
+          { id: "/payroll", href: "/payroll", label: t("shell.link.payroll"), icon: Banknote },
+          { id: "/people/certificates", href: "/people/certificates", label: t("shell.link.certificates"), icon: FileText },
+          { id: "/account", href: "/account", label: t("shell.link.profile"), icon: UserRound },
+        ]
+      : links.map(link => ({
+          id: link.to,
+          href: link.to,
+          label: t(link.label),
+          icon: link.icon,
+          count: link.countKey === "inbox" ? inboxCount : link.countKey === "approvals" ? approvalsCount : undefined,
+        }));
+  if (!platform && mode !== "self-service" && !items.some(item => item.id === "/account")) {
     items.push({ id: "/account", href: "/account", label: t("shell.profile"), icon: UserRound });
   }
   return (

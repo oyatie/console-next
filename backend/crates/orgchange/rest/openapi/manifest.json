@@ -24,6 +24,9 @@
       "get",
       "post"
     ],
+    "/api/v1/change-requests/counts": [
+      "get"
+    ],
     "/api/v1/change-requests/{id}/decide": [
       "post"
     ],
@@ -135,6 +138,9 @@
     "/api/v1/employees/register-facts/bulk": [
       "post"
     ],
+    "/api/v1/employees/register-facts/query": [
+      "post"
+    ],
     "/api/v1/employees/renumber/apply": [
       "post"
     ],
@@ -243,6 +249,9 @@
     "/api/v1/employees/{id}/rrn/reveal": [
       "post"
     ],
+    "/api/v1/employees/{id}/unit-position": [
+      "get"
+    ],
     "/api/v1/employees/{id}/void": [
       "post"
     ],
@@ -294,6 +303,12 @@
     "/api/v1/hr/exit-cases": [
       "get",
       "post"
+    ],
+    "/api/v1/hr/exit-cases/bulk": [
+      "post"
+    ],
+    "/api/v1/hr/exit-cases/counts": [
+      "get"
     ],
     "/api/v1/hr/exit-cases/{id}": [
       "get"
@@ -425,10 +440,14 @@
     "BulkEmployeeCorrectionResult",
     "BulkEmployeeLifecycleEventRequest",
     "BulkEmployeeLifecycleEventResponse",
+    "BulkExitCaseItemInput",
+    "BulkExitCaseItemResult",
     "BulkLifecyclePreview",
     "BulkLifecycleRefusalBody",
     "BulkRegisterFactsOutcome",
     "BulkRegisterFactsRequest",
+    "BulkReportExitCasesRequest",
+    "BulkReportExitCasesResponse",
     "BulkSelection",
     "BulkTransferLine",
     "CancelEmployeeLifecycleEventRequest",
@@ -442,6 +461,7 @@
     "CertificateSettingsView",
     "CertificateSnapshot",
     "ChangeRequest",
+    "ChangeRequestCountsResponse",
     "ChangeSetDetail",
     "ChangeSetLine",
     "ChangeSetSummary",
@@ -527,8 +547,11 @@
     "EmployeeRrnRevealRequest",
     "EmployeeRrnRevealed",
     "EmployeeRrnStatus",
+    "EmployeeUnitPosition",
     "EmployeeVoidOutcome",
+    "EmployeeWarningMatch",
     "EmploymentType",
+    "ExitCaseCountsResponse",
     "ExitCaseNextAction",
     "ExitGuards",
     "ExitSettlementDeadline",
@@ -585,6 +608,9 @@
     "PersonRecordTraining",
     "PersonRecordVeteran",
     "ProtectedExitPeriod",
+    "RegisterFactsQueryItem",
+    "RegisterFactsQueryRequest",
+    "RegisterFactsQueryResponse",
     "RehireEmployeeRequest",
     "ReportEmployeeExitCaseRequest",
     "ResolveEmployeeIdentityRequest",

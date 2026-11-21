@@ -25,6 +25,8 @@
 :where([data-experience]:not([data-experience="baseline"])) .stat[data-tone="primary"],
 :where([data-experience]:not([data-experience="baseline"])) .stat[data-active] { background: var(--primary-soft); }
 :where([data-experience]:not([data-experience="baseline"])) :is(.stat[data-tone="primary"], .stat[data-active]) > .statLabel { color: var(--primary); font-weight: var(--fw-semibold); }
+:where([data-experience]:not([data-experience="baseline"])) .stat[data-tone="muted"] { background: var(--surface-2); }
+:where([data-experience]:not([data-experience="baseline"])) .stat[data-tone="muted"] > .statLabel { color: var(--ink); font-weight: var(--fw-semibold); }
 :where([data-experience]:not([data-experience="baseline"])) .stat[data-active] { --active-bar: inset 0 2px 0 var(--primary); box-shadow: var(--active-bar); }
 :where([data-experience]:not([data-experience="baseline"])) .value > :is(select, input, textarea) { min-width: 0; max-width: 100%; width: 100%; }
 @media (max-width: 767px) {
@@ -38,7 +40,7 @@
 }
 @media (max-width: 359px) {
   :where([data-experience]:not([data-experience="baseline"])) .stat { padding: var(--space-2) var(--space-1-5); }
-  :where([data-experience]:not([data-experience="baseline"])) .statValue { font-size: var(--text-xs); }
+  :where([data-experience]:not([data-experience="baseline"])) .statValue { font-size: var(--text-body); }
 }
 .row:hover > .value, .row[data-hovered] > .value { color: var(--ink); }
 .row:focus-within > .act { box-shadow: var(--focus); }

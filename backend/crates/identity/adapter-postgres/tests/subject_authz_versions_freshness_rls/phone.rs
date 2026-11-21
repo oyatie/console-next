@@ -86,6 +86,7 @@ async fn account_contact_edits_keep_person_reads_and_directory_privacy_separate(
                     include_inactive: false,
                     limit: None,
                     offset: None,
+                    search: None,
                 },
             ),
         )

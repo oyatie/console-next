@@ -11,7 +11,7 @@ use axum::http::{Request, StatusCode, header};
 use console_kernel_core::OrgId;
 use console_platform_auth_rest::{
     AUTH_PASSKEYS_PATH, AuthRestConfig, AuthRestState, OTP_REDEEM_PATH,
-    PRIVACY_CONSENT_STATUS_PATH, SIGNUP_PATH, prune_rate_limit_windows, router,
+    PRIVACY_CONSENT_STATUS_PATH, prune_rate_limit_windows, router,
 };
 use console_platform_provisioning::BootstrapCredentialStore;
 use p256::ecdsa::SigningKey;
@@ -221,10 +221,10 @@ async fn enrollment_session_is_refused_outside_the_enrollment_surface(owner: PgP
     assert_eq!(consents, 0, "no consent is inferred from enrollment");
 }
 
-/// With no mail sender (`AuthRestState`'s default, as in production without
-/// SMTP) open sign-up refuses before any write: no orphan account.
+/// Open self-service signup is unmounted: POST /api/v1/auth/signup returns 404
+/// without writing any user row.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn signup_without_a_mail_sender_refuses_before_any_write(owner: PgPool) {
+async fn signup_route_is_unmounted_and_returns_404(owner: PgPool) {
     let count = || async {
         sqlx::query_scalar::<_, i64>("SELECT count(*) FROM users")
             .fetch_one(&owner)
@@ -236,12 +236,12 @@ async fn signup_without_a_mail_sender_refuses_before_any_write(owner: PgPool) {
     let (status, body) = send(
         &app,
         "POST",
-        SIGNUP_PATH,
+        "/api/v1/auth/signup",
         None,
         Some(json!({ "email": "someone@example.com" })),
     )
     .await;
-    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
     assert_eq!(count().await, before, "no account is written");
 }
 

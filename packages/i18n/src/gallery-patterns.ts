@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export const patternsKo = {
+import { koLeave } from "./catalogs/ko/leave";
+
+export const patternsEn = {
   "pat.record.role": "10587 · Active · Senior · Lead",
   "pat.record.hire": "Hire date",
   "pat.record.work": "Schedule",
@@ -183,4 +185,21 @@ export const patternsKo = {
   "pat.signIn.helpBody": "Contact your workspace administrator to issue a bootstrap code.",
 } as const;
 
-export const patternsEn: Record<keyof typeof patternsKo, string> = { ...patternsKo };
+export const patternsKo: Record<keyof typeof patternsEn, string> = {
+  ...patternsEn,
+  "pat.form.head": koLeave["leave.title"],
+  "pat.form.accrued": koLeave["leave.balance.accrued"],
+  "pat.form.used": koLeave["leave.balance.used"],
+  "pat.form.remain": koLeave["leave.balance.remaining"],
+  "pat.form.kind": koLeave["leave.type.label"],
+  "pat.form.annual": koLeave["leave.type.annual"],
+  "pat.form.halfAm": koLeave["leave.type.halfAm"],
+  "pat.form.halfPm": koLeave["leave.type.halfPm"],
+  "pat.form.date": koLeave["leave.date.label"],
+  "pat.form.oneDay": koLeave["leave.date.oneDay"],
+  "pat.form.multiDay": koLeave["leave.date.multiDay"],
+  "pat.form.start": koLeave["leave.date.start"],
+  "pat.form.end": koLeave["leave.date.end"],
+  "pat.form.after": koLeave["leave.summary.after"],
+  "pat.form.submit": koLeave["leave.submit"],
+};

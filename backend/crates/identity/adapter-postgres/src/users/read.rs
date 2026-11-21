@@ -1,5 +1,6 @@
 use crate::users::rows::fetch_user;
 use crate::users::rows::fetch_user_tx;
+use crate::users::rows_batch::fetch_users_by_ids_tx;
 use crate::users::scope::user_in_scope;
 use crate::{PgOrgError, PgOrgStore};
 use console_identity_application::{UserListQuery, UserPage, UserSummary};
@@ -100,10 +101,14 @@ impl PgOrgStore {
             .clamp(1, MAX_USER_LIMIT);
         let offset = query.offset.unwrap_or(0).max(0);
 
-        // The branch-scope + active filter is shared by the id page and the
+        // The branch-scope + active + search filter is shared by the id page and the
         // COUNT, so build it once into a closure that appends to any builder.
         let scope = scope.clone();
         let include_inactive = query.include_inactive;
+        let search = query
+            .search
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
         let push_filter = move |builder: &mut QueryBuilder<Postgres>| {
             match &scope {
                 BranchScope::All => {
@@ -127,6 +132,35 @@ impl PgOrgStore {
             if !include_inactive {
                 builder.push(" AND u.is_active = true");
             }
+            if let Some(search) = &search {
+                let escaped = escape_like(search);
+                let login_part = escape_like(search.split('@').next().unwrap_or(search));
+                builder
+                    .push(
+                        " AND (EXISTS (SELECT 1 FROM person_accounts_current pa \
+                         WHERE pa.org_id = u.org_id AND pa.id = u.id \
+                           AND LOWER(pa.display_name) LIKE '%' || ",
+                    )
+                    .push_bind(escaped.clone())
+                    .push(
+                        " || '%' ESCAPE '\\') OR EXISTS (SELECT 1 FROM employees e \
+                         WHERE e.id = u.employee_id AND e.org_id = u.org_id \
+                           AND LOWER(e.employee_number) LIKE '%' || ",
+                    )
+                    .push_bind(escaped)
+                    .push(" || '%' ESCAPE '\\')");
+                if !login_part.is_empty() {
+                    builder
+                        .push(
+                            " OR EXISTS (SELECT 1 FROM user_sign_in_ids s \
+                             WHERE s.org_id = u.org_id AND s.user_id = u.id \
+                               AND s.login LIKE '%' || ",
+                        )
+                        .push_bind(login_part)
+                        .push(" || '%' ESCAPE '\\')");
+                }
+                builder.push(")");
+            }
         };
 
         let mut count_builder =
@@ -142,8 +176,8 @@ impl PgOrgStore {
             .push_bind(offset);
 
         let org = current_org().map_err(KernelError::from)?;
-        let (total, ids) =
-            with_org_conn::<_, (i64, Vec<uuid::Uuid>), PgOrgError>(&self.pool, org, move |tx| {
+        let (total, items) =
+            with_org_conn::<_, (i64, Vec<UserSummary>), PgOrgError>(&self.pool, org, move |tx| {
                 Box::pin(async move {
                     let total: i64 = count_builder
                         .build_query_scalar::<i64>()
@@ -153,15 +187,12 @@ impl PgOrgStore {
                         .build_query_scalar::<uuid::Uuid>()
                         .fetch_all(tx.as_mut())
                         .await?;
-                    Ok((total, ids))
+                    let items = fetch_users_by_ids_tx(tx, &ids).await?;
+                    Ok((total, items))
                 })
             })
             .await?;
 
-        let mut items = Vec::with_capacity(ids.len());
-        for id in ids {
-            items.push(fetch_user(&self.pool, UserId::from_uuid(id)).await?);
-        }
         Ok(UserPage {
             items,
             limit,
@@ -169,4 +200,15 @@ impl PgOrgStore {
             total,
         })
     }
+}
+
+pub(crate) fn escape_like(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for ch in value.chars() {
+        if matches!(ch, '\\' | '%' | '_') {
+            out.push('\\');
+        }
+        out.push(ch);
+    }
+    out
 }

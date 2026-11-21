@@ -21,6 +21,7 @@
   "apps/web/src/features/identifiers/ui/identifiers-page.tsx#IdentifiersPage": 62,
   "apps/web/src/features/identifiers/ui/numbering-page.tsx#NumberingPage": 72,
   "apps/web/src/features/import/ui/import-page.tsx#ImportPage": 132,
+  "apps/web/src/features/leave/ui/leave-request-page.tsx#LeaveRequestPage": 29,
   "apps/web/src/features/onboarding/ui/company-names.tsx#CompanyNames": 49,
   "apps/web/src/features/onboarding/ui/go-live.tsx#GoLive": 38,
   "apps/web/src/features/org-bulk/ui/bulk-edit-page.tsx#BulkEditPage": 51,
