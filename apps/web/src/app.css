@@ -217,6 +217,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .field__label { font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
 .field__input { height: var(--field-h); max-width: 100%; padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
+:where([data-experience]:not([data-experience="baseline"])) select.field__input {
+  appearance: none;
+  padding-inline-end: var(--space-6);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2355616d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-2) center;
+  background-size: 14px 14px;
+}
+:root[data-theme="dark"]:where([data-experience]:not([data-experience="baseline"])) select.field__input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23c3cdd8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
 /* In a toolbar a field has a height of its own, so a style can draw it level with the controls beside it. The toolbar
    adds no weight to the selector: every rule that outranks a field's height today outranks this one as well. */
 :where(.toolbar) .field__input { height: var(--field-h-toolbar); }
@@ -234,39 +245,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* ── surfaces ──────────────────────────────────────── */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
-:where([data-experience]:not([data-experience="baseline"])) .page[data-account-page] {
-  max-width: none;
-  gap: 0;
-  background: var(--surface);
-}
-:where([data-experience]:not([data-experience="baseline"])) [data-account-page] > header {
-  padding: var(--toolbar-py) var(--space-4);
-  min-height: var(--toolbar-h);
-  justify-content: center;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-:where([data-experience]:not([data-experience="baseline"])) [data-account-page] .card {
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  box-shadow: none;
-}
-:where([data-experience]:not([data-experience="baseline"])) [data-account-page] .card > .toolbar {
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
-}
-:where([data-experience]:not([data-experience="baseline"])) [data-account-page] .card > .card__body {
-  padding-top: var(--space-3);
-}
-:where([data-experience]:not([data-experience="baseline"])) [data-account-page] .field__input {
-  min-width: 0;
-}
-:where([data-experience]:not([data-experience="baseline"])) [data-account-link-row] {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
 .card__body { padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
 /* minmax(0, …): a wide table scrolls inside its card instead of widening the page (a bare 1fr keeps its min-content). */
 .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
@@ -376,6 +354,9 @@ aside.panel { position: sticky; top: 0; }
 .rail-steps__item[data-state="failed"] { color: var(--danger-tx); border-color: var(--danger-bd); background: var(--danger-bg); font-weight: var(--fw-strong); }
 .steps-plain { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
 .list-plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.list-divided { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.list-divided > li + li { border-top: 1px solid var(--border-soft); }
+.list-divided--rows > li { padding: var(--space-3) var(--space-4); }
 .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .grow { flex: 1; }
 .page__sub { display: flex; flex-direction: column; gap: var(--space-4); }

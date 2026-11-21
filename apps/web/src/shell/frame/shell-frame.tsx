@@ -28,6 +28,7 @@ import { checklistQuery, modulesQuery } from "../../features/onboarding/api";
 import { canReadSetupChecklist } from "../../features/onboarding/domain/phase";
 import { fixFor } from "../../features/onboarding/domain/rail";
 import { useExperienceSync } from "../../experience/store";
+import { useActiveExperienceId } from "../../experience/dom";
 import type { NavHub } from "../nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
@@ -150,8 +151,15 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [platform]);
+  const experience = useActiveExperienceId();
   const scope = platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined);
-  const phoneHeader = pathname === "/account" ? { title: t("shell.account"), shellOwnsH1: true } : undefined;
+  const phoneHeader = pathname === "/account"
+    ? {
+        title: t(experience === "baseline" ? "shell.account" : "shell.profile"),
+        context: experience !== "baseline" && !platform ? identity.data?.employee_company ?? undefined : undefined,
+        shellOwnsH1: true,
+      }
+    : undefined;
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
     <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}
