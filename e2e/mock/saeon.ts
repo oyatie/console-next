@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components } from "@console/api";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import raw from "./saeon-universe.json" with { type: "json" };
 import {
   brnChecksumValid,
@@ -606,7 +607,7 @@ export function saeonApprovalDocument(docId: string = SAEON_ORG_CHANGE_ID): S["A
   const { approval } = saeonUniverse;
   const team2 = saeonUniverse.entities[0]!.workplaces[1]!.departments[2]!.split(" › ").at(-1)!;
   const team3 = saeonUniverse.entities[0]!.workplaces[1]!.departments[3]!.split(" › ").at(-1)!;
-  const roleKeys: S["OrgChangeApprovalRoleKey"][] = ["hr", "finance", "executive"];
+  const roleKeys: S["OrgChangeApprovalRoleKey"][] = ["executive", "hr", "executive"];
   const queueEntry = approval.queue.find(entry => entry.id === docId || entry.documentNumber === docId);
   const isPrimary = !queueEntry || docId === SAEON_ORG_CHANGE_ID || docId === approval.documentNumber;
   const route: S["ApprovalDocument"]["route"] = approval.steps.map((step, index) => ({
@@ -617,6 +618,12 @@ export function saeonApprovalDocument(docId: string = SAEON_ORG_CHANGE_ID): S["A
   }));
 
   if (!isPrimary && queueEntry) {
+    const entryRoute: S["ApprovalDocument"]["route"] = queueEntry.steps.map((step, index) => ({
+      id: `00000000-0000-4000-8710-${padDigits(index + 1, 12)}`,
+      role_key: (step.roleKey as S["OrgChangeApprovalRoleKey"]) ?? "hr",
+      assignee: `${step.actor} · ${step.unit}`,
+      state: step.status === "DONE" ? "done" : step.status === "CURRENT" ? "current" : "waiting",
+    }));
     return {
       id: queueEntry.id,
       box: "pending",
@@ -624,13 +631,13 @@ export function saeonApprovalDocument(docId: string = SAEON_ORG_CHANGE_ID): S["A
       summary: queueEntry.summary,
       document_no: queueEntry.documentNumber,
       decision_refusal: null,
-      source: { key: "org_change", label: approval.category },
+      source: { key: queueEntry.sourceKey, label: queueEntry.sourceLabel },
       status: { key: "IN_APPROVAL" },
       requester: { id: "00000000-0000-4000-8000-000000000002", name: queueEntry.requester },
       effective_date: queueEntry.effectiveDate,
       requested_at: `${queueEntry.requestedDate}T09:00:00+09:00`,
-      facts: [{ key: "effective", label: t("approvals.field.effectiveDate"), value: queueEntry.effectiveDate }],
-      route,
+      facts: [{ key: "effective", label: t("approvals.field.effectiveDate"), value: fmtDate(queueEntry.effectiveDate) }],
+      route: entryRoute,
       viewer: { kind: "org_change", id: SAEON_ORG_CHANGE_ID },
       body: [{ key: "summary", label: t("home.inbox.record.reason"), value: queueEntry.summary }],
       revision: 1,
@@ -661,6 +668,11 @@ export function saeonApprovalDocument(docId: string = SAEON_ORG_CHANGE_ID): S["A
     requested_at: `${approval.draftedDate}T09:00:00+09:00`,
     facts: [
       {
+        key: "due",
+        label: t("approvals.field.dueAt"),
+        value: fmtDate(approval.dueDate),
+      },
+      {
         key: "transfer",
         label: t("home.worklist.impact.transfer"),
         value: t("home.worklist.personCount", { count: approval.transferredCount }),
@@ -674,6 +686,21 @@ export function saeonApprovalDocument(docId: string = SAEON_ORG_CHANGE_ID): S["A
     route,
     viewer: { kind: "org_change", id: SAEON_ORG_CHANGE_ID },
     body: [
+      {
+        key: "headcount",
+        label: team2,
+        value: `${t("home.worklist.personCount", { count: approval.beforeHeadcount })} → ${t("home.worklist.personCount", { count: approval.afterHeadcount })}`,
+      },
+      {
+        key: "dissolved",
+        label: team3,
+        value: `${t("home.worklist.personCount", { count: approval.transferredCount })} → ${t("orgPropose.diff.chip.dissolved")}`,
+      },
+      {
+        key: "assignment",
+        label: approval.ccActor,
+        value: `${team3} → ${team2}`,
+      },
       {
         key: "impact",
         label: t("home.worklist.impact.title"),
@@ -732,6 +759,13 @@ export function saeonApprovalsPage(
       .includes(query);
   });
 
+  const sourceMap = new Map<string, { key: string; label: string; count: number }>();
+  for (const item of rawItems) {
+    const existing = sourceMap.get(item.source.key);
+    if (existing) existing.count++;
+    else sourceMap.set(item.source.key, { key: item.source.key, label: item.source.label, count: 1 });
+  }
+
   return {
     items,
     focused: null,
@@ -742,7 +776,7 @@ export function saeonApprovalsPage(
       reference: 2,
       completed: 8,
     },
-    sources: [{ key: "org_change", label: approval.category, count: allPending.length }],
+    sources: [...sourceMap.values()],
     next_cursor: null,
   };
 }

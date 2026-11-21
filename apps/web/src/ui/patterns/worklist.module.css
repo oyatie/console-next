@@ -18,6 +18,10 @@
   padding: var(--space-2) var(--page-pad) 0;
 }
 
+:where([data-experience]:not([data-experience="baseline"])) .frame {
+  flex: 1 0 auto;
+}
+
 :where([data-experience]:not([data-experience="baseline"])) .head {
   padding: var(--toolbar-py) var(--space-4);
   border-block-end: 1px solid var(--border);

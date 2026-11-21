@@ -162,7 +162,7 @@ export function ApprovalsPage() {
         title: selected?.title ?? t("approvals.document.title"),
         meta: selected?.document_no,
         openInTab: { href: `/approvals/${encodeURIComponent(sel)}`, label: selected?.title ?? sel },
-        actions: selected?.viewer ? <SourceViewerLink viewer={selected.viewer} /> : undefined,
+        actions: selected?.viewer ? <SourceViewerLink viewer={selected.viewer} size="sm" /> : undefined,
         onClose: () => select(undefined),
         returnFocus: () => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
         children: <QueryState key={sel} q={opened} layout="record">{document => <ConsoleApprovalSideView document={document} />}</QueryState>,

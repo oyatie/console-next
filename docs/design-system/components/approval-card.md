@@ -335,12 +335,15 @@ takes none of the three.
 | `step` | yes | `ReactNode` |  | The step this person holds (my step · delegated, 1 step). |
 | `title` | yes | `ReactNode` |  | The decision as a sentence (dissolves the support team on 2 Nov). |
 | `approveBlocked` | no | `ReactNode` |  | Why approve cannot be pressed now (e.g. the content changed while reviewing); shown next to it. |
+| `docked` | no | `boolean` |  | Streamlined docked pane layout with PaneHead (`title` + `meta`), single turn row, and compact spacing. |
+| `due` | no | `ReactNode` |  | Optional due-date summary shown beside the turn badge in docked mode. |
 | `meta` | no | `ReactNode` |  | Left of the decisions: when the card was opened and its content fingerprint. |
 | `next` | no | `ReactNode` |  | The open-next-approval link, placed away from where approve was. |
 | `pending` | no | `ApprovalPending` |  |  |
 | `progress` | no | `ReactNode` |  | Queue position (1st of 3 left) and its bar. |
 | `reasonMissing` | no | `ReactNode` |  | What is missing while it is not, beside the commit (defaults to choosing a reason code). |
 | `receipt` | no | `ReactNode` |  | The server receipt once recorded; it replaces the decisions. |
+| `staleBlocked` | no | `ReactNode` |  | Why no decision commit (approve, reject, or return) may run until the stale read refreshes. |
 
 **Shape 2 of 2**
 
@@ -359,6 +362,8 @@ takes none of the three.
 | `step` | yes | `ReactNode` |  | The step this person holds (my step · delegated, 1 step). |
 | `title` | yes | `ReactNode` |  | The decision as a sentence (dissolves the support team on 2 Nov). |
 | `approveBlocked` | no | `ReactNode` |  | Why approve cannot be pressed now (e.g. the content changed while reviewing); shown next to it. |
+| `docked` | no | `boolean` |  | Streamlined docked pane layout with PaneHead (`title` + `meta`), single turn row, and compact spacing. |
+| `due` | no | `ReactNode` |  | Optional due-date summary shown beside the turn badge in docked mode. |
 | `meta` | no | `ReactNode` |  | Left of the decisions: when the card was opened and its content fingerprint. |
 | `next` | no | `ReactNode` |  | The open-next-approval link, placed away from where approve was. |
 | `onReturn` | no | `undefined` |  |  |
@@ -368,6 +373,7 @@ takes none of the three.
 | `receipt` | no | `ReactNode` |  | The server receipt once recorded; it replaces the decisions. |
 | `returnConsequence` | no | `undefined` |  |  |
 | `returnLabel` | no | `undefined` |  |  |
+| `staleBlocked` | no | `ReactNode` |  | Why no decision commit (approve, reject, or return) may run until the stale read refreshes. |
 
 <!-- /ds:props -->
 
@@ -388,7 +394,7 @@ global `btn` classes. Both are in `app.css` and are not listed here: see the tok
 | `--fw-medium` | `font-weight` |
 | `--fw-semibold` | `font-weight` |
 | `--fw-strong` | `font-weight` |
-| `--ink` | `border` |
+| `--ink` | `border`, `color` |
 | `--lh-base` | `line-height` |
 | `--lh-tight` | `line-height` |
 | `--panel-w` | `max-width` |

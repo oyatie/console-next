@@ -86,9 +86,27 @@ export function ConsoleApprovalsTable({ items, sel, onSelect, hasNext, loadingMo
             card: "omit",
             fit: true,
             wide: true,
-            cell: item => item.route.length
-              ? <div className={s.route}><ChainStepper variant="chips" label={t("approvals.preview.route")} steps={item.route.map(step => ({ key: step.id, state: step.state, who: step.state === "current" ? [step.label, step.assignee].filter(Boolean).join(" · ") : step.assignee ?? step.label }))} /></div>
-              : "—",
+            cell: item => {
+              if (!item.route.length) return "—";
+              const fullRoute = item.route
+                .map(step => `${t(`uiChainStepper.state.${step.state}`)} ${[step.label, step.assignee].filter(Boolean).join(" · ")}`.trim())
+                .join(" → ");
+              const idx = item.route.findIndex(step => step.state === "current" || step.state === "failed");
+              const summary =
+                idx >= 0
+                  ? t("approvals.console.routeStep", {
+                      n: idx + 1,
+                      total: item.route.length,
+                      who: item.route[idx]!.assignee?.split(" · ")[0] ?? item.route[idx]!.label,
+                      state: item.route[idx]!.state === "failed" ? t("home.inbox.outcome.REJECTED") : t("orgChange.chain.current"),
+                    })
+                  : t("approvals.console.routeDone", { total: item.route.length });
+              return (
+                <bdi className={`${s.consoleRoute} muted`} title={fullRoute}>
+                  {summary}
+                </bdi>
+              );
+            },
           },
           {
             header: t("approvals.col.requester"),
@@ -133,6 +151,8 @@ export function ConsoleApprovalsTable({ items, sel, onSelect, hasNext, loadingMo
 export function ConsoleApprovalSideView({ document: d }: { document: ApprovalDocument }) {
   const diffs = proposalDiffs(d);
   const nonProposalBody = d.body.filter(item => !item.key.startsWith("proposal-"));
+  const bodyItems = diffs.length > 0 ? nonProposalBody : d.body;
+  const hasSummary = Boolean(d.summary && d.summary !== d.title);
   return (
     <div className={s.consoleBody}>
       <WorklistSummaryHead
@@ -157,16 +177,16 @@ export function ConsoleApprovalSideView({ document: d }: { document: ApprovalDoc
           </WorklistPadded>
         </WorklistSection>
       )}
-      {(d.summary && d.summary !== d.title) || nonProposalBody.length > 0 || (diffs.length === 0 && d.body.length > 0) ? (
+      {hasSummary || bodyItems.length > 0 ? (
         <WorklistSection>
           <PaneHead title={t("approvals.viewer.body")} level={3} />
           <WorklistPadded>
-            {d.summary && d.summary !== d.title ? <div>{d.summary}</div> : null}
-            <KeyValue readOnly items={diffs.length > 0 ? nonProposalBody : d.body} />
+            {hasSummary ? <div>{d.summary}</div> : null}
+            {bodyItems.length > 0 ? <KeyValue readOnly items={bodyItems} /> : null}
           </WorklistPadded>
         </WorklistSection>
       ) : null}
-      <ApprovalDecisionPanel key={d.id} document={d} />
+      <ApprovalDecisionPanel key={d.id} document={d} docked />
     </div>
   );
 }

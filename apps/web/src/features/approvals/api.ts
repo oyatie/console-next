@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { api, unwrap } from "@console/api";
-import { t } from "@console/i18n";
+import { t, type MessageId } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { describeOp } from "../../reference/org/present";
 import { read } from "../../lib/query";
@@ -11,7 +11,15 @@ import type { ApprovalDocument as BaseApprovalDocument, ApprovalDecision, Approv
 export type { ApprovalViewer, ApprovalItem, ApprovalDecision } from "@console/api/pending";
 export type ApprovalDocument = BaseApprovalDocument & Pick<components["schemas"]["ApprovalDocumentDetail"], "proposal" | "proposal_names">;
 
-const sourceLabel = (source: { key: string; label?: string }) => source.key === "org_change" ? t("approvals.source.orgChange") : source.label ?? source.key;
+const SOURCE_LABELS: Record<string, MessageId> = {
+  org_change: "approvals.source.orgChange",
+  leave: "approvals.source.leave",
+  attendance: "approvals.source.attendance",
+  personnel: "approvals.source.personnel",
+  certificate: "approvals.source.certificate",
+};
+const sourceLabel = (source: { key: string; label?: string }) =>
+  Object.hasOwn(SOURCE_LABELS, source.key) ? t(SOURCE_LABELS[source.key]!) : source.label ?? source.key;
 const present = (item: components["schemas"]["ApprovalDocument"]): ApprovalItem => {
   const status = labeled(ORG_CHANGE_STATUS, item.status.key);
   return { ...item, source: { ...item.source, label: sourceLabel(item.source) },
