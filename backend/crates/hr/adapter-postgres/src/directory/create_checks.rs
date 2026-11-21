@@ -108,11 +108,13 @@ pub async fn same_name_same_hire_date_warning(
     let Some(hire_date) = hire_date else {
         return Ok(None);
     };
-    let employee_ids: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT id FROM employees WHERE org_id = $1 AND id <> $2 \
+    let rows: Vec<(Uuid, String, Option<String>, i64)> = sqlx::query_as(
+        "SELECT id, COALESCE(console_employee_facts(org_id, id)->>'legal_name', name) AS name, \
+                employee_number, COUNT(*) OVER() AS total_count \
+         FROM employees WHERE org_id = $1 AND id <> $2 \
            AND merged_into_employee_id IS NULL \
            AND regexp_replace(name, '\\s', '', 'g') = regexp_replace($3, '\\s', '', 'g') \
-           AND hire_date::TEXT = $4 ORDER BY id",
+           AND hire_date::TEXT = $4 ORDER BY id LIMIT 200",
     )
     .bind(org_uuid)
     .bind(employee_id)
@@ -120,14 +122,10 @@ pub async fn same_name_same_hire_date_warning(
     .bind(hire_date)
     .fetch_all(tx.as_mut())
     .await?;
-    if employee_ids.is_empty() {
-        return Ok(None);
-    }
-    Ok(Some(EmployeeCreateWarning {
-        code: "same_name_same_hire_date",
-        employee_ids,
-        floor_won: None,
-    }))
+    Ok(crate::directory::read_warnings::build_name_warning(
+        "same_name_same_hire_date",
+        rows,
+    ))
 }
 
 #[cfg(test)]

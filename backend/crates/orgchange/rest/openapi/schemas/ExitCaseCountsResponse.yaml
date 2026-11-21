@@ -1,0 +1,47 @@
+type: object
+required:
+- all
+- open
+- closed
+- reported
+- hr_confirmed
+- hq_confirmed
+- settlement_ready
+- approval_drafted
+- submitted
+- rejected
+- cancelled
+properties:
+  all:
+    type: integer
+    format: int64
+  open:
+    type: integer
+    format: int64
+  closed:
+    type: integer
+    format: int64
+  reported:
+    type: integer
+    format: int64
+  hr_confirmed:
+    type: integer
+    format: int64
+  hq_confirmed:
+    type: integer
+    format: int64
+  settlement_ready:
+    type: integer
+    format: int64
+  approval_drafted:
+    type: integer
+    format: int64
+  submitted:
+    type: integer
+    format: int64
+  rejected:
+    type: integer
+    format: int64
+  cancelled:
+    type: integer
+    format: int64

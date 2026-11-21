@@ -18,6 +18,8 @@ use crate::{HrError, HrService, assignment_lateral};
 #[derive(Debug, Serialize)]
 pub struct HrOrgChartResponse {
     pub companies: Vec<HrOrgChartCompany>,
+    pub truncated: bool,
+    pub total: i64,
 }
 
 #[derive(Debug, Serialize)]
@@ -118,11 +120,12 @@ impl HrService {
         let org = principal.org_id;
         let reader = principal.clone();
 
-        let companies = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
+        let (companies, total, truncated) = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
         Box::pin(async move {
             let rows = sqlx::query(concat!(
                 r#"
                 SELECT
+                    COUNT(*) OVER() AS total_count,
                     e.id,
                     ea.legal_entity_id,
                     COALESCE(le.label, e.company) AS company,
@@ -165,6 +168,11 @@ impl HrService {
 
             let mut companies = Vec::<HrOrgChartCompany>::new();
             let row_count = rows.len();
+            let total: i64 = match rows.first() {
+                Some(first) => first.try_get("total_count")?,
+                None => 0,
+            };
+            let truncated = total > i64::try_from(row_count).unwrap_or(i64::MAX);
             for row in rows {
                 let company: String = row.try_get("company")?;
                 let unit: String = row.try_get("org_unit")?;
@@ -200,13 +208,17 @@ impl HrService {
             // Like the export, the whole-population chart names its row
             // count, not every subject id (up to 5000).
             let me = actor_employee_id(tx, &reader).await?;
-            let details = json!({ "row_count": row_count });
+            let details = json!({ "row_count": row_count, "total": total, "truncated": truncated });
             let event = access_event(&reader, DirectoryAccess::OrgChart, &[], me, details)?;
-            Ok((companies, vec![event]))
+            Ok(((companies, total, truncated), vec![event]))
         })
     })
     .await?;
 
-        Ok(HrOrgChartResponse { companies })
+        Ok(HrOrgChartResponse {
+            companies,
+            truncated,
+            total,
+        })
     }
 }

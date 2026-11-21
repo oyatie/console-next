@@ -2,9 +2,12 @@
 //! Moved from `app/src/hr.rs` (R2-import).
 
 use console_hr_domain::import::classification::{
-    employee_import_column_classification, employee_import_target_for_header,
+    allowed_restricted_target, employee_import_column_classification,
+    employee_import_target_for_header, is_dropped_employee_import_header, normalize_header_label,
 };
 use console_hr_domain::import::rrn::is_rrn_value;
+use sqlx::Postgres;
+use uuid::Uuid;
 
 use crate::HrError;
 use crate::import::types::EmployeeImportColumn;
@@ -61,4 +64,52 @@ pub fn reject_rrn_label(label: &str, message: &'static str) -> Result<(), HrErro
         return Err(HrError::validation(message));
     }
     Ok(())
+}
+
+/// Whether `header` is permitted to map to `target` (non-restricted headers
+/// may map to any catalog target; restricted headers may map only to their
+/// own governed target, `rrn` or `phone`).
+#[must_use]
+pub fn allowed_column_target(header: &str, target: &str) -> bool {
+    let normalized = normalize_header_label(header);
+    !is_dropped_employee_import_header(&normalized)
+        || Some(target) == allowed_restricted_target(&normalized)
+}
+
+/// Refuses a stored `mapping_profile` whose `columns` bind a restricted
+/// header to a non-governed target (`422 mapping_restricted_column`).
+pub fn validate_mapping_profile_columns(profile: &serde_json::Value) -> Result<(), HrError> {
+    for col in profile["columns"].as_array().into_iter().flatten() {
+        let header = col["source_header"]
+            .as_str()
+            .or_else(|| col["normalized_header"].as_str())
+            .unwrap_or_default();
+        if let Some(target) = col["target"].as_str()
+            && !allowed_column_target(header, target)
+        {
+            return Err(HrError {
+                errors: None,
+                status: http::StatusCode::UNPROCESSABLE_ENTITY,
+                code: "mapping_restricted_column",
+                message: format!("restricted import column cannot be mapped to {target}"),
+                refusals: None,
+            });
+        }
+    }
+    Ok(())
+}
+
+pub(crate) async fn validate_run_mapping_profile(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org_uuid: Uuid,
+    run_id: Uuid,
+) -> Result<(), HrError> {
+    let profile: serde_json::Value = sqlx::query_scalar(
+        "SELECT mapping_profile FROM data_import_runs WHERE org_id = $1 AND id = $2",
+    )
+    .bind(org_uuid)
+    .bind(run_id)
+    .fetch_one(tx.as_mut())
+    .await?;
+    validate_mapping_profile_columns(&profile)
 }

@@ -5066,35 +5066,6 @@ paths:
                 $ref: '#/components/schemas/PrivacyConsentStatusResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/v1/auth/signup:
-    post:
-      tags:
-        - auth
-      summary: Open self-service signup
-      description: Public, unauthenticated open signup. Creates a new lowest-privilege MEMBER account in the default organization
-        and emails it a single-use one-time sign-in code; the caller then redeems that code via `POST /api/v1/auth/otp/redeem`
-        and enrolls a passkey. The response reveals nothing about whether the email was newly registered (no account-existence
-        oracle) and never mints a token. The new account sees the minimal role-gated surface until an admin elevates it. Rate-limited
-        per client (IP and optional device).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SignupRequest'
-      responses:
-        '202':
-          description: The signup was accepted and a one-time code was sent.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SignupResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '502':
-          $ref: '#/components/responses/BadGateway'
   /api/v1/auth/token/refresh:
     post:
       tags:
@@ -6086,6 +6057,28 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/change-requests/counts:
+    get:
+      tags:
+        - employees
+      operationId: getChangeRequestCounts
+      summary: Counts of open change requests visible to the caller
+      description: >-
+        Single-scan counts of OPEN change requests across all visible requests (`all`),
+        requests assigned directly to the caller (`me`), and unassigned HR role requests (`role`).
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Counts of OPEN change requests per lane.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequestCountsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/change-requests/{id}/decide:
     post:
       tags:
@@ -7924,6 +7917,17 @@ paths:
             type: string
         description: Exact employee numbers, comma-separated (`employee_number=A-1,A-2`), at most 500 (422 above). Resolves
           a pasted column in one read.
+      - name: ids
+        in: query
+        required: false
+        style: form
+        explode: false
+        schema:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/Uuid'
+        description: Exact employee IDs, comma-separated (`ids=<uuid>,<uuid>`), at most 500 (422 above).
       - name: contract_ending_before
         in: query
         required: false
@@ -8010,7 +8014,7 @@ paths:
         response carries warnings [{code: same_name_in_unit, employee_ids}]; the
         employee is created regardless. BW-19: a person already on file (any
         status) with the same name (spaces ignored) and the same phone or date of birth
-        is 409 duplicate_candidate listing them in error.refusals [{employee_id,
+        is 409 duplicate_candidate listing them in error.refusals [{employee_id, name, org_unit, hire_date,
         status, employee_number, basis, remedy}] (remedy rehire for an EXITED
         one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override
         naming every candidate to record the governed exception
@@ -8573,7 +8577,7 @@ paths:
                     Columns need header_row; the sheet needs
                     a name column. 422 mapping_invalid, mapping_unknown_sheet, mapping_unknown_target,
                     mapping_bad_column, mapping_header_row_required, mapping_header_row_out_of_range,
-                    mapping_name_required, mapping_duplicate_target.'
+                    mapping_name_required, mapping_duplicate_target, mapping_restricted_column.'
       responses:
         '200':
           description: Import run preview with masked sample rows and mapping profile.
@@ -9363,6 +9367,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/employees/register-facts/query:
+    post:
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "tenant"}
+      tags:
+        - employees
+      operationId: queryEmployeeRegisterFacts
+      summary: Batch read worker register facts for up to 500 employees
+      description: >-
+        MR-23. Org-wide employee_directory_manage. Returns worker register facts plus
+        masked birth_date for either explicit employee `ids` (up to 500) or a
+        cursor-paged slice filtered by `register_review_required`. Records a single
+        audited DirectoryAccess::List event.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterFactsQueryRequest'
+      responses:
+        '200':
+          description: Register facts items and optional next cursor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterFactsQueryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/employees/renumber/apply:
     post:
       tags:
@@ -11767,6 +11804,38 @@ paths:
           description: reveal_rate_limited — wait for the rolling one-hour window.
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/employees/{id}/unit-position:
+    get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
+      tags:
+        - employees
+      operationId: getEmployeeUnitPosition
+      summary: Server position of an employee within their org unit
+      description: >-
+        Returns the 1-based position, total unit member count, adjacent employee IDs
+        (`prev_id`, `next_id`), and `pre_hire_count` matching the employee list ordering
+        and caller reach, supporting keyboard navigation past 200 unit members.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Employee position within the org unit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeUnitPosition'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/employees/{id}/void:
     post:
       tags:
@@ -16125,6 +16194,78 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/hr/exit-cases/bulk:
+    post:
+      tags:
+        - hr
+      operationId: bulkReportEmployeeExitCases
+      summary: Report exit cases in bulk (up to 500 items)
+      description: >-
+        Creates audited employee exit cases in a single idempotent transaction for up
+        to 500 employees using set-based preloading, per-item scope + own-record +
+        guard evaluation, and non-aborting per-item results.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: 16..200 characters. An exact replay returns 200 with the original body; the same key with a
+          different body is 409 conflict.
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkReportExitCasesRequest'
+      responses:
+        '200':
+          description: Per-item exit-case reporting results (or exact Idempotency-Key replay).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkReportExitCasesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/hr/exit-cases/counts:
+    get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
+      tags:
+        - hr
+      operationId: getEmployeeExitCaseCounts
+      summary: Single-scan status counts of employee exit cases in scope
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: search
+        in: query
+        required: false
+        description: Part of the employee's name or employee number (case-insensitive).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Exit-case status counts in the caller's branch scope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExitCaseCountsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
   /api/v1/hr/exit-cases/{id}:
@@ -24697,6 +24838,18 @@ paths:
           type: integer
           format: int64
           minimum: 0
+      - name: pay_group_id
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: legal_entity_id
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Page of payroll draft runs, newest period first.
@@ -30314,6 +30467,12 @@ paths:
           format: int64
           minimum: 0
           default: 0
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 200
       responses:
         '200':
           description: A page of users in the principal's branch scope.
@@ -38198,6 +38357,35 @@ components:
             order); each carries batch_id.
           items:
             $ref: '#/components/schemas/EmployeeLifecycleEvent'
+    BulkExitCaseItemInput:
+      type: object
+      additionalProperties: false
+      required: [employee_id]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        branch_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        absence_alert_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    BulkExitCaseItemResult:
+      type: object
+      required: [employee_id, ok]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        ok:
+          type: boolean
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+        message:
+          type: string
     BulkLifecyclePreview:
       type: object
       required: [event_type, effective_date, scheduled, counts, refusals]
@@ -38328,6 +38516,34 @@ components:
                 type: object
                 minProperties: 1
                 description: sex, address, careers, register_note, name_hanja, name_en, nationality, personal_email, emergency_contacts (and a first exit_reason or group_service_start_date) as in CorrectEmployeeRequest.changes.
+    BulkReportExitCasesRequest:
+      type: object
+      additionalProperties: false
+      required: [effective_exit_date, site_manager_note, items]
+      properties:
+        effective_exit_date:
+          type: string
+          description: YYYY-MM-DD
+        site_manager_note:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        exit_reason_code:
+          type: [string, 'null']
+        items:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/BulkExitCaseItemInput'
+    BulkReportExitCasesResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BulkExitCaseItemResult'
     BulkSelection:
       type: object
       additionalProperties: false
@@ -38800,6 +39016,10 @@ components:
           x-extensible-enum: [EMPLOYEE, USER_ACCOUNT, BRANCH, ORGANIZATION, DATA_IMPORT_RUN]
         subject_id:
           $ref: '#/components/schemas/Uuid'
+        subject_name:
+          type: [string, 'null']
+        subject_number:
+          type: [string, 'null']
         payload:
           type: object
           additionalProperties: true
@@ -38839,6 +39059,19 @@ components:
           oneOf:
           - $ref: '#/components/schemas/Timestamp'
           - type: 'null'
+    ChangeRequestCountsResponse:
+      type: object
+      required: [all, me, role]
+      properties:
+        all:
+          type: integer
+          format: int64
+        me:
+          type: integer
+          format: int64
+        role:
+          type: integer
+          format: int64
     ChangeSetDetail:
       allOf:
       - $ref: '#/components/schemas/ChangeSetSummary'
@@ -42764,6 +42997,15 @@ components:
           description: The namesakes for same_name_in_unit; empty for pay_below_minimum_wage.
           items:
             $ref: '#/components/schemas/Uuid'
+        matches:
+          type: array
+          description: Capped namesake match details (up to 20 entries).
+          items:
+            $ref: '#/components/schemas/EmployeeWarningMatch'
+        total_count:
+          type: integer
+          format: int64
+          description: Total number of matching namesakes before capping.
         floor_won:
           type: integer
           format: int64
@@ -45373,6 +45615,31 @@ components:
         recorded_at:
           type: [string, 'null']
           format: date-time
+    EmployeeUnitPosition:
+      type: object
+      required: [org_unit_id, index, total, prev_id, next_id, pre_hire_count]
+      properties:
+        org_unit_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        index:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+        prev_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        next_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        pre_hire_count:
+          type: integer
+          format: int64
     EmployeeView:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -45410,6 +45677,16 @@ components:
           nullable: true
           allOf:
           - $ref: '#/components/schemas/ChangeRequest'
+    EmployeeWarningMatch:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        employee_number:
+          type: string
     EmploymentAssignment:
       type: object
       required:
@@ -47224,6 +47501,54 @@ components:
           maxLength: 128
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    ExitCaseCountsResponse:
+      type: object
+      required:
+      - all
+      - open
+      - closed
+      - reported
+      - hr_confirmed
+      - hq_confirmed
+      - settlement_ready
+      - approval_drafted
+      - submitted
+      - rejected
+      - cancelled
+      properties:
+        all:
+          type: integer
+          format: int64
+        open:
+          type: integer
+          format: int64
+        closed:
+          type: integer
+          format: int64
+        reported:
+          type: integer
+          format: int64
+        hr_confirmed:
+          type: integer
+          format: int64
+        hq_confirmed:
+          type: integer
+          format: int64
+        settlement_ready:
+          type: integer
+          format: int64
+        approval_drafted:
+          type: integer
+          format: int64
+        submitted:
+          type: integer
+          format: int64
+        rejected:
+          type: integer
+          format: int64
+        cancelled:
+          type: integer
+          format: int64
     ExitCaseNextAction:
       type: object
       description: An action the case's current state admits, as a key; the client owns its label and route (the caller's capability is still checked by the action).
@@ -48597,11 +48922,18 @@ components:
       type: object
       required:
       - companies
+      - truncated
+      - total
       properties:
         companies:
           type: array
           items:
             $ref: '#/components/schemas/HrOrgChartCompany'
+        truncated:
+          type: boolean
+        total:
+          type: integer
+          format: int64
     HrOrgChartUnit:
       type: object
       required:
@@ -49392,6 +49724,7 @@ components:
       required: [id, label]
       properties: { id: { $ref: '#/components/schemas/Uuid' }, label: { type: string } }
     InvitePlatformOperatorRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -57048,6 +57381,7 @@ components:
       - GROUP_VIEWER
       - GROUP_FINANCE
     PlatformOperatorInviteResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -57064,6 +57398,7 @@ components:
         expires_at:
           $ref: '#/components/schemas/Timestamp'
     PlatformOperatorStatus:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       x-extensible-enum:
       - PENDING_ENROLMENT
@@ -57071,6 +57406,7 @@ components:
       - REVOKED
       - EXPIRED
     PlatformOperatorSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -59811,6 +60147,66 @@ components:
             omit deactivated rows.
         created_at:
           $ref: '#/components/schemas/Timestamp'
+    RegisterFactsQueryItem:
+      type: object
+      required: [employee_id, updated_at, sex, address, careers, exit_reason_code, exit_reason_label, register_note, birth_date]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        updated_at:
+          type: string
+          format: date-time
+        sex:
+          type: [string, 'null']
+          enum: [MALE, FEMALE, null]
+        address:
+          type: [string, 'null']
+        careers:
+          type: [array, 'null']
+          items:
+            $ref: '#/components/schemas/EmployeeCareer'
+        exit_reason_code:
+          type: [string, 'null']
+        exit_reason_label:
+          type: [string, 'null']
+        register_note:
+          type: [string, 'null']
+        birth_date:
+          type: [string, 'null']
+    RegisterFactsQueryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        ids:
+          oneOf:
+          - type: array
+            maxItems: 500
+            items:
+              $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        register_review_required:
+          type: [boolean, 'null']
+        cursor:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        limit:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+          maximum: 200
+    RegisterFactsQueryResponse:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegisterFactsQueryItem'
+        next_cursor:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
     RegisterProductionSourceSystem:
       type: object
       required: [branch_id, source_system]
@@ -60579,6 +60975,7 @@ components:
           type: string
           maxLength: 128
     ReissuePlatformOperatorInviteRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       properties:
@@ -60956,6 +61353,7 @@ components:
         prev_hash: { type: string }
         row_hash: { type: string }
     RevokePlatformOperatorRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       properties:
@@ -62474,24 +62872,6 @@ components:
         note:
           type: [string, 'null']
           maxLength: 1000
-    SignupRequest:
-      type: object
-      required:
-      - email
-      properties:
-        email:
-          type: string
-          format: email
-          description: The email address to register and deliver the one-time code to.
-    SignupResponse:
-      type: object
-      required:
-      - accepted
-      properties:
-        accepted:
-          type: boolean
-          description: Always true. The signup was accepted and a one-time code was sent; the response intentionally carries
-            no account-existence or token information.
     SimulateWorkflowDefinitionRequest:
       type: object
       properties:

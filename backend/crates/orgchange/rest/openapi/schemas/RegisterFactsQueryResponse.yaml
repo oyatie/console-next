@@ -1,0 +1,11 @@
+type: object
+required: [items, next_cursor]
+properties:
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/RegisterFactsQueryItem'
+  next_cursor:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'

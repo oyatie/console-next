@@ -1,0 +1,12 @@
+type: object
+required: [all, me, role]
+properties:
+  all:
+    type: integer
+    format: int64
+  me:
+    type: integer
+    format: int64
+  role:
+    type: integer
+    format: int64

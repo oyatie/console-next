@@ -27,6 +27,7 @@ mod r3_cap;
 mod r3_facts;
 mod r3_import;
 mod reconcile;
+mod restricted_remap;
 mod rollback;
 mod rollback_burst;
 mod rrn_audit;

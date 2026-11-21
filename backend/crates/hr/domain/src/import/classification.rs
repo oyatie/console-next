@@ -35,6 +35,9 @@ pub fn employee_import_target_for_header(header: &str) -> Option<&'static str> {
 /// bank or note columns never persist because no word list named them.
 /// (`retained`, raw text kept without a field, is no longer produced.)
 pub fn employee_import_column_classification(header: &str, target: Option<&str>) -> &'static str {
+    if is_dropped_employee_import_header(header) {
+        return "restricted";
+    }
     if let Some(field) = target.and_then(employee_import_field_for_target) {
         return field.classification.as_str();
     }
@@ -45,6 +48,15 @@ pub fn employee_import_column_classification(header: &str, target: Option<&str>)
         return "location";
     }
     "canonical"
+}
+
+/// The only target a restricted header may map to (`rrn` or `phone`), or
+/// `None` for any restricted header that has no governed storage target.
+#[must_use]
+pub fn allowed_restricted_target(header: &str) -> Option<&'static str> {
+    employee_import_field_for_header(header)
+        .filter(|field| field.classification == Classification::Restricted)
+        .map(|field| field.target)
 }
 
 pub fn employee_import_field_for_header(
@@ -161,5 +173,41 @@ mod tests {
         assert!(!is_dropped_employee_import_header("소속팀"));
         assert!(is_dropped_employee_import_header("급여계좌"));
         assert!(is_dropped_employee_import_header("연락처"));
+    }
+
+    #[test]
+    fn restricted_header_stays_restricted_even_with_canonical_target() {
+        let account = "account_no";
+        let salary = "salary";
+        let mobile = employee_import_field_for_target("phone").unwrap().aliases[0];
+        let rrn = employee_import_field_for_target("rrn").unwrap().aliases[0];
+        let birth = employee_import_field_for_target("birth_date")
+            .unwrap()
+            .aliases[0];
+        let worksite_addr = employee_import_field_for_target("worksite_address")
+            .unwrap()
+            .aliases[0];
+
+        assert_eq!(
+            employee_import_column_classification(account, Some("position")),
+            "restricted"
+        );
+        assert_eq!(
+            employee_import_column_classification(salary, Some("job")),
+            "restricted"
+        );
+        assert_eq!(allowed_restricted_target(account), None);
+        assert_eq!(allowed_restricted_target(salary), None);
+        assert_eq!(allowed_restricted_target(mobile), Some("phone"));
+        assert_eq!(allowed_restricted_target(rrn), Some("rrn"));
+        assert_eq!(allowed_restricted_target(birth), None);
+        assert_eq!(
+            employee_import_column_classification(birth, Some("birth_date")),
+            "canonical"
+        );
+        assert_eq!(
+            employee_import_column_classification(worksite_addr, Some("worksite_address")),
+            "location"
+        );
     }
 }

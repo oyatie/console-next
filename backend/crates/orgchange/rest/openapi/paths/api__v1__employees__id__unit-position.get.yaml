@@ -1,0 +1,30 @@
+x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
+tags:
+  - employees
+operationId: getEmployeeUnitPosition
+summary: Server position of an employee within their org unit
+description: >-
+  Returns the 1-based position, total unit member count, adjacent employee IDs
+  (`prev_id`, `next_id`), and `pre_hire_count` matching the employee list ordering
+  and caller reach, supporting keyboard navigation past 200 unit members.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: Employee position within the org unit.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeUnitPosition'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

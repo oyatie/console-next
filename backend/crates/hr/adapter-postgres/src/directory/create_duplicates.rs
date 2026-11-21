@@ -32,6 +32,12 @@ pub struct DuplicateCandidate {
     pub employee_id: Uuid,
     pub status: String,
     pub employee_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub org_unit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hire_date: Option<String>,
     /// `name_phone` or `name_birth_date`: what matched besides the name.
     pub basis: &'static str,
     /// `rehire` for an EXITED person: register them again as the same person
@@ -48,15 +54,19 @@ pub async fn duplicate_candidates(
     request: &NormalizedCreateEmployeeRequest,
 ) -> Result<Vec<DuplicateCandidate>, HrError> {
     // Resolve canonical names before looking up contact facts for candidate records.
-    let rows: Vec<(Uuid, String, Option<String>, bool)> = sqlx::query_as(
+    let rows: Vec<(Uuid, String, Option<String>, String, Option<String>, Option<String>, bool)> = sqlx::query_as(
         "WITH named AS MATERIALIZED ( \
-           SELECT e.id,e.org_id,e.employment_status,e.employee_number,e.birth_date,e.created_at \
+           SELECT e.id,e.org_id,e.name,e.org_unit,e.org_unit_id,e.hire_on,e.employment_status,e.employee_number,e.birth_date,e.created_at \
            FROM person_employees_current e WHERE e.org_id=$1 AND e.merged_into_employee_id IS NULL \
              AND regexp_replace(e.name, '\\s', '', 'g')=regexp_replace($2, '\\s', '', 'g') \
          ) SELECT e.id, e.employment_status, e.employee_number, \
+                COALESCE(facts.attributes->>'legal_name', e.name) AS name, \
+                COALESCE(NULLIF(unit.attributes->>'name', ''), NULLIF(e.org_unit, '')) AS org_unit, \
+                to_char(e.hire_on, 'YYYY-MM-DD') AS hire_date, \
                 COALESCE((CASE WHEN facts.attributes ? 'phone' THEN facts.attributes->>'phone' ELSE p.phone_e164 END) = $3, false) AS phone_match \
          FROM named e \
          LEFT JOIN LATERAL (SELECT console_employee_facts(e.org_id,e.id) AS attributes OFFSET 0) facts ON true \
+         LEFT JOIN LATERAL (SELECT r.attributes FROM org_unit_revisions r WHERE r.org_id = e.org_id AND r.org_unit_id = e.org_unit_id ORDER BY r.version DESC LIMIT 1) unit ON e.org_unit_id IS NOT NULL \
          LEFT JOIN employee_employment_profiles p \
            ON p.org_id = e.org_id AND p.employee_id = e.id \
          WHERE e.org_id = $1 \
@@ -71,20 +81,25 @@ pub async fn duplicate_candidates(
     .await?;
     Ok(rows
         .into_iter()
-        .map(|(employee_id, status, employee_number, phone_match)| {
-            let remedy = (status == "EXITED").then_some("rehire");
-            DuplicateCandidate {
-                employee_id,
-                status,
-                employee_number,
-                basis: if phone_match {
-                    "name_phone"
-                } else {
-                    "name_birth_date"
-                },
-                remedy,
-            }
-        })
+        .map(
+            |(employee_id, status, employee_number, name, org_unit, hire_date, phone_match)| {
+                let remedy = (status == "EXITED").then_some("rehire");
+                DuplicateCandidate {
+                    employee_id,
+                    status,
+                    employee_number,
+                    name: Some(name),
+                    org_unit,
+                    hire_date,
+                    basis: if phone_match {
+                        "name_phone"
+                    } else {
+                        "name_birth_date"
+                    },
+                    remedy,
+                }
+            },
+        )
         .collect())
 }
 
@@ -158,6 +173,9 @@ mod tests {
             employee_id: Uuid::new_v4(),
             status: status.to_owned(),
             employee_number: None,
+            name: None,
+            org_unit: None,
+            hire_date: None,
             basis: "name_phone",
             remedy: (status == "EXITED").then_some("rehire"),
         }

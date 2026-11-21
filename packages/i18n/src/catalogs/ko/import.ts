@@ -249,6 +249,7 @@ export const koImport: Record<keyof typeof enImport, string> = {
   "import.error.mapping_header_row_out_of_range": "시트에 없는 행을 머리글로 골랐습니다.",
   "import.error.mapping_name_required": "성명 열을 하나 선택하십시오.",
   "import.error.mapping_duplicate_target": "같은 직원 항목을 두 열에 골랐습니다.",
+  "import.error.mapping_restricted_column": "급여·계좌번호·주민등록번호 등 제한 열은 일반 직원 항목으로 연결할 수 없습니다.",
   "import.timedOut": "가져오기 반영이 완료되기 전에 서버 제한 시간을 넘겼습니다. 아무 행도 저장하지 않았습니다. 모의 반영으로 돌아가 확인한 뒤 다시 반영하십시오.",
   "import.crumb": "가져오기",
   "import.steps": "가져오기 단계",

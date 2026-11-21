@@ -40,6 +40,8 @@ pub fn change_request_from_row(row: &PgRow) -> Result<ChangeRequestResponse, HrE
         kind,
         subject_type: row.try_get("subject_type")?,
         subject_id: row.try_get("subject_id")?,
+        subject_name: row.try_get("subject_name").ok().flatten(),
+        subject_number: row.try_get("subject_number").ok().flatten(),
         payload: row.try_get("payload")?,
         reason_code: row.try_get("reason_code")?,
         note: row.try_get("note")?,
@@ -99,46 +101,60 @@ impl HrService {
         let offset = query.offset.unwrap_or(0).max(0);
         let me = *principal.user_id.as_uuid();
 
-        let push_filters = move |builder: &mut QueryBuilder<Postgres>| {
-            builder.push(" FROM change_requests WHERE TRUE");
-            builder.push(" AND (requested_by = ");
-            builder.push_bind(me);
-            builder.push(" OR assignee_user_id = ");
-            builder.push_bind(me);
-            if let Some(reach) = &reach {
-                builder.push(" OR ");
-                push_subject_in_reach(builder, reach, "");
-            }
-            builder.push(")");
-            if filed_only {
-                builder.push(" AND requested_by = ");
-                builder.push_bind(me);
-            }
-            match assignee.as_deref() {
-                Some("me") => {
-                    builder.push(" AND assignee_user_id = ");
-                    builder.push_bind(me);
-                }
-                Some(_) => {
-                    builder.push(" AND assignee_user_id IS NULL");
-                }
-                None => {}
-            }
-            if let Some(status) = status.clone() {
-                builder.push(" AND status = ");
-                builder.push_bind(status);
-            }
-        };
         let org = principal.org_id;
         let (items, total) = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                let mut count = QueryBuilder::<Postgres>::new("SELECT count(*)");
+                let push_filters = |builder: &mut QueryBuilder<Postgres>| {
+                    builder.push(" WHERE TRUE AND (r.requested_by = ");
+                    builder.push_bind(me);
+                    builder.push(" OR r.assignee_user_id = ");
+                    builder.push_bind(me);
+                    if let Some(reach) = &reach {
+                        builder.push(" OR ");
+                        push_subject_in_reach(builder, reach, "r.");
+                    }
+                    builder.push(")");
+                    if filed_only {
+                        builder.push(" AND r.requested_by = ");
+                        builder.push_bind(me);
+                    }
+                    match assignee.as_deref() {
+                        Some("me") => {
+                            builder.push(" AND r.assignee_user_id = ");
+                            builder.push_bind(me);
+                        }
+                        Some(_) => {
+                            builder.push(" AND r.assignee_user_id IS NULL");
+                        }
+                        None => {}
+                    }
+                    if let Some(status) = status.clone() {
+                        builder.push(" AND r.status = ");
+                        builder.push_bind(status);
+                    }
+                };
+                let mut count = QueryBuilder::<Postgres>::new("SELECT count(*) FROM change_requests r");
                 push_filters(&mut count);
                 let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
-                let mut rows = QueryBuilder::<Postgres>::new("SELECT ");
-                rows.push(change_request_columns!());
+                let mut rows = QueryBuilder::<Postgres>::new(
+                    "SELECT r.id, r.kind, r.subject_type, r.subject_id, r.payload, r.reason_code, \
+                     r.note, r.requested_by, r.assignee_role, r.assignee_user_id, r.status, \
+                     r.decided_by, r.decision_reason_code, r.decision_note, r.created_at, r.decided_at, \
+                     CASE WHEN r.subject_type = 'EMPLOYEE' THEN \
+                       COALESCE(console_employee_facts(e.org_id, e.id)->>'legal_name', e.name) \
+                     WHEN r.subject_type = 'USER_ACCOUNT' THEN u.display_name \
+                     WHEN r.subject_type = 'BRANCH' THEN b.name END AS subject_name, \
+                     CASE WHEN r.subject_type = 'EMPLOYEE' THEN e.employee_number END AS subject_number \
+                     FROM change_requests r \
+                     LEFT JOIN person_employees_current e \
+                       ON r.subject_type = 'EMPLOYEE' AND e.org_id = r.org_id AND e.id = r.subject_id \
+                     LEFT JOIN person_accounts_current u \
+                       ON r.subject_type = 'USER_ACCOUNT' AND u.org_id = r.org_id AND u.id = r.subject_id \
+                     LEFT JOIN branches b \
+                       ON r.subject_type = 'BRANCH' AND b.org_id = r.org_id AND b.id = r.subject_id",
+                );
                 push_filters(&mut rows);
-                rows.push(" ORDER BY created_at DESC, id DESC LIMIT ");
+                rows.push(" ORDER BY r.created_at DESC, r.id DESC LIMIT ");
                 rows.push_bind(limit);
                 rows.push(" OFFSET ");
                 rows.push_bind(offset);

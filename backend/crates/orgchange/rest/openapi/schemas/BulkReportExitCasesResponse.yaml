@@ -1,0 +1,7 @@
+type: object
+required: [results]
+properties:
+  results:
+    type: array
+    items:
+      $ref: '#/components/schemas/BulkExitCaseItemResult'

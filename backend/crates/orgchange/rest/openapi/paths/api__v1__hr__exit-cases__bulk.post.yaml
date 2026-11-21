@@ -1,0 +1,41 @@
+tags:
+  - hr
+operationId: bulkReportEmployeeExitCases
+summary: Report exit cases in bulk (up to 500 items)
+description: >-
+  Creates audited employee exit cases in a single idempotent transaction for up
+  to 500 employees using set-based preloading, per-item scope + own-record +
+  guard evaluation, and non-aborting per-item results.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: 16..200 characters. An exact replay returns 200 with the original body; the same key with a
+    different body is 409 conflict.
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/BulkReportExitCasesRequest'
+responses:
+  '200':
+    description: Per-item exit-case reporting results (or exact Idempotency-Key replay).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/BulkReportExitCasesResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

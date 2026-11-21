@@ -1,0 +1,25 @@
+type: object
+required: [employee_id, updated_at, sex, address, careers, exit_reason_code, exit_reason_label, register_note, birth_date]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  updated_at:
+    type: string
+    format: date-time
+  sex:
+    type: [string, 'null']
+    enum: [MALE, FEMALE, null]
+  address:
+    type: [string, 'null']
+  careers:
+    type: [array, 'null']
+    items:
+      $ref: '#/components/schemas/EmployeeCareer'
+  exit_reason_code:
+    type: [string, 'null']
+  exit_reason_label:
+    type: [string, 'null']
+  register_note:
+    type: [string, 'null']
+  birth_date:
+    type: [string, 'null']

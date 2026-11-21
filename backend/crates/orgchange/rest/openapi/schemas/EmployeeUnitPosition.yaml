@@ -1,0 +1,24 @@
+type: object
+required: [org_unit_id, index, total, prev_id, next_id, pre_hire_count]
+properties:
+  org_unit_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  index:
+    type: integer
+    format: int64
+  total:
+    type: integer
+    format: int64
+  prev_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  next_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  pre_hire_count:
+    type: integer
+    format: int64

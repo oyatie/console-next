@@ -3,17 +3,15 @@
 
 use console_hr_domain::text::{normalize_enum_text, parse_yyyy_mm_dd};
 use console_kernel_core::BranchScope;
-use console_platform_authz::{
-    Feature, Principal,
-    cedar_pbac::visible::{EmployeeVisibility, load_facts},
-};
+use console_platform_authz::{Feature, Principal, cedar_pbac::visible::EmployeeVisibility};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, QueryBuilder};
 use time::Date;
 use uuid::Uuid;
 
 use crate::HrError;
-use crate::authz::{HrReach, push_reach};
+use crate::authz::HrReach;
+pub(crate) use crate::directory::read_visibility::{FacetGroup, push_within, visibility};
 
 pub use crate::directory::read_from::{
     counted_employees, filtered_employees, push_facets_from, push_filtered_from,
@@ -46,6 +44,10 @@ pub struct EmployeeListQuery {
     /// Exact employee numbers, comma-separated (`employee_number=A-1,A-2`),
     /// at most [`MAX_EMPLOYEE_NUMBERS`]: resolves a pasted column in one read.
     pub employee_number: Option<String>,
+    /// Exact employee IDs, comma-separated (`ids=<uuid>,<uuid>`), at most
+    /// [`MAX_EMPLOYEE_NUMBERS`]: resolves a selected set without full-roster scan.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ids: Option<String>,
     /// `YYYY-MM-DD`: only employees whose current contract ends strictly
     /// before this date (an expired contract, for a date of tomorrow).
     pub contract_ending_before: Option<String>,
@@ -78,6 +80,7 @@ pub struct EmployeeListFilters {
     pub workplace_id: Option<Uuid>,
     pub statuses: Vec<String>,
     pub employee_numbers: Vec<String>,
+    pub ids: Vec<Uuid>,
     pub contract_ending_before: Option<Date>,
     pub lifecycle_apply_failed: Option<bool>,
     /// Who the reader may see (AX-5: the grant set; a legacy branch role, the
@@ -135,6 +138,22 @@ impl EmployeeListFilters {
                 "employee_number accepts at most 500 values",
             ));
         }
+        let ids: Vec<Uuid> = trimmed(&query.ids)
+            .map(|raw| {
+                raw.split(',')
+                    .map(str::trim)
+                    .filter(|part| !part.is_empty())
+                    .map(|part| {
+                        Uuid::parse_str(part)
+                            .map_err(|_| HrError::validation("ids must contain valid UUIDs"))
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .transpose()?
+            .unwrap_or_default();
+        if ids.len() > MAX_EMPLOYEE_NUMBERS {
+            return Err(HrError::validation("ids accepts at most 500 values"));
+        }
         Ok(Self {
             company: trimmed(&query.company),
             search: trimmed(&query.search),
@@ -147,6 +166,7 @@ impl EmployeeListFilters {
             workplace_id: query.workplace_id,
             statuses,
             employee_numbers,
+            ids,
             contract_ending_before: trimmed(&query.contract_ending_before)
                 .map(|raw| parse_yyyy_mm_dd(&raw))
                 .transpose()?,
@@ -245,6 +265,11 @@ impl EmployeeListFilters {
             builder.push_bind(self.employee_numbers.clone());
             builder.push(")");
         }
+        if !self.ids.is_empty() {
+            builder.push(" AND e.id = ANY(");
+            builder.push_bind(self.ids.clone());
+            builder.push(")");
+        }
     }
 
     /// One facet group's filters as a boolean expression (`TRUE` when none
@@ -312,53 +337,4 @@ impl EmployeeListFilters {
         }
         builder.push(if terms == 0 { "TRUE" } else { ")" });
     }
-}
-
-/// The Cedar-decided visibility of `feature`, for a reader holding it by grant.
-async fn visibility(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
-    principal: &Principal,
-    feature: Feature,
-) -> Result<Option<EmployeeVisibility>, HrError> {
-    if !principal.is_tenant_ops && principal.scopes_for(feature).next().is_none() {
-        return Ok(None);
-    }
-    let facts = load_facts(tx, principal.org_id, *principal.user_id.as_uuid())
-        .await
-        .map_err(HrError::from_kernel)?;
-    facts
-        .visible_employees(feature.as_str())
-        .map(Some)
-        .map_err(|e| HrError::internal(e.to_string()))
-}
-
-fn push_within(
-    builder: &mut QueryBuilder<Postgres>,
-    reach: &HrReach,
-    visibility: &Option<EmployeeVisibility>,
-) {
-    match visibility {
-        Some(visibility) => visibility.push(builder),
-        None => push_reach(builder, reach),
-    }
-}
-
-/// The filter groups a facet chip lifts: each group is counted with every
-/// filter except its own (`read_facets`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum FacetGroup {
-    Status,
-    LegalEntity,
-    Workplace,
-    /// Needs-review flags and the contract window.
-    Review,
-}
-
-impl FacetGroup {
-    const ALL: [Self; 4] = [
-        Self::Status,
-        Self::LegalEntity,
-        Self::Workplace,
-        Self::Review,
-    ];
 }

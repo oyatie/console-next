@@ -1,8 +1,10 @@
 use crate::users::read::DEFAULT_USER_LIMIT;
-use crate::users::rows::fetch_directory_user;
+use crate::users::rows_batch::fetch_directory_users_by_ids_tx;
 use crate::{PgOrgError, PgOrgStore};
-use console_identity_application::{DirectoryListQuery, MAX_DIRECTORY_PAGE_LIMIT, UserPage};
-use console_kernel_core::{BranchScope, KernelError, UserId};
+use console_identity_application::{
+    DirectoryListQuery, MAX_DIRECTORY_PAGE_LIMIT, UserPage, UserSummary,
+};
+use console_kernel_core::{BranchScope, KernelError};
 use console_platform_db::with_org_conn;
 use console_platform_request_context::current_org;
 use sqlx::{Postgres, QueryBuilder};
@@ -110,8 +112,8 @@ impl PgOrgStore {
             .push_bind(offset);
 
         let org = current_org().map_err(KernelError::from)?;
-        let (total, ids) =
-            with_org_conn::<_, (i64, Vec<uuid::Uuid>), PgOrgError>(&self.pool, org, move |tx| {
+        let (total, mut items) =
+            with_org_conn::<_, (i64, Vec<UserSummary>), PgOrgError>(&self.pool, org, move |tx| {
                 Box::pin(async move {
                     let total = count_builder
                         .build_query_scalar::<i64>()
@@ -121,18 +123,15 @@ impl PgOrgStore {
                         .build_query_scalar::<uuid::Uuid>()
                         .fetch_all(tx.as_mut())
                         .await?;
-                    Ok((total, ids))
+                    let items = fetch_directory_users_by_ids_tx(tx, &ids).await?;
+                    Ok((total, items))
                 })
             })
             .await?;
 
-        let mut items = Vec::with_capacity(ids.len());
-        for id in ids {
-            // fetch_user SELECTs users.phone; directory pages must not.
-            let mut user = fetch_directory_user(&self.pool, UserId::from_uuid(id)).await?;
+        for user in &mut items {
             user.branch_ids
                 .retain(|branch| result_scope.allows(*branch));
-            items.push(user);
         }
         Ok(UserPage {
             items,

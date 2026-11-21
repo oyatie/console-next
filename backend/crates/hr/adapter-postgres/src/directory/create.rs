@@ -240,6 +240,7 @@ impl HrService {
         )
         .await?;
         detail.warnings.extend(hire_warning);
+        super::read_warnings::cap_warnings(&mut detail.warnings);
         detail
             .warnings
             .extend(kind.and_then(|kind| minimum_wage_warning(kind, &facts, hire_date)));

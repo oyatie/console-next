@@ -3231,7 +3231,6 @@ dependencies = [
  "console-platform-auth",
  "console-platform-authz",
  "console-platform-db",
- "console-platform-email",
  "console-platform-group",
  "console-platform-provisioning",
  "console-platform-request-context",

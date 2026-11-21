@@ -6,9 +6,7 @@ use crate::config::role::AppRole;
 use crate::error::AppError;
 use crate::state::DatabaseDependency;
 use console_platform_auth_rest::AuthRestState;
-use console_platform_email::EmailSender;
 use console_platform_provisioning::{BootstrapCredentialStore, OtpHmacKey};
-use std::sync::Arc;
 
 pub(crate) fn resolve_otp_hmac_key(
     config: &AppConfig,
@@ -65,15 +63,13 @@ pub(crate) fn resolve_otp_hmac_key_for_profile(
 pub(crate) fn build_auth_rest_state(
     config: &AppConfig,
     database: &DatabaseDependency,
-    email_sender: &Arc<dyn EmailSender>,
     otp_hmac_key: Option<&OtpHmacKey>,
 ) -> Result<Option<AuthRestState>, AppError> {
     match database {
         DatabaseDependency::Postgres(pool) => match &config.auth_rest {
             Some(auth_config) => {
                 let mut state = AuthRestState::new(pool.clone(), auth_config.clone())
-                    .map_err(|err| AppError::Config(format!("invalid auth REST config: {err}")))?
-                    .with_email_sender(email_sender.clone());
+                    .map_err(|err| AppError::Config(format!("invalid auth REST config: {err}")))?;
                 if let Some(key) = otp_hmac_key {
                     state = state
                         .with_bootstrap_credentials(BootstrapCredentialStore::new(key.clone()));
