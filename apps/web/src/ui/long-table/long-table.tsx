@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type CellProps, type ColumnProps, type SortDescriptor } from "react-aria-components";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Minus } from "lucide-react";
 import { t } from "@console/i18n";
 import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type Selection } from "./selection";
 import { DisabledReason } from "../disabled-reason/disabled-reason";
@@ -252,7 +252,7 @@ export function LongTable<R>(p: {
           <TableHeader className={css.head} columns={cols}>
             {(c) => (
               <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={`${css.th} ${cardLayout ? (c.id === SELECT ? css.selectHead : cards.visuallyHidden) : ""}`}>
-                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}><Box />{cardLayout && toggleLabel}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
+                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}>{({ isSelected, isIndeterminate }) => <><Box selected={isSelected} indeterminate={isIndeterminate} />{cardLayout && toggleLabel}</>}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}
           </TableHeader>
@@ -268,7 +268,7 @@ export function LongTable<R>(p: {
                 return (
                   <Row id={rowKey(id)} columns={cols} className={css.row} render={props => <div {...props} data-row-id={id} aria-rowindex={indices.get(id)! + 1} />} onHoverStart={p.onRowHover && (() => hover.start(id))} onHoverEnd={hover.cancel}>
                     {(c) => {
-                      const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r);
+                      const render = () => c.id === SELECT ? <Checkbox slot="selection" className={css.check}>{({ isSelected, isIndeterminate }) => <Box selected={isSelected} indeterminate={isIndeterminate} />}</Checkbox> : c.cell(r);
                       // Collection metadata needs row names; offscreen form controls can wait for a visible cell.
                       const value = p.editable && !c.rowHeader ? render : render();
                       return <Cell data-type={c.type} focusMode={c.focusMode} allowsArrowNavigation className={css.td} render={(props, { id: cellKey }) => {
@@ -306,7 +306,7 @@ export function LongTable<R>(p: {
   );
 }
 
-const Box = () => <span className={css.box} aria-hidden="true" />;
+const Box = ({ selected, indeterminate }: { selected?: boolean; indeterminate?: boolean }) => <bdi className={css.box} aria-hidden="true">{indeterminate ? <Minus size={12} strokeWidth={3} /> : selected ? <Check size={12} strokeWidth={3} /> : null}</bdi>;
 
 /**
  * The first page's placeholder: the table's columns and rows as grey bars, announced once as loading. CSS shows

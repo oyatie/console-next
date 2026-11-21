@@ -72,7 +72,7 @@ export function usePasskeysContent({
     remove.reset();
   };
   const closeNaming = () => {
-    if (add.isPending || rename.isPending) return;
+    if (add.isSending || rename.isSending) return;
     setNaming(null);
     add.reset();
     rename.reset();
@@ -151,7 +151,7 @@ export function usePasskeysContent({
           </Field>}
         </QueryState>
         <ActionBar notice={<PasskeyError error={editing ? rename.error : add.error} />} actions={<>
-          <Button disabled={add.isPending || rename.isPending} onClick={closeNaming}>{t("composer.dismiss")}</Button>
+          <Button disabled={add.isSending || rename.isSending} onClick={closeNaming}>{t("composer.dismiss")}</Button>
           <Button variant="primary" disabled={add.isPending || rename.isPending || policy.isError || max === undefined || invalidLabel || (!!editing && !label.trim())} onClick={() => {
             if (policy.isError || max === undefined || invalidLabel) return;
             if (editing) rename.mutate({ id: editing.id, label: label.trim() });

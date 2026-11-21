@@ -191,6 +191,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ── controls ──────────────────────────────────────── */
 .btn { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink); text-decoration: none; min-height: var(--control-h); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-size: var(--control-text); font-weight: var(--fw-medium); cursor: pointer; }
 :where([data-experience]:not([data-experience="baseline"])) .btn { border-color: var(--control-border); }
+:where([data-experience]:not([data-experience="baseline"])) :where(.btn:not(.btn--block)) { white-space: nowrap; flex-shrink: 0; }
 .btn:hover { background: var(--surface-hover); }
 .btn--primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .btn--primary:hover { background: var(--primary-hover); }
@@ -218,6 +219,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .field__label { font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
 .field__input { height: var(--field-h); max-width: 100%; padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
 :where([data-experience]:not([data-experience="baseline"])) select.field__input {
+  min-width: 0;
+  max-width: 100%;
   appearance: none;
   padding-inline-end: var(--space-6);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2355616d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -281,6 +284,7 @@ aside.panel { position: sticky; top: 0; }
 
 /* ── chips and states ──────────────────────────────── */
 .chip { display: inline-flex; align-items: center; height: calc(var(--space-5) - var(--space-1)); padding: 0 var(--space-2); border-radius: var(--radius-sm); border: 1px solid; font-size: var(--text-xs); font-weight: var(--fw-medium); white-space: nowrap; }
+:where([data-experience]:not([data-experience="baseline"])) :where(.chip) { flex-shrink: 0; }
 .chip--ok { background: var(--ok-bg); border-color: var(--ok-bd); color: var(--ok-tx); }
 .chip--warn { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--warn-tx); }
 .chip--danger { background: var(--danger-bg); border-color: var(--danger-bd); color: var(--danger-tx); }

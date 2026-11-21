@@ -47,6 +47,7 @@
   background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow-pop);
+  overscroll-behavior: contain;
 }
 
 .accountItem {

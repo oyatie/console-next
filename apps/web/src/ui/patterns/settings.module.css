@@ -1,0 +1,47 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.summary {
+  min-width: 0;
+  border-block-end: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.views {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .panel :is(select, input, textarea),
+:where([data-experience]:not([data-experience="baseline"])) .views :is(select, input, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .panel > section,
+:where([data-experience]:not([data-experience="baseline"])) .panel > div > section {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border-block-end: 1px solid var(--border);
+}
+
+@media (--phone) {
+  .views :is(a, button),
+  .panel :is(a, button) {
+    min-height: var(--target-touch);
+  }
+}

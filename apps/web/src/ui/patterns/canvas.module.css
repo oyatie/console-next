@@ -1,0 +1,98 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--border);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.stageArea {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.paneWrap {
+  display: flex;
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-3);
+  gap: var(--space-3);
+}
+
+.canvasHost {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: calc(var(--row-h) * 12);
+}
+
+.inspectorAside {
+  position: sticky;
+  top: 0;
+  max-height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--panel-w);
+  width: var(--panel-w);
+  min-width: 0;
+  border-inline-start: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .toolbar :is(select, input, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (--below-wide) {
+  .stageArea {
+    flex-direction: column;
+  }
+
+  .inspectorAside {
+    position: static;
+    max-height: none;
+    flex: none;
+    width: 100%;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--border-strong);
+  }
+}
+
+@media (--phone) {
+  .toolbar {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .workspace {
+    padding: var(--space-2);
+  }
+}

@@ -21,10 +21,11 @@ import { modules, screenAccess, token } from "../../../../e2e/mock/fixtures";
 import { invalidatePaths, navigationRead } from "../lib/query";
 
 const child = vi.hoisted(() => vi.fn(() => "private page"));
+const locationState = vi.hoisted(() => ({ pathname: "/people" }));
 vi.mock("react", async original => ({ ...await original<typeof import("react")>(), useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown) => snapshot() }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>, Outlet: () => child(),
-  useNavigate: () => vi.fn(), useLocation: () => ({ pathname: "/people" }),
+  useNavigate: () => vi.fn(), useLocation: () => ({ pathname: locationState.pathname }),
   useRouter: () => ({ routesByPath: Object.fromEntries([
     ["/", "signed-in"], ["/requests", "signed-in"], ["/people/requests", "signed-in"],
     ["/people", { domain: "hr_basic", level: "view" }], ["/audit/support-access", "signed-in"],
@@ -304,7 +305,14 @@ test("ConsoleShell trims whitespace-only profile fields before composing display
     );
     expect(whitespaceRoleHtml).toContain(">Seoyeon Moon</bdi>");
     expect(whitespaceRoleHtml).not.toContain("Seoyeon Moon ·");
+    locationState.pathname = "/account";
+    const acctConsole = renderToStaticMarkup(<QueryClientProvider client={client}><ConsolePack><h1>{t("shell.profile")}</h1></ConsolePack></QueryClientProvider>);
+    const statusArea = acctConsole.split(`aria-label="${t("shell.status.label")}"`)[1] ?? "";
+    expect(statusArea).toContain(t("shell.profile"));
+    expect(statusArea).not.toContain(t("shell.account"));
+    expect(renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>)).toContain(t("shell.account"));
   } finally {
+    locationState.pathname = "/people";
     vi.stubGlobal("document", origDocument);
     session.set(null);
     client.clear();

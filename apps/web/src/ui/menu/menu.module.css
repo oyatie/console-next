@@ -1,5 +1,5 @@
 /* ui/menu: a command menu (personnel action ▾, ⋯). Tokens only. */
-.pop { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); min-width: calc(var(--panel-w) / 1.6); max-width: var(--panel-w); }
+.pop { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); min-width: calc(var(--panel-w) / 1.6); max-width: var(--panel-w); overscroll-behavior: contain; }
 .menu { outline: none; padding: var(--space-1); display: flex; flex-direction: column; }
 .item { display: grid; grid-template-columns: 1fr auto; gap: 0 var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); cursor: pointer; outline: none; font-size: var(--text-sm); }
 .item[data-focused] { background: var(--primary-soft); box-shadow: var(--selected-bar); }
