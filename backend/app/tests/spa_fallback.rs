@@ -71,7 +71,7 @@ async fn spa_is_served_as_fallback_with_cache_and_security_headers() {
         assert_eq!(headers[header::CACHE_CONTROL], "no-cache");
         let csp = headers[header::CONTENT_SECURITY_POLICY].to_str().unwrap();
         assert!(csp.contains("default-src 'self'") && csp.contains("frame-ancestors 'none'"));
-        assert!(csp.contains("connect-src 'self';"));
+        assert!(csp.contains("connect-src 'self' https://status.cosskorea.com;"));
         assert!(csp.contains("object-src 'none';"));
         assert!(csp.contains("base-uri 'none';"));
         assert_eq!(headers[header::CONTENT_TYPE], "text/html; charset=utf-8");
@@ -161,7 +161,10 @@ async fn spa_csp_allows_only_the_configured_object_store_origin() {
         .find(|directive| directive.trim_start().starts_with("connect-src "))
         .unwrap()
         .trim();
-    assert_eq!(connect, "connect-src 'self' https://objects.example.test");
+    assert_eq!(
+        connect,
+        "connect-src 'self' https://status.cosskorea.com https://objects.example.test"
+    );
     assert!(!csp.contains("*"));
     assert!(!csp.contains("/storage"));
 

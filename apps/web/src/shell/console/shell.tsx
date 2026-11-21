@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { Settings } from "lucide-react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { session } from "@console/api";
-import { t } from "@console/i18n";
+import { i18n, t } from "@console/i18n";
+import { healthStatus, pickLocalized, STATUS_PAGE_URL } from "../../features/health/api/active-status";
 import { chunk } from "../../lib/chunk-guard";
 import { useKeys } from "../../lib/react/use-keys";
 import { personName } from "../../reference/person/present";
@@ -35,12 +36,10 @@ function getPhoneSnapshot() {
   return window.matchMedia(PHONE_QUERY).matches;
 }
 
-const ConsolePhoneTop = lazy(() =>
-  chunk(import("./console-phone-chrome")).then(m => ({ default: m.ConsolePhoneTop })),
-);
-const ConsolePhoneBottom = lazy(() =>
-  chunk(import("./console-phone-chrome")).then(m => ({ default: m.ConsolePhoneBottom })),
-);
+const ConsolePhoneTop = lazy(() => chunk(import("./console-phone-chrome")).then(m => ({ default: m.ConsolePhoneTop })));
+const ConsolePhoneBottom = lazy(() => chunk(import("./console-phone-chrome")).then(m => ({ default: m.ConsolePhoneBottom })));
+const OutageBanner = lazy(() => chunk(import("../../ui/live/outage-banner")).then(m => ({ default: m.OutageBanner })));
+const StalenessBar = lazy(() => chunk(import("../../ui/live/staleness-bar")).then(m => ({ default: m.StalenessBar })));
 
 function tabIconForHref(href: string, allLinks: readonly NavLink[]): ReactNode {
   const cut = href.search(/[?#]/);
@@ -76,7 +75,13 @@ function ConsoleLayout({
   const navigate = useNavigate();
   const isPhone = useSyncExternalStore(subscribePhoneQuery, getPhoneSnapshot, () => false);
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
-  const { inboxCount, inboxExact, approvalsCount } = useConsoleCounts(!platform && Boolean(session.token) && !restoring);
+  const locale = useSyncExternalStore(i18n.subscribe, () => i18n.locale, () => i18n.locale);
+  const noticesActive = !platform && !restoring && Boolean(session.token);
+  const notices = useSyncExternalStore(healthStatus.subscribe, healthStatus.get, healthStatus.get);
+  useEffect(() => healthStatus.mount(noticesActive), [noticesActive]);
+  const showOutage = noticesActive && notices.outage !== null;
+  const showStale = noticesActive && notices.stale;
+  const { inboxCount, inboxExact, approvalsCount } = useConsoleCounts(noticesActive);
 
   const allLinks: readonly NavLink[] = useMemo(() => menu?.flatMap(group => group.links) ?? [], [menu]);
   const currentModuleTo = useMemo(
@@ -226,6 +231,15 @@ function ConsoleLayout({
           </div>
         ) : null}
 
+        {showOutage || showStale ? (
+          <section aria-label={t("live.noticesLabel")} className={s.noticesArea}>
+            {showOutage && notices.outage ? (
+              <Suspense fallback={null}><OutageBanner severity={notices.outage.severity} title={notices.outage.title ? pickLocalized(notices.outage.title, locale) : null} affected={notices.outage.affected.map(item => pickLocalized(item, locale))} statusPageHref={STATUS_PAGE_URL} retrying={notices.retrying} onRetry={() => void healthStatus.retry()} /></Suspense>
+            ) : null}
+            {showStale ? <Suspense fallback={null}><StalenessBar lastEventAt={notices.lastEventAt} /></Suspense> : null}
+          </section>
+        ) : null}
+
         {children}
 
         {!isPhone ? (
@@ -259,18 +273,8 @@ function ConsoleLayout({
   );
 }
 
-function ConsoleStatusBar({
-  platform,
-  tenantName,
-  currentTitle,
-  inboxCount,
-  inboxExact,
-}: {
-  platform?: boolean;
-  tenantName?: string;
-  currentTitle: string;
-  inboxCount?: number;
-  inboxExact: boolean;
+function ConsoleStatusBar({ platform, tenantName, currentTitle, inboxCount, inboxExact }: {
+  platform?: boolean; tenantName?: string; currentTitle: string; inboxCount?: number; inboxExact: boolean;
 }) {
   const publishedSegments = usePublishedStatusBar();
   const statusSegments = useMemo(() => {

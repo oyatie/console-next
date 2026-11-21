@@ -1,6 +1,8 @@
 //! JWT verifier, auth-REST, support issuer and policy step-up configuration.
 
 use crate::config::DEFAULT_AUTH_CEREMONY_TTL_SECS;
+use crate::config::DEFAULT_JWT_AUDIENCE;
+use crate::config::DEFAULT_JWT_ISSUER;
 use crate::config::DEFAULT_REFRESH_FAMILY_ABSOLUTE_TTL_SECS;
 use crate::config::DEFAULT_REFRESH_TOKEN_TTL_SECS;
 use crate::config::DEFAULT_WEBAUTHN_RP_NAME;
@@ -129,6 +131,37 @@ pub(crate) fn otp_hmac_key_from_vars(
     }
 }
 
+pub(crate) fn jwt_verifier_from_vars(
+    vars: &HashMap<String, String>,
+) -> Result<Option<JwtVerifierConfig>, AppError> {
+    let jwt_public_key_pem = non_empty(vars.get("CONSOLE_JWT_PUBLIC_KEY_PEM"));
+    let access_token_ttl = access_token_ttl_from_vars(vars)?;
+    let jwt_has_partial_config = jwt_public_key_pem.is_none()
+        && (non_empty(vars.get("CONSOLE_JWT_ISSUER")).is_some()
+            || non_empty(vars.get("CONSOLE_JWT_AUDIENCE")).is_some());
+    if jwt_has_partial_config {
+        return Err(AppError::Config(
+            "CONSOLE_JWT_PUBLIC_KEY_PEM is required when JWT issuer/audience is configured"
+                .to_owned(),
+        ));
+    }
+    jwt_public_key_pem
+        .map(|current| {
+            Ok(JwtVerifierConfig {
+                issuer: non_empty(vars.get("CONSOLE_JWT_ISSUER"))
+                    .unwrap_or_else(|| DEFAULT_JWT_ISSUER.to_owned()),
+                audience: non_empty(vars.get("CONSOLE_JWT_AUDIENCE"))
+                    .unwrap_or_else(|| DEFAULT_JWT_AUDIENCE.to_owned()),
+                access_token_ttl,
+                public_key_pem: verification_key_set(
+                    current,
+                    non_empty(vars.get("CONSOLE_JWT_ROTATION_PUBLIC_KEYS")),
+                )?,
+            })
+        })
+        .transpose()
+}
+
 pub(crate) fn auth_rest_config_from_vars(
     vars: &HashMap<String, String>,
     jwt: Option<&JwtVerifierConfig>,
@@ -205,7 +238,7 @@ pub(crate) fn access_token_ttl_from_vars(
 
 /// HTTPS deployment flag (including SPA HSTS), disabled for local HTTP dev.
 /// Refresh cookies always carry Secure to satisfy the __Host- prefix.
-fn parse_cookie_secure(raw: Option<&String>) -> Result<bool, AppError> {
+pub(crate) fn parse_cookie_secure(raw: Option<&String>) -> Result<bool, AppError> {
     match non_empty(raw) {
         Some(value) => value
             .parse::<bool>()

@@ -5,14 +5,11 @@ use crate::config::AppConfig;
 use crate::config::DEFAULT_COLDSTART_OTP_TTL_SECS;
 use crate::config::DEFAULT_EVIDENCE_TRANSCODE_CONCURRENCY;
 use crate::config::DEFAULT_HTTP_ADDR;
-use crate::config::DEFAULT_JWT_AUDIENCE;
-use crate::config::DEFAULT_JWT_ISSUER;
 use crate::config::DEFAULT_SERVICE_NAME;
 use crate::config::DEFAULT_SHUTDOWN_TIMEOUT_SECS;
 use crate::config::REQUEST_TIMEOUT;
-use crate::config::auth::access_token_ttl_from_vars;
 use crate::config::auth::auth_rest_config_from_vars;
-use crate::config::auth::{JwtVerifierConfig, verification_key_set};
+use crate::config::auth::jwt_verifier_from_vars;
 use crate::config::database::validate_database_urls;
 use crate::config::db_pool::DbPoolConfig;
 use crate::config::dispatch::dispatch_timer_config_from_vars;
@@ -23,12 +20,14 @@ use crate::config::notify::fcm_config_from_vars;
 use crate::config::notify::solapi_config_from_vars;
 use crate::config::office;
 use crate::config::parse::non_empty;
+use crate::config::parse::parse_base64_key_32;
+use crate::config::parse::parse_bool;
+use crate::config::parse::parse_duration_secs;
 use crate::config::parse::parse_time_duration_secs;
 use crate::config::proxy::parse_trusted_proxy_cidrs;
 use crate::config::proxy::parse_trusted_proxy_count;
 use crate::config::storage::storage_config_from_vars;
 use crate::error::AppError;
-use base64::Engine as _;
 use console_kernel_core::OrgId;
 #[cfg(any(debug_assertions, feature = "e2e-test-support"))]
 use console_platform_email::StubEmailMode;
@@ -88,41 +87,18 @@ impl AppConfig {
             platform_force_command_database_url.as_deref(),
         )?;
         let otlp_endpoint = non_empty(vars.get("OTEL_EXPORTER_OTLP_ENDPOINT"));
-        let jwt_public_key_pem = non_empty(vars.get("CONSOLE_JWT_PUBLIC_KEY_PEM"));
-        let access_token_ttl = access_token_ttl_from_vars(&vars)?;
-        let jwt_has_partial_config = jwt_public_key_pem.is_none()
-            && (non_empty(vars.get("CONSOLE_JWT_ISSUER")).is_some()
-                || non_empty(vars.get("CONSOLE_JWT_AUDIENCE")).is_some());
-        if jwt_has_partial_config {
-            return Err(AppError::Config(
-                "CONSOLE_JWT_PUBLIC_KEY_PEM is required when JWT issuer/audience is configured"
-                    .to_owned(),
-            ));
-        }
-        let jwt = jwt_public_key_pem
-            .map(|current| {
-                Ok::<_, AppError>(JwtVerifierConfig {
-                    issuer: non_empty(vars.get("CONSOLE_JWT_ISSUER"))
-                        .unwrap_or_else(|| DEFAULT_JWT_ISSUER.to_owned()),
-                    audience: non_empty(vars.get("CONSOLE_JWT_AUDIENCE"))
-                        .unwrap_or_else(|| DEFAULT_JWT_AUDIENCE.to_owned()),
-                    access_token_ttl,
-                    public_key_pem: verification_key_set(
-                        current,
-                        non_empty(vars.get("CONSOLE_JWT_ROTATION_PUBLIC_KEYS")),
-                    )?,
-                })
-            })
-            .transpose()?;
+        let jwt = jwt_verifier_from_vars(&vars)?;
+        let cookie_secure =
+            crate::config::auth::parse_cookie_secure(vars.get("CONSOLE_COOKIE_SECURE"))?;
+        let status_origin = crate::config::status::status_origin_from_vars(&vars, cookie_secure)?;
         let auth_rest = auth_rest_config_from_vars(&vars, jwt.as_ref())?;
         let storage = storage_config_from_vars(&vars)?;
         let dispatch_timers = dispatch_timer_config_from_vars(&vars)?;
-        let dispatch_jobs_enabled = match vars.get("CONSOLE_DISPATCH_JOBS_ENABLED") {
-            Some(raw) => raw.parse::<bool>().map_err(|err| {
-                AppError::Config(format!("invalid CONSOLE_DISPATCH_JOBS_ENABLED: {err}"))
-            })?,
-            None => true,
-        };
+        let dispatch_jobs_enabled = parse_bool(
+            vars.get("CONSOLE_DISPATCH_JOBS_ENABLED"),
+            true,
+            "CONSOLE_DISPATCH_JOBS_ENABLED",
+        )?;
         let evidence_transcode_concurrency =
             match vars.get("CONSOLE_EVIDENCE_TRANSCODE_CONCURRENCY") {
                 Some(raw) => raw
@@ -151,18 +127,16 @@ impl AppConfig {
                     .to_owned(),
             ));
         }
-        let shutdown_timeout = match vars.get("CONSOLE_SHUTDOWN_TIMEOUT_SECS") {
-            Some(raw) => raw.parse::<u64>().map(Duration::from_secs).map_err(|err| {
-                AppError::Config(format!("invalid CONSOLE_SHUTDOWN_TIMEOUT_SECS: {err}"))
-            })?,
-            None => Duration::from_secs(DEFAULT_SHUTDOWN_TIMEOUT_SECS),
-        };
-        let request_timeout = match vars.get("CONSOLE_REQUEST_TIMEOUT_SECS") {
-            Some(raw) => raw.parse::<u64>().map(Duration::from_secs).map_err(|err| {
-                AppError::Config(format!("invalid CONSOLE_REQUEST_TIMEOUT_SECS: {err}"))
-            })?,
-            None => REQUEST_TIMEOUT,
-        };
+        let shutdown_timeout = parse_duration_secs(
+            vars.get("CONSOLE_SHUTDOWN_TIMEOUT_SECS"),
+            Duration::from_secs(DEFAULT_SHUTDOWN_TIMEOUT_SECS),
+            "CONSOLE_SHUTDOWN_TIMEOUT_SECS",
+        )?;
+        let request_timeout = parse_duration_secs(
+            vars.get("CONSOLE_REQUEST_TIMEOUT_SECS"),
+            REQUEST_TIMEOUT,
+            "CONSOLE_REQUEST_TIMEOUT_SECS",
+        )?;
         let db_pool = DbPoolConfig::from_vars(|name| vars.get(name).cloned())?;
         let coldstart_otp = non_empty(vars.get("CONSOLE_COLDSTART_OTP"));
         let coldstart_otp_ttl = parse_time_duration_secs(
@@ -178,30 +152,25 @@ impl AppConfig {
             trusted_proxy_count,
         )?;
         let app_links = app_links_config_from_vars(&vars);
-        let mail_enabled = match vars.get("CONSOLE_MAIL_ENABLED") {
-            Some(raw) => raw
-                .parse::<bool>()
-                .map_err(|err| AppError::Config(format!("invalid CONSOLE_MAIL_ENABLED: {err}")))?,
-            None => false,
-        };
+        let mail_enabled = parse_bool(
+            vars.get("CONSOLE_MAIL_ENABLED"),
+            false,
+            "CONSOLE_MAIL_ENABLED",
+        )?;
         let mail_mox_base_url = non_empty(vars.get("CONSOLE_MAIL_MOX_BASE_URL"));
         let mail_mox_webhook_secret = non_empty(vars.get("CONSOLE_MAIL_MOX_WEBHOOK_SECRET"));
-        let audit_chain_seal_enabled = match vars.get("CONSOLE_AUDIT_CHAIN_SEAL_ENABLED") {
-            Some(raw) => raw.parse::<bool>().map_err(|err| {
-                AppError::Config(format!("invalid CONSOLE_AUDIT_CHAIN_SEAL_ENABLED: {err}"))
-            })?,
-            None => false,
-        };
+        let audit_chain_seal_enabled = parse_bool(
+            vars.get("CONSOLE_AUDIT_CHAIN_SEAL_ENABLED"),
+            false,
+            "CONSOLE_AUDIT_CHAIN_SEAL_ENABLED",
+        )?;
         let audit_chain_external =
             audit_chain_signer::external_config_from_vars(|key| non_empty(vars.get(key)))?;
-        let audit_chain_allow_dev_signer = match vars.get("CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER") {
-            Some(raw) => raw.parse::<bool>().map_err(|err| {
-                AppError::Config(format!(
-                    "invalid CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER: {err}"
-                ))
-            })?,
-            None => false,
-        };
+        let audit_chain_allow_dev_signer = parse_bool(
+            vars.get("CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER"),
+            false,
+            "CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER",
+        )?;
         let storefront_org = match non_empty(vars.get("STOREFRONT_ORG_ID")) {
             Some(raw) => Some(
                 OrgId::from_str(&raw)
@@ -211,25 +180,10 @@ impl AppConfig {
         };
         let office = office::office_config_from_vars(|key| non_empty(vars.get(key)))
             .map_err(AppError::Config)?;
-        let production_service_principal_hmac_key =
-            non_empty(vars.get("CONSOLE_PRODUCTION_SERVICE_PRINCIPAL_HMAC_KEY"))
-                .map(|encoded| {
-                    let bytes = base64::engine::general_purpose::STANDARD
-                        .decode(encoded)
-                        .map_err(|_| {
-                            AppError::Config(
-                                "CONSOLE_PRODUCTION_SERVICE_PRINCIPAL_HMAC_KEY must be base64"
-                                    .to_owned(),
-                            )
-                        })?;
-                    bytes.try_into().map_err(|_: Vec<u8>| {
-                        AppError::Config(
-                    "CONSOLE_PRODUCTION_SERVICE_PRINCIPAL_HMAC_KEY must decode to exactly 32 bytes"
-                        .to_owned(),
-                )
-                    })
-                })
-                .transpose()?;
+        let production_service_principal_hmac_key = parse_base64_key_32(
+            vars.get("CONSOLE_PRODUCTION_SERVICE_PRINCIPAL_HMAC_KEY"),
+            "CONSOLE_PRODUCTION_SERVICE_PRINCIPAL_HMAC_KEY",
+        )?;
         // INF-06: the published dev OTP never boots, whatever the cookie setting.
         crate::coldstart_guard::refuse_dev_literal(coldstart_otp.as_deref())
             .map_err(AppError::Config)?;
@@ -272,6 +226,8 @@ impl AppConfig {
             support_log_query_url: non_empty(vars.get("CONSOLE_SUPPORT_LOG_QUERY_URL")),
             jwt,
             auth_rest,
+            cookie_secure,
+            status_origin,
             storage,
             juso: console_entity_adapter_juso::JusoConfig::from_lookup(|k| vars.get(k).cloned()),
             nts: console_entity_adapter_nts::NtsConfig::from_lookup(|k| vars.get(k).cloned()),
@@ -309,82 +265,5 @@ impl AppConfig {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::config::AppConfig;
-
-    #[test]
-    fn from_pairs_applies_dev_audit_chain_signer_guard_for_active_build_profile() {
-        for seal_enabled in ["false", "true"] {
-            let result = AppConfig::from_pairs([
-                ("CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER", "true"),
-                ("CONSOLE_AUDIT_CHAIN_SEAL_ENABLED", seal_enabled),
-            ]);
-            if cfg!(debug_assertions) {
-                assert!(result.unwrap().audit_chain_allow_dev_signer);
-            } else {
-                let error = result.expect_err("release builds must reject the development signer");
-                assert!(
-                    error
-                        .to_string()
-                        .contains("CONSOLE_AUDIT_CHAIN_ALLOW_DEV_SIGNER"),
-                    "unexpected config error: {error}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn from_pairs_rejects_malformed_otp_hmac_key_in_all_profiles() {
-        for role in ["api", "worker"] {
-            for bad in ["not-hex-or-b64", "00".repeat(32).as_str(), "abcd"] {
-                let err = AppConfig::from_pairs([
-                    ("CONSOLE_APP_ROLE", role),
-                    ("CONSOLE_OTP_HMAC_KEY", bad),
-                ])
-                .expect_err("malformed CONSOLE_OTP_HMAC_KEY must fail");
-                assert!(err.to_string().contains("CONSOLE_OTP_HMAC_KEY"), "{err}");
-                assert!(!err.to_string().contains(bad), "error must not echo key");
-            }
-            let err = AppConfig::from_pairs([
-                ("CONSOLE_APP_ROLE", role),
-                ("CONSOLE_OTP_HMAC_KEY_PREV", &"11".repeat(32)),
-            ])
-            .expect_err("prev without active key must fail");
-            assert!(err.to_string().contains("CONSOLE_OTP_HMAC_KEY"), "{err}");
-        }
-    }
-
-    #[test]
-    fn from_pairs_allows_worker_with_postgres_and_without_otp_hmac_key() {
-        let config = AppConfig::from_pairs([
-            ("CONSOLE_APP_ROLE", "worker"),
-            (
-                "DATABASE_URL",
-                "postgresql://console_rt:runtime-secret@db/console",
-            ),
-            (
-                "PLATFORM_FORCE_COMMAND_DATABASE_URL",
-                "postgresql://console_platform_force_cmd:force-secret@db/console",
-            ),
-        ])
-        .expect("worker role does not require CONSOLE_OTP_HMAC_KEY");
-        assert!(config.otp_hmac_key.is_none());
-    }
-
-    #[test]
-    fn from_pairs_applies_dev_auth_guard_for_active_build_profile() {
-        let result = AppConfig::from_pairs([("CONSOLE_DEV_AUTH", "true")]);
-
-        if cfg!(debug_assertions) {
-            assert!(result.is_ok(), "debug builds allow the dev-auth marker");
-        } else {
-            let error = result.expect_err("release builds must reject the dev-auth marker");
-            assert!(
-                error
-                    .to_string()
-                    .contains("dev authentication is not allowed in a non-development build"),
-                "unexpected config error: {error}"
-            );
-        }
-    }
-}
+#[path = "env_tests.rs"]
+mod tests;

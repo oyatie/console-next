@@ -9,7 +9,6 @@ import { singleKeysOn } from "../../lib/prefs";
 import { todayKst } from "../../lib/pure/today";
 import { Avatar } from "../../ui/avatar/avatar";
 import { Kbd } from "../../ui/kbd/kbd";
-import { LiveStatus } from "../../ui/live/live-status";
 import { ModuleNavBar, type ModuleNavItem } from "../../ui/module-nav/module-nav";
 import { Skeleton } from "../../ui/skeleton/skeleton";
 import { TENANT_NAV } from "../nav";
@@ -157,7 +156,6 @@ export function ConsoleTopBar({
 
           <div className={s.metaCluster}>
             <bdi className={s.dateText}>{formatTodayShort(i18n.locale)}</bdi>
-            <LiveStatus />
             {!platform ? <SupportAccessIndicator /> : null}
             <ConsoleAccountSlot id="console-top-account" name={displayName} />
           </div>
