@@ -47,31 +47,47 @@ test("Canvas pattern passes WCAG 2.2 AA matrix, fits 390px and 320px, zooms OrgC
   expect(await page.locator('[role="treeitem"][tabindex="0"]').count()).toBe(1);
   expect(await page.locator('#node-root[tabindex="0"]').count()).toBe(1);
 
-  // Regression: fresh 390x844 load and 1440 -> 390 resize keep all visible nodes inside .viewport without overlapping .zoom.
+  // Regression: fresh 390x844 load and 1440 -> 390 resize keep all visible nodes inside .viewport without overlapping .zoom
+  // and keep .canvasFoot inside the real 390x844 viewport without vertical overflow.
   await page.getByRole("button", { name: tg("pat.canvas.depthAll"), exact: true }).click();
   await setConsoleViewport(page, 390, 844);
   const check390Geometry = async () => {
     await expect.poll(async () => {
       const geom = await page.evaluate(() => {
+        const main = document.querySelector<HTMLElement>("main");
         const vp = document.querySelector('[data-pattern="canvas"] section > div')!.getBoundingClientRect();
         const zoom = document.querySelector('[data-pattern="canvas"] [role="group"]')!.getBoundingClientRect();
+        const foot = document.querySelector<HTMLElement>('[class*="canvasFoot"]')?.getBoundingClientRect();
         const nodes = [...document.querySelectorAll<HTMLElement>('[id^="node-"]')].map(el => {
           const r = el.getBoundingClientRect();
           return {
             id: el.id,
             insideVp: r.left >= vp.left - 0.5 && r.right <= vp.right + 0.5 && r.top >= vp.top - 0.5 && r.bottom <= vp.bottom + 0.5,
             overlapsZoom: r.left < zoom.right && r.right > zoom.left && r.top < zoom.bottom && r.bottom > zoom.top,
+            overlapsFoot: foot ? r.left < foot.right && r.right > foot.left && r.top < foot.bottom && r.bottom > foot.top : false,
             topOffset: Math.round(r.top - vp.top),
           };
         });
+        const mainRect = main?.getBoundingClientRect();
         return {
           count: nodes.length,
           allInside: nodes.every(n => n.insideVp),
           noneOverlapsZoom: nodes.every(n => !n.overlapsZoom),
+          noneOverlapsFoot: nodes.every(n => !n.overlapsFoot),
           firstTopOffset: nodes[0]?.topOffset ?? 999,
+          mainFits: main ? main.scrollHeight <= main.clientHeight + 0.5 : true,
+          footVisible: Boolean(foot && mainRect && foot.bottom <= mainRect.bottom + 0.5 && foot.bottom <= window.innerHeight + 0.5),
         };
       });
-      return geom.count === 4 && geom.allInside && geom.noneOverlapsZoom && geom.firstTopOffset < 60;
+      return (
+        geom.count === 4 &&
+        geom.allInside &&
+        geom.noneOverlapsZoom &&
+        geom.noneOverlapsFoot &&
+        geom.firstTopOffset < 60 &&
+        geom.mainFits &&
+        geom.footVisible
+      );
     }, { timeout: 5000 }).toBe(true);
   };
   await check390Geometry();

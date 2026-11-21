@@ -20,6 +20,75 @@ const SHELL_PATTERNS = [
   { id: "canvas", refusedRef: "canvas-refusal" },
 ] as const;
 
+async function assertCanvas390RealViewport(page: import("@playwright/test").Page, navLabel: string) {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(expectedNavLabel => {
+          const main = document.querySelector<HTMLElement>("main");
+          const foot = document.querySelector<HTMLElement>('[class*="canvasFoot"]');
+          const nav = document.querySelector<HTMLElement>(`nav[aria-label="${CSS.escape(expectedNavLabel)}"]`);
+          const vp = document.querySelector<HTMLElement>('[data-pattern="canvas"] section > div');
+          const zoom = document.querySelector<HTMLElement>('[data-pattern="canvas"] [role="group"]');
+          if (!main || !foot || !nav || !vp || !zoom) return { ready: false };
+          const mainRect = main.getBoundingClientRect();
+          const footRect = foot.getBoundingClientRect();
+          const navRect = nav.getBoundingClientRect();
+          const vpRect = vp.getBoundingClientRect();
+          const zoomRect = zoom.getBoundingClientRect();
+          const nodes = [...document.querySelectorAll<HTMLElement>('[id^="node-"]')].map(el => {
+            const r = el.getBoundingClientRect();
+            return {
+              id: el.id,
+              insideVp:
+                r.left >= vpRect.left - 0.5 &&
+                r.right <= vpRect.right + 0.5 &&
+                r.top >= vpRect.top - 0.5 &&
+                r.bottom <= vpRect.bottom + 0.5,
+              overlapsZoom: r.left < zoomRect.right && r.right > zoomRect.left && r.top < zoomRect.bottom && r.bottom > zoomRect.top,
+              overlapsFoot: r.left < footRect.right && r.right > footRect.left && r.top < footRect.bottom && r.bottom > footRect.top,
+            };
+          });
+          return {
+            ready: true,
+            mainScrollH: main.scrollHeight,
+            mainClientH: main.clientHeight,
+            footBottom: footRect.bottom,
+            mainBottom: mainRect.bottom,
+            navTop: navRect.top,
+            nodeCount: nodes.length,
+            allInside: nodes.every(n => n.insideVp),
+            noneOverlapsZoom: nodes.every(n => !n.overlapsZoom),
+            noneOverlapsFoot: nodes.every(n => !n.overlapsFoot),
+          };
+        }, navLabel),
+      { timeout: 5000 },
+    )
+    .toMatchObject({
+      ready: true,
+      nodeCount: 4,
+      allInside: true,
+      noneOverlapsZoom: true,
+      noneOverlapsFoot: true,
+    });
+
+  const geom = await page.evaluate(expectedNavLabel => {
+    const main = document.querySelector<HTMLElement>("main")!;
+    const foot = document.querySelector<HTMLElement>('[class*="canvasFoot"]')!;
+    const nav = document.querySelector<HTMLElement>(`nav[aria-label="${CSS.escape(expectedNavLabel)}"]`)!;
+    return {
+      mainScrollH: main.scrollHeight,
+      mainClientH: main.clientHeight,
+      footBottom: foot.getBoundingClientRect().bottom,
+      mainBottom: main.getBoundingClientRect().bottom,
+      navTop: nav.getBoundingClientRect().top,
+    };
+  }, navLabel);
+  expect(geom.mainScrollH).toBeLessThanOrEqual(geom.mainClientH);
+  expect(geom.footBottom).toBeLessThanOrEqual(geom.mainBottom + 0.5);
+  expect(geom.footBottom).toBeLessThanOrEqual(geom.navTop + 0.5);
+}
+
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const { id, refusedRef } of SHELL_PATTERNS) {
@@ -70,6 +139,15 @@ for (const { id, refusedRef } of SHELL_PATTERNS) {
             lightSurface = await root.evaluate(el => getComputedStyle(el).backgroundColor);
           }
           await expectAxe(page, `${id} console ${width} ${theme}`);
+          if (id === "canvas" && width === 390) {
+            await assertCanvas390RealViewport(page, t("shell.nav"));
+            if (SHOTS_DIR) {
+              await page.screenshot({
+                path: path.join(SHOTS_DIR, `${id}--390-viewport-${theme}.png`),
+                fullPage: false,
+              });
+            }
+          }
           if (SHOTS_DIR) {
             await withFullPage(page, () =>
               page.screenshot({
@@ -79,6 +157,14 @@ for (const { id, refusedRef } of SHELL_PATTERNS) {
             );
           }
         }
+      }
+
+      if (id === "canvas") {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto(`/_review/patterns/${id}`);
+        await expect(root).toBeVisible();
+        await forgetResize(page);
+        await assertCanvas390RealViewport(page, t("shell.nav"));
       }
 
       await page.setViewportSize({ width: 390, height: 844 });
