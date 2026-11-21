@@ -11,14 +11,15 @@ import s from "./record.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
 /** officers (spec S3 tab): the representatives and the registry's officers, each list with its own edit. */
-export function OfficersTab({ e, act }: { e: LegalEntity; act: Act }) {
+export function OfficersTab({ e, act, flat }: { e: LegalEntity; act: Act; flat?: boolean }) {
   const c = e.current;
   const f = entityFields(e);
   const people = officers(e);
   const open = !useRecordLock();
+  const card = flat ? undefined : "card";
   return (
     <div className={s.col}>
-      <section className="card" aria-labelledby="reps-title">
+      <section className={card} aria-labelledby="reps-title">
         <div className={s.cardHead}>
           <h2 id="reps-title" className={s.cardTitle}>{t("entityRecord.field.representatives")}</h2>
           {c?.representation_mode && <Muted>{label(REPRESENTATION, c.representation_mode)}</Muted>}
@@ -32,7 +33,7 @@ export function OfficersTab({ e, act }: { e: LegalEntity; act: Act }) {
         </ul>
       </section>
       {e.biz_kind === "CORPORATION" && (
-        <section className="card" aria-labelledby="dirs-title">
+        <section className={card} aria-labelledby="dirs-title">
           <div className={s.cardHead}>
             <h2 id="dirs-title" className={s.cardTitle}>{t("entityRecord.field.directors")}</h2>
             <Muted>{t("entityRecord.officers.basis")}</Muted>

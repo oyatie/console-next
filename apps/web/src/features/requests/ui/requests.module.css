@@ -1,0 +1,12 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.lookupHost {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .lookupHost [data-pattern="form"] [data-read-region] > div {
+  max-width: none;
+}

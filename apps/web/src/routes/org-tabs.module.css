@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.consoleFrame {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-width: 0;
+  min-height: 100%;
+  background: var(--surface);
+}
+
+.consoleFrame > header {
+  flex-shrink: 0;
+}
+
+@media (min-width: 1024px) {
+  .consoleFrame:has([data-pattern="canvas"]) {
+    height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .consoleFrame:has([data-pattern="canvas"]) > [data-pattern="canvas"] {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+@media (--phone) {
+  .consoleFrame > header {
+    padding-block: 0;
+    min-height: 0;
+  }
+
+  .consoleFrame > header h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .consoleFrame:has([data-pattern="canvas"]):not(:has(aside)) {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .consoleFrame:has([data-pattern="canvas"]):not(:has(aside)) > [data-pattern="canvas"] {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .consoleFrame [role="group"] > button[aria-pressed] {
+    min-height: var(--control-h);
+  }
+}

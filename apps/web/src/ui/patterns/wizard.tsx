@@ -26,6 +26,9 @@ export function WizardPattern({
   facts: _facts,
   overlays,
   statusSegments,
+  keepOnLoss,
+  back,
+  own,
   baseline,
 }: WizardPatternProps) {
   const hasAside = shownSlot(aside);
@@ -39,6 +42,9 @@ export function WizardPattern({
       overlays={overlays}
       queryLayout="form"
       statusSegments={statusSegments}
+      keepOnLoss={keepOnLoss}
+      back={back}
+      own={own}
       baseline={baseline}
     >
       {() => (

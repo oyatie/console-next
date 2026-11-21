@@ -15,7 +15,7 @@ const oneOf = <T extends string>(all: readonly T[], v: unknown): T | undefined =
 
 const org = createRoute({
   getParentRoute: () => app,
-  path: "/org", staticData: { access: readRequirement("/org") },
+  path: "/org", staticData: { access: readRequirement("/org"), floorplan: "canvas", pattern: "canvas" },
   // The company structure: `view` (the chart by default, the list or the outline), `focus` (the box the chart is
   // centred on), `sel` (the selection whose panel shows) and the proposal or structure sheet `act` for it.
   validateSearch: (s: Record<string, unknown>): { tab?: "entities" | "changes"; filter?: (typeof VIEWS)[number] | "history"; effective_from?: string; effective_to?: string; add?: boolean; correction?: string; bulk?: "paste" | "import"; view?: (typeof STRUCTURE_VIEWS)[number]; focus?: string; sel?: string; act?: OrgAct; act_unit?: string; kind?: (typeof KINDS)[number]; as_of?: string; known_at?: string; compare_a?: string; compare_b?: string } => ({
@@ -41,7 +41,7 @@ const org = createRoute({
 });
 const orgChanges = createRoute({
   getParentRoute: () => app,
-  path: "/org/changes", staticData: { access: readRequirement("/org/changes") },
+  path: "/org/changes", staticData: { access: readRequirement("/org/changes"), floorplan: "canvas" },
   validateSearch: (s: Record<string, unknown>): { view?: (typeof VIEWS)[number]; effective_from?: string; effective_to?: string } => ({
     view: oneOf(VIEWS, s.view),
     effective_from: str(s.effective_from),
@@ -51,14 +51,14 @@ const orgChanges = createRoute({
 });
 const orgChange = createRoute({
   getParentRoute: () => app,
-  path: "/org/changes/$id", staticData: { access: "signed-in" },
+  path: "/org/changes/$id", staticData: { access: "signed-in", floorplan: "P-02", pattern: "document-decision" },
   validateSearch: (s: Record<string, unknown>): { unsent?: boolean; done?: (typeof DONE)[number] } => ({ unsent: flag(s.unsent), done: oneOf(DONE, s.done) }),
 }).lazy(() => screen(() => import("./org-tabs"))().then(m => m.orgChange));
 
 /** S8: moving the department `ids` (comma-separated, as chosen on the chart) to one place, as one batch or one proposal. */
 const orgMove = createRoute({
   getParentRoute: () => app,
-  path: "/org/move", staticData: { access: readRequirement("/org/move") },
+  path: "/org/move", staticData: { access: readRequirement("/org/move"), floorplan: "P-04", pattern: "wizard" },
   validateSearch: (s: Record<string, unknown>): { ids?: string } => ({ ids: str(s.ids) }),
   component: lazyRouteComponent(screen(() => import("../features/org/ui/bulk-move-page")), "BulkMovePage"),
 });

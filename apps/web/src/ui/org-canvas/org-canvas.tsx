@@ -10,10 +10,10 @@ export type CanvasHandle = { fit: () => void; reveal: (r: Rect) => void };
 /** Before the bars are measured: their single-row height plus the space kept clear of them. */
 const BARS: Insets = { top: 56, bottom: 64 };
 
-function keepsWheel(target: EventTarget | null, viewport: HTMLElement, dx: number, dy: number) {
+function allowsNativeWheel(target: EventTarget | null, viewport: HTMLElement, dx: number, dy: number) {
   for (let el = target instanceof Element ? target : null; el && el !== viewport; el = el.parentElement) {
     if (!(el instanceof HTMLElement)) continue;
-    if (el.matches("input")) return true;
+    if (el.matches("input")) return dx !== 0 && (dx < 0 ? el.scrollLeft > 0 : el.scrollLeft + el.clientWidth < el.scrollWidth);
     const style = getComputedStyle(el);
     // Firefox scrolls textareas natively even when their computed overflow is visible.
     const textarea = el instanceof HTMLTextAreaElement;
@@ -21,6 +21,13 @@ function keepsWheel(target: EventTarget | null, viewport: HTMLElement, dx: numbe
     if ((textarea || /auto|scroll/.test(style.overflowX)) && (dx < 0 ? el.scrollLeft > 0 : dx > 0 && el.scrollLeft + el.clientWidth < el.scrollWidth)) return true;
   }
   return false;
+}
+
+function keepsWheel(target: EventTarget | null, viewport: HTMLElement, dx: number, dy: number) {
+  for (let el = target instanceof Element ? target : null; el && el !== viewport; el = el.parentElement) {
+    if (el instanceof HTMLElement && el.matches("input")) return true;
+  }
+  return allowsNativeWheel(target, viewport, dx, dy);
 }
 
 /**
@@ -76,7 +83,7 @@ export const OrgCanvas = forwardRef<CanvasHandle, {
     if (!el) return;
     // React's wheel listener is passive; cancel native ancestor scrolling after the canvas handles the gesture.
     const preventScroll = (event: WheelEvent) => {
-      if (!keepsWheel(event.target, el, event.deltaX, event.deltaY)) event.preventDefault();
+      if (!allowsNativeWheel(event.target, el, event.deltaX, event.deltaY)) event.preventDefault();
     };
     el.addEventListener("wheel", preventScroll, { passive: false });
     return () => el.removeEventListener("wheel", preventScroll);
