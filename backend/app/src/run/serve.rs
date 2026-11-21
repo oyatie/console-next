@@ -26,6 +26,7 @@ pub async fn serve(config: AppConfig, state: AppState) -> Result<(), AppError> {
         // wiring); it is dispatched in `main` before `from_config` runs.
         AppRole::Migrate => run_migrations(&config).await,
         AppRole::SchemaCheck => crate::run::schema_check::run_schema_check(&config).await,
+        AppRole::Ops => crate::run::ops_cockpit::run(config).await,
     }
 }
 
