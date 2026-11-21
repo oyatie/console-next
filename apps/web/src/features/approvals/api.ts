@@ -8,7 +8,7 @@ import { APPROVAL_ROLE, ORG_CHANGE_STATUS, label, labeled } from "../../lib/labe
 import type { components } from "@console/api/schema";
 
 import type { ApprovalDocument as BaseApprovalDocument, ApprovalDecision, ApprovalQuery, ApprovalPage, ApprovalItem } from "@console/api/pending";
-export type { ApprovalViewer, ApprovalItem, ApprovalDecision } from "@console/api/pending";
+export type { ApprovalViewer, ApprovalItem, ApprovalDecision, ApprovalPage } from "@console/api/pending";
 export type ApprovalDocument = BaseApprovalDocument & Pick<components["schemas"]["ApprovalDocumentDetail"], "proposal" | "proposal_names">;
 
 const SOURCE_LABELS: Record<string, MessageId> = {

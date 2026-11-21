@@ -4,10 +4,27 @@ import { codeText } from "../../lib/labels";
 import { shortMonthDay } from "../../lib/pure/kst-day";
 import { catalogRefusal } from "../../lib/refusal";
 import { describeOp } from "../../reference/org/present";
-import type { ApprovalDocument, ApprovalViewer } from "./api";
+import type { ApprovalDocument, ApprovalPage, ApprovalViewer } from "./api";
 
 export const decisionRefusalText = (code: string) =>
   code === "approval_decision_unavailable" ? t("approvals.viewer.unavailable") : catalogRefusal(code) ?? codeText(`requestOutcome.code.${code}`, t("approvals.viewer.blockedHint"));
+
+/** Derives queue position and prev/next neighbors from a single coherent list query's cached pages. */
+export function approvalQueueContextFromPages(pages: readonly ApprovalPage[], approvalId: string) {
+  if (pages.length === 0) return null;
+  const items = pages.flatMap(page => page.items);
+  const idx = items.findIndex(item => item.id === approvalId);
+  if (idx < 0) return null;
+  const box = items[idx]!.box;
+  const hasMore = Boolean(pages.at(-1)?.next_cursor);
+  const total = hasMore ? Math.max(items.length, pages[0]?.counts[box] ?? items.length) : items.length;
+  return {
+    index: idx + 1,
+    total,
+    prevId: idx > 0 ? items[idx - 1]!.id : undefined,
+    nextId: idx + 1 < items.length ? items[idx + 1]!.id : undefined,
+  };
+}
 
 /** Builds structured before/after diff entries from server-provided proposal operations and unit names. */
 export function proposalDiffs(d: Pick<ApprovalDocument, "title" | "proposal" | "proposal_names">) {

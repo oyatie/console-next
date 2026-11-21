@@ -25,9 +25,9 @@ import {
   DocRailSection,
   DocSection,
 } from "../../../ui/patterns/document-decision-parts";
-import type { ApprovalPage } from "@console/api/pending";
+import type { ApprovalPage } from "../api";
 import { approvalDocumentQuery, type ApprovalDocument } from "../api";
-import { approvalRouteSteps, decisionRefusalText, proposalDiffs } from "../present";
+import { approvalQueueContextFromPages, approvalRouteSteps, decisionRefusalText, proposalDiffs } from "../present";
 import { ApprovalDecisionPanel } from "./approval-decision-panel";
 export { ApprovalDecisionPanel };
 import { useApprovalDecisionCommand } from "./use-approval-decision";
@@ -63,19 +63,11 @@ function stepProgressLabel(d: ApprovalDocument) {
 }
 
 function useApprovalQueueContext(approvalId: string) {
-  const pages = useCachedInfinitePages<ApprovalPage>("/api/v1/approvals");
-  if (pages.length === 0) return null;
-  const items = pages.flatMap(page => page.items);
-  const idx = items.findIndex(item => item.id === approvalId);
-  if (idx < 0) return null;
-  const box = items[idx]!.box;
-  const total = Math.max(items.length, pages[0]?.counts[box] ?? items.length);
-  return {
-    index: idx + 1,
-    total,
-    prevId: idx > 0 ? items[idx - 1]!.id : undefined,
-    nextId: idx + 1 < items.length ? items[idx + 1]!.id : undefined,
-  };
+  const pages = useCachedInfinitePages<ApprovalPage>(
+    "/api/v1/approvals",
+    candidate => candidate.some(page => page.items.some(item => item.id === approvalId)),
+  );
+  return approvalQueueContextFromPages(pages, approvalId);
 }
 
 export function ApprovalViewerPage() {

@@ -576,3 +576,88 @@ test("Console /approvals and viewer fit cleanly at 320px/390px in ko & en, and o
     }
   }
 });
+
+test("Console /approvals/$approvalId DocQueueStepper avoids multi-query concatenation self-loops and inflated totals across filter/search transitions", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  // (a) /approvals?q=0418 -> reset filters -> open OC-2026-0418 -> 1 of 6 -> Next goes to AP-2026-0419 (not self-loop)
+  {
+    let listRequestsOnViewer = 0;
+    const { fixture } = await setupConsoleApprovals(page, "light", "ko");
+    try {
+      await page.goto("/approvals?q=0418");
+      const grid = page.getByRole("grid", { name: t("approvals.list"), exact: true });
+      await expect(grid.locator("tbody tr[data-id]")).toHaveCount(1);
+
+      await page.getByRole("button", { name: t("approvals.filters.reset"), exact: true }).click();
+      await expect(grid.locator("tbody tr[data-id]")).toHaveCount(6);
+
+      await grid.locator(`tbody tr[data-id="${saeonUniverse.approval.documentNumber}"]`).getByRole("link", { name: t("home.inbox.open"), exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`/approvals/${saeonUniverse.approval.documentNumber}$`));
+      await expect(page.getByRole("main").getByText(t("approvals.console.queuePos", { n: 1, total: 6 }), { exact: true })).toBeVisible();
+      await expect(page.getByRole("contentinfo").last().getByText(t("approvals.console.queuePos", { n: 1, total: 6 }), { exact: true })).toBeVisible();
+
+      const nextLink = page.getByRole("link", { name: t("approvals.console.nextDoc"), exact: true });
+      await expect(nextLink).toHaveAttribute("href", "/approvals/AP-2026-0419");
+
+      page.on("request", req => {
+        if (new URL(req.url()).pathname === "/api/v1/approvals") listRequestsOnViewer++;
+      });
+      await nextLink.click();
+      await expect(page).toHaveURL(/\/approvals\/AP-2026-0419$/);
+      await expect(page.getByRole("main").getByText(t("approvals.console.queuePos", { n: 2, total: 6 }), { exact: true })).toBeVisible();
+      expect(listRequestsOnViewer).toBe(0);
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      fixture.release();
+    }
+  }
+
+  // (b) /approvals -> search "0419" -> open AP-2026-0419 -> 1 of 1 (no 7-item inflation, Next disabled)
+  {
+    const { fixture } = await setupConsoleApprovals(page, "light", "ko");
+    try {
+      await page.goto("/approvals");
+      const grid = page.getByRole("grid", { name: t("approvals.list"), exact: true });
+      await expect(grid.locator("tbody tr[data-id]")).toHaveCount(6);
+
+      await page.getByRole("searchbox", { name: t("approvals.filters.search"), exact: true }).fill("0419");
+      await expect(grid.locator("tbody tr[data-id]")).toHaveCount(1);
+
+      await grid.locator('tbody tr[data-id="AP-2026-0419"]').getByRole("link", { name: t("home.inbox.open"), exact: true }).click();
+      await expect(page).toHaveURL(/\/approvals\/AP-2026-0419$/);
+      await expect(page.getByRole("main").getByText(t("approvals.console.queuePos", { n: 1, total: 1 }), { exact: true })).toBeVisible();
+      await expect(page.getByRole("contentinfo").last().getByText(t("approvals.console.queuePos", { n: 1, total: 1 }), { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: t("approvals.console.nextDoc"), exact: true })).toBeDisabled();
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      fixture.release();
+    }
+  }
+
+  // (c) /approvals -> search "0418" -> reset filters (within staleTime cache) -> open OC-2026-0418 -> 1 of 6 -> Next goes to AP-2026-0419
+  {
+    const { fixture } = await setupConsoleApprovals(page, "light", "ko");
+    try {
+      await page.goto("/approvals");
+      const grid = page.getByRole("grid", { name: t("approvals.list"), exact: true });
+      await expect(grid.locator("tbody tr[data-id]")).toHaveCount(6);
+
+      await page.getByRole("searchbox", { name: t("approvals.filters.search"), exact: true }).fill("0418");
+      await expect(grid.locator("tbody tr[data-id]")).toHaveCount(1);
+
+      await page.getByRole("button", { name: t("approvals.filters.reset"), exact: true }).click();
+      await expect(grid.locator("tbody tr[data-id]")).toHaveCount(6);
+
+      await grid.locator(`tbody tr[data-id="${saeonUniverse.approval.documentNumber}"]`).getByRole("link", { name: t("home.inbox.open"), exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`/approvals/${saeonUniverse.approval.documentNumber}$`));
+      await expect(page.getByRole("main").getByText(t("approvals.console.queuePos", { n: 1, total: 6 }), { exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: t("approvals.console.nextDoc"), exact: true })).toHaveAttribute("href", "/approvals/AP-2026-0419");
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      fixture.release();
+    }
+  }
+});

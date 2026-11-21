@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterEach, expect, test } from "vitest";
 import { i18n, loadCatalog, t } from "@console/i18n";
-import { approvalRouteSteps, decisionRefusalText, proposalDiffs, relatedApprovalLinks } from "./present";
-import type { ApprovalDocument } from "./api";
+import { approvalQueueContextFromPages, approvalRouteSteps, decisionRefusalText, proposalDiffs, relatedApprovalLinks } from "./present";
+import type { ApprovalDocument, ApprovalItem, ApprovalPage } from "./api";
 
 afterEach(() => i18n.set("ko"));
 
@@ -97,4 +97,72 @@ test("relatedApprovalLinks derives genuine roster, org, and viewer links", async
     { kind: t("approvals.related.org"), label: `Team 3 (${t("orgPropose.diff.chip.dissolved")})`, to: "/org" },
     { kind: "Org change", label: t("approvals.openSource"), to: "/org/changes/$id" },
   ]);
+});
+
+test("approvalQueueContextFromPages derives exact total and neighbors without inflating complete filtered lists", () => {
+  const item = (id: string, box: ApprovalItem["box"] = "pending"): ApprovalItem => ({
+    id,
+    box,
+    title: id,
+    summary: id,
+    source: { key: "org_change", label: "Org change" },
+    status: { key: "IN_APPROVAL", label: "In approval", tone: "warn" },
+    requested_at: "2026-11-06T09:00:00Z",
+    facts: [],
+    route: [],
+  });
+  const counts = { pending: 6, upcoming: 2, requested: 3, reference: 2, completed: 8 };
+  const makePage = (items: ApprovalItem[], next_cursor: string | null = null): ApprovalPage => ({
+    items,
+    counts,
+    sources: [],
+    next_cursor,
+  });
+
+  expect(approvalQueueContextFromPages([], "d1")).toBeNull();
+  expect(approvalQueueContextFromPages([makePage([item("d1")])], "missing")).toBeNull();
+
+  // Complete 1-item filtered result must report total=1, not counts.pending=6.
+  expect(approvalQueueContextFromPages([makePage([item("AP-2026-0419")], null)], "AP-2026-0419")).toEqual({
+    index: 1,
+    total: 1,
+    prevId: undefined,
+    nextId: undefined,
+  });
+
+  // Complete 6-item unfiltered list reports exact neighbors and total=6.
+  const sixItems = ["d1", "d2", "d3", "d4", "d5", "d6"].map(id => item(id));
+  expect(approvalQueueContextFromPages([makePage(sixItems, null)], "d1")).toEqual({
+    index: 1,
+    total: 6,
+    prevId: undefined,
+    nextId: "d2",
+  });
+  expect(approvalQueueContextFromPages([makePage(sixItems, null)], "d2")).toEqual({
+    index: 2,
+    total: 6,
+    prevId: "d1",
+    nextId: "d3",
+  });
+
+  // Partial paginated list with next_cursor uses max(items.length, counts[box]).
+  expect(approvalQueueContextFromPages([makePage([item("d1"), item("d2")], "cursor-2")], "d2")).toEqual({
+    index: 2,
+    total: 6,
+    prevId: "d1",
+    nextId: undefined,
+  });
+
+  // Multi-page complete list (last page has next_cursor=null) uses items.length.
+  expect(
+    approvalQueueContextFromPages(
+      [makePage([item("d1"), item("d2")], "cursor-2"), makePage([item("d3")], null)],
+      "d3",
+    ),
+  ).toEqual({
+    index: 3,
+    total: 3,
+    prevId: "d2",
+    nextId: undefined,
+  });
 });
