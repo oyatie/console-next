@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { resolve } from "node:path";
+import { loadCatalog, t } from "@console/i18n";
+import { fmtDateInput, fmtDateShortWeekday } from "@console/i18n/format";
 import { chromium, expect as expectElement, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, test } from "vitest";
@@ -9,6 +11,7 @@ let browser: Browser;
 let page: Page;
 
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await createServer({
     configFile: false, cacheDir: ".cache/date-test", logLevel: "error",
     optimizeDeps: { include: ["react", "react/jsx-dev-runtime", "react-dom/client", "react-aria-components", "intl-messageformat", "lucide-react", "@internationalized/date"] },
@@ -20,7 +23,7 @@ beforeAll(async () => {
       load: id => id === "\0date-test" ? `
         import { createElement as h, StrictMode, useState } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { loadCatalog } from '@console/i18n';
+        import { loadCatalog, t } from '@console/i18n';
         import { DateInput } from '/apps/web/src/ui/date/date-input.tsx';
         import { AsOfControl } from '/apps/web/src/ui/asof-control/asof-control.tsx';
         await loadCatalog('ko');
@@ -34,7 +37,14 @@ beforeAll(async () => {
           return h(AsOfControl, { ...point, today: '2026-11-15', changeDates: ['2026-11-01', '2026-11-15'],
             onChange: (value, knownAt) => setPoint({ value, knownAt }) });
         }
-        createRoot(document.getElementById('root')).render(h(StrictMode, null, h(location.search ? AsOf : App)));
+        function ShortWeekday() {
+          const [value, setValue] = useState('2026-11-20');
+          return h('div', null,
+            h(DateInput, { value, onChange: setValue, label: t('leave.date.start'), today: '2026-11-20', displayFormat: 'short-weekday' }),
+            h('button', { type: 'button' }, 'outside'),
+          );
+        }
+        createRoot(document.getElementById('root')).render(h(StrictMode, null, h(location.search === '?asof' ? AsOf : location.search === '?short' ? ShortWeekday : App)));
       ` : undefined,
       configureServer: vite => {
         vite.middlewares.use((req, res, next) => {
@@ -92,4 +102,56 @@ test("the compact as-of picker keeps exact knowledge links and rejects invalid d
   await control.getByRole("button", { name: "오늘로", exact: true }).click();
   await expectElement(trigger).toContainText("2026. 11. 15.");
   await expectElement(control).not.toContainText("알려진 대로");
+});
+
+test("short-weekday DateInput reverts to formatted weekday on blur without editing", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}date-test?short`);
+  const input = page.getByRole("textbox", { name: t("leave.date.start") });
+  await expectElement(input).toHaveValue(fmtDateShortWeekday("2026-11-20"));
+  await input.focus();
+  await expectElement(input).toHaveValue(fmtDateInput("2026-11-20"));
+  await page.getByRole("button", { name: "outside" }).focus();
+  await expectElement(input).toHaveValue(fmtDateShortWeekday("2026-11-20"));
+});
+
+test("short-weekday DateInput preserves invalid draft and alert across re-focus and blur without typing", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}date-test?short`);
+  const input = page.getByRole("textbox", { name: t("leave.date.start") });
+  const outside = page.getByRole("button", { name: "outside" });
+  const alert = page.getByRole("alert");
+
+  await input.focus();
+  await input.fill("not-a-date");
+  await outside.focus();
+  await expectElement(input).toHaveValue("not-a-date");
+  await expectElement(input).toHaveAttribute("aria-invalid", "true");
+  await expectElement(alert).toBeVisible();
+
+  await input.focus();
+  await expectElement(input).toHaveValue("not-a-date");
+  await outside.focus();
+  await expectElement(input).toHaveValue("not-a-date");
+  await expectElement(input).toHaveAttribute("aria-invalid", "true");
+  await expectElement(alert).toBeVisible();
+});
+
+test("short-weekday DateInput keeps edit format on Enter while focused and formats on blur", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}date-test?short`);
+  const input = page.getByRole("textbox", { name: t("leave.date.start") });
+  const outside = page.getByRole("button", { name: "outside" });
+
+  await input.focus();
+  await input.press("Enter");
+  await expectElement(input).toBeFocused();
+  await expectElement(input).toHaveValue(fmtDateInput("2026-11-20"));
+  await outside.focus();
+  await expectElement(input).toHaveValue(fmtDateShortWeekday("2026-11-20"));
+
+  await input.focus();
+  await input.fill("20261123");
+  await input.press("Enter");
+  await expectElement(input).toBeFocused();
+  await expectElement(input).toHaveValue(fmtDateInput("2026-11-23"));
+  await outside.focus();
+  await expectElement(input).toHaveValue(fmtDateShortWeekday("2026-11-23"));
 });

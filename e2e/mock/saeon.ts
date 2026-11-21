@@ -283,6 +283,181 @@ export function saeonHeroUser(): S["CurrentUser"] {
   };
 }
 
+/** OpenAPI-typed refresh token pair carrying the Saeon self-service employee claims. */
+export function saeonHeroToken(orgId = "00000000-0000-4000-8000-000000000002"): S["TokenPairResponse"] {
+  const hero = saeonHeroUser();
+  const claims = {
+    sub: hero.id,
+    org: orgId,
+    name: hero.display_name,
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  };
+  return {
+    access_token: `${Buffer.from('{"alg":"none"}').toString("base64url")}.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.mock`,
+    token_type: "Bearer",
+    refresh_expires_at: "2099-01-01T00:00:00Z",
+    requires_passkey_setup: false,
+    privacy_consent_accepted: true,
+  };
+}
+
+function defaultHeroLeaveRequests(hero: S["CurrentUser"]): S["LeaveRequestV2View"][] {
+  return [
+    {
+      id: "00000000-0000-4000-8800-000000000101",
+      branch_id: hero.branch_ids[0]!,
+      requester_user_id: hero.id,
+      subject_employee_id: hero.employee_id!,
+      leave_type: "half_day",
+      days: 0.5,
+      charge_units: "0.500000",
+      charge_state: "resolved",
+      charge_review_reasons: [],
+      request_version: 1,
+      charge_version: 1,
+      partial_day_period: "am",
+      start_date: "2026-11-06",
+      end_date: "2026-11-06",
+      status: "approved",
+      decided_by: "00000000-0000-4000-8000-000000000010",
+      decided_at: "2026-11-05T14:20:00+09:00",
+      created_at: "2026-11-04T09:15:00+09:00",
+    },
+    {
+      id: "00000000-0000-4000-8800-000000000102",
+      branch_id: hero.branch_ids[0]!,
+      requester_user_id: hero.id,
+      subject_employee_id: hero.employee_id!,
+      leave_type: "annual",
+      days: 1,
+      charge_units: "1.000000",
+      charge_state: "resolved",
+      charge_review_reasons: [],
+      request_version: 1,
+      charge_version: 1,
+      start_date: "2026-10-23",
+      end_date: "2026-10-23",
+      status: "approved",
+      decided_by: "00000000-0000-4000-8000-000000000010",
+      decided_at: "2026-10-20T10:15:00+09:00",
+      created_at: "2026-10-19T13:40:00+09:00",
+    },
+    {
+      id: "00000000-0000-4000-8800-000000000103",
+      branch_id: hero.branch_ids[0]!,
+      requester_user_id: hero.id,
+      subject_employee_id: hero.employee_id!,
+      leave_type: "annual",
+      days: 1,
+      charge_units: "1.000000",
+      charge_state: "resolved",
+      charge_review_reasons: [],
+      request_version: 1,
+      charge_version: 1,
+      start_date: "2026-10-08",
+      end_date: "2026-10-08",
+      status: "approved",
+      decided_by: "00000000-0000-4000-8000-000000000010",
+      decided_at: "2026-10-05T11:30:00+09:00",
+      created_at: "2026-10-02T16:10:00+09:00",
+    },
+  ];
+}
+
+/** OpenAPI-typed `MyLeaveV2Overview` matching the Saeon self-service employee's leave balance. */
+export function saeonMyLeaveOverview(overrides?: {
+  filingState?: S["SelfLeaveBalance"]["filing_state"];
+  homeBranchId?: string | null;
+  accruedDays?: number | null;
+  usedDays?: number | null;
+  remainingDays?: number | null;
+  items?: S["LeaveRequestV2View"][];
+}): S["MyLeaveV2Overview"] {
+  const hero = saeonHeroUser();
+  const { leave } = saeonUniverse.hero;
+  const filingState = overrides?.filingState ?? "ready";
+  const accrued = overrides && "accruedDays" in overrides ? overrides.accruedDays : leave.grantedDays;
+  const used = overrides && "usedDays" in overrides ? overrides.usedDays : leave.usedDays;
+  const remaining = overrides && "remainingDays" in overrides ? overrides.remainingDays : leave.remainingDays;
+  const toUnits = (v: number | null | undefined) => (v == null ? null : v.toFixed(6));
+  return {
+    balance: {
+      employee_id: hero.employee_id!,
+      name: hero.employee_name!,
+      accrued_units: toUnits(accrued),
+      used_units: toUnits(used),
+      remaining_units: toUnits(remaining),
+      filing_state: filingState,
+      home_branch_id:
+        filingState === "home_branch_required"
+          ? null
+          : overrides && "homeBranchId" in overrides
+            ? overrides.homeBranchId ?? null
+            : hero.branch_ids[0]!,
+    },
+    requests: {
+      items: overrides?.items ?? defaultHeroLeaveRequests(hero),
+      next_cursor: null,
+    },
+  };
+}
+
+/** OpenAPI-typed `LeaveRequestV2View` returned when filing a synthetic leave request. */
+export function saeonLeaveRequestView(body: S["LeaveCreateRequest"], seq = 1): S["LeaveRequestV2View"] {
+  const hero = saeonHeroUser();
+  const days =
+    body.leave_type === "half_day"
+      ? 0.5
+      : Math.max(1, Math.round((Date.parse(`${body.end_date}T00:00:00Z`) - Date.parse(`${body.start_date}T00:00:00Z`)) / 86_400_000) + 1);
+  return {
+    id: `00000000-0000-4000-8800-${padDigits(seq, 12)}`,
+    branch_id: hero.branch_ids[0]!,
+    requester_user_id: hero.id,
+    subject_employee_id: hero.employee_id!,
+    leave_type: body.leave_type,
+    days,
+    charge_units: null,
+    charge_state: "review_required",
+    charge_review_reasons: [],
+    request_version: 1,
+    charge_version: 1,
+    ...(body.partial_day_period ? { partial_day_period: body.partial_day_period } : {}),
+    start_date: body.start_date,
+    end_date: body.end_date,
+    status: "pending",
+    decided_by: null,
+    decided_at: null,
+    created_at: `${saeonUniverse.hero.leave.draftDate}T09:00:00Z`,
+  };
+}
+
+/** OpenAPI-typed `AttendanceScheduleCalendar` for the hero's production crew in a `YYYY-MM` month. */
+export function saeonHeroScheduleMonth(month = "2026-11"): S["AttendanceScheduleCalendar"] {
+  const hero = saeonHeroUser();
+  const year = Number(month.slice(0, 4));
+  const mon = Number(month.slice(5, 7));
+  const dayCount = new Date(Date.UTC(year, mon, 0)).getUTCDate();
+  const days: S["AttendanceScheduleDay"][] = Array.from({ length: dayCount }, (_, i) => {
+    const dayNum = i + 1;
+    const iso = `${month}-${String(dayNum).padStart(2, "0")}`;
+    const dow = new Date(Date.UTC(year, mon - 1, dayNum)).getUTCDay();
+    return {
+      date: iso,
+      kind: dow === 0 || dow === 6 ? "WEEKLY_HOLIDAY" : "WORK",
+    };
+  });
+  return {
+    scope_kind: "WORKPLACE",
+    scope_id: hero.branch_ids[0]!,
+    scope_name: saeonUniverse.hero.shortPlace,
+    month,
+    stack: [],
+    upcoming: [],
+    days,
+    holidays_loaded: true,
+  };
+}
+
 /** OpenAPI-typed `OrgStructure` across all 5 legal entities and 40 workplaces. */
 export function saeonOrgStructure(): S["OrgStructure"] {
   let deptSeq = 1;

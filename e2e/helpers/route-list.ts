@@ -30,6 +30,7 @@ const paths = [
   "/attendance",
   "/audit/support-access",
   "/inbox",
+  "/leave",
   "/org",
   "/org/changes",
   "/org/changes/$id",

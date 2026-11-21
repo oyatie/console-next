@@ -15,7 +15,11 @@ import {
   saeonApprovalOrgChange,
   saeonAttendanceSummary,
   saeonEmployeeFacets,
+  saeonHeroScheduleMonth,
+  saeonHeroToken,
   saeonHeroUser,
+  saeonLeaveRequestView,
+  saeonMyLeaveOverview,
   saeonOrgStructure,
   saeonPayrollRow,
   saeonRosterEmployees,
@@ -233,4 +237,44 @@ test("worklist, approval OC-2026-0418, attendance month, and Console payroll tot
   expect(registerRows.reduce((sum, row) => sum + row.grossPay, 0)).toBe(36_705_800);
   expect(registerRows.reduce((sum, row) => sum + row.totalDeductions, 0)).toBe(4_383_272);
   expect(registerRows.reduce((sum, row) => sum + row.netPay, 0)).toBe(32_322_528);
+
+  const hero = saeonHeroUser();
+  const heroToken = saeonHeroToken();
+  const heroClaims = JSON.parse(Buffer.from(heroToken.access_token.split(".")[1]!, "base64url").toString()) as {
+    sub: string;
+    name: string;
+  };
+  expect(heroClaims.sub).toBe(hero.id);
+  expect(heroClaims.name).toBe(hero.display_name);
+
+  const leaveOverview = saeonMyLeaveOverview();
+  expect(leaveOverview.balance.accrued_units).toBe("15.000000");
+  expect(leaveOverview.balance.used_units).toBe("5.500000");
+  expect(leaveOverview.balance.remaining_units).toBe("9.500000");
+  expect(leaveOverview.balance.filing_state).toBe("ready");
+  expect(leaveOverview.requests.items).toHaveLength(3);
+  expect(leaveOverview.requests.items.map(item => [item.start_date, item.days, item.status])).toEqual([
+    ["2026-11-06", 0.5, "approved"],
+    ["2026-10-23", 1, "approved"],
+    ["2026-10-08", 1, "approved"],
+  ]);
+  expect(saeonMyLeaveOverview({ items: [] }).requests.items).toEqual([]);
+
+  const homeBranchRequired = saeonMyLeaveOverview({ filingState: "home_branch_required" });
+  expect(homeBranchRequired.balance.home_branch_id).toBeNull();
+
+  const novSchedule = saeonHeroScheduleMonth("2026-11");
+  expect(novSchedule.days).toHaveLength(30);
+  expect(novSchedule.days.find(d => d.date === "2026-11-20")?.kind).toBe("WORK");
+  expect(novSchedule.days.find(d => d.date === "2026-11-21")?.kind).toBe("WEEKLY_HOLIDAY");
+
+  const created = saeonLeaveRequestView({
+    idempotency_key: "00000000-0000-4000-8000-000000000001",
+    leave_type: "half_day",
+    partial_day_period: "am",
+    start_date: "2026-11-20",
+    end_date: "2026-11-20",
+  });
+  expect(created.days).toBe(0.5);
+  expect(created.partial_day_period).toBe("am");
 });
