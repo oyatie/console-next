@@ -69,7 +69,7 @@ pub async fn same_name_in_unit(
     let rows: Vec<(Uuid, String, Option<String>, i64)> = sqlx::query_as(
         "SELECT id, COALESCE(console_employee_facts(org_id, id)->>'legal_name', name) AS name, \
                 employee_number, COUNT(*) OVER() AS total_count \
-         FROM employees WHERE org_id = $1 AND org_unit_id = $2 \
+         FROM person_employees_current WHERE org_id = $1 AND org_unit_id = $2 \
            AND name = $3 AND id <> $4 AND employment_status <> 'EXITED' \
          ORDER BY id LIMIT $5",
     )

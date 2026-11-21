@@ -136,10 +136,14 @@ impl PgOrgStore {
                 let escaped = escape_like(search);
                 let login_part = escape_like(search.split('@').next().unwrap_or(search));
                 builder
-                    .push(" AND (LOWER(u.display_name) LIKE '%' || ")
+                    .push(
+                        " AND (EXISTS (SELECT 1 FROM person_accounts_current pa \
+                         WHERE pa.org_id = u.org_id AND pa.id = u.id \
+                           AND LOWER(pa.display_name) LIKE '%' || ",
+                    )
                     .push_bind(escaped.clone())
                     .push(
-                        " || '%' ESCAPE '\\' OR EXISTS (SELECT 1 FROM employees e \
+                        " || '%' ESCAPE '\\') OR EXISTS (SELECT 1 FROM employees e \
                          WHERE e.id = u.employee_id AND e.org_id = u.org_id \
                            AND LOWER(e.employee_number) LIKE '%' || ",
                     )
