@@ -10,6 +10,7 @@ use sqlx::{Postgres, QueryBuilder, Row};
 use crate::authz::authorize_hr_scoped;
 use crate::directory::access_log::{DirectoryAccess, access_event, actor_employee_id};
 use crate::exits::queries::ExitCaseFilters;
+use crate::exits::queries_service::push_exit_filters;
 use crate::metrics::record_hr_read;
 use crate::{HrError, HrService};
 
@@ -41,7 +42,6 @@ impl HrService {
     ) -> Result<ExitCaseCountsResponse, HrError> {
         authorize_hr_scoped(&principal, Feature::EmployeeDirectoryRead)?;
         record_hr_read("exit_cases");
-        let scope = principal.branch_scope.clone();
         let filters = ExitCaseFilters {
             search: query
                 .search
@@ -51,6 +51,7 @@ impl HrService {
                 .map(str::to_owned),
             ..ExitCaseFilters::default()
         };
+        let push_where = push_exit_filters(&principal, filters);
         let reader = principal.clone();
         with_audits::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
             Box::pin(async move {
@@ -68,7 +69,7 @@ impl HrService {
                      COUNT(*) FILTER (WHERE c.status = 'CANCELLED') AS cancelled_count \
                      FROM employee_exit_cases c",
                 );
-                filters.push(&mut q, &scope);
+                push_where(&mut q);
                 let row = q.build().fetch_one(tx.as_mut()).await?;
                 let counts = ExitCaseCountsResponse {
                     all: row.try_get("all_count")?,
