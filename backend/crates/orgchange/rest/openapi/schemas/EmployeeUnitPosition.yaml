@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
 required: [org_unit_id, index, total, prev_id, next_id, pre_hire_count]
 properties:

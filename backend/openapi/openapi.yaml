@@ -6059,6 +6059,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/change-requests/counts:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - employees
       operationId: getChangeRequestCounts
@@ -9369,6 +9370,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/employees/register-facts/query:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "tenant"}
       tags:
         - employees
@@ -11806,6 +11808,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/employees/{id}/unit-position:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
       tags:
         - employees
@@ -16198,6 +16201,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/hr/exit-cases/bulk:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - hr
       operationId: bulkReportEmployeeExitCases
@@ -16241,6 +16245,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/hr/exit-cases/counts:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
       tags:
         - hr
@@ -38358,6 +38363,7 @@ components:
           items:
             $ref: '#/components/schemas/EmployeeLifecycleEvent'
     BulkExitCaseItemInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required: [employee_id]
@@ -38373,6 +38379,7 @@ components:
           - $ref: '#/components/schemas/Uuid'
           - type: 'null'
     BulkExitCaseItemResult:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [employee_id, ok]
       properties:
@@ -38517,6 +38524,7 @@ components:
                 minProperties: 1
                 description: sex, address, careers, register_note, name_hanja, name_en, nationality, personal_email, emergency_contacts (and a first exit_reason or group_service_start_date) as in CorrectEmployeeRequest.changes.
     BulkReportExitCasesRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required: [effective_exit_date, site_manager_note, items]
@@ -38537,6 +38545,7 @@ components:
           items:
             $ref: '#/components/schemas/BulkExitCaseItemInput'
     BulkReportExitCasesResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [results]
       properties:
@@ -39060,6 +39069,7 @@ components:
           - $ref: '#/components/schemas/Timestamp'
           - type: 'null'
     ChangeRequestCountsResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [all, me, role]
       properties:
@@ -45616,6 +45626,7 @@ components:
           type: [string, 'null']
           format: date-time
     EmployeeUnitPosition:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [org_unit_id, index, total, prev_id, next_id, pre_hire_count]
       properties:
@@ -45678,6 +45689,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/ChangeRequest'
     EmployeeWarningMatch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [id, name]
       properties:
@@ -47502,6 +47514,7 @@ components:
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
     ExitCaseCountsResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - all
@@ -60148,6 +60161,7 @@ components:
         created_at:
           $ref: '#/components/schemas/Timestamp'
     RegisterFactsQueryItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [employee_id, updated_at, sex, address, careers, exit_reason_code, exit_reason_label, register_note, birth_date]
       properties:
@@ -60174,6 +60188,7 @@ components:
         birth_date:
           type: [string, 'null']
     RegisterFactsQueryRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       properties:
@@ -60196,6 +60211,7 @@ components:
           minimum: 1
           maximum: 200
     RegisterFactsQueryResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [items, next_cursor]
       properties:

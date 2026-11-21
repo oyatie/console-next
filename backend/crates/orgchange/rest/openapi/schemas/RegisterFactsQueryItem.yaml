@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
 required: [employee_id, updated_at, sex, address, careers, exit_reason_code, exit_reason_label, register_note, birth_date]
 properties:
