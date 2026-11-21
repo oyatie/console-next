@@ -92,8 +92,9 @@ export default function CanvasExample({ q = READY }: { q?: ReadState }) {
           resetKey={depth}
           size={{ w: 720, h: 360 }}
           lines={LINES}
+          keep={(visibleNodes.find(n => n.id === cursorId) ?? visibleNodes[0])?.box}
           minimap={false}
-          gutter={<bdi>{tg("pat.canvas.gutterHint")}</bdi>}
+          gutter={<bdi className={fx.canvasGutter}>{tg("pat.canvas.gutterHint")}</bdi>}
           stage={{
             role: "tree",
             "aria-label": tg("pat.canvas.treeLabel"),

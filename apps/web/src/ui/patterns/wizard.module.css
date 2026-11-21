@@ -94,6 +94,7 @@
 @media (--below-wide) {
   .workspace[data-has-aside] {
     grid-template-columns: minmax(0, 1fr);
+    align-content: start;
   }
 
   .asideCol {
