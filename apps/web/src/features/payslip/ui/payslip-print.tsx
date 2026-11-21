@@ -140,7 +140,9 @@ export function printPayslip(payload: PayslipPayload, fallbackMonth: string | nu
     win?.addEventListener("afterprint", cleanup, { once: true });
     win?.focus();
     win?.print();
-    fallbackTimer = setTimeout(cleanup, PRINT_CLEANUP_FALLBACK_MS);
+    if (!cleaned) {
+      fallbackTimer = setTimeout(cleanup, PRINT_CLEANUP_FALLBACK_MS);
+    }
   };
   frame.srcdoc = buildPayslipPrintHtml(payload, fallbackMonth);
   document.body.append(frame);

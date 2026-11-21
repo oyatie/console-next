@@ -642,3 +642,90 @@ for (const width of [390, 1440] as const) {
     }
   });
 }
+
+for (const experience of ["console", "baseline"] as const) {
+  test(`${experience === "console" ? "Console" : "Baseline"} /payslips preserves cached statement, ledgers, and enabled PDF save when SSE refetch fails with 503 (stale)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const ctx = await setupPayslipMock(page, { experience, theme: "light", faultClock: true });
+
+    await page.addInitScript(() => {
+      const prevFetch = window.fetch;
+      let pushFrame: ((chunk: string) => void) | null = null;
+      (window as Window & { __emitPayslipSse?: (frame: string) => void }).__emitPayslipSse = frame => {
+        pushFrame?.(frame);
+      };
+      window.fetch = (input, init) => {
+        const request = input instanceof Request ? input : new Request(input, init);
+        if (new URL(request.url).pathname !== "/api/v1/events") return prevFetch(input, init);
+        return Promise.resolve(
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                const enc = new TextEncoder();
+                pushFrame = chunk => controller.enqueue(enc.encode(chunk));
+                pushFrame(": heartbeat\n\n");
+                request.signal.addEventListener(
+                  "abort",
+                  () => {
+                    pushFrame = null;
+                    controller.close();
+                  },
+                  { once: true },
+                );
+              },
+            }),
+            { headers: { "content-type": "text/event-stream" } },
+          ),
+        );
+      };
+    });
+
+    let failDetailRefetch = false;
+    await mockRoute(page, "get", "/api/v1/me/inbox-docs/{id}", request => {
+      if (failDetailRefetch) return { status: 503, json: failure("service_unavailable") };
+      const id = new URL(request.url()).pathname.split("/").at(-1);
+      const detail = saeonHeroPayslipDetail(id);
+      return detail ? { status: 200, json: detail } : { status: 404, json: failure("not_found") };
+    });
+
+    try {
+      await page.goto("/payslips");
+      const container = experience === "console" ? page.locator('[data-pattern="phone-statement"]') : page.locator("main");
+      const saveBtn = container.getByRole("button", { name: t("payslip.action.savePdf"), exact: true });
+
+      await expect(container).toContainText(fmtNumber(3_141_755));
+      await expect(container).toContainText(t("payslip.item.basePay"));
+      await expect(container).toContainText(fmtNumber(3_100_000));
+      await expect(container).toContainText(t("payslip.deduction.NATIONAL_PENSION"));
+      await expect(saveBtn).toBeEnabled();
+
+      // Trigger background detail refetch via SSE change frame and fail with 503.
+      failDetailRefetch = true;
+      await page.evaluate(() => {
+        const emit = (window as Window & { __emitPayslipSse?: (frame: string) => void }).__emitPayslipSse;
+        emit?.('event: change\ndata: {"type":"tenant","id":null,"at":"2026-11-22T00:00:00Z"}\n\n');
+      });
+
+      await expect(container).toContainText(t("common.read.stale"));
+      await expect(container).toContainText(fmtNumber(3_141_755));
+      await expect(container).toContainText(t("payslip.item.basePay"));
+      await expect(container).toContainText(fmtNumber(3_100_000));
+      await expect(container).toContainText(t("payslip.deduction.NATIONAL_PENSION"));
+      await expect(container).toContainText(fmtNumber(425_245));
+      await expect(container).not.toContainText(t("payslip.detail.unavailable"));
+      await expect(saveBtn).toBeEnabled();
+
+      if (experience === "baseline") {
+        const cardCount = await container.locator('[class*="card"]').count();
+        expect(cardCount).toBeGreaterThanOrEqual(4);
+        expect(cardCount).toBeLessThanOrEqual(5);
+      }
+
+      expect(ctx.fixture.unexpected).toEqual([]);
+    } finally {
+      ctx.fixture.release();
+    }
+  });
+}

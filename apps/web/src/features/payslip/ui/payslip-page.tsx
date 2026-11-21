@@ -6,6 +6,7 @@ import { Download, History } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtMonth, fmtNumber } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
+import { queryView } from "../../../lib/react/query-view";
 import { ReadReference } from "../../../lib/react/read-reference";
 import { readFailureText } from "../../../lib/refusal";
 import { Button } from "../../../ui/button/button";
@@ -55,11 +56,14 @@ export function PayslipPage() {
     enabled: Boolean(active?.id),
   });
 
+  const detailView = queryView(detailQuery);
   const detailMatchesActive = Boolean(
     active?.id && !detailQuery.isPlaceholderData && detailQuery.data?.id === active.id,
   );
   const payload = detailMatchesActive ? parsePayslipPayload(detailQuery.data?.payload) : null;
-  const activePayDate = formatShortMonthDay(active?.payslip_meta?.pay_date ?? payload?.payDate);
+  const displayPayload =
+    detailMatchesActive && detailView !== "denied" && detailView !== "not-found" ? payload : null;
+  const activePayDate = formatShortMonthDay(active?.payslip_meta?.pay_date ?? displayPayload?.payDate);
 
   const selectDoc = (doc: InboxDocSummary) => {
     const docMonth = payslipMonth(doc);
@@ -78,12 +82,10 @@ export function PayslipPage() {
     });
   };
 
-  const readyPayload = detailMatchesActive && !detailQuery.isError ? payload : null;
-
   const handleSavePdf = () => {
-    if (!readyPayload) return;
+    if (!displayPayload) return;
     printCleanupRef.current?.();
-    printCleanupRef.current = printPayslip(readyPayload, month);
+    printCleanupRef.current = printPayslip(displayPayload, month);
   };
 
   const periodControl =
@@ -146,11 +148,11 @@ export function PayslipPage() {
         }
       >
         {() =>
-          payload ? (
+          displayPayload ? (
             <div className={s.heroWrap}>
               <div className="t-xs muted">{t("payslip.netPay")}</div>
               <div className="t-2xl t-strong num">
-                {t("payslip.netAmount", { amount: fmtNumber(payload.netWon) })}
+                {t("payslip.netAmount", { amount: fmtNumber(displayPayload.netWon) })}
               </div>
             </div>
           ) : (
@@ -160,7 +162,7 @@ export function PayslipPage() {
       </QueryState>
     );
 
-  const contextItems = readyPayload ? presentContextStats(readyPayload) : [];
+  const contextItems = displayPayload ? presentContextStats(displayPayload) : [];
 
   const actionButtons =
     items.length > 0 ? (
@@ -168,7 +170,7 @@ export function PayslipPage() {
         <Button
           variant="primary"
           size="lg"
-          disabled={!readyPayload}
+          disabled={!displayPayload}
           onClick={handleSavePdf}
         >
           <Download size={16} aria-hidden="true" />
@@ -203,25 +205,25 @@ export function PayslipPage() {
       periodMeta={periodMeta}
       hero={heroContent}
       stats={
-        readyPayload ? (
-          <StatRow items={presentSummaryStats(readyPayload)} label={t("payslip.statsLabel")} />
+        displayPayload ? (
+          <StatRow items={presentSummaryStats(displayPayload)} label={t("payslip.statsLabel")} />
         ) : undefined
       }
       ledgers={
-        readyPayload ? (
+        displayPayload ? (
           <>
             <Ledger
               title={t("payslip.earnings")}
               unit={t("payslip.unitWon")}
               headerSurface="muted"
               detailLayout="inline"
-              rows={presentEarningRows(readyPayload)}
+              rows={presentEarningRows(displayPayload)}
               totals={[
                 {
                   key: "gross",
                   label: t("payslip.grossTotal"),
-                  amount: fmtNumber(readyPayload.grossWon),
-                  numericValue: readyPayload.grossWon,
+                  amount: fmtNumber(displayPayload.grossWon),
+                  numericValue: displayPayload.grossWon,
                   kind: "total",
                 },
               ]}
@@ -231,14 +233,14 @@ export function PayslipPage() {
               unit={t("payslip.unitWon")}
               headerSurface="muted"
               detailLayout="inline"
-              rows={presentDeductionRows(readyPayload)}
+              rows={presentDeductionRows(displayPayload)}
               empty={t("payslip.deductionsEmpty")}
               totals={[
                 {
                   key: "deductions",
                   label: t("payslip.deductionsTotal"),
-                  amount: fmtNumber(readyPayload.totalDeductionsWon),
-                  numericValue: readyPayload.totalDeductionsWon,
+                  amount: fmtNumber(displayPayload.totalDeductionsWon),
+                  numericValue: displayPayload.totalDeductionsWon,
                   kind: "total",
                 },
               ]}
@@ -260,7 +262,7 @@ export function PayslipPage() {
           hasActiveDoc={Boolean(active)}
           period={periodControl}
           periodMeta={periodMeta}
-          payload={readyPayload}
+          payload={displayPayload}
           emptyContent={items.length === 0 ? emptyListView : !active ? monthEmptyView : detailUnavailable}
           actions={actionButtons}
           overlays={historyOverlay}

@@ -81,13 +81,13 @@ function resolveMockQuery(options: Parameters<typeof readIdentity>[0] & { enable
     }
     if (mockState.detailError) {
       return {
-        data: undefined,
+        data: mockState.detailData,
         isPending: false,
         isFetching: false,
         isError: true,
         isSuccess: false,
         error: mockState.detailError,
-        dataUpdatedAt: 0,
+        dataUpdatedAt: mockState.detailData ? 1 : 0,
         refetch: () => Promise.resolve(),
       };
     }
@@ -321,4 +321,79 @@ test("PayslipPage Console detail loading and 503 states use compact hero layout 
   expect(consoleFailedHtml).toContain(t("common.loadFailed.title"));
   expect(consoleFailedHtml).toContain(t("common.retry"));
   expect(consoleFailedHtml).not.toContain('data-read-layout="record"');
+});
+
+test("PayslipPage preserves cached statement in stale 503 state while suppressing cached payload on 403/404 in Console and Baseline", () => {
+  const savePdfButtonDisabled = (html: string) => {
+    const buttonHtml = html
+      .match(/<button\b[\s\S]*?<\/button>/g)
+      ?.find(tag => tag.includes(t("payslip.action.savePdf")));
+    expect(buttonHtml).toBeDefined();
+    return /\bdisabled\b/.test(buttonHtml!);
+  };
+
+  // Stale 503 with cached detail data in Console
+  const consoleStaleHtml = renderPage({
+    experience: "console",
+    listData: { items: [sampleDoc], next_cursor: null },
+    detailData: sampleDetail,
+    detailError: new ApiError(503, "service_unavailable", ""),
+  });
+  expect(consoleStaleHtml).toContain(t("common.read.stale"));
+  expect(consoleStaleHtml).toContain("3,141,755");
+  expect(consoleStaleHtml).toContain("3,567,000");
+  expect(consoleStaleHtml).toContain("3,100,000");
+  expect(consoleStaleHtml).toContain("425,245");
+  expect(consoleStaleHtml).toContain("151,515");
+  expect(consoleStaleHtml).not.toContain(t("payslip.detail.unavailable"));
+  expect(savePdfButtonDisabled(consoleStaleHtml)).toBe(false);
+
+  // Stale 503 with cached detail data in Baseline
+  const baselineStaleHtml = renderPage({
+    experience: "baseline",
+    listData: { items: [sampleDoc], next_cursor: null },
+    detailData: sampleDetail,
+    detailError: new ApiError(503, "service_unavailable", ""),
+  });
+  expect(baselineStaleHtml).toContain(t("common.read.stale"));
+  expect(baselineStaleHtml).toContain("3,141,755");
+  expect(baselineStaleHtml).toContain("3,567,000");
+  expect(baselineStaleHtml).toContain("3,100,000");
+  expect(baselineStaleHtml).toContain("425,245");
+  expect(baselineStaleHtml).toContain("151,515");
+  expect(baselineStaleHtml).not.toContain(t("payslip.detail.unavailable"));
+  expect(savePdfButtonDisabled(baselineStaleHtml)).toBe(false);
+  const baselineCardCount = baselineStaleHtml.match(/<section[^>]*class="[^"]*card[^"]*"/g)?.length ?? 0;
+  expect(baselineCardCount).toBeGreaterThanOrEqual(4);
+  expect(baselineCardCount).toBeLessThanOrEqual(5);
+
+  // 403 denied with prior cached data must suppress payload in Console and Baseline
+  for (const experience of ["console", "baseline"] as const) {
+    const deniedWithDataHtml = renderPage({
+      experience,
+      listData: { items: [sampleDoc], next_cursor: null },
+      detailData: sampleDetail,
+      detailError: new ApiError(403, "forbidden", ""),
+    });
+    expect(deniedWithDataHtml).toContain(t("common.denied.panel"));
+    expect(deniedWithDataHtml).not.toContain("3,141,755");
+    expect(deniedWithDataHtml).not.toContain("3,567,000");
+    expect(deniedWithDataHtml).not.toContain("3,100,000");
+    expect(savePdfButtonDisabled(deniedWithDataHtml)).toBe(true);
+  }
+
+  // 404 not-found with prior cached data must suppress payload in Console and Baseline
+  for (const experience of ["console", "baseline"] as const) {
+    const notFoundWithDataHtml = renderPage({
+      experience,
+      listData: { items: [sampleDoc], next_cursor: null },
+      detailData: sampleDetail,
+      detailError: new ApiError(404, "not_found", ""),
+    });
+    expect(notFoundWithDataHtml).toContain(t("common.read.notFound.title"));
+    expect(notFoundWithDataHtml).not.toContain("3,141,755");
+    expect(notFoundWithDataHtml).not.toContain("3,567,000");
+    expect(notFoundWithDataHtml).not.toContain("3,100,000");
+    expect(savePdfButtonDisabled(notFoundWithDataHtml)).toBe(true);
+  }
 });
