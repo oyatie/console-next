@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components } from "@console/api";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import raw from "./saeon-universe.json" with { type: "json" };
 import {
   brnChecksumValid,
@@ -598,5 +599,184 @@ export function saeonApprovalOrgChange(): S["OrgChangeDetail"] {
     })),
     settlementItems: [],
     events: [],
+  };
+}
+
+/** OpenAPI-typed `ApprovalDocumentDetail` for Saeon `OC-2026-0418` or secondary queue documents. */
+export function saeonApprovalDocument(docId: string = SAEON_ORG_CHANGE_ID): S["ApprovalDocumentDetail"] {
+  const { approval } = saeonUniverse;
+  const team2 = saeonUniverse.entities[0]!.workplaces[1]!.departments[2]!.split(" › ").at(-1)!;
+  const team3 = saeonUniverse.entities[0]!.workplaces[1]!.departments[3]!.split(" › ").at(-1)!;
+  const roleKeys: S["OrgChangeApprovalRoleKey"][] = ["executive", "hr", "executive"];
+  const queueEntry = approval.queue.find(entry => entry.id === docId || entry.documentNumber === docId);
+  const isPrimary = !queueEntry || docId === SAEON_ORG_CHANGE_ID || docId === approval.documentNumber;
+  const route: S["ApprovalDocument"]["route"] = approval.steps.map((step, index) => ({
+    id: `00000000-0000-4000-8700-${padDigits(index + 1, 12)}`,
+    role_key: roleKeys[index] ?? "hr",
+    assignee: `${step.actor} · ${step.unit}`,
+    state: step.status === "DONE" ? "done" : step.status === "CURRENT" ? "current" : "waiting",
+  }));
+
+  if (!isPrimary && queueEntry) {
+    const entryRoute: S["ApprovalDocument"]["route"] = queueEntry.steps.map((step, index) => ({
+      id: `00000000-0000-4000-8710-${padDigits(index + 1, 12)}`,
+      role_key: (step.roleKey as S["OrgChangeApprovalRoleKey"]) ?? "hr",
+      assignee: `${step.actor} · ${step.unit}`,
+      state: step.status === "DONE" ? "done" : step.status === "CURRENT" ? "current" : "waiting",
+    }));
+    return {
+      id: queueEntry.id,
+      box: "pending",
+      title: queueEntry.title,
+      summary: queueEntry.summary,
+      document_no: queueEntry.documentNumber,
+      decision_refusal: null,
+      source: { key: queueEntry.sourceKey, label: queueEntry.sourceLabel },
+      status: { key: "IN_APPROVAL" },
+      requester: { id: "00000000-0000-4000-8000-000000000002", name: queueEntry.requester },
+      effective_date: queueEntry.effectiveDate,
+      requested_at: `${queueEntry.requestedDate}T09:00:00+09:00`,
+      facts: [{ key: "effective", label: t("approvals.field.effectiveDate"), value: fmtDate(queueEntry.effectiveDate) }],
+      route: entryRoute,
+      viewer: { kind: "org_change", id: SAEON_ORG_CHANGE_ID },
+      body: [{ key: "summary", label: t("home.inbox.record.reason"), value: queueEntry.summary }],
+      revision: 1,
+      fingerprint: `sha256:saeon-${queueEntry.documentNumber.toLowerCase()}-r1`,
+      consequence: "next_step",
+      opinion_max: 1498,
+      my_actions: {
+        kind: "approve",
+        reject: { consequence: "request_ends", reason_domain: "org_change_reject" },
+      },
+    };
+  }
+
+  return {
+    id: docId,
+    box: "pending",
+    title: approval.title,
+    summary: approval.reason,
+    document_no: approval.documentNumber,
+    decision_refusal: null,
+    source: { key: "org_change", label: approval.category },
+    status: { key: "IN_APPROVAL" },
+    requester: {
+      id: "00000000-0000-4000-8000-000000000002",
+      name: approval.steps[0]?.actor ?? "",
+    },
+    effective_date: approval.effectiveDate,
+    requested_at: `${approval.draftedDate}T09:00:00+09:00`,
+    facts: [
+      {
+        key: "due",
+        label: t("approvals.field.dueAt"),
+        value: fmtDate(approval.dueDate),
+      },
+      {
+        key: "transfer",
+        label: t("home.worklist.impact.transfer"),
+        value: t("home.worklist.personCount", { count: approval.transferredCount }),
+      },
+      {
+        key: "cc",
+        label: t("approvals.box.reference"),
+        value: approval.ccActor,
+      },
+    ],
+    route,
+    viewer: { kind: "org_change", id: SAEON_ORG_CHANGE_ID },
+    body: [
+      {
+        key: "headcount",
+        label: team2,
+        value: `${t("home.worklist.personCount", { count: approval.beforeHeadcount })} → ${t("home.worklist.personCount", { count: approval.afterHeadcount })}`,
+      },
+      {
+        key: "dissolved",
+        label: team3,
+        value: `${t("home.worklist.personCount", { count: approval.transferredCount })} → ${t("orgPropose.diff.chip.dissolved")}`,
+      },
+      {
+        key: "assignment",
+        label: approval.ccActor,
+        value: `${team3} → ${team2}`,
+      },
+      {
+        key: "impact",
+        label: t("home.worklist.impact.title"),
+        value: approval.inFlightApprovalNote,
+      },
+    ],
+    proposal: [
+      {
+        op: "REASSIGN_ORG_UNIT",
+        fromOrgUnit: "00000000-0000-4000-8400-000000000003",
+        toOrgUnit: "00000000-0000-4000-8400-000000000002",
+        scope: { company: "00000000-0000-4000-8200-000000000001" },
+      },
+      {
+        op: "DISSOLVE_ORG_UNIT",
+        orgUnitId: "00000000-0000-4000-8400-000000000003",
+        mergedInto: "00000000-0000-4000-8400-000000000002",
+      },
+    ],
+    proposal_names: {
+      "00000000-0000-4000-8400-000000000002": team2,
+      "00000000-0000-4000-8400-000000000003": team3,
+    },
+    revision: 1,
+    fingerprint: "sha256:saeon-oc-2026-0418-r1",
+    consequence: "next_step",
+    opinion_max: 1498,
+    my_actions: {
+      kind: "approve",
+      reject: { consequence: "request_ends", reason_domain: "org_change_reject" },
+    },
+  };
+}
+
+/** OpenAPI-typed `ApprovalDocumentPage` for Saeon `/approvals` inbox queues. */
+export function saeonApprovalsPage(
+  box: S["ApprovalDocument"]["box"] = "pending",
+  options: { q?: string; source?: string } = {},
+): S["ApprovalDocumentPage"] {
+  const { approval } = saeonUniverse;
+  const primary = saeonApprovalDocument(approval.documentNumber);
+  const allPending: S["ApprovalDocument"][] = [
+    primary,
+    ...approval.queue.map(entry => saeonApprovalDocument(entry.id)),
+  ].map(({ body: _b, proposal: _p, proposal_names: _pn, revision: _r, fingerprint: _f, consequence: _c, opinion_max: _om, my_actions: _ma, ...summary }) => summary);
+
+  const rawItems = box === "pending" ? allPending : [];
+  const query = options.q?.trim().toLowerCase() ?? "";
+  const items = rawItems.filter(item => {
+    if (options.source && item.source.key !== options.source) return false;
+    if (!query) return true;
+    return [item.title, item.summary, item.document_no, item.requester.name]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
+
+  const sourceMap = new Map<string, { key: string; label: string; count: number }>();
+  for (const item of rawItems) {
+    const existing = sourceMap.get(item.source.key);
+    if (existing) existing.count++;
+    else sourceMap.set(item.source.key, { key: item.source.key, label: item.source.label, count: 1 });
+  }
+
+  return {
+    items,
+    focused: null,
+    counts: {
+      pending: allPending.length,
+      upcoming: 2,
+      requested: 3,
+      reference: 2,
+      completed: 8,
+    },
+    sources: [...sourceMap.values()],
+    next_cursor: null,
   };
 }
