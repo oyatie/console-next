@@ -29353,7 +29353,7 @@ export interface components {
             /** @enum {string} */
             relation: "SPOUSE" | "PARENT" | "CHILD" | "SIBLING" | "RELATIVE" | "OTHER";
             phone: string;
-            contact_notified?: boolean;
+            contact_notified?: boolean | null;
         };
         SelfEmergencyContactSummary: {
             name: string;
