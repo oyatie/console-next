@@ -9,7 +9,6 @@
 "apps/web/src/features/access/ui/role-editor.tsx": {"dsClass":3},
 "apps/web/src/features/access/ui/role-pick.tsx": {"dsClass":1},
 "apps/web/src/features/access/ui/scope-picker.tsx": {"dsClass":1},
-"apps/web/src/features/account/ui/my-access.tsx": {"dsClass":4},
 "apps/web/src/features/entity/ui/business-section.tsx": {"dsClass":1},
 "apps/web/src/features/entity/ui/create-cert-aside.tsx": {"dsClass":3},
 "apps/web/src/features/entity/ui/create-cert-form.tsx": {"dsClass":3},

@@ -9,7 +9,7 @@ import s from "./account.module.css";
 import { consentDocumentsQuery, consentQuery } from "../api";
 
 /** The status and notice settle independently, each in its own row. */
-export function ConsentCard() {
+export function ConsentBody() {
   const q = useQuery(consentQuery);
   const documents = useQuery(consentDocumentsQuery);
   const notice = documents.data?.privacy;
@@ -19,7 +19,7 @@ export function ConsentCard() {
     : <>{t("account.consent.pending")} · <Link to="/setup-passkey">{t("auth.setup.title")}</Link></>
   }</QueryState>;
   return (
-    <Card title={t("account.consent.title")}>
+    <>
       <KeyValue items={[{ key: "privacy", label, value: q.isLoadingError
         ? <details><summary className="t-xs">{t("common.loadFailed.title")}</summary>{status}</details>
         : status }]} />
@@ -30,6 +30,15 @@ export function ConsentCard() {
           <div className="muted">{t("auth.setup.consent.policy")}: {d.privacy.policy_url}</div>
         </>}</QueryState>
       </details>
+    </>
+  );
+}
+
+/** Baseline card wrapper for consent status and privacy notice disclosure. */
+export function ConsentCard() {
+  return (
+    <Card title={t("account.consent.title")}>
+      <ConsentBody />
     </Card>
   );
 }

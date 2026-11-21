@@ -69,6 +69,7 @@ export const bootEn = {
   "shell.hub.admin": "Admin",
   "shell.link.access": "Access",
   "shell.account": "My account",
+  "shell.profile": "My profile",
   "shell.needsMe": "Needs my action",
   "shell.needsMe.count": "Inbox {count}",
   "shell.needsMe.countDescription": "Inbox · {count, plural, one {# item needs my action} other {# items need my action}}",

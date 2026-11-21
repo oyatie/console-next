@@ -74,6 +74,10 @@
   .compact [data-card="fact"] { grid-column: 2; grid-row: 1; font-weight: var(--fw-semibold); color: var(--ink); }
   .compact [data-card="title"] { grid-column: 1 / 3; grid-row: 2; color: var(--steel); font-size: var(--text-xs); }
   .compact [data-card="action"] { grid-column: 3; grid-row: 1 / 3; align-self: center; justify-self: end; overflow: visible; }
+  .compact tbody > tr:not(:has(> [data-card="status"])) { grid-template-columns: minmax(0, 1fr) auto; }
+  .compact tbody > tr:not(:has(> [data-card="status"])) [data-card="fact"],
+  .compact tbody > tr:not(:has(> [data-card="status"])) [data-card="title"] { grid-column: 1; }
+  .compact tbody > tr:not(:has(> [data-card="status"])) [data-card="action"] { grid-column: 2; }
   .compact :global(.table__detail) { grid-template-columns: minmax(0, 1fr); }
   :where([data-experience]:not([data-experience="baseline"])) .compact:global(.table) tbody > tr[aria-selected="true"] { box-shadow: var(--selected-bar); }
   :where([data-experience]:not([data-experience="baseline"])) .compact:global(.table) tbody > tr[aria-selected="true"] td:first-child { box-shadow: none; }

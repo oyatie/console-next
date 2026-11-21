@@ -71,6 +71,10 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
   // An opened 업무함 record reads its item's activity; a spec that cares overrides this empty answer.
   await mockRoute(page, "get", "/api/v1/me/action-inbox/items/{id}/activity", { status: 200, json: { items: [] } });
+  await mockRoute(page, "get", "/api/v1/me/access-log", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v2/me/leave", { status: 200, json: { balance: { employee_id: id(1), name: user.display_name, accrued_units: "15", used_units: "5.5", remaining_units: "9.5", filing_state: "ready", home_branch_id: id(4) }, requests: { items: [], next_cursor: null } } });
+  await mockRoute(page, "get", "/api/v1/me/inbox-docs", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v1/change-requests", { status: 200, json: { items: [], total: 0, limit: 10, offset: 0 } });
   // Postponing an item and bringing it back answer no body; a spec that cares overrides them.
   await mockRoute(page, "post", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 204 });
   await mockRoute(page, "delete", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 204 });

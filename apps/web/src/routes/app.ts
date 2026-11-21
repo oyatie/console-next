@@ -62,7 +62,7 @@ const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-a
 // Home with the setup checklist composed in (routes compose slices).
 const home = createRoute({ getParentRoute: () => app, path: "/", validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }), staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
 const loadAccount = () => import("../features/account/Account");
-const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05" }, component: lazyRouteComponent(screen(loadAccount), "Account") });
+const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05", pattern: "phone-hub" }, component: lazyRouteComponent(screen(loadAccount), "Account") });
 const privacyIntake = createRoute({ getParentRoute: () => app, path: "/account/privacy/intake/$id", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(loadAccount), "PrivacyIntake") });
 const privacy = createRoute({ getParentRoute: () => app, path: "/account/privacy", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(loadAccount), "PrivacyRequests") });
 

@@ -70,6 +70,7 @@ export const bootKo: Record<BootMessageId, string> = {
   "shell.hub.admin": "관리",
   "shell.link.access": "권한",
   "shell.account": "내 계정",
+  "shell.profile": "내 정보",
   "shell.needsMe": "대기 업무",
   "shell.needsMe.count": "업무함 {count}",
   "shell.needsMe.countDescription": "업무함 {count, number}건",
