@@ -16,7 +16,6 @@
   "PATCH /api/v1/auth/passkeys/{id}": "A caller may rename their own passkey.",
   "POST /api/v1/auth/privacy-consent/accept": "The caller accepts their own required privacy terms.",
   "POST /api/v1/auth/privacy-consent/status": "The caller reads their own consent state through the authentication protocol.",
-  "POST /api/v1/auth/signup": "Public signup creates a lowest-privilege account without a role grant.",
   "POST /api/v1/auth/token/refresh": "A refresh token rotates its own session without a role grant.",
   "POST /api/v1/client-errors": "The public same-origin error beacon reports client failures.",
   "PATCH /api/v1/users/me": "The caller edits their own display name and phone.",

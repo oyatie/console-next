@@ -31,6 +31,7 @@ use console_identity_adapter_postgres::IdempotentCreate;
 use console_identity_application::CreateUserCommand;
 use console_identity_application::UpdateUserCommand;
 use console_identity_application::UserListQuery;
+use console_identity_domain::normalize_directory_search;
 use console_kernel_core::BranchId;
 use console_kernel_core::KernelError;
 use console_kernel_core::TraceContext;
@@ -109,6 +110,8 @@ pub(crate) async fn list_users(
             "offset must be non-negative",
         )));
     }
+    let search =
+        normalize_directory_search(query.search.as_deref()).map_err(RestError::from_kernel)?;
     let page = state
         .store
         .list_users(
@@ -117,6 +120,7 @@ pub(crate) async fn list_users(
                 include_inactive: query.include_inactive,
                 limit: query.limit,
                 offset: query.offset,
+                search,
             },
         )
         .await

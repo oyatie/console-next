@@ -6291,13 +6291,6 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
-        path: "/api/v1/auth/signup",
-        operations: &[Operation {
-            method: "post",
-            body: include_str!("../../identity/rest/openapi/paths/api__v1__auth__signup.post.yaml"),
-        }],
-    },
-    PathItem {
         path: "/api/v1/auth/token/refresh",
         operations: &[Operation {
             method: "post",
@@ -7731,14 +7724,6 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SignInIdRecord",
         body: include_str!("../../identity/rest/openapi/schemas/SignInIdRecord.yaml"),
-    },
-    NamedYaml {
-        name: "SignupRequest",
-        body: include_str!("../../identity/rest/openapi/schemas/SignupRequest.yaml"),
-    },
-    NamedYaml {
-        name: "SignupResponse",
-        body: include_str!("../../identity/rest/openapi/schemas/SignupResponse.yaml"),
     },
     NamedYaml {
         name: "SimulationOutcome",
@@ -9913,6 +9898,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/change-requests/counts",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__change-requests__counts.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/change-requests/{id}/decide",
         operations: &[Operation {
             method: "post",
@@ -10274,6 +10268,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/register-facts/query",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__employees__register-facts__query.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/renumber/apply",
         operations: &[Operation {
             method: "post",
@@ -10626,6 +10629,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/{id}/unit-position",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__employees__id__unit-position.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/{id}/void",
         operations: &[Operation {
             method: "post",
@@ -10800,6 +10812,24 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
                 ),
             },
         ],
+    },
+    PathItem {
+        path: "/api/v1/hr/exit-cases/bulk",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__hr__exit-cases__bulk.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/hr/exit-cases/counts",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__hr__exit-cases__counts.get.yaml"
+            ),
+        }],
     },
     PathItem {
         path: "/api/v1/hr/exit-cases/{id}",
@@ -11269,6 +11299,14 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         ),
     },
     NamedYaml {
+        name: "BulkExitCaseItemInput",
+        body: include_str!("../../orgchange/rest/openapi/schemas/BulkExitCaseItemInput.yaml"),
+    },
+    NamedYaml {
+        name: "BulkExitCaseItemResult",
+        body: include_str!("../../orgchange/rest/openapi/schemas/BulkExitCaseItemResult.yaml"),
+    },
+    NamedYaml {
         name: "BulkLifecyclePreview",
         body: include_str!("../../orgchange/rest/openapi/schemas/BulkLifecyclePreview.yaml"),
     },
@@ -11283,6 +11321,14 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "BulkRegisterFactsRequest",
         body: include_str!("../../orgchange/rest/openapi/schemas/BulkRegisterFactsRequest.yaml"),
+    },
+    NamedYaml {
+        name: "BulkReportExitCasesRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/BulkReportExitCasesRequest.yaml"),
+    },
+    NamedYaml {
+        name: "BulkReportExitCasesResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/BulkReportExitCasesResponse.yaml"),
     },
     NamedYaml {
         name: "BulkSelection",
@@ -11337,6 +11383,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ChangeRequest",
         body: include_str!("../../orgchange/rest/openapi/schemas/ChangeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ChangeRequestCountsResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ChangeRequestCountsResponse.yaml"),
     },
     NamedYaml {
         name: "ChangeSetDetail",
@@ -11715,12 +11765,24 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../orgchange/rest/openapi/schemas/EmployeeRrnStatus.yaml"),
     },
     NamedYaml {
+        name: "EmployeeUnitPosition",
+        body: include_str!("../../orgchange/rest/openapi/schemas/EmployeeUnitPosition.yaml"),
+    },
+    NamedYaml {
         name: "EmployeeVoidOutcome",
         body: include_str!("../../orgchange/rest/openapi/schemas/EmployeeVoidOutcome.yaml"),
     },
     NamedYaml {
+        name: "EmployeeWarningMatch",
+        body: include_str!("../../orgchange/rest/openapi/schemas/EmployeeWarningMatch.yaml"),
+    },
+    NamedYaml {
         name: "EmploymentType",
         body: include_str!("../../orgchange/rest/openapi/schemas/EmploymentType.yaml"),
+    },
+    NamedYaml {
+        name: "ExitCaseCountsResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ExitCaseCountsResponse.yaml"),
     },
     NamedYaml {
         name: "ExitCaseNextAction",
@@ -11949,6 +12011,18 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ProtectedExitPeriod",
         body: include_str!("../../orgchange/rest/openapi/schemas/ProtectedExitPeriod.yaml"),
+    },
+    NamedYaml {
+        name: "RegisterFactsQueryItem",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RegisterFactsQueryItem.yaml"),
+    },
+    NamedYaml {
+        name: "RegisterFactsQueryRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RegisterFactsQueryRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RegisterFactsQueryResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/RegisterFactsQueryResponse.yaml"),
     },
     NamedYaml {
         name: "RehireEmployeeRequest",

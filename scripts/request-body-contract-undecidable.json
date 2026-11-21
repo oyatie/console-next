@@ -385,13 +385,6 @@
       "reason": "rust_struct_not_strict"
     },
     {
-      "operation": "POST /api/v1/auth/signup",
-      "rust_file": "backend/crates/platform/auth-rest/src/lib.rs",
-      "handler": "signup",
-      "body_type": "SignupRequest",
-      "reason": "rust_struct_not_strict"
-    },
-    {
       "operation": "POST /api/v1/auth/token/refresh",
       "rust_file": "backend/crates/platform/auth-rest/src/lib.rs",
       "handler": "refresh_token",

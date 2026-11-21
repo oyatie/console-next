@@ -7,11 +7,8 @@ use console_platform_auth::JwtVerifier;
 use console_platform_auth::PasskeyService;
 use console_platform_auth::RefreshTokenStore;
 use console_platform_auth::WebauthnSettings;
-use console_platform_email::DisabledEmailSender;
-use console_platform_email::EmailSender;
 use console_platform_provisioning::BootstrapCredentialStore;
 use sqlx::PgPool;
-use std::sync::Arc;
 use time::Duration;
 use url::Url;
 
@@ -44,10 +41,6 @@ pub(crate) struct AuthServices {
     pub(crate) rp_origin: Url,
     pub(crate) refresh_token_ttl: Duration,
     pub(crate) refresh_family_absolute_ttl: Duration,
-    /// Outbound OTP email sender for open self-service signup (#38). Always
-    /// present: live SMTP, an explicitly configured non-prod stub, or a disabled
-    /// fail-closed sender that never logs OTPs.
-    pub(crate) email_sender: Arc<dyn EmailSender>,
 }
 
 impl AuthRestState {
@@ -99,9 +92,6 @@ impl AuthRestState {
                 rp_origin: handoff_origin,
                 refresh_token_ttl: config.refresh_token_ttl,
                 refresh_family_absolute_ttl: config.refresh_family_absolute_ttl,
-                // Fail closed by default; the composition root installs live SMTP
-                // or an explicit non-prod logging stub via `with_email_sender`.
-                email_sender: Arc::new(DisabledEmailSender),
             }),
         })
     }
@@ -114,17 +104,6 @@ impl AuthRestState {
     ) -> Self {
         if let Some(services) = self.services.as_mut() {
             services.bootstrap_credentials = bootstrap_credentials;
-        }
-        self
-    }
-
-    /// Install the outbound OTP email sender used by the open-signup endpoint.
-    /// The composition root calls this with the app's `Arc<dyn EmailSender>`
-    /// (live SMTP or the logging stub). A no-op when auth services are disabled.
-    #[must_use]
-    pub fn with_email_sender(mut self, email_sender: Arc<dyn EmailSender>) -> Self {
-        if let Some(services) = self.services.as_mut() {
-            services.email_sender = email_sender;
         }
         self
     }

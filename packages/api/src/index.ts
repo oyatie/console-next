@@ -5,6 +5,7 @@ export * from "./step-up";
 export type { Platform } from "./platform";
 export type { paths, components } from "./schema";
 export * from "./me-access-log";
+export * from "./hr-waterfall";
 export * from "./platform-operators";
 export * from "./support-sessions";
 

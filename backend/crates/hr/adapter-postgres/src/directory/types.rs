@@ -114,6 +114,15 @@ pub struct EmployeeFailedEvent {
     pub failure_code: String,
 }
 
+/// One namesake matched by an employee warning (`matches[]`).
+#[derive(Debug, Clone, Serialize)]
+pub struct EmployeeWarningMatch {
+    pub id: Uuid,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub employee_number: Option<String>,
+}
+
 /// A non-blocking notice on a created employee (`warnings[]`).
 #[derive(Debug, Serialize)]
 pub struct EmployeeCreateWarning {
@@ -124,6 +133,10 @@ pub struct EmployeeCreateWarning {
     /// Empty for `pay_below_minimum_wage` (kept, so existing clients that
     /// read it as a list keep working).
     pub employee_ids: Vec<Uuid>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub matches: Vec<EmployeeWarningMatch>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_count: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub floor_won: Option<i64>,
 }

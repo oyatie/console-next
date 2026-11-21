@@ -77,6 +77,8 @@ pub(crate) struct ListUsersRequest {
     pub(crate) limit: Option<i64>,
     /// Zero-based row offset for offset pagination. Optional, defaults to 0.
     pub(crate) offset: Option<i64>,
+    #[serde(default)]
+    pub(crate) search: Option<String>,
 }
 
 /// Body of `POST /api/v1/users/{id}/deactivate`.

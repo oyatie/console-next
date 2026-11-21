@@ -124,7 +124,7 @@ crates/governance/adapter-postgres/tests/approvals_create_as_runtime_role.rs	535
 crates/governance/adapter-postgres/tests/governance_rls_as_runtime_role.rs	781
 crates/governance/rest/src/lib.rs	355
 crates/identity/adapter-postgres/tests/subject_authz_versions_freshness_rls.rs	430
-crates/identity/application/src/org.rs	377
+crates/identity/application/src/org.rs	371
 crates/identity/rest/tests/authentication_locking.rs	862
 crates/identity/rest/tests/org_setup.rs	4041
 crates/inbox/adapter-postgres/tests/inbox_docs_rls_surfaces_as_runtime_role.rs	306
@@ -196,7 +196,7 @@ crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs	1190
 crates/payroll/adapter-postgres/tests/payroll_lifecycle_rls_as_runtime_role.rs	417
 crates/payroll/adapter-postgres/tests/payroll_rls_surfaces_as_runtime_role.rs	373
 crates/payroll/domain/src/lib.rs	1191
-crates/payroll/rest/src/lib.rs	336
+crates/payroll/rest/src/lib.rs	301
 crates/payroll/rest/src/lifecycle.rs	600
 crates/payroll/rest/src/payslip_draft.rs	370
 crates/payroll/rest/tests/api.rs	759
@@ -241,7 +241,7 @@ crates/platform/provisioning/tests/account_locking.rs	676
 crates/platform/provisioning/tests/bootstrap_passkey.rs	690
 crates/platform/provisioning/tests/company_locking.rs	362
 crates/platform/provisioning/tests/first_enrollment_command.rs	629
-crates/platform/provisioning/tests/rls_auth_chain_as_runtime_role.rs	596
+crates/platform/provisioning/tests/rls_auth_chain_as_runtime_role.rs	542
 crates/platform/provisioning/tests/self_enroll_handoff_as_runtime_role.rs	313
 crates/platform/push/src/lib.rs	339
 crates/platform/realtime/tests/postgres_bridge.rs	715

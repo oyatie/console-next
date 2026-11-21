@@ -51,6 +51,41 @@ pub async fn own_record_guard(
     own_record_guard_many(tx, org, actor, &[employee], feature).await
 }
 
+pub(crate) async fn own_record_decisions_many(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: UserId,
+    employees: &[Uuid],
+    feature: Feature,
+) -> Result<std::collections::HashMap<Uuid, OwnRecord>, HrError> {
+    let mut decisions = std::collections::HashMap::with_capacity(employees.len());
+    for (employee, actor_is_ops, subject_is_self) in
+        own_record_facts(tx, org, actor, employees).await?
+    {
+        let decision = decide_own_record(
+            tx,
+            org,
+            actor,
+            employee,
+            feature,
+            (actor_is_ops, subject_is_self),
+        )
+        .await?;
+        decisions.insert(employee, decision);
+    }
+    Ok(decisions)
+}
+
+pub(crate) async fn record_break_glass(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: UserId,
+    employee: Uuid,
+    feature: Feature,
+) -> Result<(), HrError> {
+    break_glass(tx, org, actor, employee, feature).await
+}
+
 /// The same Cedar guard for a batch, loading self-record facts once.
 /// Each own record retains its live holder check and review audit.
 /// # Errors

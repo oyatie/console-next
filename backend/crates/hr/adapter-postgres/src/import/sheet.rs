@@ -24,6 +24,7 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::import::canonical::normalized_decimal_text;
+use crate::import::header::allowed_column_target;
 use crate::import::parsed::{EmployeeCanonicalFields, ImportRowStatus, ParsedEmployeeImportRow};
 use crate::import::persist::persistable_import_row;
 use crate::import::types::EmployeeImportColumn;
@@ -177,7 +178,16 @@ pub fn sheet_rows(
     plans: &[ColumnPlan],
     source: &str,
 ) -> SheetRows {
-    let keys = keys(plans);
+    let plans: Vec<ColumnPlan> = plans
+        .iter()
+        .map(|plan| ColumnPlan {
+            target: plan
+                .target
+                .filter(|target| allowed_column_target(&plan.label, target)),
+            ..plan.clone()
+        })
+        .collect();
+    let keys = keys(&plans);
     let columns: Vec<EmployeeImportColumn> =
         plans.iter().zip(&keys).map(|(p, k)| column(p, k)).collect();
     let restricted: BTreeSet<&str> = columns
@@ -188,7 +198,7 @@ pub fn sheet_rows(
         })
         .map(|c| c.normalized_header.as_str())
         .collect();
-    let targets = Targets(plans);
+    let targets = Targets(&plans);
     let mut out = SheetRows {
         columns: columns.clone(),
         ..SheetRows::default()

@@ -15,7 +15,7 @@ use console_hr_domain::import::roster_cells::sheet_memory_key;
 use serde_json::{Value, json};
 
 use crate::HrError;
-use crate::import::header::reject_rrn_label;
+use crate::import::header::{allowed_column_target, reject_rrn_label};
 use crate::import::parsed::ParsedEmployeeImportWorkbook;
 use crate::import::sheet::{SheetContext, sheet_rows};
 
@@ -147,7 +147,11 @@ pub fn parse_workbook(
                         plans
                             .iter()
                             .filter(|c| {
-                                c.source == MappingSource::Operator && !c.label.trim().is_empty()
+                                c.source == MappingSource::Operator
+                                    && !c.label.trim().is_empty()
+                                    && c.target.is_none_or(|target| {
+                                        allowed_column_target(&c.label, target)
+                                    })
                             })
                             .map(|c| (memory_key(&c.label), c.target.map(ToOwned::to_owned))),
                     );
