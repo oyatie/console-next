@@ -43,6 +43,7 @@ export const bootEn = {
   "shell.link.home": "Home",
   "shell.link.leave": "Leave",
   "shell.title.leave": "Request leave",
+  "shell.title.payslip": "Payslip",
   "shell.link.certificates": "Certificates",
   "shell.link.profile": "My info",
   "shell.link.approvals": "Approval inbox",

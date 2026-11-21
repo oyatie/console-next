@@ -28,6 +28,10 @@ export type PeriodStepperProps = {
   variant?: "plain" | "boxed";
   /** Show the quick-jump button (`today` / `this week` / `this month` / `this year`). */
   showCurrent?: boolean;
+  /** Disable stepping backward (e.g. at the oldest available period). */
+  disablePrev?: boolean;
+  /** Disable stepping forward (e.g. at the latest available period). */
+  disableNext?: boolean;
   /** Accessible group label override (defaults to `attendance.period.label`). */
   label?: string;
 };
@@ -39,6 +43,8 @@ export function PeriodStepper({
   onChange,
   variant = "plain",
   showCurrent = true,
+  disablePrev = false,
+  disableNext = false,
   label,
 }: PeriodStepperProps) {
   const today = todayKst();
@@ -55,11 +61,11 @@ export function PeriodStepper({
   return (
     <div className={s.controls} role="group" aria-label={label ?? t("attendance.period.label")}>
       <div className={s.stepper} data-variant={variant}>
-        <IconButton size="sm" className={s.stepBtn} label={t(labels[unit][0])} onClick={() => move(-1)}>
+        <IconButton size="sm" className={s.stepBtn} label={t(labels[unit][0])} disabled={disablePrev} onClick={() => move(-1)}>
           <ChevronLeft size={16} aria-hidden />
         </IconButton>
         <strong className={s.text}>{text}</strong>
-        <IconButton size="sm" className={s.stepBtn} label={t(labels[unit][1])} onClick={() => move(1)}>
+        <IconButton size="sm" className={s.stepBtn} label={t(labels[unit][1])} disabled={disableNext} onClick={() => move(1)}>
           <ChevronRight size={16} aria-hidden />
         </IconButton>
       </div>

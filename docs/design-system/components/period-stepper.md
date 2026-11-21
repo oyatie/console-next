@@ -78,6 +78,8 @@ Dates are formatted via `fmtDate` and `fmtMonth` from `@console/i18n/format`.
 | `onChange` | yes | `(value: string) => void` |  | Called with the shifted or current ISO period string. |
 | `unit` | yes | `"day" \| "month" \| "week" \| "year"` |  | Calendar granularity stepped by prev/next and current-period jump. |
 | `value` | yes | `string` |  | Current business period (`YYYY-MM-DD`, `YYYY-MM`, or `YYYY`). |
+| `disableNext` | no | `boolean` | `false` | Disable stepping forward (e.g. at the latest available period). |
+| `disablePrev` | no | `boolean` | `false` | Disable stepping backward (e.g. at the oldest available period). |
 | `label` | no | `string` |  | Accessible group label override (defaults to `attendance.period.label`). |
 | `showCurrent` | no | `boolean` | `true` | Show the quick-jump button (`today` / `this week` / `this month` / `this year`). |
 | `variant` | no | `"boxed" \| "plain"` | `"plain"` | Visual chrome: `plain` (inline chevrons) or `boxed` (unified bordered control). |
