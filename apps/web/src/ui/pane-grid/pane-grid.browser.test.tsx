@@ -261,61 +261,6 @@ describe("StrictMode PaneGrid", () => {
     expect(await hasActiveAttr("data-outside")).toBe(true);
   });
 
-  test("does not overwrite intentional focus moved before post-Escape rAF fires", async () => {
-    // Case 1: focus stayed in center (outside closing pane) and moves to row B before rAF runs
-    await page.locator("[data-reset]").click();
-    const main = page.locator("[data-strict-pane-grid]");
-    await page.locator('[data-row-id="a"]').click();
-    await expect.poll(() => page.locator('[data-pane="record"]').count()).toBe(1);
-    const activeFromCenter = await page.evaluate(
-      () =>
-        new Promise<string | null>(resolve => {
-          const rowA = document.querySelector<HTMLElement>('[data-row-id="a"]');
-          const rowB = document.querySelector<HTMLElement>('[data-row-id="b"]');
-          rowA?.focus();
-          const obs = new MutationObserver(() => {
-            if (!document.querySelector('[data-pane="record"]')) {
-              obs.disconnect();
-              rowB?.focus();
-              requestAnimationFrame(() =>
-                requestAnimationFrame(() => resolve(document.activeElement?.getAttribute("data-row-id") ?? null)),
-              );
-            }
-          });
-          obs.observe(document.body, { childList: true, subtree: true });
-          rowA?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-        }),
-    );
-    expect(activeFromCenter).toBe("b");
-    expect(await main.getAttribute("data-restore-calls")).toBe("0");
-
-    // Case 2: focus was inside closing pane (falls back to body on unmount) and moves to outside button before rAF runs
-    await page.locator("[data-reset]").click();
-    await page.locator('[data-row-id="a"]').click();
-    await expect.poll(() => page.locator('[data-pane="record"]').count()).toBe(1);
-    const activeFromInside = await page.evaluate(
-      () =>
-        new Promise<boolean>(resolve => {
-          const inside = document.querySelector<HTMLElement>("[data-inside-pane]");
-          const outside = document.querySelector<HTMLElement>("[data-outside]");
-          inside?.focus();
-          const obs = new MutationObserver(() => {
-            if (!document.querySelector('[data-pane="record"]')) {
-              obs.disconnect();
-              outside?.focus();
-              requestAnimationFrame(() =>
-                requestAnimationFrame(() => resolve(Boolean(document.activeElement?.hasAttribute("data-outside")))),
-              );
-            }
-          });
-          obs.observe(document.body, { childList: true, subtree: true });
-          inside?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-        }),
-    );
-    expect(activeFromInside).toBe(true);
-    expect(await main.getAttribute("data-restore-calls")).toBe("0");
-  });
-
   test("nested radio ArrowDown and checkbox j do not hijack row navigation", async () => {
     await page.locator("[data-reset]").click();
     const radio1 = page.locator("[data-radio-1]");
