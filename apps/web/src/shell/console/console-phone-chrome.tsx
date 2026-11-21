@@ -86,7 +86,7 @@ export function ConsolePhoneBottom({
     count: link.countKey === "inbox" ? inboxCount : link.countKey === "approvals" ? approvalsCount : undefined,
   }));
   if (!platform && !items.some(item => item.id === "/account")) {
-    items.push({ id: "/account", href: "/account", label: t("shell.account"), icon: UserRound });
+    items.push({ id: "/account", href: "/account", label: t("shell.profile"), icon: UserRound });
   }
   return (
     <PhoneBottomNav

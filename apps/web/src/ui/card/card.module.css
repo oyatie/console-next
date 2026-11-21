@@ -18,14 +18,3 @@
 .card[data-density="dense"] > .head { min-height: var(--row-h); padding: var(--space-1) var(--space-3); }
 .loading { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
 .skeleton { height: var(--space-6); background: var(--border-soft); border-radius: var(--radius); }
-:where([data-experience]:not([data-experience="baseline"])) :global([data-account-page]) .card {
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  box-shadow: none;
-}
-:where([data-experience]:not([data-experience="baseline"])) :global([data-account-page]) .head {
-  background: var(--surface-2);
-  min-height: var(--row-h);
-  padding: var(--space-1-5) var(--space-4);
-}
