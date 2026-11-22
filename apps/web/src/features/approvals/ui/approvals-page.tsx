@@ -27,7 +27,7 @@ import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { approvalDocumentQuery, approvalPages, type ApprovalItem } from "../api";
 import { APPROVAL_BOXES, type ApprovalBox } from "../domain/inbox";
-import { ApprovalDocumentView } from "./approval-viewer";
+import { ApprovalDecisionPanel, ApprovalDocumentView } from "./approval-viewer";
 import { ConsoleApprovalSideView, ConsoleApprovalsTable } from "./approvals-console";
 import { SourceViewerLink } from "./source-viewer-link";
 import s from "./approvals-page.module.css";
@@ -169,6 +169,8 @@ function ConsoleApprovalsPage() {
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, getDesktopServerSnapshot);
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [blockedKey, setBlockedKey] = useState<string | null>(null);
+  const [receiptState, setReceiptState] = useState<{ id: string; text: string }>();
+  const [decisionDocId, setDecisionDocId] = useState<string>();
   const baseFilterKey = `${box}|${urlQuery}|${source ?? ""}`;
   const blockedOnly = blockedKey === baseFilterKey;
   const visibleItems = blockedOnly ? items.filter(item => Boolean(item.decision_refusal)) : items;
@@ -176,7 +178,14 @@ function ConsoleApprovalsPage() {
   const effectiveSel = sel ?? (isDesktop && dismissedKey !== filterKey ? visibleItems[0]?.id : undefined);
   // The document is read by its id, so selecting never re-reads the list and a shared or reloaded link needs no list row.
   const opened = useQuery({ ...approvalDocumentQuery(effectiveSel ?? ""), enabled: Boolean(effectiveSel), refetchOnMount: "always" });
-  const selected = (opened.data?.id === effectiveSel ? opened.data : undefined) ?? visibleItems.find(item => item.id === effectiveSel) ?? items.find(item => item.id === effectiveSel);
+  const openedDoc = opened.data?.id === effectiveSel ? opened.data : undefined;
+  const selected = openedDoc ?? visibleItems.find(item => item.id === effectiveSel) ?? items.find(item => item.id === effectiveSel);
+  const showFooterDecision = Boolean(
+    openedDoc &&
+      ((openedDoc.my_actions.kind === "approve" && openedDoc.my_actions.reject) ||
+        decisionDocId === openedDoc.id ||
+        receiptState?.id === openedDoc.id),
+  );
   const filtered = Boolean(urlQuery || source || blockedOnly);
   const reset = () => { setBlockedKey(null); setDismissedKey(null); setQuery(""); set({ q: undefined, source: undefined, ...CLOSED }); };
   const handleSelect = (id: string) => { setDismissedKey(null); select(id); };
@@ -218,8 +227,9 @@ function ConsoleApprovalsPage() {
                 tone: "warn" as const,
                 active: blockedOnly,
                 onPress: () => {
+                  const nextBaseFilterKey = `${box}|${urlQuery}|`;
                   setDismissedKey(null);
-                  setBlockedKey(prev => (prev === baseFilterKey ? null : baseFilterKey));
+                  setBlockedKey(prev => (prev === baseFilterKey ? null : nextBaseFilterKey));
                   if (source) set({ source: undefined, ...CLOSED });
                   else select(undefined);
                 },
@@ -267,12 +277,23 @@ function ConsoleApprovalsPage() {
       record={effectiveSel ? {
         id: effectiveSel,
         label: t("approvals.document.title"),
-        title: selected?.title ?? t("approvals.document.title"),
-        meta: selected?.document_no,
+        title: selected?.document_no
+          ? `${t("home.worklist.selectedMeta")} · ${selected.document_no}`
+          : t("approvals.document.title"),
         openInTab: { href: `/approvals/${encodeURIComponent(effectiveSel)}`, label: selected?.title ?? effectiveSel },
-        actions: selected?.viewer ? <SourceViewerLink viewer={selected.viewer} size="sm" /> : undefined,
         onClose: handleClose,
         returnFocus: () => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(effectiveSel)}"]`),
+        footer: showFooterDecision && openedDoc ? (
+          <ApprovalDecisionPanel
+            key={openedDoc.id}
+            document={openedDoc}
+            receipt={receiptState?.id === openedDoc.id ? receiptState.text : undefined}
+            onReceipt={text => setReceiptState({ id: openedDoc.id, text })}
+            onDecisionStart={() => setDecisionDocId(openedDoc.id)}
+            docked
+            compact
+          />
+        ) : undefined,
         children: <QueryState key={effectiveSel} q={opened} layout="record">{document => <ConsoleApprovalSideView document={document} />}</QueryState>,
       } : null}
       statusSegments={first ? [

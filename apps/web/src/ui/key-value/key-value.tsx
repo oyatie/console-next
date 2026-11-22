@@ -22,6 +22,7 @@ export function KeyValue({
   error,
   readOnly,
   density,
+  columns,
 }: {
   items: readonly KeyValueItem[];
   label?: string;
@@ -30,10 +31,11 @@ export function KeyValue({
   error?: ReactNode;
   readOnly?: boolean;
   density?: "dense" | "default";
+  columns?: 1 | 2;
 }) {
   const acts = items.some((i) => i.action != null);
   return (
-    <dl className={s.kv} data-acts={acts || undefined} data-density={density} aria-label={label} data-readonly={readOnly || undefined} aria-busy={loading || undefined}>
+    <dl className={s.kv} data-acts={acts || undefined} data-density={density} data-cols={columns === 2 && !acts ? "2" : undefined} aria-label={label} data-readonly={readOnly || undefined} aria-busy={loading || undefined}>
       {loading || error || (items.length === 0 && empty != null) ? (
         <div><dt className="sr-only">{label}</dt><dd className={error ? s.error : loading ? s.loading : s.empty} role={error ? "alert" : loading ? "status" : undefined} data-state={error ? "error" : undefined}>
           {error || (loading ? <div className={s.skeleton} /> : empty)}

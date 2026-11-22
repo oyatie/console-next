@@ -46,16 +46,20 @@ export function ApprovalDecisionPanel({
   document: d,
   receipt: controlledReceipt,
   onReceipt,
+  onDecisionStart,
   showNext = false,
   docked = false,
+  compact = false,
   showRelated = false,
   controller,
 }: {
   document: ApprovalDocument;
   receipt?: string;
   onReceipt?: (text: string) => void;
+  onDecisionStart?: () => void;
   showNext?: boolean;
   docked?: boolean;
+  compact?: boolean;
   showRelated?: boolean;
   controller?: ReturnType<typeof useApprovalDecisionCommand>;
 }) {
@@ -67,6 +71,7 @@ export function ApprovalDecisionPanel({
   const actions = d.my_actions;
   const catalog = { reject: useDecisionReasons(actions.reject?.reason_domain), return: useDecisionReasons(actions.return?.reason_domain) };
   const submit = (decision: ApprovalDecision["decision"]) => {
+    onDecisionStart?.();
     const decisionForm = decision === "REJECT" ? "reject" : decision === "RETURN" ? "return" : undefined;
     const reason = decisionForm ? reasons[decisionForm] : undefined;
     command.mutate({
@@ -120,9 +125,10 @@ export function ApprovalDecisionPanel({
     <>
       <ApprovalCard
         docked={docked}
+        compact={compact}
         eyebrow={[d.source.label, d.document_no].filter(Boolean).join(" · ")}
-        step={currentStep ? t("orgChange.turn", { role: currentStep.label }) : undefined}
-        due={docked && dueDate ? t("approvals.console.due", { date: dueDate }) : undefined}
+        step={!compact && currentStep ? t("orgChange.turn", { role: currentStep.label }) : undefined}
+        due={!compact && docked && dueDate ? t("approvals.console.due", { date: dueDate }) : undefined}
         title={docked ? t("approvals.console.myDecision") : t("approvals.viewer.decision")}
         consequence={consequenceText(d.consequence)}
         rejectConsequence={reject ? consequenceText(reject.consequence) : ""}
@@ -173,7 +179,7 @@ export function ApprovalDecisionPanel({
       >
         <CommandError error={command.error} own={ownError} />
         <Field label={t("approvals.viewer.opinion")} required={false} hint={docked ? undefined : t("approvals.viewer.opinionHint")}>
-          {props => <TextArea {...props} maxLength={d.opinion_max} value={opinion} onChange={event => setOpinion(event.target.value)} />}
+          {props => <TextArea {...props} rows={compact ? 1 : undefined} maxLength={d.opinion_max} value={opinion} onChange={event => setOpinion(event.target.value)} />}
         </Field>
       </ApprovalCard>
       {relatedLinks.length > 0 ? (

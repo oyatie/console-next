@@ -102,7 +102,7 @@
 :where([data-experience]:not([data-experience="baseline"])) .mark { border: 1px solid transparent; background: transparent; color: var(--faint); font-weight: var(--fw-body); }
 :where([data-experience]:not([data-experience="baseline"])) .mark[data-k="rc"],
 :where([data-experience]:not([data-experience="baseline"])) .mark[data-k="first"],
-:where([data-experience]:not([data-experience="baseline"])) .mark[data-k="cor"] { border-color: transparent; color: var(--faint); }
+:where([data-experience]:not([data-experience="baseline"])) .mark[data-k="cor"] { border-style: solid; border-color: transparent; color: var(--faint); }
 :where([data-experience]:not([data-experience="baseline"])) .mark[data-k="verb"] { text-decoration: none; }
 :where([data-experience]:not([data-experience="baseline"])) .markHint { color: var(--faint); }
 :where([data-experience]:not([data-experience="baseline"])) .row:hover,

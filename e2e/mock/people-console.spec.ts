@@ -131,6 +131,18 @@ for (const width of [1440, 390] as const) {
         await expectAxe(page, `Console /people/$id ${width} ${theme}`);
         await withFullPage(page, () => shot(page, `people-detail--${width}-${theme}`));
 
+        if (width === 1440) {
+          const corMark = pattern.locator('button[data-k="cor"]').first();
+          await expect(corMark).toBeVisible();
+          expect(await corMark.evaluate(el => getComputedStyle(el).borderTopStyle)).toBe("solid");
+          await corMark.hover();
+          expect(await corMark.evaluate(el => getComputedStyle(el).borderTopStyle)).toBe("solid");
+          await expect(pattern.locator("#s4")).toContainText(
+            `${t("exit.next", { step: t("exit.step.HR_CONFIRMED") })} · ${t("exit.next.current")}`,
+          );
+          await expect(pattern.locator("#s4")).not.toContainText(t("exit.next.mine"));
+        }
+
         if (width === 390) {
           const sec5Buttons = await pattern.locator("#s5 button").all();
           for (const btn of sec5Buttons) {
@@ -370,6 +382,7 @@ test("Baseline experience preserves legacy /people and /people/$id DOM unaltered
 
     await page.goto(`/people/${SAEON_HERO_ID}`);
     await expect(page.getByRole("heading", { level: 1, name: saeonUniverse.hero.name })).toBeVisible();
+    expect(await page.locator('button[data-k="cor"]').first().evaluate(el => getComputedStyle(el).borderTopStyle)).toBe("dashed");
     await fits(page, "Baseline /people/$id 1440");
 
     await page.setViewportSize({ width: 390, height: 844 });

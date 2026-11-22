@@ -195,9 +195,28 @@ for (const width of [1440, 390]) {
         if (width === 1440) {
           const initialSidePane = page.locator('aside[data-pane="record"]');
           await expect(initialSidePane).toBeVisible();
+          await expect(initialSidePane).toContainText(`${t("home.worklist.selectedMeta")} · ${saeonUniverse.approval.documentNumber}`);
           await expect(initialSidePane).toContainText(saeonUniverse.approval.title);
-          await expect(initialSidePane.getByRole("heading", { level: 3, name: t("approvals.related.title"), exact: true })).toBeVisible();
-          await expect(initialSidePane.getByRole("button", { name: t("composer.verb.approve"), exact: true })).toBeVisible();
+          const relatedHeading = initialSidePane.getByRole("heading", { level: 3, name: t("approvals.related.title"), exact: true });
+          const approveBtn = initialSidePane.getByRole("button", { name: t("composer.verb.approve"), exact: true });
+          const rejectBtn = initialSidePane.getByRole("button", { name: t("uiApprovalCard.reject"), exact: true });
+          await expect(relatedHeading).toBeVisible();
+          await expect(approveBtn).toBeVisible();
+          await expect(rejectBtn).toBeVisible();
+          const paneScrollBox = await initialSidePane.locator('[tabindex="0"]').first().boundingBox();
+          const relatedBox = await relatedHeading.boundingBox();
+          const relatedLastLinkBox = await initialSidePane.getByRole("link", { name: new RegExp(t("approvals.openSource")) }).boundingBox();
+          const approveBox = await approveBtn.boundingBox();
+          const rejectBox = await rejectBtn.boundingBox();
+          expect(paneScrollBox).not.toBeNull();
+          expect(relatedBox).not.toBeNull();
+          expect(relatedLastLinkBox).not.toBeNull();
+          expect(approveBox).not.toBeNull();
+          expect(rejectBox).not.toBeNull();
+          expect(relatedBox!.y + relatedBox!.height).toBeLessThanOrEqual(paneScrollBox!.y + paneScrollBox!.height + 1);
+          expect(relatedLastLinkBox!.y + relatedLastLinkBox!.height).toBeLessThanOrEqual(paneScrollBox!.y + paneScrollBox!.height + 1);
+          expect(approveBox!.y + approveBox!.height).toBeLessThanOrEqual(876);
+          expect(rejectBox!.y + rejectBox!.height).toBeLessThanOrEqual(876);
         } else {
           await expect(page.locator('aside[data-pane="record"]')).toHaveCount(0);
         }
@@ -683,5 +702,54 @@ test("Console /approvals/$approvalId DocQueueStepper avoids multi-query concaten
     } finally {
       fixture.release();
     }
+  }
+});
+
+test("Console /approvals KPI tile transitions work from category source -> needs-check -> all", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fixture } = await setupConsoleApprovals(page, "light");
+  await mockRoute(page, "get", "/api/v1/approvals", request => {
+    const query = new URL(request.url()).searchParams;
+    const box = (query.get("box") ?? "pending") as Parameters<typeof saeonApprovalsPage>[0];
+    const base = saeonApprovalsPage(box, {
+      q: query.get("q") ?? undefined,
+      source: query.get("source") ?? undefined,
+    });
+    return {
+      status: 200,
+      json: {
+        ...base,
+        items: base.items.map(item =>
+          item.id === "AP-2026-0419" || item.id === "AP-2026-0420"
+            ? { ...item, decision_refusal: "org_change.refuse.identity_unbound" }
+            : item,
+        ),
+      },
+    };
+  });
+  try {
+    await page.goto("/approvals");
+    const worklist = page.locator('[data-pattern="worklist"]');
+    const table = worklist.getByRole("grid", { name: t("approvals.list"), exact: true });
+    const kpiStrip = worklist.locator(`dl[aria-label="${t("approvals.console.kpiLabel")}"]`);
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(6);
+
+    await kpiStrip.getByRole("button", { name: t("approvals.source.leave"), exact: true }).click();
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(1);
+    await expect(table.locator('tbody tr[data-id="AP-2026-0419"]')).toBeVisible();
+
+    const needsCheckBtn = kpiStrip.getByRole("button", { name: t("approvals.console.needsCheck"), exact: true });
+    await needsCheckBtn.click();
+    await expect(needsCheckBtn).toHaveAttribute("aria-pressed", "true");
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(2);
+    await expect(table.locator('tbody tr[data-id="AP-2026-0419"]')).toBeVisible();
+    await expect(table.locator('tbody tr[data-id="AP-2026-0420"]')).toBeVisible();
+
+    await kpiStrip.getByRole("button", { name: t("approvals.console.all"), exact: true }).click();
+    await expect(needsCheckBtn).toHaveAttribute("aria-pressed", "false");
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(6);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
   }
 });

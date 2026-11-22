@@ -5,22 +5,24 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
-import { ChainStepper } from "../../../ui/chain-stepper/chain-stepper";
 import { ChangeRows } from "../../../ui/change-rows/change-rows";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { PaneHead } from "../../../ui/pane-grid/pane-grid";
+import { docLinkClass } from "../../../ui/patterns/document-decision-link";
+import { DocLinkContent, DocLinkList } from "../../../ui/patterns/document-decision-parts";
 import {
+  WorklistChain,
   WorklistMoreBar,
-  WorklistPadded,
   WorklistSection,
   WorklistSummaryHead,
+  type WorklistChainStep,
 } from "../../../ui/patterns/worklist-parts";
 import { Table } from "../../../ui/table";
 import type { ApprovalDocument, ApprovalItem } from "../api";
-import { approvalRouteSteps, proposalDiffs } from "../present";
-import { ApprovalDecisionPanel, ApprovalFactsContent } from "./approval-viewer";
+import { approvalRouteSteps, proposalDiffs, relatedApprovalLinks } from "../present";
+import { ApprovalFactsContent } from "./approval-viewer";
 import s from "./approvals-page.module.css";
 
 export function ConsoleApprovalsTable({ items, sel, onSelect, hasNext, loadingMore, onMore, emptyTitle }: {
@@ -150,18 +152,44 @@ export function ConsoleApprovalsTable({ items, sel, onSelect, hasNext, loadingMo
 
 export function ConsoleApprovalSideView({ document: d }: { document: ApprovalDocument }) {
   const diffs = proposalDiffs(d);
-  const nonProposalBody = d.body.filter(item => !item.key.startsWith("proposal-"));
-  const bodyItems = diffs.length > 0 ? nonProposalBody : d.body;
+  const proposalNames = Object.values(d.proposal_names ?? {}).filter(Boolean);
   const hasSummary = Boolean(d.summary && d.summary !== d.title);
+  const bodyItems = d.body.filter(item => {
+    if (item.key.startsWith("proposal-")) return false;
+    if (hasSummary && item.value === d.summary) return false;
+    if (diffs.length > 0 && proposalNames.some(name => item.label.includes(name) || item.value.includes(name))) {
+      return false;
+    }
+    return true;
+  });
+  const detailItems = [
+    ...(hasSummary ? [{ key: "reason", label: t("home.inbox.record.reason"), value: d.summary! }] : []),
+    ...bodyItems,
+  ];
+  const routeSteps = approvalRouteSteps(d);
+  const chainSteps: WorklistChainStep[] = d.route.map((step, index) => ({
+    key: step.id,
+    role: `${index + 1} ${step.label}`,
+    actor: step.assignee ?? step.label,
+    meta: routeSteps[index]?.meta ?? "",
+    state: step.state,
+  }));
+  const relatedLinks = relatedApprovalLinks(d);
   return (
     <div className={s.consoleBody}>
       <WorklistSummaryHead
-        kicker={[d.source.label, d.document_no].filter(Boolean).join(" · ")}
+        kicker={
+          <div className={s.consoleKicker}>
+            <bdi>{d.source.label}</bdi>
+            <Chip tone={d.status.tone}>{d.status.label}</Chip>
+          </div>
+        }
         title={d.title}
-        status={<Chip tone={d.status.tone}>{d.status.label}</Chip>}
       />
-      <WorklistSection padded>
-        <ApprovalFactsContent document={d} dense includeDocNo />
+      <WorklistSection>
+        <div className={s.consolePad}>
+          <ApprovalFactsContent document={d} dense includeDocNo={false} columns={2} />
+        </div>
       </WorklistSection>
       {diffs.length > 0 && (
         <WorklistSection>
@@ -169,24 +197,40 @@ export function ConsoleApprovalSideView({ document: d }: { document: ApprovalDoc
           <ChangeRows items={diffs} />
         </WorklistSection>
       )}
-      {d.route.length > 0 && (
+      {chainSteps.length > 0 && (
         <WorklistSection>
           <PaneHead title={t("approvals.preview.route")} level={3} />
-          <WorklistPadded>
-            <ChainStepper label={t("approvals.preview.route")} steps={approvalRouteSteps(d)} />
-          </WorklistPadded>
+          <WorklistChain label={t("approvals.preview.route")} steps={chainSteps} />
         </WorklistSection>
       )}
-      {hasSummary || bodyItems.length > 0 ? (
+      {detailItems.length > 0 ? (
         <WorklistSection>
           <PaneHead title={t("approvals.viewer.body")} level={3} />
-          <WorklistPadded>
-            {hasSummary ? <div>{d.summary}</div> : null}
-            {bodyItems.length > 0 ? <KeyValue readOnly items={bodyItems} /> : null}
-          </WorklistPadded>
+          <div className={s.consolePad}>
+            <KeyValue density="dense" readOnly items={detailItems} />
+          </div>
         </WorklistSection>
       ) : null}
-      <ApprovalDecisionPanel key={d.id} document={d} docked showRelated />
+      {relatedLinks.length > 0 ? (
+        <WorklistSection>
+          <PaneHead title={t("approvals.related.title")} meta={t("approvals.related.meta")} level={3} />
+          <DocLinkList columns={2}>
+            {relatedLinks.map(link => (
+              <Link
+                key={link.key}
+                to={link.to as never}
+                params={("params" in link ? link.params : undefined) as never}
+                search={("search" in link ? link.search : undefined) as never}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={docLinkClass}
+              >
+                <DocLinkContent kind={link.kind} label={link.label} />
+              </Link>
+            ))}
+          </DocLinkList>
+        </WorklistSection>
+      ) : null}
     </div>
   );
 }
