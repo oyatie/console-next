@@ -8,79 +8,26 @@ use console_hr_domain::{
     profile::identity::validate_id_pair,
 };
 use console_kernel_core::KernelError;
-use console_platform_auth::{
-    MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind, PasskeyService,
-};
+use console_platform_auth::PasskeyService;
 use console_platform_authz::{
     Principal,
     cedar_pbac::actions::employee_pii::{self, PiiFacts},
 };
 use console_platform_db::{with_audits, with_org_conn};
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 
+use super::row_identifier_stage::write_staged_step_up_identity_in_tx;
+pub use super::row_identifier_stage::{
+    DraftIdentifierType, ImportRowIdentifierRequest, ImportRowIdentifierResponse,
+    import_row_identifier_binding,
+};
 use crate::{
     HrError, HrService,
-    digest::sha256_hex,
     directory::access_log::{DirectoryAccess, access_event, actor_employee_id},
     import::store::import_run_for_update,
     rrn::{govern, record::directory, unavailable},
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum DraftIdentifierType {
-    Rrn,
-    Arc,
-    DomesticResidence,
-}
-
-impl From<DraftIdentifierType> for IdType {
-    fn from(value: DraftIdentifierType) -> Self {
-        match value {
-            DraftIdentifierType::Rrn => Self::Rrn,
-            DraftIdentifierType::Arc => Self::Arc,
-            DraftIdentifierType::DomesticResidence => Self::DomesticResidence,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ImportRowIdentifierRequest {
-    pub rrn: String,
-    #[serde(default)]
-    pub id_type: Option<DraftIdentifierType>,
-    #[serde(default)]
-    pub step_up: Option<MobilePasskeyStepUpEnvelope>,
-}
-
-impl std::fmt::Debug for ImportRowIdentifierRequest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("ImportRowIdentifierRequest([redacted])")
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct ImportRowIdentifierResponse {
-    pub run_id: Uuid,
-    pub source_key: String,
-    pub id_type: String,
-    pub recorded: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sex_derived: Option<String>,
-}
-
-/// Passkey step-up binding for recording an identifier onto a staged import draft row.
-#[must_use]
-pub fn import_row_identifier_binding(run_id: Uuid, source_key: &str) -> MobilePasskeyStepUpBinding {
-    MobilePasskeyStepUpBinding::bound(
-        MobileStepUpActionKind::PiiRecord,
-        run_id,
-        sha256_hex(format!("{run_id}:{source_key}").as_bytes()),
-    )
-}
 
 impl HrService {
     /// Validate, authorize with passkey step-up, seal via `RrnVault`, and stage a registration
@@ -238,6 +185,12 @@ impl HrService {
         let sealed = vault
             .seal(*org.as_uuid(), &rrn)
             .map_err(|_| unavailable())?;
+        let mut candidates = vault.blind_index_v2_candidates(*org.as_uuid(), &rrn);
+        if let Some(primary) = &sealed.hmac_v2
+            && !candidates.iter().any(|c| c == primary)
+        {
+            candidates.insert(0, primary.clone());
+        }
         let sex_derived = sex_of_rrn(rrn.digits()).map(str::to_owned);
         let id_type_str = effective_id_type.as_str().to_owned();
         let stored_id_type = id_type_str.clone();
@@ -252,42 +205,16 @@ impl HrService {
                         "personal-field recording denied",
                     ));
                 }
-                sqlx::query(
-                    "DELETE FROM data_import_row_identities \
-                     WHERE org_id = $1 AND run_id = $2 AND source_key = $3",
+                write_staged_step_up_identity_in_tx(
+                    tx,
+                    *org.as_uuid(),
+                    run_id,
+                    &key_copy,
+                    &sealed,
+                    &candidates,
+                    &stored_id_type,
                 )
-                .bind(*org.as_uuid())
-                .bind(run_id)
-                .bind(&key_copy)
-                .execute(tx.as_mut())
-                .await?;
-                sqlx::query(
-                    "INSERT INTO data_import_row_identities (org_id, run_id, source_key, rrn_hmac, \
-                       hmac_key_version, rrn_hmac_v2, blind_index_version, ciphertext, nonce, \
-                       dek_wrapped, dek_nonce, key_version, masked, alg_id, kek_id, msg_id, commitment_tag, id_type) \
-                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
-                )
-                .bind(*org.as_uuid())
-                .bind(run_id)
-                .bind(&key_copy)
-                .bind(&sealed.hmac)
-                .bind(sealed.hmac_key_version)
-                .bind(sealed.hmac_v2.as_deref())
-                .bind(sealed.blind_index_version)
-                .bind(&sealed.ciphertext)
-                .bind(&sealed.nonce)
-                .bind(&sealed.dek_wrapped)
-                .bind(&sealed.dek_nonce)
-                .bind(sealed.key_version)
-                .bind(&sealed.masked)
-                .bind(sealed.alg_id.as_deref())
-                .bind(sealed.kek_id.as_deref())
-                .bind(sealed.msg_id.as_deref())
-                .bind(sealed.commitment_tag.as_deref())
-                .bind(&stored_id_type)
-                .execute(tx.as_mut())
-                .await?;
-                Ok(())
+                .await
             })
         })
         .await?;

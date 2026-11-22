@@ -154,12 +154,46 @@ pub(super) fn resolve_new_person_id_type(
     Ok(effective)
 }
 
-/// Count duplicate `(name_key, birth_date)` keys among non-excluded `NOT_ISSUED` rows in one file.
-pub(super) fn not_issued_key_counts(rows: &[ImportRow]) -> BTreeMap<(String, Date), usize> {
+/// Whether `row` is a valid non-RRN `PRE_HIRE + NOT_ISSUED` candidate for duplicate checking.
+pub(super) fn is_pre_hire_not_issued_candidate(
+    row: &ImportRow,
+    facts: &PlanFacts<'_>,
+    decisions: &Decisions,
+) -> bool {
+    let explicit = row.id_type.as_deref().and_then(parse_id_type_import);
+    if explicit != Some(IdType::NotIssued) || row_has_rrn(row) {
+        return false;
+    }
+    let Some(hire) = row
+        .hire_date
+        .as_deref()
+        .and_then(|raw| parse_plan_date(raw, "hire_date").ok())
+    else {
+        return false;
+    };
+    let exit = match row.exit_date.as_deref() {
+        Some(raw) => match parse_plan_date(raw, "exit_date") {
+            Ok(date) => Some(date),
+            Err(_) => return false,
+        },
+        None => None,
+    };
+    matches!(
+        super::plan_status::new_status(row, (hire, exit), facts, decisions),
+        Ok(("PRE_HIRE", _))
+    )
+}
+
+/// Count duplicate `(name_key, birth_date)` keys among non-excluded `PRE_HIRE + NOT_ISSUED` rows in
+/// one file.
+pub(super) fn not_issued_key_counts(
+    rows: &[ImportRow],
+    facts: &PlanFacts<'_>,
+    decisions: &Decisions,
+) -> BTreeMap<(String, Date), usize> {
     let mut counts: BTreeMap<(String, Date), usize> = BTreeMap::new();
     for row in rows {
-        let explicit = row.id_type.as_deref().and_then(parse_id_type_import);
-        if explicit == Some(IdType::NotIssued)
+        if is_pre_hire_not_issued_candidate(row, facts, decisions)
             && let Some(raw_birth) = row.birth_date.as_deref()
             && let Ok(birth) = parse_import_date_checked(raw_birth)
         {

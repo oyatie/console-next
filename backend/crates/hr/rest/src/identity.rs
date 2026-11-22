@@ -270,8 +270,15 @@ async fn import_row_identifier(
     State(s): State<IdentityState>,
     Extension(principal): Extension<Principal>,
     Path((run_id, source_key)): Path<(Uuid, String)>,
-    Json(body): Json<ImportRowIdentifierRequest>,
+    body: Result<Json<ImportRowIdentifierRequest>, axum::extract::rejection::JsonRejection>,
 ) -> Reply<ImportRowIdentifierResponse> {
+    // JSON type errors can echo a numeric RRN; never return the framework's raw rejection.
+    let Json(body) = body.map_err(|_| {
+        HrError::from_kernel(
+            console_kernel_core::KernelError::validation("resident registration number is invalid")
+                .with_code("rrn_invalid"),
+        )
+    })?;
     Ok(Json(
         s.hr.record_import_row_identifier(
             principal,

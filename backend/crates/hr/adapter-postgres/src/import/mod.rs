@@ -30,6 +30,7 @@ pub mod types;
 // --- lane: IMPORT-2 ---
 pub mod caps;
 pub mod identities;
+mod identities_form;
 mod identities_record;
 pub mod memory;
 pub mod phones;
@@ -53,6 +54,7 @@ pub mod apply_report;
 pub mod cells_repair;
 pub mod company;
 pub mod row_identifier;
+mod row_identifier_stage;
 
 #[cfg(test)]
 mod sheet_restricted_tests;

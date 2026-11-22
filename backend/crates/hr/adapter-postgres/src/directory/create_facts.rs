@@ -240,7 +240,8 @@ pub async fn record_registration_facts(
                 id_type: facts.id_type.map(IdType::as_str),
             },
         )
-        .await?;
+        .await
+        .map_err(crate::directory::create::employee_create_db_error)?;
     }
     if facts.profile_given() {
         sqlx::query(

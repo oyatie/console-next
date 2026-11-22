@@ -68,7 +68,7 @@ pub async fn duplicate_candidates(
         "WITH named AS MATERIALIZED ( \
            SELECT e.id,e.org_id,e.name,e.org_unit,e.org_unit_id,e.hire_on,e.employment_status,e.employee_number,e.birth_date,e.created_at \
            FROM person_employees_current e WHERE e.org_id=$1 AND e.merged_into_employee_id IS NULL \
-             AND regexp_replace(e.name, '\\s', '', 'g')=regexp_replace($2, '\\s', '', 'g') \
+             AND lower(regexp_replace(e.name, '\\s', '', 'g'))=lower(regexp_replace($2, '\\s', '', 'g')) \
          ) SELECT e.id, e.employment_status, e.employee_number, \
                 COALESCE(facts.attributes->>'legal_name', e.name) AS name, \
                 COALESCE(NULLIF(unit.attributes->>'name', ''), NULLIF(e.org_unit, '')) AS org_unit, \

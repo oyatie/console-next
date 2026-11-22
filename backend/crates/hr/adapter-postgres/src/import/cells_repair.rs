@@ -4,6 +4,9 @@
 use std::collections::BTreeMap;
 
 use console_hr_domain::import::cells::{DateParseError, parse_import_date_checked};
+use console_hr_domain::import::classification::{
+    employee_import_field_for_header, is_dropped_employee_import_header,
+};
 use console_hr_domain::import::detect::known_target;
 use console_hr_domain::import::normalize::employee_number;
 use console_hr_domain::import::plan_cells_id::FORBIDDEN_CELL_REPAIR_TARGETS;
@@ -25,13 +28,14 @@ use crate::import::store::{import_run_for_update, load_candidate_import_rows};
 use crate::import::types::StoredEmployeeImportRow;
 use crate::{HrError, HrService};
 
-const DATE_REPAIR_TARGETS: [&str; 6] = [
+const DATE_REPAIR_TARGETS: [&str; 7] = [
     "birth_date",
     "hire_date",
     "exit_date",
     "leave_start_date",
     "leave_return_date",
     "contract_end_date",
+    "probation_end_date",
 ];
 
 #[derive(Debug, Clone, Deserialize)]
@@ -88,6 +92,19 @@ pub fn validate_cell_date_repairs(
     Ok(())
 }
 
+fn is_restricted_cell_repair_field(field: &str) -> bool {
+    let trimmed = field.trim();
+    let lowered = trimmed.to_ascii_lowercase();
+    if FORBIDDEN_CELL_REPAIR_TARGETS.contains(&lowered.as_str()) {
+        return true;
+    }
+    if is_dropped_employee_import_header(trimmed) {
+        return true;
+    }
+    employee_import_field_for_header(trimmed)
+        .is_some_and(|def| FORBIDDEN_CELL_REPAIR_TARGETS.contains(&def.target))
+}
+
 /// Ensure `decisions.cells` only references rows in this run and non-restricted repair targets.
 pub fn validate_cell_repairs(
     stored: &[StoredEmployeeImportRow],
@@ -100,7 +117,7 @@ pub fn validate_cell_repairs(
             )));
         }
         for field in repairs.keys() {
-            if FORBIDDEN_CELL_REPAIR_TARGETS.contains(&field.as_str()) {
+            if is_restricted_cell_repair_field(field) {
                 return Err(unprocessable(
                     "mapping_restricted_column",
                     format!("cell repair cannot target restricted or immutable field: {field}"),

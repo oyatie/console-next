@@ -5,7 +5,7 @@ use console_hr_adapter_postgres::import::row_identifier::import_row_identifier_b
 use console_hr_domain::profile::enums::IdType;
 use serde_json::json;
 
-async fn draft_binding_body(
+pub(super) async fn draft_binding_body(
     pool: &PgPool,
     f: &mut Fixture,
     run_id: Uuid,
@@ -37,7 +37,7 @@ async fn draft_binding_body(
     body
 }
 
-async fn put_draft(
+pub(super) async fn put_draft(
     app: Router,
     run_id: Uuid,
     source_key: &str,

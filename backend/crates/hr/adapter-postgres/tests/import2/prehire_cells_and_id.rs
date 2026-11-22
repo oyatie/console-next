@@ -146,6 +146,39 @@ async fn pre_hire_not_issued_inline_repair_and_domestic_residence_end_to_end(poo
         .run_id;
     let dup_plan = i.dry_run(dup_run, decisions()).await;
     assert!(dup_plan.review.blocking > 0);
+
+    // 4. Case-insensitive duplicate PRE_HIRE NOT_ISSUED on same (name_key, birth_date) is also refused
+    let case_run = i
+        .preview(
+            "dup-case.xlsx",
+            &[table(
+                "Sheet1",
+                0,
+                &[
+                    &[
+                        "employee_number",
+                        "name",
+                        "hire_date",
+                        "birth_date",
+                        "id_type",
+                    ],
+                    &[
+                        "PRE-3",
+                        "kim prehire",
+                        "2029-06-01",
+                        "1995-03-04",
+                        "NOT_ISSUED",
+                    ],
+                ],
+            )],
+            &WorkbookMappingRequest::default(),
+        )
+        .await
+        .unwrap()
+        .run_id;
+    let case_plan = i.dry_run(case_run, decisions()).await;
+    assert!(case_plan.review.blocking > 0, "{:?}", case_plan.rows);
+    assert_eq!(case_plan.rows[0].refusal_code, Some("duplicate_in_file"));
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

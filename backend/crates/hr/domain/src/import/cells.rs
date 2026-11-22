@@ -33,6 +33,14 @@ pub fn parse_import_date_checked(raw: &str) -> Result<Date, DateParseError> {
         // `2024. 3. 4.` keeps its spaces; only a time part is cut.
         if rest.contains(':') { day } else { text }
     });
+    if text.len() == 6 && text.bytes().all(|b| b.is_ascii_digit()) {
+        let month = text[2..4].parse::<u8>().unwrap_or(0);
+        let day = text[4..6].parse::<u8>().unwrap_or(0);
+        if (1..=12).contains(&month) && (1..=31).contains(&day) {
+            return Err(DateParseError::TwoDigitYear);
+        }
+        return Err(DateParseError::InvalidFormat);
+    }
     if let Some(date) = excel_serial(text) {
         return Ok(date);
     }
@@ -112,15 +120,22 @@ fn ymd(y: &str, m: &str, d: &str) -> Option<Date> {
     {
         return None;
     }
+    let year: i32 = y.parse().ok()?;
+    if year < 1900 {
+        return None;
+    }
     let month = Month::try_from(m.parse::<u8>().ok()?).ok()?;
-    Date::from_calendar_date(y.parse().ok()?, month, d.parse().ok()?).ok()
+    Date::from_calendar_date(year, month, d.parse().ok()?).ok()
 }
 
 /// Excel's day 1 is 1900-01-01 counted from 1899-12-30 (the 1900 leap-year
-/// bug); only whole numbers from 1900-03-01 (61) to 9999-12-31 count.
+/// bug); only whole numbers from 1900-03-01 (61) to 2100-12-31 (73415) count.
 fn excel_serial(text: &str) -> Option<Date> {
+    if text.starts_with('0') {
+        return None;
+    }
     let days: f64 = text.parse().ok()?;
-    if days.fract() != 0.0 || !(61.0..=2_958_465.0).contains(&days) {
+    if days.fract() != 0.0 || !(61.0..=73_415.0).contains(&days) {
         return None;
     }
     let epoch = Date::from_calendar_date(1899, Month::December, 30).ok()?;
@@ -128,11 +143,13 @@ fn excel_serial(text: &str) -> Option<Date> {
     epoch.checked_add(Duration::days(days as i64))
 }
 
-/// A name as identity compares it: whitespace removed (a name with an inner
-/// space equals the same name without it).
+/// A name as identity compares it: whitespace removed and lowercased.
 #[must_use]
 pub fn name_key(name: &str) -> String {
-    name.chars().filter(|c| !c.is_whitespace()).collect()
+    name.chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>()
+        .to_lowercase()
 }
 
 #[cfg(test)]
@@ -219,5 +236,43 @@ mod tests {
     #[test]
     fn names_compare_without_spaces() {
         assert_eq!(name_key(" 김 등록 "), "김등록");
+        assert_eq!(name_key("Alex Kim"), "alexkim");
+        assert_eq!(name_key("alex  kim"), "alexkim");
+    }
+
+    #[test]
+    fn regression_yymmdd_and_pre_1900_years_are_rejected_while_excel_serials_work() {
+        for raw in ["240304", "010101", "990101", "950304", "260601"] {
+            assert_eq!(
+                parse_import_date_checked(raw),
+                Err(DateParseError::TwoDigitYear),
+                "{raw}"
+            );
+        }
+        for raw in [
+            "0024-01-01",
+            "00240101",
+            "1899-12-31",
+            "1899.12.31",
+            "1899/12/31",
+        ] {
+            assert_eq!(
+                parse_import_date_checked(raw),
+                Err(DateParseError::InvalidFormat),
+                "{raw}"
+            );
+        }
+        assert_eq!(
+            parse_import_date_checked("45000"),
+            Ok(day(2023, 3, 15).unwrap())
+        );
+        assert_eq!(
+            parse_import_date_checked("45355"),
+            Ok(day(2024, 3, 4).unwrap())
+        );
+        assert_eq!(
+            parse_import_date_checked("1900-01-01"),
+            Ok(day(1900, 1, 1).unwrap())
+        );
     }
 }

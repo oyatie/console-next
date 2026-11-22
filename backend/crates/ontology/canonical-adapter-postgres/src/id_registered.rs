@@ -117,8 +117,8 @@ pub async fn set_employee_id_type_in_tx(
 }
 
 /// Revert `employees.id_type` on updated employees whose `employee_rrn` was recorded by `run_id`,
-/// preserving `'NOT_ISSUED'` when an `employee.id_registered` event was emitted for a `PRE_HIRE`
-/// worker during the run and clearing `id_type` to `NULL` otherwise.
+/// restoring the exact `previous_id_type` snapshotted on `import_run_effects` when the run
+/// recorded the identifier.
 ///
 /// Must run in the rollback transaction before `import_api.remove_employee_import_effects` deletes
 /// the `employee_rrn` rows owned by `run_id`.
@@ -136,20 +136,7 @@ pub async fn revert_import_id_type_in_tx(
     }
     sqlx::query(
         "UPDATE employees e \
-         SET id_type = CASE \
-                 WHEN e.employment_status = 'PRE_HIRE' \
-                      AND EXISTS ( \
-                          SELECT 1 FROM audit_events a \
-                          JOIN data_import_runs r ON r.org_id = e.org_id AND r.id = $2 \
-                          WHERE a.org_id = e.org_id \
-                            AND a.target_type = 'employee' \
-                            AND a.target_id = e.id::TEXT \
-                            AND a.action = 'employee.id_registered' \
-                            AND (r.applied_at IS NULL OR a.occurred_at >= r.applied_at - interval '1 minute') \
-                      ) \
-                 THEN 'NOT_ISSUED' \
-                 ELSE NULL \
-             END, \
+         SET id_type = f.previous_id_type, \
              updated_at = now() \
          FROM import_run_effects f \
          JOIN employee_rrn er \
@@ -162,7 +149,8 @@ pub async fn revert_import_id_type_in_tx(
            AND e.org_id = f.org_id \
            AND e.id = f.employee_id \
            AND e.id = ANY($3) \
-           AND e.voided_at IS NULL",
+           AND e.voided_at IS NULL \
+           AND e.id_type IS DISTINCT FROM f.previous_id_type",
     )
     .bind(org_id)
     .bind(run_id)

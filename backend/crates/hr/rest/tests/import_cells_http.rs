@@ -152,27 +152,53 @@ async fn import_cells_repair_enforces_authz_tenant_restricted_columns_two_digit_
     .await;
     assert_eq!(s_b, StatusCode::NOT_FOUND);
 
-    // 3. Restricted targets ("rrn", "phone", "name") rejected fail-closed with 422
-    for field in ["rrn", "phone", "name"] {
+    // 3. Restricted targets (including case variants and header aliases) rejected fail-closed with 422
+    let mut restricted_fields: Vec<String> = vec![
+        "rrn".into(),
+        "phone".into(),
+        "name".into(),
+        "RRN".into(),
+        "Phone".into(),
+        "NAME".into(),
+        "Mobile".into(),
+        "Employee Name".into(),
+    ];
+    for target in ["rrn", "phone", "name"] {
+        if let Some(def) =
+            console_hr_domain::import::classification::employee_import_field_for_target(target)
+            && let Some(alias) = def.aliases.first()
+        {
+            restricted_fields.push((*alias).to_string());
+        }
+    }
+    for field in restricted_fields {
         let (s_res, b_res) = put_cells(
             app(hr.clone(), p_a.clone()),
             run_id,
-            json!({ "cells": { (source_key): { (field): "X" } } }),
+            json!({ "cells": { (source_key): { (&field): "X" } } }),
         )
         .await;
-        assert_eq!(s_res, StatusCode::UNPROCESSABLE_ENTITY, "{b_res}");
-        assert_eq!(b_res["error"]["code"], "mapping_restricted_column");
+        assert_eq!(s_res, StatusCode::UNPROCESSABLE_ENTITY, "{field}: {b_res}");
+        assert_eq!(
+            b_res["error"]["code"], "mapping_restricted_column",
+            "{field}: {b_res}"
+        );
     }
 
-    // 4. Two-digit year repair value rejected with 422 two_digit_year
-    let (s_2y, b_2y) = put_cells(
-        app(hr.clone(), p_a.clone()),
-        run_id,
-        json!({ "cells": { (source_key): { "birth_date": "95-03-04" } } }),
-    )
-    .await;
-    assert_eq!(s_2y, StatusCode::UNPROCESSABLE_ENTITY, "{b_2y}");
-    assert_eq!(b_2y["error"]["code"], "two_digit_year");
+    // 4. Two-digit year repair values (birth_date and probation_end_date) rejected with 422 two_digit_year
+    for (field, val) in [
+        ("birth_date", "95-03-04"),
+        ("probation_end_date", "26-06-01"),
+    ] {
+        let (s_2y, b_2y) = put_cells(
+            app(hr.clone(), p_a.clone()),
+            run_id,
+            json!({ "cells": { (source_key): { (field): val } } }),
+        )
+        .await;
+        assert_eq!(s_2y, StatusCode::UNPROCESSABLE_ENTITY, "{field}: {b_2y}");
+        assert_eq!(b_2y["error"]["code"], "two_digit_year", "{field}: {b_2y}");
+    }
 
     // 5. Valid repair persists dry_run_decisions.cells, emits audit, and resolves dry run
     let (s_ok, b_ok) = put_cells(

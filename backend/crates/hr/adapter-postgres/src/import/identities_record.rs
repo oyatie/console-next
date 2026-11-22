@@ -4,7 +4,7 @@
 
 use std::collections::BTreeMap;
 
-use console_hr_domain::import::rrn_value::{RrnVault, SealedRrn};
+use console_hr_domain::import::rrn_value::RrnVault;
 use console_hr_domain::profile::enums::IdType;
 use console_hr_domain::profile::identity::infer_id_type_from_seventh;
 use console_kernel_core::{TraceContext, UserId};
@@ -64,8 +64,10 @@ pub async fn record(
          JOIN data_import_row_identities s ON s.source_key = p.source_key \
          WHERE s.org_id = $1 AND s.run_id = $2 ORDER BY p.n \
          ON CONFLICT (org_id, employee_id) DO NOTHING RETURNING org_id, employee_id) \
-         , effects AS (INSERT INTO import_run_effects (org_id, run_id, employee_id, effect, target_id) \
-         SELECT org_id, $2, employee_id, 'rrn_recorded', employee_id FROM recorded \
+         , effects AS (INSERT INTO import_run_effects (org_id, run_id, employee_id, effect, target_id, previous_id_type) \
+         SELECT r.org_id, $2, r.employee_id, 'rrn_recorded', r.employee_id, e.id_type \
+         FROM recorded r \
+         JOIN employees e ON e.org_id = r.org_id AND e.id = r.employee_id \
          ON CONFLICT (org_id, run_id, employee_id, effect, target_id) DO NOTHING RETURNING 1) \
          SELECT employee_id FROM recorded",
     )
@@ -221,6 +223,16 @@ async fn has_record_conflict(
             AND (r.rrn_hmac_v2 IS NULL OR NOT p.has_v2) \
             AND r.rrn_hmac = p.v1_hmac \
             AND r.employee_id <> p.employee \
+         ) OR EXISTS( \
+           SELECT 1 FROM unnest($2::uuid[], $3::bytea[]) p1(employee, candidate_hmac) \
+           JOIN unnest($2::uuid[], $3::bytea[]) p2(employee, candidate_hmac) \
+             ON p1.candidate_hmac = p2.candidate_hmac AND p1.employee <> p2.employee \
+         ) OR EXISTS( \
+           SELECT 1 FROM unnest($4::uuid[], $5::bytea[], $6::bool[]) p1(employee, v1_hmac, has_v2) \
+           JOIN unnest($4::uuid[], $5::bytea[], $6::bool[]) p2(employee, v1_hmac, has_v2) \
+             ON (NOT p1.has_v2 OR NOT p2.has_v2) \
+            AND p1.v1_hmac = p2.v1_hmac \
+            AND p1.employee <> p2.employee \
          )",
     )
     .bind(org)
@@ -232,78 +244,4 @@ async fn has_record_conflict(
     .fetch_one(tx.as_mut())
     .await?;
     Ok(conflict)
-}
-
-/// The form command uses the import identity writer and its tenant-wide claim lock.
-pub(crate) async fn record_form(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
-    org: Uuid,
-    actor: Uuid,
-    employee: Uuid,
-    sealed: SealedRrn,
-    v2_candidates: &[Vec<u8>],
-) -> Result<time::OffsetDateTime, HrError> {
-    use crate::rrn::govern;
-    lock_recording(tx, org).await?;
-    let mut candidates = v2_candidates.to_vec();
-    if let Some(primary) = &sealed.hmac_v2
-        && !candidates.iter().any(|c| c == primary)
-    {
-        candidates.insert(0, primary.clone());
-    }
-    let has_v2 = !candidates.is_empty();
-    let (recorded, in_use): (bool, bool) = sqlx::query_as(
-        "SELECT EXISTS(SELECT 1 FROM employee_rrn WHERE org_id=$1 AND employee_id=$2), \
-         EXISTS(SELECT 1 FROM employee_rrn WHERE org_id=$1 \
-                AND ((rrn_hmac_v2 IS NOT NULL AND rrn_hmac_v2 = ANY($3)) \
-                     OR ((rrn_hmac_v2 IS NULL OR NOT $5) AND rrn_hmac = $4)))",
-    )
-    .bind(org)
-    .bind(employee)
-    .bind(&candidates)
-    .bind(&sealed.hmac)
-    .bind(has_v2)
-    .fetch_one(tx.as_mut())
-    .await?;
-    if recorded || in_use {
-        let (code, message) = if recorded {
-            (
-                "rrn_already_recorded",
-                "resident registration number is already recorded",
-            )
-        } else {
-            (
-                "rrn_in_use",
-                "resident registration number is already in use",
-            )
-        };
-        return Err(govern::refused(http::StatusCode::CONFLICT, code, message));
-    }
-    let recorded_at = sqlx::query_scalar(
-        "INSERT INTO employee_rrn(org_id,employee_id,rrn_hmac,hmac_key_version,\
-         rrn_hmac_v2,blind_index_version,ciphertext,nonce,dek_wrapped,dek_nonce,\
-         key_version,masked,alg_id,kek_id,msg_id,commitment_tag,source,recorded_by) \
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'FORM',$17) \
-         RETURNING recorded_at",
-    )
-    .bind(org)
-    .bind(employee)
-    .bind(&sealed.hmac)
-    .bind(sealed.hmac_key_version)
-    .bind(sealed.hmac_v2.as_deref())
-    .bind(sealed.blind_index_version)
-    .bind(&sealed.ciphertext)
-    .bind(&sealed.nonce)
-    .bind(&sealed.dek_wrapped)
-    .bind(&sealed.dek_nonce)
-    .bind(sealed.key_version)
-    .bind(&sealed.masked)
-    .bind(sealed.alg_id.as_deref())
-    .bind(sealed.kek_id.as_deref())
-    .bind(sealed.msg_id.as_deref())
-    .bind(sealed.commitment_tag.as_deref())
-    .bind(actor)
-    .fetch_one(tx.as_mut())
-    .await?;
-    Ok(recorded_at)
 }

@@ -227,3 +227,106 @@ fn domestic_residence_and_foreigner_reg_pairs_validate_cleanly() {
     let planned = plan_rows(&[bad_pair], &facts, &Decisions::default());
     assert_eq!(planned[0].refusal_code, Some("id_type_rrn_mismatch"));
 }
+
+#[test]
+fn regression_yymmdd_and_pre_1900_dates_refused_in_dry_run_plan() {
+    let company_workplaces = BTreeMap::new();
+    let units = BTreeMap::new();
+    let unit_workplaces = BTreeMap::new();
+    let workplaces = BTreeMap::new();
+    let numbering = Numbering::default();
+    let facts = PlanFacts {
+        company_workplaces: &company_workplaces,
+        people: &[],
+        units: &units,
+        unit_workplaces: &unit_workplaces,
+        workplaces: &workplaces,
+        today: day(2026, 11, 22),
+        former_load_open: true,
+        numbering: &numbering,
+    };
+
+    let mut yymmdd_row = empty_row("r_yymmdd");
+    yymmdd_row.hire_date = Some("240304".into());
+    yymmdd_row.birth_date = Some("010101".into());
+    let plan = plan_rows(&[yymmdd_row], &facts, &Decisions::default());
+    assert_eq!(plan[0].outcome, "refused");
+    assert_eq!(plan[0].refusal_code, Some("two_digit_year"));
+
+    let mut floor_row = empty_row("r_0024");
+    floor_row.hire_date = Some("2029-01-01".into());
+    floor_row.birth_date = Some("0024-01-01".into());
+    let plan = plan_rows(&[floor_row], &facts, &Decisions::default());
+    assert_eq!(plan[0].outcome, "refused");
+    assert_eq!(plan[0].refusal_code, Some("invalid_date"));
+}
+
+#[test]
+fn regression_case_insensitive_not_issued_uniqueness_and_no_active_poisoning() {
+    let company_workplaces = BTreeMap::new();
+    let units = BTreeMap::new();
+    let unit_workplaces = BTreeMap::new();
+    let workplaces = BTreeMap::new();
+    let numbering = Numbering::default();
+    let existing = [OnFile {
+        id: uuid::Uuid::new_v4(),
+        name: "Alex Kim".into(),
+        status: "PRE_HIRE".into(),
+        birth_date: Some(day(1995, 5, 5)),
+        id_type: Some("NOT_ISSUED".into()),
+        ..OnFile::default()
+    }];
+    let facts = PlanFacts {
+        company_workplaces: &company_workplaces,
+        people: &existing,
+        units: &units,
+        unit_workplaces: &unit_workplaces,
+        workplaces: &workplaces,
+        today: day(2026, 11, 22),
+        former_load_open: true,
+        numbering: &numbering,
+    };
+
+    // Case-insensitive conflict against on-file PRE_HIRE NOT_ISSUED
+    let mut lower_on_file = empty_row("r_case_on_file");
+    lower_on_file.employee_number = Some("PRE-NEW".into());
+    lower_on_file.name = "alex kim".into();
+    lower_on_file.birth_date = Some("1995-05-05".into());
+    lower_on_file.id_type = Some("NOT_ISSUED".into());
+    let plan = plan_rows(&[lower_on_file], &facts, &Decisions::default());
+    assert_eq!(plan[0].outcome, "refused");
+    assert_eq!(plan[0].refusal_code, Some("duplicate_in_file"));
+
+    // Case-insensitive conflict within the same file
+    let mut a = empty_row("r_a");
+    a.name = "John Doe".into();
+    a.birth_date = Some("1996-06-06".into());
+    a.id_type = Some("NOT_ISSUED".into());
+    let mut b = a.clone();
+    b.source_key = "r_b".into();
+    b.name = "john doe".into();
+    let plan = plan_rows(&[a, b], &facts, &Decisions::default());
+    assert_eq!(plan[0].refusal_code, Some("duplicate_in_file"));
+    assert_eq!(plan[1].refusal_code, Some("duplicate_in_file"));
+
+    // Invalid ACTIVE + NOT_ISSUED must NOT poison a valid PRE_HIRE + NOT_ISSUED row
+    let mut valid_prehire = empty_row("r_valid_prehire");
+    valid_prehire.name = "Jane Roe".into();
+    valid_prehire.hire_date = Some("2029-01-01".into());
+    valid_prehire.birth_date = Some("1997-07-07".into());
+    valid_prehire.id_type = Some("NOT_ISSUED".into());
+
+    let mut invalid_active = valid_prehire.clone();
+    invalid_active.source_key = "r_bad_active".into();
+    invalid_active.hire_date = Some("2025-01-01".into());
+
+    let plan = plan_rows(
+        &[valid_prehire, invalid_active],
+        &facts,
+        &Decisions::default(),
+    );
+    assert_eq!(plan[0].outcome, "insert");
+    assert_eq!(plan[0].refusal_code, None);
+    assert_eq!(plan[1].outcome, "refused");
+    assert_eq!(plan[1].refusal_code, Some("not_issued_requires_pre_hire"));
+}

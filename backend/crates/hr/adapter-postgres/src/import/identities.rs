@@ -15,8 +15,8 @@ use uuid::Uuid;
 
 use crate::HrError;
 use crate::import::caps::settings_in_tx;
+pub(crate) use crate::import::identities_form::record_form;
 pub use crate::import::identities_record::record;
-pub(crate) use crate::import::identities_record::record_form;
 use crate::import::sheet::StagedIdentity;
 
 /// Legacy v1 and tenant-bound v2+ blind-index hashes of one staged row.
@@ -28,6 +28,7 @@ pub struct StagedRowHashes {
     pub id_type: Option<String>,
     pub inferred_id_type: Option<String>,
     pub sex_fallback: Option<String>,
+    pub step_up_recorded: bool,
 }
 
 pub async fn stage(
@@ -41,8 +42,8 @@ pub async fn stage(
         sqlx::query(
             "INSERT INTO data_import_row_identities (org_id, run_id, source_key, rrn_hmac, \
                hmac_key_version, rrn_hmac_v2, blind_index_version, ciphertext, nonce, \
-               dek_wrapped, dek_nonce, key_version, masked, alg_id, kek_id, msg_id, commitment_tag, id_type) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)",
+               dek_wrapped, dek_nonce, key_version, masked, alg_id, kek_id, msg_id, commitment_tag, id_type, source) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'PREVIEW')",
         )
         .bind(org)
         .bind(run)
@@ -138,7 +139,7 @@ pub async fn run_hash_candidates(
     let rows = sqlx::query(
         "SELECT source_key, rrn_hmac, hmac_key_version, rrn_hmac_v2, blind_index_version, \
                 ciphertext, nonce, dek_wrapped, dek_nonce, key_version, masked, \
-                alg_id, kek_id, msg_id, commitment_tag, id_type \
+                alg_id, kek_id, msg_id, commitment_tag, id_type, source \
          FROM data_import_row_identities WHERE org_id = $1 AND run_id = $2",
     )
     .bind(org)
@@ -161,6 +162,8 @@ pub async fn run_hash_candidates(
     for row in &rows {
         let source_key: String = row.try_get("source_key")?;
         let id_type: Option<String> = row.try_get("id_type")?;
+        let step_up_recorded =
+            row.try_get::<Option<String>, _>("source")?.as_deref() == Some("STEP_UP");
         let sealed = sealed_from_row(row)?;
         let seventh = sealed
             .masked
@@ -189,6 +192,7 @@ pub async fn run_hash_candidates(
                 id_type,
                 inferred_id_type,
                 sex_fallback,
+                step_up_recorded,
             },
         );
     }

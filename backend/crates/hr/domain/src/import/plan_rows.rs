@@ -32,16 +32,14 @@ use super::cells::name_key;
 use super::numbering::Numbering;
 use super::plan::{Decisions, ImportRow, NewPerson, PlanFacts, PlannedRow};
 use super::plan_cells_id::{
-    apply_cell_overrides, not_issued_key_counts, parse_plan_date, resolve_new_person_id_type,
-    validate_row_id_precheck,
+    apply_cell_overrides, is_pre_hire_not_issued_candidate, not_issued_key_counts, parse_plan_date,
+    resolve_new_person_id_type, validate_row_id_precheck,
 };
 use super::plan_group;
 use super::plan_identity::{Identity, identify};
 use super::plan_people::existing;
 use super::plan_place;
 use super::plan_status;
-use crate::profile::enums::IdType;
-use crate::profile::identity::parse_id_type_import;
 
 pub(super) fn refused(mut row: PlannedRow, code: &'static str, field: &'static str) -> PlannedRow {
     row.outcome = "refused";
@@ -71,7 +69,7 @@ pub fn plan_rows(
         .filter(|r| !decisions.exclusions.contains_key(&r.source_key))
         .cloned()
         .collect();
-    let not_issued_keys = not_issued_key_counts(&active_rows);
+    let not_issued_keys = not_issued_key_counts(&active_rows, facts, decisions);
     let mut planned: Vec<PlannedRow> = rows
         .iter()
         .map(|row| {
@@ -79,8 +77,7 @@ pub fn plan_rows(
                 .employee_number
                 .as_deref()
                 .is_some_and(|number| numbers.get(number).copied().unwrap_or(0) > 1);
-            let dup_pre_hire = row.id_type.as_deref().and_then(parse_id_type_import)
-                == Some(IdType::NotIssued)
+            let dup_pre_hire = is_pre_hire_not_issued_candidate(row, facts, decisions)
                 && row
                     .birth_date
                     .as_deref()

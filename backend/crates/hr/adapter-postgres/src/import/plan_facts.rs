@@ -63,9 +63,20 @@ pub fn import_row(
         sex: text(&fields.sex).or_else(|| staged.and_then(|h| h.sex_fallback.clone())),
         contract_end_date: text(&fields.contract_end_date),
         probation_end_date: text(&fields.probation_end_date),
-        id_type: text(&fields.id_type).or_else(|| staged.and_then(|h| h.id_type.clone())),
-        inferred_id_type: text(&fields.inferred_id_type)
-            .or_else(|| staged.and_then(|h| h.inferred_id_type.clone())),
+        id_type: {
+            let step_up = staged.filter(|h| h.step_up_recorded);
+            step_up
+                .and_then(|h| h.id_type.clone())
+                .or_else(|| text(&fields.id_type))
+                .or_else(|| staged.and_then(|h| h.id_type.clone()))
+        },
+        inferred_id_type: {
+            let step_up = staged.filter(|h| h.step_up_recorded);
+            step_up
+                .and_then(|h| h.inferred_id_type.clone())
+                .or_else(|| text(&fields.inferred_id_type))
+                .or_else(|| staged.and_then(|h| h.inferred_id_type.clone()))
+        },
         has_rrn: staged.is_some(),
         rrn_validation_error: text(&fields.rrn_validation_error),
     }
@@ -145,7 +156,7 @@ pub async fn people_for_rows(
         crate::assignment_lateral!(),
         "         WHERE e.org_id = $1 AND e.merged_into_employee_id IS NULL \
            AND (e.employee_number = ANY($2) \
-                OR regexp_replace(e.name, '\\s', '', 'g') = ANY($3) \
+                OR lower(regexp_replace(e.name, '\\s', '', 'g')) = ANY($3) \
                 OR (r.rrn_hmac_v2 IS NOT NULL AND r.rrn_hmac_v2 = ANY($4)) \
                 OR (r.rrn_hmac_v2 IS NULL AND r.rrn_hmac = ANY($5)) \
                 OR r.rrn_hmac = ANY($6) \
