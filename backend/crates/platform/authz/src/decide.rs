@@ -39,7 +39,7 @@ pub fn authorize_org_wide(principal: &Principal, action: Action) -> Result<(), K
     let has_custom_org_wide_permission = principal.effective_feature_grants.iter().any(|grant| {
         grant.feature == action.feature()
             && grant.permission.satisfies(action.required_permission())
-            && grant.branch_scope == BranchScope::All
+            && grant.branch_scope.is_all()
     });
 
     if !(has_builtin_org_wide_permission || has_custom_org_wide_permission) {
@@ -197,8 +197,37 @@ fn authorize_inner(
         }
     }
 
+    let has_role_permission = principal.roles.iter().any(|role| {
+        permission_for(*role, action.feature()).satisfies(action.required_permission())
+    });
+    let has_feature_permission = has_role_permission
+        || match branch {
+            Some(resource_branch) => effective_feature_grants(principal, at).any(|grant| {
+                grant.feature == action.feature()
+                    && grant.permission.satisfies(action.required_permission())
+                    && grant.branch_scope.allows(resource_branch)
+            }),
+            None => has_covering_feature_grant(
+                principal,
+                action.feature(),
+                action.required_permission(),
+                at,
+            ),
+        };
+
+    if !has_feature_permission {
+        return Err(KernelError::forbidden("role is not allowed to use feature"));
+    }
+
+    Ok(())
+}
+
+fn effective_feature_grants(
+    principal: &Principal,
+    at: Option<Timestamp>,
+) -> impl Iterator<Item = &crate::EffectiveFeatureGrant> {
     // Resolved HERE, at the decision, and dropped when it returns.
-    let effective_now = principal
+    principal
         .effective_feature_grants
         .iter()
         .chain(at.into_iter().flat_map(|at| {
@@ -206,26 +235,24 @@ fn authorize_inner(
                 .dated_feature_grants
                 .iter()
                 .filter_map(move |dated| dated.resolve(at))
-        }));
+        }))
+}
 
-    let has_feature_permission = principal.roles.iter().any(|role| {
-        permission_for(*role, action.feature()).satisfies(action.required_permission())
-    }) || effective_now.into_iter().any(|grant| {
-        grant.feature == action.feature()
-            && grant.permission.satisfies(action.required_permission())
-            && match branch {
-                Some(resource_branch) => grant.branch_scope.allows(resource_branch),
-                None => {
-                    grant.branch_scope.intersect(&principal.branch_scope) == principal.branch_scope
-                }
-            }
-    });
+pub(crate) fn has_branch_scope(principal: &Principal) -> bool {
+    !principal.branch_scope.is_empty()
+}
 
-    if !has_feature_permission {
-        return Err(KernelError::forbidden("role is not allowed to use feature"));
-    }
-
-    Ok(())
+pub(crate) fn has_covering_feature_grant(
+    principal: &Principal,
+    feature: Feature,
+    required: PermissionLevel,
+    at: Option<Timestamp>,
+) -> bool {
+    effective_feature_grants(principal, at).any(|grant| {
+        grant.feature == feature
+            && grant.permission.satisfies(required)
+            && grant.branch_scope.intersect(&principal.branch_scope) == principal.branch_scope
+    })
 }
 
 fn support_permission(principal: &Principal, action: Action) -> Result<(), KernelError> {

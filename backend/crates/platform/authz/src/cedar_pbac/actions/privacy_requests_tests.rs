@@ -129,3 +129,61 @@ fn runtime_privacy_bundles_refuse_other_subjects_and_missing_hr_links() {
         }
     }
 }
+
+#[test]
+fn runtime_privacy_decide_bundle_enforces_permission_tenant_and_sod_reasons() {
+    let base = privacy_request_decide::DecisionFacts {
+        actor_is_requester: false,
+        actor_contributed: false,
+        actor_holds_permission: true,
+        actor_decided_original: false,
+    };
+    let (allowed, reasons) = privacy_request_decide::decide("actor", "org", "org", base).unwrap();
+    assert!(allowed);
+    assert!(reasons.is_empty());
+    assert!(
+        !privacy_request_decide::decide("actor", "org", "foreign", base)
+            .unwrap()
+            .0
+    );
+    assert!(
+        !privacy_request_decide::decide(
+            "actor",
+            "org",
+            "org",
+            privacy_request_decide::DecisionFacts {
+                actor_holds_permission: false,
+                ..base
+            },
+        )
+        .unwrap()
+        .0
+    );
+    for (facts, expected) in [
+        (
+            privacy_request_decide::DecisionFacts {
+                actor_is_requester: true,
+                ..base
+            },
+            "own_request_forbidden",
+        ),
+        (
+            privacy_request_decide::DecisionFacts {
+                actor_contributed: true,
+                ..base
+            },
+            "own_request_forbidden",
+        ),
+        (
+            privacy_request_decide::DecisionFacts {
+                actor_decided_original: true,
+                ..base
+            },
+            "objection_same_decider",
+        ),
+    ] {
+        let (ok, reasons) = privacy_request_decide::decide("actor", "org", "org", facts).unwrap();
+        assert!(!ok);
+        assert!(reasons.contains(&expected.to_owned()), "{reasons:?}");
+    }
+}

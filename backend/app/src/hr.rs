@@ -1,3 +1,7 @@
+#[path = "hr/attendance_import_batch.rs"]
+mod attendance_import_batch;
+#[path = "hr/attendance_import_resolve.rs"]
+mod attendance_import_resolve;
 #[path = "hr/attendance_import_response.rs"]
 mod attendance_import_response;
 use attendance_import_response::AttendanceImportSummaryItem;
@@ -1482,28 +1486,14 @@ async fn preview_attendance_import(
             .execute(tx.as_mut())
             .await?;
 
-            for row in &parsed.rows {
-                sqlx::query(
-                    r#"
-                    INSERT INTO data_import_rows (
-                        org_id, run_id, source_sheet, source_row, source_key,
-                        row_status, raw_row, canonical_row, validation
-                    )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                    "#,
-                )
-                .bind(org_uuid)
-                .bind(run_id)
-                .bind(&row.source_sheet)
-                .bind(row.source_row)
-                .bind(&row.source_key)
-                .bind(row.row_status.as_str())
-                .bind(&row.raw_row)
-                .bind(attendance_canonical_row_json(row, &source_sha256))
-                .bind(attendance_validation_json(row))
-                .execute(tx.as_mut())
-                .await?;
-            }
+            attendance_import_batch::insert_attendance_import_rows(
+                tx,
+                org_uuid,
+                run_id,
+                &parsed.rows,
+                &source_sha256,
+            )
+            .await?;
 
             Ok(AttendanceImportPreviewResponse::from_rows(
                 run_id,
@@ -1590,77 +1580,50 @@ async fn apply_attendance_import(
     );
 
     let report = with_audit::<_, _, HrError>(&state.pool, event, |tx| {
-            Box::pin(async move {
-                attendance_access::require(tx, org, actor, None).await?;
-                let run = import_run_for_update(tx, org_uuid, run_id).await?;
-                ensure_attendance_import_run(&run, &["DRY_RUN"])?;
-                let rows = load_attendance_import_rows(tx, org_uuid, run_id).await?;
-                let summary = resolve_attendance_import_rows(tx, org_uuid, run_id, &run, &rows).await?;
-                if !summary.row_errors.is_empty() {
-                    return Err(HrError::validation(
-                        "cannot apply attendance import with unresolved or invalid rows",
-                    ));
-                }
+        Box::pin(async move {
+            attendance_access::require(tx, org, actor, None).await?;
+            let run = import_run_for_update(tx, org_uuid, run_id).await?;
+            ensure_attendance_import_run(&run, &["DRY_RUN"])?;
+            let rows = load_attendance_import_rows(tx, org_uuid, run_id).await?;
+            let summary = resolve_attendance_import_rows(tx, org_uuid, run_id, &run, &rows).await?;
+            if !summary.row_errors.is_empty() {
+                return Err(HrError::validation(
+                    "cannot apply attendance import with unresolved or invalid rows",
+                ));
+            }
 
-                let mut inserted = 0usize;
-                for row in summary.ready_rows_for_apply {
-                    let insert_result = sqlx::query(
-                        r#"
-                        INSERT INTO attendance_direct_import_events (
-                            org_id, run_id, import_row_id, employee_id, branch_id,
-                            source_sheet, source_row, source_key, source_sha256,
-                            employee_number, employee_name, branch_name, work_date,
-                            check_in_at, check_out_at, minutes_worked, fact_key
-                        )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-                        ON CONFLICT (org_id, fact_key) DO NOTHING
-                        "#,
-                    )
-                    .bind(org_uuid)
-                    .bind(run_id)
-                    .bind(row.import_row_id)
-                    .bind(row.employee_id)
-                    .bind(row.branch_id)
-                    .bind(&row.source_sheet)
-                    .bind(row.source_row)
-                    .bind(&row.source_key)
-                    .bind(&run.source_sha256)
-                    .bind(&row.employee_number)
-                    .bind(&row.employee_name)
-                    .bind(&row.branch_name)
-                    .bind(&row.work_date)
-                    .bind(&row.check_in_at)
-                    .bind(&row.check_out_at)
-                    .bind(row.minutes_worked)
-                    .bind(&row.fact_key)
-                    .execute(tx.as_mut())
-                    .await?;
-                    inserted += usize::try_from(insert_result.rows_affected()).unwrap_or_default();
-                }
+            let inserted = attendance_import_batch::insert_attendance_direct_import_events(
+                tx,
+                org_uuid,
+                run_id,
+                &run.source_sha256,
+                &summary.ready_rows_for_apply,
+            )
+            .await?;
 
-                let report = AttendanceImportApplyReport {
-                    run_id,
-                    inserted,
-                    skipped: summary.ready_rows.saturating_sub(inserted),
-                    error_rows: 0,
-                };
-                sqlx::query(
-                    r#"
+            let report = AttendanceImportApplyReport {
+                run_id,
+                inserted,
+                skipped: summary.ready_rows.saturating_sub(inserted),
+                error_rows: 0,
+            };
+            sqlx::query(
+                r#"
                     UPDATE data_import_runs
                     SET status = 'APPLIED', apply_summary = $3, applied_by = $4,
                         applied_at = now(), updated_at = now()
                     WHERE org_id = $1 AND id = $2
                     "#,
-                )
-                .bind(org_uuid)
-                .bind(run_id)
-                .bind(json!(&report))
-                .bind(*actor.as_uuid())
-                .execute(tx.as_mut())
-                .await?;
-                Ok(report)
-            })
+            )
+            .bind(org_uuid)
+            .bind(run_id)
+            .bind(json!(&report))
+            .bind(*actor.as_uuid())
+            .execute(tx.as_mut())
+            .await?;
+            Ok(report)
         })
+    })
     .await?;
 
     metrics::counter!("hr_attendance_import_runs_total", "stage" => "apply").increment(1);
@@ -2878,21 +2841,9 @@ struct AttendanceEmployeeResolution {
     employee_number: Option<String>,
 }
 
-enum AttendanceEmployeeLookup {
-    Matched(AttendanceEmployeeResolution),
-    Missing,
-    Ambiguous,
-}
-
 struct AttendanceBranchResolution {
     id: Uuid,
     name: String,
-}
-
-enum AttendanceBranchLookup {
-    Matched(AttendanceBranchResolution),
-    Missing,
-    Ambiguous,
 }
 
 async fn load_attendance_import_rows(
@@ -2982,295 +2933,7 @@ async fn resolve_attendance_import_rows(
     run: &DataImportRunRecord,
     rows: &[StoredAttendanceImportRow],
 ) -> Result<AttendanceImportDryRunSummary, HrError> {
-    let source_keys = rows
-        .iter()
-        .map(|row| row.source_key.clone())
-        .collect::<Vec<_>>();
-    let existing_keys = if source_keys.is_empty() {
-        BTreeSet::new()
-    } else {
-        sqlx::query_scalar::<_, String>(
-            r#"
-            SELECT source_key
-            FROM attendance_direct_import_events
-            WHERE org_id = $1 AND source_sha256 = $2 AND source_key = ANY($3)
-            "#,
-        )
-        .bind(org_uuid)
-        .bind(&run.source_sha256)
-        .bind(&source_keys)
-        .fetch_all(tx.as_mut())
-        .await?
-        .into_iter()
-        .collect::<BTreeSet<_>>()
-    };
-
-    let mut summary = AttendanceImportDryRunSummary {
-        run_id,
-        input_rows: usize::try_from(run.input_rows).unwrap_or_default(),
-        candidate_rows: usize::try_from(run.candidate_rows).unwrap_or_default(),
-        preserved_rows: usize::try_from(run.preserved_rows).unwrap_or_default(),
-        ..AttendanceImportDryRunSummary::default()
-    };
-
-    let mut resolved_fact_keys = BTreeSet::<String>::new();
-
-    for row in rows {
-        if row.row_status != ImportRowStatus::Candidate {
-            summary.error_rows += 1;
-            if row.validation_errors.is_empty() {
-                summary.row_errors.push(attendance_row_error(
-                    row,
-                    "invalid_row",
-                    "attendance import row is not a candidate",
-                ));
-            } else {
-                for code in &row.validation_errors {
-                    summary
-                        .row_errors
-                        .push(attendance_row_error(row, code, code));
-                }
-            }
-            continue;
-        }
-
-        if existing_keys.contains(&row.source_key) {
-            summary.error_rows += 1;
-            summary.duplicate_rows += 1;
-            summary.row_errors.push(attendance_row_error(
-                row,
-                "duplicate_import_row",
-                "attendance import row source key was already applied",
-            ));
-            continue;
-        }
-
-        let employee = match resolve_attendance_employee(tx, org_uuid, row).await? {
-            AttendanceEmployeeLookup::Matched(employee) => employee,
-            AttendanceEmployeeLookup::Missing => {
-                summary.error_rows += 1;
-                summary.missing_employee_rows += 1;
-                summary.row_errors.push(attendance_row_error(
-                    row,
-                    "missing_employee",
-                    "no employee matched the attendance row identifier",
-                ));
-                continue;
-            }
-            AttendanceEmployeeLookup::Ambiguous => {
-                summary.error_rows += 1;
-                summary.ambiguous_employee_rows += 1;
-                summary.row_errors.push(attendance_row_error(
-                    row,
-                    "ambiguous_employee",
-                    "attendance row identifier matched multiple employees",
-                ));
-                continue;
-            }
-        };
-        let branch = match resolve_attendance_branch(tx, org_uuid, row).await? {
-            AttendanceBranchLookup::Matched(branch) => branch,
-            AttendanceBranchLookup::Missing => {
-                summary.error_rows += 1;
-                summary.row_errors.push(attendance_row_error(
-                    row,
-                    "missing_branch",
-                    "no branch matched the attendance row branch name",
-                ));
-                continue;
-            }
-            AttendanceBranchLookup::Ambiguous => {
-                summary.error_rows += 1;
-                summary.row_errors.push(attendance_row_error(
-                    row,
-                    "ambiguous_branch",
-                    "attendance row branch name matched multiple branches",
-                ));
-                continue;
-            }
-        };
-
-        let employee_number = row
-            .canonical
-            .employee_number
-            .clone()
-            .or(employee.employee_number.clone());
-        let Some(work_date) = row.canonical.work_date.clone() else {
-            summary.error_rows += 1;
-            summary.row_errors.push(attendance_row_error(
-                row,
-                "missing_work_date",
-                "work_date is required",
-            ));
-            continue;
-        };
-
-        let fact_key = attendance_fact_key(
-            employee.id,
-            branch.id,
-            &work_date,
-            row.canonical.check_in_at.as_deref(),
-            row.canonical.check_out_at.as_deref(),
-            row.canonical.minutes_worked,
-        );
-        if !resolved_fact_keys.insert(fact_key.clone()) {
-            summary.error_rows += 1;
-            summary.duplicate_rows += 1;
-            summary.row_errors.push(attendance_row_error(
-                row,
-                "duplicate_attendance_fact_in_file",
-                "attendance fact is duplicated within this import run",
-            ));
-            continue;
-        }
-        if attendance_fact_exists(tx, org_uuid, &fact_key).await? {
-            summary.error_rows += 1;
-            summary.duplicate_rows += 1;
-            summary.row_errors.push(attendance_row_error(
-                row,
-                "duplicate_attendance_fact",
-                "attendance fact was already imported",
-            ));
-            continue;
-        }
-
-        summary
-            .ready_rows_for_apply
-            .push(ResolvedAttendanceImportRow {
-                import_row_id: row.import_row_id,
-                employee_id: employee.id,
-                branch_id: branch.id,
-                source_sheet: row.source_sheet.clone(),
-                source_row: row.source_row,
-                source_key: row.source_key.clone(),
-                employee_number,
-                employee_name: employee.name,
-                branch_name: branch.name,
-                work_date,
-                check_in_at: row.canonical.check_in_at.clone(),
-                check_out_at: row.canonical.check_out_at.clone(),
-                minutes_worked: row.canonical.minutes_worked,
-                fact_key,
-            });
-    }
-
-    summary.ready_rows = summary.ready_rows_for_apply.len();
-    Ok(summary)
-}
-
-async fn resolve_attendance_employee(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
-    org_uuid: Uuid,
-    row: &StoredAttendanceImportRow,
-) -> Result<AttendanceEmployeeLookup, HrError> {
-    let records = if let Some(employee_number) = row.canonical.employee_number.as_deref() {
-        sqlx::query(
-            r#"
-            SELECT id, name, employee_number
-            FROM employees
-            WHERE org_id = $1 AND employee_number = $2
-            ORDER BY id
-            LIMIT 2
-            "#,
-        )
-        .bind(org_uuid)
-        .bind(employee_number)
-        .fetch_all(tx.as_mut())
-        .await?
-    } else if let Some(employee_name) = row.canonical.employee_name.as_deref() {
-        sqlx::query(
-            r#"
-            SELECT id, name, employee_number
-            FROM employees
-            WHERE org_id = $1 AND name = $2
-            ORDER BY id
-            LIMIT 2
-            "#,
-        )
-        .bind(org_uuid)
-        .bind(employee_name)
-        .fetch_all(tx.as_mut())
-        .await?
-    } else {
-        return Ok(AttendanceEmployeeLookup::Missing);
-    };
-
-    if records.is_empty() {
-        return Ok(AttendanceEmployeeLookup::Missing);
-    }
-    if records.len() > 1 {
-        return Ok(AttendanceEmployeeLookup::Ambiguous);
-    }
-    let Some(row) = records.into_iter().next() else {
-        return Ok(AttendanceEmployeeLookup::Missing);
-    };
-    Ok(AttendanceEmployeeLookup::Matched(
-        AttendanceEmployeeResolution {
-            id: row.try_get("id")?,
-            name: row.try_get("name")?,
-            employee_number: row.try_get("employee_number")?,
-        },
-    ))
-}
-
-async fn resolve_attendance_branch(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
-    org_uuid: Uuid,
-    row: &StoredAttendanceImportRow,
-) -> Result<AttendanceBranchLookup, HrError> {
-    let Some(branch_name) = row.canonical.branch_name.as_deref() else {
-        return Ok(AttendanceBranchLookup::Missing);
-    };
-    let records = sqlx::query(
-        r#"
-        SELECT id, name
-        FROM branches
-        WHERE org_id = $1 AND name = $2
-        ORDER BY id
-        LIMIT 2
-        "#,
-    )
-    .bind(org_uuid)
-    .bind(branch_name)
-    .fetch_all(tx.as_mut())
-    .await?;
-
-    if records.is_empty() {
-        return Ok(AttendanceBranchLookup::Missing);
-    }
-    if records.len() > 1 {
-        return Ok(AttendanceBranchLookup::Ambiguous);
-    }
-    let Some(row) = records.into_iter().next() else {
-        return Ok(AttendanceBranchLookup::Missing);
-    };
-    Ok(AttendanceBranchLookup::Matched(
-        AttendanceBranchResolution {
-            id: row.try_get("id")?,
-            name: row.try_get("name")?,
-        },
-    ))
-}
-
-async fn attendance_fact_exists(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
-    org_uuid: Uuid,
-    fact_key: &str,
-) -> Result<bool, HrError> {
-    let exists: bool = sqlx::query_scalar(
-        r#"
-        SELECT EXISTS (
-            SELECT 1
-            FROM attendance_direct_import_events
-            WHERE org_id = $1 AND fact_key = $2
-        )
-        "#,
-    )
-    .bind(org_uuid)
-    .bind(fact_key)
-    .fetch_one(tx.as_mut())
-    .await?;
-    Ok(exists)
+    attendance_import_resolve::resolve_attendance_import_rows(tx, org_uuid, run_id, run, rows).await
 }
 
 fn attendance_fact_key(

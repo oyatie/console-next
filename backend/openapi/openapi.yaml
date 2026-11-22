@@ -2679,6 +2679,233 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/access/access-log/reviews/{period}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: getAccessLogReview
+      summary: Read the monthly tenant access-log review state without exposing frozen chunks
+      description: Requires tenant-wide Cedar audit::view. Records access_log.review_read before returning.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      responses:
+        '200':
+          description: Current monthly review projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/access-log/reviews/{period}/complete:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: completeAccessLogReview
+      summary: Complete a monthly tenant access-log review after all findings and follow-ups resolve
+      description: Requires tenant-wide Cedar audit::approve and a fresh passkey step-up assertion once all frozen targets are resolved.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                step_up:
+                  $ref: '#/components/schemas/PasskeyLoginFinishRequest'
+      responses:
+        '200':
+          description: Completed monthly review projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: step_up_required — passkey step-up assertion required to sign off.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/access-log/reviews/{period}/findings:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: recordAccessLogFinding
+      summary: Record or supersede a finding on a frozen flagged event or daily summary
+      description: Requires tenant-wide Cedar audit::approve. Appends an immutable finding audit record for the started review period.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [disposition]
+              properties:
+                event_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                summary:
+                  type: object
+                  nullable: true
+                  additionalProperties: false
+                  required: [actor, day, flag]
+                  properties:
+                    actor: { type: string, format: uuid }
+                    day: { type: string, format: date }
+                    flag: { type: string }
+                disposition:
+                  type: string
+                  enum: [confirmed, action_required]
+                outcome:
+                  type: string
+                  nullable: true
+                note:
+                  type: string
+                  nullable: true
+                follow_up:
+                  type: object
+                  nullable: true
+                  additionalProperties: false
+                  required: [kind]
+                  properties:
+                    kind: { type: string }
+                    ref: { type: string, nullable: true }
+                    closed: { type: boolean, nullable: true }
+      responses:
+        '200':
+          description: Updated monthly review projection including the recorded finding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/access-log/reviews/{period}/start:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: startAccessLogReview
+      summary: Start and freeze a monthly tenant access-log review
+      description: Requires tenant-wide Cedar audit::approve. Freezes flagged events and daily summaries once per closed period.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      responses:
+        '200':
+          description: Started or existing review projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/access/accounts/{accountId}/effective:
     get:
       x-console-authz: {"permission": "access:view", "scope": "any"}
@@ -26807,6 +27034,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/privacy/rights-requests:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: listPrivacyRightsIntake
+      summary: List tenant privacy rights intake requests under live Cedar placement
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: cursor, in: query, required: false, schema: { type: string, format: uuid } }
+      - { name: status, in: query, required: false, schema: { type: string, enum: [RECEIVED, DECIDED] } }
+      responses:
+        '200':
+          description: Tenant intake page filtered by live Cedar placement.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor, as_of]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [request, subject_name]
+                      properties:
+                        request: { $ref: '#/components/schemas/PrivacyRightsReceipt' }
+                        subject_name: { type: string }
+                  next_cursor: { type: string, nullable: true }
+                  as_of: { type: string, format: date }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
     post:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       tags: [Compliance]
@@ -26910,6 +27169,41 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/received:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: receiveOffAppPrivacyRightsRequest
+      summary: Record an off-app privacy rights receipt on behalf of a tenant subject
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [subject_user_id, controller, channel, agent, identity_method, received_on, kinds]
+              properties:
+                subject_user_id: { type: string, format: uuid }
+                controller: { type: string, enum: [TENANT] }
+                channel: { type: string, enum: [PHONE, LETTER, EMAIL, IN_PERSON] }
+                agent: { type: string, enum: [SUBJECT, LEGAL_REPRESENTATIVE, AUTHORIZED] }
+                mandate_received: { type: boolean, default: false }
+                identity_method: { type: string, enum: [SIGNED_IN, PASSKEY, ID_DOCUMENT_SEEN, KNOWN_CONTACT, AGENT_MANDATE] }
+                received_on: { type: string, format: date }
+                kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+                detail: { type: string, maxLength: 2000, default: '' }
+      responses:
+        '200': { description: Recorded off-app receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/privacy/rights-requests/{id}:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -26933,6 +27227,113 @@ paths:
                   as_of: { type: string, format: date }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}/decide:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: decidePrivacyRightsRequest
+      summary: Decide one requested privacy right with bound passkey step-up and SoD enforcement
+      security: [{ bearerAuth: [] }]
+      description: >
+        Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID
+        and SHA-256 of the serialized decision payload (kind, outcome, reason, note, decided_on).
+        Enforces Cedar permission, natural-person SoD against the subject, off-app filer,
+        and prior decision maker on objections.
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, outcome, step_up]
+              properties:
+                kind: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+                outcome: { type: string, enum: [GRANTED, PARTIAL, REFUSED] }
+                reason: { type: string, nullable: true }
+                note: { type: string, nullable: true }
+                decided_on: { type: string, format: date, nullable: true }
+                step_up: { $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope' }
+      responses:
+        '200': { description: Updated privacy rights receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}/objection:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: objectPrivacyRightsRequest
+      summary: File an objection against a prior privacy rights request decision
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kinds]
+              properties:
+                kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+                detail: { type: string, maxLength: 2000, default: '' }
+                channel: { type: string, enum: [IN_APP, PHONE, LETTER, EMAIL, IN_PERSON] }
+                agent: { type: string, enum: [SUBJECT, LEGAL_REPRESENTATIVE, AUTHORIZED] }
+                mandate_received: { type: boolean, default: false }
+                identity_method: { type: string, enum: [SIGNED_IN, PASSKEY, ID_DOCUMENT_SEEN, KNOWN_CONTACT, AGENT_MANDATE] }
+                received_on: { type: string, format: date, nullable: true }
+      responses:
+        '200': { description: Objection receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}/postpone:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: postponePrivacyRightsRequest
+      summary: Postpone one requested privacy right with bound passkey step-up and SoD enforcement
+      security: [{ bearerAuth: [] }]
+      description: >
+        Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID
+        and SHA-256 of the serialized postponement payload (kind, reason, note, decided_on).
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, reason, note, step_up]
+              properties:
+                kind: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+                reason: { type: string }
+                note: { type: string }
+                decided_on: { type: string, format: date, nullable: true }
+                step_up: { $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope' }
+      responses:
+        '200': { description: Updated privacy rights receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/production/capacity-slots:
     get:
@@ -35351,6 +35752,55 @@ components:
             target_types:
               type: array
               items: *access_log_code_choice
+    AccessLogReview:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [period, scope, reviewer, started_at, reviewed_at, due, flags_seen, findings, follow_up, state]
+      properties:
+        id:
+          type: string
+          format: uuid
+        period:
+          description: Review period metadata or YYYY-MM label before start.
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                from: { type: string, format: date-time }
+                to: { type: string, format: date-time }
+                time_zone: { type: string }
+        scope:
+          type: string
+        reviewer:
+          type: [string, 'null']
+          format: uuid
+        started_at:
+          type: [string, 'null']
+          format: date-time
+        reviewed_at:
+          type: [string, 'null']
+          format: date-time
+        due:
+          type: string
+          format: date-time
+        flags_seen:
+          type: object
+          nullable: true
+          additionalProperties: true
+        findings:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        follow_up:
+          type: object
+          required: [open, total]
+          properties:
+            open: { type: integer, minimum: 0 }
+            total: { type: integer, minimum: 0 }
+        state:
+          type: string
+          enum: [not_started, open, overdue, complete]
     AccessPerson:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -53097,6 +53547,7 @@ components:
             - passkey_step_up_pii_reveal
             - passkey_step_up_pii_record
             - passkey_step_up_privacy_request
+            - passkey_step_up_privacy_request_decide
         replay_attempt:
           type:
             - integer
@@ -53171,6 +53622,7 @@ components:
                 - PII_REVEAL
                 - PII_RECORD
                 - PRIVACY_REQUEST
+                - PRIVACY_REQUEST_DECIDE
             object_id:
               $ref: '#/components/schemas/Uuid'
             reason_key:
@@ -53192,6 +53644,7 @@ components:
                 - passkey_step_up_pii_reveal
                 - passkey_step_up_pii_record
                 - passkey_step_up_privacy_request
+                - passkey_step_up_privacy_request_decide
             replay_attempt:
               type:
                 - integer
@@ -53225,6 +53678,7 @@ components:
         - PII_REVEAL
         - PII_RECORD
         - PRIVACY_REQUEST
+        - PRIVACY_REQUEST_DECIDE
     MobileVotePollRequest:
       type: object
       required:
@@ -64460,6 +64914,22 @@ components:
             - string
             - 'null'
           format: date-time
+        request_expires_at:
+          type: string
+          format: date-time
+        requested_duration_seconds:
+          type: integer
+        scope:
+          type: array
+          items:
+            type: string
+        operator_approver_ref:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        tenant_approved:
+          type: boolean
       required:
         - id
         - org_id

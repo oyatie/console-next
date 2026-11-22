@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [Compliance]
+operationId: receiveOffAppPrivacyRightsRequest
+summary: Record an off-app privacy rights receipt on behalf of a tenant subject
+security: [{ bearerAuth: [] }]
+parameters:
+- { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [subject_user_id, controller, channel, agent, identity_method, received_on, kinds]
+        properties:
+          subject_user_id: { type: string, format: uuid }
+          controller: { type: string, enum: [TENANT] }
+          channel: { type: string, enum: [PHONE, LETTER, EMAIL, IN_PERSON] }
+          agent: { type: string, enum: [SUBJECT, LEGAL_REPRESENTATIVE, AUTHORIZED] }
+          mandate_received: { type: boolean, default: false }
+          identity_method: { type: string, enum: [SIGNED_IN, PASSKEY, ID_DOCUMENT_SEEN, KNOWN_CONTACT, AGENT_MANDATE] }
+          received_on: { type: string, format: date }
+          kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+          detail: { type: string, maxLength: 2000, default: '' }
+responses:
+  '200': { description: Recorded off-app receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }
+  '503': { $ref: '#/components/responses/ServiceUnavailable' }

@@ -18,8 +18,12 @@ use sqlx::{Postgres, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+pub use super::finding::{FindingInput, FollowUpInput, SummaryTarget, finding};
 use super::list::{FlaggedEvent, Prepared, page_in_tx, prepare_in_tx};
-pub use super::{complete::complete, projection::get};
+pub use super::{
+    complete::{CompleteInput, complete},
+    projection::get,
+};
 use crate::{
     AccessError, AccessResult, AccessService,
     actor::{Actor, audit},
@@ -179,6 +183,7 @@ pub async fn start(
             value
         };
         idempotency::complete_idempotency_key(tx, OPERATION, &key, &value).await?;
+        console_platform_db::command_outcomes::set_result(tx, &value).await?;
         Ok((value, events))
     })).await;
     refusal(s, &actor, &target, result).await

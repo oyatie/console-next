@@ -196,8 +196,8 @@ pub(super) async fn list(
         .map_err(|e| SupportError::Refused(e.kind.code()))?;
     require_support(Action::List, p.user_id, OrgId::platform(), org, facts)?;
     support::arm(&mut tx, org).await?;
-    // No ticket, stated reason, tenant identity, decisions or payload crosses back into the vendor tier.
-    let rows:Vec<serde_json::Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'org_id',org_id,'operator_ref',operator_ref,'state',state,'requested_at',requested_at,'expires_at',expires_at) FROM support_sessions WHERE org_id=$1 ORDER BY requested_at DESC")
+    // Vendor list responses exclude ticket_ref, reason, tenant_approver_ref, reveal_classes, and approved_duration_seconds.
+    let rows:Vec<serde_json::Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'org_id',org_id,'operator_ref',operator_ref,'state',state,'requested_at',requested_at,'request_expires_at',request_expires_at,'expires_at',expires_at,'requested_duration_seconds',requested_duration_seconds,'scope',scope,'operator_approver_ref',operator_approver_ref,'tenant_approved',(tenant_approver_ref IS NOT NULL)) FROM support_sessions WHERE org_id=$1 ORDER BY requested_at DESC")
         .bind(target.org_id).fetch_all(tx.as_mut()).await.map_err(SupportError::from)?;
     tx.commit().await.map_err(SupportError::from)?;
     Ok(axum::Json(serde_json::json!({"sessions":rows})).into_response())

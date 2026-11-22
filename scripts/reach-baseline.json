@@ -315,16 +315,6 @@
   }
  ],
  "operations": {
-  "DELETE /api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "DELETE /api/platform/groups/{id}/organizations/{org_id}": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "DELETE /api/v1/change-sets/{id}": {
    "lane": "MAT-PARITY",
    "reason": "Org change-set management follows MVP bulk-command delivery; units/maturity/plan.md §3.",
@@ -363,16 +353,6 @@
   "GET /api/audit": {
    "lane": "K4",
    "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/platform/groups": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/platform/groups/{id}/accounts": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "GET /api/v1/access/ops-usage": {
@@ -725,11 +705,6 @@
    "reason": "internal: process health probe for the orchestrator",
    "when": "excluded"
   },
-  "PATCH /api/platform/groups/{id}": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "PATCH /api/v1/org-structure/units/{orgUnitId}": {
    "lane": "O4b",
    "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -753,16 +728,6 @@
   "PATCH /api/v1/reason-codes/{domain}/{code}": {
    "lane": "K5",
    "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/platform/groups": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/platform/groups/{id}/accounts": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "POST /api/v1/attendance/closes": {
@@ -1133,11 +1098,6 @@
   "POST /api/v2/leave/requests/{id}/decide": {
    "lane": "leave",
    "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
-   "when": "mvp"
-  },
-  "PUT /api/platform/groups/{id}/organizations/{org_id}": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "PUT /api/v1/console/rollout/opt-in": {
