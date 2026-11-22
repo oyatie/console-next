@@ -79,6 +79,14 @@ BEGIN
                     USING ERRCODE = 'P0001';
             END IF;
         END IF;
+        IF COALESCE(NEW.body->>'status', '') = 'DECIDED'
+           AND (
+               new_len = 0
+               OR COALESCE(new_decisions->(new_len - 1)->'decision'->>'outcome', '') IN ('', 'POSTPONED')
+           ) THEN
+            RAISE EXCEPTION 'privacy_rights_requests cannot be DECIDED with undecided or postponed kinds'
+                USING ERRCODE = '23514';
+        END IF;
     END LOOP;
     RETURN NEW;
 END;

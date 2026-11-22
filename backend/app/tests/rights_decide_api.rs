@@ -200,3 +200,79 @@ async fn privacy_decide_postpone_and_sod_lifecycle(pool: PgPool) {
         "{db_err}"
     );
 }
+
+async fn assert_decided_guard_rejects_23514(rt: &PgPool, org: OrgId, req_id: Uuid) {
+    let mut tx = rt.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org', $1, true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let err = sqlx::query(
+        "UPDATE privacy_rights_requests SET body=jsonb_set(body,'{status}','\"DECIDED\"') WHERE id=$1",
+    )
+    .bind(req_id)
+    .execute(tx.as_mut())
+    .await
+    .unwrap_err();
+    let code = err.as_database_error().and_then(|e| e.code());
+    assert_eq!(code.as_deref(), Some("23514"), "{err}");
+    tx.rollback().await.unwrap();
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn privacy_guard_rejects_decided_status_with_undecided_or_postponed_kinds(pool: PgPool) {
+    let org = OrgId::new();
+    sqlx::query("INSERT INTO organizations(id,slug,name) VALUES($1,$2,'Guard org')")
+        .bind(org.as_uuid())
+        .bind(org.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (service, issuer) = router(&pool).await;
+    let svc = passkey_service();
+    let mut requester =
+        period_unlock_support::admin_in(&pool, &svc, &issuer, org, "Requester").await;
+    let mut handler = period_unlock_support::admin_in(&pool, &svc, &issuer, org, "Handler").await;
+    grant_privacy_intake(&pool, org, UserId::from_uuid(handler.id), requester.id).await;
+    grant_privacy_intake(&pool, org, UserId::from_uuid(requester.id), handler.id).await;
+
+    let filing = json!({"controller":"TENANT","kinds":["ACCESS"],"detail":"Guard probe"});
+    let parsed: rights::Filing = serde_json::from_value(filing.clone()).unwrap();
+    let requester_id = requester.id;
+    let mut body = filing;
+    body["step_up"] = step_up_as(
+        &pool,
+        &svc,
+        &mut requester,
+        MobileStepUpActionKind::PrivacyRequest,
+        requester_id,
+        &serde_json::to_string(&parsed).unwrap(),
+    )
+    .await;
+    let (st, filed) = send(
+        &service,
+        "/api/v1/privacy/rights-requests",
+        &requester.token,
+        Some(&Uuid::new_v4().to_string()),
+        body,
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "{filed}");
+    let req_id = Uuid::parse_str(filed["id"].as_str().unwrap()).unwrap();
+
+    let rt = settings_support::runtime_pool(&pool).await;
+    assert_decided_guard_rejects_23514(&rt, org, req_id).await;
+
+    let (st, postponed) = postpone_with_step_up(
+        &pool,
+        &svc,
+        &service,
+        &mut handler,
+        req_id,
+        json!({"kind":"ACCESS","reason":"JUSTIFIED_REASON","note":"Pending verification"}),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "{postponed}");
+    assert_decided_guard_rejects_23514(&rt, org, req_id).await;
+}

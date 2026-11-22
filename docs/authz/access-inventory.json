@@ -29,7 +29,7 @@
       "model": "BranchScope",
       "file": "backend/app/src/audit_api.rs",
       "kind": "reference",
-      "count": 10
+      "count": 9
     },
     {
       "model": "BranchScope",
@@ -947,7 +947,7 @@
       "model": "matrix",
       "file": "backend/app/src/audit_api.rs",
       "kind": "reference",
-      "count": 3
+      "count": 2
     },
     {
       "model": "matrix",

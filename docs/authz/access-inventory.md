@@ -20,7 +20,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/app/src/action_inbox/response.rs | reference | 2 |
 | BranchScope | backend/app/src/action_inbox/sources/entity_corrections.rs | reference | 3 |
 | BranchScope | backend/app/src/action_inbox/sources/hr_followups.rs | reference | 1 |
-| BranchScope | backend/app/src/audit_api.rs | reference | 10 |
+| BranchScope | backend/app/src/audit_api.rs | reference | 9 |
 | BranchScope | backend/app/src/collaboration.rs | reference | 4 |
 | BranchScope | backend/app/src/entity_wiring/correction_register.rs | reference | 3 |
 | BranchScope | backend/app/src/entity_wiring/exceptions.rs | reference | 2 |
@@ -173,7 +173,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/app/src/action_inbox/sources/entity_corrections.rs | reference | 4 |
 | matrix | backend/app/src/action_inbox/sources/hr_lifecycle.rs | reference | 2 |
 | matrix | backend/app/src/action_inbox/sources/org_change.rs | reference | 2 |
-| matrix | backend/app/src/audit_api.rs | reference | 3 |
+| matrix | backend/app/src/audit_api.rs | reference | 2 |
 | matrix | backend/app/src/cedar_parity.rs | reference | 1 |
 | matrix | backend/app/src/entity_wiring/correction_register.rs | reference | 2 |
 | matrix | backend/app/src/entity_wiring/exceptions.rs | reference | 2 |

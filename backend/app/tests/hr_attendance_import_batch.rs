@@ -5,14 +5,19 @@ mod attendance_grants;
 #[path = "access_log_reads/support.rs"]
 mod requests;
 mod settings_support;
+#[path = "../../crates/hr/adapter-postgres/tests/support/trail_queries.rs"]
+#[allow(dead_code)]
+mod trail_queries;
 
 use console_app::build_router;
 use console_kernel_core::{OrgId, UserId};
 use console_platform_test_support::seed_active_user;
+use futures::future::join_all;
 use http::StatusCode;
 use serde_json::{Value, json};
 use settings_support::{app_state, keys, runtime_pool, send, token};
 use sqlx::PgPool;
+use tracing::instrument::WithSubscriber;
 use uuid::Uuid;
 
 async fn setup_branch(pool: &PgPool, org: Uuid, name: &str) -> Uuid {
@@ -83,20 +88,6 @@ async fn run_import_lifecycle(
     (preview, dry, applied)
 }
 
-async fn table_scans(pool: &PgPool) -> i64 {
-    sqlx::query("SELECT pg_stat_force_next_flush()")
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query_scalar(
-        "SELECT COALESCE(SUM(seq_scan + idx_scan), 0)::bigint FROM pg_stat_user_tables \
-         WHERE relname IN ('employees','branches','data_import_rows','attendance_direct_import_events')",
-    )
-    .fetch_one(pool)
-    .await
-    .unwrap()
-}
-
 async fn seed_tenant_admin(pool: &PgPool, tag: &str) -> (OrgId, UserId) {
     let org = OrgId::new();
     sqlx::query("INSERT INTO organizations(id,slug,name) VALUES($1,$2,'Batch Test Org')")
@@ -133,7 +124,25 @@ async fn set_based_attendance_import_has_constant_scan_count_and_validation_pari
         "SUPER_ADMIN",
     )
     .await;
-    let service = build_router(app_state(runtime_pool(&pool).await, keys.1.clone()).unwrap());
+    loop {
+        let warmup = trail_queries::Queries::default();
+        sqlx::query("SELECT 1")
+            .execute(&pool)
+            .with_subscriber(tracing::Dispatch::new(warmup.clone()))
+            .await
+            .unwrap();
+        if !warmup.statements().is_empty() {
+            break;
+        }
+    }
+    let rt_pool = runtime_pool(&pool).await;
+    let leases = join_all((0..rt_pool.options().get_max_connections()).map(|_| rt_pool.acquire()))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+    drop(leases);
+    let service = build_router(app_state(rt_pool, keys.1.clone()).unwrap());
 
     setup_branch(&pool, *org_small.as_uuid(), "Seoul").await;
     setup_branch(&pool, *org_large.as_uuid(), "Seoul").await;
@@ -158,27 +167,57 @@ async fn set_based_attendance_import_has_constant_scan_count_and_validation_pari
         large_csv.push_str(&format!("{num},{name},Seoul,2026-08-01,09:00,18:00,540\n"));
     }
 
-    sqlx::query("SELECT pg_stat_reset()")
-        .execute(&pool)
-        .await
-        .unwrap();
-    let (_, dry_small, app_small) = run_import_lifecycle(&service, &tok_small, &small_csv).await;
+    let small_queries = trail_queries::Queries::default();
+    let (_, dry_small, app_small) = run_import_lifecycle(&service, &tok_small, &small_csv)
+        .with_subscriber(tracing::Dispatch::new(small_queries.clone()))
+        .await;
     assert_eq!(dry_small["ready_rows"], 4);
     assert_eq!(app_small["inserted"], 4);
-    let scans_small = table_scans(&pool).await;
 
-    sqlx::query("SELECT pg_stat_reset()")
-        .execute(&pool)
-        .await
-        .unwrap();
-    let (_, dry_large, app_large) = run_import_lifecycle(&service, &tok_large, &large_csv).await;
+    let large_queries = trail_queries::Queries::default();
+    let (_, dry_large, app_large) = run_import_lifecycle(&service, &tok_large, &large_csv)
+        .with_subscriber(tracing::Dispatch::new(large_queries.clone()))
+        .await;
     assert_eq!(dry_large["ready_rows"], 60);
     assert_eq!(app_large["inserted"], 60);
-    let scans_large = table_scans(&pool).await;
 
+    let small_statements = small_queries.statements();
+    let large_statements = large_queries.statements();
     assert!(
-        scans_large <= scans_small + 2 && scans_large < 30,
-        "scans must remain O(1) independent of row count (4 rows={scans_small}, 60 rows={scans_large})"
+        !small_statements.is_empty(),
+        "SQL observer must capture import lifecycle"
+    );
+    assert_eq!(
+        large_statements.len(),
+        small_statements.len(),
+        "SQL statement count must remain O(1) independent of row count (4 rows={}, 60 rows={})",
+        small_statements.len(),
+        large_statements.len()
+    );
+    assert!(
+        large_statements
+            .iter()
+            .any(|s| s.contains("INSERT INTO data_import_rows") && s.contains("FROM UNNEST(")),
+        "expected set-based UNNEST insert into data_import_rows"
+    );
+    assert!(
+        large_statements.iter().any(
+            |s| s.contains("INSERT INTO attendance_direct_import_events")
+                && s.contains("FROM UNNEST(")
+        ),
+        "expected set-based UNNEST insert into attendance_direct_import_events"
+    );
+    assert!(
+        large_statements
+            .iter()
+            .any(|s| s.contains("FROM person_employees_current") && s.contains("= ANY(")),
+        "expected set-based ANY() lookup on person_employees_current"
+    );
+    assert!(
+        large_statements
+            .iter()
+            .any(|s| s.contains("FROM branches") && s.contains("= ANY(")),
+        "expected set-based ANY() lookup on branches"
     );
 
     // Validation parity: missing/ambiguous employee, missing/ambiguous branch, in-file dup, existing dup.
