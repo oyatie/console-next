@@ -128,8 +128,8 @@ Partially exposed operations keep their current route and component; their refus
 | `POST /api/v1/hr/attendance-import/{run_id}/apply` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/hr/attendance-import/{run_id}/dry-run` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/hr/attendance-records` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/hr/attendance-records/me` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/hr/attendance-records/me` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/hr/attendance-records/me` | exposed | expose | `/me/attendance` · `MeAttendanceSections` displays the signed-in employee's clock records. |
+| `POST /api/v1/hr/attendance-records/me` | exposed | expose | `/me/attendance` · `MeAttendanceSections` records clock-in and clock-out punches for the signed-in employee. |
 | `GET /api/v1/hr/attendance-summary` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/hr/leave-balances` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/hr/minimum-wage` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
@@ -150,11 +150,11 @@ Partially exposed operations keep their current route and component; their refus
 | `POST /api/v1/attendance/closes/preflight` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/attendance/closes/{close_id}/amendments` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/attendance/exceptions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/attendance/exceptions/{exception_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/attendance/exceptions/{exception_id}` | exposed | expose | `/attendance` · `IssuesConsoleView` loads attendance exception details and evidence in the side record pane. |
 | `POST /api/v1/attendance/exceptions/{exception_id}/resolve` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/attendance/me/exceptions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/attendance/me/exceptions` | exposed | expose | `/me/attendance` · `MeAttendanceSections` displays the signed-in employee's attendance exceptions. |
 | `GET /api/v1/attendance/me/schedule` | exposed | expose | `/leave` · `LeaveRequestPage` reads the signed-in employee's work schedule to count scheduled workdays across multi-day leave ranges. |
-| `GET /api/v1/attendance/me/week52` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/attendance/me/week52` | exposed | expose | `/me/attendance` · `MeAttendanceSections` displays the signed-in employee's weekly 52-hour projection. |
 | `GET /api/v1/attendance/substitution-candidates` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/attendance/substitutions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/attendance/substitutions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |

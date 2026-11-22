@@ -43,6 +43,8 @@ import { koAttendanceHolidays } from "./ko/attendance-holidays";
 import { koAttendanceCrews } from "./ko/attendance-crews";
 import { koAttendanceOverview } from "./ko/attendance-overview";
 import { koAttendanceRecords } from "./ko/attendance-records";
+import { koMe } from "./ko/me";
+import { koTeam } from "./ko/team";
 import { koImport } from "./ko/import";
 import { koImportSheet } from "./ko/import-sheet";
 import { koImportReview } from "./ko/import-review";
@@ -267,4 +269,6 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,
+  ...koMe,
+  ...koTeam,
 };

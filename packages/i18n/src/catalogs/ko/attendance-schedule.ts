@@ -11,8 +11,8 @@ export const koAttendanceSchedule: Record<keyof typeof enAttendanceSchedule, str
   "attendanceSchedule.receipt.cancel": "적용 전 취소",
   // Scope tree
   "attendanceSchedule.tree.label": "범위 (법인 › 사업장 › 부서)",
-  "attendanceSchedule.tree.find": "찾기 — 법인·사업장·부서·근무조",
-  "attendanceSchedule.person.find": "사람 찾기 — 이름·사번",
+  "attendanceSchedule.tree.find": "검색 — 법인·사업장·부서·근무조",
+  "attendanceSchedule.person.find": "사람 검색 — 이름·사번",
   "attendanceSchedule.person.group": "직원",
   "attendanceSchedule.person.none": "이름이나 사번이 맞는 직원이 없습니다",
   "attendanceSchedule.tree.noMatch": "조건에 맞는 범위가 없습니다",

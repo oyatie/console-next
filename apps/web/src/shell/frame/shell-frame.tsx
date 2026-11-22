@@ -168,7 +168,11 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
       }
     : pathname === "/leave"
       ? { title: t("shell.title.leave"), context: employeeContext, shellOwnsH1: true, hideActions: true, phoneNav: "self-service" as const }
-      : undefined;
+      : pathname === "/me/attendance"
+        ? { title: t("shell.link.meAttendance"), context: employeeContext, phoneNav: "self-service" as const }
+        : pathname === "/me/desk"
+          ? { title: t("shell.link.meDesk"), context: employeeContext, phoneNav: "self-service" as const }
+          : undefined;
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
     <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}

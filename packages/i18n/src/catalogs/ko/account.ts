@@ -143,6 +143,8 @@ export const koAccount: Record<keyof typeof enAccount, string> = {
   "account.status.withDot": "• {status}",
   "account.hub.leave": "휴가 신청",
   "account.hub.leaveRemaining": "잔여 연차 {days}일",
+  "account.hub.attendance": "근태 현황",
+  "account.hub.attendanceMeta": "근로시간 · 근무 일정 · 출퇴근 기록",
   "account.hub.payslip": "급여명세서",
   "account.hub.payslipPayDate": "{period} · 지급일 {date}",
   "account.hub.payslipIssued": "발급된 명세서 보기",

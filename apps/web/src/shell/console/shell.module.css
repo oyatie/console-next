@@ -206,6 +206,7 @@
 
 @media (--phone) {
   .shell {
+    height: auto;
     grid-template: "phoneTop" auto "notices" auto "main" 1fr "phoneNav" auto / minmax(0, 1fr);
   }
 }

@@ -99,6 +99,25 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v2/me/leave/approval-preview", { status: 200, json: { filing_state: "ready", home_branch_id: id(4), branch_name: null, org_unit: null, steps: [] } });
   await mockRoute(page, "get", "/api/v1/me/inbox-docs", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/change-requests", { status: 200, json: { items: [], total: 0, limit: 10, offset: 0 } });
+  await mockRoute(page, "get", "/api/v1/attendance/me/schedule", {
+    status: 200,
+    json: {
+      scope_kind: "WORKPLACE",
+      scope_id: id(4),
+      scope_name: "HQ",
+      month: "2026-11",
+      stack: [],
+      upcoming: [],
+      days: [],
+      holidays_loaded: true,
+    },
+  });
+  await mockRoute(page, "get", "/api/v1/attendance/me/exceptions", { status: 200, json: { items: [], total: 0, limit: 50, offset: 0 } });
+  await mockRoute(page, "get", "/api/v1/attendance/me/week52", { status: 200, json: { status: "not_available" } });
+  await mockRoute(page, "get", "/api/v1/hr/attendance-records/me", { status: 200, json: { items: [], total: 0, limit: 50, offset: 0 } });
+  await mockRoute(page, "post", "/api/v1/hr/attendance-records/me", { status: 403, json: failure("attendance.refuse.missing_grant") });
+  await mockRoute(page, "get", "/api/v1/attendance/exceptions/{exception_id}", { status: 404, json: failure("not_found") });
+  await mockRoute(page, "get", "/api/v2/leave/requests", { status: 200, json: { items: [], next_cursor: null } });
   // Postponing an item and bringing it back answer no body; a spec that cares overrides them.
   await mockRoute(page, "post", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 204 });
   await mockRoute(page, "delete", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 204 });

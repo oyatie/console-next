@@ -21,6 +21,7 @@ export type HolidayInput = S["AttendanceHolidayInput"];
 export type HolidayPreview = S["AttendanceHolidayPreview"];
 export type ContractualHoliday = S["AttendanceContractualHoliday"];
 export type ScopeKind = S["AttendanceScopeKind"];
+export type AttendanceMonthCloseItem = S["AttendanceMonthCloseItem"];
 
 const idem = (key: string) => ({ header: { "Idempotency-Key": key } });
 
@@ -44,6 +45,8 @@ export const exceptionsQuery = (month: string, branch_id?: string) => ({
   getNextPageParam: (page: S["AttendanceExceptionPage"]) => page.items.length > 0 && page.offset + page.items.length < page.total ? page.offset + page.items.length : undefined,
 });
 export const closesQuery = (month: string, branch_id?: string) => get("/api/v1/attendance/closes", { params: { query: { month, branch_id } } });
+export const exceptionDetailQuery = (exception_id: string) =>
+  get("/api/v1/attendance/exceptions/{exception_id}", { params: { path: { exception_id } } });
 export const week52Query = (date: string, branch_id?: string) => get("/api/v1/attendance/week52", { params: { query: { week_start: isDate(date) ? addDays(nextMonday(date), -7) : date, branch_id } } });
 export type Week52Row = S["AttendanceWeek52Row"];
 

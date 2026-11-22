@@ -8,42 +8,53 @@ import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
 import type { Layer } from "../api";
 import { dateText } from "../present";
+import { ScheduleSection } from "./schedule-section";
 import s from "./attendance.module.css";
 
 /**
  * Every layer this scope ever held, newest first: scheduled · in effect · past · cancelled, who assigned it and when, and
  * the one verb a layer has — "cancel" until its start date. After that it stays in history and a new layer replaces it.
  */
-export function LayerHistory({ layers, disabled, onCancel }: { layers: Layer[]; disabled?: boolean; onCancel: (l: Layer) => void }) {
+export function LayerHistory({ layers, disabled, onCancel, consoleMode = false }: { layers: Layer[]; disabled?: boolean; onCancel: (l: Layer) => void; consoleMode?: boolean }) {
   const period = (l: Layer) =>
     l.effective_to ? t("attendanceSchedule.history.range", { from: dateText(l.effective_from), to: dateText(l.effective_to) }) : t("attendanceSchedule.history.from", { from: dateText(l.effective_from) });
+  const body = (
+    <div className={s.historyBody}>
+      {/* Keep the empty state's intrinsic height when the first row replaces it. */}
+      <div className={layers.length ? s.historyReserve : undefined} aria-hidden={layers.length > 0 || undefined}>
+        <EmptyState title={t("attendanceSchedule.history.none")} reason={t("attendanceSchedule.history.none.reason")} />
+      </div>
+      {layers.length > 0 && (
+        <Table
+          label={t("attendanceSchedule.history.title")}
+          rows={layers}
+          rowId={(l) => l.id}
+          columns={[
+            { header: t("attendanceSchedule.history.col.pattern"), cell: (l) => <strong>{l.pattern_name}</strong> },
+            { header: t("attendanceSchedule.history.col.period"), cell: (l) => <span className="num">{period(l)}</span> },
+            { header: t("attendanceSchedule.history.col.reason"), cell: (l) => <>{t(`attendance.reason.${l.reason}`)}{l.evidence_ref && <><br /><span className="muted">{l.evidence_ref}</span></>}</> },
+            { header: t("attendanceSchedule.history.col.state"), cell: (l) => <><EnumValue e={ATTENDANCE_LAYER_STATE} value={l.state} />{l.cancel_reason && <><br /><span className="muted">{l.cancel_reason}</span></>}</>, fit: true },
+            { header: t("attendanceSchedule.history.col.by"), cell: (l) => <span className="muted">{t("attendanceSchedule.history.by", { name: l.created_by_name, at: fmtDateTime(l.created_at), version: l.version })}</span> },
+            {
+              header: t("attendanceSchedule.history.col.actions"),
+              fit: true,
+              cell: (l) => (l.state === "SCHEDULED" ? <Button size="sm" variant="ghost-danger" disabled={disabled} onClick={() => onCancel(l)} aria-label={t("attendanceSchedule.history.cancelOne", { pattern: l.pattern_name })}>{t("attendanceSchedule.history.cancel")}</Button> : null),
+            },
+          ]}
+        />
+      )}
+    </div>
+  );
+  if (consoleMode) {
+    return (
+      <ScheduleSection id="att-layer-history" title={t("attendanceSchedule.history.title")} meta={t("attendanceSchedule.history.rule")}>
+        {body}
+      </ScheduleSection>
+    );
+  }
   return (
     <Card title={t("attendanceSchedule.history.title")} flush meta={t("attendanceSchedule.history.rule")}>
-      <div className={s.historyBody}>
-        {/* Keep the empty state's intrinsic height when the first row replaces it. */}
-        <div className={layers.length ? s.historyReserve : undefined} aria-hidden={layers.length > 0 || undefined}>
-          <EmptyState title={t("attendanceSchedule.history.none")} reason={t("attendanceSchedule.history.none.reason")} />
-        </div>
-        {layers.length > 0 && (
-          <Table
-            label={t("attendanceSchedule.history.title")}
-            rows={layers}
-            rowId={(l) => l.id}
-            columns={[
-              { header: t("attendanceSchedule.history.col.pattern"), cell: (l) => <strong>{l.pattern_name}</strong> },
-              { header: t("attendanceSchedule.history.col.period"), cell: (l) => <span className="num">{period(l)}</span> },
-              { header: t("attendanceSchedule.history.col.reason"), cell: (l) => <>{t(`attendance.reason.${l.reason}`)}{l.evidence_ref && <><br /><span className="muted">{l.evidence_ref}</span></>}</> },
-              { header: t("attendanceSchedule.history.col.state"), cell: (l) => <><EnumValue e={ATTENDANCE_LAYER_STATE} value={l.state} />{l.cancel_reason && <><br /><span className="muted">{l.cancel_reason}</span></>}</>, fit: true },
-              { header: t("attendanceSchedule.history.col.by"), cell: (l) => <span className="muted">{t("attendanceSchedule.history.by", { name: l.created_by_name, at: fmtDateTime(l.created_at), version: l.version })}</span> },
-              {
-                header: t("attendanceSchedule.history.col.actions"),
-                fit: true,
-                cell: (l) => (l.state === "SCHEDULED" ? <Button size="sm" variant="ghost-danger" disabled={disabled} onClick={() => onCancel(l)} aria-label={t("attendanceSchedule.history.cancelOne", { pattern: l.pattern_name })}>{t("attendanceSchedule.history.cancel")}</Button> : null),
-              },
-            ]}
-          />
-        )}
-      </div>
+      {body}
     </Card>
   );
 }

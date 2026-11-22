@@ -41,6 +41,8 @@ import { enAttendanceHolidays } from "./en/attendance-holidays";
 import { enAttendanceCrews } from "./en/attendance-crews";
 import { enAttendanceOverview } from "./en/attendance-overview";
 import { enAttendanceRecords } from "./en/attendance-records";
+import { enMe } from "./en/me";
+import { enTeam } from "./en/team";
 import { enImport } from "./en/import";
 import { enImportSheet } from "./en/import-sheet";
 import { enImportReview } from "./en/import-review";
@@ -268,6 +270,8 @@ export const en = {
   ...enDirectoryViews,
   ...enUiWorklist,
   ...enUiLedger,
+  ...enMe,
+  ...enTeam,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;

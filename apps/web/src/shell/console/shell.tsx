@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { CalendarDays, Settings } from "lucide-react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { session } from "@console/api";
 import { i18n, t } from "@console/i18n";
@@ -18,44 +17,15 @@ import { WorkspaceTabs } from "../../ui/workspace-tabs/workspace-tabs";
 import { ShellFrame, type ShellLayoutProps } from "../frame/shell-frame";
 import { activeLink, type NavLink } from "../nav";
 import { ConsoleTopBar } from "./console-top-bar";
+import { consolePathTitle, getPhoneSnapshot, subscribePhoneQuery, tabIconForHref } from "./shell-meta";
 import { useConsoleCounts } from "./use-console-counts";
 import { useWorkspaceTabs } from "./workspace-tabs-state";
 import s from "./shell.module.css";
-
-const PHONE_QUERY = "(max-width: 767px)";
-
-function subscribePhoneQuery(onStoreChange: () => void) {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
-  const mql = window.matchMedia(PHONE_QUERY);
-  mql.addEventListener("change", onStoreChange);
-  return () => mql.removeEventListener("change", onStoreChange);
-}
-
-function getPhoneSnapshot() {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
-  return window.matchMedia(PHONE_QUERY).matches;
-}
 
 const ConsolePhoneTop = lazy(() => chunk(import("./console-phone-chrome")).then(m => ({ default: m.ConsolePhoneTop })));
 const ConsolePhoneBottom = lazy(() => chunk(import("./console-phone-chrome")).then(m => ({ default: m.ConsolePhoneBottom })));
 const OutageBanner = lazy(() => chunk(import("../../ui/live/outage-banner")).then(m => ({ default: m.OutageBanner })));
 const StalenessBar = lazy(() => chunk(import("../../ui/live/staleness-bar")).then(m => ({ default: m.StalenessBar })));
-
-function tabIconForHref(href: string, allLinks: readonly NavLink[]): ReactNode {
-  const cut = href.search(/[?#]/);
-  const path = (cut === -1 ? href : href.slice(0, cut)) || "/";
-  if (path === "/leave") {
-    return <CalendarDays size={14} aria-hidden="true" />;
-  }
-  if (path === "/account" || path.startsWith("/account/")) {
-    return <Settings size={14} aria-hidden="true" />;
-  }
-  const matchedHref = path === "/" || path === "/inbox" ? "/" : activeLink(path, allLinks);
-  const Icon =
-    (matchedHref ? allLinks.find(link => link.to === matchedHref)?.icon : undefined) ??
-    allLinks[0]?.icon;
-  return Icon ? <Icon size={14} aria-hidden="true" /> : null;
-}
 
 export function ConsoleShell(props: { children?: ReactNode; pending?: boolean }) {
   return <ShellFrame layout={ConsoleLayout} {...props} />;
@@ -103,13 +73,10 @@ function ConsoleLayout({
     [allLinks, inboxCount, approvalsCount],
   );
 
-  const currentTitle = useMemo(() => {
-    if (pathname === "/leave") return t("leave.title");
-    if (pathname === "/account" || pathname.startsWith("/account/")) return t("shell.profile");
-    const matched = allLinks.find(link => link.to === currentModuleTo);
-    if (matched) return t(matched.label);
-    return platform ? t("shell.link.tenants") : t("shell.link.home");
-  }, [pathname, allLinks, currentModuleTo, platform]);
+  const currentTitle = useMemo(
+    () => consolePathTitle(pathname, allLinks, currentModuleTo, platform),
+    [pathname, allLinks, currentModuleTo, platform],
+  );
 
   const defaultHref = platform ? "/platform" : "/";
   const defaultLabel = platform ? t("shell.link.tenants") : t("shell.link.home");
@@ -168,7 +135,7 @@ function ConsoleLayout({
   const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
   const phoneActiveId = pathname === "/leave"
     ? "/leave"
-    : pathname === "/account" || pathname.startsWith("/account/")
+    : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
       ? "/account"
       : currentModuleTo;
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);

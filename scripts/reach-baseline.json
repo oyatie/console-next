@@ -385,21 +385,6 @@
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/attendance/exceptions/{exception_id}": {
-   "lane": "A5",
-   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/attendance/me/exceptions": {
-   "lane": "A5",
-   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/attendance/me/week52": {
-   "lane": "MAT-PARITY",
-   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-   "when": "post-mvp"
-  },
   "GET /api/v1/attendance/substitution-candidates": {
    "lane": "MAT-PARITY",
    "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
@@ -496,11 +481,6 @@
    "when": "mvp"
   },
   "GET /api/v1/hr/attendance-records": {
-   "lane": "A1",
-   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/hr/attendance-records/me": {
    "lane": "A1",
    "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
@@ -708,11 +688,6 @@
   "GET /api/v1/workplaces/{workplaceId}": {
    "lane": "E3a",
    "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v2/leave/requests": {
-   "lane": "leave",
-   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
   },
   "GET /healthz": {
@@ -933,11 +908,6 @@
   "POST /api/v1/hr/attendance-import/{run_id}/dry-run": {
    "lane": "A2",
    "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/hr/attendance-records/me": {
-   "lane": "A1",
-   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "POST /api/v1/integrity/findings/{id}/triage": {

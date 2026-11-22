@@ -136,6 +136,8 @@ export const enAccount = {
   "account.status.withDot": "• {status}",
   "account.hub.leave": "Leave request",
   "account.hub.leaveRemaining": "Remaining annual leave {days}d",
+  "account.hub.attendance": "Attendance",
+  "account.hub.attendanceMeta": "Hours, schedule, records",
   "account.hub.payslip": "Payslip",
   "account.hub.payslipPayDate": "{period} · Payday {date}",
   "account.hub.payslipIssued": "View issued payslips",
