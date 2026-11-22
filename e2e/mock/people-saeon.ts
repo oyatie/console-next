@@ -22,6 +22,9 @@ import {
   saeonExitCases,
   saeonFieldReveal,
   saeonFilterEmployees,
+  saeonImportDryRun,
+  saeonImportPreview,
+  saeonImportRuns,
   saeonLegalEntities,
   saeonLifecycleEvents,
   saeonNoticeCandidates,
@@ -38,6 +41,8 @@ import {
   saeonRegisterFactsBatch,
   saeonRrnReveal,
   saeonRrnStatus,
+  saeonUnmappedCompanies,
+  saeonUnplacedQueue,
 } from "./saeon";
 import { mockScreen } from "./screen";
 
@@ -50,6 +55,7 @@ interface SetupSaeonPeopleOptions {
   canManage?: boolean;
   modulesState?: "ready" | "not-ready" | "refused";
   passkeyStepUpMode?: "ok" | "step_up_required" | "refused";
+  unplacedPopulated?: boolean;
 }
 
 function employeeIdFromPath(urlString: string, suffixSegments = 0): string {
@@ -65,6 +71,7 @@ export async function setupConsoleSaeonPeople(page: Page, options: SetupSaeonPeo
     canManage = true,
     modulesState = "ready",
     passkeyStepUpMode = "ok",
+    unplacedPopulated = false,
   } = options;
 
   await page.addInitScript(
@@ -103,14 +110,16 @@ export async function setupConsoleSaeonPeople(page: Page, options: SetupSaeonPeo
         "/people/notices/$noticeId",
         "/people/exits",
         "/people/exits/$id",
+        "/people/import",
         "/people/unplaced",
+        "/people/data-health",
         "/people/certificates",
         "/people/certificates/$certificateId",
         "/org",
         "/attendance",
         "/payroll",
       ]
-    : ["/people", "/people/$id"];
+    : ["/people", "/people/$id", "/people/data-health"];
   const accessEntries: S["AccessEffectiveEntry"][] = accessPaths.flatMap(path => screenAccess(path).entries);
   const dedupedEntries = accessEntries.filter(
     (entry, idx) =>
@@ -188,10 +197,39 @@ export async function setupConsoleSaeonPeople(page: Page, options: SetupSaeonPeo
     status: 200,
     json: saeonFilterEmployees(new URL(req.url()).searchParams),
   }));
-  await mockRoute(page, "get", "/api/v1/employees/import/unplaced", {
-    status: 200,
-    json: { count: 0, next_cursor: null, items: [] },
+  await mockRoute(page, "get", "/api/v1/employees/import/unplaced", () =>
+    canManage
+      ? { status: 200, json: unplacedPopulated ? saeonUnplacedQueue() : { count: 0, next_cursor: null, items: [] } }
+      : { status: 403, json: failure("forbidden") },
+  );
+  await mockRoute(page, "get", "/api/v1/employment-assignments/unmapped-companies", () =>
+    canManage
+      ? { status: 200, json: unplacedPopulated ? saeonUnmappedCompanies() : { items: [] } }
+      : { status: 403, json: failure("forbidden") },
+  );
+  await mockRoute(page, "post", "/api/v1/employment-assignments/map-company", () =>
+    canManage
+      ? { status: 200, json: { company_text: "mapped", legal_entity_id: "00000000-0000-4000-8100-000000000001", workplace_id: "00000000-0000-4000-8200-000000000101", mapped: 2 } }
+      : { status: 403, json: failure("forbidden") },
+  );
+  await mockRoute(page, "get", "/api/v1/employee-number-rules", { status: 200, json: [] });
+  await mockRoute(page, "get", "/api/v1/employee-import-runs/{run_id}", () =>
+    canManage ? { status: 200, json: saeonImportRuns().items[0]! } : { status: 403, json: failure("forbidden") },
+  );
+  await mockRoute(page, "get", "/api/v1/employee-import-runs", () =>
+    canManage ? { status: 200, json: saeonImportRuns() } : { status: 403, json: failure("forbidden") },
+  );
+  await mockRoute(page, "post", "/api/v1/employees/import/preview", req => {
+    if (!canManage) return { status: 403, json: failure("forbidden") };
+    const rawBody = req.postData() ?? "";
+    if (rawBody.includes("BaseSalary") && rawBody.includes('"target":"')) {
+      return { status: 422, json: failure("mapping_restricted_column") };
+    }
+    return { status: 200, json: saeonImportPreview() };
   });
+  await mockRoute(page, "post", "/api/v1/employees/import/{run_id}/dry-run", () =>
+    canManage ? { status: 200, json: saeonImportDryRun() } : { status: 403, json: failure("forbidden") },
+  );
   await mockRoute(page, "get", "/api/v1/employees/voided", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/v1/employees/{id}/personal-facts", req => ({
     status: 200,

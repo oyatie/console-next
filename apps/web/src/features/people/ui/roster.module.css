@@ -78,6 +78,7 @@
 .consoleDesktopSort { display: inline-flex; align-items: center; flex-shrink: 0; }
 .consoleFind { flex: 1 1 auto; min-width: 0; max-width: 100%; }
 @media (max-width: 767px) { .consoleDesktopSort { display: none; } }
+@media (max-width: 639px) { .consoleToolLabel { display: none; } }
 .peekConsole { display: flex; flex-direction: column; min-width: 0; }
 .peekTabsWrap { display: flex; flex-direction: column; min-width: 0; }
 .peekInlineRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); }

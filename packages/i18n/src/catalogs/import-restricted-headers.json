@@ -1,0 +1,89 @@
+{
+  "rrnAliases": [
+    "주민등록번호",
+    "주민번호",
+    "rrn",
+    "resident_registration_number"
+  ],
+  "phoneAliases": [
+    "휴대폰",
+    "휴대폰번호",
+    "휴대전화",
+    "휴대전화번호",
+    "핸드폰",
+    "핸드폰번호",
+    "연락처",
+    "전화번호",
+    "전화",
+    "phone",
+    "phone_number",
+    "mobile"
+  ],
+  "canonicalDobAliases": [
+    "생년월일",
+    "birth_date",
+    "birthdate",
+    "date_of_birth",
+    "dob"
+  ],
+  "locationWorksiteAddressAliases": [
+    "근무지(주소)",
+    "근무지주소",
+    "근무지주소지",
+    "현장주소",
+    "사업장주소",
+    "worksite_address",
+    "worksiteaddress",
+    "workplace_address",
+    "workplaceaddress",
+    "site_address",
+    "siteaddress"
+  ],
+  "restrictedFragmentsKo": [
+    "주민",
+    "급여",
+    "시급",
+    "통상",
+    "수당",
+    "국민연금",
+    "건강보험",
+    "고용보험",
+    "산재",
+    "소득세",
+    "은행",
+    "계좌",
+    "장애",
+    "퇴직금",
+    "지급일",
+    "급여산정",
+    "휴대폰",
+    "핸드폰",
+    "전화",
+    "연락처",
+    "개인주소",
+    "거주주소"
+  ],
+  "restrictedFragmentsEn": [
+    "ssn",
+    "rrn",
+    "phone",
+    "mobile",
+    "salary",
+    "wage",
+    "account",
+    "bank"
+  ],
+  "pii2DobFragmentKo": "생년월일",
+  "pii2AddrFragmentKo": "주소",
+  "workQualifiersKo": [
+    "근무지",
+    "현장",
+    "사업장",
+    "회사"
+  ],
+  "workQualifiersEn": [
+    "worksite",
+    "workplace",
+    "site"
+  ]
+}

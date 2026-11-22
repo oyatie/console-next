@@ -319,7 +319,19 @@
       "precisionLabel": "정밀가공"
     }
   },
-  "reasonCodes": { "rrn_reveal": [{ "code": "INSURANCE_FILING", "labelKo": "4대보험 신고", "requiresNote": false }, { "code": "TAX_FILING", "labelKo": "원천세·연말정산 확인", "requiresNote": false }, { "code": "CERT_ISSUE", "labelKo": "증명서 발급", "requiresNote": false }] },
+  "reasonCodes": {
+    "rrn_reveal": [
+      { "code": "INSURANCE_FILING", "labelKo": "4대보험 신고", "requiresNote": false },
+      { "code": "TAX_FILING", "labelKo": "원천세·연말정산 확인", "requiresNote": false },
+      { "code": "CERT_ISSUE", "labelKo": "증명서 발급", "requiresNote": false }
+    ],
+    "import_exclude": [
+      { "code": "DUPLICATE", "labelKo": "중복", "labelEn": "Duplicate", "requiresNote": false },
+      { "code": "FORMAT_ERROR", "labelKo": "형식 오류", "labelEn": "Format error", "requiresNote": false },
+      { "code": "OUT_OF_SCOPE", "labelKo": "대상 아님", "labelEn": "Out of scope", "requiresNote": false },
+      { "code": "OTHER", "labelKo": "기타", "labelEn": "Other", "requiresNote": true }
+    ]
+  },
   "namePools": {
     "surnamesBeforeWindow": ["강", "고", "곽", "구", "권", "김", "남", "노", "문", "박", "방", "배", "백", "서", "석", "성", "손", "송", "신", "심", "안", "양", "엄", "염", "오", "우", "원", "유"],
     "surnamesAfterWindow": ["임", "장", "전", "정", "조", "주", "차", "천", "최", "추", "표", "하", "한", "허", "현", "홍", "황"],

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { SlidersHorizontal, Upload } from "lucide-react";
+import { HeartPulse, SlidersHorizontal, Upload } from "lucide-react";
 import { chunk } from "../../../lib/chunk-guard";
 import { EMPLOYMENT_TYPE, label } from "../../../lib/labels";
 import { read } from "../../../lib/query";
@@ -119,6 +119,7 @@ export function RosterConsole({
   const openPerson = open ? (sourceRows.find(e => e.id === open) ?? r.rows.find(e => e.id === open)) : undefined;
   const listQ = needsFullRoster && fullRoster.isError ? { ...r.list, error: fullRoster.error, data: undefined } : r.list;
   const order = toOrderField(sort);
+  const dataHealthLabel = t("roster.head.dataHealth");
   const sortControl = (
     <SortControl
       fields={[{ id: "name", label: t("people.col.name") }, { id: "employee_number", label: t("people.col.number") }, { id: "hire_date", label: t("people.col.hired") }]}
@@ -139,6 +140,7 @@ export function RosterConsole({
           <div className={s.consoleTools}>
             <Button size="sm" variant="secondary" onClick={() => setColsOpen(true)}><SlidersHorizontal size={13} aria-hidden="true" />{t("people.tools.columns")}</Button>
             {manage ? <Link className={buttonClass("secondary", { size: "sm" })} to="/people/import"><Upload size={13} aria-hidden="true" />{t("roster.head.import")}</Link> : null}
+            <Link className={buttonClass("secondary", { size: "sm" })} to="/people/data-health" aria-label={dataHealthLabel} title={dataHealthLabel}><HeartPulse size={13} aria-hidden="true" /><bdi className={s.consoleToolLabel}>{dataHealthLabel}</bdi></Link>
             {actions}
           </div>
         ),
