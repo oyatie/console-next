@@ -81,3 +81,4 @@
 .peekConsole { display: flex; flex-direction: column; min-width: 0; }
 .peekTabsWrap { display: flex; flex-direction: column; min-width: 0; }
 .peekInlineRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); }
+.tabHost { display: flex; flex-direction: column; flex: 1 1 0%; min-width: 0; min-height: 0; }

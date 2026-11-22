@@ -52,6 +52,18 @@ export const voidRecord = (id: string, section: Segment, entry: RecordEntry, rea
 /** The register facts of one person (sex, address, note). */
 export const registerFactsQuery = (id: string) => get("/api/v1/employees/{id}/register-facts", { params: onEmployee(id) });
 
+export type RegisterFactsQueryItem = components["schemas"]["RegisterFactsQueryItem"];
+export const REGISTER_FACTS_BATCH = 500;
+/** Batched register facts (sex, address, careers, register_note, masked birth_date) for <= 500 IDs. */
+export const registerFactsBatchQuery = (ids: readonly string[]) => {
+  const sorted = [...new Set(ids)].sort();
+  return read(
+    "/api/v1/employees/register-facts/query",
+    () => hrWaterfallApi(api).queryRegisterFacts({ ids: sorted }),
+    { ids: sorted },
+  );
+};
+
 /** The voided registrations (E9 "voided registrations"). */
 export const voidedQuery = get("/api/v1/employees/voided");
 /** The server's error code of a failed command, if it answered with one. */

@@ -1,4 +1,3 @@
-import { useQueries } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { t } from "@console/i18n";
 import { EMPLOYEE_STATUS, labeled } from "../../../lib/labels";
@@ -9,7 +8,8 @@ import { Chip } from "../../../ui/chip";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { Table } from "../../../ui/table";
-import { employeeQuery, type DuplicateCandidate } from "../api";
+import type { DuplicateCandidate } from "../api";
+import { maskedBirth } from "../domain/card";
 import type { DupPick } from "../domain/register";
 import type { PlaceOption } from "../domain/register-place";
 import s from "./register.module.css";
@@ -30,17 +30,26 @@ export function RegisterDup({ mine, candidates, places, pick, onPick, tried }: {
   onPick: (p: DupPick) => void;
   tried: boolean;
 }) {
-  const reads = useQueries({ queries: candidates.map((c) => employeeQuery(c.employee_id)) });
   const needsNote = useNeedsNote("exception", pick.code);
   const first = candidates[0]!;
-  const them = reads[0]?.data?.employee;
   const rehire = candidates.some((c) => c.remedy === "rehire");
   const cell = (same: boolean | null) => (same === null ? <span className={s.steel}>—</span> : <Chip tone={same ? "ok" : "neutral"}>{t(same ? "register.dup.same" : "register.dup.differ")}</Chip>);
-  const at = places.find((p) => p.unit.id === them?.org_unit_id);
-  const theirPlace = at ? (at.unit.kind === "SITE" ? at.unit.name : `${at.site} › ${at.unit.name}`) : (them?.org_unit ?? "—");
+  const matchingPlaces = first.org_unit ? places.filter((p) => p.unit.name === first.org_unit) : [];
+  const at = matchingPlaces.length === 1 ? matchingPlaces[0] : undefined;
+  const theirPlace = at ? (at.unit.kind === "SITE" ? at.unit.name : `${at.site} › ${at.unit.name}`) : (first.org_unit ?? "—");
+  const samePlace = !first.org_unit
+    ? null
+    : at
+      ? theirPlace === mine.place
+      : mine.place === first.org_unit
+        ? true
+        : mine.place.split(" › ").at(-1) === first.org_unit
+          ? null
+          : false;
   // The server matched on a private value it does not show: both sides read the same masked form.
-  const masked = first.basis === "name_phone" ? "010-●●●●-●●●●" : `${mine.birth.slice(0, 8)}●●`;
-  const status = them ? labeled(EMPLOYEE_STATUS, them.status ?? "").label : "";
+  const masked = first.basis === "name_phone" ? "010-●●●●-●●●●" : (mine.birth ? `${mine.birth.slice(0, 8)}●●` : maskedBirth());
+  const status = first.status ? labeled(EMPLOYEE_STATUS, first.status).label : "";
+  const theirHire = first.hire_date ? (status ? `${first.hire_date} · ${status}` : first.hire_date) : status;
   return (
     <section className={s.dup} role="status" aria-labelledby="register-dup-title">
       <div className={s.dupHead}>
@@ -52,16 +61,16 @@ export function RegisterDup({ mine, candidates, places, pick, onPick, tried }: {
           label={t("register.dup.choice")}
           rowId={(r) => r.k}
           rows={[
-            { k: "name", a: mine.name, b: them?.name ?? "", same: them ? them.name.replace(/\s/g, "") === mine.name.replace(/\s/g, "") : null },
+            { k: "name", a: mine.name, b: first.name ?? "", same: first.name ? first.name.replace(/\s/g, "") === mine.name.replace(/\s/g, "") : null },
             { k: first.basis === "name_phone" ? "phone" : "birth", a: masked, b: masked, same: true },
-            { k: "place", a: mine.place, b: theirPlace, same: them ? theirPlace === mine.place : null },
-            { k: "hire", a: `${mine.hire} · ${mine.status}`, b: them ? `${them.hire_date ?? "—"} · ${status}` : "", same: them ? them.hire_date === mine.hire : null },
+            { k: "place", a: mine.place, b: theirPlace, same: samePlace },
+            { k: "hire", a: `${mine.hire} · ${mine.status}`, b: theirHire, same: first.hire_date ? first.hire_date === mine.hire : null },
             { k: "number", a: mine.number ?? t("register.dup.mineNumber"), b: first.employee_number ?? "—", same: false },
           ] satisfies Row[]}
           columns={[
             { header: t("register.dup.col.field"), cell: (r) => <span className={s.steel}>{t(`register.dup.row.${r.k}`)}</span>, fit: true },
             { header: t("register.dup.col.mine"), cell: (r) => r.a },
-            { header: t("register.dup.col.theirs", { name: them?.name ?? mine.name, number: first.employee_number ?? "—" }), cell: (r) => r.b },
+            { header: t("register.dup.col.theirs", { name: first.name ?? mine.name, number: first.employee_number ?? "—" }), cell: (r) => r.b },
             { header: <span className="sr-only">{t("register.dup.choice")}</span>, cell: (r) => cell(r.same), fit: true },
           ]}
         />

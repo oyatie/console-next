@@ -52,9 +52,9 @@ type Employee = components["schemas"]["Employee"];
 const EMPTY_EMPLOYEES: Employee[] = [];
 
 export function RosterConsole({
-  manage, scoped = false, notice, actions, screen,
+  manage, scoped = false, notice, actions, tabs, screen,
 }: {
-  manage: boolean; scoped?: boolean; notice?: ReactNode; actions?: ReactNode; screen: ReturnType<typeof useRosterScreen>;
+  manage: boolean; scoped?: boolean; notice?: ReactNode; actions?: ReactNode; tabs?: ReactNode; screen: ReturnType<typeof useRosterScreen>;
 }) {
   const {
     contractWindow, soonDays, search, navigate, today, status, review, unit, open, openUnit, select, selectRelated,
@@ -130,6 +130,7 @@ export function RosterConsole({
 
   return (
     <ListRecord
+      tabs={tabs}
       q={listQ}
       head={{
         title: t("roster.head.title"),

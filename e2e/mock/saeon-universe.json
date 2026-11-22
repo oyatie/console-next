@@ -301,6 +301,10 @@
     "preHire": { "seq": 9002, "name": "한지호", "employeeNumber": "10701", "entityIndex": 0, "place": "서울 본사 › 인사팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2026-12-01" },
     "exited": { "seq": 9003, "name": "박성민", "employeeNumber": "10198", "entityIndex": 0, "place": "평택공장 › 생산3팀", "gradeCode": "MANAGER", "roleCode": "TEAM_LEAD", "employmentTypeCode": "REGULAR", "hireDate": "2017-05-08", "exitDate": "2026-10-31", "keptUntil": "2029-10-31", "retentionInstrument": "근로기준법", "retentionArticle": "제42조", "retentionDisposition": "파기" }
   },
+  "exitNotes": {
+    "resignation": "퇴직 면담 완료 · 개인 사유 사직",
+    "contractEnd": "계약 기간 만료 확인 완료"
+  },
   "reasonCodes": { "rrn_reveal": [{ "code": "INSURANCE_FILING", "labelKo": "4대보험 신고", "requiresNote": false }, { "code": "TAX_FILING", "labelKo": "원천세·연말정산 확인", "requiresNote": false }, { "code": "CERT_ISSUE", "labelKo": "증명서 발급", "requiresNote": false }] },
   "namePools": {
     "surnamesBeforeWindow": ["강", "고", "곽", "구", "권", "김", "남", "노", "문", "박", "방", "배", "백", "서", "석", "성", "손", "송", "신", "심", "안", "양", "엄", "염", "오", "우", "원", "유"],

@@ -119,11 +119,61 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v1/employees", async request => {
     const failed = await beforeReply("/api/v1/employees");
     const query = new URL(request.url()).searchParams;
+    const ids = query.getAll("ids").flatMap(v => v.split(",")).filter(Boolean);
+    if (ids.length > 0) {
+      const idSet = new Set(ids);
+      const hit = rows.filter(row => idSet.has(row.id));
+      return failed ?? { status: 200, json: { items: hit, total: hit.length, offset: 0, limit: hit.length || 100, next_cursor: null } };
+    }
+    const numbers = query.getAll("employee_number").flatMap(v => v.split(",")).filter(Boolean);
+    if (numbers.length > 0) {
+      const numSet = new Set(numbers);
+      const hit = rows.filter(row => row.employee_number && numSet.has(row.employee_number));
+      return failed ?? { status: 200, json: { items: hit, total: hit.length, offset: 0, limit: hit.length || 100, next_cursor: null } };
+    }
     const cursor = query.get("cursor");
     const offset = cursor ? rows.findIndex(row => row.id === cursor) + 1 : 0;
     const limit = Number(query.get("limit") ?? 100), end = offset + limit;
     return failed ?? { status: 200, json: { items: rows.slice(offset, end), total: count, offset, limit, next_cursor: end < count ? rows[end - 1]!.id : null } };
   });
+  await mockRoute(page, "post", "/api/v1/employees/register-facts/query", async request => {
+    const failed = await beforeReply("/api/v1/employees");
+    if (failed) return failed;
+    const body = request.postDataJSON() as { ids?: string[] } | null;
+    const targetIds = body?.ids?.length ? [...body.ids].sort() : rows.map(row => row.id).sort();
+    return {
+      status: 200,
+      json: {
+        items: targetIds.map(empId => ({
+          employee_id: empId,
+          updated_at: "2026-10-26T09:00:00Z",
+          sex: "MALE" as const,
+          address: "123 Gangnam-daero, Seoul",
+          careers: [],
+          exit_reason_code: null,
+          exit_reason_label: null,
+          register_note: null,
+          birth_date: "1990-01-01",
+        })),
+        next_cursor: null,
+      },
+    };
+  });
+  await mockRoute(page, "get", "/api/v1/hr/exit-cases/counts", {
+    status: 200,
+    json: { all: 0, open: 0, closed: 0, reported: 0, hr_confirmed: 0, hq_confirmed: 0, settlement_ready: 0, approval_drafted: 0, submitted: 0, rejected: 0, cancelled: 0 },
+  });
+  await mockRoute(page, "post", "/api/v1/hr/exit-cases/bulk", request => {
+    const body = request.postDataJSON() as { items?: { employee_id: string }[] } | null;
+    return { status: 200, json: { results: (body?.items ?? []).map(item => ({ employee_id: item.employee_id, ok: true })) } };
+  });
+  await mockRoute(page, "get", "/api/v1/appointment-notices/{id}", { status: 404, json: failure("not_found") });
+  await mockRoute(page, "get", "/api/v1/appointment-notices/candidates", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v1/appointment-notices", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v1/hr/certificates/{id}", { status: 404, json: failure("not_found") });
+  await mockRoute(page, "get", "/api/v1/hr/certificates/precondition", { status: 200, json: { settings_configured: true, reason_code: null } });
+  await mockRoute(page, "get", "/api/v1/hr/certificate-settings", { status: 200, json: { settings: [], seal_max_bytes: 524288, can_manage: false } });
+  await mockRoute(page, "get", "/api/v1/hr/certificates", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/me/action-inbox", async request => {
     const failed = await beforeReply("/api/v1/me/action-inbox");
     const offset = Number(new URL(request.url()).searchParams.get("cursor") ?? 0);

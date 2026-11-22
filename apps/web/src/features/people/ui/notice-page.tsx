@@ -6,10 +6,13 @@ import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
+import { queryView } from "../../../lib/react/query-view";
 import { entitiesRef } from "../../../reference/entity/api";
 import { Button } from "../../../ui/button/button";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { PageHead } from "../../../ui/page-head/page-head";
+import { FormSection } from "../../../ui/patterns/form-section";
+import { RecordPattern } from "../../../ui/patterns/record";
 import { Table } from "../../../ui/table";
 import { noticeQuery, type Notice } from "../api";
 import { after, before, sections } from "../domain/notice";
@@ -26,61 +29,106 @@ const route = getRouteApi("/app/people/notices/$noticeId");
 export function NoticePage() {
   const { noticeId } = route.useParams();
   const q = useQuery(noticeQuery(noticeId));
-  return (
+  const entitiesQ = useQuery(entitiesRef);
+  const [copied, setCopied] = useState(false);
+  const view = queryView(q);
+  const n = view === "denied" || view === "not-found" ? undefined : q.data;
+  const entity = entityName(entitiesQ.data?.items[0]);
+  const parts = n ? sections(n.lines) : [];
+  const text = n
+    ? [
+        t("notice.doc.head"),
+        t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) }),
+        ...parts.flatMap((p, i) => [t("notice.doc.section", { n: i + 1, kind: label(LIFECYCLE_EVENT, p.kind), count: p.lines.length }), ...p.lines.map((l) => [l.name, l.employee_number ?? "—", before(l), after(l)].join("\t"))]),
+        t("notice.doc.foot", { date: fmtDate(n.notice_date), entity }),
+      ].join("\n")
+    : "";
+  const copy = () => void navigator.clipboard.writeText(text).then(() => setCopied(true));
+
+  const renderBaseline = () => (
     <div className="page">
       <div className={s.noPrint}>
         <PageHead crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>, <Link key="notices" to="/people/notices">{t("notice.crumb")}</Link>]} />} title={t("notice.title")} />
       </div>
-<QueryState q={q} back={{ to: "/people/notices", label: t("notice.crumb") }} layout="record">{n => <>      <Doc n={n} />
-    </>}</QueryState>
+      <QueryState q={q} back={{ to: "/people/notices", label: t("notice.crumb") }} layout="record">
+        {(loaded) => <Doc n={loaded} entity={entity} copied={copied} onCopy={copy} />}
+      </QueryState>
     </div>
+  );
+
+  return (
+    <RecordPattern
+      q={q}
+      baseline={renderBaseline}
+      back={{ to: "/people/notices", label: t("notice.crumb") }}
+      head={{
+        title: t("notice.title"),
+        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>, <Link key="notices" to="/people/notices">{t("notice.crumb")}</Link>]} />,
+        meta: n ? <bdi className="num">{t("notice.doc.issued", { name: n.issued_by_name ?? "—", at: fmtDateTime(n.issued_at) })}</bdi> : undefined,
+        actions: n ? (
+          <>
+            <Button size="sm" onClick={copy}><Copy size={14} aria-hidden />{t("notice.copy")}</Button>
+            <Button size="sm" variant="primary" onClick={() => window.print()}><Printer size={14} aria-hidden />{t("notice.print")}</Button>
+          </>
+        ) : undefined,
+      }}
+      notes={copied ? <div className={s.muted} role="status">{t("notice.copied")}</div> : undefined}
+      sections={
+        n ? (
+          <FormSection>
+            <div data-print-doc="">
+              <NoticeArticle n={n} parts={parts} entity={entity} />
+            </div>
+          </FormSection>
+        ) : null
+      }
+      statusSegments={n ? [{ id: "no", tone: "strong", content: n.notice_no }, { id: "date", content: fmtDate(n.notice_date) }, { id: "lines", content: String(n.line_count) }] : null}
+    />
   );
 }
 
-function Doc({ n }: { n: Notice }) {
-  const entity = entityName(useQuery(entitiesRef).data?.items[0]);
-  const [copied, setCopied] = useState(false);
+function NoticeArticle({ n, parts, entity }: { n: Notice; parts: ReturnType<typeof sections>; entity: string }) {
+  return (
+    <article className={s.doc} aria-label={t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) })}>
+      <h2 className={s.docHead}>{t("notice.doc.head")}</h2>
+      <p className={s.docNo}>{t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) })}</p>
+      {n.title.replace(/\s/g, "") !== t("notice.doc.head").replace(/\s/g, "") && <p className={s.docNo}>{n.title}</p>}
+      {parts.map((p, i) => (
+        <section key={p.kind} className={s.docSection}>
+          <h3>{t("notice.doc.section", { n: i + 1, kind: label(LIFECYCLE_EVENT, p.kind), count: p.lines.length })}</h3>
+          <div className={s.docTable}>
+            <Table
+              label={t("notice.doc.section", { n: i + 1, kind: label(LIFECYCLE_EVENT, p.kind), count: p.lines.length })}
+              rows={p.lines}
+              rowId={(l) => String(l.line_no)}
+              columns={[
+                { header: t("notice.doc.col.name"), cell: (l) => l.name },
+                { header: t("notice.doc.col.number"), cell: (l) => <span className="num">{l.employee_number ?? "—"}</span>, fit: true },
+                { header: t("notice.doc.col.before"), cell: before },
+                { header: t("notice.doc.col.after"), cell: after },
+              ]}
+            />
+          </div>
+        </section>
+      ))}
+      {n.note && <p className={s.docNote}>{n.note}</p>}
+      <p className={s.docFoot}>{t("notice.doc.foot", { date: fmtDate(n.notice_date), entity })}</p>
+    </article>
+  );
+}
+
+function Doc({ n, entity, copied, onCopy }: { n: Notice; entity: string; copied: boolean; onCopy: () => void }) {
   const parts = sections(n.lines);
-  const text = [
-    t("notice.doc.head"),
-    t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) }),
-    ...parts.flatMap((p, i) => [t("notice.doc.section", { n: i + 1, kind: label(LIFECYCLE_EVENT, p.kind), count: p.lines.length }), ...p.lines.map((l) => [l.name, l.employee_number ?? "—", before(l), after(l)].join("\t"))]),
-    t("notice.doc.foot", { date: fmtDate(n.notice_date), entity }),
-  ].join("\n");
   return (
     <>
       <div className={`${s.bar} ${s.noPrint}`}>
         <span className={s.muted}>{t("notice.doc.issued", { name: n.issued_by_name ?? "—", at: fmtDateTime(n.issued_at) })}</span>
         <span className={s.grow} />
-        <Button onClick={() => void navigator.clipboard.writeText(text).then(() => setCopied(true))}><Copy size={16} aria-hidden />{t("notice.copy")}</Button>
+        <Button onClick={onCopy}><Copy size={16} aria-hidden />{t("notice.copy")}</Button>
         <Button variant="primary" onClick={() => window.print()}><Printer size={16} aria-hidden />{t("notice.print")}</Button>
         {copied && <span role="status" className={s.muted}>{t("notice.copied")}</span>}
       </div>
-      <article className={s.doc} aria-label={t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) })}>
-        <h2 className={s.docHead}>{t("notice.doc.head")}</h2>
-        <p className={s.docNo}>{t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) })}</p>
-        {n.title.replace(/\s/g, "") !== t("notice.doc.head").replace(/\s/g, "") && <p className={s.docNo}>{n.title}</p>}
-        {parts.map((p, i) => (
-          <section key={p.kind} className={s.docSection}>
-            <h3>{t("notice.doc.section", { n: i + 1, kind: label(LIFECYCLE_EVENT, p.kind), count: p.lines.length })}</h3>
-            <div className={s.docTable}>
-              <Table
-                label={t("notice.doc.section", { n: i + 1, kind: label(LIFECYCLE_EVENT, p.kind), count: p.lines.length })}
-                rows={p.lines}
-                rowId={(l) => String(l.line_no)}
-                columns={[
-                  { header: t("notice.doc.col.name"), cell: (l) => l.name },
-                  { header: t("notice.doc.col.number"), cell: (l) => <span className="num">{l.employee_number ?? "—"}</span>, fit: true },
-                  { header: t("notice.doc.col.before"), cell: before },
-                  { header: t("notice.doc.col.after"), cell: after },
-                ]}
-              />
-            </div>
-          </section>
-        ))}
-        {n.note && <p className={s.docNote}>{n.note}</p>}
-        <p className={s.docFoot}>{t("notice.doc.foot", { date: fmtDate(n.notice_date), entity })}</p>
-      </article>
+      <NoticeArticle n={n} parts={parts} entity={entity} />
     </>
   );
 }

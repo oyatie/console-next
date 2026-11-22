@@ -56,7 +56,8 @@ export function BulkPeople({ kind, rows, pending = 0, units, unitId, position, t
         {/* Drawn with the promotion pick itself (the kinds wait for the title list): the head never grows under the pointer. */}
         {perPerson && <Button aria-disabled={offers.length === 0 || undefined} onClick={() => offers.forEach(([k, v]) => onPerRow?.(k, v))}>{t("bulk.promote.acceptAll", { n: offers.length })}</Button>}
       </div>
-      <div className={s.tableWrap}>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Horizontal scroll region needs keyboard access. */}
+      <div className={s.tableWrap} tabIndex={0} role="region" aria-label={t(kind === "PROMOTE" ? "bulk.page.peoplePromote" : "bulk.page.people", { n: rows.length })}>
         <Table
           label={t(kind === "PROMOTE" ? "bulk.page.peoplePromote" : "bulk.page.people", { n: rows.length })}
           rows={rows.length ? [...rows] : Array.from({ length: pending }, (_, i): Row => ({ key: `pending-${i}`, merged: [], target: "" }))}

@@ -47,6 +47,7 @@
       "src/features/people/ui/appointments-content.tsx",
       "src/features/people/ui/certificates-page.tsx",
       "src/features/people/ui/exit-list.tsx",
+      "src/features/people/ui/grid-console.tsx",
       "src/features/people/ui/grid-page.tsx",
       "src/features/people/ui/job-titles-page.tsx",
       "src/features/people/ui/notice-list-page.tsx",
@@ -92,7 +93,7 @@
   "wizard": {
     "budget_kb": 167,
     "css_budget_kb": 16,
-    "deferred": ["src/ui/date/date-calendar.tsx", "src/features/import/ui/resolve-controls.tsx"],
+    "deferred": ["src/ui/date/date-calendar.tsx", "src/features/import/ui/resolve-controls.tsx", "src/features/people/ui/register-console-footer.tsx"],
     "routes": [
       "src/features/entity/ui/entity-wizard-baseline.tsx",
       "src/features/entity/ui/entity-wizard-console.tsx",
@@ -112,11 +113,17 @@
       "src/features/org/ui/bulk-move-page.tsx",
       "src/features/payroll/ui/payroll-setup.tsx",
       "src/features/payroll/ui/run-create-page.tsx",
+      "src/features/people/ui/bulk-baseline.tsx",
+      "src/features/people/ui/bulk-console.tsx",
       "src/features/people/ui/bulk-page.tsx",
+      "src/features/people/ui/notice-new-console.tsx",
       "src/features/people/ui/notice-new-page.tsx",
       "src/features/people/ui/register-dup.tsx",
       "src/features/people/ui/register-route.tsx",
+      "src/features/people/ui/register-run-console.tsx",
       "src/features/people/ui/register-run-page.tsx",
+      "src/features/people/ui/register-toast.tsx",
+      "src/features/people/ui/renew-console.tsx",
       "src/features/people/ui/renew-page.tsx"
     ]
   },
