@@ -31,6 +31,8 @@ const paths = [
   "/audit/support-access",
   "/inbox",
   "/leave",
+  "/me/attendance",
+  "/me/desk",
   "/org",
   "/org/changes",
   "/org/changes/$id",
@@ -50,6 +52,7 @@ const paths = [
   "/people/bulk",
   "/people/certificates",
   "/people/certificates/$certificateId",
+  "/people/data-health",
   "/people/exits",
   "/people/exits/$id",
   "/people/grid",
@@ -82,6 +85,7 @@ const paths = [
   "/setup/go-live",
   "/setup/org",
   "/statutory",
+  "/team",
 ] as const;
 
 export const routeList = paths.map(path => ({

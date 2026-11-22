@@ -185,6 +185,10 @@ for (const width of [1440, 390]) {
           await expect(page.getByRole("banner")).not.toContainText(user.display_name);
           await expect(page.getByRole("navigation", { name: t("shell.tabs.label"), exact: true })).not.toContainText("23");
           await expect(page.getByRole("heading", { level: 1, name: t("home.inbox.title"), exact: true })).toBeVisible();
+          await expect(worklist.getByRole("searchbox", { name: t("home.worklist.find"), exact: true })).toHaveAttribute(
+            "placeholder",
+            t("home.worklist.find"),
+          );
           await expect(worklist.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveCount(0);
           const orgRow = queueTable.locator('tbody tr[data-id="OC-2026-0418"]');
           const leaveRow = queueTable.locator('tbody tr[data-id="leave-app-1"]');

@@ -43,6 +43,8 @@ import { enAttendanceHolidays } from "./en/attendance-holidays";
 import { enAttendanceCrews } from "./en/attendance-crews";
 import { enAttendanceOverview } from "./en/attendance-overview";
 import { enAttendanceRecords } from "./en/attendance-records";
+import { enMe } from "./en/me";
+import { enTeam } from "./en/team";
 import { enImport } from "./en/import";
 import { enImportSheet } from "./en/import-sheet";
 import { enImportReview } from "./en/import-review";
@@ -124,6 +126,7 @@ import { enCrud } from "./en/crud";
 import { enRegister } from "./en/register";
 import { enUnplaced } from "./en/unplaced";
 import { enBulkGrid } from "./en/bulk-grid";
+import { enDataHealth } from "./en/data-health";
 import { enUiRecord } from "./en/ui-record";
 import { enEmpCard } from "./en/emp-card";
 import { enEmpFix } from "./en/emp-fix";
@@ -254,6 +257,7 @@ export const en = {
   ...enRegister,
   ...enUnplaced,
   ...enBulkGrid,
+  ...enDataHealth,
   ...enTimeline,
   ...enRequestOutcome,
   ...enUiRecord,
@@ -271,6 +275,8 @@ export const en = {
   ...enDirectoryViews,
   ...enUiWorklist,
   ...enUiLedger,
+  ...enMe,
+  ...enTeam,
   ...enShellRoutes,
 } as const;
 

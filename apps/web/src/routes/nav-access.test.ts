@@ -45,11 +45,12 @@ test("SETUP follows non-blocked checklist targets, with safe destinations on a r
 
 test("OPERATING has at most nine entries, distinct icons and no standalone subviews", () => {
   const groups = menu();
-  expect(top(groups)).toEqual(["/", "/people/requests", "/org", "/people", "/attendance", "/statutory", "/access", "/settings"]);
+  expect(top(groups)).toEqual(["/", "/people/requests", "/org", "/team", "/people", "/attendance", "/statutory", "/access", "/settings"]);
+  expect(top(groups).length).toBeLessThanOrEqual(9);
   expect(groups.length).toBeLessThanOrEqual(3);
   const icons = groups.flatMap(g => g.links.map(l => l.icon));
   expect(new Set(icons).size).toBe(icons.length);
-  expect(top(tenantNav(admin, routes, true, context()))).toHaveLength(9);
+  expect(top(tenantNav(admin, routes, true, context()))).toHaveLength(10);
 });
 
 test.each([{ targets: undefined }, { targets: [] }, { targets: ["/org", "/people", "/access"] }])("a no-grant SETUP account sees only home with targets $targets", ({ targets }) => {
@@ -100,7 +101,7 @@ test("loading links stay a fixed prefix when access and support finish in either
 });
 
 test.each(["TENANT", "LEGAL_ENTITY", "WORKPLACE", "DEPARTMENT"])("HR readers at %s see only directory destinations their reads admit", kind => {
-  expect(links(access("hr_basic", "view", kind), false, "/people")).toEqual(["/", "/people/requests", "/people", ...(kind !== "DEPARTMENT" ? ["/attendance"] : []), "/settings"]);
+  expect(links(access("hr_basic", "view", kind), false, "/people")).toEqual(["/", "/people/requests", "/team", "/people", ...(kind !== "DEPARTMENT" ? ["/attendance"] : []), "/settings"]);
 });
 
 test("an account manager without a directory grant cannot reach people", () => {

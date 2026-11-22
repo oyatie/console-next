@@ -46,6 +46,8 @@ import { koAttendanceHolidays } from "./ko/attendance-holidays";
 import { koAttendanceCrews } from "./ko/attendance-crews";
 import { koAttendanceOverview } from "./ko/attendance-overview";
 import { koAttendanceRecords } from "./ko/attendance-records";
+import { koMe } from "./ko/me";
+import { koTeam } from "./ko/team";
 import { koImport } from "./ko/import";
 import { koImportSheet } from "./ko/import-sheet";
 import { koImportReview } from "./ko/import-review";
@@ -127,6 +129,7 @@ import { koCrud } from "./ko/crud";
 import { koRegister } from "./ko/register";
 import { koUnplaced } from "./ko/unplaced";
 import { koBulkGrid } from "./ko/bulk-grid";
+import { koDataHealth } from "./ko/data-health";
 import { koUiRecord } from "./ko/ui-record";
 import { koEmpCard } from "./ko/emp-card";
 import { koEmpFix } from "./ko/emp-fix";
@@ -254,6 +257,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koRegister,
   ...koUnplaced,
   ...koBulkGrid,
+  ...koDataHealth,
   ...koTimeline,
   ...koRequestOutcome,
   ...koUiRecord,
@@ -271,5 +275,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,
+  ...koMe,
+  ...koTeam,
   ...koShellRoutes,
 };

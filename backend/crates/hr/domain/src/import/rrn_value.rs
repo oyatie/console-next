@@ -1,11 +1,12 @@
-//! Resident registration number as a value the import keeps (decisions #25):
-//! checked for shape and a real birth date, sealed and
-//! matched only through the [`RrnVault`] port (the keys live with the
-//! shell, never in the database). The value never prints: `Debug` is redacted.
+//! Resident registration number value kept by employee import and identity workflows:
+//! checked for shape and a real birth date, sealed and matched only through the [`RrnVault`] port
+//! (keys live with the shell, never in the database). `Debug` is redacted.
 //!
-//! Shape only, never the check digit: numbers issued since October 2020
-//! have no check digit. Date of birth / sex are not derived from it into other
-//! fields (decisions #20 Q3).
+//! Citizen RRNs (7th digit `1..=4`) validate shape and birth date only because post-October 2020
+//! citizen issuances omit a check digit. Alien registration numbers (`ARC`) and domestic residence
+//! numbers (`DOMESTIC_RESIDENCE`, 7th digit `5..=8`) enforce the Ministry of Justice Mod-11 check
+//! digit via [`Rrn::passes_mod11`]. When the sex field is omitted on import, sex is derived from
+//! the 7th digit per product policy.
 
 use time::{Date, Month};
 use uuid::Uuid;
@@ -74,6 +75,34 @@ impl Rrn {
     #[must_use]
     pub fn masked(&self) -> String {
         format!("{}-{}******", &self.0[..6], &self.0[6..7])
+    }
+
+    /// 7th digit (`1..=8`) classifying citizen vs foreign/domestic residence and binary sex.
+    #[must_use]
+    pub fn seventh_digit(&self) -> u8 {
+        self.0.as_bytes()[6] - b'0'
+    }
+
+    /// Check the 13th Mod-11 check digit.
+    ///
+    /// Citizen numbers (`1..=4`) use `(11 - (sum % 11)) % 10`; alien registration and domestic
+    /// residence numbers (`5..=8`) use the Ministry of Justice check formula
+    /// `((11 - (sum % 11)) % 10 + 2) % 10`.
+    #[must_use]
+    pub fn passes_mod11(&self) -> bool {
+        const WEIGHTS: [u32; 12] = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
+        let b = self.0.as_bytes();
+        let sum: u32 = WEIGHTS
+            .iter()
+            .enumerate()
+            .map(|(i, w)| u32::from(b[i] - b'0') * w)
+            .sum();
+        let base = (11 - (sum % 11)) % 10;
+        let expected = match self.seventh_digit() {
+            5..=8 => (base + 2) % 10,
+            _ => base,
+        };
+        u32::from(b[12] - b'0') == expected
     }
 }
 

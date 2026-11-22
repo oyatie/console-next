@@ -47,6 +47,14 @@ pub struct ImportRow {
     /// r3:hire-16: contract end date and probation end date as the file wrote them.
     pub contract_end_date: Option<String>,
     pub probation_end_date: Option<String>,
+    /// Explicit identity type (`RRN`, `ARC`, `DOMESTIC_RESIDENCE`, `NOT_ISSUED`).
+    pub id_type: Option<String>,
+    /// Inferred identity class (`RRN` or `ARC`) from the sealed registration number's 7th digit.
+    pub inferred_id_type: Option<String>,
+    /// Whether this row supplied a registration number cell.
+    pub has_rrn: bool,
+    /// Parse or Mod-11 validation failure detected when scanning the RRN cell.
+    pub rrn_validation_error: Option<String>,
 }
 
 impl std::fmt::Debug for ImportRow {
@@ -175,4 +183,7 @@ pub struct Decisions {
     /// in as pending hire).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub group_answers: BTreeMap<String, String>,
+    /// `source_key` -> inline cell repairs (`field` -> repaired value) applied on dry run.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub cells: BTreeMap<String, BTreeMap<String, String>>,
 }

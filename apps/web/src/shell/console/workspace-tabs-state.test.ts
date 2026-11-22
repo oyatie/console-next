@@ -7,7 +7,7 @@ import {
   normalizeAppPath,
   sameCanonicalHref,
 } from "./tab-href";
-import { MAX_WORKSPACE_TABS, readStoredWorkspaceTabs } from "./tab-storage";
+import { MAX_WORKSPACE_TABS, readStoredActiveWorkspaceTab, readStoredWorkspaceTabs } from "./tab-storage";
 import {
   appendExplicitWorkspaceTab,
   closeWorkspaceTab,
@@ -159,6 +159,18 @@ test("readStoredWorkspaceTabs filters out protocol-relative hrefs", () => {
     expect(readStoredWorkspaceTabs("console.tabs.user1")).toEqual([
       { id: "pinned-home", href: "/", label: "Home", pinned: true },
     ]);
+    store.set("console.tabs.user1.active", "tab-/payroll");
+    expect(readStoredActiveWorkspaceTab("console.tabs.user1")).toBe("tab-/payroll");
+    const next = reconcileWorkspaceTabs(
+      [
+        { id: "pinned-home", href: "/", label: "Home", pinned: true },
+        { id: "tab-/payroll", href: "/payroll", label: "Payroll" },
+      ],
+      readStoredActiveWorkspaceTab("console.tabs.user1"),
+      { defaultHref: "/", defaultLabel: "Home", pathname: "/payroll/setup", pathLabel: "Pay group setup" },
+    );
+    expect(next.tabs).toHaveLength(2);
+    expect(next.tabs[1]).toEqual({ id: "tab-/payroll", href: "/payroll/setup", label: "Pay group setup" });
   } finally {
     Object.defineProperty(globalThis, "localStorage", { configurable: true, value: origLocalStorage });
   }

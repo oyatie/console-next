@@ -4357,6 +4357,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/employees/import/{run_id}/cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Repair canonical cell values for staged candidate rows in an employee import run
+         * @description Requires EmployeeDirectoryManage. Validates and merges inline canonical cell repairs into dry_run_decisions.cells while rejecting restricted PII targets and two-digit dates.
+         */
+        put: operations["repairEmployeeImportCells"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/employees/import/{run_id}/dry-run": {
         parameters: {
             query?: never;
@@ -4432,6 +4452,26 @@ export interface paths {
          * @description Versioned (expected_version = the row's version as read, 0 when never set). Audited data_import.reconcile_check. 409 import_not_applied, import_signed_off (the run is frozen after its sign-off; error.refusals carries the sign-off), stale_revision (error.refusals [{source_key, current_version}]); 404 for a row the run did not plan; 422 for another state or a note over 1000.
          */
         put: operations["setEmployeeImportReconcileRow"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Stage a step-up sealed registration number onto a draft employee import row
+         * @description Requires EmployeeDirectoryManage and a fresh PII_RECORD passkey step-up assertion bound to (run_id, source_key). Validates and seals the registration number into data_import_row_identities without mutating raw import rows or echoing sensitive digits.
+         */
+        put: operations["recordImportRowIdentifier"];
         post?: never;
         delete?: never;
         options?: never;
@@ -7791,6 +7831,26 @@ export interface paths {
          * @description Executive/admin/super-admin read model grouped by company, org unit, and position. Source workbook rows remain preserved in the employee directory.
          */
         get: operations["getHrOrgChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/people/data-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tenant- and branch-scoped people data-health overview
+         * @description Returns batched statutory register completeness, identity document coverage, workplace and department placement counts, boolean-only bank account readiness, identity review counts, failed lifecycle action counts, bounded zero-PII drilldown items, and EmployeeDirectoryManage-gated latest import status.
+         */
+        get: operations["getPeopleDataHealth"];
         put?: never;
         post?: never;
         delete?: never;
@@ -20968,9 +21028,13 @@ export interface components {
                  * @description r3:hire-16: the employment profile's probation end date.
                  */
                 probation_end_date?: string;
+                /**
+                 * @description Resolved legal identity document type for the created employee.
+                 * @enum {string}
+                 */
+                id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE" | "NOT_ISSUED";
             };
-            /** @enum {string} */
-            refusal_code?: "duplicate_in_file" | "invalid_date" | "identity_mismatch" | "hire_date_required" | "former_load_closed" | "workplace_conflict" | "identity_conflict" | "employee_number_taken" | "status_unmapped" | "status_conflict" | "exit_date_required" | "leave_start_required" | "leave_type_unmapped" | "leave_return_required";
+            refusal_code?: string;
             refusal_field?: string;
             /** @enum {string} */
             matched_by?: "employee_number" | "alias" | "rrn" | "pick";
@@ -21122,6 +21186,8 @@ export interface components {
                 basis: string;
                 alias?: string | null;
             }[];
+            /** @description Expected format hint for inline cell repair (for example YYYY-MM-DD). */
+            expected_format?: string;
         };
         /** @description IMPORT-2 (decisions #25): the "needs checking" queue, counted. Blocking items keep apply closed (422 import_unresolved); the rest are imported as the plan says (unplaced, no employee number assigned) and stay listed. */
         EmployeeImportReviewQueue: {
@@ -21617,6 +21683,11 @@ export interface components {
         EmployeeRrnRecordRequest: {
             /** @description Resident registration number, validated by the server; never retained in a draft. */
             rrn: string;
+            /**
+             * @description Optional explicit identity document type paired with the registration number.
+             * @enum {string}
+             */
+            id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
             step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
         };
         EmployeeRrnRevealRequest: {
@@ -23480,8 +23551,48 @@ export interface components {
         ImportApplyRequest: {
             checklist_all_acknowledged?: boolean | null;
         };
+        /** @description Map of candidate row source_key to canonical field repairs for a staged employee import run. */
+        ImportCellsRepairRequest: {
+            /** @description Per-row map of canonical target field names (excluding restricted columns) to repaired string values. */
+            cells: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        /** @description Persisted inline cell repairs merged onto a staged employee import run. */
+        ImportCellsRepairResponse: {
+            /** @description Effective per-row map of canonical field repairs persisted in dry_run_decisions.cells. */
+            cells: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            /** @description Count of candidate rows with persisted cell repairs. */
+            repaired_rows: number;
+            run_id: components["schemas"]["Uuid"];
+        };
         ImportDryRunRequest: {
             decisions?: components["schemas"]["EmployeeImportDecisions"];
+        };
+        ImportRowIdentifierRequest: {
+            /** @description Resident registration number validated by the server, sealed via RrnVault, and never logged or echoed. */
+            rrn: string;
+            /**
+             * @description Optional explicit identity document type paired with the registration number.
+             * @enum {string}
+             */
+            id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        ImportRowIdentifierResponse: {
+            run_id: components["schemas"]["Uuid"];
+            source_key: string;
+            /** @enum {string} */
+            id_type: "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
+            recorded: boolean;
+            /** @enum {string} */
+            sex_derived?: "MALE" | "FEMALE";
         };
         /** @description The fresh passkey assertion proving present possession of an authenticator. Its absence yields 428 (precondition required). */
         InboxDocConfirmReceiptRequest: {
@@ -27209,6 +27320,97 @@ export interface components {
             url: string;
             /** Format: date */
             retrieved_on: string;
+        };
+        PeopleDataHealthResponse: {
+            cohort: {
+                /** Format: int64 */
+                total: number;
+                /** Format: int64 */
+                active: number;
+                /** Format: int64 */
+                on_leave: number;
+                /** Format: int64 */
+                pre_hire: number;
+            };
+            statutory_register: {
+                /** Format: int64 */
+                complete_count: number;
+                /** Format: int64 */
+                incomplete_count: number;
+                missing_by_category: {
+                    /** Format: int64 */
+                    birth: number;
+                    /** Format: int64 */
+                    job: number;
+                    /** Format: int64 */
+                    hire: number;
+                    /** Format: int64 */
+                    contract_end: number;
+                    /** Format: int64 */
+                    sex: number;
+                    /** Format: int64 */
+                    address: number;
+                    /** Format: int64 */
+                    career: number;
+                };
+            };
+            id_summary: {
+                /** Format: int64 */
+                rrn_recorded: number;
+                /** Format: int64 */
+                not_issued: number;
+                /** Format: int64 */
+                missing: number;
+                by_type: {
+                    /** Format: int64 */
+                    rrn: number;
+                    /** Format: int64 */
+                    arc: number;
+                    /** Format: int64 */
+                    domestic_residence: number;
+                    /** Format: int64 */
+                    not_issued: number;
+                    /** Format: int64 */
+                    unset: number;
+                };
+            };
+            placement_summary: {
+                /** Format: int64 */
+                placed: number;
+                /** Format: int64 */
+                unplaced: number;
+                /** Format: int64 */
+                department_missing: number;
+            };
+            bank_account: {
+                /** Format: int64 */
+                registered: number;
+                /** Format: int64 */
+                missing: number;
+            };
+            identity_review: {
+                /** Format: int64 */
+                needs_review: number;
+            };
+            failed_actions: {
+                /** Format: int64 */
+                count: number;
+            };
+            drilldown_items: {
+                employee_id: components["schemas"]["Uuid"];
+                employee_number?: string;
+                /** @enum {string} */
+                employment_status: "PRE_HIRE" | "ACTIVE" | "ON_LEAVE";
+                missing_categories: string[];
+            }[];
+            latest_import?: {
+                run_id: components["schemas"]["Uuid"];
+                status: string;
+                /** Format: int32 */
+                candidate_rows: number;
+                created_at: components["schemas"]["Timestamp"];
+                applied_at?: components["schemas"]["Timestamp"];
+            };
         };
         Period: {
             start: components["schemas"]["Timestamp"];
@@ -40645,6 +40847,37 @@ export interface operations {
             };
         };
     };
+    repairEmployeeImportCells: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCellsRepairRequest"];
+            };
+        };
+        responses: {
+            /** @description Validated cell repairs merged into the staged import run decisions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportCellsRepairResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
     dryRunEmployeeImport: {
         parameters: {
             query?: never;
@@ -40788,6 +41021,52 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationError"];
+        };
+    };
+    recordImportRowIdentifier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: components["schemas"]["Uuid"];
+                source_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRowIdentifierRequest"];
+            };
+        };
+        responses: {
+            /** @description Sealed draft identifier staged for dry run and apply. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRowIdentifierResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            /** @description rrn_record_rate_limited. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description rrn_vault_unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     signOffEmployeeImport: {
@@ -48140,6 +48419,34 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getPeopleDataHealth: {
+        parameters: {
+            query?: {
+                /** @description Filter drilldown items to employees missing the specified category. */
+                category?: "birth" | "job" | "hire" | "contractEnd" | "sex" | "address" | "career" | "rrn_missing" | "unplaced" | "department_missing" | "bank_account_missing" | "identity_review" | "failed_action" | "register_incomplete";
+                /** @description Maximum number of drilldown items returned (1..=50). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description People data-health metrics and bounded zero-PII drilldown items. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeopleDataHealthResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
         };
     };
     getHrReadinessSummary: {

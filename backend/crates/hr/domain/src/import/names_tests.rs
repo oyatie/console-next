@@ -126,6 +126,7 @@ fn review_choices_use_their_own_index_and_never_map_a_company_alias_as_a_unit() 
         value: Some("영업파트".into()),
         rows: 1,
         candidates: vec![],
+        expected_format: None,
         resolution: Some(Resolution {
             decision,
             key: "영업파트".into(),

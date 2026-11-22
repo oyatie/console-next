@@ -704,6 +704,30 @@
       "format": "iso_date",
       "example": "2026-01-15",
       "code_catalogue": null
+    },
+    {
+      "target": "id_type",
+      "aliases": [
+        "신분증유형",
+        "신분증종류",
+        "식별유형",
+        "증명유형",
+        "거소여부",
+        "id_type"
+      ],
+      "classification": "canonical",
+      "required": false,
+      "label_ids": {
+        "ko": "import.target.id_type",
+        "en": "import.target.id_type"
+      },
+      "value_type": "code",
+      "format": "catalogue_label",
+      "example": "RRN",
+      "code_catalogue": {
+        "source": "domain",
+        "resource": "profile::enums::IdType"
+      }
     }
   ]
 }

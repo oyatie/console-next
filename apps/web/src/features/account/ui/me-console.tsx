@@ -3,7 +3,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
-import { Banknote, CalendarDays, ChevronRight, FileText, LogOut, ShieldCheck } from "lucide-react";
+import { Banknote, CalendarDays, ChevronRight, Clock, FileText, LogOut, ShieldCheck } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtMonth } from "@console/i18n/format";
 import type { ReadState } from "../../../lib/react/query-view";
@@ -100,6 +100,13 @@ export function MeConsole({
           label: t("account.hub.leave"),
           meta: remainingLeave != null ? t("account.hub.leaveRemaining", { days: Number(remainingLeave) }) : undefined,
           href: canAttendance ? "/attendance" : "/leave",
+        },
+        {
+          key: "me-attendance",
+          icon: <Clock size={20} aria-hidden="true" />,
+          label: t("account.hub.attendance"),
+          meta: t("account.hub.attendanceMeta"),
+          href: "/me/attendance",
         },
         ...(latestPayslip || canPayroll
           ? [

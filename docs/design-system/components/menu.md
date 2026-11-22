@@ -317,6 +317,7 @@ secondary buttons and shows the same actions in an `ActionMenu`. That rule is in
 | `caret` | no | `boolean` | `true` |  |
 | `icon` | no | `ReactNode` |  |  |
 | `primary` | no | `boolean` |  |  |
+| `quiet` | no | `boolean` |  |  |
 
 <!-- /ds:props -->
 
@@ -350,9 +351,11 @@ secondary buttons and shows the same actions in an `ActionMenu`. That rule is in
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `border` |
+| `--border` | `border`, `border-color` |
 | `--control-h` | `width` |
+| `--faint` | `color` |
 | `--fw-medium` | `font-weight` |
+| `--ink` | `color` |
 | `--panel-w` | `max-width`, `min-width` |
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
@@ -365,6 +368,7 @@ secondary buttons and shows the same actions in an `ActionMenu`. That rule is in
 | `--space-5` | `min-height`, `width` |
 | `--steel` | `color` |
 | `--surface` | `background` |
+| `--target-touch` | `min-height`, `min-width` |
 | `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |
 

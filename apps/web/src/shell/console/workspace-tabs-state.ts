@@ -13,6 +13,7 @@ import {
 } from "./tab-href";
 import {
   MAX_WORKSPACE_TABS,
+  readStoredActiveWorkspaceTab,
   readStoredWorkspaceTabs,
   type StoredTab,
   uniqueTabId,
@@ -211,7 +212,8 @@ export function useWorkspaceTabs({
   const activeUrl = currentHref ?? pathname;
   const [state, setState] = useState<{ key: string | null; tabs: StoredTab[]; activeId: string }>(() => {
     const stored = readStoredWorkspaceTabs(storageKey) ?? [];
-    const reconciled = reconcileWorkspaceTabs(stored, undefined, {
+    const storedActive = readStoredActiveWorkspaceTab(storageKey);
+    const reconciled = reconcileWorkspaceTabs(stored, storedActive, {
       defaultHref,
       defaultLabel,
       pathname,
@@ -223,7 +225,8 @@ export function useWorkspaceTabs({
 
   if (state.key !== storageKey) {
     const stored = readStoredWorkspaceTabs(storageKey) ?? [];
-    const reconciled = reconcileWorkspaceTabs(stored, undefined, {
+    const storedActive = readStoredActiveWorkspaceTab(storageKey);
+    const reconciled = reconcileWorkspaceTabs(stored, storedActive, {
       defaultHref,
       defaultLabel,
       pathname,
@@ -258,8 +261,8 @@ export function useWorkspaceTabs({
   }
 
   useEffect(() => {
-    writeStoredWorkspaceTabs(storageKey, state.tabs);
-  }, [storageKey, state.tabs]);
+    writeStoredWorkspaceTabs(storageKey, state.tabs, state.activeId);
+  }, [storageKey, state.tabs, state.activeId]);
 
   useEffect(() => {
     const onExplicitOpen = (event: Event) => {

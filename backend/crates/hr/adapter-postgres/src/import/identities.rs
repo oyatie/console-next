@@ -7,14 +7,16 @@
 use std::collections::BTreeMap;
 
 use console_hr_domain::import::rrn_value::{RrnVault, SealedRrn};
+use console_hr_domain::profile::enums::IdType;
+use console_hr_domain::profile::identity::infer_id_type_from_seventh;
 use console_settings_domain::SettingKey;
 use sqlx::Postgres;
 use uuid::Uuid;
 
 use crate::HrError;
 use crate::import::caps::settings_in_tx;
+pub(crate) use crate::import::identities_form::record_form;
 pub use crate::import::identities_record::record;
-pub(crate) use crate::import::identities_record::record_form;
 use crate::import::sheet::StagedIdentity;
 
 /// Legacy v1 and tenant-bound v2+ blind-index hashes of one staged row.
@@ -23,6 +25,10 @@ pub struct StagedRowHashes {
     pub v1: Vec<u8>,
     pub v2: Option<Vec<u8>>,
     pub v2_candidates: Vec<Vec<u8>>,
+    pub id_type: Option<String>,
+    pub inferred_id_type: Option<String>,
+    pub sex_fallback: Option<String>,
+    pub step_up_recorded: bool,
 }
 
 pub async fn stage(
@@ -36,8 +42,8 @@ pub async fn stage(
         sqlx::query(
             "INSERT INTO data_import_row_identities (org_id, run_id, source_key, rrn_hmac, \
                hmac_key_version, rrn_hmac_v2, blind_index_version, ciphertext, nonce, \
-               dek_wrapped, dek_nonce, key_version, masked, alg_id, kek_id, msg_id, commitment_tag) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)",
+               dek_wrapped, dek_nonce, key_version, masked, alg_id, kek_id, msg_id, commitment_tag, id_type, source) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'PREVIEW')",
         )
         .bind(org)
         .bind(run)
@@ -56,6 +62,7 @@ pub async fn stage(
         .bind(s.kek_id.as_deref())
         .bind(s.msg_id.as_deref())
         .bind(s.commitment_tag.as_deref())
+        .bind(row.id_type.as_deref())
         .execute(tx.as_mut())
         .await?;
     }
@@ -132,7 +139,7 @@ pub async fn run_hash_candidates(
     let rows = sqlx::query(
         "SELECT source_key, rrn_hmac, hmac_key_version, rrn_hmac_v2, blind_index_version, \
                 ciphertext, nonce, dek_wrapped, dek_nonce, key_version, masked, \
-                alg_id, kek_id, msg_id, commitment_tag \
+                alg_id, kek_id, msg_id, commitment_tag, id_type, source \
          FROM data_import_row_identities WHERE org_id = $1 AND run_id = $2",
     )
     .bind(org)
@@ -154,7 +161,21 @@ pub async fn run_hash_candidates(
     let mut out = BTreeMap::new();
     for row in &rows {
         let source_key: String = row.try_get("source_key")?;
+        let id_type: Option<String> = row.try_get("id_type")?;
+        let step_up_recorded =
+            row.try_get::<Option<String>, _>("source")?.as_deref() == Some("STEP_UP");
         let sealed = sealed_from_row(row)?;
+        let seventh = sealed
+            .masked
+            .as_bytes()
+            .get(7)
+            .and_then(|b| b.checked_sub(b'0'));
+        let inferred_id_type = seventh
+            .and_then(infer_id_type_from_seventh)
+            .map(|t: IdType| t.as_str().to_owned());
+        let sex_fallback = seventh
+            .filter(|&d| matches!(d, 1..=8))
+            .map(|d| if d % 2 == 1 { "MALE" } else { "FEMALE" }.to_owned());
         let v2_candidates = match vault {
             Some(v) => v
                 .blind_index_v2_candidates_from_sealed(org, &sealed)
@@ -168,6 +189,10 @@ pub async fn run_hash_candidates(
                 v1: sealed.hmac,
                 v2,
                 v2_candidates,
+                id_type,
+                inferred_id_type,
+                sex_fallback,
+                step_up_recorded,
             },
         );
     }

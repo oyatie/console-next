@@ -8,6 +8,7 @@ export * from "./me-access-log";
 export * from "./me-profile";
 export * from "./leave-self-service";
 export * from "./hr-waterfall";
+export * from "./people-data-health";
 export * from "./platform-operators";
 export * from "./platform-groups";
 export * from "./access-log-review";

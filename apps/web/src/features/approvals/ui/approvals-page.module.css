@@ -39,7 +39,14 @@
 .consolePhoneMeta { display: none; }
 .consoleDesktopSource { display: inline; }
 .consoleBody { display: flex; flex-direction: column; min-width: 0; }
+.consoleKicker { display: inline-flex; align-items: center; gap: var(--space-1-5); flex-wrap: wrap; }
 @container list-table (max-width: 480px) {
   .consolePhoneMeta { display: inline; }
   .consoleDesktopSource { display: none; }
+}
+@container list-table (481px <= width < 920px) {
+  .consoleTable :is(th, td):is(:nth-child(6), :nth-child(7)) { display: none; }
+}
+@container list-table (481px <= width < 720px) {
+  .consoleTable :is(th, td):is(:nth-child(2), :nth-child(5)) { display: none; }
 }

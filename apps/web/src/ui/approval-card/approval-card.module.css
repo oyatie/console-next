@@ -102,3 +102,45 @@
   padding: var(--space-3);
   gap: var(--space-2);
 }
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] {
+  overflow: visible;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] > header {
+  margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0;
+  min-height: var(--row-h-compact);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .body {
+  padding: var(--space-1) 0 0;
+  gap: var(--space-1);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .body > div {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .body > div > :first-child {
+  flex: none;
+  white-space: nowrap;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .body > div > :nth-child(2) {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .body textarea {
+  min-height: var(--field-h);
+  height: var(--field-h);
+  padding: var(--space-1) var(--space-2);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .consequence {
+  padding: var(--space-1) 0 0;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .bar {
+  padding: var(--space-1) 0 0;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .form {
+  padding: var(--space-2) 0 0;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .done {
+  padding: var(--space-2) 0 0;
+  gap: var(--space-1-5);
+}

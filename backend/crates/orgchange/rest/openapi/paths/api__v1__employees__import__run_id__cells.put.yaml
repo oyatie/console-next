@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
+tags:
+- employees
+operationId: repairEmployeeImportCells
+summary: Repair canonical cell values for staged candidate rows in an employee import run
+description: Requires EmployeeDirectoryManage. Validates and merges inline canonical cell repairs into dry_run_decisions.cells while rejecting restricted PII targets and two-digit dates.
+security:
+- bearerAuth: []
+parameters:
+- name: run_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ImportCellsRepairRequest'
+responses:
+  '200':
+    description: Validated cell repairs merged into the staged import run decisions.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ImportCellsRepairResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

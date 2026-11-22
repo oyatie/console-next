@@ -1,0 +1,141 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.headActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.nowrap {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.railList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.railItem {
+  justify-content: flex-start;
+  text-align: start;
+  width: 100%;
+  min-width: 0;
+}
+
+.mainStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.wrapUrl {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.wrapUrl cite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-1);
+}
+
+.wrapUrl cite > span:last-child {
+  flex-basis: 100%;
+  white-space: nowrap;
+}
+
+.wrapUrl cite > span:last-child > span:first-child {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.sectionStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space-6) * 5), 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.filterRow {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.entitySelect {
+  min-inline-size: calc(var(--space-6) * 5);
+  max-inline-size: var(--panel-w);
+}
+
+.asideStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.paneDetail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.blockerList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: disc inside;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .plainLink {
+  text-decoration: none;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .plainLink:hover {
+  text-decoration: underline;
+}
+
+@media (--phone) {
+  .railList {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .railItem {
+    width: auto;
+  }
+
+  .filterRow {
+    width: 100%;
+  }
+
+  .entitySelect {
+    width: 100%;
+    max-inline-size: 100%;
+  }
+
+  .deductionsTable td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .sectionStack [data-columns="2"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

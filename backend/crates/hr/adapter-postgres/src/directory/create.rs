@@ -68,6 +68,17 @@ pub fn employee_create_db_error(error: sqlx::Error) -> HrError {
             .is_some_and(|name| name.contains("idempotency"))
         {
             registration_key_reused()
+        } else if database
+            .constraint()
+            .is_some_and(|name| name == "employees_prehire_not_issued_identity_idx")
+        {
+            HrError {
+                errors: None,
+                status: StatusCode::CONFLICT,
+                code: "duplicate_candidate",
+                message: "a pending hire with the same name and birth date already exists without an issued identifier".to_owned(),
+                refusals: None,
+            }
         } else {
             employee_number_taken(None)
         };

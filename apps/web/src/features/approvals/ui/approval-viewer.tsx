@@ -35,17 +35,18 @@ import { SourceViewerLink } from "./source-viewer-link";
 
 const route = getRouteApi("/app/approvals/$approvalId");
 
-export function ApprovalFactsContent({ document: d, dense = false, includeDocNo = d.my_actions.kind === "none", includeSource = false }: {
+export function ApprovalFactsContent({ document: d, dense = false, includeDocNo = d.my_actions.kind === "none", includeSource = false, columns }: {
   document: ApprovalDocument;
   dense?: boolean;
   includeDocNo?: boolean;
   includeSource?: boolean;
+  columns?: 1 | 2;
 }) {
   const formatFactDate = (iso: string) => (dense ? fmtDate(iso.slice(0, 10)) : fmtDateTime(iso));
   const extraFacts = dense ? d.facts.filter(fact => fact.key !== "source") : d.facts;
   return <>
     {d.decision_refusal && <Banner tone="warn" title={t("approvals.field.verification")}>{decisionRefusalText(d.decision_refusal)}</Banner>}
-    <KeyValue density={dense ? "dense" : undefined} readOnly items={[
+    <KeyValue density={dense ? "dense" : undefined} columns={columns} readOnly items={[
       ...(d.document_no && includeDocNo ? [{ key: "number", label: t("approvals.field.documentNo"), value: d.document_no }] : []),
       ...(includeSource ? [{ key: "source", label: t("approvals.col.source"), value: d.source.label }] : []),
       { key: "requester", label: t("approvals.field.requester"), value: [d.requester?.name, d.requester?.role].filter(Boolean).join(" · ") || "—" },

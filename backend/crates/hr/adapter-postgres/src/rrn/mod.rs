@@ -7,7 +7,7 @@
 pub mod backfill;
 pub mod census;
 pub(crate) mod govern;
-mod record;
+pub(crate) mod record;
 pub mod reseal;
 mod reseal_staged;
 mod reveal;

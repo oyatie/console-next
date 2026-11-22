@@ -32,7 +32,7 @@ export function ApprovalCard(p: ReturnProps & {
   /** Kind and record id (org change · OC-2026-0418). */
   eyebrow: ReactNode;
   /** The step this person holds (my step · delegated, 1 step). */
-  step: ReactNode;
+  step?: ReactNode;
   /** The decision as a sentence (dissolves the support team on 2 Nov). */
   title: ReactNode;
   /** Content, preflight in words, diff, chain. */
@@ -59,6 +59,8 @@ export function ApprovalCard(p: ReturnProps & {
   staleBlocked?: ReactNode;
   /** Streamlined docked pane layout with PaneHead (`title` + `meta`), single turn row, and compact spacing. */
   docked?: boolean;
+  /** Compact pinned footer layout inside a side pane. */
+  compact?: boolean;
   /** Optional due-date summary shown beside the turn badge in docked mode. */
   due?: ReactNode;
   /** Queue position (1st of 3 left) and its bar. */
@@ -108,7 +110,7 @@ export function ApprovalCard(p: ReturnProps & {
 
   if (p.receipt) {
     return (
-      <article className={`card ${css.card}`} aria-labelledby={`${id}-title`}>
+      <article className={p.docked ? css.card : `card ${css.card}`} aria-labelledby={`${id}-title`} data-compact={p.compact || undefined}>
         {p.progress && <div className={css.progress}>{p.progress}</div>}
         {p.docked && <PaneHead title={p.title} meta={p.meta} titleId={`${id}-title`} titleRef={doneHead} />}
         <div className={css.done}>
@@ -121,7 +123,7 @@ export function ApprovalCard(p: ReturnProps & {
   }
 
   return (
-    <article ref={cardBox} className={`card ${css.card}`} aria-labelledby={`${id}-title`} aria-busy={busy || undefined} data-escape-scope={form || busy ? "" : undefined}>
+    <article ref={cardBox} className={p.docked ? css.card : `card ${css.card}`} aria-labelledby={`${id}-title`} aria-busy={busy || undefined} data-escape-scope={form || busy ? "" : undefined} data-compact={p.compact || undefined}>
       {p.progress && <div className={css.progress}>{p.progress}</div>}
       {p.docked ? (
         <>

@@ -41,6 +41,7 @@ async fn t2_cross_tenant_blind_index_isolation_and_transplant_fail_closed(pool: 
                 &[StagedIdentity {
                     source_key: "r1".into(),
                     sealed: s_a,
+                    id_type: None,
                 }],
             )
             .await?;
@@ -69,6 +70,7 @@ async fn t2_cross_tenant_blind_index_isolation_and_transplant_fail_closed(pool: 
                 &[StagedIdentity {
                     source_key: "r1".into(),
                     sealed: s_b,
+                    id_type: None,
                 }],
             )
             .await
@@ -159,6 +161,7 @@ async fn t2_cross_tenant_blind_index_isolation_and_transplant_fail_closed(pool: 
                 &[StagedIdentity {
                     source_key: "r-bad".into(),
                     sealed: s_bad,
+                    id_type: None,
                 }],
             )
             .await?;
