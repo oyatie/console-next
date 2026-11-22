@@ -17,6 +17,8 @@ export function PersonScope({ onPerson }: { onPerson: (id: string) => void }) {
   return (
     <ServerPicker
       label={t("attendanceSchedule.person.find")}
+      placeholder={t("attendanceSchedule.person.find")}
+      hideLabel
       group={t("attendanceSchedule.person.group")}
       query={query}
       onQueryChange={setQuery}

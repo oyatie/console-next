@@ -41,6 +41,7 @@ export const routeReads = {
   "/setup/go-live": { reads: ["GET /api/v1/onboarding/go-live/preview"] },
   "/settings/company-domain": { reads: ["GET /api/v1/tenant/company-domain/request"] },
   "/people": { reads: [people, "GET /api/v1/directory/people"] },
+  "/team": { reads: [people] },
   "/people/new": { reads: [people, units, entities, structure], command: register },
   "/people/run": { reads: [units, entities, structure], command: register },
   "/people/grid": { reads: [people, units, entities, structure], command: register },

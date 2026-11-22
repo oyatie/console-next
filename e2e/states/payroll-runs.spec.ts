@@ -32,7 +32,13 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
     if (new URL(request.url()).pathname.startsWith("/api/v1/payroll/") && request.method() !== "GET") writes.push(request.url());
   });
   await page.route("**/api/v1/access/me", route => route.fulfill({ json: screenAccess("/payroll/setup") }));
-  await page.route("**/api/v1/payroll/runs", route => route.fulfill({ json: { items: [run], total: 1, limit: 50, offset: 0 } }));
+  await page.route(url => url.pathname === "/api/v1/payroll/runs", route => {
+    const q = new URL(route.request().url()).searchParams;
+    const groupId = q.get("pay_group_id");
+    const entityId = q.get("legal_entity_id");
+    const items = (!groupId || run.pay_group_id === groupId) && (!entityId || run.legal_entity_id === entityId) ? [run] : [];
+    return route.fulfill({ json: { items, total: items.length, limit: 50, offset: 0 } });
+  });
   await page.route(`**/api/v1/payroll/runs/${run.id}`, route => route.fulfill({ json: detail }));
   try {
     await page.goto("/payroll");

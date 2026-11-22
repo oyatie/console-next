@@ -24,6 +24,7 @@ import { PeriodStepper } from "./period-stepper";
 import { ScopeTree } from "./scope-tree";
 import { inField, useKeys } from "./use-keys";
 import s from "./attendance.module.css";
+import cs from "./attendance-console.module.css";
 
 const HOLIDAY = new Set(["PUBLIC_HOLIDAY", "SUBSTITUTE_HOLIDAY", "ELECTION_DAY", "LABOR_DAY", "CONTRACTUAL_HOLIDAY"]);
 const tone = (d?: ScheduleDay): DayTone | undefined => (!d ? undefined : HOLIDAY.has(d.kind) ? "holiday" : d.kind === "WEEKLY_HOLIDAY" || d.kind === "REST_DAY" ? "rest" : undefined);
@@ -54,7 +55,7 @@ function DayCell({ d, common }: { d?: ScheduleDay; common?: string }) {
  * data and company holiday), and the layer stack with the one primary, "Assign a schedule to this scope". `[` `]` step the month
  * while focus is in the calendar (never in a text field).
  */
-export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCancel, onAddPattern }: {
+export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCancel, onAddPattern, consoleMode = false }: {
   tree: ScheduleTree;
   search: AttendanceSearch;
   onScope: (kind: ScopeKind, id: string) => void;
@@ -62,6 +63,7 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
   onAssign: (targets: AssignTarget[]) => void;
   onCancel: (l: Layer) => void;
   onAddPattern: () => void;
+  consoleMode?: boolean;
 }) {
   const fallback = tree.nodes.find((n) => n.kind === "WORKPLACE") ?? tree.nodes[0];
   const scope = search.kind && search.id ? { kind: search.kind, id: search.id } : fallback && { kind: fallback.kind, id: fallback.id };
@@ -90,15 +92,17 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
       return <div ref={keys} className={s.calendarLayout}>
       <ScopeTree tree={tree} selected={scope.id} onSelect={(n: TreeNode) => onScope(n.kind, n.id)} onPerson={(id) => onScope("PERSON", id)} />
       <div className={s.centerCol}>
-        <PeriodStepper unit="month" value={month} onChange={onMonth} />
+        <PeriodStepper unit="month" variant={consoleMode ? "boxed" : "plain"} showCurrent={!consoleMode} value={month} onChange={onMonth} />
         <Month c={c} month={month} weeks={weeks} />
-        <QueryState q={history} inline>{(h) => <LayerHistory layers={h.items} disabled={history.isPlaceholderData || cal.isPlaceholderData} onCancel={onCancel} />}</QueryState>
+        <QueryState q={history} inline>{(h) => <LayerHistory consoleMode={consoleMode} layers={h.items} disabled={history.isPlaceholderData || cal.isPlaceholderData} onCancel={onCancel} />}</QueryState>
       </div>
       <aside className={s.sideCol} aria-label={t("attendanceSchedule.side.label")}>
         <LayerStack calendar={c} />
-        <Button variant="primary" onClick={() => onAssign([{ kind: c.scope_kind, id: c.scope_id, name: c.scope_name }])}>
-                <Plus size={16} aria-hidden /> {t("attendanceSchedule.assign.open")}
-              </Button>
+        <div className={consoleMode ? cs.paneActions : undefined}>
+          <Button variant="primary" onClick={() => onAssign([{ kind: c.scope_kind, id: c.scope_id, name: c.scope_name }])}>
+            <Plus size={16} aria-hidden /> {t("attendanceSchedule.assign.open")}
+          </Button>
+        </div>
         <MonthHolidays c={c} />
       </aside>
     </div>;

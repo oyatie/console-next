@@ -10,7 +10,22 @@ type PayrollRunQueryParams = operations["getPayrollRun"]["parameters"]["query"];
 export const createPayGroup = (body: CreatePayGroup, key: string) => unwrap(api.POST("/api/v1/payroll/pay-groups", { body, headers: { "idempotency-key": key } }));
 export const createPayrollRun = (body: CreatePayrollRun, key: string) => unwrap(api.POST("/api/v1/payroll/runs", { body, headers: { "idempotency-key": key } }));
 export const payGroupsQuery = get("/api/v1/payroll/pay-groups");
-export const payrollRunsQuery = get("/api/v1/payroll/runs");
+type PayrollRunsQueryParams = operations["listPayrollRuns"]["parameters"]["query"];
+const payrollRunsQuery = (params?: PayrollRunsQueryParams) =>
+  get("/api/v1/payroll/runs", params ? { params: { query: params } } : undefined);
+export const payrollRunsPages = (
+  params?: Omit<NonNullable<PayrollRunsQueryParams>, "offset">,
+  pageSize = 50,
+) => ({
+  ...payrollRunsQuery({ ...params, limit: params?.limit ?? pageSize }),
+  queryFn: ({ pageParam }: { pageParam: number }) =>
+    payrollRunsQuery({ ...params, limit: params?.limit ?? pageSize, offset: pageParam }).queryFn(),
+  initialPageParam: 0,
+  getNextPageParam: (page: components["schemas"]["PayrollRunPage"]) =>
+    page.items.length > 0 && page.offset + page.items.length < page.total
+      ? page.offset + page.items.length
+      : undefined,
+});
 export const payrollRunPreviewQuery = (input: CreatePayrollRun) => get("/api/v1/payroll/runs/preview", { params: { query: input } });
 function compactPayrollRunQuery(query?: PayrollRunQueryParams): PayrollRunQueryParams {
   if (!query) return undefined;
