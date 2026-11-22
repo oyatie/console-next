@@ -19,6 +19,9 @@ test("peopleDataHealthApi routes data-health and draft-row identifier requests t
 
   const client = peopleDataHealthApi(api);
   await client.getPeopleDataHealth({ category: "birth", limit: 10 });
+  await client.repairImportCells("11111111-1111-1111-1111-111111111111", {
+    cells: { "row-2": { birth_date: "1995-03-04" } },
+  });
   await client.recordImportRowIdentifier(
     "11111111-1111-1111-1111-111111111111",
     "row-2",
@@ -27,6 +30,7 @@ test("peopleDataHealthApi routes data-health and draft-row identifier requests t
 
   expect(calls).toEqual([
     "GET https://console.example/api/v1/hr/people/data-health?category=birth&limit=10",
+    "PUT https://console.example/api/v1/employees/import/11111111-1111-1111-1111-111111111111/cells",
     "PUT https://console.example/api/v1/employees/import/11111111-1111-1111-1111-111111111111/rows/row-2/identifier",
   ]);
 });

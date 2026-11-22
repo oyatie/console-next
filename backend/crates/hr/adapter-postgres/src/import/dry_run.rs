@@ -253,7 +253,12 @@ impl HrService {
                 refuse_while_running(tx, org_uuid, run_id).await?;
                 require_row_limit(tx, org_uuid, run_id).await?;
                 crate::import::header::validate_run_mapping_profile(tx, org_uuid, run_id).await?;
-                let operator = request.decisions;
+                let mut operator = request.decisions;
+                if operator.cells.is_empty() {
+                    operator.cells =
+                        crate::import::cells_repair::load_stored_cell_repairs(tx, org_uuid, run_id)
+                            .await?;
+                }
                 let stored = load_candidate_import_rows(tx, org_uuid, run_id).await?;
                 check_decisions(tx, org, &stored, &operator).await?;
                 let (decisions, remembered) =

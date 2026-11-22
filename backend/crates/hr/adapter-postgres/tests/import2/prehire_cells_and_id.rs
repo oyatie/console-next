@@ -66,13 +66,21 @@ async fn pre_hire_not_issued_inline_repair_and_domestic_residence_end_to_end(poo
         );
     }
 
-    let mut fix_dec = decisions();
-    fix_dec
-        .cells
-        .entry(source_key.clone())
-        .or_default()
-        .insert("birth_date".into(), "1995-03-04".into());
-    let fixed = i.dry_run(run_bad, fix_dec).await;
+    let mut fix_cells = std::collections::BTreeMap::new();
+    let mut row_fix = std::collections::BTreeMap::new();
+    row_fix.insert("birth_date".to_owned(), "1995-03-04".to_owned());
+    fix_cells.insert(source_key.clone(), row_fix);
+    i.f.hr
+        .repair_import_cells(
+            i.f.principal.clone(),
+            run_bad,
+            console_hr_adapter_postgres::import::cells_repair::ImportCellsRepairRequest {
+                cells: fix_cells,
+            },
+        )
+        .await
+        .unwrap();
+    let fixed = i.dry_run(run_bad, decisions()).await;
     assert_eq!(fixed.review.blocking, 0, "{:?}", fixed.review.items);
     i.apply(run_bad, &fixed.dry_run_digest).await.unwrap();
 

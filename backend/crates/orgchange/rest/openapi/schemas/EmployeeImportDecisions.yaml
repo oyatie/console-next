@@ -100,10 +100,3 @@ properties:
         type: string
         enum: [pre_hire]
     additionalProperties: false
-  cells:
-    type: object
-    description: Inline dry-run cell repairs keyed by source_key then target field name (restricted fields rrn, phone, and name are rejected).
-    additionalProperties:
-      type: object
-      additionalProperties:
-        type: string

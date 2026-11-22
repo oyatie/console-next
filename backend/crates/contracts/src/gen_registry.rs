@@ -10405,6 +10405,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/employees/import/{run_id}/cells",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__employees__import__run_id__cells.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/import/{run_id}/dry-run",
         operations: &[Operation {
             method: "post",
@@ -12068,6 +12077,14 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ImportApplyRequest",
         body: include_str!("../../orgchange/rest/openapi/schemas/ImportApplyRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportCellsRepairRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ImportCellsRepairRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportCellsRepairResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ImportCellsRepairResponse.yaml"),
     },
     NamedYaml {
         name: "ImportDryRunRequest",

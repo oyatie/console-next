@@ -108,6 +108,9 @@
       "get",
       "post"
     ],
+    "/api/v1/employees/import/{run_id}/cells": [
+      "put"
+    ],
     "/api/v1/employees/import/{run_id}/dry-run": [
       "post"
     ],
@@ -568,6 +571,8 @@
     "HrOrgChartResponse",
     "HrOrgChartUnit",
     "ImportApplyRequest",
+    "ImportCellsRepairRequest",
+    "ImportCellsRepairResponse",
     "ImportDryRunRequest",
     "ImportRowIdentifierRequest",
     "ImportRowIdentifierResponse",

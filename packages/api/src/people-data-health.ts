@@ -5,7 +5,9 @@ import { unwrap } from "./client";
 
 type PeopleDataHealthPaths = Pick<
   paths,
-  "/api/v1/hr/people/data-health" | "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier"
+  | "/api/v1/hr/people/data-health"
+  | "/api/v1/employees/import/{run_id}/cells"
+  | "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier"
 >;
 
 type PeopleDataHealthQuery = NonNullable<
@@ -15,6 +17,16 @@ type PeopleDataHealthQuery = NonNullable<
 export const peopleDataHealthApi = (client: Client<PeopleDataHealthPaths>) => ({
   getPeopleDataHealth: (query?: PeopleDataHealthQuery) =>
     unwrap(client.GET("/api/v1/hr/people/data-health", { params: { query } })),
+  repairImportCells: (
+    runId: string,
+    body: components["schemas"]["ImportCellsRepairRequest"],
+  ) =>
+    unwrap(
+      client.PUT("/api/v1/employees/import/{run_id}/cells", {
+        params: { path: { run_id: runId } },
+        body,
+      }),
+    ),
   recordImportRowIdentifier: (
     runId: string,
     sourceKey: string,
