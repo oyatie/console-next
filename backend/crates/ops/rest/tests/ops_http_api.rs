@@ -41,11 +41,32 @@ async fn authorized_operator_reads_all_eight_json_routes_with_no_store_and_no_co
     let app = router(state, Some(Duration::from_secs(5)));
     let jwt = signer.sign(OPERATOR_EMAIL, AUD, ISSUER, 300, None)?;
 
+    // Read /alerts first to discover the runtime 8-hex group key.
+    let alerts_req = Request::builder()
+        .uri("/api/ops/v1/alerts")
+        .header("Cf-Access-Jwt-Assertion", &jwt)
+        .body(Body::empty())?;
+    let (alerts_status, _, alerts_body) = send(&app, alerts_req).await?;
+    assert_eq!(alerts_status, StatusCode::OK, "{alerts_body}");
+    let alert_key = alerts_body["groups"][0]["key"]
+        .as_str()
+        .ok_or("alerts groups[0].key must be present")?;
+    assert_eq!(
+        alert_key.len(),
+        8,
+        "group key must be 8 hex chars: {alert_key}"
+    );
+    assert!(
+        alert_key
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    );
+    let alert_detail_path = format!("/api/ops/v1/alerts/{alert_key}");
     for path in [
         "/api/ops/v1/me",
         "/api/ops/v1/home",
         "/api/ops/v1/alerts",
-        "/api/ops/v1/alerts/HighLatency%C3%97",
+        alert_detail_path.as_str(),
         "/api/ops/v1/silences",
         "/api/ops/v1/running",
         "/api/ops/v1/running/jobs",
@@ -75,7 +96,7 @@ async fn authorized_operator_reads_all_eight_json_routes_with_no_store_and_no_co
                 .as_str()
                 .ok_or("alerts since.value must be RFC 3339 string")?;
             assert!(s.ends_with('Z'), "{path}: {s}");
-        } else if path == "/api/ops/v1/alerts/HighLatency%C3%97" {
+        } else if path == alert_detail_path {
             let s = body["group"]["since"]["value"]
                 .as_str()
                 .ok_or("alert detail since.value must be RFC 3339 string")?;

@@ -38,3 +38,9 @@
 .sheet > p, .edge { margin-inline: var(--space-4); }
 /* Two fields side by side line up by their labels, whatever hint either carries. */
 .alignTop { align-items: flex-start; }
+.phoneOnly { display: none; }
+.desktopOnly { display: inline; }
+@container list-table (max-width: 480px) {
+  .phoneOnly { display: inline; }
+  .desktopOnly { display: none; }
+}

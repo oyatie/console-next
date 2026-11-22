@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["backup_type", "window"]
+additionalProperties: false
+properties:
+  backup_type: {"type": "string", "enum": ["full", "diff", "incr"]}
+  window: {"type": "string", "enum": ["window", "now"]}

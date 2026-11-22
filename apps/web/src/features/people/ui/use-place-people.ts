@@ -43,7 +43,7 @@ export function usePlacePeople(onDone: (p: Placed) => void, onHeld: (h: Held) =>
       }
       return { people, target, batchId: batch.batch_id, effectiveDate };
     },
-    invalidates: ["/api/v1/employees", "/api/v1/org-units", "/api/v1/legal-entities", "/api/v1/org-structure", "/api/v1/onboarding"],
+    invalidates: ["/api/v1/employees", "/api/v1/employment-assignments", "/api/v1/org-units", "/api/v1/legal-entities", "/api/v1/org-structure", "/api/v1/onboarding"],
     settle: true,
     onSuccess: (r) => ("refused" in r ? onHeld(r) : onDone(r)),
   });

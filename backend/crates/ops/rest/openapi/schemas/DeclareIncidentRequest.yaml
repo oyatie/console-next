@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["title", "sev", "personal_data_impact", "discovered_at"]
+additionalProperties: false
+properties:
+  title: {"$ref": "#/components/schemas/Text"}
+  sev: {"$ref": "#/components/schemas/IncidentSeverity"}
+  lead: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  affected_components: {"type": "array", "items": {"type": "string"}}
+  personal_data_impact: {"$ref": "#/components/schemas/PersonalDataImpact"}
+  intrusion: {"type": "boolean"}
+  discovered_at: {"$ref": "#/components/schemas/Timestamp"}
+  next_public_update_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
+  public_incident_id: {"anyOf": [{"type": "string"}, {"type": "null"}]}

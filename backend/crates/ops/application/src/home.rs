@@ -7,9 +7,12 @@ use console_ops_domain::ladders::{EvidenceState, Health, WorkKind};
 use console_ops_domain::{roll_up, verdict};
 use time::OffsetDateTime;
 
-use crate::alerts_eval::{evaluate_alerts, group_key};
+use crate::alert_actions::{AlertAckStore, overlay_acks_and_changes};
+use crate::alerts_eval::{collect_known_groups, evaluate_alerts};
+use crate::changes::HostStateStore;
 use crate::home_sections::{build_budgets, build_changing, build_cost, build_data_safety};
 use crate::home_worklist::{SourcesInputs, build_worklist, collect_sources};
+use crate::home_worklist_extra::collect_recent_changes;
 use crate::jobs_eval::evaluate_jobs;
 use crate::running_eval::evaluate_running;
 use crate::snapshot::{EvaluatedSnapshot, EvidenceView, HomeSnapshotView, SourceKind, SourcesView};
@@ -43,6 +46,8 @@ pub struct CockpitEvaluator {
     access_jwks_status: ExternalSourceStatus,
     known_jobs: BTreeSet<String>,
     known_groups: BTreeMap<String, String>,
+    ack_store: Option<Arc<dyn AlertAckStore>>,
+    host_state: Option<Arc<dyn HostStateStore>>,
 }
 
 impl CockpitEvaluator {
@@ -88,7 +93,19 @@ impl CockpitEvaluator {
             access_jwks_status,
             known_jobs: BTreeSet::new(),
             known_groups: BTreeMap::new(),
+            ack_store: None,
+            host_state: None,
         }
+    }
+
+    pub fn with_ack_store(mut self, ack_store: Arc<dyn AlertAckStore>) -> Self {
+        self.ack_store = Some(ack_store);
+        self
+    }
+
+    pub fn with_host_state(mut self, host_state: Arc<dyn HostStateStore>) -> Self {
+        self.host_state = Some(host_state);
+        self
     }
 
     pub fn set_access_jwks_status(
@@ -106,7 +123,7 @@ impl CockpitEvaluator {
             self.alertmanager.begin_read(now);
             let ok = match self.ports.alertmanager.read().await {
                 Ok(snap) => {
-                    self.known_groups = snap.alerts.iter().map(group_key).collect();
+                    self.known_groups = collect_known_groups(&snap.alerts);
                     self.alertmanager.finish_ok(snap);
                     true
                 }
@@ -189,8 +206,23 @@ impl CockpitEvaluator {
     }
 
     pub fn evaluate(&self, now: OffsetDateTime) -> EvaluatedSnapshot {
-        let (alerts, alert_details, silences, am_vm_disagreement) =
+        let (mut alerts, mut alert_details, silences, am_vm_disagreement) =
             evaluate_alerts(&self.alertmanager, &self.vmalert, &self.known_groups, now);
+        let acks = self
+            .ack_store
+            .as_ref()
+            .and_then(|s| s.list_acks().ok())
+            .unwrap_or_default();
+        let recent_changes =
+            collect_recent_changes(&self.victoriametrics, self.host_state.as_deref(), now);
+        overlay_acks_and_changes(
+            &mut alerts,
+            &mut alert_details,
+            &acks,
+            &recent_changes,
+            now,
+            self.settings.sources.alertmanager.interval_s,
+        );
         let running = evaluate_running(
             &self.victoriametrics,
             &self.components,
@@ -242,6 +274,7 @@ impl CockpitEvaluator {
         let home = HomeSnapshotView {
             evaluated_at: now,
             verdict: verdict(worst_health, &work_kinds, &evidence_pairs),
+            launch_readiness: None,
             worklist,
             changing: build_changing(&self.victoriametrics, now),
             budgets: build_budgets(&self.victoriametrics, now),

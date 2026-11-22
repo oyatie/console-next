@@ -69,6 +69,7 @@ export const enRoster = {
   "roster.head.today": "Today",
   "roster.head.register": "Employee register",
   "roster.head.import": "Import",
+  "roster.head.dataHealth": "Data health",
   "roster.view.label": "Views",
   "roster.view.unplaced": "Unplaced",
   "roster.view.current": "All (excl. exited)",

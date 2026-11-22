@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Console-mode import wizard layout helpers. Tokens only, zero outer margin/padding. */
+.stack { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.triageSticky { position: sticky; top: 0; z-index: 2; }
+.guide { display: flex; flex-direction: column; gap: var(--space-3); }
+.guideList { display: flex; flex-direction: column; gap: var(--space-2); }
+.inspectorExtras { display: flex; flex-direction: column; gap: var(--space-2); }
+.mutedLine { composes: t-sm muted from global; }

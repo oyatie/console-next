@@ -10,3 +10,4 @@
 .readSlot { display: flex; flex-direction: column; gap: var(--space-4); min-block-size: calc(4lh + var(--control-h-sm) * 2 + var(--space-4)); }
 .readSlot[data-status="ACTIVE"] { min-block-size: calc(6lh + var(--control-h-sm) * 3 + var(--space-6)); }
 .readSlot > * { flex-shrink: 0; }
+.embedded { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }

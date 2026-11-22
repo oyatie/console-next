@@ -105,6 +105,7 @@ export const enCommon = {
   "common.failed.code.operator_already_enrolled": "This operator has already enrolled a passkey.",
   "common.failed.code.cannot_revoke_self": "You cannot revoke your own platform operator access.",
   "common.failed.code.last_platform_operator": "At least one active platform operator must remain.",
+  "common.failed.code.passkey_required": "Confirm with a passkey to continue.",
   "common.inviteLink": "Invite link",
   "common.copyInviteLink": "Copy link",
   "common.inviteLinkCopied": "Invite link copied",

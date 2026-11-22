@@ -8,6 +8,7 @@ import { Chip } from "../../../ui/chip";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import type { ImportRow } from "../domain/contract";
 import { filterRows, needsLook, OUTCOMES, tally, type RowFilter } from "../domain/steps";
+import { filterTriageRows, type TriageBucket } from "../domain/triage";
 import { employeeStatusLabel, matchedLabel, numberSourceLabel, outcomeLabel } from "../present";
 import { IMPORT_OUTCOME } from "../../../lib/labels";
 import { EnumValue } from "../../../ui/enum-value";
@@ -20,15 +21,31 @@ const ATTENTION_FIRST: readonly ImportRow["outcome"][] = ["refused", "unresolved
  * Every row's outcome as the server computed it, virtualised for rosters of thousands: the employee number it gets (or "no employee number") and where that came from, the employment status a new person comes in with (leave included), where they are placed
  * and how a person on file was found. Choosing a row shows its detail below. Answers live in the needs-review queue.
  */
-export function DryRows({ rows }: { rows: readonly ImportRow[] }) {
+export function DryRows({
+  rows,
+  consoleMode = false,
+  triage,
+  selectedKey,
+  onSelectRow,
+  inlineDetail = true,
+}: {
+  rows: readonly ImportRow[];
+  consoleMode?: boolean;
+  triage?: TriageBucket;
+  selectedKey?: string | null;
+  onSelectRow?: (key: string) => void;
+  inlineDetail?: boolean;
+}) {
   const n = tally(rows);
   const attention = rows.filter(needsLook).length;
   const onLeave = rows.filter((r) => r.new_person?.status === "ON_LEAVE").length;
   const [filter, setFilter] = useState<RowFilter>("all");
   const [sel, setSel] = useState<string | null>(null);
+  const activeKey = selectedKey !== undefined ? selectedKey : sel;
   const entities = useQuery(entitiesRef);
-  const shownRows = [...filterRows(rows, filter)];
-  const current = sel ? rows.find((r) => r.source_key === sel) : undefined;
+  const triagedRows = triage ? filterTriageRows(rows, triage) : rows;
+  const shownRows = [...filterRows(triagedRows, filter)];
+  const current = activeKey ? rows.find((r) => r.source_key === activeKey) : undefined;
   const place = (r: ImportRow) => {
     const id = r.new_person?.workplace_id;
     if (!id) return r.new_person ? t(r.new_person.status === "EXITED" ? "import.rows.entityUndecided" : "import.rows.unplaced") : "—";
@@ -58,14 +75,16 @@ export function DryRows({ rows }: { rows: readonly ImportRow[] }) {
     <section className="card" aria-labelledby="import-rows">
       <div className="toolbar">
         <h2 id="import-rows" className="toolbar__title">{title}</h2>
-        <div className={s.filters} role="group" aria-label={title}>
-          <ToggleButton pressed={filter === "all"} onClick={() => setFilter("all")}>{t("import.rows.filter.all", { count: rows.length })}</ToggleButton>
-          {attention > 0 && <ToggleButton pressed={filter === "attention"} onClick={() => setFilter("attention")}>{t("import.rows.filter.attention", { count: attention })}</ToggleButton>}
-          {onLeave > 0 && <ToggleButton pressed={filter === "on_leave"} onClick={() => setFilter("on_leave")}>{t("import.rows.filter.onLeave", { count: onLeave })}</ToggleButton>}
-          {OUTCOMES.filter((o) => n[o] > 0 && !ATTENTION_FIRST.includes(o)).map((o) => (
-            <ToggleButton key={o} pressed={filter === o} onClick={() => setFilter(o)}>{t("import.rows.filter.outcome", { label: outcomeLabel(o), count: n[o] })}</ToggleButton>
-          ))}
-        </div>
+        {!consoleMode && (
+          <div className={s.filters} role="group" aria-label={title}>
+            <ToggleButton pressed={filter === "all"} onClick={() => setFilter("all")}>{t("import.rows.filter.all", { count: rows.length })}</ToggleButton>
+            {attention > 0 && <ToggleButton pressed={filter === "attention"} onClick={() => setFilter("attention")}>{t("import.rows.filter.attention", { count: attention })}</ToggleButton>}
+            {onLeave > 0 && <ToggleButton pressed={filter === "on_leave"} onClick={() => setFilter("on_leave")}>{t("import.rows.filter.onLeave", { count: onLeave })}</ToggleButton>}
+            {OUTCOMES.filter((o) => n[o] > 0 && !ATTENTION_FIRST.includes(o)).map((o) => (
+              <ToggleButton key={o} pressed={filter === o} onClick={() => setFilter(o)}>{t("import.rows.filter.outcome", { label: outcomeLabel(o), count: n[o] })}</ToggleButton>
+            ))}
+          </div>
+        )}
       </div>
       <LongTable
         label={title}
@@ -73,13 +92,15 @@ export function DryRows({ rows }: { rows: readonly ImportRow[] }) {
         columns={columns}
         rows={shownRows}
         rowId={(r) => r.source_key}
+        activeRowId={activeKey ?? undefined}
         hasMore={false}
         onLoadMore={() => undefined}
         empty={t("import.rows.none")}
         density="compact"
-        onRowAction={setSel}
+        mobileLayout={consoleMode ? "compact" : "cards"}
+        onRowAction={(id) => (setSel(id), onSelectRow?.(id))}
       />
-      {current ? <RowDetail r={current} /> : <p className={`muted ${s.inset}`}>{t("import.rows.pick")}</p>}
+      {inlineDetail && (current ? <RowDetail r={current} /> : <p className={`muted ${s.inset}`}>{t("import.rows.pick")}</p>)}
     </section>
   );
 }

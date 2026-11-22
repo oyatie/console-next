@@ -205,6 +205,33 @@
         "type": "integer",
         "minimum": 1
       }
+    },
+    "records": {
+      "type": "object",
+      "required": [
+        "dir"
+      ],
+      "properties": {
+        "dir": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^/[^/]"
+        }
+      },
+      "additionalProperties": false
+    },
+    "obligations": {
+      "type": "object",
+      "required": [
+        "due_soon_days"
+      ],
+      "properties": {
+        "due_soon_days": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

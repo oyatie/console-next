@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsObligationOpen"
+summary: "Open Obligation"
+x-cedar-action: "obligation.write"
+security: [{"accessJwt": []}]
+description: "Opens a new operational obligation in obligations spool."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OpenObligationRequest"}}}}
+responses: {"201": {"description": "Obligation opened.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationWriteResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

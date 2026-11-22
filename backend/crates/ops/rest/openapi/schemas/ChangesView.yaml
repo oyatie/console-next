@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "releases", "timeline", "dora5", "freeze", "canary_percent", "bundle_sha"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  releases:
+    type: "array"
+    items:
+      type: "object"
+      required: ["digest", "state"]
+      properties:
+        digest: {"$ref": "#/components/schemas/Text"}
+        state: {"$ref": "#/components/schemas/EvidenceState"}
+        gates: {"type": "object"}
+        reason: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  timeline:
+    type: "array"
+    items:
+      type: "object"
+      required: ["at", "kind", "summary", "status"]
+      properties:
+        at: {"$ref": "#/components/schemas/Timestamp"}
+        kind: {"$ref": "#/components/schemas/Text"}
+        summary: {"$ref": "#/components/schemas/Text"}
+        status: {"$ref": "#/components/schemas/Text"}
+  dora5: {"$ref": "#/components/schemas/Dora5Metrics"}
+  freeze: {"$ref": "#/components/schemas/ObservedBoolean"}
+  canary_percent: {"$ref": "#/components/schemas/ObservedNumber"}
+  bundle_sha: {"$ref": "#/components/schemas/ObservedText"}
