@@ -39,7 +39,7 @@ pub fn authorize_org_wide(principal: &Principal, action: Action) -> Result<(), K
     let has_custom_org_wide_permission = principal.effective_feature_grants.iter().any(|grant| {
         grant.feature == action.feature()
             && grant.permission.satisfies(action.required_permission())
-            && grant.branch_scope == BranchScope::All
+            && grant.branch_scope.is_all()
     });
 
     if !(has_builtin_org_wide_permission || has_custom_org_wide_permission) {
@@ -191,7 +191,7 @@ fn authorize_inner(
             }
         }
         None => {
-            if !has_branch_scope(principal) {
+            if principal.branch_scope.is_empty() {
                 return Err(KernelError::forbidden("principal has no branch scope"));
             }
         }
