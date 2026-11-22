@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Button } from "../../../ui/button/button";
+import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { StatRow } from "../../../ui/key-value/key-value";
 import { apply, changedRows, dryRun, importCode, lostAnswer, OTHER, readJob, retryAfterOf } from "../api";
-import type { ApplyJob, ImportDryRun, ImportReport } from "../domain/contract";
+import type { ApplyJob, ImportDryRun, ImportPreview, ImportReport, ImportRow, ReviewItem } from "../domain/contract";
 import { keepJob } from "../domain/job";
 
 const BUSY_WAIT_MS = 15_000;
 import { applyBlockers, deferredCount, reasonsMissing, type Picks } from "../domain/steps";
+import { rowOf } from "../domain/review";
+import { firstActionableRowKey, hasMappedSexColumn, triageCounts, type TriageBucket } from "../domain/triage";
 import { isValueItem } from "../domain/values";
 import { importError, outcomeLabel } from "../present";
 import { ChangedCells } from "./changed-cells";
@@ -22,15 +26,31 @@ import { ValueTable } from "./value-table";
 import { useExpiry } from "./use-expiry";
 import s from "./import.module.css";
 
+export type DryRunConsoleParts = {
+  summary: ReactNode;
+  body: ReactNode;
+  currentItem: ReviewItem | undefined;
+  activeRow: ImportRow | undefined;
+  sexMapped: boolean;
+  resolveBusy: boolean;
+  onResolve: (c: Picks) => void;
+  onSheets: () => void;
+  consequence: ReactNode;
+  changed: number;
+  notice: ReactNode;
+  actions: ReactNode;
+};
+
 /**
  * The dry run: the server's plan per row, its counted needs-review queue (each item answered in one click where the
  * server offers the choices, the dry run running again at once), and an apply bound to this dry run's digest (no
  * acknowledgement checkbox: the digest is the acknowledgement, B-14). Apply stays closed while an item blocks.
  */
-export function DryRunStep({ picks, onPicks, dry, onDryRun, onApplied, onJob, onExpired, onSheets, onRestart }: {
+export function DryRunStep({ picks, onPicks, dry, preview, onDryRun, onApplied, onJob, onExpired, onSheets, onRestart, consoleShell }: {
   picks: Picks;
   onPicks: (c: Picks) => void;
   dry: ImportDryRun;
+  preview?: ImportPreview;
   onDryRun: (d: ImportDryRun) => void;
   onApplied: (r: ImportReport) => void;
   /** The apply runs as a job (r3:hire-02): the page follows it. */
@@ -38,13 +58,28 @@ export function DryRunStep({ picks, onPicks, dry, onDryRun, onApplied, onJob, on
   onExpired: () => void;
   onSheets: () => void;
   onRestart: () => void;
+  consoleShell?: (parts: DryRunConsoleParts) => ReactNode;
 }) {
   const [changed, setChanged] = useState(0);
   // One answer open at a time, in the value-link tables or the queue: the chosen one while it is still asked, else the first
   // blocking question (values first, as the page reads), so after each answer the next one is open.
   const [chosen, setChosen] = useState<string | null>(null);
+  const [triage, setTriage] = useState<TriageBucket>("all");
+  const [selectedRowKey, setSelectedRowKey] = useState<string | null>(() => firstActionableRowKey(dry));
   const asked = [...dry.review.items.filter(isValueItem), ...dry.review.items.filter((i) => !isValueItem(i))];
   const sel = (chosen && (asked.some((i) => i.id === chosen) || /^(remembered|auto):/.test(chosen)) ? chosen : null) ?? (asked.find((i) => i.blocking) ?? asked[0])?.id ?? null;
+  const selectItem = (id: string) => {
+    setChosen(id);
+    const match = asked.find((i) => i.id === id);
+    const matchedRow = match ? rowOf(dry, match) : undefined;
+    if (matchedRow) setSelectedRowKey(matchedRow.source_key);
+  };
+  const selectRow = (key: string) => {
+    setSelectedRowKey(key);
+    const row = dry.rows.find((r) => r.source_key === key);
+    const match = row ? asked.find((i) => i.sheet === row.sheet && i.row === row.row) : undefined;
+    if (match) setChosen(match.id);
+  };
   const rerun = useCommand({ run: (c: Picks) => dryRun(dry.run_id, c), onSuccess: (d: ImportDryRun) => onDryRun(d) });
   /** An answer from the queue: kept on screen and sent with the next dry run straight away. */
   const resolve = (next: Picks) => (onPicks(next), setChanged(0), rerun.mutate(next));
@@ -96,6 +131,105 @@ export function DryRunStep({ picks, onPicks, dry, onDryRun, onApplied, onJob, on
     [t("import.stat.blocking"), dry.review.blocking],
   ];
 
+  const counts = triageCounts(dry.rows);
+  const sexMapped = hasMappedSexColumn(preview);
+  const currentItem = asked.find((i) => i.id === sel);
+  const activeRow =
+    (selectedRowKey ? dry.rows.find((r) => r.source_key === selectedRowKey) : undefined)
+    ?? (currentItem ? rowOf(dry, currentItem) : undefined)
+    ?? (dry.rows.find((r) => r.source_key === firstActionableRowKey(dry)))
+    ?? dry.rows[0];
+
+  const consequenceBlock = (
+    <>
+      <p className={s.consequence}>{t("import.apply.consequence", { insert: dry.insert_candidates, update: dry.update_candidates, held })}</p>
+      {(dry.employment_type_empty_rows > 0 || dry.unplaced.rows > 0 || dry.phone_unstored_rows > 0) && (
+        <div className={s.filters} role="group" aria-label={applyLabel}>
+          {dry.employment_type_empty_rows > 0 && <Chip tone="warn">{t("import.apply.emptyType", { count: dry.employment_type_empty_rows })}</Chip>}
+          {dry.unplaced.rows > 0 && (
+            <Chip tone="warn">
+              {t("import.apply.unplaced", { count: dry.unplaced.rows })}
+              {" · "}
+              {Object.entries(dry.unplaced.by_reason).filter(([, n]) => n > 0).map(([k, n]) => `${t(`import.unplaced.${k as "no_place"}`)} ${n}`).join(" · ")}
+            </Chip>
+          )}
+          {dry.phone_unstored_rows > 0 && <Chip tone="neutral">{t("import.apply.phoneUnstored", { count: dry.phone_unstored_rows })}</Chip>}
+        </div>
+      )}
+    </>
+  );
+  const noticeBlock = (
+    <>
+      {block.pending && <p className="muted" role="status">{t("import.rerun.pending")}</p>}
+      <CommandError error={rerun.error ?? commit.error} own={importError} />
+    </>
+  );
+  const actionButtons = (
+    <>
+      <Button onClick={onRestart}>{t("import.otherFile")}</Button>
+      {missing > 0 ? (
+        <DisabledReason control={(p) => <Button {...p}>{t("import.rerun")}</Button>} reason={t("import.block.reasons", { count: missing })} />
+      ) : (
+        <Button variant={block.pending ? "primary" : "secondary"} disabled={rerun.isPending} onClick={() => (setChanged(0), rerun.mutate(picks))}>{t("import.rerun")}</Button>
+      )}
+      {reason ? (
+        <DisabledReason control={(p) => <Button {...p} variant={block.pending ? "secondary" : "primary"}>{applyLabel}</Button>} reason={reason} />
+      ) : (
+        <Button variant="primary" disabled={commit.isPending || rerun.isPending} onClick={press}>{applyLabel}</Button>
+      )}
+    </>
+  );
+
+  if (consoleShell) {
+    const summary = (
+      <Card titleId="import-dry" title={t("import.dry.title")} meta={`${t("import.stat.review")} ${fmtNumber(dry.review.count)}`}>
+        <StatRow
+          label={t("import.triage.label")}
+          items={[
+            { key: "all", label: t("import.triage.all"), value: fmtNumber(counts.all), active: triage === "all", onPress: () => setTriage("all") },
+            { key: "valid", label: t("import.triage.valid"), value: fmtNumber(counts.valid), tone: "ok", active: triage === "valid", onPress: () => setTriage("valid") },
+            { key: "warn", label: t("import.triage.warn"), value: fmtNumber(counts.warn), tone: "warn", active: triage === "warn", onPress: () => setTriage("warn") },
+            { key: "blocker", label: t("import.triage.blocker"), value: fmtNumber(counts.blocker), tone: "danger", active: triage === "blocker", onPress: () => setTriage("blocker") },
+          ]}
+        />
+      </Card>
+    );
+    const body = (
+      <>
+        <ValueTable dry={dry} picks={picks} busy={rerun.isPending} sel={sel} onSel={selectItem} onResolve={resolve} onSheets={onSheets} inlineResolve={false} consoleMode />
+        <ReviewGroups dry={dry} picks={picks} busy={rerun.isPending} onResolve={resolve} />
+        <ReviewQueue dry={dry} picks={picks} busy={rerun.isPending} sel={sel} onSel={selectItem} onResolve={resolve} onSheets={onSheets} inlineResolve={false} consoleMode />
+        <ChangedCells dry={dry} consoleMode />
+        <DryRows
+          rows={dry.rows}
+          consoleMode
+          triage={triage}
+          selectedKey={activeRow?.source_key ?? null}
+          onSelectRow={selectRow}
+          inlineDetail={false}
+        />
+      </>
+    );
+    return (
+      <>
+        {consoleShell({
+          summary,
+          body,
+          currentItem,
+          activeRow,
+          sexMapped,
+          resolveBusy: rerun.isPending,
+          onResolve: resolve,
+          onSheets,
+          consequence: consequenceBlock,
+          changed,
+          notice: noticeBlock,
+          actions: actionButtons,
+        })}
+      </>
+    );
+  }
+
   return (
     <>
       <section className="card panel" aria-labelledby="import-dry">
@@ -113,36 +247,9 @@ export function DryRunStep({ picks, onPicks, dry, onDryRun, onApplied, onJob, on
       <ChangedCells dry={dry} />
       <DryRows rows={dry.rows} />
       <section className="card panel form" aria-label={applyLabel}>
-        <p className={s.consequence}>{t("import.apply.consequence", { insert: dry.insert_candidates, update: dry.update_candidates, held })}</p>
-        {/* What the apply brings in incomplete, named before the press (BE-MIG W02, W03, W12). */}
-        {(dry.employment_type_empty_rows > 0 || dry.unplaced.rows > 0 || dry.phone_unstored_rows > 0) && (
-          <div className={s.filters} role="group" aria-label={applyLabel}>
-            {dry.employment_type_empty_rows > 0 && <Chip tone="warn">{t("import.apply.emptyType", { count: dry.employment_type_empty_rows })}</Chip>}
-            {dry.unplaced.rows > 0 && (
-              <Chip tone="warn">
-                {t("import.apply.unplaced", { count: dry.unplaced.rows })}
-                {" · "}
-                {Object.entries(dry.unplaced.by_reason).filter(([, n]) => n > 0).map(([k, n]) => `${t(`import.unplaced.${k as "no_place"}`)} ${n}`).join(" · ")}
-              </Chip>
-            )}
-            {dry.phone_unstored_rows > 0 && <Chip tone="neutral">{t("import.apply.phoneUnstored", { count: dry.phone_unstored_rows })}</Chip>}
-          </div>
-        )}
-        {block.pending && <p className="muted" role="status">{t("import.rerun.pending")}</p>}
-        <CommandError error={rerun.error ?? commit.error} own={importError} />
-        <div className={s.bar}>
-          <Button onClick={onRestart}>{t("import.otherFile")}</Button>
-          {missing > 0 ? (
-            <DisabledReason control={(p) => <Button {...p}>{t("import.rerun")}</Button>} reason={t("import.block.reasons", { count: missing })} />
-          ) : (
-            <Button variant={block.pending ? "primary" : "secondary"} disabled={rerun.isPending} onClick={() => (setChanged(0), rerun.mutate(picks))}>{t("import.rerun")}</Button>
-          )}
-          {reason ? (
-            <DisabledReason control={(p) => <Button {...p} variant={block.pending ? "secondary" : "primary"}>{applyLabel}</Button>} reason={reason} />
-          ) : (
-            <Button variant="primary" disabled={commit.isPending || rerun.isPending} onClick={press}>{applyLabel}</Button>
-          )}
-        </div>
+        {consequenceBlock}
+        {noticeBlock}
+        <div className={s.bar}>{actionButtons}</div>
       </section>
     </>
   );

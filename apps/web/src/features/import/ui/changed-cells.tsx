@@ -13,7 +13,7 @@ import s from "./import.module.css";
  * (a transfer, an exit) and is only named here. The counts head it: changed people, rows that stay as they are, and
  * the answers still to give.
  */
-export function ChangedCells({ dry }: { dry: ImportDryRun }) {
+export function ChangedCells({ dry, consoleMode = false }: { dry: ImportDryRun; consoleMode?: boolean }) {
   const cells = changedCells(dry.rows);
   if (cells.length === 0) return null;
   const people = new Set(cells.map((c) => c.key)).size;
@@ -33,15 +33,48 @@ export function ChangedCells({ dry }: { dry: ImportDryRun }) {
     >
       <Table<ChangedCell>
         label={title}
+        density={consoleMode ? "compact" : undefined}
+        mobileLayout={consoleMode ? "compact" : "cards"}
         rows={cells}
         rowId={(c) => `${c.key}\u0000${c.field}`}
         columns={[
-          { header: t("importChanges.col.number"), cell: (c) => <span className="code">{c.number ?? "—"}</span>, fit: true },
-          { header: t("importChanges.col.name"), cell: (c) => c.name, fit: true },
-          { header: t("importChanges.col.field"), cell: (c) => <b>{fieldLabel(c.field)}</b>, fit: true },
-          { header: t("importChanges.col.now"), cell: (c) => value(c, c.from) },
-          { header: t("importChanges.col.file"), cell: (c) => <b>{value(c, c.to)}</b> },
-          { header: t("importChanges.col.record"), cell: (c) => (c.route ? <Chip tone="warn">{t("importChanges.route", { route: routeLabel(c.route) })}</Chip> : <Chip tone="info">{t("importChanges.correction")}</Chip>), fit: true },
+          { header: t("importChanges.col.number"), card: consoleMode ? "omit" : undefined, cell: (c) => <span className="code">{c.number ?? "—"}</span>, fit: true },
+          {
+            header: t("importChanges.col.name"),
+            card: consoleMode ? "fact" : undefined,
+            cell: (c) =>
+              consoleMode ? (
+                <>
+                  {c.name}
+                  {c.number ? <bdi className={s.phoneOnly}>{" · "}<code className="code">{c.number}</code></bdi> : null}
+                </>
+              ) : (
+                c.name
+              ),
+            fit: true,
+          },
+          {
+            header: t("importChanges.col.field"),
+            card: consoleMode ? "title" : undefined,
+            cell: (c) =>
+              consoleMode ? (
+                <>
+                  <b className={s.desktopOnly}>{fieldLabel(c.field)}</b>
+                  <bdi className={s.phoneOnly}>{t("import.rows.change", { field: fieldLabel(c.field), before: value(c, c.from), after: value(c, c.to) })}</bdi>
+                </>
+              ) : (
+                <b>{fieldLabel(c.field)}</b>
+              ),
+            fit: true,
+          },
+          { header: t("importChanges.col.now"), card: consoleMode ? "omit" : undefined, cell: (c) => value(c, c.from) },
+          { header: t("importChanges.col.file"), card: consoleMode ? "omit" : undefined, cell: (c) => <b>{value(c, c.to)}</b> },
+          {
+            header: t("importChanges.col.record"),
+            card: consoleMode ? "status" : undefined,
+            cell: (c) => (c.route ? <Chip tone="warn">{t("importChanges.route", { route: routeLabel(c.route) })}</Chip> : <Chip tone="info">{t("importChanges.correction")}</Chip>),
+            fit: true,
+          },
         ]}
       />
     </Card>
