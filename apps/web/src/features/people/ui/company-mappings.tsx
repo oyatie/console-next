@@ -50,11 +50,13 @@ function Row({ text, people, consoleMode = false, renderSingle }: { text: string
     return (
       <li aria-label={text}>
         <RecordPaneSection title={t("setup.names.row", { name: text, count: people })}>
-          <div className={s.mappingFields}>
-            <PlacementFields value={place} onChange={setPlace} renderSingle={renderSingle} />
+          <div className={s.mappingBody}>
+            <div className={s.mappingFields}>
+              <PlacementFields value={place} onChange={setPlace} renderSingle={renderSingle} />
+            </div>
+            <CommandError error={run.error} />
+            <div className={s.mappingActions}>{action}</div>
           </div>
-          <CommandError error={run.error} />
-          <div className={s.mappingActions}>{action}</div>
         </RecordPaneSection>
       </li>
     );
@@ -85,7 +87,7 @@ export function CompanyMappings({
   return <QueryState q={q}>{(d) => d.items.length > 0 ? (
     consoleMode && wrapSection ? (
       wrapSection(
-        <ul className={s.mappingList}>{d.items.map((x) => <Row key={x.company_text} text={x.company_text} people={x.employees} consoleMode renderSingle={renderSingle} />)}</ul>,
+        <ul className="list-plain">{d.items.map((x) => <Row key={x.company_text} text={x.company_text} people={x.employees} consoleMode renderSingle={renderSingle} />)}</ul>,
       )
     ) : (
       <section aria-label={t("setup.names.title")}>

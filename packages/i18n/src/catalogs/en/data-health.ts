@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // English copy for `dataHealth.` ids (features/people/ui/data-health-*.tsx).
 export const enDataHealth = {
   "dataHealth.title": "Data health",
