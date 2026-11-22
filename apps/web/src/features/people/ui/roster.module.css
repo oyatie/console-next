@@ -1,8 +1,9 @@
 /* The people roster (E1): head band, view switch, scope and stat chips, the table full-bleed, the key strip. Layout only
    (design-language §12): surfaces are ui/ components (Band, PageHead's PhaseLine, ToggleButton chips, Banner, Avatar,
    PathList), type and tone are composed from the §3 classes. */
-.page { display: flex; flex-direction: column; min-height: 100%; }
-.band { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-5) 0; }
+.page, .band, .notes, .firstRun, .colList, .colSide, .order, .scopePick, .ways, .voided, .peekConsole, .peekTabsWrap, .tabHost { display: flex; flex-direction: column; }
+.page { min-height: 100%; }
+.band { gap: var(--space-1); padding: var(--space-2) var(--space-5) 0; }
 .views { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding-bottom: var(--space-2); }
 /* The table portals its search here after loading; its intrinsic size must not reflow the filter band. */
 .findSlot { display: flex; flex: 1 1 auto; justify-content: flex-end; min-width: min(100%, calc(var(--panel-w) / 1.6)); min-height: var(--field-h); }
@@ -29,19 +30,17 @@
 .steel { composes: muted from global; }
 .warnText { composes: t-warn from global; }
 .nm { composes: t-medium from global; }
-.notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-5) 0; }
+.notes { gap: var(--space-2); padding: var(--space-2) var(--space-5) 0; }
 .changed { display: inline-flex; margin-inline-start: var(--space-3); }
 .inView { display: inline-flex; align-items: center; gap: var(--space-1); }
 .keep { display: inline-flex; align-items: center; gap: var(--space-1); }
-.firstRun { display: flex; flex-direction: column; gap: var(--space-5); max-width: calc(var(--card-w) * 1.7); padding: var(--space-6) calc(var(--space-6) * 1.5); }
+.firstRun { gap: var(--space-5); max-width: calc(var(--card-w) * 1.7); padding: var(--space-6) calc(var(--space-6) * 1.5); }
 .firstTitle { composes: t-xl t-strong from global; margin: 0; }
-.firstSub { composes: t-sm muted from global; margin: var(--space-1) 0 0; }
 .paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--panel-w) * 0.6), 1fr)); gap: var(--space-4); }
-.pathTitle { composes: t-lg from global; display: flex; align-items: center; gap: var(--space-2); margin: 0; }
 .columns { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-4); }
 @media (max-width: 767px) { .columns { grid-template-columns: minmax(0, 1fr); } }
-.colList, .colSide { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
-.order { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.colList, .colSide { gap: var(--space-2); min-width: 0; }
+.order { list-style: none; margin: 0; padding: 0; }
 .order li { display: flex; align-items: center; gap: var(--space-1); min-height: var(--target); }
 .fixed { composes: t-sm muted from global; padding-left: var(--space-1); }
 .colBox { flex: 1; display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--target); }
@@ -49,6 +48,7 @@
 .peekCrumb { composes: t-xs muted from global; }
 @media (max-width: 639px) {
   [data-pattern="list-record"][data-detail] .band, [data-pattern="list-record"][data-detail] .scope, [data-pattern="list-record"][data-detail] .stats, [data-pattern="list-record"][data-detail] .notes, [data-pattern="list-record"][data-detail] .foot { display: none; }
+  .consoleToolLabel { display: none; }
 }
 .peekHead { display: flex; align-items: center; gap: var(--space-3); }
 .peekName { composes: t-lg from global; margin: 0; }
@@ -56,30 +56,27 @@
 .peekTitle { composes: t-sm from global; display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); }
 .peekGap { composes: t-danger t-medium from global; }
 .peekOk { composes: t-ok t-medium from global; }
-.peekItems { composes: t-sm from global; display: grid; gap: var(--space-1); margin: 0; }
+.peekItems, .peekBox { composes: t-sm from global; display: grid; gap: var(--space-1); margin: 0; }
 .peekItems > div { display: grid; grid-template-columns: calc(var(--space-6) * 3.5) minmax(0, 1fr); gap: var(--space-2); padding: calc(var(--space-1) / 2) 0; }
 .peekTerm { composes: muted from global; }
-.peekItems dd { margin: 0; }
-.peekFoot { composes: t-xs muted from global; margin: 0; }
-.scopePick { display: flex; flex-direction: column; gap: var(--space-2); }
+.peekItems dd, .peekBox dd { margin: 0; }
+.scopePick { gap: var(--space-2); }
 /* A late facet name must not move the search or density controls beside it. */
 .scopeName { display: inline-block; width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .peekKept { composes: t-xs muted from global; display: flex; align-items: center; gap: var(--space-1); margin: 0; }
-.peekBox { composes: t-sm from global; display: grid; gap: var(--space-1); margin: 0; }
 .peekBox > div { display: grid; grid-template-columns: calc(var(--space-6) * 3) minmax(0, 1fr); gap: var(--space-2); }
-.peekBox dd { margin: 0; }
-.ways { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.ways { list-style: none; margin: 0; padding: 0; gap: var(--space-2); }
 .way { composes: t-xs muted from global; display: grid; grid-template-columns: calc(var(--space-6) * 4.5) minmax(0, 1fr); gap: var(--space-3); align-items: center; }
 .exitTabs { display: flex; gap: var(--space-1); }
-.voided { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-5); }
+.voided { gap: var(--space-2); padding: var(--space-3) var(--space-5); }
 .listError { margin: var(--space-2) var(--space-4); }
 .consoleTools { display: inline-flex; align-items: center; gap: var(--space-1-5); flex-wrap: nowrap; }
 .consoleTools > * { white-space: nowrap; flex-shrink: 0; }
 .consoleDesktopSort { display: inline-flex; align-items: center; flex-shrink: 0; }
 .consoleFind { flex: 1 1 auto; min-width: 0; max-width: 100%; }
 @media (max-width: 767px) { .consoleDesktopSort { display: none; } }
-@media (max-width: 639px) { .consoleToolLabel { display: none; } }
-.peekConsole { display: flex; flex-direction: column; min-width: 0; }
-.peekTabsWrap { display: flex; flex-direction: column; min-width: 0; }
+.peekConsole, .peekTabsWrap, .tabHost { min-width: 0; }
 .peekInlineRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); }
-.tabHost { display: flex; flex-direction: column; flex: 1 1 0%; min-width: 0; min-height: 0; }
+.tabHost { flex: 1 1 0%; min-height: 0; }
+.pageWrap { display: contents; }
+@media (max-width: 640px) { .under { display: none; } }
