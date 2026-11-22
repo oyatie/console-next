@@ -4357,6 +4357,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/employees/import/{run_id}/cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Repair canonical cell values for staged candidate rows in an employee import run
+         * @description Requires EmployeeDirectoryManage. Validates and merges inline canonical cell repairs into dry_run_decisions.cells while rejecting restricted PII targets and two-digit dates.
+         */
+        put: operations["repairEmployeeImportCells"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/employees/import/{run_id}/dry-run": {
         parameters: {
             query?: never;
@@ -20874,12 +20894,6 @@ export interface components {
                 /** @enum {string} */
                 status_conflict?: "pre_hire";
             };
-            /** @description Inline dry-run cell repairs keyed by source_key then target field name (restricted fields rrn, phone, and name are rejected). */
-            cells?: {
-                [key: string]: {
-                    [key: string]: string;
-                };
-            };
         };
         EmployeeImportDryRunSummary: {
             run_id: components["schemas"]["Uuid"];
@@ -23536,6 +23550,27 @@ export interface components {
         /** @description §16 self-checklist evidence for an ingest-commit ("load") apply. Missing or false ⇒ fail-closed deny, nothing written (ruling 85). */
         ImportApplyRequest: {
             checklist_all_acknowledged?: boolean | null;
+        };
+        /** @description Map of candidate row source_key to canonical field repairs for a staged employee import run. */
+        ImportCellsRepairRequest: {
+            /** @description Per-row map of canonical target field names (excluding restricted columns) to repaired string values. */
+            cells: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        /** @description Persisted inline cell repairs merged onto a staged employee import run. */
+        ImportCellsRepairResponse: {
+            /** @description Effective per-row map of canonical field repairs persisted in dry_run_decisions.cells. */
+            cells: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            /** @description Count of candidate rows with persisted cell repairs. */
+            repaired_rows: number;
+            run_id: components["schemas"]["Uuid"];
         };
         ImportDryRunRequest: {
             decisions?: components["schemas"]["EmployeeImportDecisions"];
@@ -40810,6 +40845,37 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    repairEmployeeImportCells: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCellsRepairRequest"];
+            };
+        };
+        responses: {
+            /** @description Validated cell repairs merged into the staged import run decisions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportCellsRepairResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
         };
     };
     dryRunEmployeeImport: {
