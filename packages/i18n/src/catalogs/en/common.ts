@@ -108,5 +108,5 @@ export const enCommon = {
   "common.inviteLink": "Invite link",
   "common.copyInviteLink": "Copy link",
   "common.inviteLinkCopied": "Invite link copied",
-  "common.inviteQrLabel": "QR code for one-time sign-in link",
+  "common.inviteQrLabel": "Sign-in invite link QR code",
 } as const;

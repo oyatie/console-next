@@ -109,5 +109,5 @@ export const koCommon: Record<keyof typeof enCommon, string> = {
   "common.inviteLink": "초대 링크",
   "common.copyInviteLink": "링크 복사",
   "common.inviteLinkCopied": "초대 링크를 복사했습니다",
-  "common.inviteQrLabel": "일회용 코드 로그인 링크 QR 코드",
+  "common.inviteQrLabel": "로그인 초대 링크 QR 코드",
 };

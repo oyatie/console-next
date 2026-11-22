@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
-import { PersonLabel, PersonRecordLink } from "../../../reference/person/ui/person-label";
+import { PersonLabel, PersonRef } from "../../../reference/person/ui/person-label";
 import { Card } from "../../../ui/card/card";
 import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
@@ -12,11 +12,12 @@ import { grantPerson, periodText, storedScope } from "../present";
 import { EnforcementChip } from "./enforcement-chip";
 import { useOrgRoots } from "./use-org-roots";
 
-/** Role holders tab: reuses grant table presentation over grantsQuery({ role_id }). */
+/** Role holders tab: distinct account holders and their grant status over grantsQuery({ role_id }). */
 export function RoleHolders({ roleId, roleName, accounts }: { roleId: string; roleName: string; accounts: readonly Account[] }) {
   const grants = useQuery(grantsQuery({ role_id: roleId }));
   const roots = useOrgRoots();
-  const count = grants.data?.items.length ?? 0;
+  const distinct = [...new Map((grants.data?.items ?? []).map((g) => [g.account_id, g])).values()];
+  const count = distinct.length;
   return (
     <Card
       title={t("accessGrants.holders", { role: roleName, count })}
@@ -24,25 +25,29 @@ export function RoleHolders({ roleId, roleName, accounts }: { roleId: string; ro
       flush
     >
       <QueryState q={grants} layout="list">
-        {({ items }) =>
-          items.length ? (
+        {({ items }) => {
+          const holders = [...new Map(items.map((g) => [g.account_id, g])).values()];
+          return holders.length ? (
             <Table
               label={t("access.roles.col.holders")}
-              rows={items}
-              rowId={(g) => g.id}
+              rows={holders}
+              rowId={(g) => g.account_id}
               columns={[
                 {
                   card: "title",
                   rowHeader: true,
                   header: t("access.col.person"),
-                  cell: (g) => (
-                    <>
-                      <Link to="/access/people/$accountId" params={{ accountId: g.account_id }}>
-                        <PersonLabel person={grantPerson(g, accounts)} peers={accounts} linked={false} />
-                      </Link>{" "}
-                      <PersonRecordLink person={grantPerson(g, accounts)} peers={accounts} />
-                    </>
-                  ),
+                  cell: (g) => {
+                    const account = accounts.find((a) => a.id === g.account_id);
+                    return (
+                      <>
+                        <Link to="/access/people/$accountId" params={{ accountId: g.account_id }}>
+                          <PersonLabel person={grantPerson(g, accounts)} peers={accounts} linked={false} wrap />
+                        </Link>{" "}
+                        {account && <PersonRef account={account} details={false} wrap />}
+                      </>
+                    );
+                  },
                 },
                 { card: "fact", header: t("access.col.scope"), cell: (g) => storedScope(g.scope, roots) },
                 { card: "fact", header: t("access.col.until"), fit: true, cell: (g) => periodText(g) },
@@ -52,8 +57,8 @@ export function RoleHolders({ roleId, roleName, accounts }: { roleId: string; ro
             />
           ) : (
             <EmptyState title={t("access.role.effect.none")} reason={null} />
-          )
-        }
+          );
+        }}
       </QueryState>
     </Card>
   );
