@@ -32613,7 +32613,9 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 target_type?: string;
+                target_id?: string;
                 actor?: components["schemas"]["Uuid"];
+                trace_id?: string;
             };
             header?: never;
             path?: never;
@@ -32629,6 +32631,42 @@ export interface operations {
                 content: {
                     "application/json": {
                         items: ({
+                            /** Format: uuid */
+                            id?: string;
+                            /** Format: uuid */
+                            actor?: string | null;
+                            action?: string;
+                            target_type?: string;
+                            target_id?: string;
+                            /** Format: uuid */
+                            branch_id?: string | null;
+                            before_snap?: unknown;
+                            after_snap?: unknown;
+                            ip?: string | null;
+                            user_agent?: string | null;
+                            auth_method?: string | null;
+                            device?: string | null;
+                            classification_badges?: string[] | null;
+                            anomaly?: boolean | null;
+                            reason?: string | null;
+                            trace_id?: string;
+                            span_id?: string;
+                            source?: string | null;
+                            change_mode?: string | null;
+                            reason_code?: string | null;
+                            decision_snapshot?: unknown;
+                            /** Format: uuid */
+                            command_id?: string | null;
+                            scope_ids?: string[] | null;
+                            actor_kind?: string | null;
+                            principal_type?: string | null;
+                            /** Format: uuid */
+                            session_id?: string | null;
+                            outcome?: string | null;
+                            actor_display?: string | null;
+                            actor_employer?: string | null;
+                            /** Format: int32 */
+                            row_hash_version?: number;
                             occurred_at: components["schemas"]["Timestamp"];
                         } & {
                             [key: string]: unknown;

@@ -13,4 +13,11 @@ export const koAccessReview: Record<keyof typeof enAccessReview, string> = {
   "accessReview.scope": "범위",
   "accessReview.period": "적용 기간",
   "accessReview.state": "상태",
+  "accessReview.stat.all": "전체 부여",
+  "accessReview.stat.enforced": "적용 중",
+  "accessReview.stat.pending": "운영 시작 대기",
+  "accessReview.detail.title": "권한 부여 검토 상세",
+  "accessReview.detail.unit": "소속",
+  "accessReview.detail.openAccount": "사람별 권한 보기",
+  "accessReview.detail.close": "닫기",
 };

@@ -59,6 +59,8 @@ test("resolveRouteTabMeta returns distinct sub-route titles in Korean and Englis
       ["/payroll/runs/new", undefined, t("shellRoutes.payrollRunNew")],
       ["/access/roles", undefined, t("shellRoutes.accessRoles")],
       ["/access/grants/bulk", undefined, t("shellRoutes.accessGrantsBulk")],
+      ["/access/review", undefined, t("accessReview.title")],
+      ["/audit", undefined, t("shellRoutes.auditLog")],
       ["/audit/access-log", undefined, t("shellRoutes.auditAccessLog")],
       ["/requests/req-1", undefined, t("shellRoutes.requestDetail")],
       ["/setup/go-live", undefined, t("shellRoutes.setupGoLive")],

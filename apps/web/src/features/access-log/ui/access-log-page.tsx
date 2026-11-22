@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { keepPreviousData, useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -25,6 +25,10 @@ import { AuditTabs } from "../../../reference/audit/ui/audit-tabs";
 import { ApiError, accessLogPages, type AccessLogEvent, type AccessLogFlag, type AccessLogPage as LogPage } from "../api";
 import { AccessLogFilterSheet } from "./access-log-filter-sheet";
 
+const AccessLogReviewSheet = lazy(() =>
+  import("./access-log-review-sheet").then(m => ({ default: m.AccessLogReviewSheet })),
+);
+
 const route = getRouteApi("/app/audit/access-log");
 const flagText = (flag: AccessLogFlag) => t(`accessLog.flag.${flag}`);
 
@@ -32,6 +36,8 @@ export function AccessLogPage() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const [filterOpen, setFilterOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewEventId, setReviewEventId] = useState<string | null>(null);
   const [selected, setSelected] = useState<AccessLogEvent | null>(null);
   const [searchText, setSearchText] = useState(search.search ?? "");
   const searchQuery = search.search ?? "";
@@ -81,8 +87,20 @@ export function AccessLogPage() {
         {!rows.length ? <EmptyState title={t(filtered ? "accessLog.noResults" : "accessLog.empty")}
           reason={t(filtered ? "accessLog.noResultsReason" : "accessLog.emptyReason")} /> : <>
           <StatRow label={t("accessLog.summary")} items={[
-            { key: "events", label: t("accessLog.all"), value: fmtNumber(page.totals.events) },
-            { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(page.totals.flagged) },
+            {
+              key: "events",
+              label: t("accessLog.all"),
+              value: fmtNumber(page.totals.events),
+              active: all,
+              onPress: () => void navigate({ search: s => ({ ...s, view: "all" }), replace: true }),
+            },
+            {
+              key: "flagged",
+              label: t("accessLog.flagged"),
+              value: fmtNumber(page.totals.flagged),
+              active: !all,
+              onPress: () => void navigate({ search: s => ({ ...s, view: undefined }), replace: true }),
+            },
           ]} />
           <LongTable label={t("accessLog.table")} rows={rows} rowId={row => row.event_id} total={all ? page.totals.events : page.totals.flagged}
             hasMore={q.hasNextPage} loadingMore={q.isFetchingNextPage} onLoadMore={() => void q.fetchNextPage()}
@@ -93,7 +111,7 @@ export function AccessLogPage() {
               { id: "subjects", header: t("accessLog.subjects"), card: "fact", type: "num", cell: row => fmtNumber(row.subject_count) },
               { id: "outcome", header: t("accessLog.outcome"), card: "status", cell: row => <Chip tone={row.outcome === "DENIED" ? "warn" : "neutral"}>{t(`accessLog.outcome.${row.outcome}`)}</Chip> },
               { id: "flags", header: t("accessLog.flags"), card: "status", cell: row => row.flags.map(flag => <Chip key={flag} tone="warn">{flagText(flag)}</Chip>) },
-              { id: "at", header: t("accessLog.at"), card: "fact", type: "date", cell: row => fmtDateTime(row.occurred_at) },
+              { id: "at", header: t("accessLog.at"), card: "fact", type: "date", width: 200, cell: row => fmtDateTime(row.occurred_at) },
             ]} />
         </>}
       </Card>;
@@ -110,14 +128,42 @@ export function AccessLogPage() {
           onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} />
         <div className="row wrap">
           <Button disabled={!first && !filterInvalid} onClick={() => setFilterOpen(true)}>{t("accessLog.chooseFilters")}</Button>
+          {Boolean(first && period) && (
+            <Button onClick={() => { setReviewEventId(null); setReviewOpen(true); }}>
+              {t("accessLog.review.open")}
+            </Button>
+          )}
           {filtered && <Button onClick={clear}>{t("accessLog.clearSearch")}</Button>}
         </div>
         {!!appliedFilters.length && <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly />}
       </div>}
     sheet={filterOpen ? <AccessLogFilterSheet key={JSON.stringify({ ...filters, period: search.period })} source={first} choices={choices} value={filters} onClose={() => setFilterOpen(false)}
       onApply={next => { setFilterOpen(false); void navigate({ search: s => ({ period: s.period, view: s.view, search: s.search, ...next }), replace: true, resetScroll: false }); }} />
-    : selected && <Sheet open title={selected.actor_name} onClose={() => setSelected(null)} consequence={null}
-      actions={<Button onClick={() => setSelected(null)}>{t("uiSheet.close")}</Button>}>
+    : reviewOpen && period ? (
+      <Suspense fallback={null}>
+        <AccessLogReviewSheet
+          period={period}
+          initialEventId={reviewEventId}
+          onClose={() => { setReviewOpen(false); setReviewEventId(null); }}
+        />
+      </Suspense>
+    ) : selected && <Sheet open title={selected.actor_name} onClose={() => setSelected(null)} consequence={null}
+      actions={<>
+        {Boolean(period) && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              const id = selected.event_id;
+              setSelected(null);
+              setReviewEventId(id);
+              setReviewOpen(true);
+            }}
+          >
+            {t("accessLog.review.recordForEvent")}
+          </Button>
+        )}
+        <Button onClick={() => setSelected(null)}>{t("uiSheet.close")}</Button>
+      </>}>
       <KeyValue readOnly items={[
         { key: "action", label: t("accessLog.action"), value: codeText(`accessLog.action.${selected.action}`, selected.action) },
         { key: "at", label: t("accessLog.at"), value: fmtDateTime(selected.occurred_at) },

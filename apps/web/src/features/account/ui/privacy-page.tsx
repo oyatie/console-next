@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { getRouteApi, Link, useParams } from "@tanstack/react-router";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { get } from "../../../lib/query";
 import { ReadReference } from "../../../lib/react/read-reference";
 import { Button } from "../../../ui/button/button-base";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue } from "../../../ui/key-value/key-value";
@@ -14,14 +14,28 @@ import { Page } from "../../../ui/page/page";
 import { RecordPattern } from "../../../ui/patterns/record";
 import { SettingsPattern } from "../../../ui/patterns/settings";
 import { ApiError, privacyReceipt, privacyRequestPages } from "../api";
+import { privacyIntakeDetailQuery, type PrivacyRightKind } from "../api/privacy-intake";
 import { PrivacyConsolePanel, PrivacySummary } from "./privacy-console-panel";
 import { PrivacyReceipt } from "./privacy-receipt";
 import { PrivacyRequest } from "./privacy-request";
 import { PrivacyRequestsView } from "./privacy-requests";
 import s from "./account.module.css";
 
+const PrivacyIntakeWorkbench = lazy(() =>
+  import("./privacy-intake-workbench").then(m => ({ default: m.PrivacyIntakeWorkbench })),
+);
+const PrivacyIntakeQueue = lazy(() =>
+  import("./privacy-intake-queue").then(m => ({ default: m.PrivacyIntakeQueue })),
+);
+const PrivacyObjectionComposer = lazy(() =>
+  import("./privacy-objection-composer").then(m => ({ default: m.PrivacyObjectionComposer })),
+);
+
+const privacyRoute = getRouteApi("/app/account/privacy");
+
 const PRIVACY_VIEWS = [
   { id: "privacy-rights", labelKey: "account.privacy.nav.rights" },
+  { id: "privacy-intake", labelKey: "account.privacy.nav.intake" },
   { id: "privacy-access-log", labelKey: "account.privacy.nav.accessLog" },
   { id: "privacy-consent", labelKey: "account.privacy.nav.consent" },
   { id: "privacy-retention", labelKey: "account.privacy.nav.retention" },
@@ -31,9 +45,21 @@ type PrivacyViewId = (typeof PRIVACY_VIEWS)[number]["id"];
 
 export function PrivacyIntake() {
   const { id } = useParams({ from: "/app/account/privacy/intake/$id" });
-  const q = useQuery(get("/api/v1/privacy/rights-requests/{id}", { params: { path: { id } } }));
-  const head = { title: t("account.privacy.intake") };
+  const q = useQuery(privacyIntakeDetailQuery(id));
+  const head = {
+    title: t("account.privacy.intake"),
+    actions: (
+      <Link to="/account/privacy" search={{ view: "intake" }} className={buttonClass()}>
+        {t("privacy.intake.backToQueue")}
+      </Link>
+    ),
+  };
   const receipt = q.data ? <PrivacyReceipt request={privacyReceipt(q.data.request, q.data.as_of)} /> : null;
+  const workbench = q.data ? (
+    <Suspense fallback={null}>
+      <PrivacyIntakeWorkbench request={q.data.request} />
+    </Suspense>
+  ) : null;
   const subjectStrip = q.data
     ? <KeyValue readOnly items={[{ key: "subject", label: t("account.privacy.subject"), value: q.data.subject_name }]} />
     : undefined;
@@ -44,9 +70,12 @@ export function PrivacyIntake() {
       head={{ ...head, meta: q.data?.request.receipt_no }}
       strip={subjectStrip}
       sections={
-        <Card title={t("account.privacy.intake")}>
-          {receipt}
-        </Card>
+        <>
+          <Card title={t("account.privacy.intake")}>
+            {receipt}
+          </Card>
+          {workbench}
+        </>
       }
       baseline={() => (
         <Page floorplan="P-01" head={head} q={q} layout="record">
@@ -54,6 +83,7 @@ export function PrivacyIntake() {
             <>
               {subjectStrip}
               {receipt}
+              {workbench}
             </>
           )}
         </Page>
@@ -63,11 +93,16 @@ export function PrivacyIntake() {
 }
 
 export function PrivacyRequests() {
+  const search = privacyRoute.useSearch();
+  const navigate = privacyRoute.useNavigate();
   const q = useInfiniteQuery(privacyRequestPages);
   const [filed, setFiled] = useState<PrivacyRightsReceipt>();
   const [selectedId, select] = useState<string | undefined>();
   const [seen, setSeen] = useState(filed);
-  const [activeView, setActiveView] = useState<PrivacyViewId>("privacy-rights");
+  const [objectionOpen, setObjectionOpen] = useState(false);
+  const [activeView, setActiveView] = useState<PrivacyViewId>(
+    search.view === "intake" ? "privacy-intake" : "privacy-rights",
+  );
   if (filed !== seen) {
     setSeen(filed);
     select(filed?.id);
@@ -104,6 +139,7 @@ export function PrivacyRequests() {
       </Button>
     </div>
   ) : null;
+  const intakeViewActive = activeView === "privacy-intake" || search.view === "intake";
 
   return (
     <SettingsPattern
@@ -120,6 +156,13 @@ export function PrivacyRequests() {
               aria-current={activeView === view.id ? "true" : undefined}
               onClick={() => {
                 setActiveView(view.id);
+                if (view.id === "privacy-intake") {
+                  void navigate({ search: { view: "intake" }, replace: true, resetScroll: false });
+                  return;
+                }
+                if (search.view === "intake") {
+                  void navigate({ search: { view: undefined }, replace: true, resetScroll: false });
+                }
                 document.getElementById(view.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
             >
@@ -129,13 +172,19 @@ export function PrivacyRequests() {
         </nav>
       }
       panel={
-        <PrivacyConsolePanel
-          items={items}
-          selectedId={selected?.id}
-          onSelect={select}
-          filingSection={filingSection}
-          loadMoreRequests={loadMoreRequests}
-        />
+        intakeViewActive ? (
+          <Suspense fallback={null}>
+            <PrivacyIntakeQueue />
+          </Suspense>
+        ) : (
+          <PrivacyConsolePanel
+            items={items}
+            selectedId={selected?.id}
+            onSelect={select}
+            filingSection={filingSection}
+            loadMoreRequests={loadMoreRequests}
+          />
+        )
       }
       record={
         selected
@@ -144,12 +193,39 @@ export function PrivacyRequests() {
               label: selected.receipt_no,
               title: selected.receipt_no,
               meta: selected.controller_label,
-              onClose: () => select(undefined),
+              onClose: () => {
+                setObjectionOpen(false);
+                select(undefined);
+              },
               returnFocus: () =>
                 document.querySelector<HTMLElement>(
                   `[data-id="${CSS.escape(selected.id)}"], [data-row-id="${CSS.escape(selected.id)}"]`,
                 ),
-              children: <PrivacyReceipt request={selected} />,
+              children: (
+                <>
+                  <PrivacyReceipt request={selected} />
+                  {selected.status.code === "DECIDED" && selected.kinds.length > 0 && (
+                    <div className={s.pad}>
+                      <Button onClick={() => setObjectionOpen(true)}>
+                        {t("privacy.intake.objectionOpen")}
+                      </Button>
+                    </div>
+                  )}
+                  {objectionOpen && (
+                    <Suspense fallback={null}>
+                      <PrivacyObjectionComposer
+                        requestId={selected.id}
+                        availableKinds={selected.kinds.map(k => k.code as PrivacyRightKind)}
+                        onClose={() => setObjectionOpen(false)}
+                        onSubmitted={() => {
+                          setObjectionOpen(false);
+                          void q.refetch();
+                        }}
+                      />
+                    </Suspense>
+                  )}
+                </>
+              ),
             }
           : null
       }

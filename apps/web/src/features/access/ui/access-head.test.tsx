@@ -36,20 +36,21 @@ test("header hides writes and counts when the owning page reports a failed read"
   expect(html).not.toContain("write");
   expect(html).not.toContain(">3<");
 });
-test("navigation distinguishes go-live checks in SETUP from access review in OPERATING while linking to /access/ready", () => {
+test("navigation distinguishes go-live checks in SETUP from access review in OPERATING", () => {
   state.failed = false;
   state.phase = "SETUP";
   const setupHtml = renderToStaticMarkup(<AccessHead />);
   for (const label of [t("access.nav.roles"), t("access.nav.grants"), t("access.nav.ready"), t("access.nav.ops")]) expect(setupHtml).toContain(label);
   expect(setupHtml).not.toContain(t("access.nav.review"));
+  expect(setupHtml).toContain('href="/access/ready"');
   expect(setupHtml).not.toContain('href="/access/review"');
 
   state.phase = "OPERATING";
   const operatingHtml = renderToStaticMarkup(<AccessHead />);
   expect(operatingHtml).toContain(t("access.nav.review"));
   expect(operatingHtml).not.toContain(t("access.nav.ready"));
-  expect(operatingHtml).toContain('href="/access/ready"');
-  expect(operatingHtml).not.toContain('href="/access/review"');
+  expect(operatingHtml).toContain('href="/access/review"');
+  expect(operatingHtml).not.toContain('href="/access/ready"');
 });
 
 test.each(["loading", "retrying", "failed", "refused", "first-failed", "first-refused"])("ops tab is absent when its read is %s, including stale data", status => {

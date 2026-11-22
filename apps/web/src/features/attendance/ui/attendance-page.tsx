@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { chunk } from "../../../lib/chunk-guard";
 import { QueryState } from "../../../lib/react/query-state";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
@@ -28,8 +29,10 @@ import { CloseTab } from "./close-tab";
 import { OvertimeTab } from "./overtime-tab";
 import styles from "./records.module.css";
 
+const ImportConsoleView = lazy(() => chunk(import("./import-console-view")).then((m) => ({ default: m.ImportConsoleView })));
+
 export type View = "calendar" | "types" | "crews" | "holidays" | "public";
-export type Tab = "month" | "day" | "week" | "schedule" | "overtime" | "issues" | "close";
+export type Tab = "month" | "day" | "week" | "schedule" | "overtime" | "issues" | "close" | "import";
 export type AttendanceSearch = { view?: View; kind?: ScopeKind; id?: string; month?: string; tab?: Tab; date?: string; wp?: string; unit?: string; person?: string; detail?: boolean; issues?: boolean; mark?: string; unscheduled?: boolean };
 
 const route = getRouteApi("/app/attendance");
@@ -63,6 +66,14 @@ export function ClosePage() {
 
 export function OvertimePage() {
   return <AttendanceLayout>{() => <OvertimeTab />}</AttendanceLayout>;
+}
+
+export function ImportPage() {
+  return (
+    <Suspense fallback={null}>
+      <ImportConsoleView baseline={() => <AttendanceLayout>{() => <CloseTab />}</AttendanceLayout>} />
+    </Suspense>
+  );
 }
 
 export function PersonPage() {

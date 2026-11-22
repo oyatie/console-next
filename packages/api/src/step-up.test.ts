@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { configure } from "./client";
-import { assertBoundPasskey, assertBoundPasskeyHash, sha256Hex } from "./step-up";
+import { assertBoundPasskey, assertBoundPasskeyHash, assertSettingsChangeStepUp, sha256Hex } from "./step-up";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -32,4 +32,37 @@ test.each(["", "a".repeat(63), "a".repeat(65), "A".repeat(64), "g".repeat(64), `
   vi.stubGlobal("fetch", fetch);
   await expect(assertBoundPasskeyHash("EXCEPTION_DECIDE", "exception", hash)).rejects.toThrow("passkey_payload_hash_invalid");
   expect(fetch).not.toHaveBeenCalled();
+});
+
+test("assertSettingsChangeStepUp binds SETTINGS_CHANGE to canonical {key,value} JSON", async () => {
+  const get = vi.fn(async () => ({ id: "cred-1" }));
+  configure({ baseUrl: "https://console.example", passkeys: { get, create: async () => null }, refresh: { kind: "cookie" } });
+  let sent: unknown;
+  vi.stubGlobal("fetch", async (input: Request | string, init?: RequestInit) => {
+    sent = await new Request(input, init).json();
+    return new Response(JSON.stringify({ ceremony_id: "cer-settings", challenge: { publicKey: { challenge: "c" } } }), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+
+  const expectedHash = await sha256Hex('{"key":"approval.policy.org_structure","value":"none"}');
+  const envelope = await assertSettingsChangeStepUp("approval.policy.org_structure", "none", null);
+  expect(sent).toEqual({
+    binding: {
+      action_kind: "SETTINGS_CHANGE",
+      object_id: "00000000-0000-0000-0000-000000000000",
+      reason_key: "passkey_step_up_settings_change",
+      replay_attempt: null,
+      payload_hash: expectedHash,
+    },
+  });
+  expect(envelope).toEqual({
+    ...(sent as object),
+    assertion: { ceremony_id: "cer-settings", credential: { id: "cred-1" } },
+  });
+
+  const settingId = "attendance.week52.warn_hours";
+  const entityEnvelope = await assertSettingsChangeStepUp(settingId, 48, "11111111-1111-4111-8111-111111111111");
+  expect(entityEnvelope.binding.object_id).toBe("11111111-1111-4111-8111-111111111111");
+  expect(entityEnvelope.binding.payload_hash).toBe(await sha256Hex(JSON.stringify({ key: settingId, value: 48 })));
 });

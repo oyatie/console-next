@@ -3,18 +3,15 @@ import type { ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button-base";
 import { Card } from "../../../ui/card/card";
-import { Chip } from "../../../ui/chip";
-import { DeadlineChip } from "../../../ui/deadline-chip/deadline-chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { StatRow } from "../../../ui/key-value/key-value";
-import { Table } from "../../../ui/table";
 import { consentQuery, myAccessLogPages } from "../api";
 import { ConsentBody } from "./consent-card";
 import { MyAccessLogBody } from "./me-access-log";
 import { PrivacyRetentionSection } from "./privacy-retention";
+import { PrivacyReceiptTable } from "./privacy-receipt-table";
 import s from "./account.module.css";
 
 export function PrivacySummary({ items }: { items: PrivacyRightsReceipt[] }) {
@@ -66,30 +63,12 @@ export function PrivacyConsolePanel({
       <div id="privacy-rights">{filingSection}</div>
       <Card title={t("account.privacy.listTitle")} flush>
         {items.length ? (
-          <Table
+          <PrivacyReceiptTable
             label={t("account.privacy.list")}
             rows={items}
-            rowId={item => item.id}
             selected={selectedId}
             onSelect={onSelect}
-            columns={[
-              { header: t("account.privacy.number"), card: "title", cell: item => item.receipt_no },
-              { header: t("account.privacy.controller"), card: "fact", cell: item => item.controller_label },
-              { header: t("account.privacy.kinds"), card: "fact", cell: item => item.kinds.map(kind => kind.label).join(" · ") },
-              { header: t("account.privacy.received"), card: "omit", cell: item => fmtDateTime(item.received_at), wide: true },
-              { header: t("account.privacy.status"), card: "status", cell: item => <Chip tone={item.status.tone}>{item.status.label}</Chip> },
-              {
-                header: t("account.privacy.due"),
-                card: "fact",
-                cell: item => (
-                  <>
-                    {item.clock && <DeadlineChip days={item.clock.days_left} severity={item.clock.severity} />}
-                    {item.without_delay && t("account.privacy.withoutDelay")}
-                    {!item.clock && !item.without_delay && t("account.privacy.noClock")}
-                  </>
-                ),
-              },
-            ]}
+            secondColumn="controller"
           />
         ) : (
           <EmptyState title={t("account.privacy.empty.title")} reason={null} />

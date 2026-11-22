@@ -12,4 +12,11 @@ export const enAccessReview = {
   "accessReview.scope": "Scope",
   "accessReview.period": "Effective period",
   "accessReview.state": "State",
+  "accessReview.stat.all": "All grants",
+  "accessReview.stat.enforced": "Enforced",
+  "accessReview.stat.pending": "Waiting for go-live",
+  "accessReview.detail.title": "Grant review details",
+  "accessReview.detail.unit": "Department",
+  "accessReview.detail.openAccount": "Open person access",
+  "accessReview.detail.close": "Close",
 } as const;

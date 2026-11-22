@@ -6,7 +6,7 @@ import { app, screen, str } from "./app";
 
 const VIEWS = ["calendar", "types", "crews", "holidays", "public"] as const;
 const KINDS = ["LEGAL_ENTITY", "WORKPLACE", "DEPARTMENT", "CREW", "PERSON"] as const;
-const TABS = ["month", "day", "week", "schedule", "overtime", "issues", "close"] as const;
+const TABS = ["month", "day", "week", "schedule", "overtime", "issues", "close", "import"] as const;
 const load = () => import("../features/attendance/ui/attendance-page");
 const Schedule = lazyRouteComponent(screen(load), "AttendancePage");
 const Month = lazyRouteComponent(screen(load), "MonthPage");
@@ -15,6 +15,7 @@ const Person = lazyRouteComponent(screen(load), "PersonPage");
 const Issues = lazyRouteComponent(screen(load), "IssuesPage");
 const Close = lazyRouteComponent(screen(load), "ClosePage");
 const Overtime = lazyRouteComponent(screen(load), "OvertimePage");
+const Import = lazyRouteComponent(screen(load), "ImportPage");
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 // attendance (decision #22): the tab (month grid by default, day board, work schedule), scope, month or day and an open person card live in
@@ -39,7 +40,7 @@ const attendance = createRoute({
   }),
   component: () => {
     const search = attendance.useSearch();
-    return createElement(search.person ? Person : search.tab === "issues" ? Issues : search.tab === "close" ? Close : (search.tab === "overtime" || search.tab === "week") ? Overtime : search.tab === "schedule" ? Schedule : search.tab === "day" ? Day : Month);
+    return createElement(search.person ? Person : search.tab === "import" ? Import : search.tab === "issues" ? Issues : search.tab === "close" ? Close : (search.tab === "overtime" || search.tab === "week") ? Overtime : search.tab === "schedule" ? Schedule : search.tab === "day" ? Day : Month);
   },
 });
 

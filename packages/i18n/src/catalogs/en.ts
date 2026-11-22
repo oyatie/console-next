@@ -7,6 +7,7 @@ import { enPrivacyRefusals } from "./en/privacy";
 import { enLeave } from "./en/leave";
 import { enOrgChangeRefusals } from "./en/org_change";
 import { enPayroll } from "./en/payroll";
+import { enPayrollRun } from "./en/payroll-run";
 import { enPayslip } from "./en/payslip";
 import { enUiShiftBar } from "./en/ui-shift-bar";
 import { enNts } from "./en/nts";
@@ -265,7 +266,7 @@ export const en = {
   ...enEmpDoc,
   ...enPeopleJump,
   ...enOpsRecovery,
-  ...enNts, ...enPayroll, ...enPayslip,
+  ...enNts, ...enPayroll, ...enPayrollRun, ...enPayslip,
   ...enCommon,
   ...enSupport,
   ...enSupportAccess,

@@ -115,6 +115,8 @@ export const enEnum = {
   "enum.stepUpAction.PII_RECORD": "Record resident registration number",
   "enum.stepUpAction.SUPPORT_SESSION": "Support access",
   "enum.stepUpAction.OPERATOR_RECOVERY": "Operator recovery",
+  "enum.stepUpAction.PRIVACY_REQUEST": "Privacy rights filing",
+  "enum.stepUpAction.PRIVACY_REQUEST_DECIDE": "Privacy rights decision",
   "enum.unknown": "Unrecognized value",
   "enum.leaveType.CHILDCARE": "Childcare",
   "enum.leaveType.MATERNITY": "Maternity",

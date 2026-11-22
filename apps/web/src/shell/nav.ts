@@ -37,7 +37,7 @@ export const TENANT_NAV: readonly NavHub[] = [
   ] },
   { hub: "shell.hub.admin", links: [
     { to: "/access", label: "shell.link.access", icon: KeyRound, module: "access" },
-    { to: "/audit/support-access", label: "shell.link.audit", icon: FileText, supportApproval: true },
+    { to: "/audit", label: "shell.link.audit", icon: FileText, supportApproval: true },
     { to: "/settings", label: "shell.link.settings", icon: Settings, views: SETTINGS_VIEWS },
   ] },
 ];
@@ -46,22 +46,26 @@ export const PLATFORM_NAV: readonly NavHub[] = [{ hub: "shell.hub.platform", lin
 /** Served destinations use their own requirement; readiness remains a server fact. */
 export function tenantNav(access: AccessEffective | undefined, routes: Routes, supportApproval = false,
   { phase, setupTargets, modules }: NavContext = { pathname: "/" }) {
-  const shown = (link: NavLink) => {
-    if (!routes[link.to]) return false;
-    if (link.to === "/") return true;
-    if (!access) return false;
-    if (link.requireReadiness && !modules) return false;
-    if (modules !== undefined && link.module && !moduleReady(modules, link.module)) return false;
+  const expand = (link: NavLink): readonly NavLink[] => {
+    const hasPrimary = !!routes[link.to];
+    const auditFallback = link.to === "/audit" && link.supportApproval && supportApproval && routes["/audit/support-access"];
+    if (!hasPrimary && !auditFallback) return [];
+    if (link.to === "/") return [link];
+    if (!access) return [];
+    if (link.requireReadiness && !modules) return [];
+    if (modules !== undefined && link.module && !moduleReady(modules, link.module)) return [];
     if (phase === "SETUP") {
       // Keep S1's safe destinations if the checklist is unavailable; readiness can narrow them further.
       const targets = setupTargets ?? ["/org", "/people", "/access"];
-      if (!targets.some(to => to === link.to || to.startsWith(link.to + "/"))) return false;
+      if (!targets.some(to => to === link.to || to.startsWith(link.to + "/"))) return [];
     }
-    if (link.supportApproval) return supportApproval;
     const need = routes[link.to]?.options.staticData?.access;
-    return need === "signed-in" || !!need && accessRefusal(access, need) === null;
+    const allowedPrimary = hasPrimary && (need === "signed-in" || !!need && accessRefusal(access, need) === null);
+    if (allowedPrimary) return [link];
+    if (auditFallback) return [{ ...link, to: "/audit/support-access" }];
+    return [];
   };
-  return TENANT_NAV.map(g => ({ ...g, links: g.links.filter(shown) })).filter(g => g.links.length);
+  return TENANT_NAV.map(g => ({ ...g, links: g.links.flatMap(expand) })).filter(g => g.links.length);
 }
 
 type RailAnswer = { access: AccessEffective; supportApproval: boolean; context: NavContext };

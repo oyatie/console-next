@@ -1,23 +1,28 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
+import { chunk } from "../../../lib/chunk-guard";
 import { todayKst } from "../../../lib/pure/today";
+import { useCommand } from "../../../lib/react/command";
 import { readGroup } from "../../../lib/react/query-view";
 import { branchesQuery } from "../../../reference/org/api";
-import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import { ListRecord } from "../../../ui/patterns/list-record";
 import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
-import { closesQuery, type AttendanceMonthCloseItem } from "../api";
+import { closesQuery, preflightClose, type AttendanceMonthCloseItem, type ClosePreflight } from "../api";
 import { AttendanceTabNav } from "./attendance-head";
+import { CloseConsoleActions } from "./close-console-actions";
 import { PeriodStepper } from "./period-stepper";
 import { ScopePicker } from "./scope-picker";
 import s from "./attendance-console.module.css";
+
+const CloseConfirmSheet = lazy(() => chunk(import("./close-console-sheets")).then((m) => ({ default: m.CloseConfirmSheet })));
+const CloseAmendSheet = lazy(() => chunk(import("./close-console-sheets")).then((m) => ({ default: m.CloseAmendSheet })));
 
 const route = getRouteApi("/app/attendance");
 
@@ -28,6 +33,8 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
   const board = useQuery(closesQuery(month, search.wp));
   const branches = useQuery(branchesQuery);
   const [selectedScope, setSelectedScope] = useState<string>();
+  const [preflightByScope, setPreflightByScope] = useState<Record<string, ClosePreflight>>({});
+  const [sheet, setSheet] = useState<"confirm" | "amend" | null>(null);
   const go = (patch: Record<string, unknown>) => void navigate({ search: prev => ({ ...prev, ...patch }) });
 
   const combined = readGroup([board, branches]);
@@ -39,6 +46,29 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
       : places.find(place => place.id === scope)?.name ?? t("attendance.close.unavailable");
 
   const selectedRow = items.find(r => r.branch_scope === selectedScope);
+  const preflightKey = selectedRow ? `${month}:${selectedRow.branch_scope}` : "";
+  const activePreflight = preflightKey ? (preflightByScope[preflightKey] ?? null) : null;
+
+  const runPreflight = useCommand({
+    run: async (branchScope: string) => {
+      const res = await preflightClose(month, branchScope);
+      setPreflightByScope((prev) => ({ ...prev, [`${month}:${branchScope}`]: res }));
+      return res;
+    },
+  });
+
+  const openConfirm = async () => {
+    if (!selectedRow) return;
+    if (!activePreflight) {
+      try {
+        await runPreflight.mutateAsync(selectedRow.branch_scope);
+      } catch {
+        return;
+      }
+    }
+    setSheet("confirm");
+  };
+
   const hasLocks = items.some(row => row.close?.period_lock_id);
   const closedCount = items.filter(r => r.closed).length;
   const openCount = items.length - closedCount;
@@ -195,21 +225,42 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
                       />
                     </RecordPaneSection>
                   ) : null}
-                  {selectedRow.close?.period_lock_id ? (
-                    <div className={s.paneActions}>
-                      <Link
-                        to="/people/period-locks"
-                        search={{ unlock: selectedRow.close.period_lock_id }}
-                        className={buttonClass("secondary", { size: "sm", className: s.nowrap })}
-                      >
-                        {t("attendanceRecords.month.requestUnlock")}
-                      </Link>
-                    </div>
-                  ) : null}
+                  <CloseConsoleActions
+                    row={selectedRow}
+                    activePreflight={activePreflight}
+                    preflightError={runPreflight.error}
+                    preflightPending={runPreflight.isPending}
+                    onRunPreflight={() => runPreflight.mutate(selectedRow.branch_scope)}
+                    onOpenConfirm={() => {
+                      void openConfirm();
+                    }}
+                    onOpenAmend={() => setSheet("amend")}
+                  />
                 </div>
               ),
             }
           : null
+      }
+      overlays={
+        sheet && selectedRow ? (
+          <Suspense fallback={null}>
+            {sheet === "confirm" ? (
+              <CloseConfirmSheet
+                month={month}
+                branchScope={selectedRow.branch_scope}
+                scopeLabel={placeName(selectedRow.branch_scope)}
+                preflight={activePreflight}
+                onClose={() => setSheet(null)}
+              />
+            ) : selectedRow.close ? (
+              <CloseAmendSheet
+                closeId={selectedRow.close.id}
+                scopeLabel={placeName(selectedRow.branch_scope)}
+                onClose={() => setSheet(null)}
+              />
+            ) : null}
+          </Suspense>
+        ) : undefined
       }
       statusSegments={
         board.data

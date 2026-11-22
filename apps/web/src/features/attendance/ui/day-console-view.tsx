@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useId, useMemo, useState } from "react";
+import { lazy, Suspense, useId, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { chunk } from "../../../lib/chunk-guard";
 import { ATTENDANCE_MARK } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { useOnline } from "../../../lib/react/use-online";
@@ -34,6 +35,8 @@ import { useDrafts } from "./use-drafts";
 import { usePlanKinds } from "./use-plan-kinds";
 import s from "./attendance-console.module.css";
 
+const SubstitutionsSheet = lazy(() => chunk(import("./substitutions-sheet")).then((m) => ({ default: m.SubstitutionsSheet })));
+
 const route = getRouteApi("/app/attendance");
 
 export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }) {
@@ -53,6 +56,7 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
   const [open, setOpen] = useState<{ id: string; own: boolean } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [assign, setAssign] = useState<AssignTarget | null>(null);
+  const [subsOpen, setSubsOpen] = useState(false);
   const go = (patch: Record<string, unknown>) => void navigate({ search: x => ({ ...x, ...patch }) });
 
   const drafts = Object.keys(store.drafts).length;
@@ -129,6 +133,9 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
                 saveButton
               )
             ) : null}
+            <Button size="sm" variant="secondary" className={s.nowrap} onClick={() => setSubsOpen(true)}>
+              {t("attendance.sub.openButton")}
+            </Button>
             <Button size="sm" variant="secondary" className={s.nowrap} onClick={() => window.print()}>
               {t("attendance.dayConsole.print")}
             </Button>
@@ -142,6 +149,10 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
             onClose={() => setAssign(null)}
             onAssigned={message => (setAssign(null), setNote(message))}
           />
+        ) : subsOpen ? (
+          <Suspense fallback={null}>
+            <SubstitutionsSheet date={date} branchId={search.wp} onClose={() => setSubsOpen(false)} />
+          </Suspense>
         ) : undefined
       }
       statusSegments={
