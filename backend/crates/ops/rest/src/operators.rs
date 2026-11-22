@@ -25,7 +25,7 @@ struct RawOperator {
     grants: Vec<Grant>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Grant {
     pub action: String,

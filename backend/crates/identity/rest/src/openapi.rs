@@ -19,9 +19,13 @@ pub const OPENAPI_FRAGMENT: Fragment = Fragment {
 const EXTERNAL_SCHEMAS: &[&str] = &[
     "ActorKind",
     "AuditLastChange",
+    "Certificate",
+    "CertificatePage",
+    "ChangeRequest",
     "Date",
     "ErrorBody",
     "FieldError",
+    "KrAddress",
     "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",
@@ -835,6 +839,26 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/certificates",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__me__certificates.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__v1__me__certificates.post.yaml"),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/me/certificates/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__me__certificates__id.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/employee-views",
         operations: &[
             Operation {
@@ -846,6 +870,33 @@ const PATHS: &[PathItem] = &[
                 body: include_str!("../openapi/paths/api__v1__me__employee-views.post.yaml"),
             },
         ],
+    },
+    PathItem {
+        path: "/api/v1/me/profile",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__me__profile.get.yaml"),
+            },
+            Operation {
+                method: "patch",
+                body: include_str!("../openapi/paths/api__v1__me__profile.patch.yaml"),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/me/profile/change-requests",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__me__profile__change-requests.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/profile/reveal",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__me__profile__reveal.post.yaml"),
+        }],
     },
     PathItem {
         path: "/api/v1/me/workbench",
@@ -1609,6 +1660,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/MeAuthzResponse.yaml"),
     },
     NamedYaml {
+        name: "MeProfileResponse",
+        body: include_str!("../openapi/schemas/MeProfileResponse.yaml"),
+    },
+    NamedYaml {
         name: "MobilePasskeyStepUpStartRequest",
         body: include_str!("../openapi/schemas/MobilePasskeyStepUpStartRequest.yaml"),
     },
@@ -1919,6 +1974,38 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SelfBindingWithdrawRequest",
         body: include_str!("../openapi/schemas/SelfBindingWithdrawRequest.yaml"),
+    },
+    NamedYaml {
+        name: "CreateSelfChangeRequest",
+        body: include_str!("../openapi/schemas/CreateSelfChangeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfChangeRequestSummary",
+        body: include_str!("../openapi/schemas/SelfChangeRequestSummary.yaml"),
+    },
+    NamedYaml {
+        name: "SelfEmergencyContactInput",
+        body: include_str!("../openapi/schemas/SelfEmergencyContactInput.yaml"),
+    },
+    NamedYaml {
+        name: "SelfEmergencyContactSummary",
+        body: include_str!("../openapi/schemas/SelfEmergencyContactSummary.yaml"),
+    },
+    NamedYaml {
+        name: "SelfFieldRevealed",
+        body: include_str!("../openapi/schemas/SelfFieldRevealed.yaml"),
+    },
+    NamedYaml {
+        name: "SelfIssueCertificateRequest",
+        body: include_str!("../openapi/schemas/SelfIssueCertificateRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfRevealRequest",
+        body: include_str!("../openapi/schemas/SelfRevealRequest.yaml"),
+    },
+    NamedYaml {
+        name: "UpdateMeProfileRequest",
+        body: include_str!("../openapi/schemas/UpdateMeProfileRequest.yaml"),
     },
     NamedYaml {
         name: "SetAccessRoleStatusRequest",

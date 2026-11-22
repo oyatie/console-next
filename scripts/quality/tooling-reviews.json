@@ -10317,6 +10317,7 @@
     "securityProcess": "https://github.com/facebook/react/security/policy",
     "ruleMapping": "Preserve listed call-site contracts, error handling, wire formats and target/features.",
     "approvedUsers": [
+      "@console/ops",
       "@console/web"
     ],
     "architectureRecord": "docs/architecture/frontend-module-map.md",
@@ -10349,6 +10350,10 @@
       }
     },
     "approvedUses": [
+      {
+        "layer": "web: UI",
+        "user": "@console/ops"
+      },
       {
         "layer": "web: UI",
         "user": "@console/web"
@@ -10423,10 +10428,15 @@
     "approvedUses": [
       {
         "layer": "web: UI",
+        "user": "@console/ops"
+      },
+      {
+        "layer": "web: UI",
         "user": "@console/web"
       }
     ],
     "approvedUsers": [
+      "@console/ops",
       "@console/web"
     ],
     "architectureRecord": "docs/architecture/frontend-module-map.md",

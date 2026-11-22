@@ -37,11 +37,14 @@ test("supports boxed variant, showCurrent=false, and custom accessible group lab
     onChange: () => {},
     variant: "boxed",
     showCurrent: false,
+    disablePrev: true,
+    disableNext: false,
     label: "Payroll period",
   };
   const html = renderToStaticMarkup(<PeriodStepper {...props} />);
   expect(html).toContain('role="group"');
   expect(html).toContain('aria-label="Payroll period"');
   expect(html).toContain('data-variant="boxed"');
+  expect(html).toContain("disabled");
   expect(html).not.toContain(t("attendance.period.thisMonth"));
 });

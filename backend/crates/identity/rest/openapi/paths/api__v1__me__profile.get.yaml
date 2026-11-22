@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [me]
+operationId: getMyProfile
+summary: Authenticated employee's masked self-service profile
+description: >
+  Returns the caller's own masked personal details, employment metadata,
+  address administrative summary, boolean bank-account registration flag,
+  and open profile-correction requests. Requires Cedar employee_self_read on
+  the caller's linked employee record.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Masked self-service profile.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/MeProfileResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Caller has no linked employee or employee_self_read is denied.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    $ref: '#/components/responses/NotFound'

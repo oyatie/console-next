@@ -11,6 +11,7 @@ mod evidence;
 mod grammar;
 mod issues;
 mod long_spans;
+mod month_grid_summary;
 mod recognition_reads;
 mod save;
 mod security;

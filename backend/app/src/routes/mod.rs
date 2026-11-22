@@ -108,6 +108,15 @@ impl<'a> TenantDeps<'a> {
             DatabaseDependency::NotConfigured => PgOntologyStore::new(pool.clone()),
         };
         let leave_store = {
+            #[cfg(feature = "attendance")]
+            let store = PgLeaveStore::with_work_calendar(
+                pool.clone(),
+                Arc::new(PgInboxStore::new(pool.clone())),
+                Arc::new(
+                    crate::wiring::leave_calendar::AttendanceWorkCalendarPort::new(pool.clone()),
+                ),
+            );
+            #[cfg(not(feature = "attendance"))]
             let store = PgLeaveStore::new(pool.clone(), Arc::new(PgInboxStore::new(pool.clone())));
             match &state.leave_command_database {
                 DatabaseDependency::Postgres(command_pool) => {

@@ -1,3 +1,3 @@
 type: object
 required: [month, rows, people_total]
-properties: { month: { type: string }, rows: { type: array, items: { $ref: '#/components/schemas/AttendanceGridRow' } }, people_total: { type: integer }, next_cursor: { type: string, nullable: true } }
+properties: { month: { type: string }, rows: { type: array, items: { $ref: '#/components/schemas/AttendanceGridRow' } }, people_total: { type: integer }, next_cursor: { type: string, nullable: true }, work_pattern_summary: { type: string, nullable: true }, summary: { $ref: '#/components/schemas/AttendanceMonthGridSummary', nullable: true } }

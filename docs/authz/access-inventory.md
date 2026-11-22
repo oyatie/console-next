@@ -78,7 +78,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/identity/rest/src/context.rs | reference | 1 |
 | BranchScope | backend/crates/identity/rest/src/me/authz.rs | reference | 17 |
 | BranchScope | backend/crates/identity/rest/src/me/platform.rs | reference | 2 |
-| BranchScope | backend/crates/identity/rest/src/me/routes.rs | reference | 2 |
 | BranchScope | backend/crates/identity/rest/src/metrics.rs | reference | 6 |
 | BranchScope | backend/crates/identity/rest/src/policy/assignments.rs | reference | 4 |
 | BranchScope | backend/crates/identity/rest/src/policy/delegation.rs | reference | 16 |

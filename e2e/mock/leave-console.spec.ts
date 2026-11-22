@@ -15,7 +15,10 @@ import {
   saeonHeroToken,
   saeonHeroUser,
   saeonLeaveRequestView,
+  saeonMyLeaveApprovalPreview,
   saeonMyLeaveOverview,
+  saeonMyLeaveTeamOverlap,
+  saeonUniverse,
 } from "./saeon";
 import { mockScreen } from "./screen";
 
@@ -107,6 +110,14 @@ async function setupLeaveMock(
     if (state === "refused") return { status: 403, json: failure("forbidden") };
     return { status: 200, json: overview };
   });
+  await mockRoute(page, "get", "/api/v2/me/leave/team-overlap", {
+    status: 200,
+    json: saeonMyLeaveTeamOverlap(),
+  });
+  await mockRoute(page, "get", "/api/v2/me/leave/approval-preview", {
+    status: 200,
+    json: saeonMyLeaveApprovalPreview(),
+  });
 
   return {
     fixture,
@@ -146,6 +157,14 @@ for (const width of [1440, 390] as const) {
         await expect(dateInputs).toHaveCount(2);
         await expect(dateInputs.nth(0)).toHaveValue(fmtDateShortWeekday(DRAFT_DATE));
         await expect(dateInputs.nth(1)).toHaveValue(fmtDateShortWeekday(DRAFT_DATE));
+
+        await expect(form).toContainText(t("leave.teamOverlap.label"));
+        await expect(form).toContainText(saeonUniverse.attendanceMonth.members[7]!.name);
+        await expect(form).toContainText(t("leave.approval.label"));
+        await expect(form).toContainText(`${saeonUniverse.attendanceMonth.members[0]!.name} ${saeonUniverse.roles.TEAM_LEAD}`);
+        await expect(form).toContainText(t("leave.approval.branchHr"));
+        await expect(form).not.toContainText("TEAM_LEAD");
+        await expect(form).not.toContainText("Approver");
 
         await expect(form).toContainText(t("leave.history.title"));
         await expect(form).toContainText(`${t("leave.type.halfAm")} · ${t("leave.balance.days", { days: "0.5" })}`);
@@ -338,9 +357,13 @@ test("Console /leave reverts short-weekday DateInput on blur without edit, fetch
       t("leave.meter.valueText", { accrued: "15", used: "5.5", pending: "6", after: "3.5" }),
     );
 
-    // Invalid input re-focus then blur without typing must preserve draft, aria-invalid, and alert.
+    // Invalid input Enter must immediately surface [role="alert"] and aria-invalid without waiting for blur,
+    // and re-focus + blur without typing must preserve draft, aria-invalid, and alert.
     await endInput.focus();
     await endInput.fill("not-a-date");
+    await endInput.press("Enter");
+    await expect(endInput).toHaveAttribute("aria-invalid", "true");
+    await expect(form.getByRole("alert")).toBeVisible();
     await endInput.blur();
     await expect(endInput).toHaveValue("not-a-date");
     await expect(endInput).toHaveAttribute("aria-invalid", "true");
@@ -448,9 +471,25 @@ test("Console /leave state sweep: loading, home_branch_required, failed (503 + r
       await submit.click();
       await expect(form.getByRole("alert")).toContainText(t("leave.failed.homeBranchRequired"));
 
+      reply = { status: 409, json: failure("leave_overlapping_request") };
+      await submit.click();
+      await expect(form.getByRole("alert")).toContainText(t("common.failed.code.leave_overlapping_request"));
+
+      reply = { status: 409, json: failure("leave_period_closed") };
+      await submit.click();
+      await expect(form.getByRole("alert")).toContainText(t("common.failed.code.leave_period_closed"));
+
       reply = { status: 422, json: failure("invalid_date_range") };
       await submit.click();
       await expect(form.getByRole("alert")).toContainText(t("leave.failed.invalidRange"));
+
+      // 403/503 on overlap & approval-preview degrade gracefully without blocking submission.
+      await mockRoute(page, "get", "/api/v2/me/leave/team-overlap", { status: 403, json: failure("forbidden") });
+      await mockRoute(page, "get", "/api/v2/me/leave/approval-preview", { status: 503, json: failure("service_unavailable") });
+      await page.reload();
+      await expect(form).toContainText(t("leave.teamOverlap.unavailable"));
+      await expect(form).toContainText(t("leave.approval.unavailable"));
+      await expect(form.getByRole("button", { name: t("leave.submit"), exact: true })).toBeEnabled();
 
       expect(submitCtx.fixture.unexpected).toEqual([]);
     } finally {

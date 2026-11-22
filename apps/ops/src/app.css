@@ -1,0 +1,201 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+@import "@console/tokens/tokens.css";
+@import "@console/tokens/experiences/console.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-system);
+  font-size: var(--text-body);
+  font-weight: var(--fw-body);
+  line-height: var(--lh-base);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+:where(a) {
+  color: inherit;
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  text-decoration-line: var(--link-decoration);
+  text-underline-offset: 0.2em;
+}
+
+:where(a:hover, a:focus-visible) {
+  text-decoration-line: underline;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip {
+  position: absolute;
+  left: var(--space-2);
+  top: calc(-1 * var(--space-6) * 2);
+  z-index: var(--z-sheet);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.skip:focus {
+  top: var(--space-2);
+}
+
+[data-surface="chrome"] {
+  --canvas: var(--chrome);
+  --surface: var(--chrome);
+  --muted: var(--chrome-hover);
+  --surface-2: var(--chrome-raised);
+  --surface-rest: var(--chrome);
+  --surface-hover: var(--chrome-hover);
+  --surface-pressed: var(--chrome-hover);
+  --surface-selected: var(--chrome-raised);
+  --border: var(--chrome-border);
+  --border-soft: var(--chrome-border);
+  --border-strong: var(--chrome-border);
+  --control-border: var(--chrome-control-border);
+  --control-selected: var(--chrome-raised);
+  --on-control-selected: var(--on-chrome);
+  --control-selected-border: var(--chrome-accent);
+  --ink: var(--on-chrome);
+  --steel: var(--on-chrome-muted);
+  --faint: var(--on-chrome-muted);
+  --primary: var(--chrome-accent);
+  --primary-hover: var(--chrome-accent);
+  --primary-soft: var(--chrome-raised);
+  --primary-bd: var(--chrome-control-border);
+  --on-primary: var(--chrome);
+  --warn-bg: var(--chrome-warn-bg);
+  --warn-bd: var(--chrome-warn-bd);
+  --warn-tx: var(--chrome-attention);
+  --danger-bg: var(--chrome-danger-bg);
+  --danger-bd: var(--chrome-danger-bd);
+  --danger-tx: var(--chrome-danger);
+  --danger-solid: var(--chrome-danger-solid);
+  --on-danger: var(--chrome-on-danger);
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+  color-scheme: var(--chrome-scheme);
+  background: var(--chrome);
+  color: var(--on-chrome);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  min-height: var(--control-h);
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--control-text);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--surface-hover);
+}
+
+.btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn--primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn--ghost:hover {
+  background: var(--surface-hover);
+}
+
+.btn--sm {
+  min-height: var(--target);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.btn[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.field-input {
+  height: var(--field-h-toolbar);
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+@layer {
+  [data-react-aria-pressable] {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+}
+
+@layer {
+  .overlay,
+  .overlay * {
+    overscroll-behavior: contain;
+  }
+}

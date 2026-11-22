@@ -17,6 +17,26 @@ export async function accountReads(page: Page, state: AccountState) {
   await mockRoute(page, "get", "/api/v1/onboarding/terms", { status: 200, json: { ...document, body: "이용 약관", privacy: { ...document, title: "개인정보 처리 안내", body: "개인정보 처리 안내 전문", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false } } });
   await mockRoute(page, "get", "/api/v1/tenant/ops-recovery", { status: 200, json: { request: null, state: null, recovery_available: false, ops_has_passkey: true, ops_enrolled: true, second_operator_available: false, active_accounts: 1, hold_hours: 24, code_ttl_minutes: 10 } });
   await mockRoute(page, "get", "/api/v1/me/access-log", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v1/me/profile", {
+    status: 200,
+    json: {
+      employee_id: id(1),
+      employee_number: null,
+      org_unit: null,
+      grade: null,
+      position: null,
+      hire_date: null,
+      employment_status: "ACTIVE",
+      phone_masked: null,
+      emergency_contacts_registered: false,
+      emergency_contacts_count: 0,
+      emergency_contacts: [],
+      address_masked: null,
+      bank_account_registered: false,
+      open_change_requests: [],
+    },
+  });
+  await mockRoute(page, "get", "/api/v1/me/certificates", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v2/me/leave", { status: 200, json: { balance: { employee_id: id(1), name: user.display_name, accrued_units: "15", used_units: "5.5", remaining_units: "9.5", filing_state: "ready", home_branch_id: id(4) }, requests: { items: [], next_cursor: null } } });
   await mockRoute(page, "get", "/api/v1/me/inbox-docs", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/change-requests", { status: 200, json: { items: [], total: 0, limit: 10, offset: 0 } });

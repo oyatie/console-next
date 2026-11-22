@@ -6,10 +6,15 @@ mod facts;
 mod precondition;
 mod read;
 mod seal;
+pub mod self_service;
+mod self_service_issue;
 mod settings;
 mod validation;
 
 pub use precondition::{CertificatePrecondition, CertificatePreconditionQuery};
+pub use self_service::{
+    SelfCertificateKind, SelfCertificateListQuery, SelfIssueCertificateRequest,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 pub use settings::{CertificateSettings, CertificateSettingsRequest, CertificateSettingsView};

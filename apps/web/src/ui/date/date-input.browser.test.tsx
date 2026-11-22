@@ -155,3 +155,15 @@ test("short-weekday DateInput keeps edit format on Enter while focused and forma
   await outside.focus();
   await expectElement(input).toHaveValue(fmtDateShortWeekday("2026-11-23"));
 });
+
+test("short-weekday DateInput surfaces alert immediately on Enter for invalid draft", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}date-test?short`);
+  const input = page.getByRole("textbox", { name: t("leave.date.start") });
+  const alert = page.getByRole("alert");
+
+  await input.focus();
+  await input.fill("not-a-date");
+  await input.press("Enter");
+  await expectElement(input).toHaveAttribute("aria-invalid", "true");
+  await expectElement(alert).toBeVisible();
+});

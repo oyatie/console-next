@@ -52,8 +52,11 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const month = search.month ?? todayKst().slice(0, 7);
   const days = useMemo(() => daysOf(month), [month]);
   const grid = useInfiniteQuery({ ...monthGridPages(month, search.wp, search.unit), placeholderData: keepPreviousData });
+  const firstPage = grid.data?.pages[0];
   const rows: GridRow[] = useMemo(() => grid.data?.pages.flatMap((p) => p.rows) ?? [], [grid.data]);
-  const total = grid.data?.pages[0]?.people_total ?? 0;
+  const total = firstPage?.people_total ?? 0;
+  const workPatternSummary = firstPage?.work_pattern_summary ?? null;
+  const serverSummary = firstPage?.summary;
   const monthState = useMemo(() => pageState(rows.map((r) => r.month_state)), [rows]);
   const store = useDrafts(`${month}:${search.wp ?? ""}:${search.unit ?? ""}`, rows);
   const online = useOnline();
@@ -104,7 +107,23 @@ export function MonthTab({ head }: { head?: ReactNode }) {
     </Button>
   );
 
-  const summary = useMemo(() => summarizeMonth(rows, total, days), [rows, total, days]);
+  const summary = useMemo(() => {
+    const local = summarizeMonth(rows, total, days);
+    if (!serverSummary) return local;
+    return {
+      ...local,
+      scheduledDays: serverSummary.scheduled_days,
+      weekdayHolidays: serverSummary.weekday_holidays,
+      recognisedMinutes: serverSummary.recognised_minutes,
+      outsideMinutes: serverSummary.outside_minutes,
+      unapprovedMinutes: serverSummary.unapproved_minutes,
+      blockingCount: serverSummary.blocking_count,
+      decisionCount: serverSummary.decision_count,
+      overtimePeopleCount: serverSummary.overtime_people_count,
+      // Keep filterMonthRows(..., "issues") parity when rows include LATE/ABSENT info marks.
+      issuePeopleCount: Math.max(serverSummary.issue_people_count, local.issuePeopleCount),
+    };
+  }, [rows, total, days, serverSummary]);
   const filteredRows = useMemo(() => filterMonthRows(rows, filter), [rows, filter]);
   const openIssues = useMemo(() => extractOpenIssues(rows), [rows]);
   const openIssue = (item: OpenIssueRow) => {
@@ -196,6 +215,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
       filter={filter}
       onFilter={setFilter}
       summary={summary}
+      workPatternSummary={workPatternSummary}
       openIssues={openIssues}
       draftCount={drafts.length}
       refusedDraftCount={bad.length}

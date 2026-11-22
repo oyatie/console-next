@@ -72,7 +72,31 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   // An opened 업무함 record reads its item's activity; a spec that cares overrides this empty answer.
   await mockRoute(page, "get", "/api/v1/me/action-inbox/items/{id}/activity", { status: 200, json: { items: [] } });
   await mockRoute(page, "get", "/api/v1/me/access-log", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v1/me/profile", {
+    status: 200,
+    json: {
+      employee_id: id(1),
+      employee_number: null,
+      org_unit: null,
+      grade: null,
+      position: null,
+      hire_date: null,
+      employment_status: "ACTIVE",
+      phone_masked: null,
+      emergency_contacts_registered: false,
+      emergency_contacts_count: 0,
+      emergency_contacts: [],
+      address_masked: null,
+      bank_account_registered: false,
+      open_change_requests: [],
+    },
+  });
+  await mockRoute(page, "get", "/api/v1/me/certificates", { status: 200, json: { items: [], next_cursor: null } });
+  await mockRoute(page, "get", "/api/v1/me/certificates/{id}", { status: 404, json: failure("not_found") });
+  await mockRoute(page, "get", "/api/v1/ref/address-search", { status: 200, json: { status: "OK", items: [], total: 0 } });
   await mockRoute(page, "get", "/api/v2/me/leave", { status: 200, json: { balance: { employee_id: id(1), name: user.display_name, accrued_units: "15", used_units: "5.5", remaining_units: "9.5", filing_state: "ready", home_branch_id: id(4) }, requests: { items: [], next_cursor: null } } });
+  await mockRoute(page, "get", "/api/v2/me/leave/team-overlap", { status: 200, json: { org_unit: null, active_count: 0, out_count: 0, members_out: [] } });
+  await mockRoute(page, "get", "/api/v2/me/leave/approval-preview", { status: 200, json: { filing_state: "ready", home_branch_id: id(4), branch_name: null, org_unit: null, steps: [] } });
   await mockRoute(page, "get", "/api/v1/me/inbox-docs", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/change-requests", { status: 200, json: { items: [], total: 0, limit: 10, offset: 0 } });
   await mockRoute(page, "get", "/api/v1/change-requests/counts", { status: 200, json: { all: 0, me: 0, role: 0 } });

@@ -8,6 +8,7 @@ import { PagePhoneHeader } from "../../../ui/page/page-scope";
 import {
   consentDocumentsQuery,
   consentQuery,
+  meProfileQuery,
   meQuery,
   myAccessLogQuery,
   myChangeRequestsQuery,
@@ -16,6 +17,7 @@ import {
   operatorMeQuery,
   passkeysQuery,
   tenantRecoveryQuery,
+  ApiError,
 } from "../api";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { MePage } from "./me-page";
@@ -34,12 +36,34 @@ const state = vi.hoisted(() => ({
     employee_company: "Saeon Precision",
     employee_org_unit: "Prod Team 1",
     employee_position: "Lead",
+    employee_grade: "Senior Staff",
+    employee_hire_date: "2019-03-14",
+    employee_employment_status: "ACTIVE",
     employee_link_status: "LINKED" as "LINKED" | "UNLINKED",
     phone: "010-1234-4821",
     is_tenant_ops: false,
     has_passkey: true,
     account_status: "ACTIVE",
     tenant: { name: "Saeon Group", phase: "OPERATING", go_live_at: "2026-01-01T00:00:00Z" },
+  },
+  profileError: null as unknown,
+  profile: {
+    employee_id: "e1",
+    employee_number: "10587",
+    org_unit: "Prod Team 1",
+    grade: "Senior Staff",
+    position: "Lead",
+    hire_date: "2019-03-14",
+    employment_status: "ACTIVE",
+    phone_masked: "010-••••-4821",
+    emergency_contacts_registered: true,
+    emergency_contacts_count: 1,
+    emergency_contacts: [{ name: "Seoyeong", relation: "SPOUSE", phone_masked: "010-••••-9012" }],
+    address_masked: "Gyeonggi Pyeongtaek Godeok-dong",
+    bank_account_registered: true,
+    open_change_requests: [
+      { id: "cr1", field: "address", status: "OPEN", masked_summary: "Gyeonggi Pyeongtaek Godeok-dong", created_at: "2026-11-02T02:00:00Z" },
+    ],
   },
   accessLogItems: [
     {
@@ -76,6 +100,7 @@ vi.mock("../../../experience/dom", () => ({
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
+  useLocation: () => "/account",
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <div data-href={to}>{children}</div>,
 }));
 
@@ -97,6 +122,12 @@ vi.mock("@tanstack/react-query", async original => {
       }
       if (q === meQuery || q === operatorMeQuery || q?.queryFn === meQuery.queryFn || q?.queryFn === operatorMeQuery.queryFn) {
         return { data: state.me, isPending: false, isSuccess: true, error: null, refetch: vi.fn() };
+      }
+      if (q === meProfileQuery || q?.queryFn === meProfileQuery.queryFn) {
+        if (state.profileError) {
+          return { data: undefined, isPending: false, isSuccess: false, isError: true, error: state.profileError, refetch: vi.fn() };
+        }
+        return { data: state.profile, isPending: false, isSuccess: true, isError: false, error: null, refetch: vi.fn() };
       }
       if (q === myAccessLogQuery || q?.queryFn === myAccessLogQuery.queryFn) {
         return { data: { items: state.accessLogItems, next_cursor: null }, isPending: false, isSuccess: true, error: null, refetch: vi.fn() };
@@ -132,6 +163,7 @@ afterEach(() => {
   state.experience = "console";
   state.platform = false;
   state.me.employee_link_status = "LINKED";
+  state.profileError = null;
 });
 
 function renderMe(shellOwnsH1 = false) {
@@ -158,14 +190,19 @@ test("MePage keeps baseline Card rendering unaltered and switches to PhoneHub in
   expect(consoleDesktop).toContain('data-pattern="phone-hub"');
   expect(consoleDesktop).toContain(`>${t("shell.profile")}</h1>`);
   expect(consoleDesktop).toContain("Hajun Yun");
-  expect(consoleDesktop).toContain("Lead");
+  expect(consoleDesktop).toContain(t("enum.employeeStatus.ACTIVE"));
+  expect(consoleDesktop).toContain("Senior Staff · Lead");
   expect(consoleDesktop).toContain("10587");
   expect(consoleDesktop).toContain("Prod Team 1");
+  expect(consoleDesktop).toContain("2019-03-14");
+  expect(consoleDesktop).toContain(t("account.hub.certificates"));
   expect(consoleDesktop).toContain(t("account.hub.leaveRemaining", { days: 9.5 }));
   expect(consoleDesktop).toContain(fmtMonth("2026-10"));
-  expect(consoleDesktop).toContain("010-1234-4821");
-  expect(consoleDesktop).toContain(t("empCard.f.address"));
-  expect(consoleDesktop).toContain("Godeok-dong, Pyeongtaek");
+  expect(consoleDesktop).toContain("010-••••-4821");
+  expect(consoleDesktop).toContain(t("account.selfEdit.emergency"));
+  expect(consoleDesktop).toContain(t("account.selfEdit.address"));
+  expect(consoleDesktop).toContain("Gyeonggi Pyeongtaek Godeok-dong");
+  expect(consoleDesktop).toContain(t("account.selfEdit.bankAccount"));
   expect(consoleDesktop).toContain(t("account.selfEdit.correctionPending"));
   expect(consoleDesktop).toContain(t("account.selfEdit.viewProgress"));
   expect(consoleDesktop).toContain(
@@ -192,6 +229,12 @@ test("MePage adapts cleanly for unlinked tenant and platform vendor accounts", (
   expect(vendor).toContain(t("account.field.platform"));
   expect(vendor).not.toContain(t("account.access.title"));
   expect(vendor).not.toContain("/account/privacy");
+
+  state.platform = false;
+  state.me.employee_link_status = "LINKED";
+  state.profileError = new ApiError(403, "forbidden", "");
+  const refused = renderMe(false);
+  expect(refused).toContain(t("account.selfEdit.refused.title"));
 });
 
 test("MyAccessCard uses DS Card without legacy raw .toolbar classes", () => {
