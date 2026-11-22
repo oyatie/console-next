@@ -8,8 +8,25 @@ export function githubSlug(heading: string): string {
   return out;
 }
 
+function stripAngleBracketTags(input: string): string {
+  let out = "";
+  let i = 0;
+  while (i < input.length) {
+    if (input[i] === "<") {
+      const close = input.indexOf(">", i + 1);
+      if (close !== -1) {
+        i = close + 1;
+        continue;
+      }
+    }
+    out += input[i] ?? "";
+    i += 1;
+  }
+  return out;
+}
+
 export function cleanHeadingText(raw: string): string {
-  return raw.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/`/g, "").replace(/<[^>]*>/g, "");
+  return stripAngleBracketTags(raw.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/`/g, ""));
 }
 
 export function extractSafeAnchorIds(line: string): string[] {

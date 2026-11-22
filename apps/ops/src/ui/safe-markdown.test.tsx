@@ -3,13 +3,20 @@ import { createMemoryHistory, createRootRoute, createRoute, createRouter, Router
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { githubSlug, isSafeScheme } from "../lib/markdown";
+import { cleanHeadingText, githubSlug, isSafeScheme } from "../lib/markdown";
 import { SafeMarkdown } from "./safe-markdown";
 
 describe("SafeMarkdown XSS neutralization and anchor slug parity", () => {
   test("githubSlug matches backend domain/src/runbook.rs slugification", () => {
     expect(githubSlug("Incident Triage & Rollback")).toBe("incident-triage--rollback");
     expect(githubSlug("Step 1: Verify_DB-01")).toBe("step-1-verify_db-01");
+  });
+
+  test("cleanHeadingText strips links, backticks, and nested/split HTML tags without reforming tags", () => {
+    expect(cleanHeadingText('<a id="sec"></a> [Step 1](/alerts) `api`')).toBe(" Step 1 api");
+    const nested = cleanHeadingText("<scr<script>ipt>Heading</script>");
+    expect(nested).not.toContain("<");
+    expect(nested).toContain("Heading");
   });
 
   test("isSafeScheme rejects javascript, data, vbscript, case-variant /API, and %2e traversal URIs", () => {
