@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { CalendarDays, Settings } from "lucide-react";
+import { Banknote, CalendarDays, Settings } from "lucide-react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { session } from "@console/api";
 import { i18n, t } from "@console/i18n";
@@ -44,12 +44,9 @@ const StalenessBar = lazy(() => chunk(import("../../ui/live/staleness-bar")).the
 function tabIconForHref(href: string, allLinks: readonly NavLink[]): ReactNode {
   const cut = href.search(/[?#]/);
   const path = (cut === -1 ? href : href.slice(0, cut)) || "/";
-  if (path === "/leave") {
-    return <CalendarDays size={14} aria-hidden="true" />;
-  }
-  if (path === "/account" || path.startsWith("/account/")) {
-    return <Settings size={14} aria-hidden="true" />;
-  }
+  if (path === "/leave") return <CalendarDays size={14} aria-hidden="true" />;
+  if (path === "/payslips") return <Banknote size={14} aria-hidden="true" />;
+  if (path === "/account" || path.startsWith("/account/")) return <Settings size={14} aria-hidden="true" />;
   const matchedHref = path === "/" || path === "/inbox" ? "/" : activeLink(path, allLinks);
   const Icon =
     (matchedHref ? allLinks.find(link => link.to === matchedHref)?.icon : undefined) ??
@@ -105,6 +102,7 @@ function ConsoleLayout({
 
   const currentTitle = useMemo(() => {
     if (pathname === "/leave") return t("leave.title");
+    if (pathname === "/payslips") return t("shell.title.payslip");
     if (pathname === "/account" || pathname.startsWith("/account/")) return t("shell.profile");
     const matched = allLinks.find(link => link.to === currentModuleTo);
     if (matched) return t(matched.label);
@@ -166,8 +164,8 @@ function ConsoleLayout({
     .filter(Boolean)
     .join(" ");
   const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
-  const phoneActiveId = pathname === "/leave"
-    ? "/leave"
+  const phoneActiveId = pathname === "/leave" || pathname === "/payslips"
+    ? pathname
     : pathname === "/account" || pathname.startsWith("/account/")
       ? "/account"
       : currentModuleTo;

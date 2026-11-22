@@ -41,12 +41,12 @@
   background: var(--surface);
 }
 
-:where([data-experience]:not([data-experience="baseline"])) .frame[data-pattern="form"] {
+:where([data-experience]:not([data-experience="baseline"])) .frame:is([data-pattern="form"], [data-pattern="phone-statement"]) {
   background: var(--canvas);
 }
 
 @media (--phone) {
-  :where([data-experience]:not([data-experience="baseline"])) .frame[data-pattern="form"] {
+  :where([data-experience]:not([data-experience="baseline"])) .frame:is([data-pattern="form"], [data-pattern="phone-statement"]) {
     background: var(--surface);
   }
 

@@ -58,7 +58,7 @@ export default defineConfig({
   fullyParallel: true,
   grepInvert: process.env.E2E_PERF === "1" ? undefined : perfTag,
   // Separate profiles own short-TTL sessions and backend-free screen state proofs.
-  testIgnore: [/live-renew\.server-expiry\.spec\.ts$/, /\/(coldstart|mock|states)\//, /\/layout\/layout\.spec\.ts$/, /\/perf\/.*\.test\.ts$/, ...(xbrowser ? [/visual\.spec\.ts/] : [])],
+  testIgnore: [/live-renew\.server-expiry\.spec\.ts$/, /\/(coldstart|mock|ops|states)\//, /\/layout\/layout\.spec\.ts$/, /\/perf\/.*\.test\.ts$/, ...(xbrowser ? [/visual\.spec\.ts/] : [])],
   workers: Number(process.env.E2E_WORKERS ?? (process.env.CI ? 2 : 4)),
   // Every run records its passing tests' durations, which scripts/e2e-slot.mjs plans shards from. A sharded
   // e2e:agent run passes the caller's --reporter as E2E_REPORTER and collects one blob per job to merge.

@@ -6,7 +6,25 @@ import types from "./long-table/column-types.module.css";
 import { rowStep } from "./long-table/row-keys";
 
 /** `width` reserves a stable share for live content; `fit` shrinks the column to its content (codes, dates, chips); `wide` hides it at phone widths (secondary detail). */
-export type Column<R> = CardColumn & { header: ReactNode; cell: (r: R) => ReactNode; type?: ColumnType; fit?: boolean; width?: "code" | "status" | "summary" | "datetime" };
+export type Column<R> = CardColumn & {
+  header: ReactNode;
+  cell: (r: R) => ReactNode;
+  type?: ColumnType;
+  fit?: boolean;
+  width?: "code" | "status" | "summary" | "datetime";
+  emphasis?: "strong";
+  cellTone?: (r: R) => "danger" | "warn" | "ok" | undefined;
+};
+type TableColumnGroup = { key: string; label?: ReactNode; span: number };
+type TableFooterCell = {
+  key: string;
+  content: ReactNode;
+  span?: number;
+  type?: ColumnType;
+  emphasis?: "strong";
+  card?: "label" | "value" | "meta" | "omit";
+};
+type TableFooterRow = { key?: string; cells: readonly TableFooterCell[] };
 const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide && "wide-only"].filter(Boolean).join(" ") || undefined;
 
 /**
@@ -18,7 +36,7 @@ const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide &&
  * Bounded lists use this native table; headcount lists use LongTable's server paging and virtualization.
  * Read states belong to the surrounding QueryState boundary; it removes content after a server refusal.
  */
-export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOpen, tone, detail, groups, density, mobileLayout }: {
+export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOpen, tone, detail, groups, columnGroups, footerRow, scrollLayout, density, mobileLayout, tableClassName, groupedStyles }: {
   label: string;
   rows: R[];
   columns: Column<R>[];
@@ -29,9 +47,14 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
   tone?: (r: R) => "danger" | "warn" | undefined;
   detail?: (r: R) => ReactNode;
   groups?: { id: string; header: ReactNode; rows: R[] }[];
+  columnGroups?: readonly TableColumnGroup[];
+  footerRow?: TableFooterRow;
+  scrollLayout?: "auto" | "fixed";
   density?: "regular" | "compact";
   /** Override the automatic phone layout: rows preserve column alignment, cards keep inline forms in view, compact draws 2-line operational rows. */
   mobileLayout?: "cards" | "rows" | "compact";
+  tableClassName?: string;
+  groupedStyles?: { groupRow?: string; groupCell?: string; groupBlank?: string; footerRow?: string };
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -104,11 +127,14 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
         tabIndex={onSelect ? (id === current ? 0 : -1) : undefined}
         aria-selected={onSelect ? id === selected : undefined}
         onFocus={onSelect && (() => setActive(id))}
-        onClick={onSelect && (() => onSelect(id))}
+        onClick={onSelect && (e => {
+          if (e.target instanceof HTMLElement && e.target.closest('label.check, input[type="checkbox"]')) return;
+          onSelect(id);
+        })}
       >
         {columns.map((c, i) => {
           const value = c.cell(r);
-          return <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-type={c.type} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined} title={typeof value === "string" ? value : undefined}>{value}</td>;
+          return <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-type={c.type} data-emphasis={c.emphasis} data-cell-tone={c.cellTone?.(r)} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined} title={typeof value === "string" ? value : undefined}>{value}</td>;
         })}
       </tr>
       {more != null && more !== false && (
@@ -119,12 +145,22 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
       </Fragment>
     );
   });
+  const fixedTyped = columns.some(c => c.type) && scrollLayout !== "auto";
   const table = (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Overflowing read-only tables without focusable cells need keyboard scroll access.
-    <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : compactOnPhone ? cards.compact : cards.short} ${cards.surface} ${types.surface} ${types.native}`} data-typed={columns.some(c => c.type) || undefined} data-density={density} data-compact-rows={compactOnPhone || undefined} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
+    <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : compactOnPhone ? cards.compact : cards.short} ${cards.surface} ${types.surface} ${types.native}${tableClassName ? ` ${tableClassName}` : ""}`} data-typed={columns.some(c => c.type) || undefined} data-scroll-layout={scrollLayout} data-density={density} data-compact-rows={compactOnPhone || undefined} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
       <caption className="sr-only">{label}</caption>
-      {columns.some(c => c.type) && <colgroup>{columns.map((c, i) => <col key={i} className={cls(c)} ref={el => { if (el) el.style.width = widths[i] ?? ""; }} />)}</colgroup>}
+      {fixedTyped && <colgroup>{columns.map((c, i) => <col key={i} className={cls(c)} ref={el => { if (el) el.style.width = widths[i] ?? ""; }} />)}</colgroup>}
       <thead>
+        {columnGroups?.length ? (
+          <tr className={groupedStyles?.groupRow}>
+            {columnGroups.map(g => (
+              g.label != null
+                ? <th key={g.key} scope="colgroup" colSpan={g.span} className={groupedStyles?.groupCell}>{g.label}</th>
+                : <td key={g.key} colSpan={g.span} className={groupedStyles?.groupBlank} aria-hidden="true" />
+            ))}
+          </tr>
+        ) : null}
         <tr>{columns.map((c, i) => <th key={i} scope="col" className={cls(c)} data-type={c.type} data-width={c.width}>{c.header}</th>)}</tr>
       </thead>
       {groups ? groups.map(g => (
@@ -133,6 +169,17 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
           {renderRows(g.rows)}
         </tbody>
       )) : <tbody>{renderRows(rows)}</tbody>}
+      {footerRow && footerRow.cells.length > 0 && (
+        <tfoot>
+          <tr key={footerRow.key ?? "footer"} className={groupedStyles?.footerRow}>
+            {footerRow.cells.map((cell, i) => (
+              i === 0
+                ? <th key={cell.key} scope="row" colSpan={cell.span} data-type={cell.type} data-emphasis={cell.emphasis} data-card={cell.card}>{cell.content}</th>
+                : <td key={cell.key} colSpan={cell.span} data-type={cell.type} data-emphasis={cell.emphasis} data-card={cell.card}>{cell.content}</td>
+            ))}
+          </tr>
+        </tfoot>
+      )}
     </table>
   );
   return (
