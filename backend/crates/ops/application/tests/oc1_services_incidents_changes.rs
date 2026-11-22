@@ -232,7 +232,7 @@ fn incidents_changes_and_promote_services_produce_expected_views_and_cmds() -> T
             PublicUpdateDraft {
                 stage: PublicDraftStage::Component(PublicComponent::DegradedPerformance),
                 components: vec!["api".into()],
-                message_ko: "점검 중".into(),
+                message_ko: "Investigating issue".into(),
                 message_en: "Investigating".into(),
                 rev: 1,
             },

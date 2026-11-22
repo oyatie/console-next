@@ -193,13 +193,13 @@ fn gate_statement_and_dora5_and_status_v2_and_drill_validate_inputs() -> TestRes
         },
         "incidents": [{
             "id": "ST-0001",
-            "title": {"ko": "점검", "en": "Check"},
+            "title": {"ko": "Service check", "en": "Check"},
             "started_at": "2026-11-20T00:00:00Z",
             "report_url": null,
             "updates": [{
                 "n": 1,
                 "at": "2026-11-20T00:00:00Z",
-                "text": {"ko": "확인 중", "en": "Investigating"},
+                "text": {"ko": "Investigating issue", "en": "Investigating"},
                 "stage": "investigating",
                 "components": {"api": "degraded"},
                 "next_update_by": null,

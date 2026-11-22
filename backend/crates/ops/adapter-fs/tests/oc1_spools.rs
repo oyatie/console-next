@@ -197,7 +197,7 @@ fn application_sha256_group_key_matches_sha2_crate_digest() {
         ("HighLatency", "api"),
         ("A×B", "C"),
         ("Watchdog", "obs"),
-        ("LongAlertNameWithUnicode한글", "alertgroup-1"),
+        ("LongAlertNameWithUnicode_éα", "alertgroup-1"),
     ] {
         let got = console_ops_application::alerts_eval::compute_group_key(name, comp);
         let expected = hex::encode(&Sha256::digest(format!("{name}|{comp}").as_bytes())[..4]);
