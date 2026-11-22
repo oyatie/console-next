@@ -6,7 +6,10 @@ import { loadCatalog, t } from "@console/i18n";
 import { BulkPage } from "./bulk-page";
 
 const state = vi.hoisted(() => ({ pending: true }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { entities: [] } }) }));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: { entities: [] } }),
+  useInfiniteQuery: () => ({ data: state.pending ? undefined : { pages: [{ items: [], limit: 100, offset: 0, total: 0 }] }, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: vi.fn() }),
+}));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: ReactNode }) => <>{children}</> }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({ isPending: false, error: null }) }));
 vi.mock("./use-access-context", () => ({ useAccessContext: () => ({

@@ -25,12 +25,14 @@
       "src/features/entity/ui/entity-record.tsx",
       "src/features/entity/ui/entity-wizard.tsx",
       "src/features/people/ui/register-export.tsx",
-      "src/features/people/ui/roster-console-panel.tsx"
+      "src/features/people/ui/roster-console-panel.tsx",
+      "src/ui/qr-code/qr-code.tsx"
     ],
     "routes": [
       "src/features/access-log/ui/access-log-page.tsx",
       "src/features/access/ui/access-routes.tsx",
       "src/features/access/ui/access-review-page.tsx",
+      "src/features/account/ui/privacy-page.tsx",
       "src/features/approvals/ui/approvals-page.tsx",
       "src/features/attendance/ui/attendance-page.tsx",
       "src/features/company-domain/ui/domain-page.tsx",

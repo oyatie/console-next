@@ -54,3 +54,25 @@ for (const locale of ["ko", "en"] as const) test(`a generic read failure gives R
     expect(readFailureText(error)).toBe(`${t("common.read.failedReason")} ${t("common.failed.retryAfter", { seconds: "2" })}`);
   } finally { i18n.set("ko"); }
 });
+
+test.each(["ko", "en"] as const)("all six platform operator error codes resolve localized copy in %s", async (locale) => {
+  await loadCatalog(locale);
+  i18n.set(locale);
+  try {
+    const cases = [
+      [409, "login_taken"],
+      [409, "operator_id_taken"],
+      [409, "operator_already_revoked"],
+      [409, "operator_already_enrolled"],
+      [403, "cannot_revoke_self"],
+      [409, "last_platform_operator"],
+    ] as const;
+    for (const [status, code] of cases) {
+      const text = failureText(new ApiError(status, code, code));
+      expect(text).toBeTruthy();
+      expect(text).not.toBe(code);
+    }
+  } finally {
+    i18n.set("ko");
+  }
+});

@@ -52,6 +52,8 @@ test("the screens drawn through built patterns declare them, and no other route 
   );
   const declared = Object.fromEntries(routes.flatMap(route => route.options.staticData?.pattern ? [[route.fullPath, route.options.staticData.pattern]] : []));
   expect(declared).toEqual({
+    "/login": "sign-in",
+    "/setup-passkey": "sign-in",
     "/": "worklist",
     "/inbox": "worklist",
     "/leave": "form",
@@ -61,6 +63,9 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/approvals/$approvalId": "document-decision",
     "/attendance": "month-grid",
     "/account": "phone-hub",
+    "/account/privacy": "settings",
+    "/account/privacy/intake/$id": "record",
+    "/settings": "settings",
     "/_review/patterns/list-record": "list-record",
     "/_review/patterns/worklist": "worklist",
     "/_review/patterns/record": "record",

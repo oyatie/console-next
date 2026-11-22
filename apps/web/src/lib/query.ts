@@ -106,6 +106,24 @@ export const cursorRead = <T>(path: string, query: object, queryFn: (cursor: str
 export const cursorPages = <P extends Gettable>(path: P, query: object) => cursorRead<Data<P>>(path, query, cursor =>
   unwrap(api.GET(path, { params: { query: { ...query, cursor } } } as never)) as Promise<Data<P>>);
 
+/**
+ * Offset-paginated list GET (`offset` + `limit` in, `{ items, offset, total }` out) as an infinite query.
+ * Keyed apart from the plain GET ("offset").
+ */
+export const offsetRead = <T extends { offset: number; items: readonly unknown[]; total: number }>(
+  path: string,
+  query: object,
+  queryFn: (offset: number) => Promise<T>,
+) => ({
+  queryKey: [path, { query }, "offset"] as const,
+  queryFn: ({ pageParam }: { pageParam: number }) => queryFn(pageParam),
+  initialPageParam: 0,
+  getNextPageParam: (last: T) =>
+    last.items.length > 0 && last.offset + last.items.length < last.total
+      ? last.offset + last.items.length
+      : undefined,
+});
+
 /** A query descriptor's cache entry was invalidated by a command since it was last read (it re-reads on next use). */
 export const isInvalidated = (qc: QueryClient, q: { queryKey: readonly unknown[] }) => qc.getQueryState(q.queryKey)?.isInvalidated ?? false;
 

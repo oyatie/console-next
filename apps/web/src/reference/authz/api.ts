@@ -54,7 +54,7 @@ export const authzApplies = () => !session.claims?.platform;
 // each line with its caveats. My access, the person-access view and every refused screen read it.
 export type AccessEffective = components["schemas"]["AccessEffective"];
 export type AccessEffectiveEntry = components["schemas"]["AccessEffectiveEntry"];
-export const myAccessQuery = { ...get("/api/v1/access/me"), refetchOnMount: "always" as const };
+export const myAccessQuery = get("/api/v1/access/me");
 export const accountAccessQuery = (accountId: string) => ({
   ...get("/api/v1/access/accounts/{accountId}/effective", { params: { path: { accountId } } }),
   refetchOnMount: "always" as const,

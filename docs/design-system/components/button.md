@@ -307,6 +307,7 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | Token | Read by |
 | --- | --- |
 | `--border` | `border` |
+| `--border-strong` | `border-color` |
 | `--control-border` | `border-color` |
 | `--control-h` | `min-height`, `width` |
 | `--control-h-lg` | `min-height`, `width` |
@@ -314,9 +315,11 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | `--danger-bg` | `background` |
 | `--danger-solid` | `background`, `border-color` |
 | `--danger-tx` | `background`, `border-color`, `color` |
+| `--faint` | `color` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
 | `--ink` | `color` |
+| `--muted` | `background` |
 | `--on-danger` | `color` |
 | `--on-primary` | `color` |
 | `--primary` | `background`, `border-color`, `color` |
@@ -324,7 +327,7 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-lg` | `border-radius` |
-| `--space-1` | `gap`, `min-height` |
+| `--space-1` | `border-radius`, `gap`, `min-height` |
 | `--space-2` | `gap`, `padding`, `padding-inline` |
 | `--space-3` | `padding` |
 | `--space-6` | `min-height` |

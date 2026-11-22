@@ -1,7 +1,7 @@
 {
   "baseline": {
     "apps/web/src/features/access/ui/access-routes.tsx#BulkScreen": 70,
-    "apps/web/src/features/access/ui/access-routes.tsx#GrantsScreen": 107,
+    "apps/web/src/features/access/ui/access-routes.tsx#GrantsScreen": 106,
     "apps/web/src/features/access/ui/access-routes.tsx#PersonScreen": 99,
     "apps/web/src/features/access/ui/access-routes.tsx#ReadyScreen": 14,
     "apps/web/src/features/access/ui/access-routes.tsx#RoleNewScreen": 31,

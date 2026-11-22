@@ -206,6 +206,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn[data-pending="true"] { cursor: progress; }
 /* A primary whose pick is missing stays focusable and readable (spec R9, ER-14): soft fill, dashed border, full contrast. */
 .btn--primary[aria-disabled="true"]:not([data-pending="true"]) { opacity: 1; border-style: dashed; border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+:where([data-experience]:not([data-experience="baseline"])) :is(.btn[disabled], .btn[aria-disabled="true"]):not([data-pending="true"]):not(.btn--ghost),
+:where([data-experience]:not([data-experience="baseline"])) :is(.btn[disabled], .btn[aria-disabled="true"]):not([data-pending="true"]):not(.btn--ghost):hover {
+  opacity: 1;
+  border-style: solid;
+  border-color: var(--border-strong);
+  background: var(--muted);
+  color: var(--faint);
+}
+:where([data-experience]:not([data-experience="baseline"])) :is(.btn--ghost[disabled], .btn--ghost[aria-disabled="true"]):not([data-pending="true"]),
+:where([data-experience]:not([data-experience="baseline"])) :is(.btn--ghost[disabled], .btn--ghost[aria-disabled="true"]):not([data-pending="true"]):hover {
+  opacity: 1;
+  border-color: transparent;
+  background: transparent;
+  color: var(--faint);
+}
 /* ToggleButton look="chip": a filter as a pill (kit .optchip); pressed takes the shared pressed look above. */
 .btn--chip { min-height: calc(var(--space-6) - var(--space-1)); padding: 0 var(--space-2) 0 var(--space-3); border-color: var(--control-border); border-radius: calc(var(--radius-lg) * 10); background: var(--surface); font-size: var(--text-sm); font-weight: var(--fw-body); white-space: nowrap; }
 .btn--chip[aria-pressed="true"] { font-weight: var(--fw-medium); }
@@ -395,3 +410,81 @@ aside.panel { position: sticky; top: 0; }
    injection. shortcut: the id follows react-aria's injection guard, revisit when upgrading react-aria. */
 @layer { [data-react-aria-pressable] { touch-action: pan-x pan-y pinch-zoom; } }
 @layer { .overlay, .overlay * { overscroll-behavior: contain; } }
+
+/* ── console access pages ──────────────────────────── */
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] {
+  gap: 0;
+  background: var(--surface);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header {
+  padding-top: var(--space-2);
+  gap: var(--space-1);
+  background: var(--surface);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header > :not(nav) {
+  padding-inline: var(--space-4);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header > nav {
+  padding-inline: var(--space-1);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header:not([data-tabs]) {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-subhead] {
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-subhead] h2 {
+  font-size: var(--text-lg);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > section,
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] :is([data-access-split], [role="tabpanel"]) :is(section, aside.card) {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid var(--border);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] [data-access-split] {
+  gap: 0;
+  align-items: stretch;
+  flex: 1 1 auto;
+  --access-split-inline: 1px solid var(--border-strong);
+  --access-split-block: 0;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] [data-access-split] > :is(section, aside.card):not(:first-child):last-child {
+  border-bottom: 0;
+  border-inline-start: var(--access-split-inline);
+  border-block-start: var(--access-split-block);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] td a:not(:hover):not(:focus-visible) {
+  text-decoration-line: none;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] .btn--chip {
+  border-radius: var(--space-1);
+  padding: 0 var(--space-3);
+}
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-page] {
+    padding-bottom: var(--space-4);
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-page] [data-access-split] {
+    flex: 0 0 auto;
+    align-content: start;
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header > nav {
+    padding-inline: var(--space-2);
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-subhead] {
+    padding: var(--space-1-5) var(--space-4);
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-split] > section > :first-child {
+    min-height: var(--row-h);
+    padding-block: var(--space-1);
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-split] > section > :nth-child(2):not([data-flush]) {
+    padding-block: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+}

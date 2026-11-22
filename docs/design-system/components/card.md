@@ -285,7 +285,9 @@ draw the same surface for hand-written markup:
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `border` |
+| `--access-split-block` | `border-block-start` |
+| `--access-split-inline` | `border-inline-start` |
+| `--border` | `border`, `border-bottom` |
 | `--radius-lg` | `border-radius` |
 | `--shadow` | `box-shadow` |
 | `--space-3` | `gap` |
