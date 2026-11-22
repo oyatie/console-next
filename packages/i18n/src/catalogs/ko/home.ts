@@ -151,7 +151,7 @@ export const koHome: Record<keyof typeof enHome, string> = {
   "home.inbox.source.governance": "운영 검토",
   "home.worklist.statutoryOnly": "법정 기한만",
   "home.worklist.statutoryBadge": "법정",
-  "home.worklist.find": "업무함에서 찾기",
+  "home.worklist.find": "업무함 검색",
   "home.worklist.columns": "열 설정",
   "home.worklist.col.remaining": "남은 기간",
   "home.worklist.col.task": "업무",

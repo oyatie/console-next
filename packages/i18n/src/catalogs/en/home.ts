@@ -148,7 +148,7 @@ export const enHome = {
   "home.inbox.source.governance": "Governance",
   "home.worklist.statutoryOnly": "Statutory deadlines only",
   "home.worklist.statutoryBadge": "Statutory",
-  "home.worklist.find": "Find in inbox",
+  "home.worklist.find": "Search inbox",
   "home.worklist.columns": "Columns",
   "home.worklist.col.remaining": "Remaining",
   "home.worklist.col.task": "Work item",

@@ -188,6 +188,38 @@ for (const width of [1440, 390]) {
         await expect(worklist.locator(".card")).toHaveCount(0);
         await expect(table.getByRole("list", { name: t("approvals.preview.route"), exact: true })).toHaveCount(0);
         await expect(table.locator(`tbody tr[data-id="AP-2026-0419"]`)).toContainText(t("approvals.source.leave"));
+        const kpiStrip = worklist.locator(`dl[aria-label="${t("approvals.console.kpiLabel")}"]`);
+        await expect(kpiStrip).toBeVisible();
+        await expect(kpiStrip.getByRole("button")).toHaveCount(6);
+
+        if (width === 1440) {
+          const initialSidePane = page.locator('aside[data-pane="record"]');
+          await expect(initialSidePane).toBeVisible();
+          await expect(initialSidePane).toContainText(`${t("home.worklist.selectedMeta")} · ${saeonUniverse.approval.documentNumber}`);
+          await expect(initialSidePane).toContainText(saeonUniverse.approval.title);
+          const relatedHeading = initialSidePane.getByRole("heading", { level: 3, name: t("approvals.related.title"), exact: true });
+          const approveBtn = initialSidePane.getByRole("button", { name: t("composer.verb.approve"), exact: true });
+          const rejectBtn = initialSidePane.getByRole("button", { name: t("uiApprovalCard.reject"), exact: true });
+          await expect(relatedHeading).toBeVisible();
+          await expect(approveBtn).toBeVisible();
+          await expect(rejectBtn).toBeVisible();
+          const paneScrollBox = await initialSidePane.locator('[tabindex="0"]').first().boundingBox();
+          const relatedBox = await relatedHeading.boundingBox();
+          const relatedLastLinkBox = await initialSidePane.getByRole("link", { name: new RegExp(t("approvals.openSource")) }).boundingBox();
+          const approveBox = await approveBtn.boundingBox();
+          const rejectBox = await rejectBtn.boundingBox();
+          expect(paneScrollBox).not.toBeNull();
+          expect(relatedBox).not.toBeNull();
+          expect(relatedLastLinkBox).not.toBeNull();
+          expect(approveBox).not.toBeNull();
+          expect(rejectBox).not.toBeNull();
+          expect(relatedBox!.y + relatedBox!.height).toBeLessThanOrEqual(paneScrollBox!.y + paneScrollBox!.height + 1);
+          expect(relatedLastLinkBox!.y + relatedLastLinkBox!.height).toBeLessThanOrEqual(paneScrollBox!.y + paneScrollBox!.height + 1);
+          expect(approveBox!.y + approveBox!.height).toBeLessThanOrEqual(876);
+          expect(rejectBox!.y + rejectBox!.height).toBeLessThanOrEqual(876);
+        } else {
+          await expect(page.locator('aside[data-pane="record"]')).toHaveCount(0);
+        }
 
         if (width === 390) {
           const rowHeights = await table.locator("tbody tr[data-id]").evaluateAll(rows =>
@@ -235,6 +267,17 @@ for (const width of [1440, 390]) {
         await closeBtn.click();
         await expect(sidePane).toHaveCount(0);
         await expect(targetRow).toBeFocused();
+
+        if (width === 1440) {
+          await kpiStrip.getByRole("button", { name: t("approvals.source.leave"), exact: true }).click();
+          await expect(table.locator("tbody tr[data-id]")).toHaveCount(1);
+          await expect(table.locator('tbody tr[data-id="AP-2026-0419"]')).toBeVisible();
+          await expect(sidePane).toBeVisible();
+          await expect(sidePane).toContainText("AP-2026-0419");
+          await kpiStrip.getByRole("button", { name: t("approvals.console.all"), exact: true }).click();
+          await expect(table.locator("tbody tr[data-id]")).toHaveCount(6);
+          await expect(sidePane).toContainText(saeonUniverse.approval.documentNumber);
+        }
         expect(fixture.unexpected).toEqual([]);
       } finally {
         fixture.release();
@@ -659,5 +702,144 @@ test("Console /approvals/$approvalId DocQueueStepper avoids multi-query concaten
     } finally {
       fixture.release();
     }
+  }
+});
+
+test("Console /approvals KPI tile transitions work from category source -> needs-check -> all", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fixture } = await setupConsoleApprovals(page, "light");
+  await mockRoute(page, "get", "/api/v1/approvals", request => {
+    const query = new URL(request.url()).searchParams;
+    const box = (query.get("box") ?? "pending") as Parameters<typeof saeonApprovalsPage>[0];
+    const base = saeonApprovalsPage(box, {
+      q: query.get("q") ?? undefined,
+      source: query.get("source") ?? undefined,
+    });
+    return {
+      status: 200,
+      json: {
+        ...base,
+        items: base.items.map(item =>
+          item.id === "AP-2026-0419" || item.id === "AP-2026-0420"
+            ? { ...item, decision_refusal: "org_change.refuse.identity_unbound" }
+            : item,
+        ),
+      },
+    };
+  });
+  try {
+    await page.goto("/approvals");
+    const worklist = page.locator('[data-pattern="worklist"]');
+    const table = worklist.getByRole("grid", { name: t("approvals.list"), exact: true });
+    const kpiStrip = worklist.locator(`dl[aria-label="${t("approvals.console.kpiLabel")}"]`);
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(6);
+
+    await kpiStrip.getByRole("button", { name: t("approvals.source.leave"), exact: true }).click();
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(1);
+    await expect(table.locator('tbody tr[data-id="AP-2026-0419"]')).toBeVisible();
+
+    const needsCheckBtn = kpiStrip.getByRole("button", { name: t("approvals.console.needsCheck"), exact: true });
+    await needsCheckBtn.click();
+    await expect(needsCheckBtn).toHaveAttribute("aria-pressed", "true");
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(2);
+    await expect(table.locator('tbody tr[data-id="AP-2026-0419"]')).toBeVisible();
+    await expect(table.locator('tbody tr[data-id="AP-2026-0420"]')).toBeVisible();
+
+    await kpiStrip.getByRole("button", { name: t("approvals.console.all"), exact: true }).click();
+    await expect(needsCheckBtn).toHaveAttribute("aria-pressed", "false");
+    await expect(table.locator("tbody tr[data-id]")).toHaveCount(6);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
+});
+
+test("Console /approvals keeps .paneBody readable and .paneFooter scrollable on 409 REJECT at 1280x720 and 1366x768", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 1366, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const { fixture } = await setupConsoleApprovals(page, "light", "ko", { staleOnFirst: true });
+    try {
+      await page.goto("/approvals");
+      const sidePane = page.locator('aside[data-pane="record"]');
+      await expect(sidePane).toBeVisible();
+      await sidePane.getByRole("button", { name: t("uiApprovalCard.reject"), exact: true }).click();
+      await sidePane.getByRole("radio", { name: t("reason.org_change_reject.POLICY_VIOLATION"), exact: true }).press("Space");
+      const commit = sidePane.getByRole("button", { name: t("uiApprovalCard.reject"), exact: true });
+      await commit.scrollIntoViewIfNeeded();
+      await commit.click();
+
+      await expect(sidePane.getByRole("alert")).toContainText(t("approvals.viewer.changed"));
+
+      const paneBody = sidePane.locator('[tabindex="0"]').first();
+      const paneFooter = sidePane.locator("article").locator("xpath=..");
+      const footerScrollable = await paneFooter.evaluate(el => {
+        el.scrollTop = el.scrollHeight;
+        return el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY === "auto";
+      });
+      expect(footerScrollable, `${viewport.width}x${viewport.height} .paneFooter scrollable`).toBe(true);
+
+      const asideBox = await sidePane.boundingBox();
+      const bodyBox = await paneBody.boundingBox();
+      const footerBox = await paneFooter.boundingBox();
+      const commitBox = await commit.boundingBox();
+
+      expect(asideBox).not.toBeNull();
+      expect(bodyBox).not.toBeNull();
+      expect(footerBox).not.toBeNull();
+      expect(commitBox).not.toBeNull();
+
+      expect(bodyBox!.height, `${viewport.width}x${viewport.height} .paneBody height`).toBeGreaterThanOrEqual(80);
+      expect(footerBox!.y + footerBox!.height, `${viewport.width}x${viewport.height} .paneFooter bottom`).toBeLessThanOrEqual(
+        asideBox!.y + asideBox!.height + 1,
+      );
+      expect(commitBox!.y, `${viewport.width}x${viewport.height} commit top inside footer`).toBeGreaterThanOrEqual(footerBox!.y - 1);
+      expect(
+        commitBox!.y + commitBox!.height,
+        `${viewport.width}x${viewport.height} commit bottom inside footer`,
+      ).toBeLessThanOrEqual(footerBox!.y + footerBox!.height + 1);
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      fixture.release();
+    }
+  }
+});
+
+test("Console /approvals full-screen button works on auto-selected row and clears stale decision footer on switch", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fixture } = await setupConsoleApprovals(page, "light", "ko", { staleOnFirst: true, staleToNone: true });
+  try {
+    await page.goto("/approvals");
+    const sidePane = page.locator('aside[data-pane="record"]');
+    await expect(sidePane).toBeVisible();
+
+    const fullBtn = sidePane.getByRole("button", { name: t("uiFlexibleColumns.full"), exact: true });
+    await expect(fullBtn).toHaveAttribute("aria-pressed", "false");
+    await fullBtn.click();
+    await expect(fullBtn).toHaveAttribute("aria-pressed", "true");
+    await expect(page).toHaveURL(new RegExp(`sel=${saeonUniverse.approval.documentNumber}&full=1`));
+    await fullBtn.click();
+    await expect(fullBtn).toHaveAttribute("aria-pressed", "false");
+
+    // Start decision on doc 1 (409 sets decisionDocId and refetches doc 1 with my_actions=none), switch to doc 2, switch back -> no empty footer
+    await sidePane.getByRole("button", { name: t("composer.verb.approve"), exact: true }).click();
+    await expect(sidePane.getByRole("alert")).toContainText(t("approvals.viewer.changed"));
+
+    const table = page.getByRole("grid", { name: t("approvals.list"), exact: true });
+    await table.locator('tbody tr[data-id="AP-2026-0419"]').click();
+    await expect(sidePane).toContainText("AP-2026-0419");
+
+    await table.locator(`tbody tr[data-id="${saeonUniverse.approval.documentNumber}"]`).click();
+    await expect(sidePane).toContainText(saeonUniverse.approval.documentNumber);
+    await expect(sidePane.locator("> div")).toHaveCount(1);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
   }
 });

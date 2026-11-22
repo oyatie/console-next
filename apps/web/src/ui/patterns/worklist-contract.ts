@@ -33,10 +33,12 @@ export type WorklistProps = Pick<
   schedule?: LazyRegion;
   /** Optional operational summary bands, evaluated only when placed by the active experience. */
   bands?: LazyRegion;
+  /** Lock desktop viewport height to `100dvh` with independent pane scrolling when no lower bands stack below. */
+  viewportLock?: boolean;
   /** Status-bar segments published while the worklist is mounted in an experience with a status bar. */
   statusSegments?: Parameters<typeof useScreenStatusBar>[0];
   /** Temporary Classic (`baseline`) fallback renderer kept until Phase 7 deletes `baseline`. */
   baseline?: () => ReactNode;
 } & Partial<
-    Record<"tabs" | "views" | "find" | "filters" | "tools" | "notes" | "foot" | "facts" | "overlays", ReactNode>
+    Record<"tabs" | "views" | "find" | "filters" | "tools" | "stats" | "notes" | "foot" | "facts" | "overlays", ReactNode>
   >;

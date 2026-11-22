@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
+import { Button, Label, ListBox, ListBoxItem, Popover, Select, SelectValue, Text } from "react-aria-components";
+import selectStyles from "../select/select-field.module.css";
 import s from "./register-totals-parts.module.css";
 
 /** Flush 5-cell top summary strip combining a stage rail cell and a 4-item `StatRow`. */
@@ -125,7 +128,7 @@ export function RegisterNetBox({
   );
 }
 
-/** Toolbar-height native select matching `PeriodStepper` height in `PageHead` filters. */
+/** Toolbar-height custom select matching `PeriodStepper` height in `PageHead` filters. */
 export function RegisterToolbarSelect({
   label,
   value,
@@ -137,19 +140,36 @@ export function RegisterToolbarSelect({
   options: readonly { value: string; label: string }[];
   onChange: (value: string) => void;
 }) {
+  const selectedValue = options.some(option => option.value === value) ? value : null;
+  const placeholder = options[0]?.label ?? label;
   return (
-    <select
-      aria-label={label}
-      className={s.toolbarSelect}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-    >
-      {options.map(option => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <div className={s.toolbarSelect}>
+      <Select
+        className={selectStyles.select}
+        value={selectedValue}
+        onChange={key => key != null && onChange(String(key))}
+        isRequired={false}
+        placeholder={placeholder}
+        data-form-value={selectedValue ?? ""}
+      >
+        <Label className="sr-only">{label}</Label>
+        <Button className={selectStyles.trigger}>
+          <SelectValue className={selectStyles.value}>
+            {({ selectedText, defaultChildren, isPlaceholder }) => (isPlaceholder ? defaultChildren : selectedText)}
+          </SelectValue>
+          <ChevronDown size={14} aria-hidden className={selectStyles.chev} />
+        </Button>
+        <Popover className={selectStyles.pop}>
+          <ListBox className={selectStyles.list}>
+            {options.map(option => (
+              <ListBoxItem key={option.value} id={option.value} textValue={option.label} className={selectStyles.opt}>
+                <Text slot="label" className={selectStyles.optLabel}>{option.label}</Text>
+              </ListBoxItem>
+            ))}
+          </ListBox>
+        </Popover>
+      </Select>
+    </div>
   );
 }
 
