@@ -345,8 +345,9 @@ export function saeonAttendanceExceptionsPage(): S["AttendanceExceptionPage"] {
 }
 
 export function saeonAttendanceCloses(): { items: S["AttendanceMonthCloseItem"][] } {
+  const seoul = saeonUniverse.entities[0]!.workplaces[0]!;
   const pyeongtaek = saeonUniverse.entities[0]!.workplaces[1]!;
-  const ulsan = saeonUniverse.entities[0]!.workplaces[0]!;
+  const asan = saeonUniverse.entities[0]!.workplaces[2]!;
   return {
     items: [
       {
@@ -356,14 +357,14 @@ export function saeonAttendanceCloses(): { items: S["AttendanceMonthCloseItem"][
         pending_leave: 1,
       },
       {
-        branch_scope: ulsan.id,
+        branch_scope: seoul.id,
         closed: true,
         open_exceptions: 0,
         pending_leave: 0,
         close: {
           id: "00000000-0000-4000-8910-000000000001",
           month: "2026-10",
-          branch_scope: ulsan.id,
+          branch_scope: seoul.id,
           checks: [
             { key: "exceptions_cleared", ok: true, note: t("me.attendance.exceptions.empty") },
             { key: "leave_decisions_settled", ok: true, note: t("attendance.close.closed") },
@@ -373,6 +374,12 @@ export function saeonAttendanceCloses(): { items: S["AttendanceMonthCloseItem"][
           closed_at: "2026-10-31T09:00:00Z",
           amendments: [],
         },
+      },
+      {
+        branch_scope: asan.id,
+        closed: false,
+        open_exceptions: 0,
+        pending_leave: 1,
       },
     ],
   };

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
-import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
+import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { Receipt } from "../../../ui/receipt/receipt";
 import type { PrivacyRightKind, WirePrivacyReceipt } from "../api/privacy-intake";
 import { DecisionComposer, PostponeComposer } from "./privacy-intake-composers";
@@ -13,7 +13,13 @@ const PrivacyObjectionComposer = lazy(() =>
   import("./privacy-objection-composer").then(m => ({ default: m.PrivacyObjectionComposer })),
 );
 
-export function PrivacyIntakeWorkbench({ request }: { request: WirePrivacyReceipt }) {
+export function PrivacyIntakeWorkbench({
+  request,
+  headerTrailing,
+}: {
+  request: WirePrivacyReceipt;
+  headerTrailing?: ReactNode;
+}) {
   const [decideKind, setDecideKind] = useState<PrivacyRightKind | null>(null);
   const [postponeKind, setPostponeKind] = useState<PrivacyRightKind | null>(null);
   const [objectOpen, setObjectOpen] = useState(false);
@@ -28,7 +34,7 @@ export function PrivacyIntakeWorkbench({ request }: { request: WirePrivacyReceip
   return (
     <div className={s.section}>
       {receiptMessage && <Receipt state="recorded" message={receiptMessage} />}
-      <Card title={t("privacy.intake.decisionsTitle")}>
+      <RecordPaneSection title={t("privacy.intake.decisionsTitle")} trailing={headerTrailing}>
         <div className={s.section}>
           {kindEntries.map(([code, state]) => {
             const hasDecision = state.decisions.length > 0;
@@ -68,7 +74,7 @@ export function PrivacyIntakeWorkbench({ request }: { request: WirePrivacyReceip
             </div>
           )}
         </div>
-      </Card>
+      </RecordPaneSection>
       {decideKind && (
         <DecisionComposer
           requestId={request.id}

@@ -132,4 +132,5 @@ export const enAccessLog = {
   "accessLog.review.completedReceipt": "Completed monthly access-log review.",
   "accessLog.review.error.incomplete": "Review all flagged events before completing the monthly review.",
   "accessLog.review.error.tenantOnly": "Monthly access-log review requires tenant-wide audit permission.",
+  "accessLog.review.inspectorTitle": "Audit evidence and review",
 } as const;

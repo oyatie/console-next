@@ -4,9 +4,9 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button-base";
-import { Card } from "../../../ui/card/card";
 import { EmptyState } from "../../../ui/empty-state";
 import { StatRow } from "../../../ui/key-value/key-value";
+import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { consentQuery, myAccessLogPages } from "../api";
 import { ConsentBody } from "./consent-card";
 import { MyAccessLogBody } from "./me-access-log";
@@ -58,10 +58,12 @@ export function PrivacyConsolePanel({
       : undefined,
   } as Parameters<typeof MyAccessLogBody>[0]["q"];
 
+  const hideEmptyLog = logQuery.isSuccess && (logQuery.data?.pages.every(p => p.items.length === 0) ?? false);
+
   return (
-    <>
+    <div className={s.consoleSections}>
       <div id="privacy-rights">{filingSection}</div>
-      <Card title={t("account.privacy.listTitle")} flush>
+      <RecordPaneSection title={t("account.privacy.listTitle")} padded={items.length === 0}>
         {items.length ? (
           <PrivacyReceiptTable
             label={t("account.privacy.list")}
@@ -74,29 +76,31 @@ export function PrivacyConsolePanel({
           <EmptyState title={t("account.privacy.empty.title")} reason={null} />
         )}
         {loadMoreRequests}
-      </Card>
-      <Card id="privacy-access-log" title={t("account.accessLog.title")}>
-        <div className={s.pad}>
-          <MyAccessLogBody q={pagedAccessLog} />
-          {logQuery.hasNextPage && (
-            <div>
-              <Button disabled={logQuery.isFetchingNextPage} onClick={() => void logQuery.fetchNextPage()}>
-                {t("account.privacy.accessLog.more")}
-              </Button>
-            </div>
-          )}
+      </RecordPaneSection>
+      {!hideEmptyLog && (
+        <div id="privacy-access-log">
+          <RecordPaneSection title={t("account.accessLog.title")}>
+            <MyAccessLogBody q={pagedAccessLog} />
+            {logQuery.hasNextPage && (
+              <div>
+                <Button disabled={logQuery.isFetchingNextPage} onClick={() => void logQuery.fetchNextPage()}>
+                  {t("account.privacy.accessLog.more")}
+                </Button>
+              </div>
+            )}
+          </RecordPaneSection>
         </div>
-      </Card>
-      <Card id="privacy-consent" title={t("account.consent.title")}>
-        <div className={s.pad}>
+      )}
+      <div id="privacy-consent">
+        <RecordPaneSection title={t("account.consent.title")}>
           <ConsentBody />
-        </div>
-      </Card>
-      <Card id="privacy-retention" title={t("account.privacy.retention.title")}>
-        <div className={s.pad}>
+        </RecordPaneSection>
+      </div>
+      <div id="privacy-retention">
+        <RecordPaneSection title={t("account.privacy.retention.title")}>
           <PrivacyRetentionSection />
-        </div>
-      </Card>
-    </>
+        </RecordPaneSection>
+      </div>
+    </div>
   );
 }

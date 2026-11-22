@@ -3,55 +3,29 @@ import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
+import { codeText } from "../../../lib/labels";
+import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { AuditTabs } from "../../../reference/audit/ui/audit-tabs";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
-import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { Field, TextInput } from "../../../ui/field/field";
-import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
+import { StatRow } from "../../../ui/key-value/key-value";
 import { LongTable } from "../../../ui/long-table/long-table";
 import { ListRecord } from "../../../ui/patterns/list-record";
 import { auditAttestationQuery, auditLogQuery, type AuditRecord } from "../api";
+import { AuditDetailPane } from "./audit-detail-pane";
 import s from "./audit.module.css";
 
 const PAGE_LIMIT = 50;
-
-function formatSnapValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
-  return JSON.stringify(value);
-}
-
-function buildSnapDiffRows(beforeSnap: unknown, afterSnap: unknown) {
-  const beforeObj = beforeSnap && typeof beforeSnap === "object" && !Array.isArray(beforeSnap)
-    ? (beforeSnap as Record<string, unknown>)
-    : null;
-  const afterObj = afterSnap && typeof afterSnap === "object" && !Array.isArray(afterSnap)
-    ? (afterSnap as Record<string, unknown>)
-    : null;
-  if (!beforeObj && !afterObj) {
-    if (beforeSnap === undefined && afterSnap === undefined) return [];
-    return [{
-      key: "payload",
-      label: t("audit.detail.diff"),
-      value: `${formatSnapValue(beforeSnap)} → ${formatSnapValue(afterSnap)}`,
-    }];
-  }
-  const keys = [...new Set([...Object.keys(beforeObj ?? {}), ...Object.keys(afterObj ?? {})])];
-  return keys.map(key => ({
-    key,
-    label: key,
-    value: `${t("audit.detail.before")}: ${formatSnapValue(beforeObj?.[key])} · ${t("audit.detail.after")}: ${formatSnapValue(afterObj?.[key])}`,
-  }));
-}
 
 function recordKey(row: AuditRecord, index: number): string {
   return row.id ?? `${row.occurred_at}-${row.trace_id ?? index}`;
 }
 
 export function AuditPage() {
+  const isDesktop = useIsDesktop();
   const [targetTypeInput, setTargetTypeInput] = useState("");
   const [targetIdInput, setTargetIdInput] = useState("");
   const [actorInput, setActorInput] = useState("");
@@ -59,6 +33,7 @@ export function AuditPage() {
   const [applied, setApplied] = useState<{ target_type?: string; target_id?: string; actor?: string; trace_id?: string }>({});
   const [offset, setOffset] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dismissedAuto, setDismissedAuto] = useState(false);
 
   const q = useQuery({
     ...auditLogQuery({ limit: PAGE_LIMIT, offset, ...applied }),
@@ -67,22 +42,28 @@ export function AuditPage() {
   const attestation = useQuery(auditAttestationQuery);
 
   const rows = useMemo(
-    () => (q.data?.items ?? []).map((item, index) => ({ ...item, _rowKey: recordKey(item, index) })),
+    () => (q.data?.items ?? []).map((item, index) => ({ ...item, rowKey: recordKey(item, index) })),
     [q.data?.items],
   );
+  const effectiveSelectedId = selectedId ?? (isDesktop && !dismissedAuto ? (rows[0]?.rowKey ?? null) : null);
   const anomalyCount = useMemo(() => rows.filter(item => Boolean(item.anomaly)).length, [rows]);
   const selected = useMemo(
-    () => rows.find(item => item._rowKey === selectedId) ?? null,
-    [rows, selectedId],
+    () => rows.find(item => item.rowKey === effectiveSelectedId) ?? null,
+    [rows, effectiveSelectedId],
   );
-  const diffRows = useMemo(
-    () => (selected ? buildSnapDiffRows(selected.before_snap, selected.after_snap) : []),
-    [selected],
-  );
+
+  const actionTitle = (action?: string | null) => (action ? codeText(`audit.log.action.${action}`, action) : "—");
+  const sourceLabel = (source?: string | null, mode?: string | null) => {
+    const raw = source ?? mode;
+    return raw ? codeText(`audit.log.source.${raw}`, raw) : "—";
+  };
+  const outcomeLabel = (row: AuditRecord) =>
+    row.outcome ? codeText(`audit.log.outcome.${row.outcome}`, row.outcome) : row.anomaly ? "!" : t("audit.log.outcome.ALLOWED");
 
   const applyFilters = () => {
     setOffset(0);
     setSelectedId(null);
+    setDismissedAuto(false);
     setApplied({
       target_type: targetTypeInput.trim() || undefined,
       target_id: targetIdInput.trim() || undefined,
@@ -98,6 +79,7 @@ export function AuditPage() {
     setTraceIdInput("");
     setOffset(0);
     setSelectedId(null);
+    setDismissedAuto(false);
     setApplied({});
   };
 
@@ -165,68 +147,84 @@ export function AuditPage() {
         />
       }
       list={
-        <Card title={t("audit.log.title")} flush>
-          {rows.length === 0 ? (
-            <EmptyState title={t("audit.log.empty")} reason={t("audit.log.emptyReason")} />
-          ) : (
-            <LongTable
-              label={t("audit.log.table")}
-              rows={rows}
-              rowId={row => row._rowKey}
-              activeRowId={selectedId ?? undefined}
-              onRowAction={id => setSelectedId(id)}
-              total={rows.length}
-              hasMore={false}
-              onLoadMore={() => {}}
-              empty={t("audit.log.empty")}
-              columns={[
-                {
-                  id: "occurred",
-                  header: t("audit.log.col.occurredAt"),
-                  card: "fact",
-                  type: "date",
-                  width: 200,
-                  cell: row => fmtDateTime(row.occurred_at),
+        rows.length === 0 ? (
+          <EmptyState title={t("audit.log.empty")} reason={t("audit.log.emptyReason")} />
+        ) : (
+          <LongTable
+            label={t("audit.log.table")}
+            rows={rows}
+            rowId={row => row.rowKey}
+            activeRowId={effectiveSelectedId ?? undefined}
+            onRowAction={id => {
+              setDismissedAuto(false);
+              setSelectedId(id);
+            }}
+            total={rows.length}
+            hasMore={false}
+            onLoadMore={() => {}}
+            density="compact"
+            mobileLayout="compact"
+            empty={t("audit.log.empty")}
+            columns={[
+              {
+                id: "occurred",
+                header: t("audit.log.col.occurredAt"),
+                card: "fact",
+                type: "date",
+                width: 184,
+                cell: row => fmtDateTime(row.occurred_at),
+              },
+              {
+                id: "actor",
+                header: t("audit.log.col.actor"),
+                card: "title",
+                rowHeader: true,
+                width: 112,
+                cell: row => row.actor_display ?? row.actor ?? "—",
+              },
+              {
+                id: "action",
+                header: t("audit.log.col.action"),
+                card: "fact",
+                width: "1.6fr",
+                cell: row => {
+                  const title = actionTitle(row.action);
+                  return (
+                    <div className={s.actionCell}>
+                      <span>{title}</span>
+                      {row.action && title !== row.action && <code className="mono t-xs muted">{row.action}</code>}
+                    </div>
+                  );
                 },
-                {
-                  id: "actor",
-                  header: t("audit.log.col.actor"),
-                  card: "title",
-                  rowHeader: true,
-                  cell: row => row.actor_display ?? row.actor ?? "—",
-                },
-                {
-                  id: "action",
-                  header: t("audit.log.col.action"),
-                  card: "fact",
-                  cell: row => row.action ?? "—",
-                },
-                {
-                  id: "target",
-                  header: t("audit.log.col.target"),
-                  card: "fact",
-                  cell: row => [row.target_type, row.target_id].filter(Boolean).join(" · ") || "—",
-                },
-                {
-                  id: "source",
-                  header: t("audit.log.col.source"),
-                  card: "fact",
-                  cell: row => row.source ?? row.change_mode ?? "—",
-                },
-                {
-                  id: "outcome",
-                  header: t("audit.log.col.outcome"),
-                  card: "status",
-                  cell: row => (
-                    <Chip tone={row.anomaly ? "warn" : row.outcome === "DENIED" ? "danger" : "neutral"}>
-                      {row.outcome ?? (row.anomaly ? "!" : "OK")}
-                    </Chip>
-                  ),
-                },
-              ]}
-            />
-          )}
-        </Card>
+              },
+              {
+                id: "target",
+                header: t("audit.log.col.target"),
+                card: "omit",
+                width: "1fr",
+                cell: row => [row.target_type, row.target_id].filter(Boolean).join(" · ") || "—",
+              },
+              {
+                id: "source",
+                header: t("audit.log.col.source"),
+                card: "omit",
+                width: 72,
+                cell: row => sourceLabel(row.source, row.change_mode),
+              },
+              {
+                id: "outcome",
+                header: t("audit.log.col.outcome"),
+                card: "status",
+                width: 84,
+                cell: row => (
+                  <Chip tone={row.anomaly ? "warn" : row.outcome === "DENIED" ? "danger" : "ok"}>
+                    {outcomeLabel(row)}
+                  </Chip>
+                ),
+              },
+            ]}
+          />
+        )
       }
       foot={
         <div className={s.foot}>
@@ -244,57 +242,21 @@ export function AuditPage() {
       record={
         selected
           ? {
-              id: selected._rowKey,
+              id: selected.rowKey,
               label: t("audit.detail.title"),
-              title: selected.action ?? t("audit.detail.title"),
-              onClose: () => setSelectedId(null),
+              title: actionTitle(selected.action),
+              meta: selected.action ?? undefined,
+              onClose: () => {
+                setSelectedId(null);
+                setDismissedAuto(true);
+              },
               children: (
-                <div className={s.paneDetail}>
-                  <Card title={t("audit.detail.title")}>
-                    <KeyValue
-                      density="dense"
-                      items={[
-                        { key: "id", label: t("audit.detail.id"), value: selected.id ?? "—" },
-                        { key: "actor", label: t("audit.log.col.actor"), value: selected.actor_display ?? selected.actor ?? "—" },
-                        { key: "at", label: t("audit.log.col.occurredAt"), value: fmtDateTime(selected.occurred_at) },
-                        {
-                          key: "target",
-                          label: t("audit.log.col.target"),
-                          value: [selected.target_type, selected.target_id].filter(Boolean).join(" · ") || "—",
-                        },
-                        {
-                          key: "trace",
-                          label: t("audit.detail.trace"),
-                          value: [selected.trace_id, selected.span_id].filter(Boolean).join(" / ") || "—",
-                        },
-                        { key: "branch", label: t("audit.detail.branch"), value: selected.branch_id ?? "—" },
-                        {
-                          key: "auth",
-                          label: t("audit.detail.auth"),
-                          value: [selected.auth_method, selected.device].filter(Boolean).join(" · ") || "—",
-                        },
-                        { key: "ip", label: t("audit.detail.ip"), value: selected.ip ?? "—" },
-                        {
-                          key: "reason",
-                          label: t("audit.detail.reason"),
-                          value: [selected.reason_code, selected.reason].filter(Boolean).join(" · ") || "—",
-                        },
-                        {
-                          key: "badges",
-                          label: t("audit.detail.badges"),
-                          value: selected.classification_badges?.length ? selected.classification_badges.join(" · ") : "—",
-                        },
-                      ]}
-                    />
-                  </Card>
-                  <Card title={t("audit.detail.diff")}>
-                    {diffRows.length ? (
-                      <KeyValue density="dense" items={diffRows} />
-                    ) : (
-                      <EmptyState title={t("audit.detail.noSnap")} reason={null} />
-                    )}
-                  </Card>
-                </div>
+                <AuditDetailPane
+                  selected={selected}
+                  attestation={attestation.data}
+                  outcomeLabel={outcomeLabel(selected)}
+                  sourceLabel={sourceLabel(selected.source, selected.change_mode)}
+                />
               ),
             }
           : undefined

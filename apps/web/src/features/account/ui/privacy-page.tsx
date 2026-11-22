@@ -5,16 +5,18 @@ import { getRouteApi, Link, useParams } from "@tanstack/react-router";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { ReadReference } from "../../../lib/react/read-reference";
+import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { Button } from "../../../ui/button/button-base";
 import { buttonClass } from "../../../ui/button/button-class";
-import { Card } from "../../../ui/card/card";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { Page } from "../../../ui/page/page";
+import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { RecordPattern } from "../../../ui/patterns/record";
 import { SettingsPattern } from "../../../ui/patterns/settings";
 import { ApiError, privacyReceipt, privacyRequestPages } from "../api";
 import { privacyIntakeDetailQuery, type PrivacyRightKind } from "../api/privacy-intake";
+import type { IntakeQueueSelection } from "./privacy-intake-queue";
 import { PrivacyConsolePanel, PrivacySummary } from "./privacy-console-panel";
 import { PrivacyReceipt } from "./privacy-receipt";
 import { PrivacyRequest } from "./privacy-request";
@@ -26,6 +28,9 @@ const PrivacyIntakeWorkbench = lazy(() =>
 );
 const PrivacyIntakeQueue = lazy(() =>
   import("./privacy-intake-queue").then(m => ({ default: m.PrivacyIntakeQueue })),
+);
+const PrivacyIntakeInspector = lazy(() =>
+  import("./privacy-intake-inspector").then(m => ({ default: m.PrivacyIntakeInspector })),
 );
 const PrivacyObjectionComposer = lazy(() =>
   import("./privacy-objection-composer").then(m => ({ default: m.PrivacyObjectionComposer })),
@@ -71,9 +76,9 @@ export function PrivacyIntake() {
       strip={subjectStrip}
       sections={
         <>
-          <Card title={t("account.privacy.intake")}>
+          <RecordPaneSection title={t("account.privacy.intake")} padded={false}>
             {receipt}
-          </Card>
+          </RecordPaneSection>
           {workbench}
         </>
       }
@@ -93,6 +98,7 @@ export function PrivacyIntake() {
 }
 
 export function PrivacyRequests() {
+  const isDesktop = useIsDesktop();
   const search = privacyRoute.useSearch();
   const navigate = privacyRoute.useNavigate();
   const q = useInfiniteQuery(privacyRequestPages);
@@ -100,9 +106,9 @@ export function PrivacyRequests() {
   const [selectedId, select] = useState<string | undefined>();
   const [seen, setSeen] = useState(filed);
   const [objectionOpen, setObjectionOpen] = useState(false);
-  const [activeView, setActiveView] = useState<PrivacyViewId>(
-    search.view === "intake" ? "privacy-intake" : "privacy-rights",
-  );
+  const [activeView, setActiveView] = useState<Exclude<PrivacyViewId, "privacy-intake">>("privacy-rights");
+  const [intakeRows, setIntakeRows] = useState<IntakeQueueSelection[]>([]);
+  const [dismissedIntakeAuto, setDismissedIntakeAuto] = useState(false);
   if (filed !== seen) {
     setSeen(filed);
     select(filed?.id);
@@ -131,7 +137,8 @@ export function PrivacyRequests() {
 
   const items = q.data?.pages.flatMap(page => page.items) ?? [];
   const selected = items.find(item => item.id === selectedId) ?? (filed?.id === selectedId ? filed : undefined);
-  const filingSection = <PrivacyRequest onFiled={setFiled} />;
+  const filingSection = <PrivacyRequest onFiled={setFiled} hideWhenUnavailable sectionLayout />;
+  const baselineFilingSection = <PrivacyRequest onFiled={setFiled} />;
   const loadMoreRequests = q.hasNextPage ? (
     <div className={s.pad}>
       <Button disabled={q.isFetchingNextPage} onClick={() => void q.fetchNextPage()}>
@@ -139,7 +146,10 @@ export function PrivacyRequests() {
       </Button>
     </div>
   ) : null;
-  const intakeViewActive = activeView === "privacy-intake" || search.view === "intake";
+  const intakeViewActive = search.view === "intake";
+  const currentView: PrivacyViewId = intakeViewActive ? "privacy-intake" : activeView;
+  const activeIntakeSelection =
+    intakeViewActive && isDesktop && !dismissedIntakeAuto ? (intakeRows[0] ?? null) : null;
 
   return (
     <SettingsPattern
@@ -152,14 +162,15 @@ export function PrivacyRequests() {
             <Button
               key={view.id}
               type="button"
-              variant={activeView === view.id ? "secondary" : "ghost"}
-              aria-current={activeView === view.id ? "true" : undefined}
+              variant={currentView === view.id ? "secondary" : "ghost"}
+              aria-current={currentView === view.id ? "true" : undefined}
               onClick={() => {
-                setActiveView(view.id);
                 if (view.id === "privacy-intake") {
+                  setDismissedIntakeAuto(false);
                   void navigate({ search: { view: "intake" }, replace: true, resetScroll: false });
                   return;
                 }
+                setActiveView(view.id);
                 if (search.view === "intake") {
                   void navigate({ search: { view: undefined }, replace: true, resetScroll: false });
                 }
@@ -174,7 +185,10 @@ export function PrivacyRequests() {
       panel={
         intakeViewActive ? (
           <Suspense fallback={null}>
-            <PrivacyIntakeQueue />
+            <PrivacyIntakeQueue
+              selectedId={activeIntakeSelection?.request.id}
+              onSyncRows={setIntakeRows}
+            />
           </Suspense>
         ) : (
           <PrivacyConsolePanel
@@ -187,7 +201,26 @@ export function PrivacyRequests() {
         )
       }
       record={
-        selected
+        intakeViewActive
+          ? activeIntakeSelection
+            ? {
+                id: activeIntakeSelection.request.id,
+                label: t("account.privacy.intake"),
+                title: t("account.privacy.intake"),
+                meta: activeIntakeSelection.subject_name,
+                onClose: () => setDismissedIntakeAuto(true),
+                children: (
+                  <Suspense fallback={null}>
+                    <PrivacyIntakeInspector
+                      request={activeIntakeSelection.request}
+                      subjectName={activeIntakeSelection.subject_name}
+                      asOf={activeIntakeSelection.as_of}
+                    />
+                  </Suspense>
+                ),
+              }
+            : null
+          : selected
           ? {
               id: selected.id,
               label: selected.receipt_no,
@@ -233,7 +266,7 @@ export function PrivacyRequests() {
         <Page floorplan="P-01" head={head} q={q} layout="list">
           {data => (
             <>
-              {filingSection}
+              {baselineFilingSection}
               <PrivacyRequestsView filed={filed} items={data.pages.flatMap(page => page.items)} />
               {loadMoreRequests}
             </>

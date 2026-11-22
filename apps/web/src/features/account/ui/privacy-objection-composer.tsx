@@ -11,7 +11,7 @@ import { TextArea } from "../../../ui/field/text-area";
 import { SelectField } from "../../../ui/select/select-field";
 import {
   objectPrivacyRequest,
-  privacyLifecycleError,
+  privacyLifecycleErrorCode,
   type PrivacyRightKind,
   type WirePrivacyReceipt,
 } from "../api/privacy-intake";
@@ -41,7 +41,6 @@ export function PrivacyObjectionComposer({
     },
   });
 
-  const mappedError = privacyLifecycleError(cmd.error);
   const valid = kinds.length > 0 && detail.trim().length > 0;
 
   return (
@@ -52,8 +51,7 @@ export function PrivacyObjectionComposer({
       action={{ kind: "privacyIntake", mode: "apply" }}
       pending={cmd.isPending}
       error={cmd.error}
-      blocked={mappedError ? { reason: mappedError } : undefined}
-      notice={!mappedError && cmd.error ? <CommandError error={cmd.error} /> : undefined}
+      notice={<CommandError error={cmd.error} own={privacyLifecycleErrorCode} />}
       incomplete={!valid}
       onSubmit={() => {
         if (!valid || cmd.isPending) return;

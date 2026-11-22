@@ -10,9 +10,9 @@ import { entitiesRef } from "../../../reference/entity/api/reads";
 import { ApiError, settingsForEntityQuery } from "../../../reference/settings/api";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button-base";
-import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { SelectField, type SelectOption } from "../../../ui/select/select-field";
 import { Table } from "../../../ui/table";
 import {
@@ -53,14 +53,14 @@ export function PolicyCategoryPanel({
 
   if (filtered.length === 0) {
     return (
-      <Card title={t(`settingsHub.section.${category}`)}>
+      <RecordPaneSection title={t(`settingsHub.section.${category}`)}>
         <p className="muted">{t("settingsHub.policy.emptySection")}</p>
-      </Card>
+      </RecordPaneSection>
     );
   }
 
   return (
-    <Card title={t(`settingsHub.section.${category}`)} flush>
+    <RecordPaneSection title={t(`settingsHub.section.${category}`)} padded={false}>
       <Table<SettingEntry>
         label={t(`settingsHub.section.${category}`)}
         rows={filtered}
@@ -70,6 +70,7 @@ export function PolicyCategoryPanel({
           const hit = filtered.find((e) => e.key === key);
           if (hit) onInspect(hit);
         }}
+        scrollLayout="auto"
         density="compact"
         mobileLayout="compact"
         columns={[
@@ -116,12 +117,13 @@ export function PolicyCategoryPanel({
           },
           {
             header: t("settingsHub.reasons.actionsCol"),
+            type: "action",
             card: "action",
             cell: (entry) => {
               const editable = isSettingEditable(entry, canChange);
               return (
                 <div className={s.actions}>
-                  <Button size="sm" variant="ghost" onClick={() => onInspect(entry)}>
+                  <Button size="sm" variant="link" onClick={() => onInspect(entry)}>
                     {t("settingsHub.policy.inspect")}
                   </Button>
                   {editable ? (
@@ -130,7 +132,7 @@ export function PolicyCategoryPanel({
                     </Button>
                   ) : (
                     <DisabledReason
-                      layout="disclosure"
+                      layout="inline"
                       reason={entry.governance === "tenant" ? t("settingsHub.readOnly") : t(`settingsHub.governance.${entry.governance}`)}
                       control={(props) => (
                         <Button {...props} size="sm" variant="secondary">
@@ -145,7 +147,7 @@ export function PolicyCategoryPanel({
           },
         ]}
       />
-    </Card>
+    </RecordPaneSection>
   );
 }
 
@@ -183,7 +185,7 @@ export function WorkplaceScopePanel({
 
   return (
     <div className={s.stack}>
-      <Card title={t("settingsHub.section.workplace")}>
+      <RecordPaneSection title={t("settingsHub.section.workplace")} padded={false}>
         <div className={s.scopeBar}>
           <SelectField
             label={t("settingsHub.workplace.scopeLabel")}
@@ -245,12 +247,13 @@ export function WorkplaceScopePanel({
                     },
                     {
                       header: t("settingsHub.reasons.actionsCol"),
+                      type: "action",
                       card: "action",
                       cell: (entry) => {
                         const editable = isSettingEditable(entry, data.can_change);
                         return (
                           <div className={s.actions}>
-                            <Button size="sm" variant="ghost" onClick={() => onInspect(entry, entityParam, scopeLabel)}>
+                            <Button size="sm" variant="link" onClick={() => onInspect(entry, entityParam, scopeLabel)}>
                               {t("settingsHub.policy.inspect")}
                             </Button>
                             {editable ? (
@@ -259,7 +262,7 @@ export function WorkplaceScopePanel({
                               </Button>
                             ) : (
                               <DisabledReason
-                                layout="disclosure"
+                                layout="inline"
                                 reason={t(`settingsHub.governance.${entry.governance}`)}
                                 control={(props) => (
                                   <Button {...props} size="sm" variant="secondary">
@@ -278,7 +281,7 @@ export function WorkplaceScopePanel({
             }}
           </QueryState>
         )}
-      </Card>
+      </RecordPaneSection>
     </div>
   );
 }

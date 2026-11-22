@@ -16,7 +16,7 @@ import { SelectField } from "../../../ui/select/select-field";
 import {
   decidePrivacyRequest,
   postponePrivacyRequest,
-  privacyLifecycleError,
+  privacyLifecycleErrorCode,
   privacyOutcomeSupported,
   privacyReasonCodesQuery,
   privacyRefusalReasonDomain,
@@ -59,7 +59,6 @@ export function DecisionComposer({
     onSuccess: () => onDone(t("privacy.intake.decideReceipt")),
   });
 
-  const mappedError = privacyLifecycleError(cmd.error);
   const requiresReason = outcome !== "GRANTED" && Boolean(domain);
   const requiresNote = outcome !== "GRANTED";
   const valid =
@@ -75,8 +74,7 @@ export function DecisionComposer({
       action={{ kind: "privacyIntake", mode: "apply" }}
       pending={cmd.isPending}
       error={cmd.error}
-      blocked={mappedError ? { reason: mappedError } : undefined}
-      notice={!mappedError && cmd.error ? <CommandError error={cmd.error} /> : undefined}
+      notice={<CommandError error={cmd.error} own={privacyLifecycleErrorCode} />}
       incomplete={!valid}
       onSubmit={() => {
         if (!valid || cmd.isPending) return;
@@ -168,7 +166,6 @@ export function PostponeComposer({
     onSuccess: () => onDone(t("privacy.intake.postponeReceipt")),
   });
 
-  const mappedError = privacyLifecycleError(cmd.error);
   const valid = Boolean(reason && note.trim());
 
   return (
@@ -179,8 +176,7 @@ export function PostponeComposer({
       action={{ kind: "privacyIntake", mode: "record" }}
       pending={cmd.isPending}
       error={cmd.error}
-      blocked={mappedError ? { reason: mappedError } : undefined}
-      notice={!mappedError && cmd.error ? <CommandError error={cmd.error} /> : undefined}
+      notice={<CommandError error={cmd.error} own={privacyLifecycleErrorCode} />}
       incomplete={!valid}
       onSubmit={() => {
         if (!valid || cmd.isPending) return;

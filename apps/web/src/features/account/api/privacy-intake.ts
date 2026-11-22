@@ -114,11 +114,15 @@ export function objectPrivacyRequest(id: string, input: PrivacyObjectionInput, k
   );
 }
 
-export function privacyLifecycleError(error: unknown): string | undefined {
-  if (!(error instanceof ApiError)) return undefined;
-  if (error.code === "privacy.refuse.identity_unbound") {
+export function privacyLifecycleErrorCode(code: string): string | undefined {
+  if (code === "privacy.refuse.identity_unbound") {
     return t("privacy.refuse.identity_unbound");
   }
-  const key = `privacy.err.${error.code}`;
+  const key = `privacy.err.${code}`;
   return isMessageId(key) ? t(key) : undefined;
+}
+
+export function privacyLifecycleError(error: unknown): string | undefined {
+  if (!(error instanceof ApiError)) return undefined;
+  return privacyLifecycleErrorCode(error.code);
 }

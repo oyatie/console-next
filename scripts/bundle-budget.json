@@ -22,8 +22,10 @@
     "budget_kb": 300,
     "css_budget_kb": 36,
     "deferred": [
+      "src/features/access-log/ui/access-log-inspector.tsx",
       "src/features/access-log/ui/access-log-review-composer.tsx",
       "src/features/access-log/ui/access-log-review-sheet.tsx",
+      "src/features/account/ui/privacy-intake-inspector.tsx",
       "src/features/account/ui/privacy-intake-queue.tsx",
       "src/features/account/ui/privacy-intake-workbench.tsx",
       "src/features/account/ui/privacy-objection-composer.tsx",

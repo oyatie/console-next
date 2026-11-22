@@ -13,7 +13,7 @@ import { Field, TextInput } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { SelectField } from "../../../ui/select/select-field";
 import {
-  privacyLifecycleError,
+  privacyLifecycleErrorCode,
   privacyReasonCodesQuery,
   receiveOffAppPrivacyRequest,
   type PrivacyRightKind,
@@ -63,7 +63,6 @@ export function PrivacyOffAppComposer({
     },
   });
 
-  const mappedError = privacyLifecycleError(cmd.error);
   const valid = Boolean(subjectUserId.trim() && kinds.length > 0 && receivedOn && identityMethod);
 
   return (
@@ -74,8 +73,7 @@ export function PrivacyOffAppComposer({
       action={{ kind: "privacyIntake", mode: "record" }}
       pending={cmd.isPending}
       error={cmd.error}
-      blocked={mappedError ? { reason: mappedError } : undefined}
-      notice={!mappedError && cmd.error ? <CommandError error={cmd.error} /> : undefined}
+      notice={<CommandError error={cmd.error} own={privacyLifecycleErrorCode} />}
       incomplete={!valid}
       onSubmit={() => {
         if (!valid || cmd.isPending) return;

@@ -1,43 +1,40 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { chunk } from "../../../lib/chunk-guard";
-import { get } from "../../../lib/query";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { settingsQuery } from "../../../reference/settings/api";
 import { settingsViews, type SettingsView } from "../../../shell/settings-views";
 import { QueryState } from "../../../lib/react/query-state";
+import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { Button } from "../../../ui/button/button-base";
 import { Page } from "../../../ui/page/page";
-import { Card } from "../../../ui/card/card";
 import { SettingsPattern } from "../../../ui/patterns/settings";
 import {
   formatEntryLabel,
   formatEntryValue,
   parseSettingsSection,
   SETTINGS_SECTIONS,
+  settingSectionOf,
   type SettingEntry,
   type SettingSectionId,
 } from "../domain/catalog";
-import { domainSummary, approvalSummary, experienceSummary, summaryFormatters, type SummaryCopy } from "../domain/summaries";
+import type { SummaryCopy } from "../domain/summaries";
+import { ApprovalSettingsCard, ModuleOperationsCard, ScreenStyleSettingsCard, SettingsCard } from "./settings-cards";
 import s from "./settings-hub.module.css";
 
-const ScreenStyleSheet = lazy(() => chunk(import("./screen-style-sheet")).then(m => ({ default: m.ScreenStyleSheet })));
+const settingsCopy: SummaryCopy = (id, values) => (isMessageId(id) ? t(id, values) : t("settingsHub.unknown"));
+
 const PolicyEditSheet = lazy(() => chunk(import("./policy-edit-sheet")).then(m => ({ default: m.PolicyEditSheet })));
 const PolicyInspector = lazy(() => chunk(import("./policy-inspector")).then(m => ({ default: m.PolicyInspector })));
 const PolicyCategoryPanel = lazy(() => chunk(import("./policy-sections")).then(m => ({ default: m.PolicyCategoryPanel })));
 const WorkplaceScopePanel = lazy(() => chunk(import("./policy-sections")).then(m => ({ default: m.WorkplaceScopePanel })));
-const ReasonCodesPanel = lazy(() =>
-  chunk(import("./policy-reasons-panel")).then(m => ({ default: m.ReasonCodesPanel })),
-);
-const PolicySavedReceipt = lazy(() =>
-  chunk(import("./policy-reasons-panel")).then(m => ({ default: m.PolicySavedReceipt })),
-);
+const ReasonCodesPanel = lazy(() => chunk(import("./policy-reasons-panel")).then(m => ({ default: m.ReasonCodesPanel })));
+const PolicySavedReceipt = lazy(() => chunk(import("./policy-reasons-panel")).then(m => ({ default: m.PolicySavedReceipt })));
 
 export function SettingsHub() {
   const access = useQuery(myAccessQuery);
@@ -61,82 +58,6 @@ export function SettingsHub() {
   );
 }
 
-const settingsCopy: SummaryCopy = (id, values) => isMessageId(id) ? t(id, values) : t("settingsHub.unknown");
-
-function SettingsCard({ row }: { row: SettingsView }) {
-  const domain = row.summary.format === "domain";
-  const me = useQuery({ ...get("/api/v1/users/me"), enabled: domain, staleTime: Infinity, retry: false });
-  const format = summaryFormatters[row.summary.format] as (data: unknown, copy: SummaryCopy, date: (value: string) => string) => string;
-  const q = useQuery<unknown, Error, string>({ ...row.summary, select: data => domain
-    ? domainSummary(data as Parameters<typeof domainSummary>[0], settingsCopy, me.data?.sign_in_id)
-    : format(data, settingsCopy, fmtDate), retry: false });
-  return <Card title={<Link to={row.to} className={s.link}>{t(row.label)}<ChevronRight size={16} aria-hidden /></Link>}>
-    <QueryState q={domain ? { ...q, isPending: q.isPending || me.isPending, error: q.error || me.error } : q} inline own={() => t("settingsHub.unknown")}>
-      {value => <div className={s.value}>{value}</div>}
-    </QueryState>
-  </Card>;
-}
-
-function ApprovalSettingsCard({ onManage }: { onManage?: () => void }) {
-  const q = useQuery({ ...settingsQuery, select: data => ({ ...approvalSummary(data, settingsCopy, fmtDate), canChange: data.can_change }) });
-  return <Card title={t("settingsHub.approval")}>
-    <QueryState q={q} inline own={() => t("settingsHub.unknown")}>
-      {summary => <>
-        <div className={s.row}>
-          <div className={s.value}>{summary.value}</div>
-          {onManage && summary.canChange && (
-            <Button size="sm" variant="secondary" onClick={onManage}>
-              {t("settingsHub.operations.editAction")}
-            </Button>
-          )}
-        </div>
-        {summary.hints.length > 0 && <ul className={`muted ${s.hints}`}>{summary.hints.map((hint, i) => <li key={i}>{hint}</li>)}</ul>}
-      </>}
-    </QueryState>
-  </Card>;
-}
-
-function ModuleOperationsCard({ onManage }: { onManage: () => void }) {
-  const q = useQuery(settingsQuery);
-  const byKey = new Map((q.data?.items ?? []).map((item) => [item.key, item]));
-  const payroll = byKey.get("module.payroll.enabled");
-  const week52 = byKey.get("attendance.week52.warn_hours");
-  if (!payroll && !week52) return null;
-  const parts = [
-    payroll ? t(payroll.value ? "settingsHub.operations.payrollOn" : "settingsHub.operations.payrollOff") : null,
-    week52 && typeof week52.value === "number" ? t("settingsHub.operations.week52", { hours: week52.value }) : null,
-  ].filter(Boolean);
-  return (
-    <Card title={t("settingsHub.operations.title")}>
-      <div className={s.row}>
-        <div className={s.value}>{parts.join(" · ")}</div>
-        {q.data?.can_change && (
-          <Button size="sm" variant="secondary" onClick={onManage}>
-            {t("settingsHub.operations.editAction")}
-          </Button>
-        )}
-      </div>
-    </Card>
-  );
-}
-
-function ScreenStyleSettingsCard() {
-  const [open, setOpen] = useState(false);
-  const q = useQuery({ ...settingsQuery, select: data => experienceSummary(data, settingsCopy, fmtDate) });
-  return <Card title={t("settingsHub.key.display.experience")}>
-    <QueryState q={q} inline own={() => t("settingsHub.unknown")}>
-      {summary => <>
-        <div className={s.row}>
-          <div className={s.value}>{summary.value}</div>
-          {summary.canEdit && summary.entry && <Button size="sm" aria-haspopup="dialog" onClick={() => setOpen(true)}>{t("settingsHub.experience.change")}</Button>}
-        </div>
-        {summary.hints.length > 0 && <ul className={`muted ${s.hints}`}>{summary.hints.map((hint, i) => <li key={i}>{hint}</li>)}</ul>}
-        {open && summary.entry && <Suspense fallback={null}><ScreenStyleSheet entry={summary.entry} onClose={() => setOpen(false)} /></Suspense>}
-      </>}
-    </QueryState>
-  </Card>;
-}
-
 type InspectState = { entry: SettingEntry; scopeEntityId: string | null; scopeLabel?: string };
 type EditState = { entry: SettingEntry; scopeEntityId: string | null; scopeLabel?: string };
 
@@ -151,8 +72,10 @@ export function SettingsHubView({
   section?: SettingSectionId;
   onSelectSection?: (section: SettingSectionId) => void;
 }) {
+  const isDesktop = useIsDesktop();
   const settings = useQuery({ ...settingsQuery, enabled: interactive && section !== "overview" });
   const [inspecting, setInspecting] = useState<InspectState | null>(null);
+  const [dismissedSection, setDismissedSection] = useState<SettingSectionId | null>(null);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [savedChange, setSavedChange] = useState<{ entry: SettingEntry; change: components["schemas"]["SettingChange"] } | null>(null);
 
@@ -167,8 +90,16 @@ export function SettingsHubView({
 
   const selectSection = (next: SettingSectionId) => {
     setInspecting(null);
+    setDismissedSection(null);
     onSelectSection?.(next);
   };
+
+  const isCategorySection = section === "approvals" || section === "operations" || section === "privacy";
+  const autoInspectEntry =
+    isDesktop && interactive && isCategorySection && dismissedSection !== section
+      ? settings.data?.items.find((entry) => entry.key !== "display.experience" && settingSectionOf(entry.key) === section) ?? null
+      : null;
+  const activeInspect = inspecting ?? (autoInspectEntry ? { entry: autoInspectEntry, scopeEntityId: null } : null);
 
   const renderPanel = () => {
     if (!interactive || section === "overview") {
@@ -182,8 +113,11 @@ export function SettingsHubView({
       return (
         <Suspense fallback={null}>
           <WorkplaceScopePanel
-            selectedKey={inspecting?.entry.key}
-            onInspect={(entry, scopeEntityId, scopeLabel) => setInspecting({ entry, scopeEntityId, scopeLabel })}
+            selectedKey={activeInspect?.entry.key}
+            onInspect={(entry, scopeEntityId, scopeLabel) => {
+              setDismissedSection(null);
+              setInspecting({ entry, scopeEntityId, scopeLabel });
+            }}
             onEdit={(entry, scopeEntityId, scopeLabel) => setEditing({ entry, scopeEntityId, scopeLabel })}
           />
         </Suspense>
@@ -204,8 +138,11 @@ export function SettingsHubView({
               category={section}
               entries={data.items}
               canChange={data.can_change}
-              selectedKey={inspecting?.entry.key}
-              onInspect={(entry) => setInspecting({ entry, scopeEntityId: null })}
+              selectedKey={activeInspect?.entry.key}
+              onInspect={(entry) => {
+                setDismissedSection(null);
+                setInspecting({ entry, scopeEntityId: null });
+              }}
               onEdit={(entry) => setEditing({ entry, scopeEntityId: null })}
             />
           </Suspense>
@@ -214,10 +151,10 @@ export function SettingsHubView({
     );
   };
 
-  const latestInspectedEntry = inspecting
-    ? (inspecting.scopeEntityId == null
-        ? settings.data?.items.find((item) => item.key === inspecting.entry.key) ?? inspecting.entry
-        : inspecting.entry)
+  const latestInspectedEntry = activeInspect
+    ? (activeInspect.scopeEntityId == null
+        ? settings.data?.items.find((item) => item.key === activeInspect.entry.key) ?? activeInspect.entry
+        : activeInspect.entry)
     : null;
 
   return (
@@ -262,8 +199,11 @@ export function SettingsHubView({
               id: latestInspectedEntry.key,
               label: formatEntryLabel(latestInspectedEntry, settingsCopy),
               title: formatEntryLabel(latestInspectedEntry, settingsCopy),
-              meta: inspecting?.scopeLabel ?? t(`settingsHub.layer.${latestInspectedEntry.source.layer}`),
-              onClose: () => setInspecting(null),
+              meta: activeInspect?.scopeLabel ?? t(`settingsHub.layer.${latestInspectedEntry.source.layer}`),
+              onClose: () => {
+                setInspecting(null);
+                setDismissedSection(section);
+              },
               children: (
                 <Suspense fallback={null}>
                   <PolicyInspector
@@ -272,8 +212,8 @@ export function SettingsHubView({
                     onEdit={() =>
                       setEditing({
                         entry: latestInspectedEntry,
-                        scopeEntityId: inspecting?.scopeEntityId ?? null,
-                        scopeLabel: inspecting?.scopeLabel,
+                        scopeEntityId: activeInspect?.scopeEntityId ?? null,
+                        scopeLabel: activeInspect?.scopeLabel,
                       })
                     }
                   />

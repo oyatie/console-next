@@ -47,6 +47,8 @@ export const koPrivacyRefusals: Record<keyof typeof enPrivacyRefusals, string> =
   "privacy.intake.objectionTitle": "원 결정에 대한 이의 제기",
   "privacy.intake.objectionDetail": "이의 제기 사유",
   "privacy.intake.objectionReceipt": "이의 제기를 접수 등록했습니다.",
+  "privacy.intake.openRow": "열기",
+  "privacy.intake.openWorkbench": "상세 처리 화면 열기",
   "privacy.err.own_request_forbidden": "본인이 청구하거나 접수에 관여한 권리 행사 요청은 직접 결정할 수 없습니다.",
   "privacy.err.objection_same_decider": "원 결정에 참여한 담당자는 이의제기를 심사·결정할 수 없습니다.",
   "privacy.err.postpone_not_allowed": "해당 요청은 처리 기간을 연장할 수 없습니다.",

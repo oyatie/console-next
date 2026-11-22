@@ -1,44 +1,49 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useEffect, useState } from "react";
-import { keepPreviousData, useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { readFailureText } from "../../../lib/refusal";
 import { ReadReference } from "../../../lib/react/read-reference";
 import { codeText } from "../../../lib/labels";
+import { todayKst } from "../../../lib/pure/today";
 import { announce } from "../../../lib/react/announce";
 import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
+import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { Button } from "../../../ui/button/button";
-import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
-import { Field, TextInput } from "../../../ui/field/field";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
 import { LongTable } from "../../../ui/long-table/long-table";
-import { Page } from "../../../ui/page/page";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { ListRecord } from "../../../ui/patterns/list-record";
+import { PeriodStepper } from "../../../ui/period-stepper";
 import { SearchField } from "../../../ui/search/search-field";
-import { tabClass } from "../../../ui/tabs/tab-class";
-import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { AuditTabs } from "../../../reference/audit/ui/audit-tabs";
-import { ApiError, accessLogPages, type AccessLogEvent, type AccessLogFlag, type AccessLogPage as LogPage } from "../api";
+import accessLogStyles from "./access-log.module.css";
+import { ApiError, accessLogPages, type AccessLogEvent, type AccessLogFlag } from "../api";
+import { AccessLogBaselineView } from "./access-log-baseline";
 import { AccessLogFilterSheet } from "./access-log-filter-sheet";
 
 const AccessLogReviewSheet = lazy(() =>
   import("./access-log-review-sheet").then(m => ({ default: m.AccessLogReviewSheet })),
+);
+const AccessLogInspector = lazy(() =>
+  import("./access-log-inspector").then(m => ({ default: m.AccessLogInspector })),
 );
 
 const route = getRouteApi("/app/audit/access-log");
 const flagText = (flag: AccessLogFlag) => t(`accessLog.flag.${flag}`);
 
 export function AccessLogPage() {
+  const isDesktop = useIsDesktop();
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const [filterOpen, setFilterOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewEventId, setReviewEventId] = useState<string | null>(null);
   const [selected, setSelected] = useState<AccessLogEvent | null>(null);
+  const [dismissedAuto, setDismissedAuto] = useState(false);
   const [searchText, setSearchText] = useState(search.search ?? "");
   const searchQuery = search.search ?? "";
   const [previousQuery, setPreviousQuery] = useState(searchQuery);
@@ -76,101 +81,207 @@ export function AccessLogPage() {
     if (filtered && q.isSuccess && !q.isPlaceholderData && !q.isFetching && count !== undefined) announce(t("accessLog.searchCount", { count }));
   }, [filtered, count, q.isSuccess, q.isPlaceholderData, q.isFetching]);
   const period = search.period ?? source?.period.from.slice(0, 7) ?? "";
-  const content = filterInvalid ? {
-    children: <EmptyState alert title={t("accessLog.filterInvalid")} reason={readFailureText(q.error)} meta={<ReadReference error={q.error} />} />,
-  } : {
-    q,
-    children: (data: InfiniteData<LogPage>) => {
-      const page = data.pages[0]!;
-      const rows = data.pages.flatMap(p => p.items);
-      return <Card title={t("accessLog.title")} flush>
-        {!rows.length ? <EmptyState title={t(filtered ? "accessLog.noResults" : "accessLog.empty")}
-          reason={t(filtered ? "accessLog.noResultsReason" : "accessLog.emptyReason")} /> : <>
-          <StatRow label={t("accessLog.summary")} items={[
-            {
-              key: "events",
-              label: t("accessLog.all"),
-              value: fmtNumber(page.totals.events),
-              active: all,
-              onPress: () => void navigate({ search: s => ({ ...s, view: "all" }), replace: true }),
-            },
-            {
-              key: "flagged",
-              label: t("accessLog.flagged"),
-              value: fmtNumber(page.totals.flagged),
-              active: !all,
-              onPress: () => void navigate({ search: s => ({ ...s, view: undefined }), replace: true }),
-            },
-          ]} />
-          <LongTable label={t("accessLog.table")} rows={rows} rowId={row => row.event_id} total={all ? page.totals.events : page.totals.flagged}
-            hasMore={q.hasNextPage} loadingMore={q.isFetchingNextPage} onLoadMore={() => void q.fetchNextPage()}
-            empty={t("accessLog.empty")} onRowAction={id => setSelected(rows.find(row => row.event_id === id) ?? null)}
+  const consoleRows = q.data?.pages.flatMap(p => p.items) ?? [];
+  const consoleFirst = q.data?.pages[0];
+  const effectiveSelected =
+    selected ?? (isDesktop && !dismissedAuto ? (consoleRows[0] ?? null) : null);
+
+  const renderBaseline = () => (
+    <AccessLogBaselineView
+      q={q}
+      first={first}
+      filterInvalid={filterInvalid}
+      filtered={filtered}
+      all={all}
+      period={period}
+      search={search}
+      searchText={searchText}
+      appliedFilters={appliedFilters}
+      selected={selected}
+      onSearchChange={setSearchText}
+      onCompositionStart={() => setComposing(true)}
+      onCompositionEnd={() => setComposing(false)}
+      onNavigate={patch => void navigate({ search: s => ({ ...s, ...patch }), replace: true })}
+      onOpenFilter={() => setFilterOpen(true)}
+      onOpenReview={eventId => { setReviewEventId(eventId); setReviewOpen(true); }}
+      onClear={clear}
+      onSelect={setSelected}
+      sheetNode={
+        filterOpen ? (
+          <AccessLogFilterSheet
+            key={JSON.stringify({ ...filters, period: search.period })}
+            source={first}
+            choices={choices}
+            value={filters}
+            onClose={() => setFilterOpen(false)}
+            onApply={next => {
+              setFilterOpen(false);
+              void navigate({ search: s => ({ period: s.period, view: s.view, search: s.search, ...next }), replace: true, resetScroll: false });
+            }}
+          />
+        ) : reviewOpen && period ? (
+          <AccessLogReviewSheet
+            period={period}
+            initialEventId={reviewEventId}
+            onClose={() => { setReviewOpen(false); setReviewEventId(null); }}
+          />
+        ) : null
+      }
+    />
+  );
+
+  const consoleQuery = filterInvalid
+    ? { isPending: false, isError: false, error: null, data: first ?? { period: { from: `${todayKst().slice(0, 7)}-01`, to: todayKst(), time_zone: "Asia/Seoul", closed: false }, totals: { events: 0, flagged: 0, by_flag: {} }, items: [], next_cursor: null }, refetch: q.refetch }
+    : q;
+
+  return (
+    <ListRecord
+      q={consoleQuery}
+      tabs={<AuditTabs />}
+      head={{
+        title: t("audit.title"),
+        titleId: "audit-access-log-title",
+        actions: (
+          <>
+            <Button size="sm" variant="secondary" disabled={!first && !filterInvalid} onClick={() => setFilterOpen(true)}>
+              {t("accessLog.chooseFilters")}
+            </Button>
+            {Boolean(first && period) && (
+              <Button size="sm" variant="secondary" onClick={() => { setReviewEventId(null); setReviewOpen(true); }}>
+                {t("accessLog.review.open")}
+              </Button>
+            )}
+            {filtered && (
+              <Button size="sm" variant="ghost" onClick={clear}>
+                {t("accessLog.clearSearch")}
+              </Button>
+            )}
+          </>
+        ),
+      }}
+      filters={
+        <PeriodStepper
+          unit="month"
+          variant="boxed"
+          showCurrent={false}
+          value={period || todayKst().slice(0, 7)}
+          onChange={nextPeriod =>
+            void navigate({
+              search: s => ({ ...s, period: nextPeriod, actor: undefined, action: undefined, target_type: undefined, from: undefined, to: undefined }),
+              replace: true,
+            })
+          }
+        />
+      }
+      find={
+        <div className={accessLogStyles.searchBox}>
+          <SearchField label={t("accessLog.search")} value={searchText} onChange={setSearchText} onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} />
+        </div>
+      }
+      stats={
+        !filterInvalid && consoleFirst && consoleRows.length > 0 ? (
+          <StatRow
+            label={t("accessLog.summary")}
+            items={[
+              { key: "events", label: t("accessLog.all"), value: fmtNumber(consoleFirst.totals.events), active: all, onPress: () => void navigate({ search: s => ({ ...s, view: "all" }), replace: true }) },
+              { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(consoleFirst.totals.flagged), active: !all, onPress: () => void navigate({ search: s => ({ ...s, view: undefined }), replace: true }) },
+            ]}
+          />
+        ) : undefined
+      }
+      notes={appliedFilters.length ? <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly /> : undefined}
+      list={
+        filterInvalid ? (
+          <EmptyState
+            alert
+            title={t("accessLog.filterInvalid")}
+            reason={readFailureText(q.error)}
+            meta={<ReadReference error={q.error} />}
+          />
+        ) : !consoleRows.length ? (
+          <EmptyState
+            title={t(filtered ? "accessLog.noResults" : "accessLog.empty")}
+            reason={t(filtered ? "accessLog.noResultsReason" : "accessLog.emptyReason")}
+          />
+        ) : (
+          <LongTable
+            label={t("accessLog.table")}
+            rows={consoleRows}
+            rowId={row => row.event_id}
+            activeRowId={effectiveSelected?.event_id}
+            total={all ? (consoleFirst?.totals.events ?? consoleRows.length) : (consoleFirst?.totals.flagged ?? consoleRows.length)}
+            hasMore={q.hasNextPage}
+            loadingMore={q.isFetchingNextPage}
+            onLoadMore={() => void q.fetchNextPage()}
+            density="compact"
+            mobileLayout="compact"
+            empty={t("accessLog.empty")}
+            onRowAction={id => {
+              setDismissedAuto(false);
+              setSelected(consoleRows.find(row => row.event_id === id) ?? null);
+            }}
             columns={[
               { id: "actor", header: t("accessLog.actor"), card: "title", rowHeader: true, cell: row => row.actor_name },
               { id: "action", header: t("accessLog.action"), card: "fact", cell: row => codeText(`accessLog.action.${row.action}`, row.action) },
-              { id: "subjects", header: t("accessLog.subjects"), card: "fact", type: "num", cell: row => fmtNumber(row.subject_count) },
-              { id: "outcome", header: t("accessLog.outcome"), card: "status", cell: row => <Chip tone={row.outcome === "DENIED" ? "warn" : "neutral"}>{t(`accessLog.outcome.${row.outcome}`)}</Chip> },
-              { id: "flags", header: t("accessLog.flags"), card: "status", cell: row => row.flags.map(flag => <Chip key={flag} tone="warn">{flagText(flag)}</Chip>) },
+              { id: "subjects", header: t("accessLog.subjects"), card: "omit", type: "num", width: 88, cell: row => fmtNumber(row.subject_count) },
+              { id: "outcome", header: t("accessLog.outcome"), card: "status", width: 88, cell: row => <Chip tone={row.outcome === "DENIED" ? "danger" : "neutral"}>{t(`accessLog.outcome.${row.outcome}`)}</Chip> },
+              { id: "flags", header: t("accessLog.flags"), card: "omit", cell: row => row.flags.map(flag => <Chip key={flag} tone="warn">{flagText(flag)}</Chip>) },
               { id: "at", header: t("accessLog.at"), card: "fact", type: "date", width: 200, cell: row => fmtDateTime(row.occurred_at) },
-            ]} />
-        </>}
-      </Card>;
-    },
-  };
-  return <Page {...content} floorplan="P-01" head={{ title: t("audit.title"), tabs: <AuditTabs /> }}
-    toolbar={<div className="form">
-        <Field label={t("accessLog.period")} required={null}>{p => <TextInput {...p} type="month" value={period} onChange={e => void navigate({ search: s => ({ ...s, period: e.target.value || undefined, actor: undefined, action: undefined, target_type: undefined, from: undefined, to: undefined }), replace: true })} />}</Field>
-        <TabNav label={t("accessLog.views")} overflow="scroll">
-          <Link to="/audit/access-log" search={{ ...search, view: undefined }} className={tabClass}>{t("accessLog.flagged")}<TabCount>{q.error ? undefined : first?.totals.flagged}</TabCount></Link>
-          <Link to="/audit/access-log" search={{ ...search, view: "all" }} className={tabClass}>{t("accessLog.all")}<TabCount>{q.error ? undefined : first?.totals.events}</TabCount></Link>
-        </TabNav>
-        <SearchField label={t("accessLog.search")} value={searchText} onChange={setSearchText}
-          onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} />
-        <div className="row wrap">
-          <Button disabled={!first && !filterInvalid} onClick={() => setFilterOpen(true)}>{t("accessLog.chooseFilters")}</Button>
-          {Boolean(first && period) && (
-            <Button onClick={() => { setReviewEventId(null); setReviewOpen(true); }}>
-              {t("accessLog.review.open")}
-            </Button>
-          )}
-          {filtered && <Button onClick={clear}>{t("accessLog.clearSearch")}</Button>}
-        </div>
-        {!!appliedFilters.length && <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly />}
-      </div>}
-    sheet={filterOpen ? <AccessLogFilterSheet key={JSON.stringify({ ...filters, period: search.period })} source={first} choices={choices} value={filters} onClose={() => setFilterOpen(false)}
-      onApply={next => { setFilterOpen(false); void navigate({ search: s => ({ period: s.period, view: s.view, search: s.search, ...next }), replace: true, resetScroll: false }); }} />
-    : reviewOpen && period ? (
-      <Suspense fallback={null}>
-        <AccessLogReviewSheet
-          period={period}
-          initialEventId={reviewEventId}
-          onClose={() => { setReviewOpen(false); setReviewEventId(null); }}
-        />
-      </Suspense>
-    ) : selected && <Sheet open title={selected.actor_name} onClose={() => setSelected(null)} consequence={null}
-      actions={<>
-        {Boolean(period) && (
-          <Button
-            variant="primary"
-            onClick={() => {
-              const id = selected.event_id;
-              setSelected(null);
-              setReviewEventId(id);
-              setReviewOpen(true);
+            ]}
+          />
+        )
+      }
+      onSelect={id => {
+        setDismissedAuto(false);
+        setSelected(consoleRows.find(row => row.event_id === id) ?? null);
+      }}
+      record={
+        !filterInvalid && effectiveSelected
+          ? {
+              id: effectiveSelected.event_id,
+              label: t("accessLog.review.inspectorTitle"),
+              title: effectiveSelected.actor_name,
+              meta: codeText(`accessLog.action.${effectiveSelected.action}`, effectiveSelected.action),
+              onClose: () => {
+                setSelected(null);
+                setDismissedAuto(true);
+              },
+              children: (
+                <Suspense fallback={null}>
+                  <AccessLogInspector
+                    key={effectiveSelected.event_id}
+                    event={effectiveSelected}
+                    period={period || todayKst().slice(0, 7)}
+                  />
+                </Suspense>
+              ),
+            }
+          : undefined
+      }
+      overlays={
+        filterOpen ? (
+          <AccessLogFilterSheet
+            key={JSON.stringify({ ...filters, period: search.period })}
+            source={first}
+            choices={choices}
+            value={filters}
+            onClose={() => setFilterOpen(false)}
+            onApply={next => {
+              setFilterOpen(false);
+              void navigate({ search: s => ({ period: s.period, view: s.view, search: s.search, ...next }), replace: true, resetScroll: false });
             }}
-          >
-            {t("accessLog.review.recordForEvent")}
-          </Button>
-        )}
-        <Button onClick={() => setSelected(null)}>{t("uiSheet.close")}</Button>
-      </>}>
-      <KeyValue readOnly items={[
-        { key: "action", label: t("accessLog.action"), value: codeText(`accessLog.action.${selected.action}`, selected.action) },
-        { key: "at", label: t("accessLog.at"), value: fmtDateTime(selected.occurred_at) },
-        { key: "ip", label: t("accessLog.ip"), value: selected.ip ?? "—" },
-        { key: "purpose", label: t("accessLog.purpose"), value: selected.export_purpose ?? "—" },
-        { key: "flags", label: t("accessLog.flags"), value: selected.flags.map(flagText).join(" · ") },
-      ]} />
-    </Sheet>}
-  />;
+          />
+        ) : reviewOpen && period ? (
+          <Suspense fallback={null}>
+            <AccessLogReviewSheet
+              period={period}
+              initialEventId={reviewEventId}
+              onClose={() => { setReviewOpen(false); setReviewEventId(null); }}
+            />
+          </Suspense>
+        ) : undefined
+      }
+      baseline={renderBaseline}
+    />
+  );
 }

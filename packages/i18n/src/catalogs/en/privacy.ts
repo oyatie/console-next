@@ -46,6 +46,8 @@ export const enPrivacyRefusals = {
   "privacy.intake.objectionTitle": "File objection against prior decision",
   "privacy.intake.objectionDetail": "Objection detail",
   "privacy.intake.objectionReceipt": "Recorded objection against decision.",
+  "privacy.intake.openRow": "Open",
+  "privacy.intake.openWorkbench": "Open full workbench",
   "privacy.err.own_request_forbidden": "You cannot decide a request that you submitted or received.",
   "privacy.err.objection_same_decider": "A decider from the original ruling cannot decide this objection.",
   "privacy.err.postpone_not_allowed": "The deadline for this request cannot be postponed.",

@@ -59,9 +59,17 @@ export function formatEntryLabel(entry: SettingEntry, t: SummaryCopy): string {
   return translated;
 }
 
-export function parseSettingInput(entry: SettingEntry, raw: string): { ok: true; value: SettingValue } | { ok: false; problem: "invalidNumber" | "outOfRange" } {
+export function parseSettingInput(
+  entry: SettingEntry,
+  raw: string,
+): { ok: true; value: SettingValue } | { ok: false; problem: "invalidNumber" | "outOfRange" | "invalidValue" } {
   if (entry.kind.type === "bool") return { ok: true, value: raw === "true" };
-  if (entry.kind.type === "code") return { ok: true, value: raw };
+  if (entry.kind.type === "code") {
+    const trimmed = raw.trim();
+    if (!trimmed) return { ok: false, problem: "invalidValue" };
+    if (entry.kind.allowed && !entry.kind.allowed.includes(trimmed)) return { ok: false, problem: "invalidValue" };
+    return { ok: true, value: trimmed };
+  }
   if (!/^-?\d+$/.test(raw.trim())) return { ok: false, problem: "invalidNumber" };
   const n = Number(raw.trim());
   if (!Number.isSafeInteger(n)) return { ok: false, problem: "invalidNumber" };

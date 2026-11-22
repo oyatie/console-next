@@ -9,6 +9,7 @@ import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { TextInput } from "../../../ui/field/text-input";
 import { SelectField, type SelectOption } from "../../../ui/select/select-field";
+import { branchesQuery } from "../../../reference/org/api";
 import { assignSubstitution, cancelSubstitution, peopleQuery, substitutionCandidatesQuery } from "../api";
 
 export function AssignSubstitutionComposer({
@@ -20,6 +21,7 @@ export function AssignSubstitutionComposer({
   branchId?: string;
   onClose: () => void;
 }) {
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [coveredSearch, setCoveredSearch] = useState("");
   const [coveredId, setCoveredId] = useState<string | null>(null);
   const [workerId, setWorkerId] = useState<string | null>(null);
@@ -29,18 +31,22 @@ export function AssignSubstitutionComposer({
   const [fromMinutes, setFromMinutes] = useState("540");
   const [toMinutes, setToMinutes] = useState("1080");
 
+  const branches = useQuery({ ...branchesQuery, enabled: !branchId });
+  const activeBranches = (branches.data ?? []).filter((b) => !b.deactivated_at);
+  const effectiveBranchId = branchId ?? selectedBranchId ?? activeBranches[0]?.id ?? "";
+
   const coveredPeople = useQuery({ ...peopleQuery(coveredSearch.trim()), enabled: coveredSearch.trim().length > 0 });
   const fromNum = Number(fromMinutes);
   const toNum = Number(toMinutes);
   const candidates = useQuery({
     ...substitutionCandidatesQuery({
-      branch_id: branchId ?? "",
+      branch_id: effectiveBranchId,
       covered_employee_id: coveredId ?? "",
       cover_date: date,
       from_minutes: Number.isFinite(fromNum) ? fromNum : 540,
       to_minutes: Number.isFinite(toNum) ? toNum : 1080,
     }),
-    enabled: Boolean(branchId && coveredId && Number.isFinite(fromNum) && Number.isFinite(toNum) && toNum > fromNum),
+    enabled: Boolean(effectiveBranchId && coveredId && Number.isFinite(fromNum) && Number.isFinite(toNum) && toNum > fromNum),
     retry: false,
   });
 
@@ -58,7 +64,7 @@ export function AssignSubstitutionComposer({
       assignSubstitution(
         {
           site: site.trim(),
-          ...(branchId ? { branch_id: branchId } : {}),
+          ...(effectiveBranchId ? { branch_id: effectiveBranchId } : {}),
           role: role.trim(),
           cover_date: date,
           from_minutes: fromNum,
@@ -75,7 +81,7 @@ export function AssignSubstitutionComposer({
     onSuccess: () => onClose(),
   });
 
-  const blocked = !coveredId || !workerId || !site.trim() || !role.trim() || !Number.isFinite(fromNum) || !Number.isFinite(toNum) || toNum <= fromNum;
+  const blocked = !effectiveBranchId || !coveredId || !workerId || !site.trim() || !role.trim() || !Number.isFinite(fromNum) || !Number.isFinite(toNum) || toNum <= fromNum;
 
   return (
     <Composer
@@ -87,12 +93,24 @@ export function AssignSubstitutionComposer({
       pending={cmd.isPending}
       error={cmd.error}
       notice={<CommandError error={cmd.error} />}
-      dirty={Boolean(coveredId || workerId || site || role)}
+      dirty={Boolean(selectedBranchId || coveredId || workerId || site || role)}
       blocked={blocked ? { reason: t("attendance.issues.missingReason") } : undefined}
       onSubmit={() => {
         cmd.mutate(undefined);
       }}
     >
+      {!branchId && (
+        <SelectField
+          label={t("attendance.col.workplace")}
+          placeholder={t("attendance.col.workplace")}
+          options={activeBranches.map((b) => ({ id: b.id, label: b.name }))}
+          value={effectiveBranchId || null}
+          onChange={(id) => {
+            setSelectedBranchId(id);
+            setWorkerId(null);
+          }}
+        />
+      )}
       <Field label={t("attendance.sub.coveredEmployee")} required>
         {(props) => <TextInput {...props} value={coveredSearch} onChange={(e) => setCoveredSearch(e.target.value)} />}
       </Field>

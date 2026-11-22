@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.paneDetail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.searchBox {
+  width: calc(var(--space-6) * 9);
+  max-width: 100%;
+}

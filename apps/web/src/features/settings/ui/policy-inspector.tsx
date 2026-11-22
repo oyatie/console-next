@@ -2,14 +2,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { reasonLabel } from "../../../lib/reason-codes";
 import { ApiError, settingHistoryQuery } from "../../../reference/settings/api";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button-base";
-import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { ExternalLink } from "../../../ui/external-link";
 import { KeyValue } from "../../../ui/key-value/key-value";
+import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import {
   formatEntryDefault,
   formatEntryLabel,
@@ -39,16 +40,16 @@ export function PolicyInspector({
 
   return (
     <div className={s.stack}>
-      <Card
+      <RecordPaneSection
         title={t("settingsHub.inspector.title")}
-        tools={
+        trailing={
           editable ? (
             <Button size="sm" variant="primary" onClick={onEdit}>
               {t("settingsHub.policy.edit")}
             </Button>
           ) : (
             <DisabledReason
-              layout="disclosure"
+              layout="inline"
               reason={entry.governance === "tenant" ? t("settingsHub.readOnly") : governanceText}
               control={(props) => (
                 <Button {...props} size="sm" variant="secondary">
@@ -82,18 +83,18 @@ export function PolicyInspector({
               : []),
           ]}
         />
-      </Card>
+      </RecordPaneSection>
 
       {entry.legal_basis && (
-        <Card title={t("settingsHub.inspector.legalBasis")}>
+        <RecordPaneSection title={t("settingsHub.inspector.legalBasis")}>
           <ExternalLink href={entry.legal_basis.url}>
             {t("shellRoutes.pair", { primary: entry.legal_basis.authority, secondary: entry.legal_basis.title })}
           </ExternalLink>
-        </Card>
+        </RecordPaneSection>
       )}
 
       {entry.chain.length > 0 && (
-        <Card title={t("settingsHub.inspector.chain")}>
+        <RecordPaneSection title={t("settingsHub.inspector.chain")}>
           <div className={s.stack}>
             {entry.chain.map((link, idx) => (
               <div key={`${link.layer}-${link.scope_entity_id ?? idx}`} className={s.row}>
@@ -105,11 +106,11 @@ export function PolicyInspector({
               </div>
             ))}
           </div>
-        </Card>
+        </RecordPaneSection>
       )}
 
       {entry.scheduled.length > 0 && (
-        <Card title={t("settingsHub.inspector.scheduled")}>
+        <RecordPaneSection title={t("settingsHub.inspector.scheduled")}>
           <div className={s.stack}>
             {entry.scheduled.map((next) => (
               <div key={next.id} className={s.row}>
@@ -118,10 +119,10 @@ export function PolicyInspector({
               </div>
             ))}
           </div>
-        </Card>
+        </RecordPaneSection>
       )}
 
-      <Card title={t("settingsHub.inspector.history")}>
+      <RecordPaneSection title={t("settingsHub.inspector.history")}>
         {historyDenied ? (
           <Banner tone="info">{t("settingsHub.inspector.historyUnavailable")}</Banner>
         ) : history.isPending ? (
@@ -137,20 +138,25 @@ export function PolicyInspector({
                 <div>
                   <div>{formatEntryValue(entry, item.value, settingsCopy)}</div>
                   <div className="muted">
-                    {t("shellRoutes.pair", { primary: fmtDate(item.effective_from), secondary: item.reason_code })}
+                    {t("shellRoutes.pair", {
+                      primary: fmtDate(item.effective_from),
+                      secondary: [reasonLabel("settings_change", item.reason_code), item.reason_note].filter(Boolean).join(" · "),
+                    })}
                   </div>
                 </div>
                 <div className={s.chips}>
-                  <Chip tone={item.direction === "loosen" ? "warn" : "info"}>
-                    {t(`settingsHub.policy.direction.${item.direction}`)}
-                  </Chip>
+                  {item.direction && (
+                    <Chip tone={item.direction === "loosen" ? "warn" : "info"}>
+                      {t(`settingsHub.policy.direction.${item.direction}`)}
+                    </Chip>
+                  )}
                   {item.onboarding_exempt && <Chip tone="ok">{t("settingsHub.inspector.exempt")}</Chip>}
                 </div>
               </div>
             ))}
           </div>
         )}
-      </Card>
+      </RecordPaneSection>
     </div>
   );
 }

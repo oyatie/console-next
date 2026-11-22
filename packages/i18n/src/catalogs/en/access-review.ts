@@ -19,4 +19,9 @@ export const enAccessReview = {
   "accessReview.detail.unit": "Department",
   "accessReview.detail.openAccount": "Open person access",
   "accessReview.detail.close": "Close",
+  "accessReview.detail.grantedAt": "Granted at",
+  "accessReview.action.section": "Grant management",
+  "accessReview.action.editPeriod": "Change period",
+  "accessReview.action.revoke": "Revoke",
+  "accessReview.action.openPerson": "Open person access to change period or revoke",
 } as const;

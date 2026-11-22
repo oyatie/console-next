@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
-import { Card } from "../../../ui/card/card";
-import { ChipChoice } from "../../../ui/choice/chip-choice";
+import { Segmented } from "../../../ui/button/segmented";
 import { EmptyState } from "../../../ui/empty-state";
+import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { ApiError, privacyReceipt } from "../api";
-import { privacyIntakeListPages } from "../api/privacy-intake";
+import { privacyIntakeListPages, type WirePrivacyReceipt } from "../api/privacy-intake";
 import { PrivacyReceiptTable } from "./privacy-receipt-table";
+import accountStyles from "./account.module.css";
 import s from "./privacy-intake.module.css";
 
 const PrivacyOffAppComposer = lazy(() =>
@@ -18,8 +19,15 @@ const PrivacyOffAppComposer = lazy(() =>
 );
 
 type StatusFilter = "ALL" | "RECEIVED" | "DECIDED";
+export type IntakeQueueSelection = { request: WirePrivacyReceipt; subject_name: string; as_of: string };
 
-export function PrivacyIntakeQueue() {
+export function PrivacyIntakeQueue({
+  selectedId,
+  onSyncRows,
+}: {
+  selectedId?: string;
+  onSyncRows?: (items: IntakeQueueSelection[]) => void;
+}) {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [offAppOpen, setOffAppOpen] = useState(false);
@@ -28,48 +36,64 @@ export function PrivacyIntakeQueue() {
   const queryStatus = statusFilter === "ALL" ? undefined : statusFilter;
   const q = useInfiniteQuery({ ...privacyIntakeListPages(queryStatus), retry: false });
 
+  const items: IntakeQueueSelection[] = useMemo(
+    () =>
+      (q.data?.pages ?? []).flatMap(page =>
+        page.items.map(entry => ({
+          request: entry.request,
+          subject_name: entry.subject_name,
+          as_of: page.as_of,
+        })),
+      ),
+    [q.data?.pages],
+  );
+
+  useEffect(() => {
+    onSyncRows?.(items);
+  }, [items, onSyncRows]);
+
   if (q.error instanceof ApiError && q.error.status === 403) {
     return (
-      <Card title={t("privacy.intake.queueTitle")}>
+      <RecordPaneSection title={t("privacy.intake.queueTitle")}>
         <EmptyState
           alert
           title={t("privacy.intake.queueRefused")}
           reason={t("privacy.intake.queueEmptyReason")}
         />
-      </Card>
+      </RecordPaneSection>
     );
   }
 
-  const rows = (q.data?.pages ?? []).flatMap(page =>
-    page.items.map(entry => ({
-      ...privacyReceipt(entry.request, page.as_of),
-      subject_name: entry.subject_name,
-    })),
-  );
+  const rows = items.map(entry => ({
+    ...privacyReceipt(entry.request, entry.as_of),
+    subject_name: entry.subject_name,
+  }));
 
   return (
     <div className={s.section}>
       {receiptMsg && <Receipt state="recorded" message={receiptMsg} />}
-      <Card title={t("privacy.intake.queueTitle")} flush>
-        <div className={s.filterBar}>
-          <ChipChoice
-            label={t("account.privacy.status")}
-            required={false}
-            options={[
-              { value: "ALL", label: t("privacy.intake.filter.all") },
-              { value: "RECEIVED", label: t("privacy.intake.filter.received") },
-              { value: "DECIDED", label: t("privacy.intake.filter.decided") },
-            ]}
-            value={statusFilter}
-            onChange={value => {
-              if (value === "ALL" || value === "RECEIVED" || value === "DECIDED") {
-                setStatusFilter(value);
-              }
-            }}
-          />
-          <Button variant="primary" onClick={() => setOffAppOpen(true)}>
-            {t("privacy.intake.offAppOpen")}
-          </Button>
+      <RecordPaneSection title={t("privacy.intake.queueTitle")} padded={false}>
+        <div className={accountStyles.pad}>
+          <div className={s.filterBar}>
+            <Segmented
+              label={t("account.privacy.status")}
+              size="sm"
+              value={statusFilter}
+              onChange={value => {
+                if (value === "ALL" || value === "RECEIVED" || value === "DECIDED") {
+                  setStatusFilter(value);
+                }
+              }}
+              items={[
+                { id: "ALL", label: t("privacy.intake.filter.all") },
+                { id: "RECEIVED", label: t("privacy.intake.filter.received") },
+                { id: "DECIDED", label: t("privacy.intake.filter.decided") },
+              ]}
+            />
+            <Button size="sm" variant="primary" onClick={() => setOffAppOpen(true)}>
+              {t("privacy.intake.offAppOpen")}
+            </Button>
+          </div>
         </div>
         {rows.length === 0 ? (
           <EmptyState title={t("privacy.intake.queueEmpty")} reason={t("privacy.intake.queueEmptyReason")} />
@@ -77,6 +101,7 @@ export function PrivacyIntakeQueue() {
           <PrivacyReceiptTable
             label={t("privacy.intake.queueTitle")}
             rows={rows}
+            selected={selectedId}
             onSelect={id => {
               void navigate({ to: "/account/privacy/intake/$id", params: { id } });
             }}
@@ -90,7 +115,7 @@ export function PrivacyIntakeQueue() {
             </Button>
           </div>
         )}
-      </Card>
+      </RecordPaneSection>
       {offAppOpen && (
         <Suspense fallback={null}>
           <PrivacyOffAppComposer

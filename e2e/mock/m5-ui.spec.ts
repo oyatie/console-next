@@ -8,6 +8,7 @@ import { screens } from "../states/registry";
 import { AT, failure, id, screenAccess, user } from "./fixtures";
 import { mockRoute } from "./route";
 import { saeonAdminUser, saeonLegalEntities, saeonPayGroups, saeonPayrollRates, saeonPayrollRunDetail, saeonUniverse } from "./saeon";
+import { saeonAttendanceDayBoard } from "./saeon-mod5-6";
 import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -91,7 +92,7 @@ test("Item 22 /settings policy dry-run preview, step-up commit, and workplace sc
     status: 200,
     json: {
       domain: "settings_change",
-      items: [{ code: "POLICY_UPDATE", system: true, active: true, requires_note: false, involuntary: false, notice_required: false, label_ko: null, label_en: null }],
+      items: [{ code: "POLICY_REVIEW", system: true, active: true, requires_note: false, involuntary: false, notice_required: false, label_ko: null, label_en: null }],
     },
   });
   await mockRoute(page, "get", "/api/v1/legal-entities", {
@@ -137,12 +138,12 @@ test("Item 22 /settings policy dry-run preview, step-up commit, and workplace sc
   });
 
   await page.goto("/settings?section=approvals");
-  await expect(page.getByRole("button", { name: t("settingsHub.policy.edit") })).toBeVisible();
-  await page.getByRole("button", { name: t("settingsHub.policy.edit") }).click();
+  await expect(page.getByRole("button", { name: t("settingsHub.policy.edit") }).first()).toBeVisible();
+  await page.getByRole("button", { name: t("settingsHub.policy.edit") }).first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await dialog.getByText(t("settingsHub.code.none"), { exact: true }).click();
-  await dialog.getByText("POLICY_UPDATE", { exact: true }).click();
+  await dialog.getByText(t("reason.settings_change.POLICY_REVIEW"), { exact: true }).click();
   await dialog.getByRole("button", { name: t("settingsHub.policy.dryRun") }).click();
   await expect.poll(() => dryRunCount).toBe(1);
   await expect(dialog.getByText(t("settingsHub.policy.stepUpRequired"))).toBeVisible();
@@ -321,7 +322,7 @@ test("Item 25 /audit log lookup and /audit/access-log monthly review workflow", 
   );
 
   await page.goto("/audit");
-  await expect(page.getByText(t("audit.attestation.ok"), { exact: true })).toBeVisible();
+  await expect(page.getByText(t("audit.attestation.ok"), { exact: true }).first()).toBeVisible();
   await page.getByRole("grid").getByRole("row").nth(1).click();
   await expect(page.getByText(t("audit.detail.diff"), { exact: true })).toBeVisible();
   await fits(page, "m5 audit page");
@@ -338,9 +339,14 @@ test("Item 25 /audit log lookup and /audit/access-log monthly review workflow", 
     flags_seen: {},
     findings: [] as Record<string, unknown>[],
   };
+  let startCalls = 0;
   await page.route(url => url.pathname.startsWith("/api/v1/access/access-log"), async route => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname.endsWith("/start")) {
+      startCalls += 1;
+      if (startCalls === 1) {
+        return route.fulfill({ status: 403, json: failure("scope_tenant_wide_only") });
+      }
       reviewState = { ...reviewState, started_at: AT };
       return route.fulfill({ json: reviewState });
     }
@@ -387,11 +393,17 @@ test("Item 25 /audit log lookup and /audit/access-log monthly review workflow", 
   await page.goto("/audit/access-log");
   await page.getByRole("button", { name: t("accessLog.review.open"), exact: true }).click();
   await page.getByRole("button", { name: t("accessLog.review.start"), exact: true }).click();
+  const reviewStartCommit = page.getByRole("button", { name: t("composer.commit", { action: t("accessLog.review.noun"), verb: t("composer.verb.apply"), count: 0, unit: t("composer.unit.units") }) });
+  await reviewStartCommit.click();
+  await expect(page.getByRole("alert")).toContainText(t("accessLog.review.error.tenantOnly"));
+  await expect(reviewStartCommit).toBeDisabled();
+  await page.getByRole("dialog").getByRole("button", { name: t("uiSheet.close"), exact: true }).click();
+  await page.getByRole("button", { name: t("accessLog.review.start"), exact: true }).click();
   await page.getByRole("button", { name: t("composer.commit", { action: t("accessLog.review.noun"), verb: t("composer.verb.apply"), count: 0, unit: t("composer.unit.units") }) }).click();
   await expect(page.getByText(t("accessLog.review.startedReceipt"), { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: t("accessLog.review.recordFinding"), exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: t("accessLog.review.recordFinding"), exact: true }).click();
   await page.getByRole("button", { name: t("composer.commit", { action: t("accessLog.review.noun"), verb: t("composer.verb.record"), count: 0, unit: t("composer.unit.units") }) }).click();
-  await page.getByRole("button", { name: t("accessLog.review.complete"), exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: t("accessLog.review.complete"), exact: true }).click();
   await page.getByRole("button", { name: t("composer.commit", { action: t("accessLog.review.noun"), verb: t("composer.verb.complete"), count: 0, unit: t("composer.unit.units") }) }).click();
   await expect(page.getByText(t("accessLog.review.completedReceipt"), { exact: true })).toBeVisible();
   expect(fixture.unexpected).toEqual([]);
@@ -433,6 +445,7 @@ test("Item 26A /account/privacy intake queue, CORRECTION refusal disable, and bo
       ACCESS: { due: { on: "2026-11-11", without_delay: false, rule: null }, decisions: [] as unknown[] },
     },
   };
+  let decideCalls = 0;
   await page.route(url => url.pathname.startsWith("/api/v1/privacy/rights-requests"), async route => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/options")) {
@@ -444,6 +457,13 @@ test("Item 26A /account/privacy intake queue, CORRECTION refusal disable, and bo
     if (url.pathname.endsWith("/decide")) {
       const body = route.request().postDataJSON();
       expect(body.step_up?.binding?.action_kind).toBe("PRIVACY_REQUEST_DECIDE");
+      decideCalls += 1;
+      if (decideCalls === 1) {
+        return route.fulfill({ status: 403, json: failure("own_request_forbidden") });
+      }
+      if (decideCalls === 2) {
+        return route.fulfill({ status: 422, json: failure("decision_date_invalid") });
+      }
       receipt = {
         ...receipt,
         status: "DECIDED",
@@ -470,9 +490,109 @@ test("Item 26A /account/privacy intake queue, CORRECTION refusal disable, and bo
   await expect(page.getByRole("heading", { name: t("privacy.intake.decisionsTitle"), exact: true })).toBeVisible();
   await page.getByRole("button", { name: t("privacy.intake.decideOpen"), exact: true }).first().click();
   await expect(page.getByText(t("privacy.intake.correctionOnlyGranted"), { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: t("composer.commit", { action: t("privacy.intake.noun"), verb: t("composer.verb.apply"), count: 0, unit: t("composer.unit.units") }) }).click();
+  const decideCommit = page.getByRole("button", { name: t("composer.commit", { action: t("privacy.intake.noun"), verb: t("composer.verb.apply"), count: 0, unit: t("composer.unit.units") }) });
+  await decideCommit.click();
+  await expect(page.getByRole("alert")).toContainText(t("privacy.err.own_request_forbidden"));
+  await expect(decideCommit).toBeDisabled();
+  const closeBtn = page.getByRole("dialog").getByRole("button", { name: t("uiSheet.close"), exact: true });
+  await closeBtn.click();
+  if (await page.getByRole("dialog").isVisible()) {
+    await closeBtn.click();
+  }
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await page.getByRole("button", { name: t("privacy.intake.decideOpen"), exact: true }).first().click();
+  const decideCommitRetry = page.getByRole("button", { name: t("composer.commit", { action: t("privacy.intake.noun"), verb: t("composer.verb.apply"), count: 0, unit: t("composer.unit.units") }) });
+  await decideCommitRetry.click();
+  await expect(page.getByRole("alert")).toContainText(t("privacy.err.decision_date_invalid"));
+  await page.getByLabel(t("privacy.intake.decidedOn")).fill("2026-11-04");
+  await page.getByLabel(t("privacy.intake.decidedOn")).press("Tab");
+  await expect(decideCommitRetry).toBeEnabled();
+  await decideCommitRetry.click();
   await expect(page.getByText(t("privacy.intake.decideReceipt"), { exact: true })).toBeVisible();
   await fits(page, "m5 privacy intake workbench");
   await expectAxe(page, "m5 privacy intake workbench");
+  expect(fixture.unexpected).toEqual([]);
+});
+
+test("AssignSubstitutionComposer works from /attendance?tab=day without ?wp= via branch picker", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await initConsole(page);
+  const fixture = await mockScreen(page, screens[0], "empty");
+  const access = screenAccess("/attendance");
+  access.is_ops = true;
+  const hqId = id(20);
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: access });
+  await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: saeonAdminUser() });
+  await mockRoute(page, "get", "/api/v1/branches", {
+    status: 200,
+    json: [{ id: hqId, region_id: id(21), name: "HQ", deactivated_at: null, created_at: AT }],
+  });
+  await mockRoute(page, "get", "/api/v1/attendance/schedule/tree", {
+    status: 200,
+    json: { date: "2026-10-20", people_total: 1, people_unscheduled: 0, holidays_loaded: true, nodes: [] },
+  });
+  const dayBoard = saeonAttendanceDayBoard();
+  const firstEmp = dayBoard.groups[0]!.rows[0]!;
+  await mockRoute(page, "get", "/api/v1/attendance/days", {
+    status: 200,
+    json: { ...dayBoard, date: "2026-10-20" },
+  });
+  await page.route("**/api/v1/employees*", route =>
+    route.fulfill({
+      json: {
+        items: [{ id: firstEmp.employee_id, employee_number: firstEmp.employee_number, name: firstEmp.name, org_unit: "HQ", workplace_id: hqId, status: "ACTIVE", next_event: null }],
+        total: 1,
+        next_cursor: null,
+      },
+    }),
+  );
+  let candidateBranchId: string | null = null;
+  let assignedBody: Record<string, unknown> | null = null;
+  await page.route(url => url.pathname.startsWith("/api/v1/attendance/substitution"), async route => {
+    const reqUrl = new URL(route.request().url());
+    if (reqUrl.pathname.endsWith("/substitution-candidates")) {
+      candidateBranchId = reqUrl.searchParams.get("branch_id");
+      return route.fulfill({
+        json: {
+          items: [{ employee_id: id(102), employee_name: saeonUniverse.statusSamples.onLeave.name, employee_number: saeonUniverse.statusSamples.onLeave.employeeNumber }],
+        },
+      });
+    }
+    if (route.request().method() === "POST") {
+      assignedBody = route.request().postDataJSON() as Record<string, unknown>;
+      return route.fulfill({
+        status: 201,
+        json: {
+          id: id(301),
+          site: String(assignedBody.site ?? "HQ"),
+          role: String(assignedBody.role ?? "Lead"),
+          cover_date: "2026-10-20",
+          from_minutes: 540,
+          to_minutes: 1080,
+          covered_employee_id: firstEmp.employee_id,
+          worker_employee_id: id(102),
+          reason_kind: "LEAVE",
+          status: "ACTIVE",
+        },
+      });
+    }
+    return route.fulfill({ json: { items: [], next_cursor: null } });
+  });
+
+  await page.goto("/attendance?tab=day&date=2026-10-20");
+  await page.getByRole("button", { name: t("attendance.sub.openButton"), exact: true }).click();
+  await page.getByRole("button", { name: t("attendance.sub.assignButton"), exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: new RegExp(t("attendance.col.workplace")) })).toBeVisible();
+  await dialog.getByRole("textbox", { name: new RegExp(t("attendance.sub.coveredEmployee")) }).fill(firstEmp.name);
+  await dialog.getByRole("button", { name: new RegExp(t("attendance.sub.coveredEmployee")) }).click();
+  await page.getByRole("option", { name: new RegExp(firstEmp.name) }).click();
+  await expect.poll(() => candidateBranchId).toBe(hqId);
+  await dialog.getByRole("button", { name: new RegExp(t("attendance.sub.workerEmployee")) }).click();
+  await page.getByRole("option", { name: new RegExp(saeonUniverse.statusSamples.onLeave.name) }).click();
+  await dialog.getByLabel(new RegExp(t("attendance.sub.site"))).fill("HQ");
+  await dialog.getByLabel(new RegExp(t("attendance.sub.role"))).fill("Shift");
+  await dialog.getByRole("button", { name: t("composer.commit", { action: t("attendance.sub.noun"), verb: t("composer.verb.assign"), count: 0, unit: t("composer.unit.units") }) }).click();
+  await expect.poll(() => assignedBody?.branch_id).toBe(hqId);
   expect(fixture.unexpected).toEqual([]);
 });

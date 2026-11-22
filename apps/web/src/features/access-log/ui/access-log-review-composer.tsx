@@ -7,7 +7,6 @@ import { Composer } from "../../../ui/composer/composer";
 import { Field, TextInput } from "../../../ui/field/field";
 import { SelectField } from "../../../ui/select/select-field";
 import {
-  ApiError,
   completeAccessLogReview,
   recordAccessLogFinding,
   startAccessLogReview,
@@ -15,6 +14,12 @@ import {
 } from "../api";
 
 export type ReviewComposerMode = "start" | "record" | "complete";
+
+const ownReviewError = (code: string) => {
+  if (code === "review_incomplete") return t("accessLog.review.error.incomplete");
+  if (code === "scope_tenant_wide_only") return t("accessLog.review.error.tenantOnly");
+  return undefined;
+};
 
 export function AccessLogReviewComposer({
   period,
@@ -60,13 +65,6 @@ export function AccessLogReviewComposer({
     },
   });
 
-  const customError =
-    cmd.error instanceof ApiError && cmd.error.status === 409 && cmd.error.code === "review_incomplete"
-      ? t("accessLog.review.error.incomplete")
-      : cmd.error instanceof ApiError && cmd.error.status === 403 && cmd.error.code === "scope_tenant_wide_only"
-        ? t("accessLog.review.error.tenantOnly")
-        : null;
-
   const actionMode = mode === "start" ? "apply" : mode === "record" ? "record" : "complete";
 
   return (
@@ -77,8 +75,7 @@ export function AccessLogReviewComposer({
       action={{ kind: "accessLogReview", mode: actionMode }}
       pending={cmd.isPending}
       error={cmd.error}
-      blocked={customError ? { reason: customError } : undefined}
-      notice={!customError && cmd.error ? <CommandError error={cmd.error} /> : undefined}
+      notice={<CommandError error={cmd.error} own={ownReviewError} />}
       onSubmit={() => {
         if (cmd.isPending) return;
         cmd.mutate(undefined);

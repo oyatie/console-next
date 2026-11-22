@@ -217,6 +217,7 @@ export const enSettingsHub = {
   "settingsHub.policy.noChange": "Select or enter a different value.",
   "settingsHub.policy.invalidNumber": "Enter a whole number.",
   "settingsHub.policy.outOfRange": "Enter a value within the allowed range.",
+  "settingsHub.policy.invalidValue": "Choose a valid option.",
   "settingsHub.policy.emptySection": "No settings are available in this section.",
   "settingsHub.operations.title": "Payroll and attendance policies",
   "settingsHub.operations.payrollOn": "Payroll module on",

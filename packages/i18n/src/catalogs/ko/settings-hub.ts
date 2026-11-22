@@ -218,6 +218,7 @@ export const koSettingsHub: Record<keyof typeof enSettingsHub, string> = {
   "settingsHub.policy.noChange": "현재 값과 다른 값을 입력하십시오.",
   "settingsHub.policy.invalidNumber": "정수를 입력하십시오.",
   "settingsHub.policy.outOfRange": "허용 범위 안의 값을 입력하십시오.",
+  "settingsHub.policy.invalidValue": "허용된 선택 항목 중 하나를 선택하십시오.",
   "settingsHub.policy.emptySection": "이 분류에서 표시할 설정 항목 없음",
   "settingsHub.operations.title": "급여 · 근태 정책",
   "settingsHub.operations.payrollOn": "급여 모듈 켜짐",

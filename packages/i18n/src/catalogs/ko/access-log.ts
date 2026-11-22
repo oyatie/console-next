@@ -133,4 +133,5 @@ export const koAccessLog: Record<keyof typeof enAccessLog, string> = {
   "accessLog.review.completedReceipt": "월간 접속기록 점검을 완료했습니다.",
   "accessLog.review.error.incomplete": "점검을 완료하기 전에 확인 대상 소견을 먼저 기록하십시오.",
   "accessLog.review.error.tenantOnly": "월간 접속기록 점검에는 고객 전체 감사 권한이 필요합니다.",
+  "accessLog.review.inspectorTitle": "접속 증적 · 점검 확인",
 };

@@ -20,4 +20,9 @@ export const koAccessReview: Record<keyof typeof enAccessReview, string> = {
   "accessReview.detail.unit": "소속",
   "accessReview.detail.openAccount": "사람별 권한 보기",
   "accessReview.detail.close": "닫기",
+  "accessReview.detail.grantedAt": "부여 일시",
+  "accessReview.action.section": "권한 관리 · 변경",
+  "accessReview.action.editPeriod": "기간 변경",
+  "accessReview.action.revoke": "회수",
+  "accessReview.action.openPerson": "사람별 권한 화면에서 기간 변경 · 회수",
 };
