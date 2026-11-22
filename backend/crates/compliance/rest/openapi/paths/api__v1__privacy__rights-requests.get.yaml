@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [Compliance]
+operationId: listPrivacyRightsIntake
+summary: List tenant privacy rights intake requests under live Cedar placement
+security: [{ bearerAuth: [] }]
+parameters:
+- { name: cursor, in: query, required: false, schema: { type: string, format: uuid } }
+- { name: status, in: query, required: false, schema: { type: string, enum: [RECEIVED, DECIDED] } }
+responses:
+  '200':
+    description: Tenant intake page filtered by live Cedar placement.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [items, next_cursor, as_of]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                required: [request, subject_name]
+                properties:
+                  request: { $ref: '#/components/schemas/PrivacyRightsReceipt' }
+                  subject_name: { type: string }
+            next_cursor: { type: string, nullable: true }
+            as_of: { type: string, format: date }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '422': { $ref: '#/components/responses/ValidationError' }
+  '503': { $ref: '#/components/responses/ServiceUnavailable' }

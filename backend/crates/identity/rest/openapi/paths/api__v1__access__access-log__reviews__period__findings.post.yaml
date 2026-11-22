@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [access]
+operationId: recordAccessLogFinding
+summary: Record or supersede a finding on a frozen flagged event or daily summary
+description: Requires tenant-wide Cedar audit::approve. Appends an immutable finding audit record for the started review period.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+- name: period
+  in: path
+  required: true
+  schema:
+    type: string
+    pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [disposition]
+        properties:
+          event_id:
+            type: string
+            format: uuid
+            nullable: true
+          summary:
+            type: object
+            nullable: true
+            additionalProperties: false
+            required: [actor, day, flag]
+            properties:
+              actor: { type: string, format: uuid }
+              day: { type: string, format: date }
+              flag: { type: string }
+          disposition:
+            type: string
+            enum: [confirmed, action_required]
+          outcome:
+            type: string
+            nullable: true
+          note:
+            type: string
+            nullable: true
+          follow_up:
+            type: object
+            nullable: true
+            additionalProperties: false
+            required: [kind]
+            properties:
+              kind: { type: string }
+              ref: { type: string, nullable: true }
+              closed: { type: boolean, nullable: true }
+responses:
+  '200':
+    description: Updated monthly review projection including the recorded finding.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessLogReview'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: access_denied or scope_tenant_wide_only.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

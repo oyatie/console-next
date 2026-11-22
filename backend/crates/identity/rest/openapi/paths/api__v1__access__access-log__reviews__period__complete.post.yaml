@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [access]
+operationId: completeAccessLogReview
+summary: Complete a monthly tenant access-log review after all findings and follow-ups resolve
+description: Requires tenant-wide Cedar audit::approve and a fresh passkey step-up assertion once all frozen targets are resolved.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+- name: period
+  in: path
+  required: true
+  schema:
+    type: string
+    pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+requestBody:
+  required: false
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          step_up:
+            $ref: '#/components/schemas/PasskeyLoginFinishRequest'
+responses:
+  '200':
+    description: Completed monthly review projection.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessLogReview'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: access_denied or scope_tenant_wide_only.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    description: step_up_required — passkey step-up assertion required to sign off.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'
