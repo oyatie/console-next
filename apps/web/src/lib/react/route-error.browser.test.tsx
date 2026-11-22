@@ -15,7 +15,7 @@ let network = false;
 beforeAll(async () => {
   server = await createServer({ configFile: false, cacheDir: ".cache/vite-route-error-test", logLevel: "error",
     optimizeDeps: { ...browserTestOptimizeDeps, entries: ["apps/web/src/lib/react/route-error.browser-fixture.tsx"] },
-    server: { host: "127.0.0.1", port: 0, fs: { allow: [process.cwd(), dirname(realpathSync("node_modules/pretendard"))] } },
+    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [process.cwd(), dirname(realpathSync("node_modules/pretendard"))] } },
   });
   await server.listen();
   browser = await chromium.launch();
@@ -27,7 +27,7 @@ beforeAll(async () => {
   await page.route("**/api/v1/support-references", route => route.fulfill({ status: 503, json: {} }));
   await page.route("**/api/v1/auth/token/refresh", route => route.fulfill({ status: 401, json: { error: { code: "unauthorized", message: "ended" } } }));
 }, 60_000);
-afterAll(async () => { await browser?.close(); await server?.close(); });
+afterAll(async () => { await page?.close(); await browser?.close(); await server?.close(); }, 60_000);
 
 test.each([401, 503])("Chromium: a loader %s stays in shell and retries in place", async code => {
   status = code;
