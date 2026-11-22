@@ -8,8 +8,12 @@ type PeopleDataHealthPaths = Pick<
   "/api/v1/hr/people/data-health" | "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier"
 >;
 
+type PeopleDataHealthQuery = NonNullable<
+  paths["/api/v1/hr/people/data-health"]["get"]["parameters"]["query"]
+>;
+
 export const peopleDataHealthApi = (client: Client<PeopleDataHealthPaths>) => ({
-  getPeopleDataHealth: (query?: { category?: string; limit?: number }) =>
+  getPeopleDataHealth: (query?: PeopleDataHealthQuery) =>
     unwrap(client.GET("/api/v1/hr/people/data-health", { params: { query } })),
   recordImportRowIdentifier: (
     runId: string,
