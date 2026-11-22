@@ -49,6 +49,47 @@ pub const QUERY_VAULT_FREE_TIER_BYTES: &str = "console_vault_free_tier_bytes";
 pub const QUERY_VAULT_FREE_TIER_LIMIT_BYTES: &str = "console_vault_free_tier_limit_bytes";
 pub const QUERY_HYGIENE_BYTES: &str = "console_hygiene_bytes";
 pub const QUERY_OPS_REQUEST_LAST_TS: &str = "console_ops_request_last_timestamp_seconds";
+pub const QUERY_OPS_EVIDENCE_OK: &str = "ops:evidence_ok";
+pub const QUERY_OPS_TEXTFILE_AGE: &str = "ops:textfile_age_seconds";
+pub const QUERY_OPS_TEXTFILE_EXPECTED: &str = "ops:textfile_expected";
+pub const QUERY_OPS_TEXTFILE_MAX_AGE: &str = "ops:textfile_max_age_seconds";
+pub const QUERY_STATUS_FEED_READ_OK: &str = "console_status_feed_read_ok";
+pub const QUERY_STATUS_FEED_OBSERVED_TS: &str = "console_status_feed_observed_timestamp_seconds";
+pub const QUERY_STATUS_OBSERVER_MAX_AGE: &str = "console_status_observer_max_age_seconds";
+pub const QUERY_STATUS_PUBLICATION_TS: &str = "console_status_publication_timestamp_seconds";
+pub const QUERY_STATUS_EVIDENCE_EXPIRES_TS: &str =
+    "console_status_evidence_expires_timestamp_seconds";
+pub const QUERY_STATUS_EVIDENCE_MAX_AGE: &str = "console_status_evidence_max_age_seconds";
+pub const QUERY_STATUS_REVISION: &str = "console_status_revision";
+pub const QUERY_STATUS_UNKNOWN_COMPONENTS: &str = "console_status_unknown_components";
+pub const QUERY_ONCALL_SYNTHETIC_PAGE_TS: &str = "console_oncall_synthetic_page_timestamp_seconds";
+pub const QUERY_ONCALL_SYNTHETIC_PAGE_OK: &str = "console_oncall_synthetic_page_ok";
+pub const QUERY_OPS_RECORDS_SPOOL_FILES: &str = "console_ops_records_spool_files";
+pub const QUERY_OPS_RECORDS_UNSHIPPED: &str = "console_ops_records_unshipped";
+pub const QUERY_OPS_RECORDS_SHIP_ERRORS: &str = "console_ops_records_ship_errors";
+pub const QUERY_OPS_RECORDS_CHAIN_BROKEN: &str = "console_ops_records_chain_broken";
+pub const QUERY_OPS_RECORDS_OLDEST_UNSHIPPED_TS: &str =
+    "console_ops_records_oldest_unshipped_timestamp_seconds";
+pub const QUERY_SLO_SLI_ERROR_30M: &str = "slo:sli_error:ratio_rate30m";
+pub const QUERY_SLO_SLI_ERROR_3D: &str = "slo:sli_error:ratio_rate3d";
+pub const QUERY_SLO_SLI_ERROR_30D: &str = "slo:sli_error:ratio_rate30d";
+pub const QUERY_SLO_REQUESTS_1H: &str = "slo:requests:rate1h";
+pub const QUERY_SLO_REQUESTS_30M: &str = "slo:requests:rate30m";
+pub const QUERY_DEPLOY_LAST_TS: &str = "console_deploy_last_timestamp_seconds";
+pub const QUERY_CONFIG_LAST_TS: &str = "console_config_last_timestamp_seconds";
+pub const QUERY_RECOVERY_DEFERRED_SINCE_TS: &str =
+    "console_recovery_deferred_since_timestamp_seconds";
+pub const QUERY_RECOVERY_LAST_EXIT_CODE: &str = "console_recovery_last_exit_code";
+pub const QUERY_WAL_REPO: &str = "console_wal_repo";
+pub const QUERY_LVM_SNAPSHOT_TS: &str = "console_lvm_snapshot_timestamp_seconds";
+pub const QUERY_ONPREM_MOUNT_EXPECTED: &str = "console_onprem_mount_expected";
+pub const QUERY_HOST_DRIFT_FILES: &str = "console_host_drift_files";
+pub const QUERY_APT_PENDING_UPDATES: &str = "console_apt_pending_updates";
+pub const QUERY_APT_SECURITY_UPDATES: &str = "console_apt_security_updates";
+pub const QUERY_REBOOT_REQUIRED_SINCE_S: &str = "console_reboot_required_since_seconds";
+pub const QUERY_EGRESS_GUARD_DROPS: &str = "console_egress_guard_drops_total";
+pub const QUERY_PREVIEW_RUNNING: &str = "console_preview_running";
+pub const QUERY_PREVIEW_DIGEST_INFO: &str = "console_preview_digest_info";
 
 pub const ALL_QUERIES: &[&str] = &[
     QUERY_UP,
@@ -56,7 +97,12 @@ pub const ALL_QUERIES: &[&str] = &[
     QUERY_SLO_ERROR_BUDGET_RATIO,
     QUERY_SLO_SLI_ERROR_1H,
     QUERY_SLO_SLI_ERROR_6H,
+    QUERY_SLO_SLI_ERROR_30M,
+    QUERY_SLO_SLI_ERROR_3D,
+    QUERY_SLO_SLI_ERROR_30D,
     QUERY_SLO_REQUESTS_30D,
+    QUERY_SLO_REQUESTS_1H,
+    QUERY_SLO_REQUESTS_30M,
     QUERY_SLI_PAGE_LOAD_ERRORS,
     QUERY_SLI_PAGE_LOADS,
     QUERY_CONTAINER_RUNNING,
@@ -81,6 +127,7 @@ pub const ALL_QUERIES: &[&str] = &[
     QUERY_CONFIG_BUNDLE_INFO,
     QUERY_PGBACKREST_LAST_BACKUP_STOP,
     QUERY_PGBACKREST_ARCHIVE_MAX_WAL_AGE,
+    QUERY_WAL_REPO,
     QUERY_WAL_REPO2_PUSH_FAILURES,
     QUERY_JOB_LAST_EXIT_CODE,
     QUERY_JOB_LAST_SUCCESS_TS,
@@ -93,6 +140,38 @@ pub const ALL_QUERIES: &[&str] = &[
     QUERY_VAULT_FREE_TIER_LIMIT_BYTES,
     QUERY_HYGIENE_BYTES,
     QUERY_OPS_REQUEST_LAST_TS,
+    QUERY_OPS_EVIDENCE_OK,
+    QUERY_OPS_TEXTFILE_AGE,
+    QUERY_OPS_TEXTFILE_EXPECTED,
+    QUERY_OPS_TEXTFILE_MAX_AGE,
+    QUERY_STATUS_FEED_READ_OK,
+    QUERY_STATUS_FEED_OBSERVED_TS,
+    QUERY_STATUS_OBSERVER_MAX_AGE,
+    QUERY_STATUS_PUBLICATION_TS,
+    QUERY_STATUS_EVIDENCE_EXPIRES_TS,
+    QUERY_STATUS_EVIDENCE_MAX_AGE,
+    QUERY_STATUS_REVISION,
+    QUERY_STATUS_UNKNOWN_COMPONENTS,
+    QUERY_ONCALL_SYNTHETIC_PAGE_TS,
+    QUERY_ONCALL_SYNTHETIC_PAGE_OK,
+    QUERY_OPS_RECORDS_SPOOL_FILES,
+    QUERY_OPS_RECORDS_UNSHIPPED,
+    QUERY_OPS_RECORDS_SHIP_ERRORS,
+    QUERY_OPS_RECORDS_CHAIN_BROKEN,
+    QUERY_OPS_RECORDS_OLDEST_UNSHIPPED_TS,
+    QUERY_DEPLOY_LAST_TS,
+    QUERY_CONFIG_LAST_TS,
+    QUERY_RECOVERY_DEFERRED_SINCE_TS,
+    QUERY_RECOVERY_LAST_EXIT_CODE,
+    QUERY_LVM_SNAPSHOT_TS,
+    QUERY_ONPREM_MOUNT_EXPECTED,
+    QUERY_HOST_DRIFT_FILES,
+    QUERY_APT_PENDING_UPDATES,
+    QUERY_APT_SECURITY_UPDATES,
+    QUERY_REBOOT_REQUIRED_SINCE_S,
+    QUERY_EGRESS_GUARD_DROPS,
+    QUERY_PREVIEW_RUNNING,
+    QUERY_PREVIEW_DIGEST_INFO,
 ];
 
 #[derive(Debug, Clone, PartialEq)]

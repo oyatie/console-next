@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use std::collections::VecDeque;
 
+use console_ops_domain::changes::CmdHandOff;
 use serde::Serialize;
 use time::OffsetDateTime;
 
 use crate::events_diff;
+use crate::incidents::IncidentSummaryView;
+use crate::obligations::ObligationItemView;
 use crate::snapshot::{
     AlertGroupDetailView, ComponentView, EvaluatedSnapshot, HomeSnapshotView, JobView, SourceView,
 };
@@ -54,6 +57,42 @@ pub enum OpsEvent {
         evaluated_at: OffsetDateTime,
         source: SourceView,
     },
+    #[serde(rename = "obligation.changed")]
+    ObligationChanged {
+        id: u64,
+        #[serde(with = "time::serde::rfc3339")]
+        evaluated_at: OffsetDateTime,
+        item: ObligationItemView,
+    },
+    #[serde(rename = "incident.changed")]
+    IncidentChanged {
+        id: u64,
+        #[serde(with = "time::serde::rfc3339")]
+        evaluated_at: OffsetDateTime,
+        incident: IncidentSummaryView,
+    },
+    #[serde(rename = "action.changed")]
+    ActionChanged {
+        id: u64,
+        #[serde(with = "time::serde::rfc3339")]
+        evaluated_at: OffsetDateTime,
+        action: CmdHandOff,
+    },
+    #[serde(rename = "silence.changed")]
+    SilenceChanged {
+        id: u64,
+        #[serde(with = "time::serde::rfc3339")]
+        evaluated_at: OffsetDateTime,
+        silence_id: String,
+        active: bool,
+    },
+    #[serde(rename = "promotion.changed")]
+    PromotionChanged {
+        id: u64,
+        #[serde(with = "time::serde::rfc3339")]
+        evaluated_at: OffsetDateTime,
+        digest: String,
+    },
     #[serde(rename = "heartbeat")]
     Heartbeat {
         id: u64,
@@ -77,6 +116,11 @@ impl OpsEvent {
             | Self::ComponentChanged { id, .. }
             | Self::JobChanged { id, .. }
             | Self::SourceChanged { id, .. }
+            | Self::ObligationChanged { id, .. }
+            | Self::IncidentChanged { id, .. }
+            | Self::ActionChanged { id, .. }
+            | Self::SilenceChanged { id, .. }
+            | Self::PromotionChanged { id, .. }
             | Self::Heartbeat { id, .. }
             | Self::Resync { id, .. } => *id,
         }
@@ -90,6 +134,11 @@ impl OpsEvent {
             Self::ComponentChanged { .. } => "component.changed",
             Self::JobChanged { .. } => "job.changed",
             Self::SourceChanged { .. } => "source.changed",
+            Self::ObligationChanged { .. } => "obligation.changed",
+            Self::IncidentChanged { .. } => "incident.changed",
+            Self::ActionChanged { .. } => "action.changed",
+            Self::SilenceChanged { .. } => "silence.changed",
+            Self::PromotionChanged { .. } => "promotion.changed",
             Self::Heartbeat { .. } => "heartbeat",
             Self::Resync { .. } => "resync",
         }
@@ -97,10 +146,19 @@ impl OpsEvent {
 
     pub fn required_action(&self) -> &'static str {
         match self {
-            Self::HomeChanged { .. } | Self::Heartbeat { .. } | Self::Resync { .. } => "read.home",
-            Self::AlertGroupChanged { .. } | Self::AlertGroupResolved { .. } => "read.alerts",
-            Self::ComponentChanged { .. } | Self::JobChanged { .. } => "read.running",
+            Self::HomeChanged { .. }
+            | Self::IncidentChanged { .. }
+            | Self::Heartbeat { .. }
+            | Self::Resync { .. } => "read.home",
+            Self::AlertGroupChanged { .. }
+            | Self::AlertGroupResolved { .. }
+            | Self::SilenceChanged { .. } => "read.alerts",
+            Self::ComponentChanged { .. }
+            | Self::JobChanged { .. }
+            | Self::ActionChanged { .. }
+            | Self::PromotionChanged { .. } => "read.running",
             Self::SourceChanged { .. } => "read.sources",
+            Self::ObligationChanged { .. } => "obligation.read",
         }
     }
 
@@ -112,6 +170,11 @@ impl OpsEvent {
             | Self::ComponentChanged { id, .. }
             | Self::JobChanged { id, .. }
             | Self::SourceChanged { id, .. }
+            | Self::ObligationChanged { id, .. }
+            | Self::IncidentChanged { id, .. }
+            | Self::ActionChanged { id, .. }
+            | Self::SilenceChanged { id, .. }
+            | Self::PromotionChanged { id, .. }
             | Self::Heartbeat { id, .. }
             | Self::Resync { id, .. } => *id = new_id,
         }

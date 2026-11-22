@@ -3007,6 +3007,7 @@ dependencies = [
  "aws-lc-rs",
  "axum",
  "console-kernel-core",
+ "console-ops-adapter-fs",
  "console-ops-adapter-http",
  "console-ops-application",
  "console-ops-domain",

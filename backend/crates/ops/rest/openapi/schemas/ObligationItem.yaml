@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["id", "kind", "reviewer_role", "title", "due", "state", "evidence_ref", "signer", "signed_on", "deadline"]
+properties:
+  id: {"$ref": "#/components/schemas/Text"}
+  kind: {"$ref": "#/components/schemas/ObligationKind"}
+  reviewer_role: {"$ref": "#/components/schemas/ObligationReviewerRole"}
+  title: {"$ref": "#/components/schemas/Text"}
+  due: {"anyOf": [{"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
+  state: {"$ref": "#/components/schemas/ObligationState"}
+  evidence_ref: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  signer: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  signed_on: {"anyOf": [{"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
+  deadline: {"$ref": "#/components/schemas/Text"}

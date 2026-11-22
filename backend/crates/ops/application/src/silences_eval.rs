@@ -89,13 +89,18 @@ pub fn find_matching_rule_alert<'a>(
     members: &[&Alert],
 ) -> Option<&'a RuleAlert> {
     let snap = vm.current.as_ref()?;
-    let comp = members
-        .first()
-        .and_then(|a| a.labels.get("component").or_else(|| a.labels.get("job")));
+    let comp = members.first().and_then(|a| {
+        a.labels
+            .get("component")
+            .or_else(|| a.labels.get("alertgroup"))
+    });
     snap.alerts.iter().find(|ra| {
         ra.labels.get("alertname").map(String::as_str) == Some(alertname)
             && comp.is_none_or(|c| {
-                ra.labels.get("component").or_else(|| ra.labels.get("job")) == Some(c)
+                ra.labels
+                    .get("component")
+                    .or_else(|| ra.labels.get("alertgroup"))
+                    == Some(c)
             })
     })
 }

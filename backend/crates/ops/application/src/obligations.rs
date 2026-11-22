@@ -89,6 +89,66 @@ pub struct Detail {
     pub history: Vec<Record>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ObligationItemView {
+    pub id: String,
+    #[serde(flatten)]
+    pub obligation: Obligation,
+    pub deadline: String,
+}
+
+impl ObligationItemView {
+    pub fn from_item(item: Item, now: OffsetDateTime) -> Self {
+        let deadline = item.obligation.deadline(now);
+        Self {
+            id: item.id,
+            obligation: item.obligation,
+            deadline,
+        }
+    }
+}
+
+pub trait ObligationStore: Send + Sync {
+    fn source_name(&self) -> &'static str;
+    fn list(&self, kind: Option<Kind>, state: Option<State>) -> Result<Vec<Item>, Error>;
+    fn detail(&self, id: &str) -> Result<Detail, Error>;
+    fn open(&self, event: Event, context: &Context) -> Result<(Item, Record), Error>;
+    fn event(&self, id: &str, event: Event, context: &Context) -> Result<(Item, Record), Error>;
+    fn snapshot(&self) -> Result<(Vec<Item>, Vec<Record>), Error>;
+}
+
+impl<S: RecordSpool + Send + Sync> ObligationStore for S {
+    fn source_name(&self) -> &'static str {
+        "obligations"
+    }
+
+    fn list(&self, kind: Option<Kind>, state: Option<State>) -> Result<Vec<Item>, Error> {
+        Register::new(self).list(kind, state)
+    }
+
+    fn detail(&self, id: &str) -> Result<Detail, Error> {
+        Register::new(self).detail(id)
+    }
+
+    fn open(&self, event: Event, context: &Context) -> Result<(Item, Record), Error> {
+        let record = Register::new(self).open(event, context)?;
+        let detail = Register::new(self).detail(&record.entry.obligation_id)?;
+        Ok((detail.item, record))
+    }
+
+    fn event(&self, id: &str, event: Event, context: &Context) -> Result<(Item, Record), Error> {
+        let record = Register::new(self).event(id, event, context)?;
+        let detail = Register::new(self).detail(id)?;
+        Ok((detail.item, record))
+    }
+
+    fn snapshot(&self) -> Result<(Vec<Item>, Vec<Record>), Error> {
+        let records = self.read()?;
+        let items = replay(&records)?;
+        Ok((items, records))
+    }
+}
+
 pub struct Register<'a, S>(&'a S);
 
 impl<'a, S: RecordSpool> Register<'a, S> {

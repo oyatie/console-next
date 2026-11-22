@@ -5,6 +5,8 @@ use console_ops_domain::ladders::{EvidenceState, Severity};
 use console_ops_domain::{Observed, UtcTimestamp};
 use time::OffsetDateTime;
 
+use crate::sha256::{hex_lower, sha256};
+
 use crate::silences_eval::{
     alert_state, build_silences, find_matching_rule_alert, group_state, parse_value_vs_threshold,
 };
@@ -41,18 +43,19 @@ pub fn evaluate_alerts(
 
     let mut grouped: BTreeMap<String, (String, Vec<&Alert>)> = BTreeMap::new();
     if am.current.is_some() {
+        let mut by_identity: BTreeMap<(String, String), Vec<&Alert>> = BTreeMap::new();
         for alert in am.current.iter().flat_map(|s| &s.alerts) {
-            let ident = group_identity(alert);
-            let key = format!(
-                "{}×{}",
-                ident.0.replace('%', "%25").replace('×', "%C3%97"),
-                ident.1.replace('%', "%25").replace('×', "%C3%97")
-            );
-            grouped
-                .entry(key)
-                .or_insert_with(|| (ident.0, Vec::new()))
-                .1
+            by_identity
+                .entry(group_identity(alert))
+                .or_default()
                 .push(alert);
+        }
+        for ((alertname, component), members) in by_identity {
+            let mut key = compute_group_key(&alertname, &component);
+            if grouped.contains_key(&key) {
+                key = compute_group_key_extended(&alertname, &component);
+            }
+            grouped.insert(key, (alertname, members));
         }
     } else {
         for (key, alertname) in known_groups {
@@ -204,13 +207,19 @@ fn build_detail(
     }
 }
 
+pub fn compute_group_key(alertname: &str, component: &str) -> String {
+    let digest = sha256(format!("{alertname}|{component}").as_bytes());
+    hex_lower(&digest[..4])
+}
+
+fn compute_group_key_extended(alertname: &str, component: &str) -> String {
+    let digest = sha256(format!("{alertname}|{component}").as_bytes());
+    hex_lower(&digest[..8])
+}
+
 pub fn group_key(alert: &Alert) -> (String, String) {
     let ident = group_identity(alert);
-    let key = format!(
-        "{}×{}",
-        ident.0.replace('%', "%25").replace('×', "%C3%97"),
-        ident.1.replace('%', "%25").replace('×', "%C3%97")
-    );
+    let key = compute_group_key(&ident.0, &ident.1);
     (key, ident.0)
 }
 
@@ -219,7 +228,7 @@ fn group_identity(alert: &Alert) -> (String, String) {
     (
         label("alertname").unwrap_or_default(),
         label("component")
-            .or_else(|| label("job"))
+            .or_else(|| label("alertgroup"))
             .unwrap_or_default(),
     )
 }

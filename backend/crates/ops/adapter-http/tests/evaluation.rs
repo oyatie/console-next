@@ -71,7 +71,10 @@ async fn the_next_due_read_invalidates_every_group_and_count_and_recovers() {
     assert!(evaluator.tick(now).await);
     let current = evaluator.evaluate(now);
     assert_eq!(current.count.value(), Some(&1));
-    assert_eq!(current.groups[0].key, "SyntheticAlert×console-1");
+    assert_eq!(
+        current.groups[0].key,
+        console_ops_application::alerts_eval::compute_group_key("SyntheticAlert", "")
+    );
     for field in [
         &current.groups[0].component,
         &current.groups[0].impact,
@@ -142,7 +145,7 @@ async fn stalled_evaluation_marks_source_groups_and_count_stale_at_one_shared_bo
 }
 
 #[tokio::test]
-async fn groups_use_component_then_job_and_do_not_guess_unknown_severity() {
+async fn groups_use_component_then_alertgroup_and_do_not_guess_unknown_severity() {
     let fixture = Fixture::new().await;
     let mut alert: serde_json::Value =
         serde_json::from_str(&fixture.replies.lock().unwrap()["/monitoring/api/v2/alerts"].2)

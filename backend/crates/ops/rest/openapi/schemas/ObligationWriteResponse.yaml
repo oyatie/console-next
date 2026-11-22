@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "id", "item", "record"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  id: {"$ref": "#/components/schemas/Text"}
+  item: {"$ref": "#/components/schemas/ObligationItem"}
+  record: {"$ref": "#/components/schemas/ObligationRecord"}

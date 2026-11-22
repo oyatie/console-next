@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsChangesCanary"
+summary: "Draft Canary Cmd"
+x-cedar-action: "change.request.canary-hold"
+x-cedar-actions: ["change.request.canary-hold", "change.request.canary-promote", "change.request.canary-abort"]
+security: [{"accessJwt": []}]
+description: "Records signed canary hold/promote/abort Cmd hand-off in actions spool."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CanaryRequest"}}}}
+responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

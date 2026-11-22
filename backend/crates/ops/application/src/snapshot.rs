@@ -55,6 +55,16 @@ pub enum SourceKind {
     AccessJwks,
     #[serde(rename = "evaluator")]
     Evaluator,
+    #[serde(rename = "obligations")]
+    Obligations,
+    #[serde(rename = "releases")]
+    Releases,
+    #[serde(rename = "runbooks")]
+    Runbooks,
+    #[serde(rename = "oncall")]
+    Oncall,
+    #[serde(rename = "status_feed")]
+    StatusFeed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -164,6 +174,8 @@ pub struct HomeSnapshotView {
     #[serde(with = "time::serde::rfc3339")]
     pub evaluated_at: OffsetDateTime,
     pub verdict: Verdict,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub launch_readiness: Option<Verdict>,
     pub worklist: Vec<WorkItemView>,
     pub changing: Vec<ChangingView>,
     pub budgets: Vec<BudgetView>,

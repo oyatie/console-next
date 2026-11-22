@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["path", "content", "anchors"]
+properties:
+  path: {"$ref": "#/components/schemas/Text"}
+  content: {"type": "string"}
+  anchors: {"type": "array", "items": {"$ref": "#/components/schemas/RunbookAnchor"}}
