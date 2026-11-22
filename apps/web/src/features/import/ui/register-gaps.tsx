@@ -26,6 +26,7 @@ export function RegisterGaps({ gaps }: { gaps: NonNullable<ImportReport["registe
           </div>
           <div className="form__actions">
             <Link to="/people" search={{}} className={buttonClass("secondary")}>{t("import.gaps.fill")}</Link>
+            <Link to="/people/data-health" className={buttonClass("ghost")}>{t("import.gaps.dataHealth")}</Link>
           </div>
         </>
       )}

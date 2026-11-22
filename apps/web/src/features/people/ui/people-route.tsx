@@ -2,7 +2,7 @@ import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { Outlet, useChildMatches } from "@tanstack/react-router";
 import { People } from "../People";
 import { RegisterToast } from "./register-toast";
-import s from "./register.module.css";
+import s from "./roster.module.css";
 
 /**
  * The /people route: the People page (roster or accounts), the action a child route opens over it (the registration

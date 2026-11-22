@@ -321,7 +321,19 @@
       "precisionLabel": "정밀가공"
     }
   },
-  "reasonCodes": { "rrn_reveal": [{ "code": "INSURANCE_FILING", "labelKo": "4대보험 신고", "requiresNote": false }, { "code": "TAX_FILING", "labelKo": "원천세·연말정산 확인", "requiresNote": false }, { "code": "CERT_ISSUE", "labelKo": "증명서 발급", "requiresNote": false }] },
+  "reasonCodes": {
+    "rrn_reveal": [
+      { "code": "INSURANCE_FILING", "labelKo": "4대보험 신고", "requiresNote": false },
+      { "code": "TAX_FILING", "labelKo": "원천세·연말정산 확인", "requiresNote": false },
+      { "code": "CERT_ISSUE", "labelKo": "증명서 발급", "requiresNote": false }
+    ],
+    "import_exclude": [
+      { "code": "DUPLICATE", "labelKo": "중복", "labelEn": "Duplicate", "requiresNote": false },
+      { "code": "FORMAT_ERROR", "labelKo": "형식 오류", "labelEn": "Format error", "requiresNote": false },
+      { "code": "OUT_OF_SCOPE", "labelKo": "대상 아님", "labelEn": "Out of scope", "requiresNote": false },
+      { "code": "OTHER", "labelKo": "기타", "labelEn": "Other", "requiresNote": true }
+    ]
+  },
   "statutory": {
     "articles": { "baseArticle": "제1조", "basePromulgation": "제1호", "nps": "제88조", "nhis": "제73조", "incomeTax": "제134조" },
     "registerRows": [

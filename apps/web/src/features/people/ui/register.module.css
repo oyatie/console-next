@@ -40,9 +40,6 @@
 .before { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); font-size: var(--text-sm); }
 .before > :last-child { grid-column: 1 / -1; }
 @media (max-width: 720px) { .personRow, .termsRow, .extraRow { grid-template-columns: minmax(0, 1fr); } }
-/* The page under the registration sheet (people-route): laid out as if unwrapped; not at all on a phone. */
-.pageWrap { display: contents; }
-@media (max-width: 640px) { .under { display: none; } }
 :where([data-experience]:not([data-experience="baseline"])) .form,
 :where([data-experience]:not([data-experience="baseline"])) .dup,
 :where([data-experience]:not([data-experience="baseline"])) .before { min-width: 0; max-width: 100%; }
