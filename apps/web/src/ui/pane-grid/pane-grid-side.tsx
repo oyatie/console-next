@@ -10,7 +10,7 @@ import {
 import { ArrowLeft, ExternalLink, Maximize2, Minimize2, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { isImeKey } from "../../lib/pure/ime";
-import { Button, IconButton } from "../button/button";
+import { Button, IconButton } from "../button/button-base";
 import { useMountFocus } from "../page/use-mount-focus";
 import { SidePanelReadContext } from "../side-panel/read-context";
 import { openWorkspaceTab, type OpenTabPayload } from "../workspace-tabs/open-tab";

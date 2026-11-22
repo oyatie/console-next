@@ -35,7 +35,7 @@ Partially exposed operations keep their current route and component; their refus
 | `POST /api/platform/support-sessions/{id}/approve` | hidden | allow-list | Platform administration: The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release. Release gate: mvp. |
 | `POST /api/platform/support-sessions/{id}/end` | hidden | allow-list | Platform administration: The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release. Release gate: mvp. |
 | `POST /api/platform/support-sessions/{id}/start` | hidden | allow-list | Platform administration: The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release. Release gate: mvp. |
-| `GET /api/v1/access/ops-usage` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/access/ops-usage` | exposed | expose | `/access/people/$accountId` · `OpsUsageCard` renders the emergency access usage log (omitted on 403). |
 | `POST /api/v1/access/requests` | partial | expose | `/access/grants` · `AccessRequests`; complete refusal recovery copy. |
 | `POST /api/v1/access/requests/{requestId}/close` | partial | expose | `/access/grants` · `AccessRequests`; complete refusal recovery copy. |
 | `DELETE /api/v1/access/roles/{roleId}` | partial | expose | `/access/roles` · `RolesPage`; complete refusal recovery copy. |

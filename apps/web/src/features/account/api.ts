@@ -28,6 +28,7 @@ export const meProfileQuery = get("/api/v1/me/profile");
 export const myCertificatesQuery = (cursor?: string) => get("/api/v1/me/certificates", { params: { query: { cursor } } });
 export const myCertificateQuery = (id: string) => get("/api/v1/me/certificates/{id}", { params: { path: { id } } });
 export const myAccessLogQuery = get("/api/v1/me/access-log", { params: { query: { limit: 5 } } });
+export const myAccessLogPages = cursorPages("/api/v1/me/access-log", { limit: 20 });
 export const myLeaveSummaryQuery = get("/api/v2/me/leave", { params: { query: { limit: 1 } } });
 export const myPayslipDocsQuery = get("/api/v1/me/inbox-docs", { params: { query: { filter: "pay", limit: 1 } } });
 export const myPayslipDocDetailQuery = (id: string) => get("/api/v1/me/inbox-docs/{id}", { params: { path: { id } } });
@@ -84,14 +85,6 @@ export async function removePasskey(id: string) {
     (d) => !d.some((p) => p.id === id),
   );
 }
-
-/** One reach of a grant I hold, as GET /api/v1/access/me lists it (BE-ROLES contract; typed here until generated). */
-export type MyReach = { domain: string; level: string; grant_id: string; role_name_ko: string; scope: { kind: string; node_id?: string | null; node_name?: string | null }; valid_to?: string | null; enforcement: string };
-export type MyAccess = { is_ops: boolean; entries: MyReach[] };
-// the access paths are not in the generated client yet (features/access/api.ts types them by hand too).
-const getUntyped = api.GET as unknown as (path: string) => Promise<{ data?: MyAccess; error?: unknown; response: Response }>;
-/** What I may do: every grant I hold that counts, by domain and level (My access). */
-export const myAccessQuery = read("/api/v1/access/me", () => unwrap(getUntyped("/api/v1/access/me")));
 
 export const tenantRecoveryQuery = get("/api/v1/tenant/ops-recovery");
 export const cancelTenantRecovery = async (orgId: string, id: string, reason: string, key: string) => unwrap(api.POST("/api/v1/tenant/ops-recovery/{rid}/cancel", {

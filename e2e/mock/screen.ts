@@ -5,7 +5,7 @@ import type { Page } from "@playwright/test";
 import { attendanceBoardReads } from "./attendance-board";
 import { attendanceBoardScreens } from "../states/attendance";
 import { mockRoute } from "./route";
-import { authz, checklist, employees, facets, failure, id, inbox, modules, screenAccess, structure, token, user } from "./fixtures";
+import { AT, authz, checklist, employees, facets, failure, id, inbox, modules, screenAccess, structure, token, user } from "./fixtures";
 import { orgChange, orgChanges } from "./org-changes";
 import { mockOrgChangeCounts } from "./org-changes-web";
 import { mockPayroll } from "./payroll";
@@ -71,6 +71,19 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
   // An opened 업무함 record reads its item's activity; a spec that cares overrides this empty answer.
   await mockRoute(page, "get", "/api/v1/me/action-inbox/items/{id}/activity", { status: 200, json: { items: [] } });
+  const consentDoc = { version: "account-test", sha256: "a".repeat(64) };
+  await mockRoute(page, "post", "/api/v1/auth/privacy-consent/status", {
+    status: 200,
+    json: { policy_version: consentDoc.version, accepted: true, accepted_at: AT, privacy: consentDoc, terms: consentDoc },
+  });
+  await mockRoute(page, "get", "/api/v1/onboarding/terms", {
+    status: 200,
+    json: {
+      ...consentDoc,
+      body: "Terms of service",
+      privacy: { ...consentDoc, title: "Privacy notice", body: "Privacy notice full text", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false },
+    },
+  });
   await mockRoute(page, "get", "/api/v1/me/access-log", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/me/profile", {
     status: 200,

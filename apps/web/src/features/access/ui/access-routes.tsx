@@ -25,7 +25,10 @@ export function RoleNewScreen() {
 
 const roleRoute = getRouteApi("/app/access/roles/$roleId");
 export function RoleScreen() {
-  return <RoleEditorPage roleId={roleRoute.useParams().roleId} />;
+  const { roleId } = roleRoute.useParams();
+  const { tab } = roleRoute.useSearch();
+  const navigate = roleRoute.useNavigate();
+  return <RoleEditorPage roleId={roleId} tab={tab} onTab={(next) => void navigate({ search: { tab: next === "permissions" ? undefined : next }, replace: true })} />;
 }
 
 const grantsRoute = getRouteApi("/app/access/grants");

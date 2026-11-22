@@ -10,6 +10,7 @@ export const settingsRoute = createRoute({
     // Read after the app's children are registered, so an unserved page cannot open the hub.
     get access() { return settingsRequirement((app.children as AnyRoute[] | undefined) ?? []); },
     floorplan: "P-05",
+    pattern: "settings",
   },
   component: lazyRouteComponent(screen(() => import("../features/settings/ui/settings-hub")), "SettingsHub"),
 });
