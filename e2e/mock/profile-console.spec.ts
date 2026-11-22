@@ -8,13 +8,13 @@ import { expectAxe, fits } from "../a11y";
 import { shot, withFullPage } from "../shots";
 import { accountScreens } from "../states/account";
 import { accountReads } from "./account";
-import { failure, id } from "./fixtures";
+import { failure, id, screenAccess } from "./fixtures";
 import { mockRoute } from "./route";
 import {
   maskMobilePhone,
-  saeonAdminToken,
   saeonHeroCertificates,
   saeonHeroProfile,
+  saeonHeroToken,
   saeonHeroUser,
   saeonUniverse,
 } from "./saeon";
@@ -54,11 +54,15 @@ async function setupHeroProfile(page: Page, theme: "light" | "dark" = "light") {
   const revealCalls: string[] = [];
   const changeRequests: Array<{ field: string; body: Record<string, unknown> }> = [];
   const issuedKeys: string[] = [];
-  const heroToken = saeonAdminToken();
+  const heroToken = saeonHeroToken();
   const payslipTitle = `${t("account.hub.payslip")} 2026-10-01 ~ 2026-10-31 · ${hero.employee_name}`;
 
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: heroToken });
   await mockRoute(page, "get", "/api/v1/users/me", () => ({ status: 200, json: hero }));
+  await mockRoute(page, "get", "/api/v1/access/me", {
+    status: 200,
+    json: { ...screenAccess("/account"), account_id: hero.id, is_ops: false, entries: [] },
+  });
   await mockRoute(page, "patch", "/api/v1/users/me", request => {
     const body = request.postDataJSON() as { display_name?: string; phone?: string | null };
     hero = {
@@ -347,7 +351,16 @@ for (const width of [1440, 390]) {
           await expect(page.getByRole("heading", { level: 1, name: t("shell.profile"), exact: true })).toBeVisible();
           await expect(hub.locator("h1")).toHaveCount(0);
           await expect(page.getByRole("banner")).toContainText(saeonUniverse.hero.entityName);
-          await expect(page.getByRole("navigation", { name: t("shell.nav"), exact: true })).toContainText(t("shell.profile"));
+          const bottomNav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+          await expect(bottomNav).toBeVisible();
+          const tabs = bottomNav.locator("a");
+          await expect(tabs).toHaveCount(5);
+          await expect(tabs.nth(0)).toContainText(t("shell.link.home"));
+          await expect(tabs.nth(1)).toContainText(t("shell.link.leave"));
+          await expect(tabs.nth(2)).toContainText(t("shell.link.payroll"));
+          await expect(tabs.nth(3)).toContainText(t("shell.link.certificates"));
+          await expect(tabs.nth(4)).toContainText(t("shell.link.profile"));
+          await expect(tabs.nth(4)).toHaveAttribute("aria-current", "page");
         } else {
           await expect(hub.getByRole("heading", { level: 1, name: t("shell.profile"), exact: true })).toBeVisible();
         }

@@ -1,3 +1,4 @@
+import { koShellRoutes } from "./ko/shell-routes";
 import { koUiFlexibleColumns } from "./ko/ui-flexible-columns";
 import { koGovernanceRefusals } from "./ko/governance";
 import { koDirectoryViews } from "./ko/directory-views";
@@ -268,4 +269,5 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,
+  ...koShellRoutes,
 };

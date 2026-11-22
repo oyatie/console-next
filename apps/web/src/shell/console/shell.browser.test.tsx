@@ -28,13 +28,19 @@ beforeAll(async () => {
     },
     plugins: [{
       name: "console-shell-shortcut-test",
-      resolveId: id => id === "/console-shell-shortcut-test.js" ? "\0console-shell-shortcut-test" : undefined,
+      resolveId: id =>
+        id === "/console-shell-shortcut-test.js"
+          ? "\0console-shell-shortcut-test"
+          : id === "/console-phone-nav-test.js"
+            ? "\0console-phone-nav-test"
+            : undefined,
       load: id => id === "\0console-shell-shortcut-test" ? `
         import React, { useEffect, useState } from 'react';
         import { createRoot } from 'react-dom/client';
         import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider, useLocation, useNavigate } from '@tanstack/react-router';
         import { loadCatalog } from '@console/i18n';
         import { ConsoleAccountMenu } from '/apps/web/src/shell/console/console-account-menu.tsx';
+        import { canonicalTabTarget } from '/apps/web/src/shell/console/tab-titles.ts';
         import { useWorkspaceTabs } from '/apps/web/src/shell/console/workspace-tabs-state.ts';
         import { openWorkspaceTab, resolveAppHref } from '/apps/web/src/ui/workspace-tabs/open-tab.ts';
         import { singleKeysOn } from '/apps/web/src/lib/prefs.ts';
@@ -44,16 +50,18 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function Harness() {
-          const { pathname, href } = useLocation();
+          const { pathname, searchStr = '', href } = useLocation();
           const navigate = useNavigate();
           const [withFind, setWithFind] = useState(false);
           const [searchOpens, setSearchOpens] = useState(0);
+          const tabTarget = canonicalTabTarget(pathname, searchStr);
           const tabs = useWorkspaceTabs({
             principal: 'test-user',
             defaultHref: '/',
             defaultLabel: 'Home',
-            pathname,
-            pathLabel: pathname === '/inbox' ? 'Inbox' : 'Home',
+            pathname: tabTarget,
+            currentHref: href,
+            pathLabel: pathname === '/inbox' ? 'Inbox' : pathname === '/org' ? 'Org' : 'Home',
             onNavigate: nextHref => {
               const resolved = resolveAppHref(nextHref, pathname);
               if (resolved) void navigate({ href: resolved });
@@ -90,6 +98,7 @@ beforeAll(async () => {
               React.createElement('output', { 'data-tabs': '' }, JSON.stringify(tabs.tabs.map(t => t.href))),
               React.createElement('button', { type: 'button', onClick: () => setWithFind(v => !v) }, 'toggle'),
               React.createElement('button', { type: 'button', onClick: () => void navigate({ href: '/inbox' }) }, 'go-inbox'),
+              React.createElement('button', { type: 'button', onClick: () => void navigate({ href: '/org' }) }, 'go-org'),
               React.createElement('input', { 'aria-label': 'plain' }),
               withFind ? React.createElement('div', { 'data-list-find': '' }, React.createElement('input', { type: 'search', 'aria-label': 'find' })) : null,
             ),
@@ -98,13 +107,48 @@ beforeAll(async () => {
         const root = createRootRoute();
         const indexRoute = createRoute({ getParentRoute: () => root, path: '/', component: Harness });
         const inboxRoute = createRoute({ getParentRoute: () => root, path: '/inbox', component: Harness });
+        const orgRoute = createRoute({ getParentRoute: () => root, path: '/org', component: Harness });
         const accountRoute = createRoute({ getParentRoute: () => root, path: '/account', component: () => null });
         const privacyRoute = createRoute({ getParentRoute: () => root, path: '/account/privacy', component: () => null });
         const router = createRouter({
-          routeTree: root.addChildren([indexRoute, inboxRoute, accountRoute, privacyRoute]),
+          routeTree: root.addChildren([indexRoute, inboxRoute, orgRoute, accountRoute, privacyRoute]),
           history: createMemoryHistory({ initialEntries: ['/'] }),
         });
         createRoot(document.getElementById('root')).render(React.createElement(RouterProvider, { router }));
+      ` : id === "\0console-phone-nav-test" ? `
+        import React from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider, useNavigate } from '@tanstack/react-router';
+        import { session } from '@console/api';
+        import { loadCatalog } from '@console/i18n';
+        import { ConsoleShell } from '/apps/web/src/shell/console/shell.tsx';
+        import '/apps/web/src/app.css';
+        await loadCatalog('ko');
+        session.set({
+          access_token: 'h.' + btoa(JSON.stringify({ sub: 'hero', org: 'tenant', name: 'Hajun' })).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '') + '.s',
+          token_type: 'Bearer', refresh_expires_at: '2099-01-01T00:00:00Z', requires_passkey_setup: false,
+        });
+        const h = React.createElement;
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        function Screen({ title }) {
+          const navigate = useNavigate();
+          return h('div', { 'data-phone-screen': title },
+            h('h1', null, title),
+            h('button', { type: 'button', onClick: () => void navigate({ href: '/people/certificates/cert-1' }) }, 'go-cert-detail'),
+            h('button', { type: 'button', onClick: () => void navigate({ href: '/account' }) }, 'go-account'),
+          );
+        }
+        const root = createRootRoute({ component: () => h(ConsoleShell) });
+        const mk = (path, title) => createRoute({ getParentRoute: () => root, path, staticData: { access: 'signed-in' }, component: () => h(Screen, { title }) });
+        const router = createRouter({
+          routeTree: root.addChildren([
+            mk('/', 'Home'), mk('/people/certificates', 'Certificates'), mk('/people/certificates/$certificateId', 'Certificate Detail'),
+            mk('/account', 'Account'), mk('/leave', 'Leave'), mk('/payslips', 'Payslips'),
+          ]),
+          history: createMemoryHistory({ initialEntries: ['/people/certificates'] }),
+        });
+        createRoot(document.getElementById('root')).render(h(QueryClientProvider, { client: qc }, h(RouterProvider, { router })));
       ` : undefined,
     }],
   });
@@ -184,4 +228,71 @@ test("openWorkspaceTab resolves query-only href against current pathname and rej
   expect(tabHrefs).toContain("/inbox?sel=from-inbox");
   expect(tabHrefs).not.toContain("https://evil.example/phish");
   expect(tabHrefs).not.toContain("//evil.example/phish");
+});
+
+test("openWorkspaceTab preserves hash fragments on view-query routes when reconciled with canonicalTabTarget", async () => {
+  await page.evaluate(() => {
+    const open = (window as unknown as { __openTab: (p: { href: string; label: string }) => void }).__openTab;
+    open({ href: "/org?tab=entities#identifier-corrections", label: "Entities" });
+  });
+
+  await expect.poll(async () => await page.locator("[data-href]").textContent()).toBe("/org?tab=entities#identifier-corrections");
+  await expect.poll(async () => {
+    const hrefs = JSON.parse((await page.locator("[data-tabs]").textContent()) ?? "[]") as string[];
+    return hrefs.includes("/org?tab=entities#identifier-corrections");
+  }).toBe(true);
+
+  await page.getByRole("button", { name: "go-org", exact: true }).click();
+  await expect.poll(async () => await page.locator("[data-href]").textContent()).toBe("/org");
+  const afterChart = JSON.parse((await page.locator("[data-tabs]").textContent()) ?? "[]") as string[];
+  expect(afterChart).toContain("/org");
+  expect(afterChart).not.toContain("/org?tab=entities#identifier-corrections");
+});
+
+test("ConsolePhoneBottom highlights certificates tab on both /people/certificates and /people/certificates/$certificateId", async () => {
+  const phonePage = await context.newPage();
+  const apiMocks: Record<string, unknown> = {
+    "/api/v1/users/me": {
+      id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: "e1",
+      employee_link_status: "LINKED", employee_company: "Saeon", tenant: { name: "Saeon", phase: "OPERATING" },
+    },
+    "/api/v1/me/authz": { capabilities: [] },
+    "/api/v1/access/me": { is_ops: false, entries: [], phase: "OPERATING" },
+    "/api/v1/support-sessions/active": { can_approve: false, sessions: [], pending_count: 0 },
+    "/api/v1/onboarding/modules": ["home", "people"].map(key => ({ key, ready: true, unblock: null })),
+    "/api/v1/onboarding/checklist": { phase: "OPERATING", steps: [] },
+    "/api/v1/me/action-inbox": { items: [], next_cursor: null, counts: { turn: { total: 0, total_is_exact: true } }, attention_filters: [] },
+    "/api/v1/auth/passkeys": [],
+  };
+  try {
+    await phonePage.setViewportSize({ width: 390, height: 844 });
+    await phonePage.route("**/console-phone-nav-test", route => route.fulfill({
+      contentType: "text/html",
+      body: '<html lang="ko" data-experience="console"><title>Console Phone</title><div id="root"></div><script type="module" src="/console-phone-nav-test.js"></script></html>',
+    }));
+    await phonePage.route("**/api/v1/**", route => {
+      const path = new URL(route.request().url()).pathname;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
+    });
+
+    await openBrowserTestPage(phonePage, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, phonePage.locator('[data-phone-screen="Certificates"]'));
+    const nav = phonePage.getByRole("navigation", { name: t("shell.nav"), exact: true });
+    const expectCurrent = async (href: string, label: string) => {
+      await expect.poll(async () => await nav.locator('a[aria-current="page"]').count()).toBe(1);
+      await expect.poll(async () => await nav.locator('a[aria-current="page"]').getAttribute("href")).toBe(href);
+      await expect.poll(async () => (await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(label);
+    };
+
+    await expectCurrent("/people/certificates", t("shell.link.certificates"));
+
+    await phonePage.getByRole("button", { name: "go-cert-detail", exact: true }).click();
+    await phonePage.locator('[data-phone-screen="Certificate Detail"]').waitFor();
+    await expectCurrent("/people/certificates", t("shell.link.certificates"));
+
+    await phonePage.getByRole("button", { name: "go-account", exact: true }).click();
+    await phonePage.locator('[data-phone-screen="Account"]').waitFor();
+    await expectCurrent("/account", t("shell.link.profile"));
+  } finally {
+    await phonePage.close();
+  }
 });
