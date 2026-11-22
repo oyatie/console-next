@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
-import { buildTeamQueryParams, daysUntilDate, deriveTeamScopes, filterTeamEmployees, type TeamEmployee } from "./team-scope";
+import {
+  buildTeamQueryParams,
+  daysUntilDate,
+  deriveTeamScopes,
+  filterTeamEmployees,
+  filterVisibleTeamLeaves,
+  type TeamEmployee,
+  type TeamLeaveRequest,
+} from "./team-scope";
 
 const baseEmp = (over: Partial<TeamEmployee> = {}): TeamEmployee => ({
   id: "e1",
@@ -110,4 +118,14 @@ test("filterTeamEmployees filters direct unit, soon events, and missing review r
   expect(filterTeamEmployees(rows, { view: "all", directUnitName: null, statusFilter: "SOON", today: "2026-11-10" }).map(r => r.id)).toEqual(["e1"]);
   expect(filterTeamEmployees(rows, { view: "all", directUnitName: null, statusFilter: "MISSING", today: "2026-11-10" }).map(r => r.id)).toEqual(["e2"]);
   expect(daysUntilDate("2026-11-20", "2026-11-10")).toBe(10);
+});
+
+test("filterVisibleTeamLeaves excludes pending leaves outside the visible concurrent scope", () => {
+  const leaves = [
+    { id: "l1", subject_employee_id: "e1" },
+    { id: "l2", subject_employee_id: "e2" },
+  ] as TeamLeaveRequest[];
+  const visible = new Set(["e2"]);
+  expect(filterVisibleTeamLeaves(leaves, visible, true).map(l => l.id)).toEqual(["l2"]);
+  expect(filterVisibleTeamLeaves(leaves, visible, false).map(l => l.id)).toEqual(["l1", "l2"]);
 });

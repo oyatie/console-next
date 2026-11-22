@@ -44,6 +44,10 @@ export function consolePathTitle(
   if (pathname === "/me/attendance") return t("shell.link.meAttendance");
   if (pathname === "/me/desk") return t("shell.link.meDesk");
   if (pathname === "/account" || pathname.startsWith("/account/")) return t("shell.profile");
+  if (pathname === "/payroll/setup") return t("payroll.setup.page");
+  if (pathname === "/payroll/runs/new") return t("payroll.create.title");
+  if (pathname === "/payroll/reference") return t("payroll.reference.title");
+  if (pathname.startsWith("/payroll/employees/")) return t("payroll.employee.title");
   const matched = allLinks.find(link => link.to === currentModuleTo);
   if (matched) return t(matched.label);
   return platform ? t("shell.link.tenants") : t("shell.link.home");

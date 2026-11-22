@@ -5,7 +5,7 @@ import { expectAxe, fits } from "../a11y";
 import { test } from "../locale-fixture";
 import { authz } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
-import { saeonHeroToken, saeonHeroUser } from "../mock/saeon";
+import { saeonHeroToken, saeonHeroUser, saeonUniverse } from "../mock/saeon";
 import {
   captureBuiltConsoleShot,
   enableConsole,
@@ -120,6 +120,61 @@ test("Console /team updates StatRow and StatusBar counts in direct view", async 
     await page.getByRole("button", { name: t("team.view.direct"), exact: true }).click();
     await expect(page.getByText(t("team.status.scopeCount", { count: 5 }))).toBeVisible();
     await expect(page.locator(`dl[aria-label="${t("team.stats.label")}"]`)).toContainText("5");
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
+});
+
+test("Console /team concurrent view scopes attentionCount and leave banner to the active scope", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await enableConsole(page, "light");
+  const fixture = await mockScreen(page, teamScreen, "populated");
+  const allEmployees = saeonTeamEmployees();
+  const scope1Employees = allEmployees.items.slice(0, 2);
+  const scope2Employees = allEmployees.items.slice(2, 4);
+  const scope1Leave = saeonTeamLeaveQueue(scope1Employees).items.slice(0, 1);
+  const ulsanId = saeonUniverse.entities[0]!.workplaces[0]!.id;
+
+  await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: saeonHeroToken() });
+  await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: saeonHeroUser() });
+  await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
+  await mockRoute(page, "get", "/api/v1/access/me", {
+    status: 200,
+    json: saeonTeamAccess({ concurrent: true, tenantWide: false, canManage: true }),
+  });
+  await mockRoute(page, "get", "/api/v1/employees", (req) => {
+    const query = new URL(req.url()).searchParams;
+    const items = query.get("workplace_id") === ulsanId ? scope2Employees : scope1Employees;
+    return { status: 200, json: { ...allEmployees, items, total: items.length, next_cursor: null } };
+  });
+  await mockRoute(page, "get", "/api/v1/employees/facets", (req) => {
+    const query = new URL(req.url()).searchParams;
+    const isScope2 = query.get("workplace_id") === ulsanId;
+    const base = saeonTeamFacets();
+    return {
+      status: 200,
+      json: {
+        ...base,
+        total: 2,
+        status: [
+          { value: "ACTIVE", count: 2 },
+          { value: "ON_LEAVE", count: 0 },
+        ],
+        review: { ...base.review, contract_ending_before: isScope2 ? 0 : 1 },
+      },
+    };
+  });
+  await mockRoute(page, "get", "/api/v2/leave/requests", { status: 200, json: { items: scope1Leave, next_cursor: null } });
+
+  try {
+    await page.goto("/team");
+    await page.getByRole("button", { name: t("team.view.concurrent"), exact: true }).click();
+    await page.getByLabel(t("team.concurrent.pick"), { exact: true }).selectOption(ulsanId);
+    await expect(page.getByText(scope2Employees[0]!.name, { exact: true }).first()).toBeVisible();
+    const stats = page.locator(`dl[aria-label="${t("team.stats.label")}"]`);
+    await expect(stats).toContainText(`${t("team.stats.attention")}0`);
+    await expect(page.getByText(t("team.notes.leaveOnly", { leaveCount: 1 }))).toHaveCount(0);
     expect(fixture.unexpected).toEqual([]);
   } finally {
     fixture.release();

@@ -12,9 +12,14 @@ import { Field, TextInput } from "../../../ui/field/field";
 import { DateInput } from "../../../ui/date/date-input";
 import { payslipDraftQuery } from "../api";
 import { ContractWageForm } from "./contract-wage-form";
+import { EmployeePayConsole } from "./employee-pay-console";
 import { PayslipDraftView } from "./payslip-draft";
 const route = getRouteApi("/app/payroll/employees/$employeeId");
 export function EmployeePayPage() {
+  return <EmployeePayConsole baseline={() => <BaselineEmployeePayPage />} />;
+}
+
+function BaselineEmployeePayPage() {
   const { employeeId } = route.useParams();
   const search = route.useSearch();
   const navigate = route.useNavigate();

@@ -1,0 +1,81 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.tabStrip {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.filterGroup {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.workplaceField {
+  min-inline-size: calc(var(--space-6) * 5);
+  max-inline-size: var(--panel-w);
+}
+
+.insurerField {
+  min-inline-size: calc(var(--space-6) * 4);
+  max-inline-size: calc(var(--space-6) * 6);
+}
+
+.actionRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.nowrap {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chipGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.paneDetail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.mainStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.missingList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+}
+
+.pagerRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .plainLink {
+  text-decoration: none;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .plainLink:hover {
+  text-decoration: underline;
+}

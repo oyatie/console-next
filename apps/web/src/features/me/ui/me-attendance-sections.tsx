@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
@@ -9,7 +10,9 @@ import { QueryState } from "../../../lib/react/query-state";
 import { ReadReference } from "../../../lib/react/read-reference";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
+import { addDays } from "../../../ui/date/days";
 import { EmptyState } from "../../../ui/empty-state";
 import { StatRow, type StatRowItem } from "../../../ui/key-value/key-value";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
@@ -103,12 +106,16 @@ export function MeAttendanceSections({
   exceptions,
   recordsQuery,
   exceptionsQuery,
+  compactScheduleWeekStart,
+  fullScheduleLink,
 }: {
   schedule: UseQueryResult<OwnScheduleCalendar>;
   records: readonly OwnAttendanceRecord[];
   exceptions: readonly OwnException[];
   recordsQuery?: UseQueryResult<{ items: OwnAttendanceRecord[] }>;
   exceptionsQuery?: UseQueryResult<{ items: OwnException[] }>;
+  compactScheduleWeekStart?: string;
+  fullScheduleLink?: boolean;
 }) {
   const access = useQuery(myAccessQuery);
   const [receipt, setReceipt] = useState<string | null>(null);
@@ -166,11 +173,17 @@ export function MeAttendanceSections({
     { id: "detail", header: t("me.attendance.exceptions.col.detail"), card: "fact", cell: e => e.detail },
   ];
 
+  const compactWeekEnd = compactScheduleWeekStart ? addDays(compactScheduleWeekStart, 6) : undefined;
+  const pickScheduleDays = (days: OwnScheduleCalendar["days"]) => {
+    if (!compactScheduleWeekStart || !compactWeekEnd) return days;
+    const inWeek = days.filter(d => d.date >= compactScheduleWeekStart && d.date <= compactWeekEnd);
+    return inWeek.length > 0 ? inWeek : days.slice(0, 7);
+  };
+
   return (
     <div className={s.panelSections}>
       <RecordSection
         id="me-att-records"
-        no={1}
         title={t("me.attendance.records.title")}
         tools={
           canClock ? (
@@ -224,37 +237,7 @@ export function MeAttendanceSections({
         </div>
       </RecordSection>
 
-      <RecordSection id="me-att-schedule" no={2} title={t("me.attendance.schedule.title")}>
-        <QueryState
-          q={schedule}
-          compact
-          denied={
-            <EmptyState
-              compact
-              title={t("me.attendance.schedule.refusedTitle")}
-              reason={t("me.attendance.schedule.refusedReason")}
-              meta={<ReadReference error={schedule.error} />}
-            />
-          }
-        >
-          {cal =>
-            cal.days.length === 0 ? (
-              <EmptyState compact title={t("me.attendance.schedule.empty")} reason={null} />
-            ) : (
-              <Table
-                label={t("me.attendance.schedule.title")}
-                rows={cal.days}
-                rowId={d => d.date}
-                density="compact"
-                mobileLayout="compact"
-                columns={scheduleCols}
-              />
-            )
-          }
-        </QueryState>
-      </RecordSection>
-
-      <RecordSection id="me-att-exceptions" no={3} title={t("me.attendance.exceptions.title")}>
+      <RecordSection id="me-att-exceptions" title={t("me.attendance.exceptions.title")}>
         {exceptionsQuery ? (
           <QueryState q={exceptionsQuery} compact>
             {data => (
@@ -282,6 +265,47 @@ export function MeAttendanceSections({
             columns={exceptionCols}
           />
         )}
+      </RecordSection>
+
+      <RecordSection
+        id="me-att-schedule"
+        title={t("me.attendance.schedule.title")}
+        tools={
+          fullScheduleLink ? (
+            <Link to="/me/attendance" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>
+              {t("me.desk.links.fullSchedule")}
+            </Link>
+          ) : undefined
+        }
+      >
+        <QueryState
+          q={schedule}
+          compact
+          denied={
+            <EmptyState
+              compact
+              title={t("me.attendance.schedule.refusedTitle")}
+              reason={t("me.attendance.schedule.refusedReason")}
+              meta={<ReadReference error={schedule.error} />}
+            />
+          }
+        >
+          {cal => {
+            const visibleDays = pickScheduleDays(cal.days);
+            return visibleDays.length === 0 ? (
+              <EmptyState compact title={t("me.attendance.schedule.empty")} reason={null} />
+            ) : (
+              <Table
+                label={t("me.attendance.schedule.title")}
+                rows={visibleDays}
+                rowId={d => d.date}
+                density="compact"
+                mobileLayout="compact"
+                columns={scheduleCols}
+              />
+            );
+          }}
+        </QueryState>
       </RecordSection>
     </div>
   );

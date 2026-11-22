@@ -13,6 +13,8 @@ import {
   saeonAttendanceCloses,
   saeonAttendanceDayBoard,
   saeonAttendanceExceptionsPage,
+  saeonAttendanceScheduleCalendar,
+  saeonAttendanceScheduleLayers,
   saeonAttendanceWeek52Board,
 } from "./saeon-mod5-6";
 import { mockScreen } from "./screen";
@@ -54,18 +56,13 @@ async function setupAttendanceTabs(page: Parameters<typeof mockScreen>[0], theme
     return { status: 200, json: hit };
   });
   await mockRoute(page, "get", "/api/v1/attendance/closes", { status: 200, json: { month: "2026-10", ...closes } });
-  await mockRoute(page, "get", "/api/v1/attendance/schedule/calendar", {
-    status: 200,
-    json: {
-      scope_kind: "WORKPLACE",
-      scope_id: saeonUniverse.entities[0]!.workplaces[1]!.id,
-      scope_name: saeonUniverse.entities[0]!.workplaces[1]!.name,
-      month: "2026-10",
-      stack: [],
-      upcoming: [],
-      holidays_loaded: true,
-      days: [{ date: "2026-10-15", kind: "WORK", shift: { start: 540, end: 1080, breaks: [{ start: 720, end: 780 }] } }],
-    },
+  await mockRoute(page, "get", "/api/v1/attendance/schedule/layers", { status: 200, json: saeonAttendanceScheduleLayers() });
+  await mockRoute(page, "get", "/api/v1/attendance/schedule/calendar", req => {
+    const q = new URL(req.url()).searchParams;
+    const scopeKind = (q.get("scope_kind") ?? "WORKPLACE") as "LEGAL_ENTITY" | "WORKPLACE" | "DEPARTMENT" | "CREW" | "PERSON";
+    const scopeId = q.get("scope_id") ?? saeonUniverse.entities[0]!.workplaces[1]!.id;
+    const month = q.get("month") ?? "2026-10";
+    return { status: 200, json: saeonAttendanceScheduleCalendar(scopeKind, scopeId, month) };
   });
   await mockRoute(page, "get", "/api/v1/attendance/people/{employee_id}/month", req => {
     const employeeId = new URL(req.url()).pathname.split("/").at(-2) ?? dayBoard.groups[0]!.rows[0]!.employee_id;

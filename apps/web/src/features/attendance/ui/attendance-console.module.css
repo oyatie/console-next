@@ -114,9 +114,14 @@
 
 @media (--phone) {
   :where([data-experience]:not([data-experience="baseline"])) .tabNavWrap > nav {
-    flex-wrap: wrap;
-    overflow-x: visible;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
     gap: 0;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) .tabNavWrap > nav > a {
+    flex-shrink: 0;
   }
 
   .filterPair {
@@ -125,6 +130,11 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-1-5);
+  }
+
+  .filterPair > :last-child {
+    flex: 1 1 calc(var(--space-6) * 5);
+    min-inline-size: calc(var(--space-6) * 5);
   }
 
   .scheduleRail {
@@ -157,10 +167,13 @@
   }
 
   :where([data-experience]:not([data-experience="baseline"])) .dayMain [data-day-row] > :nth-child(4) {
-    grid-column: 2;
+    grid-column: 2 / -1;
     grid-row: 2;
     min-width: 0;
+    max-width: 100%;
     white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
   }
 
   :where([data-experience]:not([data-experience="baseline"])) .dayMain [data-day-source] {
@@ -169,7 +182,7 @@
 
   :where([data-experience]:not([data-experience="baseline"])) .dayMain [data-day-action] {
     grid-column: 3;
-    grid-row: 1 / 3;
+    grid-row: 1;
     flex-direction: row;
     align-items: center;
     justify-self: end;

@@ -7,6 +7,7 @@
 .trigger svg { flex: none; color: var(--steel); }
 .select[data-invalid] .trigger { border-color: var(--danger-solid); }
 .trigger:has(.value[data-placeholder]) { border-style: dashed; }
+:where([data-experience]:not([data-experience="baseline"])) .trigger:has(.value[data-placeholder]) { border-style: solid; }
 .value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .value[data-placeholder] { color: var(--steel); font-weight: var(--fw-body); }
 .chev { margin-left: auto; }

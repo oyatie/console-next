@@ -1,5 +1,6 @@
 /* ui/choice/checks: one checkbox per statement to confirm. Tokens only. */
 .group { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+:where([data-experience]:not([data-experience="baseline"])) .group { padding: 0; border: 0; border-radius: 0; background: transparent; }
 .label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-size: var(--text-sm); font-weight: var(--fw-medium); }
 .item { display: flex; align-items: flex-start; gap: var(--space-2); min-height: var(--target); font-size: var(--text-sm); cursor: pointer; }
 .box { display: grid; place-items: center; flex: none; width: var(--space-4); height: var(--space-4); margin-top: var(--space-1); border: 2px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); }

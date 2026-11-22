@@ -44,16 +44,26 @@ export function readStoredWorkspaceTabs(storageKey: string | null): StoredTab[] 
   }
 }
 
-function writeStoredWorkspaceTabs(storageKey: string | null, tabs: readonly StoredTab[]): boolean {
+function writeStoredWorkspaceTabs(storageKey: string | null, tabs: readonly StoredTab[], activeId?: string): boolean {
   if (!storageKey || typeof localStorage === "undefined") return false;
   try {
     localStorage.setItem(
       storageKey,
       JSON.stringify(tabs.map(({ id, href, label, pinned }) => ({ id, href, label, ...(pinned ? { pinned: true } : {}) }))),
     );
+    if (activeId) localStorage.setItem(`${storageKey}.active`, activeId);
     return true;
   } catch {
     return false;
+  }
+}
+
+export function readStoredActiveWorkspaceTab(storageKey: string | null): string | undefined {
+  if (!storageKey || typeof localStorage === "undefined") return undefined;
+  try {
+    return localStorage.getItem(`${storageKey}.active`) ?? undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -207,7 +217,8 @@ export function useWorkspaceTabs({
   const storageKey = principal ? `console.tabs.${principal}` : null;
   const [state, setState] = useState<{ key: string | null; tabs: StoredTab[]; activeId: string }>(() => {
     const stored = readStoredWorkspaceTabs(storageKey) ?? [];
-    const reconciled = reconcileWorkspaceTabs(stored, undefined, {
+    const storedActive = readStoredActiveWorkspaceTab(storageKey);
+    const reconciled = reconcileWorkspaceTabs(stored, storedActive, {
       defaultHref,
       defaultLabel,
       pathname,
@@ -218,7 +229,8 @@ export function useWorkspaceTabs({
 
   if (state.key !== storageKey) {
     const stored = readStoredWorkspaceTabs(storageKey) ?? [];
-    const reconciled = reconcileWorkspaceTabs(stored, undefined, {
+    const storedActive = readStoredActiveWorkspaceTab(storageKey);
+    const reconciled = reconcileWorkspaceTabs(stored, storedActive, {
       defaultHref,
       defaultLabel,
       pathname,
@@ -244,8 +256,8 @@ export function useWorkspaceTabs({
   }
 
   useEffect(() => {
-    writeStoredWorkspaceTabs(storageKey, state.tabs);
-  }, [storageKey, state.tabs]);
+    writeStoredWorkspaceTabs(storageKey, state.tabs, state.activeId);
+  }, [storageKey, state.tabs, state.activeId]);
 
   useEffect(() => {
     const onExplicitOpen = (event: Event) => {

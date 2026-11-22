@@ -119,7 +119,7 @@ test("2,000-person detail restores folded rows within the 2s page budget", async
   await expect.poll(renderedEnd).toBeGreaterThan(before);
   await expect(grids.nth(1)).toHaveAttribute("aria-rowcount", "1998");
   expect(await grids.getByRole("row").count()).toBeLessThan(100);
-  const find = page.getByRole("textbox", { name: "사람 검색 — 이름·사번", exact: true });
+  const find = page.getByRole("textbox", { name: "이름, 사번 검색", exact: true });
   await find.fill("AT-2000");
   const last = grids.nth(1).getByRole("textbox", { name: /^근태직원 2000 입력/ });
   await expect(grids.nth(1)).toHaveAttribute("aria-rowcount", "2");
@@ -201,7 +201,7 @@ test("attendance recovery copies both cells and sign-out purges them before anot
 test("closed-month detail keeps arrow-key focus on a read-only record", async ({ page }) => {
   const fixture = await setup(page, 5, true);
   await page.goto("/attendance?tab=day&date=2026-10-06&detail=true");
-  await page.getByRole("textbox", { name: "사람 검색 — 이름·사번", exact: true }).click();
+  await page.getByRole("textbox", { name: "이름, 사번 검색", exact: true }).click();
   await page.keyboard.press("Tab");
   for (let column = 0; column < 4; column++) await page.keyboard.press("ArrowRight");
   const input = page.getByRole("textbox", { name: /^근태직원 1 입력/ });

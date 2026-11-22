@@ -35,11 +35,21 @@ export function LayerHistory({ layers, disabled, onCancel, consoleMode = false }
             { header: t("attendanceSchedule.history.col.reason"), cell: (l) => <>{t(`attendance.reason.${l.reason}`)}{l.evidence_ref && <><br /><span className="muted">{l.evidence_ref}</span></>}</> },
             { header: t("attendanceSchedule.history.col.state"), cell: (l) => <><EnumValue e={ATTENDANCE_LAYER_STATE} value={l.state} />{l.cancel_reason && <><br /><span className="muted">{l.cancel_reason}</span></>}</>, fit: true },
             { header: t("attendanceSchedule.history.col.by"), cell: (l) => <span className="muted">{t("attendanceSchedule.history.by", { name: l.created_by_name, at: fmtDateTime(l.created_at), version: l.version })}</span> },
-            {
-              header: t("attendanceSchedule.history.col.actions"),
-              fit: true,
-              cell: (l) => (l.state === "SCHEDULED" ? <Button size="sm" variant="ghost-danger" disabled={disabled} onClick={() => onCancel(l)} aria-label={t("attendanceSchedule.history.cancelOne", { pattern: l.pattern_name })}>{t("attendanceSchedule.history.cancel")}</Button> : null),
-            },
+            ...(layers.some((l) => l.state === "SCHEDULED")
+              ? [
+                  {
+                    header: t("attendanceSchedule.history.col.actions"),
+                    card: "action" as const,
+                    fit: true,
+                    cell: (l: Layer) =>
+                      l.state === "SCHEDULED" ? (
+                        <Button size="sm" variant="ghost-danger" disabled={disabled} onClick={() => onCancel(l)} aria-label={t("attendanceSchedule.history.cancelOne", { pattern: l.pattern_name })}>
+                          {t("attendanceSchedule.history.cancel")}
+                        </Button>
+                      ) : null,
+                  },
+                ]
+              : []),
           ]}
         />
       )}

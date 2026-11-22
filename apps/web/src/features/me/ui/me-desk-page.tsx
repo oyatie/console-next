@@ -110,6 +110,7 @@ export function MeDeskPage() {
       </div>
       <div className={s.railLinks}>
         <Link to="/me/attendance" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.attendance")}</Link>
+        <Link to="/payslips" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("shell.title.payslip")}</Link>
         <Link to="/account/privacy" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.privacy")}</Link>
       </div>
     </nav>
@@ -219,6 +220,7 @@ export function MeDeskPage() {
     <RecordSection
       id="me-desk-payslips"
       title={t("me.desk.payslips.title")}
+      tools={<Link to="/payslips" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("shell.title.payslip")}</Link>}
     >
       <QueryState q={payslips} compact>
         {data => (
@@ -250,6 +252,8 @@ export function MeDeskPage() {
           exceptions={exceptions.data?.items ?? []}
           recordsQuery={records}
           exceptionsQuery={exceptions}
+          compactScheduleWeekStart={view === "overview" ? week : undefined}
+          fullScheduleLink={view === "overview"}
         />
       )}
       {(view === "overview" || view === "requests") && requestsSection}

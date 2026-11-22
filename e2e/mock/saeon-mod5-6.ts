@@ -8,7 +8,7 @@ import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { withFullPage } from "../shots";
 import { id } from "./fixtures";
 import { saeonUniverse, saeonHeroUser, saeonFilterEmployees, saeonEmployeeFacets } from "./saeon";
-import { saeonAttendanceMonthGrid } from "./attendance-saeon";
+import { saeonAttendanceMonthGrid, saeonOctoberDayKind } from "./attendance-saeon";
 
 type S = components["schemas"];
 
@@ -379,6 +379,77 @@ export function saeonAttendanceCloses(): { items: S["AttendanceMonthCloseItem"][
           closed_at: "2026-10-31T09:00:00Z",
           amendments: [],
         },
+      },
+    ],
+  };
+}
+
+const SAEON_DAY_SHIFT = { start: 540, end: 1080, breaks: [{ start: 720, end: 780 }] };
+
+export function saeonAttendanceScheduleCalendar(
+  scopeKind: S["AttendanceScopeKind"] = "WORKPLACE",
+  scopeId?: string,
+  month = "2026-10",
+): S["AttendanceScheduleCalendar"] {
+  const precision = saeonUniverse.entities[0]!;
+  const pyeongtaek = precision.workplaces[1]!;
+  const resolvedId = scopeId ?? pyeongtaek.id;
+  const resolvedName = resolvedId === precision.id ? precision.name : pyeongtaek.name;
+  const layer: S["AttendanceLayerSummary"] = {
+    layer_id: "00000000-0000-4000-8920-000000000001",
+    pattern_id: "00000000-0000-4000-8921-000000000001",
+    pattern_name: `${t("attendanceSchedule.assign.pattern")} (09:00–18:00)`,
+    effective_from: "2026-01-01",
+    version: 1,
+  };
+  const holidayNames: Record<number, string> = { 3: t("attendanceSchedule.monthHolidays.title"), 5: t("attendanceSchedule.monthHolidays.title"), 9: t("attendanceSchedule.monthHolidays.title") };
+  const days: S["AttendanceScheduleDay"][] = Array.from({ length: 31 }, (_, i) => {
+    const day = i + 1;
+    const date = `${month}-${String(day).padStart(2, "0")}`;
+    const kind = saeonOctoberDayKind(day);
+    return {
+      date,
+      kind,
+      ...(kind === "WORK" ? { shift: SAEON_DAY_SHIFT } : {}),
+      ...(holidayNames[day] ? { holiday_name: holidayNames[day] } : {}),
+      decided_by: "LEGAL_ENTITY",
+      layer_id: layer.layer_id,
+    };
+  });
+  return {
+    scope_kind: scopeKind,
+    scope_id: resolvedId,
+    scope_name: resolvedName,
+    month,
+    stack: [
+      ...(scopeKind !== "LEGAL_ENTITY"
+        ? [{ level: scopeKind, scope_id: resolvedId, scope_name: resolvedName, wins: false }]
+        : []),
+      { level: "LEGAL_ENTITY", scope_id: precision.id, scope_name: precision.name, layer, wins: true },
+    ],
+    upcoming: [],
+    holidays_loaded: true,
+    days,
+  };
+}
+
+export function saeonAttendanceScheduleLayers(): { items: S["AttendanceScheduleLayer"][] } {
+  const precision = saeonUniverse.entities[0]!;
+  return {
+    items: [
+      {
+        id: "00000000-0000-4000-8920-000000000001",
+        scope_kind: "LEGAL_ENTITY",
+        scope_id: precision.id,
+        scope_name: precision.name,
+        pattern_id: "00000000-0000-4000-8921-000000000001",
+        pattern_name: `${t("attendanceSchedule.assign.pattern")} (09:00–18:00)`,
+        effective_from: "2026-01-01",
+        reason: "STANDARD",
+        state: "IN_EFFECT",
+        version: 1,
+        created_at: "2026-01-01T00:00:00Z",
+        created_by_name: saeonUniverse.adminActor.name,
       },
     ],
   };

@@ -63,6 +63,7 @@ export const koMe: Record<keyof typeof enMe, string> = {
   "me.desk.links.title": "바로가기",
   "me.desk.links.profile": "내 정보 · 수정",
   "me.desk.links.attendance": "내 근태 자세히 보기",
+  "me.desk.links.fullSchedule": "전체 월 일정 보기",
   "me.desk.links.leave": "휴가 신청",
   "me.desk.links.requests": "내 변경 요청",
   "me.desk.links.privacy": "개인정보 권리",

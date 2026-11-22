@@ -155,3 +155,12 @@ export function computeTeamStats({
     attentionCount: visibleLeaves.length + contractEndingCount,
   };
 }
+
+/** Filters pending leave requests to visible rows when a client-side or concurrent scope filter is active. */
+export function filterVisibleTeamLeaves(
+  leaves: readonly TeamLeaveRequest[],
+  visibleEmployeeIds: ReadonlySet<string>,
+  restrictToVisible: boolean,
+): readonly TeamLeaveRequest[] {
+  return restrictToVisible ? leaves.filter(req => visibleEmployeeIds.has(req.subject_employee_id)) : leaves;
+}

@@ -32,6 +32,7 @@ import {
   computeTeamStats,
   deriveTeamScopes,
   filterTeamEmployees,
+  filterVisibleTeamLeaves,
 } from "../domain/team-scope";
 import { buildTeamColumns } from "./team-columns";
 import { TeamRecordPane } from "./team-record-pane";
@@ -118,8 +119,8 @@ export function TeamPage() {
   const isClientFiltered = activeView === "direct" || statusFilter !== "all" || Boolean(search.q?.trim());
   const visibleIds = useMemo(() => new Set(rows.map(r => r.id)), [rows]);
   const visibleLeaves = useMemo(
-    () => (isClientFiltered ? pendingLeaves.filter(req => visibleIds.has(req.subject_employee_id)) : pendingLeaves),
-    [isClientFiltered, pendingLeaves, visibleIds],
+    () => filterVisibleTeamLeaves(pendingLeaves, visibleIds, isClientFiltered || activeView === "concurrent"),
+    [pendingLeaves, visibleIds, isClientFiltered, activeView],
   );
   const { totalCount, activeCount, onLeaveCount, contractEndingCount, attentionCount } = computeTeamStats({
     rows,

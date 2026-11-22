@@ -61,6 +61,7 @@ export const enMe = {
   "me.desk.links.title": "Quick links",
   "me.desk.links.profile": "My profile & edits",
   "me.desk.links.attendance": "My attendance details",
+  "me.desk.links.fullSchedule": "Full month schedule",
   "me.desk.links.leave": "Request leave",
   "me.desk.links.requests": "My change requests",
   "me.desk.links.privacy": "Privacy rights",

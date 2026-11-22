@@ -44,7 +44,7 @@ test("person labels and deliberate namesake selection work in all five adopted p
   }
 
   await openSchedule(admin);
-  await pickNamesake(admin, "사람 검색 — 이름·사번");
+  await pickNamesake(admin, "이름, 사번 검색");
   await expect(admin).toHaveURL(/kind=PERSON/);
 
   await admin.getByRole("tab", { name: /근무조/ }).click();
