@@ -24,11 +24,12 @@ pub enum MobileStepUpActionKind {
     PiiReveal,
     PiiRecord,
     PrivacyRequest,
+    PrivacyRequestDecide,
 }
 
 impl MobileStepUpActionKind {
     /// Every kind, in the migration's order.
-    pub const ALL: [Self; 16] = [
+    pub const ALL: [Self; 17] = [
         Self::ApprovalDecision,
         Self::PollVote,
         Self::ExitConfirm,
@@ -45,6 +46,7 @@ impl MobileStepUpActionKind {
         Self::PiiReveal,
         Self::PiiRecord,
         Self::PrivacyRequest,
+        Self::PrivacyRequestDecide,
     ];
 
     /// The two pre-BW-29 mobile kinds: no payload hash, replay attempts allowed.
@@ -70,6 +72,7 @@ impl MobileStepUpActionKind {
             Self::PiiReveal => "PII_REVEAL",
             Self::PiiRecord => "PII_RECORD",
             Self::PrivacyRequest => "PRIVACY_REQUEST",
+            Self::PrivacyRequestDecide => "PRIVACY_REQUEST_DECIDE",
         }
     }
 
@@ -91,6 +94,7 @@ impl MobileStepUpActionKind {
             Self::PiiReveal => "passkey_step_up_pii_reveal",
             Self::PiiRecord => "passkey_step_up_pii_record",
             Self::PrivacyRequest => "passkey_step_up_privacy_request",
+            Self::PrivacyRequestDecide => "passkey_step_up_privacy_request_decide",
         }
     }
 

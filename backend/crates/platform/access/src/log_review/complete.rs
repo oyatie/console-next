@@ -5,6 +5,7 @@ use console_platform_db::{
     idempotency::{self, IdempotencyClaim},
     with_audits,
 };
+use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
@@ -14,6 +15,13 @@ use super::{projection, record};
 use crate::{AccessError, AccessResult, AccessService, Refusal, StepUp, actor::verify_step_up};
 
 const OPERATION: &str = "access_log_review.complete";
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CompleteInput {
+    #[serde(default)]
+    pub step_up: Option<StepUp>,
+}
 
 /// Sign off once, after every flagged event and required follow-up is resolved.
 /// # Errors
@@ -84,6 +92,7 @@ pub async fn complete(
             events.push(record::event(&p, &period, OPERATION)?.with_snapshots(None, Some(json!({"findings_total":targets.len(),"by_outcome":outcomes,"follow_ups_open":0}))));
         }
         idempotency::complete_idempotency_key(tx, OPERATION, &key, &value).await?;
+        console_platform_db::command_outcomes::set_result(tx, &value).await?;
         Ok((value, events))
     })).await;
     record::refusal(s, &actor, &target, result).await
