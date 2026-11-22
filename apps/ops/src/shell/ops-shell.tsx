@@ -1,31 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "@tanstack/react-router";
 import { COPY } from "../copy";
 import { fetchOpsAlerts, opsQueryKeys, readObservedValue, type OpsMe } from "../lib/api";
-import { hasOpsAction } from "../lib/auth";
+import { hasAnyWriteAction, hasOpsAction } from "../lib/auth";
 import { fmtJoin, formatCount } from "../lib/format";
 import type { LiveStatusSnapshot, OpsLiveController } from "../lib/live-sse";
-import { filterOpsNav, isNavActive } from "./nav";
+import { useIsPhone } from "../lib/use-is-phone";
+import { filterOpsNav, filterOpsSubLinks, resolveActiveSurfaceTitle } from "./nav";
 import { OpsPhoneBottom, OpsPhoneTop } from "./ops-phone-chrome";
 import { OpsStatusBar } from "./ops-status-bar";
 import { OpsTopBar } from "./ops-top-bar";
 import s from "./ops-shell.module.css";
-
-const PHONE_QUERY = "(max-width: 767px)";
-
-function subscribePhoneQuery(listener: () => void): () => void {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
-  const mql = window.matchMedia(PHONE_QUERY);
-  mql.addEventListener("change", listener);
-  return () => mql.removeEventListener("change", listener);
-}
-
-function getPhoneSnapshot(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
-  return window.matchMedia(PHONE_QUERY).matches;
-}
 
 export function OpsShell({
   me,
@@ -39,9 +26,10 @@ export function OpsShell({
   children: ReactNode;
 }) {
   const { pathname } = useLocation();
-  const isPhone = useSyncExternalStore(subscribePhoneQuery, getPhoneSnapshot, () => false);
+  const isPhone = useIsPhone();
   const canHome = hasOpsAction(me, "read.home");
   const canAlerts = hasOpsAction(me, "read.alerts");
+  const canWrite = hasAnyWriteAction(me);
   const activeLiveController = canHome ? liveController : undefined;
   const liveEnabled = Boolean(me && activeLiveController);
 
@@ -55,11 +43,7 @@ export function OpsShell({
     [],
   );
 
-  const live = useSyncExternalStore(
-    activeLiveController ? activeLiveController.subscribe : () => () => {},
-    activeLiveController ? activeLiveController.getSnapshot : () => fallbackLive,
-    () => fallbackLive,
-  );
+  const live = useSyncExternalStoreFallback(activeLiveController, fallbackLive);
 
   const alertsBadgeQuery = useQuery({
     queryKey: opsQueryKeys.alerts({}),
@@ -83,10 +67,8 @@ export function OpsShell({
     !alertsUnknown && typeof alertsCountVal === "number" ? alertsCountVal : undefined;
 
   const navItems = useMemo(() => filterOpsNav(me), [me]);
-  const currentTitle = useMemo(() => {
-    const active = navItems.find((item) => isNavActive(pathname, item.to));
-    return active?.label ?? COPY.now.title;
-  }, [navItems, pathname]);
+  const subLinks = useMemo(() => filterOpsSubLinks(me), [me]);
+  const currentTitle = useMemo(() => resolveActiveSurfaceTitle(pathname, navItems), [navItems, pathname]);
 
   const noticeText =
     live.status === "Paused"
@@ -154,12 +136,19 @@ export function OpsShell({
 
       {!isPhone ? (
         <div className={s.statusArea}>
-          <OpsStatusBar authenticated={Boolean(me)} evaluatedAt={evaluatedAt} currentTitle={currentTitle} live={live} />
+          <OpsStatusBar
+            authenticated={Boolean(me)}
+            evaluatedAt={evaluatedAt}
+            currentTitle={currentTitle}
+            canWrite={canWrite}
+            live={live}
+          />
         </div>
       ) : navItems.length > 0 ? (
         <div className={s.phoneNavArea}>
           <OpsPhoneBottom
             navItems={navItems}
+            subLinks={subLinks}
             pathname={pathname}
             alertsCount={alertsCount}
             alertsUnknown={alertsUnknown}
@@ -167,5 +156,18 @@ export function OpsShell({
         </div>
       ) : null}
     </div>
+  );
+}
+
+import { useSyncExternalStore } from "react";
+
+function useSyncExternalStoreFallback(
+  controller: OpsLiveController | undefined,
+  fallback: LiveStatusSnapshot,
+): LiveStatusSnapshot {
+  return useSyncExternalStore(
+    controller ? controller.subscribe : () => () => {},
+    controller ? controller.getSnapshot : () => fallback,
+    () => fallback,
   );
 }

@@ -9,12 +9,16 @@ import type {
   OpsComponent,
   OpsEvent,
   OpsHomeSnapshot,
+  OpsIncidentsList,
+  OpsIncidentSummary,
   OpsJob,
+  OpsJobs,
   OpsLive,
+  OpsObligationItem,
+  OpsObligationsList,
   OpsRunning,
   OpsSource,
   OpsSources,
-  OpsJobs,
 } from "./api";
 
 export type LiveStatusSnapshot = {
@@ -53,12 +57,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const HEALTH_STATES = new Set(["Healthy", "Progressing", "Suspended", "Degraded", "Missing", "Unknown"]);
+
+function isVerdict(v: unknown): boolean {
+  return isRecord(v) && typeof v.text === "string" && typeof v.worst === "string" && HEALTH_STATES.has(v.worst);
+}
+
+function isHomeSnapshot(home: unknown): home is OpsHomeSnapshot {
+  if (!isRecord(home) || typeof home.evaluated_at !== "string" || !isVerdict(home.verdict)) return false;
+  if (home.launch_readiness !== undefined && !isVerdict(home.launch_readiness)) return false;
+  if (!Array.isArray(home.worklist) || !Array.isArray(home.changing) || !Array.isArray(home.budgets) || !Array.isArray(home.data_safety) || !Array.isArray(home.cost)) return false;
+  if (!isRecord(home.evidence) || !isRecord(home.evidence.counts) || !Array.isArray(home.evidence.sources)) return false;
+  const c = home.evidence.counts;
+  return typeof c.Verified === "number" && typeof c.Monitoring === "number" && typeof c.Stale === "number" && typeof c.Unknown === "number";
+}
+
 export function applyOpsEventToCache(queryClient: QueryClient, event: OpsEvent | unknown): void {
   if (!isRecord(event) || typeof event.type !== "string") return;
 
   if (event.type === "home.changed") {
-    if (!isRecord(event.home) || !isRecord(event.home.verdict)) return;
-    queryClient.setQueryData<OpsHomeSnapshot>(["ops", "home"], event.home as OpsHomeSnapshot);
+    if (!isHomeSnapshot(event.home)) return;
+    queryClient.setQueryData<OpsHomeSnapshot>(["ops", "home"], event.home);
     return;
   }
   if (event.type === "alert.group.changed" || event.type === "alert.group.resolved") {
@@ -114,6 +133,49 @@ export function applyOpsEventToCache(queryClient: QueryClient, event: OpsEvent |
       const next = idx >= 0 ? prev.sources.map((s, i) => (i === idx ? src : s)) : [src, ...prev.sources];
       return { ...prev, evaluated_at: evaluatedAt, sources: next };
     });
+    return;
+  }
+  if (event.type === "obligation.changed") {
+    if (!isRecord(event.item) || typeof event.item.id !== "string" || typeof event.evaluated_at !== "string") return;
+    const item = event.item as OpsObligationItem;
+    const evaluatedAt = event.evaluated_at;
+    queryClient.setQueriesData<OpsObligationsList>({ queryKey: ["ops", "obligations"] }, (prev) => {
+      if (!prev) return prev;
+      const idx = prev.items.findIndex((it) => it.id === item.id);
+      const nextItems = idx >= 0 ? prev.items.map((it, i) => (i === idx ? item : it)) : [item, ...prev.items];
+      return { ...prev, evaluated_at: evaluatedAt, items: nextItems };
+    });
+    void queryClient.invalidateQueries({ queryKey: ["ops", "obligation", item.id], refetchType: "active" });
+    void queryClient.invalidateQueries({ queryKey: ["ops", "obligations"], refetchType: "active" });
+    return;
+  }
+  if (event.type === "incident.changed") {
+    if (!isRecord(event.incident) || typeof event.incident.id !== "string" || typeof event.evaluated_at !== "string") return;
+    const inc = event.incident as OpsIncidentSummary;
+    const evaluatedAt = event.evaluated_at;
+    queryClient.setQueryData<OpsIncidentsList>(["ops", "incidents"], (prev) => {
+      if (!prev) return prev;
+      const idx = prev.incidents.findIndex((it) => it.id === inc.id);
+      const nextList = idx >= 0 ? prev.incidents.map((it, i) => (i === idx ? inc : it)) : [inc, ...prev.incidents];
+      return { ...prev, evaluated_at: evaluatedAt, incidents: nextList };
+    });
+    void queryClient.invalidateQueries({ queryKey: ["ops", "incident", inc.id], refetchType: "active" });
+    return;
+  }
+  if (event.type === "action.changed") {
+    if (!isRecord(event.action) || typeof event.action.action_id !== "string") return;
+    void queryClient.invalidateQueries({ queryKey: ["ops", "actions"], refetchType: "active" });
+    return;
+  }
+  if (event.type === "silence.changed") {
+    if (typeof event.silence_id !== "string") return;
+    void queryClient.invalidateQueries({ queryKey: ["ops", "silences"], refetchType: "active" });
+    void queryClient.invalidateQueries({ queryKey: ["ops", "alerts"], refetchType: "active" });
+    return;
+  }
+  if (event.type === "promotion.changed") {
+    if (typeof event.digest !== "string") return;
+    void queryClient.invalidateQueries({ queryKey: ["ops", "promote"], refetchType: "active" });
     return;
   }
   if (event.type === "resync") {
