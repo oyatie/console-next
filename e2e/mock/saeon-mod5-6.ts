@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { existsSync, mkdirSync } from "node:fs";
-import path from "node:path";
 import type { Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { t } from "@console/i18n";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
-import { withFullPage } from "../shots";
+import { shot, withFullPage } from "../shots";
 import { id } from "./fixtures";
 import { saeonUniverse, saeonHeroUser, saeonFilterEmployees, saeonEmployeeFacets } from "./saeon";
 import { saeonAttendanceMonthGrid, saeonOctoberDayKind } from "./attendance-saeon";
@@ -24,14 +22,10 @@ export async function enableConsole(page: Page, theme: "light" | "dark" = "light
 }
 
 export async function captureBuiltConsoleShot(page: Page, width: 1440 | 390, name: string, theme: "light" | "dark") {
-  if (process.env.CAPTURE_CONSOLE_SHOTS !== "1") return;
-  const dir = path.resolve(process.cwd(), "docs/ui-target/built/console", String(width));
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  if (!process.env.STRUCT_SHOTS) return;
   await page.setViewportSize({ width, height: 900 });
   await page.evaluate(t => { document.documentElement.dataset.theme = t; }, theme);
-  await withFullPage(page, async () => {
-    await page.screenshot({ path: path.join(dir, `${name}-${theme}.png`), fullPage: true });
-  });
+  await withFullPage(page, () => shot(page, `${name}--${width}-${theme}`));
 }
 
 export function saeonTeamAccess(opts?: { tenantWide?: boolean; concurrent?: boolean; canManage?: boolean }): S["AccessEffective"] {
