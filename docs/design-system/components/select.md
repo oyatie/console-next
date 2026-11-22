@@ -345,6 +345,7 @@ How wide the trigger is at 390 px is decided by the layout around it.
 | `--space-1` | `gap`, `padding` |
 | `--space-2` | `gap`, `padding` |
 | `--space-3` | `padding` |
+| `--space-4` | `max-width`, `min-width` |
 | `--steel` | `color` |
 | `--surface` | `background` |
 | `--target` | `min-height` |

@@ -188,6 +188,19 @@ for (const width of [1440, 390]) {
         await expect(worklist.locator(".card")).toHaveCount(0);
         await expect(table.getByRole("list", { name: t("approvals.preview.route"), exact: true })).toHaveCount(0);
         await expect(table.locator(`tbody tr[data-id="AP-2026-0419"]`)).toContainText(t("approvals.source.leave"));
+        const kpiStrip = worklist.locator(`dl[aria-label="${t("approvals.console.kpiLabel")}"]`);
+        await expect(kpiStrip).toBeVisible();
+        await expect(kpiStrip.getByRole("button")).toHaveCount(6);
+
+        if (width === 1440) {
+          const initialSidePane = page.locator('aside[data-pane="record"]');
+          await expect(initialSidePane).toBeVisible();
+          await expect(initialSidePane).toContainText(saeonUniverse.approval.title);
+          await expect(initialSidePane.getByRole("heading", { level: 3, name: t("approvals.related.title"), exact: true })).toBeVisible();
+          await expect(initialSidePane.getByRole("button", { name: t("composer.verb.approve"), exact: true })).toBeVisible();
+        } else {
+          await expect(page.locator('aside[data-pane="record"]')).toHaveCount(0);
+        }
 
         if (width === 390) {
           const rowHeights = await table.locator("tbody tr[data-id]").evaluateAll(rows =>
@@ -235,6 +248,17 @@ for (const width of [1440, 390]) {
         await closeBtn.click();
         await expect(sidePane).toHaveCount(0);
         await expect(targetRow).toBeFocused();
+
+        if (width === 1440) {
+          await kpiStrip.getByRole("button", { name: t("approvals.source.leave"), exact: true }).click();
+          await expect(table.locator("tbody tr[data-id]")).toHaveCount(1);
+          await expect(table.locator('tbody tr[data-id="AP-2026-0419"]')).toBeVisible();
+          await expect(sidePane).toBeVisible();
+          await expect(sidePane).toContainText("AP-2026-0419");
+          await kpiStrip.getByRole("button", { name: t("approvals.console.all"), exact: true }).click();
+          await expect(table.locator("tbody tr[data-id]")).toHaveCount(6);
+          await expect(sidePane).toContainText(saeonUniverse.approval.documentNumber);
+        }
         expect(fixture.unexpected).toEqual([]);
       } finally {
         fixture.release();

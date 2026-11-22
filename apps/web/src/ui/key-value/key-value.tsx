@@ -65,9 +65,9 @@ export type StatRowItem = {
 };
 
 /** Counts side by side in one bordered row (kit .statrow): the label over the number. Never a vanity KPI: each is a count the view acts on. */
-export function StatRow({ items, label }: { items: readonly StatRowItem[]; label?: string }) {
+export function StatRow({ items, label, phoneCols }: { items: readonly StatRowItem[]; label?: string; phoneCols?: 3 }) {
   return (
-    <dl className={s.stats} aria-label={label}>
+    <dl className={s.stats} data-phone-cols={phoneCols} aria-label={label}>
       {items.map((i) => (
         <div
           key={i.key}

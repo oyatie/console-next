@@ -186,7 +186,7 @@ export function ConsoleApprovalSideView({ document: d }: { document: ApprovalDoc
           </WorklistPadded>
         </WorklistSection>
       ) : null}
-      <ApprovalDecisionPanel key={d.id} document={d} docked />
+      <ApprovalDecisionPanel key={d.id} document={d} docked showRelated />
     </div>
   );
 }

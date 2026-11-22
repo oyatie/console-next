@@ -108,7 +108,7 @@ export function ApprovalCard(p: ReturnProps & {
 
   if (p.receipt) {
     return (
-      <article className={`card ${css.card}`} aria-labelledby={`${id}-title`}>
+      <article className={p.docked ? css.card : `card ${css.card}`} aria-labelledby={`${id}-title`}>
         {p.progress && <div className={css.progress}>{p.progress}</div>}
         {p.docked && <PaneHead title={p.title} meta={p.meta} titleId={`${id}-title`} titleRef={doneHead} />}
         <div className={css.done}>
@@ -121,7 +121,7 @@ export function ApprovalCard(p: ReturnProps & {
   }
 
   return (
-    <article ref={cardBox} className={`card ${css.card}`} aria-labelledby={`${id}-title`} aria-busy={busy || undefined} data-escape-scope={form || busy ? "" : undefined}>
+    <article ref={cardBox} className={p.docked ? css.card : `card ${css.card}`} aria-labelledby={`${id}-title`} aria-busy={busy || undefined} data-escape-scope={form || busy ? "" : undefined}>
       {p.progress && <div className={css.progress}>{p.progress}</div>}
       {p.docked ? (
         <>

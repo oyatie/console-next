@@ -43,3 +43,9 @@
   .consolePhoneMeta { display: inline; }
   .consoleDesktopSource { display: none; }
 }
+@container list-table (481px <= width < 920px) {
+  .consoleTable :is(th, td):is(:nth-child(6), :nth-child(7)) { display: none; }
+}
+@container list-table (481px <= width < 720px) {
+  .consoleTable :is(th, td):is(:nth-child(2), :nth-child(5)) { display: none; }
+}

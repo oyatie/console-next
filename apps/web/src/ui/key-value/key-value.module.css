@@ -51,6 +51,11 @@
   :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(n + 4) { border-top: 1px solid var(--border); }
   :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(5) { grid-column: span 2; }
   :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat > .statValue { font-size: var(--text-body); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="3"] { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="3"] > .stat { padding: var(--space-1-5) var(--space-2); min-width: 0; border-top: 0; border-left: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="3"] > .stat:nth-child(3n + 1) { border-left: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="3"] > .stat:nth-child(n + 4) { border-top: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="3"] > .stat > .statValue { font-size: var(--text-body); }
 }
 @media (max-width: 359px) {
   :where([data-experience]:not([data-experience="baseline"])) .stat { padding: var(--space-2) var(--space-1-5); }

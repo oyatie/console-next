@@ -271,6 +271,7 @@ Neither component has a target of its own. The size of an action is that control
 | --- | --- | --- | --- | --- |
 | `items` | yes | `readonly StatRowItem[]` |  |  |
 | `label` | no | `string` |  |  |
+| `phoneCols` | no | `3` |  |  |
 
 <!-- /ds:props -->
 
