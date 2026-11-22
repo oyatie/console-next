@@ -55,6 +55,7 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/": "worklist",
     "/inbox": "worklist",
     "/leave": "form",
+    "/payslips": "phone-statement",
     "/people": "list-record",
     "/people/$id": "record",
     "/approvals": "worklist",
