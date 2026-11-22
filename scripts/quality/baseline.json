@@ -269,7 +269,6 @@
   "unused-export:e2e/parity/world-b.ts:roster": 1,
   "unused-export:e2e/parity/world-b.ts:SITE": 1,
   "unused-export:e2e/parity/world-b.ts:SITE2": 1,
-  "unused-export:e2e/slot.ts:SLOT": 1,
   "unused-export:e2e/stability.ts:SHIFT_BUDGET": 1,
   "unused-export:packages/api/src/auth.ts:ConsentStatus": 1,
   "unused-export:packages/api/src/events.ts:Fetch": 1,
