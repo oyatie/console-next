@@ -10,6 +10,7 @@ import { Table } from "../../../ui/table";
 import type { Account } from "../api";
 import { personLabel } from "../../../reference/person/present";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
+import { accessRefusal } from "../present";
 import s from "./access.module.css";
 
 /**
@@ -28,7 +29,7 @@ export function AccessRequests({ accounts, onGrant }: { accounts: readonly Accou
   const who = (r: AccessRequest) => accounts.find((a) => a.id === r.requested_by);
   return (
     <Card title={t("accessGrants.requests", { count: open.length })} flush>
-      <CommandError error={close.error} />
+      <CommandError error={close.error} own={accessRefusal} />
       <Table
         label={t("accessGrants.requests", { count: open.length })}
         rows={open}

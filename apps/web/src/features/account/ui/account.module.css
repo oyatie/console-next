@@ -22,6 +22,9 @@
 
 .notice { white-space: pre-wrap; overflow-wrap: anywhere; }
 .form { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .form { max-width: var(--card-w); }
 .contactGroup { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .contactRowHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
 .checkList { display: flex; flex-direction: column; gap: var(--space-1-5); }
+.viewsNav { align-items: stretch; gap: var(--space-1); }
+.consoleSections { display: flex; flex-direction: column; min-width: 0; }

@@ -43,7 +43,6 @@
   "packages/i18n/src/catalogs/ko/access-grants.ts accessGrants.loss.foot prose.각주 9245df55381c3fd0f132": 1,
   "packages/i18n/src/catalogs/ko/access.ts access.phase.operating prose.단계 34b85b2858284a5a2ba4": 1,
   "packages/i18n/src/catalogs/ko/access.ts access.phase.setup prose.단계 978b7121f7d39b2b7e70": 1,
-  "packages/i18n/src/catalogs/ko/access.ts access.scope.search term.검색 fd9441daaff14fed59f3": 1,
   "packages/i18n/src/catalogs/ko/accounts.ts accounts.code.branch_membership_refused verb.부여 7486fa62641be0a96214": 1,
   "packages/i18n/src/catalogs/ko/attendance-crews.ts attendanceCrews.crews.consequence verb.입력 4e89df3f156117485d41": 1,
   "packages/i18n/src/catalogs/ko/attendance-crews.ts attendanceCrews.crews.none.reason verb.입력 8ce5c2e81e4b95c59e74": 1,

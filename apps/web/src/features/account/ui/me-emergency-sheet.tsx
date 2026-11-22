@@ -104,13 +104,15 @@ export function EmergencyContactsButton({
     setOpen(true);
   };
 
+const MASKED_PHONE_RE = /[•●*]/;
+
   const validateAll = () => {
     if (drafts.length === 0) return { ok: true as const, payload: [] as SelfEmergencyContactInput[] };
     if (!notified) return { ok: false as const };
     const payload: SelfEmergencyContactInput[] = [];
     for (const c of drafts) {
       const name = c.name.trim();
-      const e164 = phoneE164(c.phone);
+      const e164 = !MASKED_PHONE_RE.test(c.phone) && phoneE164(c.phone);
       if (!name || !e164) return { ok: false as const };
       payload.push({ name, relation: c.relation, phone: e164, contact_notified: true });
     }
@@ -153,7 +155,7 @@ export function EmergencyContactsButton({
           )}
           {drafts.map((item, idx) => {
             const nameMissing = tried && !item.name.trim();
-            const phoneBad = tried && !phoneE164(item.phone);
+            const phoneBad = MASKED_PHONE_RE.test(item.phone) || (tried && !phoneE164(item.phone));
             return (
               <div key={item.id} className={s.contactGroup}>
                 <div className={s.contactRowHead}>
@@ -229,7 +231,7 @@ export function EmergencyContactsButton({
                       onBlur={() =>
                         setDrafts((prev) =>
                           prev.map((x) =>
-                            x.id === item.id
+                            x.id === item.id && !MASKED_PHONE_RE.test(x.phone)
                               ? { ...x, phone: phoneDisplay(x.phone) || x.phone }
                               : x,
                           ),

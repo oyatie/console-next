@@ -14,6 +14,7 @@ import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button-base";
 import { Page } from "../../../ui/page/page";
 import { Card } from "../../../ui/card/card";
+import { SettingsPattern } from "../../../ui/patterns/settings";
 import { domainSummary, approvalSummary, experienceSummary, summaryFormatters, type SummaryCopy } from "../domain/summaries";
 import s from "./settings-hub.module.css";
 
@@ -72,11 +73,29 @@ function ScreenStyleSettingsCard() {
 }
 
 export function SettingsHubView({ rows }: { rows: readonly SettingsView[] }) {
-  return <Page floorplan="P-05" head={{ title: t("shell.link.settings") }}>
-    <section className={s.grid} aria-label={t("shell.settings.basics")}>
+  const cards = (
+    <>
       {rows.map(row => <SettingsCard key={row.to} row={row} />)}
       <ApprovalSettingsCard />
       <ScreenStyleSettingsCard />
-    </section>
-  </Page>;
+    </>
+  );
+  return (
+    <SettingsPattern
+      q={{ isPending: false, error: null, data: rows, refetch: () => {} }}
+      head={{ title: t("shell.link.settings") }}
+      panel={
+        <div className={s.consolePanel} data-settings-hub="" aria-label={t("shell.settings.basics")}>
+          {cards}
+        </div>
+      }
+      baseline={() => (
+        <Page floorplan="P-05" head={{ title: t("shell.link.settings") }}>
+          <section className={s.grid} aria-label={t("shell.settings.basics")}>
+            {cards}
+          </section>
+        </Page>
+      )}
+    />
+  );
 }

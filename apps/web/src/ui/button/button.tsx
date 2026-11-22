@@ -1,22 +1,14 @@
-import { lazy, Suspense, useId, useRef, useState, type ButtonHTMLAttributes, type FormHTMLAttributes, type ReactNode, type Ref } from "react";
+import { lazy, Suspense, useId, useRef, useState, type ButtonHTMLAttributes, type FormHTMLAttributes, type ReactNode } from "react";
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
 import type { ErrorSummaryItem } from "../error-summary";
 import type { ButtonSize, ButtonVariant } from "./button-class";
 import { Button } from "./button-base";
-export { Button } from "./button-base";
+export { Button, IconButton } from "./button-base";
 
 const ErrorSummary = lazy(() => chunk(import("../error-summary")).then(m => ({ default: m.ErrorSummary })));
 
 export type { ButtonSize, ButtonVariant };
-
-/**
- * An icon-only button (a close ×, a row's ⋯, a zoom step): square, its name in `label` (the accessible name and the
- * tooltip). Never for a destructive act, which always says what it does in words (design-language §5.1).
- */
-export function IconButton({ label, variant = "ghost", ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label" | "title"> & { label: string; variant?: Exclude<ButtonVariant, "danger" | "ghost-danger">; size?: ButtonSize; ref?: Ref<HTMLButtonElement> }) {
-  return <Button {...rest} variant={variant} icon aria-label={label} title={label} />;
-}
 
 /** An on/off button (`aria-pressed`): a filter or a view switch in a toolbar. */
 export function ToggleButton({ pressed, look, count, countTone, className, children, ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-pressed"> & {

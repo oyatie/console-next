@@ -76,6 +76,7 @@
   --control-h: 36px; --control-h-lg: 40px; --control-h-compact: 28px; --toolbar-h: 60px; --toolbar-py: 12px;
   --field-h: 40px; --field-h-toolbar: 40px;
   --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+  --qr-bg: #ffffff; --qr-fg: #141a21;
   color-scheme: light;
 }
 
@@ -99,5 +100,6 @@
   --chart-cat-1: #29c1f6; --chart-cat-2: #ee9cad; --chart-cat-3: #b463fa; --chart-cat-4: #b1bb27; --chart-cat-5: #915f96;
   --chart-seq-1: #15304a; --chart-seq-2: #1d5585; --chart-seq-3: #2a7fc0; --chart-seq-4: #5aaee8; --chart-seq-5: #a6d6f7;
   --chrome-scheme: dark;
+  --qr-bg: #ffffff; --qr-fg: #141a21;
   color-scheme: dark;
 }

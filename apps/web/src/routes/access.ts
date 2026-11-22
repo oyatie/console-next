@@ -14,7 +14,18 @@ const roleNew = createRoute({
   validateSearch: (s: Record<string, unknown>): { copy?: string } => ({ copy: str(s.copy) }),
   component: lazyRouteComponent(screen(load), "RoleNewScreen"),
 });
-const role = createRoute({ getParentRoute: () => app, path: "/access/roles/$roleId", staticData: { access: readRequirement("/access/roles/$roleId") }, component: lazyRouteComponent(screen(load), "RoleScreen") });
+const ROLE_TABS = new Set(["permissions", "holders", "history"]);
+type RoleEditorTab = "permissions" | "holders" | "history";
+const role = createRoute({
+  getParentRoute: () => app,
+  path: "/access/roles/$roleId",
+  staticData: { access: readRequirement("/access/roles/$roleId") },
+  validateSearch: (s: Record<string, unknown>): { tab?: RoleEditorTab } => {
+    const v = str(s.tab);
+    return { tab: v && ROLE_TABS.has(v) ? (v as RoleEditorTab) : undefined };
+  },
+  component: lazyRouteComponent(screen(load), "RoleScreen"),
+});
 // `role`: the holders of one role (the roles list links its holder count here).
 const grants = createRoute({
   getParentRoute: () => app,
