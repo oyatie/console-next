@@ -46,7 +46,7 @@ export function ChangedCells({ dry, consoleMode = false }: { dry: ImportDryRun; 
               consoleMode ? (
                 <>
                   {c.name}
-                  {c.number ? <span className={s.phoneOnly}>{" · "}<span className="code">{c.number}</span></span> : null}
+                  {c.number ? <bdi className={s.phoneOnly}>{" · "}<code className="code">{c.number}</code></bdi> : null}
                 </>
               ) : (
                 c.name
@@ -60,7 +60,7 @@ export function ChangedCells({ dry, consoleMode = false }: { dry: ImportDryRun; 
               consoleMode ? (
                 <>
                   <b className={s.desktopOnly}>{fieldLabel(c.field)}</b>
-                  <span className={s.phoneOnly}>{t("import.rows.change", { field: fieldLabel(c.field), before: value(c, c.from), after: value(c, c.to) })}</span>
+                  <bdi className={s.phoneOnly}>{t("import.rows.change", { field: fieldLabel(c.field), before: value(c, c.from), after: value(c, c.to) })}</bdi>
                 </>
               ) : (
                 <b>{fieldLabel(c.field)}</b>

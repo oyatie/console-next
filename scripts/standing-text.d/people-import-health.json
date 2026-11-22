@@ -1,13 +1,13 @@
 {
   "baseline": {
-    "apps/web/src/features/import/ui/import-console.tsx#ImportConsole": 132,
+    "apps/web/src/features/import/ui/import-console.tsx#ImportConsole": 133,
     "apps/web/src/features/people/ui/data-health-page.tsx#DataHealthPage": 10,
     "apps/web/src/features/people/ui/unplaced-console.tsx#UnplacedConsole": 61
   },
   "newScreens": {
     "apps/web/src/features/import/ui/import-console.tsx#ImportConsole": {
       "FACT": 89,
-      "REFUSAL": 28,
+      "REFUSAL": 29,
       "EMPTY": 5,
       "LEGAL": 4,
       "RECEIPT": 6,
