@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::{Extension, Json, Router};
 use console_hr_adapter_postgres::employee_number::change::{
     EmployeeNumberChange, EmployeeNumberChangeRequest, EmployeeNumberMatch,
@@ -19,6 +19,9 @@ use console_hr_adapter_postgres::employee_number::renumber_apply::{
     RenumberApplyRequest, RenumberResult,
 };
 use console_hr_adapter_postgres::employee_number::rules::{NumberRuleRequest, NumberRuleView};
+use console_hr_adapter_postgres::import::row_identifier::{
+    ImportRowIdentifierRequest, ImportRowIdentifierResponse,
+};
 use console_hr_adapter_postgres::rrn::{
     FieldRevealRequest, FieldRevealed, RrnRecordRequest, RrnRevealRequest, RrnRevealed, RrnStatus,
 };
@@ -32,6 +35,8 @@ use uuid::Uuid;
 use crate::HrApiError;
 
 pub const RRN_PATH: &str = "/api/v1/employees/{id}/rrn";
+pub const IMPORT_ROW_IDENTIFIER_PATH: &str =
+    "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier";
 pub const FIELD_REVEAL_PATH: &str = "/api/v1/employees/{id}/reveal";
 pub const RRN_REVEAL_PATH: &str = "/api/v1/employees/{id}/rrn/reveal";
 pub const EMPLOYEE_NUMBER_PATH: &str = "/api/v1/employees/{id}/employee-number";
@@ -44,6 +49,7 @@ pub const RENUMBER_UNDO_PATH: &str = "/api/v1/employees/renumber/{batch_id}/undo
 pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
     crate::person_binding::REVIEWS_PATH,
     RRN_PATH,
+    IMPORT_ROW_IDENTIFIER_PATH,
     RRN_REVEAL_PATH,
     FIELD_REVEAL_PATH,
     EMPLOYEE_NUMBER_PATH,
@@ -69,6 +75,7 @@ pub fn router(
 ) -> Router {
     Router::new()
         .route(RRN_PATH, get(rrn_status).put(rrn_record))
+        .route(IMPORT_ROW_IDENTIFIER_PATH, put(import_row_identifier))
         .route(RRN_REVEAL_PATH, post(rrn_reveal))
         .route(FIELD_REVEAL_PATH, post(field_reveal))
         .route(EMPLOYEE_NUMBER_PATH, post(change_number))
@@ -257,4 +264,30 @@ async fn renumber_undo(
     Path(batch): Path<Uuid>,
 ) -> Reply<RenumberResult> {
     Ok(Json(s.hr.undo_renumber(principal, batch).await?))
+}
+
+async fn import_row_identifier(
+    State(s): State<IdentityState>,
+    Extension(principal): Extension<Principal>,
+    Path((run_id, source_key)): Path<(Uuid, String)>,
+    body: Result<Json<ImportRowIdentifierRequest>, axum::extract::rejection::JsonRejection>,
+) -> Reply<ImportRowIdentifierResponse> {
+    // JSON type errors can echo a numeric RRN; never return the framework's raw rejection.
+    let Json(body) = body.map_err(|_| {
+        HrError::from_kernel(
+            console_kernel_core::KernelError::validation("resident registration number is invalid")
+                .with_code("rrn_invalid"),
+        )
+    })?;
+    Ok(Json(
+        s.hr.record_import_row_identifier(
+            principal,
+            run_id,
+            source_key,
+            body,
+            s.vault.as_deref(),
+            s.passkeys.as_ref(),
+        )
+        .await?,
+    ))
 }

@@ -10405,6 +10405,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/employees/import/{run_id}/cells",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__employees__import__run_id__cells.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/import/{run_id}/dry-run",
         operations: &[Operation {
             method: "post",
@@ -10437,6 +10446,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
             method: "put",
             body: include_str!(
                 "../../orgchange/rest/openapi/paths/api__v1__employees__import__run_id__reconcile__rows__source_key.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__employees__import__run_id__rows__source_key__identifier.put.yaml"
             ),
         }],
     },
@@ -11127,6 +11145,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
             method: "get",
             body: include_str!(
                 "../../orgchange/rest/openapi/paths/api__v1__hr__org-chart.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/hr/people/data-health",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__hr__people__data-health.get.yaml"
             ),
         }],
     },
@@ -12052,8 +12079,24 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../orgchange/rest/openapi/schemas/ImportApplyRequest.yaml"),
     },
     NamedYaml {
+        name: "ImportCellsRepairRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ImportCellsRepairRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportCellsRepairResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ImportCellsRepairResponse.yaml"),
+    },
+    NamedYaml {
         name: "ImportDryRunRequest",
         body: include_str!("../../orgchange/rest/openapi/schemas/ImportDryRunRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportRowIdentifierRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ImportRowIdentifierRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportRowIdentifierResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ImportRowIdentifierResponse.yaml"),
     },
     NamedYaml {
         name: "IssueAppointmentNoticeRequest",
@@ -12150,6 +12193,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OrgUnitStatus",
         body: include_str!("../../orgchange/rest/openapi/schemas/OrgUnitStatus.yaml"),
+    },
+    NamedYaml {
+        name: "PeopleDataHealthResponse",
+        body: include_str!("../../orgchange/rest/openapi/schemas/PeopleDataHealthResponse.yaml"),
     },
     NamedYaml {
         name: "PersonBindingReviews",

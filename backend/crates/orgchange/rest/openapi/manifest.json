@@ -108,6 +108,9 @@
       "get",
       "post"
     ],
+    "/api/v1/employees/import/{run_id}/cells": [
+      "put"
+    ],
     "/api/v1/employees/import/{run_id}/dry-run": [
       "post"
     ],
@@ -118,6 +121,9 @@
       "get"
     ],
     "/api/v1/employees/import/{run_id}/reconcile/rows/{source_key}": [
+      "put"
+    ],
+    "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier": [
       "put"
     ],
     "/api/v1/employees/import/{run_id}/signoff": [
@@ -332,6 +338,9 @@
       "get"
     ],
     "/api/v1/hr/org-chart": [
+      "get"
+    ],
+    "/api/v1/hr/people/data-health": [
       "get"
     ],
     "/api/v1/hr/readiness-summary": [
@@ -562,7 +571,11 @@
     "HrOrgChartResponse",
     "HrOrgChartUnit",
     "ImportApplyRequest",
+    "ImportCellsRepairRequest",
+    "ImportCellsRepairResponse",
     "ImportDryRunRequest",
+    "ImportRowIdentifierRequest",
+    "ImportRowIdentifierResponse",
     "IssueAppointmentNoticeRequest",
     "IssueCertificateRequest",
     "JobTitleKind",
@@ -586,6 +599,7 @@
     "OrgUnitList",
     "OrgUnitRevision",
     "OrgUnitStatus",
+    "PeopleDataHealthResponse",
     "PersonBindingReviews",
     "PersonRecordAward",
     "PersonRecordBasis",
