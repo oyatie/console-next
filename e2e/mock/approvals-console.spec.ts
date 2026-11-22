@@ -753,3 +753,93 @@ test("Console /approvals KPI tile transitions work from category source -> needs
     fixture.release();
   }
 });
+
+test("Console /approvals keeps .paneBody readable and .paneFooter scrollable on 409 REJECT at 1280x720 and 1366x768", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 1366, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const { fixture } = await setupConsoleApprovals(page, "light", "ko", { staleOnFirst: true });
+    try {
+      await page.goto("/approvals");
+      const sidePane = page.locator('aside[data-pane="record"]');
+      await expect(sidePane).toBeVisible();
+      await sidePane.getByRole("button", { name: t("uiApprovalCard.reject"), exact: true }).click();
+      await sidePane.getByRole("radio", { name: t("reason.org_change_reject.POLICY_VIOLATION"), exact: true }).press("Space");
+      const commit = sidePane.getByRole("button", { name: t("uiApprovalCard.reject"), exact: true });
+      await commit.scrollIntoViewIfNeeded();
+      await commit.click();
+
+      await expect(sidePane.getByRole("alert")).toContainText(t("approvals.viewer.changed"));
+
+      const paneBody = sidePane.locator('[tabindex="0"]').first();
+      const paneFooter = sidePane.locator("article").locator("xpath=..");
+      const footerScrollable = await paneFooter.evaluate(el => {
+        el.scrollTop = el.scrollHeight;
+        return el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY === "auto";
+      });
+      expect(footerScrollable, `${viewport.width}x${viewport.height} .paneFooter scrollable`).toBe(true);
+
+      const asideBox = await sidePane.boundingBox();
+      const bodyBox = await paneBody.boundingBox();
+      const footerBox = await paneFooter.boundingBox();
+      const commitBox = await commit.boundingBox();
+
+      expect(asideBox).not.toBeNull();
+      expect(bodyBox).not.toBeNull();
+      expect(footerBox).not.toBeNull();
+      expect(commitBox).not.toBeNull();
+
+      expect(bodyBox!.height, `${viewport.width}x${viewport.height} .paneBody height`).toBeGreaterThanOrEqual(80);
+      expect(footerBox!.y + footerBox!.height, `${viewport.width}x${viewport.height} .paneFooter bottom`).toBeLessThanOrEqual(
+        asideBox!.y + asideBox!.height + 1,
+      );
+      expect(commitBox!.y, `${viewport.width}x${viewport.height} commit top inside footer`).toBeGreaterThanOrEqual(footerBox!.y - 1);
+      expect(
+        commitBox!.y + commitBox!.height,
+        `${viewport.width}x${viewport.height} commit bottom inside footer`,
+      ).toBeLessThanOrEqual(footerBox!.y + footerBox!.height + 1);
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      fixture.release();
+    }
+  }
+});
+
+test("Console /approvals full-screen button works on auto-selected row and clears stale decision footer on switch", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fixture } = await setupConsoleApprovals(page, "light", "ko", { staleOnFirst: true, staleToNone: true });
+  try {
+    await page.goto("/approvals");
+    const sidePane = page.locator('aside[data-pane="record"]');
+    await expect(sidePane).toBeVisible();
+
+    const fullBtn = sidePane.getByRole("button", { name: t("uiFlexibleColumns.full"), exact: true });
+    await expect(fullBtn).toHaveAttribute("aria-pressed", "false");
+    await fullBtn.click();
+    await expect(fullBtn).toHaveAttribute("aria-pressed", "true");
+    await expect(page).toHaveURL(new RegExp(`sel=${saeonUniverse.approval.documentNumber}&full=1`));
+    await fullBtn.click();
+    await expect(fullBtn).toHaveAttribute("aria-pressed", "false");
+
+    // Start decision on doc 1 (409 sets decisionDocId and refetches doc 1 with my_actions=none), switch to doc 2, switch back -> no empty footer
+    await sidePane.getByRole("button", { name: t("composer.verb.approve"), exact: true }).click();
+    await expect(sidePane.getByRole("alert")).toContainText(t("approvals.viewer.changed"));
+
+    const table = page.getByRole("grid", { name: t("approvals.list"), exact: true });
+    await table.locator('tbody tr[data-id="AP-2026-0419"]').click();
+    await expect(sidePane).toContainText("AP-2026-0419");
+
+    await table.locator(`tbody tr[data-id="${saeonUniverse.approval.documentNumber}"]`).click();
+    await expect(sidePane).toContainText(saeonUniverse.approval.documentNumber);
+    await expect(sidePane.locator("> div")).toHaveCount(1);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
+});

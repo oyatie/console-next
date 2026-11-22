@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -30,29 +30,12 @@ import { APPROVAL_BOXES, type ApprovalBox } from "../domain/inbox";
 import { ApprovalDecisionPanel, ApprovalDocumentView } from "./approval-viewer";
 import { ConsoleApprovalSideView, ConsoleApprovalsTable } from "./approvals-console";
 import { SourceViewerLink } from "./source-viewer-link";
+import { useApprovalsDesktop } from "./use-approvals-desktop";
 import s from "./approvals-page.module.css";
 
 const route = getRouteApi("/app/approvals");
 const ALL_SOURCES = "all";
 const CLOSED = { sel: undefined, full: undefined };
-const DESKTOP_MEDIA = "(min-width: 768px)";
-
-function subscribeDesktop(onChange: () => void) {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
-  const mq = window.matchMedia(DESKTOP_MEDIA);
-  mq.addEventListener("change", onChange);
-  return () => mq.removeEventListener("change", onChange);
-}
-
-function getDesktopSnapshot() {
-  return typeof window !== "undefined" && typeof window.matchMedia === "function"
-    ? window.matchMedia(DESKTOP_MEDIA).matches
-    : true;
-}
-
-function getDesktopServerSnapshot() {
-  return false;
-}
 
 /** The list stays left; `record` is the selected document, shown beside it (one column with a back button at phone width). */
 export function ApprovalInboxView({ items, sel, selected, record, onSelect, onClose, onFind, full, onFull, hasNext, loadingMore, onMore, emptyTitle }: {
@@ -166,7 +149,7 @@ function BaselineApprovalsPage() {
 
 function ConsoleApprovalsPage() {
   const { box, urlQuery, source, selection: { sel, full, expand, restore, select }, filters, set, query, setQuery, inbox, first, items, tabs, sourceOptions } = useApprovalsSearch();
-  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, getDesktopServerSnapshot);
+  const isDesktop = useApprovalsDesktop();
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [blockedKey, setBlockedKey] = useState<string | null>(null);
   const [receiptState, setReceiptState] = useState<{ id: string; text: string }>();
@@ -176,6 +159,12 @@ function ConsoleApprovalsPage() {
   const visibleItems = blockedOnly ? items.filter(item => Boolean(item.decision_refusal)) : items;
   const filterKey = `${baseFilterKey}|${blockedOnly ? "1" : "0"}`;
   const effectiveSel = sel ?? (isDesktop && dismissedKey !== filterKey ? visibleItems[0]?.id : undefined);
+  const [prevSel, setPrevSel] = useState(effectiveSel);
+  if (prevSel !== effectiveSel) {
+    setPrevSel(effectiveSel);
+    if (decisionDocId !== undefined) setDecisionDocId(undefined);
+  }
+  const activeDecisionDocId = decisionDocId === effectiveSel ? decisionDocId : undefined;
   // The document is read by its id, so selecting never re-reads the list and a shared or reloaded link needs no list row.
   const opened = useQuery({ ...approvalDocumentQuery(effectiveSel ?? ""), enabled: Boolean(effectiveSel), refetchOnMount: "always" });
   const openedDoc = opened.data?.id === effectiveSel ? opened.data : undefined;
@@ -183,7 +172,7 @@ function ConsoleApprovalsPage() {
   const showFooterDecision = Boolean(
     openedDoc &&
       ((openedDoc.my_actions.kind === "approve" && openedDoc.my_actions.reject) ||
-        decisionDocId === openedDoc.id ||
+        activeDecisionDocId === openedDoc.id ||
         receiptState?.id === openedDoc.id),
   );
   const filtered = Boolean(urlQuery || source || blockedOnly);
@@ -273,7 +262,11 @@ function ConsoleApprovalsPage() {
       )}
       onSelect={handleSelect}
       full={full}
-      onFull={on => on ? expand() : restore()}
+      onFull={on => {
+        if (!on) restore();
+        else if (sel) expand();
+        else if (effectiveSel) { setDismissedKey(null); set({ sel: effectiveSel, full: 1 }); }
+      }}
       record={effectiveSel ? {
         id: effectiveSel,
         label: t("approvals.document.title"),
