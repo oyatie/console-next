@@ -268,3 +268,41 @@ test("PhoneEditButton rejects masked characters client-side before sending PATCH
   expect(patchBodies).toEqual([{ phone: "010-9876-5432" }]);
   expect(pageErrors).toEqual([]);
 });
+
+test("EmergencyContactsButton rejects masked characters client-side before sending PATCH", async () => {
+  const patchBodies: unknown[] = [];
+  await page.route("**/api/v1/me/profile", (route) => {
+    if (route.request().method() === "PATCH") {
+      patchBodies.push(route.request().postDataJSON());
+      return route.fulfill({ json: PROFILE_FIXTURE });
+    }
+    return route.fulfill({ json: PROFILE_FIXTURE });
+  });
+  await page.route("**/api/v1/users/me", (route) => route.fulfill({ json: { id: "u1" } }));
+
+  await openHarness();
+  await page.getByRole("button", { name: t("account.selfEdit.phoneEdit"), exact: true }).nth(1).click();
+  const dialog = page.getByRole("dialog", { name: t("account.selfEdit.emergencyEditTitle"), exact: true });
+  const phoneInput = dialog.getByLabel(t("account.selfEdit.emergencyPhone"));
+
+  await dialog.getByRole("checkbox", { name: t("account.selfEdit.emergencyNotified") }).check();
+  for (const maskedCandidate of ["010-••••-4821", "010-●●●●-4821", "010-1234-5678*"]) {
+    await phoneInput.fill(maskedCandidate);
+    await phoneInput.blur();
+    await browserExpect(phoneInput).toHaveValue(maskedCandidate);
+    await browserExpect(phoneInput).toHaveAttribute("aria-invalid", "true");
+    await browserExpect(dialog).toContainText(t("account.selfEdit.emergencyPhoneInvalid"));
+    await dialog.getByRole("button", { name: t("account.selfEdit.phoneEdit"), exact: true }).click();
+    await browserExpect(dialog).toBeVisible();
+    expect(patchBodies).toEqual([]);
+  }
+
+  await phoneInput.fill("010-2222-3333");
+  await browserExpect(phoneInput).not.toHaveAttribute("aria-invalid", "true");
+  await dialog.getByRole("button", { name: t("account.selfEdit.phoneEdit"), exact: true }).click();
+  await browserExpect(dialog).toHaveCount(0);
+  expect(patchBodies).toEqual([{
+    emergency_contacts: [{ name: "Minji", relation: "SPOUSE", phone: "+821022223333", contact_notified: true }],
+  }]);
+  expect(pageErrors).toEqual([]);
+});

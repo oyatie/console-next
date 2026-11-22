@@ -5,11 +5,14 @@ import { normalizeOtp, OTP_LENGTH } from "./Login";
 beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
 afterEach(() => i18n.set("ko"));
 
-test("new codes fold case and grouping while legacy codes keep exact bytes", () => {
+test("new codes fold case and grouping while legacy codes and cop_ operator tokens keep exact bytes", () => {
   expect(normalizeOtp(" abcde-fghjk\n")).toBe("ABCDE-FGHJK");
   expect(normalizeOtp(" aB3$-x_Z\n")).toBe("aB3$-x_Z");
   expect(normalizeOtp("abc")).toHaveLength(3);
   expect(normalizeOtp("x".repeat(20)).replaceAll("-", "")).toHaveLength(OTP_LENGTH);
+  const copToken = "cop_AbCdEf-0123_xyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  expect(normalizeOtp(` ${copToken} \n`)).toBe(copToken);
+  expect(normalizeOtp("cop_Short")).toBe("cop_Short");
 });
 
 test("the code hint uses the generated issuance length in both locales", () => {

@@ -13,6 +13,7 @@ import { Button } from "../ui/button/button";
 import { Card } from "../ui/card/card";
 import { Checks } from "../ui/choice/checks";
 import { PageHead } from "../ui/page-head/page-head";
+import { SignInPattern } from "../ui/patterns/sign-in";
 import { Skeleton } from "../ui/skeleton/skeleton";
 import { pauseAutofill, rememberDomain } from "./sign-in-id";
 
@@ -60,48 +61,75 @@ export function SetupPasskey() {
     void documents.refetch();
   };
 
+  const title = t(isAppSession ? "auth.setup.consent.title" : "auth.setup.title");
+  const loadingSkeleton = <Skeleton bones={["title", "row", "row"]} label={t("common.loading")} />;
+  const notices = (
+    <>
+      {error && <Banner tone="danger" live="assertive">{error}</Banner>}
+      {loading && <Skeleton bones={["row", "row"]} label={t("common.loading")} />}
+      {failed && <Banner tone="danger" live="assertive">
+        {t(unpublished ? "setup.error.terms_not_published" : "auth.setup.consent.loadFailed")}
+        <Button disabled={busy || loading} onClick={retry}>{t("common.retry")}</Button>
+      </Banner>}
+    </>
+  );
+  const consentBody = (
+    <>
+      <div className="form">
+        <Checks
+          label={t("auth.setup.consent.title")}
+          items={[
+            { id: "privacy", label: t("auth.setup.consent.privacy"), description: privacyDescription },
+            { id: "terms", label: t("auth.setup.consent.terms"), description: termsDescription },
+          ]}
+          value={accepted ? ["privacy", "terms"] : signoffs}
+          onChange={setSignoffs}
+          isDisabled={busy || !ready}
+        />
+        {documents.data && <>
+          <details className="muted" id={privacyDescription}>
+            <summary>{t("auth.setup.consent.privacy")} · {t("auth.setup.consent.disclosure")}{documents.data.privacy.review_pending && <> ({t("auth.setup.consent.reviewPending")})</>}</summary>
+            <p className="auth__terms">{documents.data.privacy.body}</p>
+            <div className="muted">{t("auth.setup.consent.policy")}: {documents.data.privacy.policy_url}</div>
+          </details>
+          <details className="muted" id={termsDescription}>
+            <summary>{t("auth.setup.consent.terms")} · {t("auth.setup.consent.disclosure")}</summary>
+            <p className="auth__terms">{documents.data.body}</p>
+          </details>
+        </>}
+      </div>
+      <Button variant="primary" disabled={busy || !ready || !confirmed} aria-describedby={!confirmed ? disabledDescription : undefined} onClick={enroll}>
+        {!isAppSession && <KeyRound size={16} aria-hidden />} {t(isAppSession ? "auth.setup.consent.continue" : "auth.setup.register")}
+      </Button>
+      {!confirmed && <p className="muted" id={disabledDescription}>{t("auth.setup.consent.required")}</p>}
+    </>
+  );
+  const foot = (
+    <Button variant="ghost" disabled={busy} onClick={() => void logout().then(() => nav({ to: "/login", search: isAppSession || unpublished ? {} : { cancelled: 1 } }))}>
+      <LogOut size={16} aria-hidden /> {t(isAppSession || unpublished ? "shell.logout" : "auth.setup.cancel")}
+    </Button>
+  );
+
   // Consent controls appear only once the fresh documents determine the centered form's final layout.
   return (
-    <main className="auth">
-      {loading && !documents.data ? <Skeleton bones={["title", "row", "row"]} label={t("common.loading")} /> : <div className="auth__frame"><Card flush><div className="auth__content" aria-busy={busy || undefined}>
-        <PageHead title={t(isAppSession ? "auth.setup.consent.title" : "auth.setup.title")} />
-        {error && <Banner tone="danger" live="assertive">{error}</Banner>}
-        {loading && <Skeleton bones={["row", "row"]} label={t("common.loading")} />}
-        {failed && <Banner tone="danger" live="assertive">
-          {t(unpublished ? "setup.error.terms_not_published" : "auth.setup.consent.loadFailed")}
-          <Button disabled={busy || loading} onClick={retry}>{t("common.retry")}</Button>
-        </Banner>}
-        <div className="form">
-          <Checks
-            label={t("auth.setup.consent.title")}
-            items={[
-              { id: "privacy", label: t("auth.setup.consent.privacy"), description: privacyDescription },
-              { id: "terms", label: t("auth.setup.consent.terms"), description: termsDescription },
-            ]}
-            value={accepted ? ["privacy", "terms"] : signoffs}
-            onChange={setSignoffs}
-            isDisabled={busy || !ready}
-          />
-          {documents.data && <>
-            <details className="muted" id={privacyDescription}>
-              <summary>{t("auth.setup.consent.privacy")} · {t("auth.setup.consent.disclosure")}{documents.data.privacy.review_pending && <> ({t("auth.setup.consent.reviewPending")})</>}</summary>
-              <p className="auth__terms">{documents.data.privacy.body}</p>
-            </details>
-            <details className="muted" id={termsDescription}>
-              <summary>{t("auth.setup.consent.terms")} · {t("auth.setup.consent.disclosure")}</summary>
-              <p className="auth__terms">{documents.data.body}</p>
-            </details>
-            <p className="muted">{t("auth.setup.consent.policy")}: <span>{documents.data.privacy.policy_url}</span></p>
-          </>}
-        </div>
-        <Button variant="primary" disabled={busy || !ready || !confirmed} aria-describedby={!confirmed ? disabledDescription : undefined} onClick={enroll}>
-          {!isAppSession && <KeyRound size={16} aria-hidden />} {t(isAppSession ? "auth.setup.consent.continue" : "auth.setup.register")}
-        </Button>
-        {!confirmed && <p className="muted" id={disabledDescription}>{t("auth.setup.consent.required")}</p>}
-        <Button variant="ghost" disabled={busy} onClick={() => void logout().then(() => nav({ to: "/login", search: isAppSession || unpublished ? {} : { cancelled: 1 } }))}>
-          <LogOut size={16} aria-hidden /> {t(isAppSession || unpublished ? "shell.logout" : "auth.setup.cancel")}
-        </Button>
-      </div></Card></div>}
-    </main>
+    <SignInPattern
+      title={title}
+      context={t("app.name")}
+      busy={busy}
+      loading={loading && !documents.data ? loadingSkeleton : undefined}
+      notices={notices}
+      body={consentBody}
+      foot={foot}
+      baseline={() => (
+        <main className="auth">
+          {loading && !documents.data ? loadingSkeleton : <div className="auth__frame"><Card flush><div className="auth__content" aria-busy={busy || undefined}>
+            <PageHead title={title} />
+            {notices}
+            {consentBody}
+            {foot}
+          </div></Card></div>}
+        </main>
+      )}
+    />
   );
 }

@@ -6,7 +6,7 @@ import { QueryState } from "../../lib/react/query-state";
 import { queryView, type ReadState } from "../../lib/react/query-view";
 import { PageReadGate } from "../../reference/authz/ui/access-gate";
 import { Band } from "../band/band";
-import { Button } from "../button/button";
+import { Button } from "../button/button-base";
 import type { MenuAction } from "../menu/action-menu";
 import { PageHead, type PageHeadProps } from "../page-head/page-head";
 import { PageHeadActions } from "../page-head/page-head-actions";
