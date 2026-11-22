@@ -31,9 +31,9 @@ export function IssuedCode({ issued, onDone }: { issued: Issued | null; onDone: 
           <div className="secret" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>
           <span className="muted num">{t("common.expiresAt", { at: fmtDateTime(issued.expires_at) })}</span>
           {inviteUrl && (
-            <div role="group" aria-label={t("common.inviteLink")}>
+            <div className="qr-group" role="group" aria-label={t("common.inviteLink")}>
               <code className="code">{inviteUrl}</code>
-              <Suspense fallback={null}>
+              <Suspense fallback={<span className="qr-slot" aria-hidden="true" />}>
                 <QrCode value={inviteUrl} label={t("common.inviteQrLabel")} />
               </Suspense>
             </div>

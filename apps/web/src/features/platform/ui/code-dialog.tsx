@@ -26,9 +26,9 @@ export function CodeDialog({ issued, onClose }: { issued: Issued | null; onClose
           {issued.signInId && <div role="group" aria-label={t("tenants.code.signInId")}><code>{issued.signInId}</code><Button onClick={() => copy(issued.signInId!)}>{t("tenants.code.copyId")}</Button></div>}
           <div className="secret" role="group" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>
           {inviteUrl && (
-            <div role="group" aria-label={t("common.inviteLink")}>
+            <div className="qr-group" role="group" aria-label={t("common.inviteLink")}>
               <code className="code">{inviteUrl}</code>
-              <Suspense fallback={null}>
+              <Suspense fallback={<span className="qr-slot" aria-hidden="true" />}>
                 <QrCode value={inviteUrl} label={t("common.inviteQrLabel")} />
               </Suspense>
             </div>

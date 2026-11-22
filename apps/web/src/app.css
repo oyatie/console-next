@@ -335,6 +335,8 @@ aside.panel { position: sticky; top: 0; }
 .form { display: flex; flex-direction: column; gap: var(--space-3); }
 .form__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 .secret { font-family: var(--font-mono); font-size: var(--text-xl); letter-spacing: var(--tracking-label); padding: var(--space-3); background: var(--muted); border-radius: var(--radius); text-align: center; user-select: all; }
+.qr-group { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.qr-slot { display: block; width: calc(var(--space-6) * 4 + var(--space-2) * 2 + 2px); height: calc(var(--space-6) * 4 + var(--space-2) * 2 + 2px); border: 1px solid var(--border); border-radius: var(--radius); background: var(--qr-bg); }
 /* As tall as a button from the start: a command that renders once permissions load must not grow the row and push
    what is below it under a pointer already there. */
 .toolbar { display: flex; align-items: center; gap: var(--space-2); min-height: var(--toolbar-h); padding: var(--toolbar-py) var(--space-4); }
