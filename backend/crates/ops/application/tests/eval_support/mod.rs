@@ -5,6 +5,12 @@ use std::future::Future;
 use std::sync::Mutex;
 use std::task::{Context, Poll, Waker};
 
+use console_ops_application::alert_actions::{
+    AlertAckRecord, AlertAckStore, AlertmanagerSilencePost, AlertmanagerWriter, SilenceAuditRecord,
+    SilenceAuditStore,
+};
+use console_ops_application::domain::UtcTimestamp;
+use console_ops_application::obligations::{Context as ObContext, Error as SpoolError};
 use console_ops_application::{
     Alert, AlertState as RawAlertState, AlertStatus, Alertmanager, AlertmanagerSnapshot,
     AlertmanagerStatus, InstantSample, ScrapeTarget, SourceError, SourceFuture, VersionInfo,
@@ -154,5 +160,99 @@ pub fn sample(labels: &[(&str, &str)], val: f64) -> InstantSample {
             .collect(),
         timestamp_s: 1767225600.0,
         value: val,
+    }
+}
+
+pub struct MemAckStore(pub Mutex<Vec<AlertAckRecord>>);
+impl AlertAckStore for MemAckStore {
+    fn list_acks(&self) -> Result<Vec<AlertAckRecord>, SpoolError> {
+        Ok(self
+            .0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone())
+    }
+    fn record_ack(
+        &self,
+        group_key: &str,
+        alertname: &str,
+        component: &str,
+        note: Option<String>,
+        context: &ObContext,
+    ) -> Result<AlertAckRecord, SpoolError> {
+        let mut g = self
+            .0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let rec = AlertAckRecord {
+            seq: g.len() as u64 + 1,
+            hash: "h".into(),
+            support_ref: context.support_ref.clone(),
+            at: UtcTimestamp::new(context.at),
+            operator: context.operator.person.clone(),
+            group_key: group_key.to_owned(),
+            alertname: alertname.to_owned(),
+            component: component.to_owned(),
+            note,
+        };
+        g.push(rec.clone());
+        Ok(rec)
+    }
+}
+
+pub struct MemSilenceStore(pub Mutex<Vec<SilenceAuditRecord>>);
+impl SilenceAuditStore for MemSilenceStore {
+    fn list_records(&self) -> Result<Vec<SilenceAuditRecord>, SpoolError> {
+        Ok(self
+            .0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone())
+    }
+    fn record_event(
+        &self,
+        action: &str,
+        silence_id: Option<&str>,
+        group_key: Option<&str>,
+        detail: Option<&str>,
+        context: &ObContext,
+    ) -> Result<SilenceAuditRecord, SpoolError> {
+        let mut g = self
+            .0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let rec = SilenceAuditRecord {
+            seq: g.len() as u64 + 1,
+            hash: "h".into(),
+            support_ref: context.support_ref.clone(),
+            at: UtcTimestamp::new(context.at),
+            operator: context.operator.person.clone(),
+            action: action.to_owned(),
+            silence_id: silence_id.map(str::to_owned),
+            group_key: group_key.map(str::to_owned),
+            detail: detail.map(str::to_owned),
+        };
+        g.push(rec.clone());
+        Ok(rec)
+    }
+}
+
+pub struct MockWriter {
+    pub fail: bool,
+}
+impl AlertmanagerWriter for MockWriter {
+    fn create_silence(&self, _req: &AlertmanagerSilencePost) -> SourceFuture<'_, String> {
+        let fail = self.fail;
+        Box::pin(async move {
+            if fail {
+                Err(SourceError::Down)
+            } else {
+                Ok("sil-9".into())
+            }
+        })
+    }
+    fn delete_silence(&self, _id: &str) -> SourceFuture<'_, ()> {
+        let fail = self.fail;
+        Box::pin(async move { if fail { Err(SourceError::Down) } else { Ok(()) } })
     }
 }

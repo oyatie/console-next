@@ -112,6 +112,23 @@ impl OpsApiError {
             route,
         }
     }
+
+    pub fn with_code(
+        status: StatusCode,
+        code: &'static str,
+        support_ref: String,
+        route: &'static str,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            status,
+            code,
+            message: message.into(),
+            support_ref,
+            operator_person: None,
+            route,
+        }
+    }
 }
 
 pub async fn normalize_error_response(

@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["freeze", "reason"]
+additionalProperties: false
+properties:
+  freeze: {"type": "boolean"}
+  reason: {"$ref": "#/components/schemas/Text"}

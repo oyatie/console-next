@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsRunbookDoc"
+summary: "Read Runbook Document"
+x-cedar-action: "read.running"
+security: [{"accessJwt": []}]
+description: "Reads a single validated runbook markdown document and headings."
+parameters: [{"in": "path", "name": "path", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+responses: {"200": {"description": "Runbook document.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RunbookDocView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

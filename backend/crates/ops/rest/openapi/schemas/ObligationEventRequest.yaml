@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["event", "fields"]
+additionalProperties: false
+properties:
+  event: {"type": "string", "enum": ["in_review", "redated", "done", "waived"]}
+  fields: {"type": "object"}

@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["decision", "reason"]
+additionalProperties: false
+properties:
+  decision: {"type": "string", "enum": ["hold", "promote", "abort"]}
+  reason: {"$ref": "#/components/schemas/Text"}

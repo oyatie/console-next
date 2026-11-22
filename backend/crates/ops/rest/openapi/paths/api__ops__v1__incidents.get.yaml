@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsIncidentsList"
+summary: "List Incidents"
+x-cedar-action: "read.home"
+security: [{"accessJwt": []}]
+description: "Lists incidents replayed from the incidents spool."
+responses: {"200": {"description": "Incidents list.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentsList"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

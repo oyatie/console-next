@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "repos", "rto", "deferred_since", "last_exit_code", "lvm_snapshot_at", "onprem_mount_expected"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  repos: {"type": "array", "items": {"$ref": "#/components/schemas/RecoveryRepoView"}}
+  rto: {"$ref": "#/components/schemas/ObservedNumber"}
+  deferred_since: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  last_exit_code: {"$ref": "#/components/schemas/ObservedNumber"}
+  lvm_snapshot_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  onprem_mount_expected: {"$ref": "#/components/schemas/ObservedBoolean"}
