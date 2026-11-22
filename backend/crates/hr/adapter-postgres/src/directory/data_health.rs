@@ -90,11 +90,8 @@ impl HrService {
         let reach = hr_reach_in(&principal, Feature::EmployeeDirectoryRead, Tier::Branch)?;
         let org = principal.org_id;
         let org_uuid = *org.as_uuid();
-        let mut filters = EmployeeListFilters::from_query(
-            &EmployeeListQuery::default(),
-            &principal.branch_scope,
-        )?
-        .with_reach(reach);
+        let mut filters =
+            EmployeeListFilters::from_query_for_reach(&EmployeeListQuery::default(), reach)?;
 
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
