@@ -4,10 +4,31 @@ use console_platform_authz::Principal;
 use console_platform_authz::access::{
     AccessSlice, Domain, Level, NodeKind, NodePath, action_group, load_access_subject, scope_path,
 };
-use console_platform_db::DbError;
+use console_platform_db::{DbError, with_org_conn};
 use serde_json::Value;
-use sqlx::{Postgres, Row, Transaction};
+use sqlx::{PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
+
+pub(super) async fn may_read_log_review(pool: &PgPool, p: &Principal) -> bool {
+    let actor = *p.user_id.as_uuid();
+    let org = p.org_id;
+    with_org_conn::<_, _, DbError>(pool, org, move |tx| {
+        Box::pin(async move {
+            let subject = load_access_subject(tx, org, actor, time::OffsetDateTime::now_utc())
+                .await
+                .map_err(|e| DbError::Sqlx(sqlx::Error::Protocol(e.to_string())))?;
+            let Ok(slice) = AccessSlice::compile(&subject) else {
+                return Ok(false);
+            };
+            let tenant = scope_path(org, NodeKind::Tenant, None, None);
+            Ok(slice
+                .allows(&action_group(Domain::Audit, Level::View), &tenant)
+                .unwrap_or(false))
+        })
+    })
+    .await
+    .unwrap_or(false)
+}
 
 pub(super) async fn may_read(
     tx: &mut Transaction<'_, Postgres>,

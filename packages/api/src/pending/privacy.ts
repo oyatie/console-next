@@ -22,5 +22,17 @@ export type PrivacyFiling = Omit<import("../schema").operations["filePrivacyRigh
 /** Register and Cedar-resolved filing choices from the generated contract. */
 export type PrivacyFilingOptions = import("../schema").operations["privacyRightsRequestOptions"]["responses"][200]["content"]["application/json"];
 
+type _PrivacyDecisionInput = Omit<import("../schema").operations["decidePrivacyRightsRequest"]["requestBody"]["content"]["application/json"], "step_up">;
+type _PrivacyPostponeInput = Omit<import("../schema").operations["postponePrivacyRightsRequest"]["requestBody"]["content"]["application/json"], "step_up">;
+type _PrivacyOffAppReceipt = import("../schema").operations["receiveOffAppPrivacyRightsRequest"]["requestBody"]["content"]["application/json"];
+type _PrivacyObjectionInput = import("../schema").operations["objectPrivacyRightsRequest"]["requestBody"]["content"]["application/json"];
+
 export type PrivacyPaths = Pick<import("../schema").paths,
-  "/api/v1/privacy/rights-requests/mine" | "/api/v1/privacy/rights-requests" | "/api/v1/privacy/rights-requests/options" | "/api/v1/privacy/rights-requests/{id}">;
+  | "/api/v1/privacy/rights-requests/mine"
+  | "/api/v1/privacy/rights-requests"
+  | "/api/v1/privacy/rights-requests/options"
+  | "/api/v1/privacy/rights-requests/received"
+  | "/api/v1/privacy/rights-requests/{id}"
+  | "/api/v1/privacy/rights-requests/{id}/decide"
+  | "/api/v1/privacy/rights-requests/{id}/postpone"
+  | "/api/v1/privacy/rights-requests/{id}/objection">;

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use crate::statutory::{Citation, ReleaseDisposition, StatutoryRule, StatutoryUnit};
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use time::Date;
 
 pub(super) fn rule<S: Serializer>(
     rule: &Option<StatutoryRule>,
@@ -30,4 +31,35 @@ pub(super) fn rule<S: Serializer>(
             disposition: &rule.disposition,
         })
         .serialize(serializer)
+}
+
+pub(super) fn deserialize_rule<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<StatutoryRule>, D::Error> {
+    #[derive(Deserialize)]
+    struct Rule {
+        code: String,
+        #[serde(with = "super::wire_date")]
+        effective_from: Date,
+        #[serde(with = "super::wire_date::option")]
+        effective_to_exclusive: Option<Date>,
+        unit: StatutoryUnit,
+        value_num: i64,
+        value_den: i64,
+        citation: Citation,
+        disposition: ReleaseDisposition,
+    }
+
+    Option::<Rule>::deserialize(deserializer).map(|maybe| {
+        maybe.map(|rule| StatutoryRule {
+            code: rule.code,
+            effective_from: rule.effective_from,
+            effective_to_exclusive: rule.effective_to_exclusive,
+            unit: rule.unit,
+            value_num: rule.value_num,
+            value_den: rule.value_den,
+            citation: rule.citation,
+            disposition: rule.disposition,
+        })
+    })
 }

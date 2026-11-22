@@ -2,8 +2,8 @@ import { api, unwrap } from "./client";
 import { platform } from "./platform";
 import type { components } from "./schema";
 
-/** The BW-29 step-up kinds a web command binds its passkey assertion to (the server's step_up_kind.rs). */
-export type StepUpKind = "PII_REVEAL" | "PII_RECORD" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "OPERATOR_RECOVERY" | "SUPPORT_SESSION" | "PRIVACY_REQUEST";
+/** The step-up kinds a web command binds its passkey assertion to (the server's step_up_kind.rs). */
+export type StepUpKind = "PII_REVEAL" | "PII_RECORD" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "OPERATOR_RECOVERY" | "SUPPORT_SESSION" | "PRIVACY_REQUEST" | "PRIVACY_REQUEST_DECIDE";
 const reasonKey = (kind: StepUpKind): `passkey_step_up_${Lowercase<StepUpKind>}` => `passkey_step_up_${kind.toLowerCase() as Lowercase<StepUpKind>}`;
 
 type Envelope = components["schemas"]["MobilePasskeyStepUpEnvelope"];

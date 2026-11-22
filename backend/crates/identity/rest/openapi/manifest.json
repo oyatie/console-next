@@ -98,6 +98,18 @@
     "/api/v1/access/access-log": [
       "get"
     ],
+    "/api/v1/access/access-log/reviews/{period}": [
+      "get"
+    ],
+    "/api/v1/access/access-log/reviews/{period}/complete": [
+      "post"
+    ],
+    "/api/v1/access/access-log/reviews/{period}/findings": [
+      "post"
+    ],
+    "/api/v1/access/access-log/reviews/{period}/start": [
+      "post"
+    ],
     "/api/v1/access/accounts/{accountId}/effective": [
       "get"
     ],
@@ -477,6 +489,7 @@
     "AccessLevel",
     "AccessLogEvent",
     "AccessLogPage",
+    "AccessLogReview",
     "AccessPerson",
     "AccessRequest",
     "AccessRequestReason",

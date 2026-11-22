@@ -19,14 +19,14 @@ Partially exposed operations keep their current route and component; their refus
 | `POST /api/v1/users/me/employee-link` | exposed | expose | `/people/$id` · `SelfAccountLink` submits the command-bound passkey assertion. |
 | `POST /api/v1/users/me/employee-link/withdraw` | exposed | expose | `/people/$id` · `SelfAccountLink` withdraws its unreviewed receipt with a fresh passkey. |
 | `POST /api/v1/users/employee-link-attestations/{id}/review` | exposed | expose | `/inbox` · `SelfBindingReview` confirms or revokes an independently reviewed account link with a fresh passkey. |
-| `GET /api/platform/groups` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/platform/groups` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PATCH /api/platform/groups/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/platform/groups/{id}/accounts` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/platform/groups/{id}/accounts` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `DELETE /api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PUT /api/platform/groups/{id}/organizations/{org_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `DELETE /api/platform/groups/{id}/organizations/{org_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/platform/groups` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `POST /api/platform/groups` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `PATCH /api/platform/groups/{id}` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `GET /api/platform/groups/{id}/accounts` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `POST /api/platform/groups/{id}/accounts` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `DELETE /api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `PUT /api/platform/groups/{id}/organizations/{org_id}` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `DELETE /api/platform/groups/{id}/organizations/{org_id}` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
 | `PATCH /api/platform/orgs/{id}` | partial | expose | `/platform` · `Tenants`; complete refusal recovery copy. |
 | `DELETE /api/platform/orgs/{id}` | partial | expose | `/platform` · `Tenants`; complete refusal recovery copy. |
 | `POST /api/platform/orgs/{id}/admin-otp` | partial | expose | `/platform` · `Tenants`; complete refusal recovery copy. |

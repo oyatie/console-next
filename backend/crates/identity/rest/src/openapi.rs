@@ -366,6 +366,42 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__access-log__reviews__period.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}/complete",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__access-log__reviews__period__complete.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}/findings",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__access-log__reviews__period__findings.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}/start",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__access-log__reviews__period__start.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/access/accounts/{accountId}/effective",
         operations: &[Operation {
             method: "get",
@@ -1410,6 +1446,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AccessLogPage",
         body: include_str!("../openapi/schemas/AccessLogPage.yaml"),
+    },
+    NamedYaml {
+        name: "AccessLogReview",
+        body: include_str!("../openapi/schemas/AccessLogReview.yaml"),
     },
     NamedYaml {
         name: "AccessPerson",

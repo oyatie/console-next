@@ -77,6 +77,14 @@ async fn request(
             "ticket, reason, read scope and a positive duration are required",
         ));
     }
+    if body.ticket_ref.trim().chars().count() > 200
+        || body.reason_code.trim().chars().count() > 100
+        || body.reason.trim().chars().count() > 2000
+    {
+        return Err(PlatformError::validation(
+            "ticket_ref <= 200, reason_code <= 100, and reason <= 2000 characters",
+        ));
+    }
     let payload = json!([
         body.org_id,
         body.id,
@@ -129,7 +137,21 @@ async fn request(
     );
     let deadline = now + store::limit(&mut tx, org, SettingKey::SupportRequestExpiry).await?;
     sqlx::query("INSERT INTO support_sessions(org_id,id,operator_ref,operator_label,ticket_ref,reason_code,reason,scope,requested_duration_seconds,requested_at,request_expires_at,request_assertion) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)")
-        .bind(body.org_id).bind(body.id).bind(p.user_id.as_uuid()).bind(&label).bind(body.ticket_ref.trim()).bind(body.reason_code.trim()).bind(body.reason.trim()).bind(body.scope).bind(seconds).bind(now).bind(deadline).bind(assertion).execute(tx.as_mut()).await.map_err(SupportError::from)?;
+        .bind(body.org_id).bind(body.id).bind(p.user_id.as_uuid()).bind(&label).bind(body.ticket_ref.trim()).bind(body.reason_code.trim()).bind(body.reason.trim()).bind(body.scope).bind(seconds).bind(now).bind(deadline).bind(assertion)
+        .execute(tx.as_mut())
+        .await
+        .map_err(|err| {
+            if let sqlx::Error::Database(db) = &err
+                && db.code().as_deref() == Some("23505")
+            {
+                return PlatformError::new(
+                    axum::http::StatusCode::CONFLICT,
+                    "conflict",
+                    "support session already exists",
+                );
+            }
+            SupportError::from(err).into()
+        })?;
     support::decision(
         &mut tx,
         org,

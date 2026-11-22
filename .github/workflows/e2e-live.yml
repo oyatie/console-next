@@ -86,6 +86,7 @@ jobs:
           - {shard: live-renew, config: playwright.live-renew.config.ts, project: "parallel"}
           - {shard: navigation, config: playwright.navigation.config.ts, project: "chromium"}
           - {shard: focus-stress, config: e2e/mock/focus-stress.config.ts, project: "chromium"}
+          - {shard: nts, config: playwright.nts.config.ts, project: "parallel"}
     services:
       postgres:
         image: postgres:18.4@sha256:65f70a152846cf504dff86e807007e9aeac98c3aeb7b62541b2c55ab9d264e56
@@ -177,6 +178,7 @@ jobs:
           - {shard: live-renew, config: playwright.live-renew.config.ts, project: "firefox"}
           - {shard: navigation, config: playwright.navigation.config.ts, project: "firefox"}
           - {shard: focus-stress, config: e2e/mock/focus-stress.config.ts, project: "firefox"}
+          - {shard: nts, config: playwright.nts.config.ts, project: "firefox"}
     services:
       postgres:
         image: postgres:18.4@sha256:65f70a152846cf504dff86e807007e9aeac98c3aeb7b62541b2c55ab9d264e56

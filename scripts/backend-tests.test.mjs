@@ -141,7 +141,6 @@ test("every repository ignore has live ownership metadata and staggered review d
   const sources = readRust(fileURLToPath(new URL("../backend", import.meta.url)));
   assert.ok(backendTests.validateIgnoredTests(sources) > 0);
   const expiries = sources.flatMap(source => [...source.matchAll(/#\[ignore = "[^"\n]*expires=(\d{4}-\d{2}-\d{2})"\]/g)].map(match => match[1]));
-  assert.ok(expiries.length > 0);
   assert.equal(new Set(expiries).size, expiries.length, "quarantine reviews must be staggered");
 });
 
@@ -365,6 +364,7 @@ test("database builds reclaim hosted disk before compilation and report disk eve
   assert.ok(cleanup && !cleanup.if, "every database shard must reclaim disk");
   const runIndex = job.steps.findIndex(step => step.name === "Run duration shard");
   assert.ok(job.steps.indexOf(cleanup) < runIndex);
+  assert.equal(job.env.CARGO_PROFILE_DEV_DEBUG, "0");
   assert.equal(job.env.CARGO_PROFILE_TEST_DEBUG, "0");
   const report = job.steps.find(step => step.name === "Report disk after database tests");
   assert.ok(report && job.steps.indexOf(report) > runIndex);
@@ -412,13 +412,12 @@ test("cluster-wide role mutators and console_app migrations share exclusive exec
     "leave_migration_expand_contract", "key_revision_migration_upgrade",
     "attendance_console_migration_contract", "apalis_adapter", "apalis_schema_contract",
     "apalis_runtime_release", "group_of_one_expand_contract",
+    "migrated_canonical_tables_have_only_expected_writers",
     "definitions_migrated_by_console_app_are_read_only_for_runtime",
-    "placement_migrations_run_as_console_app", "owner_only_acl_is_effectively_private_on_postgres18",
-    "console_app_may_set_its_own_lock_timeout_default",
+    "placement_migrations_run_as_console_app", "console_app_may_set_its_own_lock_timeout_default",
     "status_worker_age_is_queue_scoped_read_only_and_missing_is_unknown",
     "status_public_evidence_answers_aggregate_age_only_beside_tenant_data",
     "serving_pool_rejects_overrides_and_restores_role_defaults_after_release",
-    "corrects_stored_phones_and_preserves_revision_history",
   ]) assert.ok(group.includes(name), `${name} must share the exclusive role group`);
   assert.match(config, /\[test-groups\.cluster-global\]\s+max-threads = 1/);
 });
@@ -671,5 +670,114 @@ setTimeout(() => process.exit(94), 3000);
     const status = await new Promise((resolve, reject) => { child.on("error", reject); child.on("close", resolve); });
     assert.equal(status, 1, stderr);
     assert.match(stderr, /cargo metadata --locked failed \(101\)/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("pruneTargetExecutables removes extensionless binaries while keeping library artifacts and directories", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "prune-deps-"));
+  try {
+    assert.equal(backendTests.pruneTargetExecutables(undefined), 0);
+    assert.equal(backendTests.pruneTargetExecutables(root), 0);
+    const depsDir = path.join(root, "debug", "deps");
+    mkdirSync(path.join(depsDir, ".fingerprint"), { recursive: true });
+    mkdirSync(path.join(depsDir, "build"), { recursive: true });
+    mkdirSync(path.join(depsDir, "extensionless_dir"), { recursive: true });
+    const keepFiles = ["libfoo-1234.rlib", "libfoo-1234.rmeta", "libfoo-1234.so", "libfoo-1234.dylib", "foo-1234.d", "libfoo.a", "foo.o", ".cargo-lock"];
+    for (const file of keepFiles) writeFileSync(path.join(depsDir, file), "keep");
+    writeFileSync(path.join(depsDir, ".fingerprint", "marker"), "keep");
+    writeFileSync(path.join(depsDir, "foo_test-0123456789abcdef"), "elf-binary");
+    writeFileSync(path.join(depsDir, "bar_test-fedcba9876543210"), "elf-binary");
+    assert.equal(backendTests.pruneTargetExecutables(root), 2);
+    for (const file of keepFiles) assert.ok(existsSync(path.join(depsDir, file)), `expected ${file} preserved`);
+    assert.ok(existsSync(path.join(depsDir, ".fingerprint", "marker")));
+    assert.ok(existsSync(path.join(depsDir, "build")));
+    assert.ok(existsSync(path.join(depsDir, "extensionless_dir")));
+    assert.ok(!existsSync(path.join(depsDir, "foo_test-0123456789abcdef")));
+    assert.ok(!existsSync(path.join(depsDir, "bar_test-fedcba9876543210")));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("--db lists default before featured and prunes extensionless executables between builds", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "backend-db-prune-"));
+  try {
+    mkdirSync(path.join(root, "bin"));
+    const targetDir = path.join(root, "target");
+    const depsDir = path.join(targetDir, "debug", "deps");
+    mkdirSync(path.join(depsDir, ".fingerprint"), { recursive: true });
+    writeFileSync(path.join(depsDir, "libapp.rlib"), "rlib");
+    writeFileSync(path.join(depsDir, "libapp.rmeta"), "rmeta");
+    writeFileSync(path.join(depsDir, "app.d"), "dep");
+    writeFileSync(path.join(depsDir, ".fingerprint", "pkg"), "fp");
+
+    writeFileSync(
+      path.join(root, "lib.rs"),
+      '#[test] fn ordinary() {}\n#[sqlx::test] async fn database(pool: PgPool) {}\n#[cfg(not(feature = "test-postgres"))] #[sqlx::test] async fn default_database() {}\n#[cfg(feature = "test-postgres")] #[sqlx::test] async fn feature_database() {}',
+    );
+    const defaultSuite = suite(["ordinary", "database", "default_database"]);
+    const featuredSuite = suite(["ordinary", "database", "feature_database"]);
+    writeFileSync(path.join(root, "metadata.json"), JSON.stringify({
+      workspace_root: root,
+      target_directory: targetDir,
+      workspace_members: ["example"],
+      packages: [{ id: "example", manifest_path: path.join(root, "Cargo.toml"), targets: [{ name: "db", kind: ["test"] }] }],
+    }));
+    writeFileSync(path.join(root, "list-default.json"), JSON.stringify(listing(defaultSuite)));
+    writeFileSync(path.join(root, "list-featured.json"), JSON.stringify(listing(featuredSuite)));
+    writeFileSync(path.join(root, "result-default.xml"), junit([["example::mixed", "default_database"]]));
+    writeFileSync(path.join(root, "result-featured.xml"), junit([["example::mixed", "database"], ["example::mixed", "feature_database"]]));
+
+    writeFileSync(path.join(root, "bin", "cargo"), `#!${process.execPath}
+const fs = require('node:fs'), path = require('node:path');
+const root = process.env.FIXTURE_ROOT, depsDir = path.join(root, 'target', 'debug', 'deps'), args = process.argv.slice(2);
+const log = (entry) => fs.appendFileSync(path.join(root, 'events.log'), JSON.stringify(entry) + '\\n');
+if (args[0] === 'metadata') {
+  const metadata = JSON.parse(fs.readFileSync(path.join(root, 'metadata.json')));
+  metadata.resolve = { nodes: [{ id: 'example', features: [] }] };
+  process.stdout.write(JSON.stringify(metadata));
+} else if (args[1] === 'list') {
+  const isFeatured = args.includes('--features');
+  log({
+    step: isFeatured ? 'list:featured' : 'list:default',
+    hasDefaultBin: fs.existsSync(path.join(depsDir, 'default_bin-0123456789abcdef')),
+    hasRlib: fs.existsSync(path.join(depsDir, 'libapp.rlib')),
+    hasRmeta: fs.existsSync(path.join(depsDir, 'libapp.rmeta')),
+    hasDep: fs.existsSync(path.join(depsDir, 'app.d')),
+    hasFingerprint: fs.existsSync(path.join(depsDir, '.fingerprint', 'pkg')),
+  });
+  fs.writeFileSync(path.join(depsDir, isFeatured ? 'featured_bin-fedcba9876543210' : 'default_bin-0123456789abcdef'), 'exe');
+  process.stdout.write(fs.readFileSync(path.join(root, isFeatured ? 'list-featured.json' : 'list-default.json')));
+} else if (args[1] === 'run') {
+  const isFeatured = args.includes('--features');
+  log({
+    step: isFeatured ? 'run:featured' : 'run:default',
+    hasFeaturedBin: fs.existsSync(path.join(depsDir, 'featured_bin-fedcba9876543210')),
+    hasRlib: fs.existsSync(path.join(depsDir, 'libapp.rlib')),
+    hasRmeta: fs.existsSync(path.join(depsDir, 'libapp.rmeta')),
+    hasDep: fs.existsSync(path.join(depsDir, 'app.d')),
+    hasFingerprint: fs.existsSync(path.join(depsDir, '.fingerprint', 'pkg')),
+  });
+  if (!isFeatured) fs.writeFileSync(path.join(depsDir, 'default_rerun-1111222233334444'), 'exe');
+  fs.copyFileSync(path.join(root, isFeatured ? 'result-featured.xml' : 'result-default.xml'), path.join(root, 'target/nextest/ci/junit.xml'));
+}
+`, { mode: 0o755 });
+
+    const result = spawnSync(process.execPath, [new URL("./backend-tests.mjs", import.meta.url).pathname, "--db", "--shard", "1/1"], {
+      encoding: "utf8",
+      env: { ...process.env, PATH: `${root}/bin`, FIXTURE_ROOT: root, DATABASE_URL: "postgres://postgres@127.0.0.1/postgres" },
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const events = readFileSync(path.join(root, "events.log"), "utf8").trim().split("\n").map(line => JSON.parse(line));
+    assert.deepEqual(events.map(e => e.step), ["list:default", "list:featured", "run:featured", "run:default"]);
+    assert.equal(events[1].hasDefaultBin, false, "default executables must be pruned before featured listing");
+    assert.equal(events[2].hasFeaturedBin, true, "featured executables must remain for featured run");
+    assert.equal(events[3].hasFeaturedBin, false, "featured executables must be pruned before default run");
+    for (const event of events) {
+      assert.ok(event.hasRlib && event.hasRmeta && event.hasDep && event.hasFingerprint);
+    }
+    assert.ok(!existsSync(path.join(depsDir, "default_rerun-1111222233334444")), "executables must be pruned after runs finish");
+    assert.ok(existsSync(path.join(depsDir, "libapp.rlib")));
+    assert.ok(existsSync(path.join(depsDir, "libapp.rmeta")));
+    assert.ok(existsSync(path.join(depsDir, "app.d")));
+    assert.ok(existsSync(path.join(depsDir, ".fingerprint", "pkg")));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

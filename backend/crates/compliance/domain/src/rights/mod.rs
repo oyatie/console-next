@@ -7,12 +7,12 @@ mod tests;
 mod wire;
 use crate::statutory::{StatutoryRegister, StatutoryRule, StatutoryUnit, codes, filing};
 use console_kernel_core::KernelError;
-pub use input::Filing;
+pub use input::{DecideInput, Filing, ObjectionInput, OffAppReceipt, PostponeInput};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
-time::serde::format_description!(wire_date, Date, "[year]-[month]-[day]");
+time::serde::format_description!(pub wire_date, Date, "[year]-[month]-[day]");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -31,7 +31,7 @@ pub enum Controller {
     Tenant,
     Operator,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Channel {
     InApp,
@@ -40,14 +40,14 @@ pub enum Channel {
     Email,
     InPerson,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AgentKind {
     Subject,
     LegalRepresentative,
     Authorized,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IdentityMethod {
     SignedIn,
@@ -56,7 +56,7 @@ pub enum IdentityMethod {
     KnownContact,
     AgentMandate,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Receipt {
     pub id: Uuid,
     pub controller: Controller,
@@ -71,7 +71,7 @@ pub struct Receipt {
     #[serde(with = "wire_date")]
     pub received_on: Date,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Outcome {
     Granted,
@@ -79,28 +79,31 @@ pub enum Outcome {
     Refused,
     Postponed,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Decision {
     pub outcome: Outcome,
     pub reason: Option<String>,
     pub note: Option<String>,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecordedDecision {
     #[serde(with = "wire_date")]
     pub on: Date,
     pub decision: Decision,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Due {
     #[serde(with = "wire_date::option")]
     pub on: Option<Date>,
     pub without_delay: bool,
     /// The exact register row, including its HOLD/review disposition.
-    #[serde(serialize_with = "wire::rule")]
+    #[serde(
+        serialize_with = "wire::rule",
+        deserialize_with = "wire::deserialize_rule"
+    )]
     pub rule: Option<StatutoryRule>,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KindState {
     /// None means "deadline cannot be determined"; intake remains recorded.
     pub due: Option<Due>,
@@ -113,13 +116,13 @@ impl KindState {
             .is_some_and(|d| d.decision.outcome != Outcome::Postponed)
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Status {
     Received,
     Decided,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RightsRequest {
     receipt: Receipt,
     kinds: BTreeMap<Kind, KindState>,
