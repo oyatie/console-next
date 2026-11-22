@@ -203,7 +203,7 @@ export function LoadedConsoleCard(props: {
           c.readable ? (
             <>
               <SecPersonal c={c} quick={quick} onFix={fix} />
-              <SecJob c={c} onFix={fix} onAct={open} onTab={() => onTab("events")} onContract={() => (setContract({ kind: "new" }), focusSoon("contracts"))} />
+              <SecJob c={c} calm onFix={fix} onAct={open} onTab={() => onTab("events")} onContract={() => (setContract({ kind: "new" }), focusSoon("contracts"))} />
               <SecContract c={c} onAct={open} open={contract} onOpen={setContract} />
               <SecLeave c={c} act={act} />
               <SecRecords c={c} quick={quick} />
@@ -213,7 +213,7 @@ export function LoadedConsoleCard(props: {
             </>
           ) : (
             <>
-              <SecJob c={c} onFix={fix} onAct={open} onTab={() => onTab("events")} />
+              <SecJob c={c} calm onFix={fix} onAct={open} onTab={() => onTab("events")} />
               <Gate icon={<Lock size={16} aria-hidden="true" />}>{t("empCard.reader.locked")}</Gate>
             </>
           )

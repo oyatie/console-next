@@ -59,7 +59,7 @@
 .keys { display: inline-flex; align-items: center; gap: var(--space-1); }
 /* Reserve the timer and action in both states so revealing cannot move neighbouring content. */
 .reveal { display: inline-flex; flex-wrap: wrap; max-width: 100%; align-items: center; gap: var(--space-1); }
-.revealValue { composes: masked from "../../../ui/record/record.module.css"; }
+.revealValue { composes: masked from "../../../ui/record/masked.module.css"; }
 .reveal > code, .reveal > span { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
 .reveal > span { flex-shrink: 0; overflow-wrap: normal; white-space: nowrap; }
 .reveal[data-wrap-mask] > span { white-space: normal; }

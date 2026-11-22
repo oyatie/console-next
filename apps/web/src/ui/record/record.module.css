@@ -63,7 +63,7 @@
 .tag[data-k="void"] { border-style: dashed; }
 
 .kbd { display: inline-grid; place-items: center; min-width: calc(var(--space-4) + 2px); height: calc(var(--space-4) + 2px); padding: 0 var(--space-1); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: var(--radius-sm); background: var(--kbd-bg); color: var(--steel); font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1; }
-.masked { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.5px; }
+.masked { composes: masked from "./masked.module.css"; }
 .gate { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-3); align-items: start; padding: var(--space-3); border: 1px dashed var(--control-border); border-radius: var(--radius); background: var(--canvas); font-size: var(--text-sm); margin-top: var(--space-2); }
 .line { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; font-size: var(--text-sm); color: var(--steel); flex-wrap: wrap; }
 .subhead { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); letter-spacing: var(--tracking-label); color: var(--steel); font-weight: var(--fw-medium); margin-top: var(--space-3); }
@@ -99,6 +99,28 @@
 .markHint { font-size: var(--text-xs); color: var(--steel); white-space: nowrap; }
 :where([data-experience]:not([data-experience="baseline"])) .now { border: 0; border-block-end: 1px solid var(--border); border-radius: 0; margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1) var(--space-3); padding: var(--space-2) var(--space-4); }
 :where([data-experience]:not([data-experience="baseline"])) .sectionBody :is(:global(.card), :global(.panel)) { border: 0; border-top: 1px solid var(--border-soft); border-radius: 0; box-shadow: none; background: transparent; padding-inline: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .mark { border: 1px solid transparent; background: transparent; color: var(--faint); font-weight: var(--fw-body); }
+:where([data-experience]:not([data-experience="baseline"])) .mark[data-k="rc"],
+:where([data-experience]:not([data-experience="baseline"])) .mark[data-k="first"],
+:where([data-experience]:not([data-experience="baseline"])) .mark[data-k="cor"] { border-style: solid; border-color: transparent; color: var(--faint); }
+:where([data-experience]:not([data-experience="baseline"])) .mark[data-k="verb"] { text-decoration: none; }
+:where([data-experience]:not([data-experience="baseline"])) .markHint { color: var(--faint); }
+:where([data-experience]:not([data-experience="baseline"])) .row:hover,
+:where([data-experience]:not([data-experience="baseline"])) .row:focus-within { background: var(--surface-hover); }
+:where([data-experience]:not([data-experience="baseline"])) .row:hover .mark:not([data-k="lock"]),
+:where([data-experience]:not([data-experience="baseline"])) .row:focus-within .mark:not([data-k="lock"]),
+:where([data-experience]:not([data-experience="baseline"])) .markRow:hover .mark,
+:where([data-experience]:not([data-experience="baseline"])) .markRow:focus-within .mark,
+:where([data-experience]:not([data-experience="baseline"])) .mark:not([data-k="lock"]):hover,
+:where([data-experience]:not([data-experience="baseline"])) .mark:not([data-k="lock"]):focus-visible { background: var(--surface); border-color: var(--border); color: var(--ink); font-weight: var(--fw-medium); }
+:where([data-experience]:not([data-experience="baseline"])) .row:hover .mark:is([data-k="rc"], [data-k="first"], [data-k="verb"]),
+:where([data-experience]:not([data-experience="baseline"])) .row:focus-within .mark:is([data-k="rc"], [data-k="first"], [data-k="verb"]),
+:where([data-experience]:not([data-experience="baseline"])) .markRow:hover .mark:is([data-k="rc"], [data-k="first"], [data-k="verb"]),
+:where([data-experience]:not([data-experience="baseline"])) .markRow:focus-within .mark:is([data-k="rc"], [data-k="first"], [data-k="verb"]),
+:where([data-experience]:not([data-experience="baseline"])) .mark:is([data-k="rc"], [data-k="first"], [data-k="verb"]):is(:hover, :focus-visible) { color: var(--primary); }
+:where([data-experience]:not([data-experience="baseline"])) .mark[data-k="verb"]:is(:hover, :focus-visible) { text-decoration: underline; }
+:where([data-experience]:not([data-experience="baseline"])) .mark[data-k="lock"],
+:where([data-experience]:not([data-experience="baseline"])) .mark[data-k="lock"]:hover { border-color: transparent; background: transparent; color: var(--faint); }
 @media (--phone) {
   :where([data-experience]:not([data-experience="baseline"])) .sectionHead { padding: var(--space-2) var(--space-3); }
   :where([data-experience]:not([data-experience="baseline"])) .sectionBody { padding: calc(var(--space-1) / 2) var(--space-3) var(--space-3); }
@@ -107,4 +129,6 @@
   :where([data-experience]:not([data-experience="baseline"])) .row .value { grid-column: 1; }
   :where([data-experience]:not([data-experience="baseline"])) .row .act { grid-column: 2; padding-top: 0; }
   :where([data-experience]:not([data-experience="baseline"])) .row[data-edit] { margin: 0 calc(var(--space-3) * -1); padding-left: var(--space-3); padding-right: var(--space-3); }
+  :where([data-experience]:not([data-experience="baseline"])) .mark:not([data-k="lock"]) { min-height: var(--target-touch); padding-inline: var(--space-2); color: var(--steel); white-space: nowrap; flex-shrink: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .mark:is([data-k="rc"], [data-k="first"]) { color: var(--primary); }
 }

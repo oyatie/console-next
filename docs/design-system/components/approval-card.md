@@ -332,9 +332,9 @@ takes none of the three.
 | `rejectLabel` | yes | `string` |  |  |
 | `returnConsequence` | yes | `ReactNode` |  |  |
 | `returnLabel` | yes | `string` |  |  |
-| `step` | yes | `ReactNode` |  | The step this person holds (my step · delegated, 1 step). |
 | `title` | yes | `ReactNode` |  | The decision as a sentence (dissolves the support team on 2 Nov). |
 | `approveBlocked` | no | `ReactNode` |  | Why approve cannot be pressed now (e.g. the content changed while reviewing); shown next to it. |
+| `compact` | no | `boolean` |  | Compact pinned footer layout inside a side pane. |
 | `docked` | no | `boolean` |  | Streamlined docked pane layout with PaneHead (`title` + `meta`), single turn row, and compact spacing. |
 | `due` | no | `ReactNode` |  | Optional due-date summary shown beside the turn badge in docked mode. |
 | `meta` | no | `ReactNode` |  | Left of the decisions: when the card was opened and its content fingerprint. |
@@ -344,6 +344,7 @@ takes none of the three.
 | `reasonMissing` | no | `ReactNode` |  | What is missing while it is not, beside the commit (defaults to choosing a reason code). |
 | `receipt` | no | `ReactNode` |  | The server receipt once recorded; it replaces the decisions. |
 | `staleBlocked` | no | `ReactNode` |  | Why no decision commit (approve, reject, or return) may run until the stale read refreshes. |
+| `step` | no | `ReactNode` |  | The step this person holds (my step · delegated, 1 step). |
 
 **Shape 2 of 2**
 
@@ -359,9 +360,9 @@ takes none of the three.
 | `reasonComplete` | yes | `((form: Form) => boolean) \| boolean` |  | The reason field is complete (a code; "other" with a memo). |
 | `rejectConsequence` | yes | `ReactNode` |  | What reject / request changes do, shown above the form's commit. |
 | `rejectLabel` | yes | `string` |  |  |
-| `step` | yes | `ReactNode` |  | The step this person holds (my step · delegated, 1 step). |
 | `title` | yes | `ReactNode` |  | The decision as a sentence (dissolves the support team on 2 Nov). |
 | `approveBlocked` | no | `ReactNode` |  | Why approve cannot be pressed now (e.g. the content changed while reviewing); shown next to it. |
+| `compact` | no | `boolean` |  | Compact pinned footer layout inside a side pane. |
 | `docked` | no | `boolean` |  | Streamlined docked pane layout with PaneHead (`title` + `meta`), single turn row, and compact spacing. |
 | `due` | no | `ReactNode` |  | Optional due-date summary shown beside the turn badge in docked mode. |
 | `meta` | no | `ReactNode` |  | Left of the decisions: when the card was opened and its content fingerprint. |
@@ -374,6 +375,7 @@ takes none of the three.
 | `returnConsequence` | no | `undefined` |  |  |
 | `returnLabel` | no | `undefined` |  |  |
 | `staleBlocked` | no | `ReactNode` |  | Why no decision commit (approve, reject, or return) may run until the stale read refreshes. |
+| `step` | no | `ReactNode` |  | The step this person holds (my step · delegated, 1 step). |
 
 <!-- /ds:props -->
 
@@ -391,6 +393,7 @@ global `btn` classes. Both are in `app.css` and are not listed here: see the tok
 | `--border-soft` | `border-bottom`, `border-top` |
 | `--card-w` | `width` |
 | `--control-h-lg` | `min-height` |
+| `--field-h` | `height`, `min-height` |
 | `--fw-medium` | `font-weight` |
 | `--fw-semibold` | `font-weight` |
 | `--fw-strong` | `font-weight` |
@@ -402,9 +405,11 @@ global `btn` classes. Both are in `app.css` and are not listed here: see the tok
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-sm` | `border-radius` |
-| `--space-1` | `gap` |
-| `--space-2` | `gap`, `padding` |
-| `--space-3` | `gap`, `padding` |
+| `--row-h-compact` | `min-height` |
+| `--space-1` | `gap`, `padding` |
+| `--space-1-5` | `gap` |
+| `--space-2` | `gap`, `margin`, `padding` |
+| `--space-3` | `gap`, `margin`, `padding` |
 | `--space-4` | `margin`, `padding` |
 | `--space-half` | `padding` |
 | `--steel` | `color` |

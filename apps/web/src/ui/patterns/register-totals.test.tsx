@@ -3,6 +3,7 @@ import { loadCatalog } from "@console/i18n";
 import { beforeAll, expect, test } from "vitest";
 import { assertPatternLifecycle, makeHead, makeTabs, mark, notFoundRead, readyRead, renderPatternMarkup } from "./pattern-test-helpers";
 import { RegisterTotals } from "./register-totals";
+import { RegisterToolbarSelect } from "./register-totals-parts";
 import { registerTotalsOptionalRegions } from "./register-totals-contract";
 
 beforeAll(() => loadCatalog("ko"));
@@ -50,4 +51,21 @@ test("RegisterTotals satisfies placement, conditional blockers, refusal, and 404
 
   const notFound = await renderPatternMarkup(renderRegister(notFoundRead("missing-run")));
   expect(notFound).not.toContain("data-detail");
+});
+
+test("RegisterToolbarSelect renders a custom SelectField button instead of a visible native select", async () => {
+  const html = await renderPatternMarkup(
+    <RegisterToolbarSelect
+      label="Legal entity"
+      value="ent-1"
+      options={[
+        { value: "ent-1", label: "Saeon Precision" },
+        { value: "ent-2", label: "Saeon Robotics" },
+      ]}
+      onChange={() => {}}
+    />,
+  );
+  expect(html).toContain("<button");
+  expect(html).toContain("Saeon Precision");
+  expect(html).toContain('aria-haspopup="listbox"');
 });

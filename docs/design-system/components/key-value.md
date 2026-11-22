@@ -258,6 +258,7 @@ Neither component has a target of its own. The size of an action is that control
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `items` | yes | `readonly KeyValueItem[]` |  |  |
+| `columns` | no | `1 \| 2` |  |  |
 | `density` | no | `"default" \| "dense"` |  |  |
 | `empty` | no | `ReactNode` |  |  |
 | `error` | no | `ReactNode` |  |  |
@@ -271,6 +272,7 @@ Neither component has a target of its own. The size of an action is that control
 | --- | --- | --- | --- | --- |
 | `items` | yes | `readonly StatRowItem[]` |  |  |
 | `label` | no | `string` |  |  |
+| `phoneCols` | no | `3` |  |  |
 
 <!-- /ds:props -->
 
@@ -302,7 +304,7 @@ The members of `KeyValueItem` are under Anatomy.
 | `--radius-sm` | `border-radius` |
 | `--space-1` | `gap` |
 | `--space-1-5` | `padding` |
-| `--space-2` | `gap`, `padding` |
+| `--space-2` | `column-gap`, `gap`, `padding` |
 | `--space-3` | `gap`, `padding` |
 | `--space-6` | `height` |
 | `--steel` | `color` |

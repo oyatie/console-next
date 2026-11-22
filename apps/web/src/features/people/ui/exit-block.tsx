@@ -12,6 +12,7 @@ import { fmtDate } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { ExperienceSwitch } from "../../../ui/patterns/experience-switch";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { Composer } from "../../../ui/composer/composer";
 import { focusSoon } from "../../../lib/react/announce";
@@ -128,7 +129,20 @@ function OpenCase({ c, name, onAct }: { c: Case; name: string; onAct: (k: Key) =
         {pending && <Chip tone={labeled(LIFECYCLE_STATE, pending).tone}>{labeled(LIFECYCLE_STATE, pending).label}</Chip>}
       </div>
       {pending && <Muted>{t(`exit.eventState.${pending}`, { name, date })}</Muted>}
-      {step && <Muted>{t("exit.next", { step })} · {forward ? t("exit.next.mine") : next === "confirm_exit_hq" ? t("exit.next.otherHq") : t("exit.next.others")}</Muted>}
+      {step && (
+        <Muted>
+          {t("exit.next", { step })} ·{" "}
+          {forward ? (
+            <ExperienceSwitch baseline={() => t("exit.next.mine")}>
+              {() => t("exit.next.current")}
+            </ExperienceSwitch>
+          ) : next === "confirm_exit_hq" ? (
+            t("exit.next.otherHq")
+          ) : (
+            t("exit.next.others")
+          )}
+        </Muted>
+      )}
       <div className="row" role="group" aria-label={t("exit.actions")}>
         {forward && <Button variant="primary" onClick={() => onAct(forward)}>{t(`exit.action.${forward}`)}</Button>}
         {sameActor && <DisabledReason control={(p) => <Button variant="primary" {...p}>{t("exit.action.confirm_exit_hq")}</Button>} reason={t("exit.hq.sameActor")} />}
