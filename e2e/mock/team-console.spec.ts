@@ -15,11 +15,9 @@ import {
   saeonTeamLeaveQueue,
 } from "../mock/saeon-mod5-6";
 import { mockScreen } from "../mock/screen";
-import { screens } from "../states/registry";
+import { teamScreen } from "../states/registry";
 
 test.beforeAll(() => loadCatalog("ko"));
-
-const teamScreen = screens.find(s => s.key === "team")!;
 
 async function setupSaeonTeam(
   page: Parameters<typeof mockScreen>[0],

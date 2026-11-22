@@ -20,9 +20,9 @@ export type State = keyof typeof states;
 export const screens = [
   { key: "home", path: "/", read: "/api/v1/me/action-inbox", states, registry: "home--operating-업무함-one-live-action-inbox-default-tab", live: "e2e/inbox-live.spec.ts" },
   { key: "people", path: "/people", read: "/api/v1/employees", states, registry: "people--roster-populated-table-columns-sort-org_unit-name-employee_n", live: "e2e/people-reads.spec.ts" },
-  { key: "team", path: "/team", read: "/api/v1/employees", states, registry: "team--cedar-scoped-members", live: "e2e/mock/team-console.spec.ts" },
   { key: "org", path: "/org", read: "/api/v1/org-structure", states, registry: "org--chart-view-default", live: "e2e/structure-chart.spec.ts" },
 ] as const;
+export const teamScreen = { key: "team", path: "/team", read: "/api/v1/employees", states, registry: "team--cedar-scoped-members", live: "e2e/mock/team-console.spec.ts" } as const;
 export const recordStatuses = {
   draft: "DRAFT", prechecked: "PRECHECKED", approval: "IN_APPROVAL", scheduled: "APPROVED",
   settling: "SETTLING", rejected: "REJECTED", cancelled: "CANCELLED", archived: "ARCHIVED",
@@ -36,5 +36,5 @@ export const orgChangeScreens = [
   }, registry: "org-changes-id--approval-chain", live: "e2e/orgchange-r2.spec.ts" },
 ] as const;
 export type { PayrollState };
-export type Screen = typeof payrollRunCreateScreen | (typeof payrollScreens)[number] | (typeof screens)[number] | (typeof orgChangeScreens)[number] | (typeof lifecycleSheetScreens)[number] | (typeof accountScreens)[number] | (typeof numberingScreens)[number] | (typeof attendanceScreens)[number] | (typeof attendanceBoardScreens)[number];
+export type Screen = typeof teamScreen | typeof payrollRunCreateScreen | (typeof payrollScreens)[number] | (typeof screens)[number] | (typeof orgChangeScreens)[number] | (typeof lifecycleSheetScreens)[number] | (typeof accountScreens)[number] | (typeof numberingScreens)[number] | (typeof attendanceScreens)[number] | (typeof attendanceBoardScreens)[number];
 export type OrgChangeState = Exclude<State, "empty"> | keyof typeof recordStatuses | "missing";

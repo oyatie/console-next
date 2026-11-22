@@ -6,11 +6,9 @@ import { test } from "../locale-fixture";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { saeonTeamAccess, saeonTeamEmployees, saeonTeamFacets, saeonTeamLeaveQueue, enableConsole } from "../mock/saeon-mod5-6";
-import { screens } from "./registry";
+import { teamScreen } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
-
-const teamScreen = screens.find(s => s.key === "team")!;
 
 for (const state of ["empty", "loading", "failed", "refused", "populated"] as const) {
   test(`/team state matrix: ${state} stays reachable and accessible`, async ({ page }) => {
