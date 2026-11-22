@@ -8,11 +8,13 @@ export function OpsStatusBar({
   authenticated,
   evaluatedAt,
   currentTitle,
+  canWrite,
   live,
 }: {
   authenticated: boolean;
   evaluatedAt?: string;
   currentTitle: string;
+  canWrite: boolean;
   live: LiveStatusSnapshot;
 }) {
   return (
@@ -31,7 +33,7 @@ export function OpsStatusBar({
           ) : null}
         </>
       ) : null}
-      <span className={s.statusTrailing}>{COPY.status.readOnly}</span>
+      <span className={s.statusTrailing}>{canWrite ? COPY.status.auditLogged : COPY.status.readOnly}</span>
     </footer>
   );
 }

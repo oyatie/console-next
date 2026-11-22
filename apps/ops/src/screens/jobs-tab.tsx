@@ -1,21 +1,32 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { COPY } from "../copy";
-import { fetchOpsJobs, OpsApiError, opsQueryKeys, readObservedValue, type OpsJob } from "../lib/api";
+import { fetchOpsJobs, OpsApiError, opsQueryKeys, readObservedValue, type OpsCmdHandOff, type OpsJob } from "../lib/api";
 import { classifyOpsError, hasOpsAction } from "../lib/auth";
 import { fmtJoin, formatCount, formatDuration, formatUtcShort, formatUtcTimestamp } from "../lib/format";
+import { useJobRerunMutation } from "../lib/mutations";
 import { useOpsContext } from "../lib/ops-context";
+import { useIsPhone } from "../lib/use-is-phone";
+import { CmdReceipt } from "../ui/cmd-receipt";
 import { CompactTable, type TableColumn } from "../ui/compact-table";
+import { DisabledReason } from "../ui/disabled-reason";
+import { InlineError } from "../ui/inline-error";
 import { O0State } from "../ui/o0-state";
 import { ObservedValue } from "../ui/observed-value";
 import { PageHead } from "../ui/page-head";
 import { StatRow } from "../ui/stat-row";
+import { buildRunningTabs } from "./hub-tabs";
 import s from "./running-screen.module.css";
 
-export function JobsTab() {
+export function JobsTab(props: { isPhoneOverride?: boolean }) {
   const { me, live, reportEvaluatedAt } = useOpsContext();
+  const detectedPhone = useIsPhone();
+  const isPhone = props.isPhoneOverride ?? detectedPhone;
   const allowed = hasOpsAction(me, "read.running");
+  const canRerun = hasOpsAction(me, "jobs.rerun");
+  const rerunMut = useJobRerunMutation();
+  const [receipt, setReceipt] = useState<OpsCmdHandOff | null>(null);
 
   const query = useQuery({
     queryKey: opsQueryKeys.jobs,
@@ -47,7 +58,7 @@ export function JobsTab() {
   if (query.isPending) {
     return (
       <div className={s.page}>
-        <PageHead title={COPY.running.title} meta={COPY.loading.jobsTitle} />
+        <PageHead title={COPY.running.title} meta={COPY.loading.jobsTitle} tabs={buildRunningTabs("jobs")} />
       </div>
     );
   }
@@ -77,14 +88,41 @@ export function JobsTab() {
       header: COPY.running.jobs.lastRun,
       mobileSlot: "meta",
       nowrap: true,
-      render: (r) => (
-        <ObservedValue
-          observation={r.last_run}
-          liveStatus={live.status}
-          disconnectedAgeS={live.disconnectedAgeS}
-          formatValue={(v) => formatUtcShort(String(v))}
-        />
-      ),
+      render: (r) =>
+        isPhone ? (
+          <span>
+            <ObservedValue
+              observation={r.last_run}
+              liveStatus={live.status}
+              disconnectedAgeS={live.disconnectedAgeS}
+              formatValue={(v) => formatUtcShort(String(v))}
+            />
+            <span>{fmtJoin(" · ", COPY.running.jobs.exitPrefix, " ")}</span>
+            <ObservedValue
+              observation={r.last_exit}
+              liveStatus={live.status}
+              disconnectedAgeS={live.disconnectedAgeS}
+            />
+            <span>{fmtJoin(" · ", COPY.running.jobs.nextPrefix, " ")}</span>
+            {r.next_run ? (
+              <ObservedValue
+                observation={r.next_run}
+                liveStatus={live.status}
+                disconnectedAgeS={live.disconnectedAgeS}
+                formatValue={(v) => formatUtcShort(String(v))}
+              />
+            ) : (
+              <span>{COPY.running.jobs.notScheduled}</span>
+            )}
+          </span>
+        ) : (
+          <ObservedValue
+            observation={r.last_run}
+            liveStatus={live.status}
+            disconnectedAgeS={live.disconnectedAgeS}
+            formatValue={(v) => formatUtcShort(String(v))}
+          />
+        ),
     },
     {
       id: "lastExit",
@@ -122,17 +160,37 @@ export function JobsTab() {
           <span>{COPY.running.jobs.notScheduled}</span>
         ),
     },
+    {
+      id: "action",
+      header: COPY.running.jobs.action,
+      mobileSlot: "action",
+      nowrap: true,
+      align: "right",
+      render: (r) => (
+        <button
+          type="button"
+          className="btn btn--sm"
+          disabled={!canRerun || rerunMut.isPending}
+          title={!canRerun ? COPY.running.jobs.requiresRerunGrant : undefined}
+          onClick={() => {
+            rerunMut.mutate(r.name, { onSuccess: (res) => setReceipt(res.action) });
+          }}
+        >
+          {COPY.running.jobs.rerun}
+        </button>
+      ),
+    },
   ];
 
   return (
     <div className={s.page}>
       <PageHead
         title={COPY.running.title}
-        tabs={[
-          { id: "components", to: "/running", label: COPY.running.componentsTab, active: false },
-          { id: "jobs", to: "/running/jobs", label: COPY.running.jobsTab, active: true },
-        ]}
+        tabs={buildRunningTabs("jobs")}
+        tools={!canRerun ? <DisabledReason reason={COPY.running.jobs.requiresRerunGrant} /> : undefined}
       />
+      {rerunMut.error ? <div className={s.feedbackBand}><InlineError error={rerunMut.error} /></div> : null}
+      {receipt ? <div className={s.feedbackBand}><CmdReceipt action={receipt} /></div> : null}
       <StatRow
         items={[
           {

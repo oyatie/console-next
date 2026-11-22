@@ -51,6 +51,11 @@ export function formatBurn(value: number): string {
 }
 
 export function formatPercent(value: number): string {
+  if (!Number.isFinite(value) || value === 0) return "0.0%";
+  return `${pctFmt.format(value)}%`;
+}
+
+export function formatBudgetPercent(value: number): string {
   if (!Number.isFinite(value)) return "0.0%";
   if (value <= 0) return COPY.now.exhausted;
   return `${pctFmt.format(value)}%`;
@@ -59,6 +64,7 @@ export function formatPercent(value: number): string {
 export function formatObservedPrimitive(value: unknown, unit: string | null): string {
   if (typeof value === "boolean") return value ? COPY.now.freezeActive : COPY.now.freezeClear;
   if (typeof value === "number") {
+    if (!Number.isFinite(value)) return `${COPY.observed.unknownPrefix}${COPY.observed.notInstrumented}`;
     if (unit === "s") return formatDuration(value);
     if (unit === "USD" || unit === "usd") return formatUsd(value);
     if (unit === "x" || unit === "burn") return formatBurn(value);
@@ -82,4 +88,113 @@ export function fmtCountLabel(label: string, count: number): string {
 
 export function fmtColon(label: string, value: string): string {
   return `${label}: ${value}`;
+}
+
+const LEGAL_CLOCK_LABELS: Record<string, string> = {
+  intrusion_24h: "Intrusion 24h",
+  pipc_kisa_72h: "PIPC / KISA 72h",
+};
+
+const INCIDENT_TIMELINE_LABELS: Record<string, string> = {
+  declared: "Declared",
+  note_added: "Note added",
+  lead_assigned: "Lead assigned",
+  severity_changed: "Severity changed",
+  status_changed: "Status changed",
+  postmortem_linked: "Postmortem linked",
+  public_attached: "Public incident attached",
+  mitigation_added: "Mitigation added",
+  notice_sent: "Notice sent",
+  resolved: "Resolved",
+};
+
+const OBLIGATION_EVENT_LABELS: Record<string, string> = {
+  opened: "Opened",
+  in_review: "In review",
+  redated: "Redated",
+  done: "Done",
+  waived: "Waived",
+};
+
+const OBLIGATION_KIND_LABELS: Record<string, string> = {
+  "launch-gate": "Launch gate",
+  "professional-review": "Professional review",
+  "credential-rotation": "Credential rotation",
+  escrow: "Escrow",
+  drill: "Drill",
+  "owner-decision": "Owner decision",
+  "regulatory-watch": "Regulatory watch",
+};
+
+const OBLIGATION_STATE_LABELS: Record<string, string> = {
+  open: "Open",
+  "in-review": "In review",
+  done: "Done",
+  waived: "Waived",
+};
+
+const OBLIGATION_ROLE_LABELS: Record<string, string> = {
+  owner: "Owner",
+  "labor-attorney": "Labor attorney",
+  lawyer: "Lawyer",
+  "tax-accountant": "Tax accountant",
+};
+
+const PDATA_IMPACT_LABELS: Record<string, string> = {
+  no: "No",
+  unknown: "Unknown",
+  yes: "Yes",
+};
+
+const PROMOTE_VERDICT_LABELS: Record<string, string> = {
+  ready: "Ready",
+  blocked: "Blocked",
+};
+
+const FEEDBACK_DISPOSITION_LABELS: Record<string, string> = {
+  open: "Open",
+  triaged: "Triaged",
+  resolved: "Resolved",
+  wontfix: "Won't fix",
+};
+
+function humanizeToken(raw: string): string {
+  const clean = raw.replace(/[_-]+/g, " ").trim();
+  return clean ? `${clean.charAt(0).toUpperCase()}${clean.slice(1)}` : raw;
+}
+
+export function formatLegalClockKind(kind: string): string {
+  return LEGAL_CLOCK_LABELS[kind] ?? humanizeToken(kind);
+}
+
+export function formatIncidentTimelineKind(kind: string): string {
+  return INCIDENT_TIMELINE_LABELS[kind] ?? humanizeToken(kind);
+}
+
+export function formatObligationEvent(event: string): string {
+  return OBLIGATION_EVENT_LABELS[event] ?? humanizeToken(event);
+}
+
+export function formatObligationKind(kind: string): string {
+  return OBLIGATION_KIND_LABELS[kind] ?? humanizeToken(kind);
+}
+
+export function formatObligationState(state: string): string {
+  return OBLIGATION_STATE_LABELS[state] ?? humanizeToken(state);
+}
+
+export function formatObligationRole(role: string): string {
+  return OBLIGATION_ROLE_LABELS[role] ?? humanizeToken(role);
+}
+
+export function formatPersonalDataImpact(impact: string): string {
+  return PDATA_IMPACT_LABELS[impact] ?? humanizeToken(impact);
+}
+
+export function formatPromoteVerdict(verdict: string): string {
+  return PROMOTE_VERDICT_LABELS[verdict] ?? humanizeToken(verdict);
+}
+
+export function formatFeedbackDisposition(disposition: string): string {
+  return FEEDBACK_DISPOSITION_LABELS[disposition] ?? humanizeToken(disposition);
 }
