@@ -79,6 +79,7 @@ export const enReason = {
   "reason.exit_reason.COVERAGE_EXCLUDED": "Outside employment insurance",
   "reason.exit_reason.DUAL_EMPLOYMENT": "Dual employment",
   "reason.exit_reason.DEATH": "Death",
+  "reason.exit_reason.RESIGNATION": "Voluntary resignation",
   "reason.exit_reason.OTHER": "Other",
   // AUTH-ID (decisions #33)
   "reason.sign_in_id_change.NAME_CHANGE": "Legal name change",

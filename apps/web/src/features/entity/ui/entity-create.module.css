@@ -98,6 +98,9 @@
   .rowsLine { grid-template-columns: minmax(0, 1fr); }
   .rowLabel { display: block; }
   .rowKind { justify-self: start; }
+  .director { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+  .newKid { min-width: 0; width: 100%; }
+  .reps span { flex-wrap: wrap; }
 }
 
 /* The quick sheet (spec S4-quick). */

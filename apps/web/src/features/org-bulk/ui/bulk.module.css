@@ -56,3 +56,17 @@
 @media (max-width: 1280px) {
   .cols2 { grid-template-columns: minmax(0, 1fr); }
 }
+
+:where([data-experience]:not([data-experience="baseline"])) [data-pattern="form"] [data-read-region] > div:has(.workplaces) {
+  max-width: none;
+}
+
+@media (--phone) {
+  .mapRow { grid-template-columns: minmax(0, 1fr); }
+  .mapRow > svg { display: none; }
+  .mapRow > p { grid-column: 1; }
+  .rename { width: 100%; max-width: 100%; }
+  .under { flex-basis: 100%; }
+  .stepsWrap li { white-space: nowrap; }
+  .stepsWrap li + li::before { display: none; }
+}

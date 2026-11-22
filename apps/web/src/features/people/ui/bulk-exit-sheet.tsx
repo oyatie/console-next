@@ -8,6 +8,7 @@ import { CommandError } from "../../../lib/react/command-error";
 import { todayKst } from "../../../lib/pure/today";
 import { refusalText } from "../../../reference/crud/present";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { DateField } from "../../../ui/date/date-field";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
@@ -54,7 +55,7 @@ export function BulkExitSheet({ picked, onClose }: { picked: Map<string, string>
       action={{ kind: "exitReport", mode: "apply", count: people.length }}
       tone="danger"
       onSubmit={submit}
-      recovery={rows ? <><Link className="btn" to="/people/exits" search={{}}>{t("crud.bulkExit.openList")}</Link><Button onClick={onClose}>{t("composer.dismiss")}</Button></> : undefined}
+      recovery={rows ? <><Link className={buttonClass("secondary")} to="/people/exits" search={{}}>{t("crud.bulkExit.openList")}</Link><Button onClick={onClose}>{t("composer.dismiss")}</Button></> : undefined}
 
     >
       {rows ? (

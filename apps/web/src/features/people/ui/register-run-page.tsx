@@ -1,9 +1,11 @@
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { useKeys } from "../../../lib/react/use-keys";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { chunk } from "../../../lib/chunk-guard";
+import { readGroup } from "../../../lib/react/query-view";
 import { unitsQuery } from "../../../reference/org/api";
 import { unitPath } from "../../../reference/org/present";
 import { checklistRef, entitiesRef, orgStructureRef } from "../../../reference/entity/api";
@@ -18,6 +20,8 @@ import { Crumbs } from "../../../ui/page-head/crumbs";
 import { useMountFocus } from "../../../ui/page/use-mount-focus";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { PhaseLine } from "../../../ui/page-head/phase-line";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { duplicateCandidates } from "../api";
 import { birthDate, EMPTY, gaps, isCarried, nextPerson, NO_PICK, type CarryKey, type Draft, type DupPick } from "../domain/register";
 import { placeOptions, resolvePlace } from "../domain/register-place";
@@ -30,6 +34,8 @@ import { RunSide } from "./register-run-side";
 import { RunTable, type RunRow } from "./register-run-table";
 import { useRegister, useUndoRegister } from "./use-register";
 import s from "./register-run.module.css";
+
+const RegisterRunConsole = lazy(() => chunk(import("./register-run-console")).then((m) => ({ default: m.RegisterRunConsole })));
 
 /**
  * /people/run, registration in a row (spec E3-run): one row per person, typed left to right and saved with ⌘↵ straight into the
@@ -51,7 +57,8 @@ export function RegisterRun() {
   const today = todayKst();
   const unitsQ = useQuery({ ...unitsQuery, refetchOnMount: "always" });
   const units = unitsQ.data?.items ?? [];
-  const entities = useQuery(entitiesRef).data?.items ?? [];
+  const entitiesQ = useQuery(entitiesRef);
+  const entities = entitiesQ.data?.items ?? [];
   const roots = useQuery({ ...orgStructureRef, retry: false }).data?.entities ?? [];
   const setup = useQuery({ ...checklistRef, retry: false }).data?.phase === "SETUP";
   // Only places a person can be registered at are offered (a unit with a registered workplace and its branch).
@@ -125,8 +132,10 @@ export function RegisterRun() {
   const live = rows.filter((r) => !r.undone);
   const shownGaps = new Set(tried ? g : []);
   const title = chosen ? t("register.run.titleAt", { place: placeName() }) : t("register.run.title");
+  const places = options.map((o) => ({ id: o.unit.id, text: unitFirst(entities.length > 1 ? placeText(units, o) : unitPath(units, o.unit)) }));
+  const mine = { name: d.name.trim(), birth: d.birth, place: placeName(), hire: d.hire, status: t(d.hire > today ? "register.foot.statusFuture" : "register.foot.statusNow"), number: d.numberMode === "manual" ? d.number : null };
 
-  return (
+  const renderBaseline = () => (
     <div className={s.page} ref={body}>
       <PageHead
         band
@@ -157,7 +166,7 @@ export function RegisterRun() {
               onHire={onHire}
               today={today}
               // The unit's own name first (what a narrow cell shows), then where it sits; the headcount is in the head.
-              places={options.map((o) => ({ id: o.unit.id, text: unitFirst(entities.length > 1 ? placeText(units, o) : unitPath(units, o.unit)) }))}
+              places={places}
               carried={(k) => isCarried(d, from, k, carry)}
               invalid={shownGaps}
               undoable={setup}
@@ -168,7 +177,7 @@ export function RegisterRun() {
           {tried && g.length > 0 && <p role="alert" className={s.err}>{t("register.foot.errors", { n: g.length, list: g.map((x) => t(`register.field.${x}`)).join(" · ") })}</p>}
           {cands.length > 0 && (
             <RegisterDup
-              mine={{ name: d.name.trim(), birth: d.birth, place: placeName(), hire: d.hire, status: t(d.hire > today ? "register.foot.statusFuture" : "register.foot.statusNow"), number: d.numberMode === "manual" ? d.number : null }}
+              mine={mine}
               candidates={cands}
               places={options}
               pick={pick}
@@ -183,5 +192,50 @@ export function RegisterRun() {
       </div>
       <RegisterToast />
     </div>
+  );
+
+  return (
+    <ExperienceSwitch baseline={renderBaseline}>
+      {() => (
+        <Suspense fallback={<ReadSkeleton layout="form" />}>
+          <RegisterRunConsole
+            q={readGroup([unitsQ, entitiesQ])}
+            bodyRef={body}
+            title={title}
+            setup={setup}
+            liveCount={live.length}
+            chosenUnitName={chosen?.unit.name}
+            chosenHeadcount={chosen?.unit.headcount}
+            d={d}
+            set={set}
+            hireText={hireText}
+            onHire={onHire}
+            today={today}
+            carry={carry}
+            onCarry={setCarry}
+            rows={rows}
+            showAll={showAll}
+            onShowAll={() => setShowAll(true)}
+            places={places}
+            options={options}
+            carried={(k) => isCarried(d, from, k, carry)}
+            shownGaps={shownGaps}
+            tried={tried}
+            gapList={g}
+            cands={cands}
+            mine={mine}
+            pick={pick}
+            onPick={setPick}
+            regError={reg.error}
+            undoError={undo.error}
+            dups={dups}
+            undoing={undo.isPending}
+            onUndoRow={undoRow}
+            onUndoAll={() => void undoAll()}
+            onSave={save}
+          />
+        </Suspense>
+      )}
+    </ExperienceSwitch>
   );
 }

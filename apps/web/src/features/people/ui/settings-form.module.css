@@ -1,0 +1,4 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+:where([data-experience]:not([data-experience="baseline"])) .narrowFields.narrowFields :is(input, textarea) {
+  max-width: min(100%, var(--dialog-w-md));
+}

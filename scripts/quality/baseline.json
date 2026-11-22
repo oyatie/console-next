@@ -228,7 +228,6 @@
   "unused-export:apps/web/src/ui/disabled-reason/disabled-reason.tsx:DisabledProps": 1,
   "unused-export:apps/web/src/ui/field/field.tsx:ControlProps": 1,
   "unused-export:apps/web/src/ui/file-drop/file-drop.tsx:Accept": 1,
-  "unused-export:apps/web/src/ui/key-value/key-value.tsx:KeyValueItem": 1,
   "unused-export:apps/web/src/ui/legend/legend.tsx:Swatch": 1,
   "unused-export:apps/web/src/ui/long-table/row-keys.ts:RowKeyHandlers": 1,
   "unused-export:apps/web/src/ui/masked-field/masked-field.tsx:MaskFormat": 1,

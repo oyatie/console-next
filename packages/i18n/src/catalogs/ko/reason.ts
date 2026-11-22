@@ -85,6 +85,7 @@ export const koReason: Record<keyof typeof enReason, string> = {
   "reason.exit_reason.COVERAGE_EXCLUDED": "고용보험 비적용",
   "reason.exit_reason.DUAL_EMPLOYMENT": "이중고용",
   "reason.exit_reason.DEATH": "사망",
+  "reason.exit_reason.RESIGNATION": "자진 퇴직",
   "reason.exit_reason.OTHER": "기타",
   // AUTH-ID (decisions #33): 아이디 변경, plus the two system-recorded origins.
   "reason.sign_in_id_change.NAME_CHANGE": "개명",

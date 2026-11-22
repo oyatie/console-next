@@ -27,6 +27,9 @@ export function DocumentDecision({
   facts: _facts,
   overlays,
   statusSegments,
+  keepOnLoss,
+  back,
+  own,
   baseline,
   ...panes
 }: DocumentDecisionProps) {
@@ -45,6 +48,9 @@ export function DocumentDecision({
       queryLayout="record"
       detailActive={Boolean(paneDecision)}
       statusSegments={statusSegments}
+      keepOnLoss={keepOnLoss}
+      back={back}
+      own={own}
       baseline={baseline}
     >
       {() => (

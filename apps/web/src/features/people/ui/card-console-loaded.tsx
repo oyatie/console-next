@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
@@ -18,8 +18,8 @@ import { MenuButton, type MenuEntry } from "../../../ui/menu/menu-button";
 import { RecordPattern } from "../../../ui/patterns/record";
 import { FieldMark } from "../../../ui/record/field-row";
 import { Gate } from "../../../ui/record/record-section";
-import { unitListQuery } from "../api/record";
-import { listPosition, serviceSpan } from "../domain/card";
+import { unitPositionQuery } from "../api/record";
+import { serviceSpan } from "../domain/card";
 import { retirementDate } from "../domain/employment";
 import { cardSections } from "../domain/keys";
 import { verbStates } from "../domain/lifecycle";
@@ -47,6 +47,7 @@ import { useQuick } from "./use-quick";
 
 const CardActions = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.CardActions })));
 type Detail = components["schemas"]["EmployeeDetail"];
+type UnitPosition = components["schemas"]["EmployeeUnitPosition"];
 const route = getRouteApi("/app/people/$id");
 const PATH_SEP = " › ";
 
@@ -56,13 +57,13 @@ function buildCardMeta({
   d: Detail; c: ReturnType<typeof useCard>; own: boolean; today: string; certsCount?: number;
   documents: boolean; tab: CardTab; act?: string; jumpTo: (id: string) => void;
   onTab: (t: CardTab) => void; go: (other: string) => void; open: (next: string, from?: string) => void;
-  pos: ReturnType<typeof listPosition>; dismiss: () => void;
+  pos: UnitPosition | null; dismiss: () => void;
 }) {
   const { e } = c;
   const keys = useRef<{ next?: () => void; prev?: () => void; jump: (n: number) => void; history: () => void }>({ jump: () => {}, history: () => {} });
-  useEffect(() => {
-    keys.current.next = pos?.next ? () => go(pos.next!) : undefined;
-    keys.current.prev = pos?.prev ? () => go(pos.prev!) : undefined;
+  useLayoutEffect(() => {
+    keys.current.next = pos?.next_id ? () => go(pos.next_id!) : undefined;
+    keys.current.prev = pos?.prev_id ? () => go(pos.prev_id!) : undefined;
     keys.current.jump = n => {
       if (!(c.readable ? cardSections(c.records.data?.sections, documents) : [2]).includes(n)) return;
       if (tab !== "card") onTab("card");
@@ -135,8 +136,8 @@ function buildCardMeta({
       tools: pos ? (
         <div className="row">
           <bdi className={s.pos}><strong className={s.posAt}>{t("empCard.pos.at", { index: pos.index, total: pos.total })}</strong></bdi>
-          <Button size="sm" variant="ghost" aria-label={t("empCard.prev")} disabled={!pos.prev} onClick={() => pos.prev && go(pos.prev)}><ChevronLeft size={14} aria-hidden="true" /></Button>
-          <Button size="sm" variant="ghost" aria-label={t("empCard.next")} disabled={!pos.next} onClick={() => pos.next && go(pos.next)}><ChevronRight size={14} aria-hidden="true" /></Button>
+          <Button size="sm" variant="ghost" aria-label={t("empCard.prev")} disabled={!pos.prev_id} onClick={() => pos.prev_id && go(pos.prev_id)}><ChevronLeft size={14} aria-hidden="true" /></Button>
+          <Button size="sm" variant="ghost" aria-label={t("empCard.next")} disabled={!pos.next_id} onClick={() => pos.next_id && go(pos.next_id)}><ChevronRight size={14} aria-hidden="true" /></Button>
         </div>
       ) : undefined,
       actions: c.editable ? (
@@ -171,8 +172,8 @@ export function LoadedConsoleCard(props: {
   const quick = useQuick(c);
   const { e } = c;
   const today = todayKst();
-  const list = useQuery({ ...unitListQuery(e.org_unit_id ?? ""), enabled: Boolean(e.org_unit_id) });
-  const pos = listPosition((list.data?.items ?? []).map(r => r.id), e.id);
+  const unitPos = useQuery({ ...unitPositionQuery(e.id), enabled: Boolean(e.org_unit_id) });
+  const pos = unitPos.data && unitPos.data.index > 0 ? unitPos.data : null;
   const own = useOwnRecord(e.id);
   const { mine, linked } = useLinkedAccount(e, c.users);
   const navigate = route.useNavigate();

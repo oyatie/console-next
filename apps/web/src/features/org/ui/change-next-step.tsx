@@ -41,6 +41,7 @@ export function ChangeNextStep(p: {
   onReopen: () => void;
   onEdit: () => void;
   onPreflight: () => void;
+  flat?: boolean;
 }) {
   const { d, s, title } = p;
   const lapsed = d.status === "IN_APPROVAL" && d.effectiveDate < p.today;
@@ -49,36 +50,40 @@ export function ChangeNextStep(p: {
   if (d.status === "IN_APPROVAL" && d.sole_holder_decision && !p.hold)
     return <SoleHolderDecisionCard key={d.sole_holder_decision.step_id} d={d} offer={d.sole_holder_decision} n={p.n} onNote={p.onNote} onReopen={p.onReopen} />;
   if (s.kind === "decide" && !p.hold) return <ChangeDecision key={s.step.id} d={d} s={s} refetch={p.refetch} onNote={p.onNote} onReopen={p.onReopen} />;
+  const content = (
+    <div className={css.next}>
+      {d.sole_holder_exception && <SoleHolderReview exception={d.sole_holder_exception} />}
+      {s.kind === "submit" && <Submit d={d} title={title} report={p.report} refetch={p.refetch} onNote={p.onNote} onEdit={p.onEdit} onPreflight={p.onPreflight} />}
+      {s.kind === "submit" && p.editor}
+      {s.kind === "draftReadOnly" && <p>{t("orgChange.next.draft.readOnly")}</p>}
+      {(s.kind === "awaitDecision" || s.kind === "decide") && (
+        <>
+          <p>{t("orgChange.turn", { role: label(APPROVAL_ROLE, s.step.roleKey) })}</p>
+          <p className="muted">{s.kind === "awaitDecision" && s.drafter ? t("orgChange.turn.drafter") : t("orgChange.turn.who")}</p>
+        </>
+      )}
+      {lapsed && <p className={css.caution}>{t("orgChange.lapsed", { date: fmtDate(d.effectiveDate) })}</p>}
+      {(s.kind === "scheduled" || s.kind === "awaitApply" || s.kind === "settle") && (
+        <ChangeApply d={d} s={s} title={title} n={p.n} refetch={p.refetch} onNote={p.onNote} />
+      )}
+      {(s.kind === "redraft" || s.kind === "rejected") && s.step && (
+        <>
+          <p>{t("orgChange.rejected.by", { name: actor(s.step.decidedByName), role: label(APPROVAL_ROLE, s.step.roleKey) })}</p>
+          {memo && <blockquote className={css.quote}>{t("orgChange.rejected.memo", { memo })}</blockquote>}
+        </>
+      )}
+      {s.kind === "redraft" && <Redraft d={d} title={title} memo={memo} />}
+      {s.kind === "rejected" && <p className="muted">{t("orgChange.rejected.readOnly")}</p>}
+      {s.kind === "applied" && <p>{t("orgChange.applied", { date: fmtDate(d.effectiveDate) })}</p>}
+      {s.kind === "archived" && <p>{t("orgChange.archived", { date: fmtDate(d.updatedAt) })}</p>}
+      {s.kind === "cancelled" && <Cancelled d={d} />}
+    </div>
+  );
+  if (p.flat) return content;
   return (
     <section className="card panel" aria-labelledby="next-step">
       <h2 id="next-step" className="panel__title" tabIndex={-1}>{t("orgChange.next.title")}</h2>
-      <div className={css.next}>
-        {d.sole_holder_exception && <SoleHolderReview exception={d.sole_holder_exception} />}
-        {s.kind === "submit" && <Submit d={d} title={title} report={p.report} refetch={p.refetch} onNote={p.onNote} onEdit={p.onEdit} onPreflight={p.onPreflight} />}
-        {s.kind === "submit" && p.editor}
-        {s.kind === "draftReadOnly" && <p>{t("orgChange.next.draft.readOnly")}</p>}
-        {(s.kind === "awaitDecision" || s.kind === "decide") && (
-          <>
-            <p>{t("orgChange.turn", { role: label(APPROVAL_ROLE, s.step.roleKey) })}</p>
-            <p className="muted">{s.kind === "awaitDecision" && s.drafter ? t("orgChange.turn.drafter") : t("orgChange.turn.who")}</p>
-          </>
-        )}
-        {lapsed && <p className={css.caution}>{t("orgChange.lapsed", { date: fmtDate(d.effectiveDate) })}</p>}
-        {(s.kind === "scheduled" || s.kind === "awaitApply" || s.kind === "settle") && (
-          <ChangeApply d={d} s={s} title={title} n={p.n} refetch={p.refetch} onNote={p.onNote} />
-        )}
-        {(s.kind === "redraft" || s.kind === "rejected") && s.step && (
-          <>
-            <p>{t("orgChange.rejected.by", { name: actor(s.step.decidedByName), role: label(APPROVAL_ROLE, s.step.roleKey) })}</p>
-            {memo && <blockquote className={css.quote}>{t("orgChange.rejected.memo", { memo })}</blockquote>}
-          </>
-        )}
-        {s.kind === "redraft" && <Redraft d={d} title={title} memo={memo} />}
-        {s.kind === "rejected" && <p className="muted">{t("orgChange.rejected.readOnly")}</p>}
-        {s.kind === "applied" && <p>{t("orgChange.applied", { date: fmtDate(d.effectiveDate) })}</p>}
-        {s.kind === "archived" && <p>{t("orgChange.archived", { date: fmtDate(d.updatedAt) })}</p>}
-        {s.kind === "cancelled" && <Cancelled d={d} />}
-      </div>
+      {content}
     </section>
   );
 }

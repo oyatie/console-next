@@ -1,8 +1,9 @@
 import { ENTITY_PHASE, labeled } from "../../../lib/labels";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { Lock, Network, Plus } from "lucide-react";
 import { t } from "@console/i18n";
+import { chunk } from "../../../lib/chunk-guard";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
@@ -13,6 +14,8 @@ import { Chip } from "../../../ui/chip";
 import { Composer } from "../../../ui/composer/composer";
 import { Dialog } from "../../../ui/dialog";
 import { EmptyState } from "../../../ui/empty-state";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { applySetup, STRUCTURE_READS } from "../../../reference/org/api";
 import { bulkPlan, type Resolution } from "../domain/bulk-move";
 import { collapse, descendants, targetsFor, unitIdOf, type Node } from "../../../reference/org/domain/structure";
@@ -27,6 +30,7 @@ import s from "./bulk-move.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
 const route = getRouteApi("/app/org/move");
+const BulkMoveConsole = lazy(() => chunk(import("./bulk-move-console")).then((m) => ({ default: m.BulkMoveConsole })));
 
 /**
  * S8 bulk move: a full page in three columns — the valid-only target tree, what changes with exact counts, and
@@ -78,63 +82,126 @@ export function BulkMovePage() {
     !setup && gov.missing.join(", "),
   ].filter((x): x is string => Boolean(x));
   const items = plan ? plan.items.moves + plan.items.renames + plan.items.merges : 0;
+  const titleText = count === 1 ? t("bulkMove.titleOne", { name: roots[0]!.name }) : t("bulkMove.title", { n: count || chosen.length });
+  const mode = !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply";
+  const cmdError = run.error ?? submit.error;
+  const cmdLocked = run.isPending || submit.isPending || (typeof cmdError === "object" && cmdError !== null && "status" in cmdError && (cmdError as { status: unknown }).status === 403);
+  const toolsNode = available && entity && <AddMore entity={entity} chosen={chosen} canDraft={canDraft} show={showTarget} disabled={cmdLocked} />;
+  const renderWhere = (flat: boolean) => entity ? (
+    <TargetTree
+      label={t("bulkMove.where")}
+      entity={entity}
+      show={showTarget}
+      selectable={canDraft}
+      why={(n) => excluded.has(n.id) ? t("bulkMove.addTaken") : here(n) ? t("orgUnit.target.here") : undefined}
+      right={(n) => (n.kind === "WORKPLACE" ? t("orgUnit.target.depts", { count: descendants(n).length }) : "")}
+      workplaces
+      value={to}
+      onChange={setTo}
+      flat={flat}
+    />
+  ) : null;
+  const whatBody = (
+    <>
+      <h2 id="bulk-what" className={s.colTitle}>{t("bulkMove.what")}</h2>
+      {plan ? <BulkMoveTable plan={plan} targetLabel={target!.node.name} onResolve={(id, r) => setRes((m) => { const n = new Map(m); if (r) n.set(id, r); else n.delete(id); return n; })} /> : <Muted>{t("bulkMove.pickFirst")}</Muted>}
+      {!setup && (
+        <div className={s.gov}>
+          <h3 className="field__label">{t("bulkMove.draft")}</h3>
+          <GovernFields s={gov} />
+        </div>
+      )}
+    </>
+  );
+  const afterTitle = target ? t("bulkMove.after", { site: target.workplace!.name }) : t("bulkMove.afterNone");
+  const afterBody = (
+    <>
+      <h2 id="bulk-after" className={s.colTitle}>{afterTitle}</h2>
+      <TreeLegend tags={["movedIn", "movedRenamed", "merged"]} />
+      {plan && <MiniTree label={t("bulkMove.after", { site: target!.workplace!.name })} root={plan.after} />}
+    </>
+  );
+  const submitMove = () => {
+    if (blockers.length === 0) {
+      setInFlight(true);
+      if (setup) run.mutate(undefined);
+      else submit.mutate(true);
+    }
+  };
+  const saveDraft = () => {
+    setInFlight(true);
+    submit.mutate(false);
+  };
   return (
-    <Composer
-      layout="page"
-      title={count === 1 ? t("bulkMove.titleOne", { name: roots[0]!.name }) : t("bulkMove.title", { n: count || chosen.length })}
-      kicker={<span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...(first ? first.path : [])].join(" › ")}{available && entity && <Chip tone={labeled(ENTITY_PHASE, setup ? "setup" : "operating").tone}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip>}</span>}
-      subtitle={first && t("bulkMove.titleSub", { m: total })}
-      tools={available && entity && <AddMore entity={entity} chosen={chosen} canDraft={canDraft} show={showTarget} />}
-      onClose={resolved && (!first || !entity) ? undefined : close}
-      pending={run.isPending || submit.isPending}
-      action={{ kind: "orgMove", mode: !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply", count }}
-      onSubmit={available ? () => { if (blockers.length === 0) { setInFlight(true); if (setup) run.mutate(undefined); else submit.mutate(true); } } : undefined}
-      blocked={available && blockers.length ? { reason: blockers.join(", ") } : undefined}
-      onSaveDraft={available && !setup && blockers.length === 0 ? () => { setInFlight(true); submit.mutate(false); } : undefined}
-      error={run.error ?? submit.error} notice={<CommandError focusOnRefusal error={run.error ?? submit.error} />}
-      sections={{
-        preflight: available && (blockers.length || carried.length) ? <>
-          {blockers.length > 0 && <span className={s.reason}><Lock size={14} aria-hidden />{blockers[0]}</span>}
-          {carried.length > 0 && <p className={s.lead}>{t("bulkMove.collapsed", { names: carried.map((c) => c.name).join("·"), parent: carried.map((c) => places.get(c.id)?.parent?.name).join("·"), n: roots.length })}</p>}
-        </> : null,
-        effects: available && !blockers.length ? <>
-          <span>{t(setup ? "bulkMove.consequence" : "bulkMove.consequenceGoverned", { n: count, m: total, p: plan!.totals.members, to: target!.workplace!.name, date: gov.g.date, items, moves: plan!.items.moves, renames: plan!.items.renames })}</span>
-          <Muted>{t(setup ? "bulkMove.consequenceSetupNote" : "bulkMove.consequenceGovNote", { p: plan!.totals.siteChanged })}</Muted>
-        </> : null,
-        approvals: available && !setup && gov.routed ? t("orgPropose.route") : null,
-      }}
+    <ExperienceSwitch
+      baseline={() => (
+        <Composer
+          layout="page"
+          title={titleText}
+          kicker={<div className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...(first ? first.path : [])].join(" › ")}{available && entity && <Chip tone={labeled(ENTITY_PHASE, setup ? "setup" : "operating").tone}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip>}</div>}
+          subtitle={first && t("bulkMove.titleSub", { m: total })}
+          tools={toolsNode}
+          onClose={resolved && (!first || !entity) ? undefined : close}
+          pending={run.isPending || submit.isPending}
+          action={{ kind: "orgMove", mode, count }}
+          onSubmit={available ? submitMove : undefined}
+          blocked={available && blockers.length ? { reason: blockers.join(", ") } : undefined}
+          onSaveDraft={available && !setup && blockers.length === 0 ? saveDraft : undefined}
+          error={run.error ?? submit.error} notice={<CommandError focusOnRefusal error={run.error ?? submit.error} />}
+          sections={{
+            preflight: available && (blockers.length || carried.length) ? <>
+              {blockers.length > 0 && <output className={s.reason}><Lock size={14} aria-hidden />{blockers[0]}</output>}
+              {carried.length > 0 && <div className={s.lead}>{t("bulkMove.collapsed", { names: carried.map((c) => c.name).join("·"), parent: carried.map((c) => places.get(c.id)?.parent?.name).join("·"), n: roots.length })}</div>}
+            </> : null,
+            effects: available && !blockers.length ? <>
+              <bdi>{t(setup ? "bulkMove.consequence" : "bulkMove.consequenceGoverned", { n: count, m: total, p: plan!.totals.members, to: target!.workplace!.name, date: gov.g.date, items, moves: plan!.items.moves, renames: plan!.items.renames })}</bdi>
+              <Muted>{t(setup ? "bulkMove.consequenceSetupNote" : "bulkMove.consequenceGovNote", { p: plan!.totals.siteChanged })}</Muted>
+            </> : null,
+            approvals: available && !setup && gov.routed ? t("orgPropose.route") : null,
+          }}
+        >
+          <QueryState q={st.q} layout="form">{() => !first || !entity ? <Unmovable mixed={roots.length > 1} /> : <QueryState q={st.units} layout="form">{() => <div className={s.cols}>
+            <section className={`card ${s.col}`} aria-label={t("bulkMove.where")}>{renderWhere(false)}</section>
+            <section className={`card ${s.col}`} aria-labelledby="bulk-what">{whatBody}</section>
+            <section className={`card ${s.col}`} aria-labelledby="bulk-after">{afterBody}</section>
+          </div>}</QueryState>}</QueryState>
+        </Composer>
+      )}
     >
-      <QueryState q={st.q} layout="form">{() => !first || !entity ? <Unmovable mixed={roots.length > 1} /> : <QueryState q={st.units} layout="form">{() => <div className={s.cols}>
-        <section className={`card ${s.col}`} aria-label={t("bulkMove.where")}>
-          <TargetTree
-            label={t("bulkMove.where")}
-            entity={entity}
-            show={showTarget}
-            selectable={canDraft}
-            why={(n) => excluded.has(n.id) ? t("bulkMove.addTaken") : here(n) ? t("orgUnit.target.here") : undefined}
-            right={(n) => (n.kind === "WORKPLACE" ? t("orgUnit.target.depts", { count: descendants(n).length }) : "")}
-            workplaces
-            value={to}
-            onChange={setTo}
+      {() => (
+        <Suspense fallback={<ReadSkeleton layout="form" />}>
+          <BulkMoveConsole
+            q={st.q}
+            units={st.units}
+            title={titleText}
+            path={first ? first.path : []}
+            subtitle={first ? t("bulkMove.titleSub", { m: total }) : undefined}
+            setup={setup}
+            available={Boolean(available)}
+            canMove={Boolean(first && entity)}
+            tools={toolsNode}
+            onClose={close}
+            showClose={!(resolved && (!first || !entity))}
+            pending={run.isPending || submit.isPending}
+            error={run.error ?? submit.error}
+            carriedText={available && carried.length > 0 ? t("bulkMove.collapsed", { names: carried.map((c) => c.name).join("·"), parent: carried.map((c) => places.get(c.id)?.parent?.name).join("·"), n: roots.length }) : undefined}
+            blockers={blockers}
+            consequenceText={available && !blockers.length ? t(setup ? "bulkMove.consequence" : "bulkMove.consequenceGoverned", { n: count, m: total, p: plan!.totals.members, to: target!.workplace!.name, date: gov.g.date, items, moves: plan!.items.moves, renames: plan!.items.renames }) : undefined}
+            consequenceNote={available && !blockers.length ? t(setup ? "bulkMove.consequenceSetupNote" : "bulkMove.consequenceGovNote", { p: plan!.totals.siteChanged }) : undefined}
+            routedNote={available && !setup && gov.routed ? t("orgPropose.route") : undefined}
+            whereSection={<section className={s.col} aria-label={t("bulkMove.where")}>{renderWhere(true)}</section>}
+            whatSection={<section className={s.col} aria-labelledby="bulk-what">{whatBody}</section>}
+            afterSection={<section className={s.col} aria-labelledby="bulk-after">{afterBody}</section>}
+            afterTitle={afterTitle}
+            unmovable={<Unmovable mixed={roots.length > 1} />}
+            mode={mode}
+            count={count}
+            onSubmit={submitMove}
+            onSaveDraft={!setup ? saveDraft : undefined}
           />
-        </section>
-        <section className={`card ${s.col}`} aria-labelledby="bulk-what">
-          <h2 id="bulk-what" className={s.colTitle}>{t("bulkMove.what")}</h2>
-          {plan ? <BulkMoveTable plan={plan} targetLabel={target!.node.name} onResolve={(id, r) => setRes((m) => { const n = new Map(m); if (r) n.set(id, r); else n.delete(id); return n; })} /> : <p className="muted">{t("bulkMove.pickFirst")}</p>}
-          {!setup && (
-            <div className={s.gov}>
-              <h3 className="field__label">{t("bulkMove.draft")}</h3>
-              <GovernFields s={gov} />
-            </div>
-          )}
-        </section>
-        <section className={`card ${s.col}`} aria-labelledby="bulk-after">
-          <h2 id="bulk-after" className={s.colTitle}>{target ? t("bulkMove.after", { site: target.workplace!.name }) : t("bulkMove.afterNone")}</h2>
-          <TreeLegend tags={["movedIn", "movedRenamed", "merged"]} />
-          {plan && <MiniTree label={t("bulkMove.after", { site: target!.workplace!.name })} root={plan.after} />}
-        </section>
-      </div>}</QueryState>}</QueryState>
-    </Composer>
+        </Suspense>
+      )}
+    </ExperienceSwitch>
   );
 }
 
@@ -142,15 +209,15 @@ export function BulkMovePage() {
  * Adds another department of the same entity to what moves (the keyboard twin of Shift+click on the chart), through the
  * canonical searchable tree (org-21): only department not chosen yet can be picked.
  */
-function AddMore({ entity, chosen, canDraft, show }: { entity: Node; chosen: string[]; canDraft: (n: Node) => boolean; show: (n: Node) => boolean }) {
+function AddMore({ entity, chosen, canDraft, show, disabled = false }: { entity: Node; chosen: string[]; canDraft: (n: Node) => boolean; show: (n: Node) => boolean; disabled?: boolean }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const taken = new Set(chosen);
   if (!entity.children.some((w) => descendants(w).some((n) => !taken.has(n.id) && canDraft(n)))) return null;
   return (
     <>
-      <Button aria-haspopup="dialog" onClick={() => setOpen(true)}><Plus size={16} aria-hidden />{t("bulkMove.addMore")}</Button>
-      <Dialog open={open} title={t("bulkMove.addMore")} onClose={() => setOpen(false)}>
+      <Button aria-haspopup="dialog" disabled={disabled} onClick={() => { if (!disabled) setOpen(true); }}><Plus size={16} aria-hidden />{t("bulkMove.addMore")}</Button>
+      <Dialog open={open && !disabled} title={t("bulkMove.addMore")} onClose={() => setOpen(false)}>
         <TargetTree
           label={t("bulkMove.addMore")}
           entity={entity}

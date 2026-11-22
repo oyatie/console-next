@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
-import { i18n, loadCatalog } from "@console/i18n";
-import type { LifecycleEvent } from "./api";
-import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, nextEventText, pasteSkippedText, placeText, valueText } from "./present";
+import { i18n, loadCatalog, t } from "@console/i18n";
+import type { ChangeRequest, LifecycleEvent } from "./api";
+import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, nextEventText, pasteSkippedText, placeText, reasonText, subjectText, valueText } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -109,4 +109,26 @@ test("pasteSkippedText names only non-zero skipped counts and matches the paste 
 test("a requested phone the server sends as its mask reads as the mask", () => {
   expect(valueText("phone", "010-••••-0001")).toBe("010-••••-0001");
   expect(valueText("phone", "+821055550001")).toBe("010-5555-0001");
+});
+
+test("subjectText prefers server-joined subject fields with safe fallbacks", () => {
+  const req = (over: Partial<ChangeRequest>) => ({ kind: "PROFILE_CORRECTION", subject_type: "EMPLOYEE", subject_id: "s1", payload: {}, ...over }) as ChangeRequest;
+  expect(subjectText(req({ subject_name: "Alice", subject_number: "10587" }))).toBe("Alice (10587)");
+  expect(subjectText(req({ subject_name: "Alice", subject_number: null }))).toBe("Alice (—)");
+  expect(subjectText(req({ subject_name: "Alice", subject_number: "" }))).toBe("Alice (—)");
+  expect(subjectText(req({ subject_name: null, subject_number: null }))).toBe(t("requests.subject.loading"));
+  expect(subjectText(req({ subject_type: "USER_ACCOUNT", subject_name: "Bob" }))).toBe(`${t("requests.subject.USER_ACCOUNT")} · Bob`);
+  expect(subjectText(req({ subject_type: "ORGANIZATION", subject_name: null }))).toBe(t("requests.subject.ORGANIZATION"));
+});
+
+test("reasonText localizes known request reason codes, maps unknown enums, and keeps free text", () => {
+  expect(reasonText("DATA_ENTRY_ERROR")).toBe(t("requests.reason.DATA_ENTRY_ERROR"));
+  expect(reasonText("SCOPE_ADJUSTMENT")).toBe(t("requests.reason.SCOPE_ADJUSTMENT"));
+  expect(reasonText("NEW_ASSIGNMENT")).toBe(t("requests.reason.NEW_ASSIGNMENT"));
+  expect(reasonText("DUPLICATE_CHECK")).toBe(t("requests.reason.DUPLICATE_CHECK"));
+  expect(reasonText("SHIFT_POLICY")).toBe(t("requests.reason.SHIFT_POLICY"));
+  expect(reasonText("REVIEWED")).toBe(t("requests.reason.REVIEWED"));
+  expect(reasonText("OTHER")).toBe(t("requests.reason.OTHER"));
+  expect(reasonText("FUTURE_UNKNOWN_CODE")).toBe(t("enum.unknown"));
+  expect(reasonText("Verified by HR")).toBe("Verified by HR");
 });
