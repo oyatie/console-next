@@ -152,3 +152,30 @@ impl VictoriaMetrics for Oc1Vm {
         Box::pin(async move { Ok(Vec::new()) })
     }
 }
+
+pub struct VmDigest {
+    pub digest: String,
+    pub ts: f64,
+}
+
+impl VictoriaMetrics for VmDigest {
+    fn query_instant(&self, query: &str) -> SourceFuture<'_, Vec<InstantSample>> {
+        let out = if query == console_ops_application::victoriametrics::QUERY_CONTAINER_INFO {
+            vec![InstantSample {
+                metric: [
+                    ("service".into(), "api".into()),
+                    ("digest".into(), self.digest.clone()),
+                ]
+                .into(),
+                timestamp_s: self.ts,
+                value: 1.0,
+            }]
+        } else {
+            Vec::new()
+        };
+        Box::pin(async move { Ok(out) })
+    }
+    fn targets(&self) -> SourceFuture<'_, Vec<ScrapeTarget>> {
+        Box::pin(async move { Ok(Vec::new()) })
+    }
+}

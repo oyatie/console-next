@@ -80,16 +80,22 @@ pub async fn build_harness(
         dirs.config.join("runbooks/backup.md"),
         "# Backup Recovery\n## Base Backup\nVerify wal-g.\n",
     )?;
-    let digest_dir = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    fs::create_dir_all(dirs.releases.join(digest_dir))?;
+    let hex64 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    let digest_dir = format!("sha256:{hex64}");
+    fs::create_dir_all(dirs.releases.join(&digest_dir))?;
     fs::write(
-        dirs.releases.join(digest_dir).join("gates.json"),
+        dirs.releases.join(&digest_dir).join("gates.json"),
         json!({
-            "schema_version": 1,
-            "sha256": digest_dir,
-            "verdict": "pass",
-            "checked_at": now.format(&Rfc3339)?,
-            "checks": [{"name": "smoke", "verdict": "pass"}]
+            "_type": "https://in-toto.io/Statement/v1",
+            "predicateType": "https://cosskorea.com/attestations/console-gates/v1",
+            "subject": [{"digest": {"sha256": hex64}}],
+            "predicate": {
+                "inputs": {"backend": "1234"},
+                "gates": [{"name": "smoke", "result": "pass"}],
+                "runner": {"kind": "gha", "url": null},
+                "approver": null,
+                "bake": "normal"
+            }
         })
         .to_string(),
     )?;
@@ -103,7 +109,7 @@ pub async fn build_harness(
         now.second()
     );
     fs::write(
-        dirs.state.join("deploy-history"),
+        dirs.state.join("deploy-history.log"),
         format!("{compact} ok from=none to={digest_dir} promoted staging\n"),
     )?;
     let oncall = validate_oncall_json(

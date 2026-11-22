@@ -69,6 +69,8 @@ async fn oncall_jobs_health_changes_promote_recovery_actions_and_runbooks() -> T
     let (st, _, ch) = send_json(&h.app, req_get("/api/ops/v1/changes", &h.operator_jwt)).await?;
     assert_eq!(st, StatusCode::OK, "{ch}");
     assert!(ch["releases"].is_array() && ch["dora5"].is_object());
+    assert!(!ch["releases"].as_array().is_none_or(Vec::is_empty), "{ch}");
+    assert!(ch["dora5"]["n"].as_u64().is_some_and(|n| n >= 1), "{ch}");
     for (path, payload) in [
         (
             "/api/ops/v1/changes/rollback",
@@ -185,9 +187,9 @@ async fn oncall_jobs_health_changes_promote_recovery_actions_and_runbooks() -> T
     .await?;
     assert_eq!(st, StatusCode::NOT_FOUND, "{trav}");
     assert_eq!(trav["code"], "OPS_RUNBOOK_NOT_FOUND");
-    let target = h.dirs.root.join("outside.md");
-    fs::write(&target, "# Secret")?;
-    symlink(&target, h.dirs.config.join("runbooks/link.md"))?;
+    let sym_target = h.dirs.root.join("outside.md");
+    fs::write(&sym_target, "# Secret")?;
+    symlink(&sym_target, h.dirs.config.join("runbooks/link.md"))?;
     let (st, _, sym) = send_json(
         &h.app,
         req_get("/api/ops/v1/runbooks/link.md", &h.operator_jwt),
@@ -195,6 +197,57 @@ async fn oncall_jobs_health_changes_promote_recovery_actions_and_runbooks() -> T
     .await?;
     assert_eq!(st, StatusCode::NOT_FOUND, "{sym}");
     assert_eq!(sym["code"], "OPS_RUNBOOK_NOT_FOUND");
+
+    // Excluded runbook bypass attempts must all return 404 OPS_RUNBOOK_NOT_FOUND even when files exist
+    fs::create_dir_all(h.dirs.config.join("runbooks/docs/patches"))?;
+    fs::write(
+        h.dirs.config.join("runbooks/docs/patches/secret.md"),
+        "# Secret patch",
+    )?;
+    fs::write(
+        h.dirs.config.join("runbooks/docs/ops-backlog.md"),
+        "# Backlog",
+    )?;
+    for path in [
+        "/api/ops/v1/runbooks/docs/./patches/secret.md",
+        "/api/ops/v1/runbooks/docs//patches/secret.md",
+        "/api/ops/v1/runbooks/docs/%2fpatches/secret.md",
+        "/api/ops/v1/runbooks/docs/./ops-backlog.md",
+        "/api/ops/v1/runbooks/docs//ops-backlog.md",
+    ] {
+        let (st, _, err) = send_json(&h.app, req_get(path, &h.operator_jwt)).await?;
+        assert_eq!(st, StatusCode::NOT_FOUND, "{path}: {err}");
+        assert_eq!(err["code"], "OPS_RUNBOOK_NOT_FOUND", "{path}");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn changes_surfaces_vm_digest_as_unknown_when_releases_dir_empty() -> TestResult {
+    use console_ops_rest::router;
+    use std::num::NonZeroU64;
+    use std::sync::Arc;
+
+    let h = build_harness(Some(datetime!(2026-11-23 00:00:00 UTC))).await?;
+    fs::remove_dir_all(&h.dirs.releases)?;
+    fs::create_dir_all(&h.dirs.releases)?;
+    let vm_digest = format!("sha256:{}", "e".repeat(64));
+    let state = h.state.clone().with_victoriametrics(
+        Arc::new(oc1_support::mocks::VmDigest {
+            digest: vm_digest.clone(),
+            ts: h.now.unix_timestamp() as f64,
+        }),
+        "vm-test".into(),
+        NonZeroU64::new(60).ok_or("nonzero")?,
+    );
+    let app = router(state, None);
+    let (st, _, ch) = send_json(&app, req_get("/api/ops/v1/changes", &h.operator_jwt)).await?;
+    assert_eq!(st, StatusCode::OK, "{ch}");
+    let rels = ch["releases"].as_array().ok_or("releases array")?;
+    assert_eq!(rels.len(), 1, "{ch}");
+    assert_eq!(rels[0]["digest"], vm_digest);
+    assert_eq!(rels[0]["state"], "Unknown");
+    assert_eq!(rels[0]["reason"], "gate missing");
     Ok(())
 }
 

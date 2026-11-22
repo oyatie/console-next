@@ -4,10 +4,13 @@ use axum::extract::rejection::PathRejection;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
-use console_ops_application::alert_actions::{AlertAckRecord, AlertAckStore, AlertActionsService};
+use console_ops_application::alert_actions::{
+    AlertAckRecord, AlertAckStore, AlertActionsService, resolve_silence_target_severity,
+};
 use console_ops_application::events::OpsEvent;
 use console_ops_application::obligations::{Context, Error as SpoolError};
 use console_ops_domain::alert_actions::{SilenceCreateInput, validate_silence_create};
+use console_ops_domain::ladders::Severity;
 use serde::Serialize;
 
 use crate::error::OpsApiError;
@@ -59,15 +62,18 @@ pub async fn create_silence(
         parse_json_body(&body, sref.clone(), ROUTE, "OPS_SILENCE_INVALID")?;
 
     let now = (state.clock)();
-    let groups = state.snapshots.read().await.snapshot.alerts.clone();
-    let target_sev = input.group_key.as_deref().and_then(|k| {
-        groups
-            .groups
-            .iter()
-            .find(|g| g.key == k)
-            .and_then(|g| g.severity.value().copied())
-    });
-    validate_silence_create(&input, target_sev, now)
+    validate_silence_create(&input, Some(Severity::Ticket), now)
+        .map_err(|e| from_alert_action_error(e.into(), sref.clone(), ROUTE))?;
+    let (groups, alert_details) = {
+        let guard = state.snapshots.read().await;
+        (
+            guard.snapshot.alerts.clone(),
+            guard.snapshot.alert_details.clone(),
+        )
+    };
+    let target_sev = resolve_silence_target_severity(&input, &groups, Some(&alert_details))
+        .map_err(|e| from_alert_action_error(e.into(), sref.clone(), ROUTE))?;
+    validate_silence_create(&input, Some(target_sev), now)
         .map_err(|e| from_alert_action_error(e.into(), sref.clone(), ROUTE))?;
 
     let silence_store = state.silence_store.as_deref().ok_or_else(|| {
@@ -98,7 +104,7 @@ pub async fn create_silence(
     };
     let ctx = op_context(&op, now, sref.clone());
     let silence_id = svc
-        .create_silence(&input, &groups, &ctx)
+        .create_silence_with_details(&input, &groups, Some(&alert_details), &ctx)
         .await
         .map_err(|e| from_alert_action_error(e, sref, ROUTE))?;
 
@@ -107,6 +113,8 @@ pub async fn create_silence(
         let g = input
             .group_key
             .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
             .and_then(|k| guard.snapshot.alert_details.get(k).cloned());
         (g, guard.snapshot.home.clone())
     };

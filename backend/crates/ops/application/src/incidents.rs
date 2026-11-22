@@ -60,6 +60,13 @@ impl IncidentError {
             Self::Spool(e) => e.code(),
         }
     }
+
+    pub fn reason(&self) -> String {
+        match self {
+            Self::Domain(r) => r.code().to_owned(),
+            Self::Spool(e) => e.reason(),
+        }
+    }
 }
 
 impl From<IncidentRefusal> for IncidentError {

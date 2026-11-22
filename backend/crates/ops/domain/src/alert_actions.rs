@@ -118,8 +118,8 @@ pub fn validate_silence_create(
                 "matcher name and value must be non-empty without control characters".to_owned(),
             ));
         }
-        if name == "alertname" {
-            if value == "Watchdog" {
+        if name.eq_ignore_ascii_case("alertname") {
+            if value.eq_ignore_ascii_case("watchdog") {
                 return Err(SilenceValidationError::WatchdogUnsilenceable);
             }
             has_non_watchdog_alertname = true;

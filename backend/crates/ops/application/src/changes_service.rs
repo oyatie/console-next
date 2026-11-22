@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+use std::collections::BTreeSet;
 use std::num::NonZeroU64;
 
 use console_ops_domain::UtcTimestamp;
@@ -16,8 +17,9 @@ use crate::changes::{
 use crate::obligations::Context;
 use crate::sources_status::SourceSlot;
 use crate::victoriametrics::{
-    QUERY_CONFIG_BUNDLE_INFO, QUERY_CONFIG_LAST_TS, QUERY_DEPLOY_LAST_TS, QUERY_FREEZE,
-    QUERY_ROLLOUT_CANARY_PERCENT, QUERY_ROLLOUT_WEIGHT_PERCENT, VictoriaMetricsSnapshot,
+    QUERY_CONFIG_BUNDLE_INFO, QUERY_CONFIG_LAST_TS, QUERY_CONTAINER_INFO, QUERY_DEPLOY_LAST_TS,
+    QUERY_FREEZE, QUERY_PREVIEW_DIGEST_INFO, QUERY_ROLLOUT_CANARY_PERCENT,
+    QUERY_ROLLOUT_WEIGHT_PERCENT, VictoriaMetricsSnapshot,
 };
 
 pub struct ChangesService<'a> {
@@ -33,7 +35,7 @@ impl<'a> ChangesService<'a> {
         now: OffsetDateTime,
         interval_s: NonZeroU64,
     ) -> ChangesView {
-        let releases = match self.releases.map(|r| r.list_releases()) {
+        let mut releases = match self.releases.map(|r| r.list_releases()) {
             Some(Ok(list)) => list
                 .into_iter()
                 .map(|r| {
@@ -58,6 +60,34 @@ impl<'a> ChangesService<'a> {
             }],
             None => Vec::new(),
         };
+        let mut seen_digests: BTreeSet<String> =
+            releases.iter().map(|r| r.digest.clone()).collect();
+        if let Some(snap) = vm.current.as_ref() {
+            let mut vm_digests = BTreeSet::new();
+            for q in [
+                QUERY_CONTAINER_INFO,
+                QUERY_PREVIEW_DIGEST_INFO,
+                QUERY_CONFIG_BUNDLE_INFO,
+            ] {
+                for s in snap.series.get(q).into_iter().flatten() {
+                    if let Some(d) = s.metric.get("digest").map(|v| v.trim())
+                        && is_valid_sha256_digest(d)
+                    {
+                        vm_digests.insert(d.to_owned());
+                    }
+                }
+            }
+            for digest in vm_digests {
+                if seen_digests.insert(digest.clone()) {
+                    releases.push(ReleaseGateView {
+                        digest,
+                        state: EvidenceState::Unknown,
+                        gates: None,
+                        reason: Some("gate missing".to_owned()),
+                    });
+                }
+            }
+        }
 
         let mut timeline = Vec::new();
         let mut samples = Vec::new();

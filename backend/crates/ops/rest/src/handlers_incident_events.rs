@@ -61,24 +61,37 @@ fn parse_incident_event_body(
         (Some(a), Some(b)) if a == b => a.as_u64(),
         _ => None,
     }
+    .filter(|&seq| seq >= 1)
     .ok_or_else(|| {
         OpsApiError::with_code(
             StatusCode::BAD_REQUEST,
             "OPS_INCIDENT_INVALID",
             support_ref.clone(),
             route,
-            "expected_seq or prev integer is required",
+            "expected_seq or prev integer >= 1 is required",
         )
     })?;
     let event: IncidentEvent = serde_json::from_value(Value::Object(obj)).map_err(|err| {
         OpsApiError::with_code(
             StatusCode::BAD_REQUEST,
             "OPS_INCIDENT_INVALID",
-            support_ref,
+            support_ref.clone(),
             route,
             format!("invalid incident event: {err}"),
         )
     })?;
+    if matches!(
+        event,
+        IncidentEvent::Declared { .. } | IncidentEvent::PublicDrafted { .. }
+    ) {
+        return Err(OpsApiError::with_code(
+            StatusCode::BAD_REQUEST,
+            "OPS_INCIDENT_INVALID",
+            support_ref,
+            route,
+            "event type is not allowed on this endpoint",
+        ));
+    }
     Ok((expected_seq, event))
 }
 

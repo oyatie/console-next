@@ -6,7 +6,7 @@ use console_ops_domain::alert_actions::{
     SilenceCreateInput, SilenceMatcherInput, SilenceValidationError, validate_alert_ack_note,
     validate_silence_create,
 };
-use console_ops_domain::ladders::AlertState;
+use console_ops_domain::ladders::{AlertState, Severity};
 use console_ops_domain::{Observed, UtcTimestamp};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
@@ -14,6 +14,7 @@ use time::{Duration, OffsetDateTime};
 use crate::SourceError;
 use crate::SourceFuture;
 use crate::obligations::{Context, Error as SpoolError};
+pub use crate::silences_eval::resolve_silence_target_severity;
 use crate::snapshot::{AlertGroupDetailView, AlertGroupsView, ChangeView};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -145,14 +146,20 @@ impl<'a> AlertActionsService<'a> {
         groups: &AlertGroupsView,
         context: &Context,
     ) -> Result<String, AlertActionError> {
-        let target_severity = input.group_key.as_deref().and_then(|k| {
-            groups
-                .groups
-                .iter()
-                .find(|g| g.key == k)
-                .and_then(|g| g.severity.value().copied())
-        });
-        let validated = validate_silence_create(input, target_severity, context.at)?;
+        self.create_silence_with_details(input, groups, None, context)
+            .await
+    }
+
+    pub async fn create_silence_with_details(
+        &self,
+        input: &SilenceCreateInput,
+        groups: &AlertGroupsView,
+        details: Option<&BTreeMap<String, AlertGroupDetailView>>,
+        context: &Context,
+    ) -> Result<String, AlertActionError> {
+        validate_silence_create(input, Some(Severity::Ticket), context.at)?;
+        let target_severity = resolve_silence_target_severity(input, groups, details)?;
+        let validated = validate_silence_create(input, Some(target_severity), context.at)?;
 
         // Write silences spool FIRST before mutating Alertmanager.
         self.silence_store.record_event(

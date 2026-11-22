@@ -8,7 +8,7 @@ use console_ops_domain::{roll_up, verdict};
 use time::OffsetDateTime;
 
 use crate::alert_actions::{AlertAckStore, overlay_acks_and_changes};
-use crate::alerts_eval::{evaluate_alerts, group_key};
+use crate::alerts_eval::{collect_known_groups, evaluate_alerts};
 use crate::changes::HostStateStore;
 use crate::home_sections::{build_budgets, build_changing, build_cost, build_data_safety};
 use crate::home_worklist::{SourcesInputs, build_worklist, collect_sources};
@@ -123,7 +123,7 @@ impl CockpitEvaluator {
             self.alertmanager.begin_read(now);
             let ok = match self.ports.alertmanager.read().await {
                 Ok(snap) => {
-                    self.known_groups = snap.alerts.iter().map(group_key).collect();
+                    self.known_groups = collect_known_groups(&snap.alerts);
                     self.alertmanager.finish_ok(snap);
                     true
                 }

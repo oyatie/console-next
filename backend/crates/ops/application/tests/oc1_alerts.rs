@@ -1,120 +1,33 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use std::collections::BTreeMap;
 use std::num::NonZeroU64;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use console_ops_application::alert_actions::{
-    AlertAckRecord, AlertAckStore, AlertActionsService, AlertmanagerSilencePost,
-    AlertmanagerWriter, SilenceAuditRecord, SilenceAuditStore, overlay_acks_and_changes,
+    AlertAckRecord, AlertActionsService, SilenceAuditStore, overlay_acks_and_changes,
 };
 use console_ops_application::alerts_eval::compute_group_key;
 use console_ops_application::domain::Observed;
 use console_ops_application::domain::UtcTimestamp;
 use console_ops_application::domain::alert_actions::{SilenceCreateInput, SilenceMatcherInput};
 use console_ops_application::domain::ladders::{AlertState, Severity};
-use console_ops_application::obligations::{Context, Error as SpoolError, Operator};
+use console_ops_application::obligations::{Context, Operator};
 use console_ops_application::snapshot::{
     AlertGroupDetailView, AlertGroupView, AlertGroupsView, ChangeView, RuleView,
     ValueVsThresholdView,
 };
-use console_ops_application::{SourceError, SourceFuture};
+use console_ops_application::{
+    Alert, AlertState as RawAlertState, AlertStatus, AlertmanagerSnapshot, AlertmanagerStatus,
+    CockpitEvaluator, SourceError, SourcePorts, VersionInfo, VmalertSnapshot,
+};
 use time::{Duration, macros::datetime};
 
+mod eval_support;
+use eval_support::{
+    MemAckStore, MemSilenceStore, MockAm, MockVm, MockVmetrics, MockWriter, block_on, bundle,
+};
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
-
-struct MemAckStore(Mutex<Vec<AlertAckRecord>>);
-impl AlertAckStore for MemAckStore {
-    fn list_acks(&self) -> Result<Vec<AlertAckRecord>, SpoolError> {
-        Ok(self
-            .0
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .clone())
-    }
-    fn record_ack(
-        &self,
-        group_key: &str,
-        alertname: &str,
-        component: &str,
-        note: Option<String>,
-        context: &Context,
-    ) -> Result<AlertAckRecord, SpoolError> {
-        let mut g = self
-            .0
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let rec = AlertAckRecord {
-            seq: g.len() as u64 + 1,
-            hash: "h".into(),
-            support_ref: context.support_ref.clone(),
-            at: UtcTimestamp::new(context.at),
-            operator: context.operator.person.clone(),
-            group_key: group_key.to_owned(),
-            alertname: alertname.to_owned(),
-            component: component.to_owned(),
-            note,
-        };
-        g.push(rec.clone());
-        Ok(rec)
-    }
-}
-
-struct MemSilenceStore(Mutex<Vec<SilenceAuditRecord>>);
-impl SilenceAuditStore for MemSilenceStore {
-    fn list_records(&self) -> Result<Vec<SilenceAuditRecord>, SpoolError> {
-        Ok(self
-            .0
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .clone())
-    }
-    fn record_event(
-        &self,
-        action: &str,
-        silence_id: Option<&str>,
-        group_key: Option<&str>,
-        detail: Option<&str>,
-        context: &Context,
-    ) -> Result<SilenceAuditRecord, SpoolError> {
-        let mut g = self
-            .0
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let rec = SilenceAuditRecord {
-            seq: g.len() as u64 + 1,
-            hash: "h".into(),
-            support_ref: context.support_ref.clone(),
-            at: UtcTimestamp::new(context.at),
-            operator: context.operator.person.clone(),
-            action: action.to_owned(),
-            silence_id: silence_id.map(str::to_owned),
-            group_key: group_key.map(str::to_owned),
-            detail: detail.map(str::to_owned),
-        };
-        g.push(rec.clone());
-        Ok(rec)
-    }
-}
-
-struct MockWriter {
-    fail: bool,
-}
-impl AlertmanagerWriter for MockWriter {
-    fn create_silence(&self, _req: &AlertmanagerSilencePost) -> SourceFuture<'_, String> {
-        let fail = self.fail;
-        Box::pin(async move {
-            if fail {
-                Err(SourceError::Down)
-            } else {
-                Ok("sil-9".into())
-            }
-        })
-    }
-    fn delete_silence(&self, _id: &str) -> SourceFuture<'_, ()> {
-        let fail = self.fail;
-        Box::pin(async move { if fail { Err(SourceError::Down) } else { Ok(()) } })
-    }
-}
 
 #[test]
 fn group_key_matches_console_infra_sha256_and_ack_overlay_sets_lead_and_2h_changes() -> TestResult {
@@ -275,5 +188,65 @@ fn silence_writes_spool_first_and_records_outcome_on_am_failure() -> TestResult 
     assert_eq!(records.len(), 2);
     assert_eq!(records[0].action, "silence_requested");
     assert_eq!(records[1].action, "silence_failed");
+    Ok(())
+}
+
+#[test]
+fn evaluator_tick_retains_colliding_alert_groups_across_alertmanager_outage() -> TestResult {
+    assert_eq!(
+        compute_group_key("Alert12553", "api"),
+        compute_group_key("Alert32335", "api")
+    );
+    let (comp, settings) = bundle()?;
+    let now = datetime!(2026-11-20 00:00 UTC);
+    let mk = |fp: &str, name: &str| Alert {
+        fingerprint: fp.into(),
+        labels: [
+            ("alertname".into(), name.into()),
+            ("severity".into(), "page".into()),
+            ("component".into(), "api".into()),
+        ]
+        .into(),
+        annotations: [("summary".into(), format!("{name} firing"))].into(),
+        starts_at: now - Duration::minutes(5),
+        ends_at: now + Duration::hours(1),
+        status: AlertStatus {
+            state: RawAlertState::Active,
+            silenced_by: vec![],
+            inhibited_by: vec![],
+        },
+    };
+    let am = Arc::new(MockAm(Mutex::new(Ok(AlertmanagerSnapshot {
+        alerts: vec![mk("fp-1", "Alert12553"), mk("fp-2", "Alert32335")],
+        silences: vec![],
+        status: AlertmanagerStatus {
+            version_info: VersionInfo {
+                version: "0.27".into(),
+            },
+            uptime: now,
+        },
+    }))));
+    let vm = Arc::new(MockVm(Mutex::new(Ok(VmalertSnapshot {
+        groups: vec![],
+        alerts: vec![],
+    }))));
+    let vmetrics = Arc::new(MockVmetrics(Mutex::new(Ok(BTreeMap::new()))));
+    let mut eval = CockpitEvaluator::new(
+        SourcePorts {
+            alertmanager: am,
+            vmalert: vm,
+            victoriametrics: vmetrics,
+        },
+        comp,
+        settings,
+        now,
+    );
+    block_on(eval.tick(now));
+    assert_eq!(eval.evaluate(now).alerts.groups.len(), 2);
+
+    let outage_at = now + Duration::seconds(20);
+    eval.inject_source_error_for_test("alertmanager", SourceError::Down, outage_at);
+    let degraded = eval.evaluate(outage_at);
+    assert_eq!(degraded.alerts.groups.len(), 2);
     Ok(())
 }

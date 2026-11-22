@@ -223,6 +223,22 @@ pub fn group_key(alert: &Alert) -> (String, String) {
     (key, ident.0)
 }
 
+pub fn collect_known_groups(alerts: &[Alert]) -> BTreeMap<String, String> {
+    let mut by_identity: BTreeMap<(String, String), ()> = BTreeMap::new();
+    for alert in alerts {
+        by_identity.entry(group_identity(alert)).or_insert(());
+    }
+    let mut known = BTreeMap::new();
+    for (alertname, component) in by_identity.keys() {
+        let mut key = compute_group_key(alertname, component);
+        if known.contains_key(&key) {
+            key = compute_group_key_extended(alertname, component);
+        }
+        known.insert(key, alertname.clone());
+    }
+    known
+}
+
 fn group_identity(alert: &Alert) -> (String, String) {
     let label = |name: &str| alert.labels.get(name).and_then(|v| sanitize_text(v));
     (

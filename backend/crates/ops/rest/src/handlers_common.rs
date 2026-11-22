@@ -11,7 +11,7 @@ use console_ops_application::home_worklist::{
 };
 use console_ops_application::incidents::IncidentSummaryView;
 use console_ops_application::obligations::{Context, Error as SpoolError, Operator};
-use console_ops_application::snapshot::{HomeSnapshotView, RunningView, SourceView};
+use console_ops_application::snapshot::{HomeSnapshotView, RunningView, SourceKind, SourceView};
 use console_ops_domain::bundle::{
     AccessSettings, OpsSettings, ReadLimitsSettings, SourceEndpointSettings, SourceSettings,
 };
@@ -139,30 +139,68 @@ pub(crate) fn enrich_home_snapshot(
     let mut added_extra = false;
     let mut all_sources = base_sources;
 
-    if let Some(inc_store) = &state.incidents
-        && let Ok(list) = inc_store.list()
-    {
-        let opened_at_map: BTreeMap<String, OffsetDateTime> =
-            list.iter().map(|s| (s.id.clone(), *s.opened_at)).collect();
-        let summaries: Vec<IncidentSummaryView> = list
-            .iter()
-            .map(|s| IncidentSummaryView::from_state(s, now))
-            .collect();
-        let inc_items = build_incident_home_worklist(&summaries, &opened_at_map, now, interval_s);
-        if !inc_items.is_empty() {
-            added_extra = true;
-            home.worklist.extend(inc_items);
+    if let Some(inc_store) = &state.incidents {
+        match inc_store.list() {
+            Ok(list) => {
+                let opened_at_map: BTreeMap<String, OffsetDateTime> =
+                    list.iter().map(|s| (s.id.clone(), *s.opened_at)).collect();
+                let summaries: Vec<IncidentSummaryView> = list
+                    .iter()
+                    .map(|s| IncidentSummaryView::from_state(s, now))
+                    .collect();
+                let inc_items =
+                    build_incident_home_worklist(&summaries, &opened_at_map, now, interval_s);
+                if !inc_items.is_empty() {
+                    added_extra = true;
+                    home.worklist.extend(inc_items);
+                }
+            }
+            Err(err) => {
+                added_extra = true;
+                let src = SourceView {
+                    name: "incidents".to_owned(),
+                    kind: SourceKind::Obligations,
+                    producer: "ops-records".to_owned(),
+                    interval: interval_s.get(),
+                    observed_at: None,
+                    age: 0,
+                    state: EvidenceState::Unknown,
+                    reason: Some(err.reason()),
+                };
+                home.evidence.counts.unknown += 1;
+                home.evidence.sources.push(src.clone());
+                all_sources.push(src);
+            }
         }
     }
 
     if state.is_action_allowed(&op.display_email, "read.running", now)
         && let Some(action_store) = &state.actions
-        && let Ok(actions) = action_store.list_actions()
     {
-        let action_items = build_action_home_worklist(&actions, now, interval_s);
-        if !action_items.is_empty() {
-            added_extra = true;
-            home.worklist.extend(action_items);
+        match action_store.list_actions() {
+            Ok(actions) => {
+                let action_items = build_action_home_worklist(&actions, now, interval_s);
+                if !action_items.is_empty() {
+                    added_extra = true;
+                    home.worklist.extend(action_items);
+                }
+            }
+            Err(err) => {
+                added_extra = true;
+                let src = SourceView {
+                    name: "actions".to_owned(),
+                    kind: SourceKind::Obligations,
+                    producer: "ops-records".to_owned(),
+                    interval: interval_s.get(),
+                    observed_at: None,
+                    age: 0,
+                    state: EvidenceState::Unknown,
+                    reason: Some(err.reason()),
+                };
+                home.evidence.counts.unknown += 1;
+                home.evidence.sources.push(src.clone());
+                all_sources.push(src);
+            }
         }
     }
 

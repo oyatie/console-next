@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use std::fs;
 
-use console_ops_adapter_fs::{FsHostStateStore, FsReleasesStore, FsRunbookStore};
+use console_ops_adapter_fs::{FsHostStateStore, FsIncidentStore, FsReleasesStore, FsRunbookStore};
 use console_ops_application::changes::{HostStateStore, ReleasesStore};
+use console_ops_application::domain::UtcTimestamp;
+use console_ops_application::domain::incident::{
+    IncidentEvent, IncidentRefusal, PersonalDataImpact,
+};
+use console_ops_application::domain::ladders::IncidentSeverity;
+use console_ops_application::incidents::{IncidentError, IncidentStore};
+use console_ops_application::obligations::{Context, Operator};
 use console_ops_application::runbooks::{RunbookError, RunbookStore};
+use console_ops_application::time::OffsetDateTime;
 use serde_json::json;
 
 mod support;
@@ -93,6 +101,22 @@ fn fs_runbook_store_enforces_allowlist_anchor_extraction_and_symlink_guards() ->
         store.read_doc("docs/patches/secret.md"),
         Err(RunbookError::InvalidPath)
     );
+    for bypass in [
+        "docs/./patches/secret.md",
+        "docs//patches/secret.md",
+        "docs/%2fpatches/secret.md",
+        "docs/./ops-backlog.md",
+        "docs//ops-backlog.md",
+        "docs/PATCHES/secret.md",
+        "docs/Ops-Backlog.md",
+        "docs/SCRIPT-LEDGER.TSV",
+    ] {
+        assert_eq!(
+            store.read_doc(bypass),
+            Err(RunbookError::InvalidPath),
+            "bypass path {bypass} must be rejected"
+        );
+    }
     assert_eq!(
         store.read_doc("docs/missing.md"),
         Err(RunbookError::NotFound)
@@ -146,6 +170,48 @@ fn fs_host_state_store_parses_history_and_returns_none_when_unmounted() -> TestR
     assert_eq!(
         store.read_completed_requests(),
         Some(vec!["req-1".to_owned(), "req-2".to_owned()])
+    );
+    Ok(())
+}
+
+#[test]
+fn fs_incident_store_mutate_rejects_declared_and_expected_seq_zero() -> TestResult {
+    let tmp = Temp::new();
+    let store = FsIncidentStore::open_resilient(&tmp.0);
+    let now = OffsetDateTime::UNIX_EPOCH;
+    let ctx = Context {
+        at: now,
+        operator: Operator {
+            person: "00000000-0000-4000-8000-000000000001".into(),
+            method: "access-jwt".into(),
+        },
+        support_ref: "sup-1".into(),
+    };
+    let declared = IncidentEvent::Declared {
+        title: "Injected".into(),
+        sev: IncidentSeverity::Sev1,
+        lead: None,
+        affected_components: vec!["api".into()],
+        personal_data_impact: PersonalDataImpact::No,
+        intrusion: false,
+        discovered_at: UtcTimestamp::new(now),
+        next_public_update_at: None,
+        public_incident_id: None,
+    };
+    assert_eq!(
+        store.mutate("INC-0099", 0, declared, &ctx),
+        Err(IncidentError::Domain(IncidentRefusal::Invalid))
+    );
+    assert_eq!(
+        store.mutate(
+            "INC-0001",
+            0,
+            IncidentEvent::NoteAdded {
+                note: "hello".into()
+            },
+            &ctx,
+        ),
+        Err(IncidentError::Domain(IncidentRefusal::Invalid))
     );
     Ok(())
 }

@@ -19,14 +19,11 @@ impl FsRunbookStore {
     }
 
     fn is_excluded_rel(rel: &str) -> bool {
-        rel.starts_with("docs/patches/")
-            || rel == "docs/patches"
-            || rel == "docs/script-ledger.tsv"
-            || rel == "docs/ops-backlog.md"
-            || rel == "patches"
-            || rel.starts_with("patches/")
-            || rel == "script-ledger.tsv"
-            || rel == "ops-backlog.md"
+        rel.split('/').any(|seg| {
+            seg.eq_ignore_ascii_case("patches")
+                || seg.eq_ignore_ascii_case("script-ledger.tsv")
+                || seg.eq_ignore_ascii_case("ops-backlog.md")
+        })
     }
 
     fn is_allowed_rel(rel: &str) -> bool {
@@ -40,18 +37,28 @@ impl FsRunbookStore {
         if rel.is_empty()
             || rel.starts_with('/')
             || rel.contains('\\')
+            || rel.contains('%')
+            || rel.contains("..")
             || rel.chars().any(char::is_control)
+            || rel
+                .split('/')
+                .any(|s| s.is_empty() || s == "." || s == "..")
         {
             return Err(RunbookError::InvalidPath);
         }
         let rel_path = Path::new(rel);
+        let mut normalized_segs = Vec::new();
         for comp in rel_path.components() {
             match comp {
-                Component::Normal(_) => {}
+                Component::Normal(seg) => {
+                    let s = seg.to_str().ok_or(RunbookError::InvalidPath)?;
+                    normalized_segs.push(s);
+                }
                 _ => return Err(RunbookError::InvalidPath),
             }
         }
-        if !Self::is_allowed_rel(rel) {
+        let normalized = normalized_segs.join("/");
+        if Self::is_excluded_rel(&normalized) || !Self::is_allowed_rel(&normalized) {
             return Err(RunbookError::InvalidPath);
         }
         let root_meta = fs::symlink_metadata(&self.root).map_err(|_| RunbookError::NotFound)?;

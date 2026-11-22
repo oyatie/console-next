@@ -161,6 +161,9 @@ impl IncidentStore for FsIncidentStore {
         event: IncidentEvent,
         context: &Context,
     ) -> Result<IncidentState, IncidentError> {
+        if expected_seq == 0 || matches!(event, IncidentEvent::Declared { .. }) {
+            return Err(IncidentError::Domain(IncidentRefusal::Invalid));
+        }
         self.spool
             .append(&context.support_ref, |records| {
                 let items = replay(records)?;

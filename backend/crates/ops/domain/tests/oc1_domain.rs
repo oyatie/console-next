@@ -187,6 +187,14 @@ fn silence_and_ack_validation_enforces_exact_matchers_watchdog_and_ttl() -> Test
         validate_silence_create(&watchdog, Some(Severity::Page), now),
         Err(SilenceValidationError::WatchdogUnsilenceable)
     );
+    for case_val in ["watchdog", "WATCHDOG"] {
+        let mut wd_case = ok_input.clone();
+        wd_case.matchers[0].value = case_val.into();
+        assert_eq!(
+            validate_silence_create(&wd_case, Some(Severity::Page), now),
+            Err(SilenceValidationError::WatchdogUnsilenceable)
+        );
+    }
 
     let mut no_alertname = ok_input.clone();
     no_alertname.matchers.remove(0);

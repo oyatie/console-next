@@ -20,7 +20,9 @@ use console_ops_application::promote::{
 };
 use console_ops_application::snapshot::SourceKind;
 use console_ops_application::sources_status::SourceSlot;
-use console_ops_application::victoriametrics::VictoriaMetricsSnapshot;
+use console_ops_application::victoriametrics::{
+    InstantSample, QUERY_CONTAINER_INFO, VictoriaMetricsSnapshot,
+};
 use time::macros::datetime;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -143,21 +145,12 @@ impl PromotionStore for DummyPromotions {
     }
     fn record_signoff(
         &self,
-        digest: &str,
-        verdict: &str,
-        note: &str,
-        context: &Context,
+        _digest: &str,
+        _verdict: &str,
+        _note: &str,
+        _context: &Context,
     ) -> Result<PromotionSignoff, SpoolError> {
-        Ok(PromotionSignoff {
-            seq: 1,
-            hash: "h".into(),
-            support_ref: context.support_ref.clone(),
-            at: UtcTimestamp::new(context.at),
-            operator: context.operator.person.clone(),
-            digest: digest.into(),
-            verdict: verdict.into(),
-            note: note.into(),
-        })
+        Err(SpoolError::WriteFailed)
     }
 }
 
@@ -168,25 +161,14 @@ impl FeedbackStore for DummyFeedback {
     }
     fn record_triage(
         &self,
-        feedback_id: &str,
-        digest: &str,
-        severity: &str,
-        disposition: &str,
-        note: &str,
-        context: &Context,
+        _feedback_id: &str,
+        _digest: &str,
+        _severity: &str,
+        _disposition: &str,
+        _note: &str,
+        _context: &Context,
     ) -> Result<FeedbackTriage, SpoolError> {
-        Ok(FeedbackTriage {
-            seq: 1,
-            hash: "h".into(),
-            support_ref: context.support_ref.clone(),
-            at: UtcTimestamp::new(context.at),
-            operator: context.operator.person.clone(),
-            feedback_id: feedback_id.into(),
-            digest: digest.into(),
-            severity: severity.into(),
-            disposition: disposition.into(),
-            note: note.into(),
-        })
+        Err(SpoolError::WriteFailed)
     }
 }
 
@@ -283,5 +265,31 @@ fn incidents_changes_and_promote_services_produce_expected_views_and_cmds() -> T
         actions: &actions,
     };
     assert!(promote_svc.request_promote(&digest, "normal", &ctx).is_ok());
+
+    let running_digest = format!("sha256:{}", "d".repeat(64));
+    vm_slot.begin_read(now);
+    vm_slot.finish_ok(VictoriaMetricsSnapshot {
+        series: BTreeMap::from([(
+            QUERY_CONTAINER_INFO.to_owned(),
+            vec![InstantSample {
+                metric: [
+                    ("service".into(), "api".into()),
+                    ("digest".into(), running_digest.clone()),
+                ]
+                .into(),
+                timestamp_s: now.unix_timestamp() as f64,
+                value: 1.0,
+            }],
+        )]),
+        targets: vec![],
+    });
+    let with_vm_digest = changes_svc.build_view(&vm_slot, now, interval);
+    assert_eq!(with_vm_digest.releases.len(), 1);
+    assert_eq!(with_vm_digest.releases[0].digest, running_digest);
+    assert_eq!(with_vm_digest.releases[0].state, EvidenceState::Unknown);
+    assert_eq!(
+        with_vm_digest.releases[0].reason.as_deref(),
+        Some("gate missing")
+    );
     Ok(())
 }
