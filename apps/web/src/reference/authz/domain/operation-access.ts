@@ -3,6 +3,9 @@
 import type { Requirement } from "./access";
 
 export const operationAccess = {
+  "GET /api/audit": {"domain":"audit","level":"view"},
+  "GET /api/v1/access/access-log": {"domain":"audit","level":"view","tenant":true,"scopes":["TENANT"]},
+  "GET /api/v1/access/access-log/reviews/{period}": {"domain":"audit","level":"view","tenant":true,"scopes":["TENANT"]},
   "GET /api/v1/access/accounts/{accountId}/effective": {"domain":"access","level":"view"},
   "GET /api/v1/access/grants": {"domain":"access","level":"view"},
   "POST /api/v1/access/grants/preview": {"domain":"access","level":"edit"},

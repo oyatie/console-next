@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "audit:view", "scope": "tenant"}
 tags: [access]
 operationId: getAccessLogReview
 summary: Read the monthly tenant access-log review state without exposing frozen chunks
