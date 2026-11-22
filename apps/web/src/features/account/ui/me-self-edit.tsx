@@ -1,184 +1,230 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import type { UseQueryResult } from "@tanstack/react-query";
+import { Clock } from "lucide-react";
 import { t } from "@console/i18n";
-import { useCommand } from "../../../lib/react/command";
-import { CommandError } from "../../../lib/react/command-error";
-import { Button, Form } from "../../../ui/button/button";
+import { QueryState } from "../../../lib/react/query-state";
+import { ReadReference } from "../../../lib/react/read-reference";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
-import { Dialog } from "../../../ui/dialog";
-import { Field, TextInput } from "../../../ui/field/field";
-import { updatePhone, type ChangeRequest, type Me } from "../api";
+import { EmptyState } from "../../../ui/empty-state";
+import type { MeProfile } from "../api";
+import { formatRevealedValue, openRequestForField } from "../domain/profile";
+import { AddressChangeButton } from "./me-address-sheet";
+import { BankAccountAttestationButton } from "./me-bank-sheet";
+import { EmergencyContactsButton } from "./me-emergency-sheet";
+import { PhoneEditButton } from "./me-phone-sheet";
+import { SelfRevealControls, SelfRevealError } from "./me-self-reveal";
+import { useSelfReveal } from "./use-self-reveal";
 import s from "./account.module.css";
 
-function correctionEntries(payload: Record<string, unknown> | undefined) {
-  const changes = payload?.changes;
-  if (!changes || typeof changes !== "object" || Array.isArray(changes)) return [];
-  return Object.entries(changes as Record<string, unknown>);
-}
-
-function correctionFieldLabel(key: string): string {
-  switch (key) {
-    case "address":
-      return t("empCard.f.address");
-    case "phone":
-      return t("empCard.f.phone");
-    case "emergency_contacts":
-    case "emergency_contact":
-      return t("empCard.f.emergency");
-    case "bank_account":
-    case "bank_account_registered":
-      return t("account.accessLog.field.BANK_ACCOUNT");
-    default:
-      return t("account.selfEdit.correctionLabel");
-  }
-}
-
-function PhoneEditButton({ current }: { current: string | null }) {
-  const [open, setOpen] = useState(false);
-  const [phone, setPhone] = useState(current ?? "");
-  const save = useCommand({
-    run: (next: string | null) => updatePhone(next, current),
-    invalidates: ["/api/v1/users/me"],
-    onSuccess: () => setOpen(false),
-    announce: () => t("account.selfEdit.phoneSaved"),
+export function SelfEditableBody({
+  employeeId,
+  profileQuery,
+}: {
+  employeeId: string;
+  profileQuery: UseQueryResult<MeProfile>;
+}) {
+  const relationLabel = (rel: string) => t(`empCard.relation.${rel}` as Parameters<typeof t>[0]);
+  const phoneReveal = useSelfReveal({
+    employeeId,
+    field: "PHONE",
+    fieldLabel: t("account.selfEdit.phone"),
+  });
+  const emergencyReveal = useSelfReveal({
+    employeeId,
+    field: "EMERGENCY_CONTACTS",
+    fieldLabel: t("account.selfEdit.emergency"),
+  });
+  const addressReveal = useSelfReveal({
+    employeeId,
+    field: "ADDRESS",
+    fieldLabel: t("account.selfEdit.address"),
   });
 
-  const close = () => {
-    if (save.isSending) return;
-    setOpen(false);
-    save.reset();
-  };
-
   return (
-    <>
-      <Button
-        size="sm"
-        variant="secondary"
-        className={s.actionBtn}
-        onClick={() => {
-          save.reset();
-          setPhone(current ?? "");
-          setOpen(true);
-        }}
-      >
-        {t("account.selfEdit.phoneEdit")}
-      </Button>
-      <Dialog open={open} title={t("account.selfEdit.phoneEditTitle")} onClose={close}>
-        <Form
-          aria-busy={save.isSending}
-          onSubmit={() => {
-            if (save.isPending) return;
-            const trimmed = phone.trim();
-            if (trimmed === (current ?? "").trim()) {
-              setOpen(false);
-              return;
-            }
-            save.mutate(trimmed || null);
-          }}
-        >
-          <Field label={t("account.selfEdit.phone")} required={false}>
-            {props => (
-              <TextInput
-                {...props}
-                type="tel"
-                value={phone}
-                placeholder={t("account.selfEdit.phoneFormatHint")}
-                onChange={e => setPhone(e.target.value)}
-              />
-            )}
-          </Field>
-          <CommandError error={save.error} />
-          <div className="form__actions">
-            {current && (
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={save.isPending}
-                onClick={() => save.mutate(null)}
-              >
-                {t("account.selfEdit.clearPhone")}
-              </Button>
-            )}
-            <Button type="button" disabled={save.isSending} onClick={close}>
-              {t("composer.dismiss")}
-            </Button>
-            <Button type="submit" variant="primary" disabled={save.isPending}>
-              {t("account.selfEdit.phoneEdit")}
-            </Button>
-          </div>
-        </Form>
-      </Dialog>
-    </>
-  );
-}
-
-export function SelfEditableBody({
-  me,
-  changeRequests,
-}: {
-  me: Me;
-  changeRequests?: readonly ChangeRequest[];
-}) {
-  const openCorrections = (changeRequests ?? []).filter(
-    item => item.kind === "PROFILE_CORRECTION" && item.status === "OPEN",
-  );
-
-  return (
-    <ul className="list-divided list-divided--rows" aria-label={t("account.selfEdit.title")}>
-      <li className={s.editRow}>
-        <div className={s.editRowBody}>
-          <div className={s.fieldChips}>
-            <strong className="t-strong">{t("account.selfEdit.phone")}</strong>
-            <Chip tone="outline" className={s.actionBtn}>
-              {t("account.selfEdit.policy.instant")}
-            </Chip>
-          </div>
-          <div className={me.phone ? "num" : "muted"}>
-            {me.phone ?? t("person.field.notSet")}
-          </div>
-        </div>
-        <div className={s.editRowActions}>
-          <PhoneEditButton current={me.phone} />
-        </div>
-      </li>
-      {openCorrections.map(req => {
-        const entries = correctionEntries(req.payload);
-        const primary = entries[0];
-        const fieldLabel = primary ? correctionFieldLabel(primary[0]) : t("account.selfEdit.correctionLabel");
-        const valueText =
-          primary && typeof primary[1] === "string" && primary[1].trim()
-            ? primary[1].trim()
-            : null;
+    <QueryState
+      q={profileQuery}
+      compact
+      denied={
+        <EmptyState
+          compact
+          title={t("account.selfEdit.refused.title")}
+          reason={t("account.selfEdit.refused")}
+          meta={<ReadReference error={profileQuery.error} />}
+        />
+      }
+    >
+      {(profile) => {
+        const openAddress = openRequestForField(profile.open_change_requests, "address");
+        const openBank = openRequestForField(profile.open_change_requests, "bank_account_registered");
         return (
-          <li key={req.id} className={s.editRow}>
-            <div className={s.editRowBody}>
-              <div className={s.fieldChips}>
-                <strong className="t-strong">{fieldLabel}</strong>
-                <Chip tone="outline" className={s.actionBtn}>
-                  {t("account.selfEdit.policy.approval")}
-                </Chip>
+          <ul className="list-divided list-divided--rows" aria-label={t("account.selfEdit.title")}>
+            <li className={s.editRow}>
+              <div className={s.editRowBody}>
+                <div className={s.fieldChips}>
+                  <strong className="t-strong">{t("account.selfEdit.phone")}</strong>
+                  <Chip tone="outline" className={s.actionBtn}>
+                    {t("account.selfEdit.policy.instant")}
+                  </Chip>
+                </div>
+                {phoneReveal.isRevealed ? (
+                  <code className="num">
+                    {formatRevealedValue("PHONE", phoneReveal.revealedValue, relationLabel)}
+                  </code>
+                ) : (
+                  <div className={profile.phone_masked ? "num" : "muted"}>
+                    {profile.phone_masked ?? t("person.field.notSet")}
+                  </div>
+                )}
+                <SelfRevealError error={phoneReveal.error} />
               </div>
-              <div className={s.fieldChips}>
-                {valueText && <div>{valueText}</div>}
-                <Chip tone="warn" className={s.actionBtn}>
-                  {t("account.selfEdit.correctionPending")}
-                </Chip>
+              <div className={s.editRowActions}>
+                <SelfRevealControls
+                  scope={phoneReveal.scope}
+                  fieldLabel={t("account.selfEdit.phone")}
+                  hasValue={Boolean(profile.phone_masked)}
+                  isRevealed={phoneReveal.isRevealed}
+                  seconds={phoneReveal.seconds}
+                  isPending={phoneReveal.isPending}
+                  onTrigger={phoneReveal.trigger}
+                  onHide={phoneReveal.hide}
+                  onKeyDown={phoneReveal.onKeyDown}
+                />
+                <PhoneEditButton currentMasked={profile.phone_masked ?? null} />
               </div>
-            </div>
-            <div className={s.editRowActions}>
-              <Link
-                to="/people/requests"
-                search={{ lane: "me", status: "OPEN", sel: req.id }}
-                className={buttonClass("secondary", { size: "sm", className: s.actionBtn })}
-              >
-                {t("account.selfEdit.viewProgress")}
-              </Link>
-            </div>
-          </li>
+            </li>
+
+            <li className={s.editRow}>
+              <div className={s.editRowBody}>
+                <div className={s.fieldChips}>
+                  <strong className="t-strong">{t("account.selfEdit.emergency")}</strong>
+                  <Chip tone="outline" className={s.actionBtn}>
+                    {t("account.selfEdit.policy.instant")}
+                  </Chip>
+                </div>
+                {emergencyReveal.isRevealed ? (
+                  <div className="t-sm">
+                    {formatRevealedValue("EMERGENCY_CONTACTS", emergencyReveal.revealedValue, relationLabel)}
+                  </div>
+                ) : (
+                  <div className={profile.emergency_contacts_registered ? "t-strong" : "muted"}>
+                    {profile.emergency_contacts_registered
+                      ? t("account.selfEdit.registered")
+                      : t("account.selfEdit.unregistered")}
+                  </div>
+                )}
+                <SelfRevealError error={emergencyReveal.error} />
+              </div>
+              <div className={s.editRowActions}>
+                <SelfRevealControls
+                  scope={emergencyReveal.scope}
+                  fieldLabel={t("account.selfEdit.emergency")}
+                  hasValue={profile.emergency_contacts_registered}
+                  isRevealed={emergencyReveal.isRevealed}
+                  seconds={emergencyReveal.seconds}
+                  isPending={emergencyReveal.isPending}
+                  onTrigger={emergencyReveal.trigger}
+                  onHide={emergencyReveal.hide}
+                  onKeyDown={emergencyReveal.onKeyDown}
+                />
+                <EmergencyContactsButton
+                  employeeId={employeeId}
+                  existing={profile.emergency_contacts}
+                />
+              </div>
+            </li>
+
+            <li className={s.editRow}>
+              <div className={s.editRowBody}>
+                <div className={s.fieldChips}>
+                  <strong className="t-strong">{t("account.selfEdit.address")}</strong>
+                  <Chip tone="outline" className={s.actionBtn}>
+                    {t("account.selfEdit.policy.approval")}
+                  </Chip>
+                </div>
+                {addressReveal.isRevealed ? (
+                  <div className="t-sm">
+                    {formatRevealedValue("ADDRESS", addressReveal.revealedValue, relationLabel)}
+                  </div>
+                ) : (
+                  <div className={profile.address_masked ? "" : "muted"}>
+                    {profile.address_masked ?? t("account.selfEdit.unregistered")}
+                  </div>
+                )}
+                {openAddress && (
+                  <div className={s.fieldChips}>
+                    <Chip tone="warn" className={s.actionBtn}>
+                      <Clock size={12} aria-hidden="true" /> {t("account.selfEdit.correctionPending")}
+                    </Chip>
+                  </div>
+                )}
+                <SelfRevealError error={addressReveal.error} />
+              </div>
+              <div className={s.editRowActions}>
+                <SelfRevealControls
+                  scope={addressReveal.scope}
+                  fieldLabel={t("account.selfEdit.address")}
+                  hasValue={Boolean(profile.address_masked)}
+                  isRevealed={addressReveal.isRevealed}
+                  seconds={addressReveal.seconds}
+                  isPending={addressReveal.isPending}
+                  onTrigger={addressReveal.trigger}
+                  onHide={addressReveal.hide}
+                  onKeyDown={addressReveal.onKeyDown}
+                />
+                {openAddress ? (
+                  <Link
+                    to="/people/requests"
+                    search={{ lane: "me", status: "OPEN", sel: openAddress.id }}
+                    className={buttonClass("secondary", { size: "sm", className: s.actionBtn })}
+                  >
+                    {t("account.selfEdit.viewProgress")}
+                  </Link>
+                ) : (
+                  <AddressChangeButton />
+                )}
+              </div>
+            </li>
+
+            <li className={s.editRow}>
+              <div className={s.editRowBody}>
+                <div className={s.fieldChips}>
+                  <strong className="t-strong">{t("account.selfEdit.bankAccount")}</strong>
+                  <Chip tone="outline" className={s.actionBtn}>
+                    {t("account.selfEdit.policy.approval")}
+                  </Chip>
+                </div>
+                <div className={profile.bank_account_registered ? "t-strong" : "muted"}>
+                  {profile.bank_account_registered
+                    ? t("account.selfEdit.registered")
+                    : t("account.selfEdit.unregistered")}
+                </div>
+                {openBank && (
+                  <div className={s.fieldChips}>
+                    <Chip tone="warn" className={s.actionBtn}>
+                      <Clock size={12} aria-hidden="true" /> {t("account.selfEdit.correctionPending")}
+                    </Chip>
+                  </div>
+                )}
+              </div>
+              <div className={s.editRowActions}>
+                {openBank ? (
+                  <Link
+                    to="/people/requests"
+                    search={{ lane: "me", status: "OPEN", sel: openBank.id }}
+                    className={buttonClass("secondary", { size: "sm", className: s.actionBtn })}
+                  >
+                    {t("account.selfEdit.viewProgress")}
+                  </Link>
+                ) : (
+                  <BankAccountAttestationButton currentRegistered={profile.bank_account_registered} />
+                )}
+              </div>
+            </li>
+          </ul>
         );
-      })}
-    </ul>
+      }}
+    </QueryState>
   );
 }

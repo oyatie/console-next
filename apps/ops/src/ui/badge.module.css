@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  min-height: var(--chip-h);
+  padding: 0 var(--space-1-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ok {
+  background: var(--ok-bg);
+  border-color: var(--ok-bd);
+  color: var(--ok-tx);
+}
+
+.warn {
+  background: var(--warn-bg);
+  border-color: var(--warn-bd);
+  color: var(--warn-tx);
+}
+
+.danger {
+  background: var(--danger-bg);
+  border-color: var(--danger-bd);
+  color: var(--danger-tx);
+}
+
+.info {
+  background: var(--info-bg);
+  border-color: var(--info-bd);
+  color: var(--info-tx);
+}
+
+.outline {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+
+.neutral {
+  background: var(--muted);
+  border-color: var(--border);
+  color: var(--steel);
+}
+
+.unknown {
+  background: var(--surface-2);
+  border-style: dashed;
+  border-color: var(--control-border);
+  color: var(--ink);
+}

@@ -232,6 +232,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
     </>
   ) };
   const hasUnscheduled = rows.some((r) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE"));
+  const hasPosition = rows.some((r) => Boolean(r.position));
   const hasUnit = rows.some((r) => Boolean(r.unit_name));
   const scheduleLead = {
     key: "schedule", header: t("attendanceRecords.day.plan"), width: "name" as const,
@@ -239,9 +240,10 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
       {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
     </> : null,
   };
+  const positionLead = { key: "position", header: t("attendance.monthConsole.grid.position"), width: "name" as const, hideOnPhone: true, cell: (r: GridRow) => r.position ?? "–" };
   const unitLead = { key: "unit", header: t("attendance.monthConsole.grid.unit"), width: "name" as const, hideOnPhone: true, cell: (r: GridRow) => r.unit_name ?? "–" };
   const leadColumns = consoleOrder
-    ? [nameLead, codeLead, ...(hasUnscheduled ? [scheduleLead] : hasUnit ? [unitLead] : [])]
+    ? [nameLead, codeLead, ...(hasUnscheduled ? [scheduleLead] : hasPosition ? [positionLead] : hasUnit ? [unitLead] : [])]
     : [codeLead, nameLead, ...(hasUnscheduled ? [scheduleLead] : [])];
 
   return (

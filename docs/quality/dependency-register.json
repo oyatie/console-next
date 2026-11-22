@@ -50130,6 +50130,11 @@
       "direct": true,
       "uses": [
         {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
+        {
           "file": "apps/web/package.json",
           "user": "@console/web",
           "layer": "web: UI"
@@ -50633,6 +50638,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -50666,6 +50672,11 @@
       "name": "@tanstack/react-router",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -51111,6 +51122,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -51537,6 +51549,11 @@
       "direct": true,
       "uses": [
         {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "test"
+        },
+        {
           "file": "apps/web/package.json",
           "user": "@console/web",
           "layer": "test"
@@ -51585,6 +51602,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -51804,6 +51822,11 @@
       "name": "lucide-react",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -52089,6 +52112,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -52678,6 +52702,11 @@
       "name": "react",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -53850,6 +53879,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -53878,6 +53908,7 @@
       "securityProcess": "https://github.com/facebook/react/security/policy",
       "ruleMapping": "Preserve listed call-site contracts, error handling, wire formats and target/features.",
       "approvedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "architectureRecord": "docs/architecture/frontend-module-map.md",
@@ -53911,6 +53942,10 @@
       "approvedUses": [
         {
           "layer": "web: UI",
+          "user": "@console/ops"
+        },
+        {
+          "layer": "web: UI",
           "user": "@console/web"
         }
       ],
@@ -53929,6 +53964,11 @@
       "name": "react-aria-components",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -54021,6 +54061,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -54054,6 +54095,11 @@
       "name": "react-dom",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -54404,6 +54450,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -54434,10 +54481,15 @@
       "approvedUses": [
         {
           "layer": "web: UI",
+          "user": "@console/ops"
+        },
+        {
+          "layer": "web: UI",
           "user": "@console/web"
         }
       ],
       "approvedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "architectureRecord": "docs/architecture/frontend-module-map.md",
@@ -55273,6 +55325,11 @@
       "direct": true,
       "uses": [
         {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "test"
+        },
+        {
           "file": "apps/web/package.json",
           "user": "@console/web",
           "layer": "test"
@@ -56001,6 +56058,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
