@@ -30,6 +30,10 @@ ignore = [
   # no fixed release. It is the date and time type across the backend, so
   # replacing it is its own change.
   "RUSTSEC-2026-0543", # expires 2027-01-16: chrono is unmaintained, not vulnerable; it is the backend's date and time library, and moving off it is a separate change
+  # chrono-tz: unmaintained (not a vulnerability); the advisory names no flaw
+  # and no fixed release. Confined to the optional workflow_schedules cron
+  # boundary alongside chrono (RUSTSEC-2026-0543), so replacing both is its own change.
+  "RUSTSEC-2026-0555", # expires 2027-01-16: chrono-tz is unmaintained, not vulnerable; confined to non-MVP workflow_schedules cron boundary alongside chrono (RUSTSEC-2026-0543), no fixed release
 ]
 
 [licenses]
