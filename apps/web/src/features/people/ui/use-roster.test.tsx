@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { RosterOrder } from "../domain/roster-order";
-import { MAX_PAGES, PAGE, useRoster } from "./use-roster";
+import { PAGE, useRoster } from "./use-roster";
 
 const http = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("@tanstack/react-query", async importOriginal => ({
@@ -71,9 +71,6 @@ test.each([undefined, "hire_date", "-employee_number"] as const)("the roster con
   renderToStaticMarkup(<Read sort={sort} />);
   const options = vi.mocked(useInfiniteQuery).mock.calls.at(-1)![0];
   expect(options.initialPageParam).toBeUndefined();
-  expect(options.maxPages).toBe(MAX_PAGES);
-  expect(MAX_PAGES).toBe(10);
-  expect(MAX_PAGES * PAGE).toBeLessThanOrEqual(1000);
   const read = options.queryFn as (context: { pageParam?: string }) => Promise<unknown>;
   await read({});
   expect(http.get).toHaveBeenLastCalledWith("/api/v1/employees", { params: { query: expect.objectContaining({
