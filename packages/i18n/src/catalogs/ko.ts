@@ -6,6 +6,7 @@ import { koPeriodUnlockRefusals } from "./ko/period_unlock";
 import { koLeave } from "./ko/leave";
 import { koOrgChangeRefusals } from "./ko/org_change";
 import { koPayroll } from "./ko/payroll";
+import { koPayslip } from "./ko/payslip";
 import { koUiShiftBar } from "./ko/ui-shift-bar";
 import { koNts } from "./ko/nts";
 import { koSupport } from "./ko/support";
@@ -262,7 +263,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koEmpDoc,
   ...koPeopleJump,
   ...koOpsRecovery,
-  ...koNts, ...koPayroll,
+  ...koNts, ...koPayroll, ...koPayslip,
   ...koCommon,
   ...koSupport,
   ...koSupportAccess,

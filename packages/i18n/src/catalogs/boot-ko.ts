@@ -44,6 +44,7 @@ export const bootKo: Record<BootMessageId, string> = {
   "shell.link.home": "홈",
   "shell.link.leave": "휴가",
   "shell.title.leave": "휴가 신청",
+  "shell.title.payslip": "급여명세서",
   "shell.link.certificates": "증명서",
   "shell.link.profile": "내 정보",
   "shell.link.approvals": "결재함",

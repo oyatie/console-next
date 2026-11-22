@@ -82,6 +82,7 @@
       "src/features/org/OrgChange.tsx",
       "src/features/payroll/ui/run-page.tsx",
       "src/features/payroll/ui/employee-pay-page.tsx",
+      "src/features/payslip/ui/payslip-page.tsx",
       "src/features/people/ui/card-page.tsx",
       "src/features/people/ui/card-print.tsx",
       "src/features/people/ui/certificate-page.tsx",

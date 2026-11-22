@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { ReactNode } from "react";
-import { Briefcase, CalendarDays, Clock, Settings } from "lucide-react";
+import { Banknote, Briefcase, CalendarDays, Clock, Settings } from "lucide-react";
 import { t } from "@console/i18n";
 import { activeLink, type NavLink } from "../nav";
 
@@ -22,6 +22,7 @@ export function tabIconForHref(href: string, allLinks: readonly NavLink[]): Reac
   const cut = href.search(/[?#]/);
   const path = (cut === -1 ? href : href.slice(0, cut)) || "/";
   if (path === "/leave") return <CalendarDays size={14} aria-hidden="true" />;
+  if (path === "/payslips") return <Banknote size={14} aria-hidden="true" />;
   if (path === "/me/attendance") return <Clock size={14} aria-hidden="true" />;
   if (path === "/me/desk") return <Briefcase size={14} aria-hidden="true" />;
   if (path === "/account" || path.startsWith("/account/")) return <Settings size={14} aria-hidden="true" />;
@@ -39,6 +40,7 @@ export function consolePathTitle(
   platform: boolean,
 ): string {
   if (pathname === "/leave") return t("leave.title");
+  if (pathname === "/payslips") return t("shell.title.payslip");
   if (pathname === "/me/attendance") return t("shell.link.meAttendance");
   if (pathname === "/me/desk") return t("shell.link.meDesk");
   if (pathname === "/account" || pathname.startsWith("/account/")) return t("shell.profile");

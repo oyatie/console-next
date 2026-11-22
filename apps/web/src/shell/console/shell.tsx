@@ -133,8 +133,8 @@ function ConsoleLayout({
     .filter(Boolean)
     .join(" ");
   const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
-  const phoneActiveId = pathname === "/leave"
-    ? "/leave"
+  const phoneActiveId = pathname === "/leave" || pathname === "/payslips"
+    ? pathname
     : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
       ? "/account"
       : currentModuleTo;

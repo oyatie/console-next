@@ -98,5 +98,61 @@
     "registry": "https://registry.npmjs.org/vite/8.3.5",
     "checked": "2026-10-26",
     "note": "docs/quality/dependencies/vite.md"
+  },
+  "apps/ops/package.json:dependencies:react": {
+    "requirement": "^19.3.0",
+    "version": "19.3.1",
+    "registry": "https://registry.npmjs.org/react/19.3.1",
+    "checked": "2026-11-22",
+    "note": "docs/quality/dependencies/apps-ops-workspace.md"
+  },
+  "apps/ops/package.json:dependencies:react-dom": {
+    "requirement": "^19.3.0",
+    "version": "19.3.1",
+    "registry": "https://registry.npmjs.org/react-dom/19.3.1",
+    "checked": "2026-11-22",
+    "note": "docs/quality/dependencies/apps-ops-workspace.md"
+  },
+  "apps/ops/package.json:dependencies:@tanstack/react-router": {
+    "requirement": "^1.170.40",
+    "version": "1.170.46",
+    "registry": "https://registry.npmjs.org/%40tanstack%2Freact-router/1.170.46",
+    "checked": "2026-11-22",
+    "note": "docs/quality/dependencies/apps-ops-workspace.md"
+  },
+  "apps/ops/package.json:dependencies:@tanstack/react-query": {
+    "requirement": "^5.105.1",
+    "version": "5.105.1",
+    "registry": "https://registry.npmjs.org/%40tanstack%2Freact-query/5.105.1",
+    "checked": "2026-11-22",
+    "note": "docs/quality/dependencies/apps-ops-workspace.md"
+  },
+  "apps/ops/package.json:dependencies:react-aria-components": {
+    "requirement": "^1.21.1",
+    "version": "1.22.1",
+    "registry": "https://registry.npmjs.org/react-aria-components/1.22.1",
+    "checked": "2026-11-22",
+    "note": "docs/quality/dependencies/apps-ops-workspace.md"
+  },
+  "apps/ops/package.json:dependencies:lucide-react": {
+    "requirement": "^1.72.0",
+    "version": "1.72.0",
+    "registry": "https://registry.npmjs.org/lucide-react/1.72.0",
+    "checked": "2026-11-22",
+    "note": "docs/quality/dependencies/apps-ops-workspace.md"
+  },
+  "apps/ops/package.json:devDependencies:vite": {
+    "requirement": "^8.3.8",
+    "version": "8.3.8",
+    "registry": "https://registry.npmjs.org/vite/8.3.8",
+    "checked": "2026-11-22",
+    "note": "docs/quality/dependencies/apps-ops-workspace.md"
+  },
+  "apps/ops/package.json:devDependencies:@vitejs/plugin-react": {
+    "requirement": "^6.3.0",
+    "version": "6.3.0",
+    "registry": "https://registry.npmjs.org/%40vitejs%2Fplugin-react/6.3.0",
+    "checked": "2026-11-22",
+    "note": "docs/quality/dependencies/apps-ops-workspace.md"
   }
 }
