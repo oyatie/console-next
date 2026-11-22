@@ -183,6 +183,12 @@ mod tests {
             "2024-03-+4",
         ] {
             assert_eq!(parse_import_date(raw), None, "{raw}");
+            let expected = if raw.starts_with("24-") || raw.starts_with("11") {
+                DateParseError::TwoDigitYear
+            } else {
+                DateParseError::InvalidFormat
+            };
+            assert_eq!(parse_import_date_checked(raw), Err(expected), "{raw}");
         }
     }
 

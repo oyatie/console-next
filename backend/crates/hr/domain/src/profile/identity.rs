@@ -19,17 +19,6 @@ pub fn parse_id_type_import(raw: &str) -> Option<IdType> {
     }
     match upper.as_str() {
         "FOREIGNER_REG" | "FOREIGNER" | "ALIEN_REG" => Some(IdType::Arc),
-        "\u{C8FC}\u{BBFC}\u{B4F1}\u{B85D}\u{BC88}\u{D638}" | "\u{C8FC}\u{BBFC}\u{BC88}\u{D638}" => {
-            Some(IdType::Rrn)
-        }
-        "\u{C678}\u{AD6D}\u{C778}\u{B4F1}\u{B85D}\u{BC88}\u{D638}" | "\u{C678}\u{AD6D}\u{C778}" => {
-            Some(IdType::Arc)
-        }
-        "\u{AD6D}\u{B0B4}\u{AC70}\u{C18C}\u{C2E0}\u{ACE0}\u{BC88}\u{D638}"
-        | "\u{AD6D}\u{B0B4}\u{AC70}\u{C18C}"
-        | "\u{AC70}\u{C18C}\u{C2E0}\u{ACE0}\u{BC88}\u{D638}"
-        | "\u{AC70}\u{C18C}" => Some(IdType::DomesticResidence),
-        "\u{BBF8}\u{BC1C}\u{AE09}" | "\u{BBF8}\u{B4F1}\u{B85D}" => Some(IdType::NotIssued),
         _ => None,
     }
 }
@@ -114,23 +103,14 @@ mod tests {
     use crate::profile::enums::IdType;
 
     #[test]
-    fn import_parser_normalizes_foreigner_reg_and_korean_labels() {
+    fn import_parser_normalizes_foreigner_reg_and_codes() {
         assert_eq!(parse_id_type_import("FOREIGNER_REG"), Some(IdType::Arc));
         assert_eq!(parse_id_type_import("arc"), Some(IdType::Arc));
         assert_eq!(
             parse_id_type_import("DOMESTIC_RESIDENCE"),
             Some(IdType::DomesticResidence)
         );
-        assert_eq!(
-            parse_id_type_import(
-                "\u{AD6D}\u{B0B4}\u{AC70}\u{C18C}\u{C2E0}\u{ACE0}\u{BC88}\u{D638}"
-            ),
-            Some(IdType::DomesticResidence)
-        );
-        assert_eq!(
-            parse_id_type_import("\u{BBF8}\u{BC1C}\u{AE09}"),
-            Some(IdType::NotIssued)
-        );
+        assert_eq!(parse_id_type_import("NOT_ISSUED"), Some(IdType::NotIssued));
         assert_eq!(parse_id_type_import("unknown"), None);
     }
 

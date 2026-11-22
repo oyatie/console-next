@@ -30,12 +30,7 @@ fn empty_row(key: &str) -> ImportRow {
 #[test]
 fn parse_import_date_checked_distinguishes_two_digit_years() {
     assert_eq!(parse_import_date_checked("2026-03-04"), Ok(day(2026, 3, 4)));
-    for raw in [
-        "24-03-04",
-        "24.03.04",
-        "24/3/4",
-        "24\u{B144} 3\u{C6D4} 4\u{C77C}",
-    ] {
+    for raw in ["24-03-04", "24.03.04", "24/3/4"] {
         assert_eq!(
             parse_import_date_checked(raw),
             Err(DateParseError::TwoDigitYear),
