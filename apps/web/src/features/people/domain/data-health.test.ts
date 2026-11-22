@@ -1,169 +1,133 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { describe, expect, test } from "vitest";
-import type { components } from "@console/api/schema";
 import {
+  DATA_HEALTH_CATEGORIES,
   buildCategorySummaries,
-  buildHealthRows,
-  classifyEmployeeGaps,
   completenessRate,
-  filterHealthRows,
-  kpiCounts,
+  kpiCategory,
+  kpiSummary,
+  mapDrilldownItems,
+  type PeopleDataHealthResponse,
 } from "./data-health";
 
-type Employee = components["schemas"]["Employee"];
-type EmployeeFacets = components["schemas"]["EmployeeFacets"];
-type Fact = components["schemas"]["RegisterFactsQueryItem"];
-
-function emp(overrides: Partial<Employee>): Employee {
+function sampleHealth(overrides: Partial<PeopleDataHealthResponse> = {}): PeopleDataHealthResponse {
   return {
-    id: "emp-1",
-    company: "Saeon",
-    name: "Person One",
-    employee_number: "10001",
-    org_unit_id: "unit-1",
-    legal_entity_id: "ent-1",
-    workplace_id: "wp-1",
-    job: "Engineer",
-    hire_date: "2024-01-02",
-    status: "ACTIVE",
-    home_branch_review_required: false,
-    identity_resolution_strategy: "employee_number",
-    identity_resolution_confidence: "high",
-    identity_review_required: false,
-    identity_name_only_merge: false,
-    register_review_required: false,
-    next_event: null,
-    failed_event: null,
-    created_at: "2024-01-02T00:00:00Z",
-    updated_at: "2024-01-02T00:00:00Z",
+    cohort: { total: 20, active: 15, on_leave: 2, pre_hire: 3 },
+    statutory_register: {
+      complete_count: 14,
+      incomplete_count: 6,
+      missing_by_category: {
+        birth: 1,
+        job: 2,
+        hire: 1,
+        contract_end: 1,
+        sex: 1,
+        address: 3,
+        career: 4,
+      },
+    },
+    id_summary: {
+      rrn_recorded: 16,
+      not_issued: 2,
+      missing: 2,
+      by_type: { rrn: 12, arc: 3, domestic_residence: 1, not_issued: 2, unset: 2 },
+    },
+    placement_summary: { placed: 17, unplaced: 2, department_missing: 1 },
+    bank_account: { registered: 17, missing: 3 },
+    identity_review: { needs_review: 1 },
+    failed_actions: { count: 1 },
+    drilldown_items: [
+      {
+        employee_id: "00000000-0000-4000-8000-000000000001",
+        employee_number: "10587",
+        employment_status: "ACTIVE",
+        missing_categories: ["address", "rrn_missing"],
+      },
+      {
+        employee_id: "abcdef12-0000-4000-8000-000000000002",
+        employment_status: "PRE_HIRE",
+        missing_categories: ["bank_account_missing", "unplaced"],
+      },
+    ],
+    latest_import: {
+      run_id: "00000000-0000-4000-8990-000000000001",
+      status: "APPLIED",
+      candidate_rows: 18,
+      created_at: "2026-11-09T01:00:00Z",
+      applied_at: "2026-11-09T01:05:00Z",
+    },
     ...overrides,
   };
 }
 
 describe("data-health domain", () => {
-  test("completenessRate clamps to 0..100 and treats zero population as 100%", () => {
+  test("completenessRate clamps to 0..100, treats zero cohort as 100%, and never reports 100% when missing > 0", () => {
     expect(completenessRate(0, 0)).toBe(100);
-    expect(completenessRate(10, 3)).toBe(70);
+    expect(completenessRate(20, 0)).toBe(100);
+    expect(completenessRate(20, 4)).toBe(80);
+    expect(completenessRate(2056, 1)).toBe(99);
+    expect(completenessRate(2056, 6)).toBe(99);
     expect(completenessRate(5, 8)).toBe(0);
   });
 
-  test("classifyEmployeeGaps flags missing register, placement, identity, failed events, and ending contracts", () => {
-    const e = emp({
-      id: "emp-gap",
-      legal_entity_id: "ent-2",
-      workplace_id: null,
-      org_unit_id: null,
-      job: null,
-      hire_date: null,
-      home_branch_review_required: true,
-      identity_review_required: true,
-      register_review_required: true,
-      contract_end_date: "2026-12-01",
-      failed_event: { id: "ev-1", event_type: "TRANSFER", effective_date: "2026-11-01", failure_code: "conflict" },
+  test("buildCategorySummaries maps all 14 server categories and drilldown IDs", () => {
+    const data = sampleHealth();
+    const summaries = buildCategorySummaries(data);
+    expect(summaries.map((s) => s.id)).toEqual([...DATA_HEALTH_CATEGORIES]);
+    expect(summaries.find((s) => s.id === "address")).toMatchObject({ missing: 3, total: 20, rate: 85, destination: "grid" });
+    expect(summaries.find((s) => s.id === "rrn_missing")).toMatchObject({
+      missing: 2,
+      destination: "roster",
+      drilldownIds: ["00000000-0000-4000-8000-000000000001"],
     });
-    const fact: Fact = {
-      employee_id: "emp-gap",
-      updated_at: "2026-11-01T00:00:00Z",
-      sex: null,
-      address: null,
-      careers: [],
-      exit_reason_code: null,
-      exit_reason_label: null,
-      register_note: null,
-      birth_date: null,
-    };
-
-    expect(classifyEmployeeGaps(e, fact, "2026-12-15")).toEqual([
-      "birth",
-      "sex",
-      "address",
-      "career",
-      "job",
-      "hire",
-      "unplaced",
-      "identity",
-      "failed",
-      "contractSoon",
-    ]);
-  });
-
-  test("buildHealthRows keeps view-only register_review_required employees without fabricating field causes", () => {
-    const e = emp({ id: "emp-view", register_review_required: true });
-    const rows = buildHealthRows([e], new Map(), "2026-12-15");
-    expect(rows).toHaveLength(1);
-    expect(rows[0]!.registerOnly).toBe(true);
-    expect(rows[0]!.kpis).toEqual(["register"]);
-    expect(rows[0]!.categories).toEqual([]);
-  });
-
-  test("buildCategorySummaries and filterHealthRows combine KPI buckets, entity filter, and category filter", () => {
-    const a = emp({ id: "a", legal_entity_id: "ent-1", register_review_required: true });
-    const b = emp({ id: "b", legal_entity_id: "ent-2", org_unit_id: null });
-    const facts = new Map<string, Fact>([
-      ["a", { employee_id: "a", updated_at: "2026-11-01T00:00:00Z", sex: "FEMALE", address: null, careers: [], exit_reason_code: null, exit_reason_label: null, register_note: null, birth_date: "1994-03-01" }],
-    ]);
-    const rows = buildHealthRows([a, b], facts, "2026-12-15");
-
-    expect(filterHealthRows(rows, { kpi: "register", entityId: null, category: null }).map((r) => r.employee.id)).toEqual(["a"]);
-    expect(filterHealthRows(rows, { kpi: "unplaced", entityId: "ent-2", category: "department" }).map((r) => r.employee.id)).toEqual(["b"]);
-
-    const facets: EmployeeFacets = {
-      total: 10,
-      status: [],
-      employment_type: [],
-      legal_entity: [],
-      workplace: [],
-      review: {
-        department_missing: 1,
-        identity_review_required: 0,
-        register_review_required: 1,
-        home_branch_review_required: 0,
-        lifecycle_apply_failed: 0,
-        contract_ended: 0,
-        contract_ending_before: 0,
-      },
-    };
-    const summaries = buildCategorySummaries({
-      totalActive: 10,
-      facets,
-      employees: [a, b],
-      factsById: facts,
-      soonCutoff: "2026-12-15",
-      canReadRegisterFacts: true,
+    expect(summaries.find((s) => s.id === "bank_account_missing")).toMatchObject({
+      missing: 3,
+      destination: "roster",
+      drilldownIds: ["abcdef12-0000-4000-8000-000000000002"],
     });
-    expect(summaries.find((s) => s.id === "address")?.missing).toBe(1);
-    expect(summaries.find((s) => s.id === "address")?.rate).toBe(90);
-    expect(kpiCounts(rows, facets)).toMatchObject({ all: 2, register: 1, unplaced: 1, identity: 0, actionsContracts: 0 });
+    expect(summaries.find((s) => s.id === "register_incomplete")).toMatchObject({ missing: 6, rosterReview: "register" });
+    expect(summaries.find((s) => s.id === "department_missing")).toMatchObject({ missing: 1, destination: "unplaced" });
   });
 
-  test("kpiCounts preserves explicit zero server facet counts even when rows contain gaps", () => {
-    const rowWithGaps = buildHealthRows(
-      [emp({ id: "emp-zero-facets", org_unit_id: null, contract_end_date: "2026-12-01" })],
-      new Map(),
-      "2026-12-15",
-    );
-    const zeroFacets: EmployeeFacets = {
-      total: 1,
-      status: [],
-      employment_type: [],
-      legal_entity: [],
-      workplace: [],
-      review: {
-        department_missing: 0,
-        identity_review_required: 0,
-        register_review_required: 0,
-        home_branch_review_required: 0,
-        lifecycle_apply_failed: 0,
-        contract_ended: 0,
-        contract_ending_before: 0,
-      },
-    };
-    expect(kpiCounts(rowWithGaps, zeroFacets)).toEqual({
-      all: 1,
-      register: 0,
-      unplaced: 0,
-      identity: 0,
-      actionsContracts: 0,
+  test("kpiSummary and kpiCategory compute aggregate KPI tiles and server category mapping", () => {
+    const data = sampleHealth();
+    expect(kpiSummary(data)).toEqual({
+      all: 20,
+      register: 6,
+      unplaced: 3,
+      identity: 5,
+      actionsContracts: 4,
+    });
+    expect(kpiCategory("all", data)).toBeNull();
+    expect(kpiCategory("register", data)).toBe("register_incomplete");
+    expect(kpiCategory("unplaced", data)).toBe("unplaced");
+    expect(kpiCategory("identity", data)).toBe("rrn_missing");
+    expect(kpiCategory("actionsContracts", data)).toBe("failed_action");
+
+    const deptOnly = sampleHealth({
+      placement_summary: { placed: 19, unplaced: 0, department_missing: 1 },
+      id_summary: { rrn_recorded: 20, not_issued: 0, missing: 0, by_type: { rrn: 20, arc: 0, domestic_residence: 0, not_issued: 0, unset: 0 } },
+      failed_actions: { count: 0 },
+    });
+    expect(kpiCategory("unplaced", deptOnly)).toBe("department_missing");
+    expect(kpiCategory("identity", deptOnly)).toBe("identity_review");
+    expect(kpiCategory("actionsContracts", deptOnly)).toBe("bank_account_missing");
+  });
+
+  test("mapDrilldownItems formats de-identified labels without raw PII", () => {
+    const items = mapDrilldownItems(sampleHealth());
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      employeeId: "00000000-0000-4000-8000-000000000001",
+      label: "#10587",
+      employmentStatus: "ACTIVE",
+      unplacedKind: null,
+    });
+    expect(items[1]).toMatchObject({
+      employeeId: "abcdef12-0000-4000-8000-000000000002",
+      label: "#abcdef12",
+      employmentStatus: "PRE_HIRE",
+      unplacedKind: "workplace",
     });
   });
 });

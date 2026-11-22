@@ -35,8 +35,8 @@ export function ReviewQueue({ dry, picks, busy, sel, onSel, onResolve, onSheets,
   // Once nothing blocks, the blocking view would be empty: the whole queue shows instead.
   const items = filterQueue(rest, filter === "blocking" && q.blocking === 0 ? "all" : filter);
   const current = items.find((i) => i.id === sel);
-  // The one count of the whole import's questions (values included), as every step heads it.
-  const title = t("importReview.title", { count: dry.review.count });
+  // In Console mode ValueTable renders value items separately, so the queue heading matches the non-value count shown below.
+  const title = t("importReview.title", { count: consoleMode ? q.count : dry.review.count });
   const columns: LongColumn<ReviewItem>[] = [
     { id: "reason", header: t("importReview.col.reason"), cell: (i) => <span className={s.cellLine}>{i.blocking && <Chip tone="danger">{t("importReview.blocking")}</Chip>} {reviewReasonLabel(i)}</span>, rowHeader: true, width: "3fr" },
     { id: "place", header: t("importReview.col.place"), cell: (i) => <span className="num">{t("importReview.place", placeOf(i))}</span>, width: 140 },

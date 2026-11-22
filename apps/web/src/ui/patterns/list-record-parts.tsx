@@ -95,3 +95,12 @@ export function RecordSummaryList({
     </dl>
   );
 }
+
+/** Container-responsive 2-column split bands inside a `ListRecord` main pane (stacks cleanly below 960px or when side record pane opens). */
+export function ListSplitBands({ children }: { children: ReactNode }) {
+  return (
+    <div className={s.splitBandsWrap}>
+      <div className={s.splitBands}>{children}</div>
+    </div>
+  );
+}

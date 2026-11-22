@@ -1,5 +1,5 @@
 // Employee import: preview → dry run → apply and stored run history (BW-10, MR-7).
-import { api, ApiError, unwrap } from "@console/api";
+import { api, ApiError, assertBoundPasskey, peopleDataHealthApi, unwrap } from "@console/api";
 import { get, read } from "../../lib/query";
 import { REFUSED_BEFORE_WRITE } from "../../lib/react/command";
 import type { ApplyJob, ImportDecisions, ImportPreview, ImportReport } from "./domain/contract";
@@ -118,3 +118,17 @@ export const importCode = (e: unknown) => (e instanceof ApiError ? e.code : null
 /** 422 import_row_limit: the most rows one apply takes and how many this file has (BE-MIG W11). */
 export const rowLimitOf = (e: unknown) =>
   e instanceof ApiError && e.code === "import_row_limit" ? ((e.refusals as unknown as { max: number; rows: number }[])[0] ?? null) : null;
+
+/** Repairs non-restricted cell values on a dry-run/preview import run before re-running dryRun. */
+export const repairImportCells = (runId: string, cells: Record<string, Record<string, string>>) =>
+  peopleDataHealthApi(api).repairImportCells(runId, { cells });
+
+/** Records a 13-digit registration number (RRN/ARC/DOMESTIC_RESIDENCE) for one import row under PII_RECORD step-up. */
+export const recordImportRowIdentifier = async (
+  runId: string,
+  sourceKey: string,
+  body: { rrn: string; id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE" },
+) => {
+  const step_up = await assertBoundPasskey("PII_RECORD", runId, `${runId}:${sourceKey}`);
+  return peopleDataHealthApi(api).recordImportRowIdentifier(runId, sourceKey, { ...body, step_up });
+};

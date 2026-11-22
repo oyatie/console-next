@@ -62,7 +62,7 @@ export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix:
       <FieldRow id="f-birth_date" no="3" label={t("empCard.f.birth")}  mark={c.editable && <FieldMark kind="corTwo" field={t("empCard.f.birth")} onPress={() => onFix("birth_date")} />}>
         {f?.birth_date ? <FieldValue employeeId={e.id} allowed={c.readable} fieldCode="BIRTH_DATE" masked={f.birth_date} field={t("empCard.f.birth")} who={who} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
-      <RrnField employeeId={e.id} employeeStatus={e.status} who={who} q={rrnRead} readable={c.readable} editable={c.editable}>
+      <RrnField employeeId={e.id} employeeStatus={e.status} idType={f?.id_type} who={who} q={rrnRead} readable={c.readable} editable={c.editable}>
         {c.readable && <Link className={s.link} to="/people/$id/identifiers" params={{ id: e.id }}>{t("empCard.rrn.open")}</Link>}
       </RrnField>
       <FieldRow id="f-address" no="4" label={t("empCard.f.address")} mark={c.editable && <FieldMark kind="rc" field={t("empCard.f.address")} onPress={() => onFix("address")} />}>

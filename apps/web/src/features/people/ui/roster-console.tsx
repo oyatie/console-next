@@ -57,7 +57,7 @@ export function RosterConsole({
   manage: boolean; scoped?: boolean; notice?: ReactNode; actions?: ReactNode; tabs?: ReactNode; screen: ReturnType<typeof useRosterScreen>;
 }) {
   const {
-    contractWindow, soonDays, search, navigate, today, status, review, unit, open, openUnit, select, selectRelated,
+    contractWindow, soonDays, search, navigate, today, status, review, unit, ids, open, openUnit, select, selectRelated,
     full, expand, restore, unitTrigger, unitItems, selectedUnit, sort, q, exitView, setExitView, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady, r, view, prefetch, setFilter,
     find, reset, closePaste, bulkDone, openRecord, scroller, scrollRef, onRowFocus, filtered, customFilters, sameName, onRowAction,
@@ -107,7 +107,7 @@ export function RosterConsole({
   const firstRun = !r.loading && !r.list.error && !filtered && (r.status.totals.all ?? total) === 0 && !r.changed;
   const resetAll = () => { setEmpTypes(new Set()); setAddressMissingOnly(false); setProbationOnly(false); setActiveChosung(null); reset(); };
   const toggleEntityExpand = (id: string) => setExpandedEntities(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-  const activeFilterCount = (unit ? 1 : 0) + empTypes.size + review.length + (addressMissingOnly ? 1 : 0) + (probationOnly ? 1 : 0) + (activeChosung ? 1 : 0);
+  const activeFilterCount = (unit ? 1 : 0) + (ids.length > 0 ? 1 : 0) + empTypes.size + review.length + (addressMissingOnly ? 1 : 0) + (probationOnly ? 1 : 0) + (activeChosung ? 1 : 0);
   const registerMissingCount = r.review.totals.register ?? 0;
   const contractSoonCount = r.review.totals.contractSoon ?? 0;
   const effectiveOffset = hasClientFilter ? 0 : firstOffset;
@@ -149,7 +149,7 @@ export function RosterConsole({
       find={<div ref={findInputRef} className={s.consoleFind} data-list-find=""><WorklistSearchField label={t("people.find.placeholder")} value={q} onChange={find} /></div>}
       tools={<div className={s.consoleDesktopSort}>{sortControl}</div>}
       stats={!firstRun ? <StatRow label={t("people.stat.label")} items={buildStatItems({ status, review, statusTotals: r.status.totals, registerMissingCount, setFilter })} /> : undefined}
-      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} addressMissingOnly={addressMissingOnly} setAddressMissingOnly={setAddressMissingOnly} probationOnly={probationOnly} setProbationOnly={setProbationOnly} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={sortControl} /> : undefined}
+      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} idsActive={ids.length > 0} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} addressMissingOnly={addressMissingOnly} setAddressMissingOnly={setAddressMissingOnly} probationOnly={probationOnly} setProbationOnly={setProbationOnly} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={sortControl} /> : undefined}
       indexBar={!voided && !firstRun ? <IndexBar label={t("people.index.label")} items={CHOSUNG.map(ch => ({ id: ch, label: ch }))} active={activeChosung} onSelect={setActiveChosung} range={displayedRows.length > 0 ? t("people.index.range", { start: rangeStart, end: rangeEnd, total: rangeTotal }) : undefined} prev={{ label: t("people.index.prev"), disabled: hasClientFilter || firstOffset <= 0, onPress: () => scroller.current?.scrollBy({ top: -400, behavior: "smooth" }) }} next={{ label: t("people.index.next"), disabled: hasClientFilter || !r.list.hasNextPage, onPress: () => { if (r.list.hasNextPage && !r.list.isFetchingNextPage) void r.list.fetchNextPage(); } }} /> : undefined}
       notes={
         <>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t, type MessageId } from "@console/i18n";
 import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
+import type { components } from "@console/api/schema";
 import { ID_TYPE, PAY_UNIT, label } from "../../../lib/labels";
 import { announce } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
@@ -35,7 +36,7 @@ const bases = (f: Fields<FactKey>) => Object.fromEntries(KEYS.map((k) => [k, f[k
  * edited one asks which to keep (concurrent-editing ME-1..ME-5). A recorded base pay is shown, not edited: it
  * changes through a contract correction. Nothing is preselected.
  */
-export function FactsForm({ f, name, refetch, onClose }: { f: Facts; name: string; refetch: () => unknown; onClose: () => void }) {
+export function FactsForm({ f, name, employeeStatus, refetch, onClose }: { f: Facts; name: string; employeeStatus?: components["schemas"]["Employee"]["status"]; refetch: () => unknown; onClose: () => void }) {
   const today = todayKst();
   const m = f.employment ?? f.pending_employment;
   const [form, setForm] = useState(() => fields(factValues(f)));
@@ -95,7 +96,7 @@ export function FactsForm({ f, name, refetch, onClose }: { f: Facts; name: strin
         <ChoiceField
           label={t("facts.idType")}
           required={false}
-          options={ID_TYPE.values.map((x) => ({ value: x, label: label(ID_TYPE, x) }))}
+          options={ID_TYPE.values.filter((x) => x !== "NOT_ISSUED" || employeeStatus === "PRE_HIRE").map((x) => ({ value: x, label: label(ID_TYPE, x) }))}
           value={(v.id_type as string | null) ?? null}
           onChange={set("id_type")}
         />

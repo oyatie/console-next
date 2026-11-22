@@ -1,19 +1,33 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
+import { EMPLOYEE_STATUS, label } from "../../../lib/labels";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
 import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
-import type { CategorySummary, HealthCategoryId, HealthEmployeeRow } from "../domain/data-health";
+import type { CategorySummary, DrilldownItem } from "../domain/data-health";
 import s from "./data-health.module.css";
 
-export function GapChip({ cat, contractEndDate }: { cat: HealthCategoryId; contractEndDate?: string }) {
-  const label =
-    cat === "contractSoon" && contractEndDate
-      ? t("dataHealth.worklist.contractSoon", { date: fmtDate(contractEndDate) })
-      : t(`dataHealth.field.${cat}` as "dataHealth.field.birth");
-  return <Chip tone={cat === "identity" || cat === "failed" ? "danger" : "warn"}>{label}</Chip>;
+function GapChip({ cat }: { cat: string }) {
+  const key = `dataHealth.field.${cat}`;
+  const text = t(key as "dataHealth.field.birth");
+  const tone = cat === "identity_review" || cat === "failed_action" || cat === "rrn_missing" ? "danger" : "warn";
+  return <Chip tone={tone}>{text}</Chip>;
+}
+
+export function GapSummary({ categories }: { categories: readonly string[] }) {
+  if (categories.length === 0) return null;
+  return (
+    <bdi className={s.gapSummary}>
+      <GapChip cat={categories[0]!} />
+      {categories.length > 1 ? (
+        <bdi className={s.sub}>
+          {" · "}
+          {categories.slice(1).map((cat) => t(`dataHealth.field.${cat}` as "dataHealth.field.birth")).join(" · ")}
+        </bdi>
+      ) : null}
+    </bdi>
+  );
 }
 
 export function SummaryActionLink({ row, canOrgEdit }: { row: CategorySummary; canOrgEdit: boolean }) {
@@ -31,36 +45,38 @@ export function SummaryActionLink({ row, canOrgEdit }: { row: CategorySummary; c
       </Link>
     );
   }
+  const search = row.drilldownIds?.length
+    ? { ids: row.drilldownIds.join(",") }
+    : row.rosterReview
+      ? { review: row.rosterReview }
+      : {};
   return (
-    <Link to="/people" search={row.rosterReview ? { review: row.rosterReview } : {}} className={`${buttonClass("ghost", { size: "sm" })} ${s.nowrap}`}>
+    <Link to="/people" search={search} className={`${buttonClass("ghost", { size: "sm" })} ${s.nowrap}`}>
       {t("dataHealth.summary.openRoster")}
     </Link>
   );
 }
 
 export function DataHealthRecordBody({
-  row,
-  orgText,
+  item,
   canOrgEdit,
 }: {
-  row: HealthEmployeeRow;
-  orgText: string;
+  item: DrilldownItem;
   canOrgEdit: boolean;
 }) {
   return (
     <>
-      <RecordIdentityBar name={row.employee.name} number={row.employee.employee_number ?? undefined} path={orgText} />
+      <RecordIdentityBar name={item.label} path={label(EMPLOYEE_STATUS, item.employmentStatus)} />
       <RecordPaneSection title={t("dataHealth.pane.missingTitle")}>
         <div className={s.chips}>
-          {row.registerOnly && <Chip tone="warn">{t("dataHealth.worklist.registerNeeded")}</Chip>}
-          {row.categories.map((cat) => (
-            <GapChip key={cat} cat={cat} contractEndDate={row.employee.contract_end_date} />
+          {item.missingCategories.map((cat) => (
+            <GapChip key={cat} cat={cat} />
           ))}
         </div>
       </RecordPaneSection>
       <RecordPaneSection title={t("dataHealth.pane.nextActions")}>
         <div className={s.actions}>
-          <Link to="/people/$id" params={{ id: row.employee.id }} search={{}} className={buttonClass("primary", { size: "sm" })}>
+          <Link to="/people/$id" params={{ id: item.employeeId }} search={{}} className={buttonClass("primary", { size: "sm" })}>
             {t("dataHealth.pane.openCard")}
           </Link>
           {canOrgEdit && (
@@ -68,7 +84,7 @@ export function DataHealthRecordBody({
               {t("dataHealth.pane.openGrid")}
             </Link>
           )}
-          {row.unplacedKind && canOrgEdit && (
+          {item.unplacedKind && canOrgEdit && (
             <Link to="/people/unplaced" className={buttonClass("ghost", { size: "sm" })}>
               {t("dataHealth.pane.openUnplaced")}
             </Link>

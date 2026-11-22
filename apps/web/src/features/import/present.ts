@@ -1,4 +1,4 @@
-import { IMPORT_OUTCOME, LEAVE_TYPE, label } from "../../lib/labels";
+import { ID_TYPE, IMPORT_OUTCOME, LEAVE_TYPE, label } from "../../lib/labels";
 // Words for the import contract's codes. Every enum on screen goes through here, never the raw code.
 import { i18n, isMessageId, t } from "@console/i18n";
 import type { Classification, ImportDeferred, ImportOutcome, ImportRow, ReasonCatalogEntry, ReviewItem } from "./domain/contract";
@@ -17,9 +17,11 @@ export const sourceLabel = (s: string) => known(`importSheet.source.${s}`, s);
 export const candidateBasisLabel = (basis: string) => known(`importValues.basis.${basis}`, basis);
 
 export const routeLabel = (r: ImportDeferred["route"]) => known(`import.route.${r}`, r);
-export const refusalLabel = (code: string) => known(`import.refusal.${code}`, code);
+export const refusalLabel = (code: string) =>
+  known(`import.refusal.${code}`, known(`importReview.refusal.${code}`, code));
 export const employmentTypeLabel = (code: string) => known(`enum.employmentType.${code}`, code);
 export const employeeStatusLabel = (code: string) => known(`enum.employeeStatus.${code}`, code);
+export const idTypeLabel = (code: string) => label(ID_TYPE, code);
 export const leaveTypeLabel = (code: string) => known(`import.leaveType.${code}`, label(LEAVE_TYPE, code));
 export const matchedLabel = (m: NonNullable<ImportRow["matched_by"]>) => known(`import.matched.${m}`, m);
 export const numberSourceLabel = (s: string) => known(`import.numberSource.${s}`, s);
@@ -37,9 +39,10 @@ export const decisionLabel = (d: string) => known(`import.decision.${d}`, d);
 /** The words of an import error code this screen knows better than the generic copy (CommandError `own`). */
 export const importError = (code: string) => {
   if (code === "import_apply_timed_out") return t("import.timedOut");
-  const id = `import.error.${code}`;
-  const refusal = `import.refusal.${code}`;
-  return isMessageId(id) ? t(id) : isMessageId(refusal) ? t(refusal) : undefined;
+  for (const id of [`import.error.${code}`, `importReview.error.${code}`, `import.refusal.${code}`, `importReview.refusal.${code}`]) {
+    if (isMessageId(id)) return t(id);
+  }
+  return undefined;
 };
 
 /** A value before or after a change; a blank one is said, never left as an empty gap. */

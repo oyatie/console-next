@@ -189,7 +189,7 @@ export function WorklistMeter({
   label: string;
   valueLabel: ReactNode;
 }) {
-  const pct = max > 0 ? Math.min(100, Math.max(2, Math.round((value / max) * 100))) : 0;
+  const pct = max > 0 ? (value >= max ? 100 : value <= 0 ? 0 : Math.min(96, Math.max(2, Math.floor((value / max) * 100)))) : 0;
   return (
     <div className={s.barCell}>
       <div

@@ -48,6 +48,15 @@ export function filterTriageRows(rows: readonly ImportRow[], bucket: TriageBucke
 
 const KNOWN_HINT_CODES = new Set([
   "invalid_date",
+  "two_digit_year",
+  "rrn_mod11_invalid",
+  "rrn_invalid",
+  "id_type_invalid",
+  "id_type_rrn_mismatch",
+  "not_issued_requires_pre_hire",
+  "not_issued_with_rrn",
+  "not_issued_secondary_key_required",
+  "duplicate_candidate",
   "hire_date_required",
   "workplace_conflict",
   "status_conflict",
@@ -64,16 +73,16 @@ const KNOWN_HINT_CODES = new Set([
 ]);
 
 export function rowRemediationHintKey(row: ImportRow): string | null {
-  if (row.outcome === "unresolved_identity") return "import.hint.unresolved_identity";
+  if (row.outcome === "unresolved_identity") return "importReview.hint.unresolved_identity";
   if (row.outcome === "refused" && row.refusal_code && KNOWN_HINT_CODES.has(row.refusal_code)) {
-    return `import.hint.${row.refusal_code}`;
+    return `importReview.hint.${row.refusal_code}`;
   }
   return null;
 }
 
 export function itemRemediationHintKey(reason: string): string | null {
-  if (reason === "unresolved_identity") return "import.hint.unresolved_identity";
-  return KNOWN_HINT_CODES.has(reason) ? `import.hint.${reason}` : null;
+  if (reason === "unresolved_identity") return "importReview.hint.unresolved_identity";
+  return KNOWN_HINT_CODES.has(reason) ? `importReview.hint.${reason}` : null;
 }
 
 export function hasMappedSexColumn(preview: Pick<ImportPreview, "columns"> | null | undefined): boolean {

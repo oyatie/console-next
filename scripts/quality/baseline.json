@@ -269,13 +269,6 @@
   "unused-export:e2e/parity/world-b.ts:SITE": 1,
   "unused-export:e2e/parity/world-b.ts:SITE2": 1,
   "unused-export:e2e/stability.ts:SHIFT_BUDGET": 1,
-  "unused-export:packages/api/src/auth.ts:ConsentStatus": 1,
   "unused-export:packages/api/src/events.ts:Fetch": 1,
-  "unused-export:packages/api/src/session.ts:Claims": 1,
-  "unused-export:packages/api/src/session.ts:ErrorExtras": 1,
-  "unused-export:packages/api/src/session.ts:FieldError": 1,
-  "unused-export:packages/api/src/session.ts:LastChange": 1,
-  "unused-export:packages/api/src/session.ts:Refusal": 1,
-  "unused-export:packages/api/src/step-up.ts:StepUpKind": 1,
   "unused-export:packages/i18n/src/josa.ts:JosaPair": 1
 }

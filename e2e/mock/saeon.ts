@@ -1650,7 +1650,7 @@ export function saeonEmploymentFacts(id: string) {
     hire_date: employee.hire_date ?? null,
     birth_date: "••••-••-••",
     work_email: null,
-    id_type: "RRN" as const,
+    id_type: (employee.status === "PRE_HIRE" ? "NOT_ISSUED" : "RRN") as "RRN" | "ARC" | "DOMESTIC_RESIDENCE" | "NOT_ISSUED",
     employment: {
       employment_type: empType,
       worker_classification: "EMPLOYEE" as const,
@@ -1767,6 +1767,9 @@ export function saeonEndOptions(id: string): S["EmployeeEndOptions"] {
 
 export function saeonRrnStatus(id: string) {
   const { employee, rrnMasked } = findRosterOrSampleEmployee(id);
+  if (employee.status === "PRE_HIRE") {
+    return { employee_id: employee.id, recorded: false, can_record: true, masked: null };
+  }
   return { employee_id: employee.id, recorded: true, can_record: false, masked: rrnMasked };
 }
 
@@ -2538,17 +2541,17 @@ export function saeonImportPreview(): S["EmployeeImportPreviewResponse"] {
   const hero = saeonUniverse.hero;
   const unitLabel = entity0.workplaces[0]!.departments[0]!;
   const sheetName = entity0.name;
-  const targets = ["employee_number", "name", "rrn", "birth_date", "sex", "hire_date", "employment_status", "employment_type", "org_unit", "company_brn", "position", "job", "phone"];
+  const targets = ["employee_number", "name", "rrn", "id_type", "birth_date", "sex", "hire_date", "employment_status", "employment_type", "org_unit", "company_brn", "position", "job", "phone"];
 
   return {
     run_id: SAEON_IMPORT_RUN_ID,
     entity_type: "employee_hr",
     source_filename: "saeon-2026-hire-batch.xlsx",
     source_sha256: "b".repeat(64),
-    input_rows: 4,
-    candidate_rows: 4,
+    input_rows: 5,
+    candidate_rows: 5,
     preserved_rows: 1,
-    sealed_identities: 2,
+    sealed_identities: 3,
     available_targets: targets,
     mapping_profile: {},
     sheets_needing_mapping: 0,
@@ -2560,6 +2563,7 @@ export function saeonImportPreview(): S["EmployeeImportPreviewResponse"] {
       { source_header: t("import.target.org_unit"), normalized_header: "org_unit", target: "org_unit", classification: "location", preview_allowed: true },
       { source_header: t("import.target.employment_status"), normalized_header: "employment_status", target: "employment_status", classification: "canonical", preview_allowed: true },
       { source_header: "BaseSalary", normalized_header: "basesalary", target: null, classification: "restricted", preview_allowed: false },
+      { source_header: t("import.target.id_type"), normalized_header: "id_type", target: "id_type", classification: "canonical", preview_allowed: true },
     ],
     sample_rows: [
       {
@@ -2572,6 +2576,7 @@ export function saeonImportPreview(): S["EmployeeImportPreviewResponse"] {
           [t("import.target.hire_date")]: preHire.hireDate,
           [t("import.target.org_unit")]: unitLabel,
           [t("import.target.employment_status")]: saeonUniverse.employmentTypes.REGULAR,
+          [t("import.target.id_type")]: "NOT_ISSUED",
         },
       },
       {
@@ -2584,6 +2589,7 @@ export function saeonImportPreview(): S["EmployeeImportPreviewResponse"] {
           [t("import.target.hire_date")]: hero.hireDate,
           [t("import.target.org_unit")]: hero.shortPlace,
           [t("import.target.employment_status")]: saeonUniverse.employmentTypes.REGULAR,
+          [t("import.target.id_type")]: "RRN",
         },
       },
     ],
@@ -2592,7 +2598,7 @@ export function saeonImportPreview(): S["EmployeeImportPreviewResponse"] {
         name: sheetName,
         status: "mapped",
         needs_confirmation: false,
-        rows: 4,
+        rows: 5,
         header_row: 1,
         header_candidates: [
           {
@@ -2605,6 +2611,7 @@ export function saeonImportPreview(): S["EmployeeImportPreviewResponse"] {
               { column: "E", label: t("import.target.org_unit") },
               { column: "F", label: t("import.target.employment_status") },
               { column: "G", label: "BaseSalary" },
+              { column: "H", label: t("import.target.id_type") },
             ],
           },
         ],
@@ -2616,14 +2623,20 @@ export function saeonImportPreview(): S["EmployeeImportPreviewResponse"] {
           { column: "E", label: t("import.target.org_unit"), target: "org_unit", source: "catalog" },
           { column: "F", label: t("import.target.employment_status"), target: "employment_status", source: "catalog" },
           { column: "G", label: "BaseSalary", target: null, source: "catalog" },
+          { column: "H", label: t("import.target.id_type"), target: "id_type", source: "catalog" },
         ],
       },
     ],
   };
 }
 
+export type MockImportDryRunState = {
+  repairedCells?: Record<string, Record<string, string>>;
+  recordedIdentifiers?: Record<string, { id_type: "RRN" | "ARC" | "DOMESTIC_RESIDENCE"; sex_derived?: "MALE" | "FEMALE" }>;
+};
+
 /** OpenAPI-typed `EmployeeImportDryRunSummary` covering valid, warn, and hard-blocker triage states. */
-export function saeonImportDryRun(): S["EmployeeImportDryRunSummary"] {
+export function saeonImportDryRun(state: MockImportDryRunState = {}): S["EmployeeImportDryRunSummary"] {
   const entity0 = saeonUniverse.entities[0]!;
   const site0 = entity0.workplaces[0]!;
   const sheetName = entity0.name;
@@ -2632,118 +2645,291 @@ export function saeonImportDryRun(): S["EmployeeImportDryRunSummary"] {
   const roster = generateSaeonRoster();
   const harin = roster.find(r => r.employeeNumber === "10433") ?? roster[0]!;
   const gunwoo = roster.find(r => r.employeeNumber === "50123") ?? roster[1]!;
+  const domestic = roster[2] ?? roster[0]!;
   const unknownUnit = `${site0.departments[0]}-2`;
 
+  const row2Key = `${sheetName}:2`;
+  const row5Key = `${sheetName}:5`;
+  const row2Recorded = state.recordedIdentifiers?.[row2Key];
+  const row5RepairedHire = state.repairedCells?.[row5Key]?.hire_date;
+  const row5Fixed = Boolean(row5RepairedHire && /^\d{4}-\d{2}-\d{2}$/.test(row5RepairedHire) && Number(row5RepairedHire.slice(0, 4)) >= 1900);
+
+  const items: S["EmployeeImportReviewItem"][] = [];
+  if (!row5Fixed) {
+    items.push({
+      id: "rev-two-digit-year",
+      blocking: true,
+      reason: "two_digit_year",
+      sheet: sheetName,
+      row: 5,
+      field: "hire_date",
+      source_column: t("import.target.hire_date"),
+      value: "26-11-01",
+      expected_format: "YYYY-MM-DD",
+      rows: 1,
+      resolution: { decision: "cells", key: row5Key, choices: [] },
+    });
+  }
+  items.push({
+    id: "rev-unit-map",
+    blocking: false,
+    reason: "unit_unmapped",
+    sheet: sheetName,
+    row: 4,
+    field: "org_unit",
+    source_column: t("import.target.org_unit"),
+    value: unknownUnit,
+    rows: 1,
+    resolution: { decision: "unit_map", key: unknownUnit, choices: [] },
+  });
+
+  const rows: S["EmployeeImportPlannedRow"][] = [
+    {
+      source_key: row2Key,
+      sheet: sheetName,
+      row: 2,
+      name: preHire.name,
+      employee_number: preHire.employeeNumber,
+      outcome: "insert",
+      new_person: {
+        employee_number: preHire.employeeNumber,
+        employee_number_source: "file",
+        status: "PRE_HIRE",
+        id_type: row2Recorded?.id_type ?? "NOT_ISSUED",
+        sex: row2Recorded?.sex_derived ?? "MALE",
+        hire_date: preHire.hireDate,
+        migrated_former: false,
+        workplace_id: `00000000-0000-4000-8200-${padDigits(101, 12)}`,
+        org_unit_id: null,
+        employment_type: "REGULAR",
+      },
+    },
+    {
+      source_key: `${sheetName}:3`,
+      sheet: sheetName,
+      row: 3,
+      name: hero.name,
+      employee_number: hero.employeeNumber,
+      outcome: "update",
+      matched_by: "employee_number",
+      diff: [{ field: "job", from: hero.roleLabel, to: saeonUniverse.settings.jobTitles.precisionLabel }],
+    },
+    {
+      source_key: `${sheetName}:4`,
+      sheet: sheetName,
+      row: 4,
+      name: harin.name,
+      outcome: "insert",
+      unit_name: unknownUnit,
+      new_person: {
+        employee_number: null,
+        status: "ACTIVE",
+        id_type: "RRN",
+        sex: "FEMALE",
+        hire_date: harin.hireDate,
+        migrated_former: false,
+        workplace_id: null,
+        org_unit_id: null,
+        employment_type: null,
+      },
+    },
+    row5Fixed
+      ? {
+          source_key: row5Key,
+          sheet: sheetName,
+          row: 5,
+          name: gunwoo.name,
+          employee_number: gunwoo.employeeNumber,
+          outcome: "update",
+          matched_by: "employee_number",
+          diff: [],
+        }
+      : {
+          source_key: row5Key,
+          sheet: sheetName,
+          row: 5,
+          name: gunwoo.name,
+          employee_number: gunwoo.employeeNumber,
+          outcome: "refused",
+          refusal_code: "two_digit_year",
+          refusal_field: "hire_date",
+        },
+    {
+      source_key: `${sheetName}:6`,
+      sheet: sheetName,
+      row: 6,
+      name: domestic.name,
+      employee_number: domestic.employeeNumber,
+      outcome: "insert",
+      new_person: {
+        employee_number: domestic.employeeNumber,
+        employee_number_source: "file",
+        status: "ACTIVE",
+        id_type: "DOMESTIC_RESIDENCE",
+        sex: "FEMALE",
+        hire_date: domestic.hireDate,
+        migrated_former: false,
+        workplace_id: `00000000-0000-4000-8200-${padDigits(101, 12)}`,
+        org_unit_id: null,
+        employment_type: "REGULAR",
+      },
+    },
+  ];
+
+  const blocking = items.filter((i) => i.blocking).length;
+  const repairedCells = state.repairedCells && Object.keys(state.repairedCells).length > 0 ? state.repairedCells : undefined;
   return {
     run_id: SAEON_IMPORT_RUN_ID,
-    input_rows: 4,
-    candidate_rows: 4,
+    input_rows: 5,
+    candidate_rows: 5,
     preserved_rows: 1,
-    insert_candidates: 2,
-    update_candidates: 1,
+    insert_candidates: rows.filter((r) => r.outcome === "insert").length,
+    update_candidates: rows.filter((r) => r.outcome === "update").length,
     unchanged_rows: 0,
     excluded_rows: 0,
-    unsettled_rows: 1,
-    companies: [{ company: entity0.name, input_rows: 4, inserted: 2, updated: 1, skipped: 1 }],
-    org_unit_bound_rows: 2,
+    unsettled_rows: blocking,
+    companies: [{ company: entity0.name, input_rows: 5, inserted: 3, updated: row5Fixed ? 2 : 1, skipped: row5Fixed ? 0 : 1 }],
+    org_unit_bound_rows: 3,
     org_unit_unbound_rows: 1,
     unresolved_org_units: [unknownUnit],
     dry_run_digest: "c".repeat(64),
-    decisions: { unit_map: {}, workplace_map: {}, status_map: {}, leave_type_map: {}, employment_type_map: {}, identity: {}, employee_numbers: {} },
+    decisions: {
+      unit_map: {},
+      workplace_map: {},
+      status_map: {},
+      leave_type_map: {},
+      employment_type_map: {},
+      identity: {},
+      employee_numbers: {},
+      ...(repairedCells ? { cells: repairedCells } : {}),
+    },
     remembered: [],
     auto_mapped: [],
     employment_type_empty_rows: 1,
     unplaced: { rows: 1, by_reason: { unit_unknown: 1, unit_ambiguous: 0, unit_left_unplaced: 0, workplace_unknown: 0, no_place: 0 } },
     phone_unstored_rows: 1,
     review: {
-      count: 2,
-      blocking: 1,
+      count: items.length,
+      blocking,
       groups: [],
-      items: [
-        {
-          id: "rev-invalid-date",
-          blocking: true,
-          reason: "invalid_date",
-          sheet: sheetName,
-          row: 5,
-          field: "hire_date",
-          source_column: t("import.target.hire_date"),
-          value: "26-11-01",
-          rows: 1,
-          resolution: { decision: "exclusions", key: `${sheetName}:5`, choices: [] },
-        },
-        {
-          id: "rev-unit-map",
-          blocking: false,
-          reason: "unit_unmapped",
-          sheet: sheetName,
-          row: 4,
-          field: "org_unit",
-          source_column: t("import.target.org_unit"),
-          value: unknownUnit,
-          rows: 1,
-          resolution: { decision: "unit_map", key: unknownUnit, choices: [] },
-        },
-      ],
+      items,
     },
-    rows: [
-      {
-        source_key: `${sheetName}:2`,
-        sheet: sheetName,
-        row: 2,
-        name: preHire.name,
-        employee_number: preHire.employeeNumber,
-        outcome: "insert",
-        new_person: {
-          employee_number: preHire.employeeNumber,
-          employee_number_source: "file",
-          status: "PRE_HIRE",
-          sex: "MALE",
-          hire_date: preHire.hireDate,
-          migrated_former: false,
-          workplace_id: `00000000-0000-4000-8200-${padDigits(101, 12)}`,
-          org_unit_id: null,
-          employment_type: "REGULAR",
-        },
+    rows,
+  };
+}
+
+/** OpenAPI-typed `PeopleDataHealthResponse` (zero raw PII) for Saeon `/people/data-health`. */
+export function saeonPeopleDataHealth(options: { category?: string | null; limit?: number; canManage?: boolean } = {}): S["PeopleDataHealthResponse"] {
+  const { category = null, limit = 20, canManage = true } = options;
+  const roster = generateSaeonRoster();
+  const samples = saeonStatusSampleEmployees();
+  const cappedLimit = Math.min(50, Math.max(1, limit));
+
+  const allDrilldown: S["PeopleDataHealthResponse"]["drilldown_items"] = [
+    {
+      employee_id: samples.preHire.id,
+      employee_number: samples.preHire.employee_number ?? undefined,
+      employment_status: "PRE_HIRE",
+      missing_categories: ["address", "career"],
+    },
+    {
+      employee_id: roster[0]!.id,
+      employee_number: roster[0]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["address", "rrn_missing"],
+    },
+    {
+      employee_id: roster[1]!.id,
+      employee_number: roster[1]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["bank_account_missing", "department_missing"],
+    },
+    {
+      employee_id: roster[2]!.id,
+      employee_number: roster[2]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["unplaced", "job", "birth"],
+    },
+    {
+      employee_id: roster[3]!.id,
+      employee_number: roster[3]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["identity_review", "sex"],
+    },
+    {
+      employee_id: roster[4]!.id,
+      employee_number: roster[4]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["failed_action", "hire", "contractEnd"],
+    },
+  ];
+
+  const filtered = category
+    ? allDrilldown.filter((item) =>
+        category === "register_incomplete"
+          ? item.missing_categories.some((c) => ["birth", "job", "hire", "contractEnd", "sex", "address", "career"].includes(c))
+          : item.missing_categories.includes(category),
+      )
+    : allDrilldown;
+
+  return {
+    cohort: {
+      total: roster.length + 2,
+      active: roster.length,
+      on_leave: 1,
+      pre_hire: 1,
+    },
+    statutory_register: {
+      complete_count: roster.length - 4,
+      incomplete_count: 6,
+      missing_by_category: {
+        birth: 1,
+        job: 1,
+        hire: 1,
+        contract_end: 1,
+        sex: 1,
+        address: 2,
+        career: 1,
       },
-      {
-        source_key: `${sheetName}:3`,
-        sheet: sheetName,
-        row: 3,
-        name: hero.name,
-        employee_number: hero.employeeNumber,
-        outcome: "update",
-        matched_by: "employee_number",
-        diff: [{ field: "job", from: hero.roleLabel, to: saeonUniverse.settings.jobTitles.precisionLabel }],
+    },
+    id_summary: {
+      rrn_recorded: roster.length,
+      not_issued: 1,
+      missing: 1,
+      by_type: {
+        rrn: roster.length - 4,
+        arc: 2,
+        domestic_residence: 2,
+        not_issued: 1,
+        unset: 1,
       },
-      {
-        source_key: `${sheetName}:4`,
-        sheet: sheetName,
-        row: 4,
-        name: harin.name,
-        outcome: "insert",
-        unit_name: unknownUnit,
-        new_person: {
-          employee_number: null,
-          status: "ACTIVE",
-          sex: "FEMALE",
-          hire_date: harin.hireDate,
-          migrated_former: false,
-          workplace_id: null,
-          org_unit_id: null,
-          employment_type: null,
-        },
-      },
-      {
-        source_key: `${sheetName}:5`,
-        sheet: sheetName,
-        row: 5,
-        name: gunwoo.name,
-        employee_number: gunwoo.employeeNumber,
-        outcome: "refused",
-        refusal_code: "invalid_date",
-        refusal_field: "hire_date",
-      },
-    ],
+    },
+    placement_summary: {
+      placed: roster.length,
+      unplaced: 1,
+      department_missing: 1,
+    },
+    bank_account: {
+      registered: roster.length + 1,
+      missing: 1,
+    },
+    identity_review: {
+      needs_review: 1,
+    },
+    failed_actions: {
+      count: 1,
+    },
+    drilldown_items: filtered.slice(0, cappedLimit),
+    ...(canManage
+      ? {
+          latest_import: {
+            run_id: SAEON_IMPORT_RUN_ID,
+            status: "APPLIED",
+            candidate_rows: 18,
+            created_at: SAEON_AT,
+            applied_at: SAEON_AT,
+          },
+        }
+      : {}),
   };
 }

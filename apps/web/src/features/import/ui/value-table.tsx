@@ -66,7 +66,7 @@ export function ValueTable({ dry, picks, busy, sel, onSel, onResolve, onSheets, 
         const title = t("importValues.title", { kind: decisionLabel(g.decision) });
         const open = g.rows.find((r) => r.item.id === sel);
         return (
-          <Card key={g.decision} titleId={`import-values-${g.decision}`} title={title} meta={t("importValues.counts", { all: g.rows.length, open: g.open })}>
+          <Card key={g.decision} titleId={`import-values-${g.decision}`} title={title} meta={t("importValues.counts", { all: g.rows.length, open: g.open })} flush={consoleMode} look={consoleMode ? "flush" : undefined}>
             <Table<ValueRow>
               label={title}
               mobileLayout={consoleMode ? "compact" : "cards"}

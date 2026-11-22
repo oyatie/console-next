@@ -64,8 +64,8 @@ export function ImportConsole() {
           {step !== "preview" && <CommandError error={reread.error} own={importError} />}
         </>
       }
-      body={<WorklistPadded><div className={s.stack}>{body}</div></WorklistPadded>}
-      aside={aside ? <WorklistPadded><div className={s.stack}>{aside}</div></WorklistPadded> : undefined}
+      body={<div className={s.stack}>{body}</div>}
+      aside={aside}
       asideLabel={asideLabel}
       consequence={consequence}
       notice={notice}
@@ -110,7 +110,7 @@ export function ImportConsole() {
           consoleShell={(parts: DryRunConsoleParts) =>
             renderWizard({
               body: <><div className={s.triageSticky}>{parts.summary}</div>{parts.body}</>,
-              aside: <ImportConsoleInspector dry={dry} picks={picks} currentItem={parts.currentItem} activeRow={parts.activeRow} sexMapped={parts.sexMapped} busy={parts.resolveBusy} onResolve={parts.onResolve} onSheets={parts.onSheets} />,
+              aside: <ImportConsoleInspector dry={dry} picks={picks} currentItem={parts.currentItem} activeRow={parts.activeRow} sexMapped={parts.sexMapped} busy={parts.resolveBusy} onResolve={parts.onResolve} onSheets={parts.onSheets} onDryRun={parts.onDryRun} onExpired={parts.onExpired} />,
               asideLabel: t("import.dry.inspector"),
               consequence: parts.consequence,
               notice: <>{parts.changed > 0 && <Banner tone="warn">{t("import.changed", { count: parts.changed })}</Banner>}{parts.notice}</>,

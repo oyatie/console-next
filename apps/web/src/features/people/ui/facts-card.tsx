@@ -27,7 +27,7 @@ export function FactsCard({ e, editing, onEdit, readOnly = false, calm = false }
     <section className="card panel" aria-labelledby="facts">
       <h2 id="facts" className="panel__title" tabIndex={-1}>{t("facts.title")}</h2>
       <QueryState q={facts}>
-        {(f) => (editing && !readOnly ? <FactsForm f={f} name={e.name} refetch={facts.refetch} onClose={() => onEdit(false)} /> : <FactsView f={f} name={e.name} calm={calm} onEdit={readOnly ? undefined : () => onEdit(true)} />)}
+        {(f) => (editing && !readOnly ? <FactsForm f={f} name={e.name} employeeStatus={e.status} refetch={facts.refetch} onClose={() => onEdit(false)} /> : <FactsView f={f} name={e.name} calm={calm} onEdit={readOnly ? undefined : () => onEdit(true)} />)}
       </QueryState>
     </section>
   );
