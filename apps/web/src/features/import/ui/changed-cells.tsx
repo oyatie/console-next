@@ -23,6 +23,8 @@ export function ChangedCells({ dry, consoleMode = false }: { dry: ImportDryRun; 
     <Card
       titleId="import-changes"
       title={title}
+      flush={consoleMode}
+      look={consoleMode ? "flush" : undefined}
       tools={
         <div className={s.filters}>
           <Chip tone="info">{t("importChanges.changed", { n: people })}</Chip>

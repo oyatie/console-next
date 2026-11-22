@@ -9,7 +9,7 @@ import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import type { ImportRow } from "../domain/contract";
 import { filterRows, needsLook, OUTCOMES, tally, type RowFilter } from "../domain/steps";
 import { filterTriageRows, type TriageBucket } from "../domain/triage";
-import { employeeStatusLabel, matchedLabel, numberSourceLabel, outcomeLabel } from "../present";
+import { employeeStatusLabel, idTypeLabel, matchedLabel, numberSourceLabel, outcomeLabel } from "../present";
 import { IMPORT_OUTCOME } from "../../../lib/labels";
 import { EnumValue } from "../../../ui/enum-value";
 import { RowDetail } from "./row-detail";
@@ -57,18 +57,29 @@ export function DryRows({
   };
   const number = (r: ImportRow) => {
     const np = r.new_person;
-    if (!np) return <span className="code">{r.employee_number ?? "—"}</span>;
+    if (!np) return <bdi className="code">{r.employee_number ?? "—"}</bdi>;
     if (np.employee_number == null) return <Chip tone="warn">{t("import.number.none")}</Chip>;
-    return <span className={s.cellLine}><span className="code">{np.employee_number}</span>{np.employee_number_source && np.employee_number_source !== "file" && <Chip tone="info">{numberSourceLabel(np.employee_number_source)}</Chip>}</span>;
+    return <span className={s.cellLine}><bdi className="code">{np.employee_number}</bdi>{np.employee_number_source && np.employee_number_source !== "file" && <Chip tone="info">{numberSourceLabel(np.employee_number_source)}</Chip>}</span>;
   };
   const columns: LongColumn<ImportRow>[] = [
-    { id: "at", header: t("import.col.sheetRow"), cell: (r) => <span className="num">{r.sheet} · {r.row}</span>, width: 120 },
-    { id: "number", header: t("import.rows.col.number"), cell: number, width: 150 },
-    { id: "name", header: t("import.rows.col.name"), cell: (r) => r.name, rowHeader: true, width: "1fr" },
-    { id: "status", header: t("import.rows.col.status"), cell: (r) => (r.new_person ? employeeStatusLabel(r.new_person.status) : "—"), width: 96 },
-    { id: "place", header: t("import.rows.col.place"), cell: place, width: "2fr" },
-    { id: "outcome", header: t("import.rows.col.outcome"), cell: (r) => <EnumValue e={IMPORT_OUTCOME} value={r.outcome} />, width: 120 },
-    { id: "matched", header: t("import.rows.col.matched"), cell: (r) => (r.matched_by ? matchedLabel(r.matched_by) : "—"), width: 110 },
+    { id: "at", header: t("import.col.sheetRow"), card: "title", cell: (r) => <bdi className="num">{r.sheet} · {r.row}</bdi>, width: 112 },
+    { id: "number", header: t("import.rows.col.number"), card: "fact", cell: number, width: 136 },
+    { id: "name", header: t("import.rows.col.name"), card: "title", cell: (r) => r.name, rowHeader: true, width: "1fr" },
+    {
+      id: "status",
+      header: t("import.rows.col.status"),
+      card: "fact",
+      cell: (r) =>
+        r.new_person
+          ? r.new_person.id_type
+            ? `${employeeStatusLabel(r.new_person.status)} · ${idTypeLabel(r.new_person.id_type)}`
+            : employeeStatusLabel(r.new_person.status)
+          : "—",
+      width: 205,
+    },
+    { id: "place", header: t("import.rows.col.place"), card: "fact", cell: place, width: "1.5fr" },
+    { id: "outcome", header: t("import.rows.col.outcome"), card: "status", cell: (r) => <EnumValue e={IMPORT_OUTCOME} value={r.outcome} />, width: 110 },
+    { id: "matched", header: t("import.rows.col.matched"), card: "omit", cell: (r) => (r.matched_by ? matchedLabel(r.matched_by) : "—"), width: 96 },
   ];
   const title = t("import.rows.title");
   return (

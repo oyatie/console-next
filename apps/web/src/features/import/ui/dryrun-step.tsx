@@ -35,6 +35,8 @@ export type DryRunConsoleParts = {
   resolveBusy: boolean;
   onResolve: (c: Picks) => void;
   onSheets: () => void;
+  onDryRun: (d: ImportDryRun) => void;
+  onExpired: () => void;
   consequence: ReactNode;
   changed: number;
   notice: ReactNode;
@@ -182,7 +184,7 @@ export function DryRunStep({ picks, onPicks, dry, preview, onDryRun, onApplied, 
 
   if (consoleShell) {
     const summary = (
-      <Card titleId="import-dry" title={t("import.dry.title")} meta={`${t("import.stat.review")} ${fmtNumber(dry.review.count)}`}>
+      <Card titleId="import-dry" title={t("import.dry.title")} meta={`${t("import.stat.review")} ${fmtNumber(dry.review.count)}`} flush look="flush">
         <StatRow
           label={t("import.triage.label")}
           items={[
@@ -221,6 +223,8 @@ export function DryRunStep({ picks, onPicks, dry, preview, onDryRun, onApplied, 
           resolveBusy: rerun.isPending,
           onResolve: resolve,
           onSheets,
+          onDryRun,
+          onExpired,
           consequence: consequenceBlock,
           changed,
           notice: noticeBlock,

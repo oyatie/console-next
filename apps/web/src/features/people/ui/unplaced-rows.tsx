@@ -3,7 +3,6 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
-import { Kbd } from "../../../ui/kbd/kbd";
 import { LongTable } from "../../../ui/long-table/long-table";
 import { label } from "../../../lib/labels";
 import { EMPLOYMENT_TYPES } from "../domain/register";
@@ -31,7 +30,7 @@ export function UnplacedRows({ group, sel, onSel, done, consoleMode = false }: {
     <section className={s.rows} aria-label={group ? t("unplaced.groupHead", { value: sourceText(group.value), n: people.length }) : undefined}>
       <div className={s.rowsHead}>
         <b>{group ? t("unplaced.groupHead", { value: sourceText(group.value), n: people.length }) : ""}</b>
-        <span className={s.sub}>{t("unplaced.picked", { n: sel.size })} · <Kbd keys="Shift" /><Kbd keys="↓" /> · <Kbd keys="X" /> {t("unplaced.keysRow")}</span>
+        <span className={s.sub}>{t("unplaced.picked", { n: sel.size })} · {t("unplaced.keysRow")}</span>
         <span className={s.grow} />
         {people.length > 0 && <Button variant="ghost" className={consoleMode ? c.nowrap : undefined} onClick={() => onSel(new Set(people.map((e) => e.id)))}>{t("unplaced.selectAll", { n: people.length })}</Button>}
       </div>
@@ -48,13 +47,13 @@ export function UnplacedRows({ group, sel, onSel, done, consoleMode = false }: {
         selection={{ kind: "ids", ids: sel }}
         onSelectionChange={(x) => onSel(x.kind === "ids" ? x.ids : new Set(people.map((e) => e.id)))}
         columns={[
-          { id: "number", header: t("unplaced.col.number"), cell: (e) => <span className="num">{e.employee_number ?? "—"}</span>, width: 72 },
-          { id: "name", header: t("unplaced.col.name"), cell: (e) => <b>{e.name}</b>, rowHeader: true, width: 72 },
-          { id: "reason", header: t("unplaced.col.reason"), cell: (e) => t(e.reason === "unit_unknown" ? "setup.fix.assign_departments" : "home.inbox.reason.unplaced"), width: 120 },
-          { id: "position", header: t("unplaced.col.position"), cell: (e) => e.position ?? "—", width: 52 },
-          { id: "type", header: t("unplaced.col.type"), cell: (e) => (e.employment_type ? label(TYPE, e.employment_type) : "—"), width: 72 },
-          { id: "hire", header: t("unplaced.col.hire"), cell: (e) => <span className="num">{e.hire_date ? fmtDate(e.hire_date) : "—"}</span>, width: 100 },
-          { id: "alone", header: <span className="sr-only">{t("unplaced.alone")}</span>, cell: () => <span className={consoleMode ? c.alone : s.alone} aria-hidden>{t("unplaced.alone")}</span>, width: 76 },
+          { id: "number", header: t("unplaced.col.number"), cell: (e) => <span className="num">{e.employee_number ?? "—"}</span>, width: 84 },
+          { id: "name", header: t("unplaced.col.name"), cell: (e) => <b>{e.name}</b>, rowHeader: true, width: 88 },
+          { id: "reason", header: t("unplaced.col.reason"), cell: (e) => t(e.reason === "unit_unknown" ? "setup.fix.assign_departments" : "home.inbox.reason.unplaced"), width: "1fr" },
+          { id: "position", header: t("unplaced.col.position"), cell: (e) => e.position ?? "—", width: 72 },
+          { id: "type", header: t("unplaced.col.type"), cell: (e) => (e.employment_type ? label(TYPE, e.employment_type) : "—"), width: 88 },
+          { id: "hire", header: t("unplaced.col.hire"), cell: (e) => <span className="num">{e.hire_date ? fmtDate(e.hire_date) : "—"}</span>, width: 112 },
+          { id: "alone", header: <span className="sr-only">{t("unplaced.alone")}</span>, cell: () => <span className={consoleMode ? c.alone : s.alone} aria-hidden>{t("unplaced.alone")}</span>, width: 84 },
         ]}
       />
       {done.map((d) => (

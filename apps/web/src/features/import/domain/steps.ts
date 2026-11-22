@@ -24,6 +24,8 @@ const canon = (v: unknown): string =>
 /** The answers the last dry run used that came from the operator: those the company's memory filled in left out. */
 function operatorAnswers(d: ImportDryRun): Picks {
   const out = { ...initialPicks(), ...d.decisions } as Record<string, Record<string, unknown>>;
+  // Inline cell repairs are persisted server-side via PUT .../cells and auto-loaded by dry-run/apply, not held in Picks.
+  delete out.cells;
   for (const r of d.remembered ?? []) {
     if (!(r.decision in out)) continue;
     out[r.decision] = { ...out[r.decision] };

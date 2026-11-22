@@ -29,7 +29,7 @@ const ExitCaseListContent = lazy(() => import("./ui/exit-list").then(module => (
  * nothing = current staff; `review`: comma-joined attention chips, see domain/roster.ts). The search term (a
  * person's name or number) stays out of the URL and so out of history. `bulk=paste` opens the bulk sheet from a paste.
  */
-export type PeopleSearch = { tab?: PeopleTab; exitStatus?: ExitFilter; placement?: "unplaced"; sel?: string; sel2?: string; view?: PeopleView; unit?: string; status?: string; sort?: string; review?: string; bulk?: "paste"; export?: "register" };
+export type PeopleSearch = { tab?: PeopleTab; exitStatus?: ExitFilter; placement?: "unplaced"; sel?: string; sel2?: string; view?: PeopleView; unit?: string; ids?: string; status?: string; sort?: string; review?: string; bulk?: "paste"; export?: "register" };
 
 const route = getRouteApi("/app/people");
 

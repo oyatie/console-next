@@ -39,10 +39,14 @@ test("separates hard blockers, warnings, and clean ready rows", () => {
   expect(firstActionableRowKey({ rows })).toBe("k-4");
 });
 
-test("maps invalid_date and status_conflict refusals to explicit remediation hints", () => {
-  expect(rowRemediationHintKey(mkRow({ outcome: "refused", refusal_code: "invalid_date" }))).toBe("import.hint.invalid_date");
-  expect(rowRemediationHintKey(mkRow({ outcome: "refused", refusal_code: "status_conflict" }))).toBe("import.hint.status_conflict");
-  expect(rowRemediationHintKey(mkRow({ outcome: "unresolved_identity" }))).toBe("import.hint.unresolved_identity");
+test("maps invalid_date, two_digit_year, and identity/identifier refusals to explicit remediation hints", () => {
+  expect(rowRemediationHintKey(mkRow({ outcome: "refused", refusal_code: "invalid_date" }))).toBe("importReview.hint.invalid_date");
+  expect(rowRemediationHintKey(mkRow({ outcome: "refused", refusal_code: "two_digit_year" }))).toBe("importReview.hint.two_digit_year");
+  expect(rowRemediationHintKey(mkRow({ outcome: "refused", refusal_code: "rrn_mod11_invalid" }))).toBe("importReview.hint.rrn_mod11_invalid");
+  expect(rowRemediationHintKey(mkRow({ outcome: "refused", refusal_code: "not_issued_requires_pre_hire" }))).toBe("importReview.hint.not_issued_requires_pre_hire");
+  expect(rowRemediationHintKey(mkRow({ outcome: "refused", refusal_code: "id_type_rrn_mismatch" }))).toBe("importReview.hint.id_type_rrn_mismatch");
+  expect(rowRemediationHintKey(mkRow({ outcome: "refused", refusal_code: "status_conflict" }))).toBe("importReview.hint.status_conflict");
+  expect(rowRemediationHintKey(mkRow({ outcome: "unresolved_identity" }))).toBe("importReview.hint.unresolved_identity");
   expect(rowRemediationHintKey(mkRow({ outcome: "insert" }))).toBeNull();
 });
 

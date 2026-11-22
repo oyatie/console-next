@@ -46,7 +46,23 @@ export const SORTS = ["org_unit", "name", "employee_number", "hire_date"] as con
 export type RosterSort = (typeof SORTS)[number];
 export const parseSort = (v?: string): RosterSort => SORTS.find((x) => x === v) ?? "name";
 
-export type RosterFilter = { status: StatusView; review: readonly Review[]; unit?: string; q?: string; sort?: RosterSort };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function parseIds(raw?: string): string[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(",")) {
+    const id = part.trim();
+    if (UUID_RE.test(id) && !seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+      if (out.length >= 500) break;
+    }
+  }
+  return out;
+}
+
+export type RosterFilter = { status: StatusView; review: readonly Review[]; unit?: string; ids?: readonly string[]; q?: string; sort?: RosterSort };
 
 /** What the review chips ask the server; `soonDays` is the renewal window Home's queue uses. */
 const reviewQuery = (on: readonly Review[], today: string, soonDays?: number) => ({
@@ -64,6 +80,7 @@ export const listQuery = (f: RosterFilter, today: string, soonDays?: number) => 
   search: f.q || undefined,
   sort: f.sort && f.sort !== "name" ? f.sort : undefined,
   ...scopeQuery(f.unit),
+  ids: f.ids?.length ? [...f.ids] : undefined,
   status: statusesOf(f.status),
   ...reviewQuery(f.review, today, soonDays),
 });

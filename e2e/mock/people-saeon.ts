@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { createHash } from "node:crypto";
 import type { Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
@@ -6,6 +7,7 @@ import { screens } from "../states/registry";
 import { contractWindowSettings } from "./directory";
 import { authz, failure, screenAccess } from "./fixtures";
 import { mockRoute } from "./route";
+import { maskRrn, rrnChecksumValid } from "./saeon-ids";
 import {
   SAEON_HERO_ID,
   saeonAdminToken,
@@ -33,6 +35,7 @@ import {
   saeonOrgStructure,
   saeonOrgUnits,
   saeonPayslipDraft,
+  saeonPeopleDataHealth,
   saeonPersonMonthAttendance,
   saeonPersonRecords,
   saeonPersonalFacts,
@@ -43,6 +46,7 @@ import {
   saeonRrnStatus,
   saeonUnmappedCompanies,
   saeonUnplacedQueue,
+  type MockImportDryRunState,
 } from "./saeon";
 import { mockScreen } from "./screen";
 
@@ -219,6 +223,11 @@ export async function setupConsoleSaeonPeople(page: Page, options: SetupSaeonPeo
   await mockRoute(page, "get", "/api/v1/employee-import-runs", () =>
     canManage ? { status: 200, json: saeonImportRuns() } : { status: 403, json: failure("forbidden") },
   );
+  const dryRunState: MockImportDryRunState = {
+    repairedCells: {},
+    recordedIdentifiers: {},
+  };
+
   await mockRoute(page, "post", "/api/v1/employees/import/preview", req => {
     if (!canManage) return { status: 403, json: failure("forbidden") };
     const rawBody = req.postData() ?? "";
@@ -227,9 +236,76 @@ export async function setupConsoleSaeonPeople(page: Page, options: SetupSaeonPeo
     }
     return { status: 200, json: saeonImportPreview() };
   });
+  await mockRoute(page, "put", "/api/v1/employees/import/{run_id}/cells", req => {
+    if (!canManage) return { status: 403, json: failure("forbidden") };
+    const runId = employeeIdFromPath(req.url(), 1);
+    const body = req.postDataJSON() as S["ImportCellsRepairRequest"] | null;
+    const cells = body?.cells ?? {};
+    let repairedRows = 0;
+    for (const [sourceKey, fields] of Object.entries(cells)) {
+      for (const [field, rawVal] of Object.entries(fields)) {
+        if (field === "rrn" || field === "phone" || field === "name") {
+          return { status: 422, json: failure("mapping_restricted_column") };
+        }
+        const val = rawVal.trim();
+        if (field.endsWith("_date") && val) {
+          if (/^\d{2}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(val) || (/^\d{4}-\d{2}-\d{2}$/.test(val) && Number(val.slice(0, 4)) < 1900)) {
+            return { status: 422, json: failure("two_digit_year") };
+          }
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+            return { status: 422, json: failure("invalid_date") };
+          }
+        }
+      }
+      dryRunState.repairedCells![sourceKey] = { ...(dryRunState.repairedCells![sourceKey] ?? {}), ...fields };
+      repairedRows += 1;
+    }
+    return { status: 200, json: { run_id: runId, repaired_rows: repairedRows, cells: dryRunState.repairedCells! } };
+  });
+  await mockRoute(page, "put", "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier", req => {
+    if (!canManage) return { status: 403, json: failure("forbidden") };
+    if (passkeyStepUpMode === "step_up_required") return { status: 401, json: failure("step_up_required") };
+    if (passkeyStepUpMode === "refused") return { status: 403, json: failure("forbidden") };
+    const parts = new URL(req.url()).pathname.split("/").filter(Boolean);
+    const runId = parts[parts.length - 4]!;
+    const sourceKey = decodeURIComponent(parts[parts.length - 2]!);
+    const body = req.postDataJSON() as S["ImportRowIdentifierRequest"] | null;
+    const expectedHash = createHash("sha256").update(`${runId}:${sourceKey}`).digest("hex");
+    if (
+      body?.step_up?.binding?.action_kind !== "PII_RECORD" ||
+      body?.step_up?.binding?.object_id !== runId ||
+      body?.step_up?.binding?.payload_hash !== expectedHash
+    ) {
+      return { status: 401, json: failure("passkey_step_up_binding_mismatch") };
+    }
+    const clean = (body?.rrn ?? "").replace(/\D/g, "");
+    if (!rrnChecksumValid(clean)) {
+      return { status: 422, json: failure("rrn_invalid") };
+    }
+    if (clean.slice(7, 12) === "99999") {
+      return { status: 409, json: failure("rrn_in_use") };
+    }
+    const seventh = Number(clean[6]);
+    const idType = body?.id_type ?? (seventh >= 5 ? "ARC" : "RRN");
+    if ((idType === "RRN" && seventh >= 5) || ((idType === "ARC" || idType === "DOMESTIC_RESIDENCE") && seventh < 5)) {
+      return { status: 422, json: failure("id_type_rrn_mismatch") };
+    }
+    const sexDerived = (seventh % 2 === 1 ? "MALE" : "FEMALE") as "MALE" | "FEMALE";
+    dryRunState.recordedIdentifiers![sourceKey] = { id_type: idType, sex_derived: sexDerived };
+    return {
+      status: 200,
+      json: { run_id: runId, source_key: sourceKey, id_type: idType, recorded: true, sex_derived: sexDerived },
+    };
+  });
   await mockRoute(page, "post", "/api/v1/employees/import/{run_id}/dry-run", () =>
-    canManage ? { status: 200, json: saeonImportDryRun() } : { status: 403, json: failure("forbidden") },
+    canManage ? { status: 200, json: saeonImportDryRun(dryRunState) } : { status: 403, json: failure("forbidden") },
   );
+  await mockRoute(page, "get", "/api/v1/hr/people/data-health", req => {
+    const params = new URL(req.url()).searchParams;
+    const category = params.get("category");
+    const limit = Number(params.get("limit") ?? "20") || 20;
+    return { status: 200, json: saeonPeopleDataHealth({ category, limit, canManage }) };
+  });
   await mockRoute(page, "get", "/api/v1/employees/voided", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/v1/employees/{id}/personal-facts", req => ({
     status: 200,
@@ -263,11 +339,27 @@ export async function setupConsoleSaeonPeople(page: Page, options: SetupSaeonPeo
       ? { status: 200, json: saeonRrnStatus(employeeIdFromPath(req.url(), 1)) }
       : { status: 403, json: failure("forbidden") },
   );
+  await mockRoute(page, "put", "/api/v1/employees/{id}/rrn", req => {
+    if (!canManage || passkeyStepUpMode === "refused") return { status: 403, json: failure("forbidden") };
+    if (passkeyStepUpMode === "step_up_required") return { status: 401, json: failure("step_up_required") };
+    const empId = employeeIdFromPath(req.url(), 1);
+    const body = req.postDataJSON() as S["EmployeeRrnRecordRequest"] | null;
+    const clean = (body?.rrn ?? "").replace(/\D/g, "");
+    if (!rrnChecksumValid(clean)) return { status: 422, json: failure("rrn_invalid") };
+    const seventh = Number(clean[6]);
+    const idType = body?.id_type ?? (seventh >= 5 ? "ARC" : "RRN");
+    if ((idType === "RRN" && seventh >= 5) || ((idType === "ARC" || idType === "DOMESTIC_RESIDENCE") && seventh < 5)) {
+      return { status: 422, json: failure("id_type_rrn_mismatch") };
+    }
+    return { status: 201, json: { employee_id: empId, recorded: true, masked: maskRrn(clean), source: "FORM" as const } };
+  });
 
-  await mockRoute(page, "post", "/api/v1/auth/passkey/step-up/start", () => {
+  await mockRoute(page, "post", "/api/v1/auth/passkey/step-up/start", req => {
     if (passkeyStepUpMode === "refused") {
       return { status: 403, json: failure("forbidden") };
     }
+    const reqBody = req.postDataJSON() as { binding?: S["MobilePasskeyStepUpBinding"] } | null;
+    const reqBinding = reqBody?.binding;
     return {
       status: 200,
       json: {
@@ -275,10 +367,11 @@ export async function setupConsoleSaeonPeople(page: Page, options: SetupSaeonPeo
         challenge: { publicKey: { challenge: "Y2hhbGxlbmdl" } },
         expires_at: "2026-11-10T01:00:00Z",
         binding: {
-          action_kind: "RRN_REVEAL",
-          object_id: SAEON_HERO_ID,
-          reason_key: "INSURANCE_FILING",
-          replay_attempt: null,
+          action_kind: reqBinding?.action_kind ?? "RRN_REVEAL",
+          object_id: reqBinding?.object_id ?? SAEON_HERO_ID,
+          reason_key: reqBinding?.reason_key ?? "INSURANCE_FILING",
+          replay_attempt: reqBinding?.replay_attempt ?? null,
+          ...(reqBinding?.payload_hash ? { payload_hash: reqBinding.payload_hash } : {}),
         },
       },
     };

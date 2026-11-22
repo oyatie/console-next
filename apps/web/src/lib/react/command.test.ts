@@ -97,6 +97,7 @@ const refusals = [
   ["command_settled", new ApiError(409, "command_settled", "terminal")],
   ["command_expired", new ApiError(409, "command_expired", "expired")],
   ["503 import_apply_busy (shed before writing)", new ApiError(503, "import_apply_busy", "busy")],
+  ["503 rrn_vault_unavailable (vault unreachable before writing)", new ApiError(503, "rrn_vault_unavailable", "unavailable")],
   ["local preview Refused", new Error("preview_has_refusals")],
   ["passkey DOMException", new DOMException("prompt cancelled", "NotAllowedError")],
 ] as const;
