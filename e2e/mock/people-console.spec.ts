@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -132,11 +130,6 @@ for (const width of [1440, 390] as const) {
         await fits(page, `Console /people/$id ${width} ${theme}`);
         await expectAxe(page, `Console /people/$id ${width} ${theme}`);
         await withFullPage(page, () => shot(page, `people-detail--${width}-${theme}`));
-        if (process.env.CAPTURE_CONSOLE_SHOTS === "1") {
-          const dir = path.resolve("docs/ui-target/built/console", String(width));
-          mkdirSync(dir, { recursive: true });
-          await withFullPage(page, () => page.screenshot({ path: path.join(dir, `people-detail-${theme}.png`), fullPage: true }));
-        }
 
         if (width === 390) {
           const sec5Buttons = await pattern.locator("#s5 button").all();

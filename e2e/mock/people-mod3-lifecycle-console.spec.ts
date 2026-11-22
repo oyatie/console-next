@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { test } from "../locale-fixture";
-import { withFullPage } from "../shots";
+import { shot, withFullPage } from "../shots";
 import { failure } from "./fixtures";
 import { setupConsoleSaeonPeople } from "./people-saeon";
 import { mockRoute } from "./route";
@@ -13,17 +11,14 @@ import { SAEON_HERO_ID, saeonUniverse } from "./saeon";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-const SHOT_ROOT = path.resolve("docs/ui-target/built/console");
 const capture = async (page: Page, width: 1440 | 390, name: string, theme: "light" | "dark") => {
-  if (process.env.CAPTURE_CONSOLE_SHOTS !== "1") return;
-  const dir = path.join(SHOT_ROOT, String(width));
-  mkdirSync(dir, { recursive: true });
-  const modalOpen = (await page.locator('[role="dialog"]').count()) > 0;
-  if (modalOpen) {
-    await page.screenshot({ path: path.join(dir, `${name}-${theme}.png`), fullPage: false });
+  const dir = process.env.STRUCT_SHOTS;
+  if (!dir) return;
+  if ((await page.locator('[role="dialog"]').count()) > 0) {
+    await page.screenshot({ path: `${dir}/${name}--${width}-${theme}.png`, fullPage: false });
     return;
   }
-  await withFullPage(page, () => page.screenshot({ path: path.join(dir, `${name}-${theme}.png`), fullPage: true }));
+  await withFullPage(page, () => shot(page, `${name}--${width}-${theme}`));
 };
 
 for (const width of [1440, 390] as const) {
