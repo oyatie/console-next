@@ -244,4 +244,11 @@ export const koEnum: Record<keyof typeof enEnum, string> = {
   "enum.tenantLifecycle.ENROLLED": "패스키 등록",
   "enum.tenantLifecycle.SETUP": "설정 단계",
   "enum.tenantLifecycle.OPERATING": "운영 중",
+  "enum.platformOperatorStatus.PENDING_ENROLMENT": "등록 대기",
+  "enum.platformOperatorStatus.ACTIVE": "활성",
+  "enum.platformOperatorStatus.REVOKED": "회수됨",
+  "enum.platformOperatorStatus.EXPIRED": "만료됨",
+  "enum.platformGroupRole.GROUP_ADMIN": "그룹 관리자",
+  "enum.platformGroupRole.GROUP_VIEWER": "그룹 조회",
+  "enum.platformGroupRole.GROUP_FINANCE": "그룹 재무",
 };

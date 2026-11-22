@@ -106,6 +106,7 @@ export const koCommon: Record<keyof typeof enCommon, string> = {
   "common.failed.code.operator_already_enrolled": "이미 패스키 등록을 마친 운영자입니다.",
   "common.failed.code.cannot_revoke_self": "본인의 플랫폼 운영자 권한은 스스로 회수할 수 없습니다.",
   "common.failed.code.last_platform_operator": "최소 한 명의 활성 플랫폼 운영자는 남아 있어야 합니다.",
+  "common.failed.code.passkey_required": "패스키로 본인 확인한 뒤 다시 실행하십시오.",
   "common.inviteLink": "초대 링크",
   "common.copyInviteLink": "링크 복사",
   "common.inviteLinkCopied": "초대 링크를 복사했습니다",
