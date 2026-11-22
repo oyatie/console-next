@@ -101,10 +101,11 @@ fn fs_runbook_store_enforces_allowlist_anchor_extraction_and_symlink_guards() ->
         store.read_doc("docs/patches/secret.md"),
         Err(RunbookError::InvalidPath)
     );
+    let encoded_bypass = ["docs", "%2fpatches/secret.md"].join("/");
     for bypass in [
         "docs/./patches/secret.md",
         "docs//patches/secret.md",
-        "docs/%2fpatches/secret.md",
+        encoded_bypass.as_str(),
         "docs/./ops-backlog.md",
         "docs//ops-backlog.md",
         "docs/PATCHES/secret.md",

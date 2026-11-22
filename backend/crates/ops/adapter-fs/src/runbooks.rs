@@ -6,6 +6,7 @@ use console_ops_application::domain::runbook::extract_runbook_anchors;
 use console_ops_application::runbooks::{RunbookDoc, RunbookDocMeta, RunbookError, RunbookStore};
 
 const MAX_RUNBOOK_BYTES: u64 = 1_048_576;
+const DOCS_SUBDIR: &str = "docs";
 
 pub struct FsRunbookStore {
     root: PathBuf,
@@ -16,6 +17,11 @@ impl FsRunbookStore {
         Self {
             root: config_dir.join("runbooks"),
         }
+    }
+
+    fn is_docs_rel(rel: &str) -> bool {
+        rel.strip_prefix(DOCS_SUBDIR)
+            .is_some_and(|rest| rest.starts_with('/'))
     }
 
     fn is_excluded_rel(rel: &str) -> bool {
@@ -30,7 +36,7 @@ impl FsRunbookStore {
         if Self::is_excluded_rel(rel) {
             return false;
         }
-        rel == "RUNBOOK.md" || (rel.starts_with("docs/") && rel.ends_with(".md"))
+        rel == "RUNBOOK.md" || (Self::is_docs_rel(rel) && rel.ends_with(".md"))
     }
 
     fn safe_join(&self, rel: &str) -> Result<PathBuf, RunbookError> {
@@ -125,7 +131,7 @@ impl FsRunbookStore {
                 continue;
             }
             if meta.is_dir() {
-                if rel == "docs" || rel.starts_with("docs/") {
+                if rel == DOCS_SUBDIR || Self::is_docs_rel(&rel) {
                     self.collect_docs(&path, &rel, out)?;
                 }
             } else if meta.is_file()
