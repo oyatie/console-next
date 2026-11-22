@@ -45,7 +45,7 @@ async fn facts_patch_is_tested_normalised_and_pay_is_first_record_only(pool: PgP
         { "op": "test", "path": "/work_email", "value": null },
         { "op": "replace", "path": "/work_email", "value": " Kim@Corp.EXAMPLE.COM " },
         { "op": "test", "path": "/id_type", "value": null },
-        { "op": "replace", "path": "/id_type", "value": "NOT_ISSUED" },
+        { "op": "replace", "path": "/id_type", "value": "RRN" },
         { "op": "test", "path": "/employment/pay_unit", "value": null },
         { "op": "replace", "path": "/employment/pay_unit", "value": "MONTHLY" },
         { "op": "test", "path": "/employment/base_pay_won", "value": null },
@@ -87,7 +87,7 @@ async fn facts_patch_is_tested_normalised_and_pay_is_first_record_only(pool: PgP
     // ME-3: a stale test whose write the record already holds → no conflict.
     let same = ops(json!([
         { "op": "test", "path": "/id_type", "value": null },
-        { "op": "replace", "path": "/id_type", "value": "NOT_ISSUED" }
+        { "op": "replace", "path": "/id_type", "value": "RRN" }
     ]));
     f.hr.patch_employment_facts(p(), f.employee, same)
         .await

@@ -29,6 +29,8 @@ use uuid::Uuid;
 mod emergency_contacts;
 #[path = "rrn_record_http/governance.rs"]
 mod governance;
+#[path = "rrn_record_http/id_registered.rs"]
+mod id_registered;
 #[path = "rrn_record_http/vault.rs"]
 mod vault;
 use vault::Vault;

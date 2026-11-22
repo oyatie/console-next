@@ -9206,6 +9206,55 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/employees/import/{run_id}/rows/{source_key}/identifier:
+    put:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
+      tags:
+      - employees
+      operationId: recordImportRowIdentifier
+      summary: Stage a step-up sealed registration number onto a draft employee import row
+      description: Requires EmployeeDirectoryManage and a fresh PII_RECORD passkey step-up assertion bound to (run_id, source_key). Validates and seals the registration number into data_import_row_identities without mutating raw import rows or echoing sensitive digits.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - name: source_key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportRowIdentifierRequest'
+      responses:
+        '200':
+          description: Sealed draft identifier staged for dry run and apply.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportRowIdentifierResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: rrn_record_rate_limited.
+        '503':
+          description: rrn_vault_unavailable.
   /api/v1/employees/import/{run_id}/signoff:
     post:
       tags:
@@ -16837,6 +16886,61 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/hr/people/data-health:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
+      tags:
+      - employees
+      operationId: getPeopleDataHealth
+      summary: Tenant- and branch-scoped people data-health overview
+      description: Returns batched statutory register completeness, identity document coverage, workplace and department placement counts, boolean-only bank account readiness, identity review counts, failed lifecycle action counts, bounded zero-PII drilldown items, and EmployeeDirectoryManage-gated latest import status.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - birth
+          - job
+          - hire
+          - contractEnd
+          - sex
+          - address
+          - career
+          - rrn_missing
+          - unplaced
+          - department_missing
+          - bank_account_missing
+          - identity_review
+          - failed_action
+          - register_incomplete
+        description: Filter drilldown items to employees missing the specified category.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Maximum number of drilldown items returned (1..=50).
+      responses:
+        '200':
+          description: People data-health metrics and bounded zero-PII drilldown items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeopleDataHealthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/hr/readiness-summary:
     get:
       tags:
@@ -44735,6 +44839,13 @@ components:
               type: string
               enum: [pre_hire]
           additionalProperties: false
+        cells:
+          type: object
+          description: Inline dry-run cell repairs keyed by source_key then target field name (restricted fields rrn, phone, and name are rejected).
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: string
     EmployeeImportDryRunSummary:
       type: object
       required:
@@ -45005,14 +45116,20 @@ components:
               type: string
               format: date
               description: 'r3:hire-16: the employment profile''s probation end date.'
+            id_type:
+              type: string
+              enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED]
+              description: Resolved legal identity document type for the created employee.
         refusal_code:
           type: string
-          enum: [duplicate_in_file, invalid_date, identity_mismatch, hire_date_required, former_load_closed,
+          x-extensible-enum: [duplicate_in_file, invalid_date, two_digit_year, identity_mismatch, hire_date_required, former_load_closed,
             workplace_conflict, identity_conflict, employee_number_taken, status_unmapped, status_conflict,
-            exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required]
+            exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required,
+            not_issued_requires_pre_hire, not_issued_with_rrn, not_issued_secondary_key_required,
+            id_type_invalid, id_type_rrn_mismatch, rrn_mod11_invalid]
         refusal_field:
           type: string
-          x-extensible-enum: [employee_number, name, hire_date, exit_date, birth_date, worksite_name, rrn, employment_status,
+          x-extensible-enum: [employee_number, name, hire_date, exit_date, birth_date, worksite_name, rrn, id_type, employment_status,
             leave_start_date, leave_type, leave_return_date, contract_end_date, probation_end_date]
         matched_by:
           type: string
@@ -45348,7 +45465,7 @@ components:
             decision:
               type: string
               x-extensible-enum: [identity, exclusions, company_map, unit_map, workplace_map, employment_type_map, status_map, leave_type_map,
-                employee_numbers, mapping, group_exclusions]
+                employee_numbers, mapping, group_exclusions, cells]
             key:
               type: string
             choices:
@@ -45372,6 +45489,9 @@ components:
                 x-extensible-enum: [same_name, normalized, path, suffix, registration_number, alias]
               alias:
                 type: [string, 'null']
+        expected_format:
+          type: string
+          description: Expected format hint for inline cell repair (for example YYYY-MM-DD).
     EmployeeImportReviewQueue:
       type: object
       description: 'IMPORT-2 (decisions #25): the "needs checking" queue, counted. Blocking items keep apply closed (422
@@ -46438,6 +46558,10 @@ components:
           type: string
           writeOnly: true
           description: Resident registration number, validated by the server; never retained in a draft.
+        id_type:
+          type: string
+          enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+          description: Optional explicit identity document type paired with the registration number.
         step_up:
           $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     EmployeeRrnRevealRequest:
@@ -49937,6 +50061,39 @@ components:
       properties:
         decisions:
           $ref: '#/components/schemas/EmployeeImportDecisions'
+    ImportRowIdentifierRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [rrn]
+      properties:
+        rrn:
+          type: string
+          writeOnly: true
+          description: Resident registration number validated by the server, sealed via RrnVault, and never logged or echoed.
+        id_type:
+          type: string
+          enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+          description: Optional explicit identity document type paired with the registration number.
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    ImportRowIdentifierResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [run_id, source_key, id_type, recorded]
+      properties:
+        run_id:
+          $ref: '#/components/schemas/Uuid'
+        source_key:
+          type: string
+        id_type:
+          type: string
+          enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+        recorded:
+          type: boolean
+        sex_derived:
+          type: string
+          enum: [MALE, FEMALE]
     InboxDocConfirmReceiptRequest:
       type: object
       description: >-
@@ -57664,6 +57821,171 @@ components:
             date, and not the latest promulgated slice.
         url: { type: string }
         retrieved_on: { type: string, format: date }
+    PeopleDataHealthResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - cohort
+      - statutory_register
+      - id_summary
+      - placement_summary
+      - bank_account
+      - identity_review
+      - failed_actions
+      - drilldown_items
+      properties:
+        cohort:
+          type: object
+          required: [total, active, on_leave, pre_hire]
+          properties:
+            total:
+              type: integer
+              format: int64
+            active:
+              type: integer
+              format: int64
+            on_leave:
+              type: integer
+              format: int64
+            pre_hire:
+              type: integer
+              format: int64
+        statutory_register:
+          type: object
+          required: [complete_count, incomplete_count, missing_by_category]
+          properties:
+            complete_count:
+              type: integer
+              format: int64
+            incomplete_count:
+              type: integer
+              format: int64
+            missing_by_category:
+              type: object
+              required: [birth, job, hire, contract_end, sex, address, career]
+              properties:
+                birth:
+                  type: integer
+                  format: int64
+                job:
+                  type: integer
+                  format: int64
+                hire:
+                  type: integer
+                  format: int64
+                contract_end:
+                  type: integer
+                  format: int64
+                sex:
+                  type: integer
+                  format: int64
+                address:
+                  type: integer
+                  format: int64
+                career:
+                  type: integer
+                  format: int64
+        id_summary:
+          type: object
+          required: [rrn_recorded, not_issued, missing, by_type]
+          properties:
+            rrn_recorded:
+              type: integer
+              format: int64
+            not_issued:
+              type: integer
+              format: int64
+            missing:
+              type: integer
+              format: int64
+            by_type:
+              type: object
+              required: [rrn, arc, domestic_residence, not_issued, unset]
+              properties:
+                rrn:
+                  type: integer
+                  format: int64
+                arc:
+                  type: integer
+                  format: int64
+                domestic_residence:
+                  type: integer
+                  format: int64
+                not_issued:
+                  type: integer
+                  format: int64
+                unset:
+                  type: integer
+                  format: int64
+        placement_summary:
+          type: object
+          required: [placed, unplaced, department_missing]
+          properties:
+            placed:
+              type: integer
+              format: int64
+            unplaced:
+              type: integer
+              format: int64
+            department_missing:
+              type: integer
+              format: int64
+        bank_account:
+          type: object
+          required: [registered, missing]
+          properties:
+            registered:
+              type: integer
+              format: int64
+            missing:
+              type: integer
+              format: int64
+        identity_review:
+          type: object
+          required: [needs_review]
+          properties:
+            needs_review:
+              type: integer
+              format: int64
+        failed_actions:
+          type: object
+          required: [count]
+          properties:
+            count:
+              type: integer
+              format: int64
+        drilldown_items:
+          type: array
+          items:
+            type: object
+            required: [employee_id, employment_status, missing_categories]
+            properties:
+              employee_id:
+                $ref: '#/components/schemas/Uuid'
+              employee_number:
+                type: string
+              employment_status:
+                type: string
+                enum: [PRE_HIRE, ACTIVE, ON_LEAVE]
+              missing_categories:
+                type: array
+                items:
+                  type: string
+        latest_import:
+          type: object
+          required: [run_id, status, candidate_rows, created_at]
+          properties:
+            run_id:
+              $ref: '#/components/schemas/Uuid'
+            status:
+              type: string
+            candidate_rows:
+              type: integer
+              format: int32
+            created_at:
+              $ref: '#/components/schemas/Timestamp'
+            applied_at:
+              $ref: '#/components/schemas/Timestamp'
     Period:
       type: object
       required:

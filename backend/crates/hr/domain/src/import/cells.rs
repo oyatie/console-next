@@ -3,18 +3,28 @@
 
 use time::{Date, Duration, Month};
 
+/// Structured failure reason returned by [`parse_import_date_checked`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DateParseError {
+    TwoDigitYear,
+    InvalidFormat,
+}
+
 /// A date cell as Korean HR workbooks write it: `2024-03-04`, `2024.03.04`,
 /// `2024/3/4`, `2024. 3. 4.`, `20240304`, 2024, 3 and 4 each followed by its
 /// Korean year, month or day marker (W05), a trailing time (`… 00:00:00`), or an Excel
 /// serial day number (what a date-formatted cell reads as). Full-width digits
-/// read as digits. `None` for anything else (a two-digit year included); never
-/// a guess.
-#[must_use]
-pub fn parse_import_date(raw: &str) -> Option<Date> {
+/// read as digits. Distinguishes two-digit years from general format errors.
+///
+/// # Errors
+/// [`DateParseError::TwoDigitYear`] when a 2-digit year (`YY-MM-DD`, `YY.MM.DD`,
+/// `YY/MM/DD`, or `YY년 M월 D일`) is supplied instead of a 4-digit year;
+/// [`DateParseError::InvalidFormat`] otherwise.
+pub fn parse_import_date_checked(raw: &str) -> Result<Date, DateParseError> {
     let text = half_width(raw.trim());
     // 2024, 3 and 4 each followed by its Korean year, month or day marker →
     // `2024.3.4`: only with all three markers, in order.
-    let text = match korean_ymd(&text) {
+    let text = match korean_ymd_checked(&text)? {
         Some(dotted) => dotted,
         None => text,
     };
@@ -24,20 +34,40 @@ pub fn parse_import_date(raw: &str) -> Option<Date> {
         if rest.contains(':') { day } else { text }
     });
     if let Some(date) = excel_serial(text) {
-        return Some(date);
+        return Ok(date);
     }
     if text.len() == 8 && text.bytes().all(|b| b.is_ascii_digit()) {
-        return ymd(&text[..4], &text[4..6], &text[6..]);
+        return ymd(&text[..4], &text[4..6], &text[6..]).ok_or(DateParseError::InvalidFormat);
     }
     let parts: Vec<&str> = text
         .split(['-', '.', '/'])
         .map(str::trim)
         .filter(|part| !part.is_empty())
         .collect();
+    let is_digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
     match parts.as_slice() {
-        [y, m, d] if y.len() == 4 && m.len() <= 2 && d.len() <= 2 => ymd(y, m, d),
-        _ => None,
+        [y, m, d] if y.len() == 4 && m.len() <= 2 && d.len() <= 2 => {
+            ymd(y, m, d).ok_or(DateParseError::InvalidFormat)
+        }
+        [y, m, d]
+            if y.len() == 2
+                && is_digits(y)
+                && m.len() <= 2
+                && is_digits(m)
+                && d.len() <= 2
+                && is_digits(d) =>
+        {
+            Err(DateParseError::TwoDigitYear)
+        }
+        _ => Err(DateParseError::InvalidFormat),
     }
+}
+
+/// A date cell as Korean HR workbooks write it. `None` for anything invalid (including a
+/// two-digit year); never a guess.
+#[must_use]
+pub fn parse_import_date(raw: &str) -> Option<Date> {
+    parse_import_date_checked(raw).ok()
 }
 
 /// Full-width ASCII (U+FF01..U+FF5E) and the ideographic space as their
@@ -54,15 +84,24 @@ pub fn half_width(text: &str) -> String {
 }
 
 /// A year, month and day each followed by its Korean marker (any spacing, an
-/// optional trailing `.`) as `YYYY.M.D`.
-fn korean_ymd(text: &str) -> Option<String> {
+/// optional trailing `.`) as `YYYY.M.D`, distinguishing 2-digit years.
+fn korean_ymd_checked(text: &str) -> Result<Option<String>, DateParseError> {
     let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
     let compact = compact.strip_suffix('.').unwrap_or(&compact);
-    let (y, rest) = compact.split_once('년')?;
-    let (m, rest) = rest.split_once('월')?;
-    let d = rest.strip_suffix('일')?;
+    let Some((y, rest)) = compact.split_once('년') else {
+        return Ok(None);
+    };
+    let Some((m, rest)) = rest.split_once('월') else {
+        return Ok(None);
+    };
+    let Some(d) = rest.strip_suffix('일') else {
+        return Ok(None);
+    };
     let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
-    (y.len() == 4 && digits(y) && digits(m) && digits(d)).then(|| format!("{y}.{m}.{d}"))
+    if y.len() == 2 && digits(y) && digits(m) && digits(d) {
+        return Err(DateParseError::TwoDigitYear);
+    }
+    Ok((y.len() == 4 && digits(y) && digits(m) && digits(d)).then(|| format!("{y}.{m}.{d}")))
 }
 
 fn ymd(y: &str, m: &str, d: &str) -> Option<Date> {

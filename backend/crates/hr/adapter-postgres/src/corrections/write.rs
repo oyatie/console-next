@@ -37,7 +37,7 @@ pub(crate) struct LedgerMeta<'a> {
     pub batch_id: Option<Uuid>,
 }
 
-fn value_of<'a>(fields: &'a [FieldValue], name: &str) -> Option<Option<&'a str>> {
+pub(super) fn value_of<'a>(fields: &'a [FieldValue], name: &str) -> Option<Option<&'a str>> {
     fields
         .iter()
         .find(|(field, _)| field == name)
@@ -137,6 +137,7 @@ pub(crate) async fn check_against_record(
             ));
         }
     }
+    super::id_type::check_id_type_for_status(head, fields)?;
     let Some(current) = head.profile.as_ref() else {
         return Ok(());
     };
@@ -235,6 +236,8 @@ pub(crate) async fn apply_fields_in_tx(
     } else {
         correct_employee_head_in_tx(tx, org, employee_id, &columns).await?
     };
+    super::id_type::emit_if_id_registered(tx, org, employee_id, meta.corrected_by, head, fields)
+        .await?;
     if let (Some(_), Some(old)) = (
         value_of(fields, "employee_number"),
         head.current("employee_number"),

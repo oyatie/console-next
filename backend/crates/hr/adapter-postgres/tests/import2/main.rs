@@ -22,6 +22,7 @@ mod mig_roster;
 mod mig_unplaced;
 mod mig_values;
 mod number;
+mod prehire_cells_and_id;
 mod r3_answers;
 mod r3_cap;
 mod r3_facts;

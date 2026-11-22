@@ -28,14 +28,20 @@
 
 use std::collections::BTreeMap;
 
-use super::cells::parse_import_date;
+use super::cells::name_key;
 use super::numbering::Numbering;
 use super::plan::{Decisions, ImportRow, NewPerson, PlanFacts, PlannedRow};
+use super::plan_cells_id::{
+    apply_cell_overrides, not_issued_key_counts, parse_plan_date, resolve_new_person_id_type,
+    validate_row_id_precheck,
+};
 use super::plan_group;
 use super::plan_identity::{Identity, identify};
 use super::plan_people::existing;
 use super::plan_place;
 use super::plan_status;
+use crate::profile::enums::IdType;
+use crate::profile::identity::parse_id_type_import;
 
 pub(super) fn refused(mut row: PlannedRow, code: &'static str, field: &'static str) -> PlannedRow {
     row.outcome = "refused";
@@ -51,20 +57,42 @@ pub fn plan_rows(
     facts: &PlanFacts<'_>,
     decisions: &Decisions,
 ) -> Vec<PlannedRow> {
+    let rows = apply_cell_overrides(rows, decisions);
     let mut numbers: BTreeMap<&str, usize> = BTreeMap::new();
-    for row in rows {
-        if let Some(number) = row.employee_number.as_deref() {
+    for row in &rows {
+        if !decisions.exclusions.contains_key(&row.source_key)
+            && let Some(number) = row.employee_number.as_deref()
+        {
             *numbers.entry(number).or_default() += 1;
         }
     }
+    let active_rows: Vec<ImportRow> = rows
+        .iter()
+        .filter(|r| !decisions.exclusions.contains_key(&r.source_key))
+        .cloned()
+        .collect();
+    let not_issued_keys = not_issued_key_counts(&active_rows);
     let mut planned: Vec<PlannedRow> = rows
         .iter()
         .map(|row| {
             let twice = row
                 .employee_number
                 .as_deref()
-                .is_some_and(|number| numbers[number] > 1);
-            plan_row(row, twice, facts, decisions)
+                .is_some_and(|number| numbers.get(number).copied().unwrap_or(0) > 1);
+            let dup_pre_hire = row.id_type.as_deref().and_then(parse_id_type_import)
+                == Some(IdType::NotIssued)
+                && row
+                    .birth_date
+                    .as_deref()
+                    .and_then(|raw| parse_plan_date(raw, "birth_date").ok())
+                    .is_some_and(|b| {
+                        not_issued_keys
+                            .get(&(name_key(&row.name), b))
+                            .copied()
+                            .unwrap_or(0)
+                            > 1
+                    });
+            plan_row(row, twice, dup_pre_hire, facts, decisions)
         })
         .collect();
     // Two rows that resolve to one person (an employee number and a pick, or two picks).
@@ -90,6 +118,7 @@ pub fn plan_rows(
 fn plan_row(
     row: &ImportRow,
     twice: bool,
+    dup_pre_hire: bool,
     facts: &PlanFacts<'_>,
     decisions: &Decisions,
 ) -> PlannedRow {
@@ -123,6 +152,12 @@ fn plan_row(
     if twice {
         return refused(base, "duplicate_in_file", "employee_number");
     }
+    if dup_pre_hire {
+        return refused(base, "duplicate_in_file", "birth_date");
+    }
+    if let Err((code, field)) = validate_row_id_precheck(row, None) {
+        return refused(base, code, field);
+    }
     let mut dates = [None; 3];
     for (slot, (field, raw)) in dates.iter_mut().zip([
         ("hire_date", &row.hire_date),
@@ -130,9 +165,9 @@ fn plan_row(
         ("birth_date", &row.birth_date),
     ]) {
         if let Some(raw) = raw {
-            match parse_import_date(raw) {
-                Some(date) => *slot = Some(date),
-                None => return refused(base, "invalid_date", field),
+            match parse_plan_date(raw, field) {
+                Ok(date) => *slot = Some(date),
+                Err((code, f)) => return refused(base, code, f),
             }
         }
     }
@@ -148,10 +183,15 @@ fn plan_row(
         .get(&row.source_key)
         .map(|pick| pick.employee_id);
     match identify(base.clone(), row, birth, facts, pick) {
-        Identity::Known(person, how) => PlannedRow {
-            matched_by: Some(how),
-            ..existing(base, row, person, hire, birth, decisions, facts)
-        },
+        Identity::Known(person, how) => {
+            if let Err((code, field)) = validate_row_id_precheck(row, Some(&person.status)) {
+                return refused(base, code, field);
+            }
+            PlannedRow {
+                matched_by: Some(how),
+                ..existing(base, row, person, hire, birth, decisions, facts)
+            }
+        }
         Identity::New => new_person(base, row, (hire, exit, birth), facts, decisions),
         Identity::Settled(planned) => *planned,
     }
@@ -174,8 +214,9 @@ fn new_person(
         ("probation_end_date", &row.probation_end_date),
     ]) {
         if let Some(raw) = raw {
-            match parse_import_date(raw) {
-                Some(date) if date >= hire => *slot = Some(date.to_string()),
+            match parse_plan_date(raw, field) {
+                Ok(date) if date >= hire => *slot = Some(date.to_string()),
+                Err((code, f)) => return refused(base, code, f),
                 _ => return refused(base, "invalid_date", field),
             }
         }
@@ -183,6 +224,10 @@ fn new_person(
     let [contract_end_date, probation_end_date] = ends;
     let (status, leave) = match plan_status::new_status(row, (hire, exit), facts, decisions) {
         Ok(status) => status,
+        Err((code, field)) => return refused(base, code, field),
+    };
+    let id_type = match resolve_new_person_id_type(row, status, birth, facts, decisions) {
+        Ok(id_type) => id_type.map(|t| t.as_str().to_owned()),
         Err((code, field)) => return refused(base, code, field),
     };
     let (kind, unmapped) = plan_place::employment_type(row.employment_type.as_ref(), decisions);
@@ -245,6 +290,7 @@ fn new_person(
             sex: row.sex.clone(),
             contract_end_date,
             probation_end_date,
+            id_type,
         }),
         unit_name: if left { None } else { unresolved },
         workplace_name,

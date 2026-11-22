@@ -5,6 +5,12 @@
 use std::collections::BTreeMap;
 
 use console_hr_domain::import::rrn_value::{RrnVault, SealedRrn};
+use console_hr_domain::profile::enums::IdType;
+use console_hr_domain::profile::identity::infer_id_type_from_seventh;
+use console_kernel_core::{TraceContext, UserId};
+use console_ontology_canonical_adapter_postgres::id_registered::{
+    IdRegisteredWrite, set_employee_id_type_in_tx,
+};
 use sqlx::Postgres;
 use uuid::Uuid;
 
@@ -32,7 +38,19 @@ pub async fn record(
             .with_code("rrn_in_use"),
         ));
     }
-    let count: i64 = sqlx::query_scalar(
+    let staged_meta: Vec<(String, Uuid, Option<String>, String)> = sqlx::query_as(
+        "SELECT p.source_key, p.employee, s.id_type, s.masked \
+         FROM unnest($3::TEXT[], $4::UUID[]) AS p(source_key, employee) \
+         JOIN data_import_row_identities s ON s.source_key = p.source_key \
+         WHERE s.org_id = $1 AND s.run_id = $2",
+    )
+    .bind(org)
+    .bind(run)
+    .bind(&keys)
+    .bind(&employees)
+    .fetch_all(tx.as_mut())
+    .await?;
+    let recorded_rows: Vec<(Uuid,)> = sqlx::query_as(
         "WITH recorded AS ( \
          INSERT INTO employee_rrn (org_id, employee_id, rrn_hmac, hmac_key_version, \
            rrn_hmac_v2, blind_index_version, ciphertext, nonce, dek_wrapped, dek_nonce, \
@@ -49,16 +67,74 @@ pub async fn record(
          , effects AS (INSERT INTO import_run_effects (org_id, run_id, employee_id, effect, target_id) \
          SELECT org_id, $2, employee_id, 'rrn_recorded', employee_id FROM recorded \
          ON CONFLICT (org_id, run_id, employee_id, effect, target_id) DO NOTHING RETURNING 1) \
-         SELECT count(*) FROM recorded",
+         SELECT employee_id FROM recorded",
     )
     .bind(org)
     .bind(run)
     .bind(&keys)
     .bind(&employees)
     .bind(actor)
-    .fetch_one(tx.as_mut())
+    .fetch_all(tx.as_mut())
     .await?;
-    let recorded = usize::try_from(count).unwrap_or(0);
+    let recorded = recorded_rows.len();
+    let recorded_set: std::collections::BTreeSet<Uuid> =
+        recorded_rows.into_iter().map(|(id,)| id).collect();
+    if !recorded_set.is_empty() {
+        let dry_rows: Option<serde_json::Value> = sqlx::query_scalar(
+            "SELECT dry_run_summary->'rows' FROM data_import_runs WHERE org_id = $1 AND id = $2",
+        )
+        .bind(org)
+        .bind(run)
+        .fetch_optional(tx.as_mut())
+        .await?
+        .flatten();
+        let mut planned_id_types: BTreeMap<String, String> = BTreeMap::new();
+        for item in dry_rows
+            .as_ref()
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+        {
+            if let (Some(k), Some(t)) = (
+                item["source_key"].as_str(),
+                item["new_person"]["id_type"].as_str(),
+            ) {
+                planned_id_types.insert(k.to_owned(), t.to_owned());
+            }
+        }
+        for (source_key, employee_id, staged_id_type, masked) in staged_meta {
+            if !recorded_set.contains(&employee_id) {
+                continue;
+            }
+            let effective = planned_id_types
+                .get(&source_key)
+                .map(String::as_str)
+                .or(staged_id_type.as_deref())
+                .or_else(|| {
+                    masked
+                        .as_bytes()
+                        .get(7)
+                        .and_then(|b| b.checked_sub(b'0'))
+                        .and_then(infer_id_type_from_seventh)
+                        .map(IdType::as_str)
+                });
+            if let Some(new_id_type) = effective.filter(|t| *t != "NOT_ISSUED") {
+                set_employee_id_type_in_tx(
+                    tx,
+                    IdRegisteredWrite {
+                        org_id: org,
+                        employee_id,
+                        actor: Some(UserId::from_uuid(actor)),
+                        new_id_type,
+                        source: "IMPORT",
+                        trace: TraceContext::generate(),
+                    },
+                )
+                .await
+                .map_err(|e| HrError::internal(e.to_string()))?;
+            }
+        }
+    }
     sqlx::query(
         "DELETE FROM data_import_row_identities \
           WHERE org_id = $1 AND run_id = $2 AND source_key = ANY($3)",

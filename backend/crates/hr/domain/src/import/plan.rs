@@ -49,6 +49,8 @@ pub struct OnFile {
     pub rrn_hmac_v2: Option<Vec<u8>>,
     /// IMPORT-2: earlier employee numbers that still find this person.
     pub aliases: Vec<String>,
+    /// Current persisted identity type (`RRN`, `ARC`, `DOMESTIC_RESIDENCE`, `NOT_ISSUED`).
+    pub id_type: Option<String>,
 }
 
 impl std::fmt::Debug for OnFile {
@@ -173,6 +175,8 @@ pub struct NewPerson {
     pub contract_end_date: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub probation_end_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id_type: Option<String>,
 }
 
 /// The per-row result of the dry run. `outcome` is one of `insert`, `update`,

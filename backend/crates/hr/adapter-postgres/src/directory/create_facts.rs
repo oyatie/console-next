@@ -9,6 +9,7 @@ use console_hr_domain::profile::enums::{EmploymentType, IdType, PayUnit};
 use console_hr_domain::profile::facts::{
     normalize_work_email, validate_birth_date, validate_probation_end,
 };
+use console_hr_domain::profile::identity::validate_id_type_for_status;
 use console_hr_domain::profile::registration::{
     below_minimum_wage, check_contract_kind, check_probation_applies,
 };
@@ -161,6 +162,14 @@ pub fn normalize_employee_facts(
     let id_type = normalize_optional_text(raw.id_type)
         .map(|value| IdType::parse(&value))
         .transpose()?;
+    let inferred_status = if hire_date.is_some_and(|d| d > today_kst()) {
+        "PRE_HIRE"
+    } else {
+        "ACTIVE"
+    };
+    validate_id_type_for_status(id_type, inferred_status).map_err(|_| {
+        HrError::validation("id_type NOT_ISSUED is only allowed when employment_status is PRE_HIRE")
+    })?;
     let pay_unit = normalize_optional_text(raw.pay_unit)
         .map(|value| PayUnit::parse(&value))
         .transpose()?;

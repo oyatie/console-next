@@ -60,9 +60,14 @@ pub fn import_row(
         rrn_hmac_v2: staged.and_then(|h| h.v2.clone()),
         rrn_hmac_v2_candidates: staged.map(|h| h.v2_candidates.clone()).unwrap_or_default(),
         has_phone: phones.contains(&stored.source_key),
-        sex: text(&fields.sex),
+        sex: text(&fields.sex).or_else(|| staged.and_then(|h| h.sex_fallback.clone())),
         contract_end_date: text(&fields.contract_end_date),
         probation_end_date: text(&fields.probation_end_date),
+        id_type: text(&fields.id_type).or_else(|| staged.and_then(|h| h.id_type.clone())),
+        inferred_id_type: text(&fields.inferred_id_type)
+            .or_else(|| staged.and_then(|h| h.inferred_id_type.clone())),
+        has_rrn: staged.is_some(),
+        rrn_validation_error: text(&fields.rrn_validation_error),
     }
 }
 
@@ -88,6 +93,7 @@ struct PersonRow {
     rrn_hmac: Option<Vec<u8>>,
     rrn_hmac_v2: Option<Vec<u8>>,
     aliases: Vec<String>,
+    id_type: Option<String>,
 }
 
 /// The people the rows may be: every holder of an employee number in the file
@@ -123,7 +129,7 @@ pub async fn people_for_rows(
     let found: Vec<PersonRow> = sqlx::query_as(concat!(
         "SELECT e.id, e.employee_number, e.name, e.employment_status, e.company, e.birth_date, \
                 e.hire_date::TEXT AS hire_date, e.exit_date::TEXT AS exit_date, e.org_unit, e.job, \
-                e.position, e.worksite_name, e.worksite_address, e.updated_at, \
+                e.position, e.worksite_name, e.worksite_address, e.id_type, e.updated_at, \
                 ARRAY(SELECT l.effective_date::TEXT FROM employee_lifecycle_events l \
                       WHERE l.org_id = e.org_id AND l.employee_id = e.id \
                         AND l.event_type IN ('ONBOARD', 'REHIRE') \
@@ -190,6 +196,7 @@ pub async fn people_for_rows(
                 rrn_hmac: p.rrn_hmac,
                 rrn_hmac_v2: p.rrn_hmac_v2,
                 aliases: p.aliases,
+                id_type: p.id_type,
             })
         })
         .collect()
