@@ -15,7 +15,7 @@ import { AccessHead } from "./access-head";
 export function AccessReviewPage() {
   const grants = useQuery(grantsQuery());
   const [find, setFind] = useState("");
-  return <div className="page">
+  return <div className="page" data-access-page="">
     <AccessHead />
     <QueryState q={grants} layout="list">{data => <Card title={t("accessReview.title")} flush>
       {!data.items.length

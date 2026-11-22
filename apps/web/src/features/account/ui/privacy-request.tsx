@@ -56,8 +56,10 @@ export function PrivacyRequestForm({ options, onFiled }: { options: PrivacyFilin
     {chosen.some(kind => !kind.due_on && !kind.without_delay) && <div>{t("account.privacy.noClock")}</div>}
     <div>{t("account.privacy.identity")}</div>
     <PasskeyError error={command.error} />
-    <Button variant="primary" disabled={!valid || command.isPending} onClick={() => {
-      command.mutate({ controller: controller as PrivacyFiling["controller"], kinds: kinds as PrivacyFiling["kinds"], detail });
-    }}>{t("account.privacy.submit")}</Button>
+    <div className="form__actions">
+      <Button variant="primary" disabled={!valid || command.isPending} onClick={() => {
+        command.mutate({ controller: controller as PrivacyFiling["controller"], kinds: kinds as PrivacyFiling["kinds"], detail });
+      }}>{t("account.privacy.submit")}</Button>
+    </div>
   </div>;
 }

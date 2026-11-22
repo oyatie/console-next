@@ -62,3 +62,23 @@
     padding: var(--space-4);
   }
 }
+
+:where([data-experience]:not([data-experience="baseline"])) .body [role="group"] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.secondary form[data-code-summary] label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .secondary summary {
+  min-height: var(--target);
+  line-height: var(--target);
+}

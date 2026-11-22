@@ -19,13 +19,13 @@ type Item = { id: string; name: string; headcount: number; kind: OrgKind | "TENA
 const below = (n: Item): string[] => n.children.flatMap((c) => [c.id, ...below(c)]);
 
 /** The scope a line has, as its button shows it: the place and today's headcount, or the call to pick one (mockup M4). */
-export function ScopeButton({ id, value, error, onOpen }: { id: string; value: Scope | null; error?: string; onOpen: () => void }) {
+export function ScopeButton({ id, value, error, hideLabel = true, onOpen }: { id: string; value: Scope | null; error?: string; hideLabel?: boolean; onOpen: () => void }) {
   const tree = useQuery(orgStructureRef);
   const roots = (tree.data?.entities ?? []) as OrgNode[];
   return (
     <div className={s.stack}>
-      <span id={`${id}-l`} className="sr-only">{t("access.grant.scope")}</span>
-      <Button id={id} className={s.pick} data-empty={value ? undefined : true} aria-labelledby={`${id}-l ${id}`} aria-haspopup="dialog" aria-invalid={error ? true : undefined} onClick={onOpen}>
+      <span id={`${id}-l`} className={hideLabel ? "sr-only" : "field__label"}>{t("access.grant.scope")}</span>
+      <Button id={id} className={s.pick} aria-labelledby={`${id}-l ${id}`} aria-haspopup="dialog" aria-invalid={error ? true : undefined} onClick={onOpen}>
         <Network size={16} aria-hidden />
         <span>{value ? scopeLabel(roots, value) : t("access.scope.pick")}</span>
         <ChevronDown size={14} aria-hidden className={s.chev} />

@@ -38,12 +38,13 @@ export const root = createRootRoute({ shellComponent: RootShell });
 export const login = createRoute({
   getParentRoute: () => root,
   path: "/login",
+  staticData: { pattern: "sign-in" },
   // `enrolled`: a passkey was just registered but the automatic sign-in with it failed (e.g. rate-limited).
   validateSearch: (s: Record<string, unknown>): { enrolled?: boolean; cancelled?: 1; code?: boolean } => ({ enrolled: flag(s.enrolled), code: flag(s.code), cancelled: s.cancelled === 1 || s.cancelled === "1" ? 1 : undefined }),
   beforeLoad: async () => (await guards()).leaveSignInWhenSignedIn(),
   component: lazyRouteComponent(bootScreen(() => import("../auth/Login")), "Login"),
 });
-const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: async () => (await guards()).ensureEnrolling(), component: lazyRouteComponent(bootScreen(() => import("../auth/SetupPasskey")), "SetupPasskey") });
+const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", staticData: { pattern: "sign-in" }, beforeLoad: async () => (await guards()).ensureEnrolling(), component: lazyRouteComponent(bootScreen(() => import("../auth/SetupPasskey")), "SetupPasskey") });
 export const app = createRoute({ getParentRoute: () => root, id: "app", staticData: { access: "signed-in" }, beforeLoad: async context => { await ensureSession(context); await streamReady(); } });
 
 const tenants = createRoute({
@@ -62,9 +63,10 @@ const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-a
 // Home with the setup checklist composed in (routes compose slices).
 const home = createRoute({ getParentRoute: () => app, path: "/", validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }), staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
 const loadAccount = () => import("../features/account/Account");
+const loadPrivacy = () => import("../features/account/ui/privacy-page");
 const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05", pattern: "phone-hub" }, component: lazyRouteComponent(screen(loadAccount), "Account") });
-const privacyIntake = createRoute({ getParentRoute: () => app, path: "/account/privacy/intake/$id", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(loadAccount), "PrivacyIntake") });
-const privacy = createRoute({ getParentRoute: () => app, path: "/account/privacy", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(loadAccount), "PrivacyRequests") });
+const privacyIntake = createRoute({ getParentRoute: () => app, path: "/account/privacy/intake/$id", staticData: { access: "signed-in", floorplan: "P-01", pattern: "record" }, component: lazyRouteComponent(screen(loadPrivacy), "PrivacyIntake") });
+const privacy = createRoute({ getParentRoute: () => app, path: "/account/privacy", staticData: { access: "signed-in", floorplan: "P-01", pattern: "settings" }, component: lazyRouteComponent(screen(loadPrivacy), "PrivacyRequests") });
 
 // Test builds keep the gallery for the preview suite; normal production builds drop its route and chunk.
 const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
