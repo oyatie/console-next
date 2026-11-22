@@ -18,7 +18,7 @@ pub enum DateParseError {
 ///
 /// # Errors
 /// [`DateParseError::TwoDigitYear`] when a 2-digit year (`YY-MM-DD`, `YY.MM.DD`,
-/// `YY/MM/DD`, or `YY년 M월 D일`) is supplied instead of a 4-digit year;
+/// `YY/MM/DD`, or `YY/M/D` with Korean Y/M/D markers) is supplied instead of a 4-digit year;
 /// [`DateParseError::InvalidFormat`] otherwise.
 pub fn parse_import_date_checked(raw: &str) -> Result<Date, DateParseError> {
     let text = half_width(raw.trim());
@@ -88,13 +88,13 @@ pub fn half_width(text: &str) -> String {
 fn korean_ymd_checked(text: &str) -> Result<Option<String>, DateParseError> {
     let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
     let compact = compact.strip_suffix('.').unwrap_or(&compact);
-    let Some((y, rest)) = compact.split_once('년') else {
+    let Some((y, rest)) = compact.split_once('\u{B144}') else {
         return Ok(None);
     };
-    let Some((m, rest)) = rest.split_once('월') else {
+    let Some((m, rest)) = rest.split_once('\u{C6D4}') else {
         return Ok(None);
     };
-    let Some(d) = rest.strip_suffix('일') else {
+    let Some(d) = rest.strip_suffix('\u{C77C}') else {
         return Ok(None);
     };
     let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());

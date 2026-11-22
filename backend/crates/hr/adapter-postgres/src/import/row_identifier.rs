@@ -28,12 +28,30 @@ use crate::{
     rrn::{govern, record::directory, unavailable},
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DraftIdentifierType {
+    Rrn,
+    Arc,
+    DomesticResidence,
+}
+
+impl From<DraftIdentifierType> for IdType {
+    fn from(value: DraftIdentifierType) -> Self {
+        match value {
+            DraftIdentifierType::Rrn => Self::Rrn,
+            DraftIdentifierType::Arc => Self::Arc,
+            DraftIdentifierType::DomesticResidence => Self::DomesticResidence,
+        }
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ImportRowIdentifierRequest {
     pub rrn: String,
     #[serde(default)]
-    pub id_type: Option<String>,
+    pub id_type: Option<DraftIdentifierType>,
     #[serde(default)]
     pub step_up: Option<MobilePasskeyStepUpEnvelope>,
 }
@@ -169,25 +187,7 @@ impl HrService {
                         "resident registration number is invalid",
                     )
                 })?;
-                let explicit_id_type = match request.id_type.as_deref() {
-                    Some(raw) if !raw.trim().is_empty() => Some(
-                        IdType::parse(&raw.trim().to_ascii_uppercase()).map_err(|_| {
-                            govern::refused(
-                                http::StatusCode::UNPROCESSABLE_ENTITY,
-                                "id_type_invalid",
-                                "identity type is invalid",
-                            )
-                        })?,
-                    ),
-                    _ => None,
-                };
-                if explicit_id_type == Some(IdType::NotIssued) {
-                    return Err(govern::refused(
-                        http::StatusCode::UNPROCESSABLE_ENTITY,
-                        "id_type_rrn_mismatch",
-                        "NOT_ISSUED cannot be paired with a registration number",
-                    ));
-                }
+                let explicit_id_type = request.id_type.map(IdType::from);
                 let effective = match validate_id_pair(
                     explicit_id_type,
                     Some(rrn.seventh_digit()),

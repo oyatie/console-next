@@ -19,12 +19,17 @@ pub fn parse_id_type_import(raw: &str) -> Option<IdType> {
     }
     match upper.as_str() {
         "FOREIGNER_REG" | "FOREIGNER" | "ALIEN_REG" => Some(IdType::Arc),
-        "주민등록번호" | "주민번호" => Some(IdType::Rrn),
-        "외국인등록번호" | "외국인" => Some(IdType::Arc),
-        "국내거소신고번호" | "국내거소" | "거소신고번호" | "거소" => {
-            Some(IdType::DomesticResidence)
+        "\u{C8FC}\u{BBFC}\u{B4F1}\u{B85D}\u{BC88}\u{D638}" | "\u{C8FC}\u{BBFC}\u{BC88}\u{D638}" => {
+            Some(IdType::Rrn)
         }
-        "미발급" | "미등록" => Some(IdType::NotIssued),
+        "\u{C678}\u{AD6D}\u{C778}\u{B4F1}\u{B85D}\u{BC88}\u{D638}" | "\u{C678}\u{AD6D}\u{C778}" => {
+            Some(IdType::Arc)
+        }
+        "\u{AD6D}\u{B0B4}\u{AC70}\u{C18C}\u{C2E0}\u{ACE0}\u{BC88}\u{D638}"
+        | "\u{AD6D}\u{B0B4}\u{AC70}\u{C18C}"
+        | "\u{AC70}\u{C18C}\u{C2E0}\u{ACE0}\u{BC88}\u{D638}"
+        | "\u{AC70}\u{C18C}" => Some(IdType::DomesticResidence),
+        "\u{BBF8}\u{BC1C}\u{AE09}" | "\u{BBF8}\u{B4F1}\u{B85D}" => Some(IdType::NotIssued),
         _ => None,
     }
 }
@@ -117,10 +122,15 @@ mod tests {
             Some(IdType::DomesticResidence)
         );
         assert_eq!(
-            parse_id_type_import("국내거소신고번호"),
+            parse_id_type_import(
+                "\u{AD6D}\u{B0B4}\u{AC70}\u{C18C}\u{C2E0}\u{ACE0}\u{BC88}\u{D638}"
+            ),
             Some(IdType::DomesticResidence)
         );
-        assert_eq!(parse_id_type_import("미발급"), Some(IdType::NotIssued));
+        assert_eq!(
+            parse_id_type_import("\u{BBF8}\u{BC1C}\u{AE09}"),
+            Some(IdType::NotIssued)
+        );
         assert_eq!(parse_id_type_import("unknown"), None);
     }
 

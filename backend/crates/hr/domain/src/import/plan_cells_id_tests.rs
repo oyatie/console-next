@@ -30,7 +30,12 @@ fn empty_row(key: &str) -> ImportRow {
 #[test]
 fn parse_import_date_checked_distinguishes_two_digit_years() {
     assert_eq!(parse_import_date_checked("2026-03-04"), Ok(day(2026, 3, 4)));
-    for raw in ["24-03-04", "24.03.04", "24/3/4", "24년 3월 4일"] {
+    for raw in [
+        "24-03-04",
+        "24.03.04",
+        "24/3/4",
+        "24\u{B144} 3\u{C6D4} 4\u{C77C}",
+    ] {
         assert_eq!(
             parse_import_date_checked(raw),
             Err(DateParseError::TwoDigitYear),
@@ -115,10 +120,10 @@ fn pre_hire_not_issued_enforces_status_secondary_key_and_uniqueness() {
 
     // Duplicate in file for (name_key, birth_date) under NOT_ISSUED
     let mut dup_a = prehire.clone();
-    dup_a.name = "김 예정".into();
+    dup_a.name = "Kim Prehire".into();
     let mut dup_b = prehire;
     dup_b.source_key = "r3".into();
-    dup_b.name = "김예정".into();
+    dup_b.name = "KimPrehire".into();
     let plan = plan_rows(&[dup_a, dup_b], &facts, &Decisions::default());
     assert_eq!(plan[0].refusal_code, Some("duplicate_in_file"));
     assert_eq!(plan[1].refusal_code, Some("duplicate_in_file"));
