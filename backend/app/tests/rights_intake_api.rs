@@ -123,13 +123,8 @@ async fn assert_intake(pool: PgPool) {
     let mut expected = vec![first["receipt_no"].clone(), second["receipt_no"].clone()];
     expected.sort_by_key(Value::to_string);
     assert_eq!(actual, expected);
-    sqlx::query(
-        "UPDATE privacy_rights_requests SET body=jsonb_set(jsonb_set(body,'{kinds,ACCESS,decisions}','[{\"decision\":{\"outcome\":\"GRANTED\"},\"on\":\"2026-09-01\"}]'::jsonb),'{status}','\"DECIDED\"') WHERE org_id=$1",
-    )
-    .bind(org.as_uuid())
-    .execute(&pool)
-    .await
-    .unwrap();
+    sqlx::query("UPDATE privacy_rights_requests SET body=jsonb_set(jsonb_set(body,'{kinds,ACCESS,decisions}','[{\"decision\":{\"outcome\":\"GRANTED\"},\"on\":\"2026-09-01\"}]'::jsonb),'{status}','\"DECIDED\"') WHERE org_id=$1")
+        .bind(org.as_uuid()).execute(&pool).await.unwrap();
     let (_, closed) = send(&service, "GET", path, Some(&bearer), None).await;
     assert!(
         !closed["items"]
