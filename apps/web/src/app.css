@@ -301,6 +301,8 @@ aside.panel { position: sticky; top: 0; }
 .state__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
 .state__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .state__actions > * { flex: none; max-width: 100%; }
+.state__extras { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-2); min-width: 0; max-width: 100%; }
+.state__extras .muted { font-size: var(--text-xs); }
 .state--compact { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; padding: 0; }
 .state--compact > .state__title { grid-column: 1 / -1; font-size: var(--text-sm); }
 .state--compact > .muted { grid-column: 1 / -1; }

@@ -10,6 +10,7 @@ let server: ViteDevServer;
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
+let phonePage: Page;
 
 beforeAll(async () => {
   await loadCatalog("ko");
@@ -156,6 +157,7 @@ beforeAll(async () => {
   browser = await browserEngine().launch();
   context = await browser.newContext();
   page = await context.newPage();
+  phonePage = await context.newPage();
   await page.route("**/console-shell-shortcut-test", route => route.fulfill({
     contentType: "text/html",
     body: '<html lang="ko"><title>Console Shell</title><div id="root"></div><script type="module" src="/console-shell-shortcut-test.js"></script></html>',
@@ -164,6 +166,7 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
+  await phonePage?.close();
   await page?.close();
   await context?.close();
   await browser?.close();
@@ -250,7 +253,6 @@ test("openWorkspaceTab preserves hash fragments on view-query routes when reconc
 });
 
 test("ConsolePhoneBottom highlights certificates tab on both /people/certificates and /people/certificates/$certificateId", async () => {
-  const phonePage = await context.newPage();
   const apiMocks: Record<string, unknown> = {
     "/api/v1/users/me": {
       id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: "e1",
@@ -264,35 +266,31 @@ test("ConsolePhoneBottom highlights certificates tab on both /people/certificate
     "/api/v1/me/action-inbox": { items: [], next_cursor: null, counts: { turn: { total: 0, total_is_exact: true } }, attention_filters: [] },
     "/api/v1/auth/passkeys": [],
   };
-  try {
-    await phonePage.setViewportSize({ width: 390, height: 844 });
-    await phonePage.route("**/console-phone-nav-test", route => route.fulfill({
-      contentType: "text/html",
-      body: '<html lang="ko" data-experience="console"><title>Console Phone</title><div id="root"></div><script type="module" src="/console-phone-nav-test.js"></script></html>',
-    }));
-    await phonePage.route("**/api/v1/**", route => {
-      const path = new URL(route.request().url()).pathname;
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
-    });
+  await phonePage.setViewportSize({ width: 390, height: 844 });
+  await phonePage.route("**/console-phone-nav-test", route => route.fulfill({
+    contentType: "text/html",
+    body: '<html lang="ko" data-experience="console"><title>Console Phone</title><div id="root"></div><script type="module" src="/console-phone-nav-test.js"></script></html>',
+  }));
+  await phonePage.route("**/api/v1/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
+  });
 
-    await openBrowserTestPage(phonePage, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, phonePage.locator('[data-phone-screen="Certificates"]'));
-    const nav = phonePage.getByRole("navigation", { name: t("shell.nav"), exact: true });
-    const expectCurrent = async (href: string, label: string) => {
-      await expect.poll(async () => await nav.locator('a[aria-current="page"]').count()).toBe(1);
-      await expect.poll(async () => await nav.locator('a[aria-current="page"]').getAttribute("href")).toBe(href);
-      await expect.poll(async () => (await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(label);
-    };
+  await openBrowserTestPage(phonePage, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, phonePage.locator('[data-phone-screen="Certificates"]'));
+  const nav = phonePage.getByRole("navigation", { name: t("shell.nav"), exact: true });
+  const expectCurrent = async (href: string, label: string) => {
+    await expect.poll(async () => await nav.locator('a[aria-current="page"]').count()).toBe(1);
+    await expect.poll(async () => await nav.locator('a[aria-current="page"]').getAttribute("href")).toBe(href);
+    await expect.poll(async () => (await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(label);
+  };
 
-    await expectCurrent("/people/certificates", t("shell.link.certificates"));
+  await expectCurrent("/people/certificates", t("shell.link.certificates"));
 
-    await phonePage.getByRole("button", { name: "go-cert-detail", exact: true }).click();
-    await phonePage.locator('[data-phone-screen="Certificate Detail"]').waitFor();
-    await expectCurrent("/people/certificates", t("shell.link.certificates"));
+  await phonePage.getByRole("button", { name: "go-cert-detail", exact: true }).click();
+  await phonePage.locator('[data-phone-screen="Certificate Detail"]').waitFor();
+  await expectCurrent("/people/certificates", t("shell.link.certificates"));
 
-    await phonePage.getByRole("button", { name: "go-account", exact: true }).click();
-    await phonePage.locator('[data-phone-screen="Account"]').waitFor();
-    await expectCurrent("/account", t("shell.link.profile"));
-  } finally {
-    await phonePage.close();
-  }
+  await phonePage.getByRole("button", { name: "go-account", exact: true }).click();
+  await phonePage.locator('[data-phone-screen="Account"]').waitFor();
+  await expectCurrent("/account", t("shell.link.profile"));
 });
