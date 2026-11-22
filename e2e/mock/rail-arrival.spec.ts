@@ -52,10 +52,15 @@ for (const width of [1440, 390]) for (const phase of ["OPERATING", "SETUP"] as c
       await page.evaluate(clearShifts);
       held.resolve();
       await expect(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
-      await expect(rail.getByRole("link")).toHaveCount(phase === "SETUP" ? 2 : 10);
+      await expect(rail.getByRole("link")).toHaveCount(phase === "SETUP" ? 2 : 11);
       const after = await snapshot();
       await info.attach("rail-entries", { body: JSON.stringify({ savedPhase, phase, before, after }), contentType: "application/json" });
       expect(before, "saved entries must wait for the current answer").toEqual([]);
+      expect(after.map(item => item.to)).toEqual(
+        phase === "SETUP"
+          ? ["/", "/people"]
+          : ["/", "/people/requests", "/approvals", "/org", "/team", "/people", "/attendance", "/statutory", "/access", "/audit", "/settings"],
+      );
       await expectStable(page, "current rail answer");
       for (const theme of ["light", "dark"]) {
         await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
