@@ -143,11 +143,18 @@ fn excel_serial(text: &str) -> Option<Date> {
     epoch.checked_add(Duration::days(days as i64))
 }
 
-/// A name as identity compares it: whitespace removed and lowercased.
+/// Matches PostgreSQL `\s` regex whitespace so Rust `name_key` produces the exact same
+/// normalized key as `lower(regexp_replace(name, '\s', '', 'g'))` in SQL queries and indexes.
+/// PostgreSQL `\s` excludes `\u{0085}`, `\u{00A0}`, `\u{2007}`, and `\u{202F}`.
+const fn is_pg_regex_whitespace(c: char) -> bool {
+    c.is_whitespace() && !matches!(c, '\u{0085}' | '\u{00A0}' | '\u{2007}' | '\u{202F}')
+}
+
+/// A name as identity compares it: PostgreSQL `\s` whitespace removed and lowercased.
 #[must_use]
 pub fn name_key(name: &str) -> String {
     name.chars()
-        .filter(|c| !c.is_whitespace())
+        .filter(|c| !is_pg_regex_whitespace(*c))
         .collect::<String>()
         .to_lowercase()
 }
@@ -238,6 +245,19 @@ mod tests {
         assert_eq!(name_key(" 김 등록 "), "김등록");
         assert_eq!(name_key("Alex Kim"), "alexkim");
         assert_eq!(name_key("alex  kim"), "alexkim");
+    }
+
+    #[test]
+    fn name_key_matches_postgres_regex_whitespace_including_nbsp() {
+        assert_eq!(name_key("Kim\u{00A0}Nbsp"), "kim\u{00a0}nbsp");
+        assert_eq!(name_key("KIM\u{00A0}NBSP"), "kim\u{00a0}nbsp");
+        assert_ne!(name_key("Kim\u{00A0}Nbsp"), name_key("Kim Nbsp"));
+        assert_eq!(name_key("Kim\u{3000}Nbsp"), "kimnbsp");
+        assert_eq!(name_key("Kim\u{2003}Nbsp"), "kimnbsp");
+        assert_eq!(name_key("Kim\u{2009}Nbsp"), "kimnbsp");
+        assert_eq!(name_key("Kim\u{0085}Nbsp"), "kim\u{0085}nbsp");
+        assert_eq!(name_key("Kim\u{2007}Nbsp"), "kim\u{2007}nbsp");
+        assert_eq!(name_key("Kim\u{202F}Nbsp"), "kim\u{202f}nbsp");
     }
 
     #[test]

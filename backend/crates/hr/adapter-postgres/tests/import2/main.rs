@@ -23,6 +23,7 @@ mod mig_unplaced;
 mod mig_values;
 mod number;
 mod prehire_cells_and_id;
+mod prehire_nbsp_uniqueness;
 mod prehire_step_up_rollback;
 mod r3_answers;
 mod r3_cap;

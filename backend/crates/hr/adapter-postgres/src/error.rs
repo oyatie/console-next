@@ -193,6 +193,18 @@ impl From<DbError> for HrError {
                 refusals: None,
             };
         }
+        if let DbError::Sqlx(sqlx::Error::Database(db)) = &value
+            && db.code().as_deref() == Some("23505")
+            && db.constraint() == Some("employees_prehire_not_issued_identity_idx")
+        {
+            return Self {
+                errors: None,
+                status: StatusCode::CONFLICT,
+                code: "duplicate_candidate",
+                message: "a pending hire with the same name and birth date already exists without an issued identifier".into(),
+                refusals: None,
+            };
+        }
         // Pool and connection failures are overload, not application faults (decisions #28).
         if matches!(value, DbError::Unavailable(_)) {
             return Self {
