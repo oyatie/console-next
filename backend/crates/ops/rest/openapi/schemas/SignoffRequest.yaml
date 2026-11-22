@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["digest", "verdict", "note"]
+additionalProperties: false
+properties:
+  digest: {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+  verdict: {"type": "string", "enum": ["ready", "blocked"]}
+  note: {"$ref": "#/components/schemas/Text"}

@@ -11,7 +11,7 @@ import {
 } from "./restricted";
 import { draftProblem } from "./mapping";
 
-const AVAILABLE = ["name", "employee_number", "birth_date", "org_unit", "position", "job", "worksite_address", "phone", "rrn"] as const;
+const AVAILABLE = ["name", "employee_number", "birth_date", "org_unit", "position", "job", "worksite_address", "phone", "rrn", "id_type"] as const;
 
 test("mirrors backend PII-2 and classification.rs restricted headers", () => {
   for (const hit of ["SSN", "employee_ssn", "RRN", "Phone", "MobilePhone", "mobile", "BaseSalary", "hourly_wage", "BankAccount", "account_no", "bank", "s_s_n", "b-a-n-k"]) {
@@ -57,6 +57,9 @@ test("restricts target options for restricted headers while allowing governed rr
   expect(allowedTargetsForHeader("mobile", AVAILABLE)).toEqual(["phone"]);
   expect(allowedTargetsForHeader("employee_name", AVAILABLE)).toEqual([...AVAILABLE]);
   expect(allowedTargetsForHeader("birth_date", AVAILABLE)).toEqual([...AVAILABLE]);
+  expect(isDroppedEmployeeImportHeader("id_type")).toBe(false);
+  expect(isDroppedEmployeeImportHeader("identity_type")).toBe(false);
+  expect(allowedTargetsForHeader("id_type", AVAILABLE)).toEqual([...AVAILABLE]);
 
   expect(isAllowedTargetForHeader("salary", null)).toBe(true);
   expect(isAllowedTargetForHeader("salary", "job")).toBe(false);

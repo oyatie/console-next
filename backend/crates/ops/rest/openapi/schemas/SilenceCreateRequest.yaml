@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["matchers", "ends_at", "comment"]
+additionalProperties: false
+properties:
+  matchers: {"type": "array", "items": {"$ref": "#/components/schemas/SilenceMatcherInput"}}
+  ends_at: {"$ref": "#/components/schemas/Timestamp"}
+  comment: {"$ref": "#/components/schemas/Text", "minLength": 10}
+  group_key: {"anyOf": [{"type": "string"}, {"type": "null"}]}

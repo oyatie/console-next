@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsPromoteRequest"
+summary: "Draft Promote Cmd"
+x-cedar-action: "change.request.promote"
+security: [{"accessJwt": []}]
+description: "Records signed promote Cmd hand-off in actions spool."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PromoteRequest"}}}}
+responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

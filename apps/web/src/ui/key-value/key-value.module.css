@@ -41,16 +41,22 @@
   :where([data-experience]:not([data-experience="baseline"])) .statValue { font-size: var(--text-lg); }
   :where([data-experience]:not([data-experience="baseline"])) .stat:nth-child(odd) { border-left: 1px solid var(--border); }
   :where([data-experience]:not([data-experience="baseline"])) .stat:first-child { border-left: 0; }
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(4)) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(4)) > .stat:nth-child(odd) { border-left: 0; }
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(4)) > .stat:nth-child(n + 3) { border-top: 1px solid var(--border); }
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat { padding: var(--space-1-5) var(--space-2); min-width: 0; border-top: 0; border-left: 1px solid var(--border); }
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(1),
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(4) { border-left: 0; }
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(n + 4) { border-top: 1px solid var(--border); }
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(5) { grid-column: span 2; }
-  :where([data-experience]:not([data-experience="baseline"])) .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat > .statValue { font-size: var(--text-body); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(4)) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(4)) > .stat:nth-child(odd) { border-left: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(4)) > .stat:nth-child(n + 3) { border-top: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(5)):not(:has(> :nth-child(6))) { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat { padding: var(--space-1-5) var(--space-2); min-width: 0; border-top: 0; border-left: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(1),
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(4) { border-left: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(n + 4) { border-top: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat:nth-child(5) { grid-column: span 2; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats:not([data-phone-cols]):has(> :nth-child(5)):not(:has(> :nth-child(6))) > .stat > .statValue { font-size: var(--text-body); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="2"] { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="2"] > .stat { padding: var(--space-1-5) var(--space-2); min-width: 0; border-top: 0; border-left: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="2"] > .stat:first-child { grid-column: 1 / -1; border-left: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="2"] > .stat:nth-child(2n) { border-left: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="2"] > .stat:nth-child(n + 2) { border-top: 1px solid var(--border); }
+  :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="2"] > .stat > .statValue { font-size: var(--text-body); }
   :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="3"] { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
   :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="3"] > .stat { padding: var(--space-1-5) var(--space-2); min-width: 0; border-top: 0; border-left: 1px solid var(--border); }
   :where([data-experience]:not([data-experience="baseline"])) .stats[data-phone-cols="3"] > .stat:nth-child(3n + 1) { border-left: 0; }

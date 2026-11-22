@@ -12,7 +12,7 @@ import { todayKst } from "../../../lib/pure/today";
 import { useReasonCodesReady } from "../../../lib/reason-codes";
 import { unitsQuery } from "../../../reference/org/api";
 import { employeeQuery } from "../api";
-import { activeView, exactNumber, joinReview, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
+import { activeView, exactNumber, joinReview, parseIds, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
 import { parseOrder, type RosterOrder } from "../domain/roster-order";
 import { useRoster } from "./use-roster";
 import { useRosterColumns } from "./use-roster-columns";
@@ -40,12 +40,13 @@ export function useRosterScreen() {
   const status = parseStatus(search.status);
   const review = parseReview(search.review);
   const { unit } = search;
+  const ids = parseIds(search.ids);
   const { sel: open, sel2: openUnit, select, selectRelated, full, expand, restore } = columnSelection(search, navigate);
   const unitTrigger = useRef<HTMLButtonElement | null>(null);
   const unitItems = useQuery({ ...unitsQuery, enabled: Boolean(openUnit) }).data?.items ?? [];
   const selectedUnit = openUnit ? unitItems.find((u) => u.id === openUnit) : undefined;
   const sort = parseOrder(search.sort);
-  const key = JSON.stringify([status, review, unit ?? null, sort]);
+  const key = JSON.stringify([status, review, unit ?? null, ids, sort]);
   const [back] = useState(() => (memory?.key === key ? memory : null));
   const [q, setQ] = useState(back?.q ?? "");
   const [jump, setJump] = useState<string | null>(null);
@@ -60,13 +61,13 @@ export function useRosterScreen() {
   const [rescinding, setRescinding] = useState(false);
   // The rescission sheet's reasons, read before its button shows, so nothing lands under the pointer when it opens.
   const rescindReady = useReasonCodesReady(batch ? "lifecycle_cancel" : null);
-  const r = useRoster({ status, review, unit, q, sort }, soonDays, !contractWindow.isPending);
+  const r = useRoster({ status, review, unit, ...(ids.length > 0 ? { ids } : {}), q, sort }, soonDays, !contractWindow.isPending);
   const view = useRosterColumns();
   const prefetch = usePrefetch();
   // The memory always describes the current filters (a new filter starts at the top).
   useEffect(() => remember(key, q, { q }), [key, q]);
 
-  const setFilter = (f: { status?: StatusView; review?: Review[]; unit?: string | null; sort?: RosterOrder }) => {
+  const setFilter = (f: { status?: StatusView; review?: Review[]; unit?: string | null; ids?: string | null; sort?: RosterOrder }) => {
     // A select-all selection is a saved query: a new filter would silently mean other people.
     if (sel.kind === "all") setSel(NO_SELECTION);
     setRecorded(undefined);
@@ -78,6 +79,7 @@ export function useRosterScreen() {
         ...(f.status && { status: f.status === "current" ? undefined : f.status }),
         ...(f.review && { review: joinReview(f.review) }),
         ...(f.unit !== undefined && { unit: f.unit ?? undefined }),
+        ...(f.ids !== undefined && { ids: f.ids ?? undefined }),
         ...(f.sort && { sort: f.sort === "name" ? undefined : f.sort }),
       }),
       replace: true,
@@ -94,7 +96,7 @@ export function useRosterScreen() {
   const reset = () => {
     setSel(NO_SELECTION);
     find("");
-    setFilter({ status: "current", review: [], unit: null });
+    setFilter({ status: "current", review: [], unit: null, ids: null });
     focusSoon("people-title");
   };
   const closePaste = () => void navigate({ search: (prev) => ({ ...prev, bulk: undefined }), replace: true });
@@ -149,12 +151,12 @@ export function useRosterScreen() {
     }, FOCUS_SETTLE_MS);
   };
 
-  const filtered = Boolean(q || unit || status !== "current" || review.length);
-  const customFilters = Boolean(q || unit || !activeView(status, review));
+  const filtered = Boolean(q || unit || ids.length || status !== "current" || review.length);
+  const customFilters = Boolean(q || unit || ids.length || !activeView(status, review));
   // People who share a name keep it as written: said once, and told apart by number, placement and dates.
   const sameName = q && r.rows.length > 1 && r.rows.every((e) => e.name === r.rows[0]!.name) ? r.rows.length : 0;
   return {
-    contractWindow, soonDays, search, navigate, today, status, review, unit,
+    contractWindow, soonDays, search, navigate, today, status, review, unit, ids,
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
     sort, q, exitView, setExitView, findSlot, setFindSlot, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady,

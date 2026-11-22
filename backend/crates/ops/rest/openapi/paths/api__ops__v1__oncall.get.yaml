@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsOncall"
+summary: "Read Oncall"
+x-cedar-action: "read.alerts"
+security: [{"accessJwt": []}]
+description: "Returns on-call schedule configuration and synthetic page test status."
+responses: {"200": {"description": "On-call status.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OncallView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

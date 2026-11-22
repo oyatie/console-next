@@ -68,7 +68,7 @@ test("inspector isolates item remediation hints from an unrelated valid active r
     row: 2,
     name: "Row2 Person",
     outcome: "insert",
-    new_person: { status: "PRE_HIRE", hire_date: "2026-12-01", migrated_former: false, employee_number: "10701", sex: "MALE" },
+    new_person: { status: "PRE_HIRE", id_type: "NOT_ISSUED", hire_date: "2026-12-01", migrated_former: false, employee_number: "10701", sex: "MALE" },
   });
 
   const out = await inspectHtml({
@@ -77,15 +77,32 @@ test("inspector isolates item remediation hints from an unrelated valid active r
     rows: [preHireRow, invalidRow],
     sexMapped: false,
   });
-  const hint = t("import.hint.invalid_date");
+  const hint = t("importReview.hint.invalid_date");
   expect(out.split(hint)).toHaveLength(2);
   const rowLabel = t("import.rows.detail", { sheet: "SheetA", row: 2, name: "Row2 Person" });
   const detailStart = out.indexOf(`aria-label="${rowLabel}"`);
   expect(detailStart).toBeGreaterThan(-1);
   const detailSlice = out.slice(detailStart);
+  expect(detailSlice).toContain(t("enum.idType.NOT_ISSUED"));
   expect(detailSlice).toContain(t("import.rows.preHireBadge"));
   expect(detailSlice).toContain(t("import.rows.sexDerived", { sex: t("import.sex.MALE") }));
   expect(detailSlice).not.toContain(hint);
+
+  const preHireWithRrn = row({
+    row: 6,
+    name: "Row6 Person",
+    outcome: "insert",
+    new_person: { status: "PRE_HIRE", id_type: "DOMESTIC_RESIDENCE", hire_date: "2026-12-01", migrated_former: false, employee_number: "10702", sex: "FEMALE" },
+  });
+  const preHireRrnOut = await inspectHtml({
+    activeRow: preHireWithRrn,
+    rows: [preHireWithRrn],
+    sexMapped: false,
+  });
+  expect(preHireRrnOut).toContain(t("enum.idType.DOMESTIC_RESIDENCE"));
+  expect(preHireRrnOut).not.toContain(t("import.rows.preHireBadge"));
+  expect(preHireRrnOut).toContain(t("import.rows.sexDerived", { sex: t("import.sex.FEMALE") }));
+  expect(preHireRrnOut).not.toContain("<p class=");
 
   const sameRowOut = await inspectHtml({
     currentItem: invalidDateItem,
@@ -114,5 +131,5 @@ test("inspector isolates item remediation hints from an unrelated valid active r
   });
   const conflictStart = conflictOut.indexOf(`aria-label="${t("import.rows.detail", { sheet: "SheetA", row: 4, name: "Row4 Person" })}"`);
   expect(conflictStart).toBeGreaterThan(-1);
-  expect(conflictOut.slice(conflictStart)).toContain(t("import.hint.status_conflict"));
+  expect(conflictOut.slice(conflictStart)).toContain(t("importReview.hint.status_conflict"));
 });

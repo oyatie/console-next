@@ -157,11 +157,7 @@ impl<'a> AlertmanagerEvaluator<'a> {
                     None
                 };
                 AlertGroup {
-                    key: format!(
-                        "{}×{}",
-                        key.0.replace('%', "%25").replace('×', "%C3%97"),
-                        key.1.replace('%', "%25").replace('×', "%C3%97")
-                    ),
+                    key: crate::alerts_eval::compute_group_key(&key.0, &key.1),
                     alertname: key.0.clone(),
                     members_n: self.observe(Some(members.len()), now),
                     component: field("component", false),
@@ -192,7 +188,7 @@ fn identity(alert: &Alert) -> (String, String) {
     (
         label("alertname").cloned().unwrap_or_default(),
         label("component")
-            .or_else(|| label("job"))
+            .or_else(|| label("alertgroup"))
             .cloned()
             .unwrap_or_default(),
     )

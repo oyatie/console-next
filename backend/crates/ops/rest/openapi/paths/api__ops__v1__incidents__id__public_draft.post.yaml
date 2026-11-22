@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsIncidentPublicDraft"
+summary: "Draft Public Status Update"
+x-cedar-action: "incident.publish"
+security: [{"accessJwt": []}]
+description: "Records public update draft and generates tb status publish Cmd hand-off."
+parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PublicDraftRequest"}}}}
+responses: {"201": {"description": "Public update draft and Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PublicDraftResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

@@ -103,6 +103,7 @@ const people = createRoute({
     full: str(s.sel) && (s.full === 1 || s.full === "1") ? 1 : undefined,
     view: s.view === "accounts" ? "accounts" : undefined,
     unit: str(s.unit),
+    ids: str(s.ids),
     status: str(s.status),
     // The list's order (domain/roster.ts parseSort drops what it does not know).
     sort: str(s.sort),

@@ -58,26 +58,24 @@ export function UnplacedConsole() {
                 panesClassName={s.panes}
                 consoleMode
                 footer={
-                  <WorklistPadded>
-                    <div className={s.mappings}>
-                      <UnplacedFeedback ws={ws} consoleMode />
-                      <CompanyMappings
-                        consoleMode
-                        wrapSection={(children) => <Card titleId="unplaced-mappings" title={t("setup.names.title")} flush>{children}</Card>}
-                        renderSingle={(p) => (
-                          <SelectField
-                            label={p.label}
-                            required={p.required}
-                            options={p.options.map((o) => ({ id: o.value, label: o.label, description: o.description }))}
-                            value={p.value}
-                            onChange={p.onChange}
-                            placeholder={p.group}
-                            error={p.error}
-                          />
-                        )}
-                      />
-                    </div>
-                  </WorklistPadded>
+                  <div className={s.mappings}>
+                    <UnplacedFeedback ws={ws} consoleMode />
+                    <CompanyMappings
+                      consoleMode
+                      wrapSection={(children) => <Card titleId="unplaced-mappings" title={t("setup.names.title")} flush look="flush" topRule>{children}</Card>}
+                      renderSingle={(p) => (
+                        <SelectField
+                          label={p.label}
+                          required={p.required}
+                          options={p.options.map((o) => ({ id: o.value, label: o.label, description: o.description }))}
+                          value={p.value}
+                          onChange={p.onChange}
+                          placeholder={p.group}
+                          error={p.error}
+                        />
+                      )}
+                    />
+                  </div>
                 }
               />
             </>

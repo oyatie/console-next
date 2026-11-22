@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use uuid::Uuid;
 
+pub use crate::valid_actions::VALID_ACTIONS;
+
 #[derive(Debug)]
 pub struct Operator {
     pub person: Uuid,
@@ -101,13 +103,20 @@ impl OperatorRegistry {
         Ok(Self { operators, bundle })
     }
 
+    pub fn person_ids(&self) -> Vec<String> {
+        self.operators
+            .iter()
+            .map(|op| op.person.to_string())
+            .collect()
+    }
+
     pub fn authorize(
         &self,
         verified_email: &str,
         action: &str,
         now: OffsetDateTime,
     ) -> Result<&Operator, Refusal> {
-        let hash = digest(&SHA256, verified_email.to_lowercase().as_bytes());
+        let hash = digest(&SHA256, verified_email.trim().to_lowercase().as_bytes());
         let operator = self
             .operators
             .iter()

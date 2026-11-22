@@ -223,11 +223,12 @@ The family has no target of its own. The size of a control in `tools` is that co
 | `label` | no | `string` |  | The region's name when the card has no visible title (a list whose count is its name). |
 | `level` | no | `2 \| 3` | `2` |  |
 | `loading` | no | `boolean` |  |  |
-| `look` | no | `"dashed" \| "muted" \| "outline"` |  |  |
+| `look` | no | `"dashed" \| "flush" \| "muted" \| "outline"` |  |  |
 | `meta` | no | `ReactNode` |  |  |
 | `title` | no | `ReactNode` |  |  |
 | `titleId` | no | `string` |  | The title's id, for a screen that moves focus to it (the heading takes focus, never a tab stop). |
 | `tools` | no | `ReactNode` |  |  |
+| `topRule` | no | `boolean` |  |  |
 
 <!-- /ds:props -->
 
@@ -252,7 +253,7 @@ The family's own stylesheet:
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `border`, `border-bottom` |
+| `--border` | `border`, `border-bottom`, `border-top` |
 | `--border-soft` | `background` |
 | `--canvas` | `background` |
 | `--control-border` | `border-color` |
@@ -264,6 +265,7 @@ The family's own stylesheet:
 | `--row-h` | `min-height` |
 | `--shadow` | `box-shadow` |
 | `--space-1` | `padding` |
+| `--space-1-5` | `padding` |
 | `--space-2` | `gap`, `padding` |
 | `--space-3` | `gap`, `min-height`, `padding` |
 | `--space-4` | `padding` |

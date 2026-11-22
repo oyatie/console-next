@@ -72,11 +72,17 @@
   max-width: 100%;
 }
 
-:where([data-experience]:not([data-experience="baseline"])) .body > section {
+:where([data-experience]:not([data-experience="baseline"])) .body > section,
+:where([data-experience]:not([data-experience="baseline"])) .body > * > section,
+:where([data-experience]:not([data-experience="baseline"])) .asideCol > section {
   border: 0;
   border-radius: 0;
   box-shadow: none;
   border-block-end: 1px solid var(--border);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .asideCol > section:last-child {
+  border-block-end: 0;
 }
 
 :where([data-experience]:not([data-experience="baseline"])) .body > section > * {

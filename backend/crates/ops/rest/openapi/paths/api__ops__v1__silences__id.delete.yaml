@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsSilenceDelete"
+summary: "Expire Silence"
+x-cedar-action: "alert.silence"
+security: [{"accessJwt": []}]
+description: "Writes silences spool first then expires silence in Alertmanager."
+parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+responses: {"200": {"description": "Silence expired.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SilenceDeleteResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

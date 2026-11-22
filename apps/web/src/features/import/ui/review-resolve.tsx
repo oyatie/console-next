@@ -8,7 +8,7 @@ import { t } from "@console/i18n";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import type { ImportDryRun, ReviewItem } from "../domain/contract";
-import { heldAnswer, placeOf, resolveKind, rowOf } from "../domain/review";
+import { heldAnswer, placeOf, repairableCellField, canRecordRowIdentifier, resolveKind, rowOf } from "../domain/review";
 import { withChoice, type Picks } from "../domain/steps";
 import { choiceLabel, fieldLabel, reviewReasonLabel, routeLabel } from "../present";
 import s from "./import.module.css";
@@ -17,6 +17,8 @@ const Identity = lazy(() => chunk(import("./resolve-controls")).then(m => ({ def
 const ExcludeRow = lazy(() => chunk(import("./resolve-controls")).then(m => ({ default: m.ExcludeRow })));
 const NumberAnswer = lazy(() => chunk(import("./resolve-controls")).then(m => ({ default: m.NumberAnswer })));
 const ValuePick = lazy(() => chunk(import("./resolve-controls")).then(m => ({ default: m.ValuePick })));
+const CellRepairControl = lazy(() => chunk(import("./resolve-controls")).then(m => ({ default: m.CellRepairControl })));
+const RowIdentifierControl = lazy(() => chunk(import("./resolve-controls")).then(m => ({ default: m.RowIdentifierControl })));
 
 /**
  * One needs-review item, opened: what it is and where, then the one control that answers it. A served choice is one
@@ -24,19 +26,23 @@ const ValuePick = lazy(() => chunk(import("./resolve-controls")).then(m => ({ de
  * file or left out with a reason; a sheet goes back to its column mapping; an item with nothing to answer says what
  * happens to it.
  */
-export function ReviewResolve({ item, dry, picks, busy, onResolve, onSheets }: {
+export function ReviewResolve({ item, dry, picks, busy, onResolve, onSheets, onDryRun, onExpired }: {
   item: ReviewItem;
   dry: ImportDryRun;
   picks: Picks;
   busy: boolean;
   onResolve: (c: Picks) => void;
   onSheets: () => void;
+  onDryRun?: (d: ImportDryRun) => void;
+  onExpired?: () => void;
 }) {
   const kind = resolveKind(item);
   const res = item.resolution;
   const row = rowOf(dry, item);
   const held = heldAnswer(picks, item);
   const where = t("importReview.place", placeOf(item));
+  const repairField = repairableCellField(item);
+  const recordId = Boolean(onDryRun && canRecordRowIdentifier(item, row));
   return (
     <section className={`${s.resolve} ${s.resolveCard}`} aria-labelledby="import-resolve" aria-busy={busy || undefined}>
       <div className="toolbar">
@@ -60,7 +66,20 @@ export function ReviewResolve({ item, dry, picks, busy, onResolve, onSheets }: {
       )}
       <Suspense fallback={<Skeleton bones={["block"]} label={t("common.loading")} />}>
         {kind === "identity" && res && row && <Identity item={item} row={row} picks={picks} busy={busy} onResolve={onResolve} />}
-        {kind === "exclude" && res && row && <ExcludeRow item={item} row={row} picks={picks} busy={busy} onResolve={onResolve} />}
+        {kind === "cells" && row && repairField && onDryRun && (
+          <CellRepairControl key={`${item.id}:${row.source_key}:${repairField}`} item={item} row={row} field={repairField} runId={dry.run_id} picks={picks} busy={busy} onDryRun={onDryRun} onExpired={onExpired ?? (() => undefined)} />
+        )}
+        {kind === "exclude" && res && row && (
+          <>
+            {repairField && onDryRun && (
+              <CellRepairControl key={`${item.id}:${row.source_key}:${repairField}`} item={item} row={row} field={repairField} runId={dry.run_id} picks={picks} busy={busy} onDryRun={onDryRun} onExpired={onExpired ?? (() => undefined)} />
+            )}
+            <ExcludeRow item={item} row={row} picks={picks} busy={busy} onResolve={onResolve} />
+          </>
+        )}
+        {recordId && row && onDryRun && (
+          <RowIdentifierControl key={row.source_key} runId={dry.run_id} row={row} picks={picks} busy={busy} onDryRun={onDryRun} onExpired={onExpired ?? (() => undefined)} />
+        )}
         {(kind === "company" || kind === "unit" || kind === "workplace" || kind === "type") && res && (
           <ValuePick kind={kind} text={res.key} item={item} picks={picks} busy={busy} onResolve={onResolve} />
         )}

@@ -4,15 +4,18 @@ use std::{
     time::Duration,
 };
 
+use console_ops_application::alert_actions::{AlertmanagerSilencePost, AlertmanagerWriter};
 use console_ops_application::{Alertmanager, AlertmanagerSnapshot, SourceError, SourceFuture};
 use reqwest::{Client, Url};
-use serde::Deserialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 mod jwks;
+mod status_feed;
 mod victoriametrics;
 mod vmalert;
 pub use jwks::HttpJwksFetcher;
+pub use status_feed::HttpStatusFeed;
 pub use victoriametrics::HttpVictoriaMetrics;
 pub use vmalert::HttpVmalert;
 
@@ -59,6 +62,45 @@ impl Alertmanager for HttpAlertmanager {
                 return Err(SourceError::Invalid);
             }
             Ok(snapshot)
+        })
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SilenceCreateResponse {
+    #[serde(rename = "silenceID")]
+    silence_id: String,
+}
+
+impl AlertmanagerWriter for HttpAlertmanager {
+    fn create_silence(&self, req: &AlertmanagerSilencePost) -> SourceFuture<'_, String> {
+        let body = serde_json::to_value(req);
+        Box::pin(async move {
+            let payload = body.map_err(|_| SourceError::Invalid)?;
+            let resp: SilenceCreateResponse =
+                self.source.post_json("api/v2/silences", &payload).await?;
+            if resp.silence_id.trim().is_empty() {
+                return Err(SourceError::Invalid);
+            }
+            Ok(resp.silence_id)
+        })
+    }
+
+    fn delete_silence(&self, id: &str) -> SourceFuture<'_, ()> {
+        let id = id.to_owned();
+        Box::pin(async move {
+            if id.is_empty()
+                || id.contains("..")
+                || id.chars().any(|c| {
+                    matches!(c, '/' | '\\' | '?' | '#') || c.is_whitespace() || c.is_control()
+                })
+            {
+                return Err(SourceError::Invalid);
+            }
+            self.source
+                .delete_path(&format!("api/v2/silence/{id}"))
+                .await
         })
     }
 }
@@ -145,13 +187,57 @@ impl HttpSource {
         self.get_url_bytes(self.base.clone()).await
     }
 
+    pub(crate) async fn post_json<B: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<T, SourceError> {
+        let url = self
+            .base
+            .join(path)
+            .map_err(|_| SourceError::Configuration)?;
+        let encoded = serde_json::to_vec(body).map_err(|_| SourceError::Invalid)?;
+        let response = self
+            .client
+            .post(url)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body(encoded)
+            .send()
+            .await
+            .map_err(|_| SourceError::Down)?;
+        let bytes = self.read_bounded_response(response).await?;
+        serde_json::from_slice(&bytes).map_err(|_| SourceError::Invalid)
+    }
+
+    pub(crate) async fn delete_path(&self, path: &str) -> Result<(), SourceError> {
+        let url = self
+            .base
+            .join(path)
+            .map_err(|_| SourceError::Configuration)?;
+        let response = self
+            .client
+            .delete(url)
+            .send()
+            .await
+            .map_err(|_| SourceError::Down)?;
+        let _ = self.read_bounded_response(response).await?;
+        Ok(())
+    }
+
     async fn get_url_bytes(&self, url: Url) -> Result<Vec<u8>, SourceError> {
-        let mut response = self
+        let response = self
             .client
             .get(url)
             .send()
             .await
             .map_err(|_| SourceError::Down)?;
+        self.read_bounded_response(response).await
+    }
+
+    async fn read_bounded_response(
+        &self,
+        mut response: reqwest::Response,
+    ) -> Result<Vec<u8>, SourceError> {
         if !response.status().is_success() {
             return Err(SourceError::Down);
         }

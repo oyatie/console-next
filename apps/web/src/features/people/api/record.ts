@@ -70,10 +70,16 @@ export const voidedQuery = get("/api/v1/employees/voided");
 export const errorCode = (e: unknown) => (e instanceof ApiError ? e.code : undefined);
 /** The resident registration number as stored: masked, or that none is (decision #25; each read is logged). */
 export const rrnStatusQuery = (id: string) => get("/api/v1/employees/{id}/rrn", { params: { path: { id } } });
+export type RecordableIdType = "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
 /** Bind only the employee id: a number-derived hash would expose a brute-forceable secret. */
-export const recordRrn = async (id: string, rrn: string) => {
+export const recordRrn = async (id: string, rrn: string, idType?: RecordableIdType) => {
   const step_up = await assertBoundPasskeyHash("PII_RECORD", id, await sha256Hex(id));
-  return unwrap(api.PUT("/api/v1/employees/{id}/rrn", { params: { path: { id } }, body: { rrn, step_up } }));
+  return unwrap(
+    api.PUT("/api/v1/employees/{id}/rrn", {
+      params: { path: { id } },
+      body: { rrn, ...(idType ? { id_type: idType } : {}), step_up },
+    }),
+  );
 };
 /** The whole number for a recorded reason (decisions #25); the server logs the reason, never the number. */
 const revealProof = async (id: string, field: RevealField, reason: string) => assertBoundPasskeyHash("PII_REVEAL", id, await sha256Hex(`${field}:${reason.trim()}`));

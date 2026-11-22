@@ -1,36 +1,22 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use std::num::NonZeroU64;
 
-use axum::Json;
 use axum::extract::rejection::{PathRejection, QueryRejection};
 use axum::extract::{Path, Query, State};
-use axum::http::{HeaderMap, HeaderValue, header};
-use axum::response::{IntoResponse, Response};
+use axum::http::HeaderMap;
+use axum::response::Response;
 use console_ops_application::snapshot::{
-    AlertDetailView, AlertGroupsView, GrantView, HomeSnapshotView, JobsView, MeView, OperatorView,
-    RunningView, SilencesView, SourceKind, SourcesView,
+    AlertDetailView, AlertGroupsView, GrantView, JobsView, MeView, OperatorView, RunningView,
+    SilencesView, SourceKind, SourcesView,
 };
 use console_ops_domain::Observed;
 use console_ops_domain::ladders::{AlertState, EvidenceState, Health, Severity};
 use serde::Deserialize;
 
 use crate::error::OpsApiError;
+use crate::handlers_common::{enrich_home_snapshot, eval_interval, no_store_json};
+use crate::operators::VALID_ACTIONS;
 use crate::state::OpsRestState;
-
-const STAGE0_ACTIONS: [&str; 5] = [
-    "read.me",
-    "read.home",
-    "read.alerts",
-    "read.running",
-    "read.sources",
-];
-
-fn no_store_json<T: serde::Serialize>(value: T) -> Response {
-    let mut resp = Json(value).into_response();
-    resp.headers_mut()
-        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
-    resp
-}
 
 pub async fn get_me(
     State(state): State<OpsRestState>,
@@ -38,7 +24,7 @@ pub async fn get_me(
 ) -> Result<Response, OpsApiError> {
     let op = state.authorize(&headers, "read.me", "/api/ops/v1/me")?;
     let now = (state.clock)();
-    let allowed_actions: Vec<String> = STAGE0_ACTIONS
+    let allowed_actions: Vec<String> = VALID_ACTIONS
         .iter()
         .filter(|&&action| state.is_action_allowed(&op.display_email, action, now))
         .map(|&s| s.to_owned())
@@ -67,8 +53,26 @@ pub async fn get_home(
     State(state): State<OpsRestState>,
     headers: HeaderMap,
 ) -> Result<Response, OpsApiError> {
-    state.authorize(&headers, "read.home", "/api/ops/v1/home")?;
-    let home: HomeSnapshotView = state.snapshots.read().await.snapshot.home.clone();
+    let op = state.authorize(&headers, "read.home", "/api/ops/v1/home")?;
+    let now = (state.clock)();
+    let interval_s = eval_interval(&state);
+    let (mut home, running, base_sources) = {
+        let guard = state.snapshots.read().await;
+        (
+            guard.snapshot.home.clone(),
+            guard.snapshot.running.clone(),
+            guard.snapshot.sources.sources.clone(),
+        )
+    };
+    enrich_home_snapshot(
+        &state,
+        &op,
+        now,
+        interval_s,
+        &mut home,
+        &running,
+        base_sources,
+    );
     Ok(no_store_json(home))
 }
 

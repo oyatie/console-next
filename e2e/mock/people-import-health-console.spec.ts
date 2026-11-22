@@ -2,12 +2,13 @@
 import { expect, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { rrn } from "../helpers/import-layouts";
 import { test } from "../locale-fixture";
 import { shot, withFullPage } from "../shots";
 import { failure } from "./fixtures";
 import { setupConsoleSaeonPeople } from "./people-saeon";
 import { mockRoute } from "./route";
-import { saeonUniverse } from "./saeon";
+import { saeonPeopleDataHealth, saeonUniverse } from "./saeon";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -31,7 +32,7 @@ for (const width of [1440, 390] as const) {
       try {
         const main = page.getByRole("main");
 
-        // 1. /people/import -> upload -> preview (restricted col check) -> dryrun triage capture
+        // 1. /people/import -> upload -> preview (restricted col + id_type check) -> dryrun capture
         await page.goto("/people/import");
         await expect(page.locator('[data-pattern="wizard"]')).toHaveCount(1);
         await expect(page.getByRole("link", { name: t("import.aside.healthLink") })).toBeVisible();
@@ -46,7 +47,7 @@ for (const width of [1440, 390] as const) {
         await page.getByRole("button", { name: t("import.preview"), exact: true }).click();
         await expect(page.locator("#import-sheets")).toBeVisible();
 
-        // Open sheet editor and verify restricted BaseSalary option gating
+        // Open sheet editor: BaseSalary stays restricted while id_type stays selectable
         const sheetSection = page.getByRole("region", { name: t("importSheet.sheet", { name: saeonUniverse.entities[0]!.name }), exact: true });
         await sheetSection.getByRole("button", { name: t("importSheet.remap", { name: saeonUniverse.entities[0]!.name }) }).click();
         const restrictedSelect = sheetSection.getByRole("combobox", {
@@ -54,31 +55,38 @@ for (const width of [1440, 390] as const) {
         });
         await expect(restrictedSelect.getByRole("option")).toHaveText([t("importSheet.map.notImported")]);
         await expect(sheetSection.getByText(t("importSheet.restricted.none"))).toBeVisible();
+        const idTypeSelect = sheetSection.getByRole("combobox", {
+          name: t("importSheet.map.target", { sheet: saeonUniverse.entities[0]!.name, column: "H", label: t("import.target.id_type") }),
+        });
+        await expect(idTypeSelect).toHaveValue("id_type");
 
-        // Run dry-run and verify triage + inspector + capture
+        // Run dry-run: two_digit_year inline repair opens for Row 5
         await page.getByRole("button", { name: t("import.dryRun"), exact: true }).click();
         await expect(page.locator('section[aria-labelledby="import-dry"]')).toBeVisible();
         await expect(page.getByRole("button", { name: new RegExp(t("import.triage.blocker")) })).toBeVisible();
-        await expect(page.getByText(t("import.hint.invalid_date"))).toBeVisible();
+        await expect(page.getByText(t("importReview.hint.two_digit_year"))).toBeVisible();
 
-        // Verify all 4 import_exclude reason radio chips render under ReviewResolve
         const resolveSection = page.locator('section[aria-labelledby="import-resolve"]');
-        for (const item of saeonUniverse.reasonCodes.import_exclude) {
-          await expect(resolveSection.getByRole("radio", { name: item.labelKo })).toBeVisible();
-        }
+        await expect(resolveSection.getByPlaceholder("YYYY-MM-DD")).toBeVisible();
+        await expect(page.getByRole("grid", { name: t("import.rows.title") })).toContainText(t("enum.idType.DOMESTIC_RESIDENCE"));
 
-        // Click PRE_HIRE row to inspect derived sex hint + badge without leaking row 5 invalid_date hint
+        // Inspect PRE_HIRE NOT_ISSUED row (pre-hire badge + derived sex + PII_RECORD entry) without leaking Row 5 hint
         const preHireRow = page.getByRole("grid", { name: t("import.rows.title") }).getByRole("row").filter({ hasText: saeonUniverse.statusSamples.preHire.name }).first();
         await preHireRow.click();
         const rowDetailRegion = page.getByRole("region", {
           name: t("import.rows.detail", { sheet: saeonUniverse.entities[0]!.name, row: 2, name: saeonUniverse.statusSamples.preHire.name }),
         });
+        await expect(rowDetailRegion.getByText(t("enum.idType.NOT_ISSUED"))).toBeVisible();
         await expect(rowDetailRegion.getByText(t("import.rows.preHireBadge"))).toBeVisible();
         await expect(rowDetailRegion.getByText(t("import.rows.sexDerived", { sex: t("import.sex.MALE") }))).toBeVisible();
-        await expect(rowDetailRegion).not.toContainText(t("import.hint.invalid_date"));
-        await expect(page.getByText(t("import.hint.invalid_date"))).toBeVisible();
+        await expect(rowDetailRegion.getByLabel(new RegExp(t("importReview.identifier.rrn").replace(/[()]/g, "\\$&")))).toBeVisible();
+        await expect(rowDetailRegion).not.toContainText(t("importReview.hint.two_digit_year"));
 
-        // Click blocker triage filter then back to all for clean screenshot
+        // Re-select Row 5 blocker for clean inline repair capture alongside pre-hire and domestic-residence rows
+        const row5 = page.getByRole("grid", { name: t("import.rows.title") }).getByRole("row").filter({ hasText: "26-11-01" }).first();
+        if (await row5.count()) await row5.click();
+        else await page.getByRole("grid", { name: t("import.rows.title") }).getByRole("row").nth(4).click();
+
         await page.getByRole("button", { name: t("import.triage.blocker"), exact: true }).click();
         await page.getByRole("button", { name: t("import.triage.all"), exact: true }).click();
 
@@ -94,7 +102,6 @@ for (const width of [1440, 390] as const) {
         await expect(page.getByText("10433")).toBeVisible();
         await expect(page.getByText(`${saeonUniverse.entities[0]!.name} (2025)`)).toBeVisible();
 
-        // Verify CompanyMappings is visually below the 3-pane workspace
         const tabsBox = await page.getByRole("group", { name: t("unplaced.tabs") }).boundingBox();
         const mappingsBox = await page.getByRole("heading", { name: t("setup.names.title") }).boundingBox();
         expect(tabsBox).not.toBeNull();
@@ -109,12 +116,18 @@ for (const width of [1440, 390] as const) {
         await expectAxe(page, `Console /people/unplaced ${width} ${theme}`);
         await capture(page, width, "people-unplaced", theme);
 
-        // 3. /people/data-health (analytical list view)
+        // 3. /people/data-health (single backend endpoint, zero raw PII)
         await page.goto("/people/data-health");
         await expect(page.locator('[data-pattern="list-record"]')).toHaveCount(1);
         await expect(main.getByRole("heading", { level: 1, name: t("dataHealth.title") })).toBeVisible();
+        await expect(main.getByRole("heading", { level: 2, name: t("dataHealth.idSummary.title") })).toBeVisible();
         await expect(main.getByRole("heading", { level: 2, name: t("dataHealth.summary.title") })).toBeVisible();
         await expect(main.getByRole("heading", { level: 2, name: t("dataHealth.worklist.title") })).toBeVisible();
+        await expect(main.getByText(t("dataHealth.latestImportOpen"))).toBeVisible();
+
+        const worklistGrid = main.getByRole("grid", { name: t("dataHealth.worklist.title") });
+        await expect(worklistGrid).toContainText(`#${saeonUniverse.statusSamples.preHire.employeeNumber}`);
+        await expect(worklistGrid).not.toContainText(saeonUniverse.statusSamples.preHire.name);
 
         await fits(page, `Console /people/data-health ${width} ${theme}`);
         await expectAxe(page, `Console /people/data-health ${width} ${theme}`);
@@ -128,10 +141,61 @@ for (const width of [1440, 390] as const) {
   }
 }
 
-test("Console import, unplaced & data-health interactive flows, view-only gating, error states, and baseline preservation", async ({ page }) => {
+test("Console import inline repair & step-up PII_RECORD, data-health drilldown, view-only gating, error states, and baseline preservation", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  // 1. Roster consoleTools link to /people/data-health + KPI/side-pane interactivity
+  // 1. Inline cell repair + PII_RECORD step-up on /people/import
+  const importAdmin = await setupConsoleSaeonPeople(page, { experience: "console", canManage: true, unplacedPopulated: true });
+  try {
+    await page.goto("/people/import");
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: t("uiFileDrop.pick"), exact: true }).click();
+    await (await chooser).setFiles({
+      name: "saeon-2026-hire-batch.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from("employee_number,name,hire_date\n10701,Sample,2026-12-01\n"),
+    });
+    await page.getByRole("button", { name: t("import.preview"), exact: true }).click();
+    await page.getByRole("button", { name: t("import.dryRun"), exact: true }).click();
+
+    // 2-digit year fails with 422 two_digit_year, 4-digit YYYY-MM-DD repairs in-place and clears blocker without deadlocking Apply
+    const resolveSection = page.locator('section[aria-labelledby="import-resolve"]');
+    const dateInput = resolveSection.getByPlaceholder("YYYY-MM-DD");
+    await dateInput.fill("26-11-01");
+    await resolveSection.getByRole("button", { name: t("importReview.cells.save"), exact: true }).click();
+    await expect(resolveSection.getByText(t("importReview.refusal.two_digit_year"))).toBeVisible();
+
+    await dateInput.fill("2026-11-01");
+    await resolveSection.getByRole("button", { name: t("importReview.cells.save"), exact: true }).click();
+    await expect(page.getByText(t("importReview.hint.two_digit_year"))).toHaveCount(0);
+    await expect(page.getByText(t("import.rerun.pending"))).toHaveCount(0);
+    await expect(page.getByRole("button", { name: t("import.apply", { insert: 3, update: 2 }), exact: true })).not.toHaveAttribute("aria-disabled", "true");
+
+    // Record F-4 DOMESTIC_RESIDENCE identifier on PRE_HIRE NOT_ISSUED row via PII_RECORD step-up
+    const preHireRow = page.getByRole("grid", { name: t("import.rows.title") }).getByRole("row").filter({ hasText: saeonUniverse.statusSamples.preHire.name }).first();
+    await preHireRow.click();
+    const rowDetailRegion = page.getByRole("region", {
+      name: t("import.rows.detail", { sheet: saeonUniverse.entities[0]!.name, row: 2, name: saeonUniverse.statusSamples.preHire.name }),
+    });
+    const rrnInput = rowDetailRegion.getByLabel(new RegExp(t("importReview.identifier.rrn").replace(/[()]/g, "\\$&")));
+    const f4Synthetic = rrn("1995-05-05", 6, 12345);
+    await rrnInput.fill(f4Synthetic);
+    const idSelect = rowDetailRegion.getByLabel(new RegExp(t("importReview.identifier.idType")));
+    await expect(idSelect).toHaveValue("ARC");
+    await idSelect.selectOption("DOMESTIC_RESIDENCE");
+    await rowDetailRegion.getByRole("button", { name: t("importReview.identifier.save"), exact: true }).click();
+    await expect(rowDetailRegion.getByText(t("enum.idType.DOMESTIC_RESIDENCE"))).toBeVisible();
+    await expect(rowDetailRegion.getByText(t("import.rows.preHireBadge"))).toHaveCount(0);
+    await expect(rowDetailRegion.getByText(t("import.rows.sexDerived", { sex: t("import.sex.FEMALE") }))).toBeVisible();
+
+    expect(importAdmin.unexpected).toEqual([]);
+  } finally {
+    importAdmin.release();
+  }
+
+  // 2. Roster consoleTools link to /people/data-health + KPI/side-pane + /people?ids= drilldown
+  await page.goto("about:blank");
+  await page.unrouteAll({ behavior: "ignoreErrors" });
   const admin = await setupConsoleSaeonPeople(page, { experience: "console", canManage: true, unplacedPopulated: true });
   try {
     await page.goto("/people");
@@ -145,12 +209,19 @@ test("Console import, unplaced & data-health interactive flows, view-only gating
     await expect(worklist).toBeVisible();
     await worklist.getByRole("row").nth(1).click();
     await expect(page.getByRole("complementary", { name: t("dataHealth.pane.label") })).toBeVisible();
+
+    // Drill down from rrn_missing summary row into /people?ids=...
+    await page.getByRole("button", { name: new RegExp(t("dataHealth.stat.all")) }).click();
+    const summaryGrid = page.getByRole("table", { name: t("dataHealth.summary.title") });
+    const rrnRow = summaryGrid.getByRole("row").filter({ hasText: t("dataHealth.field.rrn_missing") });
+    await rrnRow.getByRole("link", { name: t("dataHealth.summary.openRoster") }).click();
+    await expect(page).toHaveURL(/\/people\?ids=/);
     expect(admin.unexpected).toEqual([]);
   } finally {
     admin.release();
   }
 
-  // 2. View-only permission gating on /people/data-health (must NOT call hr_basic:edit endpoints)
+  // 3. View-only permission gating on /people/data-health (must NOT call hr_basic:edit endpoints or show latest_import)
   await page.goto("about:blank");
   await page.unrouteAll({ behavior: "ignoreErrors" });
   const gatedCalls: string[] = [];
@@ -168,26 +239,23 @@ test("Console import, unplaced & data-health interactive flows, view-only gating
   try {
     await page.goto("/people/data-health");
     await expect(page.getByText(t("dataHealth.limitedNotice"))).toBeVisible();
+    await expect(page.getByText(t("dataHealth.latestImportOpen"))).toHaveCount(0);
     expect(gatedCalls).toEqual([]);
     expect(viewer.unexpected).toEqual([]);
   } finally {
     viewer.release();
   }
 
-  // 3. Data health empty & failed states
+  // 4. Data health empty & 403 refused states via GET /api/v1/hr/people/data-health
   await page.goto("about:blank");
   await page.unrouteAll({ behavior: "ignoreErrors" });
   const emptyFix = await setupConsoleSaeonPeople(page, { experience: "console", canManage: true });
-  await mockRoute(page, "get", "/api/v1/employees", { status: 200, json: { items: [], total: 0, limit: 200, offset: 0, next_cursor: null } });
-  await mockRoute(page, "get", "/api/v1/employees/facets", {
+  await mockRoute(page, "get", "/api/v1/hr/people/data-health", {
     status: 200,
     json: {
-      total: 0,
-      status: [],
-      employment_type: [],
-      legal_entity: [],
-      workplace: [],
-      review: { department_missing: 0, identity_review_required: 0, register_review_required: 0, home_branch_review_required: 0, lifecycle_apply_failed: 0, contract_ended: 0, contract_ending_before: 0 },
+      ...saeonPeopleDataHealth({ canManage: true }),
+      cohort: { total: 0, active: 0, on_leave: 0, pre_hire: 0 },
+      drilldown_items: [],
     },
   });
   try {
@@ -200,8 +268,7 @@ test("Console import, unplaced & data-health interactive flows, view-only gating
   await page.goto("about:blank");
   await page.unrouteAll({ behavior: "ignoreErrors" });
   const refusedFix = await setupConsoleSaeonPeople(page, { experience: "console", canManage: false });
-  await mockRoute(page, "get", "/api/v1/employees", { status: 403, json: failure("forbidden") });
-  await mockRoute(page, "get", "/api/v1/employees/facets", { status: 403, json: failure("forbidden") });
+  await mockRoute(page, "get", "/api/v1/hr/people/data-health", { status: 403, json: failure("forbidden") });
   try {
     await page.goto("/people/data-health");
     await expect(page.getByRole("main").getByRole("heading", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
@@ -209,7 +276,7 @@ test("Console import, unplaced & data-health interactive flows, view-only gating
     refusedFix.release();
   }
 
-  // 4. Baseline fallback preservation for /people/import, /people/unplaced, /people/data-health
+  // 5. Baseline fallback preservation for /people/import, /people/unplaced, /people/data-health
   await page.goto("about:blank");
   await page.unrouteAll({ behavior: "ignoreErrors" });
   const baseline = await setupConsoleSaeonPeople(page, { experience: "baseline", canManage: true, unplacedPopulated: true });
