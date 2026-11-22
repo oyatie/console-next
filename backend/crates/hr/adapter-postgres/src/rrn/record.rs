@@ -8,7 +8,13 @@ use crate::{
 };
 use console_hr_domain::{
     import::rrn_value::{Rrn, RrnVault},
+    profile::enums::IdType,
+    profile::identity::validate_id_pair,
     profile::mask,
+};
+use console_kernel_core::{TraceContext, UserId};
+use console_ontology_canonical_adapter_postgres::id_registered::{
+    IdRegisteredWrite, set_employee_id_type_in_tx,
 };
 use console_platform_auth::{
     MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind, PasskeyService,
@@ -31,6 +37,8 @@ use uuid::Uuid;
 pub struct RrnRecordRequest {
     pub rrn: String,
     #[serde(default)]
+    pub id_type: Option<String>,
+    #[serde(default)]
     pub step_up: Option<MobilePasskeyStepUpEnvelope>,
 }
 impl std::fmt::Debug for RrnRecordRequest {
@@ -48,7 +56,7 @@ pub fn record_binding(employee: Uuid) -> MobilePasskeyStepUpBinding {
 }
 
 // Keep the existing tenant-wide RRN boundary; the one loader supplies the directory fact.
-pub(super) async fn directory(
+pub(crate) async fn directory(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     p: &Principal,
 ) -> Result<bool, HrError> {
@@ -79,7 +87,7 @@ impl HrService {
         let authorized = principal.clone();
         let passkeys = passkeys.cloned();
         let vault_available = vault.is_some();
-        let rrn = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
+        let (rrn, effective_id_type) = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let within_rate = govern::within_rate(tx, &authorized, &["employee.rrn_record"]).await?;
                 let manages = directory(tx, &authorized).await?;
@@ -140,6 +148,48 @@ impl HrService {
                         "resident registration number is invalid",
                     )
                 })?;
+                let explicit_id_type = match request.id_type.as_deref() {
+                    Some(raw) if !raw.trim().is_empty() => Some(
+                        IdType::parse(&raw.trim().to_ascii_uppercase()).map_err(|_| {
+                            govern::refused(
+                                http::StatusCode::UNPROCESSABLE_ENTITY,
+                                "id_type_invalid",
+                                "identity type is invalid",
+                            )
+                        })?,
+                    ),
+                    _ => None,
+                };
+                if explicit_id_type == Some(IdType::NotIssued) {
+                    return Err(govern::refused(
+                        http::StatusCode::UNPROCESSABLE_ENTITY,
+                        "id_type_rrn_mismatch",
+                        "NOT_ISSUED cannot be paired with a registration number",
+                    ));
+                }
+                let effective_id_type = match validate_id_pair(
+                    explicit_id_type,
+                    Some(rrn.seventh_digit()),
+                    rrn.passes_mod11(),
+                    None,
+                ) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => IdType::Rrn,
+                    Err("rrn_mod11_invalid" | "rrn_invalid") => {
+                        return Err(govern::refused(
+                            http::StatusCode::UNPROCESSABLE_ENTITY,
+                            "rrn_invalid",
+                            "resident registration number check digit is invalid",
+                        ));
+                    }
+                    Err(_) => {
+                        return Err(govern::refused(
+                            http::StatusCode::UNPROCESSABLE_ENTITY,
+                            "id_type_rrn_mismatch",
+                            "identity type does not match registration number",
+                        ));
+                    }
+                };
                 if !vault_available {
                     return Err(unavailable());
                 }
@@ -151,7 +201,7 @@ impl HrService {
                     me,
                     json!({"operation":"record", "field":"RRN"}),
                 )?;
-                Ok((rrn, vec![event]))
+                Ok(((rrn, effective_id_type), vec![event]))
             })
         })
         .await?;
@@ -186,6 +236,19 @@ impl HrService {
                     &v2_candidates,
                 )
                 .await?;
+                set_employee_id_type_in_tx(
+                    tx,
+                    IdRegisteredWrite {
+                        org_id: *org.as_uuid(),
+                        employee_id: employee,
+                        actor: Some(UserId::from_uuid(actor)),
+                        new_id_type: effective_id_type.as_str(),
+                        source: "FORM",
+                        trace: TraceContext::generate(),
+                    },
+                )
+                .await
+                .map_err(|e| HrError::internal(e.to_string()))?;
                 Ok(RrnStatus {
                     employee_id: employee,
                     recorded: true,

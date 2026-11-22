@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { ReactNode } from "react";
-import { Banknote, CalendarDays, FileText, ListChecks, Settings } from "lucide-react";
+import { Banknote, Briefcase, CalendarDays, Clock, FileText, ListChecks, Settings } from "lucide-react";
 import { activeLink, type NavLink } from "../nav";
 import { normalizeAppPath } from "./tab-href";
 
@@ -9,6 +9,8 @@ export function tabIconForHref(href: string, allLinks: readonly NavLink[]): Reac
   const path = normalizeAppPath((cut === -1 ? href : href.slice(0, cut)) || "/");
   if (path === "/leave") return <CalendarDays size={14} aria-hidden="true" />;
   if (path === "/payslips") return <Banknote size={14} aria-hidden="true" />;
+  if (path === "/me/attendance") return <Clock size={14} aria-hidden="true" />;
+  if (path === "/me/desk") return <Briefcase size={14} aria-hidden="true" />;
   if (path === "/account" || path.startsWith("/account/")) return <Settings size={14} aria-hidden="true" />;
   if (path === "/requests" || path.startsWith("/requests/")) return <ListChecks size={14} aria-hidden="true" />;
   if (path === "/audit" || path.startsWith("/audit/")) return <FileText size={14} aria-hidden="true" />;

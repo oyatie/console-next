@@ -101,36 +101,56 @@ fn changed_rows(stored: &Value, now: &[PlannedRow]) -> Value {
 pub(crate) fn apply_failure(error: PgLeaveError) -> HrError {
     if let PgLeaveError::Db(DbError::Sqlx(sqlx)) = &error
         && let Some(db) = sqlx.as_database_error()
-        && let Some(sqlstate @ ("42501" | "25P04" | "57014")) = db.code().as_deref()
     {
-        let support_reference = apply_support_reference();
-        tracing::warn!(sqlstate, %support_reference, "import command refused by the database");
-        return if sqlstate == "42501" {
-            HrError::from_kernel(
-                KernelError::forbidden("the import command was not admitted")
-                    .with_code("import_apply_forbidden"),
-            )
-        } else {
-            HrError {
-                code: "import_apply_timed_out",
-                ..HrError::unavailable(
-                    "the import exceeded the server time limit; nothing was written",
+        if let Some(sqlstate @ ("42501" | "25P04" | "57014")) = db.code().as_deref() {
+            let support_reference = apply_support_reference();
+            tracing::warn!(sqlstate, %support_reference, "import command refused by the database");
+            return if sqlstate == "42501" {
+                HrError::from_kernel(
+                    KernelError::forbidden("the import command was not admitted")
+                        .with_code("import_apply_forbidden"),
                 )
+            } else {
+                HrError {
+                    code: "import_apply_timed_out",
+                    ..HrError::unavailable(
+                        "the import exceeded the server time limit; nothing was written",
+                    )
+                }
+            };
+        }
+        if db.message() == "employee_import_batch.rows_changed" {
+            let source_key = db
+                .try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
+                .and_then(|pg| pg.detail().map(str::to_owned));
+            return conflict(
+                "rows_changed_since_preview",
+                "the roster changed after the dry run; run it again",
+                json!([{ "source_key": source_key }]),
+            );
+        }
+        if db.code().as_deref() == Some("23505") {
+            let support_reference = apply_support_reference();
+            tracing::warn!(
+                constraint = db.constraint(),
+                %support_reference,
+                "import apply hit unique constraint conflict"
+            );
+            if db.constraint() == Some("employees_prehire_not_issued_identity_idx") {
+                return conflict(
+                    "duplicate_candidate",
+                    "a pending hire with the same name and birth date already exists without an issued identifier",
+                    json!([]),
+                );
             }
-        };
-    }
-    if let PgLeaveError::Db(DbError::Sqlx(sqlx)) = &error
-        && let Some(db) = sqlx.as_database_error()
-        && db.message() == "employee_import_batch.rows_changed"
-    {
-        let source_key = db
-            .try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
-            .and_then(|pg| pg.detail().map(str::to_owned));
-        return conflict(
-            "rows_changed_since_preview",
-            "the roster changed after the dry run; run it again",
-            json!([{ "source_key": source_key }]),
-        );
+            if db.constraint() != Some("employees_org_employee_number_key") {
+                return conflict(
+                    "rows_changed_since_preview",
+                    "the roster changed after the dry run; run it again",
+                    json!([]),
+                );
+            }
+        }
     }
     HrError::from_leave_store(error)
 }
@@ -251,3 +271,7 @@ impl HrService {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "apply_tests.rs"]
+mod tests;

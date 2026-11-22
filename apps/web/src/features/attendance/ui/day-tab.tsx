@@ -31,6 +31,8 @@ import { PersonScheduleSheet } from "./person-schedule-sheet";
 import type { AssignTarget } from "./assign-sheet";
 import { useDrafts } from "./use-drafts";
 import { useOnline } from "../../../lib/react/use-online";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
+import { DayConsoleView } from "./day-console-view";
 import { usePlanKinds } from "./use-plan-kinds";
 import s from "./records.module.css";
 
@@ -41,7 +43,7 @@ const route = getRouteApi("/app/attendance");
  * groups workplace › department fold their clean rows; issue rows come first, each with its sentence and one verb. Today is judged
  * only after it ends. Drafts typed here are saved through the same save sheet as the month grid.
  */
-export function DayTab({ head }: { head?: ReactNode }) {
+function DayBaselineTab({ head }: { head?: ReactNode }) {
   const grammarHintId = useId();
   const search = route.useSearch();
   const navigate = route.useNavigate();
@@ -79,7 +81,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
           {saveWhy ? <DisabledReason reason={saveWhy} control={(p) => <Button {...p} variant="primary">{t("attendanceRecords.toolbar.save")}</Button>} /> : <Button variant="primary" onClick={() => setSave(true)}>{t("attendanceRecords.toolbar.save")}</Button>}
         </>}
       </div>}
-      {feedback && <p className="muted" role="status">{feedback}</p>}
+      {feedback && <div className="muted" role="status">{feedback}</div>}
 
       <QueryState q={board} own={refusalText} layout="grid">{b => {
         const ledger = ledgerParts(b.ledger);
@@ -160,5 +162,13 @@ export function DayTab({ head }: { head?: ReactNode }) {
     }}</QueryState>
     </PageReadGate>
     </div>
+  );
+}
+
+export function DayTab({ head }: { head?: ReactNode }) {
+  return (
+    <ExperienceSwitch baseline={() => <DayBaselineTab head={head} />}>
+      {() => <DayConsoleView baseline={() => <DayBaselineTab head={head} />} />}
+    </ExperienceSwitch>
   );
 }

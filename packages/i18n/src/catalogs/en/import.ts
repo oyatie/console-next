@@ -190,6 +190,7 @@ export const enImport = {
   "import.decision.employee_numbers": "Employee no.",
   "import.decision.mapping": "Column mapping",
   "import.target.rrn": "Resident registration no.",
+  "import.target.id_type": "Identity type",
   "import.target.leave_start_date": "Leave start",
   "import.target.leave_type": "Leave type",
   "import.target.leave_return_date": "Expected return",

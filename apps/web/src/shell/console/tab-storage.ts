@@ -33,16 +33,26 @@ export function readStoredWorkspaceTabs(storageKey: string | null): StoredTab[] 
   }
 }
 
-export function writeStoredWorkspaceTabs(storageKey: string | null, tabs: readonly StoredTab[]): boolean {
+export function writeStoredWorkspaceTabs(storageKey: string | null, tabs: readonly StoredTab[], activeId?: string): boolean {
   if (!storageKey || typeof localStorage === "undefined") return false;
   try {
     localStorage.setItem(
       storageKey,
       JSON.stringify(tabs.map(({ id, href, label, pinned }) => ({ id, href, label, ...(pinned ? { pinned: true } : {}) }))),
     );
+    if (activeId) localStorage.setItem(`${storageKey}.active`, activeId);
     return true;
   } catch {
     return false;
+  }
+}
+
+export function readStoredActiveWorkspaceTab(storageKey: string | null): string | undefined {
+  if (!storageKey || typeof localStorage === "undefined") return undefined;
+  try {
+    return localStorage.getItem(`${storageKey}.active`) ?? undefined;
+  } catch {
+    return undefined;
   }
 }
 

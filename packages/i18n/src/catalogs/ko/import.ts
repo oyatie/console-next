@@ -202,6 +202,7 @@ export const koImport: Record<keyof typeof enImport, string> = {
   "import.decision.employee_numbers": "사번",
   "import.decision.mapping": "열 연결",
   "import.target.rrn": "주민등록번호",
+  "import.target.id_type": "신분증 유형",
   "import.target.leave_start_date": "휴직 시작일",
   "import.target.leave_type": "휴직 유형",
   "import.target.leave_return_date": "복직 예정일",

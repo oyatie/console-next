@@ -375,6 +375,15 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/import/{run_id}/cells",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!(
+                "../openapi/paths/api__v1__employees__import__run_id__cells.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/import/{run_id}/reconcile",
         operations: &[Operation {
             method: "get",
@@ -398,6 +407,15 @@ const PATHS: &[PathItem] = &[
             method: "put",
             body: include_str!(
                 "../openapi/paths/api__v1__employees__import__run_id__reconcile__rows__source_key.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!(
+                "../openapi/paths/api__v1__employees__import__run_id__rows__source_key__identifier.put.yaml"
             ),
         }],
     },
@@ -993,6 +1011,13 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "get",
             body: include_str!("../openapi/paths/api__v1__hr__org-chart.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/hr/people/data-health",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__hr__people__data-health.get.yaml"),
         }],
     },
     PathItem {
@@ -1791,8 +1816,24 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/ImportApplyRequest.yaml"),
     },
     NamedYaml {
+        name: "ImportCellsRepairRequest",
+        body: include_str!("../openapi/schemas/ImportCellsRepairRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportCellsRepairResponse",
+        body: include_str!("../openapi/schemas/ImportCellsRepairResponse.yaml"),
+    },
+    NamedYaml {
         name: "ImportDryRunRequest",
         body: include_str!("../openapi/schemas/ImportDryRunRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportRowIdentifierRequest",
+        body: include_str!("../openapi/schemas/ImportRowIdentifierRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportRowIdentifierResponse",
+        body: include_str!("../openapi/schemas/ImportRowIdentifierResponse.yaml"),
     },
     NamedYaml {
         name: "IssueAppointmentNoticeRequest",
@@ -1885,6 +1926,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OrgUnitStatus",
         body: include_str!("../openapi/schemas/OrgUnitStatus.yaml"),
+    },
+    NamedYaml {
+        name: "PeopleDataHealthResponse",
+        body: include_str!("../openapi/schemas/PeopleDataHealthResponse.yaml"),
     },
     NamedYaml {
         name: "PersonBindingReviews",

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { ATTENDANCE_MONTH_STATE } from "../../../lib/labels";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -11,10 +12,13 @@ import { Chip } from "../../../ui/chip";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { ItemList } from "../../../ui/item-list/item-list";
 import { StatRow } from "../../../ui/key-value/key-value";
+import { RecordPattern } from "../../../ui/patterns/record";
+import { RecordSection } from "../../../ui/record/record-section";
 import { personMonthQuery, type Day } from "../api";
 import { duration } from "../domain/minutes";
 import { pageState, type PageState } from "../domain/month-state";
 import { dateText, entryText, monthStateText, monthText, shiftText } from "../present";
+import { AttendanceTabNav } from "./attendance-head";
 import { DayBar, DayBars } from "./day-bar";
 import { MarkChip } from "./mark-chip";
 import s from "./records.module.css";
@@ -30,77 +34,203 @@ export function PersonCard({ id, month, head }: { id: string; month?: string; he
   const q = useQuery(personMonthQuery(id, m));
   const search = route.useSearch();
   const back = { ...search, person: undefined };
-  return (
-    <>{head}<QueryState q={q} layout="record">
-      {(p) => {
-        const work = p.days.filter((d) => d.plan.kind === "WORK").length;
-        const worked = p.days.filter((d) => d.recognition.recognised > 0).length;
-        const decisions = p.days.reduce((n, d) => n + d.marks.filter((x) => x === "UNAPPROVED_EXCESS" || x === "WORK_ON_REST_DAY").length, 0);
-        return (
+  const p = q.data;
+  const work = p ? p.days.filter(d => d.plan.kind === "WORK").length : 0;
+  const worked = p ? p.days.filter(d => d.recognition.recognised > 0).length : 0;
+  const decisions = p
+    ? p.days.reduce((n, d) => n + d.marks.filter(x => x === "UNAPPROVED_EXCESS" || x === "WORK_ON_REST_DAY").length, 0)
+    : 0;
+
+  const stripItems = p
+    ? [
+        { key: "sched", label: t("attendanceRecords.card.scheduledDays"), value: t("attendanceRecords.card.days", { count: work }) },
+        { key: "worked", label: t("attendanceRecords.card.workedDays"), value: t("attendanceRecords.card.days", { count: worked }) },
+        { key: "rec", label: t("attendanceRecords.total.recognisedLong"), value: duration(p.totals.recognised) },
+        { key: "unrec", label: t("attendanceRecords.total.unrecognisedLong"), value: duration(p.totals.unrecognised) },
+        { key: "nw", label: t("attendanceRecords.total.notWorked"), value: duration(p.totals.not_worked) },
+        { key: "dec", label: t("attendanceRecords.card.decisions"), value: decisions },
+      ]
+    : [];
+
+  const baseline = () => (
+    <>
+      {head}
+      <QueryState q={q} layout="record">
+        {person => (
           <div className={s.dayPage}>
-            <Crumbs items={[<Link key="b" to="/attendance" search={back}>{t(`attendance.tab.${search.tab ?? "month"}`)}</Link>]} current={`${p.name} ${p.employee_number ?? ""}`} />
-            <div className={s.inline}>
-              <h2>{p.name} <span className="muted num">{p.employee_number}</span></h2>
-              {p.month_state.state === "OPEN" ? p.provisional && <Chip tone={ATTENDANCE_MONTH_STATE.tone?.OPEN}>{t("attendanceRecords.card.provisional", { month: monthText(m) })}</Chip> : <MonthStateChip state={pageState([p.month_state])} month={m} />}
-            </div>
-            <p className="muted">{t("attendanceRecords.card.payNote")}</p>
-            <StatRow
-              label={t("attendanceRecords.card.strip")}
-              items={[
-                { key: "sched", label: t("attendanceRecords.card.scheduledDays"), value: t("attendanceRecords.card.days", { count: work }) },
-                { key: "worked", label: t("attendanceRecords.card.workedDays"), value: t("attendanceRecords.card.days", { count: worked }) },
-                { key: "rec", label: t("attendanceRecords.total.recognisedLong"), value: duration(p.totals.recognised) },
-                { key: "unrec", label: t("attendanceRecords.total.unrecognisedLong"), value: duration(p.totals.unrecognised) },
-                { key: "nw", label: t("attendanceRecords.total.notWorked"), value: duration(p.totals.not_worked) },
-                { key: "dec", label: t("attendanceRecords.card.decisions"), value: decisions },
-              ]}
+            <Crumbs
+              items={[<Link key="b" to="/attendance" search={back}>{t(`attendance.tab.${search.tab ?? "month"}`)}</Link>]}
+              current={`${person.name} ${person.employee_number ?? ""}`}
             />
+            <div className={s.inline}>
+              <h2>
+                {person.name} <span className="muted num">{person.employee_number}</span>
+              </h2>
+              {person.month_state.state === "OPEN" ? (
+                person.provisional && (
+                  <Chip tone={ATTENDANCE_MONTH_STATE.tone?.OPEN}>
+                    {t("attendanceRecords.card.provisional", { month: monthText(m) })}
+                  </Chip>
+                )
+              ) : (
+                <MonthStateChip state={pageState([person.month_state])} month={m} />
+              )}
+            </div>
+            <div className="muted">{t("attendanceRecords.card.payNote")}</div>
+            <StatRow label={t("attendanceRecords.card.strip")} items={stripItems} />
             <Card title={t("attendanceRecords.card.daysTitle")} flush>
-              <DayBars days={p.days} labels={p.days.map(d => dateText(d.date))}><ItemList label={t("attendanceRecords.card.daysTitle")} items={p.days.map((d) => ({ key: d.date, text: <DayLine day={d} /> }))} /></DayBars>
+              <DayBars days={person.days} labels={person.days.map(d => dateText(d.date))}>
+                <ItemList
+                  label={t("attendanceRecords.card.daysTitle")}
+                  items={person.days.map(d => ({ key: d.date, text: <DayLine day={d} /> }))}
+                />
+              </DayBars>
             </Card>
             <Card title={t("attendanceRecords.card.historyTitle")}>
-              {p.history.length ? (
+              {person.history.length ? (
                 <ItemList
                   label={t("attendanceRecords.card.historyTitle")}
-                  items={p.history.map((h) => ({
+                  items={person.history.map(h => ({
                     key: h.entry.id,
-                    text: <>{dateText(h.date)} · {h.entry.kind === "VOID" || h.entry.undone ? <s>{entryText(h.entry.kind, h.entry.segments)}</s> : entryText(h.entry.kind, h.entry.segments)} · <Chip>{t(`attendanceRecords.source.${h.entry.source}`)}</Chip>{h.entry.reason && <> · {h.entry.reason}</>}</>,
-                    end: <span className="muted">{h.entry.created_by_name}</span>,
+                    text: (
+                      <>
+                        {dateText(h.date)} ·{" "}
+                        {h.entry.kind === "VOID" || h.entry.undone ? (
+                          <s>{entryText(h.entry.kind, h.entry.segments)}</s>
+                        ) : (
+                          entryText(h.entry.kind, h.entry.segments)
+                        )}{" "}
+                        · <Chip>{t(`attendanceRecords.source.${h.entry.source}`)}</Chip>
+                        {h.entry.reason && <> · {h.entry.reason}</>}
+                      </>
+                    ),
+                    end: <bdi className="muted">{h.entry.created_by_name}</bdi>,
                   }))}
                 />
               ) : (
-                <p className="muted">{t("attendanceRecords.day.noHistory")}</p>
+                <div className="muted">{t("attendanceRecords.day.noHistory")}</div>
               )}
             </Card>
           </div>
-        );
+        )}
+      </QueryState>
+    </>
+  );
+
+  return (
+    <RecordPattern
+      q={q}
+      tabs={<AttendanceTabNav tab={search.tab ?? "month"} />}
+      head={{
+        title: p ? `${p.name} ${p.employee_number ?? ""}`.trim() : t("attendance.title"),
+        titleId: "attendance-person-title",
+        crumbs: [<Link key="b" to="/attendance" search={back}>{t(`attendance.tab.${search.tab ?? "month"}`)}</Link>],
+        meta: p ? (
+          p.month_state.state === "OPEN" ? (
+            p.provisional ? (
+              <Chip tone={ATTENDANCE_MONTH_STATE.tone?.OPEN}>
+                {t("attendanceRecords.card.provisional", { month: monthText(m) })}
+              </Chip>
+            ) : undefined
+          ) : (
+            <MonthStateChip state={pageState([p.month_state])} month={m} />
+          )
+        ) : undefined,
       }}
-    </QueryState></>
+      strip={p ? <StatRow label={t("attendanceRecords.card.strip")} items={stripItems} /> : undefined}
+      sections={
+        p ? (
+          <>
+            <RecordSection id="att-person-days" no={1} title={t("attendanceRecords.card.daysTitle")} meta={t("attendanceRecords.card.payNote")}>
+              <DayBars days={p.days} labels={p.days.map(d => dateText(d.date))}>
+                <ItemList
+                  label={t("attendanceRecords.card.daysTitle")}
+                  items={p.days.map(d => ({ key: d.date, text: <DayLine day={d} /> }))}
+                />
+              </DayBars>
+            </RecordSection>
+            {p.history.length > 0 ? (
+              <RecordSection id="att-person-history" no={2} title={t("attendanceRecords.card.historyTitle")}>
+                <ItemList
+                  label={t("attendanceRecords.card.historyTitle")}
+                  items={p.history.map(h => ({
+                    key: h.entry.id,
+                    text: (
+                      <>
+                        {dateText(h.date)} ·{" "}
+                        {h.entry.kind === "VOID" || h.entry.undone ? (
+                          <s>{entryText(h.entry.kind, h.entry.segments)}</s>
+                        ) : (
+                          entryText(h.entry.kind, h.entry.segments)
+                        )}{" "}
+                        · <Chip>{t(`attendanceRecords.source.${h.entry.source}`)}</Chip>
+                        {h.entry.reason && <> · {h.entry.reason}</>}
+                      </>
+                    ),
+                    end: <bdi className="muted">{h.entry.created_by_name}</bdi>,
+                  }))}
+                />
+              </RecordSection>
+            ) : null}
+          </>
+        ) : null
+      }
+      statusSegments={
+        p
+          ? [
+              {
+                id: "person",
+                tone: "strong",
+                content: t("attendance.personConsole.status", {
+                  name: p.name,
+                  month: monthText(m),
+                  recognised: duration(p.totals.recognised),
+                }),
+              },
+            ]
+          : undefined
+      }
+      baseline={baseline}
+    />
   );
 }
 
 function DayLine({ day }: { day: Day }) {
   const r = day.recognition;
   return (
-    <span className={s.boardRow}>
+    <div className={s.boardRow}>
       <span className="num">{day.date.slice(8)}</span>
-      <span>{day.plan.shift ? shiftText(day.plan.shift) : t(`attendance.dayKind.${day.plan.kind}`)}</span>
+      <bdi>{day.plan.shift ? shiftText(day.plan.shift) : t(`attendance.dayKind.${day.plan.kind}`)}</bdi>
       <DayBar day={day} />
-      <span>{day.entry ? t("attendanceRecords.card.pair", { recorded: entryText(day.entry.kind, day.entry.segments), recognised: duration(r.recognised) }) : t("attendanceRecords.day.none")}</span>
-      <span>{day.marks.map((m) => <MarkChip key={m} mark={m} />)}</span>
-    </span>
+      <bdi>
+        {day.entry
+          ? t("attendanceRecords.card.pair", { recorded: entryText(day.entry.kind, day.entry.segments), recognised: duration(r.recognised) })
+          : t("attendanceRecords.day.none")}
+      </bdi>
+      <div>
+        {day.marks.map(m => (
+          <MarkChip key={m} mark={m} />
+        ))}
+      </div>
+    </div>
   );
 }
 
 /** A closed or reopened month on the card: its state, and the way to the lock behind it (the card itself never edits). */
 function MonthStateChip({ state, month }: { state: PageState; month: string }) {
   const { link, unlock } = monthStateText(state, month);
-  const label = state.state === "CLOSED" ? t("attendanceRecords.card.closed", { month: monthText(month) })
-    : state.relockAt ? t("attendanceRecords.card.reopened", { at: fmtDateTime(state.relockAt) }) : t("attendanceRecords.card.reopenedOpenEnded");
+  const label =
+    state.state === "CLOSED"
+      ? t("attendanceRecords.card.closed", { month: monthText(month) })
+      : state.relockAt
+        ? t("attendanceRecords.card.reopened", { at: fmtDateTime(state.relockAt) })
+        : t("attendanceRecords.card.reopenedOpenEnded");
   return (
     <>
       <Chip tone={ATTENDANCE_MONTH_STATE.tone?.[state.state]}>{label}</Chip>
-      <Link to="/people/period-locks" search={unlock ? { unlock } : {}}>{link}</Link>
+      <Link to="/people/period-locks" search={unlock ? { unlock } : {}}>
+        {link}
+      </Link>
     </>
   );
 }

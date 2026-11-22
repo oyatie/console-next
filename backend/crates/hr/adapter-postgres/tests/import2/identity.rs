@@ -111,3 +111,68 @@ async fn a_later_file_reviews_rrn_candidates_and_questions_contradictions(pool: 
     assert_eq!(picked.rows[0].employee_id, Some(kim));
     assert_eq!(picked.rows[0].outcome, "unchanged");
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn import_writer_refuses_intra_batch_duplicate_rrn_across_two_employees(pool: PgPool) {
+    let i = importer(pool).await;
+    i.load(
+        "seed.xlsx",
+        &[table(
+            "Sheet1",
+            0,
+            &[
+                &["employee_number", "name", "hire_date"],
+                &["1001", "Kim Ga", "2024-01-02"],
+                &["1002", "Kim Na", "2024-01-02"],
+            ],
+        )],
+        decisions(),
+    )
+    .await;
+    let emp_a = i.person("Kim Ga").await.0;
+    let emp_b = i.person("Kim Na").await.0;
+    let run = i
+        .preview(
+            "dup-rrn.xlsx",
+            &[table(
+                "Sheet1",
+                0,
+                &[
+                    &["employee_number", "name", "rrn", "hire_date"],
+                    &["1001", "Kim Ga", "900101-1234567", "2024-01-02"],
+                    &["1002", "Kim Na", "900101-1234567", "2024-01-02"],
+                ],
+            )],
+            &Default::default(),
+        )
+        .await
+        .unwrap()
+        .run_id;
+    let plan = i.dry_run(run, decisions()).await;
+    let people = std::collections::BTreeMap::from([
+        (plan.rows[0].source_key.clone(), emp_a),
+        (plan.rows[1].source_key.clone(), emp_b),
+    ]);
+    let org = i.f.principal.org_id;
+    let actor = *i.f.principal.user_id.as_uuid();
+    let error = console_platform_db::with_org_conn::<_, _, console_hr_adapter_postgres::HrError>(
+        &i.f.rt,
+        org,
+        move |tx| {
+            Box::pin(async move {
+                console_hr_adapter_postgres::import::identities::record(
+                    tx,
+                    *org.as_uuid(),
+                    actor,
+                    run,
+                    &people,
+                    Some(&crate::harness::MirrorVault),
+                )
+                .await
+            })
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!((error.status.as_u16(), error.code), (409, "rrn_in_use"));
+}

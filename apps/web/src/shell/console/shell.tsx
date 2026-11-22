@@ -160,7 +160,7 @@ function ConsoleLayout({
     : phoneHeader?.phoneNav === "self-service" &&
         (pathname === "/people/certificates" || pathname.startsWith("/people/certificates/"))
       ? "/people/certificates"
-      : pathname === "/account" || pathname.startsWith("/account/")
+      : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
         ? "/account"
         : currentModuleTo;
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);

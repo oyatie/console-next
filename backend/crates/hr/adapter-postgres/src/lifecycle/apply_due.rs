@@ -203,6 +203,14 @@ async fn apply_scheduled_lifecycle_event_tx(
     // employee holds on its date.
     resolve_kept_status(&mut transition, &current);
     validate_lifecycle_transition(&current, &transition)?;
+    super::store::require_issued_id_for_onboard(
+        tx,
+        org_uuid,
+        employee_id,
+        &current.employment_status,
+        &transition.to_status,
+    )
+    .await?;
     let target = resolve_lifecycle_target(tx, org_uuid, employee_id, &current, &transition).await?;
     // The from_ side is the head the event met on its date (0246, 0266), so
     // a rescission restores what was really there.
