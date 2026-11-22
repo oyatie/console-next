@@ -1,6 +1,6 @@
 // The bundle's side of the chunk guard. public/chunk-guard.js (loaded before the entry) owns the decision: reload
 // once per build with a cache-busting navigation, then an error screen. This file routes lazy chunks through it.
-type ChunkGuard = { handled?(error: unknown): void; recover(): boolean; reload(): void; loaded(): void; fail(): void; start(): void };
+type ChunkGuard = { handled?(error: unknown): void; recover(): boolean; reload(): void; loaded(): void; fail(): void; start(statusOrigin?: string): void };
 const guard = (): ChunkGuard | undefined => (globalThis as { consoleChunkGuard?: ChunkGuard }).consoleChunkGuard;
 
 // Chromium, Firefox, Safari, and Vite's CSS preload. TanStack's lazyRouteComponent reloads on the first three itself.
@@ -28,7 +28,7 @@ export function localChunk<M>(load: Promise<M>): Promise<M> {
 /** The error screen's button: a reload that fetches index.html afresh (a plain reload may revalidate a stale one). */
 export const reloadPage = () => (guard() ? guard()!.reload() : location.reload());
 /** The entry ran: its static imports are in, so failed scripts from here on are lazy chunks. */
-export const started = () => guard()?.start();
+export const started = (statusOrigin?: string) => guard()?.start(statusOrigin);
 /** The first screen rendered with its catalog: a later deploy may reload once again. */
 export const loaded = () => guard()?.loaded();
 /** A fatal failure replaces the React UI with the static recovery screen. */

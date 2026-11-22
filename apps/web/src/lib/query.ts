@@ -136,3 +136,6 @@ export const cachedQueriesWithPrefix = (qc: QueryClient, prefix: string) =>
 
 /** True when a cached query belongs to `prefix`. */
 export const isQueryForPrefix = (q: Query, prefix: string) => q.queryKey[0] === prefix;
+
+/** Derived params object stored alongside a query's path in its key. */
+export const queryParams = (q: Query): unknown => q.queryKey[1];

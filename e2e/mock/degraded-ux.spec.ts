@@ -41,6 +41,24 @@ async function seedExperience(page: import("@playwright/test").Page, experience:
   );
 }
 
+async function armChunkLoadedBarrier(page: import("@playwright/test").Page) {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("__e2e_chunk_barrier__")) {
+      sessionStorage.setItem("__e2e_chunk_barrier__", "1");
+      sessionStorage.setItem("console.chunk-reload:__ready__", "1");
+    }
+  });
+}
+
+async function waitForChunkLoadedAndExhaustReload(page: import("@playwright/test").Page) {
+  await page.waitForFunction(() => sessionStorage.getItem("console.chunk-reload:__ready__") === null);
+  await page.evaluate(() => {
+    const entry = document.querySelector<HTMLScriptElement>('script[type="module"][src]')!;
+    sessionStorage.setItem(`console.chunk-reload:${entry.src}`, "1");
+    (window as unknown as { __noReload?: boolean }).__noReload = true;
+  });
+}
+
 for (const width of [1440, 390] as const) {
   for (const theme of ["light", "dark"] as const) {
     test(`Console outage banner renders max-1 non-dismissible alert and recovers on retry (${width}px ${theme})`, async ({ page }) => {
@@ -185,17 +203,16 @@ for (const width of [1440, 390] as const) {
       const liveAsset = (url: URL) => /\/live-[^/]+\.js$/.test(url.pathname);
       await page.route(liveAsset, route => route.fulfill({ status: 404, body: "" }));
       try {
+        await armChunkLoadedBarrier(page);
         await page.goto("/login");
-        await page.evaluate(() => {
-          const entry = document.querySelector<HTMLScriptElement>('script[type="module"][src]')!;
-          sessionStorage.setItem(`console.chunk-reload:${entry.src}`, "1");
-        });
+        await waitForChunkLoadedAndExhaustReload(page);
         await page.locator("summary").click();
         await page.getByRole("textbox", { name: t("auth.login.code"), exact: true }).fill("ABCD-EFGH");
         await page.getByRole("button", { name: t("auth.login.submitCode"), exact: true }).click();
 
         const heading = page.getByRole("heading", { name: t("common.crashed.title"), exact: true });
         await expect(heading).toBeVisible();
+        expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
         const statusLink = page.getByRole("link", { name: t("live.statusPage"), exact: true });
         await expect(statusLink).toBeVisible();
         await expect(statusLink).toHaveAttribute("href", "https://status.cosskorea.com");
@@ -347,15 +364,14 @@ test("baseline experience remains completely unaltered under outage, SSE drop, a
     await mockRoute(page, "post", "/api/v1/auth/otp/redeem", { status: 200, json: token() });
     const liveAsset = (url: URL) => /\/live-[^/]+\.js$/.test(url.pathname);
     await page.route(liveAsset, route => route.fulfill({ status: 404, body: "" }));
+    await armChunkLoadedBarrier(page);
     await page.goto("/login");
-    await page.evaluate(() => {
-      const entry = document.querySelector<HTMLScriptElement>('script[type="module"][src]')!;
-      sessionStorage.setItem(`console.chunk-reload:${entry.src}`, "1");
-    });
+    await waitForChunkLoadedAndExhaustReload(page);
     await page.locator("summary").click();
     await page.getByRole("textbox", { name: t("auth.login.code"), exact: true }).fill("ABCD-EFGH");
     await page.getByRole("button", { name: t("auth.login.submitCode"), exact: true }).click();
     await expect(page.getByRole("heading", { name: t("common.crashed.title"), exact: true })).toBeVisible();
+    expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
     await expect(page.getByRole("link", { name: t("live.statusPage"), exact: true })).toHaveCount(0);
     await expect(page.getByText(t("live.crashed.inputKept"), { exact: true })).toHaveCount(0);
     expect(fixture.unexpected).toEqual([]);

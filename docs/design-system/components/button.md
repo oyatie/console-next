@@ -104,8 +104,8 @@ label or a `<data class="btn__count">` after a `Check` label; `switch` gives `Ch
 | Keyboard focus | The global rule for every focusable element: a 2 px `--primary` outline, 2 px away. The family adds one focus rule of its own: on keyboard focus, as on hover, the underline of the `link` variant takes the text colour. |
 | Pressed down | No look. There is no `:active` rule. |
 | On (`aria-pressed="true"`) | `ToggleButton`: `--primary` border and text on a `--primary-soft` fill, with the count turning `--primary`. `Segmented`: `--control-selected` fill, `--on-control-selected` text and count, `--control-border` border, and a 1 px inset `--control-selected-border` ring. A button placed directly in a `.tabs` row shows the tab underline instead. |
-| Disabled (`disabled` or `aria-disabled="true"`) | Half opacity and a not-allowed cursor. |
-| Disabled `primary` with `aria-disabled="true"` (not pending) | Stays at full opacity so it can be read: a dashed `--primary` border, `--primary-soft` fill, `--primary` text (`:not([data-pending="true"])`). |
+| Disabled (`disabled` or `aria-disabled="true"`) | Half opacity and a not-allowed cursor (in non-baseline experiences, native `:disabled` buttons keep their resting fill on hover). |
+| Disabled `primary` with `aria-disabled="true"` (not pending) | Stays at full opacity so it can be read (`:not([data-pending="true"])`): in `baseline`, a dashed `--primary` border, `--primary-soft` fill and `--primary` text; in non-baseline experiences, a solid `--border` border, `--muted` fill and `--steel` text (at rest and on hover). |
 | Disabled `link` | No look. The disabled rule is on `btn`, which the link variant does not carry. |
 | Busy or loading (`pending` on `Button`) | Sets `aria-disabled="true"` and `data-pending="true"`, shows a `progress` cursor, and suppresses `onClick` while keeping keyboard focus on the button. Half opacity applies to all variants including `primary`. |
 | Count tone | `countTone="warn"` turns the count `--warn-tx` and `countTone="danger"` turns it `--danger-tx` while the button is off. When pressed, a `ToggleButton` count turns `--primary` and a `Segmented` count turns `--on-control-selected`: the tone does not show while on. The count keeps a minimum width of three characters, so the label does not move when the number arrives. |
@@ -172,7 +172,7 @@ What the gallery shows of this family:
 
 | Shown | Where |
 |---|---|
-| `Button` in the five boxed variants, a natively disabled button, one plain `ToggleButton` | `apps/web/src/ui/button/button.gallery.tsx` |
+| `Button` in the five boxed variants, a natively disabled button, an `aria-disabled` primary button, a natively disabled primary button, one plain `ToggleButton` | `apps/web/src/ui/button/button.gallery.tsx` |
 | `sm` buttons, and `IconButton` at both sizes | `apps/web/src/ui/button/button-sizes.gallery.tsx` |
 | `Form` with a `Check` and two submit-row buttons | `apps/web/src/gallery/sections/forms.gallery.tsx` |
 
@@ -306,8 +306,7 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `border` |
-| `--border-strong` | `border-color` |
+| `--border` | `border`, `border-color` |
 | `--control-border` | `border-color` |
 | `--control-h` | `min-height`, `width` |
 | `--control-h-lg` | `min-height`, `width` |
@@ -315,7 +314,6 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | `--danger-bg` | `background` |
 | `--danger-solid` | `background`, `border-color` |
 | `--danger-tx` | `background`, `border-color`, `color` |
-| `--faint` | `color` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
 | `--ink` | `color` |

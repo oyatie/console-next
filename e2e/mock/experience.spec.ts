@@ -15,14 +15,14 @@ test.beforeAll(() => loadCatalog("ko"));
 const optionText = (experience: ReturnType<typeof offeredExperiences>[number]) =>
   experience.listing === "preview" ? t("account.experience.preview", { style: t(experience.label) }) : t(experience.label);
 const tenantOptionText = (styleId = "baseline") =>
-  t("account.experience.organizationDefault", { style: styleId === "console" ? t("account.experience.preview", { style: t("account.experience.console") }) : t("account.experience.baseline") });
+  t("account.experience.organizationDefault", { style: styleId === "console" ? t("account.experience.console") : t("account.experience.baseline") });
 
 // Start on a fresh device to exercise the default before switching styles.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`screen style switches in place and round-trips across account and device at ${width}px ${theme}`, async ({ page }, info) => {
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     // Observe the classic script before the module entry can execute.
     await page.route("**/prefs.js", async route => {
@@ -37,6 +37,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBeNull();
       await expect(chooser).toHaveValue("tenant");
       await expect(chooser.locator("option")).toHaveText([tenantOptionText("baseline"), ...offeredExperiences("baseline").map(optionText)]);
+      expect(await chooser.locator("option").allTextContents()).not.toContain(
+        t("account.experience.preview", { style: t("account.experience.console") }),
+      );
       await expect(chooser).toHaveAccessibleDescription(t("account.experience.personal"));
 
       for (const unknown of ["unavailable", "constructor"]) {
@@ -68,6 +71,9 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
           }
           await fits(page, `console shell ${width} ${theme}`);
           await page.screenshot({ path: info.outputPath("console-shell.png") });
+          if (process.env.STRUCT_SHOTS) {
+            await page.screenshot({ path: `${process.env.STRUCT_SHOTS}/shell--${width}-${theme}.png` });
+          }
           await expectAxe(page, `console shell ${width} ${theme}`);
         } else {
           await expect(page.locator("[data-console-shell]")).toHaveCount(0);
